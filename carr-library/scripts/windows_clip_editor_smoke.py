@@ -59,7 +59,7 @@ def drive_editor(wx, show_editor, frame, plan, action, record):
                     controls['start'].SetValue('1.25')
                 elif action == 'split':
                     controls['split_at'].SetValue('.25')
-                elif action == 'join':
+                elif action in ('join', 'consolidate'):
                     controls['join'].SetSelection(1)
             elif state['phase'] == 'invalid-duration':
                 assert dialog.IsShown() and 'duration' in status.GetValue().lower()
@@ -121,7 +121,7 @@ def drive_editor(wx, show_editor, frame, plan, action, record):
                 assert result['position'] == 1.25 and 'clipboard' not in result
             elif action == 'split':
                 assert result['split_at'] == .25 and result['clip_id'] == 'clip-one'
-            elif action == 'join':
+            elif action in ('join', 'consolidate'):
                 assert result['other_id'] == 'clip-two' and result['clip_id'] == 'clip-one'
         assert plan.scenes[0].clips[0].title == 'Голос'
         return result
@@ -159,7 +159,7 @@ def main():
     from carr_library.audio.production import parse_script
     from carr_library.ui.audio_clips import show_clip_editor
 
-    identity = installed_identity(["carr_library.audio.clips","carr_library.audio.clip_audio","carr_library.audio.models","carr_library.audio.production","carr_library.ui.audio_clips"])
+    identity = installed_identity(["carr_library.audio.clips","carr_library.audio.clip_consolidation","carr_library.audio.clip_audio","carr_library.audio.models","carr_library.audio.production","carr_library.ui.audio_clips"])
     if wx.Platform != '__WXMSW__':
         raise RuntimeError('Native Windows wx controls are required.')
     application = wx.App(False)
@@ -179,19 +179,20 @@ def main():
 
     try:
         for action in ('edit', 'move', 'duration', 'remove', 'preview',
-                       'copy', 'cut', 'paste', 'split', 'join', 'cancel'):
+                       'copy', 'cut', 'paste', 'split', 'join', 'consolidate', 'cancel'):
             drive_editor(wx, show_clip_editor, frame, plan, action, record)
-        print(json.dumps({'status': 'PASS', 'checks': checks,
-                          'installed_mode': True, 'isolated': True, 'module_origins': identity,
-                          'actual_pcm_processing': 'SEPARATE_STRICT_SUITE',
-                          'native_file_picker': 'NOT_RUN', 'manual_nvda': 'NOT_RUN',
-                          'playback_device_acceptance': 'NOT_RUN'}), flush=True)
-        return 0
     finally:
         frame.Destroy()
         application.ProcessPendingEvents()
         native_loop.ProcessIdle()
         application.Yield()
+    print(json.dumps({'status': 'PASS', 'checks': checks,
+                      'installed_mode': True, 'isolated': True, 'module_origins': identity,
+                      'native_controls': 'PASS', 'native_cleanup': 'PASS',
+                      'actual_pcm_processing': 'SEPARATE_STRICT_SUITE',
+                      'native_file_picker': 'NOT_RUN', 'manual_nvda': 'NOT_RUN',
+                      'playback_device_acceptance': 'NOT_RUN'}), flush=True)
+    return 0
 
 
 if __name__ == '__main__':

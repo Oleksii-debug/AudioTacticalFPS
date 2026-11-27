@@ -584,7 +584,14 @@ jobs:
             'tests/assistant/test_interactive_service.py',
             'tests/assistant/test_translation.py',
             'tests/assistant/test_translation_advanced.py',
-            'tests/assistant/test_translation_scopes.py'
+            'tests/assistant/test_translation_scopes.py',
+            'tests/storage/test_legacy_transcription_recovery.py',
+            'tests/storage/test_legacy_transcription_compatibility.py',
+            'tests/transcription/test_legacy_history_cli.py',
+            'tests/ui/test_legacy_transcription_recovery.py',
+            'tests/audio/test_clip_consolidation.py',
+            'tests/audio/test_clip_input_ownership.py',
+            'tests/conversion/test_legacy_adapters.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -1179,6 +1186,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -X utf8 scripts/r7_native_gate.py media-overlay --report ci-results/full-bundle-media-overlay-native.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -X utf8 scripts/r7_native_gate.py legacy-asr --report ci-results/full-bundle-legacy-asr-native.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -X utf8 scripts/reader_interactive_native_gate.py --results ci-results/full-bundle-reader-interactive-native
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $runInstalledTests = @'
@@ -1530,7 +1539,15 @@ jobs:
               'tests/assistant/test_dialog_lifecycle.py',
               'tests/assistant/test_local_assistant.py',
               'tests/assistant/test_production_bridge.py',
-              'tests/assistant/test_state_validation.py'
+              'tests/assistant/test_state_validation.py',
+              'tests/storage/test_legacy_transcription_recovery.py',
+              'tests/storage/test_legacy_transcription_compatibility.py',
+              'tests/transcription/test_legacy_history_cli.py',
+              'tests/ui/test_legacy_transcription_recovery.py',
+              'tests/storage/test_backup_v3_compatibility.py',
+              'tests/audio/test_clip_consolidation.py',
+              'tests/audio/test_clip_input_ownership.py',
+              'tests/conversion/test_legacy_adapters.py'
           ]
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:

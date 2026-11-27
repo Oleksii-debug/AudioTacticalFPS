@@ -18,6 +18,8 @@ from ..data_paths import guard_data_directory
 from ..extract.page_ocr import Config
 from ..ingest.worker import _invoke
 from .capabilities import CONVERSION_SUFFIXES, IMAGES, capabilities
+from .legacy import LEGACY_SUFFIXES, QUALIFIED_SUFFIXES, kind_for
+from .legacy_runtime import ToolSelection
 from .models import ConversionBudget, ConversionError, ConversionResult, ConversionUnavailable, MAX_REPORT_BYTES
 
 
@@ -38,7 +40,8 @@ def _hash(path, cancelled, expected=None):
 
 class ConversionService:
     def __init__(self, root, *, input_roots=(), budget=None, ocr_config=None,
-                 pandoc=None, image_ocr=False, office=None):
+                 pandoc=None, image_ocr=False, office=None, calibre=None, djvu=None, chm=None,
+                 legacy_preview=False):
         self.root = checked_directory(guard_data_directory(root, purpose='reading derivative output'))
         info = self.root.stat()
         self._root_identity = (info.st_dev, info.st_ino)
@@ -51,6 +54,12 @@ class ConversionService:
         if type(image_ocr) is not bool or image_ocr and ocr_config is None:
             raise ValueError('Raster OCR requires an explicit OCR configuration and selection.')
         self.image_ocr = image_ocr
+        if type(legacy_preview) is not bool:
+            raise TypeError('The explicit legacy fixture-preview option must be boolean.')
+        self.legacy_preview = legacy_preview
+        self.legacy_tools = {kind: None if value is None else ToolSelection.capture(value, kind)
+                             for kind, value in (('calibre', calibre), ('djvu', djvu), ('chm', chm))}
+
         from .office import OfficeSelection
         self.office = None if office is None else OfficeSelection.capture(office)
         self.pandoc = None
@@ -85,7 +94,8 @@ class ConversionService:
 
     def capabilities(self):
         return capabilities(pandoc_selected=self.pandoc is not None, image_ocr_selected=self.image_ocr,
-                            office_selected=self.office is not None)
+                            office_selected=self.office is not None,
+                            **{kind + '_selected': value is not None for kind, value in self.legacy_tools.items()})
 
     def _input(self, value):
         path = Path(value).absolute()
@@ -149,6 +159,11 @@ class ConversionService:
         suffix = source.suffix.casefold()
         if suffix not in CONVERSION_SUFFIXES:
             raise ConversionUnavailable('This format is not enabled by the current document reader registry.')
+        if suffix in LEGACY_SUFFIXES:
+            if self.legacy_tools[kind_for(suffix)] is None:
+                raise ConversionUnavailable('Select the actual installed legacy-tool executable explicitly.')
+            if suffix not in QUALIFIED_SUFFIXES and not self.legacy_preview:
+                raise ConversionUnavailable('This legacy format has not passed the required native fixture qualification.')
         if suffix == '.rtf' and self.pandoc is None:
             raise ConversionUnavailable('Select an installed compatible Pandoc executable for RTF explicitly.')
         from .office import OFFICE_SUFFIXES
@@ -159,10 +174,10 @@ class ConversionService:
         if source == target or source == report_path:
             raise ValueError('The original document must remain unchanged.')
         capability = next(row for row in self.capabilities() if row['extension'] == suffix)
-        if not capability['available']:
+        if not capability['available'] and not (suffix in LEGACY_SUFFIXES and self.legacy_preview):
             raise ConversionUnavailable('The existing reader dependencies are unavailable: ' +
                                         ', '.join(capability['missing']))
-        native_bytes = self.budget.max_source_bytes + 64 * 1024**2 if suffix in OFFICE_SUFFIXES else 16 * 1024**2
+        native_bytes = self.budget.max_source_bytes + 64 * 1024**2 if suffix in OFFICE_SUFFIXES or suffix in LEGACY_SUFFIXES else 16 * 1024**2
         if shutil.disk_usage(target.parent).free < (
                 before.st_size + self.budget.max_text_bytes + MAX_REPORT_BYTES + native_bytes):
             raise ConversionError('Not enough free disk for the bounded source, reading text and provenance.')
@@ -189,7 +204,10 @@ class ConversionService:
             message = dict(action='convert', source=str(snapshot), output=str(converted),
                 report=str(details_path), sha256=source_hash, source_size=count,
                 budget=asdict(self.budget), ocr_config=asdict(self.ocr_config), timeout=self.budget.timeout)
-            if suffix == '.rtf':
+            if suffix in LEGACY_SUFFIXES:
+                kind = kind_for(suffix)
+                message['adapter'] = dict(kind=kind, runtime=self.legacy_tools[kind].snapshot(stage, cancelled=cancelled))
+            elif suffix == '.rtf':
                 executable_info = regular_file(self.pandoc)
                 parent_info = checked_directory(self.pandoc.parent).stat()
                 if (executable_info.st_nlink != 1
@@ -204,16 +222,26 @@ class ConversionService:
                 message['adapter'] = dict(kind='raster-ocr')
             elif suffix in OFFICE_SUFFIXES:
                 message['adapter'] = dict(kind='libreoffice', runtime=self.office.snapshot(cancelled=cancelled))
-            result = _invoke(message,
-                timeout=self.budget.timeout, cancelled=cancelled)
+            try:
+                result = _invoke(message,
+                    timeout=self.budget.timeout, cancelled=cancelled)
+            except Exception as error:
+                if suffix in OFFICE_SUFFIXES:
+                    from .office import progress_detail
+                    error.add_note(progress_detail(stage))
+                raise
             _check(cancelled)
             if not isinstance(result, dict) or result.get('state') != 'complete':
                 state = result.get('state') if isinstance(result, dict) else None
+                detail = ''
+                if suffix in OFFICE_SUFFIXES:
+                    from .office import progress_detail
+                    detail = ' ' + progress_detail(stage)
                 if state == 'cancelled':
                     raise InterruptedError('Document conversion stopped before publication.')
                 if state == 'timed_out':
-                    raise TimeoutError('Document conversion exceeded the selected time limit.')
-                raise ConversionError('The existing document reader could not produce a complete derivative. ' +
+                    raise TimeoutError('Document conversion exceeded the selected time limit.' + detail)
+                raise ConversionError('The existing document reader could not produce a complete derivative.' + detail + ' ' +
                                       str(result.get('message', '') if isinstance(result, dict) else '')[:2000])
             details = read_json(details_path, limit=MAX_REPORT_BYTES)
             expected = {'engine', 'separator', 'segments', 'warnings', 'source_sha256', 'source_size'}

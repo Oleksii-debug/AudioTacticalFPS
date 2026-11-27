@@ -74,7 +74,8 @@ def _allowed(name):
     if name in ('studio/project.json', 'studio/project.json.recovery.json'):
         return True
     if (name == 'audio/render-journal.json' or re.fullmatch('audio/plan-' + _HEX + r'\.json', name)
-            or re.fullmatch(r'audio/publication-[0-9a-f]{32}\.json', name)):
+            or re.fullmatch(r'audio/publication-[0-9a-f]{32}\.json', name)
+            or re.fullmatch('audio/clip-consolidation-' + _HEX + r'\.json', name)):
         return True
     # Input type and saved/recovery references are checked by input_assets().
     # Sound accepts portable filenames independently of their case or suffix.
@@ -197,6 +198,15 @@ def input_assets(project_file, project_dir, *, strict=False,
         if required:
             raise ValueError('Choose the audio project folder to include its referenced sound inputs.')
         return {}
+    from ..backup_files import optional_present
+    from .clip_consolidation import retained_receipts
+    consolidation = (retained_receipts(Path(project_dir), cancelled=cancelled)
+                     if optional_present(project_dir) else {})
+    for _, receipt in consolidation.values():
+        required.update(row['audio']['asset'] for row in receipt['inputs'])
+        required.add(receipt['output']['asset'])
+    if len(required) + len(consolidation) > file_budget:
+        raise ValueError('Sound inputs and provenance exceed the snapshot file budget.')
     directory = Path(project_dir) / 'assets'
     if not directory.exists() and not directory.is_symlink():
         if required:
@@ -228,6 +238,7 @@ def input_assets(project_file, project_dir, *, strict=False,
         _safe(path)
         wav_info(path)  # Same bounded PCM16 RIFF/RF64 validation as the renderer.
         files[member] = path
+    files.update({'audio/' + name: path for name, (path, _) in consolidation.items()})
     return files
 
 
@@ -451,7 +462,11 @@ def restore_project(snapshot, destination, *, byte_budget=DEFAULT_BYTE_BUDGET,
             raise ValueError('The snapshot project identity does not match its manifest.')
         assets = input_assets(project_path, stage / 'audio', strict=True,
                               file_budget=file_budget, cancelled=cancelled)
-        if set(assets) != {name for name in records if name.startswith('audio/assets/')}:
+        from .clip_consolidation import is_receipt_name
+        expected_inputs = {name for name in records if name.startswith('audio/assets/')
+            or (name.startswith('audio/') and name.count('/') == 1
+                and is_receipt_name(name[6:]))}
+        if set(assets) != expected_inputs:
             raise ValueError('The snapshot sound inputs do not match its saved and recovery scripts.')
         output_root = target / 'project' / 'audio'
         (stage / 'audio').mkdir(exist_ok=True)

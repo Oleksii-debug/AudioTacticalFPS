@@ -503,7 +503,16 @@ class StudioController:
             self._assert_clip_snapshot(editor.fingerprint)
             if self.output_dir is None or self._output_folder(self.output_dir) != editor.root:
                 raise ValueError('The clip destination changed. Open the current project again.')
-            if request.get('action') == 'preview':
+            if request.get('action') == 'consolidate':
+                ffmpeg = resolve_ffmpeg(self.ffmpeg)
+                if ffmpeg is None:
+                    raise ValueError('Configure the reviewed local FFmpeg runtime before consolidating clips.')
+                result = editor.consolidate(request['clip_id'], request['other_id'],
+                    ffmpeg=ffmpeg, cancelled=cancelled,
+                    broker=self._resource_broker(cancelled=cancelled),
+                    operation_id='studio:' + self.project_id,
+                    trust_controller=self.trust_controller)
+            elif request.get('action') == 'preview':
                 ffmpeg = resolve_ffmpeg(self.ffmpeg)
                 if ffmpeg is None:
                     raise ValueError('Configure the reviewed local FFmpeg runtime before previewing a clip.')

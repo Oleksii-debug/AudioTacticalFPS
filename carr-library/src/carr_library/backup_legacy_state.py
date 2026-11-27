@@ -16,6 +16,9 @@ from .backup_files import local_path, portable_relative, regular, sync_directory
 
 MAX_STATE_FILES = 100_000
 MAX_STATE_BYTES = 32 * 1024**3
+# Only explicit typed canonical archives request this larger aggregate. The
+# generic historical default and its deep portable path bounds stay unchanged.
+MAX_TYPED_ARCHIVE_BYTES = MAX_STATE_BYTES + 512 * 1024**2 + 64 * 1024**3
 # Historical state was not restricted to the typed producers' 16 components.
 # The shared 4096-character bound makes 2048 one-character parts the maximum.
 MAX_STATE_PARTS = 2048
@@ -56,7 +59,7 @@ def validate_state(entries, *, max_files=MAX_STATE_FILES, max_bytes=MAX_STATE_BY
         names.add(folded)
         directories.update(parents)
         total += item['size_bytes']
-    if total > min(max_bytes, MAX_STATE_BYTES):
+    if total > min(max_bytes, MAX_TYPED_ARCHIVE_BYTES):
         raise ValueError('Legacy application state exceeds its byte budget.')
 
 
@@ -65,7 +68,9 @@ def _stamp(value):
             value.st_size, value.st_mtime_ns, value.st_ctime_ns)
 
 
-def _inventory(source, entries, cancelled):
+def _inventory(source, entries, cancelled, *, ignored=()):
+    if not set(ignored) <= {'library.sqlite', 'originals', 'manifest.json', 'pending'}:
+        raise ValueError('Only separately verified root catalog members may be excluded.')
     expected = {item['filename'] for item in entries}
     # The historical producer omitted empty directories. They are harmless,
     # but their traversal still needs a finite bound.
@@ -84,6 +89,8 @@ def _inventory(source, entries, cancelled):
                     raise ValueError('Legacy state directory budget exceeded.')
                 path = Path(entry.path)
                 relative = relative_name(path.relative_to(source).as_posix()).as_posix()
+                if relative in ignored:
+                    continue
                 folded = unicodedata.normalize('NFC', relative).casefold()
                 if folded in aliases:
                     raise ValueError('Conflicting legacy state path aliases.')
@@ -100,15 +107,16 @@ def _inventory(source, entries, cancelled):
     return found
 
 
-def verify_state(source, target, entries, *, cancelled=lambda: False, destination_name=None):
+def verify_state(source, target, entries, *, cancelled=lambda: False, destination_name=None,
+                 ignored=(), max_bytes=MAX_STATE_BYTES):
     """Stream verified bytes, optionally into a fresh private staging tree."""
-    validate_state(entries)
+    validate_state(entries, max_bytes=max_bytes)
     source = local_path(source, exists=True)
     regular(source, directory=True)
     if target is not None:
         target = local_path(target)
         target.mkdir(mode=0o700)
-    before = _inventory(source, entries, cancelled)
+    before = _inventory(source, entries, cancelled, ignored=ignored)
     directories = set()
     for item in entries:
         if cancelled():
@@ -142,8 +150,28 @@ def verify_state(source, target, entries, *, cancelled=lambda: False, destinatio
                 raise ValueError('Legacy application state changed during read.')
         if size != item['size_bytes'] or digest.hexdigest() != item['sha256']:
             raise ValueError('Legacy application state checksum mismatch.')
-    if _inventory(source, entries, cancelled) != before:
+    if _inventory(source, entries, cancelled, ignored=ignored) != before:
         raise ValueError('Legacy application state changed during verification.')
+    # Windows creation time and coarse/restored mtimes cannot prove content
+    # stability after copying. Reauthenticate the actual declared bytes too.
+    for item in entries:
+        path = local_path(source / item['filename'], root=source, exists=True)
+        digest, size = sha256(), 0
+        with path.open('rb') as stream:
+            if _stamp(os.fstat(stream.fileno())) != before[item['filename']]:
+                raise ValueError('Legacy application state changed during verification.')
+            while block := stream.read(min(1024 * 1024, item['size_bytes'] + 1 - size)):
+                if cancelled():
+                    raise InterruptedError('Library backup or restore cancelled.')
+                size += len(block)
+                digest.update(block)
+                if size > item['size_bytes']:
+                    raise ValueError('Legacy application state grew during verification.')
+            if (_stamp(os.fstat(stream.fileno())) != before[item['filename']]
+                    or _stamp(regular(path)) != before[item['filename']]):
+                raise ValueError('Legacy application state changed during verification.')
+        if size != item['size_bytes'] or digest.hexdigest() != item['sha256']:
+            raise ValueError('Legacy application state checksum changed after copying.')
     if target is not None:
         for directory in sorted((path for path in directories if path.is_relative_to(target)), key=lambda p: len(p.parts), reverse=True):
             sync_directory(directory)

@@ -41,7 +41,15 @@ from .backup_files import local_path, portable_relative, publish_tree, optional_
 from .backup_historical import (
     DIRECTORY as HISTORICAL_DIRECTORY, is_state_path as _historical_path,
     state_paths as _historical_files, validate_state_tree as _validate_historical,
-    retain_state as _retain_historical,
+    retain_state as _retain_historical, manifest_layout as _historical_layout,
+    validate_manifest as _validate_historical_manifest, root_entries as _historical_entries,
+    verify_source as _verify_historical_source,
+)
+from .legacy_transcription import (
+    is_state_path as _legacy_asr_path, state_limit as _legacy_asr_limit,
+    state_paths as _legacy_asr_files, validate_state_tree as _validate_legacy_asr,
+    snapshot_guard as _legacy_asr_guard, capture_live as _capture_legacy_asr,
+    check_live as _check_legacy_asr, snapshot_entries as _legacy_asr_entries,
 )
 from .operations.policy_backup import (
     MAX_BYTES as MAX_RESOURCE_POLICY,
@@ -363,7 +371,7 @@ def _validate_audio_batches(db, root, *, cancelled=lambda: False):
 
 def _sidecar_allowed(value):
     parts = _portable_relative(value)
-    if (_reader_path(value) or _assistant_path(value) or _historical_path(value)
+    if (_reader_path(value) or _assistant_path(value) or _historical_path(value) or _legacy_asr_path(value)
             or _translation_path(value) or _transcription_path(value) or _resource_policy_path(value)
             or _recording_path(value) or _audio_batch_path(value)):
         return True
@@ -447,9 +455,10 @@ def _sidecar_info(root, relative):
              _transcription_adapter(relative).state_limit(relative) if _transcription_path(relative) else
              _recording_adapter().state_limit(relative) if _recording_path(relative) else
              _audio_batch_adapter().state_limit(relative) if _audio_batch_path(relative) else
+             _legacy_asr_limit(relative) if _legacy_asr_path(relative) else
              MAX_RESOURCE_POLICY if _resource_policy_path(relative) else
              MAX_SIDECAR_JSON_BYTES if relative.lower().endswith('.json') else MAX_SIDECAR_FILE_BYTES)
-    minimum = 0 if (_historical_path(relative) or _transcription_allows_empty(relative)
+    minimum = 0 if (_historical_path(relative) or _legacy_asr_path(relative) or _transcription_allows_empty(relative)
                     or _recording_allows_empty(relative)
                     or relative.lower().endswith(('.srt', '.vtt', '.ffmeta'))) else 1
     if not minimum <= info.st_size <= limit:
@@ -512,6 +521,7 @@ def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES, *, cancelled=lambda: Fal
     transcription = ()
     resource_policy = _resource_policy_files(root, cancelled=cancelled)
     with ExitStack() as stack:
+        stack.enter_context(_legacy_asr_guard(root))
         if optional_present(root / 'audio-batches'):
             try:
                 # Same lock order as the producer: outer library writer, then
@@ -728,6 +738,8 @@ def _sidecar_inventory(root, max_files, max_bytes, cancelled):
         add(path)
     for path in _historical_files(root, cancelled=cancelled):
         add(path)
+    for path in _legacy_asr_files(root, cancelled=cancelled):
+        add(path)
     for path in _translation_files(root, cancelled=cancelled):
         add(path)
     for path in _transcription_files(root, cancelled=cancelled):
@@ -760,7 +772,7 @@ def _copy_sidecar(root, relative, target, identity, cancelled):
         if _identity(os.fstat(incoming.fileno())) != identity:
             raise RestoreError('sidecar changed before copying')
         if (relative.lower().endswith('.wav') and not relative.startswith('transcription-jobs/')
-                and not _recording_path(relative)):
+                and not _recording_path(relative) and not _legacy_asr_path(relative)):
             header = incoming.read(12)
             if len(header) != 12 or header[:4] not in (b'RIFF', b'RF64') or header[8:] != b'WAVE':
                 raise RestoreError('project audio artifact is not a WAV or RF64 file')
@@ -912,6 +924,7 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
                 _validate_studios(snapshot_storage.db, app.root)
                 _validate_assistants(snapshot_storage.db, app.root, cancelled=cancelled)
                 _validate_historical(app.root, cancelled=cancelled)
+                _validate_legacy_asr(snapshot_storage.db, app.root, cancelled=cancelled)
                 _validate_translations(snapshot_storage.db, app.root, cancelled=cancelled)
                 _validate_resource_policy(snapshot_storage.db, app.root, cancelled=cancelled)
                 _validate_transcriptions(snapshot_storage.db, app.root, cancelled=cancelled)
@@ -919,6 +932,18 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
                 _validate_audio_batches(snapshot_storage.db, app.root, cancelled=cancelled)
             sidecars = [_copy_sidecar(app.root, name, stage / SIDECARS / name, identity, cancelled)
                         for name, identity in inventory.items()]
+            legacy_asr = _capture_legacy_asr(app.root, stage / SIDECARS, cancelled=cancelled)
+            retained = {row['path']: row for row in sidecars}
+            for row in _legacy_asr_entries(stage / SIDECARS, legacy_asr):
+                previous = retained.setdefault(row['path'], row)
+                if previous != row:
+                    raise RestoreError('Conflicting historical transcription archive.')
+            sidecars = list(retained.values())
+            if (len(sidecars) > max_sidecar_files
+                    or sum(row['size_bytes'] for row in sidecars) > max_sidecar_bytes):
+                raise RestoreError('Historical transcription exceeds the complete-backup budget.')
+            with closing(Storage(snapshot, schema_version=CURRENT_SCHEMA_VERSION)) as snapshot_storage:
+                _validate_legacy_asr(snapshot_storage.db, stage / SIDECARS, cancelled=cancelled)
             # Bind the copied ASR state to this exact catalog before publishing
             # its manifest. The validator neither runs a worker nor opens models.
             if any(_transcription_path(entry['path']) for entry in sidecars):
@@ -952,6 +977,8 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
             # Reuse the bounded streaming reader after all other components
             # have been captured, before publishing any completed backup.
             for entry in sidecars:
+                if entry['path'] not in inventory:
+                    continue  # New inert archive is rechecked against its live source below.
                 if cancelled():
                     raise InterruptedError('Library backup cancelled during final source verification.')
                 current = _copy_sidecar(app.root, entry['path'], None,
@@ -962,6 +989,7 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
             if inventory != _sidecar_inventory(app.root, max_sidecar_files, max_sidecar_bytes, cancelled):
                 raise RestoreError('Reading/audio state changed during final backup verification.')
             check_projects()
+            _check_legacy_asr(app.root, legacy_asr, cancelled=cancelled)
             managed = pending is not None or any(not _reader_path(entry['path']) for entry in sidecars)
             manifest = dict(version=5 if pending is not None else 4 if managed else 3 if sidecars else 2, kind='carr-library', schema_version=CURRENT_SCHEMA_VERSION,
                 schema_fingerprint=fingerprint,
@@ -1006,9 +1034,8 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
 
 
 def _legacy_state_layout(manifest):
-    """The two historical v3/v4 families have disjoint exact field shapes."""
-    return manifest['version'] in (3, 4) and (
-        'state' in manifest or 'generated_audio_included' in manifest)
+    """Select only exact historical envelopes, disjoint from current typed backups."""
+    return _historical_layout(manifest) is not None
 
 
 def _sidecar_layout(manifest):
@@ -1071,9 +1098,12 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
         fields.add('schema_fingerprint')
     legacy_state = _legacy_state_layout(manifest)
     if legacy_state:
-        fields.update(('state', 'generated_audio_included'))
-        if manifest['version'] == 4:
+        layout = _historical_layout(manifest)
+        fields.update(('sidecars' if layout == 'root' else 'state', 'generated_audio_included'))
+        if 'pending' in manifest:
             fields.add('pending')
+        if layout == 'state-reading':
+            fields.add('reading_state')
     elif manifest['version'] == 3:
         fields.add('reading_state' if 'reading_state' in manifest else 'sidecars')
     elif manifest['version'] >= 4:
@@ -1116,21 +1146,25 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
         if total > MAX_ASSET_BYTES:
             raise RestoreError('asset manifest byte limit')
     if 'pending' in manifest:
-        from .pending_backup import validate_pending
-        validate_pending(manifest['pending'])
+        if manifest['pending'] is not None or _historical_layout(manifest) != 'state-reading':
+            from .pending_backup import validate_pending
+            validate_pending(manifest['pending'])
     if legacy_state:
-        from .backup_legacy_state import validate_state
-        if type(manifest['generated_audio_included']) is not bool:
-            raise RestoreError('invalid legacy application state options')
-        # Retention adds the original manifest as one authenticated sidecar.
-        validate_state(manifest['state'], max_files=max_sidecar_files - 1,
-                       max_bytes=max_sidecar_bytes - size)
-        expected_names = {DATABASE, ORIGINALS, MANIFEST, 'state'}
-        if 'pending' in manifest:
+        # Retain all original bytes as inert history, including the original
+        # authenticated manifest. Do not activate foreign reader/provider state.
+        _validate_historical_manifest(manifest)
+        _validate_historical_manifest(manifest, max_files=max_sidecar_files - 1,
+                                      max_bytes=max_sidecar_bytes - size)
+        expected_names = {DATABASE, ORIGINALS, MANIFEST}
+        if layout in ('state', 'state-reading'):
+            expected_names.add('state')
+        expected_names.update(item['filename'].split('/')[0] for item in _historical_entries(manifest))
+        if manifest.get('pending') is not None:
             expected_names.add(PENDING)
-        if set(p.name for p in directory.iterdir()) != expected_names:
+        if {p.name for p in _children(directory, max_sidecar_files + 4)} != expected_names:
             raise RestoreError('incomplete legacy application state backup')
-        _plain(directory / 'state', directory=True)
+        if 'state' in expected_names:
+            _plain(directory / 'state', directory=True)
         return manifest
     field, subdirectory = _sidecar_layout(manifest)
     if manifest['version'] >= 3:
@@ -1149,6 +1183,7 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
                     or (not subdirectory and not _reader_path(entry[field]))
                     or type(entry['size_bytes']) is not int or not 0 <= entry['size_bytes'] <= MAX_SIDECAR_FILE_BYTES
                     or (entry['size_bytes'] == 0 and not _historical_path(entry[field])
+                        and not _legacy_asr_path(entry[field])
                         and not _transcription_allows_empty(entry[field])
                         and not _recording_allows_empty(entry[field])
                         and not entry[field].lower().endswith(('.srt', '.vtt', '.ffmeta')))
@@ -1273,6 +1308,7 @@ def _verify_contents(source, stage, manifest, *, copy_files=False,
             _validate_studios(storage.db, checked_root, strict_assets=True)
             _validate_assistants(storage.db, checked_root, cancelled=cancelled)
             _validate_historical(checked_root, cancelled=cancelled)
+            _validate_legacy_asr(storage.db, checked_root, cancelled=cancelled)
             _validate_translations(storage.db, checked_root, cancelled=cancelled)
             _validate_resource_policy(storage.db, checked_root, cancelled=cancelled)
             _validate_transcriptions(storage.db, checked_root, cancelled=cancelled)
@@ -1297,9 +1333,8 @@ def _verify_contents(source, stage, manifest, *, copy_files=False,
                                          expected_manifest_sha256, cancelled=cancelled)
             _validate_historical(stage / SIDECARS, cancelled=cancelled)
         else:
-            from .backup_legacy_state import verify_state
-            verify_state(source / 'state', None, manifest['state'], cancelled=cancelled)
-    if 'pending' in manifest and not copy_files:
+            _verify_historical_source(source, manifest, cancelled=cancelled)
+    if manifest.get('pending') is not None and not copy_files:
         from .pending_backup import verify_pending
         verify_pending(source / PENDING, stage, manifest['pending'], cancelled=cancelled)
     if cancelled():
@@ -1345,7 +1380,7 @@ def restore_backup(source, destination, expected_manifest_sha256, *,
         entries, sidecars, output_directories = _verify_contents(source, stage, manifest,
             copy_files=True, expected_manifest_sha256=expected_manifest_sha256, cancelled=cancelled)
         pending = {'assets': [], 'paths': []}
-        if 'pending' in manifest:
+        if manifest.get('pending') is not None:
             from .pending_backup import restore_pending
             pending = restore_pending(source / PENDING, stage, destination, manifest['pending'],
                                       cancelled=cancelled)

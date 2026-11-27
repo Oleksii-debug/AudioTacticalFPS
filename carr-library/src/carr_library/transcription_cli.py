@@ -25,8 +25,62 @@ def _supplied_settings_arguments(command):
         command.add_argument('--' + name.replace('_', '-'), **options)
 
 
+HISTORY_OPERATIONS = ('history', 'retain-history', 'history-reading-copy', 'history-export', 'history-prepare')
+
+
+def _historical_command(root, args, *, trust_controller=None):
+    """Use retained canonical history as data; current preparation never starts it."""
+    from . import legacy_transcription as recovery
+    if args.operation == 'retain-history':
+        return {'archive': recovery.retain_live(root), 'historical': True, 'execution_started': False}
+    if args.operation == 'history':
+        return list(recovery.jobs(root))
+    reference = dict(kind=args.archive_kind, archive=args.archive, job=args.job)
+    if args.operation == 'history-reading-copy':
+        from .reader.narration import NarrationStore
+        project = recovery.reading_copy(root, reference, args.source, edited=args.edited)
+        saved = NarrationStore(root).save(project)
+        return {'id': project.id, 'saved_sha256': saved, 'original_sha256': project.original_sha256,
+                'historical': True, 'citation_authority': False}
+    if args.operation == 'history-export':
+        from .research.export_file import export_completion
+        receipt = recovery.export_output(root, reference, args.source, args.format, args.destination)
+        return {'path': str(receipt.path), 'historical': True,
+                'completion': export_completion('Historical output saved', receipt)}
+    from .transcription_service import TranscriptionService
+    service = TranscriptionService(root,
+        **({'trust_controller': trust_controller} if trust_controller is not None else {}))
+    return recovery.import_as_new(service, reference, args.sources, args.manifest,
+        {name: getattr(args, name) for name in SUPPLIED_SETTINGS}, title=args.title,
+        expected_manifest_sha256=args.expected_manifest_sha256)
+
+
+def _historical_arguments(commands):
+    commands.add_parser('history', help='List inert earlier canonical jobs without activating their runtime')
+    commands.add_parser('retain-history', help='Explicitly retain the earlier installed namespace as inert history')
+    read = commands.add_parser('history-reading-copy', help='Save a separate reading copy of an accepted earlier transcript')
+    export = commands.add_parser('history-export', help='Export an accepted earlier output to a fresh local file')
+    prepare = commands.add_parser('history-prepare', help='Prepare explicit historical sources with a reviewed current runtime')
+    for command in (read, export, prepare):
+        command.add_argument('--archive-kind', choices=('archive', 'historical'), required=True)
+        command.add_argument('--archive', required=True, help='Exact retained manifest SHA256 from history')
+        command.add_argument('job', help='Exact earlier job ID from history')
+    for command in (read, export):
+        command.add_argument('--source', required=True, help='Exact retained source ID from history')
+    read.add_argument('--edited', action='store_true', help='Use the separate saved edit')
+    export.add_argument('--format', choices=('txt', 'srt', 'vtt', 'json'), required=True)
+    export.add_argument('destination', type=Path, help='Fresh local file outside the library; never overwrite')
+    prepare.add_argument('--sources', nargs='+', required=True, help='Explicit retained source IDs')
+    prepare.add_argument('--manifest', type=Path, required=True)
+    prepare.add_argument('--expected-manifest-sha256', help='Previously reviewed current manifest identity')
+    prepare.add_argument('--title', default='Recovered transcription')
+    _supplied_settings_arguments(prepare)
+
+
 def _supplied_command(root, args, *, trust_controller=None):
     """Use the existing library-wide service without reclassifying workspace jobs."""
+    if args.operation in HISTORY_OPERATIONS:
+        return _historical_command(root, args, trust_controller=trust_controller)
     from .transcription_service import TranscriptionService
     service = TranscriptionService(root,
         **({'trust_controller': trust_controller} if trust_controller is not None else {}))
@@ -116,19 +170,20 @@ def main(argv=None, *, trust_controller=None):
     reading = commands.add_parser('reading-copy', help='Save a separate reading copy of one verified supplied output')
     reading.add_argument('job')
     reading.add_argument('--output', required=True, help='Exact relative output path from verify')
+    _historical_arguments(commands)
     args = parser.parse_args(argv)
     supplied = args.profile == SUPPLIED_PROTOCOL
     if supplied:
         if args.workspace:
             parser.error('The supplied profile uses library-wide jobs; omit --workspace. Existing workspace jobs are unchanged.')
-        if args.operation not in ('prepare', 'jobs', 'show', 'run', 'verify', 'pause', 'resume', 'stop', 'reading-copy'):
+        if args.operation not in ('prepare', 'jobs', 'show', 'run', 'verify', 'pause', 'resume', 'stop', 'reading-copy', *HISTORY_OPERATIONS):
             parser.error('Use prepare/run/verify or a control command for the library-wide supplied profile.')
         if args.operation == 'run' and args.manifest is None:
             parser.error('Start requires an explicitly selected --manifest for the supplied runtime.')
     else:
         if not args.workspace:
             parser.error('Workspace profiles require --workspace; library-wide jobs require --profile ' + SUPPLIED_PROTOCOL + '.')
-        if args.operation in ('prepare', 'pause', 'resume', 'stop', 'reading-copy'):
+        if args.operation in ('prepare', 'pause', 'resume', 'stop', 'reading-copy', *HISTORY_OPERATIONS):
             parser.error('This command requires --profile ' + SUPPLIED_PROTOCOL + ' and no --workspace.')
         if args.operation == 'run' and args.manifest is not None:
             parser.error('Workspace profiles use their configured runtime; --manifest belongs to the supplied profile.')

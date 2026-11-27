@@ -179,10 +179,12 @@
       "carr_library.audio.models",
       "carr_library.audio.production",
       "carr_library.ui.audio_clips",
-      "carr_library.native_runtime"
+      "carr_library.native_runtime",
+      "carr_library.audio.clip_consolidation"
     ],
     "probe_modules": [
       "carr_library.audio.clips",
+      "carr_library.audio.clip_consolidation",
       "carr_library.audio.clip_audio",
       "carr_library.audio.models",
       "carr_library.audio.production",
@@ -209,6 +211,8 @@
       "native split": 1,
       "join: named controls in shown owned modal": 1,
       "native join": 1,
+      "consolidate: named controls in shown owned modal": 1,
+      "native consolidate": 1,
       "cancel: named controls in shown owned modal": 1,
       "native cancel": 1,
       "invalid duration retains owned modal": 1,
@@ -497,5 +501,68 @@
     },
     "runtime_digest_field": "actual_ffmpeg.sha256",
     "runtime_environment": "CARR_FFMPEG"
+  },
+  "legacy-asr": {
+    "probe": "scripts/windows_legacy_transcription_smoke.py",
+    "arguments": [
+      "--native"
+    ],
+    "modules": [
+      "carr_library.legacy_transcription",
+      "carr_library.legacy_transcription_schema",
+      "carr_library.legacy_transcription_values",
+      "carr_library.backup_historical",
+      "carr_library.backup_legacy_state",
+      "carr_library.library_backup",
+      "carr_library.transcription_service",
+      "carr_library.transcription_state",
+      "carr_library.transcription_backup",
+      "carr_library.supplied_transcription_backup",
+      "carr_library.ui.legacy_transcription",
+      "carr_library.ui.transcription_v43_dialog"
+    ],
+    "probe_modules": [
+      "carr_library.legacy_transcription",
+      "carr_library.legacy_transcription_schema",
+      "carr_library.legacy_transcription_values",
+      "carr_library.backup_historical",
+      "carr_library.backup_legacy_state",
+      "carr_library.library_backup",
+      "carr_library.transcription_service",
+      "carr_library.transcription_state",
+      "carr_library.transcription_backup",
+      "carr_library.supplied_transcription_backup",
+      "carr_library.ui.legacy_transcription",
+      "carr_library.ui.transcription_v43_dialog"
+    ],
+    "checks": {
+      "actual Windows controls": 1,
+      "installed current recovery module": 1,
+      "native button enabled and visible": 8,
+      "native button event handled": 8,
+      "one owned recovery modal": 10,
+      "exact native recovery step": 10,
+      "one actual native choice list": 4,
+      "dialog-scoped native action": 5,
+      "current immutable definition was prepared": 1,
+      "old source bytes retained independently": 1,
+      "preparation does not start or complete inference": 1,
+      "current settings are frozen and Start stays separate": 1,
+      "native Cancel preserved the prepared job": 1,
+      "all native recovery steps acknowledged": 1
+    },
+    "fields": {
+      "status": "PASS",
+      "installed_mode": true,
+      "isolated": true,
+      "native_controls": "EXECUTED",
+      "inference": "NOT_RUN",
+      "nvda": "NOT_RUN"
+    },
+    "digest_fields": [
+      "prepared_definition_sha256",
+      "retained_source_sha256",
+      "runtime_manifest_sha256"
+    ]
   }
 }

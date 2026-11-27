@@ -44,11 +44,14 @@ def _unheld_path(value):
     still fail; the owned descriptor/path checks below remain strict.
     """
     path = _asset_path(value, must_exist=False)
-    local_path(path.parent, exists=True)
+    parent = local_path(path.parent, exists=True)
+    regular(parent, directory=True)
     try:
         regular(path)
     except FileNotFoundError:
-        pass
+        # Only the released leaf may vanish; never recreate or admit through
+        # a removed, redirected, inaccessible or non-directory parent.
+        regular(parent, directory=True)
     return path
 
 

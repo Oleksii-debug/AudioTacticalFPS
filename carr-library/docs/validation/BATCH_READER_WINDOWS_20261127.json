@@ -1,0 +1,803 @@
+{
+  "schema": 1,
+  "recorded_at_utc": "2026-11-27",
+  "scope": "Exact frozen Windows qualification evidence; no transfer to a later composed tree without its required gates",
+  "batch": {
+    "commit": "13524f5ba941ff368d11e0e0ef3f3ff11fbec880",
+    "tree": "61b29ff853a2d0b48afcc3b4d077d729ae469ca3",
+    "run_id": 46004562995,
+    "job_id": 140524360806,
+    "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46004562995",
+    "artifact": {
+      "id": 15201703738,
+      "name": "carr-audio-batches-13524f5ba941ff368d11e0e0ef3f3ff11fbec880-1",
+      "size_in_bytes": 362706,
+      "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15201703738",
+      "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15201703738/zip",
+      "expired": false,
+      "created_at": "2026-11-27T13:32:16Z",
+      "expires_at": "2026-12-27T13:32:14Z",
+      "updated_at": "2026-11-27T13:32:16Z",
+      "digest": "sha256:3b08943bb1b786e1df2fd38a01892ee8b8ed3b1ee650585f16e7a033b78e6730",
+      "workflow_run": {
+        "id": 46004562995,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/audio-batches-r9-bootstrap-fix-20261127",
+        "head_sha": "13524f5ba941ff368d11e0e0ef3f3ff11fbec880"
+      }
+    },
+    "receipts": [
+      {
+        "schema": 1,
+        "status": "PASS",
+        "mode": "source",
+        "declared_cases": 143,
+        "timeout_seconds": 1200,
+        "oracle_sha256": "ac088c0972883899d91ab8adce24ae728c1e4f3cd5deb678749cc055c39d55b1",
+        "source_commit": "13524f5ba941ff368d11e0e0ef3f3ff11fbec880",
+        "source_tree": "61b29ff853a2d0b48afcc3b4d077d729ae469ca3",
+        "wheel_sha256": "53ba52ac4251e30914302d6d362055e7609b716d544fcd200216799f19be1bac",
+        "checkout_manifest_sha256": "5ab57a077ff18b8d71a66aaacde740c982da0e162223fcf2f87c133b984d6b1b",
+        "tracked_source_files": 1267,
+        "source_only_python": {
+          "bootstrap/semantic_compat/probe.py": "c51758108a418c7bf98ddd459cefdca852777b07cfc95ac669855b1195398ac7",
+          "bootstrap/semantic_compat/test_probe.py": "ae093cae9f00307c09d2ea787dacf7c8c1522184e5480a411c0979023b7b70bb"
+        },
+        "actual_ffmpeg": {
+          "sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf",
+          "version": "ffmpeg version 9.1-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+          "version_sha256": "900a9c75d78682e23c3f73e9e13d4c9625b24a8f0dfb921a879fc5f9e445bc64"
+        },
+        "test_source_sha256": {
+          "tests/audio/test_batch_models.py": "b6e78bf5f77985389977804df8fad9da43065ab1340d7d4118a54f2ccd413e8d",
+          "tests/audio/test_audio_batches.py": "de5165536a825561430a7ac1fbe73b2a1da9238e136ba77587e8dd2387a22cb7",
+          "tests/storage/test_audio_batch_backup.py": "f11ebf17dc10046191aad73af244ed9072ce2c1973ee877856a9e69437e7b465",
+          "tests/security/test_audio_batch_admission.py": "a618ddf267af0a420a09837203c7f66ab26f92d42e813329f517832e411cf7cc",
+          "tests/e2e/test_audio_batch_cli.py": "47dff4eaac90c2d865decbe7dc4121c8c1d3a8635f3340fc903ecd8e1d285e73",
+          "tests/ui/test_audio_batches.py": "e7c9e61f224f1735ec6dc89ba23d8408c05d34404d62b987c9839b2918e8ae2e",
+          "tests/operations/test_audio_batch_facade.py": "28fa3526a84a3f2645c8d7e66dbf22e3b14dd08206aab771558b83392d406455",
+          "tests/__init__.py": "bda1d1b86fa69f604fb87c19f27628942b6bd77aa46b605efbc9cb9d4457183d",
+          "tests/security/__init__.py": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+          "tests/storage/__init__.py": "133dac0936d6e430af23a6ea8041d800ff72d4ee8b7e6bae54d16d6d0bff3efb",
+          "tests/security/conftest.py": "77599b257083e5a79ab901490005c68a8f087971df24143145b48c290e6232e6",
+          "tests/security/test_domain_admission.py": "f8dcae25e2738c16fb6fd0e6a51b772f5153b0118714f4b2f0bd850938242a9c"
+        },
+        "runner_sha256": {
+          "audio_batch_acceptance.py": "3fcb217a7ed9d535ea9d277191a27504f8e6f452bef235b728036358f9e6e003",
+          "ci_check.py": "0d11b234ae4fdcfcffdb17f51d899496140693350192d7549740a89fea50bc1e",
+          "ci_watchdog.py": "e02be6a6c3406bdf1d9d4c24673363894d03a1ee7948b3b77d6b20fcc2bfc057"
+        },
+        "pytest_exit": 0,
+        "case_counter": {
+          "tests.audio.test_audio_batches": {
+            "test_each_existing_output_format_is_actually_encoded_and_decoded_before_completion": 10,
+            "test_selected_original_can_move_after_independent_capture_and_completed_replay_is_exact": 1,
+            "test_actual_video_extraction_uses_the_explicit_second_audio_stream": 1,
+            "test_missing_explicit_audio_stream_cannot_fall_back_or_publish": 1,
+            "test_mid_queue_control_preserves_completed_items_and_explicit_resume_finishes": 2,
+            "test_retry_only_failed_item_retains_the_other_verified_output": 1,
+            "test_changed_retained_source_is_not_hidden_by_same_size_or_restored_mtime": 1,
+            "test_actual_runtime_byte_change_requires_a_new_plan_before_any_conversion": 1,
+            "test_existing_foreign_output_directory_is_never_replaced": 1,
+            "test_post_move_flush_failure_retries_the_receipt_without_reencoding": 1,
+            "test_cancel_after_actual_atomic_move_finishes_that_committed_item": 1,
+            "test_pending_native_cleanup_keeps_stage_and_resource_lease_until_settled": 1,
+            "test_two_books_keep_exact_source_drafts_and_explicit_whole_chapter_previews": 1,
+            "test_independent_export_reuses_verified_data_and_refuses_a_changed_destination": 1,
+            "test_uncommitted_derived_stage_is_recovered_without_touching_completed_outputs": 1,
+            "test_cumulative_staged_output_cannot_exceed_the_reserved_item_budget": 1
+          },
+          "tests.audio.test_batch_models": {
+            "test_invalid_per_item_presets_are_refused_before_native_work": 15,
+            "test_selection_requires_explicit_typed_local_scope": 9,
+            "test_full_plan_roundtrip_keeps_sources_names_runtime_and_exact_order": 1,
+            "test_saved_plan_cannot_silently_change_identity_or_claim_completion": 8,
+            "test_unicode_titles_have_portable_collision_safe_deterministic_names": 5,
+            "test_urls_protocols_playlists_and_network_roots_are_not_file_selections": 8,
+            "test_unreviewed_local_extensions_cannot_select_a_demuxer": 6,
+            "test_mov_self_contained_reference_is_checked_without_opening_a_track": 1,
+            "test_external_or_ambiguous_mov_references_are_refused_before_ffmpeg": 6,
+            "test_fixed_mov_arguments_disable_external_tracks_and_keep_one_input": 1,
+            "test_control_records_are_typed_monotonic_intents": 4
+          },
+          "tests.e2e.test_audio_batch_cli": {
+            "test_actual_cli_creates_previews_runs_lists_and_exports_one_verified_queue": 1,
+            "test_cli_pause_is_a_durable_request_and_resume_does_real_work": 1,
+            "test_cli_refuses_ambiguous_or_unselected_batch_controls": 8,
+            "test_cli_requires_explicit_selected_library_for_queue_state": 1
+          },
+          "tests.operations.test_audio_batch_facade": {
+            "test_shared_metadata_view_and_pause_use_the_existing_typed_queue_producer": 1,
+            "test_shared_task_control_constructs_only_the_same_library_queue_service": 1,
+            "test_foreign_queue_service_cannot_enter_the_current_shared_dashboard": 1,
+            "test_invalid_queue_metadata_is_attention_and_has_no_shared_controls": 2,
+            "test_shared_resource_view_keeps_the_live_audio_queue_identity": 1,
+            "test_dashboard_checkpoint_is_not_a_false_output_verification_claim": 1
+          },
+          "tests.security.test_audio_batch_admission": {
+            "test_actual_completed_batch_replay_and_export_survive_expiry_but_new_codec_work_does_not": 1,
+            "test_one_actual_item_finishes_on_its_admitted_lease_and_the_next_item_requires_fresh_permission": 1,
+            "test_batch_cannot_replace_an_active_host_trust_controller": 1
+          },
+          "tests.storage.test_audio_batch_backup": {
+            "test_queued_and_completed_media_restore_without_external_sources_or_empty_directory_assumptions": 2,
+            "test_paused_queue_keeps_completed_output_and_durable_control_across_restore": 1,
+            "test_full_backup_keeps_batch_book_child_original_draft_and_retained_clip_pcm": 1,
+            "test_active_queue_namespace_prevents_inconsistent_complete_backup": 1,
+            "test_unknown_or_changed_queue_state_is_never_silently_omitted_from_backup": 4,
+            "test_pending_book_snapshot_must_retain_a_real_catalog_binding_even_without_a_child": 1,
+            "test_known_interrupted_scratch_is_inert_but_unknown_state_is_not_hidden": 1
+          },
+          "tests.ui.test_audio_batches": {
+            "test_per_item_edits_and_reordering_preserve_explicit_source_and_stream": 1,
+            "test_native_preset_values_refuse_automatic_or_invalid_settings": 8,
+            "test_existing_studio_worker_receives_the_actual_durable_result_state": 4,
+            "test_worker_failure_is_reported_and_never_relabelled_as_success": 1,
+            "test_late_status_callback_cannot_borrow_a_replacement_operation_token": 1,
+            "test_late_result_never_applies_to_a_closed_dialog": 1,
+            "test_close_requests_pause_and_waits_for_the_existing_worker_before_native_close": 1,
+            "test_failed_pause_write_still_cancels_the_owned_worker_before_close": 1,
+            "test_host_startup_refusal_does_not_leave_batch_controls_permanently_disabled": 1,
+            "test_existing_host_work_blocks_a_second_batch_worker": 1,
+            "test_saved_queue_cannot_be_silently_edited_in_place": 1
+          }
+        },
+        "interpreter_sha256": "d8a68d22bad5981ea7c52fe57da0346ea66bb1d4acddaadf780a79503e1fa522",
+        "actual_cases": 143,
+        "elapsed_seconds": 252.29699999999997
+      },
+      {
+        "schema": 1,
+        "status": "PASS",
+        "mode": "installed",
+        "declared_cases": 143,
+        "timeout_seconds": 1200,
+        "oracle_sha256": "ac088c0972883899d91ab8adce24ae728c1e4f3cd5deb678749cc055c39d55b1",
+        "source_commit": "13524f5ba941ff368d11e0e0ef3f3ff11fbec880",
+        "source_tree": "61b29ff853a2d0b48afcc3b4d077d729ae469ca3",
+        "wheel_sha256": "53ba52ac4251e30914302d6d362055e7609b716d544fcd200216799f19be1bac",
+        "checkout_manifest_sha256": "5ab57a077ff18b8d71a66aaacde740c982da0e162223fcf2f87c133b984d6b1b",
+        "tracked_source_files": 1267,
+        "source_only_python": {
+          "bootstrap/semantic_compat/probe.py": "c51758108a418c7bf98ddd459cefdca852777b07cfc95ac669855b1195398ac7",
+          "bootstrap/semantic_compat/test_probe.py": "ae093cae9f00307c09d2ea787dacf7c8c1522184e5480a411c0979023b7b70bb"
+        },
+        "actual_ffmpeg": {
+          "sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf",
+          "version": "ffmpeg version 9.1-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+          "version_sha256": "900a9c75d78682e23c3f73e9e13d4c9625b24a8f0dfb921a879fc5f9e445bc64"
+        },
+        "test_source_sha256": {
+          "tests/audio/test_batch_models.py": "b6e78bf5f77985389977804df8fad9da43065ab1340d7d4118a54f2ccd413e8d",
+          "tests/audio/test_audio_batches.py": "de5165536a825561430a7ac1fbe73b2a1da9238e136ba77587e8dd2387a22cb7",
+          "tests/storage/test_audio_batch_backup.py": "f11ebf17dc10046191aad73af244ed9072ce2c1973ee877856a9e69437e7b465",
+          "tests/security/test_audio_batch_admission.py": "a618ddf267af0a420a09837203c7f66ab26f92d42e813329f517832e411cf7cc",
+          "tests/e2e/test_audio_batch_cli.py": "47dff4eaac90c2d865decbe7dc4121c8c1d3a8635f3340fc903ecd8e1d285e73",
+          "tests/ui/test_audio_batches.py": "e7c9e61f224f1735ec6dc89ba23d8408c05d34404d62b987c9839b2918e8ae2e",
+          "tests/operations/test_audio_batch_facade.py": "28fa3526a84a3f2645c8d7e66dbf22e3b14dd08206aab771558b83392d406455",
+          "tests/__init__.py": "bda1d1b86fa69f604fb87c19f27628942b6bd77aa46b605efbc9cb9d4457183d",
+          "tests/security/__init__.py": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+          "tests/storage/__init__.py": "133dac0936d6e430af23a6ea8041d800ff72d4ee8b7e6bae54d16d6d0bff3efb",
+          "tests/security/conftest.py": "77599b257083e5a79ab901490005c68a8f087971df24143145b48c290e6232e6",
+          "tests/security/test_domain_admission.py": "f8dcae25e2738c16fb6fd0e6a51b772f5153b0118714f4b2f0bd850938242a9c"
+        },
+        "runner_sha256": {
+          "audio_batch_acceptance.py": "3fcb217a7ed9d535ea9d277191a27504f8e6f452bef235b728036358f9e6e003",
+          "ci_check.py": "0d11b234ae4fdcfcffdb17f51d899496140693350192d7549740a89fea50bc1e",
+          "ci_watchdog.py": "e02be6a6c3406bdf1d9d4c24673363894d03a1ee7948b3b77d6b20fcc2bfc057"
+        },
+        "pytest_exit": 0,
+        "case_counter": {
+          "tests.audio.test_audio_batches": {
+            "test_each_existing_output_format_is_actually_encoded_and_decoded_before_completion": 10,
+            "test_selected_original_can_move_after_independent_capture_and_completed_replay_is_exact": 1,
+            "test_actual_video_extraction_uses_the_explicit_second_audio_stream": 1,
+            "test_missing_explicit_audio_stream_cannot_fall_back_or_publish": 1,
+            "test_mid_queue_control_preserves_completed_items_and_explicit_resume_finishes": 2,
+            "test_retry_only_failed_item_retains_the_other_verified_output": 1,
+            "test_changed_retained_source_is_not_hidden_by_same_size_or_restored_mtime": 1,
+            "test_actual_runtime_byte_change_requires_a_new_plan_before_any_conversion": 1,
+            "test_existing_foreign_output_directory_is_never_replaced": 1,
+            "test_post_move_flush_failure_retries_the_receipt_without_reencoding": 1,
+            "test_cancel_after_actual_atomic_move_finishes_that_committed_item": 1,
+            "test_pending_native_cleanup_keeps_stage_and_resource_lease_until_settled": 1,
+            "test_two_books_keep_exact_source_drafts_and_explicit_whole_chapter_previews": 1,
+            "test_independent_export_reuses_verified_data_and_refuses_a_changed_destination": 1,
+            "test_uncommitted_derived_stage_is_recovered_without_touching_completed_outputs": 1,
+            "test_cumulative_staged_output_cannot_exceed_the_reserved_item_budget": 1
+          },
+          "tests.audio.test_batch_models": {
+            "test_invalid_per_item_presets_are_refused_before_native_work": 15,
+            "test_selection_requires_explicit_typed_local_scope": 9,
+            "test_full_plan_roundtrip_keeps_sources_names_runtime_and_exact_order": 1,
+            "test_saved_plan_cannot_silently_change_identity_or_claim_completion": 8,
+            "test_unicode_titles_have_portable_collision_safe_deterministic_names": 5,
+            "test_urls_protocols_playlists_and_network_roots_are_not_file_selections": 8,
+            "test_unreviewed_local_extensions_cannot_select_a_demuxer": 6,
+            "test_mov_self_contained_reference_is_checked_without_opening_a_track": 1,
+            "test_external_or_ambiguous_mov_references_are_refused_before_ffmpeg": 6,
+            "test_fixed_mov_arguments_disable_external_tracks_and_keep_one_input": 1,
+            "test_control_records_are_typed_monotonic_intents": 4
+          },
+          "tests.e2e.test_audio_batch_cli": {
+            "test_actual_cli_creates_previews_runs_lists_and_exports_one_verified_queue": 1,
+            "test_cli_pause_is_a_durable_request_and_resume_does_real_work": 1,
+            "test_cli_refuses_ambiguous_or_unselected_batch_controls": 8,
+            "test_cli_requires_explicit_selected_library_for_queue_state": 1
+          },
+          "tests.operations.test_audio_batch_facade": {
+            "test_shared_metadata_view_and_pause_use_the_existing_typed_queue_producer": 1,
+            "test_shared_task_control_constructs_only_the_same_library_queue_service": 1,
+            "test_foreign_queue_service_cannot_enter_the_current_shared_dashboard": 1,
+            "test_invalid_queue_metadata_is_attention_and_has_no_shared_controls": 2,
+            "test_shared_resource_view_keeps_the_live_audio_queue_identity": 1,
+            "test_dashboard_checkpoint_is_not_a_false_output_verification_claim": 1
+          },
+          "tests.security.test_audio_batch_admission": {
+            "test_actual_completed_batch_replay_and_export_survive_expiry_but_new_codec_work_does_not": 1,
+            "test_one_actual_item_finishes_on_its_admitted_lease_and_the_next_item_requires_fresh_permission": 1,
+            "test_batch_cannot_replace_an_active_host_trust_controller": 1
+          },
+          "tests.storage.test_audio_batch_backup": {
+            "test_queued_and_completed_media_restore_without_external_sources_or_empty_directory_assumptions": 2,
+            "test_paused_queue_keeps_completed_output_and_durable_control_across_restore": 1,
+            "test_full_backup_keeps_batch_book_child_original_draft_and_retained_clip_pcm": 1,
+            "test_active_queue_namespace_prevents_inconsistent_complete_backup": 1,
+            "test_unknown_or_changed_queue_state_is_never_silently_omitted_from_backup": 4,
+            "test_pending_book_snapshot_must_retain_a_real_catalog_binding_even_without_a_child": 1,
+            "test_known_interrupted_scratch_is_inert_but_unknown_state_is_not_hidden": 1
+          },
+          "tests.ui.test_audio_batches": {
+            "test_per_item_edits_and_reordering_preserve_explicit_source_and_stream": 1,
+            "test_native_preset_values_refuse_automatic_or_invalid_settings": 8,
+            "test_existing_studio_worker_receives_the_actual_durable_result_state": 4,
+            "test_worker_failure_is_reported_and_never_relabelled_as_success": 1,
+            "test_late_status_callback_cannot_borrow_a_replacement_operation_token": 1,
+            "test_late_result_never_applies_to_a_closed_dialog": 1,
+            "test_close_requests_pause_and_waits_for_the_existing_worker_before_native_close": 1,
+            "test_failed_pause_write_still_cancels_the_owned_worker_before_close": 1,
+            "test_host_startup_refusal_does_not_leave_batch_controls_permanently_disabled": 1,
+            "test_existing_host_work_blocks_a_second_batch_worker": 1,
+            "test_saved_queue_cannot_be_silently_edited_in_place": 1
+          }
+        },
+        "interpreter_sha256": "0a4879976846d1858e67a2456039ad4b45ba25c4bfc26ef355c26f2b675d96f9",
+        "actual_cases": 143,
+        "elapsed_seconds": 244.57799999999997
+      },
+      {
+        "actual_ffmpeg": {
+          "sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf",
+          "version": "ffmpeg version 9.1-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+          "version_sha256": "900a9c75d78682e23c3f73e9e13d4c9625b24a8f0dfb921a879fc5f9e445bc64"
+        },
+        "checks": [
+          "actual Windows native queue controls",
+          "owned named native queue modal",
+          "native source actions and durable queue controls are named",
+          "native per-item format rate channel and split selectors",
+          "native exact preview is read only",
+          "queue retains the exact configured host authority",
+          "native filename field receives actual keyboard focus",
+          "invalid numeric preset cannot replace the selected item",
+          "native apply retains explicit numeric preset and Unicode title",
+          "actual retained plan is queued before any codec work",
+          "actual retained original is an independent exact copy",
+          "saved native preview contains exact collision-safe output names",
+          "saved per-item delivery settings cannot be silently edited",
+          "native pause is recorded as an unacknowledged durable request",
+          "owned worker acknowledges the paused checkpoint",
+          "paused first item has no unverified completed output",
+          "actual pinned FFmpeg output was decoded before completion",
+          "actual encoded output matches its source-bound receipt",
+          "immutable selected original remains byte identical",
+          "native completed queue is visible in accessible status",
+          "shared resource lease is released after codec settlement",
+          "completed replay preserves actual output bytes and timestamp",
+          "queue and existing Studio worker settle before native close",
+          "native queue modal closes without a late callback owner",
+          "installed implementation remains unchanged through native execution",
+          "no native queue callback failed"
+        ],
+        "file_picker": "NOT_RUN",
+        "installed_mode": true,
+        "isolated": true,
+        "module_origins": {
+          "carr_library.audio.batch_models": {
+            "path": "D:\\a\\_temp\\carr-audio-batches-46004562995-1\\installed\\Lib\\site-packages\\carr_library\\audio\\batch_models.py",
+            "sha256": "c12db191f04fd00ea3bd0b32cd2fcb5ae82d8ea947323fcc4aa786d55fd024ae"
+          },
+          "carr_library.audio.batches": {
+            "path": "D:\\a\\_temp\\carr-audio-batches-46004562995-1\\installed\\Lib\\site-packages\\carr_library\\audio\\batches.py",
+            "sha256": "964e5ae358ce5c6adb88d711d27ed69e1895e5e391f5699953f7700406aaac54"
+          },
+          "carr_library.audio.media_conversion": {
+            "path": "D:\\a\\_temp\\carr-audio-batches-46004562995-1\\installed\\Lib\\site-packages\\carr_library\\audio\\media_conversion.py",
+            "sha256": "bb5dc5a62dbcdae42163024b68828f5bc414e34bbe28041f1fbbce35ef0203bd"
+          },
+          "carr_library.audio.recording_process": {
+            "path": "D:\\a\\_temp\\carr-audio-batches-46004562995-1\\installed\\Lib\\site-packages\\carr_library\\audio\\recording_process.py",
+            "sha256": "0252f3d6bb4c2f4bf5bb8f6c637ddf444e458f823f25625aa31c13bb3ba3b4cb"
+          },
+          "carr_library.audio_batch_backup": {
+            "path": "D:\\a\\_temp\\carr-audio-batches-46004562995-1\\installed\\Lib\\site-packages\\carr_library\\audio_batch_backup.py",
+            "sha256": "d37d50f7541d04909422a060702879cf003ea901eeee54981d4ac08fc808ffc0"
+          },
+          "carr_library.security.admission": {
+            "path": "D:\\a\\_temp\\carr-audio-batches-46004562995-1\\installed\\Lib\\site-packages\\carr_library\\security\\admission.py",
+            "sha256": "9214f325cf0bd772ed408a0159d31e1e9e61433c742f46bfce7fa1ee4ef03326"
+          },
+          "carr_library.ui.audio_batches": {
+            "path": "D:\\a\\_temp\\carr-audio-batches-46004562995-1\\installed\\Lib\\site-packages\\carr_library\\ui\\audio_batches.py",
+            "sha256": "7d42f4086286ee33663d65aa5fe2eb76501a2c8c7ef0d29879f9ee09d2964048"
+          },
+          "carr_library.ui.audio_studio": {
+            "path": "D:\\a\\_temp\\carr-audio-batches-46004562995-1\\installed\\Lib\\site-packages\\carr_library\\ui\\audio_studio.py",
+            "sha256": "2e336f8f055227335b89d8ec61d2464bf95a0aad3a974acfc62c36796f23b348"
+          }
+        },
+        "native_controls": "PASS",
+        "nvda": "NOT_RUN",
+        "physical_audio": "NOT_RUN",
+        "speech_quality": "NOT_CLAIMED",
+        "status": "PASS",
+        "verified_output": {
+          "bytes": 10738,
+          "channels": 1,
+          "frames": 2000,
+          "name": "0001-Доставка-ebe671e8d414dfc0c74683ff70c6440b.flac",
+          "sample_rate": 8000,
+          "sha256": "026b1dc33d628f134091f1c57eed7f015b6df6aad734c8dcd8a0a0c95199747b"
+        }
+      },
+      {
+        "schema": 1,
+        "status": "PASS",
+        "source_cases": 143,
+        "installed_cases": 143,
+        "native_checks": 26,
+        "oracle_sha256": "ac088c0972883899d91ab8adce24ae728c1e4f3cd5deb678749cc055c39d55b1",
+        "nvda": "NOT_RUN",
+        "physical_audio": "NOT_RUN",
+        "speech_quality": "NOT_CLAIMED",
+        "source_commit": "13524f5ba941ff368d11e0e0ef3f3ff11fbec880",
+        "source_tree": "61b29ff853a2d0b48afcc3b4d077d729ae469ca3",
+        "wheel_sha256": "53ba52ac4251e30914302d6d362055e7609b716d544fcd200216799f19be1bac",
+        "actual_ffmpeg": {
+          "sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf",
+          "version": "ffmpeg version 9.1-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+          "version_sha256": "900a9c75d78682e23c3f73e9e13d4c9625b24a8f0dfb921a879fc5f9e445bc64"
+        },
+        "native_receipt_sha256": "be2abbdcb82090fed66df76c9b01ee47e72831ef7e9a1697dd5e44b20a7819e0"
+      }
+    ],
+    "prior_failure": {
+      "commit": "5c98cc855c55a12a6d43a7a33a0a7f83e1aafd24",
+      "run_id": 46001491511,
+      "job_id": 140513971297,
+      "diagnostic_run_id": 46003273085,
+      "artifact_id": 15198991074,
+      "artifact_sha256": "c55a1e52159bb68286878c6cacf9decab54e86f932619f95551d684dde9781d1",
+      "status": "FAIL_RETAINED"
+    }
+  },
+  "recorded_reader": {
+    "commit": "ab9c95bb5d75aac5cbd34e4479797a2fe01fb0a4",
+    "tree": "13c40d9f04fb639a3d6825be506ce179f782acdc",
+    "run_id": 46007147891,
+    "job_id": 140533065563,
+    "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46007147891",
+    "artifact": {
+      "id": 15202324658,
+      "name": "carr-media-overlay-ab9c95bb5d75aac5cbd34e4479797a2fe01fb0a4-1",
+      "size_in_bytes": 367722,
+      "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15202324658",
+      "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15202324658/zip",
+      "expired": false,
+      "created_at": "2026-11-27T13:38:55Z",
+      "expires_at": "2026-12-27T13:38:54Z",
+      "updated_at": "2026-11-27T13:38:55Z",
+      "digest": "sha256:160ce1d50cf935dce234b87bc56b14cf4f3e8961be6a9866b175a2702adb6437",
+      "workflow_run": {
+        "id": 46007147891,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/media-overlay-r9-boundary-fix-20261127",
+        "head_sha": "ab9c95bb5d75aac5cbd34e4479797a2fe01fb0a4"
+      }
+    },
+    "receipts": [
+      {
+        "schema": 1,
+        "status": "PASS",
+        "mode": "source",
+        "declared_cases": 100,
+        "timeout_seconds": 1200,
+        "oracle_sha256": "779f94e344daa2fd05b6a9e023c2587acc44f6f8e7f0aae0aa5bfc2be1e0205c",
+        "source_commit": "ab9c95bb5d75aac5cbd34e4479797a2fe01fb0a4",
+        "source_tree": "13c40d9f04fb639a3d6825be506ce179f782acdc",
+        "wheel_sha256": "443235e8258bc5215ac3bcfd04de9ce193285c28fefa176ac01150f91820a758",
+        "checkout_manifest_sha256": "55e6bd661e12833d73270bd1411f9b68970a61e9610eadec30d3e7f95744e22f",
+        "tracked_source_files": 1304,
+        "source_only_python": {
+          "bootstrap/semantic_compat/probe.py": "c51758108a418c7bf98ddd459cefdca852777b07cfc95ac669855b1195398ac7",
+          "bootstrap/semantic_compat/test_probe.py": "ae093cae9f00307c09d2ea787dacf7c8c1522184e5480a411c0979023b7b70bb"
+        },
+        "actual_ffmpeg": {
+          "sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf",
+          "version": "ffmpeg version 9.1-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+          "version_sha256": "900a9c75d78682e23c3f73e9e13d4c9625b24a8f0dfb921a879fc5f9e445bc64"
+        },
+        "test_source_sha256": {
+          "tests/audio/test_playback_processing.py": "b2b89aab7c9ae7b7c513094c9bb3d7cd9dacc061aa54200ca0c626a8c6eaef69",
+          "tests/reader/test_media_overlay.py": "696ba7404c1ee5c94f8d5b1bda69b91e0c6a9cd165c73390fd7b4ece1676b5c5",
+          "tests/reader/test_publication_state.py": "5877ccd8f2c07a4a17b088924dc8f8e7ade1a798092d2e2cc632768f1d0a0d1c",
+          "tests/reader/test_recorded_playback_controls.py": "be9d2a093523502386e6986c9171f7cc07eae93912d93460f3829a2faa5d238b",
+          "tests/ui/test_media_overlay.py": "ba9556d6ea45a0f41d31cbc8905c7917b4e2df167813045d2b8c0a6243cc5862",
+          "tests/__init__.py": "bda1d1b86fa69f604fb87c19f27628942b6bd77aa46b605efbc9cb9d4457183d",
+          "scripts/windows_media_overlay_smoke.py": "4d8f097f88e7ce6eac84c029438c938ea6650be195eef12367d341087b63f2d7"
+        },
+        "runner_sha256": {
+          "audio_batch_acceptance.py": "3fcb217a7ed9d535ea9d277191a27504f8e6f452bef235b728036358f9e6e003",
+          "ci_check.py": "0d11b234ae4fdcfcffdb17f51d899496140693350192d7549740a89fea50bc1e",
+          "ci_watchdog.py": "e02be6a6c3406bdf1d9d4c24673363894d03a1ee7948b3b77d6b20fcc2bfc057"
+        },
+        "pytest_exit": 0,
+        "case_counter": {
+          "tests.audio.test_playback_processing": {
+            "test_real_pitch_and_speed_are_independent_and_keep_declared_pcm_duration": 6,
+            "test_real_volume_mute_and_balance_keep_stereo_source_timing": 5,
+            "test_short_recordings_stay_valid_bounded_pcm_with_independent_controls": 3,
+            "test_control_bounds_do_not_become_arbitrary_filters": 8,
+            "test_source_position_mapping_is_inclusive_monotonic_and_rejects_outside_ranges": 1,
+            "test_pinned_derivative_cannot_be_discarded_before_player_release": 1,
+            "test_delayed_play_checks_pinned_pcm_before_a_native_action": 1,
+            "test_final_original_refusal_finishes_before_a_prepared_result_can_escape": 1,
+            "test_cancel_after_actual_native_processing_retains_no_private_derivative": 1,
+            "test_pending_owned_cleanup_keeps_inputs_stage_and_admission_until_quiescent": 1,
+            "test_byte_allowance_refuses_before_native_processing": 1
+          },
+          "tests.reader.test_media_overlay": {
+            "test_actual_publication_prepares_exact_text_timeline_and_only_owned_pcm": 2,
+            "test_cancellation_at_each_real_phase_releases_owned_files_and_resources": 4,
+            "test_invalid_budgets_are_rejected_before_runtime_or_directory_creation": 5,
+            "test_inclusive_global_deadline_rejects_after_verified_graph_before_native_decode": 1,
+            "test_tampered_embedded_audio_is_refused_before_any_native_decode": 2,
+            "test_navigation_observes_driver_frames_without_autoplay_and_stop_preserves_cursor": 1,
+            "test_valid_wave_tamper_before_playback_is_refused_without_advancing_cursor": 1,
+            "test_native_close_refusal_keeps_pcm_and_reader_until_actual_release": 1,
+            "test_unreported_positions_do_not_invent_playhead_or_overwrite_manual_navigation": 3,
+            "test_actual_native_position_profiles_update_measured_interval": 2,
+            "test_verified_read_cancellation_retains_prepared_pcm_without_publishing_owner": 1,
+            "test_changed_held_pcm_cannot_authorize_saved_position": 1,
+            "test_zip_directory_read_without_count_is_bounded_before_allocation": 1,
+            "test_owned_decode_cleanup_retains_stage_inputs_and_reservations_until_quiescent": 1
+          },
+          "tests.reader.test_publication_state": {
+            "test_exact_publication_cursor_roundtrips_without_path_text_or_audio": 1,
+            "test_invalid_position_fields_never_replace_valid_state": 11,
+            "test_duplicate_identity_and_ambiguous_json_are_rejected": 1,
+            "test_unreadable_optional_cursor_is_never_treated_as_empty_or_overwritten": 2,
+            "test_revoked_save_guard_preserves_existing_exact_cursor": 2,
+            "test_complete_backup_restores_external_publication_positions_without_reopening_audio": 1,
+            "test_complete_backup_refuses_invalid_cursor_before_completion_marker": 1
+          },
+          "tests.reader.test_recorded_playback_controls": {
+            "test_recorded_reader_maps_observed_frames_to_original_intervals_and_saves_original_time": 1,
+            "test_changed_controls_require_native_stop_and_reuse_verifies_cached_derivative": 1,
+            "test_failed_native_stop_retains_both_verified_readers_and_controlled_pcm": 1,
+            "test_combined_budget_counts_original_and_derivative_and_releases_after_refusal": 1,
+            "test_replacing_publication_discards_controlled_pcm_without_closing_shared_player": 1,
+            "test_cancelled_real_transform_never_opens_player_and_keeps_cleanup_reachable": 1
+          },
+          "tests.ui.test_media_overlay": {
+            "test_close_waits_for_actual_worker_and_disposes_late_prepared_result": 1,
+            "test_revoked_frame_guard_still_releases_actual_reader_and_finishes_close": 1,
+            "test_native_stop_refusal_preserves_every_owner_and_allows_explicit_retry": 1,
+            "test_native_close_refusal_does_not_destroy_prepared_document_and_can_retry": 1,
+            "test_stop_captures_observed_position_before_native_reset_and_saves_without_deleting_pcm": 1,
+            "test_delayed_playback_keeps_verified_reader_and_rejects_changed_pcm": 1,
+            "test_cancelled_delayed_callback_cannot_start_replaced_or_closed_reader": 1,
+            "test_new_load_keeps_shared_native_player_open_and_retains_old_cursor": 1,
+            "test_guard_revocation_disposes_new_result_without_replacing_existing_document": 1,
+            "test_manual_interval_navigation_never_starts_playback_or_modifies_source": 1,
+            "test_bounded_native_choices_keep_every_large_navigation_window_reachable": 4,
+            "test_invalid_navigation_window_is_rejected_before_native_population": 4,
+            "test_changed_host_authority_cannot_start_delayed_playback": 1,
+            "test_reading_existing_audio_does_not_consult_fresh_render_permission": 1
+          }
+        },
+        "interpreter_sha256": "272dac13f83b3cd512d0e9af204bd864b48d991c0204f7eccf3c990966dd0838",
+        "actual_cases": 100,
+        "elapsed_seconds": 42.031000000000006
+      },
+      {
+        "schema": 1,
+        "status": "PASS",
+        "mode": "installed",
+        "declared_cases": 100,
+        "timeout_seconds": 1200,
+        "oracle_sha256": "779f94e344daa2fd05b6a9e023c2587acc44f6f8e7f0aae0aa5bfc2be1e0205c",
+        "source_commit": "ab9c95bb5d75aac5cbd34e4479797a2fe01fb0a4",
+        "source_tree": "13c40d9f04fb639a3d6825be506ce179f782acdc",
+        "wheel_sha256": "443235e8258bc5215ac3bcfd04de9ce193285c28fefa176ac01150f91820a758",
+        "checkout_manifest_sha256": "55e6bd661e12833d73270bd1411f9b68970a61e9610eadec30d3e7f95744e22f",
+        "tracked_source_files": 1304,
+        "source_only_python": {
+          "bootstrap/semantic_compat/probe.py": "c51758108a418c7bf98ddd459cefdca852777b07cfc95ac669855b1195398ac7",
+          "bootstrap/semantic_compat/test_probe.py": "ae093cae9f00307c09d2ea787dacf7c8c1522184e5480a411c0979023b7b70bb"
+        },
+        "actual_ffmpeg": {
+          "sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf",
+          "version": "ffmpeg version 9.1-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+          "version_sha256": "900a9c75d78682e23c3f73e9e13d4c9625b24a8f0dfb921a879fc5f9e445bc64"
+        },
+        "test_source_sha256": {
+          "tests/audio/test_playback_processing.py": "b2b89aab7c9ae7b7c513094c9bb3d7cd9dacc061aa54200ca0c626a8c6eaef69",
+          "tests/reader/test_media_overlay.py": "696ba7404c1ee5c94f8d5b1bda69b91e0c6a9cd165c73390fd7b4ece1676b5c5",
+          "tests/reader/test_publication_state.py": "5877ccd8f2c07a4a17b088924dc8f8e7ade1a798092d2e2cc632768f1d0a0d1c",
+          "tests/reader/test_recorded_playback_controls.py": "be9d2a093523502386e6986c9171f7cc07eae93912d93460f3829a2faa5d238b",
+          "tests/ui/test_media_overlay.py": "ba9556d6ea45a0f41d31cbc8905c7917b4e2df167813045d2b8c0a6243cc5862",
+          "tests/__init__.py": "bda1d1b86fa69f604fb87c19f27628942b6bd77aa46b605efbc9cb9d4457183d",
+          "scripts/windows_media_overlay_smoke.py": "4d8f097f88e7ce6eac84c029438c938ea6650be195eef12367d341087b63f2d7"
+        },
+        "runner_sha256": {
+          "audio_batch_acceptance.py": "3fcb217a7ed9d535ea9d277191a27504f8e6f452bef235b728036358f9e6e003",
+          "ci_check.py": "0d11b234ae4fdcfcffdb17f51d899496140693350192d7549740a89fea50bc1e",
+          "ci_watchdog.py": "e02be6a6c3406bdf1d9d4c24673363894d03a1ee7948b3b77d6b20fcc2bfc057"
+        },
+        "pytest_exit": 0,
+        "case_counter": {
+          "tests.audio.test_playback_processing": {
+            "test_real_pitch_and_speed_are_independent_and_keep_declared_pcm_duration": 6,
+            "test_real_volume_mute_and_balance_keep_stereo_source_timing": 5,
+            "test_short_recordings_stay_valid_bounded_pcm_with_independent_controls": 3,
+            "test_control_bounds_do_not_become_arbitrary_filters": 8,
+            "test_source_position_mapping_is_inclusive_monotonic_and_rejects_outside_ranges": 1,
+            "test_pinned_derivative_cannot_be_discarded_before_player_release": 1,
+            "test_delayed_play_checks_pinned_pcm_before_a_native_action": 1,
+            "test_final_original_refusal_finishes_before_a_prepared_result_can_escape": 1,
+            "test_cancel_after_actual_native_processing_retains_no_private_derivative": 1,
+            "test_pending_owned_cleanup_keeps_inputs_stage_and_admission_until_quiescent": 1,
+            "test_byte_allowance_refuses_before_native_processing": 1
+          },
+          "tests.reader.test_media_overlay": {
+            "test_actual_publication_prepares_exact_text_timeline_and_only_owned_pcm": 2,
+            "test_cancellation_at_each_real_phase_releases_owned_files_and_resources": 4,
+            "test_invalid_budgets_are_rejected_before_runtime_or_directory_creation": 5,
+            "test_inclusive_global_deadline_rejects_after_verified_graph_before_native_decode": 1,
+            "test_tampered_embedded_audio_is_refused_before_any_native_decode": 2,
+            "test_navigation_observes_driver_frames_without_autoplay_and_stop_preserves_cursor": 1,
+            "test_valid_wave_tamper_before_playback_is_refused_without_advancing_cursor": 1,
+            "test_native_close_refusal_keeps_pcm_and_reader_until_actual_release": 1,
+            "test_unreported_positions_do_not_invent_playhead_or_overwrite_manual_navigation": 3,
+            "test_actual_native_position_profiles_update_measured_interval": 2,
+            "test_verified_read_cancellation_retains_prepared_pcm_without_publishing_owner": 1,
+            "test_changed_held_pcm_cannot_authorize_saved_position": 1,
+            "test_zip_directory_read_without_count_is_bounded_before_allocation": 1,
+            "test_owned_decode_cleanup_retains_stage_inputs_and_reservations_until_quiescent": 1
+          },
+          "tests.reader.test_publication_state": {
+            "test_exact_publication_cursor_roundtrips_without_path_text_or_audio": 1,
+            "test_invalid_position_fields_never_replace_valid_state": 11,
+            "test_duplicate_identity_and_ambiguous_json_are_rejected": 1,
+            "test_unreadable_optional_cursor_is_never_treated_as_empty_or_overwritten": 2,
+            "test_revoked_save_guard_preserves_existing_exact_cursor": 2,
+            "test_complete_backup_restores_external_publication_positions_without_reopening_audio": 1,
+            "test_complete_backup_refuses_invalid_cursor_before_completion_marker": 1
+          },
+          "tests.reader.test_recorded_playback_controls": {
+            "test_recorded_reader_maps_observed_frames_to_original_intervals_and_saves_original_time": 1,
+            "test_changed_controls_require_native_stop_and_reuse_verifies_cached_derivative": 1,
+            "test_failed_native_stop_retains_both_verified_readers_and_controlled_pcm": 1,
+            "test_combined_budget_counts_original_and_derivative_and_releases_after_refusal": 1,
+            "test_replacing_publication_discards_controlled_pcm_without_closing_shared_player": 1,
+            "test_cancelled_real_transform_never_opens_player_and_keeps_cleanup_reachable": 1
+          },
+          "tests.ui.test_media_overlay": {
+            "test_close_waits_for_actual_worker_and_disposes_late_prepared_result": 1,
+            "test_revoked_frame_guard_still_releases_actual_reader_and_finishes_close": 1,
+            "test_native_stop_refusal_preserves_every_owner_and_allows_explicit_retry": 1,
+            "test_native_close_refusal_does_not_destroy_prepared_document_and_can_retry": 1,
+            "test_stop_captures_observed_position_before_native_reset_and_saves_without_deleting_pcm": 1,
+            "test_delayed_playback_keeps_verified_reader_and_rejects_changed_pcm": 1,
+            "test_cancelled_delayed_callback_cannot_start_replaced_or_closed_reader": 1,
+            "test_new_load_keeps_shared_native_player_open_and_retains_old_cursor": 1,
+            "test_guard_revocation_disposes_new_result_without_replacing_existing_document": 1,
+            "test_manual_interval_navigation_never_starts_playback_or_modifies_source": 1,
+            "test_bounded_native_choices_keep_every_large_navigation_window_reachable": 4,
+            "test_invalid_navigation_window_is_rejected_before_native_population": 4,
+            "test_changed_host_authority_cannot_start_delayed_playback": 1,
+            "test_reading_existing_audio_does_not_consult_fresh_render_permission": 1
+          }
+        },
+        "interpreter_sha256": "45ada8613d1381fdac64fa8e7570b2283acf45ddf56e85ba6fe70f62cfb00ae1",
+        "actual_cases": 100,
+        "elapsed_seconds": 40.23400000000004
+      },
+      {
+        "actual_ffmpeg": {
+          "sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf",
+          "version": "ffmpeg version 9.1-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+          "version_sha256": "900a9c75d78682e23c3f73e9e13d4c9625b24a8f0dfb921a879fc5f9e445bc64"
+        },
+        "actual_publication_pcm": {
+          "daisy": {
+            "channels": 2,
+            "controlled_frames": 4000,
+            "controlled_pcm_sha256": "8b679a935e9d0011cfab9f0c81da37504e524fc97c357fa94bfb61b242685902",
+            "frames": 8000,
+            "pcm_sha256": "ecf46945a22a54d24df0ad1a87487786d9d6c59f335b351e6e69d56569725785",
+            "publication_sha256": "8f92e30e7375e41c6de265d72e0bf14ebcf61246c5c54adf1da347298cae2e0e",
+            "sample_rate": 16000,
+            "source_time_accuracy": "estimated_after_time_stretch"
+          },
+          "epub": {
+            "channels": 2,
+            "controlled_frames": 4000,
+            "controlled_pcm_sha256": "8b679a935e9d0011cfab9f0c81da37504e524fc97c357fa94bfb61b242685902",
+            "frames": 8000,
+            "pcm_sha256": "ecf46945a22a54d24df0ad1a87487786d9d6c59f335b351e6e69d56569725785",
+            "publication_sha256": "e7e52aa36bd55a4d329962e6bd5cc186065059bcccc6bf7785fe82081e060c34",
+            "sample_rate": 16000,
+            "source_time_accuracy": "estimated_after_time_stretch"
+          }
+        },
+        "checks": [
+          "selected real FFmpeg exists",
+          "native named read-only text epub",
+          "thirteen named native reader actions epub",
+          "actual verified PCM prepared epub",
+          "exact full publication identity epub",
+          "native exact Unicode interval epub",
+          "whole measured interval has native selection epub",
+          "preparation starts no output device epub",
+          "resource reservations released epub",
+          "actual independent recorded-reader controls epub",
+          "deferred native playback keeps both PCM owners epub",
+          "recorded-reader source mapping is labelled estimated epub",
+          "actual native chapter keyboard focus epub",
+          "native next chapter selects exact measured text epub",
+          "navigation does not start output epub",
+          "accessible where-am-I names actual chapter epub",
+          "exact-source position saved epub",
+          "stop preserves prepared PCM for replay epub",
+          "stop releases both playback verification readers epub",
+          "native named read-only text daisy",
+          "thirteen named native reader actions daisy",
+          "actual verified PCM prepared daisy",
+          "exact full publication identity daisy",
+          "native exact Unicode interval daisy",
+          "whole measured interval has native selection daisy",
+          "preparation starts no output device daisy",
+          "resource reservations released daisy",
+          "actual independent recorded-reader controls daisy",
+          "deferred native playback keeps both PCM owners daisy",
+          "recorded-reader source mapping is labelled estimated daisy",
+          "actual native chapter keyboard focus daisy",
+          "native next chapter selects exact measured text daisy",
+          "navigation does not start output daisy",
+          "accessible where-am-I names actual chapter daisy",
+          "exact-source position saved daisy",
+          "stop preserves prepared PCM for replay daisy",
+          "stop releases both playback verification readers daisy",
+          "new load released old owned PCM",
+          "new load released old independent playback PCM",
+          "exact publication cursor restored after another book",
+          "restored native text is exact",
+          "restore starts no output device",
+          "modal exits only after actual owners settle",
+          "final private PCM removed after close",
+          "both original publications remain byte-identical"
+        ],
+        "installed_mode": true,
+        "isolated": true,
+        "language_quality": "NOT_CLAIMED",
+        "module_origins": {
+          "carr_library.audio.cleanup": {
+            "path": "D:\\a\\_temp\\carr-media-overlay-46007147891-1\\installed\\Lib\\site-packages\\carr_library\\audio\\cleanup.py",
+            "sha256": "c71dad18606fbccc10bfc981f1f44b80ca57897aabdbcaaa0129eb609bb4efcf"
+          },
+          "carr_library.audio.daisy": {
+            "path": "D:\\a\\_temp\\carr-media-overlay-46007147891-1\\installed\\Lib\\site-packages\\carr_library\\audio\\daisy.py",
+            "sha256": "52dfe5312026fcfc6c5f1477e77eb68358800357e6abffbb460887b283519ba2"
+          },
+          "carr_library.audio.jobs": {
+            "path": "D:\\a\\_temp\\carr-media-overlay-46007147891-1\\installed\\Lib\\site-packages\\carr_library\\audio\\jobs.py",
+            "sha256": "684ddb40ca6cc885adfcf1dfc8cd3fd45809a14701a200c67ecff00f4d364b0b"
+          },
+          "carr_library.audio.playback": {
+            "path": "D:\\a\\_temp\\carr-media-overlay-46007147891-1\\installed\\Lib\\site-packages\\carr_library\\audio\\playback.py",
+            "sha256": "b48795a66a1cb1e5444292cacc4b8c7b9f8646f626176883d48b7d04a13f95e3"
+          },
+          "carr_library.audio.playback_processing": {
+            "path": "D:\\a\\_temp\\carr-media-overlay-46007147891-1\\installed\\Lib\\site-packages\\carr_library\\audio\\playback_processing.py",
+            "sha256": "b02b27e530d7ae0a135d080239fbeb3352e1fb925028db34232c4e72bd059c4c"
+          },
+          "carr_library.audio.player": {
+            "path": "D:\\a\\_temp\\carr-media-overlay-46007147891-1\\installed\\Lib\\site-packages\\carr_library\\audio\\player.py",
+            "sha256": "71638560a1e5c7cb086a8b3ce2f194a35ad33b4a1f3a78227154e9cf28563979"
+          },
+          "carr_library.audio.publishing": {
+            "path": "D:\\a\\_temp\\carr-media-overlay-46007147891-1\\installed\\Lib\\site-packages\\carr_library\\audio\\publishing.py",
+            "sha256": "2438d563df25b96ce9877b5009124a1de0c831c2a7d65ff6423f04637e86e928"
+          },
+          "carr_library.audio.recording_process": {
+            "path": "D:\\a\\_temp\\carr-media-overlay-46007147891-1\\installed\\Lib\\site-packages\\carr_library\\audio\\recording_process.py",
+            "sha256": "0252f3d6bb4c2f4bf5bb8f6c637ddf444e458f823f25625aa31c13bb3ba3b4cb"
+          },
+          "carr_library.library_backup": {
+            "path": "D:\\a\\_temp\\carr-media-overlay-46007147891-1\\installed\\Lib\\site-packages\\carr_library\\library_backup.py",
+            "sha256": "afa69cc42230859d79d2900a242661a44374ce6f4c9bdf47afd9ea532aba9aad"
+          },
+          "carr_library.reader.media_overlay": {
+            "path": "D:\\a\\_temp\\carr-media-overlay-46007147891-1\\installed\\Lib\\site-packages\\carr_library\\reader\\media_overlay.py",
+            "sha256": "5141f65c419d7722b51d275d7c6693bfcb8f7648fcdfca6a13c08290a24e8121"
+          },
+          "carr_library.reader.publication_state": {
+            "path": "D:\\a\\_temp\\carr-media-overlay-46007147891-1\\installed\\Lib\\site-packages\\carr_library\\reader\\publication_state.py",
+            "sha256": "7eaebbc691a3ecf038df0489c5251bd98f0921fef77919d20b49428efa6e91f3"
+          },
+          "carr_library.ui.media_overlay_dialog": {
+            "path": "D:\\a\\_temp\\carr-media-overlay-46007147891-1\\installed\\Lib\\site-packages\\carr_library\\ui\\media_overlay_dialog.py",
+            "sha256": "1a6226345996c9e9cf85a1042d857443df84f89896dc2846e18aa48b1ab31246"
+          }
+        },
+        "native_controls": "EXECUTED",
+        "nvda": "NOT_RUN",
+        "physical_playback": "NOT_RUN",
+        "source_commit": "ab9c95bb5d75aac5cbd34e4479797a2fe01fb0a4",
+        "status": "PASS",
+        "third_party_interoperability": "NOT_RUN",
+        "word_alignment": "NOT_CLAIMED"
+      },
+      {
+        "schema": 1,
+        "status": "PASS",
+        "source_cases": 100,
+        "installed_cases": 100,
+        "native_checks": 45,
+        "oracle_sha256": "779f94e344daa2fd05b6a9e023c2587acc44f6f8e7f0aae0aa5bfc2be1e0205c",
+        "nvda": "NOT_RUN",
+        "physical_playback": "NOT_RUN",
+        "word_alignment": "NOT_CLAIMED",
+        "third_party_interoperability": "NOT_RUN",
+        "source_commit": "ab9c95bb5d75aac5cbd34e4479797a2fe01fb0a4",
+        "source_tree": "13c40d9f04fb639a3d6825be506ce179f782acdc",
+        "wheel_sha256": "443235e8258bc5215ac3bcfd04de9ce193285c28fefa176ac01150f91820a758",
+        "actual_ffmpeg": {
+          "sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf",
+          "version": "ffmpeg version 9.1-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+          "version_sha256": "900a9c75d78682e23c3f73e9e13d4c9625b24a8f0dfb921a879fc5f9e445bc64"
+        },
+        "native_receipt_sha256": "fd34d4ec033c6eee9086b1162ed9b97bba5d92a6b1b46f7bae3436ce9c85d500"
+      }
+    ],
+    "prior_failure": {
+      "commit": "51a366368f4901d881f2b3bbeb789a25130a6f34",
+      "run_id": 46006067939,
+      "job_id": 140529415570,
+      "status": "FAIL_RETAINED",
+      "actual_source": {
+        "passed": 97,
+        "failed": 3,
+        "total": 100
+      },
+      "actual_installed": {
+        "passed": 97,
+        "failed": 3,
+        "total": 100
+      }
+    }
+  },
+  "limits": {
+    "nvda": "NOT_RUN",
+    "physical_audio_device": "NOT_RUN",
+    "private_model_or_engine": "NOT_RUN",
+    "speech_quality": "NOT_CLAIMED",
+    "word_alignment": "NOT_CLAIMED",
+    "third_party_epub_daisy_interoperability": "NOT_RUN"
+  },
+  "evidence_method": "Decoded actual GitHub Actions job logs and artifact metadata were read through the repository connector. Artifact SHA256 values are the GitHub-reported uploaded archive digests; this receipt does not claim a separate local archive download/hash. The gates themselves bind exact source/tree, complete tracked inventory, declared wheel and installed Python bytes, fixture/oracle hashes and actual native receipts."
+}

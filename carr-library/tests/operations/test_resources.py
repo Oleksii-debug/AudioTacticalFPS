@@ -82,11 +82,11 @@ def test_unheld_lock_disappearance_during_preflight_can_be_acquired(tmp_path, mo
     path.write_bytes(b'')
     actual_regular = _locks.regular
     events = []
-    def released(candidate):
+    def released(candidate, *args, **kwargs):
         if Path(candidate) == path and not events:
             events.append('prior owner released')
             path.unlink()
-        return actual_regular(candidate)
+        return actual_regular(candidate, *args, **kwargs)
     monkeypatch.setattr(_locks, 'regular', released)
     if lock is None:
         lock = _locks.NativeLock(path)
@@ -105,7 +105,7 @@ def test_unheld_lock_does_not_hide_missing_parent_or_validation_error(tmp_path, 
     from carr_library.operations import _locks
     with pytest.raises((OSError, ValueError)):
         _locks.NativeLock(tmp_path / 'missing-parent' / 'lock')
-    def denied(_):
+    def denied(_, *args, **kwargs):
         raise PermissionError('controlled validation denial')
     monkeypatch.setattr(_locks, 'regular', denied)
     with pytest.raises(PermissionError, match='validation denial'):
@@ -123,10 +123,10 @@ def test_owned_lock_still_refuses_a_disappeared_path(tmp_path, monkeypatch):
         result = actual_acquire(*args, **kwargs)
         acquired.append(True)
         return result
-    def vanished(candidate):
+    def vanished(candidate, *args, **kwargs):
         if acquired:
             raise FileNotFoundError('controlled post-acquire disappearance')
-        return actual_regular(candidate)
+        return actual_regular(candidate, *args, **kwargs)
     monkeypatch.setattr(lock.lock, 'acquire', acquire)
     monkeypatch.setattr(_locks, 'regular', vanished)
     with pytest.raises(ResourceStateError, match='could not be validated'):
@@ -419,6 +419,181 @@ def test_paths_do_not_follow_links_and_invalid_requests_are_rejected(tmp_path):
                    {'devices': ('microphone:one', 'microphone:one')}, {'cpu_slots': 0}):
         with pytest.raises(ValueError):
             ResourceRequest(**values)
+
+
+@pytest.mark.parametrize('phase', ['construction', 'acquisition'])
+def test_native_release_can_remove_the_file_during_unheld_preflight(tmp_path, monkeypatch, phase):
+    """Release a real held native lock exactly before the waiter's path check."""
+    from carr_library.operations import _locks
+    path = tmp_path / 'contended.lock'
+    holder = _locks.NativeLock(path)
+    assert holder.acquire()
+    waiter = _locks.NativeLock(path) if phase == 'acquisition' else None
+    contender = None
+    requested, released = threading.Event(), threading.Event()
+    errors = []
+    caller = threading.current_thread()
+    actual_regular = _locks.regular
+    reached = []
+
+    def release_holder():
+        try:
+            if not requested.wait(10):
+                raise AssertionError('The waiter did not reach its pre-acquisition boundary.')
+            holder.release()
+            assert not holder.held
+            assert not os.path.lexists(path)
+        except BaseException as exc:
+            errors.append(exc)
+        finally:
+            released.set()
+
+    def checked(candidate, *arguments, **keywords):
+        if (Path(candidate) == path and threading.current_thread() is caller
+                and not reached):
+            reached.append(True)
+            requested.set()
+            assert released.wait(10), 'The actual native holder did not release.'
+            assert not errors, errors
+        return actual_regular(candidate, *arguments, **keywords)
+
+    thread = threading.Thread(target=release_holder, name='resource-release-race')
+    thread.start()
+    try:
+        with monkeypatch.context() as scoped:
+            scoped.setattr(_locks, 'regular', checked)
+            if waiter is None:
+                waiter = _locks.NativeLock(path)
+            assert waiter.acquire()
+            assert reached == [True] and released.is_set() and not errors
+            assert waiter.held
+            info = path.lstat()
+            held = os.fstat(waiter.lock._context.lock_file_fd)
+            assert (info.st_dev, info.st_ino) == (held.st_dev, held.st_ino)
+            contender = _locks.NativeLock(path)
+            assert contender.acquire() is False
+            assert waiter.held and not contender.held
+            waiter.release()
+            assert contender.acquire()
+    finally:
+        requested.set()
+        thread.join(12)
+        if contender is not None:
+            contender.release()
+        if waiter is not None:
+            waiter.release()
+        holder.release()
+    assert not thread.is_alive() and not errors
+
+
+@pytest.mark.parametrize('phase', ['construction', 'acquisition'])
+def test_optional_lock_preflight_still_rejects_hardlinks_without_touching_bytes(tmp_path, phase):
+    from carr_library.operations._locks import NativeLock
+    outside = tmp_path / 'retained-original'
+    original = b'This retained file must not become a mutable resource lock.'
+    outside.write_bytes(original)
+    path = tmp_path / 'untrusted.lock'
+    lock = NativeLock(path) if phase == 'acquisition' else None
+    os.link(outside, path)
+    try:
+        with pytest.raises(ValueError):
+            if lock is None:
+                NativeLock(path)
+            else:
+                lock.acquire()
+        assert outside.read_bytes() == original and path.read_bytes() == original
+        assert lock is None or not lock.held
+    finally:
+        if lock is not None:
+            lock.release()
+
+@pytest.mark.parametrize('phase', ['construction', 'acquisition'])
+def test_lock_leaf_disappears_during_local_asset_check(tmp_path, monkeypatch, phase):
+    """Keep our reviewed optional local-asset path boundary, not another state adapter."""
+    from carr_library.operations._locks import NativeLock
+    path = tmp_path / 'released.lock'
+    lock = NativeLock(path) if phase == 'acquisition' else None
+    path.write_bytes(b'')
+    original = Path.lstat
+    removed = []
+    def disappear(candidate, *args, **kwargs):
+        if Path(candidate) == path and not removed:
+            path.unlink()
+            removed.append(True)
+        return original(candidate, *args, **kwargs)
+    peer = None
+    try:
+        with monkeypatch.context() as scoped:
+            scoped.setattr(Path, 'lstat', disappear)
+            if lock is None:
+                lock = NativeLock(path)
+            assert lock.acquire()
+        assert removed == [True] and lock.held
+        peer = NativeLock(path)
+        assert not peer.acquire()
+    finally:
+        if peer is not None:
+            peer.release()
+        if lock is not None:
+            lock.release()
+
+
+@pytest.mark.parametrize('phase', ['construction', 'acquisition'])
+def test_disappearing_lock_leaf_does_not_authorize_missing_parent(tmp_path, monkeypatch, phase):
+    from carr_library.operations import _locks
+    parent = tmp_path / 'owned-resources'
+    parent.mkdir()
+    path = parent / 'released.lock'
+    lock = _locks.NativeLock(path) if phase == 'acquisition' else None
+    path.write_bytes(b'')
+    original = _locks.regular
+    removed = []
+    def remove_family(candidate, *args, **kwargs):
+        if Path(candidate) == path and not removed:
+            path.unlink()
+            parent.rmdir()
+            removed.append(True)
+        return original(candidate, *args, **kwargs)
+    try:
+        with monkeypatch.context() as scoped:
+            scoped.setattr(_locks, 'regular', remove_family)
+            with pytest.raises((FileNotFoundError, ValueError)):
+                if lock is None:
+                    _locks.NativeLock(path)
+                else:
+                    lock.acquire()
+        assert removed == [True] and not os.path.lexists(parent)
+        assert lock is None or not lock.held
+    finally:
+        if lock is not None:
+            lock.release()
+
+
+@pytest.mark.parametrize('phase', ['construction', 'acquisition'])
+@pytest.mark.parametrize('boundary', ['parent', 'leaf'])
+def test_unheld_lock_inspection_errors_never_become_absence(tmp_path, monkeypatch, phase, boundary):
+    from carr_library.operations import _locks
+    path = tmp_path / 'checked.lock'
+    lock = _locks.NativeLock(path) if phase == 'acquisition' else None
+    original = _locks.regular
+    denied = path.parent if boundary == 'parent' else path
+    def unreadable(candidate, *args, **kwargs):
+        if Path(candidate) == denied:
+            raise PermissionError('Explicit native lock inspection denial')
+        return original(candidate, *args, **kwargs)
+    try:
+        with monkeypatch.context() as scoped:
+            scoped.setattr(_locks, 'regular', unreadable)
+            with pytest.raises(PermissionError, match='inspection denial'):
+                if lock is None:
+                    _locks.NativeLock(path)
+                else:
+                    lock.acquire()
+        assert not os.path.lexists(path)
+        assert lock is None or not lock.held
+    finally:
+        if lock is not None:
+            lock.release()
 
 
 if __name__ == '__main__':

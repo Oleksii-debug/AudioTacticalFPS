@@ -99,7 +99,8 @@
       "test_hash_cancellation_stops_after_first_real_block": 2,
       "test_capture_cancelled_before_open": 1,
       "test_receipt_and_native_digest_shape_are_preserved": 1,
-      "test_mismatched_existing_approval_rejected_before_open": 4
+      "test_mismatched_existing_approval_rejected_before_open": 4,
+      "test_replaced_existing_destination_not_opened": 4
     }
   },
   "origins": [

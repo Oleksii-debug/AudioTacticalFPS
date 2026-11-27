@@ -220,6 +220,7 @@ def show_translation_scope(frame, *, service=None):
         languages_loaded()
 
     def selected(event=None):
+        before = tuple(chosen)
         for index, item in enumerate(rows):
             if documents.IsChecked(index):
                 chosen[item.edition_id] = item
@@ -229,7 +230,8 @@ def show_translation_scope(frame, *, service=None):
             raise ValueError('A translation batch contains at most 100 explicitly selected documents.')
         selection_view.ChangeValue('\n'.join(str(i + 1) + '. ' + (item.title or 'Untitled') +
                                     ' — ' + item.edition_id for i, item in enumerate(chosen.values())))
-        controller.reviewed = None
+        if tuple(chosen) != before:
+            controller.reviewed = None
 
     def load_books(next_page=False):
         nonlocal after, current_filter

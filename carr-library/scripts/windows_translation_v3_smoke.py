@@ -9,21 +9,20 @@ from hashlib import sha256
 import json
 from pathlib import Path
 import sys
+import traceback
 from tempfile import TemporaryDirectory
 from threading import Event
 from time import monotonic, time
 from types import SimpleNamespace
 
 
-def main():
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--output', type=Path, required=True)
-    args = parser.parse_args()
+def run_native(args, progress, runtime_owner):
     if sys.platform != 'win32':
         raise SystemExit('Native Windows execution is required; no simulated native PASS is produced.')
     from carr_library.native_runtime import activate_bundled_runtime
     native_runtime = activate_bundled_runtime()
+    runtime_owner.append(native_runtime)
+    progress('native-runtime-active')
     import wx
     from carr_library import providers
     from carr_library.assistant.translation import TranslationService
@@ -158,7 +157,9 @@ def main():
                         raise AssertionError(failures[0])
                     if monotonic() > deadline:
                         raise TimeoutError('Native translation probe exceeded its bounded wait.')
-                    if dialog is None:
+                    progress('drive-' + str(phase[0]), working=bool(frame.working),
+                             synthetic_requests=len(requests))
+                    if dialog is None or not dialog.IsShown() or not dialog.IsModal():
                         return
                     if phase[0] == 0:
                         assert not requests
@@ -166,8 +167,11 @@ def main():
                         glossary_control = child(dialog, 'Advanced v3 glossary resource; blank for none')
                         assert glossary_control.IsEnabled()
                         glossary_control.SetFocus()
-                        assert wx.Window.FindFocus() is glossary_control
                         glossary_control.ChangeValue(glossary)
+                        phase[0] = 'focus'
+                    elif phase[0] == 'focus':
+                        if wx.Window.FindFocus() is not child(dialog, 'Advanced v3 glossary resource; blank for none'):
+                            return
                         button(dialog, 'Fetch languages')
                         phase[0] = 1
                     elif phase[0] == 1 and not frame.working:
@@ -223,7 +227,7 @@ def main():
                         phase[0] = 5
                         timer.Stop()
                         button(dialog, 'Close')
-                        wx.CallAfter(app.ExitMainLoop)
+                        progress('native-controls-complete', synthetic_requests=len(requests))
                 except BaseException as exc:
                     failures.append(type(exc).__name__ + ': ' + str(exc))
                     timer.Stop()
@@ -231,29 +235,93 @@ def main():
                     if dialog is not None:
                         close = wx.CloseEvent(wx.EVT_CLOSE.typeId, dialog.GetId())
                         dialog.GetEventHandler().ProcessEvent(close)
-                    wx.CallAfter(app.ExitMainLoop)
+                    progress('native-flow-failed', failures=failures[-4:])
 
             frame.Bind(wx.EVT_TIMER, drive, timer)
             timer.Start(50)
-            wx.CallAfter(show_translation, frame, initial_text=original, title='Synthetic public source', service=service)
+            def show_owned_modal():
+                try:
+                    progress('opening-owned-modal')
+                    show_translation(frame, initial_text=original, title='Synthetic public source', service=service)
+                    progress('owned-modal-returned')
+                except BaseException as error:
+                    failures.append(type(error).__name__ + ': ' + str(error))
+                    progress('modal-open-failed', failures=failures[-4:], traceback=traceback.format_exc()[-12000:])
+                finally:
+                    # Exit the application loop only after ShowModal has
+                    # unwound; an exit posted inside it can target its nested loop.
+                    wx.CallAfter(app.ExitMainLoop)
+            wx.CallAfter(show_owned_modal)
             try:
                 app.MainLoop()
             finally:
                 timer.Stop()
                 frame._closing = True
                 frame.cancel_event.set()
+                progress('settling-native-worker', failures=failures[-4:])
                 frame.executor.shutdown(wait=True, cancel_futures=True)
                 wx.MessageBox, wx.DirDialog = native_message_box, native_dir_dialog
                 frame.Destroy()
+                progress('native-frame-cleaned', failures=failures[-4:])
             if failures or phase[0] != 5:
                 raise RuntimeError('Native translation probe failed: ' + '; '.join(failures or ['incomplete flow']))
         finally:
             # This exact synthetic native vault entry is removed on every exit.
             vault.delete(selected_profile.credential_ref, selected_profile.credential_binding)
+            progress('synthetic-vault-cleaned', vault_cleanup='PASS')
+    return final
+
+
+def main():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--output', type=Path, required=True)
+    args = parser.parse_args()
+    state = {'schema': 'carr-native-translation-progress/1', 'status': 'RUNNING',
+             'flow': getattr(args, 'mode', 'selected-advanced'), 'phase': 'starting',
+             'windows': sys.platform == 'win32', 'isolated': bool(sys.flags.isolated),
+             'actual_google_api': 'NOT_RUN', 'nvda': 'NOT_RUN', 'vault_cleanup': 'NOT_RUN',
+             'runtime_cleanup': 'NOT_RUN'}
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(final, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-    print(json.dumps(final, ensure_ascii=False))
+    runtime_owner = []
+    def progress(phase, **values):
+        changed = (not args.output.is_file() or state.get('phase') != phase
+                   or any(state.get(key) != value for key, value in values.items()))
+        state.update(phase=phase, **values)
+        if not changed:
+            return
+        args.output.write_text(json.dumps(state, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+        if changed:
+            print('PROGRESS ' + json.dumps(state, ensure_ascii=False), flush=True)
+    progress('starting')
+    result, failure = None, None
+    try:
+        if not sys.flags.isolated:
+            raise RuntimeError('The native probe requires the isolated installed interpreter.')
+        result = run_native(args, progress, runtime_owner)
+    except BaseException as error:
+        failure = type(error).__name__ + ': ' + str(error)
+        state.update(status='FAIL', error=failure, traceback=traceback.format_exc()[-12000:])
+    finally:
+        try:
+            for owner in runtime_owner:
+                if owner is not None:
+                    owner.close()
+            state['runtime_cleanup'] = 'PASS'
+        except BaseException as error:
+            failure = type(error).__name__ + ': ' + str(error)
+            state.update(status='FAIL', cleanup_error=failure, traceback=traceback.format_exc()[-12000:])
+        if failure is None and result is not None and result.get('status') == 'PASS':
+            result.update(vault_cleanup=state['vault_cleanup'], runtime_cleanup=state['runtime_cleanup'],
+                          native_event_loop='owned-modal-unwound')
+            if result['vault_cleanup'] != 'PASS':
+                failure = 'The synthetic vault entry did not confirm cleanup.'
+        if failure is not None or result is None:
+            result = {**state, 'status': 'FAIL', 'error': failure or 'Native flow returned no completed receipt.'}
+        args.output.write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+        print(json.dumps(result, ensure_ascii=False), flush=True)
+    return 0 if result['status'] == 'PASS' else 1
 
 
 if __name__ == '__main__':
-    main()
+    raise SystemExit(main())

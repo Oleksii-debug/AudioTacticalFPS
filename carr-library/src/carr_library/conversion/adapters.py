@@ -205,6 +205,9 @@ def _image_records(source, data, suffix, config, budget, deadline):
 
 def selected_records(source, data, suffix, config, budget, deadline, selection):
     from .office import OFFICE_SUFFIXES, office_records
+    from .legacy import LEGACY_SUFFIXES, legacy_records
+    if suffix in LEGACY_SUFFIXES:
+        return legacy_records(source, data, suffix, budget, deadline, selection)
     if suffix in OFFICE_SUFFIXES:
         if (type(selection) is not dict or set(selection) != {'kind', 'runtime'}
                 or selection['kind'] != 'libreoffice'):
