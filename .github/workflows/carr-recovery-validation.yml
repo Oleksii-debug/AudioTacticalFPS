@@ -1,0 +1,75 @@
+name: CARR canonical recovery source validation
+
+on:
+  push:
+    branches: [carr/canonical-recovery-validation-20261127]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-recovery-validation-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  bounded-citation:
+    name: Exact candidate compilation and actual QuickJS citation source tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - name: Read exact recovery candidates
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          path: recovery-source
+          persist-credentials: false
+      - name: Read pinned shared application
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 8e6d410019f90f54ea694a5ff69402bc52567d57
+          path: shared-source
+          persist-credentials: false
+      - name: Read pinned canonical citation resources
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 966e5ccf892243ead6942c635af5fbab47e72551
+          path: canonical-source
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Compile exact candidate bytes and record the bounded composition
+        run: |
+          python -B recovery-source/recovery/validate_canonical_recovery.py --root recovery-source --shared shared-source --canonical canonical-source --evidence ci-recovery-results
+      - name: Install declared source dependencies and the exact embedded runtime
+        working-directory: shared-source/carr-library
+        run: |
+          python -m pip install '.[test]' quickjs-ng==0.18.0.2
+          python -m pip check
+          python -m pip freeze > ../../ci-recovery-results/installed-dependencies.txt
+          python -I -c "import importlib.metadata as m,quickjs; assert m.version('quickjs-ng')=='0.18.0.2'; c=quickjs.Context(); assert c.eval('1+1')==2; print('Actual QuickJS context: PASS')"
+      - name: Run both real CSL profiles and DOCX regeneration boundaries
+        working-directory: shared-source/carr-library
+        run: |
+          python -B -m pytest -p no:cacheprovider -q --import-mode=importlib \
+            tests/citations/test_csl.py tests/citations/test_custom_csl.py \
+            tests/academic_integration/test_formatting.py \
+            tests/academic_integration/test_regeneration.py \
+            tests/academic_integration/test_citation_ui.py \
+            --junitxml=../../ci-recovery-results/citation-source-tests.xml
+          python -c "import json,xml.etree.ElementTree as E; c=list(E.parse('../../ci-recovery-results/citation-source-tests.xml').iter('testcase')); bad=sum(any(x.find(t) is not None for t in ('failure','error','skipped')) for x in c); assert c and not bad; print(json.dumps(dict(status='PASS',cases=len(c),scope='bounded source citation composition',installed='NOT_RUN',native_windows='NOT_RUN',nvda='NOT_RUN')))"
+      - name: Preserve source identity and test evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-recovery-citation-${{ github.sha }}-${{ github.run_attempt }}
+          path: ci-recovery-results/
+          if-no-files-found: error
+          retention-days: 7
