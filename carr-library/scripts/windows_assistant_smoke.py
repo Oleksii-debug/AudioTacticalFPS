@@ -249,6 +249,13 @@ def exercise_controls(root, wx, *, timeout=60):
 
     failures = []
     previous_exit = application.GetExitOnFrameDelete()
+    previous_top = application.GetTopWindow()
+    # MSW can return from MainLoop before CallAfter runs when no top-level
+    # window exists. Keep a real shown host alive across both modal scenarios;
+    # their separate frames still reopen the durable application state.
+    loop_host = wx.Frame(None, title='Native assistant acceptance host')
+    application.SetTopWindow(loop_host)
+    loop_host.Show()
     application.SetExitOnFrameDelete(False)
 
     def run_scenarios():
@@ -268,9 +275,13 @@ def exercise_controls(root, wx, *, timeout=60):
 
     wx.CallAfter(run_scenarios)
     try:
+        trace_phase('enter-main-loop', host_shown=loop_host.IsShown())
+        faulthandler.dump_traceback_later(timeout + 15, exit=True)
         application.MainLoop()
     finally:
         faulthandler.cancel_dump_traceback_later()
+        application.SetTopWindow(previous_top)
+        loop_host.Destroy()
         application.SetExitOnFrameDelete(previous_exit)
     if failures:
         raise RuntimeError('; '.join(failures))

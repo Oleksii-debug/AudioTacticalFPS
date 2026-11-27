@@ -25,6 +25,8 @@ _KEYS = {
     'library.extract': ({'edition', 'name'}, set()),
     'library.backup': ({'name'}, set()),
     'audio.produce': (set(), {'text', 'script', 'voice_ids', 'title', 'format', 'stems'}),
+    'audio.transcribe': ({'path', 'name'},
+                         {'language', 'vad_filter', 'beam_size', 'condition_on_previous_text'}),
 }
 
 
@@ -41,9 +43,12 @@ def _check_arguments(step):
                 raise ValueError('Choose one or more available voice identities.')
             for voice in value:
                 text(voice, 'voice identity', maximum=4096)
-        elif key == 'stems':
+        elif key in ('stems', 'vad_filter', 'condition_on_previous_text'):
             if type(value) is not bool:
-                raise ValueError('The stems option must be true or false.')
+                raise ValueError('The selected switch must be true or false.')
+        elif key == 'beam_size':
+            if type(value) is not int or not 1 <= value <= 10:
+                raise ValueError('Transcription beam size must be an integer from 1 to 10.')
         elif key == 'limit':
             if type(value) is not int or not 1 <= value <= (500 if step.tool == 'library.catalog' else 100):
                 raise ValueError('Invalid result page size.')
@@ -53,6 +58,10 @@ def _check_arguments(step):
         raise ValueError('Provide either script text or a structured audio script.')
     if 'mode' in step.arguments and step.arguments['mode'] not in ('word', 'phrase', 'terms', 'thematic', 'semantic'):
         raise ValueError('Unsupported search mode.')
+    if step.tool == 'audio.transcribe':
+        from ..integrations.supplied_transcription import recognition_settings
+        recognition_settings({key: value for key, value in step.arguments.items()
+                              if key not in ('path', 'name')}, '<configured-local-model>')
 
 
 def _hash_file(path, cancelled=lambda: False):
@@ -78,12 +87,13 @@ def _plain(value):
 
 
 class AssistantService:
-    def __init__(self, app, *, state_dir=None, production=None):
+    def __init__(self, app, *, state_dir=None, production=None, transcription=None):
         self.app = app
         self.store = JobStore(state_dir or (app.root / 'state' / 'assistant'))
         if not self.store.directory.is_relative_to(app.root):
             raise ValueError('Assistant state must remain inside this application data directory.')
         self.production = production
+        self.transcription = transcription
 
     def preview(self, instruction, scope):
         plan = preview(instruction, scope)
@@ -103,7 +113,7 @@ class AssistantService:
                 if i != 0:
                     raise ValueError('Create a new library as the first step.')
                 workspace = '<new>'
-            if step.tool not in ('library.create', 'library.list', 'library.backup', 'audio.produce') and not workspace:
+            if step.tool not in ('library.create', 'library.list', 'library.backup', 'audio.produce', 'audio.transcribe') and not workspace:
                 raise PermissionError('Choose a library before this operation.')
             if step.tool.startswith('library.import'):
                 path = plan.scope.input(step.arguments['path'])
@@ -120,6 +130,18 @@ class AssistantService:
                     raise PermissionError('Choose the audio output directory.')
                 if self.production is None:
                     raise RuntimeError('The audio production runtime is not configured.')
+            if step.tool == 'audio.transcribe':
+                from ..integrations.supplied_transcription import AUDIO_EXTENSIONS, SuppliedTranscriptionAdapter
+                source = plan.scope.input(step.arguments['path'])
+                if not source.is_file() or source.suffix.lower() not in AUDIO_EXTENSIONS:
+                    raise ValueError('Choose a supported local audio file for transcription.')
+                target = plan.scope.output(step.arguments['name'])
+                if target.exists():
+                    raise FileExistsError('The transcript output directory already exists.')
+                if not target.parent.is_dir():
+                    raise ValueError('Choose an existing parent directory for transcript exports.')
+                if not isinstance(self.transcription, SuppliedTranscriptionAdapter):
+                    raise RuntimeError('Configure and verify the supplied transcription worker before submitting this plan.')
         return plan
 
     def submit(self, plan):
@@ -424,4 +446,15 @@ class AssistantService:
             if not isinstance(result, dict) or not result.get('artifacts'):
                 raise RuntimeError('Audio production did not return completed audio artifacts.')
             return result
+        if step.tool == 'audio.transcribe':
+            if self.transcription is None:
+                raise RuntimeError('The reviewed supplied transcription installation is unavailable.')
+            def transcription_progress(message):
+                if progress:
+                    progress(index, len(record['steps']), message)
+            return self.transcription.transcribe(scope.input(args['path']), scope.output(args['name']),
+                options={key: value for key, value in args.items() if key not in ('path', 'name')},
+                intent=intent, persist=persist, state_dir=self.store.directory,
+                max_bytes=scope.max_bytes, max_seconds=scope.max_seconds,
+                cancelled=cancelled, progress=transcription_progress)
         raise ValueError('Unknown assistant tool.')
