@@ -12,11 +12,12 @@ import xml.etree.ElementTree as ET
 REPOSITORY = 'Oleksii-debug/AudioTacticalFPS'
 ARTIFACTS = [
   {
-    "run": 46009379630,
-    "commit": "f0cbcca8200fcb0a3ab438e00337ee1583c6d48f",
-    "id": 15205168290,
-    "sha256": "d97b44b8fbd128e4e530b598a637f30b15f41817e39be0bd1c97ab8d97a0ecb7",
-    "kind": "translation-qualified"
+    "run": 46071021445,
+    "commit": "30673a5ee70a7d241c842a6577c5480260bfb8bf",
+    "id": 15233464667,
+    "bytes": 1792291,
+    "sha256": "7a48bd866cb7189d4aec75642f6e6fc3a99631fcbab6bcd606a1e97082ce7125",
+    "kind": "standard-retained-library-child-diagnostic"
   }
 ]
 
@@ -50,23 +51,77 @@ def brief(value):
         return [brief(item) for item in value]
     return value
 
-wanted = {
-    'converter-gate.json', 'legacy-converter-gate.json', 'before-execution.json',
-    'publisher-identities.json', 'source-provenance.json',
-    'source-origins.json', 'installed-origins.json', 'translation-scope-gate.json',
-    'native-selected-advanced.txt', 'native-selected-advanced.json',
-    'native-document.txt', 'native-document.json', 'native-chapter.txt',
-    'native-chapter.json', 'native-batch.txt', 'native-batch.json',
-    'source-junit.xml', 'installed-junit.xml', 'source-pytest.txt', 'installed-pytest.txt'}
+wanted = {'inputs.json',
+    'disk-budget.json',
+    'original-build.json',
+    'previous-build.json',
+    'original-manifest.json',
+    'previous-manifest.json',
+    'candidate-application-wheel.json',
+    'original-candidate-application-wheel.json',
+    'original-maintenance.json',
+    'native.json',
+    'proof.json',
+    'library.json',
+    'native-restart-crash-after-activation.json',
+    'native-restart-recover.json',
+    'original-install.log',
+    'maintenance-install.log',
+    'native-probe.log',
+    'native-library-process.log',
+    'native-library-process.json',
+    'verdict.log'}
+root_wanted = {
+    'tested-commit.txt', 'tested-tree.txt', 'source-wheel-proof.json',
+    'tested-application-wheel.json', 'standard-native-diagnostic.json',
+    'standard-system-helper-regressions.json', 'standard-system-helper-regressions.txt',
+    'standard-system-helper-source.xml', 'standard-system-helper-installed.xml',
+    'native-runtime.json', 'full-lock-source-inventory.json',
+    'native-launcher-installed-proof.json', 'native-launcher-process.json',
+    'full-bundle-verified.json', 'sealed-sbom.json'}
+installer_wanted = {'inputs.json', 'native.json', 'proof.json', 'disk-budget.json',
+                    'payload-manifest.json', 'good-build.json', 'negative-build.json'}
+library_wanted = {'before-test-dependencies.json', 'installed-library.json', 'qualification.log',
+                  'snapshot.log', 'test-dependencies.log'}
+for number in range(1, 7):
+    library_wanted.update({'library-' + str(number) + '.xml',
+                          'library-' + str(number) + '-origins.json',
+                          'library-' + str(number) + '.log'})
+
+def selected_member(name):
+    path = PurePosixPath(name)
+    if path.is_absolute() or '..' in path.parts:
+        raise ValueError('Unsafe artifact member name.')
+    # GitHub removes the declared common ci-results root from these artifacts.
+    # The prior reviewed reader also accepts its literal optional directory prefix.
+    parts = path.parts[1:] if path.parts[:1] == ('ci-results',) else path.parts
+    if len(parts) == 1:
+        return parts[0] in root_wanted
+    if len(parts) == 2 and parts[0] == 'standard-installer':
+        return parts[1] in installer_wanted
+    if len(parts) == 2 and parts[0] == 'standard-update':
+        return (parts[1] in wanted
+                or (parts[1].startswith('native-managed-') and parts[1].endswith('.log')))
+    if len(parts) == 3 and parts[0] == 'standard-update':
+        if parts[1] in ('original-application-wheel', 'previous-application-wheel'):
+            return parts[2] == 'manifest.json'
+        directory = parts[1]
+        return (directory.startswith('standard-library-')
+                and len(directory) == len('standard-library-') + 32
+                and all(character in '0123456789abcdef' for character in directory[len('standard-library-'):])
+                and parts[2] in library_wanted)
+    return False
+
 for pin in ARTIFACTS:
     base = 'https://api.github.com/repos/' + REPOSITORY + '/actions/artifacts/' + str(pin['id'])
     metadata = json.loads(read(base, 65536))
     if (metadata['id'] != pin['id'] or metadata['workflow_run']['id'] != pin['run']
             or metadata['workflow_run']['head_sha'] != pin['commit']
-            or metadata['digest'] != 'sha256:' + pin['sha256'] or metadata['expired']):
+            or metadata['digest'] != 'sha256:' + pin['sha256']
+            or metadata['size_in_bytes'] != pin['bytes'] or metadata['expired']):
         raise ValueError('Existing artifact provenance differs.')
     raw = read(base + '/zip', 8 * 1024 * 1024)
-    if hashlib.sha256(raw).hexdigest() != pin['sha256']:
+    if len(raw) != pin['bytes'] or hashlib.sha256(raw).hexdigest() != pin['sha256']:
         raise ValueError('Existing artifact archive failed its recorded digest.')
     print('ARTIFACT', json.dumps({**pin, 'bytes': len(raw), 'name': metadata['name']}), flush=True)
     with zipfile.ZipFile(io.BytesIO(raw)) as archive:
@@ -75,8 +130,13 @@ for pin in ARTIFACTS:
         if (len(names) != len(set(names)) or len(names) > 10000
                 or sum(member.file_size for member in members) > 512 * 1024 * 1024):
             raise ValueError('Ambiguous or oversized artifact inventory.')
-        selected = [name for name in names if PurePosixPath(name).name in wanted]
-        print('INVENTORY', json.dumps({'total_members': len(names), 'selected': selected}), flush=True)
+        if sum(len(name) for name in names) > 65536:
+            raise ValueError('Artifact member-name inventory exceeds its printing bound.')
+        print('MEMBER_NAMES', json.dumps(names), flush=True)
+        selected = [name for name in names if selected_member(name)]
+        found = {PurePosixPath(name).name for name in selected}
+        print('INVENTORY', json.dumps({'total_members': len(names), 'selected': selected,
+            'absent_requested_records': sorted(wanted - found)}), flush=True)
         for name in selected:
             entry = archive.getinfo(name)
             if entry.file_size > 4 * 1024 * 1024:
@@ -84,7 +144,7 @@ for pin in ARTIFACTS:
             content = archive.read(name)
             print('MEMBER', json.dumps({'name': name, 'bytes': len(content),
                   'sha256': hashlib.sha256(content).hexdigest()}), flush=True)
-            if name.endswith('-junit.xml'):
+            if name.endswith('.xml'):
                 root = ET.fromstring(content)
                 cases = root.findall('.//testcase')
                 functions = Counter(case.get('classname', '') + '::' +
@@ -110,6 +170,10 @@ for pin in ARTIFACTS:
                         'suffix_counts': dict(Counter(PurePosixPath(key).suffix.casefold() for key in code)),
                         'canonical_sha256': hashlib.sha256(json.dumps(code, sort_keys=True,
                             separators=(',', ':')).encode()).hexdigest()}), flush=True)
-                print(name, json.dumps(brief(value), sort_keys=True, ensure_ascii=False)[-80000:], flush=True)
+                rendered = json.dumps(brief(value), sort_keys=True, ensure_ascii=False)
+                if len(rendered) > 256 * 1024:
+                    raise ValueError('Bounded diagnostic JSON exceeds its printing budget.')
+                print(name, rendered, flush=True)
             else:
-                print(name, content.decode('utf-8', errors='replace')[-48000:], flush=True)
+                encoding = 'utf-16' if content.startswith((b'\xff\xfe', b'\xfe\xff')) else 'utf-8-sig'
+                print(name, content.decode(encoding, errors='replace')[-48000:], flush=True)
