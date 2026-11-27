@@ -21,7 +21,8 @@ def entry_text(entry):
                   'No voice is selected or substituted by this catalog. Inspect installed voices in Audio Studio '
                   'and installed recognition models in OCR settings.',
                   'Final language qualification follows core features and secure delivery. '
-                  'Standalone transcription is deferred.',
+                  'Transcription is available from Tools > Local transcription. '
+                  'Language support requires a configured runtime and a tested model.',
                   'Pinned upstream source revision: ' + REVISION))
     return '\n'.join(lines)
 

@@ -31,7 +31,8 @@ def test_partial_group_is_not_presented_as_supported_voice():
     assert 'No voice is selected or substituted' in view.details.value
     assert 'not establish current local installation' in view.details.value
     assert all(name.replace('_', ' ') + ': not assessed' in view.details.value for name in CAPABILITIES)
-    assert 'transcription is deferred' in view.details.value
+    assert 'Tools > Local transcription' in view.details.value
+    assert 'configured runtime and a tested model' in view.details.value
 
 
 def test_filter_preserves_same_selected_identity_and_changes_empty_state():

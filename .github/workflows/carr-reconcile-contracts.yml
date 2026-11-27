@@ -1,0 +1,45 @@
+name: CARR canonical import and delivery contracts
+on:
+  push:
+    branches: [carr/finish-review-20261127-a49c]
+    paths:
+      - carr-library/**
+      - .github/workflows/carr-reconcile-contracts.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: carr-reconcile-contracts-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  source-contracts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install the source package and existing test dependencies
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git rev-parse HEAD 'HEAD^{tree}'
+          python -m pip install '.[test]'
+          python -m pip check
+      - name: Verify canonical reuse without private assets or network services
+        run: |
+          set -euo pipefail
+          python -m compileall -q src
+          python scripts/ci_check.py --jobs 3 tests/ingest/test_import_metadata_shape.py tests/test_delivery_contract.py tests/ui/test_language_catalog_dialog.py
