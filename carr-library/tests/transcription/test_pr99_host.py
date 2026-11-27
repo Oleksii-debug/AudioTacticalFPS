@@ -485,7 +485,7 @@ def _drive_transcript_save_all(prepared, monkeypatch, script):
         CallAfter=lambda callback, *args: callbacks.append(lambda: callback(*args)))
     monkeypatch.setitem(sys.modules, 'wx', fake)
     try:
-        transcription_dialog.show_transcription(frame)
+        transcription_dialog.show_transcription(frame, protocol='receipts-v1')
         assert len(dialogs) == 1 and dialogs[0].destroyed
         assert frame._save_coordinator.participants == {}
     finally:

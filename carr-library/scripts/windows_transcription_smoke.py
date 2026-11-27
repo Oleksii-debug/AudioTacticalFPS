@@ -193,7 +193,7 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
                 dialog.EndModal(wx.ID_CANCEL)
     wx.CallLater(50, drive)
     try:
-        show_transcription(frame)
+        show_transcription(frame, protocol='receipts-v1')
         if failures:
             raise AssertionError('\n'.join(failures))
         assert state['finished'], 'Native dialog exited before acceptance.'

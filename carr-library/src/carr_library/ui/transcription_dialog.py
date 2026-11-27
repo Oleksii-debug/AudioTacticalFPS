@@ -3,12 +3,49 @@ from pathlib import Path
 import threading
 
 
-def show_transcription(frame):
+PROFILE_CHOICES = (
+    ('receipts-v1', 'Workspace jobs — receipt worker'),
+    ('whisper-v5-manifest-v1', 'Workspace jobs — supplied Whisper V5'),
+    ('supplied-whisper-v43-hardened-1', 'Library-wide jobs — reviewed runtime, 17 settings'),
+)
+
+
+def choose_profile(frame):
+    """Select an existing contract and its explicit scope without migrating jobs."""
+    import wx
+    with wx.SingleChoiceDialog(frame,
+            'Choose the installed worker profile. Workspace jobs and library-wide jobs keep their '
+            'own saved settings, originals and result histories.',
+            'Local transcription profile and scope', [label for _, label in PROFILE_CHOICES]) as picker:
+        picker.SetName('Local transcription profile and scope')
+        previous = getattr(frame, '_transcription_profile', PROFILE_CHOICES[0][0])
+        ids = tuple(identity for identity, _ in PROFILE_CHOICES)
+        picker.SetSelection(ids.index(previous) if previous in ids else 0)
+        if picker.ShowModal() != wx.ID_OK:
+            return None
+        selected = picker.GetSelection()
+        if type(selected) is not int or not 0 <= selected < len(ids):
+            raise ValueError('Choose a transcription profile and scope.')
+        frame._transcription_profile = ids[selected]
+        return ids[selected]
+
+
+def show_transcription(frame, *, protocol=None, service=None, on_ready=None):
     import wx
     from .save_all import SaveCoordinator, SaveResult, coordinator_for, defer_close
     if getattr(frame, 'working', False) or getattr(frame, '_closing', False):
         frame.report('Finish or cancel the current operation before opening transcription.')
         return
+    protocol = choose_profile(frame) if protocol is None else protocol
+    if protocol is None:
+        return
+    if protocol not in tuple(identity for identity, _ in PROFILE_CHOICES):
+        raise ValueError('Choose an explicitly supported transcription profile.')
+    if protocol == 'supplied-whisper-v43-hardened-1':
+        from .transcription_v43_dialog import show_transcription as show_supplied
+        return show_supplied(frame, service=service, on_ready=on_ready)
+    if service is not None or on_ready is not None:
+        raise ValueError('The workspace editor uses its selected library service.')
     active = getattr(frame, 'active', None)
     if active is None:
         frame.report('Select an active library before opening transcription.')
@@ -203,9 +240,10 @@ def show_transcription(frame):
                     'Профіль локального Whisper',
                     ['receipts-v1 — worker із квитанціями результатів',
                      'whisper-v5-manifest-v1 — виправлений приватний V5']) as chooser:
+                chooser.SetSelection(PROTOCOLS.index(protocol))
                 if chooser.ShowModal() != wx.ID_OK:
                     return
-                protocol = PROTOCOLS[chooser.GetSelection()]
+                chosen_protocol = PROTOCOLS[chooser.GetSelection()]
             with wx.FileDialog(dialog, 'Оберіть Python локального Whisper', style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as chooser:
                 if chooser.ShowModal() != wx.ID_OK:
                     return
@@ -219,9 +257,13 @@ def show_transcription(frame):
                 if chooser.ShowModal() != wx.ID_OK:
                     return
                 models_dir = chooser.GetPath()
-            begin('Підключення локального Whisper', lambda: service.configure(python, worker, models_dir, protocol=protocol),
-                  lambda value: report('Профіль підключено: ' + value['protocol'] + '. ' + value.get('retry_policy', '') +
-                      ' Якість моделі ще не підтверджена фактичним розпізнаванням.'))
+            def configured(value):
+                nonlocal protocol
+                protocol = value['protocol']
+                report('Профіль підключено: ' + value['protocol'] + '. ' + value.get('retry_policy', '') +
+                       ' Якість моделі ще не підтверджена фактичним розпізнаванням.')
+            begin('Підключення локального Whisper',
+                  lambda: service.configure(python, worker, models_dir, protocol=chosen_protocol), configured)
         except (ValueError, OSError, RuntimeError) as exc:
             report(exc)
     def create_selected(selected, *, folder=False):
@@ -236,11 +278,13 @@ def show_transcription(frame):
                 report(f"Збережено записів: {result['files']}. Непідтримуваних файлів пропущено: "
                        f"{result['excluded_files']}. Підпапки включено. Завдання готове до запуску.")
             begin('Перевірка папки й збереження оригінальних записів',
-                  lambda: service.submit_folder(selected, title=job_title, options=options, cancelled=cancelled),
+                  lambda: service.submit_folder(selected, title=job_title, options=options,
+                      protocol=protocol, cancelled=cancelled),
                   created)
         else:
             begin('Збереження оригінальних записів',
-                  lambda: service.submit(selected, title=job_title, options=options, cancelled=cancelled),
+                  lambda: service.submit(selected, title=job_title, options=options,
+                      protocol=protocol, cancelled=cancelled),
                   lambda identity: refresh(identity))
     def create(event):
         if not can_replace():
