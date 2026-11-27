@@ -60,7 +60,9 @@ Literal results follow edition, source ordinal, page ID and raw offset. Stable
 continuation does not use an ever-growing offset or collect all matches.
 
 Thematic and semantic adapters retain their existing BM25/RRF/window behavior
-inside each bounded source batch. The batch order is explicit; concatenated
+inside each bounded source batch, retaining the existing top-100 ranked-result
+selection per batch. Literal continuation enumerates all matching spans; ranked
+continuation does not claim every possible semantic window. The batch order is explicit; concatenated
 batch scores are never described as a global relevance ranking. Existing model
 unavailability and window-budget fallback notices remain visible.
 

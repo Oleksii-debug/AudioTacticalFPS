@@ -18,6 +18,7 @@ from carr_library.research.topic_tree import TopicTree
 from carr_library.research.anchored_export import SavedEvidence
 from carr_library.research.topic_search import TopicHit
 from carr_library.ui.search_model import Hit, SearchModel
+from carr_library.ui.search_paging import PageHistory
 from carr_library.ui.scope_bindings import ScopeServices, scope_labels
 from carr_library.extract.document_formats import file_dialog_wildcard, supported_formats_text
 
@@ -82,6 +83,7 @@ def panel(classes):
     value = object.__new__(env['DesktopSearchPanel'])
     value.frame = SimpleNamespace(working=False,report=Mock(),run_job=Mock(),library=Mock(),cancel_event=threading.Event())
     value.bound_library = value.frame.library
+    value.paging = PageHistory()
     value.model = SearchModel()
     value.model.set_workspace('a')
     value.bound_workspace,value.bound_topic = 'a',None

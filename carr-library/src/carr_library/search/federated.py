@@ -377,7 +377,7 @@ class FederatedSearch:
             state['snapshot'] = snapshot
             working = copy(self._host)
             working._selections = {}
-            working._page_selection_refs = ()
+            working._page_selection_refs = {}
             session_id, groups, owned_hits = uuid4().hex, [], {}
             examined = total_pages = 0
             for _ in range(20):

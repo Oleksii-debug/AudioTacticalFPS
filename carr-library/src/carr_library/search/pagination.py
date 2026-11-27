@@ -14,7 +14,7 @@ import json
 import re
 import unicodedata
 
-from ..catalog.membership import Catalog
+from ..catalog.membership import Catalog, _identity, _metadata
 from ..catalog.read_views import browse_editions
 from ..research.topic_tree import TopicTree
 from . import literal, thematic
@@ -22,7 +22,8 @@ from . import literal, thematic
 MAX_CURSOR_BYTES = 8192
 MAX_SCOPE_BYTES = 2 * 1024 * 1024
 ORDERING = ('Source batches in edition, source-page order; exact matches in raw-offset order. '
-            'Thematic/semantic relevance is local to each batch, never a global score.')
+            'Thematic/semantic relevance is local to each batch, never a global score; '
+            'the existing ranker returns up to 100 results per source batch.')
 
 
 @dataclass(frozen=True)
@@ -235,6 +236,9 @@ def search_page(app, workspace, query, *, mode='phrase', collection=None, title=
                 author=None, language=None, edition=None, limit=100, timeout=60.0,
                 cancelled=lambda: False, authorized_topic=None, on_status=None,
                 result_mode=None, cursor=None, page_budget=None):
+    from ..application import _SearchBudget
+    operation = _SearchBudget(timeout, cancelled)
+    operation.check()
     if mode not in ('word', 'phrase', 'terms', 'advanced', 'thematic', 'semantic'):
         raise ValueError('Unknown search mode.')
     if result_mode not in (None, 'short', 'thematic'):
@@ -249,8 +253,15 @@ def search_page(app, workspace, query, *, mode='phrase', collection=None, title=
     policy = page_budget if page_budget is not None else SearchPageBudget()
     if type(policy) is not SearchPageBudget:
         raise ValueError('A declared search page resource budget is required.')
-    filters = dict(collection=collection, title=title, author=author,
-                   language=language, edition=edition)
+    workspace = _identity(workspace)
+    collection = _identity(collection) if collection is not None else None
+    authorized_topic = _identity(authorized_topic) if authorized_topic is not None else None
+    metadata = dict(zip(('title', 'author', 'language', 'edition'),
+                        map(_metadata, (title, author, language, edition))))
+    if any(value == '' for value in metadata.values()):
+        raise ValueError('Empty metadata filters are not supported.')
+    filters = dict(collection=collection, **metadata)
+    operation.check()
     scope = binding({'root': str(app.root), 'database': str(app.database),
                      'workspace': workspace, 'query': query, 'mode': mode,
                      'result_mode': result_mode, 'filters': filters, 'limit': limit,
@@ -259,7 +270,7 @@ def search_page(app, workspace, query, *, mode='phrase', collection=None, title=
     state = (_state(decode_cursor(cursor, 'carr-search-page/1', scope)) if cursor is not None
              else dict(snapshot='', catalog=None, source=None, match=None, rank=0,
                        last=None, number=1, seen=0, scanned=0))
-    with app._search_read(workspace, timeout, cancelled) as (db, budget):
+    with app._search_read(workspace, operation.remaining(), operation.stopped) as (db, budget):
         if authorized_topic is not None:
             TopicTree(db, workspace)._visible(authorized_topic)
         catalog = Catalog(db, workspace)
@@ -329,12 +340,21 @@ def search_page(app, workspace, query, *, mode='phrase', collection=None, title=
         page = SearchPage(tuple(results), next_cursor, page_number,
             first if results else last, last, examined, page_count, edition_count, snapshot)
         budget.check()
-    # Only a successfully completed page withdraws its prior page handles.
-    # Other desktop/context selections and failed-search capabilities survive.
-    for ref in getattr(app, '_page_selection_refs', ()):
+    # Retire only this query/scope's completed page. Other library/query and
+    # desktop/context capabilities keep their existing bounded lifetime.
+    groups = dict(getattr(app, '_page_selection_refs', {}))
+    for ref in groups.pop(scope, ()):
         app._selections.pop(ref, None)
     app._selections.update(selections)
-    app._page_selection_refs = tuple(selections)
+    if selections:
+        groups[scope] = tuple(selections)
     while len(app._selections) > 2000:
         del app._selections[next(iter(app._selections))]
+    # Group metadata is bounded by the same live-handle cap, not search count.
+    retained = {}
+    for key, refs in groups.items():
+        current = tuple(ref for ref in refs if ref in app._selections)
+        if current:
+            retained[key] = current
+    app._page_selection_refs = retained
     return page

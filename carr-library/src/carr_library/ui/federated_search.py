@@ -223,6 +223,9 @@ class SearchCenter:
             finish()
             if self.alive:
                 self._clear_rows()
+                self.paging.reset()
+                self._paged_options = None
+                self._show_paging()
                 message = ('Operation cancelled. Search again to load results.'
                            if self.frame.cancel_event.is_set() else
                            f'Operation not completed: {error}. Search again when ready.')
