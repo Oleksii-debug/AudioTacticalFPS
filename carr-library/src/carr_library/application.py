@@ -361,7 +361,7 @@ class LibraryApp:
 
     def update_metadata(self, workspace, edition_id, *, title, authors=(),
                         language=None, edition=None, volume=None, expected_metadata=None,
-                        selected_fields=None):
+                        selected_fields=None, cancelled=lambda: False):
         """Publish a metadata revision without changing any original source bytes.
 
         Already saved evidence keeps the previous metadata and source revision.
@@ -374,6 +374,11 @@ class LibraryApp:
         Unselected values are retained exactly from the locked current catalog;
         only explicitly selected values receive the usual edit validation.
         """
+        def check_cancelled():
+            if cancelled():
+                raise InterruptedError('Metadata update cancelled; no catalog changes were committed.')
+
+        check_cancelled()
         allowed_fields = frozenset(('title', 'authors', 'language', 'edition', 'volume'))
         if selected_fields is None:
             fields = allowed_fields
@@ -400,6 +405,7 @@ class LibraryApp:
             volume = _metadata(volume)
         revision = uuid4().hex
         with exclusive_writer(self.root):
+            check_cancelled()
             self._check_database_paths()
             with closing(Storage(self.database, schema_version=4)) as storage:
                 with storage.transaction():
@@ -435,6 +441,7 @@ class LibraryApp:
                     db.execute('UPDATE catalog_edition SET language=?,edition=?,volume=? WHERE workspace=? AND id=?',
                         (language, edition, volume, workspace, edition_id))
                     for affected_row in affected:
+                        check_cancelled()
                         eid, asset, previous, config, previous_label, previous_volume = affected_row
                         source_pages = tuple(db.execute(
                             'SELECT * FROM page WHERE revision=? ORDER BY ordinal', (previous,)))
@@ -451,6 +458,7 @@ class LibraryApp:
                         db.execute('INSERT INTO source_metadata VALUES(?,?,?,?,?,?,?)',
                             (workspace, eid, next_revision, '; '.join(authors) or None,
                              title, next_volume, next_label))
+                    check_cancelled()
         return revision
 
     def rename_collection(self, workspace, collection, name):

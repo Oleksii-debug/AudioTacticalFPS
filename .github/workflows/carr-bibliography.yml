@@ -112,6 +112,7 @@ jobs:
             'tests/research/test_academic_library.py',
             'tests/research/test_csl_author_boundaries.py',
             'tests/citations/test_csl.py',
+            'tests/citations/test_csl_contexts.py',
             'tests/citations/test_custom_csl.py',
             'tests/citations/test_bibliography_workbench.py',
             'tests/citations/test_custom_workbench.py',
