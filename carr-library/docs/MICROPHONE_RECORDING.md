@@ -1,6 +1,6 @@
 # Bounded microphone capture in the existing Audio Studio
 
-This selective integration is based on product commit df12b7d1da1092c14406ee329aa263ba95541720. It keeps the current production model, exact-frame renderer, LGPL runtime, resource coordinator and separate audio snapshot. Native UI integration and its actual keyboard probe are the next checkpoint; this source checkpoint does not claim that UI is complete.
+This selective integration is based on product commit df12b7d1da1092c14406ee329aa263ba95541720. It keeps the current production model, exact-frame renderer, LGPL runtime, resource coordinator and separate audio snapshot. The native Production-page action opens an explicit recording dialog using the same controller and player. Its source and real-key probe must still pass at this exact successor before UI qualification.
 
 ## Reuse record
 
@@ -14,6 +14,14 @@ This selective integration is based on product commit df12b7d1da1092c14406ee329a
 | Existing capture ownership regressions | PR99 test blob e900b7cf28cc1d20a8880636eab7be0fd7916ce0 | Root Linux shutdown helper; exact Windows handle ownership retained |
 
 Canonical Project/Cue/Scene, speech engines, state/studio storage and arbitrary timed clips are not activated by this adapter. Capture does not silently translate unsupported timelines or engines.
+
+| Native recording dialog and actual-key probe | PR149 UI blob 134a723c2e38b7b8cc873196eff14bd5cec9e72b; PR152/PR149 smoke blob 321fee019089878418576560d1c6b08093167502 | Current AudioStudioDialog, existing ProgressView, same WavePlayer, scrollable named controls and actual installed-source readback |
+
+## Use in Audio Studio
+
+Choose an existing audio output folder, then open **Production > Record microphone and saved inputs**. Refresh microphones, explicitly select one and choose **Start recording**. Stop finalizes a new original; Cancel removes unfinished capture. Closing during capture first requests cancellation and waits for its owned cleanup. If native cleanup remains unresolved, Close leaves the owner and its reservations alive in the background; another recording and playback remain blocked.
+
+The saved-recording list reads bounded receipts. **Listen** and **Add selected recording to Studio playlist** verify the selected original's current bytes. Add queues the retained WAV without starting playback or changing literal narration. To render it in a structured production, explicitly use the listed assets/<uuid>.wav as an existing sound input. The recorder does not reinterpret narration or implement timed clip editing. The separate audio-project snapshot preserves these originals and receipts.
 
 ## Ownership and publication
 
@@ -29,4 +37,4 @@ New originals are assets/<uuid>.wav and their closed, hash-bound receipts are re
 
 The isolated workflow requires actual FFmpeg synthetic capture on Linux and Windows, actual owned process-stop failure/recovery, no-tone/no-speech admission, delete-original snapshot/restore/render and re-signed receipt rejection. It also reruns existing playback, progress and audio snapshot contracts. The test-only source is a fixed sine generator; production exposes no synthetic-source switch. OMP_THREAD_LIMIT=1 is test-only and does not change caller resource policy.
 
-This initial checkpoint is source-reviewed and NOT_RUN. Actual source and native results must be recorded from their exact run. A synthetic FFmpeg/keyboard PASS does not qualify a physical microphone, audio-device quality, listening, NVDA or simultaneous monitoring. Those remain NOT_RUN until measured on a real device.
+Core commit b692b46fc8d91f0e05354ff1cb5cb949afadc35a passed actual Windows run 45952214103/job 140350462417: ten required suites, 251 tests, zero failures and zero skips. This includes real synthetic capture, retained native Job Object cleanup failure/recovery, snapshot/restore/render and existing player/progress checks. The Linux job stopped before tests because FFmpeg was absent; the successor explicitly prepares the ephemeral runner's FFmpeg package. The new UI/probe and Linux successor are NOT_RUN until their exact run completes. Actual source and native results must be recorded from their exact run. A synthetic FFmpeg/keyboard PASS does not qualify a physical microphone, audio-device quality, listening, NVDA or simultaneous monitoring. Those remain NOT_RUN until measured on a real device.

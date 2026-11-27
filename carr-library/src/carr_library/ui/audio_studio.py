@@ -504,6 +504,7 @@ class AudioStudioDialog:
         output_row = wx.BoxSizer(wx.HORIZONTAL)
         self._button(production_page, output_row, 'Choose output folder', self.choose_output)
         self._button(production_page, output_row, 'Choose FFmpeg executable', self.choose_ffmpeg)
+        self._button(production_page, output_row, 'Record microphone and saved inputs', self.record_microphone)
         prod_layout.Add(output_row, 0, wx.ALL, 5)
         self.runtime = wx.StaticText(production_page, label='FFmpeg: ' + str(controller.ffmpeg or
             'automatic local runtime selection; checked before rendering'))
@@ -1442,6 +1443,23 @@ class AudioStudioDialog:
         self.segment_choice.SetItems([f'{seconds:.2f} seconds — {title}' for seconds, title in self.playback.segments])
         if self.playback.segments:
             self.segment_choice.SetSelection(0)
+
+    def record_microphone(self, event=None):
+        """Explicit capture; selecting a saved input never changes literal text."""
+        try:
+            self._capture()
+            if not self._stop_for_project_change():
+                return
+            from .audio_recording import show_recording
+            value = show_recording(self)
+            if value is not None:
+                self.playback.enqueue([Path(value['path'])])
+                self._refresh_playback_choices()
+                self._message('Verified recording added to the Studio playlist. '
+                    'Choose Play selected recording to listen. Its retained WAV is available '
+                    'as an explicit sound asset in a structured production script.', focus=True)
+        except Exception as exc:
+            self._error(exc)
 
     def add_recordings(self, event=None):
         wx = self.wx
