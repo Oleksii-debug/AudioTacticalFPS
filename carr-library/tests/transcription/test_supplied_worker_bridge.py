@@ -55,7 +55,7 @@ raise SystemExit(main(sys.argv[3:]))
     environment = dict(os.environ)
     for name in ('PYTHONPATH', 'PYTHONHOME'):
         environment.pop(name, None)
-    result = subprocess.run([sys.executable, '-I', '-B', '-c', bootstrap,
+    result = subprocess.run([sys.executable, '-I', '-B', '-X', 'utf8', '-c', bootstrap,
         str(package), json.dumps(expected), 'transcribe', *map(str, arguments)],
         capture_output=True, text=True, encoding='utf-8', timeout=timeout, env=environment)
     lines = result.stderr.splitlines(keepends=True)
@@ -606,8 +606,7 @@ def test_stop_does_not_rehash_inputs_and_preserves_completed_worker_files(prepar
         raise AssertionError('Stop must defer verification until explicit resume.')
     monkeypatch.setattr(service, '_receipts', must_not_rehash)
     def cancelled():
-        status = path / 'job_status.json'
-        return status.exists() and read_json(status).get('done') == 1
+        return bool(list((path / 'receipts').glob('*.result.json')))
     stopped = service.run(identity, timeout=30, cancelled=cancelled)
     assert stopped['status'] == 'stopped'
     assert stopped['artifacts'] == [] and stopped['done'] == 0
@@ -666,8 +665,7 @@ def test_stopped_progress_observer_failure_preserves_actual_child_resume_inputs(
     notices = []
 
     def cancelled():
-        status = path / 'job_status.json'
-        return status.exists() and read_json(status).get('done') == 1
+        return bool(list((path / 'receipts').glob('*.result.json')))
 
     def broken(done, total, phase):
         if phase == 'stopped':
@@ -720,9 +718,8 @@ def test_stop_keeps_worker_counts_monotonic_and_unverified_results_distinct(prep
             raise
 
     def cancelled():
-        status = path / 'job_status.json'
-        return (any(done == 1 for done, _, _ in calls) and status.exists()
-                and read_json(status).get('done') == 1)
+        return (bool(list((path / 'receipts').glob('*.result.json')))
+                and (os.name == 'nt' or any(done == 1 for done, _, _ in calls)))
 
     result = service.run(identity, timeout=30, cancelled=cancelled, progress=progress)
     durable, worker = service.get(identity), read_json(path / 'job_status.json')
@@ -733,13 +730,17 @@ def test_stop_keeps_worker_counts_monotonic_and_unverified_results_distinct(prep
     assert len(saved) == 1 and read_json(saved[0])['run_id'] == worker['run_id']
     assert len(list((path / 'results').rglob('*.*'))) == 6
     assert len(list((path / 'input').iterdir())) == 2
-    measured = [done for done, total, _ in calls]
-    assert measured and max(measured) == 1 and all(total == 2 for _, total, _ in calls)
+    measured = [done for done, total, _ in calls if done is not None]
     assert measured == sorted(measured), f'Progress regressed: {calls!r}; {observer_errors!r}'
-    assert calls[-1] == (1, 2, 'stopped')
+    if os.name == 'nt':
+        assert calls[:-1] and all(done is None and total is None for done, total, _ in calls[:-1])
+        assert calls[-1] == (0, 2, 'stopped')
+    else:
+        assert measured and max(measured) == 1 and all(total == 2 for _, total, _ in calls)
+        assert calls[-1] == (1, 2, 'stopped')
     assert observer_errors == []
     assert operation_outcome(result) == 'cancelled'
-    assert all(event.percent < 100 for event in events)
+    assert all(event.percent is None or event.percent < 100 for event in events)
     assert tracker.transition('cancelled', 'Stopped; saved files await verification').percent < 100
 
 
@@ -758,7 +759,7 @@ def test_partial_progress_requires_verified_resume_before_host_success(prepared,
     partial = service.run(identity, timeout=30, progress=progress)
     assert partial['status'] == 'partial' and partial['done'] == 1, partial
     assert operation_outcome(partial) == 'paused'
-    assert events and all(event.percent < 100 for event in events)
+    assert events and all(event.percent is None or event.percent < 100 for event in events)
     assert tracker.transition(operation_outcome(partial), 'Review remaining input').percent < 100
 
     configure('complete')
@@ -766,7 +767,7 @@ def test_partial_progress_requires_verified_resume_before_host_success(prepared,
     completed = service.run(identity, timeout=30, progress=progress)
     assert completed['status'] == 'completed' and completed['done'] == 2
     assert operation_outcome(completed) == 'succeeded'
-    assert all(event.percent < 100 for event in events)
+    assert all(event.percent is None or event.percent < 100 for event in events)
     assert tracker.event.percent == 99
     assert tracker.transition(operation_outcome(completed), 'Host accepted all results').percent == 100
 
@@ -803,7 +804,7 @@ def test_edit_and_export_reject_archived_workspace(
     verification_finished = False
 
     if operation == 'save_edit' and archive_when == 'publication':
-        real_verify = service.verify
+        real_verify = service._verify_locked
 
         def verify_then_arm(*args, **kwargs):
             nonlocal verification_finished
@@ -812,7 +813,7 @@ def test_edit_and_export_reject_archived_workspace(
             verification_finished = True
             return verified
 
-        monkeypatch.setattr(service, 'verify', verify_then_arm)
+        monkeypatch.setattr(service, '_verify_locked', verify_then_arm)
 
     def cancelled():
         nonlocal archived
@@ -874,3 +875,167 @@ def test_edit_and_export_reject_archived_workspace(
     assert edits_after == edits_before, observation
     assert not destination.exists(), observation
     assert list(export_parent.iterdir()) == [], observation
+
+
+def test_rechecking_completed_job_observes_stop_without_changing_saved_result(prepared, monkeypatch):
+    from threading import Event
+    from carr_library.audio.models import AudioCancelled
+    identity, completed_job = completed(prepared)
+    service = prepared[2]
+    before = (service._path(identity) / 'job.json').read_bytes()
+    stop = Event()
+    verify_sources = service._sources
+    def stop_after_first_source_check(path, job, cancelled):
+        value = verify_sources(path, job, cancelled)
+        stop.set()
+        return value
+    monkeypatch.setattr(service, '_sources', stop_after_first_source_check)
+    with pytest.raises(AudioCancelled):
+        service.run(identity, cancelled=stop.is_set)
+    assert service.get(identity)['status'] == 'completed'
+    assert service.get(identity)['artifacts'] == completed_job['artifacts']
+    assert (service._path(identity) / 'job.json').read_bytes() == before
+
+
+def test_deferred_status_is_read_only_after_the_actual_legacy_child_exits(prepared, deferred_status_probe):
+    _, _, service, original, configure = prepared
+    configure('progress-wait')
+    identity = service.submit([original])
+    probe = deferred_status_probe(service, identity, release='progress-observed')
+
+    result = service.run(identity, timeout=10, progress=probe.progress)
+
+    assert probe.live and probe.reads
+    assert set(probe.public_reads) == {'verify', 'text'} and not probe.public_read_errors
+    assert len(probe.children) == 1 and probe.children[0].returncode == 0
+    assert result == service.get(identity) and result['status'] == 'completed', result['last_error']
+    assert result['done'] == 1 and len(result['artifacts']) == 6
+    assert probe.notices[-1] == (1, 1, 'completed')
+    assert service.verify(identity)['status'] == 'completed'
+    assert 'Український' in service.text(identity, result['sources'][0]['filename'])
+
+
+def test_deferred_status_is_read_only_after_timeout_terminates_the_actual_child(prepared, deferred_status_probe):
+    _, _, service, original, configure = prepared
+    configure('timeout')
+    identity = service.submit([original])
+    probe = deferred_status_probe(service, identity)
+
+    result = service.run(identity, timeout=1, progress=probe.progress)
+
+    assert probe.live and probe.reads
+    assert set(probe.public_reads) == {'verify', 'text'} and not probe.public_read_errors
+    assert len(probe.children) == 1 and probe.children[0].poll() is not None
+    assert result == service.get(identity) and result['status'] == 'failed'
+    assert 'time allowance' in result['last_error'] and result['artifacts'] == []
+
+
+def test_deferred_stop_preserves_results_without_reading_live_status_and_resumes(prepared, deferred_status_probe):
+    _, _, service, original, configure = prepared
+    configure('pause-once')
+    identity = service.submit([original])
+    probe = deferred_status_probe(service, identity, stop_on_progress=True)
+
+    stopped = service.run(identity, timeout=10, cancelled=probe.stop.is_set, progress=probe.progress)
+
+    assert probe.live and not probe.reads
+    assert set(probe.public_reads) == {'verify', 'text'} and not probe.public_read_errors
+    assert len(probe.children) == 1 and probe.children[0].poll() is not None
+    assert stopped == service.get(identity) and stopped['status'] == 'stopped'
+    assert stopped['done'] == 0 and stopped['artifacts'] == []
+    assert (service._path(identity) / 'input' / stopped['sources'][0]['filename']).read_bytes() == original.read_bytes()
+    configure('complete')
+    resumed = service.run(identity, timeout=10)
+    assert resumed['status'] == 'completed' and resumed['done'] == 1, resumed['last_error']
+    assert len(probe.children) == 2 and probe.reads
+    assert all(child.poll() is not None for child in probe.children)
+
+
+def test_text_keeps_same_job_locked_through_actual_output_read(prepared, tmp_path, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+
+    _, _, service, original, configure = prepared
+    configure('partial')
+    second = tmp_path / 'second-locked-read.wav'
+    second.write_bytes(b'Second retained synthetic input.')
+    identity = service.submit([original, second])
+    result = service.run(identity, timeout=10)
+    assert result['status'] == 'partial' and result['done'] == 1, result['last_error']
+    artifact = next(item for item in result['artifacts'] if item['format'] == 'txt')
+    target = service._path(identity) / 'results' / artifact['path']
+    original_read = Path.read_text
+    refused = []
+
+    def read_with_competing_resume(path, *args, **kwargs):
+        if path == target:
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                competing = pool.submit(service.run, identity, timeout=10)
+                with pytest.raises(RuntimeError, match='already being changed'):
+                    competing.result(timeout=5)
+            refused.append(path)
+        return original_read(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, 'read_text', read_with_competing_resume)
+    assert 'Український' in service.text(identity, artifact['source'])
+    assert refused == [target]
+    configure('complete')
+    resumed = service.run(identity, timeout=10)
+    assert resumed['status'] == 'completed' and resumed['done'] == 2, resumed['last_error']
+
+
+def test_edit_rechecks_workspace_after_receipt_verification(prepared, monkeypatch):
+    app, workspace, service, original, _ = prepared
+    identity, result = completed(prepared)
+    source = result['sources'][0]['filename']
+    retained = service.save_edit(identity, source, 'Previously saved correction.')
+    directory = service._path(identity)
+    saved_edit = directory / 'edits' / (retained + '.json')
+    original_edit = saved_edit.read_bytes()
+    original_job = (directory / 'job.json').read_bytes()
+    original_media = original.read_bytes()
+    verify = service._verify_locked
+
+    def archive_after_verification(*args, **kwargs):
+        verified = verify(*args, **kwargs)
+        app.archive_workspace(workspace)
+        return verified
+
+    monkeypatch.setattr(service, '_verify_locked', archive_after_verification)
+    with pytest.raises(ValueError, match='archived'):
+        service.save_edit(identity, source, 'Must not be published after archival.')
+
+    assert list((directory / 'edits').iterdir()) == [saved_edit]
+    assert saved_edit.read_bytes() == original_edit
+    assert (directory / 'job.json').read_bytes() == original_job
+    assert original.read_bytes() == original_media
+
+
+def test_edit_publication_excludes_concurrent_workspace_archival(prepared, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+    from carr_library import transcription
+    from carr_library.ingest.writer_guard import WriterBusy
+
+    app, workspace, service, _, _ = prepared
+    identity, result = completed(prepared)
+    source = result['sources'][0]['filename']
+    publish = transcription.atomic_json
+    attempts = []
+
+    def publish_while_archive_attempts(path, value, **kwargs):
+        if path.parent.name == 'edits':
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                competing = pool.submit(app.archive_workspace, workspace)
+                with pytest.raises(WriterBusy):
+                    competing.result(timeout=5)
+            attempts.append(path)
+        return publish(path, value, **kwargs)
+
+    monkeypatch.setattr(transcription, 'atomic_json', publish_while_archive_attempts)
+    revision = service.save_edit(identity, source, 'An authorized published correction.')
+    assert attempts == [service._path(identity) / 'edits' / (revision + '.json')]
+    assert service.edits(identity)[0]['id'] == revision
+    assert service.verify(identity)['status'] == 'completed'
+    # The guard ends with publication; archival is not permanently blocked.
+    app.archive_workspace(workspace)
+    with pytest.raises(ValueError, match='archived'):
+        service.get(identity)
