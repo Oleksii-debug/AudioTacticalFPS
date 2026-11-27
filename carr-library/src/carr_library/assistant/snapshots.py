@@ -218,3 +218,5 @@ def validate_state_tree(db, root, *, cancelled=lambda: False):
         value = validate_state_document(path.name, raw)
         if not path.name.endswith('.control.json'):
             validate_sources(db, value)
+            from .transcription import validate_retained
+            validate_retained(root, value, cancelled=cancelled)

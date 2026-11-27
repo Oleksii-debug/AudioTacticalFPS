@@ -105,7 +105,7 @@ def show_assistant(frame, *, production=None, on_ready=None):
         return cancel.is_set() or not alive or not library_current()
 
     production = production or LocalProduction(bound_root, cancelled=stopped)
-    service = AssistantService(bound_library, production=production)
+    service = AssistantService(bound_library, production=production, validation_cancelled=stopped)
     from ..assistant.scheduling import ScheduleManager, ScheduleSession
     schedule_manager = ScheduleManager(service)
     schedule_session = ScheduleSession(schedule_manager)

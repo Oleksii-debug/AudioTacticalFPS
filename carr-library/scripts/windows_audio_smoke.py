@@ -118,6 +118,17 @@ def main():
         reopened = StudioController(private_root=library.root, registry=registry, ffmpeg=ffmpeg)
         reopened.open(saved_project)
         assert reopened.to_dict() == controller.to_dict(), 'Saved project did not survive readback.'
+        standalone_bytes = saved_project.read_bytes()
+        # A durable queue belongs to an explicitly saved library project. Keep
+        # the standalone Save/Readback case above, then use the current managed
+        # project contract for these native queue operations.
+        controller = StudioController(private_root=library.root, registry=registry, ffmpeg=ffmpeg)
+        controller.new(script, title='Synthetic managed native queue', input_kind='script')
+        controller.configure(voice=voice, language='en')
+        managed_project = controller.save_in_library()
+        assert managed_project.resolve().is_relative_to(library.root.resolve())
+        queue_source = Path(output['output'])
+        queue_source_digest = sha256(queue_source.read_bytes()).hexdigest()
         studio = AudioStudioDialog(frame, controller)
         try:
             frame.Show()
@@ -152,8 +163,13 @@ def main():
             assert studio.segment_choice.GetName() == 'Playback chapters and segments'
             assert studio.loop_start.GetName() == 'A–B repeat start, seconds'
             assert studio.sleep_minutes.GetName() == 'Sleep timer minutes; zero turns it off'
-            studio.playback.enqueue([Path(output['output'])])
-            studio._refresh_playback_choices()
+            studio.queue_state.append([queue_source])
+            wait_for(lambda: not studio.busy, 'The actual retained queue append did not settle.')
+            queue = studio.queue_state
+            assert queue.review is not None and len(queue.review.state.items) == 1, studio.status.GetValue()
+            assert queue.store.review().state == queue.review.state
+            assert queue.review.state.items[0].sha256 == queue_source_digest
+            assert studio.playback.playlist == queue.store.paths(queue.review)
             assert studio.playlist_choice.GetCount() == 1
             assert studio.playback.state == 'stopped', 'Queue setup must not start an audio device.'
             studio.sleep_minutes.ChangeValue('1')
@@ -170,12 +186,18 @@ def main():
                      'Turning the actual sleep timer off did not settle.', timeout=5)
             assert studio.playback.sleep_remaining_seconds is None
             studio.clear_playlist()
+            wait_for(lambda: not studio.busy, 'The actual retained queue clear did not settle.')
+            assert queue.review is not None and not queue.review.state.items, studio.status.GetValue()
+            assert not queue.store.review().state.items
             assert not studio.playback.playlist and studio.playlist_choice.GetCount() == 0
+            assert sha256(queue_source.read_bytes()).hexdigest() == queue_source_digest
+            assert saved_project.read_bytes() == standalone_bytes
             studio.read_playback_status()
             assert 'Stopped' in studio.status.GetValue()
             checks.extend(['native Studio named controls', 'real editable script focus', 'native voice list',
                            'native plan preview', 'project save and readback', 'native playback device, position and status controls',
-                           'native playlist, A–B, segment and sleep controls; setup without device playback'])
+                           'native retained queue append/clear and persisted readback without device playback',
+                           'native A–B, segment and sleep controls; standalone project and rendered original unchanged'])
             studio.dialog.Hide()
 
             native_result = {'complete': False, 'errors': []}

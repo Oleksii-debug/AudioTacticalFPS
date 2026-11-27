@@ -1,6 +1,45 @@
 # Supplied Whisper Transcribe — integration review
 
-Review date: 2026-11-27. Status: SOURCE_RECEIVED_AND_STATICALLY_REVIEWED; runtime/integration/Windows/NVDA/model-quality acceptance NOT_RUN in this audit. This is a work package under the [current platform specification](UNIVERSAL_SCOPE_V3_FINALIZATION.md), not a separate ASR product.
+Original source-review date: 2026-11-27. The findings below describe the
+supplied V4.3 source at intake. Later integration is recorded separately here
+and in the linked current contracts; the original NOT_RUN labels are not a
+statement that subsequent public adapter work is absent.
+
+## Subsequent integration and canonical reconciliation
+
+Canonical source `e3cf74c243d4ef930b526b5648ca9003c0900057` records the exact
+37,974-byte supplied worker SHA-256 as
+`1df2a1694b35bdf69dab614f91f1e8dea99716dfb039182ef5b83ca5ccb46ec9`.
+Its review also records a Linux protocol run with an isolated synthetic SDK:
+successful Ukrainian exports, an explicit unsupported automatic-detection
+failure, and a mandatory-export failure. That is historical synthetic protocol
+evidence, not actual recognition or Windows/model qualification. The private
+worker, models, recordings and transcripts remain outside this repository.
+
+The selected implementation now uses the existing
+[manifest-bound transcription service](SUPPLIED_TRANSCRIPTION_INTEGRATION.md),
+[current CLI and independent exports](TRANSCRIPTION_CLI.md), and
+[typed complete backups](SUPPLIED_TRANSCRIPTION_BACKUP.md). Canonical old job
+bytes are preserved by [explicit inert recovery](CANONICAL_TRANSCRIPTION_RECOVERY.md).
+No archived executable path becomes authority after restore.
+
+The missing typed assistant `audio.transcribe` route is implemented through
+that same service: [exact plan and recovery contract](ASSISTANT_TRANSCRIPTION.md).
+Its deterministic job intent is durable before prepare, the admitted definition
+is pinned before launch, and the export intent precedes publication. Completed
+resume verifies the same owned source/results and independent export without
+repeating inference. A changed definition, forged receipt or uncertain directory
+sync stays a visible failure. New source/installed regression cases use the
+existing harmless real CLI peer and require their exact composed CI run.
+
+ASR-01/02 are addressed by immutable owned inputs and content/settings/runtime
+receipts; ASR-03/04 by the reviewed no-fallback preparation and mandatory output
+verification; ASR-05/06 by existing serialized admission and whole-family
+cancellation. Interrupted files can restart; acoustic mid-file recovery is not
+claimed. Actual selected runtime/model inference, supported languages, recognition
+quality, physical hardware and manual NVDA still need their own evidence.
+This remains a work package under the
+[current platform specification](UNIVERSAL_SCOPE_V3_FINALIZATION.md).
 
 ## Source and boundary
 

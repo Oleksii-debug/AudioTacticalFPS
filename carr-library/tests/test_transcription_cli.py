@@ -221,3 +221,21 @@ def test_top_level_route_and_isolated_installed_origin(prepared_environment, tmp
                             cwd=tmp_path, capture_output=True, text=True, encoding='utf-8', timeout=30)
     assert result.returncode == 0, result.stderr[-4000:]
     assert json.loads(result.stdout) == []
+
+
+@pytest.mark.parametrize('channel', ['stdout', 'stderr'])
+def test_unicode_json_receipt_survives_actual_cp1252_output(monkeypatch, channel):
+    from io import BytesIO, TextIOWrapper
+    value = {'title': 'Україна 日本語 🎧', 'path': 'каталог/транскрипт.txt',
+             'status': 'complete', 'message': 'Збережено без втрати тексту'}
+    output = BytesIO()
+    stream = TextIOWrapper(output, encoding='cp1252', errors='strict', newline='\n')
+    try:
+        with monkeypatch.context() as patch:
+            patch.setattr(cli.sys, channel, stream)
+            cli._write(value, stream=stream if channel == 'stderr' else None)
+        encoded = output.getvalue()
+        assert encoded.isascii()
+        assert json.loads(encoded.decode('ascii')) == value
+    finally:
+        stream.detach()

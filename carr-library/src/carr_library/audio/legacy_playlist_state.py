@@ -187,6 +187,31 @@ def verify_pcm(path, item, *, cancelled=lambda: False):
     pin = file_identity(before) + (change_time,)
     if native_identity(path) != pin:
         raise ValueError('A historical recording changed before verification was acknowledged.')
+    # The first immutable reader has now closed. Timestamps are not content
+    # identities: a rewrite with restored mtime can fall within one filesystem
+    # timestamp quantum. Reopen under the same immutable ownership contract and
+    # re-attest the complete bounded bytes before acknowledging this snapshot.
+    rechecked, remaining = sha256(), before.st_size
+    try:
+        with verified_reader(path, expected_identity=file_identity(before)) as stream:
+            if stream_change_time(stream) != change_time:
+                raise ValueError('A historical recording changed before verification was acknowledged.')
+            while remaining:
+                _cancel(cancelled)
+                block = stream.read(min(1024**2, remaining))
+                if not block:
+                    raise ValueError('A historical recording changed before verification was acknowledged.')
+                remaining -= len(block)
+                rechecked.update(block)
+            if stream.read(1):
+                raise ValueError('A historical recording changed before verification was acknowledged.')
+            _cancel(cancelled)
+            if rechecked.hexdigest() != item['sha256']:
+                raise ValueError('A historical recording changed before verification was acknowledged.')
+    except RuntimeError as error:
+        raise ValueError('A historical recording changed before verification was acknowledged.') from error
+    if native_identity(path) != pin:
+        raise ValueError('A historical recording changed before verification was acknowledged.')
     return pin
 
 

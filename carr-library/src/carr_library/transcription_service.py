@@ -29,7 +29,7 @@ from .transcription_receipt import PROTOCOL, validate_settings, verify_completio
 from .transcription_state import (
     DIRECTORY, SCHEMA, MAX_INPUTS, MAX_ENTRIES, MAX_JOB_BYTES, MAX_JSON_BYTES,
     MAX_LOG_BYTES, EXTENSIONS, JOB_ID, check_cancelled, regular, relative_path,
-    read_definition, validate_definition,
+    read_definition, validate_definition, content_hash,
 )
 
 _STATES = frozenset(('queued', 'verifying', 'running', 'paused', 'cancelled', 'failed', 'complete'))
@@ -185,13 +185,20 @@ class TranscriptionService:
         return validate_definition(value, identity=identity)
 
     def prepare(self, sources, runtime_manifest, settings, *, title='Local transcription',
-                expected_manifest_sha256=None, cancelled=lambda: False):
+                expected_manifest_sha256=None, cancelled=lambda: False, job_id=None):
+        # A workflow may preallocate an ID before preparation. It grants no
+        # permission to adopt or overwrite an existing job.
+        if job_id is not None and (type(job_id) is not str or not JOB_ID.fullmatch(job_id)):
+            raise ValueError('A supplied transcription job identity must be 32 lowercase hex characters.')
         runtime = review_runtime(runtime_manifest, settings, expected_sha256=expected_manifest_sha256,
                                  cancelled=cancelled)
         selected = selected_inputs(sources, cancelled=cancelled)
-        identity = uuid4().hex
+        identity = uuid4().hex if job_id is None else job_id
         # Match complete-backup lock order. No partially published job is visible.
         with exclusive_writer(self.library_root), project_lock(self.root):
+            from .backup_files import optional_present
+            if optional_present(self.root / identity):
+                raise FileExistsError('The selected transcription job identity already exists.')
             for count, _ in enumerate(self.root.iterdir(), 1):
                 if count > MAX_INPUTS:
                     raise ValueError('The retained transcription job-count budget is full.')
@@ -268,7 +275,10 @@ class TranscriptionService:
         for name, path in paths:
             publish_noreplace(path, target / Path(name).name)
 
-    def run(self, identity, runtime_manifest, *, cancelled=lambda: False, progress=None, timeout=24 * 3600):
+    def run(self, identity, runtime_manifest, *, cancelled=lambda: False, progress=None, timeout=24 * 3600,
+            expected_definition_sha256=None):
+        if expected_definition_sha256 is not None:
+            content_hash(expected_definition_sha256)
         if type(timeout) not in (int, float) or not 1 <= timeout <= 7 * 24 * 3600:
             raise ValueError('Choose a transcription deadline between one second and seven days.')
         job = self._job(identity)
@@ -280,6 +290,9 @@ class TranscriptionService:
             preparation.enter_context(project_lock(logs, lock_name='.worker-v5.lock'))
             with self._admission(identity, cancelled=cancelled):
                 definition = read_definition(job, cancelled=cancelled)
+                if (expected_definition_sha256 is not None and
+                        hashlib.sha256(canonical(definition).encode('utf-8')).hexdigest() != expected_definition_sha256):
+                    raise ValueError('The prepared transcription definition differs from its reviewed workflow.')
                 runtime = review_runtime(runtime_manifest, definition['settings'],
                                          expected_sha256=definition['runtime_manifest_sha256'], cancelled=cancelled)
                 if runtime.model_sha256 != definition['model_sha256']:

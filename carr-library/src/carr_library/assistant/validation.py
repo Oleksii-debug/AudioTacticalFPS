@@ -28,6 +28,9 @@ _KEYS['audio.plan'] = _KEYS['audio.produce']
 
 
 def validate_arguments(step):
+    if step.tool == 'audio.transcribe':
+        from .transcription_model import validate_arguments as validate_transcription
+        return validate_transcription(step.arguments)
     if step.tool in LOCAL_TOOLS and step.tool != 'audio.plan':
         return validate_local_arguments(step.tool, step.arguments)
     required, optional = _KEYS[step.tool]
@@ -194,17 +197,17 @@ def validate_job(value, *, identity=None):
                 raise ValueError('Invalid saved create-library permission.')
         if validated.tool == 'library.backup' and not scope['allow_full_backup']:
             raise ValueError('A saved backup plan lacks its explicit permission.')
-        if validated.tool.startswith('library.import') or validated.tool in ('document.convert', 'player.inspect'):
+        if validated.tool.startswith('library.import') or validated.tool in ('document.convert', 'player.inspect', 'audio.transcribe'):
             target = _path(validated.arguments['path'])
             if not any(type(target) is type(_path(root)) and target.is_relative_to(_path(root))
                        for root in scope['input_roots']):
                 raise ValueError('Checkpoint import is outside its approved input scope.')
-        if validated.tool in ('library.extract', 'library.backup', 'audio.produce', 'document.convert'):
+        if validated.tool in ('library.extract', 'library.backup', 'audio.produce', 'document.convert', 'audio.transcribe'):
             if scope['output_root'] is None:
                 raise ValueError('Checkpoint operation has no approved output scope.')
-        if validated.tool in ('library.extract', 'library.backup', 'document.convert'):
+        if validated.tool in ('library.extract', 'library.backup', 'document.convert', 'audio.transcribe'):
             _output_name(validated.arguments['name'])
-        if (validated.tool not in ('library.create', 'library.list', 'library.backup', 'audio.produce')
+        if (validated.tool not in ('library.create', 'library.list', 'library.backup', 'audio.produce', 'audio.transcribe')
                 and validated.tool not in INDEPENDENT_TOOLS and workspace is None and creates == 0):
             raise ValueError('Checkpoint operation has no approved library scope.')
         if (type(checkpoint) is not dict or set(checkpoint) != {'status', 'intent', 'result', 'message'}
@@ -213,8 +216,12 @@ def validate_job(value, *, identity=None):
             raise ValueError('Invalid assistant step checkpoint.')
         text(checkpoint['message'], 'step message', maximum=2000, empty=True)
         intent = checkpoint['intent']
-        permitted = {'batch'} if validated.tool.startswith('library.import') else (
-            {'sha256'} if validated.tool == 'library.extract' else set())
+        if validated.tool == 'audio.transcribe':
+            from .transcription_model import validate_checkpoint
+            validate_checkpoint(value, index, validated.arguments, checkpoint)
+        permitted = {'transcription', 'definition_sha256', 'transcription_export'} if validated.tool == 'audio.transcribe' else (
+            {'batch'} if validated.tool.startswith('library.import') else (
+            {'sha256'} if validated.tool == 'library.extract' else set()))
         if set(intent) - permitted:
             raise ValueError('Invalid assistant step intent.')
         if 'batch' in intent and (not isinstance(intent['batch'], str)

@@ -57,6 +57,8 @@ def _configure_method(store):
     namespace = {'ProviderProfile': ProviderProfile, 'uuid': uuid, 'google_v3_parent': google_v3_parent,
                  'GOOGLE_TRANSLATION_ENDPOINT': GOOGLE_TRANSLATION_ENDPOINT,
                  'GOOGLE_TRANSLATION_PROVIDERS': GOOGLE_TRANSLATION_PROVIDERS,
+                 'TRANSLATION_PROVIDERS': providers.TRANSLATION_PROVIDERS,
+                 'LOCAL_TRANSLATION_PROVIDER': providers.LOCAL_TRANSLATION_PROVIDER,
                  'controller': SimpleNamespace(store=store)}
     exec(compile(ast.fix_missing_locations(ast.Module(body=[configure], type_ignores=[])), str(source), 'exec'), namespace)
     return namespace['configure']

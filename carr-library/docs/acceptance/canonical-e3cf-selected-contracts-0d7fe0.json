@@ -1,0 +1,3064 @@
+{
+  "schema": "carr-canonical-semantic-selection/2",
+  "canonical": {
+    "commit": "e3cf74c243d4ef930b526b5648ca9003c0900057",
+    "tree": "5fc67a0d9a0ab18fb0662bb01e027d29d83af72f"
+  },
+  "selected": {
+    "commit": "0d7fe0de7ec3eb60481c62424e250165c024abff",
+    "tree": "c9f14d759c4ffa269447f5776815e9ac0916237a"
+  },
+  "previous_inventory_commit": "085faa71d6e8d96788a1720e2f4b0c76447380fd",
+  "scope": {
+    "finalization_blob": "db8adbdc483a03c262885928c7ed214ca70bbaa7",
+    "detailed_blob": "d0b2761dd22b33233b311d4800230fb47f5d3d8b"
+  },
+  "trees_complete": true,
+  "counts": {
+    "reviewed_product_paths": 137,
+    "current_different_canonical_paths": 136,
+    "canonical_identical_selected": 1
+  },
+  "mandatory_completion_open": [],
+  "contracts": [
+    {
+      "id": "desktop",
+      "scope": [
+        "V3-10",
+        "V3-11",
+        "V3-22"
+      ],
+      "contract": "Keep one desktop/menu/command registry, exact installed entrypoint, keyboard preferences, language capability labels and neutral account/entitlement contracts. The visible CSL attribution is copied from the canonical shell, rather than omitted as cosmetic.",
+      "owners": [
+        "__main__.py",
+        "delivery_contract.py",
+        "keyboard_preferences.py",
+        "language_qualification/catalog.py",
+        "ui/command_registry.py",
+        "ui/builtin_keyboard_commands.py",
+        "ui/desktop_app.py",
+        "ui/workspace_shell.py"
+      ],
+      "gates": [
+        "tests/ui/test_desktop_handlers.py"
+      ],
+      "boundary": "Brand/version and 17/53 dependency profiles remain current. A source version, account contract or CI PASS does not grant model/binary redistribution rights.",
+      "owner_blobs": [
+        {
+          "path": "carr-library/src/carr_library/__main__.py",
+          "sha": "f5c7da411569cfabed560530997f77a2f0580740"
+        },
+        {
+          "path": "carr-library/src/carr_library/delivery_contract.py",
+          "sha": "dbba328488f5d17daf27ef87aa140411052a375a"
+        },
+        {
+          "path": "carr-library/src/carr_library/keyboard_preferences.py",
+          "sha": "c1356f198030e5acbb68ccaa7ccd784eb3ab68a4"
+        },
+        {
+          "path": "carr-library/src/carr_library/language_qualification/catalog.py",
+          "sha": "f6c94e01d61b82959209e64b9e78bd59692c74cd"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/command_registry.py",
+          "sha": "77f02048ba8348deea271b8b13e6b18a7d1e99cc"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/builtin_keyboard_commands.py",
+          "sha": "3d1e5a6c7e394a4896a9701afb77ff917a5d3e78"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/desktop_app.py",
+          "sha": "3514c85ce92736ee26446d8b2bd6aabbf6f61b9c"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/workspace_shell.py",
+          "sha": "c4ce2664d585bf36f2911695f8f6632499218381"
+        }
+      ],
+      "execution": "Required gates retained; execution claims are listed only in the evidence section, never inferred from a source mapping."
+    },
+    {
+      "id": "ingest",
+      "scope": [
+        "V3-01",
+        "V3-06",
+        "V3-07"
+      ],
+      "contract": "Keep the immutable retained original, V5 import_publication ownership, current supervised worker and no-clobber publication. Paged scans save root-bound continuation in deterministic successor batches; restore makes old cursors inert. Large TXT/PDF are explicit profiles, not an unconditional higher file allowance.",
+      "owners": [
+        "application.py",
+        "storage/revisions.py",
+        "ingest/worker.py",
+        "ingest/batches.py",
+        "ingest/scan_pages.py",
+        "ingest/retained_assets.py",
+        "ingest/source_profiles.py",
+        "pending_backup.py"
+      ],
+      "gates": [
+        "tests/ingest/test_canonical_publication_binding.py",
+        "tests/ingest/test_worker_publication_boundary.py",
+        "tests/ingest/test_large_source_profiles.py",
+        "tests/storage/test_large_source_backup.py"
+      ],
+      "boundary": "The ordinary bounded import profile remains unchanged. Actual 50k/1M corpus evidence belongs to commit431/run46004721023, not automatically to this selected tree or to new full-backup capacity.",
+      "owner_blobs": [
+        {
+          "path": "carr-library/src/carr_library/application.py",
+          "sha": "2c709aec25e5e31a58735eb8ce82608dfe2243c2"
+        },
+        {
+          "path": "carr-library/src/carr_library/storage/revisions.py",
+          "sha": "a24851a456b9625ad6e36bce5580ed36c2a6e1ea"
+        },
+        {
+          "path": "carr-library/src/carr_library/ingest/worker.py",
+          "sha": "28936731768f4ee57e6e9568bf4fafc26d4eedaa"
+        },
+        {
+          "path": "carr-library/src/carr_library/ingest/batches.py",
+          "sha": "eb5b4ed3a916767b04ce4ac77b95bbdc74c65f7c"
+        },
+        {
+          "path": "carr-library/src/carr_library/ingest/scan_pages.py",
+          "sha": "de16dde2fdeb4805c0a91b6ca9718ff3e9d81c05"
+        },
+        {
+          "path": "carr-library/src/carr_library/ingest/retained_assets.py",
+          "sha": "b15cd7530176093f6e84a271ad30e364c5e3ad43"
+        },
+        {
+          "path": "carr-library/src/carr_library/ingest/source_profiles.py",
+          "sha": "0b25cc8ca13f15753a87e13696412b06f27e312b"
+        },
+        {
+          "path": "carr-library/src/carr_library/pending_backup.py",
+          "sha": "39a8f1c97091730cc4101516c84b2e90b995523a"
+        }
+      ],
+      "execution": "Required gates retained; execution claims are listed only in the evidence section, never inferred from a source mapping."
+    },
+    {
+      "id": "assistant",
+      "scope": [
+        "V3-09",
+        "V3-13",
+        "V3-20"
+      ],
+      "contract": "Use current Plan/Scope/JobStore and one AssistantService. Preserve review/submit/run, source permissions, durable intent/result checkpoints, pause/cancel and no automatic restored approval. Typed local tools, named inert templates and foreground schedules join this owner. Reviewed candidate 8236 supplies canonical audio.transcribe through the existing supplied-worker service; the standalone ASR UI/CLI is not used as a substitute.",
+      "owners": [
+        "assistant/models.py",
+        "assistant/validation.py",
+        "assistant/state.py",
+        "assistant/service.py",
+        "assistant/snapshots.py",
+        "assistant/local_tools.py",
+        "assistant/templates.py",
+        "assistant/scheduling.py",
+        "ui/assistant_dialog.py"
+      ],
+      "gates": [
+        "tests/assistant/test_typed_local_tools.py",
+        "tests/assistant/test_workflow_templates.py",
+        "tests/assistant/test_workflow_template_handlers.py",
+        "tests/assistant/test_scheduling.py",
+        "tests/assistant/test_scheduling_handlers.py"
+      ],
+      "boundary": "The 0d7 owner_blobs below remain the exact baseline. Apply the separately pinned 8236 overlay for assistant transcription; its actual source/installed execution is still NOT_RUN. Restored runtime paths and completed flags cannot authorize new inference.",
+      "owner_blobs": [
+        {
+          "path": "carr-library/src/carr_library/assistant/models.py",
+          "sha": "ce65c3debd8f7de9ff057fbca2fdfc8e938bb516"
+        },
+        {
+          "path": "carr-library/src/carr_library/assistant/validation.py",
+          "sha": "181377f3d3fad44d409b84e23fd9fca459df1a32"
+        },
+        {
+          "path": "carr-library/src/carr_library/assistant/state.py",
+          "sha": "c1d9ee152ec5b05bc666fd9b4dbd19334d572763"
+        },
+        {
+          "path": "carr-library/src/carr_library/assistant/service.py",
+          "sha": "9e174958e93d9c9ff474589e61ea07bbca9202c2"
+        },
+        {
+          "path": "carr-library/src/carr_library/assistant/snapshots.py",
+          "sha": "3af4886aa6c95659a9d7f5c05969458ef0ca9ad7"
+        },
+        {
+          "path": "carr-library/src/carr_library/assistant/local_tools.py",
+          "sha": "a98ef4e371c3cdc457a48dd8e5a1a576995df54b"
+        },
+        {
+          "path": "carr-library/src/carr_library/assistant/templates.py",
+          "sha": "22f682116e5796a679acb854db37557ebf22f159"
+        },
+        {
+          "path": "carr-library/src/carr_library/assistant/scheduling.py",
+          "sha": "b6e5dc70c421f8b59a5f2b3ba407dd5bd2a87c66"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/assistant_dialog.py",
+          "sha": "d0535f844bebd1b1934a36cbd76f9e52e4a81489"
+        }
+      ],
+      "execution": "Required gates retained; execution claims are listed only in the evidence section, never inferred from a source mapping.",
+      "reviewed_additions": [
+        "canonical-assistant-transcription-tool"
+      ]
+    },
+    {
+      "id": "backup-receipt",
+      "scope": [
+        "V3-06",
+        "V3-09"
+      ],
+      "contract": "Preserve canonical second-pass content and directory re-attestation of completed assistant backups. Add current native ChangeTime pins from the actual streamed reads and a finite quiet namespace/file pass after the last external cancellation callback.",
+      "owners": [
+        "assistant/backup_receipt.py",
+        "native_file_metadata.py"
+      ],
+      "gates": [
+        "tests/assistant/test_backup_receipt.py"
+      ],
+      "boundary": "Canonical cb8060e code/test cases were ported in dbbeb; current final boundary is92c14. Both are source-only until exact-head execution. Receipt bytes/schema remain unchanged.",
+      "owner_blobs": [
+        {
+          "path": "carr-library/src/carr_library/assistant/backup_receipt.py",
+          "sha": "c910e27846421c544dc5b362b13c14c4d62c9c0d"
+        },
+        {
+          "path": "carr-library/src/carr_library/native_file_metadata.py",
+          "sha": "3f18a718bc05fb0d1c0f148d0fbcde585a9e2d8a"
+        }
+      ],
+      "execution": "Required gates retained; execution claims are listed only in the evidence section, never inferred from a source mapping."
+    },
+    {
+      "id": "planning",
+      "scope": [
+        "V3-09",
+        "V3-11",
+        "V3-20"
+      ],
+      "contract": "Local model proposals go through the existing ProviderGateway, exact saved-profile identity, explicit purpose/scope and budget ledger. Model output parses into current typed Plan; it is never arbitrary code or automatic execution. Preview/Run use the existing worker and stale-context checks.",
+      "owners": [
+        "assistant/llm.py",
+        "assistant/cli.py",
+        "providers.py",
+        "ui/assistant_dialog.py"
+      ],
+      "gates": [
+        "tests/loopback/test_local_planning.py"
+      ],
+      "boundary": "An available client and synthetic numeric-loopback request are not local model quality or actual weight acceptance.",
+      "owner_blobs": [
+        {
+          "path": "carr-library/src/carr_library/assistant/llm.py",
+          "sha": "b13d0e52bffc7dff0117e688f8d05b5460d77589"
+        },
+        {
+          "path": "carr-library/src/carr_library/assistant/cli.py",
+          "sha": "40210c66282428655a9142ef1521048fbefd0394"
+        },
+        {
+          "path": "carr-library/src/carr_library/providers.py",
+          "sha": "d095586c56423b5ff272a381f5db8bc793277db5"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/assistant_dialog.py",
+          "sha": "d0535f844bebd1b1934a36cbd76f9e52e4a81489"
+        }
+      ],
+      "execution": "Required gates retained; execution claims are listed only in the evidence section, never inferred from a source mapping."
+    },
+    {
+      "id": "translation",
+      "scope": [
+        "V3-11",
+        "V3-20"
+      ],
+      "contract": "Retain Basic Google compatibility, Advanced v3 official authority/project/location/model/glossary and expiring credential binding, plus explicit local LibreTranslate through the same gateway/ledger. Structured books/chapters/ranges use current shared retained-source capture and per-section paid receipts; offline derivative export never upgrades quotation authority.",
+      "owners": [
+        "providers.py",
+        "assistant/translation.py",
+        "assistant/translation_local.py",
+        "assistant/translation_state.py",
+        "assistant/translation_structure.py",
+        "translation_cli.py",
+        "ui/translation_dialog.py",
+        "ui/translation_sources.py",
+        "reader/book_source.py"
+      ],
+      "gates": [
+        "tests/loopback/test_translation_local_adapter.py",
+        "tests/assistant/test_translation_structure.py",
+        "tests/storage/test_translation_structure_backup.py",
+        "tests/ui/test_translation_structure.py"
+      ],
+      "boundary": "Old alternate provider/translation records remain typed inert history; credentials and ledger-root approval are never automatically rebound. Native translation PASS at891 is separate from real paid/local engine language qualification.",
+      "owner_blobs": [
+        {
+          "path": "carr-library/src/carr_library/providers.py",
+          "sha": "d095586c56423b5ff272a381f5db8bc793277db5"
+        },
+        {
+          "path": "carr-library/src/carr_library/assistant/translation.py",
+          "sha": "14c9774cc8606a425846d20385bd80764a75da66"
+        },
+        {
+          "path": "carr-library/src/carr_library/assistant/translation_local.py",
+          "sha": "b9a56e2316bcb047ed630f4391536c5fad286a6a"
+        },
+        {
+          "path": "carr-library/src/carr_library/assistant/translation_state.py",
+          "sha": "d2febcbfa901a3aa378d19aceea970669113d624"
+        },
+        {
+          "path": "carr-library/src/carr_library/assistant/translation_structure.py",
+          "sha": "57acab2e773b62d2e24573ca234212557c11d669"
+        },
+        {
+          "path": "carr-library/src/carr_library/translation_cli.py",
+          "sha": "f3e0a1982bfa0ff803078a106cd736334a2ce5f4"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/translation_dialog.py",
+          "sha": "b0e4dd7704e9cbdb948d93409748f56325e0bd44"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/translation_sources.py",
+          "sha": "02e2c2b5eacbc691e770e104c3351a18d897e455"
+        },
+        {
+          "path": "carr-library/src/carr_library/reader/book_source.py",
+          "sha": "59ae04ed5efcb74542645ffcded2ea9aaddcaa92"
+        }
+      ],
+      "execution": "Required gates retained; execution claims are listed only in the evidence section, never inferred from a source mapping."
+    },
+    {
+      "id": "audio",
+      "scope": [
+        "V3-03",
+        "V3-04",
+        "V3-05",
+        "V3-12",
+        "V3-13",
+        "V3-14"
+      ],
+      "contract": "Keep current typed ProductionPlan, explicit literal/script modes, exact plan SHA completion receipts, prepared assets, bounded FFmpeg/RF64 scene rendering, role/track/master DSP and shared process ownership. Procedural, MusicGen, ACE-Step and FluidSynth are capabilities of current configured local adapters, not a second AudioRuntime.",
+      "owners": [
+        "audio/models.py",
+        "audio/production.py",
+        "audio/music.py",
+        "audio/ffmpeg.py",
+        "audio/engines.py",
+        "audio/runtime.py",
+        "audio/model_manifest.py",
+        "audio/capture_process.py",
+        "audio/windows_job.py",
+        "ui/audio_studio.py"
+      ],
+      "gates": [
+        "tests/audio/test_production.py",
+        "tests/audio/test_model_inventory.py",
+        "tests/audio/test_owned_audio_processes.py"
+      ],
+      "boundary": "Preserve FULL FFmpeg and current native family cleanup/installed provenance. Actual model weights, rights, neural originality and listening qualification remain independent.",
+      "owner_blobs": [
+        {
+          "path": "carr-library/src/carr_library/audio/models.py",
+          "sha": "9f57f54b1596dd532f7d1cacfea374003eb33579"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/production.py",
+          "sha": "5a4257866523115d0eca765fabead80c97eeb29d"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/music.py",
+          "sha": "38af31266ea2c01dff6f7b8b7526472663847b67"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/ffmpeg.py",
+          "sha": "e865a7e69e562d4375211773cfd0ae648f7f2e54"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/engines.py",
+          "sha": "b2d86c5235f3169a859d93780f3e43e589a4816c"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/runtime.py",
+          "sha": "4b8dd520d74375e3d9e43303fe971d5236ed44e6"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/model_manifest.py",
+          "sha": "9e2cb3346ff5439e35427bb1ba46236d093fe53d"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/capture_process.py",
+          "sha": "58befa85aab2ca65ef3ea3f2b0c471587ab2d93a"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/windows_job.py",
+          "sha": "64953a31f6949c9f85ff5a2c6426f6126715e473"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/audio_studio.py",
+          "sha": "69cef4a5401e8d6701ef3dcc773105895dd0c828"
+        }
+      ],
+      "execution": "Required gates retained; execution claims are listed only in the evidence section, never inferred from a source mapping."
+    },
+    {
+      "id": "studio-migration",
+      "scope": [
+        "V3-04",
+        "V3-05",
+        "V3-06"
+      ],
+      "contract": "Canonical schema1/2 Studio projects import explicitly as new current managed projects. Keep exact old JSON/hash, source anchor, representable role/scene/music/clip meaning and independent retained PCM; unsupported meaning is refused instead of dropped.",
+      "owners": [
+        "audio/legacy_project.py",
+        "audio/managed.py",
+        "audio/clips.py",
+        "ui/legacy_studio_import.py",
+        "audio/backup.py"
+      ],
+      "gates": [
+        "tests/audio/test_canonical_project_import.py"
+      ],
+      "boundary": "No archived executable/model, existing output permission or old alternate renderer is activated.",
+      "owner_blobs": [
+        {
+          "path": "carr-library/src/carr_library/audio/legacy_project.py",
+          "sha": "eb7d5a5858c63273e629461e40441a2f243d34d2"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/managed.py",
+          "sha": "b574fc7cfbffbd88d7705b325ff471486956d5a6"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/clips.py",
+          "sha": "26b5634d6c2f886a41b06968ddddfc2f4d554ee6"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/legacy_studio_import.py",
+          "sha": "a2587c4400ef85a606d6f2e940eb70c13dfeebcd"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/backup.py",
+          "sha": "4737a8abe42f52c46de876912e4c141db811e66c"
+        }
+      ],
+      "execution": "Required gates retained; execution claims are listed only in the evidence section, never inferred from a source mapping."
+    },
+    {
+      "id": "books",
+      "scope": [
+        "V3-04",
+        "V3-06",
+        "V3-13"
+      ],
+      "contract": "Ordered retained book/part plans use current shared ReadingDesk capture, immutable plan hashes, managed projects and production receipts. Current CLI and named UI preview expose text/landmark modes and measured post-render exact PCM-frame partitions. Accepted saved completions can be read/exported without the former runtime.",
+      "owners": [
+        "reader/book_source.py",
+        "audio/book_plan.py",
+        "audio/book_batch.py",
+        "audio/book_store.py",
+        "audio/book_audio.py",
+        "audio/book_export.py",
+        "audio/book_cli.py",
+        "audio/measured_audio.py",
+        "ui/book_batch_dialog.py"
+      ],
+      "gates": [
+        "tests/audio/test_book_batch.py",
+        "tests/audio/test_book_cli.py",
+        "tests/audio/test_book_duration_cli.py",
+        "tests/audio/test_measured_book_audio.py",
+        "tests/storage/test_book_audio_backup.py"
+      ],
+      "boundary": "Native book51 checks including measured PCM passed at891. Current source still needs exact-head gates; that result is not voice quality, ASR accuracy or multi-hour original neural synthesis.",
+      "owner_blobs": [
+        {
+          "path": "carr-library/src/carr_library/reader/book_source.py",
+          "sha": "59ae04ed5efcb74542645ffcded2ea9aaddcaa92"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/book_plan.py",
+          "sha": "c7514f1d717b3e4423b71be23ab4ee7b0236116a"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/book_batch.py",
+          "sha": "b432acddb33f73a0c38f25b40b5e18b79f05e1e7"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/book_store.py",
+          "sha": "313a99382ddd88eea97357f67fc4c51783095df0"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/book_audio.py",
+          "sha": "4c9cb21001e58cf779f5fe10187d9b06b5a50ebe"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/book_export.py",
+          "sha": "2bd654579fc32f337f54fb647f424f534f8f0b74"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/book_cli.py",
+          "sha": "4feef05b42ba6434d9cd3b12e51213584df36d83"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/measured_audio.py",
+          "sha": "940ffb3cb7dc1b2682a7876252176ae35f3ec3dc"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/book_batch_dialog.py",
+          "sha": "3e56b9b89103b144f7a53cecfb50c91ab93a6e42"
+        }
+      ],
+      "execution": "Required gates retained; execution claims are listed only in the evidence section, never inferred from a source mapping."
+    },
+    {
+      "id": "publication",
+      "scope": [
+        "V3-04",
+        "V3-06",
+        "V3-13"
+      ],
+      "contract": "Use current EPUB3/DAISY/measured PCM publication owner, completion-bound plans, no-clobber destination approval, postcommit receipts and independent validators. Existing media-overlay reading and portable publication state remain in the same library/player.",
+      "owners": [
+        "audio/publishing.py",
+        "audio/measured_audio.py",
+        "reader/publication_state.py",
+        "ui/media_overlay_dialog.py"
+      ],
+      "gates": [
+        "tests/audio/test_publication.py",
+        "tests/audio/test_publication_acceptance.py",
+        "tests/audio/test_publication_cleanup.py",
+        "tests/reader/test_publication_state.py"
+      ],
+      "boundary": "Independent EPUBCheck/DAISY results qualify only the exact tested artifacts. A validator adapter or filter list is not the whole studio or format qualification.",
+      "owner_blobs": [
+        {
+          "path": "carr-library/src/carr_library/audio/publishing.py",
+          "sha": "170780d857610ca76d9ca6df385dbf909a1e5347"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/measured_audio.py",
+          "sha": "940ffb3cb7dc1b2682a7876252176ae35f3ec3dc"
+        },
+        {
+          "path": "carr-library/src/carr_library/reader/publication_state.py",
+          "sha": "4007b54c02c3dcfe08b8b7580b4da638b12c6f3e"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/media_overlay_dialog.py",
+          "sha": "1dbd559a88c5a2873a6d00a8500ae6c5c05b52b8"
+        }
+      ],
+      "execution": "Required gates retained; execution claims are listed only in the evidence section, never inferred from a source mapping."
+    },
+    {
+      "id": "backup",
+      "scope": [
+        "V3-06",
+        "V3-07"
+      ],
+      "contract": "Keep explicit current/historical manifest dispatch, exact DB/source validation, read-only verify, cancellation, pending request/profile derivation, complete typed producers and current native lock order. Legacy common-v4/legacy-v5 data retain raw bytes/provenance without turning old settings into active providers or runtimes.",
+      "owners": [
+        "library_backup.py",
+        "pending_backup.py",
+        "backup_historical.py",
+        "backup_legacy_state.py",
+        "backup_capacity.py",
+        "backup_files.py",
+        "incremental_backup.py"
+      ],
+      "gates": [
+        "tests/storage/test_backup_v3_compatibility.py",
+        "tests/storage/test_backup_assistant_state.py",
+        "tests/storage/test_large_source_backup.py"
+      ],
+      "boundary": "Current authenticated independent Vault snapshots/chunk reuse preserve PR173 behavior. The different PR152 chained-layer archive is not silently accepted as a current snapshot.",
+      "owner_blobs": [
+        {
+          "path": "carr-library/src/carr_library/library_backup.py",
+          "sha": "6e26a6f4255d34ffc2a48bae107b1a0ab9f3d76a"
+        },
+        {
+          "path": "carr-library/src/carr_library/pending_backup.py",
+          "sha": "39a8f1c97091730cc4101516c84b2e90b995523a"
+        },
+        {
+          "path": "carr-library/src/carr_library/backup_historical.py",
+          "sha": "fcfa6f3ebd0c5182c63499310cf33588cbd5a5a7"
+        },
+        {
+          "path": "carr-library/src/carr_library/backup_legacy_state.py",
+          "sha": "86503944ff2b4e39756895594e5eee6956caee4f"
+        },
+        {
+          "path": "carr-library/src/carr_library/backup_capacity.py",
+          "sha": "e281ab50c9c34d104367c9765d0585f5b004e68f"
+        },
+        {
+          "path": "carr-library/src/carr_library/backup_files.py",
+          "sha": "0073abbd4b6b7bb85421d6e6a4a79cd59f0ce972"
+        },
+        {
+          "path": "carr-library/src/carr_library/incremental_backup.py",
+          "sha": "e16835c93efb97776b82c58d89f17a724318a93a"
+        }
+      ],
+      "execution": "Required gates retained; execution claims are listed only in the evidence section, never inferred from a source mapping."
+    },
+    {
+      "id": "transcription",
+      "scope": [
+        "V3-20"
+      ],
+      "contract": "The supplied worker/protocol remains the only ASR engine path. Current immutable relative input jobs, selected complete runtime manifest, shared broker/worker lock, hardened completion authority, history and independent exports remain. Canonical archived ASR can be preserved and explicitly prepared as a new current job without accepting its old running/completed flags.",
+      "owners": [
+        "transcription_service.py",
+        "transcription_state.py",
+        "transcription_receipt.py",
+        "transcription_backup.py",
+        "transcription_exports.py",
+        "transcription_cli.py",
+        "legacy_transcription.py",
+        "legacy_transcription_schema.py",
+        "ui/transcription_dialog.py",
+        "ui/legacy_transcription.py"
+      ],
+      "gates": [
+        "tests/test_transcription_receipt.py",
+        "tests/storage/test_transcription_backup.py",
+        "tests/storage/test_legacy_transcription_recovery.py",
+        "tests/ui/test_legacy_transcription_recovery.py"
+      ],
+      "boundary": "Root869 fixes undecodable original bytes in historical ASR preservation. No private worker/model/jobs are published; actual inference and quality need reviewed supplied runtime/weights. Reviewed candidate 8236 closes the assistant workflow source gap through this same service, without replacing the standalone UI/CLI.",
+      "owner_blobs": [
+        {
+          "path": "carr-library/src/carr_library/transcription_service.py",
+          "sha": "3369c3eeb27be58d037b932c295b4e8a2a8af132"
+        },
+        {
+          "path": "carr-library/src/carr_library/transcription_state.py",
+          "sha": "99989c1b4b1b61f8a4b6762de4ef66425c7741e3"
+        },
+        {
+          "path": "carr-library/src/carr_library/transcription_receipt.py",
+          "sha": "12ad267c7964bbc9751aea9b7c370ad971fb7914"
+        },
+        {
+          "path": "carr-library/src/carr_library/transcription_backup.py",
+          "sha": "661b2c96204afffb304c7d2ee09fa4896f82cf18"
+        },
+        {
+          "path": "carr-library/src/carr_library/transcription_exports.py",
+          "sha": "4fe3eca967d818cfc2fefb80ea52a47f8222bc70"
+        },
+        {
+          "path": "carr-library/src/carr_library/transcription_cli.py",
+          "sha": "699550912feed1051f53d9f7b374fafb67d858c3"
+        },
+        {
+          "path": "carr-library/src/carr_library/legacy_transcription.py",
+          "sha": "d25f60182dbfe3749c0694708ba9842d3723bc28"
+        },
+        {
+          "path": "carr-library/src/carr_library/legacy_transcription_schema.py",
+          "sha": "9945748591aaedae407f23454163e0d1685eee08"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/transcription_dialog.py",
+          "sha": "867485146bcb90a60fab3ee23163d6c8f5626e8e"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/legacy_transcription.py",
+          "sha": "9001a158e6c0996cdb2725f9692153d27fcf57ef"
+        }
+      ],
+      "execution": "Required gates retained; execution claims are listed only in the evidence section, never inferred from a source mapping.",
+      "reviewed_additions": [
+        "canonical-assistant-transcription-tool"
+      ]
+    },
+    {
+      "id": "research",
+      "scope": [
+        "V3-06",
+        "V3-08"
+      ],
+      "contract": "Preserve canonical catalog/evidence/academic export semantics, approved destination snapshots and completed-write receipts. Current exporter is canonical logic with shared native metadata helpers; retain extra editable DOCX citation documents/regeneration and pinned QuickJS custom CSL. Citation credit is now byte-identical canonical shell.",
+      "owners": [
+        "research/export_file.py",
+        "catalog/read_views.py",
+        "citations/csl.py",
+        "citations/bibliography_workbench.py",
+        "citations/documents.py",
+        "citations/regeneration.py",
+        "ui/academic_actions.py",
+        "ui/desktop_evidence_panel.py",
+        "ui/workspace_shell.py"
+      ],
+      "gates": [
+        "tests/reader/test_export_reconciliation.py",
+        "tests/reader/test_export_publication_boundary.py",
+        "tests/ui/test_desktop_evidence_jobs.py"
+      ],
+      "boundary": "No fabricated printed page/quotation authority is inferred from a conversion or language derivative. Actual evidence Save rejection guards are retained from canonical via c6f6080.",
+      "owner_blobs": [
+        {
+          "path": "carr-library/src/carr_library/research/export_file.py",
+          "sha": "9ab449497836d32b9623a96ddcc7dbb06337aa55"
+        },
+        {
+          "path": "carr-library/src/carr_library/catalog/read_views.py",
+          "sha": "ea78c56db8ad5ace49167e55789419e227b53943"
+        },
+        {
+          "path": "carr-library/src/carr_library/citations/csl.py",
+          "sha": "7145d04ef689a5b5d12955ceb1482c29c0d14de6"
+        },
+        {
+          "path": "carr-library/src/carr_library/citations/bibliography_workbench.py",
+          "sha": "912ae43318a5268cf9eb922ac511e235b5302ef3"
+        },
+        {
+          "path": "carr-library/src/carr_library/citations/documents.py",
+          "sha": "2b0615c354552cac13562652450f97612e86a2b2"
+        },
+        {
+          "path": "carr-library/src/carr_library/citations/regeneration.py",
+          "sha": "cd9239f80ee3fc95326a23d3447f07f4a344c445"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/academic_actions.py",
+          "sha": "25b5afbd1d4ab8ad2cea521bcb043e2da748c954"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/desktop_evidence_panel.py",
+          "sha": "ba1b3e4cfe3c70435ab30243919350ab226d085c"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/workspace_shell.py",
+          "sha": "c4ce2664d585bf36f2911695f8f6632499218381"
+        }
+      ],
+      "execution": "Required gates retained; execution claims are listed only in the evidence section, never inferred from a source mapping."
+    },
+    {
+      "id": "documents",
+      "scope": [
+        "V3-01",
+        "V3-02",
+        "V3-10"
+      ],
+      "contract": "Use existing bounded static readers and owned ingest supervisor. Retain explicit selected Pandoc RTF, current Tesseract/model-pack raster OCR, guarded selected LibreOffice filters and selected self-contained Calibre. The thirteen finite legacy suffixes have selected adapter routes; protected, unsafe or unrepresentable content still fails.",
+      "owners": [
+        "conversion/service.py",
+        "conversion/worker.py",
+        "conversion/capabilities.py",
+        "conversion/adapters.py",
+        "conversion/office.py",
+        "conversion/calibre.py",
+        "extract/document_formats_xml.py",
+        "extract/ocr_runtime.py",
+        "extract/ocr_model_store.py",
+        "extract/ocr_languages.py",
+        "ui/document_conversion.py"
+      ],
+      "gates": [
+        "tests/conversion/test_conversion.py",
+        "tests/conversion/test_selected_adapters.py",
+        "tests/conversion/test_office_selection.py",
+        "tests/conversion/test_calibre_selection.py",
+        "tests/extract/test_ocr_runtime.py"
+      ],
+      "boundary": "Registry availability means an implementation/selected-runtime path, not per-file fidelity, every language OCR acceptance, DRM handling or automatic tool installation.",
+      "owner_blobs": [
+        {
+          "path": "carr-library/src/carr_library/conversion/service.py",
+          "sha": "471b663446dde44d2aaffbfe8d72bb6e635295be"
+        },
+        {
+          "path": "carr-library/src/carr_library/conversion/worker.py",
+          "sha": "f095f56ad5352730a81471235362f1fcd3d535b8"
+        },
+        {
+          "path": "carr-library/src/carr_library/conversion/capabilities.py",
+          "sha": "1d0e23a98e2eee6827ec9f4f33e9eb13a314a903"
+        },
+        {
+          "path": "carr-library/src/carr_library/conversion/adapters.py",
+          "sha": "c5d82bcc45700b4b6f3ee03771ebbfa6166ccdfd"
+        },
+        {
+          "path": "carr-library/src/carr_library/conversion/office.py",
+          "sha": "20401b2193818a4e86ab4e859cab628ed0cdcfa0"
+        },
+        {
+          "path": "carr-library/src/carr_library/conversion/calibre.py",
+          "sha": "e3fa25f98940ce6c775ad069193c21f0331b0b82"
+        },
+        {
+          "path": "carr-library/src/carr_library/extract/document_formats_xml.py",
+          "sha": "a09bc00a438e14ee631978498884961e8e396f00"
+        },
+        {
+          "path": "carr-library/src/carr_library/extract/ocr_runtime.py",
+          "sha": "511e571ea2cecdba3882769be6364f2055f14f42"
+        },
+        {
+          "path": "carr-library/src/carr_library/extract/ocr_model_store.py",
+          "sha": "a77d6d5e3042c0f2ddd2b7b5b8831dc6d5e8a79d"
+        },
+        {
+          "path": "carr-library/src/carr_library/extract/ocr_languages.py",
+          "sha": "15233ebe533b6a7d25c4b9e0bb7d0dc38e17a43b"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/document_conversion.py",
+          "sha": "32b7c945b56968750af0468ca063d9612cba2bd8"
+        }
+      ],
+      "execution": "Required gates retained; execution claims are listed only in the evidence section, never inferred from a source mapping."
+    },
+    {
+      "id": "reading",
+      "scope": [
+        "V3-02",
+        "V3-03",
+        "V3-06"
+      ],
+      "contract": "Keep current ReadingDesk authority, immutable source/page anchors, bounded fragment source capture, source-file launch review and exact bookmarks. Canonical reading/session envelopes and histories import with original provenance and DB binding, not fabricated active permission. Current large TXT profile alone may extend late source ordinals.",
+      "owners": [
+        "reader/reading_desk.py",
+        "reader/reading_state.py",
+        "reader/source_file.py",
+        "reader/book_source.py",
+        "reader/legacy_reading.py",
+        "reader/narration.py",
+        "reader/narration_text.py",
+        "ui/source_launch.py",
+        "ui/reading_desk.py",
+        "ui/narration_editor.py"
+      ],
+      "gates": [
+        "tests/reader/test_reading_state.py",
+        "tests/reader/test_legacy_reading_import.py",
+        "tests/reader/test_book_source.py",
+        "tests/ui/test_source_launch.py"
+      ],
+      "boundary": "PDF attestation only extracts the same render-fingerprint algorithm into a caller-held document helper; printed-page and reviewed OCR authority are unchanged.",
+      "owner_blobs": [
+        {
+          "path": "carr-library/src/carr_library/reader/reading_desk.py",
+          "sha": "7b4c490e28567cc15a135aafb434d655345f2292"
+        },
+        {
+          "path": "carr-library/src/carr_library/reader/reading_state.py",
+          "sha": "45264b0e8367a8cd36c0fc5bee0bf6562e26c749"
+        },
+        {
+          "path": "carr-library/src/carr_library/reader/source_file.py",
+          "sha": "91d9d956f26ad736fb0f5394b9a61e6a770e9bc1"
+        },
+        {
+          "path": "carr-library/src/carr_library/reader/book_source.py",
+          "sha": "59ae04ed5efcb74542645ffcded2ea9aaddcaa92"
+        },
+        {
+          "path": "carr-library/src/carr_library/reader/legacy_reading.py",
+          "sha": "1bc88f5a9f821df8e749a75559757a0701d435fb"
+        },
+        {
+          "path": "carr-library/src/carr_library/reader/narration.py",
+          "sha": "e9dcd5f7eb06120ca24e543133983980b1ded9ae"
+        },
+        {
+          "path": "carr-library/src/carr_library/reader/narration_text.py",
+          "sha": "989922d0495ffa07ad3e6404a6496d2fc7ecd87f"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/source_launch.py",
+          "sha": "97a8306412a39a67a52da671642c53e582811b8a"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/reading_desk.py",
+          "sha": "b5781ed4613f0bf2de84c9db40c05c4ade9d5531"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/narration_editor.py",
+          "sha": "740bcb5c69e1f02d893fa52a363aadde6a1746e0"
+        }
+      ],
+      "execution": "Required gates retained; execution claims are listed only in the evidence section, never inferred from a source mapping."
+    },
+    {
+      "id": "voice",
+      "scope": [
+        "V3-02",
+        "V3-03",
+        "V3-19",
+        "V3-21"
+      ],
+      "contract": "Keep current engines/SAPI/local selected dordiai registry and per-language capability statuses. Reader pronunciation remains language/voice scoped with isolated bounded regex expansion; explicit finite normalization, spelling, appearance and live-source guards use the current narration/live-reading owner.",
+      "owners": [
+        "audio/engines.py",
+        "audio/dordiai_discovery.py",
+        "runtime_settings.py",
+        "reader/narration.py",
+        "reader/pronunciation_worker.py",
+        "reader/speech_normalization.py",
+        "reader/spellcheck.py",
+        "reader/appearance.py",
+        "reader/live_speech.py",
+        "ui/live_reading.py"
+      ],
+      "gates": [
+        "tests/reader/test_scoped_pronunciation.py",
+        "tests/ui/test_pronunciation_preview.py"
+      ],
+      "boundary": "Do not add the alternate speech framework. Exact canonical comtypes notice/provenance is preserved as historical documentation, not activated as a current native profile. SAPI4/voice cloning/135-language quality require separate evidence.",
+      "owner_blobs": [
+        {
+          "path": "carr-library/src/carr_library/audio/engines.py",
+          "sha": "b2d86c5235f3169a859d93780f3e43e589a4816c"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/dordiai_discovery.py",
+          "sha": "950cb851039120f4b2051154dfd0a837db74eac3"
+        },
+        {
+          "path": "carr-library/src/carr_library/runtime_settings.py",
+          "sha": "7203b6cf0e0a55253ce2259e9fb2db8579d2b3b7"
+        },
+        {
+          "path": "carr-library/src/carr_library/reader/narration.py",
+          "sha": "e9dcd5f7eb06120ca24e543133983980b1ded9ae"
+        },
+        {
+          "path": "carr-library/src/carr_library/reader/pronunciation_worker.py",
+          "sha": "0881666d6667d15ae95448c2c929d15a22ae5065"
+        },
+        {
+          "path": "carr-library/src/carr_library/reader/speech_normalization.py",
+          "sha": "dc3606898c399b433b4064570186118920c94262"
+        },
+        {
+          "path": "carr-library/src/carr_library/reader/spellcheck.py",
+          "sha": "acbf7fd69c4ca2ba0e63b48bf774607d92338f6a"
+        },
+        {
+          "path": "carr-library/src/carr_library/reader/appearance.py",
+          "sha": "96e32996b76239281a7b7afa3d4220d667e6f8e3"
+        },
+        {
+          "path": "carr-library/src/carr_library/reader/live_speech.py",
+          "sha": "d46def0c23c50b2e3b1db9163b8d070b5cb0fe7d"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/live_reading.py",
+          "sha": "8e48c857eff3a02c5064199dcfc2a94e7d05308a"
+        }
+      ],
+      "execution": "Required gates retained; execution claims are listed only in the evidence section, never inferred from a source mapping."
+    },
+    {
+      "id": "queue",
+      "scope": [
+        "V3-05",
+        "V3-06"
+      ],
+      "contract": "Persist the current managed queue with independent checksum-named PCM, exact native pins, labels, historical/observed coordinate kinds, Save All/close settlement and explicit current device selection. Old canonical queues gain typed 32GiB referenced-input preservation and explicit import-as-new through the same PlaylistStore; no alternate player.",
+      "owners": [
+        "audio/playlist.py",
+        "audio/player.py",
+        "audio/playback.py",
+        "audio/playback_processing.py",
+        "audio/legacy_playlist.py",
+        "audio/legacy_playlist_state.py",
+        "ui/playback_queue.py",
+        "ui/legacy_playlist.py"
+      ],
+      "gates": [
+        "tests/audio/test_managed_playback_queue.py",
+        "tests/ui/test_managed_playback_queue.py",
+        "tests/storage/test_legacy_playlist_backup.py",
+        "tests/audio/test_legacy_playlist.py",
+        "tests/ui/test_legacy_playlist_controls.py",
+        "tests/storage/test_legacy_playlist_acceptance.py"
+      ],
+      "boundary": "Archived PCM8/16/24/32 is preserved; current explicit importer admits PCM16 up to384kHz and refuses others for separate conversion. No autoplay or device/timer restoration. New513MiB/native lanes remain NOT_RUN until exact CI.",
+      "owner_blobs": [
+        {
+          "path": "carr-library/src/carr_library/audio/playlist.py",
+          "sha": "fd3fa28661017b9bec24ad5d9426f9ba9c5b2cbb"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/player.py",
+          "sha": "ac0118863edc2b33102731695ec4312660f7ae36"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/playback.py",
+          "sha": "b9e125ca6a7bad1c52e9f65fd4cf28633fcbe0ff"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/playback_processing.py",
+          "sha": "b139f6455be6a5661678498de52608eb7fe4e1e3"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/legacy_playlist.py",
+          "sha": "42b9d2d159b747699059de52bbaa3aadb4fd4df5"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/legacy_playlist_state.py",
+          "sha": "ebdafae89966fee7bd6321abae0543222516ecbe"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/playback_queue.py",
+          "sha": "8584109ed7519fabaaaf5d125b666e1ac265519c"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/legacy_playlist.py",
+          "sha": "034699ad804a4649f9d04a88cf9ddbd7ada93291"
+        }
+      ],
+      "execution": "Required gates retained; execution claims are listed only in the evidence section, never inferred from a source mapping."
+    },
+    {
+      "id": "resources",
+      "scope": [
+        "V3-07",
+        "V3-09",
+        "V3-13",
+        "V3-20"
+      ],
+      "contract": "Reuse canonical ResourceBroker/native lock behavior through current _state and exact local policy. Keep actual current-store Tasks facade, bounded/redacted metadata, stable native selection, one shared budget/admission owner and live-only leases. Read-only reservations carry no disk path when disk_bytes is zero.",
+      "owners": [
+        "operations/models.py",
+        "operations/_locks.py",
+        "operations/_state.py",
+        "operations/broker.py",
+        "operations/admission.py",
+        "operations/facade.py",
+        "operations_cli.py",
+        "ui/operations_dialog.py"
+      ],
+      "gates": [
+        "tests/operations/test_resources.py"
+      ],
+      "boundary": "Recorded completion is different from reverified outputs. Do not invent pause/kill capability for a renderer that has no durable controller.",
+      "owner_blobs": [
+        {
+          "path": "carr-library/src/carr_library/operations/models.py",
+          "sha": "2cbf7ebddfa4492ca2b0774a1cf9e6be42f915af"
+        },
+        {
+          "path": "carr-library/src/carr_library/operations/_locks.py",
+          "sha": "a561c5608bb623ba1968a8ba8cbb4ea7f30095ed"
+        },
+        {
+          "path": "carr-library/src/carr_library/operations/_state.py",
+          "sha": "b9dbe94ba9f4e2f8dc4a6b637e344f44abceb91b"
+        },
+        {
+          "path": "carr-library/src/carr_library/operations/broker.py",
+          "sha": "7a472bcc07a8f0de289e0f278fd9f7747728a3da"
+        },
+        {
+          "path": "carr-library/src/carr_library/operations/admission.py",
+          "sha": "934cbdd5bc02b824155d53a658061a70b938b010"
+        },
+        {
+          "path": "carr-library/src/carr_library/operations/facade.py",
+          "sha": "e8ba79d2b93340823d2b4687a2060efd0fc6e33f"
+        },
+        {
+          "path": "carr-library/src/carr_library/operations_cli.py",
+          "sha": "0ff177983859a801cf100a9fd8548a7586004f97"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/operations_dialog.py",
+          "sha": "826b5198147993e68df8f0f4dc255625085a02d9"
+        }
+      ],
+      "execution": "Required gates retained; execution claims are listed only in the evidence section, never inferred from a source mapping."
+    },
+    {
+      "id": "progress",
+      "scope": [
+        "V3-06",
+        "V3-10",
+        "V3-19"
+      ],
+      "contract": "Use current ProgressHub, persisted explicit voice/quiet preferences, actual measured/indeterminate units and shared media quiet hold. Observer failures cannot cancel committed business work. All drafts/queue participants use the completion-aware SaveCoordinator, not a second save framework.",
+      "owners": [
+        "progress.py",
+        "progress_audio.py",
+        "ui/operation_progress.py",
+        "ui/save_all.py",
+        "legacy_ui_preferences.py"
+      ],
+      "gates": [
+        "tests/ui/test_save_all.py"
+      ],
+      "boundary": "Native progress and earlier Save All evidence remain exact-run scoped; synthetic status callbacks alone do not prove NVDA or physical audio.",
+      "owner_blobs": [
+        {
+          "path": "carr-library/src/carr_library/progress.py",
+          "sha": "5d4faf5ede53bec754ea6c7c535218c000f80f0c"
+        },
+        {
+          "path": "carr-library/src/carr_library/progress_audio.py",
+          "sha": "293a036a332693a3b4ceedb4fbb80476e2e4dac5"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/operation_progress.py",
+          "sha": "c9f0f590d88ea49fb25bd12ace9dccb0693eac14"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/save_all.py",
+          "sha": "41de9f19a7fc7ddefbe03cc85bf2369fc32c4218"
+        },
+        {
+          "path": "carr-library/src/carr_library/legacy_ui_preferences.py",
+          "sha": "4f9c1006eefac6101d78913e1443e57e68d8f879"
+        }
+      ],
+      "execution": "Required gates retained; execution claims are listed only in the evidence section, never inferred from a source mapping."
+    },
+    {
+      "id": "profiles",
+      "scope": [
+        "V3-03",
+        "V3-11",
+        "V3-12",
+        "V3-21"
+      ],
+      "contract": "Machine-local EngineProfileStore persists explicit selected complete manifest identities and readmits them before engine use. Exact schema1 bytes are preserved inert on explicit registration; current schema2 profile review remains the execution authority. Runtime paths/secrets are excluded from portable active backups.",
+      "owners": [
+        "runtime_settings.py",
+        "audio/model_manifest.py",
+        "audio/dordiai_discovery.py",
+        "ui/engine_settings.py"
+      ],
+      "gates": [
+        "tests/audio/test_model_inventory.py"
+      ],
+      "boundary": "Archived executable paths, old model declarations and prior voice/device configuration are not execution approval.",
+      "owner_blobs": [
+        {
+          "path": "carr-library/src/carr_library/runtime_settings.py",
+          "sha": "7203b6cf0e0a55253ce2259e9fb2db8579d2b3b7"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/model_manifest.py",
+          "sha": "9e2cb3346ff5439e35427bb1ba46236d093fe53d"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/dordiai_discovery.py",
+          "sha": "950cb851039120f4b2051154dfd0a837db74eac3"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/engine_settings.py",
+          "sha": "0d6c2466ee07e73c42809b56b68277aa3953f1db"
+        }
+      ],
+      "execution": "Required gates retained; execution claims are listed only in the evidence section, never inferred from a source mapping."
+    },
+    {
+      "id": "retrieval",
+      "scope": [
+        "V3-07",
+        "V3-08"
+      ],
+      "contract": "Keep current exact catalog filter selection, literal/semantic source guards and paginated federated windows. Cursors bind query, ordered selected roots, scope and revision; sparse windows and finite continuation stay visible in current CLI/native UI.",
+      "owners": [
+        "catalog/read_views.py",
+        "search/pagination.py",
+        "search/federated.py",
+        "search/literal.py",
+        "search/thematic.py",
+        "semantic.py",
+        "ui/federated_search.py"
+      ],
+      "gates": [
+        "tests/search/test_federated_pagination.py",
+        "tests/ui/test_federated_search.py",
+        "tests/search/test_semantic_cache_boundary.py"
+      ],
+      "boundary": "Do not replace corpus capacity with cache-row count, discard selection after a failed page, or silently restart a stale cursor.",
+      "owner_blobs": [
+        {
+          "path": "carr-library/src/carr_library/catalog/read_views.py",
+          "sha": "ea78c56db8ad5ace49167e55789419e227b53943"
+        },
+        {
+          "path": "carr-library/src/carr_library/search/pagination.py",
+          "sha": "f11ca1e01ef95130474d8c1d9a4a125d6a0ae9f1"
+        },
+        {
+          "path": "carr-library/src/carr_library/search/federated.py",
+          "sha": "b14abd43234a56e081d4e7d33e7dcf1a24de9a3e"
+        },
+        {
+          "path": "carr-library/src/carr_library/search/literal.py",
+          "sha": "810a814174d0daece99aef739911b078e6709710"
+        },
+        {
+          "path": "carr-library/src/carr_library/search/thematic.py",
+          "sha": "5a526259eb764b2f2a940d491802c4f903344487"
+        },
+        {
+          "path": "carr-library/src/carr_library/semantic.py",
+          "sha": "7e582dbfbbdc1bd6e670503785fcc798989fb70f"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/federated_search.py",
+          "sha": "0f0599735991baae6f55eacefe075074d90df513"
+        }
+      ],
+      "execution": "Required gates retained; execution claims are listed only in the evidence section, never inferred from a source mapping."
+    }
+  ],
+  "decisions": [
+    {
+      "path": "carr-library/src/carr_library/__init__.py",
+      "canonical_blob": "ee09576cfebe843794b34e7609dd3bb1b86b59a0",
+      "selected_blob": "e1c00d8eef35e3406c7bf4240adea8fd61a2793f",
+      "decision": "select_current_coherent_source_version_dev3",
+      "contracts": [
+        "desktop"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/__main__.py",
+      "canonical_blob": "1a668e92de24009bed30cbd52bca3ceac44e6d86",
+      "selected_blob": "f5c7da411569cfabed560530997f77a2f0580740",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "desktop"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/application.py",
+      "canonical_blob": "b9dc0ffe1c1c8e3b6d465282c3eb45f8e0f41aa0",
+      "selected_blob": "2c709aec25e5e31a58735eb8ce82608dfe2243c2",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "ingest"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/__init__.py",
+      "canonical_blob": "8a72ea3eadbc2c1defdc0ae10a074f37d4d4370b",
+      "selected_blob": "6686f8a0eb25f839ac8a1f9b168b942040552cf0",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "assistant"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/backup_receipt.py",
+      "canonical_blob": "cb8060e432351e99c6f28afd45626813e35c308e",
+      "selected_blob": "c910e27846421c544dc5b362b13c14c4d62c9c0d",
+      "decision": "select_current_plus_exact_canonical_reattest_and_quiet_native_final_pins",
+      "contracts": [
+        "backup-receipt"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/credentials.py",
+      "canonical_blob": "12601a8e6ba34b791b524fa14934144f07dfd493",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "translation",
+        "planning"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/llm.py",
+      "canonical_blob": "ee73d023bc8bb8932239a4e569f6a5e812dcf1a5",
+      "selected_blob": "b13d0e52bffc7dff0117e688f8d05b5460d77589",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "planning"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/models.py",
+      "canonical_blob": "1700d0191b4a27b09d18bb6e231b822cf183bd8a",
+      "selected_blob": "ce65c3debd8f7de9ff057fbca2fdfc8e938bb516",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "assistant"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": "Canonical audio.transcribe tool is still being adapted through the current supplied ASR owner; do not claim complete workflow equivalence before that candidate and its gates."
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/planner.py",
+      "canonical_blob": "6d6f6a23a66a3f6bda1f33ec5e90575144cd47e6",
+      "selected_blob": "b57c81244458e8bf9d19c8d8d5e1fbf8a6ede316",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "assistant"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": "Canonical audio.transcribe tool is still being adapted through the current supplied ASR owner; do not claim complete workflow equivalence before that candidate and its gates."
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/profiles.py",
+      "canonical_blob": "68ebee4c87963b6c0728be5dc2e2e82f0c79d7fa",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "translation",
+        "planning"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/providers.py",
+      "canonical_blob": "b46ad52dad1c034ab79c2c333cf33354225abc79",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "translation",
+        "planning"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/service.py",
+      "canonical_blob": "946a1a28ced7de30d97893e7edb8b01333b986c1",
+      "selected_blob": "9e174958e93d9c9ff474589e61ea07bbca9202c2",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "assistant"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": "Canonical audio.transcribe tool is still being adapted through the current supplied ASR owner; do not claim complete workflow equivalence before that candidate and its gates."
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/state.py",
+      "canonical_blob": "e9463dac5276c18dda007281220501f6dc7a9174",
+      "selected_blob": "c1d9ee152ec5b05bc666fd9b4dbd19334d572763",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "assistant"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation.py",
+      "canonical_blob": "485da14ea15b3ce10b68217a1b42ac9ee872f330",
+      "selected_blob": "14c9774cc8606a425846d20385bd80764a75da66",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "translation",
+        "planning"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_cli.py",
+      "canonical_blob": "eadf1f502df05f3db7ff998c28fcea98f3573423",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "translation",
+        "planning"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/__init__.py",
+      "canonical_blob": "2346d1b0b458b392f0289da2cc692aa5da7ea87e",
+      "selected_blob": "fa4f87daacff1691f322fa3f67ea92bf0983dd50",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "audio",
+        "studio-migration"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/dsp.py",
+      "canonical_blob": "d33bc8d32751794fa24b7cf2ffa9c7e26b38e351",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "audio",
+        "studio-migration"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/models.py",
+      "canonical_blob": "085587e46381a5b2db17dd75fa8b7b793f4094d1",
+      "selected_blob": "9f57f54b1596dd532f7d1cacfea374003eb33579",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "audio",
+        "studio-migration"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/music.py",
+      "canonical_blob": "5b2f7982d11adf7be7dca1e481c34a215ec28ff4",
+      "selected_blob": "38af31266ea2c01dff6f7b8b7526472663847b67",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "audio",
+        "studio-migration"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/process.py",
+      "canonical_blob": "c05538de93ec0b5a85f2955ca0d2b58670d7a186",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "audio",
+        "resources"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/audio_runtime.py",
+      "canonical_blob": "23b08b9f4d50f67c7216156869a4e41b3dde65cb",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "audio",
+        "studio-migration"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_generated.py",
+      "canonical_blob": "4c4a2741eb7c2e9a5725604551834e5c2a9fb947",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "backup"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_producers.py",
+      "canonical_blob": "ea6c5c8b195ec5e4bce874c051d10d71df61cba4",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "backup"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_sidecars.py",
+      "canonical_blob": "a3e0c46a11f86c576ca98d4190b1248b505c00dc",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "backup"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_transcription.py",
+      "canonical_blob": "245ac2aab7a40e12a53008c0f72a45b5912c59f2",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "transcription",
+        "backup"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/bibliography_cli.py",
+      "canonical_blob": "5bb69732806e588cdb7973be465c42d2cba5dddf",
+      "selected_blob": "71bbef780ac92db2dc5b8432b898804021534bdc",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "research"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/read_views.py",
+      "canonical_blob": "84b9a28698f3b65f69c880fc3a10de11cdb3c864",
+      "selected_blob": "ea78c56db8ad5ace49167e55789419e227b53943",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "research",
+        "retrieval"
+      ],
+      "source_review": "Fresh full diff: exact scope/filter SQL moved into _selection for both browse and pagination; browse keeps default/maximum500 bound and ordered authors.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/citations/bibliography_workbench.py",
+      "canonical_blob": "8fea042e38c4d4de9f7cb1f0a8d085f6a44ccaba",
+      "selected_blob": "912ae43318a5268cf9eb922ac511e235b5302ef3",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "research"
+      ],
+      "source_review": "Fresh full diff: canonical workflow retained with additive docx-citations export and regenerate_document; completed writer receipt behavior is unchanged.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/citations/csl.py",
+      "canonical_blob": "2c193f6c8778ea82d0bae76c4859e0f635598a08",
+      "selected_blob": "7145d04ef689a5b5d12955ceb1482c29c0d14de6",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "research"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/__init__.py",
+      "canonical_blob": "1a8682019ba188a87b68f3b695231320ce7e32dd",
+      "selected_blob": "50d168925c3f9548ec6b72a234e152301ccea7e6",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "documents"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/formats.py",
+      "canonical_blob": "2f9a872ea655c7fdadc386ff9fd2a5d66166cf65",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "documents"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/models.py",
+      "canonical_blob": "8b1a6611082e157f8b864ee004310ad89b473e60",
+      "selected_blob": "eedd0780c167f101b7493f0186fc406739c95f0e",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "documents"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/service.py",
+      "canonical_blob": "63c754ef00bb1cd5e0dd56077078e5e1408d623c",
+      "selected_blob": "471b663446dde44d2aaffbfe8d72bb6e635295be",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "documents"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/worker.py",
+      "canonical_blob": "db0ef1a4e617f2001e2f78e0d073bb1b15f1baf1",
+      "selected_blob": "f095f56ad5352730a81471235362f1fcd3d535b8",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "documents"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/delivery_contract.py",
+      "canonical_blob": "90163967acd50760bf15e8a98b74e0bd76aa63f2",
+      "selected_blob": "dbba328488f5d17daf27ef87aa140411052a375a",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "desktop"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/durable_state.py",
+      "canonical_blob": "030ecb184c76c17bc0913758d7ac81de284661b2",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "backup"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/document_formats_xml.py",
+      "canonical_blob": "2b198b0c24414d483c054f2f21c9dd5ebb81b649",
+      "selected_blob": "a09bc00a438e14ee631978498884961e8e396f00",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "documents"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/language_manager.py",
+      "canonical_blob": "4cdc67ffb0436e5fd9dd6304b76bfd375ae509ee",
+      "selected_blob": "55c8c158c898a948e4930e11ec33359f0f8eec01",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "documents"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/ocr_languages.py",
+      "canonical_blob": "09694edd4654025344e179276eaba8b8cb5c64af",
+      "selected_blob": "15233ebe533b6a7d25c4b9e0bb7d0dc38e17a43b",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "documents"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/ocr_model_catalog.py",
+      "canonical_blob": "9cf184d758c2185aa31eb91d38ae1ab073191b20",
+      "selected_blob": "2e50c806140e0ee13b00091709497d31cbc99778",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "documents"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/ocr_model_store.py",
+      "canonical_blob": "971c58ea5ed36ed2c57cb7840d19e64144f85854",
+      "selected_blob": "a77d6d5e3042c0f2ddd2b7b5b8831dc6d5e8a79d",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "documents"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/ocr_orientation_bridge.py",
+      "canonical_blob": "b94e0ae3d70f1221d3f46ca264c20faa2aaadc32",
+      "selected_blob": "3ae514b057dfd1ddf080cfda98b429692a8cbdb6",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "documents"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/ocr_process.py",
+      "canonical_blob": "87047f288f626ec161be979043aac431167fb890",
+      "selected_blob": "2a66ff43f7a307eee9b2854bc4490697df373270",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "documents"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/ocr_runtime.py",
+      "canonical_blob": "6612ca069be280f6d64f3a77633bdc9434da3c4f",
+      "selected_blob": "511e571ea2cecdba3882769be6364f2055f14f42",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "documents"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/page_ocr.py",
+      "canonical_blob": "b57a0c5754045e8a78a025ee7916c83c38bff772",
+      "selected_blob": "59898013025d896862dbb14e3931ad88500a9014",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "documents"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/runtime_identity.py",
+      "canonical_blob": "1a09f372be59f0921c98c641c884cc7463288179",
+      "selected_blob": "a1a9fd9b2c9ae0c61810f11aa5240d2e9c7e8450",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "documents"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/batch_scan.py",
+      "canonical_blob": "c1022c232123bfbd004bebd13d9c67822d771dc7",
+      "selected_blob": "0e40b119e9fb3ec813c66c1b351f5e821383c1b6",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "ingest"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/batches.py",
+      "canonical_blob": "f7f9aeb4d71fd88fca35d366da15af863aa83585",
+      "selected_blob": "eb5b4ed3a916767b04ce4ac77b95bbdc74c65f7c",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "ingest"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/catalog_asset_copy.py",
+      "canonical_blob": "2af8a72cba5ced234664d8cd38549a47f518aeef",
+      "selected_blob": "0f6e0fba6af9b06570cdcc0ac62139e116087148",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "ingest"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/retained_assets.py",
+      "canonical_blob": "c0df95c1e062c7ac8891805354e95a1e00f07c57",
+      "selected_blob": "b15cd7530176093f6e84a271ad30e364c5e3ad43",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "ingest"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/worker.py",
+      "canonical_blob": "74cf8fd6e1554c8cb4f7d5d08c8d97eabbde3de4",
+      "selected_blob": "28936731768f4ee57e6e9568bf4fafc26d4eedaa",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "ingest"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/__init__.py",
+      "canonical_blob": "801ffd0a93cf095715c004843bd4dcb07715c2ed",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "voice",
+        "transcription"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/_dordiai_probe.py",
+      "canonical_blob": "a52f940d53905ebde76e6b163c900d1fcbb65268",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "reading",
+        "voice"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/dordiai_speech.py",
+      "canonical_blob": "99d0afb0d117cb2acc1f9df6da9a1db4e756d847",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "reading",
+        "voice"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/dordiai_voices.py",
+      "canonical_blob": "13787af35f5fb1363665f7b0986f24771780dd0b",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "reading",
+        "voice"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/supplied_transcription.py",
+      "canonical_blob": "e18a682490a31f962974a8fd31b1e42ad0a2fae9",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "transcription",
+        "backup"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/keyboard_preferences.py",
+      "canonical_blob": "ea77248e902f2974bcfcda5912a4a179c623786e",
+      "selected_blob": "c1356f198030e5acbb68ccaa7ccd784eb3ab68a4",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "desktop"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/language_qualification/catalog.py",
+      "canonical_blob": "bad9aa5c644573ed18fdb83527733dd99a738ade",
+      "selected_blob": "f6c94e01d61b82959209e64b9e78bd59692c74cd",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "desktop"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/library_assistant.py",
+      "canonical_blob": "f96aa939066c16105c3398e507f43ef1e438d571",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "assistant"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "canonical_blob": "b585cf04946caa2db6ec103b5a2eaf6e4d13d7fc",
+      "selected_blob": "6e26a6f4255d34ffc2a48bae107b1a0ab9f3d76a",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "backup"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/native_checks.py",
+      "canonical_blob": "f852cfb3748f20cb279de98b41d8750093af8e43",
+      "selected_blob": "676c9bb01f2db33b6a01f7a56ab92d186e3390c6",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "desktop"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/operations/__init__.py",
+      "canonical_blob": "618d53c90f9586156fa7b0d84d11483d16d6d04b",
+      "selected_blob": "93c56c0e9a9ed0ce87f9ff8a4a1f46fc1fca05f7",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "resources"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/operations/_locks.py",
+      "canonical_blob": "fcf6872d1b5b8a131bf33edd2e42fd0163b9afd9",
+      "selected_blob": "a561c5608bb623ba1968a8ba8cbb4ea7f30095ed",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "resources"
+      ],
+      "source_review": "Fresh full diff: canonical native lock retained with current bounded unheld-leaf disappearance retry; acquired handle identity still checked.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/operations/broker.py",
+      "canonical_blob": "6a8854e18316521939848bd1719e9ab0484c0746",
+      "selected_blob": "7a472bcc07a8f0de289e0f278fd9f7747728a3da",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "resources"
+      ],
+      "source_review": "Fresh full diff: canonical coordinator preserved; current relative application policy can be rebound only without active leases, and cancellation reaches constructor/snapshot admission.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/operations/facade.py",
+      "canonical_blob": "4eaf0157b171b4ae4fdd9c2a8e4da06b6700cd48",
+      "selected_blob": "e8ba79d2b93340823d2b4687a2060efd0fc6e33f",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "resources"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/operations_cli.py",
+      "canonical_blob": "b03cf6a4668e88757193b7a8e94fe6c5557124ea",
+      "selected_blob": "0ff177983859a801cf100a9fd8548a7586004f97",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "resources"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/pending_backup.py",
+      "canonical_blob": "2a15b362f3b25cefeefdfa5f6edcb8527cd35e43",
+      "selected_blob": "39a8f1c97091730cc4101516c84b2e90b995523a",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "backup"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/progress.py",
+      "canonical_blob": "f19da8bd57cb73307359a03db236c5f60ede44b7",
+      "selected_blob": "5d4faf5ede53bec754ea6c7c535218c000f80f0c",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "progress"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/progress_feedback.py",
+      "canonical_blob": "69a97a9e2fc006d690e120ac38ff5c2e92d56895",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "progress"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/progress_preferences.py",
+      "canonical_blob": "011930e83ce70c861d6bf59e97fe47e8c09cd551",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "progress"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/reader/reading_state.py",
+      "canonical_blob": "1ffa53da163b74e06bf2fcf7f705fbfc479a5ca5",
+      "selected_blob": "45264b0e8367a8cd36c0fc5bee0bf6562e26c749",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "reading",
+        "voice"
+      ],
+      "source_review": "Fresh full diff: only snapshot/_read_validated compatibility accessors are added to canonical validated sidecar code.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/reader/source_file.py",
+      "canonical_blob": "1aa43a4360f3284b9c0abf13dd08d1a0a4c448ac",
+      "selected_blob": "91d9d956f26ad736fb0f5394b9a61e6a770e9bc1",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "reading",
+        "voice"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/research/export_file.py",
+      "canonical_blob": "cb6eb7b4b93f9eaec8feca9586742d3ffd9d1afa",
+      "selected_blob": "9ab449497836d32b9623a96ddcc7dbb06337aa55",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "research"
+      ],
+      "source_review": "Fresh full diff: only Windows metadata definitions are factored into shared native_file_metadata and imported under the same private names; canonical export publication/cancellation/receipt algorithm remains.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/runtime_settings.py",
+      "canonical_blob": "a83e4b5020aa3779b93e6169928607194677769c",
+      "selected_blob": "7203b6cf0e0a55253ce2259e9fb2db8579d2b3b7",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "profiles"
+      ],
+      "source_review": "Intentional schema1→schema2 authority replacement: old exact declarations retained inert, new explicit manifest-backed registrations reviewed/readmitted per execution; no autoactivation from historical paths.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/search/federated.py",
+      "canonical_blob": "4f97c0bfc61156b090f40306f8590c4da9992cec",
+      "selected_blob": "b14abd43234a56e081d4e7d33e7dcf1a24de9a3e",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "retrieval"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/COMTYPES_LICENSE.txt",
+      "canonical_blob": "d7c5350e98f8aa354955441437c3ffdc4fe227af",
+      "selected_blob": null,
+      "decision": "retain_exact_historical_notice_without_importable_alternate_runtime",
+      "contracts": [
+        "voice"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/UPSTREAM.json",
+      "canonical_blob": "bd3bc0eb36b705a59342584af18f03728b20716b",
+      "selected_blob": null,
+      "decision": "retain_exact_historical_notice_without_importable_alternate_runtime",
+      "contracts": [
+        "voice"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/__init__.py",
+      "canonical_blob": "f3a90829d0e3780e4fd88512f200e64a947c83a8",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "reading",
+        "voice"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/_io.py",
+      "canonical_blob": "4024e11d9823a3af0da4fce7dfbe89420ff97782",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "reading",
+        "voice"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/player.py",
+      "canonical_blob": "b11dcebec0f6c0be57dc6b141ed272f65b65c821",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "queue",
+        "voice"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/progress_speech.py",
+      "canonical_blob": "40fc50742fb2c50a1bfb2920e25af692017c0aaf",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "reading",
+        "voice"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/reading.py",
+      "canonical_blob": "2305d54c34861fc00fed2b66ccb74ba5d36e6b21",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "reading",
+        "voice"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/regex_worker.py",
+      "canonical_blob": "630f6d9a6b5a90355125b932cc469fe4d628f883",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "reading",
+        "voice"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/runtime.py",
+      "canonical_blob": "e913c96b3646b17db3d64864e97a3a779307d041",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "reading",
+        "voice"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/sapi_native_worker.py",
+      "canonical_blob": "0faf8b266ff9fa5a0dc5db61243e5d8e5ce99135",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "reading",
+        "voice"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/sapi_worker.ps1",
+      "canonical_blob": "25f11e868d01ae595c34e1739042ae14f55fedf7",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "reading",
+        "voice"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/session.py",
+      "canonical_blob": "24b1f463ef867d7aa98e4f7d7c54566d3e67773a",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "reading",
+        "voice"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/source.py",
+      "canonical_blob": "bd2afd04c8106689fbb80923748674fe8a75464d",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "reading",
+        "voice"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/state_backup.py",
+      "canonical_blob": "952d05ec92d50ba8786ce0da514866732148db85",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "backup"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/storage/README.md",
+      "canonical_blob": "d5f98aa7233fdc7a8aecf72c020df299a008236a",
+      "selected_blob": "1b0bee8778f8dd6caef1484f18c58d6f9c0f1cbd",
+      "decision": "documentation_union_under_current_storage_contract",
+      "contracts": [
+        "ingest"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/storage/revisions.py",
+      "canonical_blob": "0e326329b65b519a7743503ee2967211fd19897b",
+      "selected_blob": "a24851a456b9625ad6e36bce5580ed36c2a6e1ea",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "ingest"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/__init__.py",
+      "canonical_blob": "7e38d3875a79e43e24321e4a14f613a0bb7b5064",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "audio",
+        "studio-migration",
+        "books",
+        "publication",
+        "queue"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/cli.py",
+      "canonical_blob": "714af31ab62055f24ecbd04b0c8c95a202195d98",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "audio",
+        "studio-migration",
+        "books",
+        "publication",
+        "queue"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/project.py",
+      "canonical_blob": "1acf68727fdaadd14055d357e28f2eb140ab2a52",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "audio",
+        "studio-migration",
+        "books",
+        "publication",
+        "queue"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/render.py",
+      "canonical_blob": "0c05eebaa029d43bf83bdd35ec0de36a93edd198",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "audio",
+        "studio-migration",
+        "books",
+        "publication",
+        "queue"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/transcription/__init__.py",
+      "canonical_blob": "61bc62f8984afaffbde4073c49812738321f018b",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "transcription",
+        "backup"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/transcription/models.py",
+      "canonical_blob": "e744e7c0c0b7cbaf47d2cb926f9fca81690c54ab",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "transcription",
+        "backup"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/transcription/runtime.py",
+      "canonical_blob": "99b1a086122b75ae2f7fc48dbe3b4109db059c0a",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "transcription",
+        "backup"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/transcription/service.py",
+      "canonical_blob": "e12335721580f9e28db3396278dc68861f528252",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "transcription",
+        "backup"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/transcription_cli.py",
+      "canonical_blob": "5ba20a26633653e23e658b611a3e61a663d301d3",
+      "selected_blob": "699550912feed1051f53d9f7b374fafb67d858c3",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "transcription",
+        "backup"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/academic_actions.py",
+      "canonical_blob": "9311eb9f272f11dbd166681b3a34aea6d75c5138",
+      "selected_blob": "25b5afbd1d4ab8ad2cea521bcb043e2da748c954",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "research"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/academic_library_dialog.py",
+      "canonical_blob": "52b328714a72fb0d650789477c28082e33dc2647",
+      "selected_blob": "c64b4abdc9fcc758e2678af576b22823346cebce",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "research"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/academic_tools.py",
+      "canonical_blob": "2c0b20c8db64083fd45b35be276a213601045dce",
+      "selected_blob": "247a966a0fd8c6ef6b2d22819c01effd60ab7bc4",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "research"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/assistant_dialog.py",
+      "canonical_blob": "930c84fe473a2de22be6386077d197f1ee813720",
+      "selected_blob": "d0535f844bebd1b1934a36cbd76f9e52e4a81489",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "assistant"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": "Canonical audio.transcribe tool is still being adapted through the current supplied ASR owner; do not claim complete workflow equivalence before that candidate and its gates."
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/builtin_keyboard_commands.py",
+      "canonical_blob": "9d15cee9c441cd8127733e4dbec93313ed411ab8",
+      "selected_blob": "3d1e5a6c7e394a4896a9701afb77ff917a5d3e78",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "desktop"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/catalog_insights_actions.py",
+      "canonical_blob": "f61007a75fd87111466cbeffb7b8ffe511b97bf9",
+      "selected_blob": "ceb98bc67180ce5bedcd25d60fc08c39ebc473e5",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "research"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/catalog_tools_dialog.py",
+      "canonical_blob": "2cd9743e3e279c138fb4c655b11d3e1e9e52c973",
+      "selected_blob": "b13b457570bcc62e3e44972b8661d31079361ac3",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "research"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/citation_styles_dialog.py",
+      "canonical_blob": "365f9ce02fea9e05524bdeae06069a27a1c698a3",
+      "selected_blob": "95c283bc1b63ec6e052cc4eb895e22fbfa6787b7",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "research"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/command_registry.py",
+      "canonical_blob": "2fe71b6b3b7c46cef384d6fddb56997b30564e08",
+      "selected_blob": "77f02048ba8348deea271b8b13e6b18a7d1e99cc",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "desktop"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/desktop_app.py",
+      "canonical_blob": "c264eb3cf2f47d0ade514234cbf3eba13512d9bd",
+      "selected_blob": "3514c85ce92736ee26446d8b2bd6aabbf6f61b9c",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "desktop"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/desktop_evidence_panel.py",
+      "canonical_blob": "5140395fbc211900a8dd9289877c6de4b3a96d44",
+      "selected_blob": "ba1b3e4cfe3c70435ab30243919350ab226d085c",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "research"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/document_conversion.py",
+      "canonical_blob": "3e6a2feb8ac385ff4cb7ec0ecbbb4e86a71b52ed",
+      "selected_blob": "32b7c945b56968750af0468ca063d9612cba2bd8",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "documents"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/engine_settings.py",
+      "canonical_blob": "578cc5f39eb0fad693c4ebae6d4c4c62a27a7d83",
+      "selected_blob": "0d6c2466ee07e73c42809b56b68277aa3953f1db",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "profiles"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/export_destination.py",
+      "canonical_blob": "522e5fe297b5b28ced24ae51b981abe66747c4d7",
+      "selected_blob": "14ea86babd1426902c6fd2f09982e5b04147c544",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "desktop"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/federated_search.py",
+      "canonical_blob": "fbb6920a4eae81d9d5fbd4140530f6066681ba4d",
+      "selected_blob": "0f0599735991baae6f55eacefe075074d90df513",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "retrieval"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/import_center.py",
+      "canonical_blob": "bde66d23bebe46a05a79e27418984bc5d612011c",
+      "selected_blob": "cce94c8c50c3558dcb3c2764c60f9c2d43e5a230",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "ingest",
+        "desktop"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/keyboard_settings.py",
+      "canonical_blob": "cd455654455e872ba0792f14d07c27f65be23121",
+      "selected_blob": "51fa7c75e921d623f64d3a6c304d7c270aa8af0e",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "desktop"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/language_matrix.py",
+      "canonical_blob": "ba8a105cad8b021bd35625e005ffc01b1e8c578e",
+      "selected_blob": "69429f88081aa5195db6d517727ef188e6431d15",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "desktop"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/library_assistant.py",
+      "canonical_blob": "c8e9e0ca148d929ead1b44f7cef17efbb76f6568",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "assistant"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/ocr_model_manager.py",
+      "canonical_blob": "8ef8d43aeddc1d65b745dc58cc8a2d1fcde80463",
+      "selected_blob": "d87272c912134074be2254b0fe34a9dd000783af",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "documents"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/ocr_options.py",
+      "canonical_blob": "c172e351ea910fddf9aebd99dc7c7cbf8a202738",
+      "selected_blob": "23872c178f45f6e8f5ba6d62dc3e1b0ae2bdc1ec",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "documents"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/ocr_selection.py",
+      "canonical_blob": "d1eaabefb1ea68d7c1bb4c0211e168241fcd8858",
+      "selected_blob": "4b284b6991779e7a234926d65db036f78387de5d",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "documents"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/operations_dialog.py",
+      "canonical_blob": "7e687b9480dea4da3e232f561b1bfb919dc43223",
+      "selected_blob": "826b5198147993e68df8f0f4dc255625085a02d9",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "resources"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/progress_media.py",
+      "canonical_blob": "7a12bdb3acc22a29e3a216bf0b8b9381d58676af",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "progress"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/progress_panel.py",
+      "canonical_blob": "0bb2dec7a8b5a490565a196e281ec30e3ca00e9b",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "progress"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/reading_desk.py",
+      "canonical_blob": "c15a3930c781743a307302b23fcddc99a616bb8e",
+      "selected_blob": "b5781ed4613f0bf2de84c9db40c05c4ade9d5531",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "reading",
+        "voice"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/research_actions.py",
+      "canonical_blob": "20348348fadaba3a941031d2508c542e46a29fb9",
+      "selected_blob": "b678c3cd0b001b05a309d3b1e82e024967d1ee64",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "research"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/save_actions.py",
+      "canonical_blob": "813bdce720e5fde6570fc867f268b49ea5dfdde0",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "progress"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/save_all.py",
+      "canonical_blob": "ab58052ca846aa0261203fc88c523407178fa740",
+      "selected_blob": "41de9f19a7fc7ddefbe03cc85bf2369fc32c4218",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "progress"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/speech_dialog.py",
+      "canonical_blob": "41cbc65c773dcc51fee864295ec56906b1c4f50a",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "reading",
+        "voice"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/studio_dialog.py",
+      "canonical_blob": "418da4c9bf29098ebfc7fae933c43582beb7b953",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "audio",
+        "studio-migration",
+        "books",
+        "publication",
+        "queue"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/transcription_dialog.py",
+      "canonical_blob": "12f4be1fa61fd89ca208ff00663bf9961753e307",
+      "selected_blob": "867485146bcb90a60fab3ee23163d6c8f5626e8e",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "transcription",
+        "backup"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/translation_dialog.py",
+      "canonical_blob": "65292429f2caab7b98d0896d31f0adcebb953fc0",
+      "selected_blob": "b0e4dd7704e9cbdb948d93409748f56325e0bd44",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "translation",
+        "planning"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/worker_cleanup.py",
+      "canonical_blob": "2f071d9d2762ef15f5f8ee3da2fcf25de165b15a",
+      "selected_blob": null,
+      "decision": "replace_internal_module_with_current_owner",
+      "contracts": [
+        "progress"
+      ],
+      "source_review": "Contract selected from the implemented and peer-reviewed current lane; this row is not a new execution or exhaustive per-function equivalence claim.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/workspace_shell.py",
+      "canonical_blob": "c4ce2664d585bf36f2911695f8f6632499218381",
+      "selected_blob": "c4ce2664d585bf36f2911695f8f6632499218381",
+      "decision": "select_canonical_identical_blob",
+      "contracts": [
+        "desktop"
+      ],
+      "source_review": "The formerly missing visible CSL citation credit was ported in d528; selected blob is now exact canonicalc4ce2664. Required actual native startup credit assertion is also retained.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/citations/pdf_review_attestation.py",
+      "canonical_blob": "3bfbcbf14544c81bc17942183726c5c5f17f506c",
+      "selected_blob": "661780d08b3cdf42e5f18ebe96f1197971566c4e",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "research"
+      ],
+      "source_review": "Fresh full diff: existing rendering/fingerprint algorithm extracted into render_document_fingerprint for a caller-held PDF document; same page/pixel guard.",
+      "pending": null
+    },
+    {
+      "path": "carr-library/src/carr_library/reader/reading_desk.py",
+      "canonical_blob": "0acd7f25fb17de24b434741ff3b7cf2c634a4c8a",
+      "selected_blob": "7b4c490e28567cc15a135aafb434d655345f2292",
+      "decision": "select_current_contract_implementation",
+      "contracts": [
+        "reading",
+        "voice"
+      ],
+      "source_review": "Fresh full diff: only explicit LargeTextProfile.maximum_records substitutes for MAX_PAGES; ordinary scope/page/source authority checks remain.",
+      "pending": null
+    }
+  ],
+  "evidence": [
+    {
+      "kind": "capacity",
+      "tested_commit_prefix": "431ac087",
+      "run_id": 46004721023,
+      "job_id": 140527316349,
+      "status": "PASS",
+      "scope": "Actual synthetic retained corpus50000books/1000000segments/2001requests coveringall50000exacthits;12publicimportsamples,cancel/recovery/startup.",
+      "excluded": "New fa79 full-backup capacity and current0d7 result are NOT_RUN in that prior job."
+    },
+    {
+      "kind": "native-book",
+      "tested_commit": "8911b2ae232b4786677890c40560f4393a0202a9",
+      "run_id": 46011505846,
+      "job_id": 140547902143,
+      "status": "PASS",
+      "scope": "51nativebookchecks,orderedreview/preparation,currentFFmpegcompletionreuse,measuredPCM,close settlement.",
+      "excluded": "The overall job FAILED other suites/schedule; this is not a whole-head PASS or voice/NVDA qualification."
+    },
+    {
+      "kind": "native-schedule",
+      "tested_commit": "8911b2ae232b4786677890c40560f4393a0202a9",
+      "run_id": 46011505846,
+      "job_id": 140547902143,
+      "status": "FAILED",
+      "scope": "Opaque90secondtimeout. Current6c22 addsboundedphase/status diagnostics without deadlineextension; actualcause not claimed fixed."
+    },
+    {
+      "kind": "legacy-queue",
+      "tested_commit": "0d7fe0de7ec3eb60481c62424e250165c024abff",
+      "status": "PARTIAL",
+      "scope": "Actual portable source suites: historical archive19PASS, control policy8PASS, harness contracts6PASS. Core migration20PASS/1FAIL; the failing assertion treated the existing JSON-safe restored project_dir string as Path after actual restore succeeded.",
+      "run_id": 46019540622,
+      "job_id": 140575287506,
+      "excluded": "Actual Windows controls, physical playback/NVDA and the513MiB fixture lane are not qualified by these portable tests.",
+      "fixture_correction": {
+        "commit": "87d89d0bc8addd229ed775af8e0576904090c08d",
+        "execution": "NOT_RUN",
+        "paths": [
+          "carr-library/tests/audio/test_legacy_playlist.py",
+          "carr-library/tests/ui/test_translation_advanced.py"
+        ]
+      }
+    },
+    {
+      "kind": "backup-receipt-final-boundary",
+      "tested_commit": null,
+      "status": "NOT_RUN",
+      "scope": "Canonical9 reattestationcases plus7real late mutation/quiet-phasecases sourceprepared in92c14, independentlyread."
+    },
+    {
+      "kind": "large-source-installed",
+      "tested_commit": "798e62ddeef8d459f3ef088665fa1ae8c2df9557",
+      "job_id": 140566043286,
+      "status": "PARTIAL",
+      "scope": "Three installed profile/backup/parser contract suites49PASS0skip; exact373Pythonfiles checked.",
+      "excluded": "Actual2GiB Linux lane FAILED before owned import because the default16GiB resource policy cannot admit the explicit10xsource+reserve request. Root is correcting only the owned harness's explicit policy/admission/preflight, not relaxing product guards."
+    },
+    {
+      "kind": "assistant-audio-transcribe",
+      "tested_commit": null,
+      "source_candidate": "8236fa18a526181da70def2442f9bdbeecd5ce72",
+      "status": "NOT_RUN",
+      "scope": "Current-owner source reviewed. Real harmless CLI-peer tests cover prepare/publication acknowledgement recovery, retained definition tampering, completed output verification without runtime, templates and whole backup/reapproval; exact execution remains pending."
+    },
+    {
+      "kind": "portable-shared-source",
+      "tested_commit": "0d7fe0de7ec3eb60481c62424e250165c024abff",
+      "run_id": 46019540622,
+      "job_id": 140575287506,
+      "status": "FAILED",
+      "suites": {
+        "total": 180,
+        "passed": 178,
+        "failed": 2
+      },
+      "cases": {
+        "passed": 3753,
+        "failed": 6,
+        "skipped": 0
+      },
+      "failures": [
+        {
+          "path": "tests/audio/test_legacy_playlist.py",
+          "cases": 1,
+          "reason": "Fixture used / on the existing string-valued restore result."
+        },
+        {
+          "path": "tests/ui/test_translation_advanced.py",
+          "cases": 5,
+          "reason": "AST callback fixture omitted current TRANSLATION_PROVIDERS/LOCAL_TRANSLATION_PROVIDER globals."
+        }
+      ],
+      "scoped_passes": [
+        {
+          "path": "tests/audio/test_managed_playback_queue.py",
+          "cases": 56
+        },
+        {
+          "path": "tests/ui/test_managed_playback_queue.py",
+          "cases": 20
+        },
+        {
+          "path": "tests/audio/test_measured_book_audio.py",
+          "cases": 15
+        },
+        {
+          "path": "tests/ui/test_measured_book_dialog.py",
+          "cases": 7
+        },
+        {
+          "path": "tests/audio/test_book_batch.py",
+          "cases": 11
+        },
+        {
+          "path": "tests/ui/test_book_batch_dialog.py",
+          "cases": 8
+        },
+        {
+          "path": "tests/audio/test_book_duration_cli.py",
+          "cases": 1
+        },
+        {
+          "path": "tests/assistant/test_scheduling.py",
+          "cases": 24
+        },
+        {
+          "path": "tests/assistant/test_scheduling_cli.py",
+          "cases": 11
+        },
+        {
+          "path": "tests/assistant/test_scheduling_handlers.py",
+          "cases": 10
+        }
+      ],
+      "excluded": "This failed source run is not a whole-head PASS, isolated installed identity proof, Windows native evidence, actual neural execution, physical capacity, or acceptance of its unexecuted87d fixture correction."
+    }
+  ],
+  "qualification": "No source mapping, inventory size, adapter registration, schema byte cap or donor test result is a release or model/language/device/rights qualification.",
+  "reviewed_additions": [
+    {
+      "id": "canonical-assistant-transcription-tool",
+      "commit": "8236fa18a526181da70def2442f9bdbeecd5ce72",
+      "base": "0d7fe0de7ec3eb60481c62424e250165c024abff",
+      "status": "SOURCE_REVIEWED_SELECTED_FOR_COMPOSITION",
+      "execution": "NOT_RUN",
+      "files": [
+        {
+          "path": "carr-library/docs/ASSISTANT_TRANSCRIPTION.md",
+          "sha": "b4d0c18562dee745aa07e641c3f53cce16c85d39"
+        },
+        {
+          "path": "carr-library/src/carr_library/assistant/models.py",
+          "sha": "7f8c4994f7a894af3d5cabba8f5e279d2a30cc11"
+        },
+        {
+          "path": "carr-library/src/carr_library/assistant/planner.py",
+          "sha": "da6500d2cea5cf319b83f8ceaf7acdf2f04f62ca"
+        },
+        {
+          "path": "carr-library/src/carr_library/assistant/service.py",
+          "sha": "f28907356c1b649719dd35abe4654d37fe557567"
+        },
+        {
+          "path": "carr-library/src/carr_library/assistant/snapshots.py",
+          "sha": "a35e42c5d72b0b9efa80a427344cbdc5ba919397"
+        },
+        {
+          "path": "carr-library/src/carr_library/assistant/transcription.py",
+          "sha": "d31ffc4a2755e1b19559d543710b04c8224ffc6b"
+        },
+        {
+          "path": "carr-library/src/carr_library/assistant/transcription_model.py",
+          "sha": "c4d9b7f204148481136c431061d5e3b8371afbc0"
+        },
+        {
+          "path": "carr-library/src/carr_library/assistant/validation.py",
+          "sha": "77ceea1088444c90973a8920942efc987547cc48"
+        },
+        {
+          "path": "carr-library/src/carr_library/transcription_service.py",
+          "sha": "7669220955adcd4fa03c326af26f426f0f0e7908"
+        },
+        {
+          "path": "carr-library/tests/assistant/test_transcription_tool.py",
+          "sha": "81b7235c6764f09ceb641bd27b6a7d7cb7fe34af"
+        }
+      ],
+      "contract": "Use current supplied TranscriptionService only. A deterministic saved intent precedes preparation; current retained definition, source, settings and runtime pins govern retry. Saved export intent precedes new-only publication. Completed output is reverified without runtime; relocated assistant state requires fresh approval.",
+      "required_gates": [
+        "tests/assistant/test_transcription_tool.py",
+        "tests/test_transcription_service.py",
+        "tests/test_transcription_exports.py",
+        "tests/assistant/test_workflow_templates.py",
+        "tests/assistant/test_state_validation.py",
+        "tests/storage/test_backup_assistant_state.py"
+      ],
+      "review": "Independent bounded source review found no concrete blocker. Final export inventory remains inside all shared verified_reader scopes; their native ChangeTime checks and Windows immutable payload sharing cover late same-size/restored-mtime writes. No private engine/runtime is included."
+    },
+    {
+      "id": "large-fixture-policy-and-current-uk-guide",
+      "commit": "9c9e67340578806805d7e3debdeedba0151b705e",
+      "base": "0d7fe0de7ec3eb60481c62424e250165c024abff",
+      "status": "SOURCE_REVIEWED_SELECTED_FOR_COMPOSITION",
+      "execution": "NOT_RUN",
+      "files": [
+        {
+          "path": ".github/workflows/carr-capacity.yml",
+          "sha": "2529eaab6dd9eb584a6b4b0aae865e097b428618"
+        },
+        {
+          "path": "carr-library/docs/START_V3_UK.txt",
+          "sha": "51a0e0048ef0eec4a11cc3990d9b289d86ad4a66"
+        },
+        {
+          "path": "carr-library/docs/acceptance/LARGE_798_RESOURCE_ADMISSION.md",
+          "sha": "c6a30d318524bf3d7453b1fd6baed89892a9ae3e"
+        },
+        {
+          "path": "carr-library/scripts/large_source_acceptance.py",
+          "sha": "087e0bb24d6de6c1034a1aef3fd411ae823cad4e"
+        },
+        {
+          "path": "carr-library/tests/e2e/test_large_source_fixture.py",
+          "sha": "dbd6b7ef0d28353c68b36aba59cba4665111ac4f"
+        }
+      ],
+      "contract": "Select only the synthetic library's explicit disk policy for its conservative current worker request; preserve production defaults and revalidate that policy after restore. Update canonical START_V3_UK.txt for actual current menus, retained inputs, manifest-based ASR and qualification boundaries.",
+      "required_gates": [
+        "tests/e2e/test_large_source_fixture.py"
+      ],
+      "review": "Independent bounded source review found no concrete policy/admission blocker. The capacity workflow must use the actual final-ledger path/pattern when composed."
+    }
+  ],
+  "implementation_gaps_in_reviewed_selection": [],
+  "composition_conditions": [
+    "Include the exact reviewed 8236 current-owner transcription adapter, its tests and required source/installed gates before claiming that the pending audio.transcribe gap at baseline 0d7 is closed in the merged tree.",
+    "Include the current Ukrainian guide and owned-fixture resource policy from 9c9 while preserving separately reviewed current workflow paths.",
+    "Resolve the independent canonical test/nonproduct inventory by recorded behavior, then re-read exact parent SHAs before the two-parent merge.",
+    "No exact-head execution or model/language/device/NVDA/rights qualification follows from these source selections."
+  ],
+  "acceptance_followups": [
+    {
+      "commit": "0286286a5fae3e96b678ab4f1c2ce563d09cdb83",
+      "purpose": "Add explicit assistant transcription required suite to source/installed fast contracts, Windows source/full-bundle/Linux inventories and audio gate; retain exact installed module checks and existing HELP/model/CLI discovery.",
+      "execution": "NOT_RUN",
+      "review": "Changed workflow hunks retain all existing test paths; the required transcription suite is additive."
+    },
+    {
+      "commit": "4d24e4aa92db99e5f8476d645c4470725d6c8b42",
+      "purpose": "Require named real current-service transcription/recovery/help cases in the full installed JUnit verdict, rather than counting an unrelated pass.",
+      "execution": "NOT_RUN"
+    },
+    {
+      "commit": "d5b84feae1ac70ad9c8c95b91879f503157fb024",
+      "purpose": "Propagate the current native/CLI stop signal into preview runtime validation and translate shared audio-helper cancellation into the assistant's existing InterruptedError/Paused contract.",
+      "execution": "NOT_RUN",
+      "review": "Bounded source review checked the actual supervisor cleanup/rethrow contract; no new process owner or approval mechanism."
+    }
+  ]
+}

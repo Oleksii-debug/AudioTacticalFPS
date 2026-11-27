@@ -3,13 +3,31 @@
 ## Source and evidence boundary
 
 This audit was reconciled on 2026-11-27 against published source
-`8911b2ae232b4786677890c40560f4393a0202a9` and the source-only integration
-`fa79b549d5637801f02db0dbced61dda38ee4495`. The latter adds the managed
-playback queue, publication cleanup receipts and a complete-library
-backup/restore phase to the capacity harness. Follow-up `910a80ff` seals
-owned queue staging bytes; `8697ce93` corrects the historical ASR source
-dispatch and export expectations described below. These source corrections
-are **NOT_RUN** until their exact composed source passes its required jobs.
+`0d7fe0de7ec3eb60481c62424e250165c024abff` and the reviewed composition
+recorded in the canonical merge-resolution ledger. Current source includes
+the managed/legacy playback queue, complete-corpus backup phase, measured Book
+publication/CLI, canonical receipt and export protections, inert historical ASR
+recovery, typed `audio.transcribe`, coherent dev3 package identity and sealed
+commit/tree/wheel provenance.
+
+New corrections selected after that baseline include the exact large-fixture
+resource policy (`9c9e6734`), CI native-family/report cleanup (`17f03638`),
+typed transcription and explicit required gates (`8236fa18`, `0286286a`,
+`4d24e4aa`, with cancellation follow-up `d5b84fea`), and two observed
+test-fixture corrections (`87d89d0b`). The798 Windows spelling cancellation
+fixture is corrected in`039b971f` by arming its stop signal only after the
+observed actual child starts; production deadlines remain unchanged. The subsequently read canonical
+`a333f072` export identity guard is adapted through `4932e2bf`; the current
+shared native metadata owner remains authoritative. Unicode JSON receipts
+in Book/assistant/transcription/translation CLIs remain decodable through
+limited Windows console/pipe encodings without changing stored text.
+The package/test disposition record separately identifies the canonical
+source-receipt and read-only document-format assertions retained in the bundle.
+Source review does not make those new cases PASS; their exact composed
+source/installed/native runs remain required.
+
+The final CI owner chain (`17f03638 → c41c7df7 → 1f87a81e → 5c48141b → cc8a1073`) also corrects both stale installed callers and uses bounded regular-file logs compatible with native Windows Job handle admission. Descendants settle before logs or report directories close; a close failure cannot hide the original timeout or interpreter control signal. The child network, installed-origin and strict JUnit policies are unchanged.
+Actual0d7 native scheduling exposed WinError5 when a checkpoint reader blocked the atomic writer. `d216adc6` reuses the current shared-delete JSON snapshot reader and native JSON publisher while preserving strict backup approvals and immutable payload protection. Actual0d7 Windows also exposed a legacy PCM close-boundary rewrite with a restored mtime; `e112759f` repeats the complete bounded checksum under a fresh immutable reader before acknowledgment. The managed-clear native fixture now creates a genuinely managed project and waits for persisted completion (`05dbb750`), preserving the separate standalone save/readback proof. All these additions remain NOT_RUN until the exact composed-source gates execute.
 
 The authorities are [the current finalization scope](UNIVERSAL_SCOPE_V3_FINALIZATION.md)
 and [the audio scope](UNIVERSAL_SCOPE_V3_AUDIO_AGENT.md). The initial
@@ -23,6 +41,45 @@ model/language quality, manual accessibility and distribution clearance are
 independent dimensions. A later source commit does not inherit a previous
 installed binary's passing result. A queued workflow is not execution evidence.
 
+## Latest exact observed acceptance
+
+| Source and actual run | Read result | Remaining boundary |
+|---|---|---|
+| `0d7fe0de`, [main Linux140575287506](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46019540622/job/140575287506) | 180 mandatory suites:178PASS/2FAIL;3,753 passed cases,6failed,0skips. Failure1 is a test treating documented string `project_dir` as Path after successful restore; failure2 is five AST-handler fixtures missing current provider globals. | `87d89d0b` corrects only those two fixtures. The failed whole run remains FAIL; corrected cases require execution. |
+| `0d7fe0de`, [main Windows140575286988](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46019540622/job/140575286988) | Early ASR8/8 suites:278PASS. Integrated112 suites:108PASS/4FAIL,2,323 passed cases,8failed,0skips. Combined120 suites:2,601PASS/8FAIL/0SKIP. | Four failures map to spelling1 (`039b971f`), legacy PCM boundary1 (`e112759f`), empty queue1 and Advanced AST5 (`87d89d0b`). Corrected exact-source execution is still required. |
+| `0d7fe0de`, [TRUST Linux140575291238](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46019540646/job/140575291238) and [Windows140575290605](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46019540646/job/140575290605) | Both OS jobs passed all11 strict suites,217cases each,0skips. Windows also passed the actual Credential Manager case and10 installed native Help/status/checkbox/grant checks. | This qualifies those exact packages. Manual NVDA, production authority and the later composed source are not implied. |
+| `0d7fe0de`, [bibliographic Windows140575287132](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46019540592/job/140575287132) | All27 strict suites passed:1,062cases,0skips;108 native desktop checks passed. | File chooser control is synthetic; manual NVDA and native overwrite focus qualification remain separate. |
+| `0d7fe0de`, [audio Windows140575288361](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46019540941/job/140575288361) | Native Book51, managed queue12 and legacy queue12 checks passed, along with templates, large-source and Google/local translation controls. Overall job FAIL: the initial smoke used a standalone project for managed clear; native scheduling then exposed actual WinError5 during state publication. | Managed fixture `05dbb750` and JSON ownership `d216adc6` correct these exact failures. The initial smoke failure prevented later strict gates; no overall PASS is claimed. Physical audio and NVDA remain unmeasured. |
+| `0d7fe0de`, [sync140575287083](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46019540630/job/140575287083) | Source402PASS, then strict source7suites/218PASS and strict installed7suites/218PASS. The extra probe failed before pytest because its argument vector omitted required installed-origin fields. | Corrected caller `c41c7df7`/`1f87a81e` plus native spool owner `cc8a1073` require actual execution. Native transfer and later incremental gates were not reached. |
+| `0d7fe0de`, [publication140575285830](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46019540471/job/140575285830) | Initial strict source boundary13PASS. The installed inline caller then failed the required origin argument contract before pytest. | `1f87a81e` supplies the exact installed/checkout fields and owned process; final installed and validator gates must rerun. |
+| `0d7fe0de`, [fast replay46019540556](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46019540556) | Linux:309PASS/1FAIL source,283PASS/1FAIL installed; Windows:309PASS/1FAIL source,282PASS/2FAIL installed. Both loopback phases45PASS,0skips. | Empty-queue fixture corrected by `87d89d0b`; Windows installed legacy PCM re-attestation by `e112759f`. Exact final source/installed replay remains required. |
+| `798e62dd`, [large Linux140566043286](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46016847823/job/140566043286) | Installed Python inventory exact;49cases passed,0skips. Actual2GiB TXT was then written and admission correctly refused its disk request under ordinary16GiB stand policy. | This whole job failed. `9c9e6734` selects fixture resources and corrects preflight, without relaxing product limits. Actual successful multi-GiB execution remains required. |
+| `8911b2ae`, [audio140547902143](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46011505846/job/140547902143) | Native Book51 checks, templates, large-source controls and synthetic-provider translation controls passed. Strict tests exposed read-only zero-disk requests, isolated Windows Unicode CLI output and a JSON-list expectation; those are corrected in0d7. | That historical timeout is superseded diagnostically by the actual0d7 WinError5 above; no automatic PASS is inferred. |
+| `819d6bd9`, [managed140526455617](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46005184289/job/140526455617) |251strict cases,0skips; actual Windows A665→B819, full rollback, Repair, Uninstall, vault/registry and library backup/restore passed. | Later dev3 setup must pass independently. Signing and physical/manual accessibility are not inferred. |
+| `16207681`, [publication140534501156](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46007562215/job/140534501156) | Exact installed wheel,53pins and FULL9.1; actual independent EPUBCheck5.3/DAISY DTD valid fixtures and invalid controls passed. | Later publication cleanup/current source and reader/NVDA/full DAISY rules need their own results. |
+
+The [798 Windows bibliography run](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46016847674/job/140566042527)
+also passed all27 strict suites (1,062cases,0skips) and108 installed native
+checks, including actual format/overwrite dialogs. Controlled file-picker paths,
+manual keyboard/NVDA and inaccessible native overwrite-focus evidence remain
+reported separately. The subsequent a333 export no-read guard needs its own
+new source/installed execution.
+
+The798 fast Linux contracts passed13source suites/254cases,12installed/228,
+and2loopback/45, all without skips. Windows798 differed only in the known Book
+Unicode JSON failure already corrected in0d7. Those are earlier exact-source
+results, not acceptance of the added ASR/CI cleanup/current merge.
+
+Within the0d7 Linux run, actual managed queue56core+20UI, measured Book15core+7UI,
+book batch11core+8UI, isolated duration CLI1, scheduling24core+11CLI+10handler
+cases passed. Legacy queue archive19, UI8 and small harness-contract6 cases
+passed; its core suite passed20 of21 before the Path fixture correction.
+These are overlapping selections from that one run, not extra cases to add to
+3,753. They do not qualify physical513MiB migration or the native schedule lane.
+
+The latest CI status for a final source must be read from its own run. No earlier
+passing source is relabelled as acceptance of the subsequent composition.
+
 ## Finite closure work using the current implementation
 
 | Scope | Current implementation | Concrete remaining work or acceptance |
@@ -31,12 +88,12 @@ installed binary's passing result. A queued workflow is not execution evidence.
 | V3-02: text preparation | Source-bound editing/history, optional Hunspell-compatible spelling review, scoped pronunciation and reversible finite Ukrainian/English speech preparation are implemented. Number/date/unit/abbreviation/math/symbol and Markdown read/skip transformations use Preview, Apply and Undo. | Execute the current spelling/normalization gates and qualify each supported locale/rule set. Other locales retain verbatim text. Learned punctuation/stress/prosody restoration and unfamiliar foreign names need appropriate model and language evidence; finite substitutions are not that evidence. |
 | V3-03: reading and presentation | Exact-source live reading, font/colour/zoom, exact-range pacing and independent playback speed/pitch/volume/balance are implemented in the existing readers/player. Native live, recorded and Studio controls passed on earlier exact sources. | Repeat current installed/native ownership and source-revocation tests, then manual keyboard/NVDA and physical-device checks. SAPI4 remains explicitly unavailable in the current engine registry until a separately validated 32-bit helper/runtime combination exists. |
 | V3-04/05: audio production | Current Studio has role/master chain edit, reorder, bypass, removal, reusable presets and master dry/wet; clip copy/cut/paste, split, join and different-source consolidation; segmented recording with pause/resume and dry-input monitoring; ten-format media conversion and explicit video-stream selection. | Run the exact composed source/installed/native suites, including new queue stage ownership and post-publication cleanup faults. Verify real recording devices, latency, monitoring feedback and listening quality separately from synthetic FFmpeg sources. Pre-master stems and exact processed-master chapter slices remain distinct. |
-| V3-04/05: books and publication | Ordered multi-source book batches, reviewable naming/presets/splits, current-service CLI, metadata and measured PCM-frame publication are implemented. Measured parts use exact frames and retain approximate whole-line text scope where word alignment is unavailable. | Current Book native construction and immutable Effect fixture corrections need their next exact run. Verify batch cancellation/resume, retained-source restore/export and the selected voice/runtime. No model-generated speech quality or forced word alignment is inferred from a frame map. |
-| V3-06: recovery and automation | Complete typed snapshots, retained pending sources, current Vault incremental snapshots, explicit foreground scheduling and inert named workflow templates exist. `fa79` adds the managed Studio queue and its typed backup through the same owners. | Qualify the current full/incremental backup, queue restore and large-corpus complete cycle. Finish the separately reviewed legacy queue import integration and its project-ZIP exact-set checks. Restored jobs/templates/queues do not inherit execution approval, devices or automatic playback. |
+| V3-04/05: books and publication | Ordered multi-source book batches, reviewable naming/presets/splits, current-service CLI, metadata and measured PCM-frame publication are implemented. Measured parts use exact frames and retain approximate whole-line text scope where word alignment is unavailable. | Actual native Book51 checks passed on891; current0d7 Linux measured Book15+7, batch11+8 and isolated duration CLI passed. Final composed Windows/installed acceptance and selected voice/runtime remain required. No model speech quality or forced word alignment is inferred from a frame map. |
+| V3-06: recovery and automation | Complete typed snapshots, retained pending sources, current Vault incremental snapshots, explicit foreground scheduling and inert named workflow templates exist. `fa79` adds the managed Studio queue and its typed backup through the same owners. | Qualify the current full/incremental backup and large-corpus complete cycle. Legacy queue import and project-ZIP exact-set checks are implemented; Linux source cases have actual partial proof below. The physical513MiB and native/current installed lanes still need their results. Restored jobs/templates/queues do not inherit execution approval, devices or automatic playback. |
 | V3-07: large libraries and sources | Search/federation and folder scanning have bounded continuation. Explicit large TXT/PDF profiles, typed pending recovery and a larger selected backup capacity profile are implemented. Actual 1k, 10k and 50k retained-book runs passed at `431ac087`. | Execute the newer complete-backup cycle, declared large-source fixtures and exact current-head regressions. Read the bounded measurement JSON before reporting P50/P95 or RAM/disk values. Fixture construction is not public import throughput; million-segment traversal is not semantic model quality. |
-| V3-09: assistant operations | Seven additional typed tools now cover reader pages, notebook evidence, conversion, voice listing, audio planning/effect proposals and PCM inspection. Current explicit approval, source binding, journal and shared broker remain authoritative. Named templates rebind through a fresh Preview; scheduled jobs need an explicitly armed foreground window. | Do not describe inspection/proposals as arbitrary control of a live device or UI. Current `player.inspect` does not start playback; `audio.plan` does not render. Reverify completed scheduled jobs without replay, qualify actual selected local-model planning and measure engine-session costs before claiming large-book throughput. |
-| V3-20: translation and ASR | Structured document/chapter/range/batch translation is integrated with official Google Basic v2/Advanced v3 and an explicit local LibreTranslate transport. Current supplied-worker ASR has preparation, managed jobs, receipts, cancel/resume, CLI/export and inert canonical recovery. | Execute the exact current provider/CLI/native/backup gates. Real account-authorized provider calls, the actual selected local translator/model and actual supplied Whisper inference need their own evidence. Legacy ASR bytes must remain recoverable even when their extension is not proof of decodable PCM. |
-| V3-20: synchronized publishing | Current EPUB3/DAISY producers, synchronized reading and exact-publication resume are implemented. Independent EPUBCheck and DAISY DTD checks actually passed at `819d6bd9`. | Repeat them for the release source and verify real reader interoperability, manual navigation and accessibility. DAISY DTD validity is not full DAISY rule conformance; EPUBCheck is not WCAG/NVDA acceptance. |
+| V3-09: assistant operations | Eight additional typed tools now cover reader pages, notebook evidence, conversion, voice listing, audio planning/effect proposals, PCM inspection and current-service transcription. Current explicit approval, source binding, journal and shared broker remain authoritative. Named templates rebind through a fresh Preview; scheduled jobs need an explicitly armed foreground window. | Do not describe inspection/proposals as arbitrary control of a live device or UI. Current `player.inspect` does not start playback; `audio.plan` does not render. Reverify completed scheduled jobs without replay, qualify actual selected local-model planning and measure engine-session costs before claiming large-book throughput. |
+| V3-20: translation and ASR | Structured document/chapter/range/batch translation is integrated with official Google Basic v2/Advanced v3 and an explicit local LibreTranslate transport. Current supplied-worker ASR has preparation, managed jobs, receipts, cancel/resume, CLI/export, typed assistant execution and inert canonical recovery. | Execute the exact current provider/CLI/native/backup gates. Real account-authorized provider calls, the actual selected local translator/model and actual supplied Whisper inference need their own evidence. Legacy ASR bytes must remain recoverable even when their extension is not proof of decodable PCM. |
+| V3-20: synchronized publishing | Current EPUB3/DAISY producers, synchronized reading and exact-publication resume are implemented. Independent EPUBCheck and DAISY DTD checks actually passed at `819d6bd9` and `16207681`. | Repeat them for the release source and verify real reader interoperability, manual navigation and accessibility. DAISY DTD validity is not full DAISY rule conformance; EPUBCheck is not WCAG/NVDA acceptance. |
 
 Implementation references: [large sources](LARGE_SOURCE_PROFILES.md),
 [book batches](BOOK_AUDIO_BATCHES.md),
@@ -48,6 +105,8 @@ Implementation references: [large sources](LARGE_SOURCE_PROFILES.md),
 [local translation](LOCAL_TRANSLATION_ADAPTER.md),
 [media conversion](MEDIA_CONVERSION.md),
 [managed queue](MANAGED_PLAYBACK_QUEUE.md),
+[legacy queue migration](LEGACY_PLAYBACK_QUEUE_MIGRATION.md),
+[typed transcription](ASSISTANT_TRANSCRIPTION.md),
 [spelling](SPELLING_REVIEW.md) and
 [speech preparation](SPEECH_PREPARATION.md).
 
@@ -107,8 +166,13 @@ not an unbounded change to every import.
 The current pypdf/PDFium, page OCR, original-byte reader, import journal and
 catalog publisher remain the implementation. The large-source acceptance
 fixture includes a PDF with a large unused stream; it tests retained original
-size, not thousands of OCR pages or arbitrary complex-PDF quality. Optional
-2 GiB fixtures and peak child memory/VRAM still require recorded execution.
+size, not thousands of OCR pages or arbitrary complex-PDF quality. The actual
+798 Linux run physically wrote its2GiB TXT, then correctly refused the oversized
+resource request under the stand's ordinary16GiB disk policy. It did not
+complete a2GiB import. The corrected harness selects a conservative fixture-only
+policy and verifies its retention through restore; application defaults and
+production admission remain unchanged. Current2GiB TXT/PDF completion and peak
+child memory/VRAM still require their exact recorded results.
 
 The explicit `large-source-v1` backup profile uses complete manifest v6 and
 pending component v4. It declares 64 GiB catalog, 32 GiB journal, 128 GiB
@@ -120,8 +184,10 @@ See [the source/profile contract](LARGE_SOURCE_PROFILES.md).
 
 The assistant's current additions are exactly `reader.page`,
 `evidence.search`, `document.convert`, `voice.list`, `audio.plan`,
-`audio.effects` and `player.inspect`. They use current typed services;
-a saved plan cannot supply arbitrary executables, new providers or devices.
+`audio.effects`, `player.inspect` and `audio.transcribe`. They use current
+typed services. Transcription requires a selected runtime manifest and exact
+hash plus all seventeen reviewed settings; it does not accept arbitrary
+executable fields, new providers, credentials or network destinations.
 Read-only reader pages do not gain quotation authority. Evidence IDs remain
 bound to their saved notebook entry and source. Effects produce a reviewed
 source-preserving draft, not an implicit playback action.
@@ -217,7 +283,9 @@ ordinary late cleanup errors, keeps a pending native owner's original
 exception/owner, and propagates interpreter control signals with the committed
 receipt attached. The queue correction seals actual staging bytes before
 native identity checks and never deletes a foreign substituted stage.
-Both need their authored fault tests executed on the composed source.
+Current queue source/UI contracts now have the exact0d7 Linux evidence above.
+New final composition faults and current installed/native lanes still need
+their own authored test results.
 
 ## V3-01 through V3-22 qualification map
 
@@ -228,7 +296,7 @@ Both need their authored fault tests executed on the composed source.
 | V3-03 | Current live/recorded reading, appearance, pacing and independent playback controls. Current native/manual acceptance and explicitly qualified SAPI4 compatibility remain open. |
 | V3-04 | Current speech/render recovery, ordered book batches, naming/presets/metadata and measured splits. Qualify actual selected voices, exact current batch workflow and long-form listening. |
 | V3-05 | Effects, master chain, clips/consolidation, segmented recording/monitoring, media conversion and queue implemented. Physical devices, live latency/quality and current native regressions remain. |
-| V3-06 | Full/incremental typed snapshots, current queue, pending imports, foreground schedule and inert templates. Execute current complete-corpus restore and legacy-queue migration; no archived executable/device authority. |
+| V3-06 | Full/incremental typed snapshots, current and explicit legacy queue migration, pending imports, foreground schedule and inert templates. Execute current complete-corpus restore and physical/native queue lanes; no archived executable/device authority. |
 | V3-07 | Continuations and explicit large TXT/PDF profiles; actual 1k/10k/50k retained corpora passed on431. New backup phase, release-source performance and declared hardware metrics remain. |
 | V3-08 | Academic sources, evidence, CSL and editable Word/regeneration flows integrated. Exact current source-grounded export, receipt and quotation tests remain the evidence. |
 | V3-09 | Guided/local typed planning, expanded tools, scopes, approval, broker and durable execution. Selected local-model inference and measured multi-request engine session behavior are not established by registry or synthetic HTTP tests. |
@@ -246,12 +314,16 @@ Both need their authored fault tests executed on the composed source.
 | V3-21 | Existing owner engine/voice archives are known inputs for review. Consent-bound reference handling, admitted exact runtime/model, multilingual similarity/intelligibility and actual Windows/hardware cloning are not established by an adapter. No replacement training stack is authorized. |
 | V3-22 | Neutral entitlement/delivery, trust and refresh contracts do not establish deployed private billing/account authority. Real owner credentials, endpoints, signing and rights remain external dependencies. |
 
-Canonical source/data disposition is tracked separately in
-[the e3cf convergence record](CANONICAL_CONVERGENCE_E3CF_20261127.md)
-and its [135-path mapping](acceptance/canonical-e3cf-source-disposition.json).
-Preserving old bytes is not live-runtime compatibility; explicit supported
-imports use the current stores. Do not merge a second Studio, speech or provider
-implementation merely to make a file-count comparison disappear.
+Canonical source/data disposition is tracked in the
+[final137-path/21-contract product review](CANONICAL_CONVERGENCE_FINAL_20261127.md),
+the [non-product resolution](CANONICAL_NONPRODUCT_RESOLUTION_20261127.md),
+the explicit test disposition ledger and the complete481-path three-way
+merge inventory. The older135-path note remains a historical checkpoint.
+Missing canonical behavior discovered by review was ported: visible CSL credit,
+late backup receipt reattestation, synchronous evidence-note rejection cleanup,
+typed transcription, CI descendant settlement, exact sealed source-tree proof
+and concrete retained test assertions. Selected migration adapters use current
+stores; archived data is not live-runtime authority.
 
 A release claim requires the exact final source/package identities and completed
 required gates. Keep every known code defect, unsupported scenario and unexecuted
@@ -265,4 +337,7 @@ and an installed checker which incorrectly required unshipped bootstrap probes.
 The current corrections retain the bounded read limit and require exact declared
 Python inventory, including rejection of missing, extra and changed installed
 code. [Observed contracts and managed update](acceptance/CONTRACTS_AND_UPDATE_OBSERVED_20261127.md)
-records the exact runs and source boundaries. New corrections remain NOT_RUN.
+records the exact runs and source boundaries. These two corrections now have
+actual installed proof at798: all49 large-source/PDF/backup harness cases passed,
+with exact373 declared Python payload files verified before pytest. That result
+does not qualify the later CI native-family change or a successful 2GiB import.

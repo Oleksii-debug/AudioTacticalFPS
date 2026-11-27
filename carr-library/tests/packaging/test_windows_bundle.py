@@ -1,5 +1,9 @@
 """Offline distribution boundaries, using synthetic wheel bytes and real files."""
+import base64
+import csv
 import hashlib
+import io
+import os
 import importlib.util
 import json
 from pathlib import Path
@@ -58,6 +62,11 @@ class WindowsBundleTests(unittest.TestCase):
         installer.verify(self.output)
         self.assertIn("universal-research-library==1.0", (self.output / "install.lock").read_text())
         self.assertEqual((self.output / "wheelhouse" / self.app.name).read_bytes(), self.app.read_bytes())
+        manifest = json.loads((self.output / "bundle-manifest.json").read_bytes())
+        self.assertNotIn("source_tree", manifest)
+        self.assertFalse((self.output / "application-source.json").exists())
+        self.assertEqual((self.output / "START_V3_UK.txt").read_bytes(),
+                         (ROOT / "docs/START_V3_UK.txt").read_bytes())
 
     def test_actual_sealed_builder_manifest_reaches_native_installation_checks(self):
         # Build and verify the real bundle format with public synthetic wheels.
@@ -219,6 +228,77 @@ class WindowsBundleTests(unittest.TestCase):
             builder.build_bundle(self.app, self.wheels, self.lock, self.output,
                                  source_commit=commit)
         self.assertFalse(self.output.exists())
+
+    def test_exact_verified_historical_tree_is_preserved_in_bundle(self):
+        repo = self.root / 'source repository'
+        package = repo / 'carr-library/src/carr_library'
+        package.mkdir(parents=True)
+        (repo / 'carr-library/pyproject.toml').write_text('''[project]
+name = "universal-research-library"
+version = "1.0"
+dependencies = ["fixture==1.0"]
+[tool.setuptools]
+packages = ["carr_library"]
+package-dir = {"" = "src"}
+''', encoding='utf-8')
+        main = b"print('synthetic source-bound application')\n"
+        (package / '__main__.py').write_bytes(main)
+        environment = dict(os.environ, GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL=os.devnull,
+                           GIT_AUTHOR_NAME='Synthetic Test', GIT_AUTHOR_EMAIL='test@example.invalid',
+                           GIT_COMMITTER_NAME='Synthetic Test', GIT_COMMITTER_EMAIL='test@example.invalid')
+        def git(*args):
+            return subprocess.check_output(['git', '-C', str(repo), *args], env=environment,
+                                           text=True).strip()
+        git('init', '-q')
+        git('add', '.')
+        git('commit', '-qm', 'Synthetic release source')
+        release = git('rev-parse', 'HEAD')
+        tree = git('rev-parse', release + '^{tree}')
+        (repo / 'later.txt').write_text('Unrelated later commit.\n', encoding='utf-8')
+        git('add', '.')
+        git('commit', '-qm', 'Later source checkout')
+        self.assertNotEqual(tree, git('rev-parse', 'HEAD^{tree}'))
+
+        metadata = 'universal_research_library-1.0.dist-info/'
+        payload = {'carr_library/__main__.py': main,
+                   metadata + 'METADATA': b'Metadata-Version: 2.4\nName: universal-research-library\nVersion: 1.0\nRequires-Dist: fixture==1.0\n',
+                   metadata + 'WHEEL': b'Wheel-Version: 1.0\nRoot-Is-Purelib: true\nTag: py3-none-any\n'}
+        rows = [[name, 'sha256=' + base64.urlsafe_b64encode(hashlib.sha256(raw).digest()).decode().rstrip('='),
+                 str(len(raw))] for name, raw in payload.items()]
+        rows.append([metadata + 'RECORD', '', ''])
+        record = io.StringIO(newline='')
+        csv.writer(record, lineterminator='\n').writerows(rows)
+        with ZipFile(self.app, 'w', ZIP_DEFLATED) as archive:
+            for name, raw in payload.items():
+                archive.writestr(name, raw)
+            archive.writestr(metadata + 'RECORD', record.getvalue().encode())
+
+        verifier = module('source_wheel')
+        def verify(path, source_commit):
+            return verifier.verify_application_wheel(path, repo, source_commit)
+        with patch.object(builder, 'verify_application_source', side_effect=verify):
+            builder.build_bundle(self.app, self.wheels, self.lock, self.output,
+                                 source_commit=release)
+        manifest = json.loads((self.output / 'bundle-manifest.json').read_text())
+        self.assertEqual(manifest['source_commit'], release)
+        self.assertEqual(manifest['source_tree'], tree)
+        proof_path = self.output / 'application-source.json'
+        proof_bytes = proof_path.read_bytes()
+        proof = json.loads(proof_bytes)
+        self.assertEqual(proof['source_commit'], release)
+        self.assertEqual(proof['source_tree'], tree)
+        self.assertEqual(proof['wheel_sha256'], builder.sha256(self.app))
+        self.assertEqual(proof['project_name'], 'universal-research-library')
+        self.assertEqual(manifest['files']['application-source.json'],
+                         hashlib.sha256(proof_bytes).hexdigest())
+        self.assertNotIn(b'\r', proof_bytes)
+        installer.verify(self.output)
+        from carr_library.native_checks import _manifest
+        self.assertEqual(_manifest(self.output)['source_tree'], tree)
+        proof_path.write_bytes(proof_bytes.replace(release.encode(), b'0' * 40))
+        with self.assertRaisesRegex(ValueError, 'checksum'):
+            installer.verify(self.output)
+
 
     def test_application_replaced_after_source_verification_is_rejected(self):
         verified_digest = builder.sha256(self.app)

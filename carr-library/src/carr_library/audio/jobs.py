@@ -164,8 +164,12 @@ def _open_payload_file(path):
         raise
 
 
-def read_json(path, *, limit=65536):
-    """Read at most the declared budget, rejecting ambiguous JSON objects."""
+def read_json_bytes(path, *, limit=65536):
+    """Retain one bounded mutable JSON snapshot while atomic writers may publish.
+
+    Callers choose their own strict decoder. Immutable payloads and exact-path
+    approvals must keep verified_reader or their current identity checks.
+    """
     if type(limit) is not int or limit < 1:
         raise ValueError('Invalid checkpoint size limit.')
     path = Path(path)
@@ -206,6 +210,13 @@ def read_json(path, *, limit=65536):
         break
     else:
         raise ValueError('JSON state changed repeatedly while opening; retry the operation.')
+
+    return data
+
+
+def read_json(path, *, limit=65536):
+    """Read at most the declared budget, rejecting ambiguous JSON objects."""
+    data = read_json_bytes(path, limit=limit)
 
     def unique(pairs):
         result = {}

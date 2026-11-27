@@ -477,6 +477,7 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                         staged / "LOCAL_AUDIO_SETUP.txt")
         shutil.copyfile(HERE.parent / "docs" / "RUNNING.md", staged / "README.txt")
         shutil.copyfile(HERE.parent / "docs" / "START_UK.txt", staged / "START_UK.txt")
+        shutil.copyfile(HERE.parent / "docs" / "START_V3_UK.txt", staged / "START_V3_UK.txt")
         if spelling is not None:
             (staged / "spelling-component.json").write_bytes(spelling["manifest"])
             spelling_notice = staged / "notices" / "spelling"
@@ -485,6 +486,11 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
             (spelling_notice / "spellcheck-sbom.json").write_bytes(spelling["sbom"])
         if sbom is not None:
             (staged / "runtime-sbom.cdx.json").write_bytes(sbom_bytes)
+        if source_evidence is not None:
+            # Retain the verifier's exact commit/tree/wheel binding inside the
+            # sealed payload. Use deterministic LF bytes on either build host.
+            (staged / "application-source.json").write_bytes(
+                (json.dumps(source_evidence, indent=2, sort_keys=True) + "\n").encode("utf-8"))
         files = {p.relative_to(staged).as_posix(): sha256(p)
                  for p in sorted(staged.rglob("*")) if p.is_file()}
         manifest = {"schema": 1, "target": TARGET, "bundled_python": python_archive is not None,
@@ -495,6 +501,7 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                     "files": files}
         if source_commit is not None:
             manifest["source_commit"] = source_commit
+            manifest["source_tree"] = source_evidence["source_tree"]
         (staged / "bundle-manifest.json").write_text(
             json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         # Reserve a fresh destination; never overwrite an existing installation.

@@ -178,32 +178,40 @@ def test_denied_shared_memory_admission_does_not_launch_or_copy_dictionary(tmp_p
 def test_actual_pathological_affix_is_bounded_and_owned_child_reaped(tmp_path, monkeypatch, cancel):
     from carr_library.audio import capture_process as runner
     selected = dictionary(tmp_path, aff='SET UTF-8\nSFX X Y 1\nSFX X 0 s (a+)+\n', words=['a/X'])
-    actual, children, stopped = subprocess.Popen, [], Event()
-    class Processes:
-        def Popen(self, *args, **kwargs):
-            process = actual(*args, **kwargs); children.append(process); return process
-        def __getattr__(self, name):
-            return getattr(subprocess, name)
-    if os.name == 'nt':
-        from carr_library.audio import windows_job
-        actual_job = windows_job.JobProcess
-        def owned(*args, **kwargs):
-            process = actual_job(*args, **kwargs); children.append(process); return process
-        monkeypatch.setattr(windows_job, 'JobProcess', owned)
-    else:
-        monkeypatch.setattr(runner, 'subprocess', Processes())
+    actual, children, stopped = runner.start_owned_process, [], Event()
     timer = Timer(.25, stopped.set)
-    if cancel:
-        timer.start()
+
+    def started(*arguments, **options):
+        # Arm cancellation only after a real process has been admitted. A
+        # slow Windows dictionary/runtime review must not spend this barrier.
+        process = actual(*arguments, **options)
+        children.append(process)
+        assert process.poll() is None
+        if cancel:
+            timer.start()
+        return process
+
+    monkeypatch.setattr(runner, 'start_owned_process', started)
     try:
-        with pytest.raises((ValueError, InterruptedError)):
+        # Cancellation gets a finite cold-start allowance; the independent
+        # actual timeout case retains its original 0.6-second worker budget.
+        with pytest.raises(InterruptedError if cancel else ValueError):
             module.review_spelling('a' * 40 + 'bs', selected, library_root=tmp_path,
-                cancelled=stopped.is_set, budget=module.SpellBudget(timeout=.6))
+                cancelled=stopped.is_set,
+                budget=module.SpellBudget(timeout=5 if cancel else .6))
+        from carr_library.operations import ResourceBroker
+        assert len(children) == 1 and all(child.poll() is not None for child in children)
+        if cancel:
+            assert stopped.is_set()
+        assert ResourceBroker.for_app(tmp_path).snapshot()['leases'] == []
     finally:
-        timer.cancel(); timer.join() if timer.ident is not None else None
-    from carr_library.operations import ResourceBroker
-    assert len(children) == 1 and all(child.poll() is not None for child in children)
-    assert ResourceBroker.for_app(tmp_path).snapshot()['leases'] == []
+        timer.cancel()
+        if timer.ident is not None:
+            timer.join()
+        # Failure cleanup cannot make the assertions above pass: they observe
+        # the application's own settled family and released resource lease.
+        for process in children:
+            runner.stop_owned_process(process)
 
 
 def test_actual_abrupt_child_exit_returns_no_review_and_releases_admission(tmp_path, monkeypatch):

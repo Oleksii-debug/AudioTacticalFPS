@@ -284,9 +284,10 @@ def test_empty_imported_queue_keeps_provenance_through_exact_project_snapshot(tm
     backup_project(result.project_path, backup, project_dir=store.audio,
                    include_audio=False, include_cache=False)
     restored = restore_project(backup, tmp_path / 'empty-restored')
-    assert (restored['project_dir'] / PROVENANCE_NAME).read_bytes() == expected
-    assert provenance_assets(restored['project_dir'], result.project_id) == {
-        PROVENANCE_NAME: restored['project_dir'] / PROVENANCE_NAME}
+    restored_audio = Path(restored['project_dir'])
+    assert (restored_audio / PROVENANCE_NAME).read_bytes() == expected
+    assert provenance_assets(restored_audio, result.project_id) == {
+        PROVENANCE_NAME: restored_audio / PROVENANCE_NAME}
 
 
 def test_last_publication_boundary_has_no_external_callback_after_any_staged_pin(

@@ -144,16 +144,24 @@ jobs:
           & $env:CARR_PUBLICATION_PYTHON scripts/ci_check.py tests/audio/test_publication_acceptance.py 2>&1 | Tee-Object 'publication-ci-results/strict-source.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $installed = @'
-          import pathlib, runpy, sys
+          import os, pathlib, runpy, sys
           import carr_library, bootstrap
           prefix = pathlib.Path(sys.prefix).resolve()
           assert pathlib.Path(carr_library.__file__).resolve().is_relative_to(prefix)
           assert pathlib.Path(bootstrap.__file__).resolve().is_relative_to(prefix)
           assert 'site-packages' in {part.casefold() for part in pathlib.Path(carr_library.__file__).parts}
-          child = runpy.run_path('scripts/ci_check.py')['PYTEST_CHILD']
-          sys.argv = ['installed-publication-gate', 'offline', '-o', 'addopts=', '-o', 'xfail_strict=true',
-                      '-o', 'pythonpath=', '--import-mode=importlib', '--junitxml', sys.argv[1], 'tests/audio/test_publication_acceptance.py']
-          exec(compile(child, 'installed-publication-offline-policy', 'exec'))
+          root = pathlib.Path.cwd().resolve()
+          checked = runpy.run_path('scripts/ci_check.py')
+          command = [sys.executable, '-I', '-B', '-c', checked['PYTEST_CHILD'],
+                     'offline', 'installed', str(root),
+                     '-o', 'addopts=', '-o', 'xfail_strict=true',
+                     '-o', 'pythonpath=', '--import-mode=importlib',
+                     '--junitxml', str(pathlib.Path(sys.argv[1]).resolve()),
+                     '--', str(root / 'tests/audio/test_publication_acceptance.py')]
+          environment = {key: value for key, value in os.environ.items()
+                         if key.upper() not in ('PYTHONPATH', 'PYTEST_ADDOPTS', 'PYTEST_PLUGINS', 'CARR_CI_ALLOW_LOOPBACK')}
+          environment['PYTEST_DISABLE_PLUGIN_AUTOLOAD'] = '1'
+          raise SystemExit(checked['_run_test_process'](command, env=environment, cwd=root, timeout=240))
           '@
           & $env:CARR_PUBLICATION_PYTHON -I -B -c $installed 'publication-ci-results/strict-installed.xml' 2>&1 | Tee-Object 'publication-ci-results/strict-installed.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

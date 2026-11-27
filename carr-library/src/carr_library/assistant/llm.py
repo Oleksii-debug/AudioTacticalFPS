@@ -20,6 +20,9 @@ library.backup(name), audio.produce(text OR script),
 reader.page(edition,revision,page,topic?), evidence.search(query,field?,tag?,limit?,include_archived?),
 document.convert(path,name), voice.list(limit?), audio.plan(text OR script),
 audio.effects(script,target,effects,voice?,language?,master_mix?), player.inspect(path).
+audio.transcribe(path,name,runtime_manifest,runtime_manifest_sha256,settings).
+For transcription, use only the exact user-provided reviewed manifest hash and
+all seventeen explicit settings. Ask for missing values; never invent runtime authority.
 reader.page needs the exact known revision. document.convert writes a new TXT plus provenance.
 audio.effects returns an isolated script proposal; player.inspect never starts playback.
 Never include scope, credentials, shell, code, URLs, deletion or other tools.

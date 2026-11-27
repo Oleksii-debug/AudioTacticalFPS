@@ -58,3 +58,52 @@ def test_independent_large_pdf_allowance_is_admitted_before_any_fixture(tmp_path
                      '--txt-mib', '257', '--pdf-mib', '3072'])
     assert calls == []
     assert not report.exists()
+
+
+def test_actual_large_worker_policy_requires_explicit_fixture_admission_and_preserves_other_limits(tmp_path):
+    from dataclasses import replace
+    from tempfile import gettempdir
+    import pytest
+    from carr_library.application import LibraryApp
+    from carr_library.operations import ResourceBroker, ResourceLimits, ResourceUnavailable
+    from carr_library.operations.admission import document_request
+
+    module = producers()
+    app = LibraryApp(tmp_path / 'owned-measurement-library')
+    broker = ResourceBroker.for_app(app.root)
+    original = broker.limits
+    # This is a policy contract using the actual current worker request, not a
+    # claim that a multi-GiB input was produced by this small regression.
+    source_bytes = 2 * 1024**3 + 20000
+    requested = replace(document_request(app.root, Path(gettempdir()), original),
+                        disk_bytes=source_bytes * 10 + 128 * module.MIB)
+    with pytest.raises(ResourceUnavailable, match='disk_bytes'):
+        broker._fits_policy(requested, original)
+    selected = module.configure_fixture_resources(app, source_bytes)
+    assert broker.limits == selected
+    broker._fits_policy(requested, selected)
+    assert replace(selected, disk_bytes=original.disk_bytes) == original
+    assert ResourceLimits().disk_bytes == 16 * 1024**3
+    other = LibraryApp(tmp_path / 'independent-library')
+    assert ResourceBroker.for_app(other.root).limits.disk_bytes == 16 * 1024**3
+
+
+def test_pdf_admission_covers_existing_worker_reservation_not_only_copied_originals(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    import carr_library
+    import pytest
+
+    module = producers()
+    # The former four-copy PDF estimate fits; the actual existing ten-copy
+    # worker admission still requires more. Refuse before creating either input.
+    available = 4 * 2048 * module.MIB + 2 * 1024**3 + module.MIB
+    monkeypatch.setattr(module.shutil, 'disk_usage', lambda _: SimpleNamespace(free=available))
+    called = []
+    monkeypatch.setattr(module, 'text_case', lambda *args: called.append('txt'))
+    monkeypatch.setattr(module, 'pdf_case', lambda *args: called.append('pdf'))
+    output = tmp_path / 'no-false-report.json'
+    with pytest.raises(ValueError, match='Insufficient free space'):
+        module.main(['--workdir', str(tmp_path), '--output', str(output),
+                     '--expected-package', carr_library.__file__,
+                     '--txt-mib', '257', '--pdf-mib', '2048'])
+    assert called == [] and not output.exists()

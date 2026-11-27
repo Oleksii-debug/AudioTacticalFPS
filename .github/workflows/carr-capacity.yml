@@ -5,6 +5,10 @@ on:
     branches: [carr-library, carr/v3-local-studio-20261126-a4f9, 'carr/v3-acceptance-*']
     paths:
       - carr-library/scripts/benchmark_library_corpus.py
+      - carr-library/pyproject.toml
+      - carr-library/src/carr_library/__init__.py
+      - carr-library/docs/acceptance/canonical-e3cf-*.json
+      - carr-library/docs/CANONICAL_CONVERGENCE_FINAL_20261127.md
       - carr-library/src/carr_library/storage/revisions.py
       - carr-library/src/carr_library/search/pagination.py
       - carr-library/src/carr_library/ingest/source_profiles.py

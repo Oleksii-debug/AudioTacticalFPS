@@ -3,17 +3,181 @@
 Use only on a trusted synthetic test checkout, never on imported documents.
 """
 import argparse
+from contextlib import contextmanager
 from functools import partial
+import hashlib
+import importlib
+import math
 from concurrent.futures import ThreadPoolExecutor
 import os
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
+from threading import Lock
 import time
+from time import sleep
+import types
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
+SUITE_TIMEOUT_SECONDS = 600
+# Sampled live-file caps; each suite can retain at most this admitted prefix
+# per stream. Overshoot between polls is refused, never accepted as a pass.
+PROCESS_LOG_LIMIT_BYTES = 16 * 1024 * 1024
+PROCESS_LOG_POLL_SECONDS = .05
+_PROCESS_SOURCE = ROOT / 'src/carr_library/audio'
+_PROCESS_IMPORT_LOCK = Lock()
+_PROCESS_OWNER_MODULE = None
+
+
+def _process_owner():
+    """Reuse the application's exact stdlib-only native-family owner.
+
+    Load it under a private tooling namespace: source helpers must not shadow
+    the carr_library package whose installed bytes the child verifies.
+    """
+    global _PROCESS_OWNER_MODULE
+    with _PROCESS_IMPORT_LOCK:
+        if _PROCESS_OWNER_MODULE is None:
+            directory = _PROCESS_SOURCE.resolve(strict=True)
+            namespace = '_carr_required_process_' + hashlib.sha256(
+                os.fsencode(directory)).hexdigest()[:20]
+            if namespace not in sys.modules:
+                package = types.ModuleType(namespace)
+                package.__path__ = [str(directory)]
+                sys.modules[namespace] = package
+            _PROCESS_OWNER_MODULE = importlib.import_module(namespace + '.capture_process')
+        return _PROCESS_OWNER_MODULE
+
+
+@contextmanager
+def _process_log_file(prefix):
+    stream = tempfile.TemporaryFile(mode='w+b', prefix=prefix)
+    primary = None
+    try:
+        yield stream
+    except BaseException as exc:
+        primary = exc
+        raise
+    finally:
+        try:
+            stream.close()
+        except Exception as close_error:
+            if primary is None:
+                raise
+            primary.add_note('Required test log close also failed: ' + type(close_error).__name__)
+
+
+def _check_process_logs(streams):
+    for label, stream in streams:
+        if os.fstat(stream.fileno()).st_size > PROCESS_LOG_LIMIT_BYTES:
+            raise RuntimeError(f'Required test {label} exceeded its bounded output allowance.')
+
+
+def _relay_process_log(stream, descriptor):
+    # Read only after the owned family is quiet. Child handles share the
+    # regular-file offset, so reading a live spool would disturb its writes.
+    stream.seek(0)
+    remaining = PROCESS_LOG_LIMIT_BYTES
+    while remaining:
+        block = stream.read(min(64 * 1024, remaining))
+        if not block:
+            return
+        remaining -= len(block)
+        view = memoryview(block)
+        while view:
+            written = os.write(descriptor, view)
+            if written <= 0:
+                raise OSError('Required test output relay made no progress.')
+            view = view[written:]
+
+
+def _run_test_process(command, *, env, cwd=None, timeout=None) -> int:
+    directory = ROOT if cwd is None else cwd
+    wait_seconds = SUITE_TIMEOUT_SECONDS if timeout is None else timeout
+    if (type(wait_seconds) not in (int, float) or
+            not math.isfinite(wait_seconds) or wait_seconds <= 0):
+        raise ValueError('Required test process timeout must be positive and finite.')
+    owner = _process_owner()
+    # GitHub/pwsh Tee standard handles can be pipes. The shared Windows owner
+    # deliberately admits only explicit regular output files. Private spools
+    # remain open through family cleanup; no ambient parent handle is inherited.
+    with (_process_log_file('carr-ci-stdout-') as output,
+          _process_log_file('carr-ci-stderr-') as errors):
+        streams = (('stdout', output), ('stderr', errors))
+        process, failure, returncode = None, None, None
+        try:
+            process = owner.start_owned_process(command, cwd=directory, env=env,
+                                                stdout=output, stderr=errors)
+            deadline = time.monotonic() + wait_seconds
+            while True:
+                _check_process_logs(streams)
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise subprocess.TimeoutExpired(command, wait_seconds)
+                try:
+                    returncode = process.wait(timeout=min(PROCESS_LOG_POLL_SECONDS, remaining))
+                except subprocess.TimeoutExpired:
+                    continue
+                _check_process_logs(streams)
+                break
+        except BaseException as exc:
+            failure = exc
+        finally:
+            if process is not None:
+                # Includes an exited pytest leader with surviving descendants.
+                # The shared helper defers interruption and retains cleanup
+                # until quiescence before either stream can close or be read.
+                owner.stop_owned_process(process)
+        if failure is None:
+            try:
+                _check_process_logs(streams)
+            except Exception as exc:
+                failure = exc
+        if failure is not None and not isinstance(failure, Exception):
+            raise failure
+        try:
+            _relay_process_log(output, 1)
+            _relay_process_log(errors, 2)
+        except Exception as relay_error:
+            if failure is None:
+                raise
+            failure.add_note('Required test output relay also failed: ' + type(relay_error).__name__)
+        if failure is not None:
+            raise failure
+        return returncode
+
+
+def _cleanup_report_directory(directory) -> None:
+    for attempt in range(5):
+        try:
+            directory.cleanup()
+            return
+        except PermissionError:
+            if attempt == 4:
+                raise
+            sleep(.05)
+
+
+@contextmanager
+def _report_directory(suite):
+    directory = tempfile.TemporaryDirectory(prefix='carr-ci-')
+    original_error = None
+    try:
+        yield directory.name
+    except BaseException as exc:
+        original_error = exc
+        raise
+    finally:
+        try:
+            _cleanup_report_directory(directory)
+        except OSError as exc:
+            if original_error is None:
+                raise
+            print(f'FAIL: {suite}: temporary report cleanup failed after '
+                  f'{type(original_error).__name__}: {type(exc).__name__}: {exc}; '
+                  f'directory={directory.name}', flush=True)
 
 # JUnit alone cannot distinguish a non-strict XPASS from a genuine pass.
 # Use pytest's own report classification in the isolated subprocess.
@@ -164,10 +328,10 @@ def run_suite(suite: str, *, allow_loopback=False, installed=False) -> bool:
     env['DO_NOT_TRACK'] = '1'
     print(f'RUN: required suite: {suite}', flush=True)
     started = time.monotonic()
-    with tempfile.TemporaryDirectory(prefix='carr-ci-') as tmp:
-        report = Path(tmp) / 'junit.xml'
-        try:
-            proc = subprocess.run([
+    try:
+        with _report_directory(suite) as tmp:
+            report = Path(tmp) / 'junit.xml'
+            returncode = _run_test_process([
                 sys.executable, *(['-I', '-B'] if installed else []), '-c', PYTEST_CHILD,
                 'numeric-loopback' if allow_loopback else 'offline',
                 'installed' if installed else 'source', str(ROOT),
@@ -176,19 +340,20 @@ def run_suite(suite: str, *, allow_loopback=False, installed=False) -> bool:
                 '-o', 'xfail_strict=true', '-vv', '--durations=5', '--junitxml', str(report),
                 '--basetemp', str(Path(tmp) / 'pytest'),
                 '--', str(path),
-            ], cwd=ROOT, env=env, timeout=600, check=False)
+            ], env=env)
             cases = list(ET.parse(report).iter('testcase'))
-        except (OSError, subprocess.TimeoutExpired, ET.ParseError) as exc:
-            print(f'FAIL: required suite did not produce a valid report: {suite}: '
-                  f'{type(exc).__name__}: {exc}', flush=True)
-            return False
-        failed = sum(any(c.find(tag) is not None for tag in ('failure', 'error')) for c in cases)
-        skipped = sum(c.find('skipped') is not None for c in cases)
-        passed = len(cases) - failed - skipped
-        ok = proc.returncode == 0 and passed > 0 and failed == skipped == 0
+            failed = sum(any(c.find(tag) is not None for tag in ('failure', 'error')) for c in cases)
+            skipped = sum(c.find('skipped') is not None for c in cases)
+            passed = len(cases) - failed - skipped
+            ok = returncode == 0 and passed > 0 and failed == skipped == 0
+        # Report PASS only after native-family and temporary-data cleanup.
         print(f'{"PASS" if ok else "FAIL"}: {suite}: junit_passed={passed}, failed={failed}, '
-              f'skipped={skipped}, pytest_exit={proc.returncode}, elapsed_seconds={time.monotonic() - started:.2f}', flush=True)
+              f'skipped={skipped}, pytest_exit={returncode}, elapsed_seconds={time.monotonic() - started:.2f}', flush=True)
         return ok
+    except (OSError, RuntimeError, ImportError, subprocess.TimeoutExpired, ET.ParseError) as exc:
+        print(f'FAIL: {suite}: required suite did not complete cleanly: '
+              f'{type(exc).__name__}: {exc}', flush=True)
+        return False
 
 
 def main() -> int:

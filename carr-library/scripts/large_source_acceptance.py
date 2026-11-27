@@ -100,6 +100,22 @@ def timed(report, name, operation):
     return value
 
 
+def configure_fixture_resources(app, original_bytes):
+    """Select this test library's declared disk policy; never alter defaults."""
+    from dataclasses import replace
+    from carr_library.operations import ResourceBroker
+    if type(original_bytes) is not int or not 0 < original_bytes <= 4 * 1024**3:
+        raise ValueError('The fixture policy needs the exact bounded original byte count.')
+    broker = ResourceBroker.for_app(app.root)
+    before = broker.limits
+    # The existing worker declares 10x the selected source plus journal/scratch.
+    # This test profile also admits the already planned snapshot overlap.
+    selected = replace(before, disk_bytes=max(before.disk_bytes,
+                                              12 * original_bytes + 2 * 1024**3))
+    broker.configure(selected)
+    return selected
+
+
 def text_case(root, mebibytes, timeout):
     from carr_library.application import LibraryApp, open_existing_library
     from carr_library.backup_capacity import LARGE_SOURCE_PROFILE
@@ -122,6 +138,8 @@ def text_case(root, mebibytes, timeout):
         raise AssertionError('The legacy profile silently admitted a larger source.')
     profile = LargeTextProfile(original_bytes)
     app = LibraryApp(root / 'original library')
+    policy = configure_fixture_resources(app, original_bytes)
+    report['resource_policy'] = policy.to_dict()
     workspace = app.create_workspace('Measured large original')
     observed = 0
     def cancelled():
@@ -147,6 +165,8 @@ def text_case(root, mebibytes, timeout):
     restored_root = timed(report, 'pending_restore', lambda: restore_backup(
         pending, root / 'resumed library', pending_digest))
     resumed = open_existing_library(restored_root)
+    from carr_library.operations import ResourceBroker
+    assert ResourceBroker.for_app(resumed.root).limits == policy
     # These are exclusively this script's completed private fixture directories.
     # Remove duplicate phases before allocating the next full-size snapshot.
     shutil.rmtree(app.root)
@@ -201,6 +221,8 @@ def pdf_case(root, mebibytes, timeout):
     original_bytes = source.stat().st_size
     assert original_bytes > 128 * MIB
     app = LibraryApp(root / 'pdf library')
+    policy = configure_fixture_resources(app, original_bytes)
+    report['resource_policy'] = policy.to_dict()
     workspace = app.create_workspace('Measured file-backed PDF')
     result = timed(report, 'owned_import', lambda: app.import_file(workspace, source,
         source_profile=PdfProfile(original_bytes), timeout=timeout))
@@ -221,6 +243,8 @@ def pdf_case(root, mebibytes, timeout):
     shutil.rmtree(app.root)
     restored = timed(report, 'restore', lambda: restore_backup(backup, root / 'restored pdf', digest))
     reopened = open_existing_library(restored)
+    from carr_library.operations import ResourceBroker
+    assert ResourceBroker.for_app(reopened.root).limits == policy
     hit = reopened.search_page(workspace, 'Pdfprofileproof exact painted source',
                                 limit=1, timeout=60).results[0]
     assert hit.verified
@@ -252,14 +276,18 @@ def main(arguments=None):
     workdir = args.workdir.resolve(strict=True)
     if not workdir.is_dir():
         raise ValueError('Choose an existing private fixture work directory.')
-    # The phases run in separate temporary trees. Admit the larger peak:
-    # TXT retains expanded journal/catalog copies; PDF retains its original,
-    # owned input and complete-backup copies without expanding the whole file.
-    required = max(12 * (args.txt_mib * MIB), 4 * (args.pdf_mib * MIB)) + 2 * 1024**3
-    if shutil.disk_usage(workdir).free < required:
+    # The phases use separate private trees. Cover both the retained snapshot
+    # overlap and the unchanged worker's conservative 10x disk reservation,
+    # including for a PDF whose large unused stream does not expand in memory.
+    required = max(12 * (args.txt_mib * MIB), 12 * (args.pdf_mib * MIB)) + 2 * 1024**3
+    available = shutil.disk_usage(workdir).free
+    if available < required:
         raise ValueError('Insufficient free space for the declared measured fixture/backup phases.')
     report = dict(status='RUNNING', installed_package_verified=True, peak_ram='NOT_MEASURED',
-                  peak_vram='NOT_MEASURED', physical_audio='NOT_APPLICABLE')
+                  peak_vram='NOT_MEASURED', physical_audio='NOT_APPLICABLE',
+                  selected_txt_mib=args.txt_mib, selected_pdf_mib=args.pdf_mib,
+                  required_free_bytes=required, observed_initial_free_bytes=available,
+                  resource_profile='Explicit per-fixture disk allowance; production defaults unchanged')
     try:
         with TemporaryDirectory(prefix='carr-large-txt-', dir=workdir) as temporary:
             report['txt'] = text_case(Path(temporary), args.txt_mib, args.timeout)
@@ -267,7 +295,7 @@ def main(arguments=None):
             report['pdf'] = pdf_case(Path(temporary), args.pdf_mib, args.timeout)
         report['status'] = 'PASS'
     except BaseException as exc:
-        report.update(status='FAIL', error_type=type(exc).__name__)
+        report.update(status='FAIL', error_type=type(exc).__name__, error_message=str(exc)[:1000])
         raise
     finally:
         args.output.parent.mkdir(parents=True, exist_ok=True)

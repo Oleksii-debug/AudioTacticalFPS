@@ -10,6 +10,23 @@ from threading import Event
 from uuid import uuid4
 
 
+def _message(message):
+    """Bounded console observation must not invalidate a saved job."""
+    try:
+        if sys.stderr is None:
+            return
+        message = str(message)
+        truncated = len(message) > 4096
+        escaped = message[:4096].encode('ascii', 'backslashreplace').decode('ascii')
+        if truncated or len(escaped) > 4096:
+            escaped = escaped[:4093] + '...'
+        print(escaped, file=sys.stderr, flush=True)
+    except (OSError, UnicodeError, ValueError):
+        # An unavailable or closed progress stream is not operation failure.
+        # KeyboardInterrupt and SystemExit retain their normal control meaning.
+        pass
+
+
 def _data_directory(selected):
     if selected is not None:
         return Path(selected)
@@ -32,7 +49,10 @@ def main(argv=None):
     if arguments[:1] == ['schedule']:
         from .schedule_cli import main as schedule_main
         return schedule_main(arguments[1:])
-    parser = argparse.ArgumentParser(description='Scoped local assistant: preview first; explicit --run executes')
+    from .planner import HELP
+    parser = argparse.ArgumentParser(
+        description='Scoped local assistant: preview first; explicit --run executes',
+        epilog=HELP, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--data-dir', type=Path)
     source = parser.add_mutually_exclusive_group(required=True)
     source.add_argument('--instructions', type=Path)
@@ -89,7 +109,7 @@ def main(argv=None):
                                maximum=64 * 1024 if args.local_profile is not None else maximum)
         app = LibraryApp(_data_directory(args.data_dir))
         production = LocalProduction(app.root, cancelled=stopped.is_set)
-        service = AssistantService(app, production=production)
+        service = AssistantService(app, production=production, validation_cancelled=stopped.is_set)
         if args.list_local_profiles:
             result = [{'id': row.id, 'name': row.name, 'endpoint': row.endpoint, 'model': row.model}
                       for row in ProfileStore(app.root / 'api-connections.json').profiles()
@@ -115,8 +135,7 @@ def main(argv=None):
                 gateway = ProviderGateway(BudgetLedger(app.root / 'api-operations.sqlite'))
                 plan = propose_local_plan(service, gateway, profile, instruction, scope,
                     approval=approval, operation_id=uuid4().hex, cancelled=stopped.is_set, profile_store=store)
-                print('Local proposal only. Review its exact scope, then use a separate --run invocation.',
-                      file=sys.stderr, flush=True)
+                _message('Local proposal only. Review its exact scope, then use a separate --run invocation.')
             else:
                 plan = service.preview(instruction, scope)
             result = plan.to_dict()
@@ -131,11 +150,10 @@ def main(argv=None):
                 if stopped.is_set():
                     raise InterruptedError('Assistant stopped before submitting its reviewed plan.')
                 identity = service.submit(plan)
-                print('Assistant job: ' + identity, file=sys.stderr, flush=True)
+                _message('Assistant job: ' + identity)
                 result = asdict(service.run(identity, cancelled=stopped.is_set,
-                    progress=lambda done, total, phase: print(f'{done}/{total}: {phase}',
-                                                              file=sys.stderr, flush=True)))
-        print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
+                    progress=lambda done, total, phase: _message(f'{done}/{total}: {phase}')))
+        print(json.dumps(result, ensure_ascii=True, indent=2, allow_nan=False))
         if args.run:
             if result.get('status') in ('paused', 'cancelled'):
                 return 130
@@ -143,13 +161,13 @@ def main(argv=None):
                 return 1
         return 0
     except (KeyboardInterrupt, InterruptedError):
-        print('Assistant stopped. Saved job checkpoints remain available for review or resume.', file=sys.stderr)
+        _message('Assistant stopped. Saved job checkpoints remain available for review or resume.')
         return 130
     except (ValueError, OSError, RuntimeError, sqlite3.Error) as exc:
         if stopped.is_set():
-            print('Assistant stopped. No new plan was approved.', file=sys.stderr)
+            _message('Assistant stopped. No new plan was approved.')
             return 130
-        print('Local assistant: ' + str(exc), file=sys.stderr)
+        _message('Local assistant: ' + str(exc))
         return 1
     finally:
         signal.signal(signal.SIGINT, previous)

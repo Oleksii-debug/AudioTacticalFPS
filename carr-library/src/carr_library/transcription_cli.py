@@ -23,7 +23,7 @@ _FORMATS = ('txt', 'srt', 'vtt', 'json')
 
 
 def _write(value, *, stream=None):
-    print(json.dumps(value, ensure_ascii=False, allow_nan=False, indent=2),
+    print(json.dumps(value, ensure_ascii=True, allow_nan=False, indent=2),
           file=sys.stdout if stream is None else stream, flush=True)
 
 

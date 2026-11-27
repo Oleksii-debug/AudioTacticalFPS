@@ -201,3 +201,71 @@ def test_standalone_pcm_verification_refuses_actual_close_boundary_rewrite(tmp_p
     with pytest.raises(ValueError, match='before verification was acknowledged'):
         schema.verify_pcm(path, row)
     assert changed == [path]
+    assert sha256(path.read_bytes()).hexdigest() != row['sha256']
+
+
+
+def test_standalone_pcm_rechecks_bytes_when_final_metadata_pin_is_unchanged(tmp_path, monkeypatch):
+    """Actual bytes remain authority even when a native timestamp pin repeats."""
+    from contextlib import contextmanager
+    import os
+    from carr_library.audio import legacy_playlist_state as schema
+    _, source, _, queue, _ = _archive(tmp_path)
+    row = queue['items'][0]
+    path = source / row['filename']
+    captured = schema.native_identity(path)
+    original, changes = schema.verified_reader, []
+
+    @contextmanager
+    def replace_bytes_after_close(selected, **options):
+        with original(selected, **options) as stream:
+            yield stream
+        if Path(selected) == path and not changes:
+            before = path.stat()
+            with path.open('r+b') as writer:
+                writer.seek(-2, os.SEEK_END)
+                writer.write(b'\x35\x27')
+                writer.flush()
+                os.fsync(writer.fileno())
+            os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns))
+            changes.append(path)
+    monkeypatch.setattr(schema, 'verified_reader', replace_bytes_after_close)
+    # Simulate only the observed metadata equality. The PCM bytes, independent
+    # reopened reader and their checksum are real on both Windows and POSIX.
+    monkeypatch.setattr(schema, 'native_identity', lambda selected: captured)
+    monkeypatch.setattr('carr_library.native_file_metadata.stream_change_time',
+                        lambda stream: captured[-1])
+    with pytest.raises(ValueError, match='before verification was acknowledged'):
+        schema.verify_pcm(path, row)
+    assert changes == [path]
+    assert path.stat().st_size == row['size_bytes']
+    assert sha256(path.read_bytes()).hexdigest() != row['sha256']
+
+
+def test_standalone_pcm_second_content_pass_remains_cancellable(tmp_path, monkeypatch):
+    from contextlib import contextmanager
+    from carr_library.audio import legacy_playlist_state as schema
+    _, source, _, queue, _ = _archive(tmp_path)
+    row = queue['items'][0]
+    path = source / row['filename']
+    before = path.read_bytes()
+    original, entries, active = schema.verified_reader, [], []
+
+    @contextmanager
+    def observed_reader(selected, **options):
+        with original(selected, **options) as stream:
+            entries.append(Path(selected))
+            active.append(stream)
+            try:
+                yield stream
+            finally:
+                active.pop()
+    monkeypatch.setattr(schema, 'verified_reader', observed_reader)
+    # First content read, then the metadata-only identity reader, followed by
+    # the second bounded content pass. No wall-clock sleep coordinates this.
+    def cancelled():
+        return bool(active and len(entries) >= 3)
+    with pytest.raises(InterruptedError, match='cancelled'):
+        schema.verify_pcm(path, row, cancelled=cancelled)
+    assert len(entries) == 3 and not active
+    assert path.read_bytes() == before

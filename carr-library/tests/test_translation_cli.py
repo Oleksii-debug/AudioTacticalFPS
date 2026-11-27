@@ -150,3 +150,21 @@ def test_sigint_returns_130_with_the_durable_paused_job_and_without_remote_text(
     assert status == 130 and result['status'] == 'paused'
     assert service.jobs.load(queued['id'])['status'] == 'paused' and not text_calls(transport)
     assert signal.getsignal(signal.SIGINT) is previous
+
+
+def test_unicode_json_receipt_survives_actual_cp1252_output(monkeypatch):
+    from io import BytesIO, TextIOWrapper
+    value = {'title': 'Україна 日本語 🎧', 'directory': 'каталог/переклад',
+             'status': 'complete', 'original': 'Незмінний оригінал'}
+    output = BytesIO()
+    stream = TextIOWrapper(output, encoding='cp1252', errors='strict', newline='\n')
+    try:
+        with monkeypatch.context() as patch:
+            patch.setattr(module.sys, 'stdout', stream)
+            module._json(value)
+            stream.flush()
+        encoded = output.getvalue()
+        assert encoded.isascii()
+        assert json.loads(encoded.decode('ascii')) == value
+    finally:
+        stream.detach()

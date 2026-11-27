@@ -14,6 +14,7 @@ from filelock import FileLock, Timeout
 from .models import canonical, local_path
 from .validation import decode_state_json, validate_job, validate_control
 from ..ingest.writer_guard import WriterBusy, exclusive_writer
+from ..audio.jobs import _open_json_file, read_json_bytes, replace_json_file
 
 MAX_JOBS = 1000
 MAX_JOB_BYTES = 64 * 1024 * 1024
@@ -119,7 +120,7 @@ def atomic_json(path, value):
             stream.flush()
             os.fsync(stream.fileno())
         regular(path, missing=True)
-        os.replace(temporary, path)
+        replace_json_file(temporary, path)
         if os.name != 'nt':
             fd = os.open(path.parent, os.O_RDONLY)
             try:
@@ -142,8 +143,9 @@ def read_bytes(path, *, maximum=MAX_JOB_BYTES):
     info = regular(path)
     if not 0 < info.st_size <= maximum:
         raise ValueError('Invalid assistant checkpoint size.')
-    flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
-    with os.fdopen(os.open(path, flags), 'rb') as stream:
+    # Exact backup/approval reads still reject a replaced path, but their
+    # read handle must not prevent the legitimate atomic state publisher.
+    with _open_json_file(path) as stream:
         if _identity(os.fstat(stream.fileno())) != _identity(info):
             raise ValueError('Assistant checkpoint changed while opening.')
         raw = stream.read(maximum + 1)
@@ -155,7 +157,14 @@ def read_bytes(path, *, maximum=MAX_JOB_BYTES):
 
 
 def read_json(path, *, maximum=MAX_JOB_BYTES):
-    return decode_state_json(read_bytes(path, maximum=maximum))
+    """Decode a coherent live checkpoint without locking out its publisher.
+
+    A reader may observe the complete previous version during an atomic save.
+    Backup/approval callers retain read_bytes and its exact current-path check.
+    """
+    path = Path(path)
+    local_path(path.parent)
+    return decode_state_json(read_json_bytes(path, limit=maximum))
 
 
 class JobStore:

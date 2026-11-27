@@ -392,6 +392,50 @@ def test_runtime_leases_outside_backup_state_and_truthful_capabilities(tmp_path)
     assert 'no physical RAM/VRAM measurement' in facts['memory_policy']
 
 
+
+def test_forked_child_cannot_release_parent_reservation(broker, monkeypatch):
+    """Keep the donor fork boundary and exercise its PID guard on every host."""
+    with broker.reserve(ResourceRequest(cpu_slots=2), operation_id='parent', timeout=0) as lease:
+        parent_pid = os.getpid()
+        # Windows has no fork; the actual inherited-owner predicate must still
+        # reject a foreign PID without touching the parent's native lock.
+        with monkeypatch.context() as changed:
+            changed.setattr(os, 'getpid', lambda: parent_pid + 1)
+            with pytest.raises(ResourceStateError, match='parent reservation'):
+                lease.release()
+            with pytest.raises(ResourceStateError, match='parent reservation'):
+                lease._lock.release()
+            with pytest.raises(ResourceStateError, match='current process'):
+                lease.checkpoint()
+        assert lease._lock.held
+        assert len(broker.snapshot()['leases']) == 1
+
+        if 'fork' in multiprocessing.get_all_start_methods():
+            # A real fork copies the open description and the lease object.
+            # A successful child refusal must leave the parent's lease held.
+            def child_release():
+                try:
+                    lease.release()
+                except ResourceStateError:
+                    os._exit(0)
+                os._exit(1)
+
+            child = multiprocessing.get_context('fork').Process(target=child_release)
+            child.start()
+            try:
+                child.join(10)
+                assert not child.is_alive(), 'Inherited lease refusal did not settle.'
+                assert child.exitcode == 0
+            finally:
+                if child.is_alive():
+                    child.terminate()
+                child.join(5)
+                assert not child.is_alive(), 'Owned fixture child did not stop.'
+                child.close()
+            assert lease._lock.held
+            assert len(broker.snapshot()['leases']) == 1
+    assert broker.snapshot()['leases'] == []
+
 def test_paths_do_not_follow_links_and_invalid_requests_are_rejected(tmp_path):
     real = tmp_path / 'real'
     real.mkdir()

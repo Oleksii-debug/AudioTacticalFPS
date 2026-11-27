@@ -11,7 +11,7 @@ import re
 TOOLS = frozenset({
     'library.create', 'library.list', 'library.catalog', 'library.import',
     'library.import_folder', 'library.search', 'library.extract',
-    'library.backup', 'audio.produce',
+    'library.backup', 'audio.produce', 'audio.transcribe',
     'reader.page', 'evidence.search', 'document.convert', 'voice.list',
     'audio.plan', 'audio.effects', 'player.inspect',
 })

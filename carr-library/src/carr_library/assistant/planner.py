@@ -17,6 +17,9 @@ Produce audio: [script text] / Озвуч: [текст сценарію]
 Additional typed JSON tools: reader.page (edition/revision/page), evidence.search (query),
 document.convert (path/new .txt name), voice.list, audio.plan, audio.effects (isolated script
 proposal), player.inspect (scoped PCM metadata only; never starts an audio device).
+audio.transcribe requires path, a new directory name, runtime_manifest, its exact
+runtime_manifest_sha256 and all 17 explicit settings from the local transcription dialog.
+It uses the existing supplied-worker job, retained originals and verified export receipt.
 Audio prose is literal narration. Only an explicit JSON audio.produce step with input_kind="script"
 or a typed script object interprets role/music/pause directions.
 Paths must be inside your selected input/output folders. No delete, shell or remote tools are available.'''

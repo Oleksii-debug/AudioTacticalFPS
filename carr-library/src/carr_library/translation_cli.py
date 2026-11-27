@@ -16,7 +16,7 @@ from .installation_lease import installed_entrypoint
 
 
 def _json(value):
-    print(json.dumps(value, ensure_ascii=False, indent=2))
+    print(json.dumps(value, ensure_ascii=True, indent=2))
 
 
 def _read(path, maximum):

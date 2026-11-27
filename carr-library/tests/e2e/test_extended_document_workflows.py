@@ -156,6 +156,32 @@ def source_bytes(extension):
 FORMATS = ('.html', '.md', '.eml', '.fb2', '.fb3', '.odt', '.ods', '.odp', '.pptx', '.xlsx')
 
 
+@pytest.mark.parametrize('arguments', (
+    ('--self-test',), ('--backup', 'unused-backup'), ('studio', 'voices'),
+    ('--lookup-doi', '10.5555/example', '--allow-online-doi', '--workspace', 'selected'),
+))
+def test_format_listing_rejects_another_operation_before_opening_any_runtime(arguments, monkeypatch):
+    from carr_library.__main__ import main
+    def forbidden(*args, **kwargs):
+        raise AssertionError('Ambiguous command must not initialize an application or native runtime.')
+    monkeypatch.setattr('carr_library.application.LibraryApp', forbidden)
+    monkeypatch.setattr('carr_library.native_runtime.activate_bundled_runtime', forbidden)
+    with pytest.raises(SystemExit) as error:
+        main(['--document-formats', *arguments])
+    assert error.value.code == 2
+
+
+def test_format_listing_does_not_open_a_library_or_native_runtime(monkeypatch, capsys):
+    from carr_library.__main__ import main
+    def forbidden(*args, **kwargs):
+        raise AssertionError('Format listing must not open a library or native runtime.')
+    monkeypatch.setattr('carr_library.application.LibraryApp', forbidden)
+    monkeypatch.setattr('carr_library.native_runtime.activate_bundled_runtime', forbidden)
+    assert main(['--document-formats']) == 0
+    text = capsys.readouterr().out
+    assert 'HTML' in text and '.xlsx' in text
+
+
 @pytest.mark.parametrize('extension', FORMATS)
 def test_extended_source_import_reader_search_and_quote_boundary(tmp_path, extension):
     source = tmp_path / ('Наукове джерело' + extension)

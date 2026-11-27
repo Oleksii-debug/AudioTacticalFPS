@@ -42,7 +42,10 @@ def _plain(value):
 
 
 class AssistantService:
-    def __init__(self, app, *, state_dir=None, production=None):
+    def __init__(self, app, *, state_dir=None, production=None, validation_cancelled=lambda: False):
+        if not callable(validation_cancelled):
+            raise TypeError('Plan validation needs a callable cancellation signal.')
+        self.validation_cancelled = validation_cancelled
         self.app = app
         managed = app.root / 'state' / 'assistant'
         if state_dir is not None and local_path(state_dir, must_exist=False) != managed:
@@ -61,6 +64,8 @@ class AssistantService:
         return plan
 
     def validate(self, plan):
+        if self.validation_cancelled():
+            raise InterruptedError('Assistant plan validation stopped; no job was approved.')
         if not isinstance(plan, Plan):
             raise TypeError('A typed plan is required.')
         workspace = plan.scope.workspace_id
@@ -70,16 +75,21 @@ class AssistantService:
             with self.app.read(workspace):
                 pass
         for i, step in enumerate(plan.steps):
+            if self.validation_cancelled():
+                raise InterruptedError('Assistant plan validation stopped; no job was approved.')
             _check_arguments(step)
             if step.tool == 'library.create':
                 if i != 0:
                     raise ValueError('Create a new library as the first step.')
                 workspace = '<new>'
-            if (step.tool not in ('library.create', 'library.list', 'library.backup', 'audio.produce')
+            if (step.tool not in ('library.create', 'library.list', 'library.backup', 'audio.produce', 'audio.transcribe')
                     and step.tool not in INDEPENDENT_TOOLS and not workspace):
                 raise PermissionError('Choose a library before this operation.')
             if step.tool in LOCAL_TOOLS:
                 validate_admission(self, step, plan.scope)
+            if step.tool == 'audio.transcribe':
+                from .transcription import validate_admission as validate_transcription
+                validate_transcription(self, step, plan.scope)
             if step.tool.startswith('library.import'):
                 path = plan.scope.input(step.arguments['path'])
                 if step.tool.endswith('_folder') != path.is_dir():
@@ -97,6 +107,8 @@ class AssistantService:
                     raise RuntimeError('The audio production runtime is not configured.')
                 if callable(getattr(self.production, 'plan', None)):
                     self.production.plan(step.arguments, max_bytes=plan.scope.max_bytes)
+        if self.validation_cancelled():
+            raise InterruptedError('Assistant plan validation stopped; no job was approved.')
         return plan
 
     def submit(self, plan):
@@ -211,7 +223,7 @@ class AssistantService:
             records.append({'path': str(path), 'size': size, 'sha256': _hash_file(path, cancelled)})
         return records
 
-    def _verify_completed(self, result, scope, cancelled):
+    def _verify_completed(self, result, scope, cancelled, *, checkpoint=None):
         if not isinstance(result, dict):
             raise ValueError('Completed tool result is damaged.')
         before = result.get('artifacts', [])
@@ -224,6 +236,9 @@ class AssistantService:
                 raise PermissionError('The completed backup is outside the approved output directory.')
             verify_backup_receipt(directory, result['backup_receipt'], max_bytes=scope.max_bytes,
                                   max_files=scope.max_files, cancelled=cancelled)
+        if checkpoint is not None and 'transcription_export' in checkpoint['intent']:
+            from .transcription import verify_completed
+            verify_completed(self, checkpoint['intent'], result, scope, cancelled)
 
     def run(self, identity, *, cancelled=lambda: False, progress=None, _schedule_ticket=None):
         with self.store.lock(identity):
@@ -251,7 +266,7 @@ class AssistantService:
                     if record['workspace']:
                         with self.app.read(record['workspace']):
                             pass
-                    self._verify_completed(checkpoint['result'], plan.scope, stopped)
+                    self._verify_completed(checkpoint['result'], plan.scope, stopped, checkpoint=checkpoint)
                 if progress:
                     progress(len(plan.steps), len(plan.steps), 'complete')
                 return self._report(record)
@@ -267,7 +282,7 @@ class AssistantService:
                             pass
                     if checkpoint['status'] == 'complete':
                         try:
-                            self._verify_completed(checkpoint['result'], plan.scope, stopped)
+                            self._verify_completed(checkpoint['result'], plan.scope, stopped, checkpoint=checkpoint)
                         except Exception:
                             checkpoint['status'] = 'failed'
                             raise
@@ -352,6 +367,9 @@ class AssistantService:
         args = step.arguments
         workspace = record['workspace']
         intent = checkpoint['intent']
+        if step.tool == 'audio.transcribe':
+            from .transcription import execute
+            return execute(self, step, scope, record, checkpoint, persist, cancelled, progress, index)
         if step.tool in LOCAL_TOOLS:
             return execute_local(self, step, scope, workspace=workspace, cancelled=cancelled)
         if step.tool == 'library.create':
