@@ -597,3 +597,180 @@ def test_real_orphan_manifest_can_be_listed_and_publication_resumed(tmp_path, mo
         assert 'Snapshot published' in view.preview
     finally:
         controller.dispose()
+
+
+
+@pytest.fixture
+def confirmation_probe():
+    """Import only the native probe's portable policy, without creating wx."""
+    import importlib.util
+    path = Path(__file__).with_name('probe_portable_sync_native.py')
+    spec = importlib.util.spec_from_file_location('portable_sync_confirmation_probe', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _accessible_operation(probe, *, output=None, returncode=0):
+    request = dict(hwnd=101, owner=99, pid=301, title='Synthetic confirmation',
+                   yes='Yes', no='No', answer='Yes')
+    receipt = dict(status='NATIVE_DIALOG', method='UIA_Invoke', pid=301,
+                   hwnd=101, owner=99, title='Synthetic confirmation',
+                   button_name='Yes', button_type=50000, button_id='CommandButton_0',
+                   button_hwnd=0, enabled=True, offscreen=False)
+    operation = probe.AccessibleAnswer.__new__(probe.AccessibleAnswer)
+    operation.request = request
+    operation.deadline = 10
+    operation.process = Mock()
+    operation.process.poll.return_value = returncode
+    operation.process.returncode = returncode
+    operation.process.communicate.return_value = (
+        probe.json.dumps(receipt if output is None else output).encode('utf-8'), b'')
+    return operation, receipt
+
+
+def test_native_confirmation_accepts_correlated_virtual_button_receipt(confirmation_probe):
+    operation, _ = _accessible_operation(confirmation_probe)
+    assert operation.poll() is True
+
+
+@pytest.mark.parametrize(('field', 'value'), [
+    ('pid', 302), ('hwnd', 102), ('owner', 98), ('title', 'Other confirmation'),
+    ('button_name', 'No'), ('button_type', 50004), ('enabled', False),
+    ('offscreen', True), ('button_hwnd', True), ('button_hwnd', -1),
+    ('status', 'PASS'), ('method', 'EndModal'),
+])
+def test_native_confirmation_rejects_uncorrelated_receipt(confirmation_probe, field, value):
+    operation, receipt = _accessible_operation(confirmation_probe)
+    receipt[field] = value
+    operation.process.communicate.return_value = (
+        confirmation_probe.json.dumps(receipt).encode('utf-8'), b'')
+    with pytest.raises(AssertionError, match='does not match'):
+        operation.poll()
+
+
+def test_native_confirmation_pending_timeout_kills_helper_without_success(confirmation_probe, monkeypatch):
+    operation, _ = _accessible_operation(confirmation_probe, returncode=None)
+    monkeypatch.setattr(confirmation_probe, 'monotonic', lambda: 9)
+    assert operation.poll() is False
+    operation.process.communicate.assert_not_called()
+    monkeypatch.setattr(confirmation_probe, 'monotonic', lambda: 11)
+    with pytest.raises(AssertionError, match='eight seconds'):
+        operation.poll()
+    operation.process.kill.assert_called_once()
+    operation.process.communicate.assert_called_once_with(timeout=1)
+
+
+def test_native_confirmation_failed_helper_cannot_report_success(confirmation_probe):
+    operation, _ = _accessible_operation(confirmation_probe, returncode=1)
+    with pytest.raises(AssertionError, match='interaction failed'):
+        operation.poll()
+
+
+def _native_confirmation_tree(probe, monkeypatch, *, controls=None, owner=99, pid=None):
+    import ctypes
+    from ctypes import wintypes
+    confirmation = probe.WindowsConfirmations.__new__(probe.WindowsConfirmations)
+    confirmation.yes_label, confirmation.no_label = 'Yes', 'No'
+    confirmation.pending = None
+    confirmation.ctypes, confirmation.types = ctypes, wintypes
+    confirmation.callback = lambda callback: callback
+    nodes = {101: dict(kind='#32770', text='Synthetic confirmation', owner=owner,
+                       pid=probe.os.getpid() if pid is None else pid, visible=True, enabled=True, id=0)}
+    nodes.update(controls or {201: dict(kind='DirectUIHWND', text='', owner=0,
+                                      visible=True, enabled=True, id=0)})
+    api = Mock()
+    api.EnumWindows.side_effect = lambda callback, unused: callback(101, 0)
+    api.EnumChildWindows.side_effect = lambda window, callback, unused: [
+        callback(handle, 0) for handle in nodes if handle != 101]
+    api.GetWindowThreadProcessId.side_effect = lambda window, pointer: setattr(pointer._obj, 'value', nodes[window]['pid'])
+    api.GetWindow.side_effect = lambda window, flag: nodes.get(window, {}).get('owner', 0)
+    api.GetDlgCtrlID.side_effect = lambda window: nodes[window]['id']
+    api.IsWindowVisible.side_effect = lambda window: nodes[window]['visible']
+    api.IsWindowEnabled.side_effect = lambda window: nodes[window]['enabled']
+    confirmation._string = lambda function, window: nodes[window][
+        'kind' if function is api.GetClassNameW else 'text']
+    confirmation.api = api
+    operation = Mock()
+    operation.poll.return_value = False
+    constructor = Mock(return_value=operation)
+    monkeypatch.setattr(probe, 'AccessibleAnswer', constructor)
+    return confirmation, operation, constructor
+
+
+def test_native_virtual_confirmation_is_polled_and_uses_requested_answer(confirmation_probe, monkeypatch):
+    confirmation, operation, constructor = _native_confirmation_tree(confirmation_probe, monkeypatch)
+    assert confirmation.reply(99, 'Synthetic confirmation', accept=False) is False
+    request = constructor.call_args.args[0]
+    assert request == dict(hwnd=101, owner=99, pid=confirmation_probe.os.getpid(),
+                           title='Synthetic confirmation', yes='Yes', no='No', answer='No')
+    assert confirmation.reply(99, 'Synthetic confirmation', accept=False) is False
+    operation.poll.return_value = True
+    assert confirmation.reply(99, 'Synthetic confirmation', accept=False) is True
+    assert confirmation.pending is None
+    constructor.assert_called_once()
+    confirmation.api.PostMessageW.assert_not_called()
+
+
+@pytest.mark.parametrize('change', ['owner', 'process', 'title'])
+def test_native_virtual_confirmation_never_uses_another_window(confirmation_probe, monkeypatch, change):
+    kwargs = {'owner': 98} if change == 'owner' else (
+        {'pid': confirmation_probe.os.getpid() + 1} if change == 'process' else {})
+    confirmation, _, constructor = _native_confirmation_tree(confirmation_probe, monkeypatch, **kwargs)
+    title = 'Other confirmation' if change == 'title' else 'Synthetic confirmation'
+    assert confirmation.reply(99, title, accept=True) is False
+    constructor.assert_not_called()
+    confirmation.api.PostMessageW.assert_not_called()
+
+
+def test_native_confirmation_pending_action_cannot_be_retargeted(confirmation_probe, monkeypatch):
+    confirmation, operation, constructor = _native_confirmation_tree(confirmation_probe, monkeypatch)
+    assert confirmation.reply(99, 'Synthetic confirmation', accept=True) is False
+    with pytest.raises(AssertionError, match='different owned confirmation'):
+        confirmation.reply(99, 'Synthetic confirmation', accept=False)
+    confirmation.close()
+    operation.close.assert_called_once()
+    assert confirmation.pending is None
+
+
+def test_native_confirmation_retains_real_hwnd_button_click(confirmation_probe, monkeypatch):
+    controls = {201: dict(kind='Button', text='Yes', owner=0,
+                         visible=True, enabled=True, id=6)}
+    confirmation, _, constructor = _native_confirmation_tree(confirmation_probe, monkeypatch, controls=controls)
+    assert confirmation.reply(99, 'Synthetic confirmation', accept=True) is True
+    confirmation.api.PostMessageW.assert_called_once_with(201, 0x00F5, 0, 0)
+    constructor.assert_not_called()
+
+
+def test_native_confirmation_rejects_ambiguous_hwnd_buttons(confirmation_probe, monkeypatch):
+    controls = {handle: dict(kind='Button', text='Yes', owner=0,
+                             visible=True, enabled=True, id=6) for handle in (201, 202)}
+    confirmation, _, constructor = _native_confirmation_tree(confirmation_probe, monkeypatch, controls=controls)
+    with pytest.raises(AssertionError, match='no unique native answer'):
+        confirmation.reply(99, 'Synthetic confirmation', accept=True)
+    confirmation.api.PostMessageW.assert_not_called()
+    constructor.assert_not_called()
+
+
+
+def test_native_confirmation_poll_error_closes_helper_and_retains_original_failure(confirmation_probe, monkeypatch):
+    confirmation, operation, _ = _native_confirmation_tree(confirmation_probe, monkeypatch)
+    assert confirmation.reply(99, 'Synthetic confirmation', accept=True) is False
+    operation.poll.side_effect = AssertionError('Original failure')
+    with pytest.raises(AssertionError, match='Original failure'):
+        confirmation.reply(99, 'Synthetic confirmation', accept=True)
+    operation.close.assert_called_once()
+    assert confirmation.pending is None
+
+
+def test_native_confirmation_failed_cleanup_retains_handle_for_retry(confirmation_probe, monkeypatch):
+    confirmation, operation, _ = _native_confirmation_tree(confirmation_probe, monkeypatch)
+    assert confirmation.reply(99, 'Synthetic confirmation', accept=True) is False
+    operation.poll.side_effect = AssertionError('Original failure')
+    operation.close.side_effect = TimeoutError('Helper did not exit yet')
+    with pytest.raises(AssertionError, match='Original failure'):
+        confirmation.reply(99, 'Synthetic confirmation', accept=True)
+    assert confirmation.pending is not None
+    operation.close.side_effect = None
+    confirmation.close()
+    assert confirmation.pending is None

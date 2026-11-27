@@ -62,7 +62,7 @@ def test_active_checkpoint_roundtrip_preserves_bytes_and_requires_new_scope(save
         folder = tmp_path / 'backup'
         digest = create_backup(app, folder)
     manifest = json.loads((folder / 'manifest.json').read_bytes())
-    assert manifest['version'] == 4
+    assert manifest['version'] == 5
     assert {row['path'] for row in manifest['sidecars']} == {
         'state/assistant/' + name for name in expected}
     assert {path.name: path.read_bytes() for path in (folder / 'sidecars/state/assistant').iterdir()} == expected

@@ -425,7 +425,11 @@ def test_final_new_destination_publication_never_overwrites_a_late_writer(
 @pytest.mark.parametrize('name', ['CON.json', 'project.json:stream', 'project.json.'])
 def test_new_studio_file_keeps_export_filename_guards(controller, tmp_path, name):
     controller.new('Source')
+    # Windows device aliases exist without a directory entry or created file.
+    before = set(tmp_path.iterdir())
+    existed = (tmp_path / name).exists()
     with pytest.raises(ValueError, match='filename'):
         controller.save(tmp_path / name)
     assert controller.project_path is None
-    assert not (tmp_path / name).exists()
+    assert set(tmp_path.iterdir()) == before
+    assert (tmp_path / name).exists() == existed
