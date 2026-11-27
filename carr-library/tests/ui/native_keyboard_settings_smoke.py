@@ -260,10 +260,10 @@ def run_native(source=None, timeout=120):
             before = keymap.read_bytes()
 
             def cancel(dialog):
-                dialog.shortcut.SetValue('Ctrl+Alt+J')
+                dialog.shortcut.SetValue('Ctrl+Alt+U')
                 activate(button(dialog.dialog, caption='Assign shortcut'))
                 check('cancel probe has an unapplied native settings draft',
-                      dialog.draft[test_id] == 'Ctrl+Alt+J' and manager.shortcut(test_id) == 'Ctrl+Shift+K')
+                      dialog.draft[test_id] == 'Ctrl+Alt+U' and manager.shortcut(test_id) == 'Ctrl+Shift+K')
                 press(wx.WXK_ESCAPE)
 
             check('actual Escape cancels the native settings dialog', not settings_session(cancel))

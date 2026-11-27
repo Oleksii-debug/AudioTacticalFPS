@@ -15,7 +15,7 @@ requires the applicable Microsoft redistribution grant.
 
 The same native application includes editable source-preserving narration copies,
 Audio Studio (Ctrl+Alt+A), and a guided local assistant (Ctrl+Alt+J). Audio uses
-installed SAPI voices and the sealed FFmpeg runtime, with typed multivoice plans,
+installed SAPI voices and a separately prepared local FFmpeg runtime, with typed multivoice plans,
 DSP, procedural music, chapters, subtitles, stems, verified resume and separate
 project snapshots. Optional neural voice/music engines require explicitly installed
 local assets; the package does not imply that these models or every language are
@@ -37,6 +37,28 @@ Audio Studio projects have their own complete snapshot/restore workflow. Optiona
 API profiles use the Windows credential vault and explicit per-task data/cost review.
 
 ## Windows offline package
+
+### Library Core delivery profile
+
+The Library Core package includes the native desktop, Python, locked dependencies,
+local search model, OCR engine and initial OCR models. It contains no FFmpeg
+runtime or optional neural voice/music packs. Library, search, OCR, reading,
+evidence and academic workflows operate without those audio components.
+
+The Audio menu remains part of the application. Audio production, conversion and
+export require a separately prepared local FFmpeg installation; an installed SAPI
+voice alone does not satisfy that dependency. Missing tools are reported when an
+audio operation is requested. The application does not download them silently.
+See `packaging/audio-runtime/README.txt` for the existing local preparation route
+and its recorded component review limits. Local runtime preparation and a
+transferable binary package are separate operations.
+
+This profile is a bounded research-library build within the broader Resonance
+specification. It does not claim complete platform, neural-model, transcription,
+professional recording, signed-update or manual NVDA acceptance. Release evidence
+must identify this profile separately from a locally prepared audio-enabled build.
+
+### Installation
 
 The Windows x64 package targets CPython 3.11. The complete package includes its
 own Python runtime. Extract the complete package into a new folder, then open

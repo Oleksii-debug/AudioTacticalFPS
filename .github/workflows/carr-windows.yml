@@ -80,11 +80,31 @@ jobs:
           assert 'tests/audio/test_engines.py' not in suites
           assert all('probe_backup_v4_producer_models.py' not in name for name in suites)
           assert all((project / name).is_file() for name in suites)
-          native_scripts = re.findall(r"^            @\{ Script='([^']+)'", source, re.M)
-          assert native_scripts and len(native_scripts) == len(set(native_scripts))
-          assert all((project / name).is_file() for name in native_scripts)
+          native_groups = {}
+          for variable, count in (('nativeGates', 24), ('coreNativeGates', 21)):
+              groups = re.findall(r'\$' + variable + r' = @\(\n(.*?)\n          \)', source, re.S)
+              assert len(groups) == 1, variable
+              scripts = re.findall(r"Script='([^']+)'", groups[0])
+              assert len(scripts) == len(set(scripts)) == count, variable
+              assert all((project / name).is_file() for name in scripts), variable
+              native_groups[variable] = scripts
+          omitted_native = {'scripts/windows_audio_runtime_smoke.py', 'scripts/windows_audio_smoke.py',
+                            'scripts/windows_assistant_smoke.py'}
+          assert native_groups['coreNativeGates'] == [name for name in native_groups['nativeGates'] if name not in omitted_native]
+          selected = re.findall(r'\$coreSuites = @\(\n(.*?)\n          \)', source, re.S)
+          assert len(selected) == 1
+          core_suites = re.findall(r"'([^']+)'", selected[0])
+          assert len(core_suites) == len(set(core_suites)) == 42
+          assert all((project / name).is_file() for name in core_suites)
+          full_lists = [ast.literal_eval(node.value) for block in blocks
+                        for node in ast.walk(ast.parse(textwrap.dedent(block)))
+                        if isinstance(node, ast.Assign) and isinstance(node.value, ast.List)
+                        and any(isinstance(target, ast.Name) and target.id == 'installed_suites' for target in node.targets)]
+          assert len(full_lists) == 1 and len(full_lists[0]) == len(set(full_lists[0])) == 43
+          assert core_suites == [name for name in full_lists[0] if name != 'tests/assistant/test_audio_bridge.py']
           print(json.dumps({'status': 'PASS', 'python_blocks': len(blocks), 'python_inline': len(inline),
-                            'required_source_suites': len(suites), 'installed_native_gates': len(native_scripts)}))
+                            'required_source_suites': len(suites), 'installed_native_gates': len(native_groups['nativeGates']),
+                            'library_core_native_gates': len(native_groups['coreNativeGates']), 'library_core_suites': len(core_suites)}))
           '@
           $syntax | python -I -B -
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -334,6 +354,7 @@ jobs:
           '@
           $verifySbom | & $env:CARR_PYTHON -I -B - $bundle $sourceCommit | Tee-Object 'ci-results/full-bundle-sbom-proof.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item -LiteralPath (Join-Path $bundle 'audio-runtime/audio-manifest.json') -Destination 'ci-results/full-profile-audio-manifest.json'
           $manifest = Join-Path $bundle 'bundle-manifest.json'
           $manifestBefore = (Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash
           $bundledPython = Join-Path $bundle 'runtime/python.exe'
@@ -393,73 +414,40 @@ jobs:
           $env:CARR_FFMPEG = Join-Path $bundle 'audio-runtime/bin/ffmpeg.exe'
           $env:PATH = "$(Join-Path $bundle 'audio-runtime/bin');$(Join-Path $bundle 'ocr');$env:PATH"
           $env:PYTEST_DISABLE_PLUGIN_AUTOLOAD = '1'
-          $runNative = @'
-          import pathlib, runpy, sys
-          import carr_library
-          from carr_library.native_runtime import activate_bundled_runtime
-          from carr_library.audio_runtime import activate_bundled_audio_runtime
-          root = pathlib.Path(sys.argv.pop(1)).resolve()
-          assert pathlib.Path(carr_library.__file__).resolve().is_relative_to(root / '.venv')
-          native_handle = activate_bundled_runtime(bundle_root=root)
-          assert native_handle is not None
-          assert activate_bundled_audio_runtime(bundle_root=root)
-          sys.argv = sys.argv[1:]
-          runpy.run_path(sys.argv[0], run_name='__main__')
-          '@
-          $nativeGates = @(
-            @{ Script='tests/ui/probe_source_open_native.py'; Args=@(); Output='core-bundle-native.txt' },
-            @{ Script='scripts/windows_academic_smoke.py'; Args=@(); Output='full-bundle-academic-native.txt' },
-            @{ Script='scripts/windows_ocr_models_smoke.py'; Args=@(); Output='full-bundle-ocr-models.txt' },
-            @{ Script='scripts/windows_audio_runtime_smoke.py'; Args=@('--bundle', $bundle); Output='full-bundle-audio-runtime.json' },
-            @{ Script='scripts/windows_audio_smoke.py'; Args=@('--bundle', $bundle); Output='full-bundle-audio-render.json' },
-            @{ Script='scripts/windows_assistant_smoke.py'; Args=@('--bundle', $bundle); Output='full-bundle-assistant.json' },
-            @{ Script='tests/ui/native_import_center_smoke.py'; Args=@(); Output='native-import-center.txt' },
-            @{ Script='tests/ui/native_document_formats_smoke.py'; Args=@('--native'); Output='native-document-formats.txt' },
-            @{ Script='tests/ui/native_evidence_pages_smoke.py'; Args=@('--native'); Output='native-evidence-pages.txt' },
-            @{ Script='tests/ui/native_academic_smoke.py'; Args=@(); Output='native-academic-workflows.txt' },
-            @{ Script='tests/ui/native_notebook_search_smoke.py'; Args=@('--native'); Output='native-notebook-search.txt' },
-            @{ Script='tests/ui/native_ebook_reader_smoke.py'; Args=@('--native'); Output='native-ebook-reader.txt' },
-            @{ Script='tests/ui/native_catalog_tools_smoke.py'; Args=@('--native'); Output='native-catalog-tools.txt' },
-            @{ Script='tests/ui/probe_ebook_native.py'; Args=@(); Output='native-ebook-contents.txt' },
-            @{ Script='tests/ui/native_reading_desk_smoke.py'; Args=@('--native'); Output='native-reading-desk.txt' },
-            @{ Script='tests/ui/probe_catalog_insights_native.py'; Args=@(); Output='native-catalog-insights.txt' },
-            @{ Script='scripts/windows_v3_reading_smoke.py'; Args=@(); Output='native-v3-reading.txt' },
-            @{ Script='scripts/windows_ocr_languages_smoke.py'; Args=@('--require-bundled'); Output='native-ocr-languages.txt' },
-            @{ Script='tests/ui/native_academic_comparison_smoke.py'; Args=@('--require-windows'); Output='native-academic-comparison.txt' },
-            @{ Script='tests/ui/probe_advanced_search_native.py'; Args=@(); Output='native-advanced-search.txt' },
-            @{ Script='tests/ui/native_keyboard_settings_smoke.py'; Args=@('--native'); Output='native-keyboard-settings.txt' },
-            @{ Script='tests/ui/native_reader_keymap_smoke.py'; Args=@('--native'); Output='native-reader-keymap.txt' },
-            @{ Script='tests/ui/native_evidence_drafts_smoke.py'; Args=@('--native'); Output='native-evidence-drafts.txt' },
-            @{ Script='scripts/windows_citation_styles_smoke.py'; Args=@(); Output='native-citation-styles.txt' }
-          )
-          foreach ($gate in $nativeGates) {
-            $arguments = @($gate.Args)
-            & $installedPython -I -B -c $runNative $bundle (Resolve-Path $gate.Script).Path @arguments 2>&1 | Tee-Object (Join-Path 'ci-results' $gate.Output)
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          }
-          Copy-Item -LiteralPath 'ci-results/core-bundle-native.txt' -Destination 'ci-results/native-desktop.txt'
-          if ((Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash -ne $manifestBefore) { throw 'Bundle manifest changed during installation or startup.' }
-          & $bundledPython -I -B -c "import importlib.util,json,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); manifest=json.loads((root/'bundle-manifest.json').read_text()); assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime'] and manifest['bundled_audio_runtime']; print(json.dumps(dict(status='PASS',python=sys.version,source_commit=manifest['source_commit'],source_tree=manifest['source_tree'],manifest_unchanged=True,sealed_files_verified=True,model='INCLUDED',ocr='INCLUDED',private_native_runtime='INCLUDED',private_audio_runtime='INCLUDED',nvda='NOT_RUN')))" $bundle | Tee-Object 'ci-results/full-bundle-verified.json'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          "CARR_CI_BUNDLE=$bundle" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-
-          $python = Join-Path $bundle '.venv/Scripts/python.exe'
-          $env:CARR_TEST_MODEL_DIR = Join-Path $bundle 'models/minilm'
-          $env:CARR_OCR_DIR = Join-Path $bundle 'ocr'
-          $env:PYTEST_DISABLE_PLUGIN_AUTOLOAD = '1'
           $runInstalledTests = @'
-          import ctypes, importlib, importlib.util, json, pathlib, sys
+          import ctypes, importlib, importlib.util, json, os, pathlib, sys, unicodedata
           from ctypes import wintypes
           import carr_library
           from carr_library.native_runtime import activate_bundled_runtime
           from carr_library.audio_runtime import activate_bundled_audio_runtime
           root = pathlib.Path(sys.argv[1]).resolve()
+          arguments = sys.argv[2:]
+          library_only = arguments[:1] == ['--library-only']
+          if library_only:
+              selected_suite_file = pathlib.Path(arguments[1])
+              arguments = arguments[2:]
+          profile = 'library-core-ocr-native' if library_only else 'full-audio'
           assert pathlib.Path(carr_library.__file__).resolve().is_relative_to(root / '.venv')
           manifest = json.loads((root / 'bundle-manifest.json').read_text())
-          assert all(manifest[key] for key in ('bundled_model', 'bundled_ocr', 'bundled_native_runtime', 'bundled_audio_runtime'))
+          assert all(manifest[key] is True for key in ('bundled_model', 'bundled_ocr', 'bundled_native_runtime'))
+          def require_no_audio():
+              from carr_library.audio.ffmpeg import find_local_tool
+              from carr_library.audio_runtime import bundled_audio_tools
+              assert manifest.get('bundled_audio_runtime') is False
+              assert not any(unicodedata.normalize('NFC', name.split('/', 1)[0]).casefold()
+                             in {'audio', 'audio-runtime'} for name in manifest['files'])
+              assert not any(os.path.lexists(root / name) for name in ('audio', 'audio-runtime'))
+              assert bundled_audio_tools(bundle_root=root) is None
+              assert activate_bundled_audio_runtime(bundle_root=root) is None
+              assert all(find_local_tool(name) is None for name in ('ffmpeg', 'ffprobe', 'ffplay'))
+          if library_only:
+              require_no_audio()
+          else:
+              assert manifest['bundled_audio_runtime'] is True
           runtime_handle = activate_bundled_runtime(bundle_root=root)
           assert runtime_handle is not None
-          assert activate_bundled_audio_runtime(bundle_root=root)
+          if not library_only:
+              assert activate_bundled_audio_runtime(bundle_root=root)
           core_modules = [
               'carr_library.acquisition.service',
               'carr_library.acquisition.transport',
@@ -516,7 +504,7 @@ jobs:
               origin = pathlib.Path(spec.origin).resolve()
               assert origin.is_relative_to(root / '.venv'), (name, origin)
               origins[name] = str(origin)
-          print(json.dumps({'installed_package': True, 'source_commit': manifest['source_commit'],
+          print(json.dumps({'installed_package': True, 'profile': profile, 'source_commit': manifest['source_commit'],
                             'source_tree': manifest['source_tree'], 'installed_module_origins': origins}), flush=True)
           import pytest
           class RejectExpectedFailures:
@@ -570,7 +558,14 @@ jobs:
               'tests/search/test_semantic_cache.py',
               'tests/search/test_semantic_cache_boundary.py'
           ]
-          status = pytest.main([*sys.argv[2:], *installed_suites], plugins=[policy])
+          assert len(installed_suites) == 43 and len(set(installed_suites)) == 43
+          if library_only:
+              expected = [name for name in installed_suites if name != 'tests/assistant/test_audio_bridge.py']
+              selected = json.loads(selected_suite_file.read_text(encoding='utf-8-sig'))
+              assert selected == expected and len(selected) == 42
+              installed_suites = selected
+          print(json.dumps({'profile': profile, 'suite_paths': installed_suites}), flush=True)
+          status = pytest.main([*arguments, *installed_suites], plugins=[policy])
           if status or policy.seen:
               raise SystemExit(int(status) or 1)
           kernel = ctypes.WinDLL('kernel32', use_last_error=True)
@@ -585,9 +580,69 @@ jobs:
               length = kernel.GetModuleFileNameW(module, actual, len(actual))
               assert 0 < length < len(actual)
               assert pathlib.Path(actual.value).samefile(root / 'native-runtime' / 'bin' / name), name + ' loaded outside the private bundle'
-          print(json.dumps({'status': 'PASS', 'private_native_dll_paths': 'PASS'}), flush=True)
+          if library_only:
+              require_no_audio()
+          print(json.dumps({'status': 'PASS', 'private_native_dll_paths': 'PASS', 'profile': profile}), flush=True)
           '@
-          $runInstalledTests | & $python -I -B - $bundle -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-results/full-bundle-workflows.xml 2>&1 | Tee-Object 'ci-results/full-bundle-workflows.txt'
+          $installedRunner = Join-Path $bundleWork 'run-installed-workflows.py'
+          [System.IO.File]::WriteAllText($installedRunner, $runInstalledTests, [System.Text.UTF8Encoding]::new($false))
+          $runNative = @'
+          import pathlib, runpy, sys
+          import carr_library
+          from carr_library.native_runtime import activate_bundled_runtime
+          from carr_library.audio_runtime import activate_bundled_audio_runtime
+          root = pathlib.Path(sys.argv.pop(1)).resolve()
+          assert pathlib.Path(carr_library.__file__).resolve().is_relative_to(root / '.venv')
+          native_handle = activate_bundled_runtime(bundle_root=root)
+          assert native_handle is not None
+          assert activate_bundled_audio_runtime(bundle_root=root)
+          sys.argv = sys.argv[1:]
+          runpy.run_path(sys.argv[0], run_name='__main__')
+          '@
+          $nativeGates = @(
+            @{ Script='tests/ui/probe_source_open_native.py'; Args=@(); Output='core-bundle-native.txt' },
+            @{ Script='scripts/windows_academic_smoke.py'; Args=@(); Output='full-bundle-academic-native.txt' },
+            @{ Script='scripts/windows_ocr_models_smoke.py'; Args=@(); Output='full-bundle-ocr-models.txt' },
+            @{ Script='scripts/windows_audio_runtime_smoke.py'; Args=@('--bundle', $bundle); Output='full-bundle-audio-runtime.json' },
+            @{ Script='scripts/windows_audio_smoke.py'; Args=@('--bundle', $bundle); Output='full-bundle-audio-render.json' },
+            @{ Script='scripts/windows_assistant_smoke.py'; Args=@('--bundle', $bundle); Output='full-bundle-assistant.json' },
+            @{ Script='tests/ui/native_import_center_smoke.py'; Args=@(); Output='native-import-center.txt' },
+            @{ Script='tests/ui/native_document_formats_smoke.py'; Args=@('--native'); Output='native-document-formats.txt' },
+            @{ Script='tests/ui/native_evidence_pages_smoke.py'; Args=@('--native'); Output='native-evidence-pages.txt' },
+            @{ Script='tests/ui/native_academic_smoke.py'; Args=@(); Output='native-academic-workflows.txt' },
+            @{ Script='tests/ui/native_notebook_search_smoke.py'; Args=@('--native'); Output='native-notebook-search.txt' },
+            @{ Script='tests/ui/native_ebook_reader_smoke.py'; Args=@('--native'); Output='native-ebook-reader.txt' },
+            @{ Script='tests/ui/native_catalog_tools_smoke.py'; Args=@('--native'); Output='native-catalog-tools.txt' },
+            @{ Script='tests/ui/probe_ebook_native.py'; Args=@(); Output='native-ebook-contents.txt' },
+            @{ Script='tests/ui/native_reading_desk_smoke.py'; Args=@('--native'); Output='native-reading-desk.txt' },
+            @{ Script='tests/ui/probe_catalog_insights_native.py'; Args=@(); Output='native-catalog-insights.txt' },
+            @{ Script='scripts/windows_v3_reading_smoke.py'; Args=@(); Output='native-v3-reading.txt' },
+            @{ Script='scripts/windows_ocr_languages_smoke.py'; Args=@('--require-bundled'); Output='native-ocr-languages.txt' },
+            @{ Script='tests/ui/native_academic_comparison_smoke.py'; Args=@('--require-windows'); Output='native-academic-comparison.txt' },
+            @{ Script='tests/ui/probe_advanced_search_native.py'; Args=@(); Output='native-advanced-search.txt' },
+            @{ Script='tests/ui/native_keyboard_settings_smoke.py'; Args=@('--native'); Output='native-keyboard-settings.txt' },
+            @{ Script='tests/ui/native_reader_keymap_smoke.py'; Args=@('--native'); Output='native-reader-keymap.txt' },
+            @{ Script='tests/ui/native_evidence_drafts_smoke.py'; Args=@('--native'); Output='native-evidence-drafts.txt' },
+            @{ Script='scripts/windows_citation_styles_smoke.py'; Args=@(); Output='native-citation-styles.txt' }
+          )
+          $nativeFailures = @()
+          foreach ($gate in $nativeGates) {
+            $arguments = @($gate.Args)
+            & $installedPython -I -B -c $runNative $bundle (Resolve-Path $gate.Script).Path @arguments 2>&1 | Tee-Object (Join-Path 'ci-results' $gate.Output)
+            if ($LASTEXITCODE -ne 0) { $nativeFailures += "$($gate.Script): exit $LASTEXITCODE" }
+          }
+          if ($nativeFailures.Count -ne 0) { throw ('Native acceptance failed: ' + ($nativeFailures -join '; ')) }
+          Copy-Item -LiteralPath 'ci-results/core-bundle-native.txt' -Destination 'ci-results/native-desktop.txt'
+          if ((Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash -ne $manifestBefore) { throw 'Bundle manifest changed during installation or startup.' }
+          & $bundledPython -I -B -c "import importlib.util,json,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); manifest=json.loads((root/'bundle-manifest.json').read_text()); assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime'] and manifest['bundled_audio_runtime']; print(json.dumps(dict(status='PASS',python=sys.version,source_commit=manifest['source_commit'],source_tree=manifest['source_tree'],manifest_unchanged=True,sealed_files_verified=True,model='INCLUDED',ocr='INCLUDED',private_native_runtime='INCLUDED',private_audio_runtime='INCLUDED',nvda='NOT_RUN')))" $bundle | Tee-Object 'ci-results/full-bundle-verified.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_CI_BUNDLE=$bundle" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+          $python = Join-Path $bundle '.venv/Scripts/python.exe'
+          $env:CARR_TEST_MODEL_DIR = Join-Path $bundle 'models/minilm'
+          $env:CARR_OCR_DIR = Join-Path $bundle 'ocr'
+          $env:PYTEST_DISABLE_PLUGIN_AUTOLOAD = '1'
+          & $python -I -B $installedRunner $bundle -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-results/full-bundle-workflows.xml 2>&1 | Tee-Object 'ci-results/full-bundle-workflows.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -I -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-results/full-bundle-workflows.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); passed=len(cases)-failed-skipped; required={'test_actual_persistent_embeddings_reopen_without_reinference','test_actual_semantic_snapshot_survives_concurrent_membership_revocation','test_actual_multilingual_ranker_and_complete_token_coverage','test_actual_application_semantic_scope_and_original_quotes','test_scanned_pdf_requires_explicit_review_for_each_exact_page_before_publication','test_reviewed_import_rejects_changed_approval_without_publishing','test_quarantined_batch_waits_for_explicit_review_and_refreshes_external_completion','test_notebook_search_fresh_navigation_and_backup_restore','test_academic_reference_roundtrip_preserves_source_evidence','test_academic_import_is_atomic_and_exports_preserve_metadata'} | {'test_long_ascii_source_search_copy_and_context_use_exact_tail['+mode+'-'+retrieval+']' for mode in ('short','thematic') for retrieval in ('thematic','semantic')} | {'test_application_exports_the_selected_topic_with_readable_title['+format+']' for format in ('docx','html')}; assert required<={c.get('name') for c in cases} and passed>0 and failed==skipped==0; print(json.dumps(dict(status='PASS',passed=passed,failed=failed,skipped=skipped,semantic_inference='PASS',persistent_semantic_cache='PASS',scanned_source_workflow='PASS',import_batch_review='PASS',academic_workflow='PASS',notebook_research='PASS',large_source_presentation='PASS',academic_documents='PASS',nvda='NOT_RUN')))" | Tee-Object 'ci-results/full-bundle-workflows.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -651,6 +706,351 @@ jobs:
           } finally {
             foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
             foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
+          }
+
+      - name: Qualify the independent library, OCR and native profile without audio
+        timeout-minutes: 25
+        run: |
+          $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
+          $bundle = Join-Path $bundleWork 'native bundle'
+          $fullBundle = Join-Path $bundleWork 'complete bundle'
+          $coreEvidence = (New-Item -ItemType Directory -Force 'ci-results/library-core').FullName
+          $installedRunner = Join-Path $bundleWork 'run-installed-workflows.py'
+          $coreBundledPython = Join-Path $bundle 'runtime/python.exe'
+          $coreInstalledPython = Join-Path $bundle '.venv/Scripts/python.exe'
+          $testWheels = Join-Path $env:RUNNER_TEMP 'carr-test-wheels'
+          $sourceCommit = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $sourceTree = (git rev-parse 'HEAD^{tree}').Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($sourceCommit -cne $env:EXPECTED_SOURCE_COMMIT) { throw 'Core profile source identity differs from the event head.' }
+          if (!(Test-Path -LiteralPath $installedRunner -PathType Leaf) -or (Test-Path -LiteralPath (Join-Path $bundle '.venv'))) { throw 'Core qualification requires its saved runner and a fresh installation.' }
+          $coreSuites = @(
+            'tests/e2e/test_semantic_runtime.py',
+            'tests/e2e/test_import_worker.py',
+            'tests/e2e/test_import_batches_ocr.py',
+            'tests/e2e/test_notebook_research_workflow.py',
+            'tests/e2e/test_epub_import.py',
+            'tests/e2e/test_extended_document_workflows.py',
+            'tests/reader/test_ebook_reader.py',
+            'tests/e2e/test_catalog_insights_workflow.py',
+            'tests/e2e/test_academic_workflows.py',
+            'tests/e2e/test_academic_workflow.py',
+            'tests/e2e/test_academic_document_export.py',
+            'tests/e2e/test_result_presentation.py',
+            'tests/reader/test_ebook_contents.py',
+            'tests/e2e/test_epub_library.py',
+            'tests/e2e/test_epub_reading_desk.py',
+            'tests/acquisition/test_providers.py',
+            'tests/acquisition/test_acquisition_security.py',
+            'tests/acquisition/test_acquisition_workflow.py',
+            'tests/acquisition/test_acquisition_cli.py',
+            'tests/ui/test_native_acquisition.py',
+            'tests/e2e/test_advanced_research_search.py',
+            'tests/search/test_federated_advanced.py',
+            'tests/e2e/test_research_search_cli.py',
+            'tests/research/test_bibtex_import.py',
+            'tests/citations/test_csl.py',
+            'tests/citations/test_bibliography_workbench.py',
+            'tests/catalog/test_ris_apply.py',
+            'tests/storage/test_backup_v4_sidecars.py',
+            'tests/storage/test_backup_source_binding_review.py',
+            'tests/storage/test_backup_keyboard_drafts.py',
+            'tests/storage/test_keyboard_preferences.py',
+            'tests/storage/test_evidence_drafts.py',
+            'tests/reader/test_narration.py',
+            'tests/reader/test_narration_text.py',
+            'tests/assistant/test_backup_receipt.py',
+            'tests/assistant/test_budget_resume.py',
+            'tests/assistant/test_local_assistant.py',
+            'tests/assistant/test_complete_recovery.py',
+            'tests/audio/test_chunk_cache_budget.py',
+            'tests/e2e/test_managed_ocr_import.py',
+            'tests/search/test_semantic_cache.py',
+            'tests/search/test_semantic_cache_boundary.py'
+          )
+          $coreSuiteFile = Join-Path $bundleWork 'library-core-suites.json'
+          [System.IO.File]::WriteAllText($coreSuiteFile, ($coreSuites | ConvertTo-Json), [System.Text.UTF8Encoding]::new($false))
+          $prepareCore = @'
+          import hashlib, importlib.util, json, os, pathlib, sys, unicodedata
+          root, full, evidence = map(pathlib.Path, sys.argv[1:4])
+          commit, tree = sys.argv[4:6]
+          def load_helper(name, file):
+              spec = importlib.util.spec_from_file_location(name, file)
+              module = importlib.util.module_from_spec(spec)
+              spec.loader.exec_module(module)
+              return module
+          delivery = load_helper('core_delivery_guard', pathlib.Path('packaging/create_delivery.py').resolve())
+          raw = delivery._read_manifest(root, lambda: False)
+          manifest = delivery._manifest(raw, commit)
+          delivery._require_transferable_audio_inventory(manifest)
+          assert manifest['source_tree'] == tree
+          assert all(manifest.get(key) is True for key in ('bundled_python', 'bundled_model', 'bundled_ocr', 'bundled_native_runtime'))
+          assert not any(os.path.lexists(root / name) for name in ('audio', 'audio-runtime'))
+          full_manifest = json.loads((full / 'bundle-manifest.json').read_text(encoding='utf-8'))
+          assert full_manifest['source_commit'] == commit and full_manifest['source_tree'] == tree
+          assert full_manifest['bundled_audio_runtime'] is True
+          assert manifest['files'] == {name: digest for name, digest in full_manifest['files'].items()
+                                       if not name.startswith('audio-runtime/')}
+          manifest['bundled_audio_runtime'] = False
+          raw = (json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + '\n').encode('utf-8')
+          (root / 'bundle-manifest.json').write_bytes(raw)
+          manifest = delivery._manifest(raw, commit)
+          delivery._require_transferable_audio_inventory(manifest)
+          delivery._trusted_verify(root, manifest_bytes=raw)
+          assert delivery._read_manifest(root, lambda: False) == raw
+          source_proof = json.loads(pathlib.Path('ci-results/source-wheel-proof.json').read_text(encoding='utf-8-sig'))
+          sbom_proof = json.loads(pathlib.Path('ci-results/full-bundle-sbom-proof.json').read_text(encoding='utf-8-sig'))
+          assert all(proof['status'] == 'PASS' and proof['source_commit'] == commit and proof['source_tree'] == tree
+                     for proof in (source_proof, sbom_proof))
+          wheels = list(pathlib.Path('ci-results/tested-application-wheel').glob('*.whl'))
+          assert len(wheels) == 1
+          wheel_name = 'wheelhouse/' + wheels[0].name
+          wheel_hash = hashlib.sha256(wheels[0].read_bytes()).hexdigest()
+          assert wheel_hash == source_proof['wheel_sha256'] == manifest['files'][wheel_name]
+          assert hashlib.sha256((root / wheel_name).read_bytes()).hexdigest() == wheel_hash
+          sbom_hash = hashlib.sha256((root / 'runtime-sbom.cdx.json').read_bytes()).hexdigest()
+          assert sbom_hash == sbom_proof['sbom_sha256'] == manifest['files']['runtime-sbom.cdx.json']
+          assert (root / 'runtime-sbom.cdx.json').read_bytes() == pathlib.Path('packaging/windows-semantic-sbom.cdx.json').read_bytes()
+          metadata_names = ('install.lock', 'models/minilm-manifest.json', 'native-runtime/native-manifest.json',
+                            'ocr/ocr-manifest.json', 'notices/wheels/SOURCES.json')
+          metadata = {}
+          for name in metadata_names:
+              content = (root / name).read_bytes()
+              assert 0 < len(content) <= 1024 * 1024
+              digest = hashlib.sha256(content).hexdigest()
+              assert digest == manifest['files'][name]
+              destination = evidence / 'tested-metadata' / name
+              destination.parent.mkdir(parents=True, exist_ok=True)
+              destination.write_bytes(content)
+              metadata[name] = digest
+          (evidence / 'bundle-manifest.json').write_bytes(raw)
+          prepared = {'schema': 1, 'status': 'PREPARED', 'profile': 'library-core-ocr-native',
+                      'source_commit': commit, 'source_tree': tree,
+                      'manifest_sha256': hashlib.sha256(raw).hexdigest(),
+                      'inventory_sha256': hashlib.sha256(json.dumps(manifest['files'], ensure_ascii=False,
+                          sort_keys=True, separators=(',', ':')).encode('utf-8')).hexdigest(),
+                      'application_wheel_sha256': wheel_hash, 'sbom_sha256': sbom_hash, 'generated_metadata': metadata,
+                      'source_companion': {'tested_layout': 'complete-union',
+                          'tested_member': 'ocr-corresponding-source.tar',
+                          'tested_sha256': manifest['files']['ocr-corresponding-source.tar'],
+                          'delivery_layout': 'separate-source-companion', 'archive_bytes_tested': False}}
+          (evidence / 'prepared.json').write_text(json.dumps(prepared, sort_keys=True) + '\n', encoding='utf-8')
+          print(json.dumps(prepared, sort_keys=True), flush=True)
+          '@
+          $prepareCore | & $env:CARR_PYTHON -I -B - $bundle $fullBundle $coreEvidence $sourceCommit $sourceTree
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $programs = @(
+            $coreBundledPython,
+            (Join-Path $bundle 'runtime/pythonw.exe'),
+            $coreInstalledPython,
+            (Join-Path $bundle '.venv/Scripts/pythonw.exe'),
+            (Join-Path $bundle 'ocr/tesseract.exe'),
+            (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'),
+            (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe')
+          ) | ForEach-Object { [System.IO.Path]::GetFullPath($_) }
+          if (@($programs | Sort-Object -Unique).Count -ne 7) { throw 'Core profile must block its exact seven runtime/helper programs.' }
+          $environmentNames = @('PATH', 'PYTHONPATH', 'PYTHONHOME', 'CARR_FFMPEG', 'CARR_FFPROBE', 'CARR_FFPLAY',
+            'CARR_CI_AUDIO_RUNTIME', 'CARR_AUDIO_RUNTIME', 'CARR_CI_BUNDLE', 'CARR_TEST_MODEL_DIR',
+            'CARR_CI_MODEL_DIR', 'CARR_CI_MODEL_MANIFEST', 'CARR_OCR_DIR', 'CARR_CI_OCR_DIR',
+            'TESSDATA_PREFIX', 'PYTEST_DISABLE_PLUGIN_AUTOLOAD')
+          $environmentBefore = @{}
+          foreach ($name in $environmentNames) { $environmentBefore[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
+          $rulePrefix = 'CARR-core-offline-' + [guid]::NewGuid().ToString('N')
+          $ruleNames = @()
+          $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
+          try {
+          foreach ($name in @('PYTHONPATH', 'PYTHONHOME', 'CARR_FFMPEG', 'CARR_FFPROBE', 'CARR_FFPLAY', 'CARR_CI_AUDIO_RUNTIME', 'CARR_AUDIO_RUNTIME')) {
+            [Environment]::SetEnvironmentVariable($name, $null, 'Process')
+          }
+          $env:PATH = @((Join-Path $bundle 'runtime'), (Join-Path $bundle 'native-runtime/bin'),
+            (Join-Path $bundle 'ocr'), (Join-Path $bundle '.venv/Scripts'), $env:SystemRoot,
+            (Join-Path $env:SystemRoot 'System32'), (Join-Path $env:SystemRoot 'System32/Wbem'),
+            (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0'),
+            (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0')) -join ';'
+          $env:CARR_CI_BUNDLE = $bundle
+          $env:CARR_TEST_MODEL_DIR = Join-Path $bundle 'models/minilm'
+          $env:CARR_CI_MODEL_DIR = $env:CARR_TEST_MODEL_DIR
+          $env:CARR_CI_MODEL_MANIFEST = Join-Path $bundle 'models/minilm-manifest.json'
+          $env:CARR_OCR_DIR = Join-Path $bundle 'ocr'
+          $env:CARR_CI_OCR_DIR = $env:CARR_OCR_DIR
+          $env:TESSDATA_PREFIX = Join-Path $bundle 'ocr/tessdata'
+          $env:PYTEST_DISABLE_PLUGIN_AUTOLOAD = '1'
+          Set-NetFirewallProfile -Profile Domain, Private, Public -Enabled True -ErrorAction Stop
+          foreach ($program in $programs) {
+            $ruleName = $rulePrefix + '-' + $ruleNames.Count
+            $ruleNames += $ruleName
+            New-NetFirewallRule -Name $ruleName -DisplayName $ruleName -Direction Outbound -Action Block -Profile Any -Program $program -Enabled True -ErrorAction Stop | Out-Null
+          }
+          $profiles = @(Get-NetFirewallProfile -ErrorAction Stop)
+          if (@($profiles | Where-Object { $_.Enabled -ne 'True' }).Count -ne 0) { throw 'Core profile requires all Windows Firewall profiles enabled.' }
+          $active = @(Get-NetFirewallRule -PolicyStore ActiveStore -Name $ruleNames -ErrorAction Stop)
+          if ($active.Count -ne 7 -or @($active | Where-Object { $_.Enabled -ne 'True' -or $_.Direction -ne 'Outbound' -or $_.Action -ne 'Block' }).Count -ne 0) { throw 'Core outbound rules are not active.' }
+          $filters = @($active | Get-NetFirewallApplicationFilter -ErrorAction Stop | Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })
+          if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Core outbound rules cover the wrong programs.' }
+          @{ status='PASS'; profile='library-core-ocr-native'; profiles_enabled=@($profiles.Name); outbound_blocked_programs=$filters } |
+            ConvertTo-Json -Depth 4 | Set-Content (Join-Path $coreEvidence 'firewall.json')
+          & $coreBundledPython -I -B (Join-Path $bundle 'install_windows.py') 2>&1 | Tee-Object (Join-Path $coreEvidence 'installation.txt')
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $coreInstalledPython -I -B -m carr_library --self-test | Tee-Object (Join-Path $coreEvidence 'self-test.json')
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $coreInstalledPython -I -B scripts/ocr_catalog_smoke.py --model-directory (Join-Path $bundle 'ocr/tessdata') | Tee-Object (Join-Path $coreEvidence 'ocr-catalogue.json')
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $coreInstalledPython -I -B scripts/windows_installer_launchers_smoke.py --bundle $bundle 2>&1 | Tee-Object (Join-Path $coreEvidence 'launchers.json')
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $coreInstalledPython -I -B -m pip install --no-index --find-links $testWheels pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $runCoreNative = @'
+          import json, os, pathlib, runpy, sys, unicodedata
+          import carr_library
+          from carr_library.native_runtime import activate_bundled_runtime
+          from carr_library.audio_runtime import activate_bundled_audio_runtime, bundled_audio_tools
+          from carr_library.audio.ffmpeg import find_local_tool
+          root = pathlib.Path(sys.argv.pop(1)).resolve()
+          assert pathlib.Path(carr_library.__file__).resolve().is_relative_to(root / '.venv')
+          manifest = json.loads((root / 'bundle-manifest.json').read_text(encoding='utf-8'))
+          assert all(manifest.get(key) is True for key in ('bundled_python', 'bundled_model', 'bundled_ocr', 'bundled_native_runtime'))
+          assert manifest.get('bundled_audio_runtime') is False
+          assert not any(unicodedata.normalize('NFC', name.split('/', 1)[0]).casefold()
+                         in {'audio', 'audio-runtime'} for name in manifest['files'])
+          assert not any(os.path.lexists(root / name) for name in ('audio', 'audio-runtime'))
+          native_handle = activate_bundled_runtime(bundle_root=root)
+          assert native_handle is not None
+          assert bundled_audio_tools(bundle_root=root) is None
+          assert activate_bundled_audio_runtime(bundle_root=root) is None
+          assert all(find_local_tool(name) is None for name in ('ffmpeg', 'ffprobe', 'ffplay'))
+          sys.argv = sys.argv[1:]
+          runpy.run_path(sys.argv[0], run_name='__main__')
+          '@
+          $coreNativeGates = @(
+            @{ Script='tests/ui/probe_source_open_native.py'; Args=@(); Output='core-bundle-native.txt' },
+            @{ Script='scripts/windows_academic_smoke.py'; Args=@(); Output='full-bundle-academic-native.txt' },
+            @{ Script='scripts/windows_ocr_models_smoke.py'; Args=@(); Output='full-bundle-ocr-models.txt' },
+            @{ Script='tests/ui/native_import_center_smoke.py'; Args=@(); Output='native-import-center.txt' },
+            @{ Script='tests/ui/native_document_formats_smoke.py'; Args=@('--native'); Output='native-document-formats.txt' },
+            @{ Script='tests/ui/native_evidence_pages_smoke.py'; Args=@('--native'); Output='native-evidence-pages.txt' },
+            @{ Script='tests/ui/native_academic_smoke.py'; Args=@(); Output='native-academic-workflows.txt' },
+            @{ Script='tests/ui/native_notebook_search_smoke.py'; Args=@('--native'); Output='native-notebook-search.txt' },
+            @{ Script='tests/ui/native_ebook_reader_smoke.py'; Args=@('--native'); Output='native-ebook-reader.txt' },
+            @{ Script='tests/ui/native_catalog_tools_smoke.py'; Args=@('--native'); Output='native-catalog-tools.txt' },
+            @{ Script='tests/ui/probe_ebook_native.py'; Args=@(); Output='native-ebook-contents.txt' },
+            @{ Script='tests/ui/native_reading_desk_smoke.py'; Args=@('--native'); Output='native-reading-desk.txt' },
+            @{ Script='tests/ui/probe_catalog_insights_native.py'; Args=@(); Output='native-catalog-insights.txt' },
+            @{ Script='scripts/windows_v3_reading_smoke.py'; Args=@(); Output='native-v3-reading.txt' },
+            @{ Script='scripts/windows_ocr_languages_smoke.py'; Args=@('--require-bundled'); Output='native-ocr-languages.txt' },
+            @{ Script='tests/ui/native_academic_comparison_smoke.py'; Args=@('--require-windows'); Output='native-academic-comparison.txt' },
+            @{ Script='tests/ui/probe_advanced_search_native.py'; Args=@(); Output='native-advanced-search.txt' },
+            @{ Script='tests/ui/native_keyboard_settings_smoke.py'; Args=@('--native'); Output='native-keyboard-settings.txt' },
+            @{ Script='tests/ui/native_reader_keymap_smoke.py'; Args=@('--native'); Output='native-reader-keymap.txt' },
+            @{ Script='tests/ui/native_evidence_drafts_smoke.py'; Args=@('--native'); Output='native-evidence-drafts.txt' },
+            @{ Script='scripts/windows_citation_styles_smoke.py'; Args=@(); Output='native-citation-styles.txt' }
+          )
+          $coreNativeResults = @()
+          foreach ($gate in $coreNativeGates) {
+            $arguments = @($gate.Args)
+            $output = Join-Path $coreEvidence $gate.Output
+            & $coreInstalledPython -I -B -c $runCoreNative $bundle (Resolve-Path $gate.Script).Path @arguments 2>&1 | Tee-Object $output
+            $gateExit = $LASTEXITCODE
+            $coreNativeResults += @{
+              script=$gate.Script; output=$gate.Output; status=$(if ($gateExit -eq 0) { 'PASS' } else { 'FAIL' });
+              exit_code=$gateExit; sha256=(Get-FileHash -LiteralPath $output -Algorithm SHA256).Hash.ToLowerInvariant()
+            }
+          }
+          $failedNative = @($coreNativeResults | Where-Object { $_.exit_code -ne 0 })
+          @{
+            schema=1; profile='library-core-ocr-native'; status=$(if ($failedNative.Count -eq 0) { 'PASS' } else { 'FAIL' });
+            windows_execution=$(if ($failedNative.Count -eq 0) { 'PASS' } else { 'FAIL' });
+            source_commit=$sourceCommit; source_tree=$sourceTree; probes=$coreNativeResults;
+            passed=($coreNativeResults.Count - $failedNative.Count); failed=$failedNative.Count;
+            skipped=@($coreNativeResults | Where-Object { $_.exit_code -eq 77 }).Count
+          } | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $coreEvidence 'native-results.json')
+          if ($failedNative.Count -ne 0) { throw ('Core native acceptance failed: ' + (($failedNative | ForEach-Object { $_.script + ': exit ' + $_.exit_code }) -join '; ')) }
+          & $coreInstalledPython -I -B $installedRunner $bundle --library-only $coreSuiteFile -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-results/library-core/workflows.xml 2>&1 | Tee-Object (Join-Path $coreEvidence 'workflows.txt')
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $verifyCoreWorkflows = @'
+          import json, pathlib, sys, xml.etree.ElementTree as ET
+          root, evidence, selected = map(pathlib.Path, sys.argv[1:4])
+          manifest = json.loads((root / 'bundle-manifest.json').read_text(encoding='utf-8'))
+          suites = json.loads(selected.read_text(encoding='utf-8-sig'))
+          assert len(suites) == len(set(suites)) == 42
+          cases = list(ET.parse(evidence / 'workflows.xml').iter('testcase'))
+          failed = sum(any(case.find(tag) is not None for tag in ('failure', 'error')) for case in cases)
+          skipped = sum(case.find('skipped') is not None for case in cases)
+          passed = len(cases) - failed - skipped
+          assert passed > 0 and failed == skipped == 0
+          required = {'test_actual_persistent_embeddings_reopen_without_reinference','test_actual_semantic_snapshot_survives_concurrent_membership_revocation','test_actual_multilingual_ranker_and_complete_token_coverage','test_actual_application_semantic_scope_and_original_quotes','test_scanned_pdf_requires_explicit_review_for_each_exact_page_before_publication','test_reviewed_import_rejects_changed_approval_without_publishing','test_quarantined_batch_waits_for_explicit_review_and_refreshes_external_completion','test_notebook_search_fresh_navigation_and_backup_restore','test_academic_reference_roundtrip_preserves_source_evidence','test_academic_import_is_atomic_and_exports_preserve_metadata'} | {'test_long_ascii_source_search_copy_and_context_use_exact_tail['+mode+'-'+retrieval+']' for mode in ('short','thematic') for retrieval in ('thematic','semantic')} | {'test_application_exports_the_selected_topic_with_readable_title['+format+']' for format in ('docx','html')}
+          assert required <= {case.get('name') for case in cases}
+          classes = {case.get('classname', '') for case in cases}
+          for suite in suites:
+              module = suite[:-3].replace('/', '.')
+              assert any(value == module or value.startswith(module + '.') for value in classes), suite
+          report = {'status': 'PASS', 'profile': 'library-core-ocr-native',
+                    'source_commit': manifest['source_commit'], 'source_tree': manifest['source_tree'],
+                    'suite_paths': suites, 'passed': passed, 'failed': failed, 'skipped': skipped,
+                    'semantic_inference': 'PASS', 'persistent_semantic_cache': 'PASS',
+                    'scanned_source_workflow': 'PASS', 'module_coverage': 'PASS', 'nvda': 'NOT_RUN'}
+          print(json.dumps(report, sort_keys=True), flush=True)
+          '@
+          $verifyCoreWorkflows | & $coreInstalledPython -I -B - $bundle $coreEvidence $coreSuiteFile | Tee-Object (Join-Path $coreEvidence 'workflows.json')
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $finishCore = @'
+          import hashlib, importlib.util, json, os, pathlib, sys
+          import carr_library
+          from carr_library.audio.ffmpeg import find_local_tool
+          from carr_library.audio_runtime import bundled_audio_tools
+          root, evidence = map(pathlib.Path, sys.argv[1:3])
+          commit, tree = sys.argv[3:5]
+          assert pathlib.Path(carr_library.__file__).resolve().is_relative_to(root / '.venv')
+          def read(name):
+              return json.loads((evidence / name).read_text(encoding='utf-8-sig'))
+          prepared = read('prepared.json')
+          raw = (evidence / 'bundle-manifest.json').read_bytes()
+          assert (root / 'bundle-manifest.json').read_bytes() == raw
+          spec = importlib.util.spec_from_file_location('core_final_delivery_guard', pathlib.Path('packaging/create_delivery.py').resolve())
+          delivery = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(delivery)
+          manifest = delivery._manifest(raw, commit)
+          delivery._require_transferable_audio_inventory(manifest)
+          delivery._trusted_verify(root, manifest_bytes=raw)
+          assert delivery._read_manifest(root, lambda: False) == raw
+          assert manifest['source_tree'] == tree
+          assert manifest.get('bundled_audio_runtime') is False
+          assert not any(os.path.lexists(root / name) for name in ('audio', 'audio-runtime'))
+          assert bundled_audio_tools(bundle_root=root) is None
+          assert all(find_local_tool(name) is None for name in ('ffmpeg', 'ffprobe', 'ffplay'))
+          for name in ('self-test.json', 'ocr-catalogue.json', 'launchers.json', 'firewall.json', 'workflows.json', 'native-results.json'):
+              assert read(name)['status'] == 'PASS', name
+          native = read('native-results.json')
+          workflows = read('workflows.json')
+          assert native['windows_execution'] == 'PASS' and native['passed'] == 21 and native['failed'] == native['skipped'] == 0
+          assert len(native['probes']) == 21 and len(workflows['suite_paths']) == 42
+          assert workflows['passed'] > 0 and workflows['failed'] == workflows['skipped'] == 0
+          for proof in (prepared, native, workflows):
+              assert proof['source_commit'] == commit and proof['source_tree'] == tree
+          for probe in native['probes']:
+              assert probe['status'] == 'PASS' and probe['exit_code'] == 0
+              assert hashlib.sha256((evidence / probe['output']).read_bytes()).hexdigest() == probe['sha256']
+          for name, digest in prepared['generated_metadata'].items():
+              assert hashlib.sha256((evidence / 'tested-metadata' / name).read_bytes()).hexdigest() == manifest['files'][name] == digest
+          assert hashlib.sha256(raw).hexdigest() == prepared['manifest_sha256']
+          assert hashlib.sha256(json.dumps(manifest['files'], ensure_ascii=False, sort_keys=True,
+                                          separators=(',', ':')).encode('utf-8')).hexdigest() == prepared['inventory_sha256']
+          report = dict(prepared, status='PASS', windows_execution='PASS', execution_context='installed-wheel',
+                        bundled_audio_runtime=False, audio_members=[], sealed_files_verified=True,
+                        manifest_unchanged=True, archive_guard='PASS', native_probe_count=21,
+                        installed_suite_count=42, external_audio_tools='ABSENT')
+          (evidence / 'profile.json').write_text(json.dumps(report, sort_keys=True) + '\n', encoding='utf-8')
+          print(json.dumps(report, sort_keys=True), flush=True)
+          '@
+          $finishCore | & $coreInstalledPython -I -B - $bundle $coreEvidence $sourceCommit $sourceTree
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } finally {
+            try {
+              foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
+              foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
+            } finally {
+              foreach ($name in $environmentNames) { [Environment]::SetEnvironmentVariable($name, $environmentBefore[$name], 'Process') }
+            }
           }
 
       # Evidence and the exact tested application wheel only; no model, native
