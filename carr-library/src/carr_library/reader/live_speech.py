@@ -24,6 +24,7 @@ from ..ingest.writer_guard import exclusive_writer
 from ..operations import ResourceBroker
 from ..operations.admission import production_request
 from .reading_state import ReadingLocation, ReadingState, _location, _now, _timestamp, _unique
+from .live_playback import PlaybackRuntime, PlaybackSettings, playback_request
 
 
 FILENAME = 'reading-speech.json'
@@ -233,13 +234,30 @@ class SpeechOperation:
     this owner, so expiry does not interrupt already admitted work; a new
     explicit request always creates a new owner and requests fresh admission.
     """
-    def __init__(self, trust_controller=None):
+    def __init__(self, trust_controller=None, *, playback=None, playback_runtime=None):
         from ..security.admission import checked_controller
         self.trust_controller = checked_controller(trust_controller)
+        playback = PlaybackSettings() if playback is None else playback
+        if type(playback) is not PlaybackSettings:
+            raise ValueError('Validated independent playback settings are required.')
+        if playback_runtime is not None and type(playback_runtime) is not PlaybackRuntime:
+            raise TypeError('Use the existing verified local playback runtime.')
+        if playback.effects and playback_runtime is None:
+            raise ValueError('Independent playback tempo/pitch requires a verified local FFmpeg runtime. '
+                             'Refresh voices and runtime availability, or choose tempo 1 and pitch 0.')
+        self._playback, self._playback_runtime = playback, playback_runtime
         self._lease = None
         self._owner = None
         self._lock = threading.Lock()
         self.closed = False
+
+    @property
+    def playback(self):
+        return self._playback
+
+    @property
+    def playback_runtime(self):
+        return self._playback_runtime
 
     def admit(self):
         from ..security.admission import admitted_operation, operation_context
@@ -269,6 +287,9 @@ class RenderedUtterance:
     sample_rate: int
     text_sha256: str
     identity: tuple
+    synthesis_frames: int = 0
+    synthesis_sample_rate: int = 0
+    playback: PlaybackSettings = PlaybackSettings()
 
 
 class SpeechSession:
@@ -341,8 +362,10 @@ class SpeechSession:
                 self.broker = ResourceBroker.for_app(self.root, cancelled=self._check)
             value = self.text[selected.start:selected.end]
             plan = plan_narration(value, voice=self.settings.voice, language=self.settings.language)
-            request = production_request(plan, self.directory, self.broker.limits)
+            playback = self.operation.playback
+            request = playback_request(production_request(plan, self.directory, self.broker.limits), playback)
             path = self.directory / (uuid4().hex + '.wav')
+            synthesized = self.directory / (uuid4().hex + '.wav') if playback.effects else path
             try:
                 with self.broker.reserve(request, operation_id='reader:' + self.identity,
                                          cancelled=self._check) as lease:
@@ -350,8 +373,15 @@ class SpeechSession:
                         self._check()
                         lease.checkpoint()
                         return False
-                    self.registry.synthesize(value, path, **asdict(self.settings), cancelled=stopped)
+                    self.registry.synthesize(value, synthesized, **asdict(self.settings), cancelled=stopped)
                     stopped()
+                    synthesis_identity = file_identity(regular_file(synthesized))
+                    synthesis_info = wav_info(synthesized)
+                    if playback.effects:
+                        self.operation.playback_runtime.process(synthesized, path, playback,
+                            expected_identity=synthesis_identity, cancelled=stopped)
+                        stopped()
+                        synthesized.unlink()
                     payload_identity = file_identity(regular_file(path))
                     info = wav_info(path)
                     digest = sha256_file(path, cancelled=stopped, expected_identity=payload_identity)
@@ -360,10 +390,13 @@ class SpeechSession:
                     self.validate_source()
                     stopped()
                     self.current = RenderedUtterance(selected, path, digest, info.frames, info.rate,
-                                                     text_hash(value), payload_identity)
+                                                     text_hash(value), payload_identity,
+                                                     synthesis_info.frames, synthesis_info.rate, playback)
                     return self.current
             except BaseException:
-                path.unlink(missing_ok=True)
+                synthesized.unlink(missing_ok=True)
+                if synthesized != path:
+                    path.unlink(missing_ok=True)
                 raise
         finally:
             self._lock.release()

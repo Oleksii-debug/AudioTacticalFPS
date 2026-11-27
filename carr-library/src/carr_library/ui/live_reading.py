@@ -9,6 +9,8 @@ from ..audio.jobs import checked_directory
 from ..reader.live_speech import (MODES, SpeechOperation, SpeechPositionStore, SpeechSelection, SpeechSession,
                                  SpeechSettings, select_range, text_hash, MAX_TEXT_CHARACTERS)
 from ..reader.reading_state import ReadingLocation
+from ..reader.live_playback import (PlaybackSettings, TEMPO_CONTROL, PITCH_CONTROL,
+                                    discover_playback_runtime)
 
 
 def _normalized(text):
@@ -111,6 +113,7 @@ class LiveReadingDialog:
             raise ValueError('Live reading must retain its host authority.')
         self.trust_controller = configured if configured is not None else selected
         self.operation = None
+        self.playback_runtime = None
         import wx
         self.wx, self.guard = wx, guard
         self.source, self.location = text, location
@@ -159,6 +162,20 @@ class LiveReadingDialog:
         self.rate = setting('Synthesis &rate, -10 to 10', value='0')
         self.pitch = setting('Voice-native &pitch, -12 to 12; when supported', value='0')
         self.volume = setting('Synthesis &volume, 0 to 1', value='0.8')
+        self.playback_tempo = setting(
+            f'Playback tempo &factor, {TEMPO_CONTROL[1]} to {TEMPO_CONTROL[2]}; prepared utterances', value='1')
+        self.playback_pitch = setting(
+            f'Playback pitch &semitones, {PITCH_CONTROL[1]} to {PITCH_CONTROL[2]}; independent of voice pitch', value='0')
+        self.playback_availability = setting('Independent playback availability and timing',
+            value='Refresh voices to check local FFmpeg. Tempo 1 and pitch 0 preserve synthesized PCM. '
+                  'Choose before Prepare or Read; settings stay fixed for that request, including later pages. '
+                  'These controls prepare audio; they do not change audio already playing.',
+            style=wx.TE_MULTILINE | wx.TE_READONLY)
+        settings_grid.Add(wx.StaticText(settings_panel, label='Original synthesized PCM'), 0, wx.ALL, 4)
+        self.playback_reset = wx.Button(settings_panel, label='&Reset playback to tempo 1 and pitch 0')
+        self.playback_reset.SetName('Reset independent playback controls to original synthesized PCM')
+        self.playback_reset.Bind(wx.EVT_BUTTON, self.reset_playback)
+        settings_grid.Add(self.playback_reset, 0, wx.EXPAND | wx.ALL, 4)
         self.modes = list(MODES) + (['book'] if source_loader is not None else [])
         labels = ['Selected text', 'From cursor', 'Current word', 'Current line',
                   'Current sentence (punctuation boundaries)', 'Current paragraph',
@@ -251,8 +268,23 @@ class LiveReadingDialog:
         self.controls['pause'].Enable(self.playing and self.player.native is not None)
         self.controls['seek'].Enable(ready and self.player.native is not None and self.player.path is not None)
         self.controls['stop'].Enable(self.session is not None or self.future is not None)
+        self._playback_controls(idle)
         if idle:
             self._voice_controls()
+
+    def _playback_controls(self, idle):
+        enabled = idle and self.playback_runtime is not None
+        self.playback_tempo.Enable(enabled)
+        self.playback_pitch.Enable(enabled)
+        self.playback_reset.Enable(idle)
+
+    def reset_playback(self, event=None):
+        if self.future is not None or self.session is not None or self.close_pending:
+            return
+        self.playback_tempo.ChangeValue('1')
+        self.playback_pitch.ChangeValue('0')
+        self._say('Independent playback controls reset. The next request will preserve synthesized PCM; '
+                  'voice-native synthesis settings are unchanged.')
 
     def _voice_controls(self, event=None):
         index = self.voice.GetSelection()
@@ -298,8 +330,23 @@ class LiveReadingDialog:
                 self.registry = configured_voice_registry(self.root)
             voices = self.registry.voices(refresh=True, cancelled=self._stopped)
             devices = output_devices() if self.player.native is not None else ()
-            return voices, devices
+            try:
+                runtime = discover_playback_runtime(cancelled=self._stopped)
+                notice = ('Verified local FFmpeg is available for independent playback tempo/pitch. '
+                          if runtime is not None else
+                          'No local FFmpeg runtime is available. Independent playback controls are disabled. ')
+            except InterruptedError:
+                raise
+            except Exception as exc:
+                runtime = None
+                notice = 'Local FFmpeg could not be verified; independent playback controls are disabled. ' + str(exc) + ' '
+            return voices, devices, runtime, notice
         def discovered(result):
+            self.playback_runtime = result[2]
+            self.playback_availability.ChangeValue(result[3] +
+                'Tempo 1 and pitch 0 preserve synthesized PCM. Choose before Prepare or Read; '
+                'the request keeps these values through later utterances/pages. '
+                'Already playing audio does not change. Independent playback never enables unsupported voice pitch.')
             self.voice_rows = list(result[0])
             self.voice.SetItems([voice.name + ' — ' + ', '.join(voice.languages) + ' — ' + voice.id
                                 for voice in self.voice_rows])
@@ -321,12 +368,21 @@ class LiveReadingDialog:
         result.check_voice(self.voice_rows[index])
         return result
 
+    def _playback_settings(self):
+        result = PlaybackSettings(float(self.playback_tempo.GetValue()),
+                                  float(self.playback_pitch.GetValue()))
+        if result.effects and self.playback_runtime is None:
+            raise ValueError('Independent playback needs verified local FFmpeg. Refresh availability, '
+                             'or choose playback tempo 1 and pitch 0.')
+        return result
+
     def read(self, event=None, *, play=True):
         if self.future is not None or self.session is not None or self.close_pending:
             return
         try:
             self.guard()
             settings = self._settings()
+            playback = self._playback_settings()
             index = self.mode.GetSelection()
             if not 0 <= index < len(self.modes):
                 raise ValueError('Choose a reading range.')
@@ -337,7 +393,8 @@ class LiveReadingDialog:
             self.through_book = mode == 'book' and play
             if self.operation is not None:
                 self.operation.close()
-            self.operation = SpeechOperation(self.trust_controller)
+            self.operation = SpeechOperation(self.trust_controller, playback=playback,
+                                             playback_runtime=self.playback_runtime)
             if mode == 'book':
                 self._load_page(1, settings, play)
             else:
@@ -383,7 +440,8 @@ class LiveReadingDialog:
             self._select((result.selection.start, result.selection.end))
             self._say(f'Prepared characters {result.selection.start}–{result.selection.end}; '
                       f'{result.frames / result.sample_rate:.2f} measured seconds. '
-                      'Highlight covers this utterance; word timings are unavailable.')
+                      'Highlight covers this utterance; word timings are unavailable. '
+                      f'Prepared playback tempo {result.playback.tempo:g}, pitch {result.playback.pitch:g} semitones.')
             if play:
                 self.play()
         self._work(session.render_next, prepared)
