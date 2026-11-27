@@ -14,6 +14,8 @@ List libraries / Покажи бібліотеки
 Extract "EDITION_ID" as "reading.txt" / Експортуй текст "EDITION_ID" як "reading.txt"
 Backup "backup-name" / Резервна копія "backup-name"
 Produce audio: [literal text] / Озвуч: [звичайний текст]
+For audio, one optional space or tab after the colon is a command separator.
+Everything after that separator is literal text, including all line breaks and whitespace.
 Paths must be inside your selected input/output folders. No delete, shell or remote tools are available.'''
 
 
@@ -22,11 +24,22 @@ def preview(value, scope):
     if value.lstrip().startswith('{'):
         return Plan.from_json(value, scope=scope)
     steps = []
-    lines = value.strip().splitlines()
-    index = 0
-    while index < len(lines):
-        line = lines[index].strip()
-        index += 1
+    # Retain every line delimiter when locating commands. Narration is sliced
+    # from the untouched instruction, never rebuilt from these command lines.
+    offset = 0
+    for index, source_line in enumerate(value.splitlines(keepends=True), 1):
+        start = offset
+        offset += len(source_line)
+        match = re.match(r'[ \t]*(?:produce[ \t]+audio|озвуч|створи[ \t]+аудіо)[ \t]*:[ \t]?',
+                         source_line, re.IGNORECASE)
+        if match:
+            # Exactly one optional ASCII space/tab after ':' belongs to the
+            # command; every following character belongs to the literal body.
+            script = value[start + match.end():]
+            text(script, 'audio script', maximum=4 * 1024 * 1024)
+            steps.append(Step('audio.produce', {'text': script}))
+            break
+        line = source_line.strip()
         if not line:
             continue
         # The quoted payload is data. In particular, it is never re-parsed as commands.
@@ -56,12 +69,6 @@ def preview(value, scope):
         if match:
             steps.append(Step('library.extract', {'edition': match.group(1), 'name': match.group(2)}))
             continue
-        match = re.match(r'(?:produce\s+audio|озвуч|створи\s+аудіо)\s*:\s*(.*)', line, re.IGNORECASE)
-        if match:
-            script = '\n'.join([match.group(1), *lines[index:]]).strip()
-            text(script, 'audio script', maximum=4 * 1024 * 1024)
-            steps.append(Step('audio.produce', {'text': script}))
-            break
         raise ValueError(f'Command {index} is ambiguous or unsupported. Use the guided command examples; nothing has run.')
     summary = '\n'.join(f'{i + 1}. {s.tool}: ' + json.dumps(s.arguments, ensure_ascii=False)
                         for i, s in enumerate(steps))

@@ -42,6 +42,16 @@ identity. After upgrading, an old completed render is not accepted as the same
 new plan solely because its text looks unchanged. Verified speech chunks remain
 eligible for reuse when their text, voice, model and settings still match.
 
+The local assistant's guided `Produce audio:` / `Озвуч:` / `Створи аудіо:`
+commands use the same literal narration planner. Exactly one optional ASCII
+space or tab immediately after the colon is a command separator. Everything
+following it, through the end of the instruction, is narration text: additional
+spaces, a leading newline, CRLF, form feeds and trailing whitespace are retained.
+For example, two spaces after the colon leave one leading space in the narration.
+A later line that looks like another command is still part of this narration.
+The preview shows the captured text before execution. This is a guided local
+command grammar; it does not add a general-language model or private transcription.
+
 Preparation supports explicit literal pronunciation substitutions, editable
 reading text, original/difference views, undo/redo and export of the reading copy.
 These edits never approve an OCR quotation or rewrite stored library evidence.

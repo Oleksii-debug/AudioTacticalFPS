@@ -245,3 +245,23 @@ def test_resume_cannot_substitute_another_import_queue(environment):
     result = service.run(identity)
     assert result.status == 'attention' and result.completed == 0
     assert not app.browse(workspace)
+
+
+@pytest.mark.parametrize('preceding', ['', 'List libraries\r\n'])
+@pytest.mark.parametrize(('command', 'separator', 'payload'), [
+    ('Produce audio', ' ', 'First\r\n\f\f# Next\r\n \t'),
+    ('Озвуч', '\t', 'Перший\r\n\f\fNarrator: Далі\r\n \t'),
+    ('Створи аудіо', '', 'Перший\r\n\f\f[pause 2]\r\n  '),
+    ('Produce audio', '', '\r\nFirst\r\n\f\f# Next\r\n'),
+    ('  Озвуч ', ' ', ' \tПерший\r\n\f\fДалі \t\r\n'),
+    ('pRoDuCe\tAuDiO', ' ', '\f\f# Literal heading\r\n  '),
+    ('Озвуч', ' ', 'First\vsecond\x85third\u2028fourth\r\nBackup "literal text"\r\n'),
+])
+def test_guided_narration_keeps_exact_body_after_one_command_separator(
+        preceding, command, separator, payload):
+    from carr_library.assistant.planner import preview
+
+    plan = preview(preceding + command + ':' + separator + payload, Scope())
+    assert [step.tool for step in plan.steps] == (
+        ['library.list', 'audio.produce'] if preceding else ['audio.produce'])
+    assert plan.steps[-1].arguments == {'text': payload}

@@ -101,3 +101,47 @@ def test_byte_budget_fails_before_generation_or_project_creation(production, mon
     result = service.run(service.submit(plan))
     assert result.status == 'failed' and 'budget' in result.message.lower()
     assert not list(output.iterdir())
+
+
+@pytest.mark.parametrize('command', ['Produce audio', 'Озвуч'])
+def test_guided_narration_reaches_actual_renderer_without_payload_changes(
+        production, command):
+    app, output, engine, voice, service = production
+    original = '\r\nFirst sentence.\r\n\f\f# Next\r\n \t'
+    scope = Scope(output_root=output, max_bytes=32 * 1024 ** 2, max_files=20)
+    guided = service.preview(command + ': ' + original, scope)
+    step, = guided.steps
+    assert step.arguments == {'text': original}
+    # The native preview adds the explicitly selected local voice and language.
+    selected = Step(step.tool, {
+        **step.arguments, 'voice_ids': [voice.id],
+        'language': next(code for code in voice.languages if code.split('-')[0] == 'en'),
+        'stems': False,
+    })
+    identity = service.submit(Plan(scope, (selected,), guided.summary))
+    report = service.run(identity)
+    assert report.status == 'complete', report
+    result, = report.results
+    expected_sha256 = sha256(original.encode('utf-8')).hexdigest()
+    assert result['input_kind'] == 'narration'
+    assert result['source_sha256'] == expected_sha256
+
+    saved_path, = Path(result['project']).glob('plan-*.json')
+    saved = json.loads(saved_path.read_bytes())
+    assert saved['original_script'] == original
+    assert saved['input_kind'] == 'narration'
+    assert len(saved['scenes']) == 3
+    assert [''.join(event['text'] for event in scene['events'])
+            for scene in saved['scenes']] == original.split('\f')
+    empty, = saved['scenes'][1]['events']
+    assert empty['kind'] == 'line' and empty['literal'] is True and empty['text'] == ''
+    assert empty['source_start'] == empty['source_end'] == original.index('\f') + 1
+
+    files = {Path(item['path']).name: Path(item['path']) for item in result['artifacts']}
+    timeline = json.loads(files['timeline.json'].read_bytes())
+    assert timeline['source_sha256'] == expected_sha256
+    assert len(timeline['chapters']) == 3
+    middle = timeline['chapters'][1]
+    assert middle['end_frame'] - middle['start_frame'] == 1
+    assert all(line['text'] == original[line['source_start']:line['source_end']]
+               for line in timeline['lines'])
