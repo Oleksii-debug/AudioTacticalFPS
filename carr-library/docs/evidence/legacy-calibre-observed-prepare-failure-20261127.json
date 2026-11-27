@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "status": "OBSERVED_FAILURE_CORRECTION_NOT_RUN",
+  "observed_run": 45996812319,
+  "observed_job": 140498144128,
+  "observed_commit": "aa892878990dc4d67e59d9b2ab7f109f6aa6685f",
+  "observed_stage": "Prepare only fixed publisher legacy tools and reviewed dependencies",
+  "observed_result": "Step timeout after 15 minutes; runner cleanup terminated calibre-portable-installer-9.19.0.",
+  "artifact": {
+    "id": 15198887186,
+    "bytes": 1030,
+    "sha256": "034ae98a3a81ec6cdfeb6735dd51efa1456393eef33b8fb456ebc3bb7cd9deb9"
+  },
+  "publisher_source": {
+    "url": "https://github.com/kovidgoyal/calibre/blob/v9.19.0/bypy/windows/portable-installer.cpp",
+    "git_blob": "052e36f4e0bd612dd07d20b30198e3167f3d2cbb",
+    "predicate": "wcslen(fdest) > 58 opens show_error and get_directory_from_user, including automated argv[1] mode"
+  },
+  "observed_destination": "D:\\a\\_temp\\carr-legacy-converters-45996812319-1-calibre\\optional\\payload\\Calibre Portable",
+  "observed_destination_utf16_units": 89,
+  "diagnosis": "Inference from the observed fixed argv and exact publisher source: the 89-unit destination enters the modal length-error branch.",
+  "correction": "Fresh short lc-<8 hex> root; preflight final destination <=58 UTF-16 units; preparation checkpoints before each stage; native preparation deadline600s inside unchanged15min workflow step; bounded failure tail in acceptance console.",
+  "native_fixtures": "NOT_RUN",
+  "formats_advertised": [],
+  "required_portable_cases_per_mode": 135,
+  "required_native_cases_per_mode": {
+    "calibre": 9,
+    "djvu": 4,
+    "chm": 4
+  },
+  "original_typo_run": {
+    "run_id": 45996041574,
+    "status_last_observed": "queued",
+    "pin_failure_not_observed_in_execution": true
+  }
+}

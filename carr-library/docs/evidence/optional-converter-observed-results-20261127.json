@@ -1,0 +1,68 @@
+{
+  "schema": 1,
+  "status": "OBSERVED_FAILURE_DIAGNOSTIC_SUCCESSOR_NOT_RUN",
+  "observed_selected": {
+    "commit": "955165132fd530d6c3deb0e5b4b48f66dde77963",
+    "run": 45992503530,
+    "job": 140483608266,
+    "source_cases": 6,
+    "installed_cases": 6,
+    "failures": 0,
+    "artifact": {
+      "id": 15194279779,
+      "bytes": 431702,
+      "sha256": "a677aad0a042786d01468d3e6c3a5bda8396d370c88f4d1f540cd72f5e847103"
+    }
+  },
+  "observed_office": {
+    "commit": "955165132fd530d6c3deb0e5b4b48f66dde77963",
+    "run": 45992503530,
+    "job": 140483608712,
+    "source_cases": 7,
+    "source_failures": 6,
+    "source_passes": 1,
+    "installed": "NOT_RUN",
+    "artifact": {
+      "id": 15196092117,
+      "bytes": 4593538,
+      "sha256": "942daaa852b2cd4394fa9217fd1bdfa49cfaa512729d6dc819ff4ca78f4461e2"
+    },
+    "failure": "doc/ppt/xls/wpd parent120s timeouts; pdb and text-budget also reached request.json sharing-cleanup errors; cancellation passed. Native phase unknown."
+  },
+  "diagnostic_reader": {
+    "commit": "b35e925badee2738e8f321ba98499d670029e18e",
+    "run": 46005434630,
+    "job": 140527295120,
+    "status": "SUCCESS"
+  },
+  "successor": {
+    "private_office_phases": "Fixed labels only, included in error after owned worker settles; no source or native diagnostics retained.",
+    "worker_source_commit": "670704f1ac9f3b745e895aac5dfb7c20bcbd81d4",
+    "worker_blob": "cb181f81f2c040f48da2ec0f80d530c302a5821e",
+    "office_native_cases": 7,
+    "selected_native_cases": 6,
+    "legacy_qualification": "EMPTY_UNTIL_REAL_NATIVE_PROOF",
+    "runtime": "NOT_RUN",
+    "portable_source_cases": 151,
+    "portable_installed_cases": 151
+  },
+  "observed_chm": {
+    "commit": "67c717c48660a32080aadcd5cf331de557e890d5",
+    "run": 46004249451,
+    "job": 140523293874,
+    "native_source": {
+      "passed": 1,
+      "failed": 3
+    },
+    "native_installed": "NOT_RUN",
+    "observed_failure": "Synthetic uncompressed CHM listing rejected; publisher compressed help reached inert HTML parser and rejected its legacy declaration.",
+    "source_review_corrections": [
+      "Preserve empty final Block or Method delimiter by stripping newlines only; publisher 26.06 ChmHandler.cpp leaves Block empty for section0.",
+      "Only four fixed standard HTML public declarations can be replaced by inert HTML5 declaration; no DTD resolution, entity subset or arbitrary identifier is accepted. Original and parsed-member hashes are both retained."
+    ],
+    "publisher_source": {
+      "url": "https://github.com/ip7z/7zip/blob/26.06/CPP/7zip/Archive/Chm/ChmHandler.cpp",
+      "blob": "fa750eae0a567d574217864774ed52779f7d4a20"
+    }
+  }
+}

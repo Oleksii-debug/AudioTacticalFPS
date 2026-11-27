@@ -45,7 +45,7 @@ def test_inventory_distinguishes_optional_adapters_from_unintegrated_legacy():
         assert rows[suffix]['qualification'] == 'explicit_selection_required'
         assert rows[suffix]['available'] is False
     assert rows['.doc']['qualification'] == 'explicit_selection_required'
-    assert rows['.mobi']['qualification'] == 'not_integrated'
+    assert rows['.mobi']['qualification'] in ('native_fixture_not_qualified', 'explicit_selection_required')
 
 
 @pytest.mark.parametrize('changes', [

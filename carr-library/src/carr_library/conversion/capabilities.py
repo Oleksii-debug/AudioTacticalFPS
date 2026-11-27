@@ -3,11 +3,12 @@ from importlib.metadata import PackageNotFoundError, version
 
 from ..extract.document_formats import FORMAT_BY_SUFFIX, SUPPORTED_SUFFIXES
 from .office import OFFICE_SUFFIXES
+from .legacy import LEGACY_SUFFIXES, QUALIFIED_SUFFIXES, kind_for
 
 LEGACY = ('.azw', '.azw3', '.chm', '.djvu', '.doc', '.lit', '.mobi', '.pdb',
           '.prc', '.ppt', '.tcr', '.wpd', '.xls')
 IMAGES = ('.png', '.jpg', '.jpeg', '.bmp', '.tif', '.tiff', '.webp')
-CONVERSION_SUFFIXES = frozenset((*SUPPORTED_SUFFIXES, '.rtf', *IMAGES, *OFFICE_SUFFIXES))
+CONVERSION_SUFFIXES = frozenset((*SUPPORTED_SUFFIXES, '.rtf', *IMAGES, *OFFICE_SUFFIXES, *LEGACY_SUFFIXES))
 
 
 def _dependencies(suffix):
@@ -20,7 +21,8 @@ def _dependencies(suffix):
     return ()
 
 
-def capabilities(*, pandoc_selected=False, image_ocr_selected=False, office_selected=False):
+def capabilities(*, pandoc_selected=False, image_ocr_selected=False, office_selected=False,
+                 calibre_selected=False, djvu_selected=False, chm_selected=False):
     """Installed dependencies are not per-file fidelity or language qualification."""
     result = []
     reviewed_versions = {'python-docx': '1.2.0', 'defusedxml': '0.7.1'}
@@ -58,7 +60,22 @@ def capabilities(*, pandoc_selected=False, image_ocr_selected=False, office_sele
             installed=pillow, missing=[] if pillow else ['Pillow'],
             qualification='selected_runtime_requires_check' if image_ocr_selected else 'explicit_selection_required',
             limitation='Explicit OCR language/profile or verified model-pack selection is required. Every bounded image/TIFF frame becomes unverified reading text; printed pagination and exact layout are not invented.'))
+    legacy_selected = {'calibre': calibre_selected, 'djvu': djvu_selected, 'chm': chm_selected}
+    legacy_limits = {
+        'calibre': 'Unprotected MOBI/KF8, TextRead PRC, freely generated LIT and TCR only. Fixed calibre 9.19 wrapper, fresh configuration, no user plugins or protected-book handling. Plain reading text requires source review.',
+        'djvu': 'Embedded UTF-8 text from standalone or bundled self-contained pages only. Indirect/shared-dictionary references and pages requiring OCR remain explicit errors.',
+        'chm': 'Bounded 7-Zip CHM extraction to stdout and existing inert HTML reader. One strict UTF-8 TOC or declared stable filename order; no help viewer, scripts, ActiveX or network loading.',
+    }
     for suffix in LEGACY:
+        if suffix in LEGACY_SUFFIXES:
+            kind = kind_for(suffix)
+            qualified = suffix in QUALIFIED_SUFFIXES
+            result.append(dict(extension=suffix, available=bool(qualified and legacy_selected[kind]),
+                adapter='explicitly selected ' + kind + ' reading adapter', installed={}, missing=[],
+                qualification=('selected_runtime_requires_check' if legacy_selected[kind] else 'explicit_selection_required')
+                              if qualified else 'native_fixture_not_qualified',
+                limitation=legacy_limits[kind]))
+            continue
         if suffix in OFFICE_SUFFIXES:
             result.append(dict(extension=suffix, available=bool(office_selected),
                 adapter='explicitly selected LibreOffice with private inactive-content profile',
