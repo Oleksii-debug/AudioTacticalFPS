@@ -303,6 +303,66 @@ def test_source_changed_while_streaming_is_not_activated(synthetic):
     assert not (s.profile / 'tessdata/eng.traineddata').exists()
 
 
+@pytest.mark.parametrize('prior_selection', [False, True])
+def test_same_metadata_source_mutation_preserves_active_selection(synthetic, monkeypatch, prior_selection):
+    s = synthetic
+    if prior_selection:
+        s.store.install('fast', s.source, ('ukr',))
+    previous = s.manifest.read_bytes() if prior_selection else None
+    source = s.source / 'eng.traineddata'
+    before = source.stat()
+    original_stamp = store_module._stamp
+    # Windows ctime is creation time; retain real identity, size and mtime
+    # while excluding POSIX's changing ctime from this Windows-shaped case.
+    monkeypatch.setattr(store_module, '_stamp', lambda info: original_stamp(info)[:-1])
+    replacement = bytearray(s.payloads['eng'])
+    replacement[-1] ^= 1
+    changed = False
+
+    def mutate_source(*args):
+        nonlocal changed
+        if not changed:
+            source.write_bytes(replacement)
+            os.utime(source, ns=(before.st_atime_ns, before.st_mtime_ns))
+            assert store_module._stamp(source.stat()) == store_module._stamp(before)
+            changed = True
+
+    with pytest.raises(store_module.ModelStoreError, match='changed'):
+        s.store.install('fast', s.source, ('eng',), progress=mutate_source)
+    assert changed and source.read_bytes() == replacement
+    assert not (s.profile / 'tessdata/eng.traineddata').exists()
+    assert not tuple((s.profile / 'tessdata').glob('.model-*.tmp'))
+    assert s.store.available('fast') == (('ukr',) if prior_selection else ())
+    if prior_selection:
+        assert s.manifest.read_bytes() == previous
+    else:
+        assert not s.manifest.exists()
+
+
+def test_source_revalidation_can_be_cancelled_before_publication(synthetic, monkeypatch):
+    s = synthetic
+    s.store.install('fast', s.source, ('ukr',))
+    previous = s.manifest.read_bytes()
+    source = s.source / 'eng.traineddata'
+    source_reads = 0
+    original_open = Path.open
+
+    def observe_source_read(path, mode='r', *args, **kwargs):
+        nonlocal source_reads
+        if path == source and mode == 'rb':
+            source_reads += 1
+        return original_open(path, mode, *args, **kwargs)
+
+    monkeypatch.setattr(Path, 'open', observe_source_read)
+    with pytest.raises(InterruptedError, match='cancelled'):
+        s.store.install('fast', s.source, ('eng',), cancelled=lambda: source_reads >= 2)
+    assert source_reads == 2
+    assert not (s.profile / 'tessdata/eng.traineddata').exists()
+    assert not tuple((s.profile / 'tessdata').glob('.model-*.tmp'))
+    assert s.manifest.read_bytes() == previous
+    assert s.store.available('fast') == ('ukr',)
+
+
 @pytest.mark.parametrize('kind', ['model', 'license', 'manifest'])
 def test_selected_identity_detects_tampering(synthetic, kind):
     s = synthetic

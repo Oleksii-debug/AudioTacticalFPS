@@ -172,6 +172,31 @@ def _snapshot_lock(project_dir):
             yield
 
 
+def _revalidate_source(path, before, record, cancelled):
+    message = 'The project changed during its snapshot. Try again while it is idle.'
+    check_cancelled(cancelled)
+    if _identity(_safe(path)) != before:
+        raise ValueError(message)
+    checksum, size = hashlib.sha256(), 0
+    with path.open('rb') as stream:
+        if _identity(os.fstat(stream.fileno())) != before:
+            raise ValueError(message)
+        while True:
+            check_cancelled(cancelled)
+            block = stream.read(min(BLOCK, record['size'] - size + 1))
+            if not block:
+                break
+            size += len(block)
+            if size > record['size']:
+                raise ValueError(message)
+            checksum.update(block)
+        if _identity(os.fstat(stream.fileno())) != before:
+            raise ValueError(message)
+    if (_identity(_safe(path)) != before or size != record['size']
+            or checksum.hexdigest() != record['sha256']):
+        raise ValueError(message)
+
+
 def backup_project(project_file, destination, *, project_dir=None, include_cache=True,
                    include_audio=True, byte_budget=DEFAULT_BYTE_BUDGET,
                    file_budget=DEFAULT_FILE_BUDGET, cancelled=lambda: False,
@@ -230,6 +255,10 @@ def backup_project(project_file, destination, *, project_dir=None, include_cache
                         raise ValueError('A source file changed while the snapshot was being made.')
                     records.append({'path': name, 'size': size, 'sha256': checksum.hexdigest()})
                     on_status(f'Snapshot: saved {number} of {len(paths)} files.')
+                # Windows metadata can remain unchanged after an in-place edit.
+                # Re-read each source against the bytes actually archived.
+                for record in records:
+                    _revalidate_source(paths[record['path']], before[record['path']], record, cancelled)
                 current = _inventory(source, root, include_cache=include_cache, include_audio=include_audio)
                 if set(current) != set(paths) or any(_identity(_safe(current[name])) != before[name] for name in paths):
                     raise ValueError('The project changed during its snapshot. Try again while it is idle.')

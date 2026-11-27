@@ -364,6 +364,15 @@ class OcrModelStore:
                         remaining()
                         if _model_digest(temporary, model, remaining=remaining) != value:
                             raise ModelStoreError('The OCR model could not be saved completely.')
+                        # A Windows in-place write can retain observed metadata.
+                        # Recheck source bytes without replaying copy progress.
+                        try:
+                            source_value = _model_digest(source / model.relative_path, model,
+                                                         remaining=remaining)
+                        except ModelStoreError as exc:
+                            raise ModelStoreError('The source OCR model changed during installation.') from exc
+                        if source_value != value:
+                            raise ModelStoreError('The source OCR model changed during installation.')
                         # Atomic no-replace publication on the same filesystem.
                         os.link(temporary, target)
                         copied += model.size

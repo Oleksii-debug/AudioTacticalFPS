@@ -167,6 +167,79 @@ def test_budget_cancellation_and_concurrent_source_edit_leave_no_published_snaps
     assert not list(tmp_path.glob('.audio-snapshot-*'))
 
 
+@pytest.mark.parametrize('edited_file', ['project', 'asset'])
+def test_same_size_edit_with_preserved_stamp_rejects_snapshot(project, tmp_path, monkeypatch, edited_file):
+    from carr_library.audio import backup
+
+    _, file, root = project
+    source = file
+    if edited_file == 'asset':
+        source = root / 'assets' / 'sample.wav'
+        source.parent.mkdir()
+        source.write_bytes(b'Synthetic original audio')
+    original = source.read_bytes()
+    replacement = (original.replace(b'Portable audio', b'Modified audio') if edited_file == 'project'
+                   else original.replace(b'original', b'modified'))
+    assert replacement != original and len(replacement) == len(original)
+    previous = tmp_path / 'previous.zip'
+    backup_project(file, previous, project_dir=root)
+    previous_bytes = previous.read_bytes()
+    before = source.stat()
+    identity = backup._identity
+    # Windows ctime is creation time. Keep real identity, size and restored
+    # mtime while omitting only POSIX's independently changing ctime.
+    monkeypatch.setattr(backup, '_identity', lambda info: identity(info)[:-1])
+    changed = False
+
+    def mutate(_):
+        nonlocal changed
+        if changed:
+            return
+        # The asset sorts first; a project-only snapshot has one member.
+        # In either case this callback runs after the selected file was copied.
+        with source.open('r+b') as stream:
+            stream.write(replacement)
+        os.utime(source, ns=(before.st_atime_ns, before.st_mtime_ns))
+        assert backup._identity(source.stat()) == backup._identity(before)
+        changed = True
+
+    destination = tmp_path / 'changed.zip'
+    with pytest.raises(ValueError, match='changed during'):
+        backup_project(file, destination, project_dir=root, on_status=mutate)
+    assert changed and source.read_bytes() == replacement
+    assert previous.read_bytes() == previous_bytes
+    assert not destination.exists()
+    assert not list(tmp_path.glob('.audio-snapshot-*'))
+
+
+def test_snapshot_content_revalidation_cancellation_leaves_state_unchanged(project, tmp_path, monkeypatch):
+    _, file, root = project
+    source_bytes = file.read_bytes()
+    previous = tmp_path / 'previous.zip'
+    backup_project(file, previous, project_dir=root)
+    previous_bytes = previous.read_bytes()
+    reads = 0
+    open_path = Path.open
+
+    def observe_open(path, mode='r', *args, **kwargs):
+        nonlocal reads
+        if path == file and mode == 'rb':
+            reads += 1
+        return open_path(path, mode, *args, **kwargs)
+
+    monkeypatch.setattr(Path, 'open', observe_open)
+    destination = tmp_path / 'cancelled.zip'
+    # First read validates the project, second streams it into the archive,
+    # and the third reads source bytes again before publication.
+    with pytest.raises(RenderCancelled):
+        backup_project(file, destination, project_dir=root, cancelled=lambda: reads >= 3)
+    assert reads >= 3
+    assert file.read_bytes() == source_bytes
+    assert previous.read_bytes() == previous_bytes
+    assert not destination.exists()
+    assert not list(tmp_path.glob('.audio-snapshot-*'))
+
+
 def test_restore_cancellation_and_budgets_are_checked_before_final_directory(project, tmp_path):
     _, file, root = project
     snapshot = tmp_path / 'backup.zip'
