@@ -1,0 +1,563 @@
+name: CARR installed bytecode diagnostic
+
+on:
+  push:
+    branches: [carr/diagnose-installed-bytecode-20261127-db00]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-installed-bytecode-diagnostic-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  installed-bytecode-diagnostic:
+    name: Diagnostic only / sealed CPython 3.11.18 / child bytecode policy
+    runs-on: windows-2022
+    timeout-minutes: 55
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      ORT_DISABLE_TELEMETRY: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      HF_HUB_DISABLE_IMPLICIT_TOKEN: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - name: Preserve the exact committed source bytes
+        working-directory: ${{ github.workspace }}
+        run: |
+          git config --global core.autocrlf false
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Check out the exact event commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+          fetch-depth: 3
+
+      - name: Set up native x64 CPython
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.11'
+          architecture: x64
+
+      - name: Validate the diagnostic-only source boundary
+        run: |
+          $repair = 'f536118f4b27977674ed04b6b3629d36b02f9508'
+          $baseline = 'f8448db5a3da551b5aceee05237a5340ab87b13e'
+          $expected = @('.github/workflows/carr-installed-bytecode-diagnostic.yml')
+          $changed = @(git diff --name-only $repair HEAD)
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@(Compare-Object ($expected | Sort-Object) ($changed | Sort-Object)).Count -ne 0) {
+            throw 'The diagnostic must add only its workflow to the exact repaired source.'
+          }
+          $fixtures = @('carr-library/tests/e2e/test_research_search_cli.py',
+            'carr-library/tests/library_assistant/test_library_workflow.py',
+            'carr-library/tests/library_assistant/test_library_workflow_ui.py',
+            'carr-library/tests/storage/test_backup_v4_sidecars.py',
+            'carr-library/tests/storage/test_backup_publication_recovery.py')
+          $repairs = @(git diff --name-only $baseline $repair)
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@(Compare-Object ($fixtures | Sort-Object) ($repairs | Sort-Object)).Count -ne 0) {
+            throw 'The repaired source changed files beyond the five reviewed fixtures.'
+          }
+          $checkFixtures = @'
+          import ast, json, pathlib, re, textwrap
+          workflow = pathlib.Path('../.github/workflows/carr-installed-bytecode-diagnostic.yml').read_text(encoding='utf-8')
+          snippets = re.findall(r"(?ms)^          \$(\w+) = @'\r?\n(.*?)^          '@(?:\r?\n|$)", workflow)
+          expected_snippets = {'checkFixtures', 'acquire', 'copyPristine', 'oldInvocation',
+              'runFixedTests', 'summarizeFixed', 'verifyFresh'}
+          assert {name for name, _ in snippets} == expected_snippets
+          for name, body in snippets:
+              ast.parse(textwrap.dedent(body), filename='workflow:' + name)
+          paths = ['tests/e2e/test_research_search_cli.py',
+              'tests/library_assistant/test_library_workflow.py',
+              'tests/library_assistant/test_library_workflow_ui.py',
+              'tests/storage/test_backup_v4_sidecars.py',
+              'tests/storage/test_backup_publication_recovery.py']
+          for name in paths:
+              ast.parse(pathlib.Path(name).read_text(encoding='utf-8'), filename=name)
+          print(json.dumps(dict(status='PASS', diagnostic_only=True,
+              production_source='UNCHANGED from f8448db5a3da551b5aceee05237a5340ab87b13e',
+              repaired_fixtures=paths, expected_focused_cases=22)))
+          '@
+          $checkFixtures | python -I -B -
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Install the actual desktop package in a fresh environment
+        id: desktop_install
+        run: |
+          $environment = Join-Path $env:RUNNER_TEMP 'carr-windows-python'
+          python -m venv $environment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $environment 'Scripts/python.exe'
+          "CARR_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          New-Item -ItemType Directory -Force 'ci-results' | Out-Null
+          git rev-parse HEAD | Set-Content 'ci-results/tested-commit.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip list --format=json | Set-Content 'ci-results/installed-packages.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -I -c "import json,platform,sqlite3,struct,sys,wx; assert sys.platform=='win32' and struct.calcsize('P')==8 and sys.version_info[:2]==(3,11); print(json.dumps(dict(python=sys.version,windows=platform.platform(),sqlite=sqlite3.sqlite_version,wx=wx.version())))" | Tee-Object 'ci-results/native-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Match production dependencies before required source suites
+        id: production_dependencies
+        if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' }}
+        timeout-minutes: 10
+        run: |
+          & $env:CARR_PYTHON -m pip install --only-binary=:all: --require-hashes -r packaging/windows-semantic-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -I -B -c "import importlib.metadata as m,json,pathlib,re; pins=dict(re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)',pathlib.Path('packaging/windows-semantic-cp311.lock').read_text(),re.M)); actual={n:m.version(n) for n in pins}; assert len(pins)==50 and actual==pins; print(json.dumps(actual,sort_keys=True))" | Tee-Object 'ci-results/full-lock-source-inventory.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Prepare the verified OCR engine before its required source regression
+        id: ocr_runtime
+        if: ${{ !cancelled() && steps.production_dependencies.outcome == 'success' }}
+        timeout-minutes: 10
+        run: |
+          $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
+          New-Item -ItemType Directory -Force $bundleWork | Out-Null
+          & $env:CARR_PYTHON -m pip install --only-binary=:all: zstandard==0.25.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $ocr = Join-Path $bundleWork 'ocr'
+          $ocrSource = Join-Path $bundleWork 'ocr-corresponding-source.tar'
+          & $env:CARR_PYTHON packaging/prepare_windows_ocr.py --cache (Join-Path $bundleWork 'ocr-cache') --output $ocr --source-archive $ocrSource --download | Tee-Object 'ci-results/ocr-preparation.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_CI_OCR_DIR=$ocr" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+
+      - name: Prepare the pinned shared audio runtime before its source regressions
+        id: audio_runtime
+        if: ${{ !cancelled() && steps.production_dependencies.outcome == 'success' }}
+        timeout-minutes: 10
+        run: |
+          $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
+          $audioInputs = Join-Path $bundleWork 'audio-inputs'
+          $audioRuntime = Join-Path $bundleWork 'audio-runtime'
+          & $env:CARR_PYTHON packaging/acquire_audio_runtime.py --output $audioInputs --download | Tee-Object 'ci-results/audio-runtime-acquisition.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $audioLock = Get-Content packaging/audio-runtime/source-lock.json -Raw | ConvertFrom-Json
+          & $env:CARR_PYTHON packaging/prepare_audio_runtime.py --archive (Join-Path $audioInputs $audioLock.archive.name) --sources-dir $audioInputs --output $audioRuntime | Tee-Object 'ci-results/audio-runtime-preparation.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_CI_AUDIO_DIR=$audioRuntime" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Prepare the pinned local model through the existing upstream verifier
+        id: semantic_model
+        if: ${{ !cancelled() && steps.production_dependencies.outcome == 'success' }}
+        timeout-minutes: 10
+        run: |
+          $model = Join-Path $env:RUNNER_TEMP 'carr-model-ci/minilm'
+          $modelManifest = Join-Path $env:RUNNER_TEMP 'carr-model-ci/model-manifest.json'
+          $acquire = @'
+          import importlib.util, json, pathlib, shutil, sys
+          from huggingface_hub import hf_hub_download
+          spec = importlib.util.spec_from_file_location('model_build', pathlib.Path('packaging/model_bundle.py').resolve())
+          helper = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(helper)
+          target, manifest = map(pathlib.Path, sys.argv[1:])
+          target.mkdir(parents=True, exist_ok=False)
+          for name in sorted(helper.FILES):
+              source = hf_hub_download(helper.REPO, name, revision=helper.REVISION, cache_dir=target.parent / 'cache', token=False)
+              shutil.copyfile(source, target / name)
+          proof = helper.seal(target)
+          with manifest.open('x', encoding='utf-8') as stream:
+              json.dump(proof, stream, sort_keys=True)
+          print(json.dumps({'status': 'PASS', 'revision': helper.REVISION, 'files': len(proof['hashes'])}))
+          '@
+          # Only this explicit build-time child may fetch the pinned public model.
+          # Importing the application before acquisition would enforce offline mode.
+          $env:HF_HUB_OFFLINE = '0'
+          try {
+            $acquire | & $env:CARR_PYTHON -I -B - $model $modelManifest | Tee-Object 'ci-results/model-acquisition.json'
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } finally {
+            $env:HF_HUB_OFFLINE = '1'
+          }
+          & $env:CARR_PYTHON -I -B -c "import sys; from carr_library.semantic import verify_model_bundle; verify_model_bundle(sys.argv[1], sys.argv[2]); print('PASS: exact approved local model')" $model $modelManifest
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_CI_MODEL_DIR=$model" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARR_CI_MODEL_MANIFEST=$modelManifest" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Build equivalent sealed bundles and diagnose child bytecode with egress blocked
+        if: ${{ !cancelled() && steps.production_dependencies.outcome == 'success' && steps.ocr_runtime.outcome == 'success' && steps.audio_runtime.outcome == 'success' && steps.semantic_model.outcome == 'success' }}
+        timeout-minutes: 20
+        run: |
+          $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
+          $wheelhouse = Join-Path $bundleWork 'wheelhouse'
+          $applicationWheels = Join-Path $bundleWork 'application'
+          $baseBundle = Join-Path $bundleWork 'base bundle'
+          $nativeBundle = Join-Path $bundleWork 'native bundle'
+          $bundle = Join-Path $bundleWork 'complete bundle'
+          $baselineBundle = Join-Path $bundleWork 'old invocation bundle'
+          New-Item -ItemType Directory -Force $wheelhouse, $applicationWheels | Out-Null
+          & $env:CARR_PYTHON -m pip download --only-binary=:all: --no-deps --require-hashes -r packaging/windows-semantic-cp311.lock --dest $wheelhouse
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -m pip wheel --no-deps --wheel-dir $applicationWheels .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $wheels = @(Get-ChildItem -LiteralPath $applicationWheels -Filter '*.whl')
+          if ($wheels.Count -ne 1) { throw 'Expected exactly one application wheel.' }
+          $applicationWheel = $wheels[0].FullName
+          $runtime = Get-Content packaging/windows-python.json -Raw | ConvertFrom-Json
+          $pythonArchive = Join-Path $bundleWork 'windows-python.tar.gz'
+          Invoke-WebRequest -Uri $runtime.download.url -OutFile $pythonArchive
+          $archiveHash = (Get-FileHash -LiteralPath $pythonArchive -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($archiveHash -ne $runtime.download.sha256) { throw 'Pinned Python archive checksum mismatch.' }
+          $ocr = Join-Path $bundleWork 'ocr'
+          $ocrSource = Join-Path $bundleWork 'ocr-corresponding-source.tar'
+          if (!(Test-Path -LiteralPath $ocrSource -PathType Leaf) -or $ocr -ne $env:CARR_CI_OCR_DIR) { throw 'Verified source-test OCR runtime is missing.' }
+          $nativeLock = Get-Content packaging/native-runtime/source-lock.json -Raw | ConvertFrom-Json
+          $nativePackage = Join-Path $bundleWork 'native-runtime.conda'
+          Invoke-WebRequest -Uri $nativeLock.package.url -OutFile $nativePackage
+          if ((Get-Item -LiteralPath $nativePackage).Length -ne $nativeLock.package.size) { throw 'Pinned native package size mismatch.' }
+          if ((Get-FileHash -LiteralPath $nativePackage -Algorithm SHA256).Hash.ToLowerInvariant() -ne $nativeLock.package.sha256) { throw 'Pinned native package checksum mismatch.' }
+          $nativeRuntime = Join-Path $bundleWork 'native-runtime'
+          & $env:CARR_PYTHON packaging/prepare_native_runtime.py --package $nativePackage --output $nativeRuntime | Tee-Object 'ci-results/native-runtime-preparation.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $audioRuntime = $env:CARR_CI_AUDIO_DIR
+          $sourceCommit = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $sourceTree = (git rev-parse 'HEAD^{tree}').Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON packaging/build_windows_bundle.py --wheel $applicationWheel --wheelhouse $wheelhouse --lock packaging/windows-semantic-cp311.lock --python-archive $pythonArchive --model-dir $env:CARR_CI_MODEL_DIR --model-manifest $env:CARR_CI_MODEL_MANIFEST --ocr-dir $ocr --ocr-source-archive $ocrSource --source-commit $sourceCommit --sbom packaging/windows-semantic-sbom.cdx.json --output $baseBundle | Tee-Object 'ci-results/full-bundle-build.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON packaging/add_native_runtime.py --bundle $baseBundle --native-runtime $nativeRuntime --output $nativeBundle | Tee-Object 'ci-results/full-bundle-native-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON packaging/add_audio_runtime.py --bundle $nativeBundle --audio-runtime $audioRuntime --output $bundle | Tee-Object 'ci-results/full-bundle-audio-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Preserve two independent equivalent sealed payloads before either
+          # installation or any old child invocation. Never restore mutated bytes.
+          $copyPristine = @'
+          import json, pathlib, shutil, sys
+          fresh, baseline = map(pathlib.Path, sys.argv[1:])
+          assert not (fresh / '.venv').exists()
+          assert not baseline.exists()
+          shutil.copytree(fresh, baseline)
+          assert (fresh / 'bundle-manifest.json').read_bytes() == (baseline / 'bundle-manifest.json').read_bytes()
+          assert not (fresh / 'runtime/python.exe').samefile(baseline / 'runtime/python.exe')
+          print(json.dumps(dict(status='PASS', independent_payloads=True,
+              identical_sealed_manifest=True, installed_environments_created=False)))
+          '@
+          $copyPristine | & $env:CARR_PYTHON -I -B - $bundle $baselineBundle | Tee-Object 'ci-results/independent-pristine-bundles.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -I -B -c "import json,sys; from carr_library.audio_runtime import bundled_audio_tools; tools=bundled_audio_tools(sys.argv[1]); assert tools is not None; print(json.dumps(tools,sort_keys=True))" $bundle | Set-Content 'ci-results/sealed-audio-tools.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $audioTools = Get-Content -Raw -LiteralPath 'ci-results/sealed-audio-tools.json' | ConvertFrom-Json
+          & $env:CARR_PYTHON -I -B -c "import json,sys; from carr_library.audio_runtime import bundled_audio_tools; tools=bundled_audio_tools(sys.argv[1]); assert tools is not None; print(json.dumps(tools,sort_keys=True))" $baselineBundle | Set-Content 'ci-results/baseline-sealed-audio-tools.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $baselineAudioTools = Get-Content -Raw -LiteralPath 'ci-results/baseline-sealed-audio-tools.json' | ConvertFrom-Json
+          $manifest = Join-Path $bundle 'bundle-manifest.json'
+          $expectedSbom = (Get-FileHash -Algorithm SHA256 -LiteralPath 'packaging/windows-semantic-sbom.cdx.json').Hash.ToLowerInvariant()
+          $sealedSbom = Join-Path $bundle 'runtime-sbom.cdx.json'
+          if (!(Test-Path -LiteralPath $sealedSbom -PathType Leaf)) { throw 'Missing sealed SBOM' }
+          $actualSbom = (Get-FileHash -Algorithm SHA256 -LiteralPath $sealedSbom).Hash.ToLowerInvariant()
+          $sbomManifest = Get-Content -Raw -LiteralPath $manifest | ConvertFrom-Json
+          if ($sbomManifest.source_commit -ne $sourceCommit -or $sbomManifest.source_tree -ne $sourceTree -or $sbomManifest.bundled_audio_runtime -ne $true) { throw 'Final audio bundle source identity or runtime flag mismatch.' }
+          if ($actualSbom -ne $expectedSbom -or $sbomManifest.files.'runtime-sbom.cdx.json' -ne $expectedSbom) { throw 'SBOM seal mismatch' }
+          @{ status='PASS'; sha256=$actualSbom } | ConvertTo-Json | Set-Content 'ci-results/sealed-sbom.json'
+          $manifestBefore = (Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash
+          $bundledPython = Join-Path $bundle 'runtime/python.exe'
+          $installedPython = Join-Path $bundle '.venv/Scripts/python.exe'
+          $baselinePython = Join-Path $baselineBundle 'runtime/python.exe'
+          $baselineInstalledPython = Join-Path $baselineBundle '.venv/Scripts/python.exe'
+          # Finish test-only acquisition before the offline execution boundary.
+          $testWheels = Join-Path $env:RUNNER_TEMP 'carr-test-wheels'
+          New-Item -ItemType Directory -Force $testWheels | Out-Null
+          & $env:CARR_PYTHON -m pip download --only-binary=:all: --dest $testWheels pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $sapiPowerShell = Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'
+          if (!(Test-Path -LiteralPath $sapiPowerShell -PathType Leaf)) { throw 'The native SAPI PowerShell host is missing.' }
+          $programs = @($bundledPython, (Join-Path $bundle 'runtime/pythonw.exe'), $installedPython,
+                        (Join-Path $bundle '.venv/Scripts/pythonw.exe'), (Join-Path $bundle 'ocr/tesseract.exe'),
+                        $audioTools.ffmpeg, $audioTools.ffprobe, $audioTools.ffplay, $sapiPowerShell,
+                        $baselinePython, (Join-Path $baselineBundle 'runtime/pythonw.exe'),
+                        $baselineInstalledPython, (Join-Path $baselineBundle '.venv/Scripts/pythonw.exe'),
+                        (Join-Path $baselineBundle 'ocr/tesseract.exe'),
+                        $baselineAudioTools.ffmpeg, $baselineAudioTools.ffprobe, $baselineAudioTools.ffplay)
+          # Voice discovery may enumerate the installed 32-bit SAPI host too.
+          $sapiPowerShell32 = Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe'
+          if (Test-Path -LiteralPath $sapiPowerShell32 -PathType Leaf) { $programs += $sapiPowerShell32 }
+          $programs = @($programs | ForEach-Object { [System.IO.Path]::GetFullPath($_) } | Sort-Object -Unique)
+          $rulePrefix = 'CARR-offline-' + [guid]::NewGuid().ToString('N')
+          $ruleNames = @()
+          $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
+          try {
+          # Temporary rules on this disposable CI VM. Fail before execution if
+          # Windows Firewall cannot enforce every runtime program's outbound block.
+          Set-NetFirewallProfile -Profile Domain, Private, Public -Enabled True -ErrorAction Stop
+          foreach ($program in $programs) {
+            $ruleName = $rulePrefix + '-' + $ruleNames.Count
+            $ruleNames += $ruleName
+            New-NetFirewallRule -Name $ruleName -DisplayName $ruleName -Direction Outbound -Action Block -Profile Any -Program $program -Enabled True -ErrorAction Stop | Out-Null
+          }
+          $profiles = @(Get-NetFirewallProfile -ErrorAction Stop)
+          if (@($profiles | Where-Object { $_.Enabled -ne 'True' }).Count -ne 0) { throw 'Offline checks require enabled Windows Firewall profiles.' }
+          $active = @(Get-NetFirewallRule -PolicyStore ActiveStore -Name $ruleNames -ErrorAction Stop)
+          if ($active.Count -ne $programs.Count -or @($active | Where-Object { $_.Enabled -ne 'True' -or $_.Direction -ne 'Outbound' -or $_.Action -ne 'Block' }).Count -ne 0) { throw 'Offline execution rules are not active.' }
+          $filters = @($active | Get-NetFirewallApplicationFilter -ErrorAction Stop | Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })
+          if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Offline execution rules do not cover the intended programs.' }
+          @{ status='PASS'; profiles_enabled=@($profiles.Name); outbound_blocked_programs=$filters; phase='independent baseline and repaired installed child bytecode diagnostics' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-results/full-bundle-firewall.json'
+          # The old invocation executes only in its independent baseline copy.
+          & $baselinePython -I -B (Join-Path $baselineBundle 'install_windows.py') 2>&1 | Tee-Object 'ci-results/baseline-install.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $oldInvocation = @'
+          import hashlib, importlib.util, json, os, pathlib, subprocess, sys, tempfile
+          root, fresh, project = map(lambda value: pathlib.Path(value).resolve(), sys.argv[1:4])
+          expected_commit, expected_tree = sys.argv[4:6]
+          assert sys.version_info[:3] == (3, 11, 18), sys.version
+          assert sys.dont_write_bytecode is True
+          assert pathlib.Path(sys.executable).samefile(root / '.venv/Scripts/python.exe')
+          assert root != fresh and not root.is_relative_to(fresh) and not fresh.is_relative_to(root)
+          assert not (fresh / '.venv').exists(), 'Repaired bundle must still be pristine.'
+          manifest_path = root / 'bundle-manifest.json'
+          manifest_bytes = manifest_path.read_bytes()
+          assert manifest_bytes == (fresh / 'bundle-manifest.json').read_bytes()
+          manifest = json.loads(manifest_bytes)
+          assert manifest['source_commit'] == expected_commit and manifest['source_tree'] == expected_tree
+          observed_path = 'runtime/Lib/__pycache__/__future__.cpython-311.pyc'
+          assert observed_path in manifest['files']
+          spec = importlib.util.spec_from_file_location('baseline_verifier', root / 'install_windows.py')
+          verifier = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(verifier)
+          verifier.verify(root)
+          import carr_library
+          assert pathlib.Path(carr_library.__file__).resolve().is_relative_to(root / '.venv')
+          def file_hash(path):
+              value = hashlib.sha256()
+              with path.open('rb') as stream:
+                  for block in iter(lambda: stream.read(1024 * 1024), b''):
+                      value.update(block)
+              return value.hexdigest()
+          def mismatches():
+              result = []
+              for name, expected in sorted(manifest['files'].items()):
+                  path = root / name
+                  actual = file_hash(path) if path.is_file() else None
+                  if actual != expected:
+                      result.append({'path': name, 'expected': expected, 'actual': actual})
+              return result
+          env = dict(os.environ)
+          env['PYTHONPATH'] = os.pathsep.join((str(project / 'src'), str(project)))
+          env['PYTHONUTF8'] = '1'
+          policy = ("import sys; before={'dont_write_bytecode':bool(sys.dont_write_bytecode),"
+                    "'isolated':sys.flags.isolated}; import carr_library,bootstrap,json; "
+                    "print(json.dumps({'before':before,'after':{'dont_write_bytecode':bool(sys.dont_write_bytecode),"
+                    "'isolated':sys.flags.isolated},'origins':[carr_library.__file__,bootstrap.__file__]}))")
+          with tempfile.TemporaryDirectory(prefix='carr-old-cli-') as temporary:
+              work = pathlib.Path(temporary).resolve()
+              data = work / 'library'
+              assert not data.exists()
+              # This is the FIRST deliberately unprotected child. Match the old actual
+              # CLI invocation and old PYTHONPATH before any origin/policy probe runs.
+              command = [sys.executable, '-m', 'carr_library', '--data-dir', str(data), '--list-libraries']
+              cli = subprocess.run(command, cwd=work, env=env, capture_output=True,
+                                   text=True, encoding='utf-8', timeout=30)
+              after_cli = mismatches()
+              print(json.dumps(dict(stage='old_actual_cli_before_policy_probes', command=command,
+                  returncode=cli.returncode, stdout=cli.stdout[:4096], stderr=cli.stderr[:4096],
+                  sealed_mismatches=after_cli,
+                  original_observed_file_changed=any(row['path'] == observed_path for row in after_cli))), flush=True)
+              assert cli.returncode == 0, (cli.stdout, cli.stderr)
+              assert json.loads(cli.stdout) == [] and data.is_dir()
+              assert manifest_path.read_bytes() == manifest_bytes
+              policies = {}
+              for name, flags in (('old_search_cli', []), ('old_isolated_ui_child', ['-I'])):
+                  child = subprocess.run([sys.executable, *flags, '-c', policy], cwd=work, env=env,
+                      capture_output=True, text=True, encoding='utf-8', timeout=30)
+                  assert child.returncode == 0, (name, child.stdout, child.stderr)
+                  policies[name] = json.loads(child.stdout)
+                  assert policies[name]['before']['dont_write_bytecode'] is False, policies[name]
+                  assert policies[name]['after']['dont_write_bytecode'] is False, policies[name]
+              after_probes = mismatches()
+          assert manifest_path.read_bytes() == manifest_bytes
+          verify_error = None
+          try:
+              verifier.verify(root)
+          except ValueError as error:
+              verify_error = str(error)
+              assert after_probes and verify_error.startswith('bundle checksum failed:'), verify_error
+          else:
+              assert not after_probes
+          print(json.dumps(dict(status='PASS', diagnostic_only=True,
+              production_baseline='f8448db5a3da551b5aceee05237a5340ab87b13e',
+              source_commit=expected_commit, source_tree=expected_tree, python=sys.version,
+              unsafe_policy_observed=True, policy_probes_ran_after_measured_cli=True,
+              policies=policies, after_real_old_cli=after_cli, after_policy_probes=after_probes,
+              old_cli_mutation_reproduced=bool(after_cli),
+              exact_original_file_mutation_reproduced=any(row['path'] == observed_path for row in after_cli),
+              baseline_bundle_verification='FAIL' if verify_error else 'PASS',
+              baseline_verification_error=verify_error,
+              restored_bytes=False, repaired_bundle_still_uninstalled=not (fresh / '.venv').exists(),
+              acoustic_inference='NOT_RUN', nvda='NOT_RUN')), flush=True)
+          '@
+          $oldInvocation | & $baselineInstalledPython -I -B -X utf8 - $baselineBundle $bundle (Get-Location).Path $sourceCommit $sourceTree 2>&1 | Tee-Object 'ci-results/old-child-bytecode.txt'
+          $baselineCode = $LASTEXITCODE
+          # Preserve baseline evidence and never copy it back. Continue the
+          # independent repaired stage even if the causal probe was inconclusive.
+          & $bundledPython -I -B (Join-Path $bundle 'install_windows.py') 2>&1 | Tee-Object 'ci-results/fresh-bundle-install.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -m carr_library --self-test | Tee-Object 'ci-results/fresh-bundle-self-test.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ((Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash -ne $manifestBefore) { throw 'Fresh bundle manifest changed during installation or startup.' }
+          $python = $installedPython
+          & $python -I -B -m pip install --no-index --find-links $testWheels pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $env:CARR_TEST_MODEL_DIR = Join-Path $bundle 'models/minilm'
+          $env:CARR_OCR_DIR = Join-Path $bundle 'ocr'
+          $env:PYTEST_DISABLE_PLUGIN_AUTOLOAD = '1'
+          $runFixedTests = @'
+          import importlib.util, json, pathlib, subprocess, sys, tempfile
+          root = pathlib.Path(sys.argv[1]).resolve()
+          expected_commit, expected_tree = sys.argv[2:4]
+          assert sys.version_info[:3] == (3, 11, 18), sys.version
+          assert sys.dont_write_bytecode is True
+          assert pathlib.Path(sys.executable).samefile(root / '.venv/Scripts/python.exe')
+          import carr_library, bootstrap
+          for module in (carr_library, bootstrap):
+              assert pathlib.Path(module.__file__).resolve().is_relative_to(root / '.venv')
+          from carr_library.native_runtime import activate_bundled_runtime
+          runtime_handle = activate_bundled_runtime(bundle_root=root)
+          assert runtime_handle is not None
+          manifest = json.loads((root / 'bundle-manifest.json').read_text(encoding='utf-8'))
+          assert manifest['source_commit'] == expected_commit and manifest['source_tree'] == expected_tree
+          assert all(manifest[key] for key in
+              ('bundled_python', 'bundled_model', 'bundled_ocr', 'bundled_native_runtime', 'bundled_audio_runtime'))
+          spec = importlib.util.spec_from_file_location('fresh_verifier', root / 'install_windows.py')
+          verifier = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(verifier)
+          verifier.verify(root)
+          # Reuse the actual repaired test helper; do not emulate a safer command.
+          path = pathlib.Path('tests/e2e/test_research_search_cli.py').resolve()
+          spec = importlib.util.spec_from_file_location('fixed_search_cli_fixture', path)
+          fixture = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(fixture)
+          with tempfile.TemporaryDirectory(prefix='carr-fixed-cli-') as temporary:
+              prefix, env = fixture._python_child(pathlib.Path(temporary))
+              policy = ("import sys; before=bool(sys.dont_write_bytecode); "
+                        "import carr_library,bootstrap,json; print(json.dumps({'before':before,"
+                        "'after':bool(sys.dont_write_bytecode),"
+                        "'origins':[carr_library.__file__,bootstrap.__file__]}))")
+              child = subprocess.run([*prefix, '-c', policy], cwd=temporary, env=env,
+                  check=True, capture_output=True, text=True, encoding='utf-8', timeout=30)
+              proof = json.loads(child.stdout)
+              assert proof['before'] is True and proof['after'] is True
+              assert [pathlib.Path(p).resolve() for p in proof['origins']] == [
+                  pathlib.Path(module.__file__).resolve() for module in (carr_library, bootstrap)]
+          print(json.dumps(dict(status='PASS', diagnostic_only=True, python=sys.version,
+              source_commit=expected_commit, source_tree=expected_tree, installed_origins=proof['origins'],
+              actual_fixture_helper='_python_child', child_policy=proof, pre_test_seal='PASS')), flush=True)
+          import pytest
+          raise SystemExit(pytest.main(['-vv', '-ra', '--tb=long',
+              '-o', 'addopts=', '-o', 'pythonpath=', '-o', 'xfail_strict=true',
+              '--import-mode=importlib', '--junitxml=ci-results/installed-bytecode-tests.xml',
+              'tests/e2e/test_research_search_cli.py',
+              'tests/library_assistant/test_library_workflow.py::test_real_process_exit_after_topic_commit_recovers_single_topic',
+              'tests/library_assistant/test_library_workflow.py::test_real_process_exit_after_export_link_recovers_only_its_recorded_twin',
+              'tests/library_assistant/test_library_workflow_ui.py::test_load_review_and_resume_reconcile_only_the_recorded_export_publication',
+              'tests/storage/test_backup_v4_sidecars.py::test_real_process_exit_during_sidecar_publication',
+              'tests/storage/test_backup_publication_recovery.py::test_actual_exit_at_completion_manifest_leaves_a_verifiable_backup']))
+          '@
+          $runFixedTests | & $python -I -B -X utf8 - $bundle $sourceCommit $sourceTree 2>&1 | Tee-Object 'ci-results/installed-bytecode-tests.txt'
+          $suiteCode = $LASTEXITCODE
+          $summarizeFixed = @'
+          import json, pathlib, sys, xml.etree.ElementTree as ET
+          path = pathlib.Path('ci-results/installed-bytecode-tests.xml')
+          cases = list(ET.parse(path).iter('testcase')) if path.exists() else []
+          failed = sum(any(case.find(tag) is not None for tag in ('failure', 'error')) for case in cases)
+          skipped = sum(case.find('skipped') is not None for case in cases)
+          required = {'test_list_libraries_and_search_only_explicit_selection_without_desktop',
+              'test_existing_modes_and_metadata_filters_apply_in_each_selected_library',
+              'test_missing_library_selection_is_an_error_and_does_not_create_data',
+              'test_missing_last_library_or_corrupted_original_never_prints_partial_results',
+              'test_conflicting_operations_and_invalid_result_limit_fail_clearly',
+              'test_corrupt_library_database_fails_clearly_without_partial_json_or_replacing_it',
+              'test_advanced_cli_pages_keep_originals_and_selected_libraries',
+              'test_real_process_exit_after_topic_commit_recovers_single_topic',
+              'test_real_process_exit_after_export_link_recovers_only_its_recorded_twin',
+              'test_load_review_and_resume_reconcile_only_the_recorded_export_publication',
+              'test_real_process_exit_during_sidecar_publication',
+              'test_actual_exit_at_completion_manifest_leaves_a_verifiable_backup'}
+          coverage = required <= {case.get('name', '').split('[', 1)[0] for case in cases}
+          ok = len(cases) == 22 and coverage and failed == skipped == 0
+          print(json.dumps(dict(status='PASS' if ok else 'FAIL', diagnostic_only=True,
+              collected=len(cases), passed=len(cases)-failed-skipped, failed=failed, skipped=skipped,
+              required_cases_present=coverage, expected_cases=22, python=sys.version)), flush=True)
+          raise SystemExit(0 if ok else 1)
+          '@
+          $summarizeFixed | & $python -I -B -X utf8 - 2>&1 | Tee-Object 'ci-results/installed-bytecode-tests.json'
+          $summaryCode = $LASTEXITCODE
+          if ((Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash -ne $manifestBefore) { throw 'Fresh bundle manifest changed during repaired child acceptance.' }
+          $verifyFresh = @'
+          import hashlib, importlib.util, json, pathlib, sys
+          root = pathlib.Path(sys.argv[1]).resolve()
+          manifest = json.loads((root / 'bundle-manifest.json').read_text(encoding='utf-8'))
+          mismatches = []
+          for name, expected in sorted(manifest['files'].items()):
+              path = root / name
+              value = hashlib.sha256()
+              if path.is_file():
+                  with path.open('rb') as stream:
+                      for block in iter(lambda: stream.read(1024 * 1024), b''):
+                          value.update(block)
+                  actual = value.hexdigest()
+              else:
+                  actual = None
+              if actual != expected:
+                  mismatches.append({'path': name, 'expected': expected, 'actual': actual})
+          print(json.dumps(dict(stage='fresh_repaired_bundle_after_22_cases',
+              sealed_file_count=len(manifest['files']), mismatches=mismatches)), flush=True)
+          spec = importlib.util.spec_from_file_location('final_verifier', root / 'install_windows.py')
+          verifier = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(verifier)
+          verifier.verify(root)
+          assert not mismatches
+          print(json.dumps(dict(status='PASS', sealed_files_verified=True, restored_bytes=False,
+              source_commit=manifest['source_commit'], source_tree=manifest['source_tree'],
+              python=sys.version)), flush=True)
+          '@
+          $verifyFresh | & $bundledPython -I -B -X utf8 - $bundle 2>&1 | Tee-Object 'ci-results/final-fresh-seal.json'
+          $sealCode = $LASTEXITCODE
+          @{ diagnostic_only=$true; baseline_exit_code=$baselineCode; suite_exit_code=$suiteCode;
+             summary_exit_code=$summaryCode; final_seal_exit_code=$sealCode;
+             sealed_manifest_unchanged=$true; source_commit=$sourceCommit; source_tree=$sourceTree;
+             repaired_source='f536118f4b27977674ed04b6b3629d36b02f9508';
+             production_baseline='f8448db5a3da551b5aceee05237a5340ab87b13e';
+             expected_installed_python='3.11.18'; expected_cases=22; restored_bytes=$false;
+             acoustic_inference='NOT_RUN'; nvda='NOT_RUN'
+           } | ConvertTo-Json | Set-Content 'ci-results/installed-bytecode-diagnostic-status.json'
+          if ($baselineCode -ne 0 -or $suiteCode -ne 0 -or $summaryCode -ne 0 -or $sealCode -ne 0) {
+            throw "Installed bytecode diagnostic failed: baseline=$baselineCode suites=$suiteCode summary=$summaryCode seal=$sealCode"
+          }
+          } finally {
+            foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
+            foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
+          }
+
+
+      - name: Preserve focused diagnostic evidence only
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: carr-installed-bytecode-diagnostic-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-results/
+          if-no-files-found: warn
+          retention-days: 7
