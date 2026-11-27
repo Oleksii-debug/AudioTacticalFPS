@@ -24,9 +24,13 @@ RECORDING = re.compile(r'state/studio/recordings/([0-9a-f]{32})\.(json|wav)\Z')
 MANAGED_INPUT = re.compile(r'state/studio/inputs/(' + HEX + r')\.audio\Z')
 PUBLICATION = re.compile(r'state/studio/publications/([0-9a-f]{32})\.json\Z')
 MAX_PRIMARY_BYTES = 32 * 1024**3
+TRUSTED_CLIENT = frozenset({'state/trusted-client/entitlement.json',
+                            'state/trusted-client/entitlement.pending.json'})
 
 
 def limit(name):
+    if name in TRUSTED_CLIENT:
+        return 65536
     if name == 'state/operations/resources.json':
         return 32768
     if match := RECORDING.fullmatch(name):
@@ -563,8 +567,65 @@ def _translation_job(value, identity):
         raise ValueError('Completed translation is missing accepted chunks.')
 
 
+def _public_entitlement(value):
+    """Keep only a bounded public envelope, without importing its authority.
+
+    Backup has no independently trusted publisher key or OS anchor. These
+    structural checks preserve exact signed bytes as inert recovery data; only
+    EntitlementStore can authenticate them against the owner's live policy and
+    protected monotonic state. Secrets, keys and anchor records have no adapter.
+    """
+    from .security._files import json_value
+    from .security.entitlements import _b64, _identity, _integer
+    fields(value, {'version', 'kind', 'key_id', 'payload', 'signature'})
+    if type(value['version']) is not int or value['version'] != 1 or value['kind'] != 'carr-entitlement':
+        raise ValueError('Unsupported public entitlement envelope.')
+    digest(value['key_id'])
+    payload = _b64(value['payload'])
+    _b64(value['signature'], 64)
+    item = json_value(payload, maximum=32768)
+    fields(item, {'schema', 'product', 'entitlement_id', 'subject', 'device', 'sequence', 'profile',
+        'issued_at', 'not_before', 'expires_at', 'offline_until', 'refresh_interval',
+        'policy_version', 'terms_sha256', 'features', 'revoked', 'request_nonce'})
+    if type(item['schema']) is not int or item['schema'] != 1:
+        raise ValueError('Unsupported public entitlement payload.')
+    for key in ('product', 'entitlement_id', 'subject', 'policy_version'):
+        _identity(item[key])
+    if item['device'] is not None:
+        _identity(item['device'])
+    _integer(item['sequence'], minimum=1, maximum=2**53 - 1)
+    for key in ('issued_at', 'not_before'):
+        _integer(item[key], minimum=1)
+    digest(item['terms_sha256'])
+    if item['profile'] not in ('perpetual', 'renewable', 'evaluation') or type(item['revoked']) is not bool:
+        raise ValueError('Invalid public entitlement profile.')
+    if item['profile'] == 'perpetual':
+        if any(item[key] is not None for key in ('expires_at', 'offline_until', 'refresh_interval')):
+            raise ValueError('A perpetual grant cannot require periodic renewal.')
+    else:
+        for key in ('expires_at', 'offline_until'):
+            _integer(item[key], minimum=1)
+        if (item['issued_at'] > item['expires_at']
+                or not item['not_before'] < item['expires_at'] <= item['offline_until']):
+            raise ValueError('Invalid public entitlement validity interval.')
+        if item['refresh_interval'] is not None:
+            _integer(item['refresh_interval'], minimum=60, maximum=30 * 86400)
+    features = item['features']
+    if (type(features) is not list or len(features) > 128
+            or any(type(feature) is not str for feature in features)
+            or len(set(features)) != len(features)):
+        raise ValueError('Invalid public entitlement feature inventory.')
+    for feature in features:
+        _identity(feature)
+    nonce = item['request_nonce']
+    if nonce is not None and (type(nonce) is not str or not re.fullmatch('[0-9a-f]{32}', nonce)):
+        raise ValueError('Invalid public entitlement renewal nonce.')
+
+
 def validate(db, name, value):
-    if name == 'state/operations/resources.json':
+    if name in TRUSTED_CLIENT:
+        _public_entitlement(value)
+    elif name == 'state/operations/resources.json':
         from .operations.models import ResourceLimits
         fields(value, {'schema', 'limits'})
         if value['schema'] != 'carr-resource-policy/1':

@@ -378,7 +378,7 @@ def normalize_manifest(manifest):
         for value in manifest['state']:
             if type(value) is not dict or not isinstance(value.get('filename'), str):
                 raise RestoreError('invalid legacy state entry')
-            portable_name(value['filename'])
+            portable_name('state/' + value['filename'])
             entries.append({**value, 'filename': 'state/' + value['filename']})
         roots = frozenset({'state'})
         if version >= 4:
@@ -480,6 +480,8 @@ def _ignored(name):
         return (path.name in ('.state.lock', '.render.lock', '.origin.lock', '.recording.lock', '.selected-clip.lock')
                 or name.startswith('state/studio/publications/') and bool(re.fullmatch(r'\.[0-9a-f]{32}\.lock', path.name))
                 or path.name.startswith('.pending-'))
+    if path.parent.as_posix() == 'state/trusted-client':
+        return path.name == '.trust.lock' or bool(re.fullmatch(r'\.trust-[a-z0-9_]{8}', path.name))
     if path.parent.as_posix() == 'state/speech':
         return bool(re.fullmatch(r'\.[0-9a-f]{64}\.lock', path.name) or path.name.startswith('.pending-'))
     if path.parent.as_posix() == 'state/audio':

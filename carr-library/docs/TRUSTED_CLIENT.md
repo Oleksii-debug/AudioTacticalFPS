@@ -107,9 +107,16 @@ accepted grants.
 
 Signed state belongs outside the program directory. Updates leave it, the OS
 vault, libraries, model settings, queue paths and prior outputs in place.
-The general library backup does not export the protected anchor or make a
-license portable. A different device requires owner recovery; device/path
-bindings are not silently changed.
+The complete-library backup retains only the current and pending public signed
+envelopes under `state/trusted-client`, byte for byte, within the producer's
+64 KiB limit. Its passive adapter validates the exact public schemas and bounded
+encodings; it does not authenticate a signature, contact an issuer, open the
+credential vault or authorize a grant. Private keys, credentials, protected
+anchors and arbitrary client configuration have no portable backup adapter.
+The live store still requires the independently trusted publisher policy and
+matching protected sequence/digest on use. Restored public bytes cannot
+provision a new device or roll back its protected state. A different device
+requires owner recovery; device/path bindings are not silently changed.
 
 ## Renewal adapter
 

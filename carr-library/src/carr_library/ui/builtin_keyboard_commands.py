@@ -65,6 +65,7 @@ READER_COMMANDS = (
     CommandSpec('reader.bookmark_add', 'Add named page bookmark', 'reader', 'Ctrl+B'),
     CommandSpec('reader.bookmarks', 'Manage page bookmarks', 'reader', 'Ctrl+Shift+B'),
     CommandSpec('reader.help', 'Reader keyboard guide', 'reader', 'F1'),
+    CommandSpec('reader.audio', 'EPUB synchronized recorded audio', 'reader'),
     CommandSpec('reader.commands', 'Find a reader command', 'reader', 'Ctrl+Shift+P'),
     CommandSpec('reader.settings', 'Reader keyboard shortcuts', 'reader', 'Ctrl+Alt+K'),
 )
@@ -78,6 +79,7 @@ VOICE_READER_COMMANDS = (
     CommandSpec('voice_reader.clipboard', 'Read clipboard once', 'voice_reader'),
     CommandSpec('voice_reader.dictionary', 'Pronunciation dictionary', 'voice_reader'),
     CommandSpec('voice_reader.find', 'Find and replace', 'voice_reader', 'Ctrl+F'),
+    CommandSpec('voice_reader.playback', 'Playback controls', 'voice_reader'),
     CommandSpec('voice_reader.previous_unit', 'Previous text unit', 'voice_reader'),
     CommandSpec('voice_reader.current_unit', 'Select current text unit', 'voice_reader'),
     CommandSpec('voice_reader.next_unit', 'Next text unit', 'voice_reader'),

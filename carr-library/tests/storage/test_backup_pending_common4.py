@@ -186,3 +186,64 @@ def test_exact_canonical_pending_shapes_are_read_without_rewriting(tmp_path, ver
         assert ReadingState(restored.root).resume(workspace, 'published') == page.location
     final = restored.resume_import(workspace, request['request_id'])
     assert final['state'] == 'complete' and final['id'] == initial['id']
+
+
+@pytest.mark.parametrize('watermark', [None, 0, 2 ** 63 - 1])
+def test_legacy_publication_watermark_is_inert_and_removed_on_full_restore(tmp_path, monkeypatch, watermark):
+    app, workspace, source, request, initial = partial(tmp_path)
+    identity = request['request_id']
+    request_path = app.root / 'import-requests' / (identity + '.json')
+    request['publication_watermark'] = watermark
+    request_path.write_text(canonical(request) + '\n', encoding='utf-8')
+    source.unlink()
+    backup, destination = tmp_path / 'backup', tmp_path / 'restored'
+    def forbid(*args, **kwargs):
+        raise AssertionError('Legacy receipt metadata cannot execute an importer during backup/restore.')
+    with monkeypatch.context() as passive:
+        passive.setattr(subprocess, 'Popen', forbid)
+        checksum = create_backup(app, backup)
+        manifest = verify_backup(backup, checksum)
+        assert manifest['version'] == 4
+        saved = json.loads((backup / 'pending' / 'import-requests' / (identity + '.json')).read_bytes())
+        assert 'publication_watermark' in saved and saved['publication_watermark'] == watermark
+        restored_root = restore_backup(backup, destination, checksum)
+    restored = LibraryApp(restored_root)
+    restored_request = load_request(restored.root, identity)
+    assert 'publication_watermark' not in restored_request
+    assert restored_request['state'] == request['state'] == 'cancelled'
+    with restored.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 0
+    # Only this explicit call resumes the retained checkpoint and commits.
+    final = restored.resume_import(workspace, identity)
+    assert final['state'] == 'complete' and final['id'] == initial['id']
+    with restored.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+        assert db.execute('SELECT count(*) FROM page').fetchone()[0] == 3
+
+
+@pytest.mark.parametrize('watermark', [-1, 2 ** 63, True, 0.0, '1', [], {}])
+@pytest.mark.parametrize('phase', ['snapshot', 'restore'])
+def test_legacy_publication_watermark_rejects_invalid_bounds_before_publication(tmp_path, watermark, phase):
+    app, _, _, request, _ = partial(tmp_path)
+    name = 'import-requests/' + request['request_id'] + '.json'
+    backup, destination = tmp_path / 'backup', tmp_path / 'restored'
+    if phase == 'snapshot':
+        request['publication_watermark'] = watermark
+        (app.root / name).write_text(canonical(request) + '\n', encoding='utf-8')
+        with pytest.raises(ValueError, match='publication boundary'):
+            create_backup(app, backup)
+        assert not backup.exists()
+    else:
+        create_backup(app, backup)
+        manifest = json.loads((backup / 'manifest.json').read_bytes())
+        path = backup / 'pending' / name
+        value = json.loads(path.read_bytes())
+        value['publication_watermark'] = watermark
+        raw = (canonical(value) + '\n').encode('utf-8')
+        path.write_bytes(raw)
+        entry = next(row for row in manifest['pending']['files'] if row['filename'] == name)
+        entry.update(size_bytes=len(raw), sha256=sha256(raw).hexdigest())
+        checksum = resign(backup, manifest)
+        with pytest.raises(ValueError, match='publication boundary'):
+            restore_backup(backup, destination, checksum)
+        assert not destination.exists()

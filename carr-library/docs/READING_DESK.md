@@ -119,6 +119,39 @@ The native control probe uses a declared synthetic voice and playback sink.
 Actual installed voice quality, physical audio playback and Windows 11/NVDA
 acceptance require their separate evidence.
 
+## Playback of the current recording
+
+After reading text, open **Playback controls** in the Voice Reader. This dialog
+controls the same rendered WAV and does not start sound merely by opening.
+Its command is also available in **Find a voice reader command** and can receive
+a user-selected shortcut.
+
+Choose backward and forward skips from 0.1 to 600 seconds, then press
+**Apply skip intervals**. Skipping or seeking while paused keeps playback paused.
+Changing a stopped position does not start it; use **Play current recording**
+explicitly. **Pause or resume recording** and **Stop current recording** remain
+available as named controls.
+
+For **A–B repeat**, enter start and end seconds within the recording, at least
+0.05 seconds apart, then apply the range. Applying or clearing a range while
+stopped does not play it. An active repeat rechecks the original reader's current
+library and source permission before starting its next pass. **Stop** cancels
+pending repeat and sleep actions, including actions waiting for progress feedback
+to become quiet.
+
+The **Sleep timer** uses elapsed time in the open reader, up to seven days.
+It stops playing or paused audio and suppresses further repeat when it expires.
+Closing only the controls leaves the current playback session available; closing
+the Voice Reader stops its owned playback. These controls do not modify or
+overwrite the rendered WAV or the retained text source.
+
+**Synthesis rate** changes a newly rendered voice request only when the selected
+voice supports it. These playback controls do not promise independent playback
+speed, pitch shifting, or pitch-preserving time stretch. Windows playback reports
+native MCI positions; the existing ffplay fallback reports an elapsed-time
+estimate. Actual MCI tests use silent synthetic PCM. Listening quality, real voice
+pronunciation and Windows 11/NVDA use require their separate acceptance.
+
 ## Personal reading state
 
 Names and positions are saved locally in `reading-state.json` in the selected

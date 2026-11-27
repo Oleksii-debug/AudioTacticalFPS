@@ -309,3 +309,79 @@ def test_actual_installed_codecs(runtime, tmp_path, extension, rate):
     assert result.sample_rate == rate and result.channels == 2
     assert abs(result.duration - 2) < .15
     assert result.size > 1000
+
+
+@pytest.mark.parametrize('operation', ['convert', 'concatenate'])
+def test_codec_staging_survives_unconfirmed_native_cleanup(runtime, tmp_path, monkeypatch, operation):
+    import gc
+    import os
+    from threading import Event
+    from carr_library.audio import dsp
+    from carr_library.audio.cleanup import CleanupOwner
+    from carr_library.audio.models import AudioCleanupPending
+
+    source = tone(tmp_path / 'retained-source.wav', duration=.1)
+    original = source.read_bytes()
+    runtime.capabilities()
+    runtime.inspect(source)
+    released = Event()
+    owner = CleanupOwner(lambda: released.is_set())
+    error = AudioCleanupPending('Controlled codec shutdown is unconfirmed.', cleanup_owner=owner)
+    held = {}
+    target = tmp_path / 'never-published.wav'
+
+    def unconfirmed(command, **options):
+        assert options['owned_windows_job'] is (os.name == 'nt')
+        stage = Path(command[-1])
+        assert stage.parent.name.startswith('.audio-') and stage.parent.is_dir()
+        stage.write_bytes(b'Unaccepted native partial output')
+        held['render'] = stage.parent
+        if operation == 'concatenate':
+            manifest = Path(command[command.index('-i') + 1])
+            assert manifest.name == 'scenes.ffconcat' and manifest.is_file()
+            held['concat'] = manifest.parent
+        raise error
+
+    monkeypatch.setattr(dsp, 'run_process', unconfirmed)
+    try:
+        with pytest.raises(AudioCleanupPending) as result:
+            if operation == 'convert':
+                runtime.convert(source, target)
+            else:
+                runtime.concatenate((source, source), target)
+        assert result.value is error
+        assert not target.exists() and source.read_bytes() == original
+        assert set(held) == ({'render', 'concat'} if operation == 'concatenate' else {'render'})
+        gc.collect()
+        assert not owner.close()
+        assert all(directory.is_dir() for directory in held.values())
+        released.set()
+        assert owner.close() and owner.quiescent
+        assert all(not directory.exists() for directory in held.values())
+        assert not target.exists() and source.read_bytes() == original
+    finally:
+        released.set()
+        owner.close()
+
+
+def test_actual_codec_processes_use_existing_native_ownership(runtime, tmp_path, monkeypatch):
+    import os
+    from carr_library.audio import dsp
+
+    source = tone(tmp_path / 'actual-owned-source.wav', duration=.1)
+    calls = []
+    actual = dsp.run_process
+
+    def observed(command, **options):
+        calls.append((tuple(command), options.get('owned_windows_job')))
+        return actual(command, **options)
+
+    monkeypatch.setattr(dsp, 'run_process', observed)
+    result = runtime.convert(source, tmp_path / 'actual-owned-result.wav')
+    assert calls and all(owned is (os.name == 'nt') for _, owned in calls)
+    assert any(Path(command[0]).stem.lower() == 'ffprobe' for command, _ in calls)
+    assert any(Path(command[0]).stem.lower() == 'ffmpeg' and '-i' in command
+               for command, _ in calls)
+    channels, rate = samples(result.path)
+    assert rate == RATE and len(channels) == 2
+    assert all(len(channel) == round(.1 * RATE) for channel in channels)

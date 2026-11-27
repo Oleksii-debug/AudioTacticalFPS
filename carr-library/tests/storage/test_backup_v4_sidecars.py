@@ -311,3 +311,30 @@ def test_cancelled_operation_never_publishes_destination(reading, tmp_path, oper
         else:
             restore_backup(folder, tmp_path / 'rejected', digest, cancelled=cancelled)
     assert not (tmp_path / 'rejected').exists()
+
+
+def test_legacy_state_inventory_uses_the_full_typed_transcription_namespace(tmp_path):
+    app = LibraryApp(tmp_path / 'library')
+    app.create_workspace('Historical typed inventory')
+    folder = tmp_path / 'backup'
+    create_backup(app, folder)
+    value = manifest(folder)
+    value.pop('pending', None)
+    value.pop('sidecars')
+    value['version'] = 3
+    relative = ('transcription/' + 'a' * 64 + '/jobs/' + 'b' * 32
+                + '/results/book/chapter/part/segment.txt')
+    entry = dict(filename=relative, size_bytes=1, sha256='c' * 64)
+    value['state'] = [entry]
+    before = json.dumps(value, ensure_ascii=False, sort_keys=True)
+
+    inventory = backup_sidecars.normalize_manifest(value)
+
+    assert inventory.entries == ({**entry, 'filename': 'state/' + relative},)
+    assert inventory.empty_roots == frozenset({'state'})
+    assert json.dumps(value, ensure_ascii=False, sort_keys=True) == before
+    # Only the known typed producer has the deeper path allowance. An unrelated
+    # producer at the same depth remains invalid under the ordinary policy.
+    value['state'] = [{**entry, 'filename': relative.replace('transcription/', 'unvalidated/', 1)}]
+    with pytest.raises(ValueError, match='portable sidecar filename'):
+        backup_sidecars.normalize_manifest(value)
