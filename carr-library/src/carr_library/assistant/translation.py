@@ -10,7 +10,7 @@ from uuid import uuid4
 
 from .models import canonical, local_path, text
 from .profiles import ProviderProfile
-from .providers import Authorization, Gateway, money, _request
+from .providers import Authorization, Gateway, money, _request, translation_receipt_sha256
 from .state import JobStore, atomic_json, read_json, now
 from ..speech.reading import ReadingDocument
 from ..speech._io import new_output, digest
@@ -167,7 +167,7 @@ class TranslationService:
         self.jobs.save(job)
         return identity
 
-    def _load(self, identity):
+    def _load(self, identity, *, receipt_integrity=None):
         """Verify existing receipts without renewing remote authority or billing."""
         job = self.jobs.load(identity)
         if (job.get('kind') != 'translation/1' or job.get('source_sha256') != _hash(job.get('source_text', ''))
@@ -202,8 +202,11 @@ class TranslationService:
                 raise ValueError('A completed translation chunk is damaged.')
             if requests[index] is None:
                 if (row['text'] != job['chunks'][index] or row.get('request_sha256') is not None
-                        or row.get('response_sha256') is not None or row.get('detected_source') is not None):
+                        or row.get('response_sha256') is not None or row.get('detected_source') is not None
+                        or 'decoded_translation_sha256' in row):
                     raise ValueError('A whitespace chunk differs from its preserved original.')
+                if receipt_integrity is not None:
+                    receipt_integrity.append('original-whitespace')
                 continue
             text(row['text'], 'completed translation output', maximum=200000)
             recorded = operations.get(identity + '_' + str(index))
@@ -219,6 +222,21 @@ class TranslationService:
                     or recorded.get('output_sha256') != row['response_sha256']
                     or money(recorded.get('reserved_cost')) != cost):
                 raise ValueError('A completed translation receipt differs from its approved request or usage evidence.')
+            usage = recorded.get('usage')
+            if type(usage) is not dict:
+                raise ValueError('Completed translation usage evidence is invalid.')
+            key = 'decoded_translation_sha256'
+            if key in row or key in usage:
+                expected = translation_receipt_sha256(row['text'], row.get('detected_source'))
+                if row.get(key) != expected or usage.get(key) != expected:
+                    raise ValueError('A decoded translation receipt differs from its usage evidence.')
+                integrity = 'decoded-ledger-bound'
+            else:
+                # Historical receipts predate the independent decoded digest.
+                # Keep user-owned derivatives exportable without inventing evidence.
+                integrity = 'legacy-wire-only'
+            if receipt_integrity is not None:
+                receipt_integrity.append(integrity)
         return job
 
     def resume(self, identity, *, cancelled=lambda: False, progress=lambda *args: None):
@@ -247,6 +265,9 @@ class TranslationService:
                     receipt = {'index': index, 'source_sha256': _hash(chunk), 'text': result['text'],
                         'translation_sha256': _hash(result['text']), 'detected_source': result.get('detected_source'),
                         'request_sha256': result.get('request_sha256'), 'response_sha256': result.get('output_sha256')}
+                    if chunk.strip():
+                        receipt['decoded_translation_sha256'] = translation_receipt_sha256(
+                            result['text'], result.get('detected_source'))
                     job['receipts'].append(receipt)
                     # Save accepted output before cancellation: never bill twice.
                     self.jobs.save(job)
@@ -263,7 +284,8 @@ class TranslationService:
             return {'id': identity, 'status': job['status'], 'completed': len(job['receipts']), 'total': total}
 
     def export(self, identity, output):
-        job = self._load(identity)
+        receipt_integrity = []
+        job = self._load(identity, receipt_integrity=receipt_integrity)
         if job['status'] != 'complete' or len(job['receipts']) != len(job['chunks']):
             raise ValueError('Finish and verify all chunks before publishing the translation.')
         target = local_path(output, must_exist=False)
@@ -285,7 +307,9 @@ class TranslationService:
             'target_language': job['target_language'], 'provider_adapter': job['profile']['adapter'],
             'model': job['profile']['model'], 'source_is_immutable': True, 'quotation_authority': False,
             'automated_translation_quality': 'not independently qualified',
-            'chunks': [{key: value for key, value in row.items() if key != 'text'} for row in job['receipts']],
+            'chunks': [dict({key: value for key, value in row.items() if key != 'text'},
+                            decoded_receipt_integrity=integrity)
+                       for row, integrity in zip(job['receipts'], receipt_integrity)],
             'files': {name: digest(target / name) for name in paths}}
         atomic_json(target / 'translation-provenance.json', report)
         return {'status': 'complete', 'path': str(target), 'files': report['files']}
