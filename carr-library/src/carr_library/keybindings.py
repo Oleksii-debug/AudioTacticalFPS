@@ -62,9 +62,9 @@ def normalize_shortcut(value):
 def normalize_context_shortcut(value, context='main'):
     """Keep existing main assignments, while protecting native Reader editing."""
     result = normalize_shortcut(value)
-    if context not in ('main', 'reader'):
+    if context not in ('main', 'reader', 'voice_reader'):
         raise ValueError('Unknown keyboard command context.')
-    if result and context == 'reader':
+    if result and context in ('reader', 'voice_reader'):
         *parts, key = result.split('+')
         modifiers = set(parts)
         if (key == 'Enter'
@@ -90,7 +90,7 @@ class Command:
                 or any(ord(ch) < 32 for ch in self.identity)
                 or not isinstance(self.label, str) or not self.label.strip()):
             raise ValueError('Invalid keyboard command.')
-        if self.context not in ('main', 'reader'):
+        if self.context not in ('main', 'reader', 'voice_reader'):
             raise ValueError('Unknown keyboard command context.')
         # An existing fixed platform command, e.g. Alt+F4, remains intact.
         if self.configurable:

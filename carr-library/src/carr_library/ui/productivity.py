@@ -145,8 +145,9 @@ def compatible_shortcuts(root, commands):
 class KeyboardActions:
     def __init__(self, frame, bindings, dialogs=None):
         self.frame, self.bindings = frame, tuple(bindings)
-        from .keyboard_settings import reader_commands
-        self.commands = (*tuple(binding.command for binding in self.bindings), *reader_commands())
+        from .keyboard_settings import reader_commands, voice_reader_commands
+        self.commands = (*tuple(binding.command for binding in self.bindings),
+                         *reader_commands(), *voice_reader_commands())
         self._reader_adapters = weakref.WeakSet()
         self.dialogs = dialogs or NativeDialogs()
         self.overrides = {}
@@ -215,7 +216,7 @@ class KeyboardActions:
         values = validate_bindings(self.commands, self.overrides)
         self.dialogs.show(self.frame, 'Current keyboard shortcuts', '\n'.join(
             f'[{command.context}] {command.label}: {values[command.identity] or "No shortcut"}' for command in self.commands) +
-            '\n\nMain and Reading Desk contexts share these saved preferences. '
+            '\n\nMain, Reading Desk and Voice reader contexts share these saved preferences. '
             'Ordinary text editing keys and Alt-menu letters remain reserved.')
 
     def change(self, event=None, *, context='main', parent=None, report=None):
@@ -226,37 +227,38 @@ class KeyboardActions:
             if self.frame.library is not library or Path(self.frame.library.root) != root:
                 raise ValueError('The library changed. Reopen keyboard shortcuts.')
         try:
-            if context not in ('main', 'reader'):
+            if context not in ('main', 'reader', 'voice_reader'):
                 raise ValueError('Unknown keyboard command context.')
             commands = tuple(command for command in self.commands
                              if command.configurable and command.context == context)
             values = validate_bindings(self.commands, self.overrides)
             labels = [f'{command.label}; {values[command.identity] or "No shortcut"}' for command in commands]
-            if context == 'reader':
-                labels.insert(0, 'Restore all Reader shortcuts to their original keys')
+            context_label = 'Reader' if context == 'reader' else 'Voice reader'
+            if context != 'main':
+                labels.insert(0, f'Restore all {context_label} shortcuts to their original keys')
             index = self.dialogs.choose(parent, 'Keyboard shortcuts', 'Choose a command to change.', labels)
             current()
             if index is None:
                 return
             if type(index) is not int or not 0 <= index < len(labels):
                 raise ValueError('Choose one command.')
-            if context == 'reader':
+            if context != 'main':
                 if index == 0:
                     import wx
-                    if wx.MessageBox('Restore every Reader shortcut to its original key? Main-window assignments are preserved.',
-                        'Reset Reader keyboard shortcuts', wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, parent) != wx.YES:
+                    if wx.MessageBox(f'Restore every {context_label} shortcut to its original key? Other contexts are preserved.',
+                        f'Reset {context_label} keyboard shortcuts', wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, parent) != wx.YES:
                         return
                     current()
                     reader_ids = {command.identity for command in commands}
                     self.save({key: value for key, value in self.overrides.items() if key not in reader_ids})
-                    report('Original Reader shortcuts restored and saved.')
+                    report(f'Original {context_label} shortcuts restored and saved.')
                     return
                 index -= 1
             command = commands[index]
             value = self.dialogs.text(parent, 'Change keyboard shortcut',
                 command.label + '\nUse Ctrl+Shift+S, Alt+F8 or F6. Leave empty to remove the shortcut. '
-                + ('Reader defaults can be restored from the first choice in this dialog.'
-                   if context == 'reader' else 'Main-window defaults can be restored from Options.'),
+                + (f'{context_label} defaults can be restored from the first choice in this dialog.'
+                   if context != 'main' else 'Main-window defaults can be restored from Options.'),
                 values[command.identity])
             current()
             if value is None:

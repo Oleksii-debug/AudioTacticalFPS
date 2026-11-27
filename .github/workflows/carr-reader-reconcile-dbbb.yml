@@ -11,7 +11,7 @@ concurrency:
 jobs:
   reader-review:
     runs-on: windows-2022
-    timeout-minutes: 25
+    timeout-minutes: 40
     defaults:
       run:
         shell: pwsh
@@ -49,10 +49,46 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pip check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Require new appearance and complete recovery regressions
+      - name: Require composed reader tools, output, spelling, appearance and complete recovery
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: |
-          python -B scripts/ci_check.py --jobs 2 tests/speech/test_presentation.py tests/ui/test_reader_presentation.py tests/storage/test_reader_presentation_backup.py 2>&1 | Tee-Object 'ci-reader-results/appearance-source.txt'
+          python -B scripts/ci_check.py --jobs 2 tests/speech/test_presentation.py tests/ui/test_reader_presentation.py tests/storage/test_reader_presentation_backup.py tests/speech/test_reading_tools.py tests/ui/test_reading_tools.py tests/speech/test_output_devices.py tests/ui/test_reader_output.py tests/speech/test_spelling.py tests/speech/test_spelling_worker.py tests/ui/test_reader_spelling.py tests/speech/test_player_controls.py tests/speech/test_session.py tests/ui/test_keyboard_settings.py tests/ui/test_keyboard_export.py tests/ui/test_keyboard_rename.py 2>&1 | Tee-Object 'ci-reader-results/appearance-source.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require actual source reading tools and isolated regex cancellation
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        timeout-minutes: 4
+        run: |
+          python -I -B scripts/windows_reading_tools_smoke.py --source . --output 'ci-reader-results/source-reading-tools.json' 2>&1 | Tee-Object 'ci-reader-results/source-reading-tools.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require actual installed reading tools and isolated regex cancellation
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        timeout-minutes: 4
+        run: |
+          python -I -B scripts/windows_reading_tools_smoke.py --expect-installed --output 'ci-reader-results/installed-reading-tools.json' 2>&1 | Tee-Object 'ci-reader-results/installed-reading-tools.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require actual source and installed Windows spelling dictionary
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        timeout-minutes: 4
+        run: |
+          python -I -B -X utf8 scripts/windows_spelling_smoke.py --source . --report 'ci-reader-results/source-spelling.json' 2>&1 | Tee-Object 'ci-reader-results/source-spelling.txt'
+          $sourceExit = $LASTEXITCODE
+          python -I -B -X utf8 scripts/windows_spelling_smoke.py --report 'ci-reader-results/installed-spelling.json' 2>&1 | Tee-Object 'ci-reader-results/installed-spelling.txt'
+          if ($sourceExit -ne 0 -or $LASTEXITCODE -ne 0) { exit 1 }
+      - name: Require actual source native reading appearance
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          $previousPythonPath = $env:PYTHONPATH
+          try {
+            $env:PYTHONPATH = (Resolve-Path 'src').Path
+            python -B scripts/windows_reader_presentation_smoke.py --report 'ci-reader-results/source-reading-appearance.json' 2>&1 | Tee-Object 'ci-reader-results/source-reading-appearance.txt'
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } finally { $env:PYTHONPATH = $previousPythonPath }
+      - name: Require actual installed native reading appearance
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          python -I -B scripts/windows_reader_presentation_smoke.py --expect-installed --report 'ci-reader-results/installed-reading-appearance.json' 2>&1 | Tee-Object 'ci-reader-results/installed-reading-appearance.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Prepare the exact pinned FFmpeg version for recording compatibility
         id: audio

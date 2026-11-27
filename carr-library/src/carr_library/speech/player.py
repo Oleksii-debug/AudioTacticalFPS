@@ -17,6 +17,7 @@ from uuid import uuid4
 import wave
 
 from ._io import local_file, stop_process
+from .output_devices import OutputDevice, verify_output_device
 
 
 class WavePlayer:
@@ -37,6 +38,7 @@ class WavePlayer:
         self.repeat_count = 0
         self._sleep_deadline = None
         self._session_generation = 0
+        self._output_device = None
         self.backend = 'Windows MCI' if os.name == 'nt' else 'ffplay'
         self.position_is_approximate = os.name != 'nt'
         self._executable = shutil.which('ffplay') if os.name != 'nt' else None
@@ -48,6 +50,51 @@ class WavePlayer:
     @property
     def available(self):
         return os.name == 'nt' or bool(self._executable)
+
+    @property
+    def output_selection_supported(self):
+        return os.name == 'nt'
+
+    @property
+    def output_device(self):
+        """This reader's session selection; None keeps its original mapper."""
+        return self._output_device
+
+    @property
+    def active_output_index(self):
+        if os.name != 'nt' or not self._open or self._output_device is None:
+            return None
+        return int(self._mci(f'status {self._alias} output'))
+
+    def set_output_device(self, selected):
+        """Adopt an explicit prepared selection without starting audio.
+
+        Changing an active route leaves its position paused, disarms A/B and
+        sleep, and invalidates queued restarts. Only an explicit resume/read
+        opens the new route; the caller retains its normal quiet admission.
+        """
+        if selected is not None and not isinstance(selected, OutputDevice):
+            raise ValueError('Select a verified native output device or System default output.')
+        if selected is not None and not self.output_selection_supported:
+            raise RuntimeError('This playback backend does not support per-reader output selection.')
+        state = self.state
+        position = self.position_seconds if self.path is not None else 0.0
+        self._session_generation += 1
+        self._disarm()
+        self._close_backend()
+        self._output_device = selected
+        if self.path is not None and state in ('playing', 'paused'):
+            self._offset, self._end_seconds = position, self.duration_seconds
+            self._state, self._started = 'paused', None
+
+    def _verify_output_route(self):
+        if self._output_device is None:
+            return None
+        current = verify_output_device(self._output_device)
+        if self._open and self.active_output_index != current.index:
+            raise RuntimeError('Windows did not retain the explicitly selected reader output. '
+                               'Playback was stopped; no default fallback is allowed.')
+        return current
 
     def _mci(self, command):
         buffer = ctypes.create_unicode_buffer(1024)
@@ -126,9 +173,13 @@ class WavePlayer:
             return
         try:
             if os.name == 'nt':
+                selected = self._verify_output_route()
                 self._mci(f'open "{target}" type waveaudio alias {self._alias}')
                 self._open = True
                 self._mci(f'set {self._alias} time format milliseconds')
+                if selected is not None:
+                    self._mci(f'set {self._alias} output {selected.index}')
+                    self._verify_output_route()
                 suffix = '' if end_seconds is None else f' to {end_ms}'
                 self._mci(f'play {self._alias} from {round(start * 1000)}{suffix}')
             else:
@@ -185,7 +236,13 @@ class WavePlayer:
                         end_seconds=self._ab[1] if self._repeat_enabled else None)
             return True
         if os.name == 'nt':
-            self._mci(f'resume {self._alias}')
+            try:
+                self._verify_output_route()
+                self._mci(f'resume {self._alias}')
+            except Exception:
+                self._disarm()
+                self._close_backend()
+                raise
         else:
             if self._process.poll() is not None:
                 raise RuntimeError('The playback device stopped. Start playback again.')
