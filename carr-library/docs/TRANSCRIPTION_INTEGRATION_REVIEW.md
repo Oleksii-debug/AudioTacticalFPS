@@ -4,7 +4,7 @@ Review date: 2026-11-27. Status: SOURCE_RECEIVED_AND_STATICALLY_REVIEWED; runtim
 
 ## Source and boundary
 
-The owner-supplied implementation identifies itself as V4.3. The current source includes worker.py (37,974 bytes), accessible_window.ps1 (49,718 bytes), README_UA.txt and download_models_once.py. The readable worker source was inspected. File bytes/immutable source hash and dependency lock must be recorded before code adoption; this review has not created a redistributed source snapshot.
+The owner-supplied implementation identifies itself as V4.3. The current source includes worker.py (37,974 bytes), accessible_window.ps1 (49,718 bytes), README_UA.txt and download_models_once.py. The inspected worker.py has SHA256 `1df2a1694b35bdf69dab614f91f1e8dea99716dfb039182ef5b83ca5ccb46ec9` (recorded in [integration evidence](https://github.com/Oleksii-debug/AudioTacticalFPS/issues/1#issuecomment-7206485666)). An approved dependency/model lock and adoption/runtime checks remain required. This review has not created a redistributed source snapshot or published the private source location.
 
 The source location is retained in the authorized private worker input, not in public Git. Its personal jobs, recordings/transcripts, virtual environment, historical backups/patch clutter and machine-specific paths must not be imported. No root LICENSE, dependency lock or pyproject.toml was observed; establish provenance/rights for the supplied wrapper and every runtime/model before redistribution. Do not invent a license for the owner's code.
 

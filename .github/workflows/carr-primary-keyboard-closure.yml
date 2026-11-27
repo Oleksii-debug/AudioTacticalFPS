@@ -1,0 +1,64 @@
+name: Resonance isolated native keyboard closure
+on:
+  push:
+    branches: [carr/v3-primary-keyboard-closure-20261127]
+permissions:
+  contents: read
+concurrency:
+  group: resonance-native-keyboard-closure-${{ github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  keyboard:
+    runs-on: windows-2022
+    timeout-minutes: 12
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Install exact primary desktop source and pinned runtime
+        run: |
+          New-Item -ItemType Directory -Force 'keyboard-results' | Out-Null
+          git rev-parse HEAD | Set-Content 'keyboard-results/tested-commit.txt'
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Exercise actual main keyboard assignment cancellation and conflicts
+        run: |
+          python -I -B tests/ui/native_keyboard_settings_smoke.py --native 2>&1 | Tee-Object 'keyboard-results/native-keyboard-settings.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Exercise actual contextual reader key remapping
+        run: |
+          python -I -B tests/ui/native_reader_keymap_smoke.py --native 2>&1 | Tee-Object 'keyboard-results/native-reader-keymap.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Exercise actual research-note recovery and explicit save
+        run: |
+          python -I -B tests/ui/native_evidence_drafts_smoke.py --native 2>&1 | Tee-Object 'keyboard-results/native-evidence-drafts.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Preserve text-only actual native evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: resonance-keyboard-closure-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/keyboard-results/
+          retention-days: 7
