@@ -5,6 +5,7 @@ the existing metadata projection reproduces coarse Windows file timestamps;
 identity, mode, link count and size remain real. No digest or writer is mocked.
 """
 from hashlib import sha256
+import os
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -107,7 +108,8 @@ def test_unchanged_existing_destination_still_publishes_exact_bytes(export_case,
 
 def observe_target_reads(monkeypatch, target):
     """Observe actual file reads without substituting their contents or digest."""
-    original_open = Path.open
+    original_open = os.fdopen
+    target_identity = export_file._identity(target.stat())
     reads = []
 
     class Reader:
@@ -130,11 +132,12 @@ def observe_target_reads(monkeypatch, target):
             reads.append((size, len(value)))
             return value
 
-    def open_file(path, mode='r', *args, **kwargs):
-        stream = original_open(path, mode, *args, **kwargs)
-        return Reader(stream) if path == target and mode == 'rb' else stream
+    def open_file(descriptor, mode='r', *args, **kwargs):
+        stream = original_open(descriptor, mode, *args, **kwargs)
+        return (Reader(stream) if mode == 'rb' and
+                export_file._identity(os.fstat(descriptor)) == target_identity else stream)
 
-    monkeypatch.setattr(Path, 'open', open_file)
+    monkeypatch.setattr(os, 'fdopen', open_file)
     return reads
 
 
@@ -176,14 +179,14 @@ def test_oversized_existing_destination_is_rejected_before_payload_read(tmp_path
     target = tmp_path / 'too-large.bin'
     with target.open('wb') as stream:
         stream.truncate(64 * MIB + 1)
-    original_open = Path.open
+    original_open = os.open
 
     def forbid_payload_read(path, *args, **kwargs):
-        if path == target:
+        if Path(path) == target:
             pytest.fail('An oversized destination must be rejected before opening its payload.')
         return original_open(path, *args, **kwargs)
 
-    monkeypatch.setattr(Path, 'open', forbid_payload_read)
+    monkeypatch.setattr(os, 'open', forbid_payload_read)
     with pytest.raises(ValueError, match='64 MiB|verification budget'):
         if operation == 'capture':
             export_file.capture_export_destination(target, private_root=tmp_path / 'private')
@@ -203,3 +206,63 @@ def test_cancelled_capture_preserves_absent_or_existing_destination(tmp_path, ex
                                                 cancelled=lambda: True)
     assert (target.read_bytes() if target.exists() else None) == (ORIGINAL if existing else None)
     assert not list(tmp_path.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize('kind', ['hardlink', 'nonregular'])
+def test_raced_destination_is_rejected_before_any_descriptor_read(export_case, monkeypatch, kind):
+    h = export_case
+    h.target.write_bytes(ORIGINAL)
+    private_source = h.private / 'retained.txt'
+    private_source.write_bytes(b'Synthetic retained source')
+    original_open, original_fdopen = os.open, os.fdopen
+    changed, reads, descriptors = [], [], []
+
+    class Reader:
+        def __init__(self, stream):
+            self.stream = stream
+        def __enter__(self):
+            self.stream.__enter__()
+            return self
+        def __exit__(self, *args):
+            return self.stream.__exit__(*args)
+        def read(self, count):
+            reads.append(count)
+            pytest.fail('A raced destination must be rejected before reading any bytes.')
+
+    def replace_before_open(path, flags, *args, **kwargs):
+        if Path(path) == h.target and not changed:
+            h.target.unlink()
+            if kind == 'hardlink':
+                os.link(private_source, h.target)
+            elif hasattr(os, 'mkfifo'):
+                os.mkfifo(h.target)
+                assert flags & os.O_NONBLOCK
+            else:
+                h.target.mkdir()
+            changed.append(True)
+        return original_open(path, flags, *args, **kwargs)
+
+    def observe(descriptor, mode='r', *args, **kwargs):
+        stream = original_fdopen(descriptor, mode, *args, **kwargs)
+        if mode == 'rb':
+            descriptors.append(descriptor)
+            return Reader(stream)
+        return stream
+
+    with monkeypatch.context() as patch:
+        patch.setattr(os, 'open', replace_before_open)
+        patch.setattr(os, 'fdopen', observe)
+        with pytest.raises((ValueError, OSError)):
+            h.publish()
+    assert changed == [True] and not reads
+    for descriptor in descriptors:
+        with pytest.raises(OSError):
+            os.fstat(descriptor)
+    if kind == 'hardlink':
+        assert h.target.samefile(private_source)
+    elif hasattr(os, 'mkfifo'):
+        assert h.target.is_fifo()
+    else:
+        assert h.target.is_dir()
+    assert private_source.read_bytes() == b'Synthetic retained source'
+    assert not list(h.target.parent.glob('.research-export-*'))
