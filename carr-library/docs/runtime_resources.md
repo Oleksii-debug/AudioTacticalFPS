@@ -122,6 +122,38 @@ before claiming orphan-process containment. No OS CPU affinity, whole-process
 RAM cap, measured VRAM usage, thermal control or network sandbox is provided by
 this broker. `capabilities()` states these limits explicitly.
 
+## Isolated import process ownership
+
+Import and PDF review retain their existing bounded supervisor, private stdin/
+stdout/stderr files, request journal and immutable publication receipts. The
+supervisor closes its native process family before reading a final reply or
+reconciling a stopped child's committed transaction. A leader exit by itself is
+not completion of its OCR descendants.
+
+On Windows the existing `JobProcess` creates the child inside its private job
+and inherits only private duplicates of the three selected standard streams.
+The original stream objects remain owned by the caller. Native job accounting
+must reach zero active processes before the result can be consumed.
+
+On POSIX, `waitid(WNOWAIT)` keeps the exact leader waitable until its newly
+created process group is signalled. Cleanup sends one signal while that identity
+is still owned, reaps the leader, and checks for group disappearance with a real
+five-second deadline. A retry only observes the already signalled group; it does
+not signal a possibly reused numeric identity. Unsupported waitid platforms
+refuse this isolated launch instead of claiming equivalent ownership.
+
+If native cleanup cannot confirm quiescence, the existing retained cleanup owner
+keeps the three stream objects, request lock and any PDF review staging directory
+alive. The caller receives a cleanup-pending error. No final reply is accepted,
+no publication recovery is attempted, and the same request cannot run again
+until that owner releases its lock. Cleanup does not rewrite publication receipts.
+
+This is a prerequisite for shared ingest/OCR admission, not an admission adapter.
+In particular, POSIX process groups do not contain a deliberately detached child
+or survive abrupt loss of their application supervisor as a resource owner.
+The broker's existing application-owned lease contract above is unchanged;
+orphan containment and worker-held admission must be qualified separately.
+
 ## Participating services in this composition
 
 This adapter keeps the accepted application services and saved formats:

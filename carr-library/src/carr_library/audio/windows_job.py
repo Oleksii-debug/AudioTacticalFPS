@@ -88,10 +88,13 @@ def _kernel():
 
 class JobProcess:
     """The small Popen interface used by run_process, with a private job owner."""
-    def __init__(self, args, *, cwd=None, env=None, stdin_pipe=False):
+    def __init__(self, args, *, cwd=None, env=None, stdin_pipe=False, stdio=None):
         if os.name != 'nt':
             raise RuntimeError('Windows process jobs require native Windows.')
         import msvcrt
+        if stdio is not None and (stdin_pipe or not isinstance(stdio, (tuple, list))
+                                  or len(stdio) != 3):
+            raise ValueError('Explicit process streams require exactly stdin, stdout and stderr.')
         self.args, self.returncode = args, None
         self._api, self._process, self._job = _kernel(), _ProcessInfo(), None
         self.stdin = self.stdout = self.stderr = None
@@ -118,18 +121,31 @@ class JobProcess:
             if not self._api.UpdateProcThreadAttribute(attributes, 0, 0x0002000D,
                     jobs, ctypes.sizeof(jobs), None, None):
                 raise ctypes.WinError(ctypes.get_last_error())
-            if stdin_pipe:
-                input_fd, input_write = os.pipe()
-                descriptors.extend((input_fd, input_write))
+            if stdio is not None:
+                # The caller retains its file objects. Only private duplicates
+                # become inheritable and enter the existing three-handle list.
+                child_fds = []
+                for stream in stdio:
+                    descriptor = stream.fileno()
+                    if type(descriptor) is not int or descriptor < 0:
+                        raise ValueError('A process stream needs an open binary descriptor.')
+                    duplicate = os.dup(descriptor)
+                    descriptors.append(duplicate)
+                    child_fds.append(duplicate)
+                input_write = stdout_read = stderr_read = None
             else:
-                input_fd = os.open(os.devnull, os.O_RDONLY)
-                input_write = None
-                descriptors.append(input_fd)
-            stdout_read, stdout_write = os.pipe()
-            descriptors.extend((stdout_read, stdout_write))
-            stderr_read, stderr_write = os.pipe()
-            descriptors.extend((stderr_read, stderr_write))
-            child_fds = (input_fd, stdout_write, stderr_write)
+                if stdin_pipe:
+                    input_fd, input_write = os.pipe()
+                    descriptors.extend((input_fd, input_write))
+                else:
+                    input_fd = os.open(os.devnull, os.O_RDONLY)
+                    input_write = None
+                    descriptors.append(input_fd)
+                stdout_read, stdout_write = os.pipe()
+                descriptors.extend((stdout_read, stdout_write))
+                stderr_read, stderr_write = os.pipe()
+                descriptors.extend((stderr_read, stderr_write))
+                child_fds = (input_fd, stdout_write, stderr_write)
             for descriptor in child_fds:
                 os.set_inheritable(descriptor, True)
             handles = (HANDLE * 3)(*(msvcrt.get_osfhandle(fd) for fd in child_fds))
@@ -161,10 +177,12 @@ class JobProcess:
             if input_write is not None:
                 self.stdin = os.fdopen(input_write, 'wb')
                 descriptors.remove(input_write)
-            self.stdout = os.fdopen(stdout_read, 'rb')
-            descriptors.remove(stdout_read)
-            self.stderr = os.fdopen(stderr_read, 'rb')
-            descriptors.remove(stderr_read)
+            if stdout_read is not None:
+                self.stdout = os.fdopen(stdout_read, 'rb')
+                descriptors.remove(stdout_read)
+            if stderr_read is not None:
+                self.stderr = os.fdopen(stderr_read, 'rb')
+                descriptors.remove(stderr_read)
         except BaseException as original:
             def close_streams():
                 for pipe in (self.stdin, self.stdout, self.stderr):

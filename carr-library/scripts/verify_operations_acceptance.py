@@ -47,6 +47,7 @@ ORIGINS = [
     "carr_library.operations.facade",
     "carr_library.transcription",
     "carr_library.studio.render",
+    "carr_library.studio.project",
     "carr_library.audio.process",
     "carr_library.ui.operations_dialog",
     "carr_library.ui.transcription_dialog",
@@ -85,6 +86,7 @@ SUITES = [
     "tests/assistant/test_translation.py",
     "tests/assistant/test_providers.py",
     "tests/assistant/test_translation_v3.py",
+    "tests/assistant/test_translation_narration.py",
     "tests/ui/test_profile_project_exports.py"
 ]
 CROSS_PROCESS = {

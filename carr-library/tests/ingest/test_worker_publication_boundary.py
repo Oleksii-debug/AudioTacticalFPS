@@ -12,17 +12,6 @@ from carr_library.application import LibraryApp
 from carr_library.ingest import worker
 
 
-class WorkerSubprocess:
-    """Scope instrumentation to this supervisor, never the stdlib process module."""
-
-    def __init__(self, original, popen):
-        self._original = original
-        self.Popen = popen
-
-    def __getattr__(self, name):
-        return getattr(self._original, name)
-
-
 class BarrierClock:
     """Arm the supervisor deadline before a committed child triggers expiry."""
 
@@ -74,7 +63,7 @@ def source_file(tmp_path, kind):
 
 def publication_barrier(monkeypatch, marker, *, before=False, crash=False):
     """Only instrument the trusted child bootstrap around its real DB commit."""
-    popen = worker.subprocess.Popen
+    popen = worker._spawn
     processes = []
 
     def launch(command, *args, **kwargs):
@@ -112,7 +101,7 @@ def publication_barrier(monkeypatch, marker, *, before=False, crash=False):
                 return process
         return popen(command, *args, **kwargs)
 
-    monkeypatch.setattr(worker, 'subprocess', WorkerSubprocess(worker.subprocess, launch))
+    monkeypatch.setattr(worker, '_spawn', launch)
     return processes
 
 
@@ -175,7 +164,7 @@ def test_prelaunch_cancellation_never_starts_or_recovers_a_worker(tmp_path, monk
     source = source_file(tmp_path, 'docx')
     def forbidden(*args, **kwargs):
         raise AssertionError('A pre-cancelled import must not launch a process.')
-    monkeypatch.setattr(worker, 'subprocess', WorkerSubprocess(worker.subprocess, forbidden))
+    monkeypatch.setattr(worker, '_spawn', forbidden)
     result = app.import_file(workspace, source, cancelled=lambda: True)
     assert result['state'] == 'cancelled'
     assert 'recovered_publication' not in result
@@ -222,7 +211,7 @@ def test_another_requests_fresh_publication_cannot_hide_metadata_or_membership_f
     other[field] = changes[field]
     marker = tmp_path / 'before-request-publication'
     processes = publication_barrier(monkeypatch, marker, before=True)
-    original_popen = worker.subprocess.Popen
+    original_popen = worker._spawn
     competing = []
 
     def launch(command, *args, **kwargs):
@@ -235,7 +224,7 @@ def test_another_requests_fresh_publication_cannot_hide_metadata_or_membership_f
             assert competing[0]['state'] == 'complete'
         return original_popen(command, *args, **kwargs)
 
-    monkeypatch.setattr(worker, 'subprocess', WorkerSubprocess(worker.subprocess, launch))
+    monkeypatch.setattr(worker, '_spawn', launch)
     result = app.import_file(workspace, source, **wanted, cancelled=marker.exists, timeout=30)
     assert result['state'] == ('cancelled' if conflict == 'collections' else 'failed'), result
     assert 'recovered_publication' not in result

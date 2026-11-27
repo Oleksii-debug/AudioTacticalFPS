@@ -97,5 +97,19 @@ jobs:
             tests/transcription/test_v5_worker_profile.py \
             tests/transcription/test_runtime_interpreter.py \
             tests/extract/test_special_ocr_models.py \
+            tests/ingest/test_worker_process_ownership.py \
+            tests/e2e/test_import_worker_publication.py \
+            tests/ingest/test_worker_publication_boundary.py \
+            tests/citations/test_finish_pdf_worker.py \
+            tests/e2e/test_import_worker.py \
+            tests/audio/test_cleanup_ownership.py \
+            tests/e2e/test_pdf_review_cancellation.py \
+            tests/ingest/test_worker_isolated_launch.py \
+            tests/audio/test_owned_process_tree.py \
+            tests/assistant/test_planning_handlers.py \
+            tests/operations/test_resource_backup.py \
+            tests/speech/test_source.py \
+            tests/assistant/test_translation_narration.py \
+            tests/packaging/test_standard_installer.py \
             tests/packaging/test_ci_check.py
       # This source-only job supplements the complete native Windows/bundle gate.

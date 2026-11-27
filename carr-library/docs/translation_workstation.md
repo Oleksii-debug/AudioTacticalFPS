@@ -67,6 +67,71 @@ The local reservation and optional estimate are **not provider-enforced billing
 limits** or a live price quotation. Actual cost/quota remains the provider
 account's contract; no current price is invented by this application.
 
+## Bilingual narration through the existing Audio Studio
+
+For a **completed library-source translation**, choose **Bilingual audio project**
+in the translation window. This rechecks the saved source, accepted decoded-text
+receipts and current source authorization, then inspects the existing installed
+voice registry. It makes no provider request and starts no speech.
+
+Both voice lists open with **no voice selected**. Explicitly choose one voice for
+the original and one for the translation. Each list shows the voice name, engine,
+declared language and licence. Matching uses the complete declared language tag:
+`en` does not silently match `en-US`, and regional or script variants are not
+discarded. If a matching voice is unavailable, the dialog explains that the pair
+is unsupported. Automatic source-language detection, mixed-language assignment,
+pasted-text jobs and unfinished jobs are outside this narration workflow. They
+retain their existing text-export behavior where supported.
+
+The new export directory contains the original five translation files plus
+`bilingual.studio.json`. Open that JSON with Audio Studio's existing **Open JSON**
+action, review the roles, then explicitly **Render**. This uses the ordinary
+Studio project, queue, renderer and output receipts. There is no separate narrator,
+translator, voice catalog or job store. Exporting the project alone does not create
+a render job or reserve a heavy-runtime slot.
+
+Each accepted translation request chunk becomes one scene: literal original text
+first, then its accepted translated text. Long utterances are split without dropping
+characters. Existing Studio directives such as `[Music: ...]`, `[Pause: ...]` or
+speaker-looking prefixes in the document remain literal words; they cannot create
+music, pauses or extra roles. Chunk pairs are **not sentence, printed-page or
+chapter alignment**. Original reading text, source positions and undo history stay
+in the existing reading-copy export. The Studio script is explicitly a new derived
+presentation; its `source_ref` strings are passive job/chunk/hash provenance,
+without quotation or live source authority.
+
+The provenance manifest includes the Studio file hash, project fingerprint and
+the two selected voice declarations/runtime fingerprints. The service rereads
+voice settings and selected runtime identities before creating the output and
+before its completion manifest. A removed or changed voice, changed source,
+revoked source access or cancellation cannot publish a successful export. A
+partial new directory can remain, but it has no completion manifest. The accepted
+translation job and provider receipts remain unchanged. At a later explicit Studio
+render, the current Studio voice/runtime checks apply; a detached project does
+not grant continuing access to the library or freeze an external voice installation.
+
+The combined source and translated text must fit the ordinary 16 MiB Studio JSON
+import limit as well as existing translation limits. The service checks the fully
+serialized project before creating an export folder. A completed translation that
+is too large for narration remains available for its normal text export; choose a
+smaller source-position range for a new narration translation.
+
+Programmatic callers use the same `TranslationService.narration_choices(job_id)`
+and `TranslationService.export(..., narration_voices=(original_record,
+translation_record))` methods as the native window. Supply the exact two explicitly
+chosen records returned by inspection; the service revalidates them. There is no
+new translation CLI or automatic choice. Adapter language declarations and local
+synthetic tests do not establish linguistic or pronunciation quality.
+
+`tests/assistant/test_translation_narration.py` exercises actual completed jobs,
+source authorization, receipt tampering, changed voice assets/settings, literal
+text, output bounds and the existing Studio load/save/revision/backup paths.
+Its voice provider is a declared test fixture that cannot synthesize. The existing
+native Windows translation probe additionally opens real unselected voice controls,
+exports an actual source-bound project through the window, and destroys a chooser's
+parent directly. Its voice declarations and HTTPS responses are synthetic; acoustic
+quality, real Google billing and manual NVDA are separate qualification.
+
 ## Advanced OAuth and glossary boundaries
 
 The account editor accepts a short-lived token value and its explicit expiry,

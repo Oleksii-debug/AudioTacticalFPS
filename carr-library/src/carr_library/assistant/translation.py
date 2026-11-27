@@ -2,7 +2,7 @@
 
 Jobs retain accepted chunks. Uncertain billable calls are never retried.
 """
-from contextlib import nullcontext
+from contextlib import ExitStack, nullcontext
 from dataclasses import asdict
 from decimal import Decimal, ROUND_DOWN, ROUND_UP
 from hashlib import sha256
@@ -515,8 +515,64 @@ class TranslationService:
                 raise
             return {'id': identity, 'status': job['status'], 'completed': len(job['receipts']), 'total': total}
 
-    def export(self, identity, output, *, cancelled=lambda: False, guard=lambda: None):
-        with self.jobs.lock(identity):
+    @staticmethod
+    def _narration_languages(job):
+        from ..language_qualification.catalog import canonical_language_tag
+        if (job.get('kind') != 'translation/2' or job['status'] != 'complete'
+                or len(job['receipts']) != len(job['chunks'])):
+            raise ValueError('Bilingual narration requires a completed source-bound translation.')
+        if job['source_language'] == 'auto':
+            raise ValueError('Bilingual narration needs an explicit source language; '
+                             'automatic or mixed-language voice assignment is not supported.')
+        return tuple(canonical_language_tag(job[name])
+                     for name in ('source_language', 'target_language'))
+
+    @staticmethod
+    def _narration_voice(registry, voice_id, language):
+        from ..language_qualification.catalog import canonical_language_tag
+        from ..speech.runtime import Voice
+        voice = registry.get(voice_id)
+        if (not isinstance(voice, Voice)
+                or canonical_language_tag(voice.language, adapter_underscores=True) != language):
+            raise ValueError('Choose an installed voice with the exact declared language tag ' + language + '.')
+        fingerprint = registry.fingerprint(voice_id)
+        if (type(fingerprint) is not str or len(fingerprint) != 64
+                or any(character not in '0123456789abcdef' for character in fingerprint)):
+            raise ValueError('The installed voice has no valid runtime fingerprint.')
+        return {'voice': asdict(voice), 'runtime_fingerprint': fingerprint}
+
+    def narration_choices(self, identity, *, cancelled=lambda: False, guard=lambda: None):
+        """Inspect installed voice declarations; never translate or synthesize."""
+        from ..language_qualification.catalog import canonical_language_tag, CatalogError
+        from ..runtime_settings import voice_registry
+        with self.jobs.lock(identity), ExitStack() as lifetime:
+            job = self._load(identity)
+            languages = self._narration_languages(job)
+            self._output_budget(job)
+            self._text_binding(job)
+            self._source_context(job, cancelled=cancelled, guard=guard)
+            registry = voice_registry(self.library.root / 'state', cancelled=cancelled)
+            lifetime.callback(registry.close)
+            choices = {language: [] for language in languages}
+            voices = registry.voices()
+            if len(voices) > 10000:
+                raise ValueError('The installed voice inventory exceeds its review budget.')
+            for voice in voices:
+                check_cancelled(cancelled)
+                guard()
+                try:
+                    language = canonical_language_tag(voice.language, adapter_underscores=True)
+                except CatalogError:
+                    continue  # An undeclared language is not inferred from its name.
+                if language in choices:
+                    choices[language].append(self._narration_voice(registry, voice.id, language))
+            self._source_context(job, cancelled=cancelled, guard=guard)
+            return {'source_language': languages[0], 'target_language': languages[1],
+                    'original': tuple(choices[languages[0]]), 'translation': tuple(choices[languages[1]])}
+
+    def export(self, identity, output, *, cancelled=lambda: False, guard=lambda: None,
+               narration_voices=None):
+        with self.jobs.lock(identity), ExitStack() as lifetime:
             job = self._load(identity)
             if job['status'] != 'complete' or len(job['receipts']) != len(job['chunks']):
                 raise ValueError('Finish and verify all chunks before publishing the translation.')
@@ -529,6 +585,44 @@ class TranslationService:
                                       source_anchor=binding['anchor'] if binding else None)
             reading.replace(0, len(reading.text), translated,
                             label='Machine translation derivative; not a source quotation')
+            narration = None
+            verify_voices = lambda: None
+            if narration_voices is not None:
+                from ..runtime_settings import load_settings, voice_registry
+                from ..studio.project import Role, bilingual_project
+                languages = self._narration_languages(job)
+                if (type(narration_voices) is not tuple or len(narration_voices) != 2
+                        or any(type(record) is not dict or set(record) != {'voice', 'runtime_fingerprint'}
+                               or type(record['voice']) is not dict or 'id' not in record['voice']
+                               for record in narration_voices)):
+                    raise ValueError('Explicitly choose both installed narration voices before export.')
+                voice_state = self.library.root / 'state'
+                settings_snapshot = load_settings(voice_state)
+                registry = voice_registry(voice_state, cancelled=cancelled)
+                lifetime.callback(registry.close)
+
+                def verify_voices():
+                    check_cancelled(cancelled)
+                    guard()
+                    if load_settings(voice_state) != settings_snapshot:
+                        raise ValueError('Installed voice settings changed. Review and select both voices again.')
+                    registry.reload(cancelled=cancelled)
+                    for expected, language in zip(narration_voices, languages):
+                        check_cancelled(cancelled)
+                        guard()
+                        current = self._narration_voice(registry, expected['voice']['id'], language)
+                        if canonical(current) != canonical(expected):
+                            raise ValueError('An installed narration voice changed. Review and select both voices again.')
+                    check_cancelled(cancelled)
+                    guard()
+
+                verify_voices()
+                roles = tuple(Role(name, label + ' (' + language + ')', expected['voice']['id'], language)
+                              for name, label, language, expected in zip(
+                                  ('original', 'translation'), ('Original', 'Translation'), languages, narration_voices))
+                narration = bilingual_project(tuple((chunk, receipt['text'])
+                    for chunk, receipt in zip(job['chunks'], job['receipts'])), title=job['title'],
+                    roles=roles, translation_id=identity, source_sha256=job['source_sha256'])
             target = local_path(output, must_exist=False)
             local_path(target.parent)
             if self.library is not None:
@@ -542,6 +636,7 @@ class TranslationService:
                 if desk is not None:
                     desk = self._source_context(job, index=0, cancelled=cancelled, guard=guard)
                 self._source_current(desk, cancelled=cancelled, guard=guard)
+                verify_voices()
                 target.mkdir(mode=0o700)  # Exclusive; never overwrite a prior export.
                 reading.save(target / 'translation.reading.json')
                 self._source_current(desk, cancelled=cancelled, guard=guard)
@@ -552,6 +647,9 @@ class TranslationService:
                 with new_output(target / 'bilingual.txt', cancelled=cancelled) as staged:
                     staged.write_bytes(bilingual.encode('utf-8'))
                 paths = ('translation.reading.json', 'translated.txt', 'original.txt', 'bilingual.txt')
+                if narration is not None:
+                    atomic_json(target / 'bilingual.studio.json', narration.to_dict())
+                    paths += ('bilingual.studio.json',)
                 report = {'schema': 'carr-translation-export/1', 'job_id': identity,
                     'source_sha256': job['source_sha256'], 'source_language': job['source_language'],
                     'target_language': job['target_language'], 'provider_adapter': job['profile']['adapter'],
@@ -561,11 +659,21 @@ class TranslationService:
                     'decoded_text_binding': text_binding,
                     'chunks': [{key: value for key, value in row.items() if key != 'text'} for row in job['receipts']],
                     'files': {name: digest(target / name) for name in paths}}
+                if narration is not None:
+                    report['narration'] = {'project_file': 'bilingual.studio.json',
+                        'project_fingerprint': narration.fingerprint, 'voices': list(narration_voices),
+                        'alignment': 'Original then translation for each accepted request chunk; not sentence or page alignment.',
+                        'language_matching': 'Exact adapter-declared tags only; linguistic quality is not independently qualified.',
+                        'source_refs': 'Passive job/chunk/text-hash lineage; no quotation or live source authority.',
+                        'execution': 'Not rendered. Open the project in Audio Studio, review voices, then explicitly Render.'}
+                verify_voices()
                 if binding:
                     report['source_anchor'] = binding['anchor']
                     self._source_context(job, index=len(job['chunks']) - 1,
                                          cancelled=cancelled, guard=guard)
                 self._source_current(desk, cancelled=cancelled, guard=guard)
+                check_cancelled(cancelled)
+                guard()
                 atomic_json(target / 'translation-provenance.json', report)
                 return {'status': 'complete', 'path': str(target), 'files': report['files']}
 

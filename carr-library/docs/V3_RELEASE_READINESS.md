@@ -29,9 +29,9 @@ execution and manual Windows 11/NVDA review remain separate evidence.
 | Keyboard and progress | Configurable menu keys, named native controls, measured or indeterminate progress, optional tones and explicitly selected local-voice notices in English/Ukrainian/Slovak; playback/recording quieting and settings backup | Native probes and callback regressions cover normal Close and direct owner/parent destruction; the exact new native probes require their own Windows run. Human NVDA and listening review remain required |
 | Language inventory | Exact canonical 135 entries, source audit and searchable capability matrix | Resource inventory is separate from acoustic qualification; no claim of 135 working voices |
 | Assistant and providers | Typed scoped tools, durable jobs, guided fallback and explicit local-model proposals through the existing validated plan adapter; execution requires a separate action | Real loopback HTTP and cancellation/destruction tests with synthetic responses; no automatic server/model startup, arbitrary model commands or model-quality claim |
-| Translation | Basic v2 and Advanced v3 bounded plain text, whole retained reading sources or position ranges; exact account/model/glossary consent, chunk receipts, resume and source-bound reading derivatives | Synthetic HTTPS with the real gateway, independent decoded-text ledger and source checks. Advanced uses an explicitly supplied expiring OAuth token. Live Google access, linguistic quality, formatted documents, document batches and local inference remain unqualified or unimplemented as stated below |
-| Delivery preparation | Exact-source wheel checks, pinned dependency/SBOM closure, parent-manifest binding, sealed runtime files and a native Windows executable with real installation/restart checks | MSVC/Zig launcher and installed bundle evidence are tied to exact source and executable hashes; publisher signatures, a standard signed installer and distribution clearance remain separate |
-| Private integration boundary | Optional Ed25519 entitlement verification, protected monotonic anchors, crash recovery, selected-repository TUF verification, verified package acquisition and accessible status controls; private operation and user-data actions remain available | Component selection: 175 passed, with the Windows credential-vault case explicitly not run locally. Synthetic trust roots are test-only; exact assembled Windows acceptance, production authority and transactional activation remain outstanding |
+| Translation | Basic v2 and Advanced v3 bounded plain text, whole retained reading sources or position ranges; exact account/model/glossary consent, chunk receipts, resume and source-bound reading derivatives. Completed source-bound jobs can export a literal bilingual Studio project with two explicitly selected exact-language voices | Synthetic HTTPS with the real gateway, independent decoded-text ledger and source checks. Export itself performs no translation request or speech render; original/translation pairs follow accepted chunks, not claimed acoustic sentence alignment. Advanced uses an explicitly supplied expiring OAuth token. Live Google access, linguistic quality, formatted documents, document batches and local inference remain unqualified or unimplemented as stated below |
+| Delivery preparation | Exact-source wheel checks, pinned dependency/SBOM closure, parent-manifest binding, sealed runtime files, native Windows executable and reusable per-user Inno installation/repair in fresh program generations | Each setup uses an exact sealed transferable payload. Source preparation tests and prior native installer evidence remain tied to their original source; the current assembled installer requires fresh install/failure/repair/uninstall acceptance. Publisher signatures and distribution clearance remain separate |
+| Private integration boundary | Optional Ed25519 entitlement verification, protected monotonic anchors, crash recovery, selected-repository TUF verification, verified package acquisition and accessible status controls; private operation and user-data actions remain available | Exact installed Windows client/vault/native evidence is recorded in the integration review by source, separate from later compositions. Synthetic trust roots are test-only; production authority and concrete transactional activation remain outstanding |
 
 The native V3 acceptance script performs installed SAPI synthesis, scene
 production, output verification, restart, CSL/DOCX, isolated text conversion and
@@ -42,8 +42,9 @@ firewall rules. Its evidence explicitly labels manual NVDA as NOT_RUN.
 
 The following cannot be labelled DONE by passing the current core tests:
 
-- A signed ResearchLibrary.exe and standard signed installer/uninstall/repair,
-  owner-configured publisher trust and a complete private release review.
+- A signed ResearchLibrary.exe and standard signed installer, exact assembled
+  native install/uninstall/repair acceptance, owner-configured publisher trust
+  and a complete private release review.
 - Owner-configured private entitlement authority and account-optional perpetual
   policies; exact assembled Windows verification of the implemented client;
   production renewal acceptance and transactional signed update A-to-B
@@ -62,8 +63,11 @@ The following cannot be labelled DONE by passing the current core tests:
   editing and offline scene production do not establish those capabilities.
 - Actual selected local LLM inference and model quality, an approved local
   translator, formatted-document and multi-document translation, canonical
-  language mapping and integrated bilingual narration. Implemented Basic/v3
-  text protocols and synthetic loopback tests are distinct from these requirements.
+  language mapping and actual bilingual narration quality. The implemented
+  bilingual project export uses explicit declared voice/language pairs; its
+  current native dialogs and later Studio rendering require their own evidence.
+  Implemented Basic/v3 text protocols and synthetic loopback tests are distinct
+  from linguistic and acoustic qualification.
 - Shared admission for remaining heavy import/OCR paths. Existing Tasks exposes
   their saved state but does not make those workers participate in the
   Studio/transcription/media resource pool. Declared budgets are not measured

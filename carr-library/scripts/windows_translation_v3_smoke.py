@@ -29,7 +29,12 @@ def main():
     from carr_library.application import LibraryApp
     from carr_library.assistant import profiles, translation, providers
     from carr_library.assistant.credentials import WindowsCredentialVault
+    from carr_library.reader import ReadingDesk
+    from carr_library.speech import Voice, VoiceRegistry
     from carr_library.speech.reading import ReadingDocument
+    from carr_library.speech.source import read_source_range
+    from carr_library.studio.project import Project
+    from carr_library import runtime_settings
     from carr_library.ui import translation_dialog as ui
     contract = runpy.run_path(str(Path(__file__).with_name('verify_operations_acceptance.py')))
     tested_source = contract['source_identity']()
@@ -140,7 +145,9 @@ def main():
                 return wx.YES
             wx.MessageBox = approve
             class Directory:
-                def __init__(self, *args, **kwargs): pass
+                def __init__(self, *args, **kwargs): self.identity = int(wx.NewIdRef())
+                def GetId(self): return self.identity
+                def Bind(self, *args, **kwargs): pass
                 def ShowModal(self): return wx.ID_OK
                 def GetPath(self): return str(root)
                 def Destroy(self): pass
@@ -168,6 +175,81 @@ def main():
                 return True
             frame.run_job = run_job
             frame.Show(); app.SetTopWindow(frame)
+            workspace = library.create_workspace('Synthetic bilingual native source')
+            imported = library.add_text(workspace, 'Literal bilingual native source',
+                                        '[Music: not a direction]\n' + original)
+            desk = ReadingDesk(library, workspace, imported['edition'])
+            retained = read_source_range(desk, 1, 1)
+
+            class DeclaredVoices:
+                """UI/export fixture only; never claims an installed acoustic model."""
+                name, executable = 'Native test declarations, no speech', Path(__file__).resolve()
+                def voices(self):
+                    return (Voice('native-test:en', 'Synthetic original declaration', self.name, 'en'),
+                            Voice('native-test:uk', 'Synthetic translated declaration', self.name, 'uk'))
+                def render(self, *args, **kwargs):
+                    raise AssertionError('Bilingual project export must not synthesize speech.')
+
+            def exercise_narration():
+                dialog = None
+                try:
+                    dialog = next(window for window in wx.GetTopLevelWindows() if window.GetName() == 'Translation workspace')
+                    status = wx.FindWindowByName('Preview, supported languages and job status', dialog)
+                    selected = wx.FindWindowByName('Selected text; originals remain unchanged', dialog)
+                    pump(lambda: not frame.working and selected.GetValue() == retained.text, 'Authorized source loading')
+                    check('bilingual native source is read-only', not selected.IsEditable())
+                    wx.FindWindowByName('Source language code; auto detects', dialog).ChangeValue('en')
+                    wx.FindWindowByName('Target language code', dialog).ChangeValue('uk')
+                    wx.FindWindowByName('Advanced v3 glossary resource; blank for none', dialog).ChangeValue(glossary)
+                    wx.FindWindowByName('Maximum approved budget in USD; no default price', dialog).ChangeValue('1')
+                    press(wx.FindWindowByName('Preview', dialog))
+                    press(wx.FindWindowByName('Translate / resume', dialog))
+                    pump(lambda: not frame.working and '"status": "complete"' in status.GetValue(), 'Source translation completion')
+                    before = len(calls)
+
+                    def choose_both():
+                        chooser = None
+                        try:
+                            chooser = next(window for window in wx.GetTopLevelWindows()
+                                           if window.GetTitle().startswith('Bilingual narration'))
+                            check('actual native bilingual choice dialog', chooser.IsModal())
+                            for name in ('Original narration voice (en)', 'Translation narration voice (uk)'):
+                                control = wx.FindWindowByName(name, chooser)
+                                check('native unselected voice: ' + name, control is not None and control.GetSelection() == wx.NOT_FOUND)
+                                control.SetSelection(0)  # Explicit test selection; the product supplies no default.
+                            press(wx.FindWindowById(wx.ID_OK, chooser))
+                        except Exception:
+                            errors.append(traceback.format_exc())
+                            if chooser is not None and chooser.IsModal():
+                                chooser.EndModal(wx.ID_CANCEL)
+                    def wait_for_choice():
+                        if any(window.GetTitle().startswith('Bilingual narration') for window in wx.GetTopLevelWindows()):
+                            choose_both()
+                        elif frame.working:
+                            wx.CallLater(20, wait_for_choice)
+                        else:
+                            errors.append('Bilingual voice inspection completed without its native chooser.')
+                    wx.CallLater(200, wait_for_choice)
+                    press(wx.FindWindowByName('Bilingual audio project', dialog))
+                    pump(lambda: not frame.working and 'No speech has run.' in status.GetValue(), 'Native bilingual export')
+                    project_path, = root.glob('Translation-*/bilingual.studio.json')
+                    project = Project.from_dict(json.loads(project_path.read_text(encoding='utf-8')))
+                    report = json.loads(project_path.with_name('translation-provenance.json').read_text(encoding='utf-8'))
+                    check('native bilingual export retained literal original',
+                          ''.join(line.text for scene in project.scenes for line in scene.lines
+                                  if line.role == 'original') == retained.text)
+                    check('native bilingual export uses explicit roles and passive lineage',
+                          [role.voice_id for role in project.roles] == ['native-test:en', 'native-test:uk']
+                          and all('no quotation or live source authority' in line.source_ref
+                                  for scene in project.scenes for line in scene.lines))
+                    check('native bilingual export has verified project bytes',
+                          sha256(project_path.read_bytes()).hexdigest() == report['files']['bilingual.studio.json'])
+                    check('native bilingual export sends no new provider request', len(calls) == before)
+                    press(wx.FindWindowByName('Close', dialog))
+                except Exception:
+                    errors.append(traceback.format_exc())
+                    if dialog is not None and dialog.IsModal():
+                        dialog.EndModal(wx.ID_CANCEL)
 
             def exercise():
                 dialog = None
@@ -254,7 +336,7 @@ def main():
                     jobs = service.list()
                     stopped = [job for job in jobs if job['status'] == 'paused']
                     complete = [job for job in jobs if job['status'] == 'complete']
-                    check('destroyed pending owner preserves prior completed translation', len(complete) == 1)
+                    check('destroyed pending owner preserves both prior completed translations', len(complete) == 2)
                     check('destroyed pending owner publishes no late accepted result',
                           len(stopped) == 1 and stopped[0]['receipts'] == [] and len(calls) == before + 1)
                     job = stopped[0]
@@ -271,9 +353,43 @@ def main():
 
             def opened():
                 try:
-                    for exercise_case in (exercise, exercise_destroy):
+                    for exercise_case in (exercise, exercise_narration, exercise_destroy):
                         wx.CallLater(200, exercise_case)
-                        ui.show_translation(frame)
+                        previous_registry = runtime_settings.voice_registry
+                        try:
+                            if exercise_case is exercise_narration:
+                                runtime_settings.voice_registry = lambda root, cancelled=lambda: False: VoiceRegistry(
+                                    [DeclaredVoices()], cancelled=cancelled)
+                                ui.show_translation(frame, source_loader=lambda cancelled: read_source_range(
+                                    desk, 1, 1, cancelled=cancelled))
+                                if not errors:
+                                    service = translation.TranslationService(library.root / 'state' / 'translation', library=library)
+                                    bound_job, = (job for job in service.list() if job['kind'] == 'translation/2')
+                                    choices = service.narration_choices(bound_job['id'])
+                                    owner = wx.Frame(frame, title='Disposable bilingual chooser owner')
+                                    owner.Show()
+                                    destroyed = threading.Event()
+                                    def destroy_choice_owner():
+                                        chooser = next(window for window in wx.GetTopLevelWindows()
+                                                       if window.GetTitle().startswith('Bilingual narration'))
+                                        identity = chooser.GetId()
+                                        def observed(event):
+                                            if event.GetId() == identity:
+                                                destroyed.set()
+                                            event.Skip()
+                                        chooser.Bind(wx.EVT_WINDOW_DESTROY, observed)
+                                        owner.Destroy()
+                                    wx.CallLater(200, destroy_choice_owner)
+                                    try:
+                                        choice_result = ui.choose_narration_voices(owner, choices)
+                                    except InterruptedError:
+                                        choice_result = None
+                                    pump(destroyed.is_set, 'Native parent destruction of bilingual chooser')
+                                    check('destroyed bilingual chooser yields no voice selection', choice_result is None)
+                            else:
+                                ui.show_translation(frame)
+                        finally:
+                            runtime_settings.voice_registry = previous_registry
                         if errors:
                             break
                 except Exception:
@@ -299,6 +415,9 @@ def main():
     print(json.dumps({'status': 'PASS', 'checks': len(checks), 'synthetic_rest_calls': len(calls),
         'source': tested_source, 'installed_origins': tested_origins, 'source_and_origins_unchanged': True,
         'native_keyboard': 'PASS', 'native_parent_destroy_pending_translation': 'PASS',
+        'native_source_bilingual_export': 'PASS',
+        'native_parent_destroy_bilingual_chooser': 'PASS',
+        'bilingual_voice_scope': 'Synthetic adapter declarations; no speech or language-quality qualification',
         'live_google_api': 'WAITING_INPUT', 'billing_and_quality': 'WAITING_INPUT',
         'native_approval_and_file_pickers': 'NOT_RUN', 'nvda': 'NOT_RUN'}), flush=True)
     return 0

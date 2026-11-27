@@ -42,6 +42,60 @@ def _origin(document):
             'not quotation evidence. Plain text only; up to 2,000,000 source and translated characters.')
 
 
+def choose_narration_voices(parent, choices, *, guard=lambda: None):
+    """Review two exact installed-voice declarations without an automatic default."""
+    import wx
+    if not choices['original'] or not choices['translation']:
+        raise ValueError('Bilingual narration needs installed voices declaring exactly '
+                         + choices['source_language'] + ' and ' + choices['target_language']
+                         + '. No regional, script or language fallback is inferred.')
+    dialog = wx.Dialog(parent, title='Bilingual narration — choose both installed voices')
+    owner_id, alive = dialog.GetId(), True
+
+    def destroyed(event):
+        nonlocal alive
+        if event.GetId() == owner_id:
+            alive = False
+        event.Skip()
+
+    dialog.Bind(wx.EVT_WINDOW_DESTROY, destroyed)
+    layout = wx.BoxSizer(wx.VERTICAL)
+    description = ('This creates a new Studio project only. Original text and translation are paired by '
+                   'request chunk, not aligned sentences. Voice languages are adapter declarations; '
+                   'pronunciation quality is not qualified. Open the exported JSON in Audio Studio, '
+                   'review roles, then explicitly Render. No speech or provider request starts here.')
+    layout.Add(wx.StaticText(dialog, label=description), 0, wx.EXPAND | wx.ALL, 6)
+    controls = []
+    for key, label, language in (('original', 'Original narration voice', choices['source_language']),
+                                 ('translation', 'Translation narration voice', choices['target_language'])):
+        name = label + ' (' + language + ')'
+        layout.Add(wx.StaticText(dialog, label=name), 0, wx.ALL, 6)
+        records = choices[key]
+        control = wx.Choice(dialog, choices=[record['voice']['name'] + '; '
+            + record['voice']['language'] + '; ' + record['voice']['engine'] + '; '
+            + record['voice']['license'] for record in records])
+        control.SetName(name)
+        control.SetSelection(wx.NOT_FOUND)
+        controls.append(control)
+        layout.Add(control, 0, wx.EXPAND | wx.ALL, 6)
+    layout.Add(dialog.CreateButtonSizer(wx.OK | wx.CANCEL), 0, wx.ALL, 6)
+    dialog.SetSizerAndFit(layout)
+    try:
+        if dialog.ShowModal() != wx.ID_OK:
+            return None
+        guard()
+        if not alive:
+            raise InterruptedError('The bilingual voice selection was closed.')
+        selected = tuple(control.GetSelection() for control in controls)
+        if any(not 0 <= index < len(choices[key])
+               for index, key in zip(selected, ('original', 'translation'))):
+            raise ValueError('Explicitly choose both voices; no default voice has been selected.')
+        return tuple(choices[key][index] for index, key in zip(selected, ('original', 'translation')))
+    finally:
+        if alive:
+            dialog.Destroy()
+
+
 def show_translation(frame, *, source_loader=None, source_guard=lambda: None, source_topic=None):
     import wx
     from ..speech.reading import ReadingDocument
@@ -95,7 +149,7 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
     row = wx.BoxSizer(wx.HORIZONTAL)
     for name, label in [('languages', 'Fetch &languages'), ('preview', '&Preview'), ('run', '&Translate / resume'),
                         ('pause', 'Pa&use'), ('jobs', 'Saved &jobs'), ('new', '&New translation'),
-                        ('export', '&Export'), ('close', '&Close')]:
+                        ('export', '&Export'), ('narration', 'Bilingual &audio project'), ('close', '&Close')]:
         button = wx.Button(dialog, label=label)
         button.SetName(label.replace('&', ''))
         buttons[name] = button
@@ -169,6 +223,7 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
         buttons['jobs'].Enable(not busy)
         buttons['new'].Enable(not busy and source_ready)
         buttons['export'].Enable(not busy and current_job is not None)
+        buttons['narration'].Enable(not busy and current_job is not None and document is not None)
         buttons['pause'].Enable(busy)
 
     def begin(title, operation, complete):
@@ -372,26 +427,67 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
         except Exception as exc:
             report(str(exc), True)
 
-    def export(event):
+    def export(event, *, narration_voices=None):
         if current_job is None:
             return
         values = visible_scope()
         chooser = wx.DirDialog(dialog, 'Choose parent folder for a NEW translation export of job ' + current_job)
+        chooser_id, chooser_alive = chooser.GetId(), True
+        def chooser_destroyed(event):
+            nonlocal chooser_alive
+            if event.GetId() == chooser_id:
+                chooser_alive = False
+            event.Skip()
+        chooser.Bind(wx.EVT_WINDOW_DESTROY, chooser_destroyed)
         try:
             if chooser.ShowModal() == wx.ID_OK:
                 guard()
+                if not chooser_alive:
+                    raise InterruptedError('The translation export folder picker was closed.')
                 destination = Path(chooser.GetPath()) / ('Translation-' + current_job[:8] + '-' + uuid4().hex[:8])
                 identity = current_job
                 def publish():
                     check_saved_scope(identity, values, offline=True)
-                    return service.export(identity, destination, cancelled=stopped, guard=guard)
+                    options = {} if narration_voices is None else {'narration_voices': narration_voices}
+                    return service.export(identity, destination, cancelled=stopped, guard=guard, **options)
                 begin('Exporting translation derivative',
                       publish,
-                      lambda result: report('Saved new files in: ' + result['path']))
+                      lambda result: report('Saved new files in: ' + result['path']
+                          + ('\nOpen bilingual.studio.json in Audio Studio, review voices, then Render. '
+                             'No speech has run.' if narration_voices is not None else '')))
         except Exception as exc:
             report(str(exc), True)
         finally:
-            chooser.Destroy()
+            if chooser_alive and not native_destroyed:
+                chooser.Destroy()
+
+    def narration(event):
+        if current_job is None:
+            return
+        identity, values = current_job, visible_scope()
+
+        def inspect():
+            check_saved_scope(identity, values, offline=True)
+            return service.narration_choices(identity, cancelled=stopped, guard=guard)
+
+        def choose(choices):
+            try:
+                guard()
+                if current_job != identity:
+                    raise ValueError('The selected translation changed. Choose its narration voices again.')
+                selected_voices = choose_narration_voices(dialog, choices, guard=guard)
+                if selected_voices is not None:
+                    guard()
+                    if current_job != identity:
+                        raise ValueError('The selected translation changed before narration export.')
+                    export(None, narration_voices=selected_voices)
+            except Exception as exc:
+                report(str(exc), True)
+
+        try:
+            begin('Reviewing installed bilingual narration voices', inspect, choose)
+        except Exception as exc:
+            report(str(exc), True)
 
     def loaded(retained):
         nonlocal document, original_document, source_ready
@@ -436,7 +532,7 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
         event.Skip()
 
     for name, handler in {'languages': languages, 'preview': preview, 'run': run, 'pause': lambda e: cancel.set(),
-                           'jobs': jobs, 'new': new, 'export': export, 'close': close}.items():
+                           'jobs': jobs, 'new': new, 'export': export, 'narration': narration, 'close': close}.items():
         buttons[name].Bind(wx.EVT_BUTTON, handler)
     dialog.Bind(wx.EVT_CLOSE, close)
     dialog.Bind(wx.EVT_WINDOW_DESTROY, destroyed)
