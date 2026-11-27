@@ -350,3 +350,28 @@ def test_absent_selected_32_bit_voice_never_chooses_a_different_installed_voice(
         voices=lambda **options: (api.Voice(other, 'Different voice', ('en',), 'sapi5-32'),)))
     with pytest.raises(api.EngineUnavailable, match='No substitute'):
         api.VoiceRegistry((api._LazySAPI32Engine(),)).selected_voice(wanted)
+
+
+@pytest.mark.parametrize('name', ['SAPI.SpVoice', 'SAPI.SpFileStream', 'SAPI.SpAudioFormat'])
+def test_fixed_factory_uses_supported_pywin32_progid_contract(name):
+    calls = []
+    interface, wrapped, inproc, dispatch_iid = object(), object(), object(), object()
+    def create(*args):
+        calls.append(('create', args))
+        return interface
+    def wrap(value, **options):
+        calls.append(('wrap', value, options))
+        return wrapped
+    # Deliberately no CLSIDFromProgID: the pinned pywin32 client exposes
+    # ProgID conversion through CoCreateInstance's PyWinObject_AsIID argument.
+    pythoncom = SimpleNamespace(CoCreateInstance=create,
+                                CLSCTX_INPROC_SERVER=inproc, IID_IDispatch=dispatch_iid)
+    dynamic = SimpleNamespace(Dispatch=wrap)
+    assert worker._dispatch(name, pythoncom, dynamic) is wrapped
+    assert calls == [('create', (name, None, inproc, dispatch_iid)),
+                     ('wrap', interface, {'userName': name})]
+
+
+def test_fixed_factory_rejects_foreign_class_before_com_admission():
+    with pytest.raises(ValueError, match='fixed local SAPI'):
+        worker._dispatch('WScript.Shell', SimpleNamespace(), SimpleNamespace())

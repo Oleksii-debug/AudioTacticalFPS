@@ -110,7 +110,9 @@ def _dispatch(name, pythoncom, dynamic):
         raise ValueError('Only the fixed local SAPI classes are allowed.')
     # Construct a new in-process COM object directly; never attach to a running
     # object, invoke makepy, or request an out-of-process/local-server fallback.
-    raw = pythoncom.CoCreateInstance(pythoncom.CLSIDFromProgID(name), None,
+    # pywin32 312 accepts this fixed ProgID through PyWinObject_AsIID; it does
+    # not export a pythoncom.CLSIDFromProgID method.
+    raw = pythoncom.CoCreateInstance(name, None,
                                      pythoncom.CLSCTX_INPROC_SERVER, pythoncom.IID_IDispatch)
     return dynamic.Dispatch(raw, userName=name)
 
