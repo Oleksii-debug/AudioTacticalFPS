@@ -336,3 +336,73 @@ def test_reviewed_runtime_fingerprint_changes_for_unrecorded_bytecode(root):
     assert initial['runtime_distributions'] == changed['runtime_distributions']
     assert initial['runtime_auxiliary'] != changed['runtime_auxiliary']
     assert initial['fingerprint'] != changed['fingerprint']
+
+
+
+# ASR-07: distribution name/version and digest must come from one snapshot.
+@pytest.mark.parametrize('version', [
+    '0.1', '1.2.3', '2.0rc1', '1!2.0', '1.0+local', '1.2.post1', '1.0.dev3', '2026.11.27',
+])
+@pytest.mark.parametrize('newline', ['\n', '\r\n'])
+@pytest.mark.parametrize('name', ['Extra.Dep', 'extra_dep', 'EXTRA-DEP'])
+def test_metadata_snapshot_preserves_valid_version_and_normalized_name(root, version, newline, name):
+    base, site = root
+    _, info = install(site, 'extra-dep')
+    (info / 'METADATA').write_bytes(newline.join([
+        'Metadata-Version: 2.1', f'Name: {name}', f'Version: {version}',
+        'Summary: fixture', ' continuation', '', 'Description',
+    ]).encode('utf-8'))
+    inventory, _ = module._runtime_inventory([base])
+    assert inventory['extra-dep']['version'] == version
+    assert inventory['extra-dep']['file_count'] == 3
+
+
+@pytest.mark.parametrize('raw', [
+    b'Name: extra-dep\nVersion: 0.1\nName: other\n',
+    b'Name: extra-dep\nVersion: 0.1\nVersion: 0.2\n',
+    b'Version: 0.1\n',
+    b'Name: extra-dep\n',
+    b'Name: extra-dep\nVersion: 0.1\nSummary: \xff\n',
+    b'Name: extra-dep\nVersion: ' + b'1' * 1025 + b'\n',
+    b'Name: extra-dep\nVersion: 1\x00\n',
+    b'Name: extra-dep\nVersion: 1\n 2\n',
+    b'Name: extra-dep\nVersion: 0.1\nbroken header\n',
+])
+def test_invalid_distribution_metadata_rejected(root, raw):
+    base, site = root
+    _, info = install(site, 'extra-dep')
+    (info / 'METADATA').write_bytes(raw)
+    with pytest.raises(ValueError, match='METADATA|valid name or version'):
+        module._runtime_inventory([base])
+
+
+@pytest.mark.parametrize('change', ['name', 'version', 'body'])
+def test_metadata_mutated_after_parse_rejected(root, monkeypatch, change):
+    base, site = root
+    _, info = install(site, 'extra-dep')
+    target = info / 'METADATA'
+    original = module._distribution_metadata
+
+    def mutate_after_parse(path, **kwargs):
+        snapshot = original(path, **kwargs)
+        if path == target:
+            raw = target.read_bytes()
+            if change == 'name':
+                raw = raw.replace(b'Name: extra-dep', b'Name: other-dep')
+            elif change == 'version':
+                raw = raw.replace(b'Version: 0.1', b'Version: 0.2')
+            else:
+                raw += b'\nChanged body'
+            target.write_bytes(raw)
+        return snapshot
+
+    monkeypatch.setattr(module, '_distribution_metadata', mutate_after_parse)
+    with pytest.raises(ValueError, match='METADATA changed during verification'):
+        module._runtime_inventory([base])
+
+
+def test_metadata_snapshot_cancelled(root):
+    _, site = root
+    _, info = install(site, 'extra-dep')
+    with pytest.raises(InterruptedError):
+        module._distribution_metadata(info / 'METADATA', cancel=lambda: True)
