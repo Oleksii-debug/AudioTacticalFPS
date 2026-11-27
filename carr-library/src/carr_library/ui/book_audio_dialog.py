@@ -73,6 +73,7 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None):
     alive, busy, selected_source, plan, review, reviewed_fields = True, False, None, None, None, None
     locked_plan, voices = False, ()
     cleanup_started = False
+    cleanup_lock = threading.Lock()
     cancel = threading.Event()
 
     def field(label, cls=wx.TextCtrl, proportion=0, **kwargs):
@@ -129,7 +130,8 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None):
             raise ValueError('The active library or topic changed. Reopen Book audio in the original scope.')
 
     def stopped():
-        return cancel.is_set() or frame.cancel_event.is_set() or not alive
+        return (cancel.is_set() or frame.cancel_event.is_set() or not alive
+                or getattr(frame, '_closing', False))
 
     def fields():
         return (first.GetValue(), last.GetValue(), modes.GetSelection(), characters.GetValue(),
@@ -158,16 +160,24 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None):
         if event is not None:
             event.Skip()
 
-    def queue_cleanup():
+    def cleanup_owned():
         nonlocal cleanup_started
+        if not owned:
+            return
+        with cleanup_lock:
+            if cleanup_started:
+                return
+            cleanup_started = True
+        service.close()
+
+    def queue_cleanup():
         if not owned or cleanup_started:
             return True
         if getattr(frame, 'working', False) or getattr(frame, '_closing', False):
             return False
-        cleanup_started = True
         # Reuse the desktop's one worker and completion ownership. Closing a
         # native voice may block; never run it on wx or alongside synthesis.
-        frame.run_job('Closing book-audio voices', service.close,
+        frame.run_job('Closing book-audio voices', cleanup_owned,
                       failed=lambda error: frame.report('Book audio cleanup needs attention: ' + str(error)))
         return True
 
@@ -186,10 +196,17 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None):
         busy = True
         controls()
         def checked():
-            guard()
-            if stopped():
-                raise InterruptedError('Book audio cancelled before starting.')
-            return operation()
+            try:
+                guard()
+                if stopped():
+                    raise InterruptedError('Book audio cancelled before starting.')
+                return operation()
+            finally:
+                # DesktopFrame intentionally drops done/failed callbacks after
+                # forced owner closure. Finish owned teardown on this active
+                # worker, after the operation has released native work.
+                if not alive or getattr(frame, '_closing', False):
+                    cleanup_owned()
         def finished(value):
             nonlocal busy
             busy = False
@@ -401,8 +418,8 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None):
         if not busy and not queue_cleanup():
             report('Wait for the owning desktop operation to finish before closing Book audio.')
             return
-        # A busy operation's completion schedules cleanup after native child
-        # cleanup, while DesktopFrame still owns the current job lifetime.
+        # A busy operation releases owned voices in its worker's finally, even
+        # if the closing desktop suppresses its normal completion callbacks.
         alive = False
         if getattr(dialog, 'IsModal', lambda: True)():
             dialog.EndModal(wx.ID_CANCEL)

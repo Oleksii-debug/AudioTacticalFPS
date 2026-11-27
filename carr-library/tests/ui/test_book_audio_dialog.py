@@ -219,7 +219,7 @@ def test_preview_uses_new_values_even_if_widget_change_emits_no_event(handlers):
     assert not e.production.jobs()
 
 
-def test_owned_cleanup_is_queued_after_active_work_and_never_runs_on_wx(handlers, monkeypatch):
+def test_owned_cleanup_follows_active_work_and_never_runs_on_wx(handlers, monkeypatch):
     e = handlers
     e.close()
     # Reopen with this explicit service returned as the owned constructor.
@@ -236,10 +236,11 @@ def test_owned_cleanup_is_queued_after_active_work_and_never_runs_on_wx(handlers
     e.press('Load selected book')
     close()
     assert closes == []
-    e.complete()  # Cancel the existing source operation, then queue owner cleanup.
-    assert closes == [] and len(e.state['queue']) == 1
-    e.complete()
+    e.complete()  # Cancel source work; its finally releases owned voices.
     assert len(closes) == 1 and e.service._closed.is_set()
+    assert not e.state['queue']
+    close()
+    assert len(closes) == 1
     monkeypatch.setattr(e.service, 'close', original)
 
 
@@ -276,3 +277,86 @@ def test_pause_before_queued_run_preserves_prepared_items_without_synthesis(hand
     assert not list(e.output.iterdir())
     assert before == {identity: (e.production.jobs_root / identity / 'job.json').read_bytes()
                       for identity in before}
+
+
+def test_idle_owned_cleanup_still_uses_the_existing_desktop_worker(handlers, monkeypatch):
+    e = handlers
+    e.close()
+    e.state['widgets'].clear()
+    monkeypatch.setattr(ui, 'BookAudioService', lambda *args: e.service)
+    closes, original = [], e.service.close
+    def close_service():
+        closes.append(threading.get_ident())
+        assert closes[-1] != e.ui_thread
+        original()
+    monkeypatch.setattr(e.service, 'close', close_service)
+    try:
+        _, close = ui.create_book_audio_dialog(e.frame, wx_module=e.wx)
+        close()
+        assert closes == [] and len(e.state['queue']) == 1
+        e.complete()
+        close()
+        assert len(closes) == 1 and e.service._closed.is_set()
+        assert not e.state['queue']
+    finally:
+        monkeypatch.setattr(e.service, 'close', original)
+
+
+@pytest.mark.parametrize('owned', [False, True], ids=['borrowed', 'owned'])
+def test_forced_owner_close_releases_active_owned_service_without_ui_callbacks(handlers, monkeypatch, owned):
+    e = handlers
+    e.close()
+    e.state['widgets'].clear()
+    monkeypatch.setattr(ui, 'BookAudioService', lambda *args: e.service)
+    entered, release = threading.Event(), threading.Event()
+    original_options, original_close = ui.source_options, e.service.close
+    closes, callbacks, results = [], [], []
+    def blocked_options(*args, **kwargs):
+        value = original_options(*args, **kwargs)
+        entered.set()
+        assert release.wait(5), 'The close barrier was not released.'
+        assert kwargs['cancelled'](), 'Forced desktop closure must stop source work.'
+        return value
+    def close_service():
+        closes.append(threading.get_ident())
+        assert closes[-1] != e.ui_thread
+        original_close()
+    monkeypatch.setattr(ui, 'source_options', blocked_options)
+    monkeypatch.setattr(e.service, 'close', close_service)
+    thread = None
+    try:
+        _, close = ui.create_book_audio_dialog(e.frame, wx_module=e.wx,
+                                              **({} if owned else {'service': e.service}))
+        e.press('Load selected book')
+        _, operation, done, failed = e.state['queue'].pop(0)
+        def work():
+            try:
+                result, callback = operation(), done
+            except Exception as error:
+                result, callback = error, failed
+            results.append(result)
+            # This is the actual DesktopFrame.run_job completion admission:
+            # forced owner closure drops both callbacks before wx.CallAfter.
+            if not e.frame._closing:
+                callbacks.append(callback)
+        thread = threading.Thread(target=work)
+        thread.start()
+        assert entered.wait(5)
+        e.frame._closing = True
+        e.frame.cancel_event.set()
+        release.set()
+        thread.join(10)
+        assert not thread.is_alive() and len(results) == 1
+        assert callbacks == [] and not e.state['queue']
+        assert closes == ([thread.ident] if owned else [])
+        assert e.service._closed.is_set() is owned
+        close()
+        close()
+        assert len(closes) == int(owned)
+        assert not e.production.jobs()
+    finally:
+        release.set()
+        if thread is not None:
+            thread.join(10)
+        e.frame.working = False
+        monkeypatch.setattr(e.service, 'close', original_close)
