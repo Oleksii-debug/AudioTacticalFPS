@@ -13,110 +13,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  bounded-citation:
-    name: Exact candidate compilation and actual QuickJS citation source tests
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    env:
-      PYTHONUTF8: '1'
-      PYTHONDONTWRITEBYTECODE: '1'
-      HF_HUB_OFFLINE: '1'
-      TRANSFORMERS_OFFLINE: '1'
-      DO_NOT_TRACK: '1'
-    steps:
-      - name: Read exact recovery candidates
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ github.sha }}
-          path: recovery-source
-          persist-credentials: false
-      - name: Read pinned shared application
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: 8e6d410019f90f54ea694a5ff69402bc52567d57
-          path: shared-source
-          persist-credentials: false
-      - name: Read pinned canonical citation resources
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: 966e5ccf892243ead6942c635af5fbab47e72551
-          path: canonical-source
-          persist-credentials: false
-      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
-        with:
-          python-version: '3.11'
-      - name: Install the configuration parser used by source validation
-        run: python -m pip install PyYAML==6.0.4
-      - name: Compile exact candidate bytes and record the bounded composition
-        run: |
-          python -B recovery-source/recovery/validate_canonical_recovery.py --root recovery-source --shared shared-source --canonical canonical-source --evidence ci-recovery-results
-      - name: Install declared source dependencies and the exact embedded runtime
-        working-directory: shared-source/carr-library
-        run: |
-          python -m pip install '.[test]' quickjs-ng==0.18.0.2
-          python -m pip check
-          python -m pip freeze > ../../ci-recovery-results/installed-dependencies.txt
-          python -I -c "import importlib.metadata as m,quickjs; assert m.version('quickjs-ng')=='0.18.0.2'; c=quickjs.Context(); assert c.eval('1+1')==2; print('Actual QuickJS context: PASS')"
-      - name: Diagnose the exact failing citation profile and bounded native resources
-        run: |
-          python -B recovery-source/recovery/probe_quickjs_profiles.py --source shared-source/carr-library --output ci-recovery-results/quickjs-profile-diagnostic.json
-      - name: Require all five citation suites on the exact Python 3.11 composition
-        working-directory: shared-source/carr-library
-        run: |
-          python -B -m pytest -p no:cacheprovider -q --import-mode=importlib \
-            tests/citations/test_csl.py tests/citations/test_custom_csl.py \
-            tests/academic_integration/test_formatting.py \
-            tests/academic_integration/test_regeneration.py \
-            tests/academic_integration/test_citation_ui.py --durations=12 \
-            --junitxml=../../ci-recovery-results/citation-source-tests.xml
-          python -B -c "import json,xml.etree.ElementTree as E; c=list(E.parse('../../ci-recovery-results/citation-source-tests.xml').iter('testcase')); bad=sum(any(x.find(t) is not None for t in ('failure','error','skipped')) for x in c); expected=('test_csl','test_custom_csl','test_formatting','test_regeneration','test_citation_ui'); assert len(c)>=279 and not bad; assert all(any(x.get('classname','').endswith(s) for x in c) for s in expected); print(json.dumps(dict(status='PASS',cases=len(c),suites=expected,scope='all five source citation suites',installed='NOT_RUN',native_windows='NOT_RUN',nvda='NOT_RUN')))"
-      - name: Preserve source identity and test evidence
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        with:
-          name: carr-recovery-citation-${{ github.sha }}-${{ github.run_attempt }}
-          path: ci-recovery-results/
-          if-no-files-found: error
-          retention-days: 7
-
-  archived-powershell:
-    name: Parse every archived Windows workflow PowerShell block
-    runs-on: windows-2022
-    timeout-minutes: 8
-    env:
-      PYTHONUTF8: '1'
-      PYTHONDONTWRITEBYTECODE: '1'
-    defaults:
-      run:
-        shell: pwsh
-    steps:
-      - name: Read the exact recovery archive
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ github.sha }}
-          path: recovery-source
-          persist-credentials: false
-      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
-        with:
-          python-version: '3.11'
-      - name: Install the pinned archive configuration parser
-        run: python -B -m pip install PyYAML==6.0.4
-      - name: Extract verified run text as inert parser inputs
-        run: |
-          python -B recovery-source/recovery/prepare_native_recovery_checks.py powershell --root recovery-source --evidence ci-powershell-results
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Use the actual PowerShell parser without running archived commands
-        run: |
-          & './recovery-source/recovery/parse_archived_powershell.ps1' -Manifest ci-powershell-results/powershell-inputs.json -Output ci-powershell-results/powershell-parser.json
-      - name: Preserve exact workflow and parser evidence
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        with:
-          name: carr-recovery-powershell-${{ github.sha }}-${{ github.run_attempt }}
-          path: ci-powershell-results/
-          if-no-files-found: error
-          retention-days: 7
-
   windows-ci-runner:
     name: Actual Windows owned descendant termination and cleanup
     runs-on: windows-2022
@@ -168,6 +64,49 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: carr-recovery-windows-ci-runner-${{ github.sha }}-${{ github.run_attempt }}
+          path: ci-owned-results/
+          if-no-files-found: error
+          retention-days: 7
+
+  posix-ci-runner:
+    name: Actual POSIX owned descendant termination and cleanup
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      PYTEST_ADDOPTS: ''
+      PYTHONPATH: ''
+    steps:
+      - name: Read the exact selected runner candidates
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          path: recovery-source
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Prepare only the pinned test runner in a fresh environment
+        run: |
+          python -B -m venv .ci-runner-venv
+          .ci-runner-venv/bin/python -B -m pip install pytest==9.0.2
+      - name: Bind exact source bytes and record the actual interpreter
+        run: |
+          .ci-runner-venv/bin/python -B recovery-source/recovery/prepare_native_recovery_checks.py ci-check --root recovery-source --evidence ci-owned-results --stage ci-owned-source
+          .ci-runner-venv/bin/python -B -m pip freeze > ci-owned-results/installed-dependencies.txt
+          .ci-runner-venv/bin/python -B -c "import json,sys,pytest; assert sys.prefix!=sys.base_prefix; print(json.dumps(dict(executable=sys.executable,base_executable=sys._base_executable,prefix=sys.prefix,base_prefix=sys.base_prefix,version=sys.version,pytest=pytest.__file__)))" > ci-owned-results/interpreter.json
+      - name: Require the complete finite runner regression on native POSIX
+        working-directory: ci-owned-source/carr-library
+        run: |
+          ../../.ci-runner-venv/bin/python -B -m pytest -q -p no:cacheprovider --import-mode=importlib -o addopts= -o xfail_strict=true --basetemp ../../ci-owned-results/pytest --junitxml ../../ci-owned-results/ci-check-tests.xml tests/packaging/test_ci_check.py 2>&1 | tee ../../ci-owned-results/ci-check-tests.txt
+          ../../.ci-runner-venv/bin/python -B -c "import json,xml.etree.ElementTree as E; c=list(E.parse('../../ci-owned-results/ci-check-tests.xml').iter('testcase')); bad=sum(any(x.find(t) is not None for t in ('failure','error','skipped')) for x in c); assert len(c)>=25 and not bad; assert any(x.get('name')=='test_timeout_terminates_real_descendant_before_temp_cleanup_and_stays_failed' for x in c); print(json.dumps(dict(status='PASS',cases=len(c),scope='selected POSIX CI runner cleanup regressions',application_native='NOT_RUN',installed='NOT_RUN',nvda='NOT_RUN')))"
+      - name: Preserve exact runner identities and native diagnostics
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-recovery-posix-ci-runner-${{ github.sha }}-${{ github.run_attempt }}
           path: ci-owned-results/
           if-no-files-found: error
           retention-days: 7

@@ -49,3 +49,7 @@ This checkpoint still changes only recovery records. The source archive is not a
 ## Checkpoint 6: exact archive transport repair
 
 Checkpoint 5 validation run 45980167359 failed before the citation tests and PowerShell parser. The archived Windows workflow had been captured from a truncated tool response; the active local application workflow remained valid. This checkpoint stores the complete 128,830-byte file, verifies Git blob `dd71a09369ec77e6d00181111c534fe25857c5aa`, and disables newline conversion inside this source archive. Fresh CI is required; no prior failure is relabelled as a pass. The active application integration is being verified separately.
+
+## Checkpoint 7: native fixture admission race
+
+Run 45982468090 confirmed all 150 candidate identities/configuration checks, 279 actual citation tests on Python 3.11 and 64 PowerShell blocks with zero parse errors. Its Windows process suite failed before process ownership admission: the parent observed a created but empty synthetic PID marker. This checkpoint publishes that PID only after a complete sibling write using `os.replace`, while preserving the open held-file lock and all existing exit/cleanup/identity assertions. Production `ci_check.py` remains unchanged. The new finite Windows and POSIX runs are pending; full application integration remains interrupted by executor unavailability.
