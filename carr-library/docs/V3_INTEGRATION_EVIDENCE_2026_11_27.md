@@ -3,6 +3,60 @@
 This is a source/evidence checkpoint, not a declaration of full-platform completion.
 The technical scope remains [V3 finalization](UNIVERSAL_SCOPE_V3_FINALIZATION.md).
 
+## Following streamed-text and office composition
+
+The next source composition combines `a508975cf010aeb72f2e5deab5107b77649d91a7`
+(parent exact `01014502`) with the reviewed office candidate
+`597a05feb9efe0ea840c625631d8187f0996cdb8`. Every modified office preimage was
+compared byte-for-byte between its `947193` parent and the current streamed
+candidate before adopting its blob. No conflicting current file was replaced.
+
+The explicit UTF-8 profile supports selected originals up to 128 MiB through
+streamed retention, versioned fragments, the existing import journal/owned
+worker, canonical publication receipts and independent whole-original
+attestation. Actual source fixtures over 64 MiB executed, including prepared
+backup, deletion of the original, restoration to another root, real worker
+resume, exact quotation and completed rebackup. All 71 new source cases passed,
+zero skips: 28 streaming, 10 journal, four attestation, five real worker, nine
+backup, eight isolated CLI and seven Import Center handler cases. Their final
+installed-wheel run started before the executor disconnected; its terminal
+result was not observed and is **NOT_RUN/UNOBSERVED**, not a passing result.
+All seven suites and nine representative case identities are required in the
+new source/installed gates, plus the actual native Import Center probe.
+Multi-GB PDFs and declared 1k/10k/50k-book corpus measurements remain separate.
+
+The selected LibreOffice adapter adds fixed DOC, PPT, XLS, WordPerfect and
+PalmDoc filters through the existing isolated conversion owner and broker.
+The five strict portable suites passed 176 cases without skips. Actual selected
+Linux LibreOfficeDev 26.8 passed DOC/PPT/WPD/PalmDoc, cancellation and byte-budget
+cases (six cases). XLS is implemented but its selected host execution failed:
+both the original and an independent one-cell fixture hit the native memory
+boundary. The unchanged 3 GiB process cap was retained. This does not establish
+five-format qualification or a general limitation of other LibreOffice builds.
+No converter binary, new base runtime wheel or third-party dictionary is
+distributed. The new portable office selection suite is required in source,
+Linux and installed gates. Actual selected Windows LibreOffice remains a
+separate seven-case native acceptance requirement.
+
+### Observed Windows acceptance of exact 01014502
+
+The [audio run](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45980805320)
+passed all **443 mandatory cases in 18 suites without skips**, actual installed
+SAPI/FFmpeg, all 26 native live-reading checks and 151 native effect-control
+checks including master chain and mix. The live probe verified actual English
+SAPI PCM, Unicode/emoji offsets, exact source highlight, explicit voice
+selection, stopped preparation, durable source cursor and modal-owner cleanup.
+The broader audio selection passed 1,046 cases with six explicitly reported
+optional/platform skips and 22 passing subtests; these overlap the strict
+suites. Physical playback, manual NVDA and language/word-alignment quality are
+not claimed. Bibliography, independent publication conformance, signed-client
+and encrypted-snapshot workflows also passed exact `01014502`.
+
+The main Windows and managed A-to-B runs were still in progress when this
+checkpoint was written; Linux and native keyboard jobs had passed. Their
+terminal status, and all new composed-source execution, must be read rather
+than inferred from the previous successes.
+
 ## Current reader, scanner and master composition
 
 This composition extends published `df0f7c1937d59b91b17c84d45311263be5957df6`.

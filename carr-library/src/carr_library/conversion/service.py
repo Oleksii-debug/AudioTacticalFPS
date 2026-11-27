@@ -8,6 +8,7 @@ import re
 import shutil
 from tempfile import TemporaryDirectory
 from time import monotonic
+from uuid import uuid4
 
 from ..audio.jobs import (
     checked_directory, regular_file, file_identity, verified_reader, publish_noreplace, read_json,
@@ -37,7 +38,7 @@ def _hash(path, cancelled, expected=None):
 
 class ConversionService:
     def __init__(self, root, *, input_roots=(), budget=None, ocr_config=None,
-                 pandoc=None, image_ocr=False):
+                 pandoc=None, image_ocr=False, office=None):
         self.root = checked_directory(guard_data_directory(root, purpose='reading derivative output'))
         info = self.root.stat()
         self._root_identity = (info.st_dev, info.st_ino)
@@ -50,6 +51,8 @@ class ConversionService:
         if type(image_ocr) is not bool or image_ocr and ocr_config is None:
             raise ValueError('Raster OCR requires an explicit OCR configuration and selection.')
         self.image_ocr = image_ocr
+        from .office import OfficeSelection
+        self.office = None if office is None else OfficeSelection.capture(office)
         self.pandoc = None
         self._pandoc_identity = None
         self._pandoc_parent_identity = None
@@ -81,7 +84,8 @@ class ConversionService:
         self.input_roots = tuple(selected)
 
     def capabilities(self):
-        return capabilities(pandoc_selected=self.pandoc is not None, image_ocr_selected=self.image_ocr)
+        return capabilities(pandoc_selected=self.pandoc is not None, image_ocr_selected=self.image_ocr,
+                            office_selected=self.office is not None)
 
     def _input(self, value):
         path = Path(value).absolute()
@@ -113,7 +117,30 @@ class ConversionService:
             raise FileExistsError('The reading text or its provenance report already exists. Choose another name.')
         return path, receipt
 
-    def extract(self, source, output, *, cancelled=lambda: False):
+    def extract(self, source, output, *, cancelled=lambda: False, broker=None):
+        """Use the caller's current application broker when supplied.
+
+        The desktop passes its one ResourceBroker; standalone callers keep the
+        existing explicit output-root API. A lease outlives native cleanup and
+        both publications, including failure paths.
+        """
+        if broker is None:
+            return self._extract(source, output, cancelled=cancelled)
+        from ..operations import ResourceBroker, ResourceRequest, ResourceCancelled
+        if not isinstance(broker, ResourceBroker):
+            raise TypeError('Use the shared typed local resource coordinator.')
+        request = ResourceRequest(cpu_slots=broker.limits.cpu_slots,
+            memory_bytes=3 * 1024**3, disk_path=self.root,
+            disk_bytes=2 * self.budget.max_source_bytes + self.budget.max_text_bytes
+                       + MAX_REPORT_BYTES + 64 * 1024**2)
+        try:
+            with broker.reserve(request, operation_id='conversion:' + uuid4().hex,
+                                cancelled=cancelled, timeout=60) as lease:
+                return self._extract(source, output, cancelled=lease.cancelled)
+        except ResourceCancelled as error:
+            raise InterruptedError('Document conversion cancelled before resource admission.') from error
+
+    def _extract(self, source, output, *, cancelled):
         if not callable(cancelled):
             raise ValueError('A conversion cancellation callback is required.')
         _check(cancelled)
@@ -124,6 +151,9 @@ class ConversionService:
             raise ConversionUnavailable('This format is not enabled by the current document reader registry.')
         if suffix == '.rtf' and self.pandoc is None:
             raise ConversionUnavailable('Select an installed compatible Pandoc executable for RTF explicitly.')
+        from .office import OFFICE_SUFFIXES
+        if suffix in OFFICE_SUFFIXES and self.office is None:
+            raise ConversionUnavailable('Select the installed LibreOffice program executable for this format explicitly.')
         if suffix in IMAGES and not self.image_ocr:
             raise ConversionUnavailable('Select OCR and its language/model configuration for raster images explicitly.')
         if source == target or source == report_path:
@@ -132,8 +162,9 @@ class ConversionService:
         if not capability['available']:
             raise ConversionUnavailable('The existing reader dependencies are unavailable: ' +
                                         ', '.join(capability['missing']))
+        native_bytes = self.budget.max_source_bytes + 64 * 1024**2 if suffix in OFFICE_SUFFIXES else 16 * 1024**2
         if shutil.disk_usage(target.parent).free < (
-                before.st_size + self.budget.max_text_bytes + MAX_REPORT_BYTES + 16 * 1024 * 1024):
+                before.st_size + self.budget.max_text_bytes + MAX_REPORT_BYTES + native_bytes):
             raise ConversionError('Not enough free disk for the bounded source, reading text and provenance.')
         source_identity = file_identity(before)
         started = monotonic()
@@ -171,6 +202,8 @@ class ConversionService:
                     sha256=_hash(self.pandoc, cancelled, self._pandoc_identity)))
             elif suffix in IMAGES:
                 message['adapter'] = dict(kind='raster-ocr')
+            elif suffix in OFFICE_SUFFIXES:
+                message['adapter'] = dict(kind='libreoffice', runtime=self.office.snapshot(cancelled=cancelled))
             result = _invoke(message,
                 timeout=self.budget.timeout, cancelled=cancelled)
             _check(cancelled)
@@ -270,7 +303,7 @@ class ConversionService:
                 raise
         return ConversionResult(target, report, report_path)
 
-    def extract_many(self, sources, *, cancelled=lambda: False, progress=None):
+    def extract_many(self, sources, *, cancelled=lambda: False, progress=None, broker=None):
         results = []
         for index, source in enumerate(sources, 1):
             if index > self.budget.max_files:
@@ -278,7 +311,7 @@ class ConversionService:
             _check(cancelled)
             source, _ = self._input(source)
             name = re.sub(r'[^\w .-]', '_', source.stem, flags=re.UNICODE).strip(' .')[:48] or 'document'
-            result = self.extract(source, f'{index:04d}-{name}-reading.txt', cancelled=cancelled)
+            result = self.extract(source, f'{index:04d}-{name}-reading.txt', cancelled=cancelled, broker=broker)
             results.append(result)
             if progress is not None:
                 progress(index, result)

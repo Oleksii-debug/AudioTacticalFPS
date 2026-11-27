@@ -2,11 +2,12 @@
 from importlib.metadata import PackageNotFoundError, version
 
 from ..extract.document_formats import FORMAT_BY_SUFFIX, SUPPORTED_SUFFIXES
+from .office import OFFICE_SUFFIXES
 
 LEGACY = ('.azw', '.azw3', '.chm', '.djvu', '.doc', '.lit', '.mobi', '.pdb',
           '.prc', '.ppt', '.tcr', '.wpd', '.xls')
 IMAGES = ('.png', '.jpg', '.jpeg', '.bmp', '.tif', '.tiff', '.webp')
-CONVERSION_SUFFIXES = frozenset((*SUPPORTED_SUFFIXES, '.rtf', *IMAGES))
+CONVERSION_SUFFIXES = frozenset((*SUPPORTED_SUFFIXES, '.rtf', *IMAGES, *OFFICE_SUFFIXES))
 
 
 def _dependencies(suffix):
@@ -19,7 +20,7 @@ def _dependencies(suffix):
     return ()
 
 
-def capabilities(*, pandoc_selected=False, image_ocr_selected=False):
+def capabilities(*, pandoc_selected=False, image_ocr_selected=False, office_selected=False):
     """Installed dependencies are not per-file fidelity or language qualification."""
     result = []
     reviewed_versions = {'python-docx': '1.2.0', 'defusedxml': '0.7.1'}
@@ -58,6 +59,15 @@ def capabilities(*, pandoc_selected=False, image_ocr_selected=False):
             qualification='selected_runtime_requires_check' if image_ocr_selected else 'explicit_selection_required',
             limitation='Explicit OCR language/profile or verified model-pack selection is required. Every bounded image/TIFF frame becomes unverified reading text; printed pagination and exact layout are not invented.'))
     for suffix in LEGACY:
+        if suffix in OFFICE_SUFFIXES:
+            result.append(dict(extension=suffix, available=bool(office_selected),
+                adapter='explicitly selected LibreOffice with private inactive-content profile',
+                installed={}, missing=[],
+                qualification='selected_runtime_requires_check' if office_selected else 'explicit_selection_required',
+                limitation=('Selected binary Word/PowerPoint/Excel, WordPerfect header family or PalmDoc TEXt/REAd PDB only. '
+                    'Fixed verified installed filters create ODF for the existing guarded reader; no macros, external-link updates, '
+                    'exact layout or printed pagination are admitted. Unsupported content remains an explicit error.')))
+            continue
         result.append(dict(extension=suffix, available=False, adapter='not enabled by this reader registry',
                            installed={}, missing=[], qualification='not_integrated',
                            limitation='Use a separately reviewed conversion tool and import the resulting supported copy. No converter, model, decryption or DRM bypass is supplied.'))

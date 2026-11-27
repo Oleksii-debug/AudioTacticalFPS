@@ -2,7 +2,7 @@
 from pathlib import Path
 
 from ..conversion import ConversionBudget, ConversionService, capabilities
-from ..conversion.capabilities import IMAGES
+from ..conversion.capabilities import IMAGES, OFFICE_SUFFIXES
 from ..extract.document_formats import file_dialog_wildcard
 
 
@@ -27,6 +27,7 @@ def formats_text():
         'Each isolated worker has a 120-second default deadline. Cancel current operation also stops that worker.',
         'PDFs and images use the existing local OCR model chooser. Image OCR requires explicit selection and preserves image-frame boundaries. Unreadable or mixed native/image PDF pages require the reviewed import workflow.',
         'RTF requires explicit selection of an installed Pandoc executable. The worker checks its exact bytes and uses fixed --sandbox RTF-to-plain-text options.',
+        'DOC/PPT/XLS, supported WordPerfect and PalmDoc PDB require selection of the actual installed LibreOffice program/soffice executable. Each worker uses a new profile with macros, active content and untrusted links disabled; converted ODF passes the existing reader checks.',
         'A batch keeps already completed file/report pairs if a later input fails or is cancelled.',
         'A report is the completion marker. A publication error is reported even if a moved file remains for inspection.',
     ))
@@ -51,6 +52,19 @@ def choose_pandoc(frame):
         dialog.Destroy()
 
 
+def choose_office(frame):
+    import wx
+    dialog = wx.FileDialog(frame, 'Select installed LibreOffice program/soffice executable',
+        wildcard='LibreOffice program executable|soffice.exe;soffice.com;soffice|All files|*',
+        style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+    try:
+        if dialog.ShowModal() != wx.ID_OK:
+            return None
+        return Path(dialog.GetPath())
+    finally:
+        dialog.Destroy()
+
+
 def convert_documents(frame):
     import wx
     from .desktop_app import show_text
@@ -62,7 +76,7 @@ def convert_documents(frame):
         frame.report('An operation is already running. Wait or choose Cancel current operation.')
         return
     dialog = wx.FileDialog(frame, 'Choose documents for new reading text',
-                           wildcard=('Selected RTF and raster images|*.rtf;*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff;*.webp|'
+                           wildcard=('Selected legacy documents and raster images|*.doc;*.ppt;*.xls;*.wpd;*.pdb;*.rtf;*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff;*.webp|'
                                      + file_dialog_wildcard()),
                            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST | wx.FD_MULTIPLE)
     try:
@@ -97,8 +111,13 @@ def convert_documents(frame):
             pandoc = choose_pandoc(frame)
             if pandoc is None:
                 return
+        office = None
+        if any(path.suffix.casefold() in OFFICE_SUFFIXES for path in sources):
+            office = choose_office(frame)
+            if office is None:
+                return
         converter = ConversionService(destination, input_roots=sources, ocr_config=config,
-                                      pandoc=pandoc, image_ocr=image_ocr)
+                                      pandoc=pandoc, image_ocr=image_ocr, office=office)
     except Exception as error:
         frame.report('Document conversion could not start. ' + str(error))
         return
@@ -106,8 +125,12 @@ def convert_documents(frame):
     completed = []
 
     def operation():
+        options = {}
+        if library is not None:
+            from ..operations import ResourceBroker
+            options['broker'] = ResourceBroker.for_app(library.root, cancelled=frame.cancel_event.is_set)
         return converter.extract_many(sources, cancelled=frame.cancel_event.is_set,
-                                      progress=lambda number, result: completed.append(result))
+                                      progress=lambda number, result: completed.append(result), **options)
 
     def done(results):
         lines = ['Created ' + str(len(results)) + ' reading file(s).', '',

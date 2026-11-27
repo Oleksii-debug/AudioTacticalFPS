@@ -141,3 +141,43 @@ def test_native_flow_passes_both_explicit_selections_to_the_current_service(tmp_
     assert captured['root'] == destination and captured['input_roots'] == sources
     assert captured['image_ocr'] is True and captured['ocr_config'] is chosen_config
     assert captured['pandoc'] == executable and captured['executed_sources'] == sources
+
+
+def test_office_picker_cancel_starts_no_worker_or_output(tmp_path, monkeypatch):
+    source, destination = tmp_path / 'selected.doc', tmp_path / 'output'
+    source.write_bytes(b'selected original')
+    destination.mkdir()
+    frame = SimpleNamespace(_closing=False, working=False, library=None, cancel_event=Event())
+    fake_ui(monkeypatch, (source,), destination, frame)
+    monkeypatch.setattr(ui, 'choose_office', lambda frame: None)
+    frame.run_job = lambda *a, **k: (_ for _ in ()).throw(AssertionError('Cancelled office choice started a job.'))
+    ui.convert_documents(frame)
+    assert list(destination.iterdir()) == [] and source.read_bytes() == b'selected original'
+
+
+def test_office_choice_and_shared_application_broker_reach_existing_worker(tmp_path, monkeypatch):
+    from carr_library.operations import ResourceBroker
+    source, destination, library = tmp_path / 'selected.wpd', tmp_path / 'output', tmp_path / 'library'
+    source.write_bytes(b'selected original')
+    destination.mkdir()
+    library.mkdir()
+    frame = SimpleNamespace(_closing=False, working=False, library=SimpleNamespace(root=library),
+                            cancel_event=Event())
+    fake_ui(monkeypatch, (source,), destination, frame)
+    selected = tmp_path / 'office/program/soffice'
+    monkeypatch.setattr(ui, 'choose_office', lambda frame: selected)
+    broker, captured = object(), {}
+    def for_app(root, *, cancelled):
+        assert root == library and cancelled.__self__ is frame.cancel_event
+        return broker
+    monkeypatch.setattr(ResourceBroker, 'for_app', for_app)
+    class Service:
+        def __init__(self, root, **options): captured.update(root=root, **options)
+        def extract_many(self, inputs, **options):
+            captured.update(executed_sources=inputs, broker=options['broker'])
+            return ()
+    monkeypatch.setattr(ui, 'ConversionService', Service)
+    frame.run_job = lambda title, operation, **callbacks: operation()
+    ui.convert_documents(frame)
+    assert captured['office'] == selected and captured['broker'] is broker
+    assert captured['input_roots'] == captured['executed_sources'] == (source,)

@@ -204,6 +204,12 @@ def _image_records(source, data, suffix, config, budget, deadline):
 
 
 def selected_records(source, data, suffix, config, budget, deadline, selection):
+    from .office import OFFICE_SUFFIXES, office_records
+    if suffix in OFFICE_SUFFIXES:
+        if (type(selection) is not dict or set(selection) != {'kind', 'runtime'}
+                or selection['kind'] != 'libreoffice'):
+            raise ConversionUnavailable('Legacy conversion requires the explicitly selected LibreOffice identity.')
+        return office_records(source, data, suffix, budget, deadline, selection['runtime'])
     if suffix == '.rtf':
         if (not isinstance(selection, dict) or set(selection) != {'kind', 'executable'}
                 or selection['kind'] != 'pandoc-rtf'):

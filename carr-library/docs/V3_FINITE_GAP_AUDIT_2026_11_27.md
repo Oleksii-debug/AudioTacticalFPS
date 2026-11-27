@@ -20,9 +20,9 @@ an incompatible runtime executable.
 
 | Priority | Scope | Confirmed remaining behavior | Existing implementation to extend |
 |---|---|---|---|
-| 1 | V3-07 | Search and folder continuation now have bounded explicit pages and executed source/installed acceptance. Original documents still use the default 64 MiB boundary; the new large UTF-8 profile and corpus-scale measurements are active work. | [`application.py`](../src/carr_library/application.py), [`search/federated.py`](../src/carr_library/search/federated.py), [`ingest/batch_scan.py`](../src/carr_library/ingest/batch_scan.py), [`catalog/intake.py`](../src/carr_library/catalog/intake.py). Keep each operation bounded; add continuations and configurable budgets rather than removing safety checks. Catalog browsing already has keyset pagination. |
-| 2 | V3-01 | Thirteen named legacy suffixes have no integrated adapter. Five have an installed local conversion candidate, as detailed below. | [`conversion/capabilities.py`](../src/carr_library/conversion/capabilities.py), existing selected Pandoc/raster adapters and owned process supervisor. |
-| 3 | V3-03 | Exact-source live reading is implemented and passed installed synthetic acceptance; actual native wx/SAPI acceptance is pending. Independent playback speed/pitch remain code work. | [`ui/reading_desk.py`](../src/carr_library/ui/reading_desk.py), [`ui/narration_editor.py`](../src/carr_library/ui/narration_editor.py), current SAPI adapters and [`audio/playback.py`](../src/carr_library/audio/playback.py). Existing playlist, A–B repeat, sleep timer, seek, pause and resume are already present. |
+| 1 | V3-07 | Search and folder continuation now have bounded explicit pages and executed source/installed acceptance. Original documents still use the default 64 MiB boundary; the explicit streamed UTF-8 profile up to 128 MiB is implemented with 71 passing source cases, while multi-GB/PDF profiles and corpus-scale measurements remain active work. | [`application.py`](../src/carr_library/application.py), [`search/federated.py`](../src/carr_library/search/federated.py), [`ingest/batch_scan.py`](../src/carr_library/ingest/batch_scan.py), [`catalog/intake.py`](../src/carr_library/catalog/intake.py). Keep each operation bounded; add continuations and configurable budgets rather than removing safety checks. Catalog browsing already has keyset pagination. |
+| 2 | V3-01 | Five named legacy suffixes now have explicitly selected office adapters. Four passed the selected Linux host; XLS failed its native memory boundary. Eight further suffixes remain without integrated adapters. | [`conversion/capabilities.py`](../src/carr_library/conversion/capabilities.py), existing selected Pandoc/raster adapters and owned process supervisor. |
+| 3 | V3-03 | Exact-source live reading is implemented and passed installed synthetic acceptance; actual native wx/SAPI acceptance passed on exact 01014502 and remains required on later compositions. Independent playback speed/pitch remain code work. | [`ui/reading_desk.py`](../src/carr_library/ui/reading_desk.py), [`ui/narration_editor.py`](../src/carr_library/ui/narration_editor.py), current SAPI adapters and [`audio/playback.py`](../src/carr_library/audio/playback.py). Existing playlist, A–B repeat, sleep timer, seek, pause and resume are already present. |
 | 4 | V3-04/05 | Role/master chain editing, reorder/bypass/presets and master dry/wet are implemented; clip cut/copy/paste/split and compatible adjacent join are implemented. Arbitrary different-asset consolidation, recording pause/resume and monitoring remain code work. | [`ui/audio_effects.py`](../src/carr_library/ui/audio_effects.py), [`ui/audio_clips.py`](../src/carr_library/ui/audio_clips.py), [`audio/models.py`](../src/carr_library/audio/models.py), [`ui/recording_dialog.py`](../src/carr_library/ui/recording_dialog.py). Do not describe a typed filter list as the complete professional editor. |
 | 5 | V3-04/05 | General audio batch conversion, video soundtrack extraction, and a durable multi-book audiobook preset/naming/split-review workflow are not completed native actions. | Current FFmpeg ownership, Studio plans, prepared assets and receipt-bound exporters; no additional audio framework is needed. |
 | 6 | V3-02 | No Hunspell spellcheck adapter or general number/date/unit/symbol reading normalization. Current normalization deliberately only adjusts spacing. | [`reader/narration.py`](../src/carr_library/reader/narration.py) and current bounded language/voice pronunciation rules. Statistical punctuation, stress and prosody quality need separate model evidence. |
@@ -37,19 +37,20 @@ The current direct registry supports TXT, PDF, DOCX, EPUB, HTML/HTM/XHTML,
 Markdown, EML, FB2/FB3, ODT/ODP/ODS, PPTX and XLSX. Explicitly selected Pandoc
 adds RTF. Explicit OCR configuration adds supported raster/TIFF files.
 
-| Suffixes still `not_integrated` | Local inspection on 2026-11-27 | Remaining gate |
+| Legacy suffix family | Current implementation / observed host | Remaining gate |
 |---|---|---|
-| `.doc`, `.ppt`, `.xls` | Installed LibreOffice registry has MS Word 97, MS PowerPoint 97 and MS Excel 97 IMPORT filters. | Selected-runtime binding, isolated profile, macro/external-resource policy, fixed conversion outputs, actual fixtures and native qualification. |
-| `.wpd` | Installed Writer registry has WordPerfect IMPORT filter. | Same adapter and format fixtures; not every historical WordPerfect variation is thereby qualified. |
-| `.pdb` | Installed Writer registry has PalmDoc, Plucker and Palm text IMPORT filters. | Explicit supported PDB variants; the extension alone cannot identify an arbitrary Palm database as a book. |
+| `.doc`, `.ppt`, `.xls` | Selected fixed-filter adapters implemented; DOC and PPT executed successfully on the selected Linux host. XLS hit that host's native memory boundary. | Current composed/native Windows qualification; XLS requires a successful selected-runtime run before qualification. |
+| `.wpd` | Selected WordPerfect header/filter adapter executed successfully on the selected Linux host. | Current composed/native Windows qualification; historical variations need their own fixtures. |
+| `.pdb` | Explicit PalmDoc TEXt/REAd adapter executed successfully on the selected Linux host. | Current composed/native Windows qualification; other Palm database variants remain unsupported. |
 | `.azw`, `.azw3`, `.lit`, `.mobi`, `.prc`, `.tcr` | `calibre` and `ebook-convert` absent. Pandoc does not advertise these input formats. | Reviewed optional converter provisioning and integration; DRM/password bypass remains out of scope. No customer model/key is needed for ordinary unprotected fixtures. |
 | `.djvu` | `djvutxt`, `djvused`, `ddjvu` and discovered DjVuLibre shared library absent. | Reviewed DjVu reader or selected-tool adapter and real fixtures. |
 | `.chm` | No CHM utility/shared reader found. | Reviewed CHM reader/adapter, archive and external-resource bounds, real fixtures. |
 
 The executable actually present is LibreOfficeDev `26.8.0.0.alpha0`, revision
 `2c87e51eeaa2b413ff4ae097b2705eea1995d8e5`. Its host version and filter inventory
-were executed/inspected; no new document conversion or Windows qualification
-was performed by this audit. Pandoc is `3.1.11.1`; its advertised formats do not
+were executed/inspected during the initial audit. The later selected adapter
+executed the four successful format fixtures described above; Windows
+qualification and the failing XLS host case remain separate. Pandoc is `3.1.11.1`; its advertised formats do not
 include these thirteen suffixes. Native Hunspell 1.7 and Enchant libraries are
 present, but no corresponding Python module was found. These observations
 identify reuse candidates, not product availability or redistribution clearance.

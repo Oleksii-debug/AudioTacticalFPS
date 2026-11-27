@@ -44,7 +44,8 @@ def test_inventory_distinguishes_optional_adapters_from_unintegrated_legacy():
     for suffix in ('.rtf', '.png', '.tiff'):
         assert rows[suffix]['qualification'] == 'explicit_selection_required'
         assert rows[suffix]['available'] is False
-    assert rows['.doc']['qualification'] == 'not_integrated'
+    assert rows['.doc']['qualification'] == 'explicit_selection_required'
+    assert rows['.mobi']['qualification'] == 'not_integrated'
 
 
 @pytest.mark.parametrize('changes', [

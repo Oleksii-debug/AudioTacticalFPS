@@ -14,7 +14,7 @@ from ..catalog.intake import classify
 from ..extract.document_formats import FORMAT_BY_SUFFIX, extract_document
 from ..extract.page_ocr import Config
 from .models import ConversionBudget, ConversionError, MAX_REPORT_BYTES
-from .capabilities import CONVERSION_SUFFIXES, IMAGES
+from .capabilities import CONVERSION_SUFFIXES, IMAGES, OFFICE_SUFFIXES
 
 
 def _extract_records(source, data, suffix, config, budget, deadline):
@@ -97,7 +97,7 @@ def convert_request(message):
         raise ConversionError('The private conversion source checksum changed.')
     deadline = time.monotonic() + budget.timeout
     adapter = message.get('adapter')
-    if suffix == '.rtf' or suffix in IMAGES:
+    if suffix == '.rtf' or suffix in IMAGES or suffix in OFFICE_SUFFIXES:
         from .adapters import selected_records
         engine, separator, records, warnings = selected_records(
             source, data, suffix, config, budget, deadline, adapter)
