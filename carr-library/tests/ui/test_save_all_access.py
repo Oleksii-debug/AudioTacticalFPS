@@ -129,6 +129,7 @@ def make(document, editor, draft_store, source_guard):
     alive, busy, source_loaded = True, False, True
     save_path = last_audio = last_recovery_signature = None
     recovery_notice = ''
+    reader_tabs, remembered_voice_id = None, ''
     dialog = None
     source_status = Text('')
     voice_choice = SimpleNamespace(GetSelection=lambda: -1)

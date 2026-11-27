@@ -68,7 +68,7 @@ class ReaderDraftStore:
                           if os.path.lexists(self.path) else None)
                 if actual != expected_token:
                     raise ValueError('Another window changed this reading draft. Save As to keep your copy.')
-            atomic_json(self.path, record, replace=True)
+            atomic_json(self.path, record, replace=expected_token is not None)
         return self.path, sha256(encode(record)).hexdigest()
 
     def load(self):

@@ -63,6 +63,10 @@ jobs:
             'tests/ui/test_reader_presentation.py',
             'tests/storage/test_reader_presentation_backup.py',
             'tests/storage/test_reading_tabs_backup.py',
+            'tests/speech/test_reading_tabs.py',
+            'tests/speech/test_reading_focus.py',
+            'tests/ui/test_reader_tabs.py',
+            'tests/ui/test_reading_focus.py',
             'tests/operations/test_resources.py',
             'tests/operations/test_facade.py',
             'tests/operations/test_production_admission.py',
@@ -178,7 +182,7 @@ jobs:
 
   windows-reading-appearance:
     runs-on: windows-2022
-    timeout-minutes: 10
+    timeout-minutes: 20
     defaults:
       run:
         shell: pwsh
@@ -229,7 +233,7 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         timeout-minutes: 2
         run: |
-          python -B scripts/ci_check.py --jobs 2 tests/speech/test_output_devices.py tests/storage/test_reader_presentation_backup.py tests/storage/test_reading_tabs_backup.py tests/transcription_windows/test_protocol_fixture_handles.py tests/operations_windows/test_native_lock_release.py tests/audio/test_recording_windows_process.py tests/audio/test_recording_process.py tests/audio/test_audio_process.py 2>&1 | Tee-Object 'ci-appearance-results/strict-source.txt'
+          python -B scripts/ci_check.py --jobs 2 tests/speech/test_output_devices.py tests/storage/test_reader_presentation_backup.py tests/storage/test_reading_tabs_backup.py tests/transcription_windows/test_protocol_fixture_handles.py tests/operations_windows/test_native_lock_release.py tests/audio/test_recording_windows_process.py tests/audio/test_recording_process.py tests/speech/test_reading_tabs.py tests/speech/test_reading_focus.py tests/ui/test_reader_tabs.py tests/ui/test_reading_focus.py tests/audio/test_audio_process.py 2>&1 | Tee-Object 'ci-appearance-results/strict-source.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Require native owned descendants and fresh venv redirectors
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
@@ -237,6 +241,16 @@ jobs:
         run: |
           python -I -B tests/audio/native_recording_process_probe.py --report ci-appearance-results/native-owned-process.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require source and installed native reading tabs and focus
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        timeout-minutes: 7
+        run: |
+          $failures = @()
+          python -I -B -X utf8 scripts/windows_reading_tabs_smoke.py --source . --output ci-appearance-results/source-reading-tabs.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'source-reading-tabs' }
+          python -I -B -X utf8 scripts/windows_reading_tabs_smoke.py --expect-installed --output ci-appearance-results/installed-reading-tabs.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'installed-reading-tabs' }
+          if ($failures.Count) { throw ('Native reading tabs failed: ' + ($failures -join ', ')) }
       - name: Require exact source native reading appearance
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         timeout-minutes: 3
