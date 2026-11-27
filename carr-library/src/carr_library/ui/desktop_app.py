@@ -610,6 +610,8 @@ class DesktopFrame(WorkspaceFrame):
         from .save_actions import install_save_actions
         install_speech_actions(self)
         install_studio_actions(self)
+        from .audio_playback import install_audio_playback
+        install_audio_playback(self)
         install_book_audio_actions(self)
         install_assistant_actions(self)
         install_save_actions(self)

@@ -5,10 +5,14 @@ numeric values; it creates no player, worker, engine or playback loop.
 """
 
 
-def show_reader_playback(parent, player, *, execute, stop, pause, subscribe, prepare_listening=None):
+def show_reader_playback(parent, player, *, execute, stop, pause, subscribe, prepare_listening=None,
+                         allow_queue=False, review_playlist=None, status_message=lambda: ''):
     import wx
 
-    dialog = wx.Dialog(parent, title='Reader playback controls', size=(700, 740),
+    if type(allow_queue) is not bool or allow_queue and not callable(review_playlist):
+        raise ValueError('Standalone queue controls require an owned review callback.')
+    dialog = wx.Dialog(parent, title=('Audio playback and session playlist' if allow_queue
+                                     else 'Reader playback controls'), size=(700, 740),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
     outer = wx.BoxSizer(wx.VERTICAL)
     panel = wx.ScrolledWindow(dialog, style=wx.TAB_TRAVERSAL | wx.VSCROLL)
@@ -18,6 +22,27 @@ def show_reader_playback(parent, player, *, execute, stop, pause, subscribe, pre
         'Controls apply to the current rendered recording. Opening this dialog '
         'does not start audio. Stop also cancels pending repeat and sleep.')),
         0, wx.EXPAND | wx.ALL, 6)
+    queue_list, queue_buttons, queue_note, queue_seen = None, {}, '', None
+    if allow_queue:
+        layout.Add(wx.StaticText(panel, label=(
+            'Session playlist: review explicit local PCM WAV files. Selecting or editing '
+            'the queue never starts audio. Play queue explicitly arms later items.')),
+            0, wx.EXPAND | wx.ALL, 4)
+        queue_list = wx.ListBox(panel, choices=[], size=(-1, 120))
+        queue_list.SetName('Reviewed session playlist; choose an item explicitly')
+        layout.Add(queue_list, 0, wx.EXPAND | wx.ALL, 4)
+        row = wx.GridSizer(cols=3, hgap=4, vgap=4)
+        for key, label in (
+                ('replace', 'Replace session playlist...'), ('add', 'Add files to session playlist...'),
+                ('select', 'Stop and select item'), ('play', 'Play queue from selected item'),
+                ('up', 'Stop and move item up'), ('down', 'Stop and move item down'),
+                ('remove', 'Stop and remove item'), ('clear', 'Stop and clear playlist'),
+                ('cancel', 'Cancel playlist review')):
+            control = wx.Button(panel, label=label)
+            control.SetName(label)
+            row.Add(control, 0, wx.EXPAND)
+            queue_buttons[key] = control
+        layout.Add(row, 0, wx.EXPAND | wx.ALL, 4)
     outputs, output_note = (None,), ''
     output = reload_outputs = apply_output = None
     if callable(getattr(player, 'output_devices', None)):
@@ -35,6 +60,30 @@ def show_reader_playback(parent, player, *, execute, stop, pause, subscribe, pre
         row.Add(apply_output, 0, wx.ALL, 4)
         layout.Add(row, 0, wx.EXPAND)
     fields = {}
+    mix_button = muted = None
+    if callable(getattr(player, 'set_levels', None)):
+        levels = player.levels
+        for name, label, initial in (
+                ('volume', 'This player volume, 0 to 100', levels.volume),
+                ('balance', 'This player stereo balance, minus 100 left to 100 right', levels.balance * 100)):
+            layout.Add(wx.StaticText(panel, label=label), 0, wx.ALL, 4)
+            control = wx.TextCtrl(panel, value=format(initial, '.12g'))
+            control.SetName(label)
+            layout.Add(control, 0, wx.EXPAND | wx.ALL, 4)
+            fields[name] = control
+        muted = wx.CheckBox(panel, label='Mute this player only')
+        muted.SetName('Mute this player only')
+        muted.SetValue(levels.muted)
+        layout.Add(muted, 0, wx.ALL, 4)
+        mix_button = wx.Button(panel, label='Apply player volume, mute and balance')
+        mix_button.SetName('Apply player volume, mute and balance')
+        layout.Add(mix_button, 0, wx.ALL, 4)
+        layout.Add(wx.StaticText(panel, label=(
+            'Uses this player’s owned Windows output only. Other applications and '
+            'screen-reader volume are unchanged. Unsupported devices report a failure.'
+            if player.live_mix_available else
+            'Live volume, mute and balance are unavailable on this backend.')),
+            0, wx.EXPAND | wx.ALL, 4)
     listening_button = listening_cancel = None
     if prepare_listening is not None:
         from ..speech.listening import ListeningSettings
@@ -95,16 +144,51 @@ def show_reader_playback(parent, player, *, execute, stop, pause, subscribe, pre
     alive, preparing, cancel_preparation, listening_note = True, False, None, ''
 
     def refresh():
+        nonlocal queue_seen
         if not alive:
+            return
+        try:
+            state, position = player.state, player.position_seconds
+        except Exception as exc:
+            status.ChangeValue('Playback state is unavailable. Stop or close to retry cleanup. ' + str(exc))
             return
         loop = player.ab_loop
         remaining = player.sleep_remaining_seconds
-        text = (f'{player.state}; {player.position_seconds:.2f} of '
+        text = (f'{state}; {position:.2f} of '
                 f'{player.duration_seconds:.2f} seconds. '
                 + (f'Repeat {loop[0]:.2f} to {loop[1]:.2f} seconds. ' if loop else 'Repeat off. ')
                 + (f'Sleep in {remaining / 60:.2f} minutes. ' if remaining is not None else 'Sleep off. ')
                 + ('Position is approximate on this backend.' if player.position_is_approximate else
-                   'Position is reported by Windows MCI.'))
+                   'Position is reported by the owned Windows playback device.'))
+        if queue_list is not None:
+            values = player.playlist
+            if values != queue_seen:
+                selected = queue_list.GetSelection()
+                queue_list.Set([f'{index + 1}. {value.path.name}; {value.duration_seconds:.2f} seconds'
+                                for index, value in enumerate(values)])
+                if values:
+                    queue_list.SetSelection(min(max(0, selected), len(values) - 1))
+                queue_seen = values
+            current = player.playlist_index
+            text += (f' Playlist: {len(values)} item(s); '
+                     + (f'current item {current + 1}. ' if current is not None else 'none selected for playback. ')
+                     + ('Sequential playback armed. ' if player.queue_active else 'Sequential playback off. ')
+                     + queue_note)
+            for name, button in queue_buttons.items():
+                button.Enable(preparing if name == 'cancel' else not preparing)
+            queue_list.Enable(not preparing)
+        if mix_button is not None:
+            levels = player.levels
+            text += (f' Player volume {levels.volume:g}; mute {"on" if levels.muted else "off"}; '
+                     f'balance {levels.balance * 100:g}. ')
+            enabled = bool(player.live_mix_available) and not preparing
+            mix_button.Enable(enabled)
+            muted.Enable(enabled)
+            fields['volume'].Enable(enabled)
+            fields['balance'].Enable(enabled)
+        message = status_message()
+        if message:
+            text += ' ' + str(message)
         if output is not None:
             selected = player.output_device
             text += (' Output: ' + (selected.name if selected is not None else 'automatic')
@@ -124,6 +208,18 @@ def show_reader_playback(parent, player, *, execute, stop, pause, subscribe, pre
             if output is not None:
                 reload_outputs.Enable(not preparing)
                 apply_output.Enable(not preparing)
+        if preparing:
+            for name, button in buttons.items():
+                button.Enable(name == 'stop')
+            if output is not None:
+                reload_outputs.Enable(False)
+                apply_output.Enable(False)
+        elif listening_button is None:
+            for button in buttons.values():
+                button.Enable(True)
+            if output is not None:
+                reload_outputs.Enable(True)
+                apply_output.Enable(True)
         if status.GetValue() != text:
             status.ChangeValue(text)
 
@@ -149,6 +245,87 @@ def show_reader_playback(parent, player, *, execute, stop, pause, subscribe, pre
             except Exception as exc:
                 report_error(exc)
         return invoke
+
+    def mix_action():
+        from ..speech._wave_output import PlaybackLevels
+        levels = PlaybackLevels(float(fields['volume'].GetValue()), bool(muted.GetValue()),
+                                float(fields['balance'].GetValue()) / 100)
+        return lambda: player.set_levels(levels.volume, muted=levels.muted, balance=levels.balance)
+
+    def queue_index():
+        index = queue_list.GetSelection()
+        if not 0 <= index < len(player.playlist):
+            raise ValueError('Choose a reviewed playlist item.')
+        return index
+
+    def queue_action(kind):
+        index = queue_index()
+        captured = tuple(player.playlist)
+        def checked(action):
+            def apply():
+                if tuple(player.playlist) != captured:
+                    raise ValueError('The playlist changed while this action was waiting. Choose the item again.')
+                action()
+            return apply
+        if kind == 'play':
+            return checked(lambda: player.play_queue(index))
+        if kind == 'select':
+            return checked(lambda: player.select_queue(index))
+        values = list(captured)
+        if kind == 'remove':
+            del values[index]
+        else:
+            destination = index + (-1 if kind == 'up' else 1)
+            if not 0 <= destination < len(values):
+                raise ValueError('This item is already at that end of the playlist.')
+            values[index], values[destination] = values[destination], values[index]
+        reviewed = tuple(values)
+        return checked(lambda: player.set_playlist(reviewed))
+
+    def choose_queue(*, append=False):
+        nonlocal preparing, cancel_preparation, queue_note
+        from ..speech.playlist import MAX_ITEMS
+        if preparing:
+            raise ValueError('Wait for or cancel the current file review.')
+        with wx.FileDialog(dialog, 'Choose local PCM WAV files for the session playlist',
+                wildcard='PCM WAV audio (*.wav)|*.wav',
+                style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST | wx.FD_MULTIPLE) as chooser:
+            if chooser.ShowModal() != wx.ID_OK:
+                return
+            paths = tuple(chooser.GetPaths())
+        previous = tuple(player.playlist) if append else ()
+        if not paths or len(paths) + len(previous) > MAX_ITEMS:
+            raise ValueError(f'Choose at most {MAX_ITEMS} total playlist recordings.')
+        stop()
+        preparing = True
+        queue_note = 'Reviewing file bytes on the existing worker; audio is stopped.'
+        refresh()
+        def completed(values):
+            nonlocal preparing, cancel_preparation, queue_note
+            if not alive:
+                return
+            try:
+                player.set_playlist((*previous, *values))
+            except Exception as exc:
+                failed(exc)
+                return
+            preparing, cancel_preparation = False, None
+            queue_note = 'Playlist reviewed. Select an item and start playback explicitly.'
+            refresh()
+        def failed(exc):
+            nonlocal preparing, cancel_preparation, queue_note
+            if not alive:
+                return
+            preparing, cancel_preparation = False, None
+            queue_note = 'Playlist unchanged. ' + str(exc)
+            refresh()
+            report_error(exc)
+        try:
+            cancel_preparation = review_playlist(paths, completed, failed, active=lambda: alive)
+            if preparing and not callable(cancel_preparation):
+                raise RuntimeError('Playlist review did not start.')
+        except Exception as exc:
+            failed(exc)
 
     def loop_action():
         first, last = float(fields['a'].GetValue()), float(fields['b'].GetValue())
@@ -247,15 +424,26 @@ def show_reader_playback(parent, player, *, execute, stop, pause, subscribe, pre
             failed(exc)
 
     def cancel_settings(event=None):
-        nonlocal listening_note
+        nonlocal listening_note, queue_note
         if not alive or not preparing:
             return
         if callable(cancel_preparation):
             cancel_preparation()
         stop()
         listening_note = 'Cancellation requested; waiting for private conversion cleanup.'
+        queue_note = 'Cancellation requested; waiting for bounded file review to stop.'
         refresh()
 
+    if queue_list is not None:
+        queue_buttons['replace'].Bind(wx.EVT_BUTTON, run(lambda: lambda: choose_queue(append=False)))
+        queue_buttons['add'].Bind(wx.EVT_BUTTON, run(lambda: lambda: choose_queue(append=True)))
+        for name in ('select', 'play', 'up', 'down', 'remove'):
+            queue_buttons[name].Bind(wx.EVT_BUTTON,
+                run(lambda name=name: queue_action(name), audible=name == 'play'))
+        queue_buttons['clear'].Bind(wx.EVT_BUTTON, run(lambda: lambda: player.set_playlist(())))
+        queue_buttons['cancel'].Bind(wx.EVT_BUTTON, cancel_settings)
+    if mix_button is not None:
+        mix_button.Bind(wx.EVT_BUTTON, run(mix_action, audible=True))
     if output is not None:
         reload_outputs.Bind(wx.EVT_BUTTON, run(lambda: load_outputs))
         apply_output.Bind(wx.EVT_BUTTON, run(output_action))
@@ -263,9 +451,15 @@ def show_reader_playback(parent, player, *, execute, stop, pause, subscribe, pre
         listening_button.Bind(wx.EVT_BUTTON, run(lambda: prepare_settings))
         listening_cancel.Bind(wx.EVT_BUTTON, cancel_settings)
 
+    def stop_clicked(event=None):
+        try:
+            stop()
+        except Exception as exc:
+            report_error(exc)
+
     buttons['play'].Bind(wx.EVT_BUTTON, run(lambda: player.play_current, audible=True))
     buttons['pause'].Bind(wx.EVT_BUTTON, run(lambda: pause))
-    buttons['stop'].Bind(wx.EVT_BUTTON, lambda _event: stop())
+    buttons['stop'].Bind(wx.EVT_BUTTON, stop_clicked)
     buttons['back'].Bind(wx.EVT_BUTTON, run(lambda: player.skip_backward, audible=True))
     buttons['forward'].Bind(wx.EVT_BUTTON, run(lambda: player.skip_forward, audible=True))
     buttons['skips'].Bind(wx.EVT_BUTTON, run(skips_action))
@@ -277,7 +471,7 @@ def show_reader_playback(parent, player, *, execute, stop, pause, subscribe, pre
     try:
         subscribe(refresh)
         refresh()
-        fields['a'].SetFocus()
+        (queue_list if queue_list is not None else fields['a']).SetFocus()
         dialog.ShowModal()
     finally:
         alive = False
