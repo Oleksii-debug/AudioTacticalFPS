@@ -327,8 +327,18 @@ def probe_model(runtime, engine, *, cancelled=lambda: False):
     from .dsp import _digest
     if engine not in runtime.music_models:
         raise AudioUnavailable('Configure the explicit local music installation first.')
-    config, _ = runtime.music_models[engine]
+    config, configured_manifest = runtime.music_models[engine]
+    # A failed recheck must not leave the previous installation advertised as
+    # available. Only an unchanged, successfully reverified identity can
+    # retain evidence of earlier inference.
+    status = runtime.music_model_status[engine]
+    prior_inference = status.get('inference_tested', False)
+    status.update(assets_verified=False, runtime_probed=False,
+                  runtime_code_verified=False, inference_tested=False)
     data = validate_model(config, cancelled=cancelled)
+    if data != configured_manifest:
+        raise ValueError('The configured model manifest changed; review and configure the installation again.')
+    status['assets_verified'] = True
     records = data.get('runtime_code_files')
     if not isinstance(records, dict) or not records or len(records) > 100000:
         raise AudioUnavailable('The reviewed model manifest needs a complete runtime_code_files SHA256 inventory before inference.')
@@ -362,8 +372,9 @@ def probe_model(runtime, engine, *, cancelled=lambda: False):
         source = local_path(root / name, root=root, exists=True)
         if _digest(source, cancelled) != expected_hash:
             raise ValueError('Installed engine code failed its reviewed SHA256 check.')
-    runtime.music_model_status[engine].update(runtime_probed=True, runtime_code_verified=True)
-    return dict(runtime.music_model_status[engine])
+    status.update(runtime_probed=True, runtime_code_verified=True,
+                  inference_tested=prior_inference)
+    return dict(status)
 
 
 # Trusted application worker code, never constructed from a user's prompt or
@@ -446,8 +457,7 @@ with wave.open(job['output'],'wb') as destination:
 def _neural(runtime, spec, output, *, sample_rate, channels, cancelled, progress):
     if spec.engine not in runtime.music_models:
         raise AudioUnavailable(f'{spec.engine} is not configured. Install and verify its local runtime and weights explicitly.')
-    config, _ = runtime.music_models[spec.engine]
-    manifest = validate_model(config, cancelled=cancelled)
+    config, manifest = runtime.music_models[spec.engine]
     probe_model(runtime, spec.engine, cancelled=cancelled)
     if spec.duration > config.max_chunk_seconds:
         raise ValueError('This request exceeds the configured neural chunk allowance. Schedule multiple resumable scenes; do not request an unlimited single inference.')
