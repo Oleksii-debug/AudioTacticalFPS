@@ -397,7 +397,10 @@ def test_backup_resume_verifies_saved_reading_state_without_republishing(
     monkeypatch.setattr(app, 'backup', no_republication)
     resumed = LocalLibraryAssistant.open_job(app, ws, job['id']).run(job['id'])
     assert resumed['state'] == 'failed', resumed
-    assert 'reading-state' in resumed['error']
+    if damage == 'changed_bytes':
+        assert 'sidecar digest or size' in resumed['error']
+    else:
+        assert FILENAME in resumed['error']
     assert {str(item.relative_to(target)): item.read_bytes()
             for item in target.rglob('*') if item.is_file()} == damaged
     assert reading.path.read_bytes() == live_state
@@ -424,7 +427,7 @@ def test_new_backup_is_verified_before_a_step_can_be_completed(environment, monk
     result = service.run(job['id'])
     assert result['state'] == 'failed', result
     assert result['steps'][0]['state'] != 'complete'
-    assert 'reading-state' in result['error']
+    assert 'sidecar digest or size' in result['error']
 
 
 def test_job_lock_rejects_concurrent_runner(environment):

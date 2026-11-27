@@ -56,7 +56,9 @@ jobs:
             tests/storage/test_library_backup_reading_state.py \
             tests/storage/test_v3_state_backup.py \
             tests/storage/test_backup_generated_audio.py \
-            tests/storage/test_backup_translation.py 2>&1 | tee ci-pending-results/strict-tests.txt
+            tests/storage/test_backup_translation.py \
+            tests/storage/test_backup_schema_identity.py \
+            tests/library_assistant/test_library_workflow.py 2>&1 | tee ci-pending-results/strict-tests.txt
       # This source-only job supplements the complete native Windows/bundle gate.
       - name: Retain exact text acceptance evidence
         if: always()
