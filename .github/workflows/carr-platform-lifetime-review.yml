@@ -46,6 +46,12 @@ jobs:
           $python = (Get-Command python.exe).Source
           $base = (& $python -I -B -c "import sys; print(sys._base_executable)").Trim()
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $ffmpeg = Join-Path $env:CARR_NATIVE_CORRECTION_AUDIO 'bin/ffmpeg.exe'
+          $ffprobe = Join-Path $env:CARR_NATIVE_CORRECTION_AUDIO 'bin/ffprobe.exe'
+          @{ schema=1; status='PASS'; bundled=$false; runtime_root=$env:CARR_NATIVE_CORRECTION_AUDIO;
+             ffmpeg=@{ path=$ffmpeg; sha256=(Get-FileHash -LiteralPath $ffmpeg -Algorithm SHA256).Hash.ToLowerInvariant() };
+             ffprobe=@{ path=$ffprobe; sha256=(Get-FileHash -LiteralPath $ffprobe -Algorithm SHA256).Hash.ToLowerInvariant() }
+           } | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 'ci-platform-lifetime/external-test-audio-binding.json'
           $programs = @($python, $base, (Get-Process -Id $PID).Path,
             (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'),
             (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe'),
@@ -69,11 +75,17 @@ jobs:
             if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Runtime denial does not cover the selected processes.' }
             @{ status='PASS'; blocked_programs=$filters; scope='selected runtime executables' } | ConvertTo-Json -Depth 3 | Set-Content 'ci-platform-lifetime/firewall.json'
             $failed = @()
-            foreach ($probe in @('windows_platform_tools_smoke.py', 'windows_epub_reading_smoke.py')) {
-              & $python -I -B -X utf8 -X faulthandler (Join-Path 'scripts' $probe) 2>&1 | Tee-Object (Join-Path 'ci-platform-lifetime' ($probe + '.txt'))
+            $probes = @(
+              @{ name='platform'; script='scripts/windows_platform_tools_smoke.py'; arguments=@() },
+              @{ name='epub'; script='scripts/windows_epub_reading_smoke.py'; arguments=@('--audio-evidence', 'ci-platform-lifetime/external-test-audio-binding.json') }
+            )
+            foreach ($probe in $probes) {
+              $scriptPath = $probe.script
+              $probeArgs = @($probe.arguments)
+              & $python -I -B -X utf8 -X faulthandler $scriptPath @probeArgs 2>&1 | Tee-Object (Join-Path 'ci-platform-lifetime' ($probe.name + '.txt'))
               $observedExit = $LASTEXITCODE
-              Write-Output ($probe + ' native exit: ' + $observedExit)
-              if ($observedExit -ne 0) { $failed += ($probe + ': ' + $observedExit) }
+              Write-Output ($probe.name + ' native exit: ' + $observedExit)
+              if ($observedExit -ne 0) { $failed += ($probe.name + ': ' + $observedExit) }
             }
             if ($failed.Count -ne 0) { throw ('Native correction probes failed: ' + ($failed -join '; ')) }
           } finally {
