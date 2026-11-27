@@ -30,8 +30,7 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
     library = LibraryApp(root / 'library')
     workspace = library.create_workspace('Native transcription controls')
     service = library.transcription(workspace)
-    models = root / 'models'
-    models.mkdir()
+    models = fixture.synthetic_models(root / 'models')
     worker = root / 'synthetic-worker.py'
     worker.write_text(fixture.SYNTHETIC_WORKER.replace('__MODE__', repr('complete')), encoding='utf-8')
     service.configure(Path(sys.executable).resolve(), worker, models)
@@ -193,7 +192,7 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
                 dialog.EndModal(wx.ID_CANCEL)
     wx.CallLater(50, drive)
     try:
-        show_transcription(frame)
+        show_transcription(frame, protocol='receipts-v1')
         if failures:
             raise AssertionError('\n'.join(failures))
         assert state['finished'], 'Native dialog exited before acceptance.'

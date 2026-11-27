@@ -109,10 +109,12 @@ def _open_worker_status(path):
         raise
 
 
-def read_worker_status(path):
+def read_worker_status(path, *, max_bytes=MAX_JSON_BYTES):
     """Use the existing bounded JSON contract for a replaceable status file."""
+    if type(max_bytes) is not int or not 1 <= max_bytes <= MAX_JSON_BYTES:
+        raise ValueError('Invalid worker status byte budget.')
     path = local_path(path, exists=True)
-    if regular(path).st_size > MAX_JSON_BYTES:
+    if regular(path).st_size > max_bytes:
         raise ValueError('State exceeds its configured JSON budget.')
     with _open_worker_status(path) as stream:
         info = os.fstat(stream.fileno())
@@ -120,8 +122,8 @@ def read_worker_status(path):
         if (not stat.S_ISREG(info.st_mode) or info.st_nlink not in (0, 1)
                 or getattr(info, 'st_file_attributes', 0) & 0x400):
             raise ValueError('State must use regular local files, without links.')
-        raw = stream.read(MAX_JSON_BYTES + 1)
-    if len(raw) > MAX_JSON_BYTES:
+        raw = stream.read(max_bytes + 1)
+    if len(raw) > max_bytes:
         raise ValueError('State grew beyond its JSON budget.')
     return json.loads(raw.decode('utf-8'), object_pairs_hook=_unique,
                       parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Non-finite state number.')))
@@ -182,6 +184,78 @@ def require_completed(result):
     if result['status'] != 'completed':
         raise RuntimeError(result.get('last_error') or 'Transcription did not complete every requested export; review remaining inputs.')
     return result
+
+
+# Executed inside the already-selected child interpreter. Both supplied-worker
+# entry paths reuse this status-only Windows compatibility layer; it installs
+# no audit policy and re-emits os.rename to any hooks already present.
+_STATUS_REPLACE_BOOTSTRAP = r'''if os.name == 'nt':
+    import ctypes, msvcrt, stat
+    from ctypes import wintypes
+    _kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    _create = _kernel.CreateFileW
+    _create.argtypes = (wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                       ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE)
+    _create.restype = wintypes.HANDLE
+    _close = _kernel.CloseHandle
+    _close.argtypes, _close.restype = (wintypes.HANDLE,), wintypes.BOOL
+    _rename = _kernel.SetFileInformationByHandle
+    _rename.argtypes = (wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD)
+    _rename.restype = wintypes.BOOL
+    class _RenameInfo(ctypes.Structure):
+        _fields_ = [('Flags', wintypes.DWORD), ('RootDirectory', wintypes.HANDLE),
+                    ('FileNameLength', wintypes.DWORD), ('FileName', wintypes.WCHAR * 1)]
+    _original_replace = os.replace
+    def _status_replace(src, dst, *, src_dir_fd=None, dst_dir_fd=None):
+        try:
+            return _original_replace(src, dst, src_dir_fd=src_dir_fd, dst_dir_fd=dst_dir_fd)
+        except PermissionError as exc:
+            # MoveFileExW cannot replace an open destination even when the host
+            # shares delete access. Keep ordinary os.replace for every other
+            # path; only this live status needs Windows POSIX rename semantics.
+            if (getattr(exc, 'winerror', None) not in (5, 32)
+                    or src_dir_fd is not None or dst_dir_fd is not None):
+                raise
+            source = pathlib.Path(os.fsdecode(src)).absolute()
+            destination = pathlib.Path(os.fsdecode(dst)).absolute()
+            if destination != job / 'job_status.json' or source.parent != job:
+                raise
+            for candidate in (source, destination):
+                info = candidate.lstat()
+                if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1
+                        or getattr(info, 'st_file_attributes', 0) & 0x400):
+                    raise PermissionError('Live status publication requires regular private job files.')
+            # Native calls do not emit os.rename. Recheck all installed audit
+            # hooks immediately before acquiring the source handle.
+            sys.audit('os.rename', src, dst, -1, -1)
+            # DELETE | FILE_READ_ATTRIBUTES, share read/write/delete, and open
+            # the final reparse point itself for the descriptor guard below.
+            handle = _create(str(source), 0x00010080, 0x7, None, 3, 0x00200080, None)
+            if handle == ctypes.c_void_p(-1).value:
+                raise ctypes.WinError(ctypes.get_last_error())
+            try:
+                descriptor = msvcrt.open_osfhandle(handle, os.O_RDONLY | os.O_NOINHERIT)
+            except BaseException:
+                _close(handle)
+                raise
+            try:
+                info = os.fstat(descriptor)
+                if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1
+                        or getattr(info, 'st_file_attributes', 0) & 0x400):
+                    raise PermissionError('Live status source changed to a nonregular file.')
+                name = str(destination).encode('utf-16-le')
+                buffer = ctypes.create_string_buffer(ctypes.sizeof(_RenameInfo) + len(name))
+                record = _RenameInfo.from_buffer(buffer)
+                record.Flags, record.RootDirectory, record.FileNameLength = 0x3, None, len(name)
+                ctypes.memmove(ctypes.addressof(buffer) + _RenameInfo.FileName.offset, name, len(name))
+                # FileRenameInfoEx: replace existing + POSIX semantics retains
+                # the old host snapshot while new opens see the new status.
+                if not _rename(handle, 22, buffer, ctypes.sizeof(buffer)):
+                    raise ctypes.WinError(ctypes.get_last_error())
+            finally:
+                os.close(descriptor)
+    os.replace = _status_replace
+'''
 
 
 _SITE_BOOTSTRAP = r'''

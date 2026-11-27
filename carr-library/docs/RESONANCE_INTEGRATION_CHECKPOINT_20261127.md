@@ -3,7 +3,7 @@
 ## Current composition and evidence boundaries
 
 This continuation reconciles the owner branch through
-`2f011f8999eed0ecb2fdbfe987b3364c832b4f85` with the supplied-worker profiles,
+`8a8249342e5b48f67d83cd957b3c33bf752a7ce3` with the supplied-worker profiles,
 passive backup validation, request-bound import publication recovery and the
 single shared native progress controller. Component source review is complete;
 the composed Windows and installed-bundle gates must run against the published
@@ -16,6 +16,13 @@ The selected implementation includes:
   revisions and bounded file/folder intake.
 - Typed passive backup validation for both profiles, including saved partial
   edits after resume/Stop, without reading or executing external models.
+- The same native entrypoint and CLI now explicitly select the library-wide
+  supplied V43 protocol, preserving its seventeen settings, immutable definitions,
+  pause/resume/stop, verified reading copies and separate typed backup namespace.
+  Existing workspace jobs keep their original identities and scope.
+- New receipt-profile runs hash the complete selected model before launch, pass
+  the exact frozen identity to the supplied adapter and require that identity in
+  every accepted receipt. Historical saved results remain passively readable.
 - One native `OperationProgress` controller and notification worker. The
   `progress_view` compatibility name aliases that same object and the shared
   hub remains stable when the library root changes.
@@ -30,6 +37,12 @@ The selected implementation includes:
 - Native snapshot confirmation retains real owned-window/UIA/receipt checks
   through the successor password dialog; OCR keeps strict model identifiers
   while accepting the native Windows report's script separators.
+- A bounded native TaskDialog answer handles the verified production confirmation
+  when Windows exposes no UIA button. It still requires exact ownership and
+  observes actual closure before allowing the successor dialog.
+- Portable OCR inventory enumeration now fails on unreadable directories and
+  bounds both files and empty directories, with a cancellation/deadline check
+  before every entry. Verified model packs and native OCR behavior are retained.
 - Windows audio input hashing/copying holds a read-only sharing handle so an
   in-place writer cannot evade detection through timestamp coincidence. All
   existing regular-file/reparse/identity/resource guards remain.
@@ -45,9 +58,10 @@ The selected implementation includes:
   deadlines.
 
 The final workflow preserves the preceding selectors and currently requires
-227 unique source suites, 79 installed contents selectors plus the original
+232 unique source suites, 84 installed contents selectors plus the original
 14 positional installed suites, the original native gates, the 13-check
-transcription protocol probe and the 44-check shared-progress probe. These
+workspace transcription probe, the 39-check supplied-profile probe and the
+44-check shared-progress probe. These
 are required gates, not counts of completed acceptance tests.
 
 Recovered local execution completed 173 focused cases plus 25 subtests for
@@ -63,6 +77,47 @@ acceptance verdict. The exact audio-boundary component also passed 68 focused
 Linux cases. The final PR159 current-host port was independently reviewed;
 its new virtual-environment, publication-race and held-status-reader cases
 require the new composed Windows run.
+
+## Current composed portable verification
+
+The new supplied-profile backend passed 223 cases across receipt validation,
+supervision and both backup namespaces. After the shared Windows status startup
+and explicit UI/CLI routing were composed, all 91 supervisor/UI/CLI cases passed.
+The current native snapshot confirmation policy suite passed 102 cases.
+
+The receipt-model binding passed its 83-case bridge suite, all 35 current-host
+cases and all 42 workspace backup cases. Two cross-profile fixtures initially
+lacked the newly required vocabulary file; adding that nonempty inert fixture
+left every assertion intact, and the complete 39-case V5 suite then passed.
+The actual supplied private receipt adapter passed all 22 of its own checks
+against this host, using its controlled decoder and synthetic model bytes.
+The original private source was preserved and was not included in this repository.
+
+The observed backup/audio/database fixture corrections passed all 46 cases.
+Portable OCR, including the new enumeration checks and real local Tesseract
+fixtures, passed all 45 cases. These component selections overlap and must not
+be summed into a unique acceptance count. Model accuracy, real weights, Windows
+execution of the private worker and NVDA listening remain separate evidence.
+
+## Exact 2274270 Windows checkpoint
+
+The immutable acceptance source was
+`2274270c790b2e9574026be5115b282babe51d51`, tree
+`8bca8a7dd1ef562aca639eb739f78b9d180fe224`. Its four push workflows ran on
+`carr/v3-acceptance-d3a-r2-20261127`; their findings prompted the corrections in
+the current composition.
+
+| Workflow | Observed result | Current correction or limit |
+| --- | --- | --- |
+| Keyboard/recovery, run 45938490473, job 140307099400 | 270 strict source cases; installed Main 35, Reader 23, evidence draft 15 and Save All 27 checks passed; native measured progress passed | Exact checkpoint PASS; includes the disposed-owner timer regression |
+| Audio, run 45938490502 | 687 passing cases, four failures, seven explicit platform/runtime skips and 22 subtests; native 16 checks and 1/3/10-hour synthetic PCM processing passed | Two backup guard fixtures now cover both copy and final verification; two mutation fixtures read WAV metadata before opening the writer |
+| Bibliography, run 45938490505 | All 28 suites completed within the deadline; 1,016 passing and two failing cases, zero skips; native citation 108 checks passed | The two real replay-race fixtures now open the current database schema instead of requesting historical schema 4 |
+| Snapshot, run 45938490533 | 301 source and 154 isolated installed cases passed; native confirmation exposed no UIA buttons and failed | The bounded production TaskDialog fallback requires a new Windows result |
+
+The main integration job was still running when this source checkpoint was
+written. No full-workflow PASS is inferred from its successful earlier steps.
+The new composition requires its own exact-head runs; the preceding results are
+retained as defect evidence, not transferred acceptance.
 
 ## Exact preceding CBA Windows result
 

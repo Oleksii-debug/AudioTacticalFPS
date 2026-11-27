@@ -16,12 +16,13 @@ import time
 from uuid import uuid4
 
 from .transcription_host import (AudioBudget, AudioCancelled, AudioError, finite,
-                                 read_worker_status, run_process)
+                                 read_worker_status, run_process, _STATUS_REPLACE_BOOTSTRAP)
 from .durable_state import (atomic_bytes, atomic_json, digest_file, local_path,
                             read_json, regular, state_lock, sync_directory)
 from .ingest.writer_guard import exclusive_writer
 from .backup_files import portable_relative as relative_name
 from .file_publication import publish_directory_no_replace
+from .transcription_contract import model_inventory
 
 MAX_FILES = 64
 MAX_SOURCE_BYTES = 8 * 1024**3
@@ -328,7 +329,7 @@ def _word_subtitles(words, *, vtt):
 # Installed model code is explicitly trusted local code. These guards constrain
 # Python-visible network, child commands and writes; they are not an OS sandbox
 # for arbitrary native libraries. The worker must also require offline assets.
-_WORKER_BOOTSTRAP = r'''
+_WORKER_BOOTSTRAP = (r'''
 import os, pathlib, runpy, sys
 job = pathlib.Path(sys.argv[2]).resolve(strict=True)
 worker = pathlib.Path(sys.argv[1]).resolve(strict=True)
@@ -356,77 +357,11 @@ def audit(event, args):
         writable(args[1])
 sys.dont_write_bytecode = True
 sys.addaudithook(audit)
-if os.name == 'nt':
-    import ctypes, msvcrt, stat
-    from ctypes import wintypes
-    _kernel = ctypes.WinDLL('kernel32', use_last_error=True)
-    _create = _kernel.CreateFileW
-    _create.argtypes = (wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
-                       ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE)
-    _create.restype = wintypes.HANDLE
-    _close = _kernel.CloseHandle
-    _close.argtypes, _close.restype = (wintypes.HANDLE,), wintypes.BOOL
-    _rename = _kernel.SetFileInformationByHandle
-    _rename.argtypes = (wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD)
-    _rename.restype = wintypes.BOOL
-    class _RenameInfo(ctypes.Structure):
-        _fields_ = [('Flags', wintypes.DWORD), ('RootDirectory', wintypes.HANDLE),
-                    ('FileNameLength', wintypes.DWORD), ('FileName', wintypes.WCHAR * 1)]
-    _original_replace = os.replace
-    def _status_replace(src, dst, *, src_dir_fd=None, dst_dir_fd=None):
-        try:
-            return _original_replace(src, dst, src_dir_fd=src_dir_fd, dst_dir_fd=dst_dir_fd)
-        except PermissionError as exc:
-            # MoveFileExW cannot replace an open destination even when the host
-            # shares delete access. Keep ordinary os.replace for every other
-            # path; only this live status needs Windows POSIX rename semantics.
-            if (getattr(exc, 'winerror', None) not in (5, 32)
-                    or src_dir_fd is not None or dst_dir_fd is not None):
-                raise
-            source = pathlib.Path(os.fsdecode(src)).absolute()
-            destination = pathlib.Path(os.fsdecode(dst)).absolute()
-            if destination != job / 'job_status.json' or source.parent != job:
-                raise
-            for candidate in (source, destination):
-                info = candidate.lstat()
-                if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1
-                        or getattr(info, 'st_file_attributes', 0) & 0x400):
-                    raise PermissionError('Live status publication requires regular private job files.')
-            # Native calls do not emit os.rename. Recheck all installed audit
-            # hooks immediately before acquiring the source handle.
-            sys.audit('os.rename', src, dst, -1, -1)
-            # DELETE | FILE_READ_ATTRIBUTES, share read/write/delete, and open
-            # the final reparse point itself for the descriptor guard below.
-            handle = _create(str(source), 0x00010080, 0x7, None, 3, 0x00200080, None)
-            if handle == ctypes.c_void_p(-1).value:
-                raise ctypes.WinError(ctypes.get_last_error())
-            try:
-                descriptor = msvcrt.open_osfhandle(handle, os.O_RDONLY | os.O_NOINHERIT)
-            except BaseException:
-                _close(handle)
-                raise
-            try:
-                info = os.fstat(descriptor)
-                if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1
-                        or getattr(info, 'st_file_attributes', 0) & 0x400):
-                    raise PermissionError('Live status source changed to a nonregular file.')
-                name = str(destination).encode('utf-16-le')
-                buffer = ctypes.create_string_buffer(ctypes.sizeof(_RenameInfo) + len(name))
-                record = _RenameInfo.from_buffer(buffer)
-                record.Flags, record.RootDirectory, record.FileNameLength = 0x3, None, len(name)
-                ctypes.memmove(ctypes.addressof(buffer) + _RenameInfo.FileName.offset, name, len(name))
-                # FileRenameInfoEx: replace existing + POSIX semantics retains
-                # the old host snapshot while new opens see the new status.
-                if not _rename(handle, 22, buffer, ctypes.sizeof(buffer)):
-                    raise ctypes.WinError(ctypes.get_last_error())
-            finally:
-                os.close(descriptor)
-    os.replace = _status_replace
-if len(sys.argv) > 3 and sys.argv[3] == 'whisper-v5-manifest-v1':
+''' + _STATUS_REPLACE_BOOTSTRAP + r'''if len(sys.argv) > 3 and sys.argv[3] == 'whisper-v5-manifest-v1':
     sys.path.insert(0, str(worker.parent))
 sys.argv = [str(worker), '--job-dir', str(job)]
 runpy.run_path(str(worker), run_name='__main__')
-'''
+''')
 
 
 class TranscriptionService:
@@ -888,6 +823,10 @@ class TranscriptionService:
                     or identity['runtime'].get('executable', {}).get('sha256') != context['python_sha256']
                     or identity['model'].get('selected') != job['settings']['model']):
                 raise ValueError('A transcription receipt belongs to another engine or model.')
+            if job['protocol'] == RECEIPTS_PROTOCOL and 'model_identity' in context:
+                _identity(context['model_identity'])
+                if identity['model'] != context['model_identity']:
+                    raise ValueError('Recognition model bytes differ from the verified selected local model.')
             if job['protocol'] == V5_PROTOCOL:
                 effective = next((item for item in job.get('effective_runs', ()) if item['source'] == name), None)
                 if (identity.get('protocol') != V5_PROTOCOL or identity.get('host_run_id') != context['host_run_id']
@@ -950,6 +889,8 @@ class TranscriptionService:
             config = self.configuration(verify=True)
             if config['protocol'] != job['protocol']:
                 raise ValueError('This saved job requires its original worker protocol; configure that profile before resuming.')
+            model = (model_inventory(config['models_dir'], job['settings'], cancelled=cancelled)
+                     if job['protocol'] == RECEIPTS_PROTOCOL else None)
             self._sources(path, job, cancelled)
             for name in ('stop.flag', 'pause.flag', 'settings_live.json'):
                 candidate = path / name
@@ -963,6 +904,8 @@ class TranscriptionService:
             context = {'input_root': str((path / 'input').resolve()),
                        'worker_sha256': config['worker_sha256'],
                        'python_sha256': config['python_sha256']}
+            if job['protocol'] == RECEIPTS_PROTOCOL:
+                context['model_identity'] = model
             worker_settings, results_root = job['settings'], path / 'results'
             if job['protocol'] == V5_PROTOCOL:
                 model = local_path(config['models_dir'], exists=True)
@@ -984,10 +927,13 @@ class TranscriptionService:
             self._save(path, job)
             for name in ('results', 'temporary', 'runtime-home'):
                 (path / name).mkdir(exist_ok=True, mode=0o700)
-            atomic_json(path / 'job_config.json', {
+            worker_config = {
                 'job_name': job['title'], 'folders': [context['input_root']],
                 'results_root': str(results_root), 'models_dir': config['models_dir'],
-                'settings': worker_settings}, replace=True)
+                'settings': worker_settings}
+            if job['protocol'] == RECEIPTS_PROTOCOL:
+                worker_config['expected_model_identity'] = model
+            atomic_json(path / 'job_config.json', worker_config, replace=True)
             environment = {key: os.environ[key] for key in (
                 'SystemRoot', 'SYSTEMROOT', 'WINDIR', 'COMSPEC', 'LANG', 'LC_ALL',
                 'NUMBER_OF_PROCESSORS', 'PROCESSOR_ARCHITECTURE') if key in os.environ}
