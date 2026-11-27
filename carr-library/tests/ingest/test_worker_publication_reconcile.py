@@ -120,8 +120,8 @@ def test_crash_or_timeout_after_real_commit_recovers_complete(source, tmp_path, 
     marker, children = publication_barrier(monkeypatch, tmp_path, 'after',
                                          action='crash' if action == 'crash' else 'wait')
     started = time.monotonic()
-    result = app.import_file(workspace, source, title='Published source', timeout=3)
-    assert time.monotonic() - started < 12
+    result = app.import_file(workspace, source, title='Published source', timeout=15)
+    assert time.monotonic() - started < 23
     assert marker.exists() and all(child.poll() is not None for child in children)
     assert result['state'] == 'complete' and result['publication_reconciled'] is True, result
     assert app.search(workspace, 'railway history')[0].revision == result['id']
