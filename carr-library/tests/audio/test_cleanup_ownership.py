@@ -15,7 +15,7 @@ import pytest
 from carr_library.audio.cleanup import CleanupOwner, retained_state_lock
 from carr_library.audio.models import AudioBudget, AudioCleanupPending, AudioError
 from carr_library.audio import process
-from carr_library.audio.windows_job import JobProcess, _Accounting, _ProcessInfo, DWORD
+from carr_library.audio.windows_job import JobProcess, _ProcessIds, _ProcessInfo, DWORD
 
 
 def execute(code, **options):
@@ -54,15 +54,15 @@ def test_ambient_ffreport_is_removed_without_mutating_selected_environment():
 
 def test_runner_retains_failed_cleanup_and_delivers_quiescence_callback(monkeypatch):
     permitted = threading.Event()
-    target, name = (JobProcess, 'close') if os.name == 'nt' else (process, '_terminate')
+    target, name = (JobProcess, 'close') if os.name == 'nt' else (process, '_wait_posix_group')
     actual = getattr(target, name)
     attempts = []
 
-    def fail_until_released(child):
-        attempts.append(child)
+    def fail_until_released(*args, **kwargs):
+        attempts.append(args[0])
         if not permitted.is_set():
             raise OSError('injected native cleanup failure')
-        actual(child)
+        return actual(*args, **kwargs)
 
     monkeypatch.setattr(target, name, fail_until_released)
     notified = threading.Event()
@@ -138,31 +138,47 @@ def test_renderer_stage_survives_uncertain_native_cleanup_until_owned_exit(tmp_p
 
 
 class Kernel:
+    """Finite exact-root fixture for the current retained member-handle owner."""
     def __init__(self, failure):
         self.failure, self.active, self.closed = failure, 1, []
 
+    def GetProcessId(self, handle):
+        assert handle == 101
+        return 701
+
     def QueryInformationJobObject(self, job, kind, pointer, size, returned):
+        assert job == 202 and kind == 3
         if self.failure == 'query':
             return 0
-        ctypes.cast(pointer, ctypes.POINTER(_Accounting)).contents.ActiveProcesses = self.active
+        value = ctypes.cast(pointer, ctypes.POINTER(_ProcessIds)).contents
+        value.assigned = value.count = self.active
+        if self.active:
+            value.identities[0] = 701
         return 1
 
-    def TerminateJobObject(self, job, code):
+    def TerminateProcess(self, handle, code):
+        assert handle == 101 and code == 1
         if self.failure == 'terminate':
             return 0
         self.active = 0
         return 1
 
+    def TerminateJobObject(self, *args):
+        pytest.fail('A bulk stop cannot erase membership before exact-handle capture.')
+
     def WaitForSingleObject(self, handle, timeout):
-        return 0x102 if self.failure == 'wait' else 0
+        assert handle == 101
+        return 0x102 if self.failure == 'wait' or self.active else 0
 
     def GetExitCodeProcess(self, handle, pointer):
+        assert handle == 101
         if self.failure == 'exit-code':
             return 0
         ctypes.cast(pointer, ctypes.POINTER(DWORD)).contents.value = 0
         return 1
 
     def CloseHandle(self, handle):
+        assert handle in (101, 202)
         if self.failure == ('close-root' if handle == 101 else 'close-job'):
             return 0
         self.closed.append(handle)
@@ -178,6 +194,7 @@ def test_failed_native_cleanup_keeps_unconfirmed_job_handle(monkeypatch, failure
     child._api, child._process, child._job = Kernel(failure), _ProcessInfo(), 202
     child._process.hProcess = 101
     child._cleanup_lock = threading.Lock()
+    child._member_handles = {}
     with pytest.raises((OSError, subprocess.TimeoutExpired)):
         child.close()
     assert child._job == 202 and 202 not in child._api.closed

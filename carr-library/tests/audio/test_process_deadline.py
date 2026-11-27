@@ -129,7 +129,8 @@ def test_timely_real_root_is_not_reclassified_by_slow_post_exit_validation(tmp_p
     selected.write_bytes(b'Exact selected bytes\n' * 65536)
     budget = 2
     validate, calls, verified, expected = _slow_post_exit_verifier(native, selected, budget)
-    result = _execute("print('actual completed protocol')", budget=budget, cancelled=validate)
+    result = _execute("import sys; sys.stdout.buffer.write(b'actual completed protocol\\n'); "
+                      "sys.stdout.buffer.flush()", budget=budget, cancelled=validate)
     assert result.returncode == 0 and result.stdout == b'actual completed protocol\n'
     assert result.elapsed > budget and len(calls) >= 2
     assert verified == [expected] and sha256(selected.read_bytes()).hexdigest() == expected
