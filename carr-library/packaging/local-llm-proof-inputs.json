@@ -36,13 +36,13 @@
     }
   ],
   "product_source_sha256": {
-    "assistant/llm.py": "2c4177af9977e2c7adad381e7b12cc44b28d44f75b50c48832135d6a6298f1a1",
+    "assistant/llm.py": "7b41efb0b2c813f9cd8a4df75f47e27e3467c0e60fc597fce5ef031c46fc2ff4",
     "assistant/models.py": "5a0521b5dcfef5bb9b57e01fec1e453b9dbee6db7883fee2ccd0178944d4ca1b",
     "assistant/service.py": "3b354f01d06396359b98233a59255a47530531c7d5d9d946f191b5d92e7928a7",
     "providers.py": "d41a3a484440404f838c29d70eae11047978de2e4adc66586ad1970ee940cc6f"
   },
   "equivalent_reviewed_product_commit": "bbd7f662162c139bf4d4cf06f32257c141b9884a",
-  "equivalence_scope": "The proposal SYSTEM prompt is clarified in this proof; the parser and remaining three hashed permission/gateway modules are byte-identical to bbd7. Not a whole-build qualification.",
+  "equivalence_scope": "The product proposal SYSTEM documents neutral tool meanings and actual argument types; parser and remaining three hashed permission/gateway modules are byte-identical to bbd7. Not a whole-build qualification.",
   "generation_grammar": {
     "path": "packaging/local-llm-proof-json.gbnf",
     "sha256": "1a3e3469892957861029adcd24ad0c886b778a942dd4a18cc146238ad56474dd",

@@ -49,19 +49,27 @@ The current candidate therefore reuses unmodified upstream
 without response rewriting, parser relaxation, seed shopping or answer
 constraints. Exact source/grammar identities are in the input manifest.
 All proposal acceptance, permission refusal, cancellation and no-send
-assertions are retained. This configuration change still needs its actual run.
+assertions are retained. Actual run 45945159039 confirmed that this configuration
+returns strict JSON, but the small model chose an unrequested library-creation
+step for a list request. The existing caller Scope refused it. This semantic
+failure remains evidence of an unqualified candidate, not a positive result.
 
 ## Acceptance
 
-The product's existing `assistant.llm.SYSTEM` instruction now explicitly asks
-for raw JSON without Markdown or reasoning, a string schema identifier, a string
-summary and an array of steps containing a string tool and object arguments.
-It supplies no expected tool or argument. The parser, tool validator, caller
-scope, gateway and approval logic are unchanged. The pinned source hash binds
-the actual inference to this product prompt; synthetic user instructions contain
-only their requested operations. A previous actual run returned fenced JSON with
-an incorrectly nested schema and was correctly rejected by the product parser.
-This narrow correction benefits the real proposal workflow as well as the probe.
+The product's existing `assistant.llm.SYSTEM` now explicitly describes the
+strict JSON shape, the purpose of every allowed tool, and every argument name
+and type accepted by the real `AssistantService._check_arguments`. It requires
+only explicitly requested operations and the fewest necessary steps. Tool
+descriptions are complete and neutral; no expected test answer is injected.
+The actual schema source is
+[service.py at bbd7](https://github.com/Oleksii-debug/AudioTacticalFPS/blob/bbd7f662162c139bf4d4cf06f32257c141b9884a/carr-library/src/carr_library/assistant/service.py).
+
+This addresses the observed semantic failure as a real product correction.
+The parser, tool validator, caller scope, gateway and approval logic remain
+unchanged. The pinned source hash binds actual inference to this product prompt;
+synthetic user instructions contain only their requested operations. The fixed
+sampling seed, generic JSON grammar, all four semantic/boundary cases and
+no-execution controls are unchanged. A new actual run is still required.
 
 
 The probe requires actual English and Ukrainian model proposals to pass the
