@@ -14,6 +14,28 @@ from carr_library.library_backup import create_backup, restore_backup
 NAME = 'state/audio/engines.json'
 
 
+_COLLECTION_MODELS = frozenset({
+    ('.speech.tabs', 'carr_library'),
+    ('.speech.playlist', 'carr_library'),
+})
+
+
+def guard_collection_imports(monkeypatch, forbidden):
+    """Allow the two typed collection validators, never optional engine imports."""
+    actual_import = backup_sidecars.import_module
+    observed = []
+
+    def checked(name, package=None):
+        identity = name, package
+        if identity not in _COLLECTION_MODELS:
+            return forbidden(name, package)
+        observed.append(identity)
+        return actual_import(name, package)
+
+    monkeypatch.setattr(backup_sidecars, 'import_module', checked)
+    return observed
+
+
 def configuration():
     # Deliberately nonexistent Windows/POSIX references, never executables or
     # model fixtures. Restoring settings must not inspect the other machine.
@@ -80,7 +102,7 @@ def test_configured_engines_roundtrip_without_importing_or_running_engines(tmp_p
     def forbidden(*args, **kwargs):
         pytest.fail('A passive settings backup must not import or execute an optional engine.')
 
-    monkeypatch.setattr(backup_sidecars, 'import_module', forbidden)
+    collection_imports = guard_collection_imports(monkeypatch, forbidden)
     monkeypatch.setattr(subprocess, 'Popen', forbidden)
     folder = tmp_path / 'backup'
     checksum = create_backup(app, folder)
@@ -94,6 +116,7 @@ def test_configured_engines_roundtrip_without_importing_or_running_engines(tmp_p
     assert json.loads((target / NAME).read_bytes()) == configuration()
     assert LibraryApp(target).edition_metadata(workspace, 'edition').title == 'Source remains intact'
     assert snapshot_files(folder) == before
+    assert set(collection_imports) == _COLLECTION_MODELS
 
 
 def test_legacy_generic_helper_settings_keep_exact_bytes_and_defaults(tmp_path):
@@ -218,7 +241,7 @@ def test_pinned_python_helper_roundtrips_passively(tmp_path, monkeypatch, script
     def forbidden(*args, **kwargs):
         pytest.fail('Backup must not import or execute the externally installed bridge.')
 
-    monkeypatch.setattr(backup_sidecars, 'import_module', forbidden)
+    collection_imports = guard_collection_imports(monkeypatch, forbidden)
     monkeypatch.setattr(subprocess, 'Popen', forbidden)
     folder = tmp_path / 'backup'
     checksum = create_backup(app, folder)
@@ -227,6 +250,7 @@ def test_pinned_python_helper_roundtrips_passively(tmp_path, monkeypatch, script
     assert (restored / NAME).read_bytes() == raw
     assert (app.root / NAME).read_bytes() == raw
     assert snapshot_files(folder) == before
+    assert set(collection_imports) == _COLLECTION_MODELS
 
 
 @pytest.mark.parametrize('fields', [
@@ -273,3 +297,22 @@ def test_resigned_pinned_helper_restore_rejects_missing_script_identity(tmp_path
     assert snapshot_files(folder) == before
     assert (app.root / NAME).read_bytes() == original
     assert not list(tmp_path.glob('.carr-library-restore-*'))
+
+
+def test_collection_import_allowlist_keeps_runtime_and_process_sentinels_fatal(monkeypatch):
+    def forbidden(*args, **kwargs):
+        pytest.fail('A passive backup must not import an optional engine or start a process.')
+
+    collection_imports = guard_collection_imports(monkeypatch, forbidden)
+    monkeypatch.setattr(subprocess, 'Popen', forbidden)
+    for identity in (
+            ('.speech.runtime', 'carr_library'),
+            ('.audio.music', 'carr_library'),
+            ('faster_whisper', None),
+            ('.speech.tabs', 'unrelated_package'),
+            ('.speech.tabs.extra', 'carr_library')):
+        with pytest.raises(pytest.fail.Exception, match='must not import'):
+            backup_sidecars.import_module(*identity)
+    with pytest.raises(pytest.fail.Exception, match='must not import'):
+        subprocess.Popen(['/synthetic-uninstalled-engines/must-not-start'])
+    assert collection_imports == []
