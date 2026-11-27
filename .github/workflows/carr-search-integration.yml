@@ -1,0 +1,63 @@
+name: CARR composed search integration
+on:
+  push:
+    branches: [carr/search-reconcile-ce034-20261126]
+    paths:
+      - carr-library/**
+      - .github/workflows/carr-search-integration.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: carr-composed-search-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  composed-search:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install the exact composed source and test dependencies
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git rev-parse HEAD 'HEAD^{tree}'
+          python -m pip install '.[test]'
+          python -m pip check
+      - name: Verify the search graft and retained CLI and semantic-cache contracts
+        timeout-minutes: 8
+        run: |
+          set -euo pipefail
+          python -m compileall -q src bootstrap tests/ui/federated_native_smoke.py
+          python scripts/ci_check.py \
+            tests/search/test_federated_advanced.py \
+            tests/search/test_federated.py \
+            tests/ui/test_federated_search.py \
+            tests/ui/test_federated_labels.py \
+            tests/ui/test_desktop_query_jobs.py \
+            tests/ui/test_desktop_result_modes.py \
+            tests/e2e/test_research_search_cli.py \
+            tests/search/test_literal_long_source.py \
+            tests/search/test_literal_unicode_memory.py \
+            tests/search/test_advanced_search.py \
+            tests/e2e/test_result_presentation.py \
+            tests/e2e/test_audio_cli.py \
+            tests/acquisition/test_acquisition_cli.py \
+            tests/search/test_semantic_cache.py
+      # Source qualification supplements the unchanged installed/native Windows gates.

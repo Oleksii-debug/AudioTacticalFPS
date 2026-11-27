@@ -65,7 +65,7 @@ def test_grouped_explicit_selection_dedup_caps_and_independent_host_refs(researc
     assert reopened.evidence(one, t1) == (saved,)
 
 
-@pytest.mark.parametrize('mode', ['phrase', 'word', 'terms', 'thematic', 'semantic'])
+@pytest.mark.parametrize('mode', ['phrase', 'word', 'terms', 'thematic', 'semantic', 'advanced'])
 def test_existing_modes_metadata_filters_and_empty_selected_group(research, mode):
     app, one, two, c1, c2, *_ = research
     controller = FederatedSearch(app)
@@ -324,7 +324,7 @@ def test_cancelled_search_never_initializes_a_second_database_or_reads(research,
     assert controller.current is previous
 
 
-@pytest.mark.parametrize('mode', ['phrase', 'word', 'terms', 'thematic', 'semantic'])
+@pytest.mark.parametrize('mode', ['phrase', 'word', 'terms', 'thematic', 'semantic', 'advanced'])
 @pytest.mark.parametrize('query', [None, True, [], '', ' \t\r\n', 'x' * 501,
                                   'history\x00', 'history\x7f', 'history\ud800'])
 def test_malformed_query_rejected_even_for_empty_corpus_before_host_calls(tmp_path, monkeypatch, mode, query):

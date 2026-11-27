@@ -144,6 +144,8 @@ class DesktopSearchPanel(PagedSearchPanel):
             control.Bind(wx.EVT_TEXT, self.on_options_changed)
 
     def on_build_query(self, event=None):
+        if getattr(self.frame, '_closing', False):
+            return
         if self.frame.working:
             self.frame.report('An operation is already running. Wait or choose Cancel current operation.')
             return
@@ -153,16 +155,25 @@ class DesktopSearchPanel(PagedSearchPanel):
             self.query.SetFocus()
             return
         from carr_library.ui.advanced_search import show_query_builder
-        query = show_query_builder(self, current_query=self.query.GetValue())
+        current, epoch = self.query.GetValue(), self._context_epoch
+        active = getattr(self.frame, 'active', None)
+        query = show_query_builder(self, current_query=current)
+        if getattr(self.frame, '_closing', False):
+            return
+        if (self.model.workspace != workspace or self.frame.library is not self.bound_library
+                or getattr(self.frame, 'active', None) != active):
+            self.frame.report('The library changed. Open its Search section again.')
+            return
         if query is None:
             self.query.SetFocus()
             return
-        if self.model.workspace != workspace or self.frame.library is not self.bound_library:
-            self.frame.report('The library changed. Open its Search section again.')
+        if (self._context_epoch != epoch or self.query.GetValue() != current
+                or self.frame.working or getattr(self.frame, '_closing', False)):
+            self.frame.report('Search options changed while the query builder was open. Open it again.')
             return
+        self.on_options_changed()
         self.retrieval.SetSelection(self.MODES.index('advanced'))
         self.query.ChangeValue(query)
-        self.on_options_changed()
         self.status.ChangeValue('Advanced query ready. Press Enter in the query field to search the selected library.')
         self.query.SetFocus()
 
@@ -194,6 +205,8 @@ class DesktopSearchPanel(PagedSearchPanel):
                                 'The selected collection is no longer available. Choose a collection and search again.')
 
     def on_search(self, event):
+        if getattr(self.frame, '_closing', False):
+            return
         if self.frame.working:
             self.frame.report('An operation is already running. Wait or choose Cancel current operation.')
             return
@@ -203,6 +216,12 @@ class DesktopSearchPanel(PagedSearchPanel):
             self.status.ChangeValue('Select a library and enter a query.')
             self.query.SetFocus()
             return
+        library, active = self.frame.library, getattr(self.frame, 'active', None)
+        if library is not self.bound_library or (active is not None
+                and active != (workspace, self.bound_topic)):
+            self.frame.report('The library changed. Open its Search section again.')
+            return
+        data_identity = library.root, library.database, library.assets_dir, library.assets.root
         retrieval = self.retrieval.GetSelection()
         if not 0 <= retrieval < len(self.MODES):
             self.status.ChangeValue('Choose a search mode first.')
@@ -239,8 +258,17 @@ class DesktopSearchPanel(PagedSearchPanel):
         self.details.ChangeValue('')
         notes = []
 
+        def current_scope():
+            return (self._context_epoch == epoch and self.model.workspace == workspace
+                    and self.frame.library is library and getattr(self.frame, 'active', None) == active
+                    and not getattr(self.frame, '_closing', False)
+                    and (library.root, library.database, library.assets_dir, library.assets.root) == data_identity)
+
+        def stopped():
+            return self.frame.cancel_event.is_set() or not current_scope()
+
         def done(rows):
-            if self._context_epoch != epoch or self.model.workspace != workspace:
+            if stopped():
                 return
             self.results = {r.ref: r for r in rows}
             self.model.replace(workspace, (Hit(r.workspace, r.ref, r.revision, r.title,
@@ -266,9 +294,13 @@ class DesktopSearchPanel(PagedSearchPanel):
             else:
                 self.status.SetFocus()
 
-        self.frame.run_job('Searching the selected library', lambda: self.frame.library.search(
-            workspace, query, mode=mode, result_mode=result_mode, cancelled=self.frame.cancel_event.is_set,
-            authorized_topic=self.bound_topic, on_status=notes.append, **options), done)
+        def load():
+            if stopped():
+                raise InterruptedError('The search query, library, or data folder changed before searching.')
+            return library.search(workspace, query, mode=mode, result_mode=result_mode,
+                cancelled=stopped, authorized_topic=self.bound_topic, on_status=notes.append, **options)
+
+        self.frame.run_job('Searching the selected library', load, done)
 
     def on_more(self, event):
         if self.frame.working:
@@ -1194,6 +1226,8 @@ class DesktopFrame(WorkspaceFrame):
             'Academic library imports are reviewed before saving. Its exports ask for all active references or selected only; notes are excluded by default.\n'
             'Ctrl+Shift+L opens Library tools: catalog reports, collection bibliography, source inventory and literature-review matrix.\n'
             'Ctrl+Alt+F opens Research Search Center for explicitly selected libraries and source metadata filters.\n'
+            'Its Build advanced query command also uses Ctrl+Alt+Q and keeps checked libraries and filters.\n'
+            'All words and Advanced searches offer Previous and Next result pages; changing options starts a new search.\n'
             'Research, Manage saved topic searches creates, edits, archives or restores searches of quotations and notes in the active topic.\n'
             'Ctrl+Shift+T edits tags for selected evidence. Ctrl+Alt+T finds evidence by a tag in the active topic.\n'
             'Ctrl+Shift+F searches saved quotations and notes across topics in the current library.\n'

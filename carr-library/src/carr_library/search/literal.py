@@ -167,7 +167,8 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
     Other modes have no wildcard/operator syntax. Exact matches share score 1; tie-break is
     edition, segment ordinal, page id, raw offset. Results never cross pages.
     Only active_page rows from PR #21 are accepted; no persistent second index.
-    Scope/offset caps fail explicitly, not silently with incomplete results.
+    Scope caps fail explicitly, not silently with incomplete results. Offset
+    only skips matches in this bounded scope; it never sizes an allocation.
     """
     if not isinstance(workspace, str) or not workspace:
         raise ValueError('explicit workspace required')
@@ -179,7 +180,7 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
         raise ValueError('invalid query')
     if not (type(limit) is int and type(offset) is int and type(timeout) in (int, float)
             and 1 <= limit <= 100
-            and 0 <= offset <= 10000 and 0 < timeout <= 60):
+            and offset >= 0 and 0 < timeout <= 60):
         raise ValueError('invalid search budget')
     q = _fold(query).strip()
     if not q:
