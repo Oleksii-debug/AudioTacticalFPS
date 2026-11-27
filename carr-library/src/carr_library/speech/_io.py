@@ -119,6 +119,7 @@ def new_output(destination, *, cancelled=lambda: False, before_publish=None):
 
     No placeholder is ever published. Filesystems lacking hard-link support
     fail explicitly instead of substituting a race-prone overwrite.
+    An optional validator runs on the flushed staging file before the link.
     """
     check_cancelled(cancelled)
     target = local_file(destination, must_exist=False)
@@ -139,7 +140,7 @@ def new_output(destination, *, cancelled=lambda: False, before_publish=None):
         check_cancelled(cancelled)
         if before_publish is not None:
             before_publish(staged)
-        check_cancelled(cancelled)
+            check_cancelled(cancelled)
         os.link(staged, target)
         # Remove the staging name before readers validate the final inode.
         staged.unlink()
