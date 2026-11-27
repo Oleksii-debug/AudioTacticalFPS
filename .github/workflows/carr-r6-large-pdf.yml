@@ -1,0 +1,282 @@
+name: CARR r6 measured multi-gigabyte PDF
+
+on:
+  push:
+    branches: ['carr/v3-acceptance-*', 'carr/v3-large-pdf-r6-*']
+    paths:
+      - carr-library/**
+      - .github/workflows/carr-r6-large-pdf.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-r6-large-pdf-${{ github.repository }}-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  measured-large-pdf:
+    name: Windows installed package / measured 2049 MiB synthetic PDF
+    runs-on: windows-2022
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      ORT_DISABLE_TELEMETRY: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      HF_HUB_DISABLE_IMPLICIT_TOKEN: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - name: Check out the exact event commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up native x64 CPython
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.11'
+          architecture: x64
+
+      - name: Install the exact package and hash-locked measurement dependencies
+        run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = 'Stop'
+          $environment = Join-Path $env:RUNNER_TEMP ('carr-r6-large-pdf-python-' + [guid]::NewGuid().ToString('N'))
+          if (Test-Path -LiteralPath $environment) { throw 'Use a fresh installed measurement environment.' }
+          python -m venv $environment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $environment 'Scripts/python.exe'
+          "CARR_LARGE_PDF_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          New-Item -ItemType Directory -Path 'ci-results/large-pdf' -ErrorAction Stop | Out-Null
+          git rev-parse HEAD | Set-Content 'ci-results/large-pdf/tested-commit.txt' -Encoding utf8
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git rev-parse 'HEAD^{tree}' | Set-Content 'ci-results/large-pdf/tested-tree.txt' -Encoding utf8
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -I -B -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock -r packaging/windows-sync-test-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -I -B -m pip install --no-deps --no-build-isolation .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Measure the real multi-gigabyte fixture with native outbound blocking
+        timeout-minutes: 18
+        run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = 'Stop'
+          if ($env:OS -cne 'Windows_NT' -or $env:CI -cne 'true') {
+            throw 'This gate requires the disposable native Windows CI VM.'
+          }
+          $python = (Resolve-Path -LiteralPath $env:CARR_LARGE_PDF_PYTHON -ErrorAction Stop).Path
+          $project = (Resolve-Path -LiteralPath '.').Path
+          $evidence = Join-Path $project 'ci-results/large-pdf'
+          $rawReport = Join-Path $evidence 'raw-measurement.json'
+          $stderrLog = Join-Path $evidence 'probe-stderr.log'
+          $validatedReport = Join-Path $evidence 'validated-measurement.json'
+          $finalReport = Join-Path $evidence 'proof.json'
+          $work = Join-Path $env:RUNNER_TEMP ('carr-r6-large-pdf-work-' + [guid]::NewGuid().ToString('N'))
+          if (Test-Path -LiteralPath $work) { throw 'Use a new private measurement directory.' }
+          New-Item -ItemType Directory -Path $work -ErrorAction Stop | Out-Null
+          foreach ($path in @($rawReport, $stderrLog, $validatedReport, $finalReport)) {
+            if (Test-Path -LiteralPath $path) { throw 'Do not reuse a previous measurement receipt.' }
+          }
+          $ruleName = 'CARR-r6-large-pdf-' + [guid]::NewGuid().ToString('N')
+          $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
+          if ($profilesBefore.Count -ne 3 -or
+              @(Compare-Object @('Domain', 'Private', 'Public') @($profilesBefore.Name | Sort-Object)).Count -ne 0) {
+            throw 'Cannot capture all three original Windows Firewall profiles.'
+          }
+          $profilesBefore | ConvertTo-Json -Depth 4 |
+            Set-Content -LiteralPath (Join-Path $evidence 'firewall-before.json') -Encoding utf8
+          function Assert-ActualOutboundBlock {
+            $profiles = @(Get-NetFirewallProfile -ErrorAction Stop)
+            if ($profiles.Count -ne 3 -or
+                @($profiles | Where-Object { [string]($_.Enabled) -ne 'True' }).Count -ne 0) {
+              throw 'All Windows Firewall profiles must remain enabled during measurement.'
+            }
+            $active = @(Get-NetFirewallRule -PolicyStore ActiveStore -Name $ruleName -ErrorAction Stop)
+            if ($active.Count -ne 1 -or [string]($active[0].Enabled) -ne 'True' -or
+                [string]($active[0].Direction) -ne 'Outbound' -or
+                [string]($active[0].Action) -ne 'Block' -or [string]($active[0].Profile) -ne 'Any') {
+              throw 'The exact owned outbound block rule is not active.'
+            }
+            $filters = @($active | Get-NetFirewallApplicationFilter -ErrorAction Stop)
+            if ($filters.Count -ne 1 -or
+                [IO.Path]::GetFullPath($filters[0].Program) -ine [IO.Path]::GetFullPath($python)) {
+              throw 'Active Windows Firewall does not block the exact installed interpreter.'
+            }
+          }
+          $operationError = $null
+          $cleanupErrors = @()
+          $qualification = $null
+          $blockedBefore = $false
+          $blockedAfter = $false
+          try {
+            Set-NetFirewallProfile -Profile Domain, Private, Public -Enabled True -ErrorAction Stop
+            # The exact UUID name is recorded before creation, including partial failure.
+            New-NetFirewallRule -Name $ruleName -DisplayName $ruleName -Direction Outbound -Action Block -Profile Any -Program $python -Enabled True -ErrorAction Stop | Out-Null
+            Assert-ActualOutboundBlock
+            $blockedBefore = $true
+            foreach ($name in @('PYTHONPATH', 'PYTHONHOME', 'CARR_CI_ALLOW_LOOPBACK')) {
+              [Environment]::SetEnvironmentVariable($name, $null, 'Process')
+            }
+            & $python -I -B -X utf8 tests/ingest/streaming_pdf_probe.py $work 2049 1> $rawReport 2> $stderrLog
+            if ($LASTEXITCODE -ne 0) { throw "The actual multi-gigabyte probe failed with exit $LASTEXITCODE." }
+            Assert-ActualOutboundBlock
+            $blockedAfter = $true
+            @'
+          from hashlib import sha256
+          import json
+          import os
+          from pathlib import Path
+          import platform
+          import re
+          import struct
+          import subprocess
+          import sys
+
+          project, raw_path, output_path = map(Path, sys.argv[1:])
+          assert os.name == 'nt' and platform.system() == 'Windows' and sys.flags.isolated == 1
+          assert sys.version_info[:2] == (3, 11) and struct.calcsize('P') == 8
+          raw = raw_path.read_bytes()
+          assert 0 < len(raw) <= 65536
+          report = json.loads(raw.decode('utf-8-sig'))
+          assert type(report) is dict and report['schema'] == 1
+          assert report['fixture'] == 'synthetic-unreferenced-stream-with-native-page'
+          assert report['profile']['os'] == 'Windows'
+          assert report['profile']['python'].startswith('3.11.')
+          assert report['profile']['isolated'] is True
+          mib = 1024 ** 2
+          for field in ('input_bytes', 'free_bytes_before_fixture', 'declared_required_free_bytes',
+                        'source_and_retained_bytes', 'peak_rss_bytes', 'baseline_peak_rss_bytes',
+                        'traced_peak_bytes', 'max_single_parser_read'):
+              assert type(report[field]) is int and report[field] >= 0, field
+          assert 2049 * mib < report['input_bytes'] < 2050 * mib
+          assert report['source_and_retained_bytes'] == 2 * report['input_bytes']
+          assert report['declared_required_free_bytes'] == 2 * 2050 * mib + 256 * mib
+          assert report['free_bytes_before_fixture'] >= report['declared_required_free_bytes']
+          assert report['max_single_parser_read'] == 16 * mib
+          assert report['traced_peak_bytes'] < 32 * mib
+          assert 0 <= report['peak_rss_bytes'] - report['baseline_peak_rss_bytes'] < 64 * mib
+          assert re.fullmatch('[0-9a-f]{64}', report['source_sha256'])
+          for field in ('elapsed_seconds', 'fixture_creation_seconds'):
+              assert type(report[field]) in (int, float) and 0 <= report[field] < 1080, field
+          for field in ('native_text', 'render_fingerprint', 'retained_readback', 'multi_gigabyte_execution'):
+              assert report[field] is True, field
+          assert report['real_corpus'] is False
+          expected = {
+              'carr_library.catalog.streaming_pdf': 'src/carr_library/catalog/streaming_pdf.py',
+              'carr_library.ingest.retained_assets': 'src/carr_library/ingest/retained_assets.py',
+              'carr_library.extract.page_ocr': 'src/carr_library/extract/page_ocr.py',
+              'carr_library.citations.pdf_review_attestation': 'src/carr_library/citations/pdf_review_attestation.py',
+          }
+          assert type(report['module_origins']) is dict and set(report['module_origins']) == set(expected)
+          prefix = Path(sys.prefix).resolve(strict=True)
+          for name, relative in expected.items():
+              origin = report['module_origins'][name]
+              assert type(origin) is dict and set(origin) == {'path', 'sha256'}
+              installed = Path(origin['path']).resolve(strict=True)
+              assert installed.is_relative_to(prefix), name
+              assert re.fullmatch('[0-9a-f]{64}', origin['sha256']), name
+              assert sha256(installed.read_bytes()).hexdigest() == origin['sha256'], name
+              assert origin['sha256'] == sha256((project / relative).read_bytes()).hexdigest(), name
+          def git(*arguments):
+              return subprocess.check_output(['git', '--no-replace-objects', '-C', str(project.parent),
+                  *arguments], timeout=30).decode('utf-8').strip()
+          source, tree = git('rev-parse', 'HEAD'), git('rev-parse', 'HEAD^{tree}')
+          assert re.fullmatch('[0-9a-f]{40}', source) and re.fullmatch('[0-9a-f]{40}', tree)
+          assert source == (raw_path.parent / 'tested-commit.txt').read_text(encoding='utf-8-sig').strip()
+          assert tree == (raw_path.parent / 'tested-tree.txt').read_text(encoding='utf-8-sig').strip()
+          subprocess.run(['git', '--no-replace-objects', '-C', str(project.parent), 'diff',
+              '--quiet', 'HEAD', '--', 'carr-library'], check=True, timeout=30)
+          proof = dict(schema='carr-r6-large-pdf-qualification/1', status='MEASURED',
+              source_commit=source, source_tree=tree, actual_windows=True,
+              actual_isolated_process=True, installed_package=True,
+              actual_platform=platform.platform(), python_executable=str(Path(sys.executable).resolve()),
+              installed_prefix=str(prefix), raw_measurement_sha256=sha256(raw).hexdigest(),
+              measurement=report,
+              source_files_sha256={name: sha256((project / name).read_bytes()).hexdigest() for name in (
+                  'tests/ingest/streaming_pdf_probe.py', 'tests/ingest/streaming_pdf_fixture.py',
+                  'packaging/windows-cp311.lock', 'packaging/windows-sync-test-cp311.lock')},
+              real_corpus_benchmark='NOT_RUN', nvda='NOT_RUN',
+              multi_gigabyte_full_backup='NOT_RUN', full_platform_acceptance='NOT_CLAIMED')
+          with output_path.open('x', encoding='utf-8') as stream:
+              json.dump(proof, stream, sort_keys=True, indent=2)
+              stream.write('\n')
+          print('Measured installed synthetic PDF; native firewall cleanup still pending.')
+          '@ | & $python -I -B -X utf8 - $project $rawReport $validatedReport
+            if ($LASTEXITCODE -ne 0) { throw 'The exact installed multi-gigabyte measurement contract failed.' }
+            $qualification = Get-Content -LiteralPath $validatedReport -Raw -Encoding UTF8 | ConvertFrom-Json
+            Assert-ActualOutboundBlock
+          } catch {
+            $operationError = $_
+          } finally {
+            try {
+              # Query errors are failures, never evidence that an owned rule is absent.
+              $owned = @(Get-NetFirewallRule -ErrorAction Stop | Where-Object { $_.Name -ceq $ruleName })
+              if ($owned.Count) { $owned | Remove-NetFirewallRule -ErrorAction Stop }
+              $remaining = @(Get-NetFirewallRule -ErrorAction Stop | Where-Object { $_.Name -ceq $ruleName })
+              if ($remaining.Count) { throw 'The owned Windows Firewall rule remains after cleanup.' }
+            } catch { $cleanupErrors += $_.Exception.Message }
+            foreach ($profile in $profilesBefore) {
+              try {
+                Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop
+                $restored = @(Get-NetFirewallProfile -Name $profile.Name -ErrorAction Stop)
+                if ($restored.Count -ne 1 -or [string]($restored[0].Enabled) -ne [string]($profile.Enabled)) {
+                  throw 'An original Windows Firewall profile was not restored exactly.'
+                }
+              } catch { $cleanupErrors += $_.Exception.Message }
+            }
+          }
+          $cleanup = [ordered]@{
+            schema=1
+            owned_rule=$ruleName
+            blocked_program=$python
+            active_store_before=$blockedBefore
+            active_store_after=$blockedAfter
+            profiles_restored=($cleanupErrors.Count -eq 0)
+            owned_rule_removed=($cleanupErrors.Count -eq 0)
+            errors=@($cleanupErrors)
+          }
+          $cleanup | ConvertTo-Json -Depth 6 |
+            Set-Content -LiteralPath (Join-Path $evidence 'firewall-cleanup.json') -Encoding utf8
+          if ($null -ne $operationError) {
+            if ($cleanupErrors.Count) { Write-Warning ($cleanupErrors -join '; ') }
+            throw $operationError
+          }
+          if ($cleanupErrors.Count) { throw ($cleanupErrors -join '; ') }
+          if ($null -eq $qualification -or -not $blockedBefore -or -not $blockedAfter) {
+            throw 'The measured report and exact active firewall evidence are incomplete.'
+          }
+          $qualification.status = 'PASS'
+          $qualification | Add-Member -NotePropertyName actual_firewall -NotePropertyValue $true
+          $qualification | Add-Member -NotePropertyName firewall -NotePropertyValue $cleanup
+          $encoded = ([Text.UTF8Encoding]::new($false)).GetBytes(($qualification | ConvertTo-Json -Depth 12) + [Environment]::NewLine)
+          if ($encoded.Length -gt 131072) { throw 'The bounded public measurement receipt is oversized.' }
+          $stream = [IO.File]::Open($finalReport, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
+          try { $stream.Write($encoded, 0, $encoded.Length); $stream.Flush($true) } finally { $stream.Dispose() }
+          Write-Output 'PASS: measured 2049 MiB synthetic native PDF extraction/rendering through the exact installed package.'
+          Write-Output 'Real-corpus benchmark, NVDA, multi-gigabyte full backup and full-platform acceptance remain separate.'
+
+      # Only small reports are uploaded. The actual 2 GiB fixture and its
+      # retained copy remain in RUNNER_TEMP and are never public artifacts.
+      - name: Preserve exact large-PDF measurement evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: carr-r6-large-pdf-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            carr-library/ci-results/large-pdf/**/*.json
+            carr-library/ci-results/large-pdf/**/*.txt
+            carr-library/ci-results/large-pdf/**/*.log
+          if-no-files-found: warn
+          retention-days: 7
