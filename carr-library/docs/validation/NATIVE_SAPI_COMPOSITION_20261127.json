@@ -1,0 +1,151 @@
+{
+  "schema": 1,
+  "status": "IMPLEMENTED_SOURCE_REVIEWED_RUNTIME_NOT_RUN",
+  "component": "Native SAPI current engine and explicit reading punctuation",
+  "base": "275a882be727aec2f2ed72e5f543fd449fcd40c3",
+  "base_tree": "b630c0289e6d5579ea76a585db0e8e6bec28b73f",
+  "canonical": "e3cf74c243d4ef930b526b5648ca9003c0900057",
+  "canonical_native_worker_blob": "0faf8b266ff9fa5a0dc5db61243e5d8e5ce99135",
+  "core_checkpoint": "5cd1ed9501cb9e14c302ea460d417b6e8b84c0ec",
+  "source_review": {
+    "core": "5cd1ed9501cb9e14c302ea460d417b6e8b84c0ec",
+    "reviewer": "durable_native_composition",
+    "result": "No concrete blocker found in dispatch/ownership; actual COM pending."
+  },
+  "shared_file_comparison": {
+    "root": "bf85c5ecbfee9e45068192d40e8cc8584f95986b",
+    "paths": {
+      "carr-library/src/carr_library/audio/engines.py": {
+        "current_sha": "7739fc81ccd82f688c94f145565692ac1f842cbe",
+        "base_sha": "7739fc81ccd82f688c94f145565692ac1f842cbe",
+        "identical": true
+      },
+      "carr-library/pyproject.toml": {
+        "current_sha": "4f910b7cf5d6342d44f5f2c612e31d02f5a918aa",
+        "base_sha": "4f910b7cf5d6342d44f5f2c612e31d02f5a918aa",
+        "identical": true
+      },
+      "carr-library/src/carr_library/__main__.py": {
+        "current_sha": "dd7879c152225c554bf1d26e46fca851a9f443fd",
+        "base_sha": "dd7879c152225c554bf1d26e46fca851a9f443fd",
+        "identical": true
+      },
+      "carr-library/src/carr_library/reader/live_speech.py": {
+        "current_sha": "7d06d2d56e9d10cbc4bfe942fbc6e02266279cbc",
+        "base_sha": "7d06d2d56e9d10cbc4bfe942fbc6e02266279cbc",
+        "identical": true
+      },
+      "carr-library/src/carr_library/ui/live_reading.py": {
+        "current_sha": "a7803b58fb56fd6c0f1c0b559571a2c013e8d848",
+        "base_sha": "a7803b58fb56fd6c0f1c0b559571a2c013e8d848",
+        "identical": true
+      }
+    }
+  },
+  "runtime_dependency": {
+    "name": "pywin32",
+    "version": "312",
+    "wheel_sha256": "d11417d84412f859b722fad0841b3614459ed0047f7542d8362e77884f6b6e8a",
+    "integrated_pins": 56,
+    "new_dependency": false
+  },
+  "tests": {
+    "tests/audio/test_native_sapi.py": {
+      "test_native_voice_id_preserves_exact_system_speech_token_leaf": 1,
+      "test_native_literal_text_and_punctuation_are_only_private_json": 1,
+      "test_wrong_native_host_identity_never_publishes": 5,
+      "test_ambiguous_or_unbound_native_inventory_is_rejected": 4,
+      "test_changed_render_identity_does_not_publish_staged_pcm": 3,
+      "test_native_cancellation_or_deadline_keeps_target_absent": 2,
+      "test_native_cache_identity_distinguishes_host_without_relabeling_voice": 1,
+      "test_worker_rejects_invalid_request_before_com": 10,
+      "test_worker_refuses_existing_or_external_output": 1,
+      "test_worker_import_does_not_initialize_com": 1,
+      "test_fixed_com_classes_and_literal_flags_preserve_selected_voice": 2,
+      "test_duplicate_com_token_leaves_are_refused_before_render": 1,
+      "test_default_windows_discovery_never_constructs_powershell": 1,
+      "test_explicit_installed_espeak_fallback_keeps_distinct_engine_ids": 2,
+      "test_espeak_punctuation_is_a_fixed_flag_and_default_options_stay_unchanged": 2,
+      "test_untyped_punctuation_cannot_reach_an_engine": 3,
+      "test_saved_32_bit_voice_resolves_only_after_explicit_identity_selection": 1,
+      "test_invalid_saved_32_bit_identity_never_constructs_a_compatibility_host": 2,
+      "test_absent_selected_32_bit_voice_never_chooses_a_different_installed_voice": 1
+    },
+    "tests/reader/test_speech_punctuation.py": {
+      "test_false_default_keeps_legacy_engine_options_and_project_models": 1,
+      "test_punctuation_requires_an_explicit_boolean": 7,
+      "test_default_position_writer_keeps_schema_one": 2,
+      "test_schema_two_coexists_with_original_rows_and_only_changes_selected_position": 1,
+      "test_unversioned_or_untyped_punctuation_is_never_accepted": 4,
+      "test_reader_rejects_unsupported_punctuation_before_render": 1,
+      "test_real_reader_session_forwards_only_selected_punctuation_and_retains_resource_owner": 2,
+      "test_registry_does_not_forward_optional_control_to_unsupported_adapter": 1
+    },
+    "tests/storage/test_speech_punctuation_backup.py": {
+      "test_complete_backup_preserves_original_state_bytes_and_explicit_new_option": 2
+    },
+    "tests/ui/test_speech_punctuation.py": {
+      "test_punctuation_control_is_capability_bound_and_resets_unsupported_choice": 2,
+      "test_punctuation_control_is_disabled_during_current_request": 2,
+      "test_prepared_request_keeps_its_captured_punctuation_setting": 1,
+      "test_ui_does_not_silently_admit_punctuation_for_an_unsupported_voice": 1
+    }
+  },
+  "source_cases": 71,
+  "installed_cases": 71,
+  "native_checks": 35,
+  "native_label_counter": {
+    "actual Windows native reader controls": 1,
+    "existing reviewed pywin32 dependency": 1,
+    "installed private entrypoint returns actual bounded COM inventory": 1,
+    "installed entrypoint reports actual interpreter architecture": 1,
+    "reader opens without automatic speech or playback": 1,
+    "actual native English SAPI voice enumerated": 1,
+    "actual native voice retains prior token-leaf identifier": 1,
+    "native cache records exact worker and existing COM client": 1,
+    "native punctuation has an accessible capability-bound control": 1,
+    "unsupported native SAPI pitch remains disabled": 1,
+    "selected punctuation captured before preparation": 1,
+    "actual native SAPI utterance reached measured prepared state": 1,
+    "native output is actual nonempty mono PCM16 at 22050 Hz": 1,
+    "actual native PCM contains nonzero samples": 1,
+    "prepared native utterance retains exact selected text hash": 1,
+    "prepared punctuation stays in the current request": 1,
+    "PCM preparation never opens an output device or claims completion": 1,
+    "native stop settles session without inventing a played cursor": 1,
+    "saved schema two retains explicit punctuation and zero observed cursor": 1,
+    "restored position never launches an old voice or playback": 1,
+    "native window closes after actual current owners settle": 1,
+    "actual missing native token fails without an output or substitute": 1,
+    "actual owned native process cancellation is observed": 1,
+    "cancelled native synthesis publishes no partial PCM": 1,
+    "every actual native worker leader and job handle is released": 1,
+    "native discovery and synthesis never invoke PowerShell": 1,
+    "complete backup restores exact optional reading state": 1,
+    "restored punctuation is passive and never starts an engine": 1,
+    "restored native reading state supports complete rebackup": 1,
+    "source library text remains byte-identical": 1,
+    "native refresh voices event handled": 1,
+    "native prepare event handled": 1,
+    "native stop event handled": 1,
+    "native restore cursor event handled": 1,
+    "native close event handled": 1
+  },
+  "required_followup": "Exact focused Windows run and integrated full gate.",
+  "preserved": {
+    "audio_role_schema": true,
+    "old_reading_speech_schema1_default_fields": true,
+    "old_sapi5_token_leaf_ids": true,
+    "explicit_sapi5_32_ids": true,
+    "current_process_owner": true,
+    "frozen_refs_unchanged": true
+  },
+  "not_claimed": [
+    "physical playback",
+    "NVDA",
+    "third-party acoustic quality",
+    "generic PyInstaller frozen build",
+    "native 32-bit COM",
+    "whole-product PASS"
+  ]
+}

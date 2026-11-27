@@ -624,7 +624,11 @@ jobs:
             'tests/storage/test_provider_recovery.py',
             'tests/e2e/test_audio_cli_resources.py',
             'tests/ui/test_progress_compatibility.py',
-            'tests/packaging/test_native_checks_manifest.py'
+            'tests/packaging/test_native_checks_manifest.py',
+            'tests/audio/test_native_sapi.py',
+            'tests/reader/test_speech_punctuation.py',
+            'tests/storage/test_speech_punctuation_backup.py',
+            'tests/ui/test_speech_punctuation.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -1233,6 +1237,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -X utf8 scripts/r7_native_gate.py provider-recovery --report ci-results/full-bundle-provider-recovery-native.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -X utf8 scripts/r7_native_gate.py native-sapi --report ci-results/full-bundle-native-sapi.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $runInstalledTests = @'
           import ctypes, hashlib, json, os, pathlib, sys
           from ctypes import wintypes
@@ -1613,7 +1619,11 @@ jobs:
               'tests/storage/test_provider_recovery.py',
               'tests/e2e/test_audio_cli_resources.py',
               'tests/ui/test_progress_compatibility.py',
-              'tests/packaging/test_native_checks_manifest.py'
+              'tests/packaging/test_native_checks_manifest.py',
+              'tests/audio/test_native_sapi.py',
+              'tests/reader/test_speech_punctuation.py',
+              'tests/storage/test_speech_punctuation_backup.py',
+              'tests/ui/test_speech_punctuation.py'
           ]
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:

@@ -78,5 +78,14 @@
     "translation_quality": "NOT_QUALIFIED",
     "nvda": "NOT_RUN",
     "rerun": "REQUIRED"
+  },
+  "repairs_followup": {
+    "source_commit": "bf85c5ecbfee9e45068192d40e8cc8584f95986b",
+    "additional_observation": "The retained template506 gate at ff6 also exercises TranslationStore.cache_path; its message lives in assistant/translation_state.py, separately from TranslationService.",
+    "repair": "Restore the same translation profile phrase at the third call site. The unchanged existing cache-namespace assertion remains required.",
+    "known_superseded_rerun": {
+      "branch": "carr/local-translation-r14-recovery-d3a-20261127",
+      "status": "Includes fixture repair but predates the third message correction; do not use it as final qualification."
+    }
   }
 }

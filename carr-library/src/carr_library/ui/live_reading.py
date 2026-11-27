@@ -166,6 +166,8 @@ class LiveReadingDialog:
         self.rate = setting('Synthesis &rate, -10 to 10', value='0')
         self.pitch = setting('Voice-native &pitch, -12 to 12; when supported', value='0')
         self.volume = setting('Synthesis &volume, 0 to 1', value='0.8')
+        self.punctuation = setting('Speak &punctuation; when supported by the selected voice', wx.CheckBox)
+        self.punctuation.SetValue(False)
         self.playback_tempo = setting(
             f'Playback tempo &factor, {TEMPO_CONTROL[1]} to {TEMPO_CONTROL[2]}; prepared utterances', value='1')
         self.playback_pitch = setting(
@@ -335,6 +337,8 @@ class LiveReadingDialog:
         idle = self.future is None and self.session is None and not self.close_pending
         for control in (self.voice, self.language, self.rate, self.pitch, self.volume, self.mode):
             control.Enable(idle)
+        if getattr(self, 'punctuation', None) is not None:
+            self.punctuation.Enable(idle)
         for key in ('voices', 'read', 'prepare', 'resume'):
             self.controls[key].Enable(idle)
         ready = self.session is not None and self.session.current is not None and self.future is None
@@ -373,6 +377,12 @@ class LiveReadingDialog:
                 control.Enable(supported and self.session is None and self.future is None)
                 if not supported:
                     control.ChangeValue(default)
+        punctuation = getattr(self, 'punctuation', None)
+        if punctuation is not None:
+            supported = 0 <= index < len(self.voice_rows) and 'punctuation' in self.voice_rows[index].controls
+            punctuation.Enable(supported and self.session is None and self.future is None)
+            if not supported:
+                punctuation.SetValue(False)
 
     def _work(self, action, done):
         if self.future is not None or self.closed:
@@ -441,7 +451,9 @@ class LiveReadingDialog:
             raise ValueError('Refresh local voices and explicitly choose one before reading.')
         result = SpeechSettings(self.voice_rows[index].id, self.language.GetValue().strip(),
                                 float(self.rate.GetValue()), float(self.pitch.GetValue()),
-                                float(self.volume.GetValue()))
+                                float(self.volume.GetValue()),
+                                punctuation=(self.punctuation.GetValue()
+                                             if getattr(self, 'punctuation', None) is not None else False))
         result.check_voice(self.voice_rows[index])
         return result
 

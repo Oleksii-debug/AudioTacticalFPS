@@ -68,6 +68,9 @@ from .installation_lease import installed_entrypoint
 @installed_entrypoint(allow_bootstrap_self_test=True)
 def main(argv=None, *, trust_controller=None):
     arguments = list(sys.argv[1:] if argv is None else argv)
+    if arguments and arguments[0] == '--carr-sapi-native-worker':
+        from .audio.sapi_native_worker import main as sapi_worker_main
+        return sapi_worker_main(arguments[1:])
     if arguments and arguments[0] == 'import-text':
         from .streamed_import_cli import main as streamed_import_main
         return streamed_import_main(arguments[1:], **({'trust_controller': trust_controller} if trust_controller is not None else {}))

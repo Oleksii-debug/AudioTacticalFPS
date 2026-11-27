@@ -912,5 +912,107 @@
       "metrics.vault_calls": 0,
       "metrics.explicit_import_confirmations": 4
     }
+  },
+  "native-sapi": {
+    "probe": "scripts/windows_native_sapi_smoke.py",
+    "arguments": [
+      "--native"
+    ],
+    "subprocess_timeout_seconds": 270,
+    "modules": [
+      "carr_library.audio.engines",
+      "carr_library.audio.sapi_native_worker",
+      "carr_library.audio.windows_process",
+      "carr_library.audio.jobs",
+      "carr_library.audio.player",
+      "carr_library.audio.playback",
+      "carr_library.reader.live_speech",
+      "carr_library.reader.live_playback",
+      "carr_library.ui.live_reading",
+      "carr_library.library_backup",
+      "carr_library.__main__"
+    ],
+    "probe_modules": [
+      "carr_library.audio.engines",
+      "carr_library.audio.sapi_native_worker",
+      "carr_library.audio.windows_process",
+      "carr_library.audio.jobs",
+      "carr_library.audio.player",
+      "carr_library.audio.playback",
+      "carr_library.reader.live_speech",
+      "carr_library.reader.live_playback",
+      "carr_library.ui.live_reading",
+      "carr_library.library_backup",
+      "carr_library.__main__"
+    ],
+    "checks": {
+      "actual Windows native reader controls": 1,
+      "existing reviewed pywin32 dependency": 1,
+      "installed private entrypoint returns actual bounded COM inventory": 1,
+      "installed entrypoint reports actual interpreter architecture": 1,
+      "reader opens without automatic speech or playback": 1,
+      "actual native English SAPI voice enumerated": 1,
+      "actual native voice retains prior token-leaf identifier": 1,
+      "native cache records exact worker and existing COM client": 1,
+      "native punctuation has an accessible capability-bound control": 1,
+      "unsupported native SAPI pitch remains disabled": 1,
+      "selected punctuation captured before preparation": 1,
+      "actual native SAPI utterance reached measured prepared state": 1,
+      "native output is actual nonempty mono PCM16 at 22050 Hz": 1,
+      "actual native PCM contains nonzero samples": 1,
+      "prepared native utterance retains exact selected text hash": 1,
+      "prepared punctuation stays in the current request": 1,
+      "PCM preparation never opens an output device or claims completion": 1,
+      "native stop settles session without inventing a played cursor": 1,
+      "saved schema two retains explicit punctuation and zero observed cursor": 1,
+      "restored position never launches an old voice or playback": 1,
+      "native window closes after actual current owners settle": 1,
+      "actual missing native token fails without an output or substitute": 1,
+      "actual owned native process cancellation is observed": 1,
+      "cancelled native synthesis publishes no partial PCM": 1,
+      "every actual native worker leader and job handle is released": 1,
+      "native discovery and synthesis never invoke PowerShell": 1,
+      "complete backup restores exact optional reading state": 1,
+      "restored punctuation is passive and never starts an engine": 1,
+      "restored native reading state supports complete rebackup": 1,
+      "source library text remains byte-identical": 1,
+      "native refresh voices event handled": 1,
+      "native prepare event handled": 1,
+      "native stop event handled": 1,
+      "native restore cursor event handled": 1,
+      "native close event handled": 1
+    },
+    "fields": {
+      "status": "PASS",
+      "installed_mode": true,
+      "isolated": true,
+      "native_controls": "EXECUTED",
+      "physical_playback": "NOT_RUN",
+      "nvda": "NOT_RUN",
+      "com_client": "pywin32",
+      "com_client_version": "312",
+      "private_entrypoint": "EXECUTED",
+      "native_cancellation": "OBSERVED"
+    },
+    "exact_metrics": {
+      "saved_cursor": 0,
+      "actual_native_pcm.sample_rate": 22050,
+      "actual_native_pcm.channels": 1
+    },
+    "positive_metrics": [
+      "actual_native_pcm.frames"
+    ],
+    "digest_fields": [
+      "actual_native_pcm.pcm_sha256",
+      "actual_native_pcm.text_sha256",
+      "reading_state_sha256",
+      "restored_state_sha256"
+    ],
+    "equal_fields": [
+      [
+        "reading_state_sha256",
+        "restored_state_sha256"
+      ]
+    ]
   }
 }

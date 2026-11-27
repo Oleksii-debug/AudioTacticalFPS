@@ -1,0 +1,283 @@
+{
+  "schema": 1,
+  "feature": "Measured accepted-PCM audiobook duration",
+  "recorded_utc": "2026-11-27T15:15:00Z",
+  "observed": {
+    "head": "b6b7e77e4272b2e8f8c8802a0a1a166a627dd956",
+    "tree": "ca20e0cc090559dc1de4211cc933d5875d514dab",
+    "run_id": 46015802198,
+    "job_id": 140562475384,
+    "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46015802198",
+    "overall": "FAIL",
+    "source": {
+      "cases": 227,
+      "passed": 226,
+      "failed": 1,
+      "skipped": 0,
+      "elapsed_seconds": 620.36,
+      "receipt": {
+        "schema": 1,
+        "status": "FAIL",
+        "mode": "source",
+        "declared_cases": 227,
+        "timeout_seconds": 1200,
+        "oracle_sha256": "2d08e1a83dea94b6dc5bf12521eef46b4b1398ee04ecef6febf369e902131270",
+        "source_commit": "b6b7e77e4272b2e8f8c8802a0a1a166a627dd956",
+        "source_tree": "ca20e0cc090559dc1de4211cc933d5875d514dab",
+        "wheel_sha256": "93ca3438f57361c1b56669d33d44a592ca57171e5697ac8ea9557f721cef1b61",
+        "checkout_manifest_sha256": "210cdec400c1b33b5815eef380b6f0cac498e3dbcc0f8c5b85e823c592ad57d6",
+        "tracked_source_files": 1405,
+        "source_only_python": {
+          "bootstrap/semantic_compat/probe.py": "c51758108a418c7bf98ddd459cefdca852777b07cfc95ac669855b1195398ac7",
+          "bootstrap/semantic_compat/test_probe.py": "ae093cae9f00307c09d2ea787dacf7c8c1522184e5480a411c0979023b7b70bb"
+        },
+        "actual_ffmpeg": {
+          "sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf",
+          "version": "ffmpeg version 9.1-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+          "version_sha256": "900a9c75d78682e23c3f73e9e13d4c9625b24a8f0dfb921a879fc5f9e445bc64"
+        },
+        "test_source_sha256": {
+          "tests/audio/test_batch_models.py": "b6e78bf5f77985389977804df8fad9da43065ab1340d7d4118a54f2ccd413e8d",
+          "tests/audio/test_audio_batches.py": "de5165536a825561430a7ac1fbe73b2a1da9238e136ba77587e8dd2387a22cb7",
+          "tests/storage/test_audio_batch_backup.py": "f11ebf17dc10046191aad73af244ed9072ce2c1973ee877856a9e69437e7b465",
+          "tests/security/test_audio_batch_admission.py": "a618ddf267af0a420a09837203c7f66ab26f92d42e813329f517832e411cf7cc",
+          "tests/e2e/test_audio_batch_cli.py": "47dff4eaac90c2d865decbe7dc4121c8c1d3a8635f3340fc903ecd8e1d285e73",
+          "tests/ui/test_audio_batches.py": "e7c9e61f224f1735ec6dc89ba23d8408c05d34404d62b987c9839b2918e8ae2e",
+          "tests/operations/test_audio_batch_facade.py": "28fa3526a84a3f2645c8d7e66dbf22e3b14dd08206aab771558b83392d406455",
+          "tests/audio/test_book_duration.py": "6036ef9aed2e3ba4314c7193d948c9a37d139c78d70806c81b4d23c9997d0d90",
+          "tests/storage/test_book_duration_backup.py": "2bfb465c8c1323232059a0840114a5421546524cae8c703a50b64cbd71fa24f1",
+          "tests/e2e/test_book_duration_cli.py": "58a3dceb20adaeea768b587d6cefca85aee73515662515d3d21395dc77adaa24",
+          "tests/ui/test_book_duration.py": "af8e8ebcde178bfdb7682a50f7c3cedbe47ec5cde1666bf5acf40cd98d94f657",
+          "tests/audio/test_publish_new_digest.py": "4251888dbe3ec870c72a2695b59ac4985e07c8aaa49189e8281a34085a8908d5",
+          "tests/__init__.py": "bda1d1b86fa69f604fb87c19f27628942b6bd77aa46b605efbc9cb9d4457183d",
+          "tests/security/__init__.py": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+          "tests/storage/__init__.py": "133dac0936d6e430af23a6ea8041d800ff72d4ee8b7e6bae54d16d6d0bff3efb",
+          "tests/security/conftest.py": "77599b257083e5a79ab901490005c68a8f087971df24143145b48c290e6232e6",
+          "tests/security/test_domain_admission.py": "f8dcae25e2738c16fb6fd0e6a51b772f5153b0118714f4b2f0bd850938242a9c"
+        },
+        "runner_sha256": {
+          "audio_batch_acceptance.py": "3fcb217a7ed9d535ea9d277191a27504f8e6f452bef235b728036358f9e6e003",
+          "ci_check.py": "a7e90c3a14dc51b78c9af17850a7038bf21513cc5ba41466293cc853cd0e2842",
+          "ci_watchdog.py": "e02be6a6c3406bdf1d9d4c24673363894d03a1ee7948b3b77d6b20fcc2bfc057"
+        },
+        "pytest_exit": 1,
+        "reason": "ValueError: The strict actual pytest process failed.",
+        "elapsed_seconds": 622.984
+      }
+    },
+    "installed": {
+      "cases": 227,
+      "passed": 226,
+      "failed": 1,
+      "skipped": 0,
+      "elapsed_seconds": 605.16,
+      "receipt": {
+        "schema": 1,
+        "status": "FAIL",
+        "mode": "installed",
+        "declared_cases": 227,
+        "timeout_seconds": 1200,
+        "oracle_sha256": "2d08e1a83dea94b6dc5bf12521eef46b4b1398ee04ecef6febf369e902131270",
+        "source_commit": "b6b7e77e4272b2e8f8c8802a0a1a166a627dd956",
+        "source_tree": "ca20e0cc090559dc1de4211cc933d5875d514dab",
+        "wheel_sha256": "93ca3438f57361c1b56669d33d44a592ca57171e5697ac8ea9557f721cef1b61",
+        "checkout_manifest_sha256": "210cdec400c1b33b5815eef380b6f0cac498e3dbcc0f8c5b85e823c592ad57d6",
+        "tracked_source_files": 1405,
+        "source_only_python": {
+          "bootstrap/semantic_compat/probe.py": "c51758108a418c7bf98ddd459cefdca852777b07cfc95ac669855b1195398ac7",
+          "bootstrap/semantic_compat/test_probe.py": "ae093cae9f00307c09d2ea787dacf7c8c1522184e5480a411c0979023b7b70bb"
+        },
+        "actual_ffmpeg": {
+          "sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf",
+          "version": "ffmpeg version 9.1-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+          "version_sha256": "900a9c75d78682e23c3f73e9e13d4c9625b24a8f0dfb921a879fc5f9e445bc64"
+        },
+        "test_source_sha256": {
+          "tests/audio/test_batch_models.py": "b6e78bf5f77985389977804df8fad9da43065ab1340d7d4118a54f2ccd413e8d",
+          "tests/audio/test_audio_batches.py": "de5165536a825561430a7ac1fbe73b2a1da9238e136ba77587e8dd2387a22cb7",
+          "tests/storage/test_audio_batch_backup.py": "f11ebf17dc10046191aad73af244ed9072ce2c1973ee877856a9e69437e7b465",
+          "tests/security/test_audio_batch_admission.py": "a618ddf267af0a420a09837203c7f66ab26f92d42e813329f517832e411cf7cc",
+          "tests/e2e/test_audio_batch_cli.py": "47dff4eaac90c2d865decbe7dc4121c8c1d3a8635f3340fc903ecd8e1d285e73",
+          "tests/ui/test_audio_batches.py": "e7c9e61f224f1735ec6dc89ba23d8408c05d34404d62b987c9839b2918e8ae2e",
+          "tests/operations/test_audio_batch_facade.py": "28fa3526a84a3f2645c8d7e66dbf22e3b14dd08206aab771558b83392d406455",
+          "tests/audio/test_book_duration.py": "6036ef9aed2e3ba4314c7193d948c9a37d139c78d70806c81b4d23c9997d0d90",
+          "tests/storage/test_book_duration_backup.py": "2bfb465c8c1323232059a0840114a5421546524cae8c703a50b64cbd71fa24f1",
+          "tests/e2e/test_book_duration_cli.py": "58a3dceb20adaeea768b587d6cefca85aee73515662515d3d21395dc77adaa24",
+          "tests/ui/test_book_duration.py": "af8e8ebcde178bfdb7682a50f7c3cedbe47ec5cde1666bf5acf40cd98d94f657",
+          "tests/audio/test_publish_new_digest.py": "4251888dbe3ec870c72a2695b59ac4985e07c8aaa49189e8281a34085a8908d5",
+          "tests/__init__.py": "bda1d1b86fa69f604fb87c19f27628942b6bd77aa46b605efbc9cb9d4457183d",
+          "tests/security/__init__.py": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+          "tests/storage/__init__.py": "133dac0936d6e430af23a6ea8041d800ff72d4ee8b7e6bae54d16d6d0bff3efb",
+          "tests/security/conftest.py": "77599b257083e5a79ab901490005c68a8f087971df24143145b48c290e6232e6",
+          "tests/security/test_domain_admission.py": "f8dcae25e2738c16fb6fd0e6a51b772f5153b0118714f4b2f0bd850938242a9c"
+        },
+        "runner_sha256": {
+          "audio_batch_acceptance.py": "3fcb217a7ed9d535ea9d277191a27504f8e6f452bef235b728036358f9e6e003",
+          "ci_check.py": "a7e90c3a14dc51b78c9af17850a7038bf21513cc5ba41466293cc853cd0e2842",
+          "ci_watchdog.py": "e02be6a6c3406bdf1d9d4c24673363894d03a1ee7948b3b77d6b20fcc2bfc057"
+        },
+        "pytest_exit": 1,
+        "reason": "ValueError: The strict actual pytest process failed.",
+        "elapsed_seconds": 607.4999999999999
+      }
+    },
+    "native": {
+      "status": "PASS",
+      "checks": 41,
+      "exact_declared_labels_compared": true,
+      "receipt": {
+        "actual_ffmpeg": {
+          "sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf",
+          "version": "ffmpeg version 9.1-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+          "version_sha256": "900a9c75d78682e23c3f73e9e13d4c9625b24a8f0dfb921a879fc5f9e445bc64"
+        },
+        "checks": [
+          "actual Windows native queue controls",
+          "owned named native queue modal",
+          "native source actions and durable queue controls are named",
+          "native per-item format rate channel and split selectors",
+          "native exact preview is read only",
+          "queue retains the exact configured host authority",
+          "native filename field receives actual keyboard focus",
+          "invalid numeric preset cannot replace the selected item",
+          "native apply retains explicit numeric preset and Unicode title",
+          "actual retained plan is queued before any codec work",
+          "actual retained original is an independent exact copy",
+          "saved native preview contains exact collision-safe output names",
+          "saved per-item delivery settings cannot be silently edited",
+          "native pause is recorded as an unacknowledged durable request",
+          "owned worker acknowledges the paused checkpoint",
+          "paused first item has no unverified completed output",
+          "actual pinned FFmpeg output was decoded before completion",
+          "actual encoded output matches its source-bound receipt",
+          "immutable selected original remains byte identical",
+          "native completed queue is visible in accessible status",
+          "shared resource lease is released after codec settlement",
+          "completed replay preserves actual output bytes and timestamp",
+          "queue and existing Studio worker settle before native close",
+          "native saved audiobook keeps its reviewed chapter outputs",
+          "native audiobook completes accepted PCM before duration planning",
+          "native measured duration controls are named and enabled",
+          "native measured duration field receives actual keyboard focus",
+          "native duration preview contains every exact reviewed output name",
+          "native duration review retains independent exact accepted PCM",
+          "native measured part intervals cover the source without gaps or overlap",
+          "native duration edit revokes prior publication approval",
+          "native repeated review reopens the same immutable accepted source",
+          "native actual lossless parts rejoin to the exact accepted PCM",
+          "native measured duration publication never resynthesises speech",
+          "native measured parts preserve the original saved audiobook",
+          "native measured PCM and receipts enter the existing typed backup inventory",
+          "native duration worker and shared resource lease settle before reuse",
+          "native duration replay reuses exact completed bytes and timestamps",
+          "native queue modal closes without a late callback owner",
+          "installed implementation remains unchanged through native execution",
+          "no native queue callback failed"
+        ],
+        "file_picker": "NOT_RUN",
+        "installed_mode": true,
+        "isolated": true,
+        "measured_duration": {
+          "parts": 3,
+          "pcm_join_sha256": "100c1a6319d50122e06a923fd64b70f149b6351b138d192086aa356838f265aa",
+          "resynthesised": false,
+          "review_sha256": "bd11ae4575c0a5400238d9df7af2e815b6235c7fd898294b3e9be511a54669d5",
+          "source_frames": 19200,
+          "source_pcm_sha256": "100c1a6319d50122e06a923fd64b70f149b6351b138d192086aa356838f265aa",
+          "source_sha256": "e528db0833f35f49fea65b0f674beb7308a9d958c5e935be453f12ea46803efc",
+          "status": "complete"
+        },
+        "module_origins": {
+          "carr_library.audio.batch_models": {
+            "path": "D:\\a\\_temp\\carr-book-duration-46015802198-1\\installed\\Lib\\site-packages\\carr_library\\audio\\batch_models.py",
+            "sha256": "c12db191f04fd00ea3bd0b32cd2fcb5ae82d8ea947323fcc4aa786d55fd024ae"
+          },
+          "carr_library.audio.batches": {
+            "path": "D:\\a\\_temp\\carr-book-duration-46015802198-1\\installed\\Lib\\site-packages\\carr_library\\audio\\batches.py",
+            "sha256": "7c44777bf23c9115c4b1ab907fb00befe6bff2852dc9057cea94300489a48b01"
+          },
+          "carr_library.audio.book_duration": {
+            "path": "D:\\a\\_temp\\carr-book-duration-46015802198-1\\installed\\Lib\\site-packages\\carr_library\\audio\\book_duration.py",
+            "sha256": "684cc65ba173e26dc0e47bf2157c0b75eb9086446bc3850391f8b62e52907c96"
+          },
+          "carr_library.audio.ffmpeg": {
+            "path": "D:\\a\\_temp\\carr-book-duration-46015802198-1\\installed\\Lib\\site-packages\\carr_library\\audio\\ffmpeg.py",
+            "sha256": "ec4be2ede960fd2ea438c73bb9c8ab841eb27d02ddb7717632cdb712e10e72cb"
+          },
+          "carr_library.audio.jobs": {
+            "path": "D:\\a\\_temp\\carr-book-duration-46015802198-1\\installed\\Lib\\site-packages\\carr_library\\audio\\jobs.py",
+            "sha256": "584f4a512067b13847ef4f60af9be6b3bdf0917608010e4bc7235056ac956a33"
+          },
+          "carr_library.audio.media_conversion": {
+            "path": "D:\\a\\_temp\\carr-book-duration-46015802198-1\\installed\\Lib\\site-packages\\carr_library\\audio\\media_conversion.py",
+            "sha256": "bb5dc5a62dbcdae42163024b68828f5bc414e34bbe28041f1fbbce35ef0203bd"
+          },
+          "carr_library.audio.publishing": {
+            "path": "D:\\a\\_temp\\carr-book-duration-46015802198-1\\installed\\Lib\\site-packages\\carr_library\\audio\\publishing.py",
+            "sha256": "2438d563df25b96ce9877b5009124a1de0c831c2a7d65ff6423f04637e86e928"
+          },
+          "carr_library.audio.recording_process": {
+            "path": "D:\\a\\_temp\\carr-book-duration-46015802198-1\\installed\\Lib\\site-packages\\carr_library\\audio\\recording_process.py",
+            "sha256": "0252f3d6bb4c2f4bf5bb8f6c637ddf444e458f823f25625aa31c13bb3ba3b4cb"
+          },
+          "carr_library.audio_batch_backup": {
+            "path": "D:\\a\\_temp\\carr-book-duration-46015802198-1\\installed\\Lib\\site-packages\\carr_library\\audio_batch_backup.py",
+            "sha256": "dd5e414cc3fa0f9c88546aa4e6f13ede6f8aaad42cec37658dcbc34af3ea7281"
+          },
+          "carr_library.security.admission": {
+            "path": "D:\\a\\_temp\\carr-book-duration-46015802198-1\\installed\\Lib\\site-packages\\carr_library\\security\\admission.py",
+            "sha256": "9214f325cf0bd772ed408a0159d31e1e9e61433c742f46bfce7fa1ee4ef03326"
+          },
+          "carr_library.ui.audio_batches": {
+            "path": "D:\\a\\_temp\\carr-book-duration-46015802198-1\\installed\\Lib\\site-packages\\carr_library\\ui\\audio_batches.py",
+            "sha256": "6ef02f98bbf3e3285e788c503e90f8940c768e7b890b482a9dfb8a1ecaee2891"
+          },
+          "carr_library.ui.audio_studio": {
+            "path": "D:\\a\\_temp\\carr-book-duration-46015802198-1\\installed\\Lib\\site-packages\\carr_library\\ui\\audio_studio.py",
+            "sha256": "df926ec6aae5da877fe5814d9149e608af96bb2287c64559e261e787429c946e"
+          }
+        },
+        "native_cleanup": "PASS",
+        "native_controls": "PASS",
+        "nvda": "NOT_RUN",
+        "physical_audio": "NOT_RUN",
+        "speech_quality": "NOT_CLAIMED",
+        "status": "PASS",
+        "verified_output": {
+          "bytes": 10738,
+          "channels": 1,
+          "frames": 2000,
+          "name": "0001-Доставка-5c50fb5cc3b869167a038101675be505.flac",
+          "sample_rate": 8000,
+          "sha256": "026b1dc33d628f134091f1c57eed7f015b6df6aad734c8dcd8a0a0c95199747b"
+        }
+      }
+    },
+    "artifact": {
+      "id": 15208273773,
+      "bytes": 401817,
+      "sha256": "adb77fc71063697a06169c9780ad21925aa69f52050f33d23b1b6abfed5d8e5f"
+    }
+  },
+  "evidence_scope": {
+    "read": "Completed GitHub job log and artifact metadata; native labels compared with the exact frozen oracle.",
+    "archive_extracted_independently": false,
+    "qualification_of_later_integrated_heads": false
+  },
+  "failure": {
+    "test": "tests.audio.test_book_duration::test_changed_retained_pcm_is_refused_before_native_processing",
+    "phase": "fixture setup before deliberate mutation and publication assertion",
+    "exception": "PermissionError: [WinError 32]",
+    "cause": "The fixture called wav_info(path), which opens the existing Windows verified reader, while its own r+b stream was still open. The reader intentionally denies concurrent writable sharing."
+  },
+  "correction": {
+    "path": "carr-library/tests/audio/test_book_duration.py",
+    "change": "Read the WAV data offset before opening the deliberate corruption writer. Close the writer before calling the publication service, preserving the corruption rejection and no-output assertions.",
+    "product_changes": false,
+    "source_cases": 227,
+    "installed_cases": 227,
+    "native_checks": 41,
+    "oracle_unchanged": true,
+    "execution_status": "NOT_RUN at correction authoring"
+  }
+}

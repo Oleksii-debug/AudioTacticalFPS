@@ -391,7 +391,7 @@ class TranslationStore:
 
     def cache_path(self, profile):
         if not isinstance(profile, ProviderProfile) or profile.provider not in TRANSLATION_PROVIDERS:
-            raise ValueError('Choose an installed translation adapter and an explicit connection profile.')
+            raise ValueError('Choose an installed translation adapter and an explicit translation profile.')
         return self.directory / ('languages-' + profile.id + '.json')
 
     def load(self, identity):

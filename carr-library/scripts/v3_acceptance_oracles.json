@@ -2281,6 +2281,46 @@
       "test_source_identities_require_full_lowercase_git_sha": 10,
       "test_unknown_installation_fields_are_still_rejected": 1,
       "test_audio_runtime_false_and_source_commit_only_remain_valid": 1
+    },
+    "tests.audio.test_native_sapi": {
+      "test_native_voice_id_preserves_exact_system_speech_token_leaf": 1,
+      "test_native_literal_text_and_punctuation_are_only_private_json": 1,
+      "test_wrong_native_host_identity_never_publishes": 5,
+      "test_ambiguous_or_unbound_native_inventory_is_rejected": 4,
+      "test_changed_render_identity_does_not_publish_staged_pcm": 3,
+      "test_native_cancellation_or_deadline_keeps_target_absent": 2,
+      "test_native_cache_identity_distinguishes_host_without_relabeling_voice": 1,
+      "test_worker_rejects_invalid_request_before_com": 10,
+      "test_worker_refuses_existing_or_external_output": 1,
+      "test_worker_import_does_not_initialize_com": 1,
+      "test_fixed_com_classes_and_literal_flags_preserve_selected_voice": 2,
+      "test_duplicate_com_token_leaves_are_refused_before_render": 1,
+      "test_default_windows_discovery_never_constructs_powershell": 1,
+      "test_explicit_installed_espeak_fallback_keeps_distinct_engine_ids": 2,
+      "test_espeak_punctuation_is_a_fixed_flag_and_default_options_stay_unchanged": 2,
+      "test_untyped_punctuation_cannot_reach_an_engine": 3,
+      "test_saved_32_bit_voice_resolves_only_after_explicit_identity_selection": 1,
+      "test_invalid_saved_32_bit_identity_never_constructs_a_compatibility_host": 2,
+      "test_absent_selected_32_bit_voice_never_chooses_a_different_installed_voice": 1
+    },
+    "tests.reader.test_speech_punctuation": {
+      "test_false_default_keeps_legacy_engine_options_and_project_models": 1,
+      "test_punctuation_requires_an_explicit_boolean": 7,
+      "test_default_position_writer_keeps_schema_one": 2,
+      "test_schema_two_coexists_with_original_rows_and_only_changes_selected_position": 1,
+      "test_unversioned_or_untyped_punctuation_is_never_accepted": 4,
+      "test_reader_rejects_unsupported_punctuation_before_render": 1,
+      "test_real_reader_session_forwards_only_selected_punctuation_and_retains_resource_owner": 2,
+      "test_registry_does_not_forward_optional_control_to_unsupported_adapter": 1
+    },
+    "tests.storage.test_speech_punctuation_backup": {
+      "test_complete_backup_preserves_original_state_bytes_and_explicit_new_option": 2
+    },
+    "tests.ui.test_speech_punctuation": {
+      "test_punctuation_control_is_capability_bound_and_resets_unsupported_choice": 2,
+      "test_punctuation_control_is_disabled_during_current_request": 2,
+      "test_prepared_request_keeps_its_captured_punctuation_setting": 1,
+      "test_ui_does_not_silently_admit_punctuation_for_an_unsupported_voice": 1
     }
   },
   "installed": {
@@ -4494,6 +4534,46 @@
       "test_source_identities_require_full_lowercase_git_sha": 10,
       "test_unknown_installation_fields_are_still_rejected": 1,
       "test_audio_runtime_false_and_source_commit_only_remain_valid": 1
+    },
+    "tests.audio.test_native_sapi": {
+      "test_native_voice_id_preserves_exact_system_speech_token_leaf": 1,
+      "test_native_literal_text_and_punctuation_are_only_private_json": 1,
+      "test_wrong_native_host_identity_never_publishes": 5,
+      "test_ambiguous_or_unbound_native_inventory_is_rejected": 4,
+      "test_changed_render_identity_does_not_publish_staged_pcm": 3,
+      "test_native_cancellation_or_deadline_keeps_target_absent": 2,
+      "test_native_cache_identity_distinguishes_host_without_relabeling_voice": 1,
+      "test_worker_rejects_invalid_request_before_com": 10,
+      "test_worker_refuses_existing_or_external_output": 1,
+      "test_worker_import_does_not_initialize_com": 1,
+      "test_fixed_com_classes_and_literal_flags_preserve_selected_voice": 2,
+      "test_duplicate_com_token_leaves_are_refused_before_render": 1,
+      "test_default_windows_discovery_never_constructs_powershell": 1,
+      "test_explicit_installed_espeak_fallback_keeps_distinct_engine_ids": 2,
+      "test_espeak_punctuation_is_a_fixed_flag_and_default_options_stay_unchanged": 2,
+      "test_untyped_punctuation_cannot_reach_an_engine": 3,
+      "test_saved_32_bit_voice_resolves_only_after_explicit_identity_selection": 1,
+      "test_invalid_saved_32_bit_identity_never_constructs_a_compatibility_host": 2,
+      "test_absent_selected_32_bit_voice_never_chooses_a_different_installed_voice": 1
+    },
+    "tests.reader.test_speech_punctuation": {
+      "test_false_default_keeps_legacy_engine_options_and_project_models": 1,
+      "test_punctuation_requires_an_explicit_boolean": 7,
+      "test_default_position_writer_keeps_schema_one": 2,
+      "test_schema_two_coexists_with_original_rows_and_only_changes_selected_position": 1,
+      "test_unversioned_or_untyped_punctuation_is_never_accepted": 4,
+      "test_reader_rejects_unsupported_punctuation_before_render": 1,
+      "test_real_reader_session_forwards_only_selected_punctuation_and_retains_resource_owner": 2,
+      "test_registry_does_not_forward_optional_control_to_unsupported_adapter": 1
+    },
+    "tests.storage.test_speech_punctuation_backup": {
+      "test_complete_backup_preserves_original_state_bytes_and_explicit_new_option": 2
+    },
+    "tests.ui.test_speech_punctuation": {
+      "test_punctuation_control_is_capability_bound_and_resets_unsupported_choice": 2,
+      "test_punctuation_control_is_disabled_during_current_request": 2,
+      "test_prepared_request_keeps_its_captured_punctuation_setting": 1,
+      "test_ui_does_not_silently_admit_punctuation_for_an_unsupported_voice": 1
     }
   },
   "native_trust": [
