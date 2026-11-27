@@ -11,7 +11,7 @@ import zipfile
 
 import pytest
 
-from carr_library import audio_runtime as runtime
+from carr_library import audio_runtime as runtime, native_checks
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -54,6 +54,7 @@ def inputs(tmp_path, monkeypatch):
         archive.writestr('carr_library/audio_runtime.py', (ROOT / 'src/carr_library/audio_runtime.py').read_bytes())
     manifest = {'schema': 1, 'target': 'Windows x64 / CPython 3.11', 'source_commit': 'a' * 40,
                 'source_tree': 'b' * 40, 'bundled_python': True, 'bundled_native_runtime': True,
+                'bundled_model': False, 'bundled_ocr': False,
                 'files': {p.relative_to(bundle).as_posix(): digest(p.read_bytes())
                           for p in bundle.rglob('*') if p.is_file()}}
     (bundle / 'bundle-manifest.json').write_bytes(encode(manifest))
@@ -101,6 +102,41 @@ def test_attach_preserves_exact_source_and_every_sealed_byte_without_collecting_
     assert runtime.bundled_audio_tools(output) == report['audio_runtime']['tools']
     assert report['native_windows_execution'] == report['audio_runtime']['native_execution'] == 'NOT_RUN'
     helper._installer().verify(output)
+
+
+@pytest.mark.parametrize('change', [None, 'changed_tool', 'unannounced_audio', 'missing_audio'])
+def test_produced_audio_bundle_is_consumed_by_installation_check(inputs, monkeypatch, change):
+    bundle, audio, output, _ = inputs
+    helper.attach_runtime(bundle, audio, output)
+    manifest = native_checks._manifest(output)
+    assert manifest['source_tree'] == 'b' * 40
+    assert manifest['bundled_audio_runtime'] is True
+    if change == 'changed_tool':
+        (output / 'audio-runtime/bin/ffmpeg.exe').write_bytes(b'Changed executable')
+    elif change == 'unannounced_audio':
+        manifest['bundled_audio_runtime'] = False
+        (output / 'bundle-manifest.json').write_bytes(encode(manifest))
+    elif change == 'missing_audio':
+        (output / 'audio-runtime/bin/ffprobe.exe').unlink()
+
+    # Native DLLs are synthetic in this fixture. The audio verifier, inventory,
+    # files, hashes and builder/consumer round trip are the actual implementation.
+    def load(name):
+        if name == 'carr_library.native_runtime':
+            return SimpleNamespace(activate_bundled_runtime=lambda **kwargs: None)
+        if name == 'carr_library.audio_runtime':
+            return runtime
+        if name in {module for _, module in native_checks.NATIVE_MODULES}:
+            return SimpleNamespace()
+        pytest.fail('Unexpected dependency import: ' + name)
+    monkeypatch.setattr(native_checks, 'import_module', load)
+    report = native_checks.check_native_dependencies(output)
+    assert report['status'] == ('FAIL' if change else 'PASS')
+    if change:
+        assert report['failed_component'] == 'bundled audio runtime'
+        assert report['audio']['status'] == 'FAIL'
+    else:
+        assert report['audio'] == {'status': 'PASS', 'integrity': 'sha256', 'native_execution': 'NOT_RUN'}
 
 
 def test_existing_output_is_preserved(inputs):

@@ -48,6 +48,7 @@ def run_native(source=None):
     import carr_library.providers as provider_module
     import carr_library.ui.desktop_app as desktop_module
     import carr_library.ui.transcription_dialog as asr_ui
+    import carr_library.ui.transcription_results as asr_results_ui
     import carr_library.ui.translation_dialog as translation_ui
     from carr_library.application import LibraryApp
     from carr_library.ui.api_connections import ConnectionsController
@@ -60,7 +61,7 @@ def run_native(source=None):
     loop_activation = wx.EventLoopActivator(native_loop)
     checks, errors, state = [], [], {}
     origins = {module.__name__: str(Path(module.__file__).resolve()) for module in
-        (asr_module, provider_module, desktop_module, asr_ui, translation_ui)}
+        (asr_module, provider_module, desktop_module, asr_ui, asr_results_ui, translation_ui)}
 
     def check(name, condition):
         if not condition:
@@ -232,6 +233,10 @@ def run_native(source=None):
                     and 'Transcription complete' not in dialog.status.GetValue())
                 check('cancellation preserves the first completed transcript and closes the iterator',
                     len(list(output.glob('transcript-*/complete-*.json'))) == 1 and model.closed == 2)
+                check('partial batch cancellation keeps its completed input available in the result viewer',
+                    dialog.results_button.IsEnabled() and len(dialog.completed_results) == 1
+                    and dialog.completed_results[0][0] == str(sources[0])
+                    and dialog.completed_results[0][1]['cached'] is True)
                 check('guarded Close button ends the transcription dialog',
                     button_event(next(child for child in dialog.GetChildren()
                                       if isinstance(child, wx.Button) and child.GetId() == wx.ID_CLOSE)))
@@ -264,7 +269,49 @@ def run_native(source=None):
                     details['settings']['word_timestamps'] is True and bool(details['segments'][0]['words']))
                 check('original audio bytes remain unchanged',
                       [sha256(path.read_bytes()).hexdigest() for path in sources] == source_hashes)
-                dialog.sources = (sources[1],)
+                check('completed inputs enable the explicit native results action',
+                    dialog.results_button.IsEnabled() and len(dialog.completed_results) == 1)
+
+                def inspect_preview():
+                    viewer = state['asr_results']
+                    check('native result preview verifies and displays the completed transcript',
+                        viewer.current is not None and not viewer.pending and not frame.working
+                        and viewer.preview.GetValue().strip() == 'Синтетичний текст — Україна.'
+                        and 'Verified TXT snapshot' in viewer.details.GetValue())
+                    check('native transcript preview receives keyboard focus',
+                          pump(lambda: wx.Window.FindFocus() is viewer.preview))
+                    check('verified preview enables an explicit output-folder action', viewer.folder.IsEnabled())
+                    close = next(child for child in viewer.GetChildren()
+                                 if isinstance(child, wx.Button) and child.GetId() == wx.ID_CLOSE)
+                    check('native transcript result Close event is handled', button_event(close))
+                    state['asr_result_viewed'] = True
+
+                def begin_preview():
+                    try:
+                        viewer = modal('Completed transcriptions')
+                        check('explicit result button opens the actual native viewer', viewer is not None)
+                        state['asr_results'] = viewer
+                        check('result inputs have source labels in a standard named list',
+                            isinstance(viewer.inputs, wx.ListBox)
+                            and viewer.inputs.GetName() == 'Completed transcription inputs'
+                            and viewer.inputs.GetString(0) == str(sources[0]))
+                        check('preview and result details use named read-only text controls',
+                            isinstance(viewer.preview, wx.TextCtrl) and not viewer.preview.IsEditable()
+                            and viewer.preview.GetName() == 'Verified transcript preview'
+                            and not viewer.details.IsEditable())
+                        later(lambda: not viewer.pending and viewer.current is not None, inspect_preview)
+                    except BaseException:
+                        abort()
+
+                wx.CallAfter(begin_preview)
+                check('native completed-results button dispatches its handler', button_event(dialog.results_button))
+                raise_errors()
+                check('manual preview returns to the completed batch action',
+                    state.get('asr_result_viewed') is True
+                    and pump(lambda: wx.Window.FindFocus() is dialog.results_button))
+                # Reuse the first completed source, then cancel during the next
+                # one. The native failure callback must retain the saved prefix.
+                dialog.sources = tuple(sources)
                 model.block = True
                 model.started.clear()
                 check('native Start can launch the next selected source', button_event(dialog.start))

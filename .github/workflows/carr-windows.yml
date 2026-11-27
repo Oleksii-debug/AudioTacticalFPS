@@ -7,7 +7,7 @@ on:
       - carr-library/**
       - .github/workflows/carr-windows.yml
   push:
-    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/notebook-release-ascii-e021-20261126, carr/v3-integrated-private-ce034-20261126, carr/backup-compose-primary-20261126]
+    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/notebook-release-ascii-e021-20261126, carr/v3-integrated-private-ce034-20261126, carr/backup-compose-primary-20261126, carr/resonance-build-check-20261127]
     paths:
       - carr-library/**
       - .github/workflows/carr-windows.yml
@@ -393,6 +393,7 @@ jobs:
             'tests/audio/test_transcription.py',
             'tests/audio/test_transcription_models.py',
             'tests/ui/test_transcription_controller.py',
+            'tests/ui/test_transcription_results.py',
             'tests/e2e/test_transcription_cli.py',
             'tests/e2e/test_google_translation.py',
             'tests/ui/test_translation_busy_guard.py',
@@ -704,6 +705,7 @@ jobs:
               'carr_library.ui.evidence_panel',
               'carr_library.ui.audio_studio',
               'carr_library.ui.transcription_dialog',
+              'carr_library.ui.transcription_results',
               'carr_library.ui.translation_dialog',
               'carr_library.ui.assistant_dialog',
               'carr_library.ui.ocr_language_dialog',
@@ -780,6 +782,7 @@ jobs:
               'tests/audio/test_transcription.py',
               'tests/audio/test_transcription_models.py',
               'tests/ui/test_transcription_controller.py',
+              'tests/ui/test_transcription_results.py',
               'tests/e2e/test_transcription_cli.py',
               'tests/e2e/test_google_translation.py',
               'tests/e2e/test_managed_ocr_import.py',

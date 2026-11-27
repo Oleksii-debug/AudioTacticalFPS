@@ -15,6 +15,17 @@ def completion_message(results, output):
             + ('\n' + '\n'.join(notes) if notes else ''))
 
 
+def completed_entries(sources, receipts):
+    """Keep each completed receipt paired with its original, unambiguous input."""
+    sources, receipts = tuple(sources), tuple(receipts)
+    if len(receipts) > len(sources):
+        raise ValueError('The batch returned more results than selected input files.')
+    if any(not isinstance(receipt, dict) or receipt.get('status') != 'complete'
+           for receipt in receipts):
+        raise ValueError('Only completed transcripts can be shown in the result list.')
+    return tuple((str(source), receipt) for source, receipt in zip(sources, receipts))
+
+
 class TranscriptionBatchError(RuntimeError):
     def __init__(self, message, completed, *, notes=()):
         self.completed = tuple(completed)
@@ -100,6 +111,7 @@ def show_transcription_dialog(frame, controller=None):
             self.pending = False
             self.closed = False
             self.sources = ()
+            self.completed_results = ()
             self._progress_lock = Lock()
             self._latest_status = None
             self.mutable = []
@@ -149,6 +161,11 @@ def show_transcription_dialog(frame, controller=None):
             self.status = wx.TextCtrl(self, style=wx.TE_MULTILINE | wx.TE_READONLY)
             self.status.SetName('Transcription progress and result')
             layout.Add(self.status, 1, wx.EXPAND | wx.ALL, 6)
+            self.results_button = wx.Button(self, label='View completed res&ults...')
+            self.results_button.SetName('View completed transcription results')
+            self.results_button.Bind(wx.EVT_BUTTON, self.view_results)
+            self.results_button.Disable()
+            layout.Add(self.results_button, 0, wx.ALL, 6)
             buttons = wx.BoxSizer(wx.HORIZONTAL)
             self.start = wx.Button(self, label='&Start transcription')
             self.start.Bind(wx.EVT_BUTTON, self.run)
@@ -208,6 +225,21 @@ def show_transcription_dialog(frame, controller=None):
             for control in self.mutable:
                 control.Enable(not value)
             self.cancel.Enable(value)
+            self.results_button.Enable(not value and bool(self.completed_results))
+
+        def remember_results(self, sources, receipts):
+            self.completed_results = completed_entries(sources, receipts)
+            self.results_button.Enable(not self.pending and bool(self.completed_results))
+
+        def view_results(self, event=None):
+            if self.pending or not self.completed_results:
+                return
+            try:
+                from .transcription_results import show_transcription_results
+                show_transcription_results(self, self.completed_results)
+                self.results_button.SetFocus()
+            except Exception as exc:
+                self.report(str(exc))
 
         def report(self, message, *, focus=True):
             if not self.closed:
@@ -225,7 +257,7 @@ def show_transcription_dialog(frame, controller=None):
             if value is not None and self.pending:
                 self.report(value, focus=False)
 
-        def submit(self, title, operation, done):
+        def submit(self, title, operation, done, on_failed=None):
             if self.pending or frame.working or getattr(frame, '_closing', False):
                 self.report('Wait for the current operation or cancel it first.')
                 return
@@ -236,6 +268,8 @@ def show_transcription_dialog(frame, controller=None):
                 done(result)
             def failed(error):
                 self.set_pending(False)
+                if on_failed is not None:
+                    on_failed(error)
                 self.report(str(error))
             frame.run_job(title, operation, complete, failed)
 
@@ -255,8 +289,11 @@ def show_transcription_dialog(frame, controller=None):
                     return controller.transcribe(sources, output, manifest, settings=settings,
                         formats=('txt', 'srt', 'vtt', 'json'), cancelled=frame.cancel_event.is_set, on_status=self.progress)
                 def done(results):
+                    self.remember_results(sources, results)
                     self.report(completion_message(results, output))
-                self.submit('Transcribing local audio', operation, done)
+                def failed(error):
+                    self.remember_results(sources, getattr(error, 'completed', ()))
+                self.submit('Transcribing local audio', operation, done, failed)
             except Exception as exc:
                 self.report(str(exc))
 

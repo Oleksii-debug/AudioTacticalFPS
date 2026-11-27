@@ -2,6 +2,14 @@
 
 Review date: 2026-11-27. Status: SOURCE_RECEIVED_AND_STATICALLY_REVIEWED; runtime/integration/Windows/NVDA/model-quality acceptance NOT_RUN in this audit. This is a work package under the [current platform specification](UNIVERSAL_SCOPE_V3_FINALIZATION.md), not a separate ASR product.
 
+## Development update after the source review
+
+The [local transcription workflow](TRANSCRIPTION_LOCAL.md) now adapts the supplied worker's persistent model call, segment handling and exports into the platform's existing desktop job executor, model manifest and artifact publication. Its source identity is recorded there. ASR-01 through ASR-05 now have focused regression coverage for content-bound cache reuse, same-name inputs, language selection, complete exports and serialized model sessions. Completed results can be selected and read in the native dialog, including the completed prefix of a cancelled or failed batch. Word timestamps are implemented; speaker diarization remains separate.
+
+Local registration verifies existing model files without downloading or copying them. The optional faster-whisper/PyAV pair has a real consumer decode smoke, and [the limited tiny.en inference record](evidence/transcription-tiny-en-20261127.json) covers one synthetic English CPU sample, all four exports and exact cache reuse. These checks do not establish general recognition quality or complete Windows/NVDA acceptance.
+
+The current increment performs inference on the shared background executor. Cancellation is cooperative between yielded segments; a blocked native call is not preempted. A qualified isolated Windows engine pack, bounded worker-process cancellation, model/distribution rights, Ukrainian and multilingual recognition, long-file/resource behavior and manual NVDA remain open acceptance work. The findings below retain the original source-review evidence rather than claiming those remaining items are closed.
+
 ## Source and boundary
 
 The owner-supplied implementation identifies itself as V4.3. The current source includes worker.py (37,974 bytes), accessible_window.ps1 (49,718 bytes), README_UA.txt and download_models_once.py. The readable worker source was inspected. File bytes/immutable source hash and dependency lock must be recorded before code adoption; this review has not created a redistributed source snapshot.

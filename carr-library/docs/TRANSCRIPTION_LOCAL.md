@@ -6,6 +6,8 @@ Open **Audio → Local transcription**. Select local audio/video files, a review
 
 TXT, SRT, VTT and JSON are generated into an identity-specific folder. JSON can include word timestamps when selected. A completion marker is published only after every requested format is verified. Source audio stays unchanged. Existing edited results are preserved and reported as conflicts; unrelated same-name TXT files are never adopted. Cache identity binds captured audio bytes, exact model inventory, actual runtime files and inference settings.
 
+Choose **View completed results** to select a finished input, read its transcript and open its output folder. Inputs retain their full local paths so equal filenames in different folders remain distinguishable. If a later file fails or is cancelled, completed files from that batch remain available here. The named, read-only preview verifies the saved TXT against its completion receipt in the background; it does not change the transcript. Long texts show a clearly labelled preview of up to 64 KiB, with the complete file available in the output folder. Close and Escape request cancellation while verification is pending.
+
 ## Use the model already on the computer
 
 Choose **Register an existing local model** and select a complete CTranslate2/faster-whisper model directory containing `model.bin`, `config.json` and `tokenizer.json`. Registration records SHA256 values in `resonance-asr-model.json`; it does not copy or download model weights. Select the source and model licence deliberately. This records a local installation decision and does not grant redistribution rights. An existing manifest is never silently replaced.

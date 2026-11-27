@@ -6,7 +6,21 @@ import pytest
 from carr_library.audio.jobs import RenderCancelled
 
 from carr_library.ui.transcription_dialog import (TranscriptionController, TranscriptionBatchError,
-                                                  completion_message)
+                                                  completed_entries, completion_message)
+
+
+def test_completed_result_selection_keeps_partial_batch_and_same_named_inputs_distinct(tmp_path):
+    sources = (tmp_path / 'first' / 'book.wav', tmp_path / 'second' / 'book.wav')
+    first = {'status': 'complete', 'files': {'txt': 'first.txt'}}
+    second = {'status': 'complete', 'files': {'txt': 'second.txt'}}
+    assert completed_entries(sources, ()) == ()
+    assert completed_entries(sources, (first,)) == ((str(sources[0]), first),)
+    assert completed_entries(sources, (first, second)) == (
+        (str(sources[0]), first), (str(sources[1]), second))
+    with pytest.raises(ValueError, match='more results'):
+        completed_entries(sources[:1], (first, second))
+    with pytest.raises(ValueError, match='Only completed'):
+        completed_entries(sources, ({'status': 'partial'},))
 
 
 @pytest.fixture

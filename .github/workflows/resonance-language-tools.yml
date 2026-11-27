@@ -1,9 +1,6 @@
 name: Resonance transcription and translation
 
 on:
-  push:
-    branches: [carr/development-asr-translation-20261127]
-    paths: ['carr-library/**', '.github/workflows/resonance-language-tools.yml']
   pull_request:
     branches: [carr-library, carr/v3-integrated-private-ce034-20261126]
     paths:
@@ -63,14 +60,14 @@ jobs:
         if: runner.os == 'Windows'
         run: python -m pip install 'wxPython==4.2.4'
       - name: Compile new entrypoints and native controls
-        run: python -m compileall -q src/carr_library/audio/transcription.py src/carr_library/audio/transcription_models.py src/carr_library/transcription_cli.py src/carr_library/translation.py src/carr_library/ui/transcription_dialog.py src/carr_library/ui/translation_dialog.py
+        run: python -m compileall -q src/carr_library/audio/transcription.py src/carr_library/audio/transcription_models.py src/carr_library/transcription_cli.py src/carr_library/translation.py src/carr_library/ui/transcription_dialog.py src/carr_library/ui/transcription_results.py src/carr_library/ui/translation_dialog.py
       - name: Build and install the actual application wheel
         run: |
           python -m pip wheel --no-deps --wheel-dir language-wheel .
           python -m pip install --no-deps --force-reinstall language-wheel/*.whl
       - name: Verify installed entrypoints without source imports
         run: |
-          python -I -c "import pathlib,carr_library.audio.transcription as a,carr_library.audio.transcription_models as m,carr_library.transcription_cli as c,carr_library.translation as t,carr_library.ui.transcription_dialog as u; modules=(a,m,c,t,u); assert all('site-packages' in pathlib.Path(x.__file__).parts for x in modules); print('PASS: installed language modules imported from wheel')"
+          python -I -c "import pathlib,carr_library.audio.transcription as a,carr_library.audio.transcription_models as m,carr_library.transcription_cli as c,carr_library.translation as t,carr_library.ui.transcription_dialog as u,carr_library.ui.transcription_results as r; modules=(a,m,c,t,u,r); assert all('site-packages' in pathlib.Path(x.__file__).parts for x in modules); print('PASS: installed language modules imported from wheel')"
           python -I -m carr_library.transcription_cli --help
           python -I -m carr_library --self-test
       - name: Exercise native Windows language dialogs from the installed wheel
@@ -83,6 +80,7 @@ jobs:
           tests/audio/test_transcription_models.py
           tests/audio/test_model_manifest.py
           tests/ui/test_transcription_controller.py
+          tests/ui/test_transcription_results.py
           tests/e2e/test_transcription_cli.py
           tests/e2e/test_google_translation.py
           tests/e2e/test_provider_gateway.py
@@ -96,6 +94,9 @@ jobs:
           tests/reader/test_file_export.py
           tests/reader/test_binary_file_export.py
           tests/e2e/test_academic_document_export.py
+          tests/packaging/test_native_checks.py
+          tests/packaging/test_audio_bundle.py
+          tests/packaging/test_windows_bundle.py
       - name: Install optional transcription runtime without model weights
         run: python -m pip install 'faster-whisper==1.2.1' 'av==17.1.0'
       - name: Exercise actual installed CPU transcription dependencies
