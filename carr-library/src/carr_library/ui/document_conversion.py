@@ -28,7 +28,7 @@ def formats_text():
         'Each isolated worker has a 120-second default deadline. Cancel current operation also stops that worker.',
         'PDFs and images use the existing local OCR model chooser. Image OCR requires explicit selection and preserves image-frame boundaries. Unreadable or mixed native/image PDF pages require the reviewed import workflow.',
         'RTF requires explicit selection of an installed Pandoc executable. The worker checks its exact bytes and uses fixed --sandbox RTF-to-plain-text options.',
-        'DOC/PPT/XLS, supported WordPerfect and PalmDoc PDB require selection of the actual installed LibreOffice program/soffice executable. Each worker uses a new profile with macros, active content and untrusted links disabled; converted ODF passes the existing reader checks.',
+        'DOC/PPT/XLS, supported WordPerfect and PalmDoc PDB require selection of the actual installed LibreOffice program/soffice.com console executable on Windows, or program/soffice on POSIX. Each worker uses a new profile with macros, active content and untrusted links disabled; converted ODF passes the existing reader checks.',
         'A batch keeps already completed file/report pairs if a later input fails or is cancelled.',
         'A report is the completion marker. A publication error is reported even if a moved file remains for inspection.',
     ))
@@ -73,8 +73,8 @@ def choose_legacy(frame, kind):
 
 def choose_office(frame):
     import wx
-    dialog = wx.FileDialog(frame, 'Select installed LibreOffice program/soffice executable',
-        wildcard='LibreOffice program executable|soffice.exe;soffice.com;soffice|All files|*',
+    dialog = wx.FileDialog(frame, 'Select LibreOffice program/soffice.com on Windows or program/soffice on POSIX',
+        wildcard='LibreOffice console executable|soffice.com;soffice|All files|*',
         style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
     try:
         if dialog.ShowModal() != wx.ID_OK:

@@ -79,7 +79,9 @@ def _cancel(cancelled):
 
 def _paths(path):
     path = Path(path)
-    if (not path.is_absolute() or path.name not in ('soffice', 'soffice.exe', 'soffice.com')
+    if path.name == 'soffice.exe':
+        raise ConversionUnavailable('Headless Windows conversion requires explicitly selecting program/soffice.com; the GUI launcher can display a version dialog.')
+    if (not path.is_absolute() or path.name not in ('soffice', 'soffice.com')
             or path.parent.name.casefold() != 'program'):
         raise ConversionUnavailable('Select the actual installed LibreOffice program/soffice executable by absolute local path.')
     checked_directory(path.parent)
@@ -157,7 +159,7 @@ def _admit(selection, suffix, deadline):
     from .adapters import _executable, _remaining
     if (type(selection) is not dict or set(selection) != {'root', 'root_identity', 'executable', 'files'}
             or type(selection['root']) is not str or type(selection['executable']) is not str
-            or selection['executable'] not in ('program/soffice', 'program/soffice.exe', 'program/soffice.com')
+            or selection['executable'] not in ('program/soffice', 'program/soffice.com')
             or type(selection['files']) is not list
             or type(selection['root_identity']) is not list or len(selection['root_identity']) != 2
             or any(type(value) is not int or value < 0 for value in selection['root_identity'])):
