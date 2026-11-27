@@ -17,6 +17,14 @@ def show_production_editor(parent, editor, rows, *, current=lambda: True,
     options = voice_options(rows)
     dialog = wx.Dialog(parent, title='Roles, voices and final audio', size=(820, 780),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+    try:
+        return _run_production_editor(wx, dialog, editor, options, current=current,
+                                      focus_output=focus_output, on_ready=on_ready)
+    finally:
+        dialog.Destroy()
+
+
+def _run_production_editor(wx, dialog, editor, options, *, current, focus_output, on_ready):
     dialog.SetName('Structured Studio roles and final audio')
     accepted = None
     selected_role = editor.roles[0]
@@ -113,7 +121,8 @@ def show_production_editor(parent, editor, rows, *, current=lambda: True,
         language_choice.SetSelection(visible_languages.index(language))
         messages = [voice.name + ' — ' + voice.id,
                     ('Available controls: ' + ', '.join(voice.controls) if voice.available
-                     else 'Unavailable: ' + (voice.reason or 'The saved voice is not installed.'))]
+                     else ('Not in the current list: ' if not voice.advertised else 'Unavailable: ')
+                     + (voice.reason or 'The saved voice is not installed.'))]
         for name, default in (('rate', 0), ('pitch', 0), ('volume', 100)):
             supported = voice.available and name in voice.controls
             try:
@@ -124,7 +133,7 @@ def show_production_editor(parent, editor, rows, *, current=lambda: True,
             # explicitly, rather than being silently dropped on voice change.
             fields[name].Enable(supported or nondefault)
             if not supported:
-                messages.append(f'{name.capitalize()} is unsupported; only its default {default} can be applied.')
+                messages.append(f'{name.capitalize()} is not advertised for this selection; only its default {default} can be applied.')
         role = editor.role(selected_role)
         messages.append(f'{len(role.effects)} retained role effect step(s); only a final gain step is edited here.')
         if not voice.available:
@@ -138,7 +147,7 @@ def show_production_editor(parent, editor, rows, *, current=lambda: True,
         values = role_values(role)
         visible_voices = saved_voice_options(options, role.voice)
         voice_choice.SetItems([
-            ('Unavailable — ' if not item.available else '') + item.name + ' — ' + item.id
+            ('Unavailable — ' if item.advertised and not item.available else '') + item.name + ' — ' + item.id
             for item in visible_voices])
         voice_choice.SetSelection(next(index for index, item in enumerate(visible_voices) if item.id == role.voice))
         for key in ('pan', 'rate', 'pitch', 'volume', 'gain_db'):
@@ -208,9 +217,6 @@ def show_production_editor(parent, editor, rows, *, current=lambda: True,
     voice_choice.Bind(wx.EVT_CHOICE, select_voice)
     load_role(selected_role)
     (output_format if focus_output else role_choice).SetFocus()
-    try:
-        if on_ready is not None:
-            wx.CallAfter(on_ready, dialog, fields, buttons, status)
-        return accepted if dialog.ShowModal() == wx.ID_OK else None
-    finally:
-        dialog.Destroy()
+    if on_ready is not None:
+        wx.CallAfter(on_ready, dialog, fields, buttons, status)
+    return accepted if dialog.ShowModal() == wx.ID_OK else None

@@ -53,7 +53,9 @@ def _voice_dict(voice):
         return asdict(voice)
     if isinstance(voice, dict):
         return voice
-    return {name: getattr(voice, name, '') for name in ('id', 'name', 'languages', 'engine', 'available', 'reason')}
+    row = {name: getattr(voice, name, '') for name in ('id', 'name', 'languages', 'engine', 'available', 'reason')}
+    row['controls'] = getattr(voice, 'controls', ())
+    return row
 
 
 def _runtime_description(selected):
@@ -1110,7 +1112,7 @@ class AudioStudioDialog:
                             'controls': item.controls, 'available': item.available,
                             'reason': item.reason} for item in options]
         self.voice.SetItems([
-            ('Unavailable — ' if not item.available else '') + item.name
+            ('Unavailable — ' if item.advertised and not item.available else '') + item.name
             + ' — ' + ', '.join(item.languages) + ' — ' + item.id for item in options])
         self.voice.SetSelection(next(index for index, item in enumerate(options)
                                      if item.id == self.controller.voice))
@@ -1163,8 +1165,12 @@ class AudioStudioDialog:
                         and self._production_form_state() == snapshot)
 
             def discover():
-                rows = controller.voices(cancelled=self.cancelled.is_set)
-                return rows, controller.registry
+                registry = controller._registry()
+                rows = tuple(_voice_dict(voice) for voice in
+                             registry.voices(cancelled=self.cancelled.is_set))
+                if controller.registry is not registry:
+                    raise ValueError('The selected voice registry changed during discovery.')
+                return rows, registry
 
             def loaded(value):
                 nonlocal selected_registry

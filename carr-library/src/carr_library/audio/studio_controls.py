@@ -26,6 +26,7 @@ class VoiceOption:
     controls: tuple[str, ...]
     available: bool
     reason: str = ''
+    advertised: bool = True
 
 
 def _single_line(value, label, limit=2048):
@@ -69,8 +70,9 @@ def saved_voice_options(options, saved):
     _single_line(saved, 'saved voice identifier')
     if any(option.id == saved for option in options):
         return tuple(options)
-    return (VoiceOption(saved, 'Unavailable saved voice', (), (), False,
-                        'Reload or explicitly choose an installed voice; no substitute was selected.'),
+    return (VoiceOption(saved, 'Retained voice ID — not in the current list', (), (), False,
+                        'An unlisted ID may be a retained engine alias. Choose an advertised voice for role edits; '
+                        'no substitute was selected.', advertised=False),
             *options)
 
 
