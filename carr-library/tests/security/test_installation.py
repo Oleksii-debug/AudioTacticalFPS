@@ -40,19 +40,25 @@ def setup_update(tmp_path, repository, clock):
     draft = ReadingDocument.from_dict(reading.to_dict())
     draft.replace(0, len(draft.text), 'Explicit spoken derivative.')
     ReaderDraftStore(app.root, slot='update-editable-draft').save(ReaderResume(draft, cursor=3))
-    # Pending work, private voice configuration and protected-state document
-    # are not moved or retargeted during an application-only update.
+    # Pending work and private voice configuration are not moved or retargeted
+    # during an application-only update.
     retained = {}
     for name, data in (
         ('pending/synthetic-import.json', b'{"resume":"same-input-and-output-paths"}'),
         ('models/synthetic-voice/config.json', b'{"voice":"existing-local-voice"}'),
-        ('state/trusted-client/entitlement.json', b'synthetic-owner-state-not-a-grant'),
         ('audio-projects-retained/output.wav', b'existing-output-not-an-audio-fixture'),
     ):
         path = app.root / name
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(data)
         retained[path] = data
+    # EntitlementStore has an explicitly configured owner root; it is not an
+    # application LibraryApp sidecar. Keep this opaque preservation sentinel
+    # outside the typed user-data backup, without treating it as a signed grant.
+    protected = tmp_path / 'client-state' / 'entitlement.json'
+    protected.parent.mkdir()
+    protected.write_bytes(b'synthetic-owner-state-not-a-grant')
+    retained[protected] = protected.read_bytes()
     policy = repository.policy()
     raw_a = bundle('A')
     # Initial A is a locally created, trusted test installation, not an update.
@@ -107,6 +113,9 @@ def test_signed_a_to_b_real_stage_backup_activation_and_checked_restore_preserve
     assert restored_draft.document.source_text == reading.source_text
     assert restored_draft.document.source_anchor == reading.source_anchor
     assert restored_draft.cursor == 3
+    assert not (restored.root / 'state' / 'trusted-client').exists()
+    assert (tmp_path / 'client-state' / 'entitlement.json').read_bytes() == b'synthetic-owner-state-not-a-grant'
+    assert anchor.load().sequence == 2
     with pytest.raises(TrustError, match='rollback or replay'):
         transaction.apply(package)
 

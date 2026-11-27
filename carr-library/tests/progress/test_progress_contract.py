@@ -6,7 +6,7 @@ from threading import Event, Thread
 
 import pytest
 
-from carr_library.progress import ProgressHub, bind_progress, current_progress
+from carr_library.progress import ProgressHub, bind_progress, current_progress, operation_outcome
 
 
 class Clock:
@@ -18,6 +18,15 @@ class Clock:
 
     def advance(self, seconds):
         self.now += seconds
+
+
+@pytest.mark.parametrize('status, expected', [
+    ('stopped', 'cancelled'), ('STOPPED', 'cancelled'),
+    ('partial', 'paused'), ('future-worker-state', 'paused'),
+])
+def test_supplied_worker_stop_keeps_cancellation_distinct_from_incomplete_receipts(status, expected):
+    assert operation_outcome({'status': status}) == expected
+    assert operation_outcome([{'status': status}, {'status': 'failed'}]) == 'failed'
 
 
 def test_measured_quarters_never_claim_completion_before_durable_success():

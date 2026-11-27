@@ -208,7 +208,7 @@ def main():
                         check('native source highlight is an exact Unicode fragment', overlay.text.GetStringSelection()
                               == expected_page.raw_text[overlay.session.chapter.cues[0].start:overlay.session.chapter.cues[0].end])
                         check('existing progress observes the owned transport', overlay.transport.observed
-                              in frame.operation_progress._players)
+                              in frame.progress_panel.media.players)
                         stage = 2
                         press(named(overlay.dialog, 'Play from selected segment'))
                     elif stage == 2 and overlay.player.state == 'playing':
@@ -243,7 +243,7 @@ def main():
                         press(wx.Window.FindWindowById(wx.ID_CANCEL, overlay.dialog), wx.WXK_ESCAPE)
                     elif stage == 10 and reader._audio_dialog is None:
                         check('closing recorded audio confirms owned cleanup', overlay.closed and overlay.player.state == 'stopped'
-                              and overlay.transport.observed not in frame.operation_progress._players)
+                              and overlay.transport.observed not in frame.progress_panel.media.players)
                         stage = 11
                         press(wx.Window.FindWindowById(wx.ID_CANCEL, reader.dialog), wx.WXK_ESCAPE)
                 finally:
@@ -287,7 +287,7 @@ def main():
             if frame is not None:
                 frame.cancel_event.set(); frame._closing = True
                 frame.executor.shutdown(wait=True, cancel_futures=True)
-                frame.operation_progress.close(); frame.Destroy()
+                frame.progress_panel.close(); frame.Destroy()
             gui.Yield()
             if native_handle is not None:
                 native_handle.close()

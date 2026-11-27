@@ -333,6 +333,12 @@ jobs:
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
 
+      - name: Exercise installed native voice favorites and language profiles
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_voice_preferences_smoke.py --installed 2>&1 | Tee-Object 'ci-results/native-voice-preferences.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Exercise native semantic command settings, search and restored edit focus
         timeout-minutes: 3
         run: |
@@ -621,6 +627,8 @@ jobs:
             & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; script=sys.argv.pop(1); runpy.run_path(script,run_name='__main__')" (Resolve-Path (Join-Path scripts $probe)).Path 2>&1 | Tee-Object (Join-Path ci-results ('full-bundle-' + $probe + '.txt'))
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
+          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; script=sys.argv.pop(1); runpy.run_path(script,run_name='__main__')" (Resolve-Path scripts/windows_voice_preferences_smoke.py).Path --installed 2>&1 | Tee-Object 'ci-results/full-bundle-voice-preferences.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/epubcheck_acceptance.py --archive (Join-Path $env:CARR_PUBLICATION_TOOLS 'epubcheck-5.3.0.zip') --java $env:CARR_PUBLICATION_JAVA --report 'ci-results/installed-epubcheck.json' --require-installed
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/daisy_schema_acceptance.py --schemas (Join-Path $env:CARR_PUBLICATION_TOOLS 'daisy-schemas') --report 'ci-results/installed-daisy-schemas.json' --require-installed
@@ -802,6 +810,9 @@ jobs:
               'tests/ui/test_studio_progress_isolation.py',
               'tests/ui/test_progress_media_quiet.py',
               'tests/ui/test_progress_voice_actions.py',
+              'tests/speech/test_voice_preferences.py',
+              'tests/storage/test_voice_preferences_backup.py',
+              'tests/ui/test_voice_preferences_dialog.py',
               'tests/storage/test_progress_preferences_backup.py',
               'tests/studio/test_production_cancellation_outcomes.py',
               'tests/progress/test_progress_media_integration.py',
@@ -1035,6 +1046,9 @@ jobs:
             'tests/ui/test_studio_progress_isolation.py',
             'tests/ui/test_progress_media_quiet.py',
             'tests/ui/test_progress_voice_actions.py',
+            'tests/speech/test_voice_preferences.py',
+            'tests/storage/test_voice_preferences_backup.py',
+            'tests/ui/test_voice_preferences_dialog.py',
             'tests/storage/test_progress_preferences_backup.py',
             'tests/progress/test_progress_media_integration.py',
             'tests/packaging/test_offline_runtime_policy.py',

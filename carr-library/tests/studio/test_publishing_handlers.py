@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 from carr_library.application import LibraryApp
-from carr_library.ui.operation_progress import ProgressTracker
+from carr_library.progress import ProgressHub, ProgressState, bind_progress
 from carr_library.ui.publishing_dialog import create_publishing_dialog
 
 _spec = importlib.util.spec_from_file_location('publishing_handler_fixtures', Path(__file__).with_name('test_publishing.py'))
@@ -55,21 +55,37 @@ def desktop(source_job):
         setattr(wx, name, Widget)
     wx.BoxSizer = Sizer
     wx.CallAfter = lambda callback, *args: callback(*args)
-    progress = ProgressTracker()
+    progress = ProgressHub()
     frame = SimpleNamespace(library=library, cancel_event=Event(), working=False, _closing=False,
-                            operation_progress=progress, operations=[])
-    def run_job(title, operation, done, failed):
+                            progress_hub=progress, active_progress=None, operations=[])
+    def run_job(title, operation, done, failed, with_progress=False):
         frame.working = True; frame.cancel_event.clear(); frame.operations.append(title)
-        progress.start(title)
+        task = progress.start(title)
+        frame.active_progress = task
         try:
-            done(operation())
+            with bind_progress(task):
+                result = operation(lambda **fields: task.update(**fields)) if with_progress else operation()
+            done(result)
+            task.succeed(durable=True)
         except Exception as exc:
+            task.cancelled(str(exc)) if isinstance(exc, InterruptedError) else task.fail(str(exc))
             failed(exc)
         finally:
             frame.working = False
     frame.run_job = run_job
     dialog = create_publishing_dialog(frame, wx_module=wx)
     return frame, dialog, state
+
+
+def queue_job(frame, pending):
+    def run_job(title, operation, done, failed, with_progress=False):
+        task = frame.progress_hub.start(title)
+        frame.active_progress = task
+        def work():
+            with bind_progress(task):
+                return operation(lambda **fields: task.update(**fields)) if with_progress else operation()
+        pending.append((work, done, failed))
+    return run_job
 
 
 def test_native_handler_requires_explicit_completed_job_and_destination(desktop):
@@ -91,6 +107,9 @@ def test_actual_native_handler_exports_and_verifies_same_receipt(desktop, tmp_pa
     assert output.exists(), dialog.status.GetValue()
     assert not dialog.busy and not dialog.buttons['cancel'].IsEnabled()
     assert 'EPUB saved and its bytes verified' in dialog.status.GetValue()
+    assert frame.active_progress.snapshot().state == ProgressState.SUCCEEDED
+    assert frame.active_progress.snapshot().percent == 100
+    assert frame.progress_hub.snapshot(frame.active_progress.operation_id) == frame.active_progress.snapshot()
     assert len(dialog.receipts) == 1 and dialog.receipt_choice.GetSelection() == 0
     dialog.on_verify()
     assert 'Verified exact saved EPUB bytes' in dialog.status.GetValue()
@@ -112,7 +131,7 @@ def test_close_cancels_and_suppresses_late_native_result(desktop, tmp_path):
     frame, dialog, _ = desktop
     dialog.on_refresh(); dialog.job_choice.SetSelection(0); dialog.output.ChangeValue(str(tmp_path / 'late.epub'))
     pending = []
-    frame.run_job = lambda title, operation, done, failed: pending.append((operation, done, failed))
+    frame.run_job = queue_job(frame, pending)
     dialog.on_export(); assert dialog.busy
     dialog.on_close(); message = dialog.status.GetValue()
     assert dialog.cancel.is_set() and frame.cancel_event.is_set()
@@ -153,7 +172,7 @@ def test_queued_daisy_handler_captures_reviewed_format_and_publisher(desktop, tm
     output = tmp_path / 'captured-daisy.zip'; dialog.output.ChangeValue(str(output))
     dialog.publisher.ChangeValue('Reviewed publisher')
     pending = []
-    frame.run_job = lambda title, operation, done, failed: pending.append((operation, done, failed))
+    frame.run_job = queue_job(frame, pending)
     dialog.on_export()
     assert dialog.busy and not dialog.format_choice.IsEnabled() and not dialog.publisher.IsEnabled()
     dialog.format_choice.SetSelection(0); dialog.publisher.ChangeValue('Later value')

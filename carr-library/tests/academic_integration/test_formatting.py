@@ -128,8 +128,9 @@ def test_cluster_group_and_repeated_notes_use_real_processor_state(references):
         CitationCluster((CitationRequest('book-doe', '12', locator_verified=True),), 'first', 1),
         CitationCluster((CitationRequest('book-doe', '18', locator_verified=True),), 'second', 2)])
     assert result.citations[0].text == 'Jane Doe, The Book of Science (Example Press, 2020), 12.'
-    # The pinned Chicago style's ibid-with-locator branch keeps author + locator.
-    assert result.citations[1].text == 'Doe, 18.'
+    # The canonical Chicago 18th-edition subsequent-note macro includes the
+    # shortened title as well as author and locator.
+    assert result.citations[1].text == 'Doe, The Book of Science, 18.'
     assert [x.cluster_id for x in result.citations] == ['first', 'second']
 
 

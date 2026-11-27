@@ -495,3 +495,24 @@ def test_reader_detached_progress_observer_does_not_prevent_actual_resource_clea
     reader.values['audio_files'].cleanup.assert_called_once()
     assert any('Progress observer detached' in message for message in reader.reports)
     assert not hasattr(reader.parent, '_reader_playback_retained')
+
+
+def test_reader_reload_keeps_the_explicit_voice_without_speaking(reader):
+    reader.choice.selection = 1
+    chosen = reader.registry.voices()[1].id
+    reader.handlers.reload()
+    reader.work.finish()
+    assert reader.choice.selection == 1
+    assert reader.registry.voices()[reader.choice.selection].id == chosen
+    assert not reader.activations and reader.progress.provider is None
+
+
+def test_reader_reload_of_removed_voice_leaves_no_implicit_replacement(reader):
+    reader.choice.selection = 1
+    removed = reader.registry.voices()[1].id
+    reader.registry._voices.pop(removed)
+    reader.handlers.reload()
+    reader.work.finish()
+    assert reader.choice.selection == -1
+    assert any('No substitute was selected' in message for message in reader.reports)
+    assert not reader.activations and reader.progress.provider is None

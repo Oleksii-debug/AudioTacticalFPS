@@ -316,7 +316,7 @@ def operation_outcome(result):
     complete = {'complete', 'completed', 'succeeded', 'success', 'ok', 'passed', 'pass',
                 'ready', 'verified', 'saved', 'exported', 'duplicate', 'excluded'}
     failure = {'failed', 'error', 'timed_out', 'timeout', 'corrupt', 'invalid'}
-    cancelled = {'cancelled', 'canceled', 'aborted'}
+    cancelled = {'cancelled', 'canceled', 'aborted', 'stopped'}
     rank = {'succeeded': 0, 'paused': 1, 'cancelled': 2, 'failed': 3}
     outcome, pending, inspected = 'succeeded', [result], 0
     while pending:

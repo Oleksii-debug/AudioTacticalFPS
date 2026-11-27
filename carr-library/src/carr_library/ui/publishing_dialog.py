@@ -88,7 +88,7 @@ def create_publishing_dialog(frame, *, wx_module=None):
             return AudioBudget(max_output_bytes=int(self.max_gib.GetValue()) * 1024**3,
                                timeout=float(self.minutes.GetValue()) * 60)
 
-        def begin(self, title, operation, complete):
+        def begin(self, title, operation, complete, *, with_progress=False):
             if self.busy or not self.alive:
                 return False
             if local_path(frame.library.root, exists=True) != self.library_root:
@@ -109,7 +109,10 @@ def create_publishing_dialog(frame, *, wx_module=None):
                 self.busy = False
                 if self.alive:
                     self.report(str(error)); self.controls(); self.status.SetFocus()
-            frame.run_job(title, operation, done=done, failed=failed)
+            options = dict(done=done, failed=failed)
+            if with_progress:
+                options['with_progress'] = True
+            frame.run_job(title, operation, **options)
             return True
 
         def on_refresh(self, event=None):
@@ -166,10 +169,11 @@ def create_publishing_dialog(frame, *, wx_module=None):
                     if not publisher:
                         raise ValueError('Enter the publisher metadata explicitly for this DAISY publication.')
                 service = PublicationService(self.production, budget=self.budget())
-                def operation():
-                    token = frame.operation_progress.event.token
+                def operation(report_progress):
                     def progress(message):
-                        frame.operation_progress.update(phase=message, token=token)
+                        # The existing desktop reporter owns observer failures
+                        # and the worker's canonical bound ProgressTask.
+                        report_progress(phase=message)
                         wx.CallAfter(self.report, message)
                     if format_index == 1:
                         return service.export_daisy(identity, output, publisher=publisher, language=language, creator=creator,
@@ -181,7 +185,7 @@ def create_publishing_dialog(frame, *, wx_module=None):
                     self.receipt_choice.Set([f'{row["status"]}; {row["id"]}; {Path(row["output"]).name}' for row in self.receipts])
                     self.receipt_choice.SetSelection(len(self.receipts) - 1)
                     self.report(f'{label} saved and its bytes verified.\n' + json.dumps(value, ensure_ascii=False, indent=2))
-                self.begin('Publishing synchronized ' + label, operation, done)
+                self.begin('Publishing synchronized ' + label, operation, done, with_progress=True)
             except Exception as exc:
                 self.report(exc)
 

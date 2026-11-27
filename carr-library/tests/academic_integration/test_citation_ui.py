@@ -1,6 +1,7 @@
 """Headless native-action controllers against real SQLite, canonical QuickJS CSL and DOCX."""
 from dataclasses import replace
 import json
+import sys
 from types import SimpleNamespace
 from zipfile import ZipFile
 
@@ -151,11 +152,14 @@ def test_controller_cancellation_does_not_publish_or_modify_reference(prepared, 
 
 
 def test_legacy_doi_entrypoint_routes_to_the_existing_acquisition_workflow(prepared, monkeypatch):
-    from carr_library.ui import acquisition_dialog, citation_formatting
+    from carr_library.ui import citation_formatting
     library, workspace, _, academic, reference, _ = prepared
     frame = SimpleNamespace(library=library, active=(workspace, None))
     calls = []
-    monkeypatch.setattr(acquisition_dialog, 'show_acquisition_dialog', lambda parent: calls.append(parent))
+    # Only the native destination is a stand-in; the compatibility action and
+    # its exact shared acquisition import execute without requiring wx here.
+    monkeypatch.setitem(sys.modules, 'carr_library.ui.acquisition_dialog',
+        SimpleNamespace(show_acquisition_dialog=lambda parent: calls.append(parent)))
     citation_formatting.show_doi_preview(frame)
     assert calls == [frame]
     assert academic.list() == (reference,)

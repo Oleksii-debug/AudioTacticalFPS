@@ -338,6 +338,9 @@ def _cached_file_timestamps(monkeypatch):
     # Keep the actual identity, mode, link count and size while modelling that
     # metadata behavior with real changed bytes on every host platform.
     monkeypatch.setattr(export_file, '_file_state', lambda info: state(info)[:-2] + (0, 0))
+    # Hold the additional native Windows metadata steady too: this case must
+    # prove that the full content fingerprint detects the independent write.
+    monkeypatch.setattr(export_file, '_windows_change_time', lambda path: 0)
 
 
 def test_approved_content_change_with_identical_metadata_is_never_replaced(export, monkeypatch):
@@ -347,7 +350,10 @@ def test_approved_content_change_with_identical_metadata_is_never_replaced(expor
     approval = export_file.capture_export_destination(target,
         private_root=target.parent / 'private')
     target.write_bytes(b'Newer independent work')
-    assert export_file._file_state(target.stat()) == approval.state
+    native = (0,) if os.name == 'nt' else ()
+    assert (*export_file._file_state(target.stat()), *native) == approval.state[:-1]
+    assert approval.state[-1] == sha256(b'Approved earlier bytes').digest()
+    assert approval.state[-1] != sha256(target.read_bytes()).digest()
 
     with pytest.raises(ValueError, match='destination changed'):
         publish(approval=approval)

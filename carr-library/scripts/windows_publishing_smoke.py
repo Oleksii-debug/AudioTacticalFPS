@@ -107,7 +107,9 @@ def main():
                     press(dialog.buttons['export']); until(lambda: not dialog.busy)
                     check('native export completed with a durable receipt', target.exists() and len(dialog.receipts)==1
                           and 'saved and its bytes verified' in dialog.status.GetValue())
-                    check('shared progress completes only after publication verification',frame.operation_progress.event.state=='succeeded')
+                    check('shared progress completes only after publication verification',
+                          frame.progress_panel.active_task.snapshot().state.value == 'succeeded'
+                          and frame.progress_panel.active_task.snapshot().percent == 100)
                     check('native completion focuses readable publication status',wx.Window.FindFocus()==dialog.status)
                     provenance = inspect_epub(target)
                     check('exact script and measured line overlays are retained',provenance['original_script']==script

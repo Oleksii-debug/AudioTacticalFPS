@@ -7,7 +7,7 @@ import pytest
 
 from carr_library import backup_producers
 from carr_library.application import LibraryApp
-from carr_library.durable_state import atomic_json, read_json
+from carr_library.durable_state import atomic_json, read_json, state_lock
 from carr_library.library_backup import restore_backup
 from carr_library.studio.book_audio import BookAudioService, SplitOptions, capture_plan
 from carr_library.studio.project import Project, Role
@@ -82,10 +82,13 @@ def test_individually_valid_job_cannot_break_its_saved_book_plan(book, tmp_path,
 def test_actual_preparation_locks_are_not_restored_and_new_output_requires_review(book, tmp_path):
     _prepare(book)
     lock = book.service.plans / ('.book-' + book.plan.id + '.lock')
-    assert lock.is_file()  # Actual FileLock left by the existing producer.
     plan_path = book.service.plans / (book.plan.id + '.json')
     original_plan = plan_path.read_bytes()
-    checksum = book.app.backup(tmp_path / 'backup')
+    # Hold the producer's actual lock while taking the snapshot. FileLock
+    # versions differ on whether their released lock files remain on disk.
+    with state_lock(book.service.plans, 'book-' + book.plan.id):
+        assert lock.is_file()
+        checksum = book.app.backup(tmp_path / 'backup')
     manifest = read_json(tmp_path / 'backup' / 'manifest.json')
     assert manifest['version'] == 4
     assert not any(row['filename'].endswith('.lock') for row in manifest['sidecars'])

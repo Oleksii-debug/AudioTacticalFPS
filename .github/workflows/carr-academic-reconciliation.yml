@@ -165,7 +165,7 @@ jobs:
             tests/studio/test_publishing_handlers.py \
             tests/studio/test_daisy_publishing.py tests/studio/test_daisy_boundaries.py tests/packaging/test_installer_process.py tests/packaging/test_standard_installer.py \
             tests/reader/test_ebook_audio.py tests/speech/test_pronunciation_review.py \
-            tests/speech/test_pronunciation_handlers.py tests/speech/test_pronunciation_reader_hook.py \
+            tests/speech/test_pronunciation_handlers.py tests/speech/test_pronunciation_reader_hook.py tests/speech/test_voice_preferences.py tests/storage/test_voice_preferences_backup.py tests/ui/test_voice_preferences_dialog.py \
             tests/studio/test_pronunciation.py tests/studio/test_pronunciation_dialog.py tests/studio/test_pronunciation_render.py \
             tests/audio/test_audiobook.py tests/audio/test_effect_presets.py tests/studio/test_audiobook_publication.py \
             tests/speech/test_navigation.py tests/ui/test_reader_navigation.py \

@@ -3,6 +3,7 @@ from decimal import Decimal
 from hashlib import sha256
 import json
 import subprocess
+from types import SimpleNamespace
 import pytest
 from carr_library.application import LibraryApp
 from carr_library.assistant.models import canonical
@@ -71,7 +72,11 @@ def test_translation_state_roundtrips_without_credentials_or_gateway(produced, t
     assert len(manifest['sidecars']) == 6
     for row in manifest['sidecars']:
         assert (target / row['filename']).read_bytes() == (app.root / row['filename']).read_bytes()
-    restored = TranslationService(target / 'state/translation', gateway=object())
+    # Accepted chunks still require their actual restored local usage evidence;
+    # reading that ledger grants no provider connection or fresh transfer consent.
+    passive = SimpleNamespace(ledger=UsageLedger(target / 'state/translation/provider/usage'),
+                              request=forbidden)
+    restored = TranslationService(target / 'state/translation', gateway=passive)
     job = restored._load(identity)
     assert job['status'] == 'paused' and len(job['receipts']) == 1
     assert restored.jobs.control(identity) == 'pause'

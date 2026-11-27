@@ -199,9 +199,11 @@ def _validate_engine_settings(value):
         return value
 
     fields(value, {'schema', 'ffmpeg', 'ffprobe', 'piper', 'voice_helpers', 'music_models', 'fluidsynth'},
-           {'dordiai'})
+           {'dordiai', 'voice_preferences'})
     if type(value['schema']) is not int or value['schema'] != 1:
         raise ValueError('Unsupported local engine settings schema.')
+    if 'voice_preferences' in value:
+        _model('runtime_settings').validate_voice_preferences(value['voice_preferences'])
     # The primary speech provider has its own optional top-level declaration.
     # Resolve only its pure settings validator, never a provider or installation.
     dordiai = value.get('dordiai')
