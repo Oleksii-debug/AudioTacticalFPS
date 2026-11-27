@@ -132,7 +132,7 @@ class LocalModelManifest:
         if set(raw) - known:
             raise ModelManifestError('Unsupported model manifest fields.')
         actual_engine = _text(raw.get('engine'), 'engine')
-        if actual_engine not in {'musicgen', 'piper', 'dordiai-voices', 'ace-step'}:
+        if actual_engine not in {'musicgen', 'piper', 'dordiai-voices', 'ace-step', 'faster-whisper'}:
             raise ModelManifestError('Unsupported local model engine.')
         if engine is not None and actual_engine != engine:
             raise ModelManifestError('The model manifest belongs to another engine.')
