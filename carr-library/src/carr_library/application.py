@@ -731,12 +731,10 @@ class LibraryApp:
                         job = ingest.start(workspace, record.edition_id, self.assets_dir, retained.name, settings)
                     record_progress(self.root, _request_id, job=job)
                     result = ingest.run(workspace, job, self.assets_dir, retained.name, settings, cancelled=cancelled)
-                    if result['state'] in ('complete', 'superseded') and not publisher.published_here:
-                        if cancelled():
-                            raise InterruptedError('Import cancelled before catalog registration.')
-                        # A terminal journal state is not proof of publication.
-                        # Validate the sealed source and active/result identity
-                        # even when the journal has no previously stored revision.
+                    if result['state'] in ('complete', 'superseded'):
+                        # A terminal journal state alone cannot establish a
+                        # published source. Always validate the sealed revision
+                        # and its current authorized identity before returning.
                         with storage.transaction():
                             self._authorize(storage.db, workspace)
                             current = storage.db.execute(
@@ -750,14 +748,19 @@ class LibraryApp:
                                 raise ValueError('Completed import is missing its sealed source revision.')
                             if (current[3] == job) != (result['state'] == 'complete'):
                                 raise ValueError('Completed import active revision changed.')
-                            # A replay may add membership with exact current
-                            # metadata, including after a metadata revision.
-                            # Registration rejects stale metadata atomically;
-                            # it never reactivates the old source revision.
-                            register_batch(Catalog(storage.db, workspace), (record,))
-                            storage._check()
-                            if cancelled():
-                                raise InterruptedError('Import registration cancelled before commit.')
+                            if not publisher.published_here:
+                                if cancelled():
+                                    raise InterruptedError('Import cancelled before catalog registration.')
+                                # Replay can add membership only with matching
+                                # current metadata, without reactivating an old
+                                # source revision. Keep the existing pre-commit
+                                # cancellation check inside this transaction.
+                                register_batch(Catalog(storage.db, workspace), (record,))
+                                storage._check()
+                                if cancelled():
+                                    raise InterruptedError('Import registration cancelled before commit.')
+                            # First publication already registered and checked
+                            # the request atomically with its source revision.
                     result['verified'] = asset.mime == 'text/plain' and result['state'] == 'complete'
                     return result
 
@@ -934,13 +937,17 @@ class LibraryApp:
     def search(self, workspace, query, *, mode='phrase', collection=None, title=None,
                author=None, language=None, edition=None, limit=100, timeout=60.0,
                cancelled=lambda: False, authorized_topic=None, on_status=None,
-               result_mode=None):
+               result_mode=None, offset=0):
         if mode not in ('word', 'phrase', 'terms', 'thematic', 'semantic', 'advanced'):
             raise ValueError('Unknown search mode.')
         if result_mode not in (None, 'short', 'thematic'):
             raise ValueError('Choose Short quotations or Thematic excerpts.')
         if type(limit) is not int or not 1 <= limit <= 100:
             raise ValueError('Invalid search operation budget.')
+        if type(offset) is not int or offset < 0:
+            raise ValueError('Invalid search page offset.')
+        if offset and mode not in ('terms', 'advanced'):
+            raise ValueError('Result pages are available for All words and Advanced searches.')
         if on_status is not None and not callable(on_status):
             raise ValueError('Search status callback must be callable.')
         with self._search_read(workspace, timeout, cancelled) as (db, budget):
@@ -970,7 +977,8 @@ class LibraryApp:
                                                   timeout=budget.remaining(), cancelled=budget.stopped)
             else:
                 hits = literal.search(db, workspace, query, edition_ids=tuple(allowed),
-                                      mode=mode, limit=limit, timeout=budget.remaining(), cancelled=budget.stopped)
+                                      mode=mode, limit=limit, offset=offset,
+                                      timeout=budget.remaining(), cancelled=budget.stopped)
             # Catalog selection, active source selection, and metadata materialization
             # all share this read transaction. No cached edition filters cross snapshots.
             loader, metadata, attestor = self._loaders(db, workspace, cancelled=budget.stopped)
@@ -1237,6 +1245,10 @@ class LibraryApp:
             load, metadata, _ = self._loaders(db, workspace, cancelled=budget.stopped)
             return SavedTopicQueries(SavedEvidenceStore(db, workspace, load, metadata)).run(
                 topic, identity, timeout=budget.remaining(), cancelled=budget.stopped)
+
+    def transcription(self, workspace):
+        from .transcription import TranscriptionService
+        return TranscriptionService(self, workspace)
 
     def backup(self, destination, *, max_bytes=None, include_generated=False, cancelled=lambda: False):
         from .library_backup import create_backup

@@ -336,9 +336,11 @@ class ImportCenterActions:
             finally:
                 dialog.Destroy()
             if path:
-                approval = confirm_export_destination(self, path, private_root=self.library.root, wx_module=wx)
+                approval = confirm_export_destination(self, path, private_root=self.library.root,
+                                                       title='Replace import report', wx_module=wx)
                 if approval is None:
                     return
+                self._bound()
                 write_export(path, batch_report(batch), private_root=self.library.root, approval=approval)
                 self.report('Import report saved.')
         except Exception as exc:
