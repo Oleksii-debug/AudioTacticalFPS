@@ -440,6 +440,11 @@ def translation_handlers(tmp_path, transport, monkeypatch):
         'TE_MULTILINE', 'TE_READONLY', 'YES_NO', 'NO_DEFAULT', 'YES', 'ID_OK', 'ID_CLOSE', 'EVT_BUTTON', 'EVT_CLOSE'))})
     for name in ('Dialog', 'StaticText', 'TextCtrl', 'Choice', 'Button'):
         setattr(wx, name, Widget)
+    class SavedChooser(Widget):
+        def ShowModal(self):
+            self.selection = 0
+            return wx.ID_OK
+    wx.SingleChoiceDialog = SavedChooser
     wx.BoxSizer = Sizer
     wx.CallAfter = lambda callback, *args: callback(*args)
     def approve(message, *args):
@@ -538,4 +543,41 @@ def test_handler_root_change_before_worker_does_not_send_old_library_text(transl
         assert len(transport['calls']) == 1
         e.press('Translate / resume')
         assert not e.state['queue'] and len(e.service.list()) == 1
+    e.scenario(scenario)
+
+
+def test_saved_job_restores_visible_scope_and_rejects_changed_resume_and_export(translation_handlers, transport):
+    e = translation_handlers
+    def scenario():
+        prepare_handler(e); e.press('Preview'); e.press('Translate / resume'); e.complete()
+        saved, = e.service.list()
+        fields = {
+            'Selected text; originals remain unchanged': ('Handler reviewed original.', 'Unrelated text'),
+            'Source language code; auto detects': ('en', 'auto'),
+            'Target language code': ('uk', 'sk'),
+            'Advanced v3 glossary resource; blank for none': (GLOSSARY, ''),
+            'Maximum approved budget in USD; no default price': (saved['authorization']['budget'], '9'),
+        }
+        for field, (_, changed) in fields.items():
+            e.find(field).ChangeValue(changed)
+        e.find('Optional price per million characters in USD; your current contract rate').ChangeValue('99')
+        e.press('Saved jobs')
+        for field, (expected, _) in fields.items():
+            assert e.find(field).value == expected
+        assert e.find('Optional price per million characters in USD; your current contract rate').value == ''
+        status = e.find('Preview, supported languages and job status')
+        assert saved['id'] in status.value and status.focused
+        calls, approvals = len(transport['calls']), len(e.state['approvals'])
+        for field, (expected, changed) in fields.items():
+            e.find(field).ChangeValue(changed)
+            status.focused = False
+            e.press('Translate / resume')
+            assert 'Visible settings differ' in status.value and status.focused
+            assert not e.state['queue']
+            e.find(field).ChangeValue(expected)
+        e.find('Selected text; originals remain unchanged').ChangeValue('Unrelated text')
+        e.press('Export')  # No directory picker exists in this test double; refusal must precede it.
+        assert 'Visible settings differ' in status.value
+        assert not e.state['queue'] and len(transport['calls']) == calls
+        assert len(e.state['approvals']) == approvals
     e.scenario(scenario)
