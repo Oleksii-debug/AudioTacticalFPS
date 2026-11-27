@@ -151,3 +151,83 @@ def test_active_work_keeps_standard_future_result_and_queued_cancellation():
     finally:
         release.set()
         executor.shutdown(wait=True, cancel_futures=True)
+
+
+def test_queued_work_cannot_enter_while_an_earlier_cancel_callback_blocks_shutdown():
+    executor = DesktopExecutor()
+    entered, release = threading.Event(), threading.Event()
+    cancel_entered, release_cancel = threading.Event(), threading.Event()
+    cancel_guard = threading.Lock()
+    ordinary, cleanup, errors = [], [], []
+    def active():
+        entered.set()
+        assert release.wait(5)
+        return 'already admitted'
+    def canceled(future):
+        if not future.cancelled():
+            return
+        with cancel_guard:
+            first = not cancel_entered.is_set()
+            cancel_entered.set()
+        if first:
+            assert release_cancel.wait(5)
+    running = executor.submit(active)
+    assert entered.wait(5)
+    pending = []
+    for index in range(4):
+        future = executor.submit(lambda value=index: ordinary.append(value))
+        future.add_done_callback(canceled)
+        pending.append(future)
+    executor.register_cleanup(lambda: cleanup.append(threading.get_ident()))
+    def shut():
+        try:
+            executor.shutdown(wait=False, cancel_futures=True)
+        except BaseException as error:
+            errors.append(error)
+    closer = threading.Thread(target=shut)
+    try:
+        closer.start()
+        assert cancel_entered.wait(5)
+        # Shutdown has not canceled every Future yet. Let the actual worker
+        # drain the queue before the blocking cancellation callback returns.
+        release.set()
+        assert running.result(5) == 'already admitted'
+        for future in pending:
+            with pytest.raises(CancelledError):
+                future.result(5)
+        assert ordinary == [] and cleanup == []
+        assert closer.is_alive()
+        release_cancel.set()
+        closer.join(5)
+        assert not closer.is_alive() and not errors
+        executor.shutdown(wait=True, cancel_futures=True)
+        assert len(cleanup) == 1 and cleanup[0] != threading.get_ident()
+    finally:
+        release.set()
+        release_cancel.set()
+        closer.join(5)
+        executor.shutdown(wait=True, cancel_futures=True)
+
+
+def test_graceful_shutdown_preserves_explicit_non_canceling_queue_drain():
+    executor = DesktopExecutor()
+    entered, release = threading.Event(), threading.Event()
+    order = []
+    def active():
+        entered.set()
+        assert release.wait(5)
+        order.append('active')
+    running = executor.submit(active)
+    try:
+        assert entered.wait(5)
+        pending = executor.submit(lambda: order.append('queued'))
+        executor.register_cleanup(lambda: order.append('cleanup'))
+        executor.shutdown(wait=False, cancel_futures=False)
+        release.set()
+        running.result(5)
+        pending.result(5)
+        executor.shutdown(wait=True, cancel_futures=False)
+        assert order == ['active', 'queued', 'cleanup']
+    finally:
+        release.set()
+        executor.shutdown(wait=True, cancel_futures=True)

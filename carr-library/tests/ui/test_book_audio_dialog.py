@@ -432,3 +432,54 @@ def test_book_cleanup_survives_actual_executor_shutdown(handlers, monkeypatch, c
         executor.shutdown(wait=True, cancel_futures=True)
         e.frame.working = False
         monkeypatch.setattr(e.service, 'close', original_close)
+
+
+def test_failed_book_close_keeps_registered_owner_for_successful_worker_retry(handlers, monkeypatch):
+    from carr_library.ui.worker_lifetime import DesktopExecutor
+    e = handlers
+    e.close()
+    e.state['widgets'].clear()
+    monkeypatch.setattr(ui, 'BookAudioService', lambda *args: e.service)
+    executor = DesktopExecutor()
+    attempts, unregistered, submitted = [], [], []
+    original_close = e.service.close
+    def close_service():
+        attempts.append(threading.get_ident())
+        assert attempts[-1] != e.ui_thread
+        if len(attempts) == 1:
+            raise RuntimeError('Synthetic retained voice cleanup failure')
+        original_close()
+    monkeypatch.setattr(e.service, 'close', close_service)
+    def register(callback):
+        unregister = executor.register_cleanup(callback)
+        def released():
+            unregistered.append(threading.get_ident())
+            unregister()
+        return released
+    e.frame.register_worker_cleanup = register
+    def run_job(title, operation, done=None, failed=None):
+        submitted.append(executor.submit(operation))
+        return True
+    e.frame.run_job = run_job
+    try:
+        _, close = ui.create_book_audio_dialog(e.frame, wx_module=e.wx)
+        close()
+        assert len(submitted) == 1
+        with pytest.raises(RuntimeError, match='retained voice cleanup'):
+            submitted[0].result(5)
+        assert len(attempts) == 1 and unregistered == []
+        assert not e.service._closed.is_set()
+        # The ordinary UI completion need not run. The same registered owner
+        # is retried by the existing worker during forced desktop shutdown.
+        e.frame._closing = True
+        executor.shutdown(wait=True, cancel_futures=True)
+        assert e.service._closed.is_set()
+        assert len(attempts) == 2 and attempts[0] == attempts[1] != e.ui_thread
+        assert unregistered == [attempts[1]]
+        executor.shutdown(wait=True, cancel_futures=True)
+        close()
+        assert len(attempts) == 2
+    finally:
+        executor.shutdown(wait=True, cancel_futures=True)
+        e.frame.working = False
+        monkeypatch.setattr(e.service, 'close', original_close)

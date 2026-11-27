@@ -72,7 +72,7 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None):
     layout.Add(form, 0, wx.ALL | wx.EXPAND, 6)
     alive, busy, selected_source, plan, review, reviewed_fields = True, False, None, None, None, None
     locked_plan, voices = False, ()
-    cleanup_started = False
+    cleanup_complete = False
     cleanup_lock = threading.Lock()
     unregister_cleanup = lambda: None
     cancel = threading.Event()
@@ -162,23 +162,23 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None):
             event.Skip()
 
     def cleanup_owned():
-        nonlocal cleanup_started
+        nonlocal cleanup_complete
         if not owned:
             return
+        # Retain retry ownership if close fails, and serialize a concurrent
+        # normal close with the finalizer already captured by desktop shutdown.
         with cleanup_lock:
-            if cleanup_started:
+            if cleanup_complete:
                 return
-            cleanup_started = True
-        try:
             service.close()
-        finally:
-            unregister_cleanup()
+            cleanup_complete = True
+        unregister_cleanup()
 
     if owned:
         unregister_cleanup = frame.register_worker_cleanup(cleanup_owned)
 
     def queue_cleanup():
-        if not owned or cleanup_started:
+        if not owned or cleanup_complete:
             return True
         if getattr(frame, 'working', False) or getattr(frame, '_closing', False):
             return False
