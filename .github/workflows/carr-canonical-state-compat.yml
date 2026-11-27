@@ -93,16 +93,21 @@ jobs:
           $ErrorActionPreference = 'Stop'
           if ((git rev-parse HEAD).Trim() -ne $env:GITHUB_SHA) { throw 'Unexpected source identity.' }
           git rev-parse HEAD 'HEAD^{tree}'
-          python -m pip install '.[test]'
+          $proofEnvironment = Join-Path $env:RUNNER_TEMP 'carr-canonical-compat-environment'
+          python -m venv $proofEnvironment
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python -m pip check
+          $proofPython = Join-Path $proofEnvironment 'Scripts/python.exe'
+          & $proofPython -m pip install '.[test]'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $proofPython -m pip check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Actual Windows file identity and canonical restore contracts
         timeout-minutes: 10
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          python -m compileall -q src tests/storage/fixtures
+          $proofPython = Join-Path $env:RUNNER_TEMP 'carr-canonical-compat-environment/Scripts/python.exe'
+          & $proofPython -m compileall -q src tests/storage/fixtures
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python scripts/ci_check.py --jobs 2 tests/storage/test_canonical_state_compatibility.py tests/storage/test_library_backup.py tests/storage/test_backup_schema_identity.py
+          & $proofPython scripts/ci_check.py --jobs 2 tests/storage/test_canonical_state_compatibility.py tests/storage/test_library_backup.py tests/storage/test_backup_schema_identity.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
