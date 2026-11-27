@@ -89,3 +89,142 @@ jobs:
           name: office-observations-${{ github.sha }}
           path: carr-library/ci-office-observations
           if-no-files-found: error
+
+  linux-formats:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: carr-library
+        shell: bash
+    env:
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install exact conversion source and authored fixtures
+        run: python -m pip install ".[test]"
+      - name: Prepare pinned official Linux office runtime
+        if: "!cancelled() && runner.os == 'Linux'"
+        run: |
+          office_stage="$(mktemp -d "$RUNNER_TEMP/carr-office-26.8.3-XXXXXX")"
+          export CARR_OFFICE_PROVISION="$office_stage"
+          curl --fail --location --proto '=https' --proto-redir '=https' --retry 3 --connect-timeout 30 --max-time 180 --max-filesize 221377373 \
+            'https://download.documentfoundation.org/libreoffice/stable/26.8.3/deb/x86_64/LibreOffice_26.8.3_Linux_x86-64_deb.tar.gz' \
+            --output "$office_stage/office.tar.gz"
+          python - <<'PY'
+          from hashlib import sha256
+          import json
+          import os
+          from pathlib import Path, PurePosixPath
+          import re
+          import subprocess
+          import tarfile
+          
+          root = Path(os.environ['CARR_OFFICE_PROVISION'])
+          archive = root / 'office.tar.gz'
+          expected_size = 221377373
+          expected_hash = 'e7cd3538e85818ff9dd9bb65386769fde927011242aace5a144989f4000dcabf'
+          if archive.stat().st_size != expected_size:
+              raise RuntimeError('The official Office archive has a different length.')
+          digest = sha256()
+          with archive.open('rb') as stream:
+              for block in iter(lambda: stream.read(1024 * 1024), b''):
+                  digest.update(block)
+          if digest.hexdigest() != expected_hash:
+              raise RuntimeError('The official Office archive differs from its pinned SHA256.')
+          packages = root / 'packages'
+          packages.mkdir()
+          names, debs, total, count = set(), [], 0, 0
+          with tarfile.open(archive, 'r:gz') as bundle:
+              for member in bundle:
+                  count += 1
+                  name = PurePosixPath(member.name)
+                  total += member.size
+                  if (count > 2048 or total > 512 * 1024**2 or name.is_absolute()
+                          or '..' in name.parts or '\\' in member.name or len(member.name) > 1024
+                          or not (member.isdir() or member.isfile()) or member.name in names):
+                      raise RuntimeError('The pinned Office archive has an unexpected extraction shape.')
+                  names.add(member.name)
+                  if not member.isfile() or len(name.parts) != 3 or name.parts[1] != 'DEBS':
+                      continue
+                  if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9.+_:-]*\.deb', name.name):
+                      raise RuntimeError('The official Office package name is invalid.')
+                  target = packages / name.name
+                  with bundle.extractfile(member) as source, target.open('xb') as output:
+                      remaining = member.size
+                      while remaining:
+                          block = source.read(min(1024 * 1024, remaining))
+                          if not block:
+                              raise RuntimeError('The official Office package is truncated.')
+                          output.write(block)
+                          remaining -= len(block)
+                      if source.read(1):
+                          raise RuntimeError('The official Office package exceeds its declared length.')
+                  debs.append(target)
+          if not 3 <= len(debs) <= 128:
+              raise RuntimeError('The pinned Office archive lacks its bounded package set.')
+          selected = []
+          for deb in sorted(debs):
+              package = subprocess.check_output(['dpkg-deb', '-f', str(deb), 'Package'], text=True).strip()
+              version = subprocess.check_output(['dpkg-deb', '-f', str(deb), 'Version'], text=True).strip()
+              if (re.fullmatch(r'[a-z0-9][a-z0-9+.-]{0,127}', package) is None
+                      or not version or len(version) > 128):
+                  raise RuntimeError('The selected Office package metadata is invalid.')
+              selected.append({'package': package, 'version': version})
+          subprocess.run(['sudo', 'apt-get', 'install', '--no-install-recommends', '-y',
+                          *(str(path) for path in sorted(debs))], check=True, timeout=240)
+          executables = set()
+          for row in selected:
+              installed = subprocess.check_output(
+                  ['dpkg-query', '-W', '-f=' + '$' + '{Version}', row['package']], text=True).strip()
+              if installed != row['version']:
+                  raise RuntimeError('An installed Office package differs from the pinned archive.')
+              for value in subprocess.check_output(['dpkg-query', '-L', row['package']], text=True).splitlines():
+                  candidate = Path(value)
+                  if candidate.name == 'soffice' and candidate.parent.name == 'program':
+                      if candidate.is_symlink() or not candidate.is_file():
+                          raise RuntimeError('The selected Office launcher is not an ordinary installed file.')
+                      executables.add(candidate)
+          if len(executables) != 1:
+              raise RuntimeError('The pinned Office packages must declare exactly one launcher.')
+          executable = executables.pop()
+          version = subprocess.check_output([str(executable), '--version'], text=True, timeout=30)
+          if re.fullmatch(r'LibreOffice 26\.8\.3(?:\.\d+)? [0-9a-f]{40}\s*', version) is None:
+              raise RuntimeError('The installed Office version differs from the reviewed release.')
+          report = Path('ci-office-observations')
+          report.mkdir(exist_ok=True)
+          (report / 'office-version.txt').write_text(version, encoding='utf-8')
+          (report / 'packages.json').write_text(json.dumps({
+              'archive_url': 'https://download.documentfoundation.org/libreoffice/stable/26.8.3/deb/x86_64/LibreOffice_26.8.3_Linux_x86-64_deb.tar.gz',
+              'checksum_source': 'https://download.documentfoundation.org/libreoffice/stable/26.8.3/deb/x86_64/LibreOffice_26.8.3_Linux_x86-64_deb.tar.gz.sha256',
+              'archive_bytes': expected_size, 'archive_sha256': expected_hash,
+              'packages': selected, 'executable': str(executable),
+          }, indent=2) + '\n', encoding='utf-8')
+          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as environment:
+              environment.write('CARR_SOFFICE=' + str(executable) + '\n')
+          PY
+      - name: Observe six bounded actual XLS and Write routes on Linux
+        run: |
+          mkdir -p ci-office-observations
+          python -I -B -X utf8 -X faulthandler scripts/observe_office_native.py --formats-only 2>&1 | tee ci-office-observations/observations.txt
+      - name: Preserve exact identity
+        if: always()
+        run: |
+          mkdir -p ci-office-observations
+          git rev-parse HEAD > ci-office-observations/commit.txt
+          python -m pip freeze > ci-office-observations/packages.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: office-linux-format-observations-${{ github.sha }}
+          path: carr-library/ci-office-observations
+          if-no-files-found: error

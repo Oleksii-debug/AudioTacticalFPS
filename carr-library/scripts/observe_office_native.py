@@ -282,7 +282,70 @@ def authored_write_with_fod(text):
     assert len(result) == page_count * 128
     return result
 
+
+def format_census_only():
+    """Six actual Linux observations; reuse the current bounded child helpers."""
+    assert sys.platform == 'linux'
+    from carr_library.audio.models import AudioBudget
+    from carr_library.audio.process import run_process
+    from carr_library.conversion.office import OfficeSelection, _admit
+    native = Path(os.environ['CARR_SOFFICE']).resolve(strict=True)
+    installed = identities()
+    for row in installed.values():
+        assert 'site-packages' in row['path'].replace('\\', '/').casefold()
+    fixture_path = Path(__file__).resolve().parents[1] / 'tests/conversion/office_native_acceptance.py'
+    fixture_before = sha256(fixture_path.read_bytes()).hexdigest()
+    spec = importlib.util.spec_from_file_location('office_authored_fixture', fixture_path)
+    fixture = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(fixture)
+    selected = OfficeSelection.capture(native).snapshot()
+    with TemporaryDirectory(prefix='carr-office-format-observation-') as temporary:
+        root = Path(temporary).resolve()
+        deadline = monotonic() + 300
+        xls = fixture.legacy_office(root, 'xls', TEXT)
+        xls_bytes = xls.read_bytes()
+        inputs = (('xls', 'actual_failed_format', xls_bytes, 'ods'),
+                  ('wri', 'header_only', fixture.microsoft_write(TEXT), 'odt'),
+                  ('wri', 'one_run_fod', authored_write_with_fod(TEXT), 'odt'))
+        print(json.dumps({'status': 'AUTHORED_FORMATS_READY', 'installed': installed,
+            'selection_sha256': sha256(json.dumps(selected, sort_keys=True).encode()).hexdigest()}),
+            flush=True)
+        for kind, variant, captured, extension in inputs:
+            for route in ('direct', 'worker'):
+                remaining = deadline - monotonic()
+                if remaining < 1:
+                    raise TimeoutError('The bounded Linux format census did not finish.')
+                stage = root / (kind + '-' + variant + '-' + route)
+                stage.mkdir()
+                source = stage / ('source.' + kind)
+                source.write_bytes(captured)
+                (stage / 'selection.json').write_text(json.dumps(selected), encoding='utf-8')
+                if route == 'worker':
+                    outcome = worker_observation(stage, selected, native, remaining, kind)
+                else:
+                    outcome = run_process([sys.executable, '-I', '-B', '-X', 'utf8',
+                        str(Path(__file__).resolve()), '--format-child', kind, str(stage)],
+                        budget=AudioBudget(timeout=min(90, remaining),
+                            max_output_bytes=128 * 1024**2, max_staging_files=4096),
+                        owned_tree=True, cwd=stage, watch=(stage,), allow_failure=True)
+                assert source.read_bytes() == captured and xls.read_bytes() == xls_bytes
+                _admit(selected, '.' + kind, monotonic() + 20)
+                print(json.dumps({'case': 'linux_actual_format', 'kind': kind,
+                    'variant': variant, 'route': route, 'exit': outcome.returncode,
+                    'source_bytes': len(captured), 'source_sha256': sha256(captured).hexdigest(),
+                    'source_header_hex': captured[:128].hex(),
+                    'stdout': outcome.stdout.decode('utf-8', 'replace')[:65536],
+                    'stderr': outcome.stderr.decode('utf-8', 'replace')[:8192],
+                    **observations(stage, extension)}, ensure_ascii=True), flush=True)
+    assert identities() == installed
+    assert sha256(fixture_path.read_bytes()).hexdigest() == fixture_before
+    print('OBSERVATIONS_COMPLETE: six actual Linux routes; exact installed sources and inputs unchanged',
+          flush=True)
+
 def main():
+    if sys.argv[1:] == ['--formats-only']:
+        format_census_only()
+        return
     if len(sys.argv) == 4 and sys.argv[1] == '--format-child':
         kind, root = sys.argv[2], Path(sys.argv[3]).resolve(strict=True)
         child('original', root, kind)
