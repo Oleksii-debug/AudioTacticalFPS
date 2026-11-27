@@ -1,0 +1,91 @@
+name: CARR bounded recording reuse
+
+on:
+  push:
+    branches: [work/recording-reuse-df12-a49c]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-recording-reuse-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  source-linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: carr-library
+        shell: bash
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      OMP_THREAD_LIMIT: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install source dependencies and inspect the actual runtime
+        run: |
+          set -euo pipefail
+          python -m pip install pytest==9.0.2 filelock==3.29.0 platformdirs==4.10.0 packaging==26.4 pypdf==7.1.1 python-docx==1.2.0 defusedxml==0.7.1 Pillow==13.0.0
+          python -m pip check
+          command -v ffmpeg
+          ffmpeg -version
+      - name: Actual capture, owned cleanup, snapshot and existing audio admission
+        run: |
+          set -euo pipefail
+          python -m compileall -q src/carr_library/audio src/carr_library/progress.py
+          python scripts/ci_check.py tests/audio/test_recording.py tests/audio/test_capture_ownership.py tests/audio/test_recording_admission.py tests/audio/test_project_backup.py tests/audio/test_input_asset_backup.py tests/audio/test_player.py tests/audio/test_progress_speech.py tests/test_progress.py tests/ui/test_audio_playback_controls.py tests/ui/test_progress_voice.py
+  source-windows:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      OMP_THREAD_LIMIT: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Install the existing desktop lock and verified LGPL runtime
+        run: |
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install pytest==9.0.2 --only-binary=:all:
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $captureInputs = Join-Path $env:RUNNER_TEMP 'recording-inputs'
+          $captureRuntime = Join-Path $env:RUNNER_TEMP 'recording-runtime'
+          python packaging/acquire_audio_runtime.py --output $captureInputs --download
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $captureArchive = Join-Path $captureInputs 'ffmpeg-n9.0.2-982-g836df4e858-win64-lgpl-shared-9.0.zip'
+          python packaging/prepare_audio_runtime.py --archive $captureArchive --sources-dir $captureInputs --output $captureRuntime
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $captureBin = Join-Path $captureRuntime 'bin'
+          $captureBinary = Join-Path $captureBin 'ffmpeg.exe'
+          "CARR_FFMPEG=$captureBinary" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $captureBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          & $captureBinary -version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Actual capture, native Job Object and existing audio admission
+        run: |
+          python -m compileall -q src/carr_library/audio src/carr_library/progress.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python scripts/ci_check.py tests/audio/test_recording.py tests/audio/test_capture_ownership.py tests/audio/test_recording_admission.py tests/audio/test_project_backup.py tests/audio/test_input_asset_backup.py tests/audio/test_player.py tests/audio/test_progress_speech.py tests/test_progress.py tests/ui/test_audio_playback_controls.py tests/ui/test_progress_voice.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

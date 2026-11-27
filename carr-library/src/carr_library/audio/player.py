@@ -89,7 +89,25 @@ class WavePlayer:
         self._queue, self.playlist_index = (item,), 0
         self._ab, self.segments, self._auto_advance = None, (), True
 
+    @property
+    def recording_quiescent(self):
+        if getattr(self, '_recording_starting', False):
+            return False
+        return self.status().state in ('idle', 'stopped', 'completed', 'closed')
+
     def _start(self, path, *, start_seconds=0, end_seconds=None, device_id=_DEVICE_UNSET):
+        from ..progress import begin_player_start, release_player
+        self._recording_starting = True
+        try:
+            begin_player_start(self)
+            return self._start_owned(path, start_seconds=start_seconds,
+                end_seconds=end_seconds, device_id=device_id)
+        finally:
+            self._recording_starting = False
+            if self.recording_quiescent:
+                release_player(self)
+
+    def _start_owned(self, path, *, start_seconds=0, end_seconds=None, device_id=_DEVICE_UNSET):
         from .playback import PCMPlayer
         selected = local_path(path)
         # Validate all bounds before interrupting an existing valid recording.
@@ -130,6 +148,10 @@ class WavePlayer:
                 self._external_status = replace(self._external_status, state='completed' if code == 0 else 'error',
                     error=None if code == 0 else f'The local audio player exited with code {code}.')
             snapshot = self._external_status
+        if (not getattr(self, '_recording_starting', False)
+                and snapshot.state in ('idle', 'stopped', 'completed', 'closed')):
+            from ..progress import release_player
+            release_player(self)
         if getattr(self, '_selection_cleared', False) and snapshot.state not in ('error', 'unavailable', 'closed'):
             return PlaybackStatus()
         return snapshot
@@ -185,6 +207,9 @@ class WavePlayer:
             self.process = None
             self._external_status = replace(self._external_status, state='stopped', position_frames=0)
         self._ended = False
+        if not getattr(self, '_recording_starting', False):
+            from ..progress import release_player
+            release_player(self)
 
     def stop(self):
         self._auto_advance, self._sleep_deadline = False, None
@@ -197,6 +222,9 @@ class WavePlayer:
             self._ended = False
         else:
             self._halt()
+        if not getattr(self, '_recording_starting', False):
+            from ..progress import release_player
+            release_player(self)
 
     @property
     def playlist(self):

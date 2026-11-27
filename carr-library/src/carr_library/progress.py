@@ -341,6 +341,8 @@ class ProgressTonePolicy:
 
 _audio_lock = threading.RLock()
 _audio_owners = set()
+_recording_owners = {}
+_playback_owners = set()
 _dispatcher = None
 
 
@@ -558,6 +560,59 @@ def set_media_active(owner, active):
                 _dispatcher.silence()
         else:
             _audio_owners.discard(owner)
+
+
+
+def set_recording_active(owner, active, *, cleanup_pending=False):
+    """Use the existing audio admission lock for an explicitly owned capture."""
+    with _audio_lock:
+        if active:
+            _recording_owners[owner] = bool(cleanup_pending)
+            _audio_owners.add(owner)
+            if _dispatcher is not None:
+                _dispatcher.silence()  # Cancels both tones and selected speech.
+        else:
+            _recording_owners.pop(owner, None)
+            _audio_owners.discard(owner)
+
+
+def recording_audio_notice():
+    with _audio_lock:
+        if any(_recording_owners.values()):
+            return 'Microphone cleanup is still pending. Playback waits until its owned cleanup completes.'
+        if _recording_owners:
+            return 'A microphone recording is active. Stop or cancel it before starting playback.'
+        return ''
+
+
+def begin_player_start(owner):
+    """Atomically exclude capture before this existing player can start output.
+
+    This passive ownership does not itself suppress notifications: their own
+    WavePlayer must not cancel the speech request that is playing through it.
+    """
+    with _audio_lock:
+        notice = recording_audio_notice()
+        if notice:
+            raise RuntimeError(notice)
+        _playback_owners.add(owner)
+
+
+def release_player(owner):
+    """Called only after observed completion or successful native stop/close."""
+    with _audio_lock:
+        _playback_owners.discard(owner)
+
+
+def recording_admission_ready(owner):
+    """No app content or unconfirmed notification output may enter a recording."""
+    with _audio_lock:
+        for player in tuple(_playback_owners):
+            if player.recording_quiescent:
+                _playback_owners.discard(player)
+        return (owner in _recording_owners and not _playback_owners
+                and not (_audio_owners - _recording_owners.keys())
+                and (_dispatcher is None or _dispatcher.quiescent))
 
 
 def progress_audio_suppressed():
