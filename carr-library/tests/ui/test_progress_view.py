@@ -211,7 +211,30 @@ def test_playback_suppresses_tones_before_native_start_and_releases_on_stop_or_e
     dialog.controller = SimpleNamespace(result={'output': str(tmp_path / 'master.wav')})
     dialog.editing_dirty = False
     admitted = []
-    dialog.playback.play.side_effect = lambda path: admitted.append(dialog.progress_view._media_active)
+    from carr_library.audio.playback import PlaybackStatus
+    from dataclasses import replace
+    state = [PlaybackStatus()]
+    dialog.playback.status.side_effect = lambda: state[0]
+    dialog.playback.poll.return_value = None
+    dialog.playback.playlist_index = dialog.playback.ab_loop = dialog.playback.sleep_remaining_seconds = None
+    dialog.playback.native = SimpleNamespace(_cleanup_error=None)
+    dialog.playback_status = Mock()
+    dialog.playback_status.GetValue.return_value = ''
+    dialog._last_playback_error = None
+    dialog._refresh_playback_choices = Mock()
+    dialog.playback_device = Mock()
+    dialog.playback_device.GetSelection.return_value = 0
+    dialog.playback_device_ids = [None]
+
+    def playing(path, *, device_id):
+        admitted.append(dialog.progress_view._media_active)
+        state[0] = PlaybackStatus(state='playing', sample_rate=8000, total_frames=8000)
+
+    def stopped():
+        state[0] = replace(state[0], state='stopped')
+
+    dialog.playback.play.side_effect = playing
+    dialog.playback.stop.side_effect = stopped
     dialog.play()
     assert admitted == [True]
     assert dialog.progress_view._media_active
@@ -225,3 +248,25 @@ def test_playback_suppresses_tones_before_native_start_and_releases_on_stop_or_e
     dialog.playback.play.side_effect = OSError('device unavailable')
     dialog.play()
     assert not dialog.progress_view._media_active
+
+
+
+def test_native_playback_poll_releases_tone_broker_only_after_output_stops(tmp_path):
+    from carr_library.audio.playback import PlaybackStatus
+    from dataclasses import replace
+    dialog = studio(tmp_path)
+    dialog.playback.native = SimpleNamespace(_cleanup_error=None)
+    dialog.playback.poll.return_value = None
+    dialog.playback.playlist_index = dialog.playback.ab_loop = dialog.playback.sleep_remaining_seconds = None
+    dialog.playback_status = Mock()
+    dialog.playback_status.GetValue.return_value = ''
+    dialog._last_playback_error = None
+    playing = PlaybackStatus(state='playing', sample_rate=8000, total_frames=8000)
+    for state in ('starting', 'playing', 'paused'):
+        dialog.playback.status.return_value = replace(playing, state=state)
+        dialog.refresh_playback()
+        assert dialog.progress_view._media_active
+    for state in ('completed', 'stopped'):
+        dialog.playback.status.return_value = replace(playing, state=state)
+        dialog.refresh_playback()
+        assert not dialog.progress_view._media_active
