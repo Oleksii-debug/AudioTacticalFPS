@@ -259,11 +259,15 @@ def run_native(source=None, timeout=120):
             action.Enable(True)
             before = keymap.read_bytes()
 
+            # Ctrl+Alt+J belongs to the real local assistant in the complete
+            # application. Verify a free draft key before testing Escape.
+            cancel_shortcut = 'Ctrl+Alt+Shift+J'
+            manager.validate({**manager.overrides, test_id: cancel_shortcut})
             def cancel(dialog):
-                dialog.shortcut.SetValue('Ctrl+Alt+J')
+                dialog.shortcut.SetValue(cancel_shortcut)
                 activate(button(dialog.dialog, caption='Assign shortcut'))
                 check('cancel probe has an unapplied native settings draft',
-                      dialog.draft[test_id] == 'Ctrl+Alt+J' and manager.shortcut(test_id) == 'Ctrl+Shift+K')
+                      dialog.draft[test_id] == cancel_shortcut and manager.shortcut(test_id) == 'Ctrl+Shift+K')
                 press(wx.WXK_ESCAPE)
 
             check('actual Escape cancels the native settings dialog', not settings_session(cancel))

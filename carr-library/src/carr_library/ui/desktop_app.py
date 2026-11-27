@@ -491,7 +491,7 @@ class DesktopFrame(WorkspaceFrame):
         self.working = False
         self._closing = False
         super().__init__(None, library.list_scopes, self._bind)
-        self.SetTitle('Universal Research Library')
+        self.SetTitle('Resonance')
         self.SetMinSize((760, 650))
         self._menus()
         if self.scopes:

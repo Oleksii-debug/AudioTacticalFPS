@@ -107,6 +107,8 @@ def exercise_controls(root, wx):
                     raise RuntimeError('The native saved-job selector did not open.')
                 choices = [window for window in wx.GetTopLevelWindows()
                            if isinstance(window, wx.SingleChoiceDialog)
+                           and window.GetParent() == state['dialog']
+                           and window.IsShown() and window.IsModal()
                            and window.GetTitle() == 'Assistant jobs']
                 if not choices:
                     wx.CallLater(25, select_saved)
@@ -131,6 +133,8 @@ def exercise_controls(root, wx):
                 if dialog is None:
                     dialog = next((window for window in wx.GetTopLevelWindows()
                                    if isinstance(window, wx.Dialog)
+                                   and window.GetParent() == frame
+                                   and window.IsShown() and window.IsModal()
                                    and window.GetTitle().startswith('Local assistant')), None)
                     if dialog is None:
                         wx.CallLater(25, poll)
@@ -162,7 +166,8 @@ def exercise_controls(root, wx):
                         checks.append(EXPECTED_CHECKS[0])
                     click(button(dialog, 'Run / resume'))
                     state['phase'] = 'running'
-                elif state['phase'] == 'running' and review.GetValue().startswith('complete:'):
+                elif (state['phase'] == 'running' and review.GetValue().startswith('complete:')
+                      and button(dialog, 'Run / resume').IsEnabled()):
                     assert '3 of 3 verified operations' in review.GetValue()
                     job, = observer.jobs()
                     assert job.status == 'complete' and job.completed == job.total == 3

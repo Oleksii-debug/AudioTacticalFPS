@@ -2,6 +2,7 @@
 from hashlib import sha256
 import json
 import os
+import shutil
 from pathlib import Path
 import subprocess
 import sys
@@ -71,6 +72,8 @@ def test_exact_v3_reader_shapes_restore_without_rewriting(reading, tmp_path, sha
     folder = tmp_path / 'legacy'
     create_backup(app, folder)
     value = manifest(folder)
+    value.pop('pending', None)
+    shutil.rmtree(folder / 'pending', ignore_errors=True)
     value['version'] = 3
     del value['generated_audio_included']
     if shape == 'reading_state':
@@ -90,6 +93,8 @@ def test_empty_v3_variants_have_unambiguous_namespaces(tmp_path, shape):
     folder = tmp_path / 'legacy'
     create_backup(app, folder)
     value = manifest(folder)
+    value.pop('pending', None)
+    shutil.rmtree(folder / 'pending', ignore_errors=True)
     value['version'] = 3
     del value['sidecars']
     if shape == 'reading_state':

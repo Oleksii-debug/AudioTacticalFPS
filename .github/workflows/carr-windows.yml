@@ -174,6 +174,33 @@ jobs:
           & $env:CARR_PYTHON -I -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-results/local-transport.xml').iter('testcase')); assert cases and not any(c.find(t) is not None for c in cases for t in ('failure','error','skipped')); print(json.dumps(dict(status='PASS',passed=len(cases),failed=0,skipped=0,transport='synthetic local loopback fixtures')))" | Tee-Object 'ci-results/local-transport.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Exercise pending-import backup with the verified OCR runtime
+        timeout-minutes: 5
+        run: |
+          $previousPath = $env:PATH
+          $previousOcr = $env:CARR_OCR_DIR
+          $previousTessdata = $env:TESSDATA_PREFIX
+          try {
+            $env:PATH = "$env:CARR_CI_OCR_DIR;$previousPath"
+            $env:CARR_OCR_DIR = $env:CARR_CI_OCR_DIR
+            $env:TESSDATA_PREFIX = Join-Path $env:CARR_CI_OCR_DIR 'tessdata'
+            & $env:CARR_PYTHON scripts/ci_check.py --jobs 2 tests/storage/test_backup_pending_common4.py tests/storage/test_pending_backup.py tests/storage/test_backup_recovered_import.py 2>&1 | Tee-Object 'ci-results/pending-import-backup.txt'
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } finally {
+            $env:PATH = $previousPath
+            $env:CARR_OCR_DIR = $previousOcr
+            $env:TESSDATA_PREFIX = $previousTessdata
+          }
+
+      - name: Require the academic library suite without parallel contention
+        timeout-minutes: 12
+        run: |
+          # This unchanged suite took 593.81 seconds during the three-worker
+          # source gate. Keep its same 600-second bound and all assertions,
+          # giving its SQLite/backup work an independent serial process.
+          & $env:CARR_PYTHON scripts/ci_check.py tests/research/test_academic_library.py 2>&1 | Tee-Object 'ci-results/academic-library-source.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Run required integrated source workflows
         timeout-minutes: 25
         run: |
@@ -229,7 +256,6 @@ jobs:
             'tests/reader/test_topic_tree.py',
             'tests/storage/test_backup_schema_identity.py',
             'tests/storage/test_academic_migration.py',
-            'tests/research/test_academic_library.py',
             'tests/research/test_csl_author_boundaries.py',
             'tests/e2e/test_academic_workflow.py',
             'tests/citations/test_finish_label_integrity.py',
@@ -345,6 +371,9 @@ jobs:
             'tests/studio/test_music_scheduling.py',
             'tests/studio/test_studio_controller.py',
             'tests/ingest/test_import_publication_point.py',
+            'tests/ingest/test_worker_publication_boundary.py',
+            'tests/e2e/test_import_files_cancellation.py',
+            'tests/reader/test_export_publication_boundary.py',
             'tests/ingest/test_import_replay_identity.py',
             'tests/reader/test_export_no_clobber.py',
             'tests/ui/test_citation_styles_jobs.py',
@@ -672,6 +701,13 @@ jobs:
                             'tests/storage/test_backup_primary_producers.py',
                             'tests/storage/test_backup_generated_audio.py',
                             'tests/storage/test_backup_translation.py',
+                            'tests/storage/test_backup_pending_common4.py',
+                            'tests/storage/test_pending_backup.py',
+                            'tests/storage/test_backup_recovered_import.py',
+                            'tests/ingest/test_worker_publication_boundary.py',
+                            'tests/e2e/test_import_files_cancellation.py',
+                            'tests/reader/test_export_publication_boundary.py',
+                            'tests/speech/test_source.py',
                             'tests/audio/test_bundled_runtime_settings.py',
                             'tests/studio/test_studio_controller.py',
                             'tests/e2e/test_epub_library.py', 'tests/e2e/test_epub_reading_desk.py',

@@ -752,9 +752,20 @@ class LibraryApp:
 
     def import_files(self, workspace, paths, **metadata):
         results = []
+        cancelled = metadata.get('cancelled', lambda: False)
+        if not callable(cancelled):
+            raise ValueError('An import cancellation callback is required.')
         for path in paths:
+            if cancelled():
+                break
             try:
-                results.append({'file': Path(path).name, **self.import_file(workspace, path, **metadata)})
+                result = {'file': Path(path).name, **self.import_file(workspace, path, **metadata)}
+                results.append(result)
+                if result.get('state') == 'cancelled':
+                    break
+            except InterruptedError as exc:
+                results.append({'file': Path(path).name, 'state': 'cancelled', 'message': str(exc)})
+                break
             except (ValueError, OSError, sqlite3.Error, RuntimeError) as exc:
                 results.append({'file': Path(path).name, 'state': 'failed', 'message': str(exc)})
         return tuple(results)
