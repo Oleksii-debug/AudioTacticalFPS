@@ -769,3 +769,108 @@ def test_partial_progress_requires_verified_resume_before_host_success(prepared,
     assert all(event.percent < 100 for event in events)
     assert tracker.event.percent == 99
     assert tracker.transition(operation_outcome(completed), 'Host accepted all results').percent == 100
+
+
+@pytest.mark.parametrize('operation, archive_when', [
+    pytest.param('save_edit', 'entry', id='save-edit-archived-at-entry'),
+    pytest.param('export', 'entry', id='export-archived-at-entry'),
+    pytest.param('save_edit', 'publication', id='save-edit-archived-at-final-checkpoint'),
+    pytest.param('export', 'publication', id='export-archived-at-final-checkpoint'),
+])
+def test_edit_and_export_reject_archived_workspace(
+        prepared, tmp_path, monkeypatch, record_property, operation, archive_when):
+    """Archive the real scope after real verification/staging, without cancelling."""
+    app, workspace, service, original, _ = prepared
+    identity, result = completed(prepared)
+    source = result['sources'][0]['filename']
+    existing_revision = service.save_edit(identity, source, 'Existing retained user correction.')
+    path = service._path(identity)
+    protected_paths = [original, path / 'job.json', path / 'job_status.json', path / 'job_config.json']
+    for directory in ('input', 'receipts', 'results'):
+        protected_paths.extend(child for child in (path / directory).rglob('*') if child.is_file())
+    protected = {child: child.read_bytes() for child in protected_paths}
+
+    def saved_edits():
+        return {child.name: child.read_bytes() for child in (path / 'edits').iterdir()
+                if child.is_file()}
+
+    edits_before = saved_edits()
+    assert set(edits_before) == {existing_revision + '.json'}
+    export_parent = tmp_path / 'authorization-export'
+    export_parent.mkdir()
+    destination = export_parent / 'result'
+    archived = False
+    verification_finished = False
+
+    if operation == 'save_edit' and archive_when == 'publication':
+        real_verify = service.verify
+
+        def verify_then_arm(*args, **kwargs):
+            nonlocal verification_finished
+            verified = real_verify(*args, **kwargs)
+            assert verified['id'] == identity and verified['status'] == 'completed'
+            verification_finished = True
+            return verified
+
+        monkeypatch.setattr(service, 'verify', verify_then_arm)
+
+    def cancelled():
+        nonlocal archived
+        if archive_when != 'publication' or archived:
+            return False
+        if operation == 'save_edit':
+            ready = verification_finished
+        else:
+            manifests = list(export_parent.glob('.pending-*/transcription-manifest.json'))
+            assert len(manifests) <= 1
+            ready = bool(manifests)
+            if ready:
+                manifest = read_json(manifests[0])
+                assert manifest['job'] == identity and manifest['status'] == 'completed'
+                assert len(manifest['artifacts']) == len(result['artifacts']) == 6
+                for artifact in manifest['artifacts']:
+                    actual = manifests[0].parent / artifact['filename']
+                    assert sha256(actual.read_bytes()).hexdigest() == artifact['sha256']
+                assert (manifests[0].parent / 'edited' / (existing_revision + '.txt')).read_text(
+                    encoding='utf-8') == 'Existing retained user correction.'
+        if ready:
+            app.archive_workspace(workspace)
+            archived = True
+        return False
+
+    if archive_when == 'entry':
+        app.archive_workspace(workspace)
+        archived = True
+    error = None
+    returned = None
+    try:
+        if operation == 'save_edit':
+            returned = service.save_edit(identity, source, 'Must not publish after archive.', cancelled=cancelled)
+        else:
+            returned = service.export(identity, destination, cancelled=cancelled)
+    except ValueError as exc:
+        error = str(exc)
+
+    edits_after = saved_edits()
+    observation = {
+        'operation': operation, 'archive_when': archive_when, 'archived': archived,
+        'error': error, 'returned': returned is not None,
+        'export_published': destination.exists(),
+        'new_edit_count': len(edits_after.keys() - edits_before.keys()),
+        'staging_count': len(list(export_parent.glob('.pending-*'))),
+        'protected_bytes_unchanged': all(child.read_bytes() == value for child, value in protected.items()),
+        'existing_edits_unchanged': all(edits_after.get(name) == value for name, value in edits_before.items()),
+    }
+    module = Path(sys.modules[TranscriptionService.__module__].__file__).resolve()
+    record_property('transcription_source_sha256', sha256(module.read_bytes()).hexdigest())
+    record_property('authorization_boundary', json.dumps(observation, sort_keys=True))
+    print('TRANSCRIPTION_AUTHORIZATION_BOUNDARY=' + json.dumps(observation, sort_keys=True))
+    assert archived, observation
+    with app.read() as db:
+        assert db.execute('SELECT archived FROM workspace_meta WHERE workspace=?', (workspace,)).fetchone()[0] == 1
+    assert observation['protected_bytes_unchanged'], observation
+    assert observation['existing_edits_unchanged'], observation
+    assert error is not None and 'archived' in error, observation
+    assert edits_after == edits_before, observation
+    assert not destination.exists(), observation
+    assert list(export_parent.iterdir()) == [], observation
