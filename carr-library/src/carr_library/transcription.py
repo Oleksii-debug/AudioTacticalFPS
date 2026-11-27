@@ -729,12 +729,15 @@ class TranscriptionService:
             artifacts = [{'path': (results / relative_name(kinds[kind]['path'])).relative_to(path / 'results').as_posix(),
                           'size_bytes': kinds[kind]['bytes'], 'sha256': kinds[kind]['sha256']}
                          for kind in ('txt', 'srt', 'vtt', 'json')]
-            derived = []
             if requested['output_words']:
                 for kind in ('srt', 'vtt'):
+                    if cancelled():
+                        raise AudioCancelled('Whisper V5 subtitle export was cancelled.')
                     target = results / 'host-derived' / (name + '.words.' + kind)
                     data = _word_subtitles(words, vtt=kind == 'vtt')
-                    derived.append((target, data))
+                    # Bound memory to one source's subtitle buffer. These
+                    # files stay unaccepted until every manifest row passes.
+                    atomic_bytes(target, data)
                     artifacts.append({'path': target.relative_to(path / 'results').as_posix(),
                                       'size_bytes': len(data), 'sha256': sha256(data).hexdigest()})
             receipt = {'version': 1, 'state': 'complete', 'run_id': context['host_run_id'], 'identity': identity,
@@ -743,7 +746,7 @@ class TranscriptionService:
                 'result_metadata_sha256': kinds['json']['sha256'],
                 'v5_manifest_sha256': manifest_hash, 'v5_record': index,
                 'word_subtitle_provenance': 'Host formatting of validated original JSON word timings; no inferred alignment.'}
-            pending.append(('receipts/' + identity['sha256'] + '.result.json', receipt, derived))
+            pending.append(('receipts/' + identity['sha256'] + '.result.json', receipt))
             effective_runs.append({'source': name, 'attempt': row['attempt'], 'settings': effective})
             seen.add(name)
             used.update(names)
@@ -751,11 +754,9 @@ class TranscriptionService:
             raise ValueError('Whisper V5 manifest has unassigned or shared artifacts.')
         context['manifest_sha256'] = manifest_hash
         job['effective_runs'] = effective_runs
-        for name, receipt, derived in pending:
+        for name, receipt in pending:
             if cancelled():
                 raise AudioCancelled('Whisper V5 result admission was cancelled.')
-            for target, data in derived:
-                atomic_bytes(target, data)
             atomic_json(path / name, receipt)
         status = {'run_id': context['host_run_id'], 'result_state': 'completed' if manifest['complete'] else 'partial',
                   'done': len(pending), 'total': manifest['total'], 'failed': manifest['failed'],

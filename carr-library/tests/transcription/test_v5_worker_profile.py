@@ -4,8 +4,10 @@ No private supplied source, model, recording, inference or acoustic qualificatio
 is used here. The fixture implements only the documented file protocol.
 """
 from pathlib import Path
+from hashlib import sha256
 import json
 import runpy
+import subprocess
 import sys
 
 import pytest
@@ -410,3 +412,39 @@ def test_old_receipts_job_keeps_its_protocol_after_v5_is_configured(v5, tmp_path
     assert service.get(identity)['protocol'] == 'receipts-v1'
     assert service.text(identity, job['sources'][0]['filename']).startswith('Synthetic transcript.')
     assert service.run(identity, timeout=10)['status'] == 'completed'
+
+
+def test_v5_cli_configure_create_run_export_share_the_persisted_profile(v5, tmp_path):
+    app, workspace, service, source, runtime, models = v5
+    original = source.read_bytes()
+    command = [sys.executable, '-B', '-m', 'carr_library', 'transcribe',
+               '--data-dir', str(app.root), '--workspace', workspace]
+    def invoke(*arguments, expected=0):
+        result = subprocess.run([*command, *map(str, arguments)], capture_output=True,
+                                text=True, encoding='utf-8', timeout=30)
+        assert result.returncode == expected, result.stdout + result.stderr
+        return json.loads(result.stdout) if expected == 0 else result
+
+    configured = invoke('configure', '--python', Path(sys.executable).resolve(),
+        '--worker', runtime / 'worker.py', '--models-dir', models, '--protocol', PROTOCOL)
+    assert configured['protocol'] == PROTOCOL and configured['inference_qualified'] is False
+    assert configured['wrapper_sources_sha256'] == {
+        name: sha256((runtime / name).read_bytes()).hexdigest()
+        for name in ('worker.py', 'local_models.py', 'transcript_features.py')}
+    identity = invoke('create', source, '--protocol', PROTOCOL, '--language', 'uk',
+                      '--compute-type', 'auto', '--no-word-timestamps')['id']
+    saved = invoke('show', identity)
+    assert saved['protocol'] == PROTOCOL and saved['settings']['max_attempts'] == 3
+    assert saved['settings']['language'] == 'uk' and saved['settings']['compute_type'] == 'auto'
+    assert saved['settings']['word_timestamps'] is False
+    result = invoke('run', identity, '--timeout', 15)
+    assert result['status'] == 'completed' and result['done'] == 1
+    assert {row['format'] for row in result['artifacts']} == {'txt', 'srt', 'vtt', 'json'}
+    destination = tmp_path / 'cli-export'
+    assert invoke('export', identity, destination)['exported_to'] == str(destination)
+    assert read_json(destination / 'transcription-manifest.json')['status'] == 'completed'
+    rejected = invoke('create', source, '--max-attempts', 1, expected=1)
+    assert 'max_attempts=3' in rejected.stderr
+    assert len(service.list()) == 1 and invoke('show', identity)['status'] == 'completed'
+    assert service.text(identity, result['sources'][0]['filename']) == 'Synthetic V5 fixture.\n'
+    assert source.read_bytes() == original
