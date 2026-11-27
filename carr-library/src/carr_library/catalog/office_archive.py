@@ -34,6 +34,10 @@ FORMATS = {
 
 
 def _reserved(part):
+    # Keep the same Windows filename policy on Python 3.11/3.12, whose
+    # pathlib fallback checks device names but not all forbidden characters.
+    if any(char in '<>"|?*' for char in part):
+        return True
     checker = getattr(ntpath, "isreserved", None)
     return checker(part) if checker else PureWindowsPath(part).is_reserved()
 
