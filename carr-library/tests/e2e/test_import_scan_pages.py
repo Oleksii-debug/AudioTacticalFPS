@@ -33,7 +33,11 @@ def library(tmp_path):
 def test_actual_5003_files_form_finite_saved_successors_after_reopen(library, tmp_path):
     app, workspace = library
     root = sources(tmp_path, 5003)
-    first = app.plan_import_batch_page(workspace, [root])
+    # This case measures finite corpus reachability, not a Windows disk-speed promise.
+    # Keep the normal 60-second product default; explicitly select a bounded
+    # capacity-test allowance for 5,000 complete native file snapshots.
+    first = app.plan_import_batch_page(workspace, [root], timeout=300)
+    assert first['scan']['timeout'] == 300
     assert first['version'] == 2 and first['total'] == 5000
     assert first['scan']['page'] == 1 and first['scan']['next_cursor']
     reopened = LibraryApp(app.root)

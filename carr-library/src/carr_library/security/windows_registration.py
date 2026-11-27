@@ -142,6 +142,7 @@ class WindowsRegistration:
             'values': values, 'shortcuts': shortcuts}, root)
 
     def health(self, root, release):
+        self.health_failure = None
         value = self.snapshot(root)
         lookup = self._location(value['values'], root)
         expected = {'displayname': 'Resonance', 'displayversion': release.version,
@@ -150,8 +151,14 @@ class WindowsRegistration:
         for name, text in expected.items():
             item = lookup.get(name)
             if item is None or item['type'] != 1 or os.path.normcase(item['value']) != os.path.normcase(text):
+                # Report only the fixed field name, never registry values,
+                # program paths or retained shortcut contents.
+                self.health_failure = 'registration-' + name
                 return False
-        return all(value['shortcuts'][name] is not None for name in LINKS)
+        if not all(value['shortcuts'][name] is not None for name in LINKS):
+            self.health_failure = 'registration-shortcuts'
+            return False
+        return True
 
     def restore(self, root, saved):
         saved = validate_snapshot(saved, root)

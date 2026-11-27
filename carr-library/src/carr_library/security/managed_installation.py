@@ -210,17 +210,25 @@ class WindowsManagedSetupAdapter:
         _cancel(cancelled)
 
     def health(self, root, stage, release):
+        self.health_failure = None
         receipt = setup_receipt(stage, release)
         owned = self.maintenance.owned(root, receipt['bundle_manifest_sha256'],
                                        receipt['setup_sha256'], allow_updating=True)
-        if (self.maintenance.inventory(root / 'app') != (owned['files'], owned['directories'])
-                or owned['maintenance'] != {**receipt['maintenance_sha256'], SETUP_FILE: receipt['setup_sha256']}):
+        if self.maintenance.inventory(root / 'app') != (owned['files'], owned['directories']):
+            self.health_failure = 'installed-file-inventory'
+            return False
+        if owned['maintenance'] != {**receipt['maintenance_sha256'], SETUP_FILE: receipt['setup_sha256']}:
+            self.health_failure = 'installed-maintenance-inventory'
             return False
         for name in ('unins000.exe', 'unins000.dat'):
             file_info(root / name)
         if not self.registration.health(root, release):
+            self.health_failure = getattr(self.registration, 'health_failure', None) or 'registration'
             return False
-        return self.bundle.health(root / 'app', release)
+        if not self.bundle.health(root / 'app', release):
+            self.health_failure = 'installed-application-checks'
+            return False
+        return True
 
     def restore(self, root, proof_file, proof_sha256, wrapper_sha256, owner):
         proof = protocol.decode_proof(read_bytes(proof_file, protocol.MAX_PROOF), proof_sha256)

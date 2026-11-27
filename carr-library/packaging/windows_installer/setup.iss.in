@@ -2,6 +2,7 @@
 [Setup]
 AppId={{7421E0E1-9394-4A8D-8AF8-DAD3CF947D18}
 AppName=Resonance
+UninstallDisplayName=Resonance
 AppVersion=@@VERSION@@
 AppPublisher=Resonance project
 DefaultDirName={localappdata}\Programs\Resonance

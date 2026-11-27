@@ -208,7 +208,8 @@ def probe(setup_a, evidence_a, prepared_b, source_a, source_b, work, report):
 
         def reject_after_real_health(*args):
             if not actual_health(*args):
-                raise RuntimeError('The actual B health gate failed before the intentional rollback test.')
+                raise RuntimeError('The actual B health gate failed before the intentional rollback test: ' +
+                                   str(getattr(native, 'health_failure', None) or 'unclassified'))
             return False
 
         native.health = reject_after_real_health

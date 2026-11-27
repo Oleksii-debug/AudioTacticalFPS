@@ -3,6 +3,38 @@
 This is a source/evidence checkpoint, not a declaration of full-platform completion.
 The technical scope remains [V3 finalization](UNIVERSAL_SCOPE_V3_FINALIZATION.md).
 
+## Corrective source after observed Windows results
+
+Exact `01014502a9af432f42a2d5747b6cb81f28e4c4e3` main Windows
+run [45980805266](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45980805266)
+completed 229 required integrated suites: 225 passed and four failed.
+Two actual 5,003-file capacity cases reached the selected 60-second scan
+deadline; those tests now explicitly choose a finite 300-second allowance.
+Production defaults are unchanged, and a separate expired-page regression
+preserves and retries the exact saved continuation after a real file snapshot.
+The other two suites used incomplete UI fixtures: the federated-search fixture
+omitted its controller's `next_cursor`, and the narration window omitted
+`Enable`/`IsEnabled`. Fixtures now implement and assert the current contract;
+the source, Unicode, save and access assertions remain.
+
+Managed update run
+[45980805357](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45980805357)
+passed the actual Unicode shortcut inspection but stopped at real B health,
+before intentional rollback injection. Source review found that the compiled
+setup did not explicitly emit the fixed uninstall display name required by
+the strict registration consumer. The template now emits
+`UninstallDisplayName=Resonance`. Six generated-template/production-health
+cases also reject wrong version, foreign repair path, extra uninstall
+arguments and missing shortcuts. Fixed field/stage diagnostics contain no
+registry values or private paths. This confirmed producer defect is not proof
+that it was the only native failure; actual B/rollback/repair/uninstall must
+run again.
+
+These corrective candidates (`712b739`, `0323af3`, `7203419`) were reviewed
+and composed through verified source preimages while the executor was
+unavailable. Their new exact bytes are **NOT_RUN** locally; no passing result
+is inferred from previous source, API persistence or review.
+
 ## Following streamed-text and office composition
 
 The next source composition combines `a508975cf010aeb72f2e5deab5107b77649d91a7`
@@ -20,7 +52,7 @@ resume, exact quotation and completed rebackup. All 71 new source cases passed,
 zero skips: 28 streaming, 10 journal, four attestation, five real worker, nine
 backup, eight isolated CLI and seven Import Center handler cases. Their final
 installed-wheel run started before the executor disconnected; its terminal
-result was not observed and is **NOT_RUN/UNOBSERVED**, not a passing result.
+result was not observed and is **RESULT_NOT_OBSERVED**, not a passing result.
 All seven suites and nine representative case identities are required in the
 new source/installed gates, plus the actual native Import Center probe.
 Multi-GB PDFs and declared 1k/10k/50k-book corpus measurements remain separate.
@@ -52,7 +84,7 @@ suites. Physical playback, manual NVDA and language/word-alignment quality are
 not claimed. Bibliography, independent publication conformance, signed-client
 and encrypted-snapshot workflows also passed exact `01014502`.
 
-The main Windows and managed A-to-B runs were still in progress when this
+At this earlier checkpoint the main Windows and managed A-to-B runs were still in progress when this
 checkpoint was written; Linux and native keyboard jobs had passed. Their
 terminal status, and all new composed-source execution, must be read rather
 than inferred from the previous successes.

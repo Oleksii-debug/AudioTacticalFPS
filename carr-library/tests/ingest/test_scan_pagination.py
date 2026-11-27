@@ -34,7 +34,8 @@ def test_actual_5003_files_all_reachable_beyond_old_global_limit(tmp_path):
     root.mkdir()
     for number in range(5003):
         write(root / f'{number:06d}.txt', f'Unique original {number}.')
-    rows, pages = all_pages([root])
+    # Explicit measured-capacity allowance; the production deadline is unchanged.
+    rows, pages = all_pages([root], timeout=300)
     assert len(rows) == 5003
     assert [row['file'] for row in rows] == [f'{i:06d}.txt' for i in range(5003)]
     assert len({row['source'] for row in rows}) == 5003
@@ -183,3 +184,28 @@ def test_continuation_requires_same_explicit_roots_and_recursion(tmp_path):
 def test_page_guards_remain_explicit_and_before_file_reads(tmp_path, options):
     with pytest.raises(ValueError):
         scan_paths_page([tmp_path], **options)
+
+
+def test_expired_page_after_real_snapshot_keeps_exact_continuation_retryable(tmp_path, monkeypatch):
+    from carr_library.ingest import scan_pages
+    root = tmp_path / 'selected'
+    for name in ('a', 'b', 'c'):
+        write(root / (name + '.txt'), name)
+    first = scan_paths_page([root], file_budget=1)
+    saved = first.next_cursor
+    read = batch_scan.planned_snapshot
+    clock, observed = [0.0], []
+    def delayed(path):
+        value = read(path)
+        observed.append(Path(path).name)
+        clock[0] = 2.0
+        return value
+    with monkeypatch.context() as patch:
+        patch.setattr(scan_pages, 'monotonic', lambda: clock[0])
+        patch.setattr(batch_scan, 'planned_snapshot', delayed)
+        with pytest.raises(TimeoutError, match='unchanged continuation'):
+            scan_paths_page([root], cursor=saved, timeout=1)
+    assert observed == ['b.txt'] and first.next_cursor == saved
+    retry = scan_paths_page([root], cursor=saved)
+    assert [row['file'] for row in retry.rows] == ['b.txt', 'c.txt']
+    assert retry.complete

@@ -296,8 +296,13 @@ def test_native_multiline_normalization_only_enters_saved_text_after_an_edit(tmp
         def __init__(self, *args, value='', style=0, **kwargs):
             self.value, self.style = value.replace('\r\n', '\n'), style
             self.handlers, self.identity = {}, next(identifiers)
+            self.enabled = True
         def Bind(self, event, callback, *args, **kwargs):
             self.handlers[event] = callback
+        def Enable(self, value=True):
+            self.enabled = bool(value)
+        def IsEnabled(self):
+            return self.enabled
         def GetId(self):
             return self.identity
         def GetValue(self):
@@ -355,6 +360,9 @@ def test_native_multiline_normalization_only_enters_saved_text_after_an_edit(tmp
 
     def ready(dialog, controller, controls):
         assert controls['editor'].GetValue() == displayed
+        assert controls['editor'].IsEnabled() and controls['save'].IsEnabled()
+        assert controls['live_reading'].IsEnabled() and controls['close'].IsEnabled()
+        assert not controls['cancel_preview'].IsEnabled()
         dialog.handlers['timer'](None)
         assert store.load(project.id, draft=True)[0].current_text == original
         controls['save_all' if save_all else 'save'].handlers['button']()

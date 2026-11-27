@@ -87,7 +87,8 @@ def native_dialog(monkeypatch, rows, active):
            **{name: Control for name in ('Dialog', 'BoxSizer', 'StaticText', 'FlexGridSizer',
                                         'CheckListBox', 'TextCtrl', 'Choice', 'Button', 'ListBox')})
     monkeypatch.setitem(sys.modules, 'wx', wx)
-    controller = N(selection_changed=Mock(), search=Mock())
+    # The current controller exposes a page cursor even before its first search.
+    controller = N(selection_changed=Mock(), search=Mock(), next_cursor=None)
     monkeypatch.setattr(module, 'SearchCenter', lambda frame, view: controller)
     view = NativeSearchCenter(N(active=(active, None)), rows)
     return view, controller

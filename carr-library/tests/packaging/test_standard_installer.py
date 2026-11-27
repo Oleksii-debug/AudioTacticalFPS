@@ -954,3 +954,50 @@ def test_native_probe_does_not_treat_incomplete_registry_as_an_empty_account(mon
         assert probe.registry() is None
     else:
         assert set(probe.registry()) == {'InstallLocation', 'UninstallString', 'ModifyPath', 'NoModify'}
+
+
+@pytest.mark.parametrize('changed', [None, 'displayname', 'displayversion',
+    'modifypath', 'uninstallstring', 'shortcuts'],
+    ids=['generated-contract', 'implicit-versioned-name', 'wrong-version',
+         'foreign-repair-path', 'uninstall-extra-argument', 'missing-shortcut'])
+def test_generated_standard_setup_registration_matches_strict_update_health(tmp_path, payload, changed):
+    """Exercise the actual generated producer name, not a canned desired value.
+
+    Inno defaults UninstallDisplayName to AppVerName (which includes version).
+    The fixed name is therefore explicit; version remains independently bound.
+    Native registry/Inno acceptance still belongs to the two-setup Windows gate.
+    """
+    from carr_library.security.windows_registration import WindowsRegistration, LINKS
+    bundle, expected = payload
+    output = tmp_path / 'generated-health-contract'
+    prepared = build.prepare(bundle, output, manifest_sha256=expected)
+    generated = (output / 'ResonanceSetup.iss').read_text(encoding='utf-8-sig')
+    section = generated.split('[Setup]\n', 1)[1].split('\n[Files]', 1)[0]
+    directives = dict(line.split('=', 1) for line in section.splitlines()
+                      if line and not line.startswith(';') and '=' in line)
+    assert directives['AppVersion'] == prepared['application_version']
+    assert directives['UninstallDisplayName'] == directives['AppName']
+    root = tmp_path / 'Real synthetic root Україна Ω'
+    root.mkdir()
+    values = {
+        'InstallLocation': {'type': 1, 'value': str(root)},
+        'DisplayName': {'type': 1, 'value': directives['UninstallDisplayName']},
+        'DisplayVersion': {'type': 1, 'value': directives['AppVersion']},
+        'ModifyPath': {'type': 1, 'value': '"' + str(root / 'maintenance/ResonanceSetup.exe') + '"'},
+        'UninstallString': {'type': 1, 'value': '"' + str(root / 'unins000.exe') + '"'},
+    }
+    shortcuts = dict.fromkeys(LINKS, 'synthetic-present-bytes')
+    if changed == 'displayname':
+        values['DisplayName']['value'] = directives['AppName'] + ' ' + directives['AppVersion']
+    elif changed == 'displayversion':
+        values['DisplayVersion']['value'] = '99.0.0'
+    elif changed == 'modifypath':
+        values['ModifyPath']['value'] = '"' + str(tmp_path / 'foreign/ResonanceSetup.exe') + '"'
+    elif changed == 'uninstallstring':
+        values['UninstallString']['value'] += ' /UNREVIEWED'
+    elif changed == 'shortcuts':
+        shortcuts[LINKS[0]] = None
+    native = WindowsRegistration.__new__(WindowsRegistration)
+    native.snapshot = lambda selected: dict(values=values, shortcuts=shortcuts)
+    assert native.health(root, SimpleNamespace(version=prepared['application_version'])) is (changed is None)
+    assert native.health_failure == (None if changed is None else 'registration-' + changed)
