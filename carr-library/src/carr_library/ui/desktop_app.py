@@ -525,7 +525,7 @@ class DesktopFrame(WorkspaceFrame):
         self.working = False
         self._closing = False
         super().__init__(None, library.list_scopes, self._bind)
-        self.SetTitle('Universal Research Library')
+        self.SetTitle('Resonance — Sceneria Innovative Technologies')
         self.SetMinSize((760, 650))
         self._menus()
         from .productivity import install_productivity_actions
@@ -606,6 +606,10 @@ class DesktopFrame(WorkspaceFrame):
         install_assistant_actions(self)
         install_audio_studio_actions(self)
         install_api_connection_actions(self)
+        from .transcription_dialog import install_transcription_actions
+        from .translation_dialog import install_translation_actions
+        install_transcription_actions(self)
+        install_translation_actions(self)
 
     def build_advanced_query(self, event=None):
         if self.working:

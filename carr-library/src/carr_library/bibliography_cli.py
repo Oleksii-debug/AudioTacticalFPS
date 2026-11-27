@@ -75,9 +75,11 @@ def main(argv=None):
         preview = workbench.preview(identity=args.reference, style=args.style,
                                      locale=args.locale, name_mode=args.names)
         if args.output is not None:
-            workbench.export(preview, args.output, format=args.format, require_absent=not args.overwrite)
+            receipt = workbench.export(preview, args.output, format=args.format,
+                                       require_absent=not args.overwrite, return_receipt=True)
+            warnings = (*preview.warnings, *((receipt.cleanup_warning,) if receipt.cleanup_warning else ()))
             print(json.dumps({'result': 'SAVED', 'output': str(args.output), 'style': preview.style,
-                              'references': len(preview.result.entries), 'warnings': preview.warnings},
+                              'references': len(preview.result.entries), 'warnings': warnings},
                              ensure_ascii=False, indent=2))
         else:
             print(workbench.copy_text(preview), end='')

@@ -61,6 +61,7 @@ test = [
 research-library = "carr_library.__main__:main"
 research-library-ocr-models = "carr_library.extract.ocr_model_catalog:main"
 research-library-bibliography = "carr_library.bibliography_cli:main"
+research-library-transcribe = "carr_library.transcription_cli:main"
 
 [project.gui-scripts]
 research-library-desktop = "carr_library.__main__:main"

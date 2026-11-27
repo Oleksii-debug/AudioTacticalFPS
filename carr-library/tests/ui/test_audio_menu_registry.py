@@ -8,6 +8,8 @@ from carr_library.ui import keyboard_settings
 from carr_library.ui.command_registry import CommandRegistry, ShortcutError
 from carr_library.ui.audio_studio import install_audio_studio_actions
 from carr_library.ui.api_connections import install_api_connection_actions
+from carr_library.ui.translation_dialog import install_translation_actions
+from carr_library.ui.transcription_dialog import install_transcription_actions
 
 
 class Item:
@@ -50,15 +52,18 @@ def test_audio_and_connections_register_before_or_after_keyboard_manager(monkeyp
         frame.keyboard_commands = keyboard_settings.KeyboardManager(frame, registry=CommandRegistry())
     install_audio_studio_actions(frame)
     install_api_connection_actions(frame)
+    install_translation_actions(frame)
+    install_transcription_actions(frame)
     if not manager_first:
         pending = frame._pending_keyboard_commands
         frame.keyboard_commands = keyboard_settings.KeyboardManager(frame, registry=CommandRegistry())
         for spec, item in pending:
             frame.keyboard_commands.register_menu_command(spec, item)
     manager = frame.keyboard_commands
-    assert set(manager.bindings) == {'audio.studio.open', 'audio.narration.prepare_selected', 'api.connections.open'}
-    assert len(handlers) == 3
-    assert [bar.GetMenuLabel(i) for i in range(2)] == ['A&udio', '&Connections']
+    assert set(manager.bindings) == {'audio.studio.open', 'audio.narration.prepare_selected',
+                                    'api.connections.open', 'translation.text.open', 'audio.transcription.open'}
+    assert len(handlers) == 5
+    assert [bar.GetMenuLabel(i) for i in range(3)] == ['A&udio', '&Connections', '&Translation']
     manager.apply_overrides({'audio.studio.open': 'Ctrl+Alt+J', 'api.connections.open': 'Ctrl+Shift+K'})
     assert manager.bindings['audio.studio.open'].item.GetItemLabel().endswith('\tCtrl+Alt+J')
     assert manager.bindings['api.connections.open'].item.GetItemLabel().endswith('\tCtrl+Shift+K')

@@ -390,6 +390,12 @@ jobs:
             'tests/audio/test_dordiai_discovery.py',
             'tests/audio/test_ffmpeg.py',
             'tests/audio/test_model_manifest.py',
+            'tests/audio/test_transcription.py',
+            'tests/audio/test_transcription_models.py',
+            'tests/ui/test_transcription_controller.py',
+            'tests/e2e/test_transcription_cli.py',
+            'tests/e2e/test_google_translation.py',
+            'tests/ui/test_translation_busy_guard.py',
             'tests/audio/test_music.py',
             'tests/audio/test_narration_plan.py',
             'tests/audio/test_production.py',
@@ -624,7 +630,8 @@ jobs:
             @{ Script='tests/ui/native_keyboard_settings_smoke.py'; Args=@('--native'); Output='native-keyboard-settings.txt' },
             @{ Script='tests/ui/native_reader_keymap_smoke.py'; Args=@('--native'); Output='native-reader-keymap.txt' },
             @{ Script='tests/ui/native_evidence_drafts_smoke.py'; Args=@('--native'); Output='native-evidence-drafts.txt' },
-            @{ Script='scripts/windows_citation_styles_smoke.py'; Args=@(); Output='native-citation-styles.txt' }
+            @{ Script='scripts/windows_citation_styles_smoke.py'; Args=@(); Output='native-citation-styles.txt' },
+            @{ Script='tests/ui/native_language_tools_smoke.py'; Args=@('--native'); Output='native-language-tools.txt' }
           )
           foreach ($gate in $nativeGates) {
             $arguments = @($gate.Args)
@@ -661,6 +668,10 @@ jobs:
               'carr_library.audio.ffmpeg',
               'carr_library.audio.engines',
               'carr_library.audio.production',
+              'carr_library.audio.transcription',
+              'carr_library.audio.transcription_models',
+              'carr_library.transcription_cli',
+              'carr_library.translation',
               'carr_library.audio_runtime',
               'carr_library.assistant.models',
               'carr_library.assistant.planner',
@@ -692,6 +703,8 @@ jobs:
               'carr_library.ui.keyboard_settings',
               'carr_library.ui.evidence_panel',
               'carr_library.ui.audio_studio',
+              'carr_library.ui.transcription_dialog',
+              'carr_library.ui.translation_dialog',
               'carr_library.ui.assistant_dialog',
               'carr_library.ui.ocr_language_dialog',
               'carr_library.ui.ocr_model_manager'
@@ -764,6 +777,11 @@ jobs:
               'tests/assistant/test_complete_recovery.py',
               'tests/assistant/test_audio_bridge.py',
               'tests/audio/test_chunk_cache_budget.py',
+              'tests/audio/test_transcription.py',
+              'tests/audio/test_transcription_models.py',
+              'tests/ui/test_transcription_controller.py',
+              'tests/e2e/test_transcription_cli.py',
+              'tests/e2e/test_google_translation.py',
               'tests/e2e/test_managed_ocr_import.py',
               'tests/search/test_semantic_cache.py',
               'tests/search/test_semantic_cache_boundary.py'

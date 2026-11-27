@@ -1,0 +1,99 @@
+"""Desktop routing and partial completion; no wx/NVDA claim."""
+from pathlib import Path
+
+import pytest
+
+from carr_library.ui.transcription_dialog import TranscriptionController, TranscriptionBatchError
+
+
+@pytest.fixture
+def setup(tmp_path):
+    model = tmp_path / 'model'
+    model.mkdir()
+    manifest = model / 'manifest.json'
+    manifest.write_text('{}')
+    output = tmp_path / 'results'
+    output.mkdir()
+    sources = []
+    for name in ('перший.wav', 'другий.wav'):
+        path = tmp_path / name
+        path.write_bytes(b'synthetic media')
+        sources.append(path)
+    calls = []
+    factories = []
+    class Session:
+        def __init__(self, path):
+            factories.append(path)
+        def transcribe(self, source, folder, **options):
+            calls.append((source, folder, options))
+            options['on_status']('Segment complete')
+            return {'status': 'complete', 'files': {'txt': 'synthetic'}, 'cached': False}
+    controller = TranscriptionController(tmp_path / 'private', session_factory=Session)
+    return controller, sources, output, manifest, calls, factories
+
+
+def test_batch_and_later_runs_reuse_one_model_session_and_shared_cancel(setup):
+    controller, sources, output, manifest, calls, factories = setup
+    progress = []
+    cancelled = lambda: False
+    first = controller.transcribe(sources, output, manifest, settings='fixture-settings',
+        formats=('txt',), cancelled=cancelled, on_status=progress.append)
+    second = controller.transcribe(sources[:1], output, manifest, settings='other-settings', formats=('srt',))
+    assert len(first) == 2 and len(second) == 1 and len(factories) == 1
+    assert calls[0][2]['cancelled'] is cancelled
+    assert calls[2][2]['settings'] == 'other-settings'
+    assert calls[0][2]['on_status'] is not None
+    assert 'Segment complete' in progress
+
+
+def test_later_failure_retains_completed_receipts_and_never_counts_failed_file(setup):
+    controller, sources, output, manifest, calls, _ = setup
+    original = controller.session_factory
+    def factory(path):
+        session = original(path)
+        perform = session.transcribe
+        def transcribe(source, folder, **options):
+            if source == sources[1]:
+                raise OSError('Synthetic disk full')
+            return perform(source, folder, **options)
+        session.transcribe = transcribe
+        return session
+    controller.session_factory = factory
+    with pytest.raises(TranscriptionBatchError, match='disk full') as raised:
+        controller.transcribe(sources, output, manifest, settings=None, formats=('txt',))
+    assert len(raised.value.completed) == 1
+    assert '1 completed file(s)' in str(raised.value)
+
+
+def test_missing_or_partial_service_success_is_rejected(setup):
+    controller, sources, output, manifest, _, _ = setup
+    class Partial:
+        def __init__(self, path): pass
+        def transcribe(self, *args, **kwargs): return {'status': 'partial'}
+    controller.session_factory = Partial
+    with pytest.raises(TranscriptionBatchError, match='complete result') as raised:
+        controller.transcribe(sources, output, manifest, settings=None, formats=('txt',))
+    assert raised.value.completed == ()
+
+
+def test_private_outputs_model_outputs_and_cancel_fail_before_session_creation(setup, tmp_path):
+    controller, sources, output, manifest, calls, factories = setup
+    private = tmp_path / 'private'
+    private.mkdir()
+    for destination in (private, manifest.parent):
+        with pytest.raises(ValueError):
+            controller.transcribe(sources, destination, manifest, settings=None, formats=('txt',))
+    with pytest.raises(InterruptedError):
+        controller.transcribe(sources, output, manifest, settings=None, formats=('txt',), cancelled=lambda: True)
+    assert not calls and not factories
+
+
+def test_model_selection_change_creates_one_new_session(setup, tmp_path):
+    controller, sources, output, manifest, _, factories = setup
+    controller.transcribe(sources[:1], output, manifest, settings=None, formats=('txt',))
+    other = tmp_path / 'other-model'
+    other.mkdir()
+    new_manifest = other / 'model.json'
+    new_manifest.write_text('{}')
+    controller.transcribe(sources[:1], output, new_manifest, settings=None, formats=('txt',))
+    assert factories == [manifest, new_manifest]
