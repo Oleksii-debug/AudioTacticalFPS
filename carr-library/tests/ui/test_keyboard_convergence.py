@@ -182,7 +182,17 @@ def test_canonical_dialog_export_never_serializes_unsupported_legacy_keys(
     wx.FileDialog = Chooser
     wx.ID_OK, wx.FD_SAVE = 1, 8
     wx.YES_NO, wx.NO_DEFAULT, wx.ICON_QUESTION, wx.YES = 32, 64, 128, 256
-    wx.MessageBox = lambda *args: wx.YES
+    wx.ID_YES = wx.YES
+    class Confirmation:
+        def __init__(self, *args, **kwargs): self.live = True
+        def __bool__(self): return self.live
+        def ShowModal(self):
+            assert self.live
+            return wx.ID_YES
+        def Destroy(self):
+            assert self.live
+            self.live = False
+    wx.MessageDialog = Confirmation
     dialog = object.__new__(KeyboardSettingsDialog)
     dialog.wx, dialog.manager, dialog.closed = wx, manager, False
     dialog.dialog = SimpleNamespace()

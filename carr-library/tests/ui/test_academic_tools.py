@@ -30,11 +30,29 @@ def export_confirmation(monkeypatch):
     from carr_library.ui import academic_tools
     from carr_library.ui.export_destination import confirm_export_destination
 
-    native = SimpleNamespace(YES_NO=1, NO_DEFAULT=2, ICON_QUESTION=4, YES=8, NO=16)
+    native = SimpleNamespace(YES_NO=1, NO_DEFAULT=2, ICON_QUESTION=4,
+                             YES=8, NO=16, ID_YES=8, ID_NO=16)
     native.MessageBox = Mock(return_value=native.YES)
+    native.dialogs = []
+
+    class MessageDialog:
+        def __init__(self, parent, message, title, style):
+            self.args = (message, title, style, parent)
+            self.destroyed = False
+            native.dialogs.append(self)
+
+        def ShowModal(self):
+            # Existing choice and race hooks now exercise the owned modal API.
+            return native.MessageBox(*self.args)
+
+        def Destroy(self):
+            self.destroyed = True
+
+    native.MessageDialog = MessageDialog
     monkeypatch.setattr(academic_tools, 'confirm_export_destination',
         lambda *args, **kwargs: confirm_export_destination(*args, **kwargs, wx_module=native))
-    return native
+    yield native
+    assert all(dialog.destroyed for dialog in native.dialogs)
 
 
 class Frame:

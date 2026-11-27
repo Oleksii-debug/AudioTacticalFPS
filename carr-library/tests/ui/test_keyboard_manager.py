@@ -563,7 +563,18 @@ def export_form(manager, tmp_path):
     native.FD_SAVE, native.FD_OVERWRITE_PROMPT = 8, 16
     native.YES_NO, native.NO_DEFAULT, native.ICON_QUESTION = 32, 64, 128
     native.YES, native.NO = 256, 512
-    native.MessageBox = Mock(return_value=native.YES)
+    native.ID_YES, native.ID_NO = native.YES, native.NO
+    native.confirmation = Mock(return_value=native.ID_YES)
+    class Confirmation:
+        def __init__(self, *args, **kwargs): self.live = True
+        def __bool__(self): return self.live
+        def ShowModal(self):
+            assert self.live
+            return native.confirmation()
+        def Destroy(self):
+            assert self.live
+            self.live = False
+    native.MessageDialog = Confirmation
     dialog.wx = native
     return dialog, destination
 
@@ -587,7 +598,7 @@ def test_keymap_export_preserves_other_work_written_during_validation(
     dialog.export_map()
     assert destination.read_bytes() == independent
     assert 'destination changed' in dialog.messages[-1]
-    assert dialog.wx.MessageBox.call_count == int(existing)
+    assert dialog.wx.confirmation.call_count == int(existing)
     assert snapshot(manager) == before
     assert not list(tmp_path.glob('.research-export-*'))
 
@@ -596,7 +607,7 @@ def test_declined_keymap_replacement_never_validates_or_writes(
         manager, tmp_path, monkeypatch):
     dialog, destination = export_form(manager, tmp_path)
     destination.write_bytes(b'Keep existing keymap')
-    dialog.wx.MessageBox.return_value = dialog.wx.NO
+    dialog.wx.confirmation.return_value = dialog.wx.ID_NO
     validate = Mock(side_effect=AssertionError('Declined export must not validate or write'))
     monkeypatch.setattr(manager, 'validate', validate)
     dialog.export_map()
@@ -616,7 +627,7 @@ def test_confirmed_keymap_export_keeps_the_live_shortcuts_unchanged(manager, tmp
     dialog.export_map()
     assert json.loads(destination.read_text()) == {'version': 1, 'bindings': dialog.draft}
     assert snapshot(manager) == before
-    assert dialog.wx.MessageBox.call_count == int(existing)
+    assert dialog.wx.confirmation.call_count == int(existing)
     assert 'was exported' in dialog.messages[-1]
 
 

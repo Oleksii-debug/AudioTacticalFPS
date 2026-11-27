@@ -19,6 +19,12 @@ from .state_backup import relative_name
 MAX_BYTES = backup_extensions.MAX_BYTES
 MAX_JSON = backup_extensions.MAX_JSON
 ROOT_LIMITS = dict(backup_extensions.SIDECARS)
+# Recovery bytes only. A backup cannot provide a publisher policy, signature
+# verification, protected anchor or installation authority. Keep even a damaged
+# bounded token for owner recovery; the normal EntitlementStore still rejects it.
+_TRUSTED_RECOVERY = frozenset(('state/trusted-client/entitlement.json',
+                               'state/trusted-client/entitlement.pending.json'))
+_TRUSTED_RECOVERY_BYTES = 65536
 _HEX = r'[0-9a-f]{64}'
 _UUID = r'[0-9a-f]{32}'
 _LINKS = re.compile(r'state/speech/' + _HEX + r'\.reader-links\.json\Z')
@@ -36,6 +42,8 @@ def limit(name):
         _reserved_names((name.removeprefix('state/'),))
     if name in ROOT_LIMITS:
         return ROOT_LIMITS[name]
+    if name in _TRUSTED_RECOVERY:
+        return _TRUSTED_RECOVERY_BYTES
     if name == 'state/operations/resources.json':
         return 65536
     if name == 'state/ui/progress.json':
@@ -85,7 +93,7 @@ def is_media(name):
 
 
 def empty_allowed(name):
-    return bool(_TEXT.fullmatch(name) or _TRANSCRIPTION.fullmatch(name)
+    return bool(name in _TRUSTED_RECOVERY or _TEXT.fullmatch(name) or _TRANSCRIPTION.fullmatch(name)
                 and name.endswith(('.txt', '.srt')))
 
 
@@ -93,6 +101,10 @@ def validate(db, name, raw):
     """Validate passive bytes; cross-file identities are checked as a collection."""
     from .backup_producers import fields, text
     from .backup_sidecars import _json
+    if name in _TRUSTED_RECOVERY:
+        if type(raw) is not bytes or len(raw) > _TRUSTED_RECOVERY_BYTES:
+            raise ValueError('Trusted-client recovery bytes exceed their bounded allowance.')
+        return
     if name in ROOT_LIMITS:
         database = db.execute('PRAGMA database_list').fetchone()[2]
         allowed = [row[0] for row in db.execute('SELECT id FROM workspace')]

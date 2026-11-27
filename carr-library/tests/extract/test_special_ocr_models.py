@@ -73,27 +73,19 @@ def test_valid_language_script_and_separate_orientation_remain_usable():
 
 
 def test_existing_native_picker_offers_only_actual_reading_models(monkeypatch):
-    monkeypatch.setattr(language_manager, 'discover_ocr_runtime', lambda: _runtime())
-    observed = {}
-
-    class Dialog:
-        def __init__(self, parent, message, title, labels):
-            observed['labels'] = labels
-        def SetSelections(self, selected):
-            observed['initial'] = selected
-        def ShowModal(self):
-            return 1
-        def GetSelections(self):
-            return [0, 1]
-        def Destroy(self):
-            observed['destroyed'] = True
-
-    monkeypatch.setitem(sys.modules, 'wx', SimpleNamespace(MultiChoiceDialog=Dialog, ID_OK=1))
-    config = ocr_options.choose_installed_languages(None)
-    assert observed['labels'] == ['English (eng)', 'Script: Latin (script/Latin)']
-    assert observed['initial'] == [0]
-    assert observed['destroyed']
-    assert config.languages == 'eng+script/Latin'
+    from carr_library.ui import ocr_selection
+    identifiers = _runtime().languages
+    rows = ocr_selection.selectable_models('installed', identifiers)
+    assert tuple(row[0] for row in rows) == ('eng', 'script/Latin')
+    config = ocr_selection.selected_config('installed', tuple(row[0] for row in rows), identifiers)
+    assert config.languages == 'eng+script/Latin' and config.orientation is False
+    calls = []
+    def choose(parent):
+        calls.append(parent)
+        return config
+    monkeypatch.setattr(ocr_selection, 'choose_model_config', choose)
+    assert ocr_options.choose_ocr_config(None, ['scanned.pdf']) is config
+    assert calls == [None]
 
 
 def test_special_reading_preset_is_rejected_without_persisting_state(tmp_path):

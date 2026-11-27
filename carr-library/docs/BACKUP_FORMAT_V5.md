@@ -6,22 +6,39 @@ The top-level manifest has kind `carr-library`. Its independently retained
 SHA256 must match before the reader chooses a format. A number alone never
 selects between the two older implementations.
 
-| Envelope | Exact additional fields | Result |
+| Envelope | Distinguishing fields beyond the database and original inventory | Result |
 | --- | --- | --- |
-| Canonical 1–2 | Core database and original inventory; schema fingerprint from version 2 | Existing checked catalog restoration |
-| Canonical 3 | `state`, `generated_audio_included` | Existing application-state restoration |
-| Canonical 4 | The version 3 fields plus `pending` | Existing pinned import recovery and rebinding |
-| Legacy sidecars 3 | `sidecars` | Checked common catalog and source positions; exact old archive retained |
-| Legacy recovery 4 | `sidecars`, `recovery` | The same, including inert old Studio, provider, agent, and queue records |
-| Canonical 5 | Canonical state, optional canonical pending component, plus `extensions` | Typed additions described below |
+| Historical 1–2 | No application sidecars; schema fingerprint from version 2 | Checked catalog restoration |
+| Historical reading state 3 | `reading_state` | Exact source-bound reading locations |
+| Historical sidecars 3 | `sidecars` | Checked source positions and declared compatible sidecars; original historical archives retained where required |
+| Historical canonical state 3–4 | `state`, `generated_audio_included`; version 4 also has `pending` | Checked state and pinned import recovery |
+| Historical recovery 4 | `sidecars`, `recovery` | Compatible catalog plus inert older Studio, provider, agent, and queue records |
+| Historical extensions 5 | Canonical state, canonical pending component, and `extensions` | Typed historical additions described below |
+| Historical reading state 5 | `state`, `generated_audio_included`, `pending`, `reading_state` | Exact separately bound reading state with checked canonical recovery |
+| **Current common inventory 4** | `sidecars`, `generated_audio_included`, and optional non-null `pending` | One inventory for current root sidecars and producer-owned state |
 
-Each parser requires its complete field set and exact file inventory. Mixing
-`sidecars`/`recovery` with canonical `state`/`pending` does not select a fallback
-parser. Changing an old manifest's version number does not convert its content.
-Versions 1–4 retain their prior schema checks and public behavior. The writer
-continues emitting canonical 2–4 when no typed extensions are required.
+The current writer always emits the common-inventory version 4 envelope.
+Each sidecar filename is relative to the library root, so a producer file such
+as `state/studio/jobs/<id>/job.json` keeps its `state/` prefix. Root settings
+such as `reading-state.json` stay at the root. Every entry binds its exact
+filename, byte count and SHA256. An optional `pending` component uses the
+existing pinned-import validator and includes the original bytes needed for
+recovery. The current writer does not add a top-level `state` or `extensions`
+field.
 
-## Typed version 5 additions
+Each historical parser still requires its complete authenticated field set and
+exact file inventory. Numeric versions overlap between historical producers;
+the number alone never selects a fallback parser. Combining fields from two
+layouts or changing an old manifest's version does not convert its content.
+SQLite schema versions remain independent from backup envelope versions.
+
+## Historical typed version 5 additions
+
+The following extension layout remains readable for existing backups.
+Its original component bytes and validation rules remain intact. Current
+common-inventory backups carry the corresponding supported producer files
+through the typed sidecar registry; they do not manufacture this historical
+`extensions` envelope.
 
 The `extensions` directory contains allowlisted root sidecars and complete inert
 legacy archives. Its manifest binds the workspace inventory, independent-state
@@ -171,3 +188,21 @@ inert incompatible queues, transcription receipt/retained-input integrity,
 disabled runtime settings, and cancellation before/during publication. Native
 Windows qualification belongs to the separate actual Windows workflow; source
 tests do not establish NVDA speech, audio hardware, ASR quality or model rights.
+
+## Trusted-client recovery bytes
+
+A complete common-inventory backup preserves only the two known files
+`state/trusted-client/entitlement.json` and
+`state/trusted-client/entitlement.pending.json`, each at most 64 KiB, as
+unverified recovery bytes. This includes damaged or incomplete owner state so
+an application update or later recovery does not silently discard it. Other
+filenames under that directory are not accepted. Ordinary single-link,
+non-reparse file and complete inventory/hash checks still apply.
+
+Copying these files does not verify a signature, current validity, publisher
+policy or protected installation anchor. Backup and restore neither open the
+credential vault nor activate an entitlement. The normal entitlement reader
+continues checking the signed envelope and independently protected anchor
+before allowing a managed operation; malformed, forged or unanchored restored
+bytes remain rejected. Protected monotonic state is not reconstructed from a
+backup. Reading, export and recovery remain governed by their existing policy.

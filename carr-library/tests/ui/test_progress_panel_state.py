@@ -21,6 +21,7 @@ class Checkbox:
 
 def panel_with_store(tmp_path, preferences, sink):
     panel = object.__new__(NativeProgressPanel)
+    panel.closed = False
     panel.preferences = preferences
     panel.store = ProgressPreferenceStore(tmp_path / 'progress-preferences.json')
     panel.store.save(preferences)

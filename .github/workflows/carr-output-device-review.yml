@@ -56,6 +56,14 @@ jobs:
             tests/ui/test_live_reading_controls.py \
             tests/ui/test_studio_playback_actions.py \
             tests/ui/test_native_menu_contract.py \
+            tests/ui/test_native_acquisition.py \
+            tests/ui/test_academic_tools.py \
+            tests/ui/test_save_actions.py \
+            tests/assistant/test_local_assistant.py \
+            tests/storage/test_trusted_client_backup.py \
+            tests/storage/test_current_producer_backup.py \
+            tests/extract/test_special_ocr_models.py \
+            tests/ui/test_studio_progress_results.py \
             tests/ui/test_progress_job_review.py \
             tests/speech/test_voice_preferences.py \
             tests/speech/test_voice_preferences_handlers.py \
@@ -68,6 +76,12 @@ jobs:
       - name: Require installed native voice preference review
         if: runner.os == 'Windows'
         run: python -I -B -X utf8 scripts/windows_voice_preferences_smoke.py 2>&1 | tee ci-output-review/native-voice-preferences.txt
+      - name: Require installed native output selection and disposal
+        if: runner.os == 'Windows'
+        run: python -I -B -X utf8 scripts/windows_output_devices_smoke.py 2>&1 | tee ci-output-review/native-output-devices.txt
+      - name: Require installed recovery timer lifetime
+        if: runner.os == 'Windows'
+        run: python -I -B -X utf8 scripts/windows_save_timer_smoke.py --output ci-output-review/native-save-timer.json 2>&1 | tee ci-output-review/native-save-timer.txt
       - name: Preserve source and dependency identity
         if: always()
         run: |

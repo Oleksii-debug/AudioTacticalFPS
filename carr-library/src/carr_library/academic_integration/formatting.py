@@ -483,8 +483,18 @@ def _run(payload: dict, *, node_path: Path | str | None, cancelled: Callable[[],
             processor = source.read(2 * 1024 * 1024 + 1)
         if len(processor) > 2 * 1024 * 1024 or sha256(processor).hexdigest() != manifest['processor']['sha256']:
             raise CitationError('The installed citation processor failed its integrity check.')
-        from ..citations.csl import RenderBudget, _execute
-        result = _execute(payload, processor=processor.decode('utf-8'), bridge=_DOCUMENT_BRIDGE,
+        from ..citations.csl import RenderBudget, _execute, _xml_json
+        # Feed the same verified XML bytes through citeproc-js's documented
+        # JSON XML interface, as the canonical citation profile already does.
+        # Its JavaScript string parser repeatedly reparses styles/locales and
+        # can consume the bounded interpreter budget before formatting begins.
+        runtime_payload = dict(payload,
+            style_xml=_xml_json(payload['style_xml']),
+            locales={name: _xml_json(source) for name, source in payload['locales'].items()})
+        if len(json.dumps(runtime_payload, ensure_ascii=False, allow_nan=False,
+                          separators=(',', ':')).encode('utf-8')) > _MAX_BYTES:
+            raise CitationError('The combined CSL input exceeds its processing budget.')
+        result = _execute(runtime_payload, processor=processor.decode('utf-8'), bridge=_DOCUMENT_BRIDGE,
             budget=RenderBudget(max_records=_MAX_REFERENCES, max_citations=_MAX_CLUSTERS,
                 max_input_bytes=_MAX_BYTES, max_output_bytes=_MAX_BYTES,
                 memory_bytes=256 * 1024 * 1024, cpu_seconds=timeout), cancelled=cancelled)

@@ -7,6 +7,7 @@ import re
 
 
 _MODEL_ID = re.compile(r'(?:script/)?[A-Za-z0-9_]+')
+AUXILIARY_MODELS = frozenset(('osd', 'equ'))
 
 
 def is_model_id(value):
@@ -21,4 +22,12 @@ def model_ids(languages):
     selected = tuple(languages.split('+'))
     if not all(is_model_id(name) for name in selected):
         raise ValueError('invalid language selection')
+    return selected
+
+
+def reading_model_ids(languages):
+    """Reading languages/scripts exclude separate orientation/equation detectors."""
+    selected = model_ids(languages)
+    if any(name.casefold() in AUXILIARY_MODELS for name in selected):
+        raise ValueError('Choose reading languages or scripts; auxiliary detectors are separate options.')
     return selected

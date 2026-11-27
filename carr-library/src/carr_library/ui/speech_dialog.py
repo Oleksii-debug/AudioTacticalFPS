@@ -1059,12 +1059,17 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
 def install_speech_actions(frame):
     """Add one conventional menu without modifying existing keyboard bindings."""
     import wx
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
 
     menu = wx.Menu()
     item = menu.Append(wx.ID_ANY, 'Voice reader and reading copy...\tCtrl+Alt+V')
     frame.Bind(wx.EVT_MENU, lambda event: show_speech_reader(frame), item)
+    register_menu_command(frame, CommandSpec('voice.reader', 'Voice reader and reading copy',
+                                           'main', 'Ctrl+Alt+V'), item)
     clipboard = menu.Append(wx.ID_ANY, 'Read &clipboard...')
     frame.Bind(wx.EVT_MENU, lambda event: show_clipboard_reader(frame), clipboard)
+    register_menu_command(frame, CommandSpec('voice.clipboard', 'Read clipboard'), clipboard)
     from .reading_desk import ReadingActions
     from ..speech.source import read_source_range
 
@@ -1097,5 +1102,7 @@ def install_speech_actions(frame):
     actions = ReadingActions(frame, reader_factory=BookSpeechReader)
     selected = menu.Append(wx.ID_ANY, 'Narrate selected book or chapter...\tCtrl+Alt+R')
     frame.Bind(wx.EVT_MENU, actions.open_book, selected)
+    register_menu_command(frame, CommandSpec('voice.book', 'Narrate selected book or chapter',
+                                           'main', 'Ctrl+Alt+R'), selected)
     frame.speech_reading_actions = actions
     frame.GetMenuBar().Append(menu, '&Voice')

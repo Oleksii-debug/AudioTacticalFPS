@@ -145,7 +145,8 @@ def test_late_stop_does_not_hide_artifact_verifier_failure(tmp_path, voices, mon
 
     def verify_then_fail(state, *, cancelled=lambda: False):
         verify(state, cancelled=cancelled)
-        assert state['status'] == 'complete' and state['artifacts']
+        # Artifact verification precedes the durable completion receipt.
+        assert state['status'] == 'running' and state['artifacts']
         for artifact in state['artifacts']:
             path = Path(artifact['path'])
             accepted[str(path)] = (path.stat().st_size, sha256(path.read_bytes()).hexdigest())

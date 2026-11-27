@@ -2,6 +2,8 @@
 import hashlib
 import json
 from pathlib import Path
+import shutil
+import sys
 from types import SimpleNamespace
 
 import pytest
@@ -96,10 +98,21 @@ def test_csl_explicit_runtime_and_bundled_failure_are_not_silently_replaced(tmp_
     from carr_library.academic_integration import formatting
     executable = tmp_path / 'selected-node'
     executable.write_bytes(b'inert')
-    def damaged(_):
-        raise ValueError('Included runtime is corrupt')
-    monkeypatch.setattr(engines, 'bundled_executable', damaged)
-    monkeypatch.setattr(formatting.shutil, 'which', lambda _: pytest.fail('A damaged included runtime cannot fall back to PATH'))
-    assert formatting._node_binary(executable) == str(executable)
-    with pytest.raises(ValueError, match='corrupt'):
-        formatting._node_binary(None)
+    def forbidden(*args, **kwargs):
+        pytest.fail('The bounded citation runtime cannot fall back to a Node executable or PATH.')
+    monkeypatch.setattr(engines, 'bundled_executable', forbidden)
+    monkeypatch.setattr(shutil, 'which', forbidden)
+    references = [{'id': 'one', 'type': 'book', 'title': 'Explicit local citation'}]
+    # An old explicit Node override is rejected, even when the file exists.
+    with pytest.raises(formatting.CitationError, match='Node.js'):
+        formatting.render_citations(references, node_path=executable)
+    # The current interpreter is mandatory: its absence cannot select a legacy
+    # bundled executable or an ambient tool. Existing sealed-engine corruption
+    # cases above still validate every declared historical component.
+    with monkeypatch.context() as missing:
+        missing.setitem(sys.modules, 'quickjs', None)
+        with pytest.raises(formatting.CitationError, match='local citation runtime is missing'):
+            formatting.render_citations(references)
+    result = formatting.render_citations(references)
+    assert result.bibliography[0].reference_id == 'one'
+    assert 'Explicit local citation' in result.bibliography[0].text

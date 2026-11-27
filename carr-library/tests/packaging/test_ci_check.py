@@ -406,7 +406,18 @@ def test_parallel_barrier():
             (root / 'descendant.py').write_text(
                 "from pathlib import Path\nimport os,sys,time\n"
                 "held = open(sys.argv[1], 'wb')\n"
-                "Path(sys.argv[2]).write_text(str(os.getpid()), encoding='ascii')\n"
+                "marker = Path(sys.argv[2])\n"
+                "staged = marker.with_suffix('.pending')\n"
+                "with staged.open('x', encoding='ascii') as stream:\n"
+                "    marker.with_suffix('.starting').touch()\n"
+                "    deadline = time.monotonic() + 30\n"
+                "    while not marker.with_suffix('.publish').exists():\n"
+                "        if time.monotonic() >= deadline: raise TimeoutError('Readiness was not acknowledged')\n"
+                "        time.sleep(.01)\n"
+                "    stream.write(str(os.getpid()))\n"
+                "    stream.flush()\n"
+                "    os.fsync(stream.fileno())\n"
+                "os.replace(staged, marker)\n"
                 "while True: time.sleep(1)\n", encoding='utf-8')
             (root / 'test_timeout.py').write_text(
                 "from pathlib import Path\nimport json,os,pytest,subprocess,sys,time\n"
@@ -424,22 +435,38 @@ def test_parallel_barrier():
                 processes.append(process)
                 if Path(args[0][-1]).name != 'test_timeout.py':
                     return process
-                deadline = time.monotonic() + 30
-                while not marker.exists():
-                    self.assertIsNone(process.poll(), 'Synthetic pytest exited before starting its child')
-                    self.assertLess(time.monotonic(), deadline, 'Synthetic child did not start')
-                    time.sleep(.02)
-                pid = int(marker.read_text(encoding='ascii'))
-                observed['pid'] = pid
-                observed['suite'] = json.loads((root / 'suite-owner.json').read_text(encoding='utf-8'))
-                if kernel is not None:
-                    handle = kernel.OpenProcess(0x100001, False, pid)  # SYNCHRONIZE | TERMINATE
-                    self.assertTrue(handle, ctypes.get_last_error())
-                    observed['handle'] = handle
-                    self.assertEqual(kernel.WaitForSingleObject(handle, 0), 258)  # alive
-                else:
-                    self.assertEqual(os.getpgid(process.pid), process.pid)
-                    self.assertEqual(os.getpgid(pid), process.pid)
+                try:
+                    deadline = time.monotonic() + 30
+                    # Exercise the real creation/write gap deterministically. The
+                    # PID is published only after its staged stream is closed; mere
+                    # existence of that empty staging file cannot admit the suite.
+                    while not marker.with_suffix('.starting').exists():
+                        self.assertIsNone(process.poll(), 'Synthetic pytest exited before starting its child')
+                        self.assertLess(time.monotonic(), deadline, 'Synthetic child did not stage readiness')
+                        time.sleep(.02)
+                    self.assertEqual(marker.with_suffix('.pending').read_bytes(), b'')
+                    self.assertFalse(marker.exists())
+                    marker.with_suffix('.publish').touch()
+                    while not marker.exists():
+                        self.assertIsNone(process.poll(), 'Synthetic pytest exited before starting its child')
+                        self.assertLess(time.monotonic(), deadline, 'Synthetic child did not start')
+                        time.sleep(.02)
+                    pid = int(marker.read_text(encoding='ascii'))
+                    observed['pid'] = pid
+                    observed['suite'] = json.loads((root / 'suite-owner.json').read_text(encoding='utf-8'))
+                    if kernel is not None:
+                        handle = kernel.OpenProcess(0x100001, False, pid)  # SYNCHRONIZE | TERMINATE
+                        self.assertTrue(handle, ctypes.get_last_error())
+                        observed['handle'] = handle
+                        self.assertEqual(kernel.WaitForSingleObject(handle, 0), 258)  # alive
+                    else:
+                        self.assertEqual(os.getpgid(process.pid), process.pid)
+                        self.assertEqual(os.getpgid(pid), process.pid)
+                except BaseException:
+                    # The observing Popen wrapper has not transferred ownership
+                    # to the runner yet. Clean up its real tree on setup errors.
+                    runner._terminate_process_tree(process)
+                    raise
                 return process
 
             def tracked_temporary(*args, **kwargs):

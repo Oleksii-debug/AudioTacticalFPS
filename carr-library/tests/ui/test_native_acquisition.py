@@ -30,6 +30,12 @@ class Control:
         self.pages = []
         self.modal_result = None
         self.options = kwargs
+    def GetId(self): return id(self)
+    def __bool__(self): return not self.destroyed
+    def IsBeingDeleted(self): return self.destroyed
+    def SetLabel(self, label): self.label = label
+    def GetStringSelection(self):
+        return self.items[self.index] if 0 <= self.index < len(self.items) else ''
     def Bind(self, event, callback): self.bindings[event] = callback
     def SetName(self, name): self.name = name
     def SetValue(self, value): self.value = value
@@ -42,6 +48,7 @@ class Control:
     def SetMaxLength(self, length): self.max_length = length
     def SetMinSize(self, value): self.min_size = value
     def SetSizer(self, value): self.sizer = value
+    def Layout(self): pass
     def SetEscapeId(self, value): self.escape_id = value
     def Add(self, *args): pass
     def AddPage(self, page, label): self.pages.append((page, label))
@@ -68,7 +75,8 @@ def module(tmp_path):
             'LEFT', 'RIGHT', 'TOP', 'BOTTOM', 'ALIGN_RIGHT', 'TE_MULTILINE',
             'TE_READONLY', 'ID_CANCEL', 'ID_OK', 'ID_YES', 'ID_NO', 'YES_NO',
             'NO_DEFAULT', 'ICON_QUESTION', 'EVT_BUTTON', 'EVT_CLOSE',
-            'EVT_CHOICE', 'EVT_TEXT', 'EVT_CHECKBOX', 'DD_DIR_MUST_EXIST')):
+            'EVT_CHOICE', 'EVT_TEXT', 'EVT_CHECKBOX', 'DD_DIR_MUST_EXIST',
+            'EVT_WINDOW_DESTROY')):
         setattr(wx, name, 1 << index)
     wx.callbacks = []
     wx.CallAfter = lambda callback: wx.callbacks.append(callback)

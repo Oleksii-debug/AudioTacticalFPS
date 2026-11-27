@@ -14,7 +14,7 @@ from tempfile import TemporaryFile
 from threading import Event
 import time
 
-from ..extract.ocr_languages import model_ids
+from ..extract.ocr_languages import model_ids, AUXILIARY_MODELS
 from ..extract.ocr_process import prepare_ocr_query, normalize_ocr_query_output
 from ..extract.page_ocr import Config
 from ..extract.pinned_tessdata import MODELS, POLICY
@@ -22,7 +22,7 @@ from ..extract.pinned_tessdata import MODELS, POLICY
 
 PROFILES = (('installed', 'Models installed with the current OCR runtime'),
             ('fast', 'Managed Fast models'), ('best', 'Managed Best models'))
-AUXILIARY = frozenset(('osd', 'equ'))
+AUXILIARY = AUXILIARY_MODELS
 MAX_INVENTORY_BYTES = 128 * 1024
 
 

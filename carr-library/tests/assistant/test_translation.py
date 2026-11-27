@@ -594,9 +594,10 @@ def test_full_backup_keeps_decoded_translation_evidence_and_offline_authority(tm
     backup = tmp_path / 'backup'
     checksum = app.backup(backup)
     manifest = read_json(backup / 'manifest.json')
-    inventory = {item['filename']: item for item in manifest['state']}
+    assert manifest['version'] == 4
+    inventory = {item['filename']: item for item in manifest['sidecars']}
     for relative, raw in original_files.items():
-        entry = inventory[relative.as_posix()]
+        entry = inventory['state/' + relative.as_posix()]
         assert entry['size_bytes'] == len(raw) and entry['sha256'] == sha256(raw).hexdigest()
         assert (backup / 'state' / relative).read_bytes() == raw
 
@@ -1557,16 +1558,20 @@ def test_native_completed_export_keeps_original_lineage_without_current_account(
 
 def test_native_account_revoked_after_accepted_chunk_stops_next_request(
         tmp_path, connection, translation_window):
-    from types import SimpleNamespace
+    from carr_library.progress import ProgressHub, bind_progress
     case = bound_ready(tmp_path, connection)
     window = translation_window
     frame = window.bind(case)
     revoked = []
-    def progress(done, total, phase, *, token):
-        if done == 1 and not revoked:
+    task = ProgressHub().start('Approved translation', unit='chunks')
+    update = task.update
+    def progress(*, completed, total, phase):
+        snapshot = update(completed=completed, total=total, phase=phase)
+        if completed == 1 and not revoked:
             change_saved_account(case, 'disabled')
             revoked.append(True)
-    frame.operation_progress = SimpleNamespace(event=SimpleNamespace(token='account-test'), update=progress)
+        return snapshot
+    task.update = progress
     calls = len(connection['calls'])
     def scenario():
         window.find('Maximum approved').ChangeValue('2')
@@ -1582,5 +1587,8 @@ def test_native_account_revoked_after_accepted_chunk_stops_next_request(
         assert window.state['focused'] == status.name
         window.click('Close')
     window.state['scenario'] = scenario
-    window.ui.show_translation(frame, source_loader=lambda cancelled: case.source, source_topic=case.topic)
+    # Desktop workers now bind the shared ProgressTask explicitly.
+    with bind_progress(task):
+        window.ui.show_translation(frame, source_loader=lambda cancelled: case.source, source_topic=case.topic)
+    assert task.snapshot().completed == 1
     assert not window.errors

@@ -135,7 +135,8 @@ def native_menus(tmp_path, monkeypatch, request):
         _closing=False, working=False, busy=False, host=Control(), layout=Control(),
         IsActive=lambda: True, IsEnabled=lambda: True, IsBeingDeleted=lambda: False,
         choice=Control(), status=Control(), GetId=lambda: 71, SetAcceleratorTable=lambda value: None,
-        report=notices.append, Unbind=lambda *args, **kwargs: True)
+        report=notices.append, Unbind=lambda *args, **kwargs: True,
+        evidence=None, _dirty=lambda: False, _restore_note_focus=lambda: None)
     def bind(event, callback, item=None, **kwargs):
         if event == wx.EVT_MENU:
             identity = item.GetId() if item is not None else kwargs['id']

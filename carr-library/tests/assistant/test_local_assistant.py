@@ -302,7 +302,7 @@ def test_native_probe_waits_for_resumed_job_result_callback(environment, worker_
 
     dialog_tree = ast.parse(inspect.getsource(assistant_dialog))
     show = next(node for node in dialog_tree.body
-                if isinstance(node, ast.FunctionDef) and node.name == 'show_assistant')
+                if isinstance(node, ast.FunctionDef) and node.name == 'create_assistant_dialog')
     handlers = [node for node in show.body
                 if isinstance(node, ast.FunctionDef) and node.name in ('report', 'run')]
     assert len(handlers) == 2
@@ -334,6 +334,8 @@ def test_native_probe_waits_for_resumed_job_result_callback(environment, worker_
         namespace = {
             'executor': SimpleNamespace(submit=submit), 'service': SimpleNamespace(resume=resume),
             'cancel': Event(), 'review': review, 'buttons': buttons, 'json': json,
+            'frame': SimpleNamespace(library=app), 'library_root': app.root,
+            'planning_source': Control(), 'folder_buttons': (Control(), Control()),
             'wx': SimpleNamespace(CallAfter=lambda function, *args: callbacks.put((function, args))),
             **{name: Control() for name in
                ('scope_choice', 'instruction', 'input_folder', 'output_folder', 'full_backup')},

@@ -14,7 +14,7 @@ ID = r'[A-Za-z0-9_-]{1,80}'
 HEX = r'[0-9a-f]{64}'
 READER = re.compile(r'state/speech/(' + HEX + r')\.reader\.json\Z')
 PROFILE = re.compile(r'state/providers/(' + ID + r')\.profile\.json\Z')
-USAGE = re.compile(r'state/(?:providers/usage|translation/provider/usage)/(' + ID + r')\.usage\.json\Z')
+USAGE = re.compile(r'state/(?:providers/usage|translation/provider/usage|gateway/usage)/(' + ID + r')\.usage\.json\Z')
 TRANSLATION = re.compile(r'state/translation/jobs/([0-9a-f]{32})(\.control)?\.json\Z')
 LANGUAGES = re.compile(r'state/translation/languages-(' + ID + r')\.json\Z')
 ASSISTANT = re.compile(r'state/assistant/([0-9a-f]{32})(\.control)?\.json\Z')
@@ -87,7 +87,7 @@ def _studio_job(value, identity):
     from .studio.project import Project
     fields(value, {'schema', 'id', 'status', 'project', 'fingerprint', 'destination',
                    'format', 'stems', 'nodes', 'artifacts', 'progress', 'created',
-                   'updated', 'error', 'runtime'}, {'result', 'resource_plan', 'recovery', 'warnings'})
+                   'updated', 'error', 'runtime'}, {'result', 'resource_plan', 'recovery', 'warnings', 'total_disk_bytes'})
     if type(value['schema']) is not int or value['schema'] != 1 or value['id'] != identity:
         raise ValueError('Invalid production job identity.')
     project = Project.from_dict(value['project'])
@@ -117,6 +117,8 @@ def _studio_job(value, identity):
             raise ValueError('A restored Studio job cannot inherit output authority.')
     else:
         path(value['destination'])
+    if 'total_disk_bytes' in value:
+        number(value['total_disk_bytes'], 1024**2, 2**63 - 1, integer=True)
     if 'warnings' in value:
         if type(value['warnings']) is not list or len(value['warnings']) > 10000:
             raise ValueError('Invalid Studio completion warnings.')

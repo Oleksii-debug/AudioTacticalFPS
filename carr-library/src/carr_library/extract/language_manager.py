@@ -14,6 +14,7 @@ import tempfile
 
 from ..durable_state import atomic_json, local_path, regular, read_json, sync_directory, _unique
 from .ocr_runtime import discover_ocr_runtime, OcrRuntimeError
+from .ocr_languages import reading_model_ids
 
 CODE = re.compile(r'(?:script/)?[A-Za-z][A-Za-z0-9_]{0,79}')
 NAMES = {'eng': 'English', 'ukr': 'Ukrainian', 'slk': 'Slovak', 'ces': 'Czech',
@@ -21,7 +22,8 @@ NAMES = {'eng': 'English', 'ukr': 'Ukrainian', 'slk': 'Slovak', 'ces': 'Czech',
          'hun': 'Hungarian', 'ita': 'Italian', 'por': 'Portuguese', 'rus': 'Russian',
          'ara': 'Arabic', 'heb': 'Hebrew', 'jpn': 'Japanese', 'kor': 'Korean',
          'chi_sim': 'Chinese, simplified', 'chi_tra': 'Chinese, traditional',
-         'osd': 'Orientation and script detection (not a reading language)'}
+         'osd': 'Orientation and script detection (not a reading language)',
+         'equ': 'Equation detection (not a reading language)'}
 
 
 @dataclass(frozen=True)
@@ -52,7 +54,8 @@ def installed_languages(runtime=None, *, timeout=15):
     for code in sorted(set(codes)):
         if not CODE.fullmatch(code):
             raise OcrRuntimeError('Unexpected installed OCR model identifier.')
-        kind = 'orientation' if code == 'osd' else ('script' if code.startswith('script/') else 'language')
+        kind = ('orientation' if code == 'osd' else 'equation' if code == 'equ'
+                else 'script' if code.startswith('script/') else 'language')
         models.append(LanguageModel(code, NAMES.get(code, code.replace('script/', 'Script: ')), kind))
     if not models:
         raise OcrRuntimeError('The OCR runtime has no installed language models.')
@@ -63,7 +66,8 @@ def language_selection(codes, available, *, max_models=8):
     codes = tuple(codes)
     if not 1 <= len(codes) <= max_models or len(set(codes)) != len(codes):
         raise ValueError(f'Choose 1 to {max_models} distinct models for one OCR pass.')
-    supported = {model.code for model in available if model.kind != 'orientation'}
+    reading_model_ids('+'.join(codes))
+    supported = {model.code for model in available if model.kind in ('language', 'script')}
     if any(code not in supported for code in codes):
         raise ValueError('Choose installed reading models; orientation is a separate option.')
     return '+'.join(codes)

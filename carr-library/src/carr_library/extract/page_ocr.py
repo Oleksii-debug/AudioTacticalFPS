@@ -13,7 +13,7 @@ import time
 
 from .pinned_tessdata import MODELS, POLICY, stage_pinned_models
 from .ocr_runtime import OcrRuntimeError, discover_ocr_runtime
-from .ocr_languages import model_ids
+from .ocr_languages import model_ids, reading_model_ids
 from .ocr_process import run_ocr
 
 
@@ -79,7 +79,7 @@ class Config:
     def __post_init__(self):
         if type(self.orientation) is not bool:
             raise ValueError('orientation must be boolean')
-        selected = model_ids(self.languages)
+        selected = reading_model_ids(self.languages)
         if len(self.languages) > 2048 or len(set(selected)) != len(selected):
             raise ValueError('duplicate or oversized language selection')
         if self.model_policy not in ('default', POLICY):

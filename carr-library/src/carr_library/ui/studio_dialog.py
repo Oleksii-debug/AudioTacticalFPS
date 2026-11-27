@@ -276,9 +276,10 @@ def show_studio(frame):
                 # interrupt the production service after it saved a receipt.
                 unavailable(exc)
 
-        def failed_operation(exc, *, worker=False):
+        def failure_outcome(exc, *, worker=False):
+            from concurrent.futures import CancelledError
             from carr_library.audio.models import AudioCancelled
-            interrupted = worker and isinstance(exc, (InterruptedError, AudioCancelled))
+            interrupted = worker and isinstance(exc, (InterruptedError, AudioCancelled, CancelledError))
             state = 'paused' if interrupted else 'failed'
             if worker and with_progress and job_identity is not None:
                 try:
@@ -287,6 +288,13 @@ def show_studio(frame):
                         state = saved_state
                 except Exception:
                     pass  # A missing receipt cannot hide the original error.
+            return state
+
+        def failed_operation(exc, *, worker=False):
+            if not alive:
+                finish_detached_task(error=exc, worker=worker)
+                return
+            state = failure_outcome(exc, worker=worker)
             if state == 'cancelled':
                 observe('cancel', phase + ': cancelled', token=token)
             elif state == 'paused':
@@ -305,6 +313,37 @@ def show_studio(frame):
                     return operation(measured_phase) if with_progress else operation()
             return operation(measured_phase) if with_progress else operation()
 
+        def finish_detached_task(result=None, *, error=None, worker=False, applied=False):
+            # The shared task outlives its native observer. Only a returned
+            # durable receipt or a completed result callback can claim success;
+            # an unapplied value may still require publication by that callback.
+            from carr_library.progress import ProgressTask
+            if not isinstance(task, ProgressTask) or task.snapshot().terminal:
+                return
+            try:
+                if error is not None:
+                    outcome = failure_outcome(error, worker=worker)
+                elif applied or isinstance(result, dict) and any(key in result for key in ('status', 'state')):
+                    outcome = operation_outcome(result)
+                else:
+                    outcome = 'unavailable'
+                message = (phase + ': ' + outcome + '; the view has closed. ' +
+                           ('The returned saved receipt is retained.' if outcome == 'succeeded'
+                            else 'Review the saved operation before continuing.'))
+                if outcome == 'succeeded':
+                    task.succeed(durable=True, message=message)
+                elif outcome == 'failed':
+                    task.fail(message)
+                elif outcome == 'cancelled':
+                    task.cancelled(message)
+                elif outcome == 'paused':
+                    task.pause(message)
+                else:
+                    task.unavailable(message)
+            except (Exception, KeyboardInterrupt):
+                if not task.snapshot().terminal:
+                    task.unavailable('The view closed before its operation outcome could be confirmed.')
+
         try:
             future = executor.submit(perform)
         except Exception as exc:
@@ -315,13 +354,20 @@ def show_studio(frame):
             return
 
         def discard_result(done):
+            nonlocal busy
+            finished.set()
+            busy = False
             try:
                 result = done.result()
-            except Exception:
+            except (Exception, KeyboardInterrupt) as exc:
+                finish_detached_task(error=exc, worker=True)
                 return
+            # Keep result cleanup independent of a delivered GUI callback, and
+            # retain a failed owner before recording the shared task outcome.
             if callable(getattr(result, 'close', None)):
                 owned_progress_voices.add(result)
                 retire_progress_voice(result)
+            finish_detached_task(result)
 
         def finish(done):
             if not alive:
@@ -341,18 +387,22 @@ def show_studio(frame):
                     failed_operation(exc, worker=True)
                     return
                 try:
+                    outcome = operation_outcome(result)
+                except Exception as exc:
+                    unavailable(exc)
+                    return
+                try:
                     # Completion may verify or publish a final artifact. It is
                     # business work and must finish before any success signal.
-                    complete(result)
+                    if outcome == 'succeeded':
+                        complete(result)
+                    else:
+                        report(phase + ': ' + outcome + '. Saved work is retained.', True)
                 except Exception as exc:
                     failed_operation(exc)
                     return
                 if not alive:
-                    return
-                try:
-                    outcome = operation_outcome(result)
-                except Exception as exc:
-                    unavailable(exc)
+                    finish_detached_task(result, applied=outcome == 'succeeded')
                     return
                 if outcome == 'succeeded':
                     observe('succeed', phase + ': verified complete', token=token)

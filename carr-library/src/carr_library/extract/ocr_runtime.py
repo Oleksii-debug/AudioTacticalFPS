@@ -15,7 +15,7 @@ import shutil
 import stat
 import sys
 
-from .ocr_languages import is_model_id, model_ids
+from .ocr_languages import is_model_id, model_ids, reading_model_ids
 
 MANIFEST = 'ocr-manifest.json'
 MAX_MANIFEST = 2 * 1024 * 1024
@@ -120,9 +120,9 @@ class OcrRuntime:
 
     def require_languages(self, languages, orientation=False):
         try:
-            selected = model_ids(languages)
+            selected = reading_model_ids(languages)
         except ValueError:
-            raise OcrRuntimeError('Invalid OCR language selection.') from None
+            raise OcrRuntimeError('Invalid OCR language selection. Choose reading languages or scripts; auxiliary detectors are separate.') from None
         if self.portable:
             wanted = set(selected) | ({'osd'} if orientation else set())
             if not wanted <= set(self.languages):
