@@ -581,3 +581,181 @@ def test_menu_installation_is_idempotent_and_binds_keyboard_command(monkeypatch)
     assert install_ebook_actions(frame) is first
     menu.Append.assert_called_once_with(wx.ID_ANY, 'Read electronic book contents\tCtrl+Shift+O')
     assert frame.Bind.call_args.args[1] == first.open
+
+
+
+def _recorded_epub_native_probe_handlers():
+    """Execute the real diagnostic closures without constructing native windows."""
+    import ast
+    from hashlib import sha256
+    import json
+    from pathlib import Path
+    import traceback
+
+    script = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_epub_reading_smoke.py'
+    module = ast.parse(script.read_text(encoding='utf-8'), filename=str(script))
+    main = next(node for node in module.body if isinstance(node, ast.FunctionDef) and node.name == 'main')
+    names = {'remember_failure', 'abort', 'guarded', 'expire', 'trace_highlight'}
+    functions = [node for node in main.body if isinstance(node, ast.FunctionDef) and node.name in names]
+    assert {node.name for node in functions} == names
+    events, pending = [], []
+
+    class Dialog:
+        def __init__(self, name):
+            self.name, self.modal = name, True
+        def IsModal(self):
+            return self.modal
+        def EndModal(self, result):
+            assert result == 5101
+            events.append(('end', self.name))
+            self.modal = False
+
+    class Owner:
+        def __init__(self, name):
+            self.name, self.closed, self.failure = name, False, None
+            self.dialog = Dialog(name)
+        def close(self):
+            events.append(('close', self.name))
+            if self.failure == 'throw':
+                raise RuntimeError(self.name + ' cleanup raised')
+            if self.failure == 'refuse':
+                return
+            self.closed = True
+            if self.dialog.IsModal():
+                self.dialog.EndModal(5101)
+
+    overlay, reader = Owner('overlay'), Owner('reader')
+    reader._audio_dialog = overlay
+    env = {
+        'errors': [], 'finished': False, 'stage': 1,
+        'shutdown': {'requested': False, 'reader_returned': False, 'attempted': set()},
+        'pressed': set(), 'reader': reader, 'overlay': overlay,
+        'wx': SimpleNamespace(ID_CANCEL=5101,
+            CallAfter=lambda callback: pending.append((0, callback)),
+            CallLater=lambda delay, callback: pending.append((delay, callback))),
+        'gui': SimpleNamespace(ExitMainLoop=lambda: events.append(('exit',))),
+        'simulator': SimpleNamespace(KeyUp=lambda key: events.append(('key-up', key)) or True),
+        'traceback': traceback, 'json': json, 'sha256': sha256,
+    }
+    exec(compile(ast.fix_missing_locations(ast.Module(body=functions, type_ignores=[])),
+                 str(script), 'exec'), env)
+    return SimpleNamespace(env=env, events=events, pending=pending, overlay=overlay, reader=reader)
+
+
+def _recorded_epub_native_step(harness):
+    assert harness.pending, 'The real modal-unwind closure stopped scheduling cleanup.'
+    delay, callback = harness.pending.pop(0)
+    assert delay in (0, 25)
+    callback()
+
+
+def test_recorded_epub_failure_is_printed_before_inside_out_modal_unwind(capsys):
+    harness = _recorded_epub_native_probe_handlers()
+    def fail():
+        raise AssertionError('exact native highlight mismatch')
+    harness.env['guarded'](fail)()
+    assert 'exact native highlight mismatch' in capsys.readouterr().out
+    assert len(harness.env['errors']) == 1 and harness.events == []
+    harness.env['abort']()
+    assert len(harness.pending) == 1, 'Repeated failure must not start another unwind.'
+    _recorded_epub_native_step(harness)
+    assert harness.events == [('close', 'overlay'), ('end', 'overlay')]
+    # EndModal is not proof that the containing ShowModal/finally returned.
+    _recorded_epub_native_step(harness)
+    assert harness.events == [('close', 'overlay'), ('end', 'overlay')]
+    harness.reader._audio_dialog = None
+    _recorded_epub_native_step(harness)
+    assert harness.events == [('close', 'overlay'), ('end', 'overlay'),
+                              ('close', 'reader'), ('end', 'reader')]
+    assert ('exit',) not in harness.events
+    harness.env['shutdown']['reader_returned'] = True
+    _recorded_epub_native_step(harness)
+    assert harness.events[-1] == ('exit',)
+    assert harness.overlay.closed and harness.reader.closed
+
+
+@pytest.mark.parametrize('owner_name', ['overlay', 'reader'])
+@pytest.mark.parametrize('failure', ['throw', 'refuse'])
+def test_recorded_epub_abort_retains_unconfirmed_owner_and_original_failure(capsys, owner_name, failure):
+    harness = _recorded_epub_native_probe_handlers()
+    failed = getattr(harness, owner_name)
+    failed.failure = failure
+    def fail():
+        raise AssertionError('original selection failure')
+    harness.env['guarded'](fail)()
+    _recorded_epub_native_step(harness)
+    harness.reader._audio_dialog = None
+    _recorded_epub_native_step(harness)
+    harness.env['shutdown']['reader_returned'] = True
+    _recorded_epub_native_step(harness)
+    output = capsys.readouterr().out
+    assert 'original selection failure' in output and 'Native EPUB owner cleanup failed.' in output
+    assert 'original selection failure' in harness.env['errors'][0]
+    assert len(harness.env['errors']) == 2
+    assert not failed.closed, 'Failure-only modal unwind must not claim resource closure.'
+    other = harness.reader if owner_name == 'overlay' else harness.overlay
+    assert other.closed
+    assert harness.events == [('close', 'overlay'), ('end', 'overlay'),
+                              ('close', 'reader'), ('end', 'reader'), ('exit',)]
+
+
+def test_recorded_epub_deadline_survives_error_suppressed_normal_callbacks(capsys):
+    harness = _recorded_epub_native_probe_handlers()
+    harness.env['errors'].append('original failure')
+    callback = Mock()
+    harness.env['guarded'](callback)()
+    callback.assert_not_called()
+    harness.env['expire']()
+    assert harness.env['errors'][0] == 'original failure'
+    assert len(harness.env['errors']) == 2
+    assert 'deadline at stage 1' in capsys.readouterr().out
+    _recorded_epub_native_step(harness)
+    assert harness.events[:2] == [('close', 'overlay'), ('end', 'overlay')]
+
+
+def test_recorded_epub_finished_probe_does_not_restart_deadline_cleanup():
+    harness = _recorded_epub_native_probe_handlers()
+    harness.env['finished'] = True
+    harness.env['expire']()
+    assert harness.env['errors'] == [] and harness.pending == [] and harness.events == []
+
+
+def test_recorded_epub_failed_key_release_does_not_lose_modal_cleanup(capsys):
+    harness = _recorded_epub_native_probe_handlers()
+    harness.env['pressed'].add(32)
+    harness.env['simulator'].KeyUp = lambda key: False
+    harness.env['abort']()
+    assert harness.env['pressed'] == set()
+    assert 'could not release its native key' in capsys.readouterr().out
+    _recorded_epub_native_step(harness)
+    assert harness.events[:2] == [('close', 'overlay'), ('end', 'overlay')]
+    assert len(harness.env['errors']) == 1
+
+
+def test_recorded_epub_highlight_diagnostic_preserves_exact_bounded_observation(capsys):
+    from hashlib import sha256
+    import json
+    harness = _recorded_epub_native_probe_handlers()
+    raw = '😀 line\n' + 'x' * 5000
+    selected = raw[:7] + 'wrong'
+    control = raw.replace('\n', '\r\n')
+    harness.env['expected_page'] = SimpleNamespace(raw_text=raw)
+    harness.overlay.busy, harness.overlay.closed = False, False
+    harness.overlay.session = SimpleNamespace(page=SimpleNamespace(raw_text=raw),
+        chapter=SimpleNamespace(cues=(SimpleNamespace(start=0, end=7),)))
+    harness.overlay.text = SimpleNamespace(GetSelection=lambda: (0, 9),
+        GetStringSelection=lambda: selected, GetValue=lambda: control)
+    harness.overlay.status = SimpleNamespace(GetValue=lambda: 'Mapping unavailable.')
+    harness.env['trace_highlight']()
+    lines = capsys.readouterr().out.splitlines()
+    assert lines[0].startswith('EPUB diagnostic: inspecting the unchanged native highlight')
+    value = json.loads(lines[1])['epub_highlight_diagnostic']
+    assert value['selected']['prefix'] == selected
+    assert value['expected_fragment']['prefix'] == raw[:7]
+    assert value['selected']['prefix'] != value['expected_fragment']['prefix']
+    assert value['control']['sha256'] == sha256(control.encode('utf-8')).hexdigest()
+    assert value['expected_source']['sha256'] == sha256(raw.encode('utf-8')).hexdigest()
+    assert value['control']['characters'] == len(control) and len(value['control']['prefix']) == 2048
+    assert value['native_selection'] == [0, 9] and value['session_source_matches']
+    assert value['status']['prefix'] == 'Mapping unavailable.'
+    assert harness.env['errors'] == [] and harness.events == []
