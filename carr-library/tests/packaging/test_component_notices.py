@@ -22,7 +22,7 @@ def distribution(root, *, name='example-component', version='2.1',
     relative = directory.name + ('/licenses/' if modern else '/') + filename
     target = root / relative
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(text, encoding='utf-8')
+    target.write_bytes(text.encode('utf-8'))
     (directory / 'METADATA').write_text(
         'Metadata-Version: 2.4\nName: ' + name + '\nVersion: ' + version
         + '\nLicense-Expression: MIT AND BSD-3-Clause\nLicense-File: ' + filename + '\n\n',
@@ -65,7 +65,7 @@ def bundle(root, entries):
 
 @pytest.mark.parametrize('modern', [True, False], ids=['license-directory', 'legacy-metadata-directory'])
 def test_actual_installed_metadata_and_record_preserve_upstream_text(tmp_path, modern):
-    text = 'Mixed original licence\nCopyright (c) Example 2026\nAll original conditions remain.\n'
+    text = 'Mixed original licence\r\nCopyright (c) Example 2026\nAll original conditions remain.\r\n'
     directory, path = distribution(tmp_path, text=text, modern=modern)
     actual = metadata.PathDistribution(directory)
     assert actual.metadata['Name'] == 'example-component'
@@ -130,7 +130,7 @@ def test_record_parent_notice_is_refused_but_unrelated_script_rows_are_never_res
     path = directory / 'RECORD'
     with path.open('a', encoding='utf-8') as stream:
         stream.write('../../../Scripts/unrelated-script.exe,,\n')
-    assert notices.read_notice(notices.notices(selected(tmp_path))[0]).endswith(target.read_text())
+    assert notices.read_notice(notices.notices(selected(tmp_path))[0]).endswith(target.read_bytes().decode('utf-8'))
     with path.open('a', encoding='utf-8') as stream:
         stream.write('../outside-LICENSE.txt,,\n')
     with pytest.raises(ValueError, match='Unsafe'):
@@ -213,7 +213,7 @@ def test_declared_legacy_notice_without_record_is_explicitly_unhashed(tmp_path):
     files = notices.notices(selected(tmp_path))
     assert len(files) == 1
     text = notices.read_notice(files[0])
-    assert text.endswith(target.read_text()) and 'no recorded file hash' in text
+    assert text.endswith(target.read_bytes().decode('utf-8')) and 'no recorded file hash' in text
 
 
 def test_record_cannot_silently_admit_new_declared_notice(tmp_path):

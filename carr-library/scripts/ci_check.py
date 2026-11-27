@@ -14,6 +14,13 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# This controlled Word suite deliberately keeps real CSL/DOCX rendering in
+# every authority/publication case. The measured Windows r5 run exhausted
+# 600 seconds after 10 cases; retain all 36 cases and their per-render bounds.
+# Every other required suite keeps the existing ten-minute process deadline.
+SUITE_SECONDS = {'tests/citations/test_word_com.py': 1800}
+
+
 # JUnit alone cannot distinguish a non-strict XPASS from a genuine pass.
 # Use pytest's own report classification in the isolated subprocess.
 NETWORK_POLICY = """
@@ -150,7 +157,7 @@ def run_suite(suite: str, *, allow_loopback=False) -> bool:
                 '--durations=15', '--junitxml', str(report),
                 '--basetemp', str(Path(tmp) / 'pytest'),
                 '--', str(path),
-            ], cwd=ROOT, env=env, timeout=600, check=False)
+            ], cwd=ROOT, env=env, timeout=SUITE_SECONDS.get(suite, 600), check=False)
             cases = list(ET.parse(report).iter('testcase'))
         except (OSError, subprocess.TimeoutExpired, ET.ParseError) as exc:
             print(f'FAIL: {suite}: required suite did not produce a valid report: '

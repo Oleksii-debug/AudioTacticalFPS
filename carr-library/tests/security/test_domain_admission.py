@@ -237,7 +237,8 @@ def test_v43_fresh_run_refused_before_execution_or_original_control_mutation(
 def test_actual_v43_completed_receipt_and_reading_copy_stay_available(
         authority, tmp_path, monkeypatch):
     fixture = fixture_module(monkeypatch, 'test_transcription_service.py')
-    service, manifest, source, settings = fixture.prepared_environment.__wrapped__(tmp_path)()
+    service, manifest, source, settings = fixture.prepared_environment.__wrapped__(tmp_path)(
+        settings={'output_srt': True, 'output_vtt': True, 'output_json': True})
     service.trust_controller = authority.controller
     fixture.real_protocol_child.__wrapped__(monkeypatch)
     identity = service.prepare([source], manifest, settings)

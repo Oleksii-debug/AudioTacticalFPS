@@ -74,7 +74,7 @@ def actual_metadata(root):
     path = directory / 'licenses' / 'LICENSE.txt'
     path.parent.mkdir()
     text = 'Copyright Component Authors\nRead every original condition.\n'
-    path.write_text(text, encoding='utf-8')
+    path.write_bytes(text.encode('utf-8'))
     (directory / 'METADATA').write_text('Metadata-Version: 2.4\nName: component\nVersion: 1\n'
         'License-File: LICENSE.txt\n\n', encoding='utf-8')
     output = StringIO(newline='')

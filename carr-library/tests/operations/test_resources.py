@@ -74,6 +74,72 @@ def _contend(directory, label, queue, start):
         queue.put((label, 'exiting', time.monotonic()))
 
 
+@pytest.mark.parametrize('phase', ['construction', 'acquisition'])
+def test_unheld_lock_disappearance_during_preflight_can_be_acquired(tmp_path, monkeypatch, phase):
+    from carr_library.operations import _locks
+    path = tmp_path / 'ephemeral.lock'
+    lock = _locks.NativeLock(path) if phase == 'acquisition' else None
+    path.write_bytes(b'')
+    actual_regular = _locks.regular
+    events = []
+    def released(candidate):
+        if Path(candidate) == path and not events:
+            events.append('prior owner released')
+            path.unlink()
+        return actual_regular(candidate)
+    monkeypatch.setattr(_locks, 'regular', released)
+    if lock is None:
+        lock = _locks.NativeLock(path)
+    assert lock.acquire()
+    try:
+        assert events == ['prior owner released'] and lock.held
+        held = os.fstat(lock.lock._context.lock_file_fd)
+        current = actual_regular(path)
+        assert (held.st_dev, held.st_ino) == (current.st_dev, current.st_ino)
+    finally:
+        lock.release()
+    assert not lock.held
+
+
+def test_unheld_lock_does_not_hide_missing_parent_or_validation_error(tmp_path, monkeypatch):
+    from carr_library.operations import _locks
+    with pytest.raises((OSError, ValueError)):
+        _locks.NativeLock(tmp_path / 'missing-parent' / 'lock')
+    def denied(_):
+        raise PermissionError('controlled validation denial')
+    monkeypatch.setattr(_locks, 'regular', denied)
+    with pytest.raises(PermissionError, match='validation denial'):
+        _locks.NativeLock(tmp_path / 'denied.lock')
+
+
+def test_owned_lock_still_refuses_a_disappeared_path(tmp_path, monkeypatch):
+    from carr_library.operations import _locks
+    path = tmp_path / 'owned.lock'
+    lock = _locks.NativeLock(path)
+    actual_acquire = lock.lock.acquire
+    actual_regular = _locks.regular
+    acquired = []
+    def acquire(*args, **kwargs):
+        result = actual_acquire(*args, **kwargs)
+        acquired.append(True)
+        return result
+    def vanished(candidate):
+        if acquired:
+            raise FileNotFoundError('controlled post-acquire disappearance')
+        return actual_regular(candidate)
+    monkeypatch.setattr(lock.lock, 'acquire', acquire)
+    monkeypatch.setattr(_locks, 'regular', vanished)
+    with pytest.raises(ResourceStateError, match='could not be validated'):
+        lock.acquire()
+    assert not lock.held
+    # The failed validation closed only this descriptor. The real file is
+    # untouched and a new legitimate owner can take the same native lock.
+    monkeypatch.setattr(_locks, 'regular', actual_regular)
+    successor = _locks.NativeLock(path)
+    assert successor.acquire()
+    successor.release()
+
+
 @pytest.fixture
 def broker(tmp_path):
     return ResourceBroker(tmp_path / 'runtime', limits=ResourceLimits(cpu_slots=2,
