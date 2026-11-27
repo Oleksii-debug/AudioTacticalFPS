@@ -5,6 +5,7 @@ No vendor voice, native vendor executable, acoustic quality, NVDA or physical
 audio device is exercised. Native single-executable argv shape has source tests.
 """
 from argparse import ArgumentParser
+from contextlib import ExitStack
 from hashlib import sha256
 import importlib
 import importlib.util
@@ -315,17 +316,22 @@ def main():
               'isolated': bool(sys.flags.isolated), 'native_controls': 'NOT_RUN',
               'synthetic_helper_execution': 'NOT_RUN', 'native_vendor_execution': 'NOT_RUN',
               'physical_playback': 'NOT_RUN', 'nvda': 'NOT_RUN', 'speech_quality': 'NOT_CLAIMED',
-              'source_commit': os.environ.get('CARR_EXPECTED_SOURCE_COMMIT', os.environ.get('GITHUB_SHA', '')),
+              'source_commit': os.environ.get('CARR_EXPECTED_SOURCE_COMMIT') or os.environ.get('GITHUB_SHA', ''),
               'fixture_source_sha256': fixture.sha(Path(__file__).resolve().with_name('local_voice_contract_fixture.py'))}
     try:
         if not args.native or os.name != 'nt':
             raise ValueError('This probe requires explicit actual native Windows qualification.')
-        before = identity()
-        report.update(run_native())
-        if identity() != before:
-            raise ValueError('Installed application bytes changed during the native helper probe.')
-        report.update(status='PASS', native_controls='EXECUTED', synthetic_helper_execution='EXECUTED',
-                      module_origins=before)
+        with ExitStack() as resources:
+            from carr_library.native_runtime import activate_bundled_runtime
+            handle = activate_bundled_runtime()
+            if handle is not None:
+                resources.callback(handle.close)
+            before = identity()
+            report.update(run_native())
+            if identity() != before:
+                raise ValueError('Installed application bytes changed during the native helper probe.')
+            report.update(status='PASS', native_controls='EXECUTED', synthetic_helper_execution='EXECUTED',
+                          module_origins=before)
     except BaseException as error:
         print(''.join(traceback.format_exception(type(error), error, error.__traceback__))[-12000:], flush=True)
         report['reason'] = type(error).__name__ + ': ' + str(error)
