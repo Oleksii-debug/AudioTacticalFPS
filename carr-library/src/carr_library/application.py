@@ -1208,7 +1208,7 @@ class LibraryApp:
             _, identity, locator, raw, _ = self._selected(db, workspace, ref, revision)
             if locator.kind != 'physical_page':
                 raise ValueError('This review workflow is for physical PDF pages only.')
-            data = self._asset_original(db, workspace, identity)
+            data = self._asset_original(db, workspace, identity, cancelled=cancelled)
             renderer, fingerprint = isolated_render_fingerprint(data, locator.index, cancelled=cancelled)
             raw_hash = sha256(raw.encode('utf-8')).hexdigest()
         check()

@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "parent": "2c040db358e64bdb1c6bc27b9c911de6e734d574",
+  "status": "NOT_RUN",
+  "source_derived_count": 19,
+  "selectors": [
+    "tests/ingest/test_streaming_pdf.py",
+    "tests/e2e/test_large_pdf_original.py"
+  ],
+  "required_function_counts": {
+    "tests.ingest.test_streaming_pdf": {
+      "test_real_large_pdf_has_bounded_fresh_process_resident_and_python_allocations": 2,
+      "test_pdf_budget_is_finite_and_typed": 4,
+      "test_non_pdf_and_legacy_bytes_limits_remain": 1,
+      "test_bound_snapshot_rejects_replacement_and_rehashed_metadata": 1,
+      "test_original_hardlinks_and_foreign_relative_paths_are_rejected": 1,
+      "test_parser_cannot_request_whole_source_or_oversized_read": 1,
+      "test_copy_cancellation_after_actual_bytes_removes_only_its_partial": 1,
+      "test_native_block_read_failure_cannot_produce_render_proof": 1,
+      "test_selected_byte_budget_is_bound_to_request_and_receipt_identity": 1,
+      "test_streaming_parser_source_is_in_the_existing_runtime_identity": 1,
+      "test_pdf_attestation_rechecks_file_even_with_an_injected_renderer": 1
+    },
+    "tests.e2e.test_large_pdf_original": {
+      "test_large_pdf_real_worker_view_review_and_full_backup_restore": 1,
+      "test_large_pending_request_restores_exact_original_and_resumes_real_worker": 1,
+      "test_large_pdf_backup_cancel_never_publishes_manifest": 1,
+      "test_pending_backup_refuses_source_exceeding_its_saved_request_budget": 1
+    }
+  },
+  "installed_support_files": [
+    "tests/ingest/streaming_pdf_fixture.py",
+    "tests/ingest/streaming_pdf_probe.py"
+  ],
+  "installed_origins": [
+    "carr_library.catalog.streaming_pdf"
+  ],
+  "legacy_oracle_count_changes": {},
+  "claims": {
+    "valid_synthetic_mebibytes": [
+      72,
+      144
+    ],
+    "real_corpus": false,
+    "multi_gigabyte_execution": false,
+    "benchmark_p50_p95": false,
+    "external_viewer": false
+  },
+  "post_composition_patch": {
+    "base": "bf6038cd5db3cd2e7508c899327932bf344e6250",
+    "path": "carr-library/src/carr_library/ingest/batch_scan.py",
+    "edits": [
+      {
+        "before": "            asset = planned_snapshot(path)\n            manifest = asset.manifest()\n            del asset",
+        "after": "            asset = planned_snapshot(path, cancelled=cancelled)\n            manifest = asset.manifest()\n            del asset"
+      }
+    ],
+    "reason": "The newly appended scan_paths_page must carry its live cancellation callback into large-PDF chunk hashing; old scan_paths is patched in the streaming successor."
+  }
+}

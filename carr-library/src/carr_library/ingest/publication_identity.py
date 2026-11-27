@@ -95,6 +95,11 @@ def _request(value):
     result['config'] = dict(value['config'])
     if value['expected_manifest'] is not None:
         result['expected_manifest'] = _manifest(value['expected_manifest'])
+        if 'pdf_max_bytes' in value:
+            from ..catalog.streaming_pdf import valid_original_size
+            manifest = result['expected_manifest']
+            if not valid_original_size(manifest['mime'], manifest['size'], pdf_max_bytes=value['pdf_max_bytes']):
+                raise ValueError('Publication source exceeds its immutable PDF budget.')
     for name in ('pinned_asset', 'resume_job'):
         if value[name] is not None:
             _hex(value[name], 64)

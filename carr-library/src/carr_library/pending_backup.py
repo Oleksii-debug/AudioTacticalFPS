@@ -597,6 +597,12 @@ def _references(requests, batches):
                 yield 'import-batches/' + identity + '.json', row['row_id'], row['source'], row['manifest'], None
 
 
+def _request_original_budget(request, asset):
+    if not valid_original_size(asset['mime'], asset['size_bytes'],
+                               pdf_max_bytes=request.get('pdf_max_bytes', MAX_PDF_BYTES)):
+        raise ValueError('Pending source exceeds its immutable request byte budget.')
+
+
 def _original_payload(path, asset, cancelled):
     """Verify every byte; only bounded text/office formats return a bytes value."""
     if asset['mime'] == 'application/pdf' and asset['size_bytes'] > MAX_BYTES:
@@ -764,6 +770,8 @@ def _snapshot_pending(app, target, *, cancelled=lambda: False):
             for name, row_id, source, expected, known in _references(requests, batches):
                 _check(cancelled)
                 asset_hash = retain(expected, known, source)
+                if row_id is None:
+                    _request_original_budget(requests[Path(name).stem], assets[asset_hash])
                 bindings.append(dict(filename=name, row_id=row_id, source=source, asset_sha256=asset_hash))
             for asset in assets.values():
                 _check(cancelled)
@@ -888,6 +896,8 @@ def _validated_contents(source, catalog_path, metadata, *, journal_path, cancell
                 if binding is None or binding['source'] != old_source:
                     raise ValueError('Pending source binding differs from its original request.')
                 asset = assets[binding['asset_sha256']]
+                if row_id is None:
+                    _request_original_budget(requests[Path(name).stem], asset)
                 if (known is not None and asset['sha256'] != known or expected is not None and
                         (asset['sha256'], asset['mime'], asset['size_bytes']) !=
                         (expected['sha256'], expected['mime'], expected['size'])):

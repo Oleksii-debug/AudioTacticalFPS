@@ -80,7 +80,7 @@ class Ingest:
         return dict(id=job, workspace=workspace, edition=row['edition'], asset=row['asset'],
                     state=row['state'], completed=count, total=row['count'], error=row['error'])
 
-    def _plan(self, asset, config):
+    def _plan(self, asset, config, *, cancelled=lambda: False):
         if asset.mime == 'text/plain':
             # Upstream TXT extractor replaces invalid bytes and normalizes CRLF;
             # preserve exact decoded source instead, and do not invent pagination.
@@ -91,7 +91,7 @@ class Ingest:
             settings = dict(adapter='strict-utf8-v1', kind='logical_segment')
         elif asset.mime == 'application/pdf':
             from pypdf import PdfReader
-            with original_stream(asset) as stream:
+            with original_stream(asset, cancelled=cancelled) as stream:
                 reader = PdfReader(stream)
                 if reader.is_encrypted:
                     raise IngestError('encrypted PDF')
@@ -116,7 +116,8 @@ class Ingest:
         if not all(isinstance(v, str) and v for v in (workspace, edition)):
             raise IngestError('missing scope or edition')
         asset = snapshot_original(root, relative, pdf_max_bytes=pdf_max_bytes, cancelled=cancelled)
-        count, settings, _ = self._plan(asset, config)
+        count, settings, _ = (self._plan(asset, config, cancelled=cancelled)
+                              if isinstance(asset, FileAsset) else self._plan(asset, config))
         job = digest(canonical([workspace, edition, asset.digest, settings]))
         with self.transaction():
             self.db.execute('INSERT INTO job VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING',
@@ -196,7 +197,8 @@ class Ingest:
             raise IngestError('invalid step limit')
         row = self._job(workspace, job)
         asset = snapshot_original(root, relative, pdf_max_bytes=pdf_max_bytes, cancelled=cancelled)
-        count, settings, segments = self._plan(asset, config)
+        count, settings, segments = (self._plan(asset, config, cancelled=cancelled)
+                                     if isinstance(asset, FileAsset) else self._plan(asset, config))
         if (asset.digest, count, settings) != (row['asset'], row['count'], row['config']):
             raise IngestError('source or configuration changed')
         with tempfile.TemporaryDirectory(prefix='carr-ingest-') as tmp:

@@ -287,8 +287,8 @@ class RuntimeBoundIngest(Ingest):
         self.review_asset = review_asset
         self.validated_reviews = {}
 
-    def _plan(self, asset, config):
-        count, settings, segments = super()._plan(asset, config)
+    def _plan(self, asset, config, *, cancelled=lambda: False):
+        count, settings, segments = super()._plan(asset, config, cancelled=cancelled)
         if asset.mime == 'application/pdf':
             from ..extract.runtime_identity import runtime_identity
             data = json.loads(settings)

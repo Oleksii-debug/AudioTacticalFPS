@@ -80,7 +80,11 @@ def pdf_review_attestor(workspace, resolve_asset, lookup_review, *, renderer=ren
                       sha256(data).hexdigest() if type(data) is bytes and 0 < len(data) <= MAX_BYTES else None)
             if digest != identity.asset_sha256:
                 return False
-            renderer_identity, fingerprint = renderer(data, locator.index)
+            if isinstance(data, FileAsset):
+                with data.open():
+                    renderer_identity, fingerprint = renderer(data, locator.index)
+            else:
+                renderer_identity, fingerprint = renderer(data, locator.index)
             return review.renderer == renderer_identity and review.rendered_sha256 == fingerprint
         except (OSError, LookupError, ValueError, RuntimeError, ImportError):
             return False

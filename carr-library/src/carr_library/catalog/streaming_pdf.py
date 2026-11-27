@@ -76,10 +76,12 @@ class _BoundedReader:
 
     def seek(self, offset, whence=0):
         _cancel(self.cancelled)
-        position = self.stream.seek(offset, whence)
+        if type(offset) is not int or whence not in (0, 1, 2):
+            raise IntakeError('Invalid PDF parser seek.')
+        position = offset + (self.tell() if whence == 1 else self.size if whence == 2 else 0)
         if not 0 <= position <= self.size:
             raise IntakeError('PDF parser sought outside the original.')
-        return position
+        return self.stream.seek(position)
 
     def read(self, size=-1):
         _cancel(self.cancelled)
@@ -128,6 +130,17 @@ class FileAsset:
                 expected_manifest=None, expected_identity=None):
         from ..audio.jobs import checked_directory, file_identity, verified_reader
         pdf_budget(max_bytes)
+        if expected_manifest is not None and (
+                not isinstance(expected_manifest, dict) or set(expected_manifest) != {'sha256', 'mime', 'size'}
+                or expected_manifest['mime'] != 'application/pdf'
+                or not valid_original_size('application/pdf', expected_manifest['size'], pdf_max_bytes=max_bytes)
+                or not isinstance(expected_manifest['sha256'], str)
+                or not re.fullmatch('[0-9a-f]{64}', expected_manifest['sha256'])):
+            raise IntakeError('Invalid expected PDF manifest.')
+        if expected_identity is not None and (
+                not isinstance(expected_identity, (tuple, list)) or len(expected_identity) != 5
+                or any(type(value) is not int for value in expected_identity)):
+            raise IntakeError('Invalid expected PDF file identity.')
         _cancel(cancelled)
         path = Path(path)
         # Validate aliases before canonicalizing; never hide a link or reparse.
