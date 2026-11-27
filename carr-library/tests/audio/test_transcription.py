@@ -432,13 +432,56 @@ def test_default_backend_uses_local_path_and_never_downloads(monkeypatch, tmp_pa
                                           'device': 'cpu', 'compute_type': 'int8'})]
 
 
-@pytest.mark.parametrize('bad', [float('nan'), float('inf'), -1, True])
+@pytest.mark.parametrize('bad', [float('nan'), float('inf'), -1, True, False,
+                                '0.5', 1 + 2j, 30 * 86400 + 1,
+                                pytest.param(10 ** 1000, id='numeric-overflow')])
 def test_invalid_engine_timestamps_fail_without_publication(setup, bad):
     setup.model.transcribe = lambda *args, **kwargs: (
         iter([SimpleNamespace(start=bad, end=1., text='invalid', words=None)]),
         SimpleNamespace(language='uk', duration=1.))
     with pytest.raises(ValueError, match='timestamp'):
         setup.session.transcribe(setup.source, setup.root)
+    assert not list(setup.root.glob('transcript-*/complete-*.json'))
+
+
+def test_real_numeric_timestamp_scalars_are_normalized_before_publication(setup):
+    # Actual faster-whisper word alignment returns numpy.float64 scalars. This
+    # dependency-free scalar reproduces that numeric-subclass API boundary;
+    # the optional runtime smoke also executes real NumPy float32 and float64.
+    class EngineScalar(float):
+        pass
+
+    setup.model.transcribe = lambda *args, **kwargs: (
+        iter([SimpleNamespace(start=EngineScalar(0), end=EngineScalar(1.25),
+            text='Valid timestamps.', words=[SimpleNamespace(
+                start=EngineScalar(0.25), end=EngineScalar(1.25), word='Valid')])]),
+        SimpleNamespace(language='uk', duration=EngineScalar(1.25)))
+    receipt = setup.session.transcribe(setup.source, setup.root,
+        settings=TranscriptionSettings(word_timestamps=True), formats=('json', 'srt'))
+    details = json.loads(Path(receipt['files']['json']).read_text('utf-8'))
+    assert details['duration'] == 1.25 and type(details['duration']) is float
+    assert details['segments'][0]['words'][0]['start'] == 0.25
+    assert '00:00:00,000 --> 00:00:01,250' in Path(receipt['files']['srt']).read_text('utf-8')
+    assert receipt['status'] == 'complete'
+
+
+def test_non_numeric_object_is_not_coerced_to_a_timestamp():
+    class PretendNumber:
+        def __float__(self):
+            raise AssertionError('Non-numeric object conversion must not be executed.')
+
+    with pytest.raises(ValueError, match='timestamp'):
+        module._seconds(PretendNumber())
+
+
+@pytest.mark.parametrize('pyav_version', ['19.0.0', '19.0.2', '20.1.0'])
+def test_incompatible_pyav_fails_before_model_loading_or_cached_result(setup, pyav_version):
+    setup.session._runtime_identity = lambda: {
+        **runtime('1.2.1'), 'distributions': {
+            **runtime('1.2.1')['distributions'], 'av': {'version': pyav_version}}}
+    with pytest.raises(module.EngineUnavailable, match='PyAV'):
+        setup.session.transcribe(setup.source, setup.root)
+    assert not setup.loaded and not setup.model.calls
     assert not list(setup.root.glob('transcript-*/complete-*.json'))
 
 

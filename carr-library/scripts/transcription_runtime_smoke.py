@@ -41,11 +41,12 @@ def capture_native_diagnostics(stream):
 def check_runtime(directory):
     import faster_whisper
     from faster_whisper import WhisperModel
+    from faster_whisper.audio import decode_audio
     import ctranslate2
     import av
     import onnxruntime
     import numpy
-    from carr_library.audio.transcription import transcription_runtime_identity
+    from carr_library.audio.transcription import _seconds, transcription_runtime_identity
 
     if metadata.version('faster-whisper') != '1.2.1' or not callable(WhisperModel):
         raise RuntimeError('This smoke check requires the selected faster-whisper 1.2.1 runtime.')
@@ -82,11 +83,35 @@ def check_runtime(directory):
     expected = numpy.frombuffer(pcm, dtype='<i2')
     if actual.size != frames or not numpy.array_equal(actual, expected):
         raise RuntimeError('PyAV did not recover the exact synthetic PCM samples.')
+    # The consumer's actual API matters: direct av.open works with PyAV 19,
+    # while faster-whisper 1.2.1 passes an argument that release removed.
+    recognized_input = decode_audio(str(source), sampling_rate=rate)
+    expected_input = expected.astype(numpy.float32) / 32768.0
+    if (recognized_input.dtype != numpy.dtype('float32') or recognized_input.shape != (frames,)
+            or not numpy.array_equal(recognized_input, expected_input)):
+        raise RuntimeError('The faster-whisper decoder did not preserve the synthetic PCM samples.')
+    for numeric_type in (numpy.float32, numpy.float64):
+        converted = _seconds(numeric_type(1.25))
+        if type(converted) is not float or converted != 1.25:
+            raise RuntimeError('The adapter did not normalize the runtime numeric timestamp.')
+        for invalid in (numeric_type('nan'), numeric_type('inf'), numeric_type(-0.5)):
+            try:
+                _seconds(invalid)
+            except ValueError:
+                continue
+            raise RuntimeError('The adapter accepted an invalid runtime numeric timestamp.')
+    try:
+        _seconds(numpy.bool_(True))
+    except ValueError:
+        pass
+    else:
+        raise RuntimeError('The adapter accepted a NumPy boolean as a timestamp.')
     identity = transcription_runtime_identity()
     return {
         'checks': ['faster_whisper_1_2_1_import', 'native_dependency_imports',
                    'ctranslate2_cpu_int8', 'onnxruntime_cpu_provider',
-                   'pyav_exact_synthetic_pcm_decode', 'installed_runtime_file_fingerprint'],
+                   'pyav_exact_synthetic_pcm_decode', 'faster_whisper_exact_synthetic_pcm_decode',
+                   'numpy_timestamp_normalization', 'installed_runtime_file_fingerprint'],
         'cpu_compute_types': compute_types,
         'onnxruntime_providers': providers,
         'synthetic_audio': {'sample_rate': rate, 'channels': 1, 'sample_width_bytes': 2,

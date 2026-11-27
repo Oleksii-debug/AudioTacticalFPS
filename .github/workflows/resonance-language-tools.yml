@@ -97,7 +97,7 @@ jobs:
           tests/reader/test_binary_file_export.py
           tests/e2e/test_academic_document_export.py
       - name: Install optional transcription runtime without model weights
-        run: python -m pip install 'faster-whisper==1.2.1'
+        run: python -m pip install 'faster-whisper==1.2.1' 'av==17.1.0'
       - name: Exercise actual installed CPU transcription dependencies
         run: python -I scripts/transcription_runtime_smoke.py
       - name: Record exact tested source

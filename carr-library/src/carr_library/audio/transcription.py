@@ -17,6 +17,7 @@ import hashlib
 from importlib import metadata
 import json
 import math
+from numbers import Real
 import os
 from pathlib import Path, PurePosixPath
 import platform
@@ -162,9 +163,18 @@ def _time(value):
 
 
 def _seconds(value):
-    if type(value) not in (int, float) or not math.isfinite(value) or not 0 <= value <= 30 * 86400:
+    # Whisper alignment can return NumPy real scalars for both segment and word
+    # timestamps. Normalize them before JSON publication, without accepting
+    # booleans, strings, complex numbers or arbitrary __float__ objects.
+    if isinstance(value, bool) or not isinstance(value, Real):
         raise ValueError('The transcription engine returned an invalid timestamp.')
-    return float(value)
+    try:
+        seconds = float(value)
+    except (TypeError, ValueError, OverflowError):
+        raise ValueError('The transcription engine returned an invalid timestamp.') from None
+    if not math.isfinite(seconds) or not 0 <= seconds <= 30 * 86400:
+        raise ValueError('The transcription engine returned an invalid timestamp.')
+    return seconds
 
 
 def _text(value, *, maximum=100000):
@@ -262,6 +272,14 @@ class TranscriptionSession:
     def _runtime(self, cancelled):
         identity = (self._runtime_identity() if self._runtime_identity is not None
                     else transcription_runtime_identity(cancelled=cancelled))
+        distributions = identity['distributions']
+        pyav_version = distributions.get('av', {}).get('version', '')
+        major = re.match(r'([0-9]+)(?:\.|$)', pyav_version)
+        if (distributions.get('faster-whisper', {}).get('version') == '1.2.1'
+                and major and int(major.group(1)) >= 19):
+            raise EngineUnavailable('faster-whisper 1.2.1 cannot decode audio with PyAV 19 or later. '
+                                    'Install the compatible transcription extra (tested PyAV 17.1.0). '
+                                    'Your existing model files do not need to be downloaded again.')
         versions = self.manifest.settings.get('runtime_versions', {})
         if not isinstance(versions, dict) or set(versions) - set(RUNTIME_DISTRIBUTIONS):
             raise ModelManifestError('Invalid pinned ASR runtime versions.')

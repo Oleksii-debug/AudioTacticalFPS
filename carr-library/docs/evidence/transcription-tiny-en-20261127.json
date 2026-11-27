@@ -1,0 +1,148 @@
+{
+  "schema": 1,
+  "status": "PASS",
+  "scope": "Actual corrected local TranscriptionSession CPU/int8 inference, all four exports, exact cache reuse and explicit unsupported-language rejection",
+  "adapter_sha256": "8ecccd2de12534b57614c960e1cbe9c78e81ea8c9148de38210811a2138ade8b",
+  "model": {
+    "id": "Systran/faster-whisper-tiny.en",
+    "source": "https://huggingface.co/Systran/faster-whisper-tiny.en",
+    "revision": "0d3d19a32d3338f10357c0889762bd8d64bbdeba",
+    "license_metadata": "MIT",
+    "files": {
+      "README.md": {
+        "size": 1323,
+        "sha256": "1b7816626bf0548e4b71a467f4112b4592924bc818e3117f19aefcc50ce4b6aa"
+      },
+      "config.json": {
+        "size": 2317,
+        "sha256": "14b1b421a90349bc551b881461426b561a874049cb9e4c4864f2ca384f6a7cc5"
+      },
+      "model.bin": {
+        "size": 75537502,
+        "sha256": "1a5afae06a4db91c975c9a9d78be5cc110ee4ea022ad57d55492e4550e936b2a"
+      },
+      "tokenizer.json": {
+        "size": 2128466,
+        "sha256": "929c5252409436dce1b38a75d1abbcb5e132d170d8e324e4e04ed915fa2d22df"
+      },
+      "vocabulary.txt": {
+        "size": 422309,
+        "sha256": "ff77588746d3a2595d32ab5b69ffd7b95ce2441ac57533cb66fc3eb575a115cf"
+      }
+    },
+    "manifest_sha256": "4c59ac53fad3c69ebb1c0b6dd1c1270864d9252024897155045a07ba05df2694",
+    "registered_inventory_revision": "d6fdbb0f74a164d1fbd03259ddac6cd56bea42b5d6337ce5911a980547795c21"
+  },
+  "runtime": {
+    "distributions": {
+      "av": {
+        "files_sha256": "14dc34c53215458cff9569a6e3ebe7c1c7feb02aa6857e127f14baa9f6b8a02d",
+        "version": "17.1.0"
+      },
+      "ctranslate2": {
+        "files_sha256": "4e688f5b209c06d18866ca5b6532092bfe29435a788234eb5462112594ec6d1c",
+        "version": "4.8.0"
+      },
+      "faster-whisper": {
+        "files_sha256": "1f0dd1b7bcbbea446c03c57d4d6b01570f4e28ef6937440e4b75a7e1b379f801",
+        "version": "1.2.1"
+      },
+      "huggingface-hub": {
+        "files_sha256": "37553bc4e0d9145a4fd0fdaba9b3f52d5c595c9d136aa9e971ee9bb156b115f6",
+        "version": "1.19.0"
+      },
+      "numpy": {
+        "files_sha256": "93cab46df9517d5228bd0b4b2a99a635802a02af0e16bb50210c078c4159579e",
+        "version": "2.4.6"
+      },
+      "onnxruntime": {
+        "files_sha256": "12a8232c9290fe72ffe0bc40ca0a4b25c6611d7ee566101d0334c84e7a29e315",
+        "version": "1.26.0"
+      },
+      "tokenizers": {
+        "files_sha256": "4ec405e19272e9d671b303381d404b696c8ae226e678f19347c4bf5d2fbf6fab",
+        "version": "0.23.1"
+      }
+    },
+    "executable_sha256": "fa67443527ed9647f760d807e2a38f26340757123e643c4639cf273ed15d5ea7",
+    "implementation": "CPython",
+    "machine": "x86_64",
+    "platform": "Linux",
+    "python": "3.12.14"
+  },
+  "network": {
+    "boundary": "Linux user/network namespace without external network interfaces",
+    "interfaces": [
+      "lo"
+    ],
+    "python_network_attempts": []
+  },
+  "input": {
+    "kind": "new synthetic English Flite speech",
+    "text": "This is a local speech recognition test. The application saves every transcript format and preserves the original recording.",
+    "sha256": "af08d0b5d419334866658454236781ac3c479a66e7ca3781f4632c2ee3c7a06f",
+    "bytes": 246158,
+    "frames": 123040,
+    "sample_rate": 16000,
+    "channels": 1,
+    "sample_width": 2,
+    "duration_seconds": 7.69
+  },
+  "inference": {
+    "seconds": 2.165,
+    "language": "en",
+    "duration": 7.69,
+    "segments": 1,
+    "word_timestamps": 18,
+    "text": "This is a local speech recognition test, the application saves every transcript format and preserves the original recording.",
+    "settings": {
+      "beam_size": 5,
+      "compute_type": "int8",
+      "condition_on_previous_text": true,
+      "device": "cpu",
+      "language": "en",
+      "task": "transcribe",
+      "vad_filter": true,
+      "word_timestamps": true
+    },
+    "result_identity": "e7d4b1c3951db1ba81d1cc0380d0cce47a7a9cdaf9cc7d524f550794d2e2fc87",
+    "outputs": {
+      "txt": {
+        "bytes": 125,
+        "sha256": "0c4b6ffd54972f845cc3b364a31d89681a76954f0b65355dbf20e4499b23dd60"
+      },
+      "srt": {
+        "bytes": 157,
+        "sha256": "d12b9813f26724a6b14027382f6a78a45017e33ca19c46c7d2b6ebd0a5080b44"
+      },
+      "vtt": {
+        "bytes": 164,
+        "sha256": "e12587d3438e3dd8095716ba6f2815c807c5ffa601da6aaec78b72e6d852f514"
+      },
+      "json": {
+        "bytes": 4197,
+        "sha256": "7957e5bc7225e892bad625431398b2ccc7e0b666b6186bc4bf2e594967bf87dc"
+      }
+    }
+  },
+  "recovery": {
+    "cache_verified": true,
+    "seconds": 0.756,
+    "original_unchanged": true,
+    "completion_marker_verified": true
+  },
+  "explicit_uk_language": {
+    "status": "REJECTED_AS_UNSUPPORTED",
+    "message": "The selected Whisper model does not support the requested source language (uk). Choose a compatible local model or a supported source language.",
+    "complete_output_published": false
+  },
+  "qualification": {
+    "ukrainian_recognition": "NOT_RUN",
+    "manual_audio_quality": "NOT_RUN",
+    "windows": "NOT_RUN",
+    "nvda": "NOT_RUN",
+    "general_distribution_clearance": "NOT_ESTABLISHED"
+  },
+  "tested_local_source_commit": "dc58db9125e3e44b65ec4e25ff628d8f447f7946",
+  "tested_source_tree": "1c7924f9052f19fafc48af9d720476c59867b1ee"
+}
