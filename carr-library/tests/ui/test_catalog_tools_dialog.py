@@ -12,6 +12,9 @@ from unittest.mock import patch
 
 import pytest
 
+# Keep publisher class identity stable outside the temporary wx module patch.
+from carr_library.research import export_file
+
 
 class Control:
     def __init__(self, *args, **kwargs):

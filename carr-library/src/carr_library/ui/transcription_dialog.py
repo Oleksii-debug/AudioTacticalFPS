@@ -323,12 +323,16 @@ class TranscriptionController:
             self.report('Opened the local result folder for review: ' + path, focus=True)
         return self._job('Checking local transcription result folder', work, done)
 
+    def dispose(self):
+        """Detach without I/O; pending work observes cancellation and drops UI callbacks."""
+        self.closed = True
+        self._token = None
+
     def close(self):
         if self.busy:
             self.report('Pause or cancel the operation and wait for its saved status before closing.', focus=True)
             return False
-        self.closed = True
-        self._token = None
+        self.dispose()
         return True
 
 
@@ -433,6 +437,7 @@ def create_transcription_dialog(frame, *, controller_factory=TranscriptionContro
             self.SetSizer(layout)
             self.SetEscapeId(self.close_button.GetId())
             self.Bind(wx.EVT_CLOSE, self.close)
+            self.Bind(wx.EVT_WINDOW_DESTROY, self.on_destroy)
             accelerators = []
             for flags, key, handler in [
                     (wx.ACCEL_NORMAL, wx.WXK_F6, self.start),
@@ -552,6 +557,11 @@ def create_transcription_dialog(frame, *, controller_factory=TranscriptionContro
             if output is not None:
                 self.controller.open_folder(output['file'], wx.LaunchDefaultApplication)
 
+        def on_destroy(self, event):
+            if event.GetEventObject() is self:
+                self.controller.dispose()
+            event.Skip()
+
         def close(self, event=None):
             if not self.controller.close():
                 if event is not None and hasattr(event, 'CanVeto') and event.CanVeto():
@@ -568,4 +578,5 @@ def show_transcription(frame):
         dialog.CentreOnParent()
         dialog.ShowModal()
     finally:
+        dialog.controller.dispose()
         dialog.Destroy()

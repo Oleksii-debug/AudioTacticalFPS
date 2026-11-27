@@ -166,7 +166,7 @@ def run_native_transcription(frame, directory):
         try:
             dialog.ShowModal()
         finally:
-            controller.closed = True
+            controller.dispose()
             # A real host provides this executor; wait for any failure cleanup
             # before undoing the exact synthetic worker pin.
             frame.executor.submit(lambda: None).result(timeout=20)
@@ -174,6 +174,14 @@ def run_native_transcription(frame, directory):
         if errors:
             raise AssertionError('\n'.join(errors))
         assert state.get('completed'), 'Native transcription did not complete its workflow.'
+        detached = create_transcription_dialog(frame, controller_factory=factory)
+        detached_controller = detached.controller
+        detached.files.Destroy()
+        wx.YieldIfNeeded()
+        assert not detached_controller.closed, 'A child-control destruction detached the whole dialog.'
+        detached.Destroy()
+        wx.YieldIfNeeded()
+        assert detached_controller.closed and detached_controller._token is None
     return {'status': 'PASS', 'native_controls_and_async_completion': 'PASS',
             'synthetic_worker_all_formats': 'PASS', 'pause_cancel_resume': 'PASS',
             'derived_reader_handoff_and_reopen': 'PASS', 'nvda': 'NOT_RUN',
