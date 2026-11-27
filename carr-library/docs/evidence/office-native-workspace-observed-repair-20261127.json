@@ -1,0 +1,372 @@
+{
+  "schema": "carr-office-observed-native-workspace-repair/1",
+  "base_commit": "104bf86e1ea5900c316758ae19c60b9d15d64905",
+  "status": "SOURCE_REPAIR_NOT_RUN",
+  "execution_status": "NOT_RUN",
+  "observed": {
+    "commit": "1649fc54091b840910475d11f4f20416c0dda216",
+    "run_id": 46028341055,
+    "job_id": 140605432838,
+    "source_native": {
+      "passed": 1,
+      "failed": 6,
+      "skipped": 0
+    },
+    "installed_native": "NOT_RUN",
+    "artifact": {
+      "id": 15216022819,
+      "bytes": 4581459,
+      "sha256": "3c0a4e8bc08db74edee9fc3262fb6c1d25b3c8cc312bd5df621b92bbb2422b29"
+    },
+    "evidence_origin": "Decoded GitHub job log and artifact metadata; artifact ZIP not independently reread here.",
+    "fixed_runtime": "LibreOffice 26.2.7.3 08dfbf04dcac895fc3a8d30dbf5a00de1b9dda5e",
+    "native_matrix": [
+      {
+        "adapter_module": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\conversion\\office.py",
+        "adapter_sha256": "dffa42daf99cd78c570ae24fd26036e6e7274f3dba6d20e4d0ca9a1a1845827d",
+        "arguments": [
+          "D:\\a\\_temp\\carr-converters-46028341055-1-office\\libreoffice\\program\\soffice.com",
+          "-env:UserInstallation=file:///D:/a/AudioTacticalFPS/AudioTacticalFPS/carr-library/converter-ci-results/source-tmp/test_real_selected_legacy_filt0/%D0%A7%D0%B8%D1%82%D0%B0%D0%BB%D1%8C%D0%BD%D0%B0%20%D0%BA%D0%BE%D0%BF%D1%96%D1%8F/.carr-diagnostic-6s3k4mxj/libreoffice-profile",
+          "--headless",
+          "--nologo",
+          "--nodefault",
+          "--nofirststartwizard",
+          "--norestore",
+          "--version"
+        ],
+        "elapsed_seconds": 2.562999999999988,
+        "executable": "D:\\a\\_temp\\carr-converters-46028341055-1-office\\libreoffice\\program\\soffice.com",
+        "family": "office",
+        "reproduction_only": true,
+        "returncode": 0,
+        "schema": 1,
+        "source_sha256": "acce640c7ff34418e6621f3e625ab95741c6b206ff7c4335bb2f9206da232dd2",
+        "stderr": "",
+        "stdout": "LibreOffice 26.2.7.3 08dfbf04dcac895fc3a8d30dbf5a00de1b9dda5e\r\n\r\n",
+        "variant": "baseline"
+      },
+      {
+        "adapter_module": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\conversion\\office.py",
+        "adapter_sha256": "dffa42daf99cd78c570ae24fd26036e6e7274f3dba6d20e4d0ca9a1a1845827d",
+        "arguments": [
+          "D:\\a\\_temp\\carr-converters-46028341055-1-office\\libreoffice\\program\\soffice.com",
+          "-env:UserInstallation=file:///D:/a/AudioTacticalFPS/AudioTacticalFPS/carr-library/converter-ci-results/source-tmp/test_real_selected_legacy_filt0/%D0%A7%D0%B8%D1%82%D0%B0%D0%BB%D1%8C%D0%BD%D0%B0%20%D0%BA%D0%BE%D0%BF%D1%96%D1%8F/.carr-diagnostic-6s3k4mxj/libreoffice-profile",
+          "--headless",
+          "--nologo",
+          "--nodefault",
+          "--nofirststartwizard",
+          "--norestore",
+          "--infilter=MS Word 97",
+          "--convert-to",
+          "odt:writer8",
+          "--outdir",
+          "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\converter-ci-results\\source-tmp\\test_real_selected_legacy_filt0\\Читальна копія\\.carr-diagnostic-6s3k4mxj\\office-output",
+          "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\converter-ci-results\\source-tmp\\test_real_selected_legacy_filt0\\Читальна копія\\.carr-diagnostic-6s3k4mxj\\source.doc"
+        ],
+        "elapsed_seconds": 3.0319999999999823,
+        "executable": "D:\\a\\_temp\\carr-converters-46028341055-1-office\\libreoffice\\program\\soffice.com",
+        "family": "office",
+        "reproduction_only": true,
+        "returncode": 0,
+        "schema": 1,
+        "source_sha256": "acce640c7ff34418e6621f3e625ab95741c6b206ff7c4335bb2f9206da232dd2",
+        "stderr": "",
+        "stdout": "",
+        "variant": "baseline"
+      },
+      {
+        "error": "Selected LibreOffice did not produce its single declared intermediate.",
+        "error_type": "ConversionError",
+        "family": "office",
+        "intermediate_names": [],
+        "reproduction_only": true,
+        "variant": "baseline"
+      },
+      {
+        "adapter_module": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\conversion\\office.py",
+        "adapter_sha256": "dffa42daf99cd78c570ae24fd26036e6e7274f3dba6d20e4d0ca9a1a1845827d",
+        "arguments": [
+          "D:\\a\\_temp\\carr-converters-46028341055-1-office\\libreoffice\\program\\soffice.com",
+          "-env:UserInstallation=file:///D:/a/AudioTacticalFPS/AudioTacticalFPS/carr-library/converter-ci-results/source-tmp/test_real_selected_legacy_filt0/%D0%A7%D0%B8%D1%82%D0%B0%D0%BB%D1%8C%D0%BD%D0%B0%20%D0%BA%D0%BE%D0%BF%D1%96%D1%8F/.carr-diagnostic-wk_op4s5/libreoffice-profile",
+          "--headless",
+          "--nologo",
+          "--nodefault",
+          "--nofirststartwizard",
+          "--norestore",
+          "--version"
+        ],
+        "elapsed_seconds": 2.5469999999999686,
+        "executable": "D:\\a\\_temp\\carr-converters-46028341055-1-office\\libreoffice\\program\\soffice.com",
+        "family": "office",
+        "reproduction_only": true,
+        "returncode": 0,
+        "schema": 1,
+        "source_sha256": "acce640c7ff34418e6621f3e625ab95741c6b206ff7c4335bb2f9206da232dd2",
+        "stderr": "",
+        "stdout": "LibreOffice 26.2.7.3 08dfbf04dcac895fc3a8d30dbf5a00de1b9dda5e\r\n\r\n",
+        "variant": "selected-user-environment"
+      },
+      {
+        "adapter_module": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\conversion\\office.py",
+        "adapter_sha256": "dffa42daf99cd78c570ae24fd26036e6e7274f3dba6d20e4d0ca9a1a1845827d",
+        "arguments": [
+          "D:\\a\\_temp\\carr-converters-46028341055-1-office\\libreoffice\\program\\soffice.com",
+          "-env:UserInstallation=file:///D:/a/AudioTacticalFPS/AudioTacticalFPS/carr-library/converter-ci-results/source-tmp/test_real_selected_legacy_filt0/%D0%A7%D0%B8%D1%82%D0%B0%D0%BB%D1%8C%D0%BD%D0%B0%20%D0%BA%D0%BE%D0%BF%D1%96%D1%8F/.carr-diagnostic-wk_op4s5/libreoffice-profile",
+          "--headless",
+          "--nologo",
+          "--nodefault",
+          "--nofirststartwizard",
+          "--norestore",
+          "--infilter=MS Word 97",
+          "--convert-to",
+          "odt:writer8",
+          "--outdir",
+          "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\converter-ci-results\\source-tmp\\test_real_selected_legacy_filt0\\Читальна копія\\.carr-diagnostic-wk_op4s5\\office-output",
+          "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\converter-ci-results\\source-tmp\\test_real_selected_legacy_filt0\\Читальна копія\\.carr-diagnostic-wk_op4s5\\source.doc"
+        ],
+        "elapsed_seconds": 3.0159999999999627,
+        "executable": "D:\\a\\_temp\\carr-converters-46028341055-1-office\\libreoffice\\program\\soffice.com",
+        "family": "office",
+        "reproduction_only": true,
+        "returncode": 0,
+        "schema": 1,
+        "source_sha256": "acce640c7ff34418e6621f3e625ab95741c6b206ff7c4335bb2f9206da232dd2",
+        "stderr": "",
+        "stdout": "",
+        "variant": "selected-user-environment"
+      },
+      {
+        "error": "Selected LibreOffice did not produce its single declared intermediate.",
+        "error_type": "ConversionError",
+        "family": "office",
+        "intermediate_names": [],
+        "reproduction_only": true,
+        "variant": "selected-user-environment"
+      },
+      {
+        "adapter_module": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\conversion\\office.py",
+        "adapter_sha256": "dffa42daf99cd78c570ae24fd26036e6e7274f3dba6d20e4d0ca9a1a1845827d",
+        "arguments": [
+          "D:\\a\\_temp\\carr-converters-46028341055-1-office\\libreoffice\\program\\soffice.com",
+          "-env:UserInstallation=file:///D:/a/_temp/.carr-diagnostic-xl403724/libreoffice-profile",
+          "--headless",
+          "--nologo",
+          "--nodefault",
+          "--nofirststartwizard",
+          "--norestore",
+          "--version"
+        ],
+        "elapsed_seconds": 2.5469999999999686,
+        "executable": "D:\\a\\_temp\\carr-converters-46028341055-1-office\\libreoffice\\program\\soffice.com",
+        "family": "office",
+        "reproduction_only": true,
+        "returncode": 0,
+        "schema": 1,
+        "source_sha256": "acce640c7ff34418e6621f3e625ab95741c6b206ff7c4335bb2f9206da232dd2",
+        "stderr": "",
+        "stdout": "LibreOffice 26.2.7.3 08dfbf04dcac895fc3a8d30dbf5a00de1b9dda5e\r\n\r\n",
+        "variant": "short-ascii-stage"
+      },
+      {
+        "adapter_module": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\conversion\\office.py",
+        "adapter_sha256": "dffa42daf99cd78c570ae24fd26036e6e7274f3dba6d20e4d0ca9a1a1845827d",
+        "arguments": [
+          "D:\\a\\_temp\\carr-converters-46028341055-1-office\\libreoffice\\program\\soffice.com",
+          "-env:UserInstallation=file:///D:/a/_temp/.carr-diagnostic-xl403724/libreoffice-profile",
+          "--headless",
+          "--nologo",
+          "--nodefault",
+          "--nofirststartwizard",
+          "--norestore",
+          "--infilter=MS Word 97",
+          "--convert-to",
+          "odt:writer8",
+          "--outdir",
+          "D:\\a\\_temp\\.carr-diagnostic-xl403724\\office-output",
+          "D:\\a\\_temp\\.carr-diagnostic-xl403724\\source.doc"
+        ],
+        "elapsed_seconds": 9.625,
+        "executable": "D:\\a\\_temp\\carr-converters-46028341055-1-office\\libreoffice\\program\\soffice.com",
+        "family": "office",
+        "reproduction_only": true,
+        "returncode": 0,
+        "schema": 1,
+        "source_sha256": "acce640c7ff34418e6621f3e625ab95741c6b206ff7c4335bb2f9206da232dd2",
+        "stderr": "",
+        "stdout": "convert D:\\a\\_temp\\.carr-diagnostic-xl403724\\source.doc as a Writer document -> D:\\a\\_temp\\.carr-diagnostic-xl403724\\office-output\\source.odt using filter : writer8\n",
+        "variant": "short-ascii-stage"
+      },
+      {
+        "adapter_result": "selected-libreoffice-doc",
+        "family": "office",
+        "records": 1,
+        "reproduction_only": true,
+        "variant": "short-ascii-stage"
+      },
+      {
+        "adapter_module": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\conversion\\office.py",
+        "adapter_sha256": "dffa42daf99cd78c570ae24fd26036e6e7274f3dba6d20e4d0ca9a1a1845827d",
+        "arguments": [
+          "D:\\a\\_temp\\carr-converters-46028341055-1-office\\libreoffice\\program\\soffice.com",
+          "-env:UserInstallation=file:///D:/a/AudioTacticalFPS/AudioTacticalFPS/carr-library/converter-ci-results/source-tmp/test_real_selected_legacy_filt0/%D0%A7%D0%B8%D1%82%D0%B0%D0%BB%D1%8C%D0%BD%D0%B0%20%D0%BA%D0%BE%D0%BF%D1%96%D1%8F/.carr-diagnostic-nn9a97oe/libreoffice-profile",
+          "--headless",
+          "--nologo",
+          "--nodefault",
+          "--nofirststartwizard",
+          "--norestore",
+          "--version"
+        ],
+        "elapsed_seconds": 3.1410000000000196,
+        "executable": "D:\\a\\_temp\\carr-converters-46028341055-1-office\\libreoffice\\program\\soffice.com",
+        "family": "office",
+        "reproduction_only": true,
+        "returncode": 0,
+        "schema": 1,
+        "source_sha256": "acce640c7ff34418e6621f3e625ab95741c6b206ff7c4335bb2f9206da232dd2",
+        "stderr": "",
+        "stdout": "LibreOffice 26.2.7.3 08dfbf04dcac895fc3a8d30dbf5a00de1b9dda5e\r\n\r\n",
+        "variant": "without-component-holds"
+      },
+      {
+        "adapter_module": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\conversion\\office.py",
+        "adapter_sha256": "dffa42daf99cd78c570ae24fd26036e6e7274f3dba6d20e4d0ca9a1a1845827d",
+        "arguments": [
+          "D:\\a\\_temp\\carr-converters-46028341055-1-office\\libreoffice\\program\\soffice.com",
+          "-env:UserInstallation=file:///D:/a/AudioTacticalFPS/AudioTacticalFPS/carr-library/converter-ci-results/source-tmp/test_real_selected_legacy_filt0/%D0%A7%D0%B8%D1%82%D0%B0%D0%BB%D1%8C%D0%BD%D0%B0%20%D0%BA%D0%BE%D0%BF%D1%96%D1%8F/.carr-diagnostic-nn9a97oe/libreoffice-profile",
+          "--headless",
+          "--nologo",
+          "--nodefault",
+          "--nofirststartwizard",
+          "--norestore",
+          "--infilter=MS Word 97",
+          "--convert-to",
+          "odt:writer8",
+          "--outdir",
+          "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\converter-ci-results\\source-tmp\\test_real_selected_legacy_filt0\\Читальна копія\\.carr-diagnostic-nn9a97oe\\office-output",
+          "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\converter-ci-results\\source-tmp\\test_real_selected_legacy_filt0\\Читальна копія\\.carr-diagnostic-nn9a97oe\\source.doc"
+        ],
+        "elapsed_seconds": 3.2340000000000373,
+        "executable": "D:\\a\\_temp\\carr-converters-46028341055-1-office\\libreoffice\\program\\soffice.com",
+        "family": "office",
+        "reproduction_only": true,
+        "returncode": 0,
+        "schema": 1,
+        "source_sha256": "acce640c7ff34418e6621f3e625ab95741c6b206ff7c4335bb2f9206da232dd2",
+        "stderr": "",
+        "stdout": "",
+        "variant": "without-component-holds"
+      },
+      {
+        "error": "Selected LibreOffice did not produce its single declared intermediate.",
+        "error_type": "ConversionError",
+        "family": "office",
+        "intermediate_names": [],
+        "reproduction_only": true,
+        "variant": "without-component-holds"
+      },
+      {
+        "adapter_module": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\conversion\\office.py",
+        "adapter_sha256": "dffa42daf99cd78c570ae24fd26036e6e7274f3dba6d20e4d0ca9a1a1845827d",
+        "arguments": [
+          "D:\\a\\_temp\\carr-converters-46028341055-1-office\\libreoffice\\program\\soffice.com",
+          "-env:UserInstallation=file:///D:/a/AudioTacticalFPS/AudioTacticalFPS/carr-library/converter-ci-results/source-tmp/test_real_selected_legacy_filt0/%D0%A7%D0%B8%D1%82%D0%B0%D0%BB%D1%8C%D0%BD%D0%B0%20%D0%BA%D0%BE%D0%BF%D1%96%D1%8F/.carr-diagnostic-0v29kfx2/libreoffice-profile",
+          "--headless",
+          "--nologo",
+          "--norestore",
+          "--version"
+        ],
+        "elapsed_seconds": 2.6720000000000255,
+        "executable": "D:\\a\\_temp\\carr-converters-46028341055-1-office\\libreoffice\\program\\soffice.com",
+        "family": "office",
+        "reproduction_only": true,
+        "returncode": 0,
+        "schema": 1,
+        "source_sha256": "acce640c7ff34418e6621f3e625ab95741c6b206ff7c4335bb2f9206da232dd2",
+        "stderr": "",
+        "stdout": "LibreOffice 26.2.7.3 08dfbf04dcac895fc3a8d30dbf5a00de1b9dda5e\r\n\r\n",
+        "variant": "minimal-startup-flags"
+      },
+      {
+        "adapter_module": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\conversion\\office.py",
+        "adapter_sha256": "dffa42daf99cd78c570ae24fd26036e6e7274f3dba6d20e4d0ca9a1a1845827d",
+        "arguments": [
+          "D:\\a\\_temp\\carr-converters-46028341055-1-office\\libreoffice\\program\\soffice.com",
+          "-env:UserInstallation=file:///D:/a/AudioTacticalFPS/AudioTacticalFPS/carr-library/converter-ci-results/source-tmp/test_real_selected_legacy_filt0/%D0%A7%D0%B8%D1%82%D0%B0%D0%BB%D1%8C%D0%BD%D0%B0%20%D0%BA%D0%BE%D0%BF%D1%96%D1%8F/.carr-diagnostic-0v29kfx2/libreoffice-profile",
+          "--headless",
+          "--nologo",
+          "--norestore",
+          "--infilter=MS Word 97",
+          "--convert-to",
+          "odt:writer8",
+          "--outdir",
+          "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\converter-ci-results\\source-tmp\\test_real_selected_legacy_filt0\\Читальна копія\\.carr-diagnostic-0v29kfx2\\office-output",
+          "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\converter-ci-results\\source-tmp\\test_real_selected_legacy_filt0\\Читальна копія\\.carr-diagnostic-0v29kfx2\\source.doc"
+        ],
+        "elapsed_seconds": 3.0779999999999745,
+        "executable": "D:\\a\\_temp\\carr-converters-46028341055-1-office\\libreoffice\\program\\soffice.com",
+        "family": "office",
+        "reproduction_only": true,
+        "returncode": 0,
+        "schema": 1,
+        "source_sha256": "acce640c7ff34418e6621f3e625ab95741c6b206ff7c4335bb2f9206da232dd2",
+        "stderr": "",
+        "stdout": "",
+        "variant": "minimal-startup-flags"
+      },
+      {
+        "error": "Selected LibreOffice did not produce its single declared intermediate.",
+        "error_type": "ConversionError",
+        "family": "office",
+        "intermediate_names": [],
+        "reproduction_only": true,
+        "variant": "minimal-startup-flags"
+      }
+    ]
+  },
+  "finding": "For the same selected runtime, source digest, inactive profile and component holds, only the short-ASCII-stage reproduction produced and parsed the declared ODT. Baseline, selected-user-environment, without-component-holds and minimal-startup-flags variants exited zero without an intermediate. The matrix did not independently isolate Unicode from path length.",
+  "repair": {
+    "product_paths": [
+      "src/carr_library/conversion/service.py",
+      "src/carr_library/conversion/office.py"
+    ],
+    "parent_ownership": "The existing parent ExitStack owns the destination publication directory and a short native temporary directory before _invoke. Existing worker descendant settlement precedes either directory cleanup and the shared lease release.",
+    "native_arguments": "Fixed relative source/output file names and a file URI for the original inactive-content profile; selected executable and held component inventory unchanged.",
+    "publication": "Copy actual verified worker output with publish_new(expected_identity, expected_sha256) into the destination volume, then preserve existing report-last same-filesystem no-replace moves.",
+    "resources": "One existing ResourceRequest with additional_disks atomically covers both directories, including same-volume aggregation; standalone free-space checks remain explicit.",
+    "wire": "No new worker field or launch authority; source, reading.txt and details.json remain in one fixed private worker directory.",
+    "preserved": [
+      "Explicit TXT encoding and exact receipt binding from 104bf86",
+      "Existing isolated worker/process owner",
+      "Runtime component holds and post-run admission",
+      "Inactive macros/active-content/link profile",
+      "Original bytes and SHA256",
+      "All seven real Office fixture functions/case multiplicities"
+    ]
+  },
+  "new_portable_cases": {
+    "test_parent_keeps_both_stages_and_one_multivolume_lease_until_worker_settles": 3,
+    "test_worker_text_changed_before_cross_workspace_copy_never_publishes": 1,
+    "test_destination_race_during_verified_workspace_copy_preserves_foreign_file": 1,
+    "test_atomic_workspace_resource_rejection_starts_no_worker_or_private_directory": 1,
+    "test_native_workspace_free_space_is_checked_before_snapshot_or_worker": 1,
+    "test_excessive_native_temporary_root_is_rejected_without_creating_another_location": 1,
+    "test_office_uses_ascii_relative_file_arguments_with_original_inactive_profile": 1
+  },
+  "new_portable_total": 9,
+  "support_modules": [
+    "tests.conversion.test_office_selection"
+  ],
+  "required_native_cases": {
+    "test_real_selected_legacy_filter_retains_original_and_exact_provenance": 5,
+    "test_selected_office_cancellation_settles_family_before_private_profile_cleanup": 1,
+    "test_selected_office_text_budget_keeps_destination_empty": 1
+  },
+  "verification": {
+    "source_readback": "Required after creation",
+    "python_compilation": "NOT_RUN",
+    "pytest_source": "NOT_RUN",
+    "pytest_installed": "NOT_RUN",
+    "native_source": "NOT_RUN",
+    "native_installed": "NOT_RUN"
+  }
+}

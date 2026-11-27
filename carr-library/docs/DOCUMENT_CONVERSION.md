@@ -169,6 +169,23 @@ contracts used here are LibreOffice's [command-line parameters](https://help.lib
 [Calc link-update configuration](https://github.com/LibreOffice/core/blob/master/officecfg/registry/schema/org/openoffice/Office/Calc.xcs),
 and [thread-pool concurrency preference](https://github.com/LibreOffice/core/blob/master/comphelper/source/misc/threadpool.cxx).
 
+On Windows, selected LibreOffice uses a short private native workspace under
+the checked local temporary root. The parent owns that directory before starting
+the existing worker; it remains alive until the same owner settles all native
+descendants. Fixed input/output names are relative to that native working
+directory and the private profile is passed as an escaped file URI. The selected
+runtime, immutable component readers and inactive-content settings are unchanged.
+
+The shared resource request reserves the native and publication directories
+atomically through its existing multi-volume disk policy. Standalone callers
+also check free space on both volumes. After worker settlement, the parent
+copies the bounded UTF-8 result into the destination volume using the existing
+identity- and SHA256-checked publisher. Final text/report moves therefore retain
+their same-filesystem no-replace boundary even when the native temporary folder
+is on another drive. Neither an output file nor the original is moved into a
+different application-owned namespace. A temporary root longer than 96 UTF-16
+units is rejected explicitly before native work.
+
 The facade copies a bounded selected source into a private local stage, hashes
 that copy, and checks the original identity/hash again before publication.
 Symlinks, reparse points, network paths, alternate streams, invalid portable

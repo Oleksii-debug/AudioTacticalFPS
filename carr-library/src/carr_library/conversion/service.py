@@ -1,4 +1,5 @@
 """Selected local documents to new reading text, using the current worker."""
+from contextlib import ExitStack
 from dataclasses import asdict
 from hashlib import sha256
 import json
@@ -6,18 +7,18 @@ import os
 from pathlib import Path
 import re
 import shutil
-from tempfile import TemporaryDirectory
+from tempfile import TemporaryDirectory, gettempdir
 from time import monotonic
 from uuid import uuid4
 
 from ..audio.jobs import (
-    checked_directory, regular_file, file_identity, verified_reader, publish_noreplace, read_json,
+    checked_directory, regular_file, file_identity, verified_reader, publish_new, publish_noreplace, read_json,
 )
 from ..audio.paths import filename_component
 from ..data_paths import guard_data_directory
 from ..extract.page_ocr import Config
 from ..ingest.worker import _invoke
-from .capabilities import CONVERSION_SUFFIXES, IMAGES, capabilities
+from .capabilities import CONVERSION_SUFFIXES, IMAGES, OFFICE_SUFFIXES, capabilities
 from .legacy import LEGACY_SUFFIXES, QUALIFIED_SUFFIXES, kind_for
 from .legacy_runtime import ToolSelection
 from .models import (
@@ -39,6 +40,17 @@ def _hash(path, cancelled, expected=None):
             digest.update(block)
     _check(cancelled)
     return digest.hexdigest()
+
+
+def _office_workspace_parent():
+    """Use one checked short temporary root, never an alternate native runtime."""
+    parent = checked_directory(Path(gettempdir()))
+    # Leave room for the random directory and LibreOffice's internal profile
+    # files. URI escaping and fixed relative argv keep non-ASCII names out of
+    # native file arguments; this also avoids the observed long-profile path.
+    if len(str(parent).encode('utf-16-le')) // 2 > 96:
+        raise ConversionError('Choose a shorter local temporary directory for selected LibreOffice.')
+    return parent
 
 
 class ConversionService:
@@ -138,23 +150,30 @@ class ConversionService:
         both publications, including failure paths.
         """
         encoding = selected_text_encoding(encoding)
+        office_parent = (_office_workspace_parent() if os.name == 'nt'
+                         and Path(source).suffix.casefold() in OFFICE_SUFFIXES else None)
         if broker is None:
-            return self._extract(source, output, encoding=encoding, cancelled=cancelled)
+            return self._extract(source, output, encoding=encoding, cancelled=cancelled,
+                                 office_parent=office_parent)
         from ..operations import ResourceBroker, ResourceRequest, ResourceCancelled
         if not isinstance(broker, ResourceBroker):
             raise TypeError('Use the shared typed local resource coordinator.')
+        work_bytes = (2 * self.budget.max_source_bytes + self.budget.max_text_bytes
+                      + MAX_REPORT_BYTES + 64 * 1024**2)
         request = ResourceRequest(cpu_slots=broker.limits.cpu_slots,
             memory_bytes=3 * 1024**3, disk_path=self.root,
-            disk_bytes=2 * self.budget.max_source_bytes + self.budget.max_text_bytes
-                       + MAX_REPORT_BYTES + 64 * 1024**2)
+            disk_bytes=(self.budget.max_text_bytes + MAX_REPORT_BYTES
+                        if office_parent is not None else work_bytes),
+            additional_disks=((office_parent, work_bytes),) if office_parent is not None else ())
         try:
             with broker.reserve(request, operation_id='conversion:' + uuid4().hex,
                                 cancelled=cancelled, timeout=60) as lease:
-                return self._extract(source, output, encoding=encoding, cancelled=lease.cancelled)
+                return self._extract(source, output, encoding=encoding, cancelled=lease.cancelled,
+                                     office_parent=office_parent)
         except ResourceCancelled as error:
             raise InterruptedError('Document conversion cancelled before resource admission.') from error
 
-    def _extract(self, source, output, *, encoding, cancelled):
+    def _extract(self, source, output, *, encoding, cancelled, office_parent=None):
         if not callable(cancelled):
             raise ValueError('A conversion cancellation callback is required.')
         _check(cancelled)
@@ -172,7 +191,6 @@ class ConversionService:
                 raise ConversionUnavailable('This legacy format has not passed the required native fixture qualification.')
         if suffix == '.rtf' and self.pandoc is None:
             raise ConversionUnavailable('Select an installed compatible Pandoc executable for RTF explicitly.')
-        from .office import OFFICE_SUFFIXES
         if suffix in OFFICE_SUFFIXES and self.office is None:
             raise ConversionUnavailable('Select the installed LibreOffice program executable for this format explicitly.')
         if suffix in IMAGES and not self.image_ocr:
@@ -184,15 +202,29 @@ class ConversionService:
             raise ConversionUnavailable('The existing reader dependencies are unavailable: ' +
                                         ', '.join(capability['missing']))
         native_bytes = self.budget.max_source_bytes + 64 * 1024**2 if suffix in OFFICE_SUFFIXES or suffix in LEGACY_SUFFIXES else 16 * 1024**2
-        if shutil.disk_usage(target.parent).free < (
-                before.st_size + self.budget.max_text_bytes + MAX_REPORT_BYTES + native_bytes):
+        work_bytes = before.st_size + self.budget.max_text_bytes + MAX_REPORT_BYTES + native_bytes
+        publication_bytes = self.budget.max_text_bytes + MAX_REPORT_BYTES
+        target_bytes = work_bytes
+        if office_parent is not None:
+            office_parent = checked_directory(office_parent)
+            same_volume = office_parent.stat().st_dev == target.parent.stat().st_dev
+            target_bytes = publication_bytes + (work_bytes if same_volume else 0)
+            if shutil.disk_usage(office_parent).free < work_bytes:
+                raise ConversionError('Not enough free disk for the bounded native LibreOffice workspace.')
+        if shutil.disk_usage(target.parent).free < target_bytes:
             raise ConversionError('Not enough free disk for the bounded source, reading text and provenance.')
         source_identity = file_identity(before)
         started = monotonic()
-        with TemporaryDirectory(prefix='.carr-conversion-', dir=target.parent) as directory:
-            stage = Path(directory)
-            snapshot = stage / ('source' + suffix)
-            converted, details_path = stage / 'reading.txt', stage / 'details.json'
+        with ExitStack() as owned:
+            stage = Path(owned.enter_context(TemporaryDirectory(prefix='.carr-conversion-', dir=target.parent)))
+            worker_stage = stage
+            if office_parent is not None:
+                worker_stage = checked_directory(owned.enter_context(
+                    TemporaryDirectory(prefix='carr-office-', dir=office_parent)))
+                if len(str(worker_stage).encode('utf-16-le')) // 2 > 120:
+                    raise ConversionError('The native LibreOffice workspace exceeds its path budget.')
+            snapshot = worker_stage / ('source' + suffix)
+            converted, details_path = worker_stage / 'reading.txt', worker_stage / 'details.json'
             digest, count = sha256(), 0
             with verified_reader(source, expected_identity=source_identity) as read, snapshot.open('xb') as write:
                 while block := read.read(1024 * 1024):
@@ -236,7 +268,7 @@ class ConversionService:
             except Exception as error:
                 if suffix in OFFICE_SUFFIXES:
                     from .office import progress_detail
-                    error.add_note(progress_detail(stage))
+                    error.add_note(progress_detail(worker_stage))
                 raise
             _check(cancelled)
             if not isinstance(result, dict) or result.get('state') != 'complete':
@@ -244,7 +276,7 @@ class ConversionService:
                 detail = ''
                 if suffix in OFFICE_SUFFIXES:
                     from .office import progress_detail
-                    detail = ' ' + progress_detail(stage)
+                    detail = ' ' + progress_detail(worker_stage)
                 if state == 'cancelled':
                     raise InterruptedError('Document conversion stopped before publication.')
                 if state == 'timed_out':
@@ -298,6 +330,14 @@ class ConversionService:
             encoded = (json.dumps(report, ensure_ascii=False, sort_keys=True, allow_nan=False) + '\n').encode('utf-8')
             if len(encoded) > MAX_REPORT_BYTES:
                 raise ConversionError('The final provenance report exceeds its byte budget.')
+            if worker_stage != stage:
+                # _invoke has settled the existing native family. Copy only
+                # verified text into the destination volume before final moves.
+                local_text = stage / 'reading.txt'
+                publish_new(converted, local_text, cancelled=cancelled,
+                            expected_identity=file_identity(text_info),
+                            expected_sha256=report['text_sha256'])
+                converted = local_text
             receipt = stage / 'provenance.json'
             with receipt.open('xb') as stream:
                 stream.write(encoded)
