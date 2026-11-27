@@ -4,6 +4,10 @@ Source base: PR99 `b63e90e895d08e9ba1a529f9be42dec1a94abcc3`.
 Reused canonical producer: `bfcc1f5cae137cc27030c0cec6dc46a1641892c1`,
 `src/carr_library/pending_backup.py` blob
 `134d7534a8abf1b68b032ace804b2494853c1d90`.
+Prepared-before-first-worker regression is reused exactly from CARR05 commit
+`642ed98ca33399529b1058381545d9ffccef2135`,
+`tests/storage/test_complete_pending_backup.py` blob
+`dc7d6a9d955e4a5116a3916966bd1ab5bae45359`.
 
 ## Changes
 
