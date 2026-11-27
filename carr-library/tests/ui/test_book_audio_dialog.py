@@ -281,12 +281,25 @@ def test_preview_uses_new_values_even_if_widget_change_emits_no_event(handlers):
     e = handlers
     preview(e)
     old = e.find('Book split preview and saved job status').value
-    e.find('Part name template: index, book, part').ChangeValue('{index:04d} - Explicit new name')
+    requested = '{index:04d} - Explicit new name'
+    e.find('Part name template: index, book, part').ChangeValue(requested)
     e.press('Preview split and names')
     e.complete()
-    assert 'Explicit-new-name' in e.find('Book split preview and saved job status').value
-    assert e.find('Book split preview and saved job status').value != old
-    assert not e.production.jobs()
+    current = e.find('Book split preview and saved job status').value
+    assert 'Part name template: ' + requested in current
+    titles = {f'{index:04d} - Explicit new name' for index in (1, 2)}
+    assert all('Part title: ' + title in current for title in titles)
+    assert current != old
+    assert not e.production.jobs() and e.service.saved() == ()
+    e.press('Prepare saved items')
+    assert len(e.state['approvals']) == 1 and not e.production.jobs()
+    e.complete()
+    jobs = e.production.jobs()
+    assert len(jobs) == 2 and {job['project']['title'] for job in jobs} == titles
+    assert all(job['destination'] in current and job['destination'] not in old for job in jobs)
+    saved, = e.service.saved()
+    assert saved.options.name_template == requested
+    assert not list(e.output.iterdir())
 
 
 def test_owned_cleanup_follows_active_work_and_never_runs_on_wx(handlers, monkeypatch):

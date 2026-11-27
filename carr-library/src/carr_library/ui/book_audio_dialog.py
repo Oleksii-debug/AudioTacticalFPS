@@ -47,6 +47,7 @@ def review_text(plan, review):
         'Voice: ' + plan.role.voice_id + '; ' + plan.role.language + '; rate ' + str(plan.role.rate)
             + '; volume ' + str(plan.role.volume),
         'Split: ' + plan.options.mode + '; format: ' + plan.format,
+        'Part name template: ' + plan.options.name_template,
         'Output parent: ' + review.output_parent,
         'Review SHA-256: ' + review.fingerprint,
         'Extraction approval is unchanged. Source offsets below are zero-based Unicode characters.',
@@ -58,7 +59,9 @@ def review_text(plan, review):
             '%s; character %d; %s' % (row['label'], row['start'], row['id'])
             for row in entries(source, plan.landmarks))))
     for index, (part, output) in enumerate(zip(plan.parts, review.destinations), 1):
-        rows.append(f'{index}. {part.label}; characters {part.start}–{part.end}; {part.end - part.start} characters\n{output}')
+        title = plan.options.title(index, source['title'], part.label)
+        rows.append(f'{index}. {part.label}; characters {part.start}–{part.end}; {part.end - part.start} characters\n'
+                    f'Part title: {title}\nOutput folder: {output}')
     if not review.prepared:
         rows.append('Restored items receive fresh names during Prepare; review those actual names before Run.')
     return '\n\n'.join(rows)
