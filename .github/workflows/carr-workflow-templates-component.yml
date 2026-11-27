@@ -48,3 +48,12 @@ jobs:
             tests/assistant/test_workflow_template_editor.py \
             tests/assistant/test_planning_handlers.py \
             tests/ui/test_studio_keyboard_registration.py
+      - name: Require portable source identity without replacing native OCR gates
+        run: |
+          set -euo pipefail
+          python -m pytest -q -o xfail_strict=true \
+            tests/extract/test_runtime_identity.py::test_missing_engine_and_source_change \
+            tests/extract/test_runtime_identity.py::test_resource_limit \
+            tests/extract/test_runtime_identity.py::test_model_identifier_rules_are_bound_to_resume_identity \
+            tests/extract/test_runtime_identity.py::test_unsafe_model_identifiers_fail_before_engine_discovery \
+            tests/extract/test_runtime_identity.py::test_engine_version_change_detected

@@ -24,7 +24,7 @@ class Settings:
 def source_fixture(tmp_path):
     # Exercise real file hashing with synthetic source files; the pinned
     # model staging module is the exact upstream candidate, not a double.
-    for name in ('page_ocr.py', 'orientation.py', 'ocr_orientation_bridge.py',
+    for name in ('page_ocr.py', 'raster_pages.py', 'orientation.py', 'ocr_orientation_bridge.py',
                  'pinned_tessdata.py', 'runtime_identity.py', 'ocr_languages.py',
                  'model_catalog.py', 'ocr_model_store.py', 'managed_ocr.py',
                  'ocr_model_catalog.py', 'ocr-model-catalog.json', 'ocr_process.py'):
@@ -95,7 +95,7 @@ def test_resource_limit(tmp_path):
         ri._hash(p, limit=4)
 
 
-@pytest.mark.parametrize('module', ['ocr_languages.py', 'ocr_process.py'])
+@pytest.mark.parametrize('module', ['ocr_languages.py', 'ocr_process.py', 'raster_pages.py'])
 def test_model_identifier_rules_are_bound_to_resume_identity(source_fixture, module):
     with patch.object(ri.ocr_runtime, 'discover_ocr_runtime', return_value=None):
         before = ri.runtime_identity(Settings())

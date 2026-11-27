@@ -110,7 +110,7 @@ def test_legacy_saved_audio_recipe_is_passive_but_does_not_replay_project_lineag
     raw = {'id': 'a' * 32, 'name': 'Legacy recipe', 'kind': 'workflow', 'summary': '',
            'steps': [{'tool': tool, 'arguments': {'script': project().to_dict(), 'format': 'wav'}}]}
     saved = WorkflowTemplate.from_dict(raw)
-    assert saved.to_dict() == raw  # No silent rewrite during backup/read.
+    assert encode(saved.to_dict()) == encode(raw)  # No silent rewrite of saved JSON during backup/read.
     proposed = instantiate_plan(saved, Scope(output_root=tmp_path))
     script = proposed.steps[0].arguments['script']
     assert script['id'] != 'old-project' and script['revision'] == 1

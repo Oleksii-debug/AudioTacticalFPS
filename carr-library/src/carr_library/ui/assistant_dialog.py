@@ -352,7 +352,8 @@ def create_assistant_dialog(frame, *, wx_module=None, reader_owner=None):
         try:
             refresh_template_macros(frame, wx_module=wx)
         except (ValueError, OSError, RuntimeError) as exc:
-            report('Template saved; shortcut inventory needs attention: ' + str(exc))
+            return ' Shortcut inventory needs attention: ' + str(exc)
+        return ''
 
     def edit_template(event=None):
         nonlocal template_selection
@@ -389,8 +390,8 @@ def create_assistant_dialog(frame, *, wx_module=None, reader_owner=None):
             template_name.ChangeValue(candidate.name)
             template_kind.SetSelection(KINDS.index(candidate.kind))
             invalidate()
-            refresh_template_commands()
-            report('Typed template saved. Load its values, choose the current scope, then Preview and Run separately.')
+            notice = refresh_template_commands()
+            report('Typed template saved. Load its values, choose the current scope, then Preview and Run separately.' + notice)
         except Exception as exc:
             report(str(exc))
 
@@ -486,9 +487,9 @@ def create_assistant_dialog(frame, *, wx_module=None, reader_owner=None):
             service.validate(selected_plan)
             token = template_store.save(record, expected_token=token)
             template_selection = (record.id, token)
-            refresh_template_commands()
+            notice = refresh_template_commands()
             report(f'Saved "{record.name}" as {record.kind}. Only typed steps were saved; '
-                   'loading it requires fresh scope review and a separate Run.')
+                   'loading it requires fresh scope review and a separate Run.' + notice)
         except Exception as exc:
             report(str(exc))
 
@@ -511,10 +512,10 @@ def create_assistant_dialog(frame, *, wx_module=None, reader_owner=None):
                 raise ValueError('The selected template changed.')
             template_store.delete(record.id, expected_token=token)
             template_selection = None
-            refresh_template_commands()
+            notice = refresh_template_commands()
             template_name.ChangeValue('')
             invalidate()
-            report('Named template deleted. Existing jobs were preserved.')
+            report('Named template deleted. Existing jobs were preserved.' + notice)
         except Exception as exc:
             report(str(exc))
 

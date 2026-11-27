@@ -71,7 +71,7 @@ def test_cli_project_capture_never_starts_audio_and_drops_saved_lineage(tmp_path
     script = saved['template']['steps'][0]['arguments']['script']
     assert script['id'] == 'template' and script['revision'] == 1
     assert script['scenes'][0]['lines'][0]['source_ref'] == ''
-    assert json.loads(path.read_bytes()) == value
+    assert path.read_bytes() == encode(value)
 
 
 def test_cli_replace_and_delete_require_exact_catalogue_review(tmp_path, capsys):
@@ -98,3 +98,31 @@ def test_cli_has_no_execute_command(tmp_path):
     with pytest.raises(SystemExit) as error:
         main(['--data-dir', str(tmp_path), 'run'])
     assert error.value.code == 2
+
+
+@pytest.mark.parametrize('rejected', [False, True])
+def test_cli_preview_closes_its_real_production_owner_on_success_and_validation_error(
+        tmp_path, capsys, monkeypatch, rejected):
+    from carr_library.studio.render import ProductionService
+    from carr_library.assistant.templates import WorkflowTemplate
+    root = tmp_path / 'library'
+    app = LibraryApp(root)
+    record = WorkflowTemplate.define('Explicit preview', [
+        {'tool': 'library.list', 'arguments': {}}])
+    TemplateStore(root).save(record, expected_token=None)
+    closed = []
+    original_close = ProductionService.close
+    def close(owner):
+        original_close(owner)
+        closed.append(owner)
+    monkeypatch.setattr(ProductionService, 'close', close)
+    if rejected:
+        def refuse(self, plan):
+            raise ValueError('Synthetic validation refusal')
+        monkeypatch.setattr(AssistantService, 'validate', refuse)
+    code, _, error = call(capsys, root, 'preview', record.id)
+    assert code == (1 if rejected else 0)
+    assert ('Synthetic validation refusal' in error) is rejected
+    assert len(closed) == 1 and closed[0]._closed.is_set()
+    assert closed[0]._voices is None
+    assert AssistantService(app).jobs() == ()

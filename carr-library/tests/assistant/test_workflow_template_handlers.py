@@ -258,3 +258,31 @@ def test_typed_editor_replacement_has_default_no_and_catalogue_cas(native_handle
     assert store.get(original.id)[0].summary == 'Concurrent copy'
     assert 'changed' in e.controls['review'].GetValue()
     assert not e.dialog.assistant_service.jobs()
+
+
+@pytest.mark.parametrize('operation', ['save_template', 'edit_template', 'delete_template'])
+def test_committed_template_action_keeps_shortcut_registration_failure_visible(
+        native_handlers, monkeypatch, operation):
+    from dataclasses import replace
+    from carr_library.ui import workflow_templates
+    e = native_handlers
+    record, old_token = reviewed_template(e, 'Explicit saved recipe')
+    def refused(*args, **kwargs):
+        raise ValueError('Synthetic registry capacity boundary')
+    monkeypatch.setattr(workflow_templates, 'refresh_template_macros', refused)
+    monkeypatch.setattr(workflow_templates, 'edit_template',
+        lambda *args, **kwargs: replace(record, summary='Edited typed definition'))
+    confirmation(e)
+    e.handlers[operation]()
+    rows, token = TemplateStore(e.app.root).list()
+    if operation == 'delete_template':
+        assert rows == ()
+        assert 'Named template deleted.' in e.controls['review'].GetValue()
+    else:
+        assert len(rows) == 1 and rows[0].id == record.id
+        assert ('Saved "' if operation == 'save_template' else 'Typed template saved.') in e.controls['review'].GetValue()
+        if operation == 'edit_template':
+            assert rows[0].summary == 'Edited typed definition' and token != old_token
+    assert 'Shortcut inventory needs attention' in e.controls['review'].GetValue()
+    assert 'capacity boundary' in e.controls['review'].GetValue()
+    assert e.dialog.assistant_service.jobs() == ()

@@ -120,8 +120,7 @@ def main(argv=None):
         return 1
     finally:
         if production is not None:
-            from ..studio.cli import _close_production
-            _close_production(production)
+            production.close()
 
 
 if __name__ == '__main__':

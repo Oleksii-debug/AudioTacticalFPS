@@ -109,7 +109,7 @@ def test_project_file_picker_copies_typed_settings_and_removes_source_refs(wx, t
     wx.action = select
     result = ui.edit_template(None, initial, wx_module=wx)
     assert result is not None and result.id == initial.id
-    assert json.loads(path.read_bytes()) == raw
+    assert path.read_bytes() == encode(raw)
     assert result.parameters == {} and wx.dialogs[-1].destroyed
 
 
