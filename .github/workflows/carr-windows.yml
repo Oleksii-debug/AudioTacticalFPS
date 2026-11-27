@@ -18,7 +18,7 @@ permissions:
 
 concurrency:
   group: carr-windows-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.head_ref || github.ref_name }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   integrated-desktop:
@@ -47,13 +47,22 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
           persist-credentials: false
 
-      - name: Check out the distinct previous standard generation
+      - name: Check out the reviewed maintenance generation A
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: 91332206578b4d8dc779fec08c8d51a67962b0ff
+          ref: 3cefda9cc3be02a96d4e40b291645f1bfc1fcc6f
           path: carr-standard-source-a
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check out the unchanged original generation O
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 91332206578b4d8dc779fec08c8d51a67962b0ff
+          path: carr-standard-source-original
           fetch-depth: 0
           persist-credentials: false
 
@@ -66,6 +75,8 @@ jobs:
       - name: Compile the exact source and regression entrypoints
         run: |
           python -m compileall -q src tests scripts packaging
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -I -B scripts/source_syntax_acceptance.py --source-commit $env:CARR_EXPECTED_SOURCE_COMMIT --output ci-results/source-syntax-preflight.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           foreach ($path in @('scripts/ci_standard_installer.ps1', 'scripts/ci_standard_update.ps1', 'scripts/qualify_standard_library.ps1')) {
             $tokens = $null
@@ -1959,10 +1970,10 @@ jobs:
           & ./scripts/ci_standard_installer.ps1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Verify two distinct signed standard generations and native rollback
+      - name: Verify explicit original maintenance and distinct signed upgrade with native rollback
         timeout-minutes: 120
         run: |
-          & ./scripts/ci_standard_update.ps1 -PreviousCheckout (Join-Path $env:GITHUB_WORKSPACE 'carr-standard-source-a') -PreviousSource '91332206578b4d8dc779fec08c8d51a67962b0ff'
+          & ./scripts/ci_standard_update.ps1 -OriginalCheckout (Join-Path $env:GITHUB_WORKSPACE 'carr-standard-source-original') -OriginalSource '91332206578b4d8dc779fec08c8d51a67962b0ff' -PreviousCheckout (Join-Path $env:GITHUB_WORKSPACE 'carr-standard-source-a') -PreviousSource '3cefda9cc3be02a96d4e40b291645f1bfc1fcc6f'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       # Evidence and public source wheel: no model, native DLLs, OCR source payload, or user documents

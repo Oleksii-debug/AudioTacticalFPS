@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "kind": "standard-original-maintenance-update-builder",
+  "date_utc": "2026-11-27",
+  "status": "SOURCE_REVIEWED_EXECUTION_NOT_RUN",
+  "base_source": "4e733a4f081c7f7bf0464983e94711604fc93fa1",
+  "base_script_blob": "ac6e2b00b3225ede33cc8901e6b55c6e40df9134",
+  "original_source": "91332206578b4d8dc779fec08c8d51a67962b0ff",
+  "maintenance_source": "3cefda9cc3be02a96d4e40b291645f1bfc1fcc6f",
+  "probe_contract_source": "00861a0e42aee127e66f32da4dbd4719b0812194",
+  "probe_contract_blob": "078bd836ababc72dcc8203a016aa418c3983eb6d",
+  "changed_paths": [
+    "carr-library/scripts/ci_standard_update.ps1",
+    "carr-library/docs/evidence/standard-three-generation-builder-20261127.json"
+  ],
+  "scope": [
+    "One reusable scoped source-wheel/sealed-bundle/setup builder, invoked for explicit original O and maintenance A checkouts.",
+    "Three distinct exact source/tree identities, O-to-A-to-B Git ancestry, unchanged already-acquired integrated lock/SBOM and both predecessor native-launcher validators.",
+    "Independent original/previous public wheel and build/manifest receipts; current B wheel is independently verified in each preparation and must match exactly.",
+    "Original and maintenance source wheels must both differ from B and from each other. No installed original is edited and no wheel identity is relabeled.",
+    "All fifteen existing managed A-to-B labels, protected anchor, rollback/restart, source binding, actual library50 and privacy restrictions are retained.",
+    "The separate original-maintenance.json must exactly equal the returned maintenance object with all four checks and all three preservation flags.",
+    "Five explicit original probe flags are passed alongside unchanged previous/candidate flags. Workflow/probe integration is root-owned and absent from this component.",
+    "Fresh private outputs and per-generation evidence/log filenames refuse collisions. Existing successful redundant builder-copy cleanup is retained; sealed O/A inputs, setup executables and failed native generations remain.",
+    "Free-space preflight adds actual sealed O/A payload and expanded application-wheel sizes. B's measured environment size is a conservative same-dependency baseline plus additional O/A wheel bytes, not a claimed O/A environment measurement."
+  ],
+  "managed_check_count": 15,
+  "maintenance_check_count": 4,
+  "maintenance_checks": [
+    "exact-original-source-installed",
+    "ordinary-maintenance-installer-without-update-authority",
+    "original-process-and-sealed-generation-preserved",
+    "maintenance-native-self-test-and-user-data-preserved"
+  ],
+  "maintenance_exact_fields": [
+    "status",
+    "original_source",
+    "original_setup_sha256",
+    "original_manifest_sha256",
+    "previous_source",
+    "checks",
+    "actual_original_process_preserved",
+    "actual_original_sealed_generation_preserved",
+    "user_data_preserved"
+  ],
+  "runtime_status": "NOT_RUN",
+  "portable_helper_cases": 16,
+  "portable_helper_population": "Unchanged current-root helper module; no new aggregate test cases in this builder component.",
+  "prior_failure": {
+    "run_id": 46053395802,
+    "job_id": 140690003057,
+    "source": "480f8ecee5e7eee108245391fb617cf8eaa7bfa5",
+    "original_source": "91332206578b4d8dc779fec08c8d51a67962b0ff",
+    "status": "FAILED",
+    "observed_outer_error": "The setup did not activate the reviewed new generation.",
+    "inner_inno_reason": "Not retained in the original artifact. The exact original single-link helper refusal is source-proven for the observed two-link system executable, not an invented runtime traceback."
+  },
+  "limitations": [
+    "No successful original913-to-B managed update is claimed; ordinary original-to-maintenance repair and managed maintenance-to-B are separate phases.",
+    "No pending/prior update authority is removed by this builder.",
+    "No source, payload, publisher or license clearance is inferred from source review.",
+    "No local executor, PowerShell AST execution or native three-generation result is claimed.",
+    "No workflow, protected test oracle, product code, main ref or frozen ref is changed by this component."
+  ]
+}

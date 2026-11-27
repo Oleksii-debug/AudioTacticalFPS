@@ -64,7 +64,7 @@ def capabilities(*, pandoc_selected=False, image_ocr_selected=False, office_sele
     legacy_limits = {
         'calibre': 'Qualification covers synthetic unprotected MOBI (including AZW/PRC extension aliases), AZW3/KF8, freely generated LIT and TCR with explicitly selected calibre 9.19.0. Its exact-version wrapper rejects other revisions, user plugins and protected-book handling. Plain reading text requires source review; arbitrary real books and other Palm database subtypes are not qualified.',
         'djvu': 'Embedded UTF-8 text from standalone or bundled self-contained pages only. Indirect/shared-dictionary references and pages requiring OCR remain explicit errors.',
-        'chm': 'Bounded 7-Zip CHM extraction to stdout and existing inert HTML reader. One strict UTF-8 TOC or declared stable filename order; no help viewer, scripts, ActiveX or network loading.',
+        'chm': 'Qualified fixture scope is synthetic ITSF3 and the pinned 7-Zip 26.06 compressed public help on Windows, using an explicitly selected and rechecked 7-Zip installation. Bounded extraction to stdout and the existing inert HTML reader preserve raw/member identities. One strict UTF-8 TOC or declared stable filename order; no help viewer, scripts, ActiveX, network loading or arbitrary-help fidelity claim.',
     }
     for suffix in LEGACY:
         if suffix in LEGACY_SUFFIXES:

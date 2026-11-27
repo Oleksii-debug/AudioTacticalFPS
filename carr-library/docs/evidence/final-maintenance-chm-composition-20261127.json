@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "status": "COMPOSED_NOT_EXECUTED",
+  "base_commit": "4e733a4f081c7f7bf0464983e94711604fc93fa1",
+  "additional_maintenance_parent": "3cefda9cc3be02a96d4e40b291645f1bfc1fcc6f",
+  "maintenance_product_and_regression_blobs_already_equal_to_base": true,
+  "standard": {
+    "original": "91332206578b4d8dc779fec08c8d51a67962b0ff",
+    "maintenance": "3cefda9cc3be02a96d4e40b291645f1bfc1fcc6f",
+    "builder_source": "3320a807f85848140124214000c05cf3709a15b2",
+    "probe_source": "d4e835b37b7c0bd75ba156d816438630fc31cc64",
+    "candidate_checkouts_complete_ancestry": true,
+    "ordinary_maintenance_checks": 4,
+    "managed_checks": 15,
+    "installed_library_checks": 50,
+    "old_direct_managed_update": "NOT_QUALIFIED"
+  },
+  "chm": {
+    "source": "e5453076c9593219e2d851d8f96a7fa62680d219",
+    "proof": "docs/evidence/chm-ordinary-admission-independent-read-20261127.json",
+    "source_cases": 236,
+    "installed_cases": 236,
+    "native_cases_each": 4,
+    "ordinary_selected": true,
+    "publisher_member_census": "70/70/0 is asserted by the source-bound passing native case; there is no separately retained raw per-member digest receipt"
+  },
+  "generated_fixture_repair": {
+    "source": "375f6cc7c62ddf3dce248761ebe8eccdb1cbf9de",
+    "cases": 36,
+    "product_guards_unchanged": true
+  },
+  "protected_oracles": {
+    "source": 5627,
+    "installed": 5299,
+    "focused_source": 853,
+    "focused_installed": 853,
+    "focused_modules": 43,
+    "full_source_selector_entries": 446,
+    "full_installed_content_selector_entries": 310
+  },
+  "retained_limits": [
+    "Component runs belong to their exact source commits, not this unexecuted composition.",
+    "Office runtime-cache repair is independently in progress and is not included here.",
+    "Synthetic publisher and original test documents do not qualify production authority, arbitrary documents, real model quality, physical hardware or manual NVDA."
+  ]
+}

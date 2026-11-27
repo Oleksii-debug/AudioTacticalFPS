@@ -3,7 +3,9 @@
 This probe uses ephemeral synthetic TUF test keys and a synthetic protected
 anchor. It proves the existing client/installer transaction, not a production
 publisher, signing service, Authenticode approval, NVDA or physical hardware.
-Both A and B must already be built by the current reviewed standard builder.
+Original O, maintenance A and candidate B must already be built from their own
+exact source checkouts. O-to-A is an explicit ordinary repair, recorded separately
+from the unchanged managed A-to-B acceptance.
 No compiler, package, model or runtime is downloaded here.
 """
 from __future__ import annotations
@@ -97,13 +99,14 @@ def write_target(path, executable, report_raw, manifest_raw):
 def inspect(args):
     if os.name != 'nt' or not args.disposable_ci or os.environ.get('CI', '').lower() != 'true':
         raise RuntimeError('Use an otherwise empty disposable native Windows CI account and --disposable-ci.')
-    for value, count in ((args.previous_source, 40), (args.candidate_source, 40),
+    for value, count in ((args.original_source, 40), (args.previous_source, 40), (args.candidate_source, 40),
+                         (args.original_setup_sha256, 64), (args.original_manifest_sha256, 64),
                          (args.previous_setup_sha256, 64), (args.candidate_setup_sha256, 64),
                          (args.previous_manifest_sha256, 64), (args.candidate_manifest_sha256, 64)):
         if len(value) != count or any(char not in '0123456789abcdef' for char in value):
             raise ValueError('Exact independent lowercase source/manifest/setup identities are required.')
-    if args.previous_source == args.candidate_source:
-        raise ValueError('A same-identity repair is not an A-to-B upgrade proof.')
+    if len({args.original_source, args.previous_source, args.candidate_source}) != 3:
+        raise ValueError('Original, maintenance and candidate must have three distinct source identities.')
     import carr_library
     from carr_library.application import LibraryApp
     from carr_library.audio.engines import _start_process, _stop
@@ -113,7 +116,7 @@ def inspect(args):
     from carr_library.security._files import TrustError, directory, json_bytes, json_value, read_bytes
     from carr_library.security.anchors import Anchor, WindowsVaultAnchor
     from carr_library.security.standard_installation import StandardUpdateTransaction
-    from carr_library.security.standard_state import PENDING, REJECTED
+    from carr_library.security.standard_state import PENDING, PRIOR, REJECTED
     from carr_library.security.standard_windows import WindowsStandardHost, run_owned
     from carr_library.security.updates import LocalRepositoryClient
     if not Path(carr_library.__file__).resolve().is_relative_to(Path(sys.prefix).resolve()):
@@ -128,6 +131,7 @@ def inspect(args):
         value = delivery._manifest(raw, source)
         delivery._require_transferable_audio_inventory(value)
         return value
+    report_root = directory(Path(args.library_report).absolute().parent)
     class RejectOneVerifiedHealth(WindowsStandardHost):
         reject = True
         verified_health_calls = 0
@@ -137,6 +141,29 @@ def inspect(args):
                 return False
             self.verified_health_calls += 1
             return not self.reject
+        def launch(self, root, staged, installer, transaction, *, cancelled):
+            # Keep the actual installed host launch path. The only diagnostic
+            # instrumentation appends Inno's log switch for this exact setup;
+            # all original arguments, environment, ownership and timeout stay.
+            from unittest.mock import patch
+            from carr_library.security import standard_windows as native_host
+            if (not isinstance(transaction, str) or len(transaction) != 32
+                    or any(char not in '0123456789abcdef' for char in transaction)):
+                raise AssertionError('A fixed diagnostic log requires the exact transaction identity.')
+            log = report_root / ('native-managed-' + transaction + '.log')
+            if os.path.lexists(log):
+                raise FileExistsError('The owned native setup log already exists.')
+            actual_run, calls = native_host.run_owned, []
+            def logged_run(command, **options):
+                if Path(command[0]) == staged / installer:
+                    calls.append(tuple(command))
+                    command = [*command, '/LOG=' + str(log)]
+                return actual_run(command, **options)
+            with patch.object(native_host, 'run_owned', logged_run):
+                code = super().launch(root, staged, installer, transaction, cancelled=cancelled)
+            if len(calls) != 1:
+                raise AssertionError('The actual standard host did not launch exactly its reviewed setup.')
+            return code
     host = RejectOneVerifiedHealth(installer.verify, validate, timeout=1800)
     system_helper = host._powershell()
     helper_info = system_helper.lstat()
@@ -152,6 +179,8 @@ def inspect(args):
         existing = None
     if existing is not None or os.path.lexists(host.shortcut()):
         raise RuntimeError('An existing registered installation or shortcut must not be changed by this disposable proof.')
+    original, o_report, o_manifest = build_inputs(args.original_build, args.original_source,
+        args.original_setup_sha256, args.original_manifest_sha256, delivery, bundle=args.original_bundle)
     previous, a_report, a_manifest = build_inputs(args.previous_build, args.previous_source,
         args.previous_setup_sha256, args.previous_manifest_sha256, delivery, bundle=args.previous_bundle)
     candidate, b_report, b_manifest = build_inputs(args.candidate_build, args.candidate_source,
@@ -168,34 +197,89 @@ def inspect(args):
     app.add_text(workspace, 'Preserved source', 'Retain exact user-owned research through application upgrade.')
     sentinel = data / 'user-owned-proof.txt'
     sentinel.write_bytes(b'Unknown user-owned bytes remain unchanged.\n')
-    old, ready = None, work / 'old-installed-process-ready.txt'
-    try:
-        with verified_reader(previous):
-            code, _ = run_owned([previous, '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART',
-                '/SP-', '/DIR=' + str(root)], cwd=work, environment=host.environment(), timeout=1800)
-        if code:
-            raise AssertionError('The actual previous setup failed.')
-        prior = host.snapshot(root)
-        if (prior['source_commit'] != args.previous_source
-                or prior['manifest_sha256'] != args.previous_manifest_sha256
-                or prior['setup_sha256'] != args.previous_setup_sha256):
-            raise AssertionError('Installed A differs from the independently reviewed setup.')
-        a_generation = root.joinpath(*prior['generation'].split('/'))
-        checks.append(CHECKS[2])
-        old_code = (
-            "from pathlib import Path; import sys,time\n"
+    old, original_process = None, None
+    ready = work / 'old-installed-process-ready.txt'
+    def hold_generation(generation, marker):
+        code = ("from pathlib import Path; import sys,time\n"
             "from carr_library.installation_lease import application_lease\n"
             "with application_lease():\n"
             "    Path(sys.argv[1]).write_bytes(b'ready')\n"
             "    time.sleep(7200)\n")
-        old = _start_process([str(a_generation / '.venv' / 'Scripts' / 'python.exe'),
-            '-I', '-B', '-c', old_code, str(ready)], stdin=subprocess.DEVNULL,
+        process = _start_process([str(generation / '.venv' / 'Scripts' / 'python.exe'),
+            '-I', '-B', '-c', code, str(marker)], stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=host.environment())
-        deadline = time.monotonic() + 30
-        while not ready.exists() and old.poll() is None and time.monotonic() < deadline:
-            time.sleep(.02)
-        if not ready.exists() or old.poll() is not None:
-            raise AssertionError('The actual previous installed process did not hold its lifetime lease.')
+        try:
+            deadline = time.monotonic() + 30
+            while not marker.exists() and process.poll() is None and time.monotonic() < deadline:
+                time.sleep(.02)
+            if not marker.exists() or process.poll() is not None:
+                raise AssertionError('The actual retained installation did not hold its lifetime lease.')
+            return process
+        except BaseException:
+            _stop(process)
+            raise
+    try:
+        # Historical O is kept exactly as built. Do not edit its installed
+        # Python, clear pending authority, or relabel it as the fixed A.
+        with verified_reader(original):
+            code, _ = run_owned([original, '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART',
+                '/SP-', '/DIR=' + str(root), '/LOG=' + str(report_root / 'original-install.log')],
+                cwd=work, environment=host.environment(), timeout=1800)
+        if code:
+            raise AssertionError('The actual original setup failed.')
+        historical = host.snapshot(root)
+        if (historical['source_commit'] != args.original_source
+                or historical['manifest_sha256'] != args.original_manifest_sha256
+                or historical['setup_sha256'] != args.original_setup_sha256):
+            raise AssertionError('Installed O differs from its independently reviewed source and setup.')
+        original_generation = root.joinpath(*historical['generation'].split('/'))
+        original_process = hold_generation(original_generation, work / 'original-process-ready.txt')
+        maintenance_checks = ['exact-original-source-installed']
+        # Ordinary maintenance is user-selected installation, not a signed
+        # update bypass. A pending/recoverable transaction must never be erased
+        # to make this path available.
+        if os.path.lexists(root / PENDING) or os.path.lexists(root / PRIOR):
+            raise AssertionError('Recover pending standard update state before ordinary maintenance.')
+        with verified_reader(previous):
+            code, _ = run_owned([previous, '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART',
+                '/SP-', '/DIR=' + str(root), '/LOG=' + str(report_root / 'maintenance-install.log')],
+                cwd=work, environment=host.environment(), timeout=1800)
+        if code:
+            raise AssertionError('The explicit ordinary maintenance setup failed.')
+        prior = host.snapshot(root)
+        if (prior['source_commit'] != args.previous_source
+                or prior['manifest_sha256'] != args.previous_manifest_sha256
+                or prior['setup_sha256'] != args.previous_setup_sha256
+                or prior['generation'] == historical['generation']
+                or os.path.lexists(root / PENDING) or os.path.lexists(root / PRIOR)):
+            raise AssertionError('Maintenance A is not a distinct ready ordinary installation.')
+        maintenance_checks.append('ordinary-maintenance-installer-without-update-authority')
+        a_generation = root.joinpath(*prior['generation'].split('/'))
+        checks.append(CHECKS[2])
+        if (original_process.poll() is not None
+                or read_bytes(original_generation / 'bundle-manifest.json', 16 * 1024**2) != o_manifest):
+            raise AssertionError('Ordinary maintenance changed the running original or its sealed payload.')
+        installer.verify(original_generation, manifest_bytes=o_manifest)
+        maintenance_checks.append('original-process-and-sealed-generation-preserved')
+        code, _ = run_owned([a_generation / '.venv' / 'Scripts' / 'python.exe',
+            '-I', '-B', '-m', 'carr_library', '--self-test'],
+            cwd=a_generation, environment=host.environment(), timeout=180)
+        if (code or sentinel.read_bytes() != b'Unknown user-owned bytes remain unchanged.\n'
+                or not app.search(workspace, 'exact user-owned research')):
+            raise AssertionError('Maintenance failed its actual self-test or changed research data.')
+        maintenance_checks.append('maintenance-native-self-test-and-user-data-preserved')
+        maintenance = {'status': 'passed', 'checks': maintenance_checks,
+            'original_source': args.original_source,
+            'original_setup_sha256': args.original_setup_sha256,
+            'original_manifest_sha256': args.original_manifest_sha256,
+            'previous_source': args.previous_source,
+            'actual_original_process_preserved': True,
+            'actual_original_sealed_generation_preserved': True,
+            'user_data_preserved': True}
+        with (report_root / 'original-maintenance.json').open('x', encoding='utf-8') as stream:
+            json.dump(maintenance, stream, indent=2); stream.write('\n')
+            stream.flush(); os.fsync(stream.fileno())
+        old = hold_generation(a_generation, ready)
         try:
             with installation_lease(root, exclusive=True):
                 raise AssertionError('The running previous application did not block destructive replacement.')
@@ -312,6 +396,11 @@ def inspect(args):
         if old.poll() is not None or read_bytes(a_generation / 'bundle-manifest.json', 16 * 1024**2) != a_manifest:
             raise AssertionError('The running previous process or its sealed generation was changed.')
         installer.verify(a_generation, manifest_bytes=a_manifest)
+        if (original_process.poll() is not None
+                or read_bytes(original_generation / 'bundle-manifest.json', 16 * 1024**2) != o_manifest
+                or sentinel.read_bytes() != b'Unknown user-owned bytes remain unchanged.\n'):
+            raise AssertionError('Managed B changed the retained original generation, process or user bytes.')
+        installer.verify(original_generation, manifest_bytes=o_manifest)
         checks.append(CHECKS[10])
         if anchor.load().sequence != 2 or anchor.load().digest != package.release.sha256:
             raise AssertionError('The exact verified target did not reach the protected anchor.')
@@ -363,6 +452,8 @@ def inspect(args):
         checks.append(CHECKS[13])
         _stop(old)
         old = None
+        _stop(original_process)
+        original_process = None
         code, _ = run_owned([uninstaller, '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART'],
             cwd=work, environment=host.environment(), timeout=900)
         if code or os.path.lexists(host.shortcut()) or sentinel.read_bytes() != b'Unknown user-owned bytes remain unchanged.\n':
@@ -380,6 +471,7 @@ def inspect(args):
         if anchor.vault.get_optional(anchor.reference, anchor.vault_binding) is not None:
             raise AssertionError('The owned synthetic Windows vault anchor was not removed after success.')
         return {'schema': 1, 'status': 'passed', 'checks': checks,
+            'maintenance': maintenance,
             'previous_source': args.previous_source, 'candidate_source': args.candidate_source,
             'system_helper': helper_identity,
             'previous_setup_sha256': args.previous_setup_sha256,
@@ -395,15 +487,19 @@ def inspect(args):
             'synthetic_publisher_and_anchor': True, 'production_authority_qualified': False,
             'authenticode_verified': False, 'nvda_verified': False}
     finally:
-        if old is not None:
-            _stop(old)
+        try:
+            if old is not None:
+                _stop(old)
+        finally:
+            if original_process is not None:
+                _stop(original_process)
         # Failure leaves exact setup state/evidence for inspection. No cleanup
         # may uninstall a registered or unobserved newer generation implicitly.
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    for prefix in ('previous', 'candidate'):
+    for prefix in ('original', 'previous', 'candidate'):
         parser.add_argument('--' + prefix + '-build', type=Path, required=True)
         parser.add_argument('--' + prefix + '-bundle', type=Path,
             help='Exact separately retained sealed payload, after removing a verified builder copy.')

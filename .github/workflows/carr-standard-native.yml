@@ -13,11 +13,11 @@ permissions:
 
 concurrency:
   group: carr-standard-native-${{ github.repository }}-${{ github.ref_name }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   native-standard-only:
-    name: Windows standard install and distinct A-to-B only
+    name: Windows standard install, original maintenance and distinct A-to-B
     runs-on: windows-2022
     timeout-minutes: 240
     defaults:
@@ -39,13 +39,22 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
           persist-credentials: false
 
-      - name: Check out the distinct reviewed previous standard generation
+      - name: Check out the reviewed maintenance generation A
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 3cefda9cc3be02a96d4e40b291645f1bfc1fcc6f
+          path: carr-standard-source-a
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check out the unchanged original generation O
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: 91332206578b4d8dc779fec08c8d51a67962b0ff
-          path: carr-standard-source-a
+          path: carr-standard-source-original
           fetch-depth: 0
           persist-credentials: false
 
@@ -58,6 +67,8 @@ jobs:
       - name: Compile the exact source and regression entrypoints
         run: |
           python -m compileall -q src tests scripts packaging
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -I -B scripts/source_syntax_acceptance.py --source-commit $env:GITHUB_SHA --output ci-results/source-syntax-preflight.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           foreach ($path in @('scripts/ci_standard_installer.ps1', 'scripts/ci_standard_update.ps1', 'scripts/qualify_standard_library.ps1')) {
             $tokens = $null
@@ -348,10 +359,10 @@ jobs:
           & ./scripts/ci_standard_installer.ps1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Verify two distinct signed standard generations and native rollback
+      - name: Verify explicit original maintenance and distinct signed upgrade with native rollback
         timeout-minutes: 120
         run: |
-          & ./scripts/ci_standard_update.ps1 -PreviousCheckout (Join-Path $env:GITHUB_WORKSPACE 'carr-standard-source-a') -PreviousSource '91332206578b4d8dc779fec08c8d51a67962b0ff'
+          & ./scripts/ci_standard_update.ps1 -OriginalCheckout (Join-Path $env:GITHUB_WORKSPACE 'carr-standard-source-original') -OriginalSource '91332206578b4d8dc779fec08c8d51a67962b0ff' -PreviousCheckout (Join-Path $env:GITHUB_WORKSPACE 'carr-standard-source-a') -PreviousSource '3cefda9cc3be02a96d4e40b291645f1bfc1fcc6f'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       # Evidence and public source wheel: no model, native DLLs, OCR source payload, or user documents
@@ -368,9 +379,14 @@ jobs:
           upgrade=json.loads((root/'standard-update/proof.json').read_text(encoding='utf-8'))
           assert install['status']=='passed' and install['source_commit']==source and install['check_count']==6
           assert upgrade['status']=='passed' and upgrade['candidate_source']==source and upgrade['check_count']==15
-          assert upgrade['previous_source']=='91332206578b4d8dc779fec08c8d51a67962b0ff' and upgrade['previous_source']!=source
-          report={'schema':1,'status':'PASS','scope':'actual-standard-install-repair-uninstall-and-distinct-A-to-B',
-              'source_commit':source,'source_tree':tree,'standard_native_checks':6,'upgrade_native_checks':15,
+          assert upgrade['previous_source']=='3cefda9cc3be02a96d4e40b291645f1bfc1fcc6f' and upgrade['previous_source']!=source
+          maintenance=upgrade['maintenance']
+          assert maintenance['status']=='passed' and maintenance['original_source']=='91332206578b4d8dc779fec08c8d51a67962b0ff'
+          assert maintenance['previous_source']==upgrade['previous_source']
+          assert maintenance['checks']==['exact-original-source-installed','ordinary-maintenance-installer-without-update-authority','original-process-and-sealed-generation-preserved','maintenance-native-self-test-and-user-data-preserved']
+          assert all(maintenance[name] is True for name in ('actual_original_process_preserved','actual_original_sealed_generation_preserved','user_data_preserved'))
+          report={'schema':1,'status':'PASS','scope':'actual-original-maintenance-plus-standard-install-repair-uninstall-and-distinct-A-to-B',
+              'source_commit':source,'source_tree':tree,'standard_native_checks':6,'upgrade_native_checks':15,'maintenance_native_checks':4,
               'full_source_regression_replay':'NOT_RUN','full_installed_regression_replay':'NOT_RUN',
               'full_platform_acceptance':'NOT_CLAIMED','production_authority':'NOT_CONFIGURED',
               'authenticode':'NOT_RUN','nvda':'NOT_RUN'}

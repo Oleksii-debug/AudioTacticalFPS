@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "kind": "explicit-standard-installation-maintenance-source",
+  "status": "SOURCE_REVIEWED_RUNTIME_NOT_RUN",
+  "date_utc": "2026-11-27",
+  "original_source": "91332206578b4d8dc779fec08c8d51a67962b0ff",
+  "original_tree": "8f9de28e362ad3c53addb247ad8d774c16a9b46a",
+  "original_standard_windows_blob": "0a9fbc1120d633df53c042810c908d6465cc5da3",
+  "reviewed_current_source": "bae2c36f7ed97fefed57304cc803ef5ea6c8b7be",
+  "resulting_standard_windows_blob": "fff6e774b4e9a0034a3f71eaa8a803b7410fb80e",
+  "test_source_blob": "66cefd61be3a8f7c23a78a42354a7833abf9a0a1",
+  "production_delta": [
+    "Import stat solely for fixed OS-helper metadata validation.",
+    "WindowsStandardHost._powershell admits regular nonredirected servicing hardlinks only at the path rooted in GetSystemDirectoryW; private application file_info remains single-link.",
+    "WindowsStandardHost._shortcut_target uses the existing fixed WScript.Shell COM class through Activator, disables module autoload, and explicitly releases both COM references; existing owned process, timeout and response bounds are unchanged."
+  ],
+  "unchanged_boundaries": [
+    "Every other byte of the original standard_windows.py, including the process owner and timeouts.",
+    "Original standard_installation.py, old-host reservation, pending/prior guards and protected update policy.",
+    "Original _files.py including single-link application/private-file validation.",
+    "Original standard installer template, runtime/wheel locks, licenses, model pins, source version, source wheel/build helpers and application features."
+  ],
+  "prior_observation": {
+    "run_id": 46053395802,
+    "job_id": 140690003057,
+    "candidate_source": "480f8ecee5e7eee108245391fb617cf8eaa7bfa5",
+    "original_source": "91332206578b4d8dc779fec08c8d51a67962b0ff",
+    "result": "FAILED",
+    "outer_error": "The setup did not activate the reviewed new generation.",
+    "observed_system_powershell_link_count": 2,
+    "inner_inno_exception": "NOT_OBSERVED: the retained archive has no A-to-B inner Inno log.",
+    "source_inference": "The original reserve_generation necessarily reaches its own snapshot and _powershell file_info check before reserving B; the observed two-link system executable violates that original single-link check. This explains a deterministic old-host refusal but does not substitute for an unrecorded inner traceback."
+  },
+  "intended_native_qualification": {
+    "status": "NOT_RUN",
+    "phases": [
+      "Install the exact original source and retain its generation, owned process and user-data sentinel.",
+      "Explicitly run this newly built maintenance setup through the ordinary installer path only after pending/prior coordination is absent or settled by existing recovery.",
+      "Verify exact maintenance source/setup/manifest, unchanged original generation, live original process and user-data bytes.",
+      "Run the unchanged distinct-source managed-maintenance-A-to-current-B oracle, including controlled health rejection, rollback, backup, restart recovery, activation and uninstall boundaries."
+    ],
+    "ancestry": "This commit is a real child of the original source. If the managed gate requires maintenance A to be an ancestor of B, B must explicitly incorporate this reviewed branch as ancestry; do not relabel source identities or remove the ancestry assertion.",
+    "claims_excluded": [
+      "No successful historical original913-to-B managed update is claimed.",
+      "No installer, application, generation or Python bytes are patched in place.",
+      "No pending/prior state is deleted to bypass recovery.",
+      "No runtime qualification is transferred from current-source tests.",
+      "No production signing, Authenticode, NVDA, publisher or license clearance is established."
+    ]
+  },
+  "portable_tests": {
+    "path": "carr-library/tests/security/test_standard_system_helper.py",
+    "cases": 16,
+    "counter": {
+      "test_fixed_os_helper_accepts_servicing_hardlinks_without_environment_selection": 3,
+      "test_hardlinked_private_files_remain_refused_before_any_content_read": 1,
+      "test_system_helper_rejects_nonregular_or_redirected_leaf": 4,
+      "test_unavailable_or_truncated_system_directory_never_reaches_a_file": 3,
+      "test_system_api_failure_does_not_fall_back_to_environment_or_path": 1,
+      "test_redirected_system_helper_parent_is_refused": 1,
+      "test_shortcut_target_keeps_path_as_data_and_uses_the_same_bounded_fixed_host": 1,
+      "test_shortcut_helper_failure_never_admits_its_untrusted_target": 2
+    },
+    "actual_status": "NOT_RUN_ON_MAINTENANCE_SOURCE",
+    "fixture_scope": "Existing current-source tests are copied exactly; synthetic fixed OS path/API seams and ordinary filesystem boundaries, without executing the inert helper."
+  }
+}

@@ -52,7 +52,7 @@ def main():
                 raise ValueError('Entry point function is missing: ' + name)
             entrypoints[group + ':' + name] = target
     standard = (root / 'carr-library/scripts/ci_standard_update.ps1').read_text(encoding='utf-8')
-    for name in ('sourceProof', 'checkPrevious'):
+    for name in ('preflight', 'sourceProof', 'checkPrevious', 'verify'):
         start = standard.index('$' + name + " = @'\n") + len('$' + name + " = @'\n")
         end = standard.index("\n'@", start)
         ast.parse(standard[start:end], filename='ci_standard_update.ps1:' + name, feature_version=(3, 11))

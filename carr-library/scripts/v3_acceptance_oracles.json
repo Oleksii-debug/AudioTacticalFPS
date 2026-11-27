@@ -1908,7 +1908,8 @@
       "test_chm_paragraph_normalization_does_not_relax_other_malformed_structure": 3,
       "test_chm_undeclared_html_and_general_html_reader_keep_their_strict_endtag_contract": 1,
       "test_chm_paragraph_normalization_uses_current_text_and_absolute_time_budgets": 2,
-      "test_qualified_calibre_formats_still_require_explicit_selection_and_leave_chm_unqualified": 6
+      "test_qualified_calibre_formats_still_require_explicit_selection_and_do_not_select_chm": 6,
+      "test_qualified_chm_requires_explicit_selection_and_does_not_select_other_families": 1
     },
     "tests.assistant.test_backup_receipt": {
       "test_cancel_and_file_limit_apply_before_complete_receipt": 1,
@@ -2748,7 +2749,14 @@
       "test_original_reader_budgets_apply_before_native_html_recovery": 4,
       "test_serialized_recovery_expansion_is_bounded_before_a_reading_is_returned": 1,
       "test_recovery_cannot_silently_drop_reorder_or_expose_text": 3,
-      "test_existing_conversion_worker_keeps_raw_and_recovered_member_identities": 1
+      "test_existing_conversion_worker_keeps_raw_and_recovered_member_identities": 1,
+      "test_exact_publisher_unterminated_entity_keeps_its_html_prefix_meaning": 2,
+      "test_legacy_named_reference_preserves_exact_source_terminator": 5,
+      "test_observed_repeated_description_start_materializes_existing_implicit_close": 2,
+      "test_named_reference_and_description_repairs_do_not_rewrite_attributes_or_expose_suppression": 1,
+      "test_new_legacy_repairs_do_not_admit_orphan_description_ends_or_ambiguous_attributes": 2,
+      "test_legacy_named_reference_keeps_full_word_digest_not_only_token_count": 1,
+      "test_unterminated_named_reference_expansion_keeps_existing_output_bound": 1
     },
     "tests.audio.test_completed_speech_checkpoint": {
       "test_actual_completed_speech_is_sealed_before_stop_and_never_synthesized_again": 3,
@@ -5019,7 +5027,8 @@
       "test_chm_paragraph_normalization_does_not_relax_other_malformed_structure": 3,
       "test_chm_undeclared_html_and_general_html_reader_keep_their_strict_endtag_contract": 1,
       "test_chm_paragraph_normalization_uses_current_text_and_absolute_time_budgets": 2,
-      "test_qualified_calibre_formats_still_require_explicit_selection_and_leave_chm_unqualified": 6
+      "test_qualified_calibre_formats_still_require_explicit_selection_and_do_not_select_chm": 6,
+      "test_qualified_chm_requires_explicit_selection_and_does_not_select_other_families": 1
     },
     "tests.assistant.test_backup_receipt": {
       "test_cancel_and_file_limit_apply_before_complete_receipt": 1,
@@ -5859,7 +5868,14 @@
       "test_original_reader_budgets_apply_before_native_html_recovery": 4,
       "test_serialized_recovery_expansion_is_bounded_before_a_reading_is_returned": 1,
       "test_recovery_cannot_silently_drop_reorder_or_expose_text": 3,
-      "test_existing_conversion_worker_keeps_raw_and_recovered_member_identities": 1
+      "test_existing_conversion_worker_keeps_raw_and_recovered_member_identities": 1,
+      "test_exact_publisher_unterminated_entity_keeps_its_html_prefix_meaning": 2,
+      "test_legacy_named_reference_preserves_exact_source_terminator": 5,
+      "test_observed_repeated_description_start_materializes_existing_implicit_close": 2,
+      "test_named_reference_and_description_repairs_do_not_rewrite_attributes_or_expose_suppression": 1,
+      "test_new_legacy_repairs_do_not_admit_orphan_description_ends_or_ambiguous_attributes": 2,
+      "test_legacy_named_reference_keeps_full_word_digest_not_only_token_count": 1,
+      "test_unterminated_named_reference_expansion_keeps_existing_output_bound": 1
     },
     "tests.audio.test_completed_speech_checkpoint": {
       "test_actual_completed_speech_is_sealed_before_stop_and_never_synthesized_again": 3,

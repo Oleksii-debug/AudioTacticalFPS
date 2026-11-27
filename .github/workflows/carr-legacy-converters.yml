@@ -95,11 +95,11 @@ jobs:
           $inventory = @'
           import importlib.metadata as metadata, json, pathlib, re, struct, sys
           pins = dict(re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)', pathlib.Path('packaging/windows-cp311.lock').read_text(), re.M))
-          assert len(pins) == 17 and {name: metadata.version(name) for name in pins} == pins
+          assert len(pins) == 18 and {name: metadata.version(name) for name in pins} == pins
           assert sys.platform == 'win32' and sys.flags.isolated and struct.calcsize('P') == 8
           print(json.dumps(pins, sort_keys=True))
           '@
-          & $python -I -B -c $inventory | Tee-Object converter-ci-results/runtime-17-pins.json
+          & $python -I -B -c $inventory | Tee-Object converter-ci-results/runtime-18-pins.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "CARR_CONVERTER_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           "CARR_CONVERTER_WORK=$work" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
@@ -158,7 +158,7 @@ jobs:
           $report = Get-Content converter-ci-results/legacy-converter-gate.json -Raw | ConvertFrom-Json
           $expected = if ($env:CARR_CONVERTER_FAMILY -eq 'calibre') { 9 } else { 4 }
           if ($report.status -ne 'PASS' -or $report.native_source_cases -ne $expected -or $report.native_installed_cases -ne $expected -or
-              $report.portable_source_cases -ne 221 -or $report.portable_installed_cases -ne 221 -or
+              $report.portable_source_cases -ne 236 -or $report.portable_installed_cases -ne 236 -or
               $report.source_commit -ne $env:CARR_CONVERTER_COMMIT -or $report.source_tree -ne $env:CARR_CONVERTER_TREE -or
               -not $report.installed_identity.isolated) { throw 'Actual legacy fixture qualification is incomplete.' }
           & git diff --exit-code HEAD --
@@ -212,7 +212,7 @@ jobs:
       - name: Install exact portable parser and test dependencies
         run: |
           python -m pip install --only-binary=:all: pytest==9.0.2 lxml==6.1.3 defusedxml==0.7.1 platformdirs==4.10.0
-      - name: Require all 134 current legacy and recovery source cases
+      - name: Require all 149 current legacy and recovery source cases
         timeout-minutes: 8
         run: |
           python -I -B -X utf8 - <<'PY'
@@ -236,7 +236,7 @@ jobs:
           plan = json.loads((root / 'scripts/legacy_conversion_oracles.json').read_text(encoding='utf-8'))
           expected = {name: plan['portable'][name] for name in (
               'tests.conversion.test_legacy_adapters', 'tests.conversion.test_chm_html_recovery')}
-          if sum(sum(row.values()) for row in expected.values()) != 134:
+          if sum(sum(row.values()) for row in expected.values()) != 149:
               raise ValueError('Focused CHM source population changed.')
           base = runpy.run_path(str(root / 'scripts/conversion_acceptance.py'))
           report = {'schema': 1, 'status': 'NOT_RUN', 'source_commit': head,

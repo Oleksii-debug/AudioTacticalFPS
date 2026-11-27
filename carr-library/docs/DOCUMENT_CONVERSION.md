@@ -42,11 +42,21 @@ result through the current guarded ODF reader. Other PDB families are refused.
 This implemented path does not qualify every selected LibreOffice build: the
 per-filter host evidence, including the outstanding XLS failure, is below.
 
-AZW/AZW3, CHM, DjVu, LIT, MOBI, PRC and TCR remain unintegrated. The inspected
-host did not provide `ebook-convert`, `djvutxt`, `ddjvu` or a CHM extraction
-tool. Pandoc is not a substitute for unsupported input filters. No converter,
-model, remote service, decryption or DRM bypass is downloaded or supplied by
-this action.
+AZW/AZW3, LIT, MOBI, PRC and TCR have explicitly selected calibre adapters;
+ordinary admission is qualified for the recorded unprotected synthetic
+format/container combinations with calibre 9.19.0. Self-contained DjVu embedded
+text is qualified with the pinned DjVuLibre 3.5.30-2 MSYS2 UCRT64 build. A missing
+DjVu text layer is an explicit error, not inferred OCR. These qualifications do
+not cover arbitrary books, other Palm subtypes, encrypted inputs or every build.
+
+The bounded CHM adapter uses explicitly selected 7-Zip and the current inert
+HTML reader. Ordinary admission is qualified at the exact recorded frozen
+source for synthetic ITSF3 and the pinned 7-Zip 26.06 compressed public help,
+including all 70 HTML-member checks. This does not qualify arbitrary active
+help content or every selected runtime build. See
+[Selected legacy document reading](LEGACY_DOCUMENT_CONVERSION.md) for exact
+runtime, container and execution evidence. No converter, model, remote service,
+decryption or DRM bypass is downloaded or supplied by the conversion action.
 
 Reading separators join ordered extracted records. The report preserves each
 record's exact output character interval and text hash, its logical locator,
@@ -78,7 +88,7 @@ raster input pass `image_ocr=True` together with an explicitly chosen existing
 an image or discovers and activates Pandoc from PATH. API callers retain the
 same explicit input and destination selection rules.
 
-For the selected legacy formats, pass
+For the selected Office formats, pass
 `office=Path('/explicit/LibreOffice/program/soffice')`. Selection captures the
 local installation directory and component identities without executing code.
 The queued job rechecks that selection, hashes its bounded component inventory,
@@ -87,6 +97,13 @@ The inventory includes the selected launcher, `soffice.bin`, Windows
 `soffice.exe` when selecting `soffice.com`, present known POSIX launch helpers,
 and the main/Writer/Calc/Impress registries. It does not claim to seal all native
 libraries, system fonts or the entire LibreOffice installation.
+
+For the qualified calibre or DjVu scopes, pass the explicit absolute
+`calibre=Path('/selected/calibre/ebook-convert.exe')` or
+`djvu=Path('/selected/djvulibre/djvutxt.exe')` to the same service. Their current
+selection inventory, companion checks and bounded worker remain mandatory.
+Supplying an executable does not enable an unqualified family or substitute a
+different version for a runtime-specific qualification.
 
 `extract_many(sources, cancelled=..., progress=...)` processes a finite selection
 sequentially. The progress callback receives `(completed_count, ConversionResult)`.
@@ -245,12 +262,32 @@ opens an explicit local-executable picker; the five selected legacy suffixes
 use a separate LibreOffice picker. Cancelling a required selection starts no
 worker and creates no derivative.
 
-## Upstream historical evidence and R7 verification status
+## Recorded Windows execution and current qualification
 
-This R7 composition ports the selected adapters into the frozen R6 PDF and
-import stack. Its own execution status is **NOT_RUN** until the exact composed
-tree completes the portable, installed and explicit native gates below. The
-following historical observations belong to upstream commit
+Each result below belongs to its exact frozen source and selected runtime.
+Later source changes require their own gate; a component result does not mark
+the final composed application as tested.
+
+| Scope | Frozen source and actual execution | Evidence |
+| --- | --- | --- |
+| Selected RTF and English raster OCR | `955165132fd530d6c3deb0e5b4b48f66dde77963`, run `45992503530`: all six source and six isolated installed cases passed | [Recorded optional-tool results](evidence/optional-converter-observed-results-20261127.json) |
+| Ordinary DjVu embedded-text admission | `684cc8ddac569fdcf5d685b33302f570481ea6f8`, run `46024229261`: 163 portable and four native cases passed in each mode; exact raw artifact independently read | [DjVu qualification](evidence/djvu-native-qualification-20261127.json) |
+| Ordinary calibre admission for six tested suffixes | `08fb93a68ebbdb0c564a1e09b9960d2d718d020e`, run `46039340019`: 187 portable and nine native cases passed in each mode; exact raw artifact independently read | [Calibre ordinary-admission evidence](evidence/calibre-ordinary-admission-independent-read-20261127.json) |
+| LibreOffice, including XLS | The full seven-case source/installed gate remains required. The recorded `65ae1e9` Windows source run passed six and refused XLS at hidden ODF print-region review; installed cases did not run | Fresh repaired native execution is required; no all-five-format qualification is claimed |
+| Ordinary CHM admission | `e5453076c9593219e2d851d8f96a7fa62680d219`, run `46058236666`: 236 portable and four native cases passed per mode, including complete 70-member census assertions | [Ordinary proof](evidence/chm-ordinary-admission-independent-read-20261127.json), independently read from the exact artifact; separate earlier [preview proof](evidence/chm-native-preview-independent-read-20261127.json) retained |
+
+These finite cases do not qualify arbitrary user documents, every OCR language,
+faithful page layout, printed pagination, quotation accuracy or manual
+screen-reader operation. The mandatory native populations are documented in
+[Optional converter qualification](OPTIONAL_CONVERTER_QUALIFICATION.md) and the
+separate legacy document guide.
+
+## Upstream historical evidence and initial R7 verification
+
+
+The initial R7 port brought selected adapters into the existing bounded PDF and
+import stack. At authoring, that exact port had not executed. The following
+older host observations belong to upstream commit
 `078d254bd4ab4dbe9de4ea80e1e26731cb8ac9e8`; their test counts and host results do
 not establish acceptance of this composition.
 

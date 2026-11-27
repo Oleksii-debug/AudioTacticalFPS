@@ -92,7 +92,7 @@ def convert(tmp_path, source, kind, *, budget=None, cancelled=lambda: False):
     output = tmp_path / 'reading-output'
     output.mkdir()
     result = ConversionService(output, input_roots=(source,), budget=budget,
-        legacy_preview=kind == 'chm', **{kind: selected(kind)}).extract(source, 'reading.txt', cancelled=cancelled)
+        legacy_preview=False, **{kind: selected(kind)}).extract(source, 'reading.txt', cancelled=cancelled)
     return result
 
 
@@ -221,7 +221,7 @@ def _diagnose_public_chm(source, stage, monkeypatch):
     def emit(value):
         print('NATIVE_DIAGNOSTIC ' + json.dumps({
             'family': 'chm', 'known_public_publisher_fixture': True,
-            'reproduction_only': True, **value}, ensure_ascii=True, sort_keys=True), flush=True)
+            'acceptance_required': True, **value}, ensure_ascii=True, sort_keys=True), flush=True)
     def read(args):
         remaining = deadline - time.monotonic()
         if remaining <= 0:
@@ -298,14 +298,16 @@ def _diagnose_public_chm(source, stage, monkeypatch):
                     ('member', 'bytes', 'sha256', 'status')}})
         complete = True
     finally:
-        emit({'event': 'publisher-html-census', 'complete': complete,
+        summary = {'event': 'publisher-html-census', 'complete': complete,
             'declared_html_members': len(rows), 'checked_html_members': len(checked),
             'failed_members': len(failures),
             'member_inventory_sha256': sha256(json.dumps(checked, ensure_ascii=True,
                 sort_keys=True, separators=(',', ':')).encode('utf-8')).hexdigest(),
-            'seconds_budget': 45})
+            'seconds_budget': 45}
+        emit(summary)
     if failures:
         raise ValueError('Pinned public CHM HTML census found ' + str(len(failures)) + ' parser failures.')
+    return summary
 
 
 def test_real_chm_public_publisher_help_exercises_compressed_container(tmp_path, monkeypatch):
@@ -321,6 +323,10 @@ def test_real_chm_public_publisher_help_exercises_compressed_container(tmp_path,
         raise
     assert '7-Zip' in result.path.read_text(encoding='utf-8')
     assert len(result.report['segments']) > 2
+    census = _diagnose_public_chm(source, tmp_path, monkeypatch)
+    assert census['complete'] is True
+    assert census['declared_html_members'] == census['checked_html_members'] == 70
+    assert census['failed_members'] == 0
     prove(result, source, before)
 
 

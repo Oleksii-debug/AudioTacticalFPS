@@ -93,11 +93,11 @@ jobs:
           $inventory = @'
           import importlib.metadata as metadata, json, pathlib, re, struct, sys
           pins = dict(re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)', pathlib.Path('packaging/windows-cp311.lock').read_text(), re.M))
-          assert len(pins) == 17 and {name: metadata.version(name) for name in pins} == pins
+          assert len(pins) == 18 and {name: metadata.version(name) for name in pins} == pins
           assert sys.platform == 'win32' and sys.flags.isolated and struct.calcsize('P') == 8
           print(json.dumps(pins, sort_keys=True))
           '@
-          & $python -I -B -c $inventory | Tee-Object converter-ci-results/runtime-17-pins.json
+          & $python -I -B -c $inventory | Tee-Object converter-ci-results/runtime-18-pins.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "CARR_CONVERTER_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           "CARR_CONVERTER_WORK=$work" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append

@@ -1,0 +1,638 @@
+{
+  "schema": 1,
+  "status": "PASS_AT_RECORDED_ORDINARY_HEAD",
+  "family": "chm",
+  "qualified_suffixes": [
+    ".chm"
+  ],
+  "source": {
+    "commit": "e5453076c9593219e2d851d8f96a7fa62680d219",
+    "tree": "1c964d35b0d291a2876f4821e3cabbe6a2acaafa"
+  },
+  "execution": {
+    "run_id": 46058236666,
+    "job_id": 140705880437,
+    "portable_source_cases": 236,
+    "portable_installed_cases": 236,
+    "native_source_cases": 4,
+    "native_installed_cases": 4,
+    "legacy_preview": false
+  },
+  "independent_reader": {
+    "commit": "8f1bf7d42f03e32e9cbd77e801b49c1640c90c4f",
+    "run_id": 46058913528,
+    "job_id": 140708111298,
+    "status": "SUCCESS",
+    "archive_code_executed": false
+  },
+  "artifact": {
+    "run": 46058236666,
+    "commit": "e5453076c9593219e2d851d8f96a7fa62680d219",
+    "id": 15227926080,
+    "sha256": "e172c5edf09305ef948c6e5067457341f65f7b9166c65ee2e8ef03457cccd964",
+    "bytes": 3529405,
+    "kind": "chm-ordinary-source-installed236-native4-and70-member-census",
+    "name": "carr-legacy-converters-chm-e5453076c9593219e2d851d8f96a7fa62680d219"
+  },
+  "raw_members": [
+    {
+      "artifact": 15227926080,
+      "name": "before-execution.json",
+      "bytes": 54059,
+      "sha256": "c96bf91b3a3949edc3317ce4bf7a75e533bd93882f634d1495216482fc9625da"
+    },
+    {
+      "artifact": 15227926080,
+      "name": "boundaries/installed-junit.xml",
+      "bytes": 41525,
+      "sha256": "40c18f3f741971af74cd49adc92c95ffe3e6e648ee5c5b031d9cc92d14b35e4a"
+    },
+    {
+      "artifact": 15227926080,
+      "name": "boundaries/installed-origins.json",
+      "bytes": 414,
+      "sha256": "449ba210f2b481cc949b33aa896625a4c6f1b0420c0ef7fe4649b9ea62008b94"
+    },
+    {
+      "artifact": 15227926080,
+      "name": "boundaries/installed-pytest.txt",
+      "bytes": 41142,
+      "sha256": "54cee0714d3986bea5a554536110556e97615f7326c905aa41371484e4eaa9e1"
+    },
+    {
+      "artifact": 15227926080,
+      "name": "boundaries/source-origins.json",
+      "bytes": 418,
+      "sha256": "23d7bb5d3294fd2585f2ae2c3eed60a77d05e9c93908d99b0ccd2243a9d265ce"
+    },
+    {
+      "artifact": 15227926080,
+      "name": "boundaries/source-junit.xml",
+      "bytes": 41525,
+      "sha256": "c65878e44ff1289ba703fef72b163fe2c172b2636a59d3891c62c625cdfe143d"
+    },
+    {
+      "artifact": 15227926080,
+      "name": "boundaries/source-pytest.txt",
+      "bytes": 41135,
+      "sha256": "e1d2241b51531784d7ed610e314f28bbaec73514b18e2d4d6dca9f6c6e8938d4"
+    },
+    {
+      "artifact": 15227926080,
+      "name": "native/installed-junit.xml",
+      "bytes": 881,
+      "sha256": "d5c40144ff11dc2f3ad6ea9c40483e5810528a693095b7552b4aa0c1c934b1c0"
+    },
+    {
+      "artifact": 15227926080,
+      "name": "legacy-converter-gate.json",
+      "bytes": 80543,
+      "sha256": "2518cdde23668596e5a2716223811121155e7491c33e2945799a8457c6876aa3"
+    },
+    {
+      "artifact": 15227926080,
+      "name": "native/installed-origins.json",
+      "bytes": 414,
+      "sha256": "449ba210f2b481cc949b33aa896625a4c6f1b0420c0ef7fe4649b9ea62008b94"
+    },
+    {
+      "artifact": 15227926080,
+      "name": "native/installed-pytest.txt",
+      "bytes": 1952,
+      "sha256": "32fc7983cd1569b60f6c0e30bd82da17f2db4e22cb92aba2f4da9a5a62298155"
+    },
+    {
+      "artifact": 15227926080,
+      "name": "native/source-junit.xml",
+      "bytes": 881,
+      "sha256": "fc6bd6b14a8651ab77a11fd9071ea3af6a63dd3e25f4cc9032f4cb1f3410c2c3"
+    },
+    {
+      "artifact": 15227926080,
+      "name": "native/source-origins.json",
+      "bytes": 418,
+      "sha256": "23d7bb5d3294fd2585f2ae2c3eed60a77d05e9c93908d99b0ccd2243a9d265ce"
+    },
+    {
+      "artifact": 15227926080,
+      "name": "native/source-pytest.txt",
+      "bytes": 1949,
+      "sha256": "8b0e68fab6b148367507e1864761c693f8206b3cc34e6e99ba6ccc94da3c4190"
+    },
+    {
+      "artifact": 15227926080,
+      "name": "publisher-identities.json",
+      "bytes": 803,
+      "sha256": "72abb01f20a38080b952f40ab4ee3fb60a3bc1d2228756babc36eb2f04911cb0"
+    },
+    {
+      "artifact": 15227926080,
+      "name": "source-provenance.json",
+      "bytes": 477,
+      "sha256": "bff9072e0ea1c19f311cf2c5d561f712fd0f579c120106018345dde34dd1f5b5"
+    }
+  ],
+  "junit": [
+    {
+      "artifact": 15227926080,
+      "file": "boundaries/installed-junit.xml",
+      "cases": 236,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0,
+      "function_counter": {
+        "tests.conversion.test_chm_html_recovery::test_complete_observed_publisher_shape_population_preserves_order": 11,
+        "tests.conversion.test_chm_html_recovery::test_exact_publisher_unterminated_entity_keeps_its_html_prefix_meaning": 2,
+        "tests.conversion.test_chm_html_recovery::test_existing_conversion_worker_keeps_raw_and_recovered_member_identities": 1,
+        "tests.conversion.test_chm_html_recovery::test_general_or_undeclared_html_never_enters_legacy_recovery": 3,
+        "tests.conversion.test_chm_html_recovery::test_later_unsafe_tokens_still_fail_after_an_admitted_orphan_end": 7,
+        "tests.conversion.test_chm_html_recovery::test_legacy_named_reference_keeps_full_word_digest_not_only_token_count": 1,
+        "tests.conversion.test_chm_html_recovery::test_legacy_named_reference_preserves_exact_source_terminator": 5,
+        "tests.conversion.test_chm_html_recovery::test_named_reference_and_description_repairs_do_not_rewrite_attributes_or_expose_suppression": 1,
+        "tests.conversion.test_chm_html_recovery::test_new_legacy_repairs_do_not_admit_orphan_description_ends_or_ambiguous_attributes": 2,
+        "tests.conversion.test_chm_html_recovery::test_observed_repeated_description_start_materializes_existing_implicit_close": 2,
+        "tests.conversion.test_chm_html_recovery::test_original_reader_budgets_apply_before_native_html_recovery": 4,
+        "tests.conversion.test_chm_html_recovery::test_recovery_cannot_silently_drop_reorder_or_expose_text": 3,
+        "tests.conversion.test_chm_html_recovery::test_recovery_preserves_active_hidden_and_comment_suppression": 1,
+        "tests.conversion.test_chm_html_recovery::test_recovery_retains_declared_charset_and_numeric_unicode_without_replacement": 3,
+        "tests.conversion.test_chm_html_recovery::test_serialized_recovery_expansion_is_bounded_before_a_reading_is_returned": 1,
+        "tests.conversion.test_chm_html_recovery::test_unterminated_named_reference_expansion_keeps_existing_output_bound": 1,
+        "tests.conversion.test_conversion::test_actual_batch_preserves_completed_first_file_when_later_reader_rejects": 1,
+        "tests.conversion.test_conversion::test_actual_docx_uses_ordered_body_and_simple_tables": 1,
+        "tests.conversion.test_conversion::test_actual_epub_uses_spine_instead_of_zip_order": 1,
+        "tests.conversion.test_conversion::test_actual_fb2_reuses_existing_bounded_xml_reader": 1,
+        "tests.conversion.test_conversion::test_actual_pdf_keeps_physical_page_order_without_claiming_printed_labels": 1,
+        "tests.conversion.test_conversion::test_actual_pdf_page_budget_is_checked_before_publication": 1,
+        "tests.conversion.test_conversion::test_actual_worker_keeps_utf8_crlf_formfeed_and_original": 1,
+        "tests.conversion.test_conversion::test_cancel_during_real_private_source_copy_keeps_original": 1,
+        "tests.conversion.test_conversion::test_capability_inventory_matches_current_registry_and_never_enables_legacy": 1,
+        "tests.conversion.test_conversion::test_capability_rejects_reader_version_the_existing_docx_parser_rejects": 1,
+        "tests.conversion.test_conversion::test_current_text_adapters_execute_in_supervised_worker": 3,
+        "tests.conversion.test_conversion::test_existing_output_or_report_never_changes": 2,
+        "tests.conversion.test_conversion::test_first_post_move_sync_failure_removes_only_unchanged_own_text": 3,
+        "tests.conversion.test_conversion::test_only_explicit_inputs_and_output_root_are_authorized": 1,
+        "tests.conversion.test_conversion::test_portable_filename_rejection_precedes_worker": 3,
+        "tests.conversion.test_conversion::test_post_move_sync_failure_preserves_matching_pair_but_is_not_success": 1,
+        "tests.conversion.test_conversion::test_real_resource_rejections_publish_nothing": 3,
+        "tests.conversion.test_conversion::test_receipt_collision_rolls_back_only_new_own_text": 1,
+        "tests.conversion.test_conversion::test_source_change_after_actual_worker_rejects_publication": 1,
+        "tests.conversion.test_conversion::test_unicode_batch_name_fits_portable_component_budget": 1,
+        "tests.conversion.test_conversion::test_worker_rejects_wrong_action_and_extra_request_keys": 1,
+        "tests.conversion.test_conversion_ui::test_image_selection_uses_existing_model_dialog_and_cancel_starts_no_job": 1,
+        "tests.conversion.test_conversion_ui::test_native_flow_passes_both_explicit_selections_to_the_current_service": 1,
+        "tests.conversion.test_conversion_ui::test_office_choice_and_shared_application_broker_reach_existing_worker": 1,
+        "tests.conversion.test_conversion_ui::test_office_picker_cancel_starts_no_worker_or_output": 1,
+        "tests.conversion.test_conversion_ui::test_rtf_converter_picker_cancel_does_not_activate_a_path_tool": 1,
+        "tests.conversion.test_conversion_ui::test_ui_does_not_write_unregistered_files_inside_library": 1,
+        "tests.conversion.test_conversion_ui::test_ui_selects_exact_files_and_uses_existing_job_cancel_event": 1,
+        "tests.conversion.test_legacy_adapters::test_cancel_during_runtime_snapshot_creates_no_manifest": 1,
+        "tests.conversion.test_legacy_adapters::test_chm_ambiguous_or_excessive_listing_never_selects_members": 5,
+        "tests.conversion.test_legacy_adapters::test_chm_known_legacy_doctype_is_inert_and_original_bytes_stay_bound": 4,
+        "tests.conversion.test_legacy_adapters::test_chm_legacy_orphan_paragraph_end_preserves_decoding_and_text_order": 3,
+        "tests.conversion.test_legacy_adapters::test_chm_member_path_cannot_escape_or_spoof_listing": 6,
+        "tests.conversion.test_legacy_adapters::test_chm_paragraph_normalization_does_not_relax_other_malformed_structure": 3,
+        "tests.conversion.test_legacy_adapters::test_chm_paragraph_normalization_keeps_active_hidden_and_literal_tokens_inert": 1,
+        "tests.conversion.test_legacy_adapters::test_chm_paragraph_normalization_uses_current_text_and_absolute_time_budgets": 2,
+        "tests.conversion.test_legacy_adapters::test_chm_truncated_member_publishes_no_complete_worker_report": 1,
+        "tests.conversion.test_legacy_adapters::test_chm_undeclared_html_and_general_html_reader_keep_their_strict_endtag_contract": 1,
+        "tests.conversion.test_legacy_adapters::test_chm_undeclared_or_complex_doctype_remains_refused": 4,
+        "tests.conversion.test_legacy_adapters::test_chm_worker_uses_declared_toc_and_existing_inert_html_reader": 1,
+        "tests.conversion.test_legacy_adapters::test_djvu_final_odd_chunk_ends_exactly_at_its_containing_form": 4,
+        "tests.conversion.test_legacy_adapters::test_djvu_final_padding_exception_never_relaxes_chunk_bounds_or_sibling_alignment": 2,
+        "tests.conversion.test_legacy_adapters::test_djvu_framing_and_page_authority_are_bounded": 4,
+        "tests.conversion.test_legacy_adapters::test_djvu_shared_or_external_reference_is_refused_before_native_reader": 1,
+        "tests.conversion.test_legacy_adapters::test_encrypted_palm_header_is_refused_before_native_reader": 2,
+        "tests.conversion.test_legacy_adapters::test_excessive_code_handle_inventory_is_refused_before_any_native_lease": 1,
+        "tests.conversion.test_legacy_adapters::test_fixed_calibre_wrapper_enforces_private_io_and_no_network_or_programs": 13,
+        "tests.conversion.test_legacy_adapters::test_large_component_inventory_keeps_existing_worker_request_bound": 1,
+        "tests.conversion.test_legacy_adapters::test_large_selected_code_closure_keeps_every_reader_until_native_scope_exits": 2,
+        "tests.conversion.test_legacy_adapters::test_native_chm_empty_final_property_keeps_its_delimiter": 2,
+        "tests.conversion.test_legacy_adapters::test_protected_lit_marker_is_refused_before_calibre": 2,
+        "tests.conversion.test_legacy_adapters::test_qualified_calibre_formats_still_require_explicit_selection_and_do_not_select_chm": 6,
+        "tests.conversion.test_legacy_adapters::test_qualified_chm_requires_explicit_selection_and_does_not_select_other_families": 1,
+        "tests.conversion.test_legacy_adapters::test_qualified_djvu_requires_explicit_selection_and_does_not_enable_other_families": 1,
+        "tests.conversion.test_legacy_adapters::test_real_hardlink_alias_remains_refused_after_fresh_windows_stat": 1,
+        "tests.conversion.test_legacy_adapters::test_relative_or_path_discovered_runtime_is_never_selected": 3,
+        "tests.conversion.test_legacy_adapters::test_renamed_or_foreign_book_formats_are_not_conversion_inputs": 5,
+        "tests.conversion.test_legacy_adapters::test_resealed_foreign_inventory_path_is_not_authority": 1,
+        "tests.conversion.test_legacy_adapters::test_selected_component_change_cannot_start_a_conversion": 4,
+        "tests.conversion.test_legacy_adapters::test_tcr_dictionary_and_actual_expansion_are_bounded_before_native_decoder": 3,
+        "tests.conversion.test_legacy_adapters::test_unexecuted_native_formats_never_become_available_from_selection_alone": 8,
+        "tests.conversion.test_legacy_adapters::test_unqualified_service_requires_explicit_fixture_preview": 1,
+        "tests.conversion.test_legacy_adapters::test_windows_cached_directory_metadata_does_not_invalidate_regular_components": 1,
+        "tests.conversion.test_office_selection::test_expired_deadline_never_spawns_a_native_process": 1,
+        "tests.conversion.test_office_selection::test_fixed_adapter_rejects_false_format_before_runtime_admission": 5,
+        "tests.conversion.test_office_selection::test_gui_launcher_is_not_silently_promoted_to_unselected_console": 1,
+        "tests.conversion.test_office_selection::test_native_launch_keeps_existing_owner_and_scrubs_unselected_configuration": 1,
+        "tests.conversion.test_office_selection::test_private_phase_survives_failure_without_publishing_source_or_native_logs": 3,
+        "tests.conversion.test_office_selection::test_profile_is_per_operation_and_disables_active_content_and_external_updates": 1,
+        "tests.conversion.test_office_selection::test_progress_refuses_untrusted_marker_content_and_aliased_marker": 1,
+        "tests.conversion.test_office_selection::test_queued_selection_refuses_new_authority_before_worker": 3,
+        "tests.conversion.test_office_selection::test_selected_console_manifest_binds_both_launchers_before_native_work": 1,
+        "tests.conversion.test_office_selection::test_selected_inventory_checks_fixed_installed_filter_without_executing": 1,
+        "tests.conversion.test_office_selection::test_snapshot_rechecks_earlier_component_after_last_hash": 1,
+        "tests.conversion.test_office_selection::test_staging_budget_and_lookup_failures_cannot_report_complete": 4,
+        "tests.conversion.test_office_selection::test_worker_admission_refuses_changed_or_incomplete_inventory": 5,
+        "tests.conversion.test_selected_adapters::test_additional_budgets_are_typed_and_bounded": 5,
+        "tests.conversion.test_selected_adapters::test_all_headers_are_bounded_before_ocr_runtime_discovery": 3,
+        "tests.conversion.test_selected_adapters::test_document_extension_never_activates_an_implicit_converter": 3,
+        "tests.conversion.test_selected_adapters::test_inventory_distinguishes_optional_adapters_from_unintegrated_legacy": 1,
+        "tests.conversion.test_selected_adapters::test_ocr_flag_requires_an_explicit_typed_model_choice": 1,
+        "tests.conversion.test_selected_adapters::test_queued_conversion_cannot_adopt_a_changed_selected_converter": 3,
+        "tests.conversion.test_selected_adapters::test_raster_header_must_match_extension_before_engine_execution": 1,
+        "tests.conversion.test_selected_adapters::test_rtf_selected_executable_hash_is_rechecked_before_start": 1,
+        "tests.conversion.test_selected_adapters::test_unselected_converter_path_cannot_come_from_source_metadata": 1,
+        "tests.conversion.test_selected_adapters::test_worker_refuses_unapproved_image_adapter_payload": 3
+      }
+    },
+    {
+      "artifact": 15227926080,
+      "file": "boundaries/source-junit.xml",
+      "cases": 236,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0,
+      "function_counter": {
+        "tests.conversion.test_chm_html_recovery::test_complete_observed_publisher_shape_population_preserves_order": 11,
+        "tests.conversion.test_chm_html_recovery::test_exact_publisher_unterminated_entity_keeps_its_html_prefix_meaning": 2,
+        "tests.conversion.test_chm_html_recovery::test_existing_conversion_worker_keeps_raw_and_recovered_member_identities": 1,
+        "tests.conversion.test_chm_html_recovery::test_general_or_undeclared_html_never_enters_legacy_recovery": 3,
+        "tests.conversion.test_chm_html_recovery::test_later_unsafe_tokens_still_fail_after_an_admitted_orphan_end": 7,
+        "tests.conversion.test_chm_html_recovery::test_legacy_named_reference_keeps_full_word_digest_not_only_token_count": 1,
+        "tests.conversion.test_chm_html_recovery::test_legacy_named_reference_preserves_exact_source_terminator": 5,
+        "tests.conversion.test_chm_html_recovery::test_named_reference_and_description_repairs_do_not_rewrite_attributes_or_expose_suppression": 1,
+        "tests.conversion.test_chm_html_recovery::test_new_legacy_repairs_do_not_admit_orphan_description_ends_or_ambiguous_attributes": 2,
+        "tests.conversion.test_chm_html_recovery::test_observed_repeated_description_start_materializes_existing_implicit_close": 2,
+        "tests.conversion.test_chm_html_recovery::test_original_reader_budgets_apply_before_native_html_recovery": 4,
+        "tests.conversion.test_chm_html_recovery::test_recovery_cannot_silently_drop_reorder_or_expose_text": 3,
+        "tests.conversion.test_chm_html_recovery::test_recovery_preserves_active_hidden_and_comment_suppression": 1,
+        "tests.conversion.test_chm_html_recovery::test_recovery_retains_declared_charset_and_numeric_unicode_without_replacement": 3,
+        "tests.conversion.test_chm_html_recovery::test_serialized_recovery_expansion_is_bounded_before_a_reading_is_returned": 1,
+        "tests.conversion.test_chm_html_recovery::test_unterminated_named_reference_expansion_keeps_existing_output_bound": 1,
+        "tests.conversion.test_conversion::test_actual_batch_preserves_completed_first_file_when_later_reader_rejects": 1,
+        "tests.conversion.test_conversion::test_actual_docx_uses_ordered_body_and_simple_tables": 1,
+        "tests.conversion.test_conversion::test_actual_epub_uses_spine_instead_of_zip_order": 1,
+        "tests.conversion.test_conversion::test_actual_fb2_reuses_existing_bounded_xml_reader": 1,
+        "tests.conversion.test_conversion::test_actual_pdf_keeps_physical_page_order_without_claiming_printed_labels": 1,
+        "tests.conversion.test_conversion::test_actual_pdf_page_budget_is_checked_before_publication": 1,
+        "tests.conversion.test_conversion::test_actual_worker_keeps_utf8_crlf_formfeed_and_original": 1,
+        "tests.conversion.test_conversion::test_cancel_during_real_private_source_copy_keeps_original": 1,
+        "tests.conversion.test_conversion::test_capability_inventory_matches_current_registry_and_never_enables_legacy": 1,
+        "tests.conversion.test_conversion::test_capability_rejects_reader_version_the_existing_docx_parser_rejects": 1,
+        "tests.conversion.test_conversion::test_current_text_adapters_execute_in_supervised_worker": 3,
+        "tests.conversion.test_conversion::test_existing_output_or_report_never_changes": 2,
+        "tests.conversion.test_conversion::test_first_post_move_sync_failure_removes_only_unchanged_own_text": 3,
+        "tests.conversion.test_conversion::test_only_explicit_inputs_and_output_root_are_authorized": 1,
+        "tests.conversion.test_conversion::test_portable_filename_rejection_precedes_worker": 3,
+        "tests.conversion.test_conversion::test_post_move_sync_failure_preserves_matching_pair_but_is_not_success": 1,
+        "tests.conversion.test_conversion::test_real_resource_rejections_publish_nothing": 3,
+        "tests.conversion.test_conversion::test_receipt_collision_rolls_back_only_new_own_text": 1,
+        "tests.conversion.test_conversion::test_source_change_after_actual_worker_rejects_publication": 1,
+        "tests.conversion.test_conversion::test_unicode_batch_name_fits_portable_component_budget": 1,
+        "tests.conversion.test_conversion::test_worker_rejects_wrong_action_and_extra_request_keys": 1,
+        "tests.conversion.test_conversion_ui::test_image_selection_uses_existing_model_dialog_and_cancel_starts_no_job": 1,
+        "tests.conversion.test_conversion_ui::test_native_flow_passes_both_explicit_selections_to_the_current_service": 1,
+        "tests.conversion.test_conversion_ui::test_office_choice_and_shared_application_broker_reach_existing_worker": 1,
+        "tests.conversion.test_conversion_ui::test_office_picker_cancel_starts_no_worker_or_output": 1,
+        "tests.conversion.test_conversion_ui::test_rtf_converter_picker_cancel_does_not_activate_a_path_tool": 1,
+        "tests.conversion.test_conversion_ui::test_ui_does_not_write_unregistered_files_inside_library": 1,
+        "tests.conversion.test_conversion_ui::test_ui_selects_exact_files_and_uses_existing_job_cancel_event": 1,
+        "tests.conversion.test_legacy_adapters::test_cancel_during_runtime_snapshot_creates_no_manifest": 1,
+        "tests.conversion.test_legacy_adapters::test_chm_ambiguous_or_excessive_listing_never_selects_members": 5,
+        "tests.conversion.test_legacy_adapters::test_chm_known_legacy_doctype_is_inert_and_original_bytes_stay_bound": 4,
+        "tests.conversion.test_legacy_adapters::test_chm_legacy_orphan_paragraph_end_preserves_decoding_and_text_order": 3,
+        "tests.conversion.test_legacy_adapters::test_chm_member_path_cannot_escape_or_spoof_listing": 6,
+        "tests.conversion.test_legacy_adapters::test_chm_paragraph_normalization_does_not_relax_other_malformed_structure": 3,
+        "tests.conversion.test_legacy_adapters::test_chm_paragraph_normalization_keeps_active_hidden_and_literal_tokens_inert": 1,
+        "tests.conversion.test_legacy_adapters::test_chm_paragraph_normalization_uses_current_text_and_absolute_time_budgets": 2,
+        "tests.conversion.test_legacy_adapters::test_chm_truncated_member_publishes_no_complete_worker_report": 1,
+        "tests.conversion.test_legacy_adapters::test_chm_undeclared_html_and_general_html_reader_keep_their_strict_endtag_contract": 1,
+        "tests.conversion.test_legacy_adapters::test_chm_undeclared_or_complex_doctype_remains_refused": 4,
+        "tests.conversion.test_legacy_adapters::test_chm_worker_uses_declared_toc_and_existing_inert_html_reader": 1,
+        "tests.conversion.test_legacy_adapters::test_djvu_final_odd_chunk_ends_exactly_at_its_containing_form": 4,
+        "tests.conversion.test_legacy_adapters::test_djvu_final_padding_exception_never_relaxes_chunk_bounds_or_sibling_alignment": 2,
+        "tests.conversion.test_legacy_adapters::test_djvu_framing_and_page_authority_are_bounded": 4,
+        "tests.conversion.test_legacy_adapters::test_djvu_shared_or_external_reference_is_refused_before_native_reader": 1,
+        "tests.conversion.test_legacy_adapters::test_encrypted_palm_header_is_refused_before_native_reader": 2,
+        "tests.conversion.test_legacy_adapters::test_excessive_code_handle_inventory_is_refused_before_any_native_lease": 1,
+        "tests.conversion.test_legacy_adapters::test_fixed_calibre_wrapper_enforces_private_io_and_no_network_or_programs": 13,
+        "tests.conversion.test_legacy_adapters::test_large_component_inventory_keeps_existing_worker_request_bound": 1,
+        "tests.conversion.test_legacy_adapters::test_large_selected_code_closure_keeps_every_reader_until_native_scope_exits": 2,
+        "tests.conversion.test_legacy_adapters::test_native_chm_empty_final_property_keeps_its_delimiter": 2,
+        "tests.conversion.test_legacy_adapters::test_protected_lit_marker_is_refused_before_calibre": 2,
+        "tests.conversion.test_legacy_adapters::test_qualified_calibre_formats_still_require_explicit_selection_and_do_not_select_chm": 6,
+        "tests.conversion.test_legacy_adapters::test_qualified_chm_requires_explicit_selection_and_does_not_select_other_families": 1,
+        "tests.conversion.test_legacy_adapters::test_qualified_djvu_requires_explicit_selection_and_does_not_enable_other_families": 1,
+        "tests.conversion.test_legacy_adapters::test_real_hardlink_alias_remains_refused_after_fresh_windows_stat": 1,
+        "tests.conversion.test_legacy_adapters::test_relative_or_path_discovered_runtime_is_never_selected": 3,
+        "tests.conversion.test_legacy_adapters::test_renamed_or_foreign_book_formats_are_not_conversion_inputs": 5,
+        "tests.conversion.test_legacy_adapters::test_resealed_foreign_inventory_path_is_not_authority": 1,
+        "tests.conversion.test_legacy_adapters::test_selected_component_change_cannot_start_a_conversion": 4,
+        "tests.conversion.test_legacy_adapters::test_tcr_dictionary_and_actual_expansion_are_bounded_before_native_decoder": 3,
+        "tests.conversion.test_legacy_adapters::test_unexecuted_native_formats_never_become_available_from_selection_alone": 8,
+        "tests.conversion.test_legacy_adapters::test_unqualified_service_requires_explicit_fixture_preview": 1,
+        "tests.conversion.test_legacy_adapters::test_windows_cached_directory_metadata_does_not_invalidate_regular_components": 1,
+        "tests.conversion.test_office_selection::test_expired_deadline_never_spawns_a_native_process": 1,
+        "tests.conversion.test_office_selection::test_fixed_adapter_rejects_false_format_before_runtime_admission": 5,
+        "tests.conversion.test_office_selection::test_gui_launcher_is_not_silently_promoted_to_unselected_console": 1,
+        "tests.conversion.test_office_selection::test_native_launch_keeps_existing_owner_and_scrubs_unselected_configuration": 1,
+        "tests.conversion.test_office_selection::test_private_phase_survives_failure_without_publishing_source_or_native_logs": 3,
+        "tests.conversion.test_office_selection::test_profile_is_per_operation_and_disables_active_content_and_external_updates": 1,
+        "tests.conversion.test_office_selection::test_progress_refuses_untrusted_marker_content_and_aliased_marker": 1,
+        "tests.conversion.test_office_selection::test_queued_selection_refuses_new_authority_before_worker": 3,
+        "tests.conversion.test_office_selection::test_selected_console_manifest_binds_both_launchers_before_native_work": 1,
+        "tests.conversion.test_office_selection::test_selected_inventory_checks_fixed_installed_filter_without_executing": 1,
+        "tests.conversion.test_office_selection::test_snapshot_rechecks_earlier_component_after_last_hash": 1,
+        "tests.conversion.test_office_selection::test_staging_budget_and_lookup_failures_cannot_report_complete": 4,
+        "tests.conversion.test_office_selection::test_worker_admission_refuses_changed_or_incomplete_inventory": 5,
+        "tests.conversion.test_selected_adapters::test_additional_budgets_are_typed_and_bounded": 5,
+        "tests.conversion.test_selected_adapters::test_all_headers_are_bounded_before_ocr_runtime_discovery": 3,
+        "tests.conversion.test_selected_adapters::test_document_extension_never_activates_an_implicit_converter": 3,
+        "tests.conversion.test_selected_adapters::test_inventory_distinguishes_optional_adapters_from_unintegrated_legacy": 1,
+        "tests.conversion.test_selected_adapters::test_ocr_flag_requires_an_explicit_typed_model_choice": 1,
+        "tests.conversion.test_selected_adapters::test_queued_conversion_cannot_adopt_a_changed_selected_converter": 3,
+        "tests.conversion.test_selected_adapters::test_raster_header_must_match_extension_before_engine_execution": 1,
+        "tests.conversion.test_selected_adapters::test_rtf_selected_executable_hash_is_rechecked_before_start": 1,
+        "tests.conversion.test_selected_adapters::test_unselected_converter_path_cannot_come_from_source_metadata": 1,
+        "tests.conversion.test_selected_adapters::test_worker_refuses_unapproved_image_adapter_payload": 3
+      }
+    },
+    {
+      "artifact": 15227926080,
+      "file": "native/installed-junit.xml",
+      "cases": 4,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0,
+      "function_counter": {
+        "tests.conversion.test_legacy_adapters_native::test_real_chm_output_budget_keeps_original_and_empty_destination": 1,
+        "tests.conversion.test_legacy_adapters_native::test_real_chm_public_publisher_help_exercises_compressed_container": 1,
+        "tests.conversion.test_legacy_adapters_native::test_real_chm_static_toc_order_does_not_execute_or_read_active_content": 1,
+        "tests.conversion.test_legacy_adapters_native::test_real_chm_unsafe_member_inventory_is_refused_before_extracting_html": 1
+      }
+    },
+    {
+      "artifact": 15227926080,
+      "file": "native/source-junit.xml",
+      "cases": 4,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0,
+      "function_counter": {
+        "tests.conversion.test_legacy_adapters_native::test_real_chm_output_budget_keeps_original_and_empty_destination": 1,
+        "tests.conversion.test_legacy_adapters_native::test_real_chm_public_publisher_help_exercises_compressed_container": 1,
+        "tests.conversion.test_legacy_adapters_native::test_real_chm_static_toc_order_does_not_execute_or_read_active_content": 1,
+        "tests.conversion.test_legacy_adapters_native::test_real_chm_unsafe_member_inventory_is_refused_before_extracting_html": 1
+      }
+    }
+  ],
+  "verified": {
+    "verdict": [
+      {
+        "file": "boundaries/installed-junit.xml",
+        "cases": 236,
+        "exact_counter": true,
+        "zero_failure": true
+      },
+      {
+        "file": "boundaries/source-junit.xml",
+        "cases": 236,
+        "exact_counter": true,
+        "zero_failure": true
+      },
+      {
+        "file": "native/installed-junit.xml",
+        "cases": 4,
+        "exact_counter": true,
+        "zero_failure": true
+      },
+      {
+        "file": "native/source-junit.xml",
+        "cases": 4,
+        "exact_counter": true,
+        "zero_failure": true
+      }
+    ],
+    "bindings": [
+      {
+        "path": "scripts/legacy_conversion_acceptance.py",
+        "gitdata_sha256": "72d7a9006fade11ebca878000e4c826afbdff8eacaa583482d415964be90fb67",
+        "receipt_sha256": "72d7a9006fade11ebca878000e4c826afbdff8eacaa583482d415964be90fb67"
+      },
+      {
+        "path": "scripts/legacy_conversion_oracles.json",
+        "gitdata_sha256": "ff52f4296d1cf07b95f78f5aca2743b8716459a35a849c678016cfb64cf01ea0",
+        "receipt_sha256": "ff52f4296d1cf07b95f78f5aca2743b8716459a35a849c678016cfb64cf01ea0"
+      },
+      {
+        "path": "tests/conversion/test_legacy_adapters.py",
+        "gitdata_sha256": "1d4353d29489ddec7819a130f371013749be55e5597dc3071074abc101edd5c6",
+        "receipt_sha256": "1d4353d29489ddec7819a130f371013749be55e5597dc3071074abc101edd5c6"
+      },
+      {
+        "path": "tests/conversion/test_legacy_adapters_native.py",
+        "gitdata_sha256": "d8b2ca4af0245ca52e0251f655c507b2c4db91a0a029d4785a15b3d1374b0e38",
+        "receipt_sha256": "d8b2ca4af0245ca52e0251f655c507b2c4db91a0a029d4785a15b3d1374b0e38"
+      }
+    ],
+    "origins": {
+      "boundaries": {
+        "source": {
+          "isolated": false,
+          "module_origins": {
+            "bootstrap": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\bootstrap\\__init__.py",
+              "sha256": "a90e8b1d37413ef4fbc54cdbea7f67a8c2a09ac01ed8cee54e5b9c47fe8fc930"
+            },
+            "carr_library": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\__init__.py",
+              "sha256": "93ac58ea85ec030da93ad5ae63430cb23c3ba24627931f5d40b3f8ba37ce9c7a"
+            }
+          }
+        },
+        "installed": {
+          "isolated": true,
+          "module_origins": {
+            "bootstrap": {
+              "path": "D:\\a\\_temp\\lc-88d0d35b\\installed\\Lib\\site-packages\\bootstrap\\__init__.py",
+              "sha256": "a90e8b1d37413ef4fbc54cdbea7f67a8c2a09ac01ed8cee54e5b9c47fe8fc930"
+            },
+            "carr_library": {
+              "path": "D:\\a\\_temp\\lc-88d0d35b\\installed\\Lib\\site-packages\\carr_library\\__init__.py",
+              "sha256": "93ac58ea85ec030da93ad5ae63430cb23c3ba24627931f5d40b3f8ba37ce9c7a"
+            }
+          }
+        }
+      },
+      "native": {
+        "source": {
+          "isolated": false,
+          "module_origins": {
+            "bootstrap": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\bootstrap\\__init__.py",
+              "sha256": "a90e8b1d37413ef4fbc54cdbea7f67a8c2a09ac01ed8cee54e5b9c47fe8fc930"
+            },
+            "carr_library": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\__init__.py",
+              "sha256": "93ac58ea85ec030da93ad5ae63430cb23c3ba24627931f5d40b3f8ba37ce9c7a"
+            }
+          }
+        },
+        "installed": {
+          "isolated": true,
+          "module_origins": {
+            "bootstrap": {
+              "path": "D:\\a\\_temp\\lc-88d0d35b\\installed\\Lib\\site-packages\\bootstrap\\__init__.py",
+              "sha256": "a90e8b1d37413ef4fbc54cdbea7f67a8c2a09ac01ed8cee54e5b9c47fe8fc930"
+            },
+            "carr_library": {
+              "path": "D:\\a\\_temp\\lc-88d0d35b\\installed\\Lib\\site-packages\\carr_library\\__init__.py",
+              "sha256": "93ac58ea85ec030da93ad5ae63430cb23c3ba24627931f5d40b3f8ba37ce9c7a"
+            }
+          }
+        }
+      }
+    },
+    "installed_identity": {
+      "files": {
+        "canonical_sha256": "1e7e26683c9b0f742becc4438d1ed6470a2899d779788b62132d49d058d9e59e",
+        "entries": 371
+      },
+      "isolated": true,
+      "module_origins": {
+        "bootstrap": "D:\\a\\_temp\\lc-88d0d35b\\installed\\Lib\\site-packages\\bootstrap\\__init__.py",
+        "carr_library": "D:\\a\\_temp\\lc-88d0d35b\\installed\\Lib\\site-packages\\carr_library\\__init__.py"
+      },
+      "prefix": "D:\\a\\_temp\\lc-88d0d35b\\installed",
+      "wheel_sha256": "9d4ca3ec4868b98f79b2281b5f3dfbec18dd5cc1284f741b64b6d22f133add50"
+    },
+    "wheel_source": {
+      "payload_files": 440,
+      "project_name": "universal-research-library",
+      "project_version": "0.2.0.dev2",
+      "required_runtime_files": 371,
+      "source_commit": "e5453076c9593219e2d851d8f96a7fa62680d219",
+      "source_tree": "1c964d35b0d291a2876f4821e3cabbe6a2acaafa",
+      "wheel_sha256": "9d4ca3ec4868b98f79b2281b5f3dfbec18dd5cc1284f741b64b6d22f133add50"
+    }
+  },
+  "source_files": {
+    "scripts\\conversion_acceptance.py": "7e4e7cd40005ef7d00a4d685ade8b40e66e03fad96254927a6cc05c647ff7f3b",
+    "scripts\\legacy_conversion_acceptance.py": "72d7a9006fade11ebca878000e4c826afbdff8eacaa583482d415964be90fb67",
+    "scripts\\legacy_conversion_oracles.json": "ff52f4296d1cf07b95f78f5aca2743b8716459a35a849c678016cfb64cf01ea0",
+    "tests\\conversion\\legacy_fixtures.py": "8148e3480af12084786485ebd20210ac6a7bb3c375430d534a41370531d46f24",
+    "tests\\conversion\\native_diagnostics.py": "576e377cf63b568b8acbf5b6d2c2432da50aa6500babdfebbe61028bc49f46e2",
+    "tests\\conversion\\test_chm_html_recovery.py": "322dedefd0ff4f1f1aec1c1b3c66c8917b3ecb6400fd65a286f05eaf8115d0dd",
+    "tests\\conversion\\test_conversion.py": "0e2cfac30c1ecc83d22868b828fa7cf415bad6130354c4433de650cb3776ef69",
+    "tests\\conversion\\test_conversion_ui.py": "2213385a5002a2ca09a479b617377f4e89cab9e480a4b60412a0fa8652731df9",
+    "tests\\conversion\\test_legacy_adapters.py": "1d4353d29489ddec7819a130f371013749be55e5597dc3071074abc101edd5c6",
+    "tests\\conversion\\test_legacy_adapters_native.py": "d8b2ca4af0245ca52e0251f655c507b2c4db91a0a029d4785a15b3d1374b0e38",
+    "tests\\conversion\\test_office_selection.py": "f09d55d710810009a5bed88720a09d940c426b3115b5b50359dabe05234a8a0c",
+    "tests\\conversion\\test_selected_adapters.py": "c456d33f16a3d2ddc8d244ae9cc248756769fae789484e74351148c79b0aca19"
+  },
+  "publisher": {
+    "artifact": {
+      "bytes": 2003456,
+      "provider": "upstream official release",
+      "sha256": "6dc822569e777d9a3ecd5ffcbc22b55600af87e6c5d9810a64e8566cf5a4af9f",
+      "status": "PINNED_BYTES_VERIFIED",
+      "url": "https://github.com/ip7z/7zip/releases/download/26.06/7z2606-x64.msi",
+      "version": "26.06"
+    },
+    "executable": "D:\\a\\_temp\\lc-88d0d35b\\optional\\payload\\Files\\7-Zip\\7z.exe",
+    "family": "chm",
+    "help_fixture": "D:\\a\\_temp\\lc-88d0d35b\\optional\\payload\\Files\\7-Zip\\7-zip.chm",
+    "lock_sha256": "9c711d6f2c29623863e25157243aded5216ba1b953179cbb28eedabd8018aba9",
+    "native_fixtures": "NOT_RUN",
+    "phase": "prepare-verified-runtime",
+    "runtime_root": "D:\\a\\_temp\\lc-88d0d35b\\optional\\payload\\Files\\7-Zip",
+    "schema": 1,
+    "status": "PASS"
+  },
+  "provenance": {
+    "family": "chm",
+    "run_attempt": "1",
+    "run_id": "46058236666",
+    "schema": 1,
+    "source_commit": "e5453076c9593219e2d851d8f96a7fa62680d219",
+    "source_tree": "1c964d35b0d291a2876f4821e3cabbe6a2acaafa",
+    "status": "NOT_RUN",
+    "workflow_ref": "Oleksii-debug/AudioTacticalFPS/.github/workflows/carr-legacy-converters.yml@refs/heads/carr/legacy-converters-r26-chm-paragraph-ordinary-d3a-20261127",
+    "workflow_sha": "e5453076c9593219e2d851d8f96a7fa62680d219"
+  },
+  "runtime_code_inventories": [
+    {
+      "artifact": 15227926080,
+      "member": "before-execution.json",
+      "files": 106,
+      "code_handles": 6,
+      "code_bytes": 4365824,
+      "suffix_counts": {
+        ".dll": 3,
+        ".exe": 3
+      },
+      "canonical_sha256": "7c8509b880acc3ff3fc756dfe6a5e00001d43f18194097dd7f676e32e6b53d04"
+    },
+    {
+      "artifact": 15227926080,
+      "member": "legacy-converter-gate.json",
+      "files": 106,
+      "code_handles": 6,
+      "code_bytes": 4365824,
+      "suffix_counts": {
+        ".dll": 3,
+        ".exe": 3
+      },
+      "canonical_sha256": "7c8509b880acc3ff3fc756dfe6a5e00001d43f18194097dd7f676e32e6b53d04"
+    }
+  ],
+  "publisher_census": {
+    "required_in_each_native_mode": true,
+    "declared_html_members": 70,
+    "checked_html_members": 70,
+    "failed_members": 0,
+    "evidence_kind": "Source-bound assertions inside the raw passing public-help testcase, not a separately captured census receipt.",
+    "testcase": "tests.conversion.test_legacy_adapters_native::test_real_chm_public_publisher_help_exercises_compressed_container",
+    "exact_test_sha256": "d8b2ca4af0245ca52e0251f655c507b2c4db91a0a029d4785a15b3d1374b0e38",
+    "assertions": [
+      "census['complete'] is True",
+      "census['declared_html_members'] == census['checked_html_members'] == 70",
+      "census['failed_members'] == 0"
+    ],
+    "raw_case_passes": {
+      "source": true,
+      "installed": true
+    },
+    "separate_summary_json_retained": false,
+    "note": "Pytest captured successful-case stdout. The70-member checks are part of the verified executed fixture; individual member digests and a standalone census receipt are not claimed."
+  },
+  "qualified_scope": {
+    "runtime": "Pinned7-Zip26.06 official Windows x64 MSI with its selected106-file inventory",
+    "positive_cases": [
+      "Synthetic ITSF3 with inert local HTML and declared TOC order",
+      "Pinned publisher compressed7-Zip help, plus complete70-member extraction/strict-reading census"
+    ],
+    "boundaries": [
+      "Output budget preserves source and leaves destination empty",
+      "Unsafe archive member inventory is rejected before reading HTML"
+    ],
+    "ordinary_service_admission": true
+  },
+  "source_only_linux": {
+    "run_id": 46058236666,
+    "job_id": 140705880691,
+    "status": "PASS",
+    "cases": 149,
+    "artifact": {
+      "id": 15227890699,
+      "bytes": 874143,
+      "sha256": "23a71fae0d00463b806ca7b59699d4c3d247f2101ec8e40602e6d298330b77a1"
+    }
+  },
+  "limits": [
+    "PASS is bound to e5453076 and the exact selected runtime bytes. A final combined root still requires its own full acceptance.",
+    "No arbitrary real-user CHM, active content, browser/help viewer, script/ActiveX execution, network fetching, exact layout, printed pagination, quotation or manual screen-reader claim.",
+    "Preparation/provenance files retain their initial NOT_RUN stage markers; final gate and raw JUnits carry actual execution status.",
+    "Existing forced-unqualified tests and explicit runtime selection guards remain; enabling this family does not select any executable automatically."
+  ]
+}

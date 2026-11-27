@@ -23,7 +23,9 @@ base.SUPPORT = (*base.SUPPORT, 'tests/ui/test_operation_progress.py',
                 'tests/ingest/test_worker_publication_boundary.py',
                 'tests/storage/backup_compat_fixture.py',
                 'tests/ui/test_import_center.py',
-                'tests/extract/test_document_formats_xml.py')
+                'tests/extract/test_document_formats_xml.py',
+                'tests/conversion/test_legacy_adapters.py',
+                'tests/conversion/legacy_fixtures.py')
 read, write, require, file_hash = base.read, base.write, base.require, base.file_hash
 source_identity, installed_identity = base.source_identity, base.installed_identity
 runtime_identity, population = base.runtime_identity, base.population
@@ -102,7 +104,8 @@ def finalize(results):
                     completed_speech_checkpoint_cases=ORACLE.get('completed_speech_checkpoint_cases', 0),
                     canonical_process_signal_cases=ORACLE.get('canonical_process_signal_cases', 0),
                     canonical_completed_import_binding_cases=ORACLE.get('canonical_completed_import_binding_cases', 0),
-                    canonical_presentation_fixture_cases=ORACLE.get('canonical_presentation_fixture_cases', 0))
+                    canonical_presentation_fixture_cases=ORACLE.get('canonical_presentation_fixture_cases', 0),
+                    chm_publisher_recovery_cases=ORACLE.get('chm_publisher_recovery_cases', 0))
     except Exception as error:
         print(''.join(traceback.format_exception(type(error), error, error.__traceback__)),
               file=sys.stderr, flush=True)
