@@ -26,6 +26,19 @@ def not_run(reason):
     return 77
 
 
+
+def _owned_button(dialog, label, button_type):
+    """Find one exact button only inside the selected native dialog."""
+    def descendants(owner):
+        for child in owner.GetChildren():
+            yield child
+            yield from descendants(child)
+    matches = [child for child in descendants(dialog)
+               if isinstance(child, button_type) and child.GetLabel() == label]
+    if len(matches) != 1:
+        raise AssertionError('Expected one owned native button: ' + label)
+    return matches[0]
+
 def run_native(source=None):
     if sys.platform not in ('win32', 'darwin') and not (
             os.environ.get('DISPLAY') or os.environ.get('WAYLAND_DISPLAY')):
@@ -181,8 +194,7 @@ def run_native(source=None):
                 dialog = state['import']
                 check('native queue recognizes HTML and Markdown as two documents',
                       dialog.batch['counts']['queued'] == 2 and dialog.rows.GetCount() == 2)
-                button = next(child for child in dialog.GetChildren()
-                              if isinstance(child, wx.Button) and child.GetLabel() == '&Start queued files')
+                button = _owned_button(dialog, '&Start queued files', wx.Button)
                 event = wx.CommandEvent(wx.EVT_BUTTON.typeId, button.GetId())
                 event.SetEventObject(button)
                 check('native Start queued files button event launches work',

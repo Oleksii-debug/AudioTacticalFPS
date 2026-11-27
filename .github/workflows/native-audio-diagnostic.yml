@@ -1,4 +1,4 @@
-name: CARR isolated native EPUB diagnostics
+name: CARR isolated native EPUB and document diagnostics
 
 on:
   push:
@@ -119,11 +119,11 @@ jobs:
           "CARR_V3_AUDIO=$audioRuntime" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           (Join-Path $audioRuntime 'bin') | Out-File $env:GITHUB_PATH -Encoding utf8 -Append
 
-      - name: Require EPUB transport and exact native text mapping source controls
+      - name: Require EPUB mapping and import control source regressions
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.installed-origin.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
         timeout-minutes: 3
         run: |
-          & $env:CARR_PYTHON scripts/ci_check.py --jobs 2 tests/reader/test_ebook_audio.py tests/ui/test_ebook_dialog.py 2>&1 | Tee-Object 'ci-native-audio-diagnostic/epub-source-tests.txt'
+          & $env:CARR_PYTHON scripts/ci_check.py --jobs 2 tests/reader/test_ebook_audio.py tests/ui/test_ebook_dialog.py tests/ui/test_import_center.py 2>&1 | Tee-Object 'ci-native-audio-diagnostic/epub-source-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise actual installed recorded EPUB with bounded stack observations
@@ -169,6 +169,13 @@ jobs:
                   observer_stream.close()
           '@
           $diagnose | & $env:CARR_PYTHON -I -B - 2>&1 | Tee-Object 'ci-native-audio-diagnostic/native-epub.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise actual installed document import and reading controls
+        if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.installed-origin.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/native_document_formats_smoke.py --native 2>&1 | Tee-Object 'ci-native-audio-diagnostic/native-document-formats.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Preserve only diagnostic source and native text evidence
