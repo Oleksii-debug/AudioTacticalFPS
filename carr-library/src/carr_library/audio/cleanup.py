@@ -91,8 +91,8 @@ def pending_cleanup(attempt, *, message, callbacks=()):
         owner.add_quiescent_callback(callback)
     with _RETAINED_LOCK:
         _RETAINED.add(owner)
-    worker = threading.Thread(target=owner._retry, name='audio-cleanup', daemon=True)
     try:
+        worker = threading.Thread(target=owner._retry, name='audio-cleanup', daemon=True)
         worker.start()
     except Exception as exc:
         # Retain the owner even if thread admission fails. Its public close()

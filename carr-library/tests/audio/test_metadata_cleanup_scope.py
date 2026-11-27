@@ -13,7 +13,7 @@ import time
 
 import pytest
 
-from carr_library.audio import process
+from carr_library.audio import cleanup, process
 from carr_library.audio.cleanup import retained_temporary_directory
 from carr_library.audio.models import AudioBudget, AudioCleanupPending
 from carr_library.operations.broker import ResourceBroker
@@ -32,7 +32,7 @@ with Path(sys.argv[1]).open('rb') as owned:
 """
 
 
-@pytest.mark.parametrize('boundary', ['cancel', 'reader-start'])
+@pytest.mark.parametrize('boundary', ['cancel', 'reader-start', 'cleanup-constructor'])
 def test_actual_metadata_child_retains_stage_and_broker_until_confirmed_cleanup(
         tmp_path, monkeypatch, boundary):
     broker = ResourceBroker(tmp_path / 'broker', limits=ResourceLimits(
@@ -42,7 +42,7 @@ def test_actual_metadata_child_retains_stage_and_broker_until_confirmed_cleanup(
     permit, released = threading.Event(), threading.Event()
     spawned, attempts, owned = [], [], {}
     real_popen, real_terminate = subprocess.Popen, process._terminate
-    real_start = threading.Thread.start
+    real_thread, real_start = threading.Thread, threading.Thread.start
     ready = tmp_path / 'actual-child-running'
 
     def observe_child(*args, **kwargs):
@@ -72,9 +72,15 @@ def test_actual_metadata_child_retains_stage_and_broker_until_confirmed_cleanup(
             raise RuntimeError('Deliberate diagnostic-reader admission failure.')
         return real_start(thread, *args, **kwargs)
 
+    def create_thread(*args, **kwargs):
+        if boundary == 'cleanup-constructor' and kwargs.get('name') == 'audio-cleanup':
+            raise RuntimeError('Deliberate retained-cleanup Thread constructor failure.')
+        return real_thread(*args, **kwargs)
+
     monkeypatch.setattr(process.subprocess, 'Popen', observe_child)
     monkeypatch.setattr(process, '_terminate', refused_stop)
     monkeypatch.setattr(threading.Thread, 'start', start_reader)
+    monkeypatch.setattr(cleanup.threading, 'Thread', create_thread)
 
     def admitted():
         stack = ExitStack()
@@ -88,7 +94,7 @@ def test_actual_metadata_child_retains_stage_and_broker_until_confirmed_cleanup(
                 process.run_process(
                     [sys.executable, '-I', '-B', '-c', CHILD, str(source), str(ready)],
                     budget=AudioBudget(timeout=15, reserve_disk_bytes=0),
-                    cancelled=(lambda: ready.exists()) if boundary == 'cancel' else lambda: False,
+                    cancelled=(lambda: ready.exists()) if boundary != 'reader-start' else lambda: False,
                     watch=(owned['directory'],), retain_cleanup=True)
         except AudioCleanupPending as exc:
             reservation = stack.pop_all()
@@ -103,6 +109,8 @@ def test_actual_metadata_child_retains_stage_and_broker_until_confirmed_cleanup(
             admitted()
         owner = caught.value.cleanup_owner
         owner.add_quiescent_callback(released.set)
+        if boundary == 'cleanup-constructor':
+            assert isinstance(owner.last_error, RuntimeError) and 'constructor failure' in str(owner.last_error)
         assert len(spawned) == 1 and attempts
         child = spawned[0]
         assert child.poll() is None and not owner.quiescent
@@ -115,6 +123,7 @@ def test_actual_metadata_child_retains_stage_and_broker_until_confirmed_cleanup(
         assert not (tmp_path / 'published.mp3').exists()
 
         permit.set()
+        owner.close()  # Also works when no cleanup thread could be constructed.
         assert released.wait(10), 'Exact child/reader cleanup did not release retained ownership.'
         assert owner.quiescent and child.poll() is not None
         assert child.stdout.closed and child.stderr.closed
