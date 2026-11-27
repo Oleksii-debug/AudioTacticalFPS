@@ -58,6 +58,12 @@ jobs:
         run: |
           python scripts/ci_check.py tests/operations_posix/test_fork_ownership.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require actual Windows reader-handle publication
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/ci_check.py tests/transcription_windows/test_protocol_fixture_handles.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Install actual native desktop controls
         if: runner.os == 'Windows'
         shell: pwsh

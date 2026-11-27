@@ -1,7 +1,9 @@
 """Actual reader output selection through native keys and the existing MCI player.
 
 The caller explicitly chooses an enumerated WinMM index for its qualification
-machine. Generated PCM proves transport behavior, not human listening or NVDA.
+machine. --expected-device-identity also pins that choice to the reviewed
+inventory's stable identity before playback; CI supplies both values. Generated
+PCM proves transport behavior, not human listening or NVDA.
 Source mode requires the caller's source PYTHONPATH; --expect-installed uses -I.
 """
 import argparse
@@ -269,6 +271,9 @@ def run(args, report):
         matches = [value for value in outputs if value.index == args.device_index]
         check('caller explicitly selected an available WinMM output index', len(matches) == 1)
         selected = matches[0]
+        if args.expected_device_identity is not None:
+            check('selected output matches the reviewed stable endpoint identity before playback',
+                  selected.identity == args.expected_device_identity)
         report['device'] = {'index': selected.index, 'name': selected.name, 'identity': selected.identity}
         with TemporaryDirectory(prefix='resonance-reader-output-') as temporary:
             root = Path(temporary)
@@ -321,6 +326,8 @@ def run(args, report):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--device-index', type=int, required=True)
+    parser.add_argument('--expected-device-identity',
+                        help='Stable endpoint identity from the reviewed output inventory.')
     parser.add_argument('--expect-installed', action='store_true')
     parser.add_argument('--report', type=Path, required=True)
     args = parser.parse_args()

@@ -311,6 +311,10 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
 
     check_cancelled()
     requested, private = _export_paths(path, private_root)
+    if approval is not None and type(approval) is not ExportDestination:
+        raise ValueError('A captured export destination approval is required.')
+    if approval is not None and (approval.requested != requested or approval.private_root != private):
+        raise ValueError('The export destination changed. Choose the destination again.')
     captured_absent = type(approval) is ExportDestination and approval.require_absent
     try:
         target, parent_identity, previous = _destination(
@@ -326,8 +330,6 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
     # did not exist when this write began, including for legacy callers.
     require_absent = require_absent or previous is None
     if approval is not None:
-        if type(approval) is not ExportDestination:
-            raise ValueError('A captured export destination approval is required.')
         if (approval.requested != requested or approval.private_root != private
                 or approval.target != target or approval.parent_identity != parent_identity
                 or approval.state != previous):

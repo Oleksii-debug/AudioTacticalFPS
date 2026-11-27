@@ -173,7 +173,9 @@ def execute(args):
     if args.command == 'inspect':
         return job_summary(job)
     if args.command == 'resume':
-        if not args.allow_remote or args.approve_job != job_summary(job)['resume_approval_sha256']:
+        if not args.allow_remote:
+            raise PermissionError('Explicit --allow-remote consent is required before resuming external translation calls.')
+        if args.approve_job != job_summary(job)['resume_approval_sha256']:
             raise PermissionError('Inspect and explicitly approve the exact saved job before resuming external calls.')
         if profiles.get(job['profile']['id']).to_dict() != job['profile']:
             raise PermissionError('The saved provider account changed. Preview and approve a new translation.')

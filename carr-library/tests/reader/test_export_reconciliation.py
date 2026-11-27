@@ -114,3 +114,28 @@ def test_receipt_and_native_digest_shape_are_preserved(tmp_path):
     receipt = e.write_export(target, 'Цитата\r\nOriginal', private_root=private, approval=approval)
     assert receipt.path == target and receipt.cleanup_warning is None
     assert target.read_bytes() == 'Цитата\r\nOriginal'.encode()
+
+
+@pytest.mark.parametrize('binary', [False, True])
+@pytest.mark.parametrize('mismatch', ['path', 'private_root'])
+def test_mismatched_existing_approval_rejected_before_open(tmp_path, monkeypatch, binary, mismatch):
+    first = tmp_path / 'first.txt'
+    target = tmp_path / 'second.txt' if mismatch == 'path' else first
+    first.write_bytes(b'Approved input')
+    target.write_bytes(b'Independent work')
+    private = tmp_path / 'private'
+    approval = e.capture_export_destination(first, private_root=private)
+    actual_private = tmp_path / 'other-private' if mismatch == 'private_root' else private
+    opened = []
+    real_open = os.open
+    def observed(path, *args, **kwargs):
+        if Path(path) == target:
+            opened.append(path.name)
+        return real_open(path, *args, **kwargs)
+    monkeypatch.setattr(e.os, 'open', observed)
+    writer = e.write_binary_export if binary else e.write_export
+    with pytest.raises(ValueError, match='destination changed'):
+        writer(target, b'new' if binary else 'new', private_root=actual_private, approval=approval)
+    assert target.read_bytes() == b'Independent work'
+    assert not list(tmp_path.glob('.research-export-*'))
+    assert not opened

@@ -362,8 +362,11 @@ def test_cli_binds_glossary_and_keeps_all_existing_remote_approval_gates(tmp_pat
     p = profile()
     ProfileStore(app.root / 'state/providers').save(p)
     vault = Vault()
-    monkeypatch.setattr(translation_cli, 'Gateway',
-                        lambda directory, **kwargs: Gateway(directory, vault=vault, **kwargs))
+    approved_gateways = []
+    def approved_gateway(directory, **kwargs):
+        approved_gateways.append((directory, kwargs))
+        return Gateway(directory, vault=vault, **kwargs)
+    monkeypatch.setattr(translation_cli, 'Gateway', approved_gateway)
     base = ['--data-dir', str(app.root)]
     assert translation_cli.main(base + ['profiles']) == 0
     profiles = json.loads(capsys.readouterr().out)['profiles']
@@ -391,14 +394,26 @@ def test_cli_binds_glossary_and_keeps_all_existing_remote_approval_gates(tmp_pat
     assert translation_cli.main(base + ['inspect', '--job', result['id']]) == 0
     inspected = json.loads(capsys.readouterr().out)
     assert inspected['glossary'] == GLOSSARY and inspected['provider_adapter'] == p.adapter
+    approval = inspected['resume_approval_sha256']
+    before = (len(transport['calls']), len(vault.calls), len(approved_gateways))
     assert translation_cli.main(base + ['resume', '--job', result['id'],
-                                         '--approve-job', inspected['resume_approval_sha256']]) == 1
+                                         '--approve-job', approval]) == 1
     assert '--allow-remote' in capsys.readouterr().err
-    before = len(transport['calls'])
+    wrong_approval = ('0' if approval[0] != '0' else '1') + approval[1:]
     assert translation_cli.main(base + ['resume', '--job', result['id'], '--allow-remote',
-                                         '--approve-job', inspected['resume_approval_sha256']]) == 0
+                                         '--approve-job', wrong_approval]) == 1
+    assert 'Inspect and explicitly approve the exact saved job' in capsys.readouterr().err
+    # Each denied route stops before remote-mode construction, credentials and HTTP.
+    assert (len(transport['calls']), len(vault.calls), len(approved_gateways)) == before
+    assert translation_cli.main(base + ['inspect', '--job', result['id']]) == 0
+    assert json.loads(capsys.readouterr().out)['resume_approval_sha256'] == approval
+    assert (len(transport['calls']), len(vault.calls), len(approved_gateways)) == before
+    assert translation_cli.main(base + ['resume', '--job', result['id'], '--allow-remote',
+                                         '--approve-job', approval]) == 0
     assert json.loads(capsys.readouterr().out)['status'] == 'complete'
-    assert len(transport['calls']) == before  # Accepted work is never billed again.
+    assert len(approved_gateways) == before[2] + 1
+    assert len(vault.calls) == before[1]
+    assert len(transport['calls']) == before[0]  # Accepted work is never billed again.
     destination = tmp_path / 'cli export'
     assert translation_cli.main(base + ['export', '--job', result['id'], '--output', str(destination)]) == 0
     assert json.loads(capsys.readouterr().out)['status'] == 'complete'

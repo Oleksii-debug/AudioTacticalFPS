@@ -308,3 +308,63 @@ was saved or independently reviewed. The supplementary portable/reader runs
 are diagnostic evidence. Final application assembly still requires the retained
 application wheel from the complete successful same-head Windows aggregate and
 the other required same-head workflows.
+
+## Native reader diagnostic and follow-up admission review
+
+The supplementary Windows run
+[45985650997](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45985650997)
+belongs to source `31a8acc65f546b7fea77cdb47eb46a87da1b38a1`. Its source
+and installed reading-tools and Windows-dictionary probes passed. The same
+run did not pass as an aggregate: a 32,768-character automatic pytest parameter
+ID exceeded the Windows environment limit, a malformed-state fixture attempted
+create-only publication over an existing file, and the appearance probe's
+failure cleanup opened an unsaved-copy question before showing its original
+exception.
+
+The successor retains the oversized identity input with compact test IDs,
+uses explicit replacement only in that malformed-state fixture, and drives
+ASCII appearance inputs through wx's byte-input contract. Appearance acceptance
+keeps all prior style, preview, selection and source checks. It saves the
+synthetic reading copy through actual Ctrl+S and verifies the recovery record
+before each Escape. Failure writes its original traceback and stage before
+ending the probe's modal loops; production close behavior remains unchanged.
+
+The sealed spelling probe receives its declared site-packages import root.
+The sealed platform-tools probe uses the existing native-runtime activation
+wrapper before importing wx. These correct launch wiring without removing
+any gate. The focused diagnostic job records only source/installed test
+evidence; it cannot supply the final delivery wheel.
+
+The latest integration record also identified PR182's early export-approval
+path/root guard. Its reviewed narrow correction is reconciled before reading
+the destination, with the four original text/binary and path/root regressions.
+The existing bounded content hash, native Windows change time, captured-absent,
+cancellation and atomic publication checks remain in force. This source review
+does not transfer the donor's Windows verdict to the new composition.
+
+The first combined portable preflight at
+`c4de280442e714dc53feb5e656b66edd1ddb6ae0`,
+[45991270051](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45991270051),
+compiled all application modules and passed 61 of its 64 selected suites.
+It recorded 1,540 passing, 20 failing and two skipped cases. Nineteen failures
+came from running literal-loopback provider tests under the unconditional
+offline socket guard; those complete unchanged tests now have their own strict
+HTTP/TLS step. Two actual Windows handle cases now run unchanged in a mandatory
+Windows-specific module, alongside the nine portable publication cases.
+Main source/installed, the Windows bridge and the V3 Windows selection retain
+those native cases.
+
+The translation failure was a missing-consent diagnostic: the existing combined
+guard rejected absent --allow-remote before evaluating the supplied job digest.
+The successor gives that missing flag its own explicit error while preserving
+the exact-job-digest guard. The same test now checks both denial paths before
+gateway construction, credential access or HTTP; repeated inspection retains
+the digest, and a completed approved resume must not bill again. Request
+identity and glossary/model binding are unchanged. These corrections require
+fresh results; the failed preflight supplies no release verdict.
+
+Native output qualification also carries the reviewed stable endpoint identity
+from inventory into each source, installed and sealed probe. A reordered numeric
+index must fail before playback instead of silently qualifying another output.
+This strengthens the diagnostic boundary without changing the production
+player or the user's default audio device.
