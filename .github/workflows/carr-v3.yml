@@ -82,7 +82,7 @@ jobs:
           PYTEST_ADDOPTS: ''
         run: |
           $installedRecovery = @'
-          import json, pathlib, sys, xml.etree.ElementTree as ET
+          import hashlib, json, pathlib, sys, xml.etree.ElementTree as ET
           import carr_library, carr_library.state_backup, carr_library.ingest.worker
           import carr_library.application, carr_library.pending_backup, carr_library.library_backup
           import carr_library.speech.reading, carr_library.speech.source, carr_library.ui.speech_dialog
@@ -94,6 +94,7 @@ jobs:
           import carr_library.assistant.translation, carr_library.assistant.providers
           import carr_library.ui.translation_dialog
           import carr_library.assistant.profiles, carr_library.ui.assistant_dialog
+          import carr_library.audio.windows_job, carr_library.audio.cleanup
           import pytest
           checkout = pathlib.Path.cwd().resolve()
           names = ('carr_library', 'carr_library.state_backup', 'carr_library.ingest.worker',
@@ -106,10 +107,17 @@ jobs:
                    'carr_library.storage.revisions', 'carr_library.storage.schema_identity',
                    'carr_library.assistant.translation', 'carr_library.assistant.providers',
                    'carr_library.ui.translation_dialog',
-                   'carr_library.assistant.profiles', 'carr_library.ui.assistant_dialog')
+                   'carr_library.assistant.profiles', 'carr_library.ui.assistant_dialog',
+                   'carr_library.audio.windows_job', 'carr_library.audio.cleanup')
+          owner_modules = ('carr_library.ingest.worker', 'carr_library.audio.windows_job',
+                           'carr_library.audio.cleanup')
+          owner_source = {name: hashlib.sha256((checkout / 'src' / pathlib.Path(
+              *name.split('.'))).with_suffix('.py').read_bytes()).hexdigest() for name in owner_modules}
           def installed_origins():
               origins = {name: str(pathlib.Path(sys.modules[name].__file__).resolve()) for name in names}
               assert all(not pathlib.Path(path).is_relative_to(checkout) for path in origins.values()), origins
+              assert all(hashlib.sha256(pathlib.Path(origins[name]).read_bytes()).hexdigest()
+                         == owner_source[name] for name in owner_modules), 'Installed native owner differs from this source.'
               return origins
           installed_origins()
           class RejectExpectedFailures:
@@ -139,6 +147,7 @@ jobs:
                     'tests/storage/test_academic_migration.py',
                     'tests/storage/test_backup_schema_identity.py',
                     'tests/e2e/test_import_worker_publication.py',
+                    'tests/ingest/test_worker_process_ownership.py',
                     'tests/ingest/test_import_replay_identity.py',
                     'tests/speech/test_reading.py',
                     'tests/speech/test_source.py',
@@ -162,11 +171,21 @@ jobs:
           required_ocr = {'test_unreadable_directory_rejects_entire_inventory', 'test_empty_directory_inventory_has_a_bound', 'test_directory_inventory_checks_budget_between_entries'}
           ocr_cases = [c.get('name') for c in cases if c.get('classname', '').rsplit('.', 1)[-1] == 'test_ocr_runtime']
           ocr_exact = len(ocr_cases) == len(required_ocr) and set(ocr_cases) == required_ocr
-          ok = status == 0 and passed > 0 and failed == skipped == 0 and not policy.seen and portable_complete and ocr_exact
+          required_owner = {
+              'test_return_or_stop_waits_for_actual_descendant_native_lock[' + value + ']'
+              for value in ('orphan-complete', 'cancel-cancelled', 'timeout-timed_out', 'overflow-failed')}
+          required_owner.update({'test_explicit_native_stdio_preserves_binary_bytes_and_parent_handles',
+              'test_failed_family_cleanup_retains_streams_request_and_review_source[request]',
+              'test_failed_family_cleanup_retains_streams_request_and_review_source[review]'})
+          owner_cases = [c.get('name') for c in cases if c.get('classname', '').rsplit('.', 1)[-1] == 'test_worker_process_ownership']
+          owner_exact = len(owner_cases) == len(required_owner) and set(owner_cases) == required_owner
+          ok = status == 0 and passed > 0 and failed == skipped == 0 and not policy.seen and portable_complete and ocr_exact and owner_exact
           result = dict(status='PASS' if ok else 'FAIL', passed=passed, failed=failed,
                         skipped=skipped, pytest_exit=int(status), expected_failures=policy.seen,
                         origins=installed_origins(), ocr_inventory_cases=sorted(ocr_cases),
-                        ocr_inventory_exact=ocr_exact, manual_nvda='NOT_RUN')
+                        ocr_inventory_exact=ocr_exact, native_owner_cases=sorted(owner_cases),
+                        native_owner_exact=owner_exact, native_owner_source_sha256=owner_source,
+                        manual_nvda='NOT_RUN')
           pathlib.Path('ci-v3-results/installed-recovery.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
           print(json.dumps(result), flush=True)
           raise SystemExit(0 if ok else 1)
