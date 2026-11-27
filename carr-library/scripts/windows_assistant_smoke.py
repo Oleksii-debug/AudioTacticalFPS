@@ -56,6 +56,8 @@ def main():
         frame = wx.Frame(None, title='Synthetic assistant acceptance')
         frame.library = LibraryApp(root / 'library')
         frame.active = None
+        refreshed = []
+        frame.refresh_scopes = lambda: refreshed.append(tuple(row.id for row in frame.library.workspaces()))
         frame.Show()
         started = monotonic()
         state = {'phase': 'open', 'dialog': None}
@@ -111,6 +113,9 @@ def main():
                     assert controls['Verified assistant steps completed'].GetValue() == 100
                     workspaces = frame.library.workspaces()
                     assert len(workspaces) == 1
+                    assert controls['Library scope'].GetStrings() == [
+                        'Create a new library / list libraries only', 'Native assistant']
+                    assert controls['Library scope'].GetSelection() == 0
                     assert len(frame.library.browse(workspaces[0].id)) == 1
                     assert frame.library.search(workspaces[0].id, 'Railway transport')[0].quote == 'Railway transport'
                     checks.extend(('native Run executes real import and scoped search', 'native progress reaches 100 only after completion'))
@@ -138,8 +143,10 @@ def main():
 
         wx.CallAfter(poll)
         assistant_dialog.show_assistant(frame)
+        assert refreshed == [tuple(row.id for row in frame.library.workspaces())]
+        checks.append('created libraries refresh in the dialog and desktop without reopening')
         frame.Destroy()
-        if failures or len(checks) != 6:
+        if failures or len(checks) != 7:
             raise RuntimeError('; '.join(failures) or 'Native controls did not complete all checks.')
     for name, expected in hashes.items():
         if sha256((source_root / 'carr_library' / name).read_bytes()).hexdigest() != expected:

@@ -79,6 +79,16 @@ def show_assistant(frame):
         if alive:
             review.ChangeValue(str(value))
 
+    def refresh_workspaces():
+        nonlocal workspaces
+        index = scope_choice.GetSelection()
+        selected = workspaces[index - 1].id if 0 < index <= len(workspaces) else None
+        workspaces = frame.library.workspaces()
+        scope_choice.SetItems(['Create a new library / list libraries only'] +
+                              [row.name for row in workspaces])
+        scope_choice.SetSelection(next((i + 1 for i, row in enumerate(workspaces)
+                                       if row.id == selected), 0))
+
     def invalidate(event=None):
         nonlocal plan, job_id
         plan, job_id = None, None
@@ -206,6 +216,7 @@ def show_assistant(frame):
                            json.dumps(result.results, ensure_ascii=False, indent=2) + '\n' + result.message)
                 except Exception as exc:
                     report(str(exc))
+                refresh_workspaces()
                 review.SetFocus()
             wx.CallAfter(apply)
         future.add_done_callback(finish)
@@ -287,6 +298,7 @@ def show_assistant(frame):
         if alive:
             close()
         dialog.Destroy()
+        frame.refresh_scopes()
 
 
 
