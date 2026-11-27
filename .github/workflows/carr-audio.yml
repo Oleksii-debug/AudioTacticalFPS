@@ -24,7 +24,7 @@ jobs:
   windows-audio:
     name: Windows / actual SAPI / FFmpeg / native Studio
     runs-on: windows-2022
-    timeout-minutes: 20
+    timeout-minutes: 45
     defaults:
       run:
         shell: pwsh
@@ -75,8 +75,48 @@ jobs:
           python -I scripts/windows_audio_smoke.py 2>&1 | Tee-Object audio-ci-results/native-audio.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Run provider safety, source integrity and audio recovery regressions
+        timeout-minutes: 32
         run: |
-          python scripts/ci_audio_check.py -q -rs --durations=20 --tb=short -o faulthandler_timeout=90 --junitxml=audio-ci-results/audio-source.xml tests/assistant tests/audio tests/reader/test_narration_text.py tests/ui/test_audio_studio.py tests/ui/test_api_connections.py tests/e2e/test_provider_gateway.py tests/e2e/test_provider_transport_boundaries.py tests/e2e/test_provider_transport_contract.py tests/e2e/test_provider_ledger_lifetime.py tests/e2e/test_audio_cli.py --import-mode=importlib
+          @'
+          import importlib.util
+          from pathlib import Path
+          import shutil
+          import sys
+          
+          spec = importlib.util.spec_from_file_location("required_audio_suites", Path("scripts/ci_check.py"))
+          required = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(required)
+          
+          # Reuse the base's bounded progress hook without changing strict outcomes.
+          import_marker = "import pytest\n"
+          pytest_call = "pytest.main(sys.argv[1:], plugins=[policy])"
+          assert required.PYTEST_CHILD.count(import_marker) == 1
+          assert required.PYTEST_CHILD.count(pytest_call) == 1
+          required.PYTEST_CHILD = required.PYTEST_CHILD.replace(
+              import_marker, import_marker + "from scripts.ci_audio_check import CaseProgress\n",
+          ).replace(
+              pytest_call,
+              'pytest.main(["-q", "-rs", "--import-mode=importlib", "--durations=20", "--tb=short", '
+              '"-o", "faulthandler_timeout=90", *sys.argv[1:]], plugins=[policy, CaseProgress()])',
+          )
+          
+          # Keep each completed JUnit file before the reviewed runner removes its temp tree.
+          run_process = required._run_test_process
+          def preserve_report(command, *, env):
+              try:
+                  return run_process(command, env=env)
+              finally:
+                  report = Path(command[command.index("--junitxml") + 1])
+                  if report.is_file():
+                      relative = Path(command[-1]).relative_to(required.ROOT)
+                      destination = required.ROOT / "audio-ci-results" / ("__".join(relative.parts) + ".xml")
+                      destination.parent.mkdir(exist_ok=True)
+                      shutil.copyfile(report, destination)
+          required._run_test_process = preserve_report
+          
+          sys.argv = ["scripts/ci_check.py", "--jobs", "4", "tests/assistant", "tests/audio", "tests/reader/test_narration_text.py", "tests/ui/test_audio_studio.py", "tests/ui/test_api_connections.py", "tests/e2e/test_provider_gateway.py", "tests/e2e/test_provider_transport_boundaries.py", "tests/e2e/test_provider_transport_contract.py", "tests/e2e/test_provider_ledger_lifetime.py", "tests/e2e/test_audio_cli.py"]
+          raise SystemExit(required.main())
+          '@ | python - 2>&1 | Tee-Object audio-ci-results/audio-source.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify the installed library still works
         run: |
