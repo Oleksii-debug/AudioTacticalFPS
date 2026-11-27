@@ -3,9 +3,6 @@ from dataclasses import asdict
 import json
 from pathlib import Path
 
-from .projects import MAX_PROJECT_BYTES, ProjectStore, parse_script, plain
-
-
 def add_arguments(parser):
     commands = parser.add_argument_group('Local Audio Studio')
     commands.add_argument('--voices', action='store_true', help='List actually installed local voices and capabilities')
@@ -79,7 +76,7 @@ def execute(args, root, *, printer=print, progress=None):
         return 0
     from .voices import VoiceRegistry
     from .director import ProductionDirector
-    from .projects import Settings
+    from .projects import MAX_PROJECT_BYTES, ProjectStore, Settings, parse_script, plain
     registry = VoiceRegistry.for_library(root)
     if args.voices:
         if any((args.studio_script,args.studio_import,args.studio_project,args.audio_output,args.studio_resume)):

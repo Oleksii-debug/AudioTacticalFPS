@@ -176,4 +176,4 @@ def music_configuration_status(root):
         'fluidsynth': {'configured': value['fluidsynth'] is not None, 'inference_tested': False,
                       'kind': 'local symbolic notes and an explicitly reviewed SoundFont'},
         'musicgen': {'configured': value['musicgen'] is not None, 'inference_tested': False,
-                    'kind': 'optional local neural engine; run a real sample to assess this installation'}}
+                    'kind': 'optional local neural engine; requires a verified isolated Linux network namespace; unavailable on Windows'}}

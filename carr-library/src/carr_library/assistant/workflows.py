@@ -206,6 +206,8 @@ class LocalAssistant:
         path=_local_path(value)
         if not path.is_absolute() or path.name in ('','.','..'):
             raise ValueError('Output must be a named absolute local destination.')
+        if '..' in path.parts:
+            raise ValueError('Output is outside the selected folder: parent traversal components are not permitted.')
         plain(path.parent,directory=True)
         resolved=path.parent.resolve(strict=True)/path.name
         root=Path(self.scope.output_root).resolve(strict=True)

@@ -101,6 +101,17 @@ def check_cancelled(cancelled=None):
         raise RenderCancelled('Audio operation cancelled; completed outputs were preserved.')
 
 
+def _require_local_volume(path):
+    """Reject Windows drive mappings before opening or creating any audio file."""
+    if os.name == 'nt':
+        import ctypes
+        get_drive_type = ctypes.windll.kernel32.GetDriveTypeW
+        get_drive_type.argtypes = (ctypes.c_wchar_p,)
+        get_drive_type.restype = ctypes.c_uint
+        if get_drive_type(path.anchor) == 4:  # DRIVE_REMOTE, including mapped UNC shares
+            raise ValueError('Mapped network drives are unavailable for local audio files.')
+
+
 def local_file(value):
     """Validate an existing plain local file, including its parent path."""
     if not isinstance(value, (str, os.PathLike)):
@@ -109,6 +120,7 @@ def local_file(value):
     if not isinstance(raw, str) or not raw or '\x00' in raw or '://' in raw or raw.startswith(('\\\\', '//')):
         raise ValueError('Only explicit local file paths are allowed.')
     path = Path(raw).absolute()
+    _require_local_volume(path)
     for part in (path, *path.parents):
         info = part.lstat()
         if stat.S_ISLNK(info.st_mode) or getattr(info, 'st_file_attributes', 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT:
@@ -126,6 +138,7 @@ def output_path(value):
     raw = str(path)
     if '\x00' in raw or '://' in raw or raw.startswith(('\\\\', '//')) or _RESERVED.match(path.name):
         raise ValueError('Choose an ordinary local output file.')
+    _require_local_volume(path)
     if os.name == 'nt' and ':' in path.name:
         raise ValueError('Alternate data streams are not audio output files.')
     for parent in path.parents:

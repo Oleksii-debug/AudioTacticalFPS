@@ -134,6 +134,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     for module, installer in (
             ('academic_tools', 'install_source_comparison_actions'),
             ('audio_studio', 'install_audio_studio'),
+            ('audio_effects', 'install_audio_effects'),
             ('local_assistant', 'install_local_assistant'),
             ('provider_settings', 'install_provider_settings')):
         callback = Mock()

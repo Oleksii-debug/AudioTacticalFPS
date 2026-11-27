@@ -84,7 +84,8 @@ class MusicSettingsDialog:
         layout = wx.BoxSizer(wx.VERTICAL)
         instructions = wx.TextCtrl(self.dialog, value=(
             'Choose an already installed engine. Saving verifies local files; it does not download models or claim tested inference. '
-            'MusicGen weights use the private noncommercial profile. To hear this installation, generate a three-second sample. '
+            'MusicGen requires a verified isolated Linux network namespace and is unavailable on Windows in this build. '
+            'Its weights use the private noncommercial profile. To hear an available engine, generate a three-second sample. '
             'In a saved production use @music musicgen calm 80 or @music fluidsynth calm 80; ordinary @music calm 80 uses the included procedural engine.'),
             style=wx.TE_MULTILINE | wx.TE_READONLY)
         instructions.SetName('Local music setup, license and production instructions')

@@ -93,7 +93,7 @@ reports an algorithmic fallback as neural generation.
 | --- | --- | --- |
 | `procedural` | Seeded symbolic note/chord pattern rendered by FFmpeg oscillators and envelopes | Included with FFmpeg; mood, key, tempo and seed controls; motif recurrence is explicitly reported |
 | `fluidsynth` | Seeded note events rendered through FluidSynth's block audio API in an isolated child | User-installed FluidSynth and `.sf2` SoundFont; SoundFont license must be explicitly recorded |
-| `musicgen` | Optional local Transformers `MusicgenForConditionalGeneration` worker | User-installed Python environment and verified passive model assets; at most 25 seconds per generation chunk |
+| `musicgen` | Optional local Transformers `MusicgenForConditionalGeneration` worker | User-installed Python environment and verified passive model assets in a separately isolated Linux network namespace; unavailable on Windows; at most 25 seconds per generation chunk |
 
 The procedural engine accepts any project duration allowed by available disk
 and user budgets. Its deliberate recurring motif is not continuously novel
@@ -115,9 +115,16 @@ Use a separate, explicitly installed local Python environment. The worker checks
 the installed `torch` and `transformers` versions against an approved manifest.
 It loads the processor and model from the selected directory with
 `local_files_only=True`, `trust_remote_code=False` and `use_safetensors=True`.
-No application path acquires weights. Python Internet sockets, DNS and package
-telemetry are disabled before optional libraries are imported. Native-library
-egress restrictions additionally depend on the host firewall/sandbox policy.
+No application path acquires weights. Python Internet sockets, DNS, child
+execution and package telemetry are disabled before optional libraries are
+imported. The Python guard is not an operating-system sandbox for native code.
+Before importing Torch, the worker additionally requires Linux kernel evidence
+of a network namespace different from PID 1's namespace and containing only
+the loopback interface. Environment flags are not accepted as that evidence.
+The caller must already be running inside that separately isolated namespace;
+this application does not launch or configure it. A Windows native isolation
+launcher is not implemented, so MusicGen generation explicitly fails on
+Windows. Configuring model files does not remove this platform requirement.
 
 Pass `MusicGenConfig(model_dir, manifest, manifest_sha256,
 python_executable=..., device='cpu', timeout_seconds=...)` as
@@ -134,7 +141,7 @@ The external UTF-8 manifest must contain exactly:
   "version": 1,
   "engine": "musicgen-transformers",
   "model_id": "facebook/musicgen-small",
-  "revision": "<exact reviewed 40–64 character hexadecimal revision>",
+  "revision": "<exact reviewed 40- or 64-character hexadecimal revision>",
   "weights_license": "CC-BY-NC-4.0",
   "code_license": "Apache-2.0",
   "transformers_version": "<exact installed version>",
@@ -155,6 +162,15 @@ not evidence of publisher provenance; review the actual publisher revision
 and rights before creating an approved manifest. The manifest SHA256 is an
 explicit installation input, separate from the model directory.
 
+The accepted identifiers are the reviewed `facebook/musicgen-small`, `medium`
+and `large` families, with an optional `stereo-` prefix; melody/style models are
+unsupported. Model configuration references and every safetensors shard must
+remain inside the approved inventory. Remote loader hooks, adapters, unreviewed
+quantization loaders and ambiguous JSON are rejected. Inference also requires
+complete MusicGen/Encodec/T5 configuration, processor/tokenizer assets and
+safetensors weights. Passing inventory validation alone does not establish
+that those inference assets are complete or that inference has run.
+
 The adapter's Apache-2.0 code-license field identifies Transformers. AudioCraft's
 MIT code license is separate from its CC-BY-NC-4.0 model weights. This private
 noncommercial profile does not claim commercial rights to those weights or
@@ -170,9 +186,10 @@ keyboard-accessible dialog selects existing local files, verifies their hashes,
 and saves a registration. File verification runs away from the UI thread and
 can be cancelled. **Generate and play a three-second sample** invokes the
 selected engine, saves a new WAV, reports its actual frame count and SHA256,
-and starts local playback when an audio device is available. A missing model or
-runtime produces an explicit error; selecting MusicGen never substitutes the
-procedural engine.
+and starts local playback when an audio device is available. A missing model,
+runtime or required network isolation produces an explicit error; selecting
+MusicGen never substitutes the procedural engine. The dialog and CLI status
+state that this build cannot run MusicGen on Windows.
 
 MusicGen registration requires the installed model directory, the separately
 reviewed manifest and its approved SHA256, the Python executable in the model's

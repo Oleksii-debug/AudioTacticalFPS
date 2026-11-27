@@ -133,6 +133,8 @@ jobs:
         run: |
           & $env:CARR_PYTHON -I -B tests/ui/native_audio_studio_smoke.py 2>&1 | Tee-Object 'ci-results/native-audio-studio.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -I -B tests/ui/native_audio_effects_smoke.py 2>&1 | Tee-Object 'ci-results/native-audio-effects.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON -I -B tests/assistant/native_credentials_probe.py 2>&1 | Tee-Object 'ci-results/native-provider-credentials.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON -I -B tests/ui/native_provider_settings_smoke.py 2>&1 | Tee-Object 'ci-results/native-provider-settings.json'
@@ -163,7 +165,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON -m pip check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $env:CARR_PYTHON -I -B -c "import importlib.metadata as m,json,pathlib,re; pins=dict(re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)',pathlib.Path('packaging/windows-semantic-cp311.lock').read_text(),re.M)); actual={n:m.version(n) for n in pins}; assert len(pins)==47 and actual==pins; print(json.dumps(actual,sort_keys=True))" | Tee-Object 'ci-results/full-lock-source-inventory.json'
+          & $env:CARR_PYTHON -I -B -c "import importlib.metadata as m,json,pathlib,re; pins=dict(re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)',pathlib.Path('packaging/windows-semantic-cp311.lock').read_text(),re.M)); actual={n:m.version(n) for n in pins}; assert len(pins)==50 and actual==pins; print(json.dumps(actual,sort_keys=True))" | Tee-Object 'ci-results/full-lock-source-inventory.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Prepare the verified OCR engine before its required source regression
@@ -192,6 +194,7 @@ jobs:
             'tests/packaging/test_ci_check.py',
             'tests/e2e/test_offline_startup.py',
             'tests/audio/test_projects.py',
+            'tests/audio/test_project_recovery_boundaries.py',
             'tests/audio/test_voices.py',
             'tests/audio/test_model_voices.py',
             'tests/audio/test_voice_settings.py',
@@ -199,13 +202,16 @@ jobs:
             'tests/audio/test_narration_integration.py',
             'tests/audio/test_playback.py',
             'tests/audio/test_render.py',
+            'tests/audio/test_windows_volume_boundary.py',
             'tests/audio/test_effects.py',
             'tests/audio/test_music.py',
             'tests/audio/test_music_settings.py',
+            'tests/audio/test_music_model_boundary.py',
             'tests/audio/test_director.py',
             'tests/audio/test_director_path_identity.py',
             'tests/ui/test_provider_settings.py',
             'tests/ui/test_audio_studio.py',
+            'tests/ui/test_audio_effects.py',
             'tests/assistant/test_workflows.py',
             'tests/acquisition/test_providers.py',
             'tests/acquisition/test_acquisition_security.py',
@@ -267,7 +273,15 @@ jobs:
             'tests/storage/test_research_schema.py',
             'tests/storage/test_finish_workspace_integrity.py',
             'tests/research/test_academic_library.py',
+            'tests/research/test_bibtex_import.py',
+            'tests/research/test_csl_author_boundaries.py',
             'tests/e2e/test_academic_workflow.py',
+            'tests/citations/test_csl.py',
+            'tests/citations/test_custom_csl.py',
+            'tests/citations/test_bibliography_workbench.py',
+            'tests/citations/test_custom_workbench.py',
+            'tests/ui/test_citation_styles_jobs.py',
+            'tests/reader/test_export_no_clobber.py',
             'tests/citations/test_finish_label_integrity.py',
             'tests/citations/test_authorized_action.py',
             'tests/citations/test_finish_pdf_authority.py',
@@ -561,7 +575,11 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path scripts/windows_academic_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-academic-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path scripts/windows_citation_styles_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-citation-styles.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; from carr_library.audio.runtime import activate_bundled_audio_runtime; native=activate_bundled_runtime(); audio=activate_bundled_audio_runtime(); assert native is not None and audio is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path tests/ui/native_audio_studio_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-audio-studio.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; from carr_library.audio.runtime import activate_bundled_audio_runtime; native=activate_bundled_runtime(); audio=activate_bundled_audio_runtime(); assert native is not None and audio is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path tests/ui/native_audio_effects_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-audio-effects.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -X utf8 -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path tests/ui/native_voice_settings_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-voice-settings.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -611,6 +629,10 @@ jobs:
                             'tests/e2e/test_epub_library.py', 'tests/e2e/test_epub_reading_desk.py',
                             'tests/audio/test_render.py', 'tests/audio/test_effects.py',
                             'tests/audio/test_music.py', 'tests/audio/test_music_settings.py',
+                            'tests/audio/test_music_model_boundary.py',
+                            'tests/audio/test_project_recovery_boundaries.py',
+                            'tests/audio/test_windows_volume_boundary.py',
+                            'tests/ui/test_audio_effects.py',
                             'tests/audio/test_director.py',
                             'tests/acquisition/test_providers.py',
                             'tests/acquisition/test_acquisition_security.py',

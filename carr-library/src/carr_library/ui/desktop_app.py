@@ -565,6 +565,8 @@ class DesktopFrame(WorkspaceFrame):
         install_query_manager_actions(self)
         from .audio_studio import install_audio_studio
         install_audio_studio(self)
+        from .audio_effects import install_audio_effects
+        install_audio_effects(self)
         from .local_assistant import install_local_assistant
         install_local_assistant(self)
         from .provider_settings import install_provider_settings

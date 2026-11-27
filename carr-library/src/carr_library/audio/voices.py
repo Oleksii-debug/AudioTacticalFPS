@@ -117,6 +117,8 @@ def _local_path(value):
             or raw.startswith(('\\\\', '//')) or '://' in raw):
         raise ValueError('Choose a local file path.')
     path = Path(raw).absolute()
+    from .render import _require_local_volume
+    _require_local_volume(path)
     for ancestor in (path.parent, *path.parent.parents):
         info = ancestor.lstat()
         if (stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode)
@@ -153,7 +155,11 @@ def _executable(value, fallback):
     if raw.startswith(('\\\\', '//')) or '://' in raw or '\x00' in raw:
         raise ValueError('An engine executable must be local.')
     path = Path(raw)
-    if not path.is_absolute() or not path.is_file():
+    if not path.is_absolute():
+        raise ValueError('A configured engine must be an existing absolute executable path.')
+    from .render import _require_local_volume
+    _require_local_volume(path)
+    if not path.is_file():
         raise ValueError('A configured engine must be an existing absolute executable path.')
     if fallback == 'ffmpeg':
         from .render import tool_path

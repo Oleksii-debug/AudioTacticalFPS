@@ -18,7 +18,7 @@ Manifest version 3 adds checksummed application state when it exists:
 | Reading positions and bookmarks | Preserve exact workspace, edition, revision, location and source digests. Reading still revalidates these identities before displaying a page. |
 | Keyboard and OCR preferences | Preserve validated command overrides and named, ordered recognition presets. Restoring preferences does not install a voice or OCR model. |
 | Audio projects and history | Preserve current project JSON, historical revisions, narration derivatives, voice settings, accepted cached chunks and imported audio assets. |
-| Audio drafts | Preserve unsaved new scripts and existing-project drafts, including title, language, output format and base revision. Drafts may contain unfinished or invalid script syntax. |
+| Audio drafts | Preserve each editor window's checksummed recovery record, including exact unfinished text, title, language, output format, project identity and original base revision/fingerprint. Legacy single-project drafts remain readable. |
 | Local music registrations | Preserve nonsecret model/SoundFont paths, exact hashes and rights metadata. External assets remain separate and must pass validation before later use. |
 | Local voice registrations | Preserve strict executable/manifest paths and reviewed hashes. Restored registrations are inactive until explicitly revalidated; external voice assets are not copied. |
 | Production jobs | Preserve project snapshots, progress and accepted cache records. Restore pauses the job and requires a new output destination and a new render job. |
@@ -68,6 +68,12 @@ Reading positions, bookmarks and Studio source links must also match an exact
 sealed page in the copied database. Historical revisions and archived libraries
 remain valid; an unrelated source cannot be accepted merely by recalculating the
 sidecar checksum.
+
+Per-window recovery drafts must refer to a saved project included in the same
+snapshot, or explicitly identify a project that has not yet been created. A
+draft based on an older revision is retained unchanged when another window has
+saved a newer one. Restore neither rebases that draft nor drops invalid authored
+text; recovery keeps the original conflict visible before a later save.
 
 Copying streams in 1 MiB blocks. Explicit limits are 100,000 sidecar files,
 64 GiB of sidecar bytes, 32 GiB per ordinary sidecar file, 32 MiB per JSON

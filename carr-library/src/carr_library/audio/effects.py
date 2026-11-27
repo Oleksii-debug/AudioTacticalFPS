@@ -9,8 +9,8 @@ from typing import Mapping
 
 
 def number(value, name, minimum, maximum):
-    if (type(value) not in (int, float) or not math.isfinite(value)
-            or not minimum <= value <= maximum):
+    if (type(value) not in (int, float) or not minimum <= value <= maximum
+            or not math.isfinite(value)):
         raise ValueError(f'{name} must be a finite number from {minimum} to {maximum}.')
     return float(value)
 

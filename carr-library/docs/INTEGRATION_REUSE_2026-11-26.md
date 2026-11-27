@@ -84,3 +84,42 @@ The Windows workflow includes the reused suites and runs the native keyboard
 and OCR chooser probes from the installed package. The final bundle repeats
 them with egress blocked and requires its bundled OCR engine and actual English
 recognition. These declarations do not claim an unexecuted Windows/NVDA result.
+
+## Final combined-source additions
+
+The integrated candidate reuses PR112 at
+`103c2f0e86e519f7235dfbfbe7adcb0a6b373b26` for typed native audio effects,
+per-window draft recovery, ancestor/volume guards and stricter model inventories.
+The existing MIDI, sound-effect, music/voice settings and source-linked narration
+workflows remain in the same services. The peer fixes through
+`318a6ac3998063282af676ee4e827b529c7d018c` retain dependency-free CLI help,
+separate OCR catalog access from audio activation, handle the actual FFmpeg 9.1
+inventory columns and compare native Windows output identity using the actual
+file rather than its temporary path spelling.
+
+PR111 at `3defd1a259412fd8c41ab66179447b0fdc0eb7c3` supplies the local
+citeproc-js/QuickJS engine, reviewed bundled styles/locales, BibTeX parser,
+workbench, native dialog and source/license records. Only those modules and
+their narrow catalog/export hooks are reused; the existing library, audio,
+assistant, acquisition and import workflows are preserved. Its subsequent
+`bd169b9962532ef567c4ed8e927c9b60a386a3f4` export fix binds overwrite approval
+to the destination state before the user confirms and before a background job
+starts. A newly created destination remains atomic create-only.
+
+The new dependency lock has 50 exact pins. The installed wheel includes the
+CSL processor and its license notices, bundled styles and locales. The Windows
+workflow retains 166 distinct required source suites and adds actual installed
+native voice-registration, effects and CSL probes.
+
+The two focused export/async-dialog suites after adopting the destination fix
+passed 52 tests with zero failures or skips on the local host. The peer's
+exact-source Windows bibliography gate at `3defd1` passed 928 required tests
+and 69 native assertions. That evidence does not replace the complete combined
+candidate's Windows gate. Two local broad CSL attempts were killed before
+producing a complete report; they are not counted as passing acceptance.
+
+Full V3 acceptance is not inferred from code registration or package contents.
+MusicGen on Windows, owner-supplied cloning, signed delivery/update services,
+entitlement integration, translation and the final 135-language acoustic/NVDA
+qualification retain their explicit execution and owner-input requirements.
+Standalone transcription follows the later owner-supplied integration scope.

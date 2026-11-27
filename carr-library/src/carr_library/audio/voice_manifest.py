@@ -30,6 +30,8 @@ def local_path(path: Path | str, *, must_exist: bool = True) -> Path:
         raise ModelManifestError('Choose a local path, not a network share.')
     if any(':' in part for part in path.parts[1:]):
         raise ModelManifestError('Alternate streams and URL paths are not supported.')
+    from .render import _require_local_volume
+    _require_local_volume(path)
     for part in (path, *path.parents):
         if part.is_symlink():
             raise ModelManifestError('Linked paths are not accepted for local engine assets.')

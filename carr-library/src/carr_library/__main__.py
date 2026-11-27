@@ -146,8 +146,6 @@ def main(argv=None):
             return 0
         from .native_runtime import activate_bundled_runtime
         native_handle = activate_bundled_runtime()
-        from .audio.runtime import activate_bundled_audio_runtime
-        audio_handle = activate_bundled_audio_runtime()
         if ocr_operation:
             from .extract.model_catalog import models, profile_provenance
             from .extract.ocr_model_store import OcrModelStore
@@ -170,6 +168,8 @@ def main(argv=None):
                 result = store.select(args.ocr_profile, args.verify_ocr_models).fingerprint()
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0
+        from .audio.runtime import activate_bundled_audio_runtime
+        audio_handle = activate_bundled_audio_runtime()
         if args.self_test:
             print(json.dumps(self_test(), ensure_ascii=False))
             return 0

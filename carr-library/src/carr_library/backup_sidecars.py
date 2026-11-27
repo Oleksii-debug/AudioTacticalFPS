@@ -290,7 +290,7 @@ def _validate_json(relative, value, source_root):
         if parts[1] == 'drafts':
             ProjectStore.validate_draft(value, standalone=True)
             if value['id'] != PurePosixPath(relative).stem:
-                raise RestoreError('unsaved studio draft identity mismatch')
+                raise RestoreError('studio recovery draft identity mismatch')
         elif parts[-1] == 'project.json' or parts[-2] == 'revisions':
             project = Project.from_dict(value)
             if project.id != parts[2]:
@@ -299,6 +299,8 @@ def _validate_json(relative, value, source_root):
                 raise RestoreError('studio revision identity mismatch')
         elif parts[-1] == 'draft.json':
             ProjectStore.validate_draft(value)
+            if value.get('version') == 3 and value['project_id'] != parts[2]:
+                raise RestoreError('studio recovery draft project identity mismatch')
         elif parts[-2] == 'jobs':
             if (type(value) is not dict or value.get('version') != 1
                     or value.get('id') != PurePosixPath(relative).stem
@@ -381,6 +383,13 @@ def _verify_tree(stage, manifest, *, db):
             value = _read_json(path)
             _validate_json(row['path'], value, manifest['source_root'])
             _verify_sources(db, row['path'], value)
+            if row['path'].startswith('studio/drafts/') and value.get('project_id') is not None:
+                # Each window retains its original base, even after another
+                # window commits a newer revision. Require the saved project
+                # itself, without rebasing or discarding a stale recovery draft.
+                current = f"studio/projects/{value['project_id']}/project.json"
+                if current not in actual:
+                    raise RestoreError('studio recovery draft has no matching saved project')
             if '/cache/' in row['path']:
                 paired = row['path'][:-5] + '.wav'
                 if paired in actual and value['sha256'] != _file_record(actual[paired], paired)['sha256']:

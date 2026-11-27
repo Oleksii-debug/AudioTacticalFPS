@@ -12,7 +12,7 @@ import pytest
 from carr_library.application import LibraryApp
 from carr_library import backup_sidecars as sidecars
 from carr_library.library_backup import create_backup, restore_backup, INCOMPLETE
-from carr_library.audio.projects import ProjectStore, parse_script, read_json, atomic_json
+from carr_library.audio.projects import ProjectStore, parse_script, read_json, atomic_json, digest
 from carr_library.audio.director import ProductionDirector
 from carr_library.reader.reading_state import ReadingLocation, ReadingState
 from carr_library.assistant.providers import ConnectionStore, ProviderProfile
@@ -328,6 +328,67 @@ def test_unsaved_studio_draft_and_invalid_script_metadata_survive_backup(library
     assert copies.new_drafts() == (draft,)
     assert copies.new_drafts()[0]['language'] == 'uk'
     assert copies.new_drafts()[0]['format'] == 'flac'
+
+
+def test_per_window_stale_drafts_keep_exact_bytes_and_legacy_recovery(library, tmp_path):
+    app, _ = library
+    store = ProjectStore(app.root)
+    original = store.create(parse_script('Narrator: Original script.', ['local-voice']))
+    store.save_draft(original.id, 'Legacy unfinished draft')
+    stale = store.save_draft(original.id, '\0Unfinished first window',
+        session_id='a' * 32, title='First window', language='uk', format='flac')
+    newer = parse_script('Narrator: Saved by the other window.', ['local-voice'], previous=original)
+    store.save(newer)
+    current = store.save_draft(newer.id, '@unknown unfinished directive',
+        session_id='b' * 32, title='Second window', language='sk', format='wav')
+    before = store.project_drafts(original.id)
+    raw = {row['id']: (store.studio / 'drafts' / (row['id'] + '.json')).read_bytes()
+           for row in (stale, current)}
+    checksum = create_backup(app, tmp_path / 'backup')
+    restored = restore_backup(tmp_path / 'backup', tmp_path / 'restored', checksum)
+    copies = ProjectStore(restored)
+    assert copies.load(original.id) == newer
+    assert copies.project_drafts(original.id) == before
+    assert copies.new_drafts() == ()
+    assert stale['base_revision'] == original.revision
+    assert stale['base_fingerprint'] == original.fingerprint != newer.fingerprint
+    for draft_id, expected in raw.items():
+        assert (copies.studio / 'drafts' / (draft_id + '.json')).read_bytes() == expected
+    assert read_json(copies.path(original.id) / 'draft.json')['script'] == 'Legacy unfinished draft'
+
+
+@pytest.mark.parametrize('phase', ['snapshot', 'restore'])
+def test_rehashed_per_window_draft_cannot_reference_a_missing_project(library, tmp_path, phase):
+    app, _ = library
+    store = ProjectStore(app.root)
+    saved = store.create(parse_script('Narrator: Original.', ['local-voice']))
+    draft = store.save_draft(saved.id, 'Unfinished recovery text', session_id='a' * 32)
+    relative = 'studio/drafts/' + draft['id'] + '.json'
+    backup = tmp_path / 'backup'
+    if phase == 'restore':
+        create_backup(app, backup)
+        path = backup / 'sidecars' / relative
+    else:
+        path = app.root / relative
+    draft['project_id'] = 'missing-project'
+    draft['sha256'] = digest({key: value for key, value in draft.items() if key != 'sha256'})
+    raw = json.dumps(draft).encode('utf-8')
+    path.write_bytes(raw)
+    if phase == 'restore':
+        manifest_path = backup / 'manifest.json'
+        manifest = json.loads(manifest_path.read_text())
+        row = next(row for row in manifest['sidecars']['files'] if row['path'] == relative)
+        row.update(size_bytes=len(raw), sha256=sha256(raw).hexdigest())
+        sealed = json.dumps(manifest).encode('utf-8')
+        manifest_path.write_bytes(sealed)
+        destination = tmp_path / 'restored'
+        with pytest.raises(RestoreError, match='no matching saved project'):
+            restore_backup(backup, destination, sha256(sealed).hexdigest())
+    else:
+        destination = backup
+        with pytest.raises(RestoreError, match='no matching saved project'):
+            create_backup(app, backup)
+    assert not destination.exists()
 
 
 def test_keyboard_and_ordered_ocr_presets_survive_full_restore(library, tmp_path):
