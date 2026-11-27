@@ -212,13 +212,36 @@ def test_full_final_page_uses_exact_lookahead_instead_of_guessing_more_results(t
 
 
 def test_final_result_page_after_ten_thousand_matches_is_not_rejected(tmp_path):
+    from contextlib import closing
+    from hashlib import sha256
+
+    from carr_library.application import _CatalogPublisher
+    from carr_library.catalog.registration import Registration
+    from carr_library.citations.text_attestation import CONFIG
+    from carr_library.ingest.writer_guard import exclusive_writer
+    from carr_library.storage.revisions import Page, Storage
+
     app = LibraryApp(tmp_path / 'library')
     workspace = app.create_workspace('Large research collection')
-    for edition, count in enumerate([1000] * 10 + [1]):
-        pages = '\f'.join(f'alpha beta edition {edition:02d} page {page:03d}'
+    # This case tests retrieval past 10,000 authorized segments, not the ingest
+    # journal. Publish the synthetic originals through the existing retention,
+    # catalog and sealed-revision APIs, in one transaction per edition, without
+    # 10,001 per-page extraction checkpoints and their durable writes.
+    with exclusive_writer(app.root), closing(Storage(app.database, schema_version=4)) as storage:
+        for edition, count in enumerate([1000] * 10 + [1]):
+            pages = tuple(f'alpha beta edition {edition:02d} page {page:03d}'
                           for page in range(count))
-        app.add_text(workspace, f'Source {edition:02d}', pages,
-                     edition_id=f'edition-{edition:02d}', work_id=f'work-{edition:02d}')
+            data = '\f'.join(pages).encode('utf-8')
+            digest = sha256(data).hexdigest()
+            app.assets.retain(data, 'text/plain', digest)
+            record = Registration(f'work-{edition:02d}', f'edition-{edition:02d}',
+                {'sha256': digest, 'mime': 'text/plain', 'size': len(data)},
+                f'Source {edition:02d}')
+            _CatalogPublisher(storage, record).publish_revision(workspace, record.edition_id,
+                f'revision-{edition:02d}', digest, CONFIG, (Page(raw) for raw in pages))
+    with app.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM active_page WHERE workspace=?',
+                          (workspace,)).fetchone()[0] == 10001
     service = FederatedSearch(app)
     session = service.search([workspace], 'alpha AND beta', mode='advanced',
         result_mode='short', limit_per_library=1, offset_per_library=10000)
