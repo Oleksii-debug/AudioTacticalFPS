@@ -360,13 +360,14 @@ def test_local_only(request):
 
             real_run_suite = runner.run_suite
 
-            def with_test_deadline(suite):
+            def with_test_deadline(suite, *, allow_loopback=False):
+                self.assertFalse(allow_loopback)
                 if suite == 'test_timeout.py':
                     # Startup is acknowledged by the real descendant first;
                     # only the wait budget is shortened, never termination.
                     with mock.patch.object(runner, 'SUITE_TIMEOUT_SECONDS', .15):
-                        return real_run_suite(suite)
-                return real_run_suite(suite)
+                        return real_run_suite(suite, allow_loopback=allow_loopback)
+                return real_run_suite(suite, allow_loopback=allow_loopback)
 
             output = io.StringIO()
             try:

@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "status": "FIXTURE_ONLY_REPAIR_NOT_RUN",
+  "observed": {
+    "source_commit": "4e570d78fd496a29f5afefd8789e8d8112e8ba5f",
+    "run_id": 46049991116,
+    "job_id": 140678635022,
+    "platform": "windows-2022",
+    "status": "FAIL",
+    "passed": 47,
+    "failed": 1,
+    "elapsed_seconds": 13.4,
+    "failing_test": "tests.packaging.test_ci_check.CIEntrypointTests.test_timeout_terminates_real_descendant_before_temp_cleanup_and_stays_failed",
+    "error": "TypeError: with_test_deadline() got an unexpected keyword argument 'allow_loopback'",
+    "phase": "main() called the deadline fixture wrapper before its actual timeout suite or descendant started.",
+    "artifact": {
+      "id": 15224738937,
+      "bytes": 111343,
+      "digest": "sha256:4c73200e080aa2b323b530b9482e0315269aee2788f3e59efb4c128587d1d53a"
+    },
+    "linux_status_at_authoring": "QUEUED"
+  },
+  "change": "The test deadline wrapper accepts the current keyword-only allow_loopback=False argument, asserts it stays false, and forwards it unchanged to the real run_suite for both timeout and later successful suites.",
+  "preserved": [
+    "Runner/product code is unchanged.",
+    "Exact48 Windows /49 Linux required populations and all existing assertions are unchanged.",
+    "The real-child startup acknowledgment, inherited Windows Job/POSIX group, actual termination and private-directory cleanup checks still execute; no mocked termination replaces them.",
+    "No test deadline, case watchdog, cleanup retry or dependency version changes.",
+    "The original frozen failing ref remains unchanged."
+  ],
+  "next_run": {
+    "status": "NOT_RUN",
+    "same_gate": ".github/workflows/carr-ci-runner.yml",
+    "windows_cases": 48,
+    "linux_cases": 49
+  }
+}
