@@ -1,0 +1,137 @@
+{
+  "schema": 1,
+  "status": "PARTIAL_EXECUTION_EVIDENCE_EXECUTOR_UNAVAILABLE",
+  "recorded_at_utc": "2026-11-27T10:35:34.604Z",
+  "scope": "Observed completion/checkpoint summaries, not substitutes for unavailable raw case receipts or full 50,000-result completion.",
+  "production_fix": {
+    "public_commit": "51e55b376edd33f4977112b1ec2892b03c98e6ff",
+    "executed_local_commit": "d914fc65585b452e71a0d180042454cb473b1f41",
+    "verified_identical_tree": "deb0df64c31cb9dca87a9586e23ccfbf4a201596"
+  },
+  "source_regressions": {
+    "status": "PASS",
+    "main_tests_passed": 210,
+    "subtests_passed": 15,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "suites": [
+      {
+        "modules": [
+          "tests/search/test_capacity_query_shapes.py",
+          "tests/search/test_search_pagination.py"
+        ],
+        "passed": 115,
+        "elapsed_seconds": 8.58
+      },
+      {
+        "modules": [
+          "tests/catalog/test_read_views.py",
+          "tests/catalog/test_read_views_v2_integration.py",
+          "tests/catalog/test_application_metadata_integrity.py",
+          "tests/catalog/test_catalog_panel_acceptance.py",
+          "tests/e2e/test_search_operation_budget.py"
+        ],
+        "passed": 75,
+        "subtests_passed": 15,
+        "elapsed_seconds": 2.48
+      },
+      {
+        "modules": [
+          "tests/e2e/test_retained_source_search_integrity.py",
+          "tests/e2e/test_application.py"
+        ],
+        "passed": 20,
+        "elapsed_seconds": 11.25
+      }
+    ],
+    "evidence": "Successful pytest terminal results; XML receipts were written locally but could not be retrieved after executor transport loss. Initial fixture type errors were corrected before the final 115-case pass; PDF workers used absolute project/source PYTHONPATH."
+  },
+  "baseline_first_attempt": {
+    "public_commit": "26f5a64df0126dc0459c9865617fdebf78df5f79",
+    "evidence": "library-capacity-initial-20261127.json",
+    "status_50000": "CASE_TIMEOUT",
+    "timeout_seconds": 1800
+  },
+  "baseline_reused_fixture": {
+    "public_commit": "26f5a64df0126dc0459c9865617fdebf78df5f79",
+    "status": "INTERRUPTED_FOR_REVIEWED_PERFORMANCE_FIX",
+    "benchmark_driver_exit_code": 130,
+    "last_durable_pages": 50,
+    "last_durable_exact_results": 5000,
+    "source_unchanged_after_interruption": true,
+    "first_page": {
+      "samples": 20,
+      "p50_seconds": 8.064800678999745,
+      "p95_seconds": 8.911887347996526,
+      "total_seconds": 164.3761749609912,
+      "observed_process_peak_rss_bytes": 49139712
+    },
+    "first_25_continuations": {
+      "samples": 25,
+      "p50_seconds": 7.964986450999277,
+      "p95_seconds": 9.449401838995982,
+      "total_seconds": 204.0958788229982,
+      "exact_results_verified": 2500
+    },
+    "last_checkpoint_elapsed_seconds": 582.378876614006,
+    "full_500_pages_completed": false
+  },
+  "optimized_completed_scales": [
+    {
+      "synthetic_editions": 1000,
+      "status": "PASS",
+      "elapsed_seconds": 6.615015962001053,
+      "all_search_pages_completed": true,
+      "search_pages": 10,
+      "exact_results_verified": 1000,
+      "search_page_latency": {
+        "samples": 10,
+        "p50_seconds": 0.0783816709954408,
+        "p95_seconds": 0.35936174700327683,
+        "total_seconds": 1.0715686110052047
+      }
+    },
+    {
+      "synthetic_editions": 10000,
+      "status": "PASS",
+      "elapsed_seconds": 63.24169681600324,
+      "all_search_pages_completed": true,
+      "search_pages": 100,
+      "exact_results_verified": 10000,
+      "search_page_latency": {
+        "samples": 100,
+        "p50_seconds": 0.28146637399913743,
+        "p95_seconds": 0.458969277999131,
+        "total_seconds": 30.783640815963736
+      }
+    }
+  ],
+  "optimized_50000": {
+    "status": "LAST_OBSERVED_RUNNING_FINAL_RECEIPT_NOT_RETRIEVED",
+    "reused_same_retained_fixture": true,
+    "case_timeout_seconds": 3600,
+    "configured_search_page_cap": 0,
+    "first_page": {
+      "samples": 20,
+      "p50_seconds": 1.3442310850005015,
+      "p95_seconds": 1.64835060799669,
+      "total_seconds": 28.06347555098182
+    },
+    "last_observed_durable_pages": 25,
+    "last_observed_exact_results": 2500,
+    "full_500_pages_completed": "NOT_ESTABLISHED"
+  },
+  "limitations": {
+    "corpus": "Distinct synthetic edition/work/revision identities; one shared retained 94-byte UTF-8 text original and one segment per edition; not 50,000 imported book files.",
+    "storage": "Linux development container tmpfs; warm OS cache; shared host.",
+    "imports": "Direct catalogue construction differs from real imports. The harness separately invokes twenty small unique TXT imports per completed case; large-book import throughput is not measured.",
+    "native_windows_or_nvda": "NOT_RUN_BY_THIS_MEASUREMENT",
+    "neural_search": "NOT_RUN"
+  },
+  "interruption": {
+    "kind": "EXECUTOR_TRANSPORT_UNAVAILABLE",
+    "message": "A new exec command was rejected before process creation because exec-server transport recovery timed out; the environment was then marked unavailable. Optimized 50k completion is not inferred from the already running command.",
+    "preserved": "Source fix, tests, harness and original 1k/10k raw evidence plus 1800s limit are already committed publicly; this record preserves only actually observed later summary values."
+  }
+}
