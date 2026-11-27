@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "status": "OBSERVED_FAILURE_CORRECTION_NOT_RUN",
+  "observed": {
+    "commit": "67c717c48660a32080aadcd5cf331de557e890d5",
+    "run": 46004249451,
+    "job": 140523294096,
+    "native_source": {
+      "passed": 2,
+      "failed": 7
+    },
+    "native_installed": "NOT_RUN",
+    "artifact": {
+      "id": 15202124359,
+      "bytes": 1588575,
+      "sha256": "8cbb3ffdb04b7127512efd94de1e214971dfb35086993b1c48a69678e6c3eb41"
+    },
+    "failures": [
+      "The actual installed calibre code inventory exceeds the explicit384handle cap.",
+      "The publisher's TCR compressor rejects the long repetitive cancellation input with ValueError: bytes must be in range(0,256)."
+    ]
+  },
+  "correction": {
+    "code_handle_limit": 1024,
+    "keeps_all_code_readers_held": true,
+    "changes_stdio_limit": false,
+    "all_existing_component_hash_reparse_link_and_postchecks_retained": true,
+    "cancellation_fixture": "Synthetic valid TCR literal dictionary, then actual native decoder/converter; avoids unrelated vendor compressor crash. Six format roundtrips remain unchanged.",
+    "portable_cases_each": 154,
+    "native_calibre_cases_each": 9,
+    "qualification": "NOT_RUN"
+  },
+  "sources": {
+    "crt_low_level_limit": "https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/setmaxstdio?view=msvc-170",
+    "tcr_format": "https://github.com/kovidgoyal/calibre/blob/v9.19.0/src/calibre/ebooks/compression/tcr.py",
+    "tcr_blob": "211f146c34c6fe8d46c531cbba7031415fd6fe75"
+  }
+}

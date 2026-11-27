@@ -600,7 +600,7 @@ def export_output(root, reference, source_id, extension, destination, *, approva
     raw = _digest(resolve(name), row, cancelled=cancelled, collect=True)
     from .research.export_file import write_binary_export
     return write_binary_export(destination, raw, private_root=root, approval=approval,
-                               cancelled=cancelled)
+                               require_absent=approval is None, cancelled=cancelled)
 
 def _validate_link(root, path, *, cancelled):
     info = regular(path)

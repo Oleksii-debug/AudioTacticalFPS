@@ -72,3 +72,15 @@ def sample_chm():
         'contents.hhc': b'<html><body><object type="text/sitemap"><param name="Local" value="z.htm"></object>'
                         b'<object type="text/sitemap"><param name="Local" value="a.htm"></object></body></html>',
     })
+
+
+def tcr(text):
+    """Synthetic literal dictionary in the publisher's documented TCR framing.
+
+    The native reader still performs real TCR decoding. A one-byte mapping
+    avoids invoking the unrelated publisher compressor for a cancellation input.
+    Format reference: calibre v9.19.0 src/calibre/ebooks/compression/tcr.py.
+    """
+    if type(text) is not bytes or not text:
+        raise ValueError('A nonempty synthetic byte body is required.')
+    return b'!!8-Bit!!' + b''.join(bytes((1, code)) for code in range(256)) + text

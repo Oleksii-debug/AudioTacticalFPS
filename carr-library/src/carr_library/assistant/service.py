@@ -168,6 +168,11 @@ class AssistantService:
                     'Saved job is damaged or unavailable; it was not run. ' + str(exc)[:1000]))
         return tuple(reports)
 
+    def workflow_templates(self):
+        """Open inert named drafts; no scope, model or execution is approved."""
+        from .templates import WorkflowTemplateStore
+        return WorkflowTemplateStore(self.app.root)
+
     def review_instruction(self, identity):
         """Copy saved steps into an unapproved draft, without transferring scope.
 

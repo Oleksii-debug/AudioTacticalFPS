@@ -359,10 +359,13 @@ def test_pending_native_cleanup_keeps_stage_sources_and_resource_lease_until_qui
             return native(args, **options)
         stage = Path(args[-1]).parent
         assert options['owned_tree'] is True
-        assert stage.is_dir() and stage.name.startswith('.clip-consolidation-')
+        outer = stage.parent
+        assert stage.is_dir() and stage.name.startswith('.clip-')
+        assert outer.is_dir() and outer.name.startswith('.clip-consolidation-')
+        assert outer.parent == root
         def settle():
             attempts.append(True)
-            assert stage.is_dir()
+            assert stage.is_dir() and outer.is_dir()
             assert len(broker.snapshot()['leases']) == 1
             assert all(active.get(path, 0) for path in originals)
             assert set((root / 'assets').iterdir()) == set(originals)

@@ -71,7 +71,14 @@ def test_cli_historical_output_is_exact_and_never_silently_overwrites(tmp_path, 
     before = destination.read_bytes()
     assert cli.main(command) == 1
     assert destination.read_bytes() == before
-    capsys.readouterr()
+    assert 'replacement was not authorized' in capsys.readouterr().err
+    # A different existing payload is equally protected; no equality shortcut
+    # or fresh metadata capture grants this CLI permission to replace it.
+    destination.write_bytes(b'Keep the separately authored local file.\n')
+    before = destination.read_bytes()
+    assert cli.main(command) == 1
+    assert destination.read_bytes() == before
+    assert 'replacement was not authorized' in capsys.readouterr().err
 
 
 def test_cli_saved_edit_becomes_separate_reading_project(tmp_path, capsys):

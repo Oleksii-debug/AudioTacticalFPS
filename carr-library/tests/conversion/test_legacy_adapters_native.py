@@ -136,7 +136,8 @@ def test_real_calibre_output_budget_publishes_nothing(tmp_path):
 
 
 def test_real_calibre_cancel_after_native_text_settles_before_private_cleanup(tmp_path):
-    source = book(tmp_path, '.tcr', 'CALIBRE NATIVE CANCEL READING TEXT.\n\n' * 1000)
+    source = tmp_path / 'cancellation.tcr'
+    source.write_bytes(FIXTURES['tcr'](b'CALIBRE NATIVE CANCEL READING TEXT.\n\n' * 1000))
     before = source.read_bytes()
     observed = []
     def cancelled():

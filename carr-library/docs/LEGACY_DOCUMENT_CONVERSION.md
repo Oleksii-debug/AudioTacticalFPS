@@ -127,3 +127,11 @@ They are selected external programs, not a relicensed application dependency.
 No claim of verified detached publisher signatures or reproducible vendor
 binaries is made. The official release/source links and fixed checksums identify
 what the gate actually obtained.
+
+Observed native correction (2026-11-27): the pinned calibre closure exceeds the
+initial 384-reader allowance. The exact source now allows at most 1,024 held
+code readers, retaining every code identity and final check. The real publisher
+closure and all nine source/installed fixtures must pass before any format is
+advertised; no stdio limit or process isolation is altered. The cancellation
+fixture uses a synthetic valid literal TCR dictionary because the publisher's
+compressor failed on its repetitive input; actual decoding remains required.
