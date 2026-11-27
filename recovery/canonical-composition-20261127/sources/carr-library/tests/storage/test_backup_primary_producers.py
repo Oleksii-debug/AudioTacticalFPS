@@ -66,6 +66,104 @@ def manifest_rows(manifest):
     return rows
 
 
+@pytest.fixture
+def edited_producers(tmp_path):
+    from carr_library.speech.reading import PronunciationRule
+    from carr_library.ui.pronunciation_dialog import DictionaryStore
+    from carr_library.ui.studio_dialog import StudioController
+
+    app = LibraryApp(tmp_path / 'edited-library')
+    workspace = app.create_workspace('Unfinished user edits')
+    app.add_text(workspace, 'Source', 'Original text remains exact.')
+    dictionary = DictionaryStore(app.root)
+    # Invalid regex syntax is allowed in a saved rule for later review. Backup
+    # may validate its declaration, but must not compile or apply the pattern.
+    rules = (PronunciationRule('(', 'Unfinished rule', regex=True,
+                               voice_id='unavailable:local'),)
+    token = dictionary.save(rules, expected=None)
+    controller = StudioController(app, service=object())
+    # Autosave happens before project parsing and must preserve an unfinished
+    # script with an empty title, even when no matching voice is installed.
+    controller.autosave('[Pause: unfinished', '', ['unavailable:local'])
+    paths = (dictionary.path, controller.draft)
+    return app, workspace, rules, token, {p.relative_to(app.root).as_posix(): p.read_bytes() for p in paths}
+
+
+def test_actual_dictionary_and_unsaved_studio_draft_roundtrip_without_activation(
+        edited_producers, tmp_path, monkeypatch):
+    from carr_library.ui.pronunciation_dialog import DictionaryStore
+    app, workspace, rules, token, original = edited_producers
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('Preserving editor data must not activate a provider.')
+
+    from carr_library import runtime_settings
+    monkeypatch.setattr(runtime_settings, 'voice_registry', forbidden)
+    monkeypatch.setattr(subprocess, 'Popen', forbidden)
+    folder = tmp_path / 'editor-backup'
+    checksum = create_backup(app, folder)
+    for name, raw in original.items():
+        assert (folder / name).read_bytes() == raw
+    shutil.rmtree(app.root)
+    target = restore_backup(folder, tmp_path / 'editor-restored', checksum)
+    for name, raw in original.items():
+        assert (target / name).read_bytes() == raw
+        assert (folder / name).read_bytes() == raw
+    assert DictionaryStore(target).load() == (rules, token)
+    assert LibraryApp(target).search(workspace, 'Original')[0].quote == 'Original'
+
+
+@pytest.mark.parametrize('damage', [
+    'dictionary-schema', 'dictionary-extra', 'dictionary-rule-extra', 'dictionary-flag',
+    'draft-schema', 'draft-extra', 'draft-text', 'draft-voices', 'draft-project'])
+@pytest.mark.parametrize('phase', ['backup', 'restore'])
+def test_editor_checkpoints_remain_typed_after_outer_manifest_resealing(
+        edited_producers, tmp_path, damage, phase):
+    app, _, _, _, _ = edited_producers
+    name = ('state/speech/pronunciations.json' if damage.startswith('dictionary-')
+            else 'state/studio/draft.json')
+    folder = app.root
+    if phase == 'restore':
+        folder = tmp_path / 'editor-backup'
+        create_backup(app, folder)
+    path = folder / name
+    value = json.loads(path.read_bytes())
+    if damage == 'dictionary-schema': value['schema'] = 'unrecognized'
+    elif damage == 'dictionary-extra': value['command'] = 'not executable'
+    elif damage == 'dictionary-rule-extra': value['rules'][0]['command'] = 'not executable'
+    elif damage == 'dictionary-flag': value['rules'][0]['regex'] = 'yes'
+    elif damage == 'draft-schema': value['schema'] = True
+    elif damage == 'draft-extra': value['command'] = 'not executable'
+    elif damage == 'draft-text': value['text'] = ['not text']
+    elif damage == 'draft-voices': value['voice_ids'] = [True]
+    elif damage == 'draft-project': value['project_id'] = '../../foreign-project'
+    raw = json.dumps(value).encode()
+    path.write_bytes(raw)
+    destination = tmp_path / 'rejected-editor-data'
+    if phase == 'restore':
+        manifest = json.loads((folder / 'manifest.json').read_bytes())
+        manifest_rows(manifest)[name].update(size_bytes=len(raw), sha256=sha256(raw).hexdigest())
+        checksum = resign(folder, manifest)
+        with pytest.raises(ValueError):
+            restore_backup(folder, destination, checksum)
+    else:
+        with pytest.raises(ValueError):
+            create_backup(app, destination)
+    assert path.read_bytes() == raw
+    assert not destination.exists()
+
+
+def test_independent_editor_state_is_not_assigned_to_a_workspace(edited_producers, tmp_path):
+    app, workspace, _, _, original = edited_producers
+    folder = tmp_path / 'scoped-editor-backup'
+    create_backup(app, folder, authorized_workspaces=(workspace,))
+    names = manifest_rows(json.loads((folder / 'manifest.json').read_bytes()))
+    for name, raw in original.items():
+        assert name not in names
+        assert not (folder / name).exists()
+        assert (app.root / name).read_bytes() == raw
+
+
 def resign(folder, manifest):
     raw = (json.dumps(manifest, ensure_ascii=False, sort_keys=True, separators=(',', ':')) + '\n').encode()
     (folder / 'manifest.json').write_bytes(raw)

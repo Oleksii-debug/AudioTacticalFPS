@@ -3,7 +3,7 @@
   "repository": "Oleksii-debug/AudioTacticalFPS",
   "canonical_commit": "966e5ccf892243ead6942c635af5fbab47e72551",
   "canonical_tree": "682b267cb237804c7a15e6ac0285b9b6861b847c",
-  "status": "DRAFT_COMPONENT_RECOVERY_NOT_FINAL_APPLICATION",
+  "status": "INCOMPLETE_PUBLIC_RECOVERY_CHECKPOINT",
   "source_execution": "Published checkpoint6:150 source identities/configuration checks,279citation tests onPython3.11 and64actualPowerShell blocks PASS. Exact runner67e42 + atomic-marker testbc059: Windows25+5subtestsPASS run45984033388; POSIX25+5subtestsPASS run45984384730. New public provider cancellation fix is independently source-reviewed; its exact baseline/fixed CI is pending. Final application/source composition is not complete and its executor is unavailable.",
   "files": [
     {
@@ -335,43 +335,53 @@
       "path": "carr-library/src/carr_library/backup_extensions.py",
       "base_commit": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
       "base_blob": "2130f4117abd06b22a767de9ed1bea08899b6dfb",
-      "new_blob": "5bc7bef3f5e7a2ef6ca3dc76b9311809f8163d3b",
-      "characters": 43414,
-      "warning": "Finite primary validation plus old opaque reader, v4 extension producer marker and root sidecars. Static only; actual regression execution pending.",
+      "new_blob": "c49fa285596d090c7f5a4f8a6b193097672f1329",
+      "warning": "Fresh reconstructed public-source composition has not run. Preserve the separately recorded local result without transferring it to these hashes.",
       "store_key": "replay_extensions_primary_union",
       "application_mode": "EXACT_BASE_REPLAY",
       "base_ref": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
       "owner": "durable",
       "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/backup_extensions.py",
-      "status": "DRAFT_SOURCE_NOT_RUNTIME_VALIDATED",
-      "supersedes_blob": "f5e7eef31abfc3cb822a5eeef63f9d58c03c6d6f"
+      "status": "PUBLIC_EXACT_PATCH_REPLAY_NOT_EXECUTED",
+      "supersedes_blob": "5bc7bef3f5e7a2ef6ca3dc76b9311809f8163d3b",
+      "replay_base_blob": "5bc7bef3f5e7a2ef6ca3dc76b9311809f8163d3b",
+      "bytes": 43685,
+      "readback": "EXACT_PUBLIC_BLOB",
+      "review_note": "Complete retained generic patch replayed against exact public source with unique contexts; no local c04 or sync bytes.35 pre-existing test functions retained across the five test files;20 new parametrized cases added. This reconstruction needs its own execution and is not claimed byte-identical to the inaccessible local118-test proof."
     },
     {
       "path": "carr-library/src/carr_library/backup_producers.py",
       "base_commit": "966e5ccf892243ead6942c635af5fbab47e72551",
       "base_blob": "88543abac6386f82193dd32dba295a375e2655c2",
-      "new_blob": "cb4c0a14038a46be3639939ccd2463d28a9433de",
+      "new_blob": "ee9e9ca2b1c08e52e5e00cb9a486f57aab27c64e",
       "exact_patch_replay": true,
-      "readback": true,
-      "status": "SOURCE_ONLY_NOT_COMPILED_OR_TESTED",
+      "readback": "EXACT_PUBLIC_BLOB",
+      "status": "PUBLIC_EXACT_PATCH_REPLAY_NOT_EXECUTED",
       "scope": "replay_backup_producers_union",
       "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
       "owner": "durable",
-      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/backup_producers.py"
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/backup_producers.py",
+      "supersedes_blob": "cb4c0a14038a46be3639939ccd2463d28a9433de",
+      "replay_base_blob": "cb4c0a14038a46be3639939ccd2463d28a9433de",
+      "bytes": 32040,
+      "review_note": "Complete retained generic patch replayed against exact public source with unique contexts; no local c04 or sync bytes.35 pre-existing test functions retained across the five test files;20 new parametrized cases added. This reconstruction needs its own execution and is not claimed byte-identical to the inaccessible local118-test proof.",
+      "warning": "Fresh reconstructed public-source composition has not run. Preserve the separately recorded local result without transferring it to these hashes."
     },
     {
       "path": "carr-library/src/carr_library/backup_sidecars.py",
       "base_commit": "966e5ccf892243ead6942c635af5fbab47e72551",
       "base_blob": "af17bc1c169de119d0eb6226694e4b0bdbe55907",
-      "new_blob": "7e7d2f73555d51577c01a88233c98ed68f8c98ba",
-      "characters": 35285,
+      "new_blob": "8073ccc38fb51fb16c5c64d022684cf2ca178540",
       "store_key": "replay_backup_sidecars_union",
       "application_mode": "EXACT_BASE_REPLAY",
       "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
       "owner": "durable",
       "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/backup_sidecars.py",
-      "status": "DRAFT_SOURCE_NOT_RUNTIME_VALIDATED",
-      "supersedes_blob": "fda860f3bb6b5427d00076103bef762ef0bb5f6f"
+      "status": "PUBLIC_EXACT_PATCH_REPLAY_NOT_EXECUTED",
+      "supersedes_blob": "7e7d2f73555d51577c01a88233c98ed68f8c98ba",
+      "replay_base_blob": "7e7d2f73555d51577c01a88233c98ed68f8c98ba",
+      "readback": "EXACT_PUBLIC_BLOB",
+      "review_note": "Only two canonical924 initial-root cancellation checks replayed onto the typed union. Strict lstat/FileNotFoundError-only semantics and all other adapters retained; fresh bounded backup proof pending."
     },
     {
       "path": "carr-library/src/carr_library/bundled_engines.py",
@@ -459,12 +469,12 @@
       "base_blob": "99d0afb0d117cb2acc1f9df6da9a1db4e756d847",
       "new_blob": "b042c9f31e65aaae4819a1ec40422895cf8be9ff",
       "sha256": "647a0051572a3d7d1049b3bb72d22f6a21d58ed07f3c367d813e5a1ede8c13b9",
-      "status": "INDEPENDENT_SOURCE_REVIEW_ACCEPTED_RUNTIME_PENDING",
+      "status": "LINUX_COMPONENT_PASS_WINDOWS_PENDING",
       "readback": true,
       "owner": "asr",
       "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/integrations/dordiai_speech.py",
       "supersedes_blob": "ece549fa8ff660fa2285eb8a8ea6c3a5151bdb7f",
-      "review_note": "Cold discovery now observes both current-operation cancellation and the provider Stop event; same admitted operation/adapter/cleanup owner, unchanged real-child assertions. Root and two independent reviewers accepted the exact 5404-character public facade. Bounded old-negative/new-positive Windows/POSIX run45985132540 is pending."
+      "review_note": "Public facade is independently source-reviewed; unchanged old-negative/new-positive CI confirms the intended baseline1PASS/1FAIL and all72cases/fourfixedsuites passing onUbuntu/Python3.11.18,sourceunchanged. Windows job140464461808 queued. No installed/UI/realmodel qualification."
     },
     {
       "path": "carr-library/src/carr_library/integrations/dordiai_voices.py",
@@ -1444,9 +1454,8 @@
       "path": "carr-library/tests/storage/test_backup_primary_producers.py",
       "base_commit": "966e5ccf892243ead6942c635af5fbab47e72551",
       "base_blob": "8e98fce992da579cedf4cdef5b89376b0adb0032",
-      "new_blob": "8f911b4c3d68d64b3c1af58adc99c024daff154d",
-      "characters": 13191,
-      "warning": "Actual primary producer fixture adapted to typed writer and exact V3/V4 readers. Source bytes/identities retained; restored Studio job requires explicit new output instead of reusing old authority. Not executed.",
+      "new_blob": "d2540f3db2b0dc773666427242bbbc07d2a83264",
+      "warning": "Fresh reconstructed public-source composition has not run. Preserve the separately recorded local result without transferring it to these hashes.",
       "store_key": "replay_primary_producer_fixture_union",
       "proof": {
         "base_blob": "8e98fce992da579cedf4cdef5b89376b0adb0032",
@@ -1458,7 +1467,12 @@
       "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
       "owner": "durable",
       "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/storage/test_backup_primary_producers.py",
-      "status": "DRAFT_SOURCE_NOT_RUNTIME_VALIDATED"
+      "status": "PUBLIC_EXACT_PATCH_REPLAY_NOT_EXECUTED",
+      "supersedes_blob": "8f911b4c3d68d64b3c1af58adc99c024daff154d",
+      "replay_base_blob": "8f911b4c3d68d64b3c1af58adc99c024daff154d",
+      "bytes": 18083,
+      "readback": "EXACT_PUBLIC_BLOB",
+      "review_note": "Complete retained generic patch replayed against exact public source with unique contexts; no local c04 or sync bytes.35 pre-existing test functions retained across the five test files;20 new parametrized cases added. This reconstruction needs its own execution and is not claimed byte-identical to the inaccessible local118-test proof."
     },
     {
       "path": "carr-library/tests/storage/test_backup_reader_appearance.py",
@@ -1473,6 +1487,34 @@
       "owner": "durable",
       "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/storage/test_backup_reader_appearance.py",
       "status": "DRAFT_SOURCE_NOT_RUNTIME_VALIDATED"
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_reporting.py",
+      "base_ref": "8c981c7e947f8d144c8706b5ea022990517c7dd9",
+      "base_blob": "70953d5644de286716326066f363c737d0ba7a75",
+      "replay_base_blob": "70953d5644de286716326066f363c737d0ba7a75",
+      "new_blob": "5555f2c920ae95c6a0f5bd459fce992b5ad7e41b",
+      "bytes": 3574,
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/storage/test_backup_reporting.py",
+      "owner": "durable",
+      "readback": "EXACT_PUBLIC_BLOB",
+      "status": "PUBLIC_EXACT_PATCH_REPLAY_NOT_EXECUTED",
+      "review_note": "Complete retained generic patch replayed against exact public source with unique contexts; no local c04 or sync bytes.35 pre-existing test functions retained across the five test files;20 new parametrized cases added. This reconstruction needs its own execution and is not claimed byte-identical to the inaccessible local118-test proof.",
+      "warning": "Fresh reconstructed public-source composition has not run. Preserve the separately recorded local result without transferring it to these hashes."
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_restore_cancellation.py",
+      "base_ref": "8c981c7e947f8d144c8706b5ea022990517c7dd9",
+      "base_blob": "927cc2d22ef4c96a7e8915f795c8f110777cb531",
+      "replay_base_blob": "927cc2d22ef4c96a7e8915f795c8f110777cb531",
+      "new_blob": "4d33f72b1039f975e0996fa67a8a212375ade507",
+      "bytes": 4551,
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/storage/test_backup_restore_cancellation.py",
+      "owner": "durable",
+      "readback": "EXACT_PUBLIC_BLOB",
+      "status": "PUBLIC_EXACT_PATCH_REPLAY_NOT_EXECUTED",
+      "review_note": "Complete retained generic patch replayed against exact public source with unique contexts; no local c04 or sync bytes.35 pre-existing test functions retained across the five test files;20 new parametrized cases added. This reconstruction needs its own execution and is not claimed byte-identical to the inaccessible local118-test proof.",
+      "warning": "Fresh reconstructed public-source composition has not run. Preserve the separately recorded local result without transferring it to these hashes."
     },
     {
       "path": "carr-library/tests/storage/test_backup_schema_identity.py",
@@ -1493,6 +1535,20 @@
       "owner": "durable",
       "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/storage/test_backup_schema_identity.py",
       "status": "DRAFT_SOURCE_NOT_RUNTIME_VALIDATED"
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_studio_media.py",
+      "base_ref": "8c981c7e947f8d144c8706b5ea022990517c7dd9",
+      "base_blob": "36005c919726441fe0a648dc26490a0b958fa1c6",
+      "replay_base_blob": "36005c919726441fe0a648dc26490a0b958fa1c6",
+      "new_blob": "83d57bbde83cea9e040e9d4eff41e2195f0a7e54",
+      "bytes": 9212,
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/storage/test_backup_studio_media.py",
+      "owner": "durable",
+      "readback": "EXACT_PUBLIC_BLOB",
+      "status": "PUBLIC_EXACT_PATCH_REPLAY_NOT_EXECUTED",
+      "review_note": "Complete retained generic patch replayed against exact public source with unique contexts; no local c04 or sync bytes.35 pre-existing test functions retained across the five test files;20 new parametrized cases added. This reconstruction needs its own execution and is not claimed byte-identical to the inaccessible local118-test proof.",
+      "warning": "Fresh reconstructed public-source composition has not run. Preserve the separately recorded local result without transferring it to these hashes."
     },
     {
       "path": "carr-library/tests/storage/test_backup_translation.py",
@@ -1614,6 +1670,20 @@
       "readback": true,
       "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/storage/test_progress_preferences_backup.py",
       "note": "Uses actual canonical ProgressPreferenceStore for current root-sidecar roundtrip; retains every former state/ui/progress.json byte/load assertion in an explicitly named legacy compatibility case. No legacy panel/service is started. Requires current legacy pure decoder module to remain available. Not executed."
+    },
+    {
+      "path": "carr-library/tests/storage/test_studio_input_backup.py",
+      "base_ref": "8c981c7e947f8d144c8706b5ea022990517c7dd9",
+      "base_blob": "092a06457c4a977d425060a5503c23812d5f01b8",
+      "replay_base_blob": "092a06457c4a977d425060a5503c23812d5f01b8",
+      "new_blob": "fe8c8c97bbcd44df58d454d7f909c90f8065c016",
+      "bytes": 24893,
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/storage/test_studio_input_backup.py",
+      "owner": "durable",
+      "readback": "EXACT_PUBLIC_BLOB",
+      "status": "PUBLIC_EXACT_PATCH_REPLAY_NOT_EXECUTED",
+      "review_note": "Complete retained generic patch replayed against exact public source with unique contexts; no local c04 or sync bytes.35 pre-existing test functions retained across the five test files;20 new parametrized cases added. This reconstruction needs its own execution and is not claimed byte-identical to the inaccessible local118-test proof.",
+      "warning": "Fresh reconstructed public-source composition has not run. Preserve the separately recorded local result without transferring it to these hashes."
     },
     {
       "path": "carr-library/tests/storage/test_v3_state_backup.py",
@@ -1839,7 +1909,8 @@
     "Checkpoint5 corrects only the bounded legacy citation memory profile and reviewed workflow source. Actual PowerShell parsing and CPython3.11 replay are pending a separate validation run. Archive objects are not a final platform build.",
     "Checkpoint6 repairs the archived Windows workflow transport using bounded chunks and verified Git blob dd71a09369ec77e6d00181111c534fe25857c5aa; adds recovery-local .gitattributes '* -text' so native source hash gates use unchanged committed bytes. Validation failures were retained and not relabelled.",
     "Checkpoint7 keeps the native failure evidence and repairs only atomic readiness publication inside the existing synthetic descendant fixture. No production process cleanup change or timeout/assertion relaxation. Fresh Windows and POSIX full finite runner selections replace no earlier evidence.",
-    "Checkpoint8 records actual Windows/POSIX runner success without copying either result to application or native-audio qualification. It preserves an honest finite remaining-scope audit and the local sync hash inventory while executor transport is unavailable."
+    "Checkpoint8 records actual Windows/POSIX runner success without copying either result to application or native-audio qualification. It preserves an honest finite remaining-scope audit and the local sync hash inventory while executor transport is unavailable.",
+    "Checkpoint9 adds four archived fixture paths and replays three existing backup candidates from complete retained public-base patches.154 candidates now; earlier150-source compilation evidence belongs to checkpoint8 and earlier bytes."
   ],
   "root_notes": {
     "builder": {
@@ -2021,9 +2092,100 @@
     {
       "validation_commit": "5e1f7385c13badf4a53f0a4c8a677afa7daceb42",
       "run_id": 45985132540,
-      "status": "PENDING",
+      "status": "CANCELLED_WHILE_QUEUED",
       "scope": "Exact public provider facade; original real-child negative and four unchanged fixed suites on Windows/POSIX",
-      "real_voice_or_model": "NOT_RUN"
+      "real_voice_or_model": "NOT_RUN",
+      "reason": "Independent review confirmed carr-library/.gitattributes already contains * -text. The added setting is redundant protection, not a demonstrated defect correction; no runtime/source-identity failure occurred on old run."
+    },
+    {
+      "validation_commit": "59cde34dcdb293d53acae77f10347be63d4351b9",
+      "run_id": 45986810416,
+      "status": "LINUX_PASS_WINDOWS_PENDING",
+      "scope": "Unchanged exact public provider facade; baseline real-child negative and four fixed suites on Windows/POSIX",
+      "workflow_change": {
+        "old_run": 45985132540,
+        "old_status": "CANCELLED_WHILE_QUEUED",
+        "new_run": 45986810416,
+        "new_commit": "59cde34dcdb293d53acae77f10347be63d4351b9",
+        "change": "Explicit core.autocrlf=false before checkout and fetch-depth3 to retain original shared parent",
+        "correction": "Independent review confirmed carr-library/.gitattributes already contains * -text. The added setting is redundant protection, not a demonstrated defect correction; no runtime/source-identity failure occurred on old run.",
+        "production_and_assertions_changed": false
+      },
+      "independent_helper_review": "ACCEPTED",
+      "real_voice_or_model": "NOT_RUN",
+      "application_native": "NOT_RUN",
+      "linux": {
+        "validation_commit": "59cde34dcdb293d53acae77f10347be63d4351b9",
+        "run_id": 45986810416,
+        "job_id": 140464461514,
+        "platform": "ubuntu-24.04",
+        "python": "3.11.18",
+        "baseline": {
+          "status": "EXPECTED_NEGATIVE_CONFIRMED",
+          "passed": 1,
+          "failed": 1,
+          "seconds": 60.806061734
+        },
+        "fixed": {
+          "status": "PASS",
+          "cases": 72,
+          "suites": [
+            "test_dordiai_canonical_convergence",
+            "test_dordiai_speech",
+            "test_dordiai_voices",
+            "test_dordiai_probe_cancellation"
+          ],
+          "seconds": 7.277952042,
+          "source_unchanged": true,
+          "failures": 0,
+          "errors": 0,
+          "skips": 0
+        },
+        "artifact_id": 15192716049,
+        "artifact_sha256": "4b7473dc12966a5aff71eae503a4271aab212c9e8b72c8f0b388093ef0c435b8",
+        "installed": "NOT_RUN",
+        "nvda": "NOT_RUN",
+        "real_voice_or_model": "NOT_RUN"
+      },
+      "windows": {
+        "job_id": 140464461808,
+        "status": "QUEUED"
+      }
+    },
+    {
+      "validation_commit": "942e2b914223329320946cfc9c5b26d76da78948",
+      "run_id": 45988474768,
+      "status": "PASS",
+      "scope": "Canonical-only local planner transcription contract; one expected old negative then64cases/threefixedsuites",
+      "evidence": {
+        "commit": "942e2b914223329320946cfc9c5b26d76da78948",
+        "run_id": 45988474768,
+        "job_id": 140469996481,
+        "platform": "ubuntu-24.04",
+        "python": "3.11.18",
+        "baseline": {
+          "status": "EXPECTED_NEGATIVE_CONFIRMED",
+          "failed": 1,
+          "seconds": 1.116611338
+        },
+        "fixed": {
+          "status": "PASS",
+          "cases": 64,
+          "suites": 3,
+          "new_cases": 6,
+          "seconds": 11.442318764,
+          "failures": 0,
+          "errors": 0,
+          "skips": 0,
+          "source_unchanged": true
+        },
+        "artifact_id": 15193545771,
+        "artifact_sha256": "109d3a8386376bdd1cad49dec407545305c826a5ac569e3be879efe69329d39b",
+        "real_engine": "NOT_RUN",
+        "installed": "NOT_RUN",
+        "nvda": "NOT_RUN",
+        "target": "Canonical e69 registry/dispatch only"
+      }
     }
   ],
   "deletions": [
@@ -2039,11 +2201,183 @@
     "shared": "8c981c7e947f8d144c8706b5ea022990517c7dd9",
     "note": "Latest public deltas are being reconciled in an isolated local composition; this archive still changes only recovery records and does not activate the application."
   },
-  "checkpoint": 8,
+  "checkpoint": 9,
   "public_composition_decisions": {
     "manifest_blob": "e4060c83eca99e44a58cd7b4ea682110a9aad29c",
     "shared_parent": "96294e97498f2133bf93f02ce72f84b6e709c72b",
     "canonical_parent": "3beebd5aca900b8bf2e86498ae79db4015c96705",
     "status": "SOURCE_REVIEWED_NOT_EXECUTED"
-  }
+  },
+  "latest_observed_public": {
+    "observed_at": "2026-11-27T11:02:00Z",
+    "canonical": "e69ba2403515f21509686d66f4bc8b3673756d81",
+    "shared_pr143": "4fae6fa69daf86fc9566f8847d74bccc8a4dc5a5",
+    "source_compare": "evidence/latest-public-overlap.json",
+    "status": "PUBLIC_SOURCE_REVIEW_IN_PROGRESS_NOT_INTEGRATED",
+    "note": "The canonical comparison changes103 paths since924;33 overlap archived candidates. Blob mismatches require reconciliation, not assumed replacement. Shared4fa adds actual PCM geometry attestation through the common before_publish hook. No exact current application composition exists in this archive."
+  },
+  "related_proposals": [
+    {
+      "name": "canonical local planner transcription contract",
+      "commit": "942e2b914223329320946cfc9c5b26d76da78948",
+      "tree": "3ae175ce8818e8af23f09684eb08b33be16d0e95",
+      "base": "e69ba2403515f21509686d66f4bc8b3673756d81",
+      "branch": "carr/planner-transcription-contract-20261127",
+      "run_id": 45988474768,
+      "status": "FINITE_SOURCE_PASS",
+      "files": [
+        {
+          "path": "carr-library/src/carr_library/assistant/llm.py",
+          "base_blob": "ee73d023bc8bb8932239a4e569f6a5e812dcf1a5",
+          "new_blob": "501a6223025c2d9c12b70e262ee01cd0b97bccbe",
+          "sha256": "ad72db3072db609be5671d80166aa5ad7dc47e29aead559ca175e8fd83a42644"
+        },
+        {
+          "path": "carr-library/tests/assistant/test_supplied_transcription.py",
+          "base_blob": "16f1896735602c43760e9a07485bf5168540fb33",
+          "new_blob": "28ae61aa879abe20c192c9a2dabfcb386e43089e",
+          "sha256": "b8d0906ec7ce9fbface4244d8811400998d808beb2f77d4cc6f20ea7989dce3c"
+        }
+      ],
+      "guard": "Canonical e69 already registers and dispatches audio.transcribe. Shared4fa does not; do not apply prompt alone there. No authority/model/service/adapter changes. Six appended contract/boundary cases; actual old-negative and three fixed suites required.",
+      "execution": {
+        "commit": "942e2b914223329320946cfc9c5b26d76da78948",
+        "run_id": 45988474768,
+        "job_id": 140469996481,
+        "platform": "ubuntu-24.04",
+        "python": "3.11.18",
+        "baseline": {
+          "status": "EXPECTED_NEGATIVE_CONFIRMED",
+          "failed": 1,
+          "seconds": 1.116611338
+        },
+        "fixed": {
+          "status": "PASS",
+          "cases": 64,
+          "suites": 3,
+          "new_cases": 6,
+          "seconds": 11.442318764,
+          "failures": 0,
+          "errors": 0,
+          "skips": 0,
+          "source_unchanged": true
+        },
+        "artifact_id": 15193545771,
+        "artifact_sha256": "109d3a8386376bdd1cad49dec407545305c826a5ac569e3be879efe69329d39b",
+        "real_engine": "NOT_RUN",
+        "installed": "NOT_RUN",
+        "nvda": "NOT_RUN",
+        "target": "Canonical e69 registry/dispatch only"
+      }
+    },
+    {
+      "name": "public typed-backup adapter proof",
+      "commit": "f8f9d83411bae7471f1d5642d58684e096471026",
+      "tree": "7eab07b6b23a8897abb4d92154ac56c8439e2ebc",
+      "base": "8c981c7e947f8d144c8706b5ea022990517c7dd9",
+      "branch": "carr/backup-adapter-recovery-20261127",
+      "status": "CI_PENDING",
+      "overlays": [
+        {
+          "path": "carr-library/src/carr_library/backup_producers.py",
+          "mode": "100644",
+          "type": "blob",
+          "sha": "ee9e9ca2b1c08e52e5e00cb9a486f57aab27c64e"
+        },
+        {
+          "path": "carr-library/src/carr_library/backup_extensions.py",
+          "mode": "100644",
+          "type": "blob",
+          "sha": "c49fa285596d090c7f5a4f8a6b193097672f1329"
+        },
+        {
+          "path": "carr-library/tests/storage/test_backup_restore_cancellation.py",
+          "mode": "100644",
+          "type": "blob",
+          "sha": "4d33f72b1039f975e0996fa67a8a212375ade507"
+        },
+        {
+          "path": "carr-library/tests/storage/test_backup_reporting.py",
+          "mode": "100644",
+          "type": "blob",
+          "sha": "5555f2c920ae95c6a0f5bd459fce992b5ad7e41b"
+        },
+        {
+          "path": "carr-library/tests/storage/test_studio_input_backup.py",
+          "mode": "100644",
+          "type": "blob",
+          "sha": "fe8c8c97bbcd44df58d454d7f909c90f8065c016"
+        },
+        {
+          "path": "carr-library/tests/storage/test_backup_studio_media.py",
+          "mode": "100644",
+          "type": "blob",
+          "sha": "83d57bbde83cea9e040e9d4eff41e2195f0a7e54"
+        },
+        {
+          "path": "carr-library/tests/storage/test_backup_primary_producers.py",
+          "mode": "100644",
+          "type": "blob",
+          "sha": "d2540f3db2b0dc773666427242bbbc07d2a83264"
+        },
+        {
+          "path": "carr-library/src/carr_library/library_backup.py",
+          "mode": "100644",
+          "type": "blob",
+          "sha": "1a6d938e2cdc01e332b9cb33f7ec108698a160c1"
+        },
+        {
+          "path": "carr-library/src/carr_library/state_backup.py",
+          "mode": "100644",
+          "type": "blob",
+          "sha": "3295c4ba6ad6fa32aaf71034f7ea1fdf39067c6a"
+        },
+        {
+          "path": "carr-library/src/carr_library/pending_backup.py",
+          "mode": "100644",
+          "type": "blob",
+          "sha": "0fa1ec46d1ecf7f039185e69af7b94a5a9b6adc1"
+        },
+        {
+          "path": "carr-library/src/carr_library/backup_sidecars.py",
+          "mode": "100644",
+          "type": "blob",
+          "sha": "8073ccc38fb51fb16c5c64d022684cf2ca178540"
+        },
+        {
+          "path": "carr-library/src/carr_library/backup_generated.py",
+          "mode": "100644",
+          "type": "blob",
+          "sha": "4c4a2741eb7c2e9a5725604551834e5c2a9fb947"
+        },
+        {
+          "path": "carr-library/src/carr_library/progress_preferences.py",
+          "mode": "100644",
+          "type": "blob",
+          "sha": "011930e83ce70c861d6bf59e97fe47e8c09cd551"
+        },
+        {
+          "path": "carr-library/src/carr_library/keyboard_preferences.py",
+          "mode": "100644",
+          "type": "blob",
+          "sha": "ea77248e902f2974bcfcda5912a4a179c623786e"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/command_registry.py",
+          "mode": "100644",
+          "type": "blob",
+          "sha": "2fe71b6b3b7c46cef384d6fddb56997b30564e08"
+        },
+        {
+          "path": "carr-library/tests/storage/test_backup_generated_audio.py",
+          "mode": "100644",
+          "type": "blob",
+          "sha": "86a42dbdf529c3fc9406a9a233f6d3d12b1c4616"
+        }
+      ],
+      "scope": "Fresh16overlaypubliccomposition, two required original adapter failures then seven full suites, actual FFmpeg/ffprobe, zero failures/errors/skips and unchanged source.",
+      "local118": "NOT_INHERITED",
+      "sync": "NOT_INCLUDED"
+    }
+  ]
 }

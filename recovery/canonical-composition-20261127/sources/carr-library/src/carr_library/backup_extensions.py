@@ -230,8 +230,12 @@ def validate_primary_state(root, entries, database, *, legacy_opaque=False,
     use only the current finite adapters within these producer namespaces.
     """
     from . import backup_generated, backup_producers, backup_sidecars
+    from .studio.backup_inputs import _reserved_names
 
     root = Path(root)
+    # Preserve the domain inspector's exact-name rule before generic namespace
+    # dispatch; a case alias must not become a different producer on restore.
+    _reserved_names(entry['filename'] for entry in entries)
     generated, receipts, handled = [], {}, False
     protected = ('speech/', 'studio/', 'providers/', 'assistant/', 'translation/')
     with closing(sqlite3.connect(Path(database).as_uri() + '?mode=ro&immutable=1', uri=True)) as db:

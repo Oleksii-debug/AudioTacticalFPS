@@ -1,0 +1,291 @@
+{
+  "canonical_base": "924ae83316a3cf9482aaf2ec51a6e6a5adb614c3",
+  "canonical_head": "e69ba2403515f21509686d66f4bc8b3673756d81",
+  "shared_head": "4fae6fa69daf86fc9566f8847d74bccc8a4dc5a5",
+  "compared_paths": 103,
+  "archive_overlap": [
+    {
+      "path": ".github/workflows/carr-bibliography.yml",
+      "canonical_blob": "6d0ee34dfcbc71c8570711e34c81dca65c4eea70",
+      "archived_blob": "1e13791fcfe90276398cdccebbae2833ea4e8f90",
+      "equal": false
+    },
+    {
+      "path": ".github/workflows/carr-native-launcher.yml",
+      "canonical_blob": "c65208de5275b74ec1a9378d5186c147763fc790",
+      "archived_blob": "487fd0fc9c3de9189a16624d675099b70cf99a95",
+      "equal": false
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "canonical_blob": "700a88782aad660cdd06bb0814d1b47e31c23ebe",
+      "archived_blob": "625404170db0b40d46ff3b14c873d15085732d89",
+      "equal": false
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "canonical_blob": "986a17cfc5d7fcfd78552462556f8eee31110157",
+      "archived_blob": "dd71a09369ec77e6d00181111c534fe25857c5aa",
+      "equal": false
+    },
+    {
+      "path": "carr-library/docs/translation_workstation.md",
+      "canonical_blob": "b8339ab9a5676f4b483316761b5e40bca5147579",
+      "archived_blob": "8aff642db0539c3c8c4d2bd5904be3b645dbfe79",
+      "equal": false
+    },
+    {
+      "path": "carr-library/packaging/windows-sbom.cdx.json",
+      "canonical_blob": "a18692577c78ff4dc053cc0ca9be284966409b53",
+      "archived_blob": "65949043d5984fb7a4eb115c69b2d92ce89a39c5",
+      "equal": false
+    },
+    {
+      "path": "carr-library/packaging/windows-semantic-sbom.cdx.json",
+      "canonical_blob": "a7e536afbe13617942188ed41a673b6013802c48",
+      "archived_blob": "8912b39b838d3f3e085426b9829b59713cd9c074",
+      "equal": false
+    },
+    {
+      "path": "carr-library/pyproject.toml",
+      "canonical_blob": "ab769a044f386e8ece581b03a4f18481bbe79d04",
+      "archived_blob": "ed200df7730585f1c5cbfa909719ed56689db768",
+      "equal": false
+    },
+    {
+      "path": "carr-library/scripts/windows_translation_v3_smoke.py",
+      "canonical_blob": "8c03ad29b98ba215415ea9b51a97d9f343481b6a",
+      "archived_blob": "bd766fcae95dc4f31a8e18e45512e04591bb206d",
+      "equal": false
+    },
+    {
+      "path": "carr-library/src/carr_library/__main__.py",
+      "canonical_blob": "1a668e92de24009bed30cbd52bca3ceac44e6d86",
+      "archived_blob": "a809c0a658c52de3cd16444e632e9cecb107374f",
+      "equal": false
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_producers.py",
+      "canonical_blob": "ea6c5c8b195ec5e4bce874c051d10d71df61cba4",
+      "archived_blob": "cb4c0a14038a46be3639939ccd2463d28a9433de",
+      "equal": false
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_sidecars.py",
+      "canonical_blob": "a3e0c46a11f86c576ca98d4190b1248b505c00dc",
+      "archived_blob": "7e7d2f73555d51577c01a88233c98ed68f8c98ba",
+      "equal": false
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "canonical_blob": "b585cf04946caa2db6ec103b5a2eaf6e4d13d7fc",
+      "archived_blob": "1a6d938e2cdc01e332b9cb33f7ec108698a160c1",
+      "equal": false
+    },
+    {
+      "path": "carr-library/src/carr_library/pending_backup.py",
+      "canonical_blob": "2a15b362f3b25cefeefdfa5f6edcb8527cd35e43",
+      "archived_blob": "0fa1ec46d1ecf7f039185e69af7b94a5a9b6adc1",
+      "equal": false
+    },
+    {
+      "path": "carr-library/src/carr_library/research/export_file.py",
+      "canonical_blob": "c60b6f387c086c51f4de7ed535e9fd5d675f88a4",
+      "archived_blob": "2817f62129673c118d14d2733ed608c13eed27a4",
+      "equal": false
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/render.py",
+      "canonical_blob": "0c05eebaa029d43bf83bdd35ec0de36a93edd198",
+      "archived_blob": "bf7fd44fdb222fdf1ba3946939fc34ed5419ad97",
+      "equal": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/academic_actions.py",
+      "canonical_blob": "9311eb9f272f11dbd166681b3a34aea6d75c5138",
+      "archived_blob": "d3d38dfdc4e917472c470c9bde179ab6fd2d2e99",
+      "equal": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/academic_library_dialog.py",
+      "canonical_blob": "52b328714a72fb0d650789477c28082e33dc2647",
+      "archived_blob": "f6ee27b8745491a081fe42e788be7132c0befc9d",
+      "equal": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/assistant_dialog.py",
+      "canonical_blob": "930c84fe473a2de22be6386077d197f1ee813720",
+      "archived_blob": "e7a5472aa9aa8898ee7f40fcb7df10aa66065add",
+      "equal": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/desktop_app.py",
+      "canonical_blob": "c264eb3cf2f47d0ade514234cbf3eba13512d9bd",
+      "archived_blob": "840a9ff6ba30858b539ed931e180b3401cc10f5b",
+      "equal": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/operations_dialog.py",
+      "canonical_blob": "7e687b9480dea4da3e232f561b1bfb919dc43223",
+      "archived_blob": "e3aee7e03c3100dc9351007f2db04fb2edf801fc",
+      "equal": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/reading_desk.py",
+      "canonical_blob": "c15a3930c781743a307302b23fcddc99a616bb8e",
+      "archived_blob": "42d69ceec10b249c31998389097d39d74a5ab076",
+      "equal": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/transcription_dialog.py",
+      "canonical_blob": "12f4be1fa61fd89ca208ff00663bf9961753e307",
+      "archived_blob": "33585c7d04fb6eec3fbf43a1c7f692400a8cbc95",
+      "equal": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/translation_dialog.py",
+      "canonical_blob": "65292429f2caab7b98d0896d31f0adcebb953fc0",
+      "archived_blob": "7bb9ec4d12cb574806aaa728328da50c754bbd02",
+      "equal": false
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_v3.py",
+      "canonical_blob": "b994aafda65f3497878302233e4a9f559aac8622",
+      "archived_blob": "6d91146ba66d4d84756cfb2f0f83d6170af4e741",
+      "equal": false
+    },
+    {
+      "path": "carr-library/tests/audio_acceptance/test_primary_publication_budget.py",
+      "canonical_blob": "405552e3ef7f5494678a7a583b42cf0eb84cf9a4",
+      "archived_blob": "f101b2031245c7e9810a38d8db30d1a173ac74c1",
+      "equal": false
+    },
+    {
+      "path": "carr-library/tests/ingest/test_import_replay_identity.py",
+      "canonical_blob": "724445325865adc020416552b877d895e95a7107",
+      "archived_blob": "ce3cf47a5cb562c71a67d4833e52ef9a97ab6649",
+      "equal": false
+    },
+    {
+      "path": "carr-library/tests/ingest/test_worker_publication_boundary.py",
+      "canonical_blob": "7fd9a9486696f2995d96c82b6b546ffb68f65e93",
+      "archived_blob": "1212ae2e4a8f92993d64a77da40fbcf8f900ad9d",
+      "equal": false
+    },
+    {
+      "path": "carr-library/tests/reader/test_export_publication_boundary.py",
+      "canonical_blob": "db2dceee443248f8374766ea730057fc9a1eff61",
+      "archived_blob": "8b0d55c9f8ca6618560331ea15a1545e0263f326",
+      "equal": false
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_translation.py",
+      "canonical_blob": "ed2ca50c88f66182c3d3cfaa98735888405800c2",
+      "archived_blob": "07bb0505e80be709cc2a3fafdd33b19cbd36c78a",
+      "equal": false
+    },
+    {
+      "path": "carr-library/tests/ui/test_academic_export_handler.py",
+      "canonical_blob": "63320ade10dbfbf0553663193172f03dc25298a7",
+      "archived_blob": "5a72e7fb6f59b80aa78b5f523940bedabe5fbe7a",
+      "equal": false
+    },
+    {
+      "path": "carr-library/tests/ui/test_academic_library_dialog.py",
+      "canonical_blob": "56e179cbda725e91a8f4d64a717db3b73b1f50df",
+      "archived_blob": "74021fd27ccbbf10867c882a394ab5cc9a01d036",
+      "equal": false
+    },
+    {
+      "path": "carr-library/tests/ui/test_transcription_dialog.py",
+      "canonical_blob": "b13e4c59a67effc05df1e8332b45f3aff505f157",
+      "archived_blob": "4fb9aa4b6d584512389207733901d2fe626f624f",
+      "equal": false
+    }
+  ],
+  "nonarchive_paths": [
+    "carr-library/docs/REUSE_DECISIONS_V2.md",
+    "carr-library/docs/RUNNING.md",
+    "carr-library/docs/START_UK.txt",
+    "carr-library/docs/START_V3_UK.txt",
+    "carr-library/docs/V3_RELEASE_READINESS.md",
+    "carr-library/docs/assistant_runtime.md",
+    "carr-library/docs/runtime_resources.md",
+    "carr-library/docs/speech_runtime.md",
+    "carr-library/docs/transcription_runtime.md",
+    "carr-library/packaging/CI_ENTRYPOINT.md",
+    "carr-library/scripts/windows_local_planning_smoke.py",
+    "carr-library/scripts/windows_platform_tools_smoke.py",
+    "carr-library/src/carr_library/__init__.py",
+    "carr-library/src/carr_library/assistant/llm.py",
+    "carr-library/src/carr_library/assistant/profiles.py",
+    "carr-library/src/carr_library/assistant/providers.py",
+    "carr-library/src/carr_library/assistant/service.py",
+    "carr-library/src/carr_library/assistant/translation.py",
+    "carr-library/src/carr_library/assistant/translation_cli.py",
+    "carr-library/src/carr_library/audio/process.py",
+    "carr-library/src/carr_library/backup_transcription.py",
+    "carr-library/src/carr_library/durable_state.py",
+    "carr-library/src/carr_library/operations/__init__.py",
+    "carr-library/src/carr_library/operations/_locks.py",
+    "carr-library/src/carr_library/operations/broker.py",
+    "carr-library/src/carr_library/operations/facade.py",
+    "carr-library/src/carr_library/operations/models.py",
+    "carr-library/src/carr_library/operations_cli.py",
+    "carr-library/src/carr_library/studio/cli.py",
+    "carr-library/src/carr_library/transcription/__init__.py",
+    "carr-library/src/carr_library/transcription/models.py",
+    "carr-library/src/carr_library/transcription/runtime.py",
+    "carr-library/src/carr_library/transcription/service.py",
+    "carr-library/src/carr_library/transcription_cli.py",
+    "carr-library/src/carr_library/ui/catalog_insights_actions.py",
+    "carr-library/src/carr_library/ui/catalog_tools_dialog.py",
+    "carr-library/src/carr_library/ui/import_center.py",
+    "carr-library/src/carr_library/ui/research_actions.py",
+    "carr-library/tests/assistant/test_local_assistant.py",
+    "carr-library/tests/assistant/test_local_planning.py",
+    "carr-library/tests/assistant/test_local_planning_loopback.py",
+    "carr-library/tests/assistant/test_planning_handlers.py",
+    "carr-library/tests/e2e/test_export_destination.py",
+    "carr-library/tests/e2e/test_import_worker_publication.py",
+    "carr-library/tests/e2e/test_operations_cli.py",
+    "carr-library/tests/e2e/test_transcription_cli.py",
+    "carr-library/tests/operations/test_facade.py",
+    "carr-library/tests/operations/test_production_admission.py",
+    "carr-library/tests/operations/test_resources.py",
+    "carr-library/tests/operations/test_worker_start_cleanup.py",
+    "carr-library/tests/reader/test_export_reconciliation.py",
+    "carr-library/tests/storage/test_atomic_state_publication.py",
+    "carr-library/tests/storage/test_transcription_backup.py",
+    "carr-library/tests/transcription/conftest.py",
+    "carr-library/tests/transcription/fixture_runtime.py",
+    "carr-library/tests/transcription/fixtures/protocol_worker.py",
+    "carr-library/tests/transcription/test_admission_boundaries.py",
+    "carr-library/tests/transcription/test_protocol_fixture.py",
+    "carr-library/tests/transcription/test_restore.py",
+    "carr-library/tests/transcription/test_runtime_admission.py",
+    "carr-library/tests/transcription/test_service.py",
+    "carr-library/tests/ui/native_catalog_tools_smoke.py",
+    "carr-library/tests/ui/probe_catalog_insights_actions.py",
+    "carr-library/tests/ui/test_academic_actions.py",
+    "carr-library/tests/ui/test_catalog_tools_dialog.py",
+    "carr-library/tests/ui/test_desktop_handlers.py",
+    "carr-library/tests/ui/test_operations_policy.py",
+    "carr-library/tests/ui/test_platform_modal_lifecycle.py",
+    "carr-library/tests/ui/test_reading_desk_actions.py",
+    "carr-library/tests/ui/test_studio_keyboard_registration.py"
+  ],
+  "shared_delta": [
+    {
+      "path": "carr-library/src/carr_library/reader/live_export.py",
+      "sha": "5fe2d3e30d97943ad048fb359ff30c3585ec717a",
+      "archived_blob": null
+    },
+    {
+      "path": "carr-library/tests/reader/test_live_reading.py",
+      "sha": "36d2c7de0a7a09b5ba942d5c669662e3915d8aec",
+      "archived_blob": null
+    }
+  ],
+  "qualification": "Read-only public source comparison. Blob mismatch means reconciliation required, not a proven regression. Local resolved working tree is unavailable."
+}

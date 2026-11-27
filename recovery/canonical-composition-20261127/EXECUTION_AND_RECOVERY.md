@@ -4,9 +4,9 @@ This record preserves observed development work. It is **not a release, installe
 
 ## Published source and validation anchors
 
-- Canonical branch observed at `924ae83316a3cf9482aaf2ec51a6e6a5adb614c3`.
-- PR143 application branch observed at `8c981c7e947f8d144c8706b5ea022990517c7dd9`.
-- Reviewed public source archive checkpoint 6: `f30136619c028a1a95dd6ca17b63e020f1b9d407`.
+- Latest canonical branch observed at `e69ba2403515f21509686d66f4bc8b3673756d81`; its source tree matches independently qualified historical candidate7425. The final union still needs its own execution.
+- Latest PR143 application branch observed at `4fae6fa69daf86fc9566f8847d74bccc8a4dc5a5`, including actual reader PCM geometry attestation.
+- This is public source recovery checkpoint9, extending checkpoint8 `6076d38c264f7738bd548d6458e839d084a3765f`. It archives 154 source candidates; earlier150-source compilation evidence remains attributed to its original snapshot.
 - Current independent validation source: `4292bb0974009a5082f53cd36a921139aaf6bd8b`, [Actions run 45982468090](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45982468090).
 - Main application work remained in a separate, locally resolved composition when the executor transport disconnected. That worktree has **not** been represented as a published final application commit.
 
@@ -59,7 +59,7 @@ The single-PCM/effects work has completed several focused portable runs and an i
 1. Recover the existing executor/workspace before reading or mutating its local candidates. Do not infer successful writes from interrupted sessions.
 2. Preserve the original local `c04e9f56bbafbf341cbfd61cdeb23995506d8dd3` work and unresolved merge/index separately. The completed composition was built in an independent worktree; do not abort or overwrite the original recovery evidence.
 3. Verify the frozen local proof manifests and exact file hashes before copying. Restore the sync and typed-backup candidates, then finish the effects/clip schema preservation case.
-4. Diagnose the one actual provider-cancellation failure. Keep the cancellation assertion; a timeout is not an acceptable substitute.
+4. Carry the reviewed public provider-cancellation fix into the final composition. Its original negative and all 72 fixed cases passed on Ubuntu; the Windows result remains pending at this checkpoint. Keep the same cancellation/cleanup assertions.
 5. Add new regression selectors to the existing workflows, run the exact composed source gate, and record its unchanged source inventory and actual dependency identities.
 6. Reconcile the latest public parents, finish the real application merge and update PR143 only with evidence for that exact composition. Native Windows, installed-origin, human NVDA/listening, private engine/model and rights qualification remain separate gates.
 
@@ -76,3 +76,17 @@ The exact production runner `67e42f01e73ef7bfcd3686ff34f646aab26c74f3` and atomi
 The provider-cancellation defect was traced to the facade forwarding caller cancellation but not its own Stop event while the adapter held the cold-probe lock. Public facade `b042c9f31e65aaae4819a1ec40422895cf8be9ff` forwards both checks through the existing operation callback, preserving cleanup and concurrent admission. Root and two independent source reviews accepted it. Branch `carr/dordiai-discovery-recovery-20261127`, commit `5e1f7385c13badf4a53f0a4c8a677afa7daceb42`, executes the unchanged original negative then all four provider/probe suites on Windows and POSIX; its run45985132540 is pending here.
 
 The pending completed-master playlist also needs SHA/size-bound worker-to-GUI and queue-to-open admission; that source-derived issue was not executed after the outage. The [remaining scope audit](REMAINING_SCOPE.md) records substantial missing implementation, including live microphone monitoring and several timeline/player/batch workflows. It must not be reduced to a list of unperformed qualification tests.
+
+## Checkpoint9: public reconstruction and new measured results
+
+The local executor remains unavailable. Exact public source and complete retained generic patches allowed the seven typed-backup changes to be reconstructed without reading or uploading the unfinished localc04 source. All seven candidate blobs were fetched back exactly. Thirty-five existing test functions remain; twenty additional parametrized producer/tamper/scope cases are included. Two intentional fixture assertions now bind the actual artifact path and current extension version. Two canonical924 initial-root cancellation checks were also replayed into the typed sidecar union.
+
+A separate [backup proof branch](https://github.com/Oleksii-debug/AudioTacticalFPS/tree/f8f9d83411bae7471f1d5642d58684e096471026) provides the reviewed 16-overlay dependency closure over shared8c. It requires two specific original adapter failures, then seven complete suites with actual FFmpeg/ffprobe, zero failures/errors/skips and unchanged source. This fresh composition is not asserted identical to the inaccessible local118-test tree; its CI is pending.
+
+The provider proof [run45986810416](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45986810416), exact59cde34, completed its Ubuntu job140464461514: the old implementation produced exactly the expected 1 PASS / 1 FAIL in 60.81 s; the corrected implementation passed all 72 cases / four suites in 7.28 s with unchanged source and zero failures/errors/skips. Windows job140464461808 remains queued here. The preceding45985132540 was cancelled while queued following a workflow-only explicit newline setting. Subsequent inspection confirmed the application's existing attributes already protected its bytes; this was redundant protection, not a demonstrated source defect, and no test failure is attributed to that cancelled run.
+
+The canonical-only [planner correction942e2b9](https://github.com/Oleksii-debug/AudioTacticalFPS/tree/942e2b914223329320946cfc9c5b26d76da78948) passed [run45988474768](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45988474768), job140469996481. The old SYSTEM failed specifically for its missing registered transcription tool; the corrected source passed 64 cases / three suites in 11.44 s, including six new proposal/authority cases. Source identities remained unchanged and no failures/errors/skips were permitted. Canonicale69 already registers and dispatches transcription; shared4fa does not. This prompt is therefore a related canonical-only proposal and is not silently overlaid into the incomplete archive.
+
+The [latest public reconciliation findings](PUBLIC_RECONCILIATION.md) preserve export authority, ASR restore trust, resource/process ownership, import publication and actual WAV geometry. A separate public Studio557 candidate already implements clip operations, master effects and named presets through a different project model. [Remaining scope](REMAINING_SCOPE.md) now records that code as available for reconciliation rather than universally absent. Its presence does not resolve the frozen schema downgrade or SHA-bound master playback admission.
+
+No new component result qualifies the final full application, installed package, actual private model/voice, physical device or human NVDA behavior.

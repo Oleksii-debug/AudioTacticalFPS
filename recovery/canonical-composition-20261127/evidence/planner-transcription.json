@@ -1,0 +1,29 @@
+{
+  "commit": "942e2b914223329320946cfc9c5b26d76da78948",
+  "run_id": 45988474768,
+  "job_id": 140469996481,
+  "platform": "ubuntu-24.04",
+  "python": "3.11.18",
+  "baseline": {
+    "status": "EXPECTED_NEGATIVE_CONFIRMED",
+    "failed": 1,
+    "seconds": 1.116611338
+  },
+  "fixed": {
+    "status": "PASS",
+    "cases": 64,
+    "suites": 3,
+    "new_cases": 6,
+    "seconds": 11.442318764,
+    "failures": 0,
+    "errors": 0,
+    "skips": 0,
+    "source_unchanged": true
+  },
+  "artifact_id": 15193545771,
+  "artifact_sha256": "109d3a8386376bdd1cad49dec407545305c826a5ac569e3be879efe69329d39b",
+  "real_engine": "NOT_RUN",
+  "installed": "NOT_RUN",
+  "nvda": "NOT_RUN",
+  "target": "Canonical e69 registry/dispatch only"
+}

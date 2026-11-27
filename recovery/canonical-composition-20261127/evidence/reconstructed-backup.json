@@ -1,0 +1,58 @@
+{
+  "status": "PUBLIC_REPLAY_FRESH_CI_PENDING",
+  "candidate_commit": "f8f9d83411bae7471f1d5642d58684e096471026",
+  "new_source_files": [
+    {
+      "path": "carr-library/src/carr_library/backup_producers.py",
+      "base_blob": "cb4c0a14038a46be3639939ccd2463d28a9433de",
+      "new_blob": "ee9e9ca2b1c08e52e5e00cb9a486f57aab27c64e",
+      "bytes": 32040,
+      "status": "PUBLIC_EXACT_PATCH_REPLAY_NEW_COMPOSITION_NOT_RUN"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_extensions.py",
+      "base_blob": "5bc7bef3f5e7a2ef6ca3dc76b9311809f8163d3b",
+      "new_blob": "c49fa285596d090c7f5a4f8a6b193097672f1329",
+      "bytes": 43685,
+      "status": "PUBLIC_EXACT_PATCH_REPLAY_NEW_COMPOSITION_NOT_RUN"
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_restore_cancellation.py",
+      "base_blob": "927cc2d22ef4c96a7e8915f795c8f110777cb531",
+      "new_blob": "4d33f72b1039f975e0996fa67a8a212375ade507",
+      "bytes": 4551,
+      "status": "PUBLIC_EXACT_PATCH_REPLAY_NEW_COMPOSITION_NOT_RUN"
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_reporting.py",
+      "base_blob": "70953d5644de286716326066f363c737d0ba7a75",
+      "new_blob": "5555f2c920ae95c6a0f5bd459fce992b5ad7e41b",
+      "bytes": 3574,
+      "status": "PUBLIC_EXACT_PATCH_REPLAY_NEW_COMPOSITION_NOT_RUN"
+    },
+    {
+      "path": "carr-library/tests/storage/test_studio_input_backup.py",
+      "base_blob": "092a06457c4a977d425060a5503c23812d5f01b8",
+      "new_blob": "fe8c8c97bbcd44df58d454d7f909c90f8065c016",
+      "bytes": 24893,
+      "status": "PUBLIC_EXACT_PATCH_REPLAY_NEW_COMPOSITION_NOT_RUN"
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_studio_media.py",
+      "base_blob": "36005c919726441fe0a648dc26490a0b958fa1c6",
+      "new_blob": "83d57bbde83cea9e040e9d4eff41e2195f0a7e54",
+      "bytes": 9212,
+      "status": "PUBLIC_EXACT_PATCH_REPLAY_NEW_COMPOSITION_NOT_RUN"
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_primary_producers.py",
+      "base_blob": "8f911b4c3d68d64b3c1af58adc99c024daff154d",
+      "new_blob": "d2540f3db2b0dc773666427242bbbc07d2a83264",
+      "bytes": 18083,
+      "status": "PUBLIC_EXACT_PATCH_REPLAY_NEW_COMPOSITION_NOT_RUN"
+    }
+  ],
+  "sidecar_blob": "8073ccc38fb51fb16c5c64d022684cf2ca178540",
+  "local118": "NOT_INHERITED",
+  "private_or_c04_bytes": false
+}

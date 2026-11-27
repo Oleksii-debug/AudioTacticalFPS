@@ -24,6 +24,10 @@ SUBTITLE = re.compile(r'state/studio/jobs/(' + ID + r')/script\.(srt|vtt|lrc)\Z'
 
 
 def limit(name):
+    if name == 'state/speech/pronunciations.json':
+        return 8_000_000
+    if name == 'state/studio/draft.json':
+        return 32 * 1024 * 1024
     if READER_LINKS.fullmatch(name):
         return 65536
     if READER.fullmatch(name) or STUDIO.fullmatch(name) or SUBTITLE.fullmatch(name):
@@ -505,7 +509,34 @@ def _translation_job(value, identity):
         raise ValueError('Completed translation is missing accepted chunks.')
 
 def validate(db, name, value):
-    if READER.fullmatch(name):
+    if name == 'state/speech/pronunciations.json':
+        from .speech.reading import PronunciationRule
+        fields(value, {'schema', 'rules'})
+        if (value['schema'] != 'carr.pronunciations.v1'
+                or type(value['rules']) is not list or len(value['rules']) > 1000):
+            raise ValueError('Invalid saved pronunciation dictionary.')
+        for rule in value['rules']:
+            fields(rule, {'pattern', 'replacement'},
+                   {'regex', 'ignore_case', 'language', 'voice_id'})
+            # Validate inert rules through the same model as dictionary import.
+            # A saved pattern is not compiled or applied during backup/restore.
+            PronunciationRule(**rule)
+    elif name == 'state/studio/draft.json':
+        fields(value, {'schema', 'text', 'title', 'voice_ids', 'project_id'})
+        if type(value['schema']) is not int or value['schema'] != 1:
+            raise ValueError('Invalid Studio draft schema.')
+        # Autosave deliberately preserves unfinished/invalid scripts and empty
+        # titles before project validation. Do not parse or render these bytes.
+        text(value['text'], 32 * 1024 * 1024, empty=True)
+        text(value['title'], 32 * 1024 * 1024, empty=True)
+        if type(value['voice_ids']) is not list or len(value['voice_ids']) > 10000:
+            raise ValueError('Invalid Studio draft voice inventory.')
+        for voice in value['voice_ids']:
+            text(voice, 2048, empty=True)
+        if (value['project_id'] is not None and
+                (type(value['project_id']) is not str or not re.fullmatch(ID, value['project_id']))):
+            raise ValueError('Invalid Studio draft project identity.')
+    elif READER.fullmatch(name):
         from .speech.session import decode_reader_resume
         decode_reader_resume(value)
     elif READER_LINKS.fullmatch(name):

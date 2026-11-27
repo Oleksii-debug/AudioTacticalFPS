@@ -1,0 +1,33 @@
+{
+  "validation_commit": "59cde34dcdb293d53acae77f10347be63d4351b9",
+  "run_id": 45986810416,
+  "job_id": 140464461514,
+  "platform": "ubuntu-24.04",
+  "python": "3.11.18",
+  "baseline": {
+    "status": "EXPECTED_NEGATIVE_CONFIRMED",
+    "passed": 1,
+    "failed": 1,
+    "seconds": 60.806061734
+  },
+  "fixed": {
+    "status": "PASS",
+    "cases": 72,
+    "suites": [
+      "test_dordiai_canonical_convergence",
+      "test_dordiai_speech",
+      "test_dordiai_voices",
+      "test_dordiai_probe_cancellation"
+    ],
+    "seconds": 7.277952042,
+    "source_unchanged": true,
+    "failures": 0,
+    "errors": 0,
+    "skips": 0
+  },
+  "artifact_id": 15192716049,
+  "artifact_sha256": "4b7473dc12966a5aff71eae503a4271aab212c9e8b72c8f0b388093ef0c435b8",
+  "installed": "NOT_RUN",
+  "nvda": "NOT_RUN",
+  "real_voice_or_model": "NOT_RUN"
+}

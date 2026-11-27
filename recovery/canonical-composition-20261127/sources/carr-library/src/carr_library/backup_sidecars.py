@@ -499,11 +499,16 @@ def _capture(root, *, include_generated=False, cancelled=lambda: False, root_nam
             return False
         return True
     for name in _SIMPLE:
+        _check_cancelled(cancelled)
         if name not in selected:
             continue
         if present(root / name):
             files[name] = _identity(_regular(root / name))
-    pending = [name for name in _DIRECTORIES if name in selected and present(root / name)]
+    pending = []
+    for name in _DIRECTORIES:
+        _check_cancelled(cancelled)
+        if name in selected and present(root / name):
+            pending.append(name)
     while pending:
         _check_cancelled(cancelled)
         name = pending.pop()
