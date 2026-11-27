@@ -10,40 +10,44 @@ from hashlib import sha256
 import os
 from pathlib import Path, PurePosixPath
 import re
+import unicodedata
 
-from .backup_files import local_path, regular, sync_directory
+from .backup_files import local_path, portable_relative, regular, sync_directory
 
 MAX_STATE_FILES = 100_000
 MAX_STATE_BYTES = 32 * 1024**3
 
 
 def relative_name(value):
-    if (not isinstance(value, str) or not value or '\\' in value or ':' in value
-            or any(ord(c) < 32 for c in value)):
-        raise ValueError('Invalid legacy state manifest path.')
-    path = PurePosixPath(value)
-    if (path.is_absolute() or str(path) != value
-            or any(part in ('.', '..') or part.endswith((' ', '.')) for part in path.parts)):
-        raise ValueError('Invalid legacy state manifest path.')
-    reserved = {'con', 'prn', 'aux', 'nul', *(f'com{i}' for i in range(1, 10)),
-                *(f'lpt{i}' for i in range(1, 10))}
-    if any(part.split('.')[0].casefold() in reserved for part in path.parts):
-        raise ValueError('Invalid portable legacy state filename.')
-    return path
+    """Historical state must pass the current portable-name boundary."""
+    try:
+        return portable_relative(value)
+    except ValueError as exc:
+        raise ValueError('Invalid portable legacy state manifest path.') from exc
 
 
 def validate_state(entries, *, max_files=MAX_STATE_FILES, max_bytes=MAX_STATE_BYTES):
     if not isinstance(entries, list) or len(entries) > min(max_files, MAX_STATE_FILES):
         raise ValueError('Invalid legacy application state manifest.')
-    names, directories, total = set(), set(), 0
+    names, directories, portable_paths, total = set(), set(), {}, 0
     for item in entries:
         if (not isinstance(item, dict) or set(item) != {'filename', 'size_bytes', 'sha256'}
                 or type(item['size_bytes']) is not int or item['size_bytes'] < 0
                 or not isinstance(item['sha256'], str) or not re.fullmatch('[0-9a-f]{64}', item['sha256'])):
             raise ValueError('Invalid legacy application state manifest.')
         name = relative_name(item['filename'])
-        folded = name.as_posix().casefold()
-        parents = {parent.as_posix().casefold() for parent in name.parents if str(parent) != '.'}
+        folded = unicodedata.normalize('NFC', name.as_posix()).casefold()
+        parents = {unicodedata.normalize('NFC', parent.as_posix()).casefold()
+                   for parent in name.parents if str(parent) != '.'}
+        # Bind every ancestor's original spelling too. Merely checking full
+        # filenames misses A/one versus a/two and Unicode-normalized aliases.
+        for part in (name, *name.parents):
+            current = part.as_posix()
+            if current == '.':
+                continue
+            key = unicodedata.normalize('NFC', current).casefold()
+            if portable_paths.setdefault(key, current) != current:
+                raise ValueError('Conflicting legacy application state path aliases.')
         if folded in names or folded in directories or parents & names:
             raise ValueError('Conflicting legacy application state filename.')
         names.add(folded)
@@ -77,7 +81,7 @@ def _inventory(source, entries, cancelled):
                     raise ValueError('Legacy state directory budget exceeded.')
                 path = Path(entry.path)
                 relative = relative_name(path.relative_to(source).as_posix()).as_posix()
-                folded = relative.casefold()
+                folded = unicodedata.normalize('NFC', relative).casefold()
                 if folded in aliases:
                     raise ValueError('Conflicting legacy state path aliases.')
                 aliases[folded] = relative
