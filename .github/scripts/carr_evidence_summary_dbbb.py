@@ -9,7 +9,7 @@ import urllib.parse
 import urllib.request
 import zipfile
 REPOSITORY = "Oleksii-debug/AudioTacticalFPS"
-SOURCES = [[46058816017,"7471d0455549b5598248b4e51d67ad613f86f5ca",15228805314,"80f6c29aebc070b0d4a4c3264a0f7c6f2374e16f10a6af470b6a6d6d641bcdbf"]]
+SOURCES = [[46059259121,"8cb61be3dfd9be2447737dafacb428d850be774d",15228227464,"1dd577683a9c242f376f27284d80c44b37529f47780564020614d511cd718844"],[46059259121,"8cb61be3dfd9be2447737dafacb428d850be774d",15227738360,"53a20719a1e5d968ee787a0f0a89b35169d49ea554ec7b8ffa4d7add5ccadee1"],[46059259121,"8cb61be3dfd9be2447737dafacb428d850be774d",15228013635,"46eda90e4d8832b5d48dc8fba05a2f932be3f1beb6810b78066b2ef02a3239fe"],[46059259121,"8cb61be3dfd9be2447737dafacb428d850be774d",15228407289,"d2d08628cdb1794ad063466fc74987f7fc5f620534b5900aa1527e5011257c61"]]
 class SafeRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         parsed = urllib.parse.urlsplit(newurl)
@@ -28,7 +28,7 @@ def fetch(url, limit):
         if len(data) > limit:
             raise ValueError("Evidence read exceeded its reviewed bound")
         return data
-remaining = 220000
+remaining = 400000
 def emit(text):
     global remaining
     if remaining <= 0:
@@ -47,37 +47,33 @@ for run, head, identity, digest in SOURCES:
     if hashlib.sha256(raw).hexdigest() != digest:
         raise ValueError("Artifact digest mismatch")
     emit(json.dumps({"artifact": identity, "name": metadata["name"], "sha256": digest,
-                    "source_head": head, "scope": "existing synthetic native evidence; no tests executed"}))
+                    "source_head": head, "scope": "existing synthetic measurement receipts; no tests executed"}))
     with zipfile.ZipFile(io.BytesIO(raw)) as archive:
         entries = archive.infolist()
         if len(entries) > 2000 or sum(x.file_size for x in entries) > 128 * 1024 * 1024:
             raise ValueError("Evidence archive exceeds reviewed bound")
         emit("FILES " + json.dumps([(x.filename, x.file_size) for x in entries if not x.is_dir()])[:10000])
-        priority = ("reading-preparation", "protected-voice", "book-audio")
-        entries.sort(key=lambda entry: (next((i for i, term in enumerate(priority)
-            if term in entry.filename.lower()), len(priority)), entry.filename))
         for entry in entries:
             name = entry.filename
             path = PurePosixPath(name)
             if (path.is_absolute() or ".." in path.parts or "\\" in name or "\x00" in name
                     or entry.flag_bits & 1 or entry.file_size > 32 * 1024 * 1024):
                 raise ValueError("Unexpected evidence member")
-            if entry.is_dir() or path.suffix.lower() not in (".txt", ".log", ".json"):
+            if entry.is_dir() or path.suffix.lower() != ".json":
                 continue
-            content = archive.read(entry).decode("utf-8-sig", errors="replace")
-            if path.suffix.lower() == ".json":
-                if any(term in name for term in priority):
-                    emit("NATIVE_RECEIPT " + name + "\n" + content[:22000])
-                else:
-                    try:
-                        value = json.loads(content)
-                    except ValueError:
-                        continue
-                    if type(value) is dict:
-                        emit("OTHER_NATIVE_RESULT " + name + "\n" + json.dumps({
-                            key: value[key] for key in ("status", "result", "passed", "failed_stage",
-                            "error", "errors", "manual_nvda", "speech_inference") if key in value})[:2500])
-            elif any(term in name for term in priority):
-                emit("NATIVE_TEXT " + name + "\n" + content[-50000:])
+            if ("windows-2022" not in metadata["name"]
+                    and path.name != "source-pages.json"):
+                continue
+            if "windows-2022" in metadata["name"] and "experiment" not in path.parts:
+                continue
+            raw_member = archive.read(entry)
+            value = json.loads(raw_member.decode("utf-8-sig"))
+            record = json.dumps({"artifact": identity, "path": name,
+                                 "member_sha256": hashlib.sha256(raw_member).hexdigest(),
+                                 "value": value}, ensure_ascii=True)
+            if len(record) + 64 > remaining:
+                raise ValueError("Measurement receipt exceeds output budget")
+            emit("MEASUREMENT_RECEIPT " + record)
+
 emit(json.dumps({"summary_complete": True, "remaining_output_budget": remaining,
                  "qualification": "diagnostic only; exact previous source head"}))
