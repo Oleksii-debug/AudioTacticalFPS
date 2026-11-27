@@ -3,6 +3,7 @@
 These headless event tests do not claim native Windows or NVDA acceptance.
 """
 from dataclasses import replace
+import sys
 from threading import Event
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -12,6 +13,32 @@ import pytest
 from carr_library.citations.anchors import Identity
 from carr_library.reader.ebook import EbookBook, EbookChapter, EbookSection
 from carr_library.ui import ebook_reader
+
+
+@pytest.mark.parametrize('captions', [
+    ('File', 'Library', 'Research', 'Academic', 'Help'),
+    ('Help', 'Research', 'File', 'Academic', 'Library'),
+])
+def test_reader_installs_in_library_after_other_menus_are_inserted(monkeypatch, captions):
+    class Menu:
+        def __init__(self):
+            self.labels = []
+
+        def Append(self, identifier, label):
+            self.labels.append(label)
+            return SimpleNamespace(label=label)
+
+    menus = {caption: Menu() for caption in captions}
+    bar = SimpleNamespace(FindMenu=lambda name: captions.index(name),
+                          GetMenu=lambda index: menus[captions[index]])
+    frame = SimpleNamespace(menu_bar=bar, Bind=Mock())
+    wx = SimpleNamespace(ID_ANY=-1, EVT_MENU=object())
+    monkeypatch.setitem(sys.modules, 'wx', wx)
+    ebook_reader.install_ebook_reader(frame)
+    assert menus['Library'].labels == ['Read EPUB book\tCtrl+Shift+R']
+    assert all(not menu.labels for name, menu in menus.items() if name != 'Library')
+    frame.Bind.assert_called_once()
+    assert frame.Bind.call_args.args[1] == frame.ebook_reader_actions.read
 
 
 def book():

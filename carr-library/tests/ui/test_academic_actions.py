@@ -98,6 +98,49 @@ def edition():
                        'Existing title', 'uk', 'First', 'II', ('Current Author', 'Олена'))
 
 
+@pytest.mark.parametrize('captions', [
+    ('File', 'Library', 'Research', 'Academic', 'Help'),
+    ('Help', 'Research', 'File', 'Academic', 'Library'),
+])
+def test_install_actions_preserves_named_destinations_after_menu_insertion(module, captions):
+    class Menu:
+        def __init__(self):
+            self.labels = []
+
+        def Append(self, identifier, label):
+            self.labels.append(label)
+            return SimpleNamespace(label=label)
+
+    class Bar:
+        def __init__(self):
+            self.rows = [(name, Menu()) for name in captions]
+
+        def FindMenu(self, name):
+            return next((i for i, (label, _) in enumerate(self.rows)
+                         if label.replace('&', '') == name), -1)
+
+        def GetMenu(self, index):
+            return self.rows[index][1]
+
+        def Insert(self, index, menu, label):
+            self.rows.insert(index, (label, menu))
+
+    module.wx.Menu = Menu
+    module.wx.ID_ANY = -1
+    module.wx.EVT_MENU = object()
+    bar = Bar()
+    frame = SimpleNamespace(menu_bar=bar, Bind=Mock())
+    module.install_academic_actions(frame)
+    assert bar.GetMenu(bar.FindMenu('Research')).labels == ['Export topic and subtopics\tCtrl+Shift+E']
+    assert bar.GetMenu(bar.FindMenu('Library')).labels == []
+    assert bar.GetMenu(bar.FindMenu('File')).labels == []
+    bibliography = bar.FindMenu('Bibliography')
+    assert bibliography + 1 == bar.FindMenu('Academic')
+    assert bar.GetMenu(bibliography).labels == [
+        'Review reference metadata for selected book', 'Export library or collection bibliography']
+    assert frame.Bind.call_count == 3
+
+
 @pytest.fixture
 def reference_file(tmp_path):
     path = tmp_path / 'references.ris'
