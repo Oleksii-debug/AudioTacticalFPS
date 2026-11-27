@@ -2,7 +2,8 @@
 
 Reuses the reviewed WinMM buffer ABI from audio.recording_monitor. Only the
 WavePlayer owner calls this helper, including poll; no worker, timer or second
-player is created. Live volume is applied to this owned HWAVEOUT only.
+player is created. Levels affect only the PCM copied into this owner's buffers;
+no session, endpoint, device or native stream volume setting is changed.
 """
 from collections import deque
 import ctypes as C
@@ -45,6 +46,43 @@ class PlaybackLevels:
         return left | (right << 16)
 
 
+# The accepted format ceiling and one 50 ms queue block are the processing bound.
+_MAX_BLOCK_BYTES = 384000 * _BLOCK_MS // 1000 * 2 * 4
+_GAIN_ONE = 1 << 24
+
+
+def _pcm_levels(data, *, width, channels, levels):
+    """Scale one bounded little-endian PCM block without touching the input."""
+    if (type(data) is not bytes or type(width) is not int or width not in (1, 2, 3, 4)
+            or type(channels) is not int or channels not in (1, 2)
+            or not isinstance(levels, PlaybackLevels) or len(data) > _MAX_BLOCK_BYTES
+            or len(data) % (width * channels)):
+        raise ValueError('Invalid bounded playback PCM block.')
+    if channels == 1 and levels.balance:
+        raise ValueError('Stereo balance requires a stereo recording.')
+    level = 0 if levels.muted else levels.volume / 100
+    gains = (round(_GAIN_ONE * level * (1 - max(0, levels.balance))),
+             round(_GAIN_ONE * level * (1 + min(0, levels.balance))))
+    if gains == (_GAIN_ONE, _GAIN_ONE):
+        return data
+    if gains == (0, 0):
+        return (b'\x80' if width == 1 else b'\x00') * len(data)
+    # Gain never exceeds one. Integer rounding and explicit saturation make the
+    # full unsigned-8/signed-16/24/32 PCM range deterministic without overflow.
+    minimum, maximum = -(1 << (width * 8 - 1)), (1 << (width * 8 - 1)) - 1
+    result = bytearray(len(data))
+    for offset in range(0, len(data), width):
+        sample = int.from_bytes(data[offset:offset + width], 'little', signed=width != 1)
+        if width == 1:
+            sample -= 128
+        magnitude = (abs(sample) * gains[(offset // width) % channels] + _GAIN_ONE // 2) // _GAIN_ONE
+        scaled = min(maximum, max(minimum, -magnitude if sample < 0 else magnitude))
+        if width == 1:
+            scaled += 128
+        result[offset:offset + width] = scaled.to_bytes(width, 'little', signed=width != 1)
+    return bytes(result)
+
+
 class _TimeValue(C.Union):
     _fields_ = [('value', U32), ('reserved', C.c_ubyte * 8)]
 
@@ -69,8 +107,6 @@ def _library():
         'waveOutRestart': ([HANDLE], U32),
         'waveOutGetPosition': ([HANDLE, C.POINTER(_MMTime), U32], U32),
         'waveOutGetDevCapsW': ([C.c_size_t, C.POINTER(_Caps), U32], U32),
-        'waveOutSetVolume': ([HANDLE, U32], U32),
-        'waveOutGetVolume': ([HANDLE, C.POINTER(U32)], U32),
     }
     for name, (arguments, result) in signatures.items():
         function = getattr(library, name)
@@ -177,20 +213,36 @@ class WaveOutput:
     def set_levels(self, levels):
         if not isinstance(levels, PlaybackLevels) or not self.handle.value:
             raise ValueError('Live controls need a validated setting and an owned playback handle.')
-        if not self._caps & 4:  # WAVECAPS_VOLUME
-            raise RuntimeError('This output does not support per-instance volume controls.')
-        if levels.balance and (self.channels != 2 or not self._caps & 8):  # WAVECAPS_LRVOLUME
-            raise RuntimeError('This output cannot control stereo balance for this recording.')
+        if levels.balance and self.channels != 2:
+            raise RuntimeError('Stereo balance requires a stereo recording.')
         self.check_output()
-        requested = levels.packed
-        # Only a real HWAVEOUT obtained above is passed; never a device ordinal.
-        _check(self.library.waveOutSetVolume(self.handle, requested), 'set this player volume')
-        actual = U32()
-        _check(self.library.waveOutGetVolume(self.handle, C.byref(actual)), 'confirm this player volume')
-        mask = 0xFFFFFFFF if self._caps & 8 else 0xFFFF
-        if actual.value & mask != requested & mask:
-            raise RuntimeError('Windows did not confirm the requested player volume and balance.')
-        self.levels = levels
+        if levels == self.levels:
+            return
+        if self.paused and self.pending:
+            # Queued native buffers may not be modified. A paused change resets
+            # and releases them, then queues newly scaled bytes at the observed
+            # frame without ever restarting sound.
+            frame = min(self.last_frame, max(self.first_frame,
+                        round(self.position_seconds * self.rate)))
+            try:
+                _check(self.library.waveOutReset(self.handle), 'discard paused playback buffers')
+                self._release_done()
+                if self.pending:
+                    raise PlaybackCleanupError('Windows did not release the paused playback buffers.')
+                _check(self.library.waveOutPause(self.handle), 'keep playback paused after a level change')
+                self.first_frame = self.next_frame = frame
+                self.reader.setpos(frame)
+                self.levels, self.ended = levels, False
+                self.pump()
+            except BaseException:
+                # The same owner retains every buffer and refuses more writes
+                # until its normal Close path confirms native release.
+                self.stopping = True
+                raise
+        else:
+            # Playing buffers already belong to the driver and stay immutable.
+            # New levels reach later buffers within the existing 4 x 50 ms queue.
+            self.levels = levels
 
     def _release_done(self):
         while self.pending and self.pending[0].header.flags & 1:  # WHDR_DONE
@@ -212,6 +264,7 @@ class WaveOutput:
             self._check_source()
             if len(data) != count * self.channels * self.width:
                 raise ValueError('The PCM recording ended before its measured frame boundary.')
+            data = _pcm_levels(data, width=self.width, channels=self.channels, levels=self.levels)
             raw = C.create_string_buffer(data, len(data))
             header = _WaveHeader(data=C.addressof(raw), length=len(data))
             token = _Buffer(raw, header)

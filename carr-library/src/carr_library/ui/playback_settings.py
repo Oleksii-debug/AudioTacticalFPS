@@ -64,8 +64,8 @@ def create_playback_settings_dialog(parent, *, settings, levels, prepare, apply_
             layout.Add(self.muted, 0, wx.ALL, 4)
             button('levels', 'Apply player volume, mute and balance', self.levels)
             layout.Add(wx.StaticText(body, label=(
-                'Uses the owned Windows playback instance. Device support is checked when applied. '
-                'The selected recording must be stereo for balance.'
+                'Changes only this player’s PCM buffers. Up to 200 ms of already queued audio '
+                'keeps its previous levels, plus device latency. Balance requires stereo.'
                 if mix_available else 'Live volume, mute and balance are unavailable on this backend.')),
                 0, wx.EXPAND | wx.ALL, 4)
             if play is not None:
@@ -161,7 +161,7 @@ def create_playback_settings_dialog(parent, *, settings, levels, prepare, apply_
                 selected = PlaybackLevels(float(self.fields['volume'].GetValue()),
                     bool(self.muted.GetValue()), float(self.fields['balance'].GetValue()) / 100)
                 apply_levels(selected)
-                self.message('Player level request accepted. The playback owner confirms native device support.')
+                self.message('Player level request accepted. Queued audio may retain its previous levels briefly.')
             except (Exception, KeyboardInterrupt) as exc:
                 self.message(exc)
 

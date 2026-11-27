@@ -3,7 +3,7 @@
 Windows MCI provides measured play position and native pause/seek. The POSIX
 ffplay fallback is explicit; elapsed position there is only a clock estimate. Optional
 listening copies reuse the existing bounded FFmpeg converter; explicit Windows
-levels reuse an owned WinMM handle and never an output-device ordinal.
+levels scale only this player's bounded PCM buffers, without changing native volume state.
 """
 import ctypes
 import math

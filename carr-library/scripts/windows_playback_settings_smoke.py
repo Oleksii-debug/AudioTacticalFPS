@@ -114,7 +114,7 @@ class _WaveDriver:
 
     def call(self, name, handle=None):
         if handle is not None and handle.value != 0x10000:
-            raise AssertionError('Playback attempted a global or foreign volume handle.')
+            raise AssertionError('Playback attempted a foreign native handle.')
         self.calls.append(name)
         self.threads.append(threading.get_ident())
         return 0
@@ -141,12 +141,14 @@ class _WaveDriver:
         return self.call('restart', handle)
 
     def waveOutSetVolume(self, handle, value):
-        self.volume = value
-        return self.call('volume', handle)
+        raise AssertionError('Playback changed shared native volume state.')
 
     def waveOutGetVolume(self, handle, result):
-        result._obj.value = self.volume
-        return self.call('get-volume', handle)
+        raise AssertionError('Playback queried shared native volume state.')
+
+    def pcm(self):
+        return b''.join(ctypes.string_at(header.data, header.length)
+                       for identity, header in self.headers.items() if identity in self.queued)
 
     def waveOutGetPosition(self, handle, result, size):
         result._obj.kind, result._obj.data.value = 2, 0
@@ -589,16 +591,28 @@ def _run_native(arguments):
                     pump(lambda: live.core.status().playback_muted and drivers,
                          'The existing source worker did not apply muted instance levels.')
                     driver = drivers[-1]
-                    check('muted levels use the existing source worker and exact owned handle',
-                          driver.volume == 0 and 'restart' not in driver.calls
+                    check('mute changes only the existing source worker PCM buffers',
+                          driver.pcm() and not any(driver.pcm())
+                          and driver.volume == 0xFFFFFFFF and 'restart' not in driver.calls
                           and live.core.status().state == 'paused'
                           and len(set(driver.threads)) == 1
                           and driver.threads[0] == requests[0][1])
                     popup.muted.SetValue(False)
                     press(popup.buttons['levels'])
-                    expected = round(.175 * 65535) | (round(.35 * 65535) << 16)
-                    pump(lambda: driver.volume == expected and not live.core.status().playback_muted,
-                         'Unmute did not retain the requested per-instance volume and balance.')
+                    pump(lambda: not live.core.status().playback_muted and any(driver.pcm()),
+                         'Unmute did not retain the requested player-only PCM volume and balance.')
+                    queued = driver.pcm()
+                    with wave.open(str(backend.listening_path), 'rb') as original:
+                        original.setpos(backend._wave.first_frame)
+                        unscaled = original.readframes(len(queued) // 4)
+                    actual_pairs = list(struct.iter_unpack('<hh', queued))
+                    source_pairs = list(struct.iter_unpack('<hh', unscaled))
+                    check('actual queued stereo PCM applies independent gain and balance',
+                          len(actual_pairs) == len(source_pairs) > 0
+                          and all(abs(left - round(a * .175)) <= 1
+                                  and abs(right - round(b * .35)) <= 1
+                                  for (left, right), (a, b) in zip(actual_pairs, source_pairs))
+                          and driver.volume == 0xFFFFFFFF)
                     check('paused unmute never restarts audio', 'restart' not in driver.calls
                           and live.core.status().state == 'paused')
                 open_settings(playback_button, live_levels)

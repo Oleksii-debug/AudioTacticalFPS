@@ -24,6 +24,7 @@ class Driver:
     def __init__(self):
         self.calls, self.prepared, self.queued = [], {}, set()
         self.volume, self.support = 0xFFFFFFFF, 12
+        self.written = []
         self.position, self.unit = 0, 2
         self.fail, self.last_format = None, None
 
@@ -52,14 +53,10 @@ class Driver:
     def waveOutRestart(self, handle): return self._call('restart', handle)
 
     def waveOutSetVolume(self, handle, value):
-        code = self._call('volume', handle)
-        if not code:
-            self.volume = value
-        return code
+        raise AssertionError('Playback must not change a device, stream or session volume.')
 
     def waveOutGetVolume(self, handle, result):
-        result._obj.value = self.volume if self.support & 8 else self.volume & 65535
-        return self._call('get-volume', handle)
+        raise AssertionError('Playback must not use shared native volume state.')
 
     def waveOutGetPosition(self, handle, result, size):
         result._obj.kind, result._obj.data.value = self.unit, self.position
@@ -78,6 +75,7 @@ class Driver:
         code = self._call('write', handle)
         if not code:
             self.queued.add(id(token))
+            self.written.append(C.string_at(token.data, token.length))
         return code
 
     def waveOutUnprepareHeader(self, handle, header, size):
@@ -99,6 +97,7 @@ class Driver:
         code = self._call('reset', handle)
         if not code:
             self.complete()
+            self.position = 0
         return code
 
     def waveOutClose(self, handle):
@@ -129,16 +128,25 @@ def test_invalid_levels_are_rejected_without_native_calls(volume, muted, balance
     assert driver.calls == []
 
 
-def test_levels_use_only_owned_handle_and_mute_preserves_requested_volume(pcm, driver):
+def queued_pcm(output):
+    return b''.join(C.string_at(token.header.data, token.header.length) for token in output.pending)
+
+
+def test_levels_use_only_owned_pcm_and_mute_preserves_requested_volume(pcm, driver):
     original = sha256(pcm.read_bytes()).hexdigest()
     output = native.WaveOutput()
     output.open(pcm, paused=True)
+    before = queued_pcm(output)
     output.set_levels(native.PlaybackLevels(40, False, .5))
-    assert driver.volume == round(.2 * 65535) | (round(.4 * 65535) << 16)
+    changed = queued_pcm(output)
+    assert before == b'\x01\x00\x02\x00' * 1600
+    assert changed == b'\x00\x00\x01\x00' * 1600
     output.set_levels(native.PlaybackLevels(40, True, .5))
-    assert driver.volume == 0 and output.levels.volume == 40 and output.levels.muted
+    assert queued_pcm(output) == b'\x00' * len(before)
+    assert output.levels.volume == 40 and output.levels.muted
     output.set_levels(native.PlaybackLevels(40, False, .5))
-    assert driver.volume != 0
+    assert queued_pcm(output) == changed
+    assert driver.volume == 0xFFFFFFFF and 'restart' not in driver.calls
     output.close()
     assert sha256(pcm.read_bytes()).hexdigest() == original
 
@@ -204,21 +212,22 @@ def test_uncertain_close_retains_memory_and_blocks_new_output_until_ack(pcm, dri
     assert not output.handle.value and not output.pending and output not in native._UNRELEASED_OUTPUTS
 
 
-def test_mono_capability_confirms_only_defined_low_word(pcm, driver):
-    driver.support = 4
+def test_stereo_balance_does_not_require_device_volume_capability(pcm, driver):
+    driver.support = 0
     output = native.WaveOutput()
-    output.open(pcm, paused=True, levels=native.PlaybackLevels(37))
-    assert output.levels.volume == 37
-    with pytest.raises(RuntimeError, match='balance'):
-        output.set_levels(native.PlaybackLevels(37, False, .5))
+    output.open(pcm, paused=True, levels=native.PlaybackLevels(100, False, 1))
+    assert queued_pcm(output) == b'\x00\x00\x02\x00' * 1600
+    assert output.levels.balance == 1 and driver.volume == 0xFFFFFFFF
     output.close()
 
 
-def test_unsupported_volume_fails_before_any_pcm_write(pcm, driver):
-    driver.support = 0
+def test_mono_balance_is_refused_before_any_pcm_write(pcm, driver):
+    with wave.open(str(pcm), 'wb') as stream:
+        stream.setparams((1, 2, 8000, 0, 'NONE', 'uncompressed'))
+        stream.writeframes(b'\x01\x00' * 8000)
     output = native.WaveOutput()
-    with pytest.raises(RuntimeError, match='volume'):
-        output.open(pcm)
+    with pytest.raises(RuntimeError, match='Stereo balance'):
+        output.open(pcm, levels=native.PlaybackLevels(37, False, .5))
     assert 'write' not in driver.calls and 'restart' not in driver.calls
     assert not output.handle.value and output.stream is None
 
@@ -296,7 +305,8 @@ def test_live_transition_closes_old_mci_before_open_and_preserves_controls(owned
     assert player._wave.last_frame == 8000 and player.backend == 'Windows waveOut'
     before = driver.calls.count('open')
     player.set_levels(45, muted=True, balance=-.5)
-    assert driver.calls.count('open') == before and driver.volume == 0
+    assert driver.calls.count('open') == before and player._wave.levels.muted
+    assert driver.volume == 0xFFFFFFFF
     navigation.close()
 
 
@@ -330,7 +340,8 @@ def test_stopped_level_request_is_passive(owned_player, driver):
     assert driver.calls == before and player.state == 'stopped'
     assert player.levels.muted and player.levels.volume == 0
     player.play_current()
-    assert player._wave is not None and driver.volume == 0
+    assert player._wave is not None and queued_pcm(player._wave) == b'\x00' * 6400
+    assert driver.volume == 0xFFFFFFFF
 
 
 def test_unconfirmed_wave_close_keeps_private_listening_owner(owned_player, driver):
@@ -360,3 +371,105 @@ def test_close_retry_cannot_queue_more_pcm_from_a_status_observer(owned_player, 
     assert driver.calls.count('write') == before
     driver.fail = None
     player.close()
+
+
+@pytest.mark.parametrize('width,values,expected', [
+    (1, [0, 255, 128, 129], [64, 192, 128, 129]),
+    (2, [-32768, 32767, 0, 1], [-16384, 16384, 0, 1]),
+    (3, [-8388608, 8388607, 0, 1], [-4194304, 4194304, 0, 1]),
+    (4, [-2147483648, 2147483647, 0, 1], [-1073741824, 1073741824, 0, 1]),
+])
+def test_actual_pcm_extremes_scale_without_overflow_and_preserve_input(width, values, expected):
+    encode = lambda rows: b''.join(value.to_bytes(width, 'little', signed=width != 1) for value in rows)
+    original = encode(values)
+    assert native._pcm_levels(original, width=width, channels=2,
+        levels=native.PlaybackLevels()) is original
+    scaled = native._pcm_levels(original, width=width, channels=2,
+        levels=native.PlaybackLevels(50))
+    assert scaled == encode(expected) and original == encode(values)
+    muted = native._pcm_levels(original, width=width, channels=2,
+        levels=native.PlaybackLevels(50, True))
+    assert muted == (b'\x80' if width == 1 else b'\x00') * len(original)
+    left_only = native._pcm_levels(original, width=width, channels=2,
+        levels=native.PlaybackLevels(100, False, -1))
+    silence = 128 if width == 1 else 0
+    assert left_only == encode([values[0], silence, values[2], silence])
+
+
+@pytest.mark.parametrize('data,width,channels', [
+    (b'x' * (native._MAX_BLOCK_BYTES + 4), 2, 2),
+    (b'\x00', 2, 2), (b'\x00' * 4, 5, 2), (b'\x00' * 4, 2, 3),
+    (bytearray(4), 2, 2), (b'\x00' * 4, True, 2),
+])
+def test_pcm_processing_rejects_unbounded_or_misaligned_input(data, width, channels):
+    with pytest.raises(ValueError, match='bounded'):
+        native._pcm_levels(data, width=width, channels=channels, levels=native.PlaybackLevels(50))
+
+
+def test_active_level_change_keeps_driver_owned_buffers_immutable_and_bounds_queue(pcm, driver):
+    output = native.WaveOutput()
+    output.open(pcm)
+    old_tokens = tuple(output.pending)
+    old_bytes = queued_pcm(output)
+    assert len(old_tokens) == 4 and len(old_bytes) / (8000 * 4) == pytest.approx(.2)
+    before = list(driver.calls)
+    output.set_levels(native.PlaybackLevels(40, True))
+    assert tuple(output.pending) == old_tokens and queued_pcm(output) == old_bytes
+    assert driver.calls == before  # No reset, restart or shared native volume call.
+    driver.complete()
+    output.pump()
+    assert queued_pcm(output) == b'\x00' * 6400
+    assert output.levels.volume == 40 and output.levels.muted
+    output.close()
+
+
+def test_paused_level_change_requeues_from_observed_frame_without_resume(pcm, driver):
+    output = native.WaveOutput()
+    output.open(pcm, paused=True)
+    driver.position = 200
+    output.set_levels(native.PlaybackLevels(100, True))
+    assert output.first_frame == 200 and output.next_frame == 1800
+    assert output.position_seconds == pytest.approx(.025)
+    assert queued_pcm(output) == b'\x00' * 6400
+    assert driver.calls.index('reset') < len(driver.calls) - 1
+    assert 'restart' not in driver.calls and output.paused
+    output.resume()
+    assert driver.calls.count('restart') == 1
+    output.close()
+
+
+@pytest.mark.parametrize('phase', ['reset', 'unprepare', 'pause'])
+def test_failed_paused_requeue_retains_owner_until_native_close(pcm, driver, phase):
+    output = native.WaveOutput()
+    output.open(pcm, paused=True)
+    driver.fail = phase
+    with pytest.raises(RuntimeError):
+        output.set_levels(native.PlaybackLevels(20, True))
+    assert output.handle.value and output.stream is not None and output.stopping
+    before = driver.calls.count('write')
+    with pytest.raises(native.PlaybackCleanupError):
+        output.pump()
+    assert driver.calls.count('write') == before
+    driver.fail = None
+    output.close()
+    assert not driver.prepared and not output.handle.value
+
+
+def test_two_owned_players_have_separate_pcm_levels_and_no_native_volume_state(pcm, monkeypatch):
+    first_driver, second_driver = Driver(), Driver()
+    selected = iter((first_driver, second_driver))
+    monkeypatch.setattr(native, '_library', lambda: next(selected))
+    first, second = native.WaveOutput(), native.WaveOutput()
+    try:
+        first.open(pcm, paused=True)
+        second.open(pcm, paused=True)
+        original_second = queued_pcm(second)
+        second_calls = list(second_driver.calls)
+        first.set_levels(native.PlaybackLevels(25, True))
+        assert queued_pcm(first) == b'\x00' * 6400
+        assert queued_pcm(second) == original_second
+        assert second_driver.calls == second_calls and second.levels == native.PlaybackLevels()
+        assert first_driver.volume == second_driver.volume == 0xFFFFFFFF
+    finally:
+        first.close()
+        second.close()

@@ -52,17 +52,24 @@ position remains an explicitly approximate clock estimate.
 
 ## Volume, mute and stereo balance
 
-On Windows, **Apply player volume, mute and balance** uses an owned HWAVEOUT
-handle inside the existing player. It never uses a global output-device ordinal
-for setting volume. Volume ranges from **0 to 100**, mute retains the requested
-volume, and balance ranges from **−100 left to +100 right**. Balance requires a
-stereo recording and a device that supports independent left/right levels.
+On Windows, **Apply player volume, mute and balance** scales only the bounded PCM
+buffers owned by the existing player. It never changes a Windows stream,
+application-session, endpoint or device volume setting. Volume ranges from
+**0 to 100**, mute retains the requested volume, and balance ranges from
+**−100 left to +100 right**. Balance requires a stereo recording. The arithmetic
+supports unsigned 8-bit and signed 16-, 24- and 32-bit PCM, without amplification
+above the original sample range.
 
-Applying controls to a stopped player remains silent. A paused player remains
-paused. When active MCI playback changes to the owned WaveOut path, the old MCI
-alias must confirm closure before the new native handle is admitted. Unsupported
-device capabilities or unconfirmed native cleanup produce an explicit error;
-they do not select another device.
+While playing, buffers already submitted to the driver remain untouched. The
+current queue holds at most **200 ms** of audio with its previous levels;
+device latency may add to the time before the change is heard. Paused changes
+release and rebuild the queued buffers at the observed frame while retaining
+the pause. Applying controls to a stopped player remains silent.
+
+When active MCI playback changes to the owned WaveOut path, the old MCI alias
+must confirm closure before the new native handle is admitted. Unsupported PCM
+formats or unconfirmed native cleanup produce an explicit error; they do not
+select another device.
 
 Live-reader changes are queued to the existing reader worker. The controls
 report a request; they do not claim instantaneous native completion or silence.
@@ -100,3 +107,10 @@ with synthetic voices/transport where disclosed. Physical output behavior,
 human listening quality and NVDA operation require their separate measured
 acceptance. No results from the earlier clip-only gate qualify this playback
 composition.
+
+The Windows API reference describes handle-specific waveOut volume, while
+Microsoft's legacy-audio session guidance links those volume controls to the
+application session. This implementation avoids that ambiguity by changing
+only the samples queued by its own player:
+[waveOutSetVolume](https://learn.microsoft.com/en-us/windows/win32/api/mmeapi/nf-mmeapi-waveoutsetvolume)
+and [legacy audio events](https://learn.microsoft.com/en-us/windows/win32/coreaudio/audio-events-for-legacy-audio-applications).
