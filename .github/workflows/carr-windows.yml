@@ -551,7 +551,7 @@ jobs:
           $env:CARR_V3_AUDIO = Join-Path $bundle 'audio-runtime'
           & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path scripts/windows_v3_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-primary-studio.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B scripts/windows_speech_lifetime_smoke.py 2>&1 | Tee-Object 'ci-results/native-reader-lifetime.txt'
+          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path scripts/windows_speech_lifetime_smoke.py).Path 2>&1 | Tee-Object 'ci-results/native-reader-lifetime.txt'
           if ($LASTEXITCODE -ne 0) { throw 'Native Reader owner and parent destruction acceptance failed.' }
           & $installedPython -I -B scripts/windows_assistant_smoke.py --bundle $bundle --result 'ci-results/full-bundle-assistant.json' 2>&1 | Tee-Object 'ci-results/full-bundle-assistant.log'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
