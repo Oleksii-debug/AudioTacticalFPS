@@ -225,10 +225,10 @@ jobs:
           & $env:CARR_PYTHON scripts/ci_check.py tests/audio/test_music.py tests/audio/test_production.py tests/extract/test_ocr_runtime.py 2>&1 | Tee-Object 'ci-results/runtime-compatibility-regressions.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Check final export and ownership regressions before long suites
+      - name: Check final export, import and installation regressions before long suites
         timeout-minutes: 6
         run: |
-          & $env:CARR_PYTHON scripts/ci_check.py tests/e2e/test_provider_ledger_lifetime.py tests/ui/test_keyboard_manager.py tests/reader/test_export_no_clobber.py tests/ui/test_citation_styles_jobs.py 2>&1 | Tee-Object 'ci-results/finalization-regressions.txt'
+          & $env:CARR_PYTHON scripts/ci_check.py tests/e2e/test_provider_ledger_lifetime.py tests/ui/test_keyboard_manager.py tests/reader/test_export_no_clobber.py tests/ui/test_citation_styles_jobs.py tests/packaging/test_native_checks.py tests/ingest/test_import_metadata_shape.py 2>&1 | Tee-Object 'ci-results/finalization-regressions.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Run required integrated source workflows
@@ -340,6 +340,7 @@ jobs:
             'tests/storage/test_research_schema.py',
             'tests/packaging/test_source_wheel.py',
             'tests/packaging/test_ci_check.py',
+            'tests/packaging/test_native_checks.py',
             'tests/catalog/test_application_metadata_integrity.py',
             'tests/storage/test_finish_workspace_integrity.py',
             'tests/extract/test_docx_hidden_styles.py',
@@ -349,6 +350,7 @@ jobs:
             'tests/ui/test_federated_labels.py',
             'tests/search/test_literal_unicode_memory.py',
             'tests/e2e/test_search_deadline.py',
+            'tests/ingest/test_import_metadata_shape.py',
             'tests/ingest/test_txt_replay_registration.py',
             'tests/ingest/test_terminal_replay_registration.py',
             'tests/research/test_bibtex_import.py',
@@ -733,6 +735,7 @@ jobs:
                       self.seen = True
           policy = RejectExpectedFailures()
           installed_suites = [
+              'tests/ingest/test_import_metadata_shape.py',
               'tests/e2e/test_semantic_runtime.py',
               'tests/e2e/test_import_worker.py',
               'tests/e2e/test_import_batches_ocr.py',

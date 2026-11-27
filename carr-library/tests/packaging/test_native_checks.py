@@ -111,6 +111,24 @@ def test_native_runtime_flag_is_delegated_to_canonical_loader(tmp_path, monkeypa
     assert events[1] == ('activate_bundled_runtime', str(tmp_path))
 
 
+@pytest.mark.parametrize('audio_flag', [False, True])
+def test_complete_producer_manifest_reaches_native_checks(tmp_path, monkeypatch, audio_flag):
+    manifest = bundle(tmp_path, model=True, ocr=True)
+    manifest.update(source_tree='c' * 40, bundled_native_runtime=True,
+                    bundled_audio_runtime=audio_flag)
+    manifest_path = tmp_path / 'bundle-manifest.json'
+    manifest_path.write_text(json.dumps(manifest), encoding='utf-8')
+    original = manifest_path.read_bytes()
+    events = []
+    controlled_imports(monkeypatch, events)
+    report = native_checks.check_native_dependencies(tmp_path)
+    assert report['status'] == 'PASS'
+    assert report['semantic']['status'] == report['ocr']['status'] == 'PASS'
+    assert ('activate_bundled_runtime', str(tmp_path)) in events
+    assert ('canonical_ocr_check', 30, str(tmp_path / 'ocr')) in events
+    assert manifest_path.read_bytes() == original
+
+
 def test_optional_semantic_uses_shared_policy_before_tokenizers(tmp_path, monkeypatch):
     bundle(tmp_path, model=True)
     events = []
@@ -150,7 +168,8 @@ def test_bundled_ocr_reuses_canonical_check_and_restores_environment(
 @pytest.mark.parametrize('change', [
     'duplicate_key', 'boolean_schema', 'string_model_flag', 'missing_ocr_flag',
     'unknown_field', 'bad_commit', 'bad_hash', 'traversal', 'case_collision', 'bad_json',
-    'string_native_flag',
+    'string_native_flag', 'string_audio_flag', 'integer_audio_flag', 'null_audio_flag',
+    'short_tree', 'uppercase_tree', 'nonstring_tree',
 ])
 def test_invalid_manifest_rejected_before_native_imports(tmp_path, monkeypatch, change):
     manifest = bundle(tmp_path)
@@ -172,6 +191,18 @@ def test_invalid_manifest_rejected_before_native_imports(tmp_path, monkeypatch, 
         manifest['files']['readme.TXT'] = 'b' * 64
     elif change == 'string_native_flag':
         manifest['bundled_native_runtime'] = 'false'
+    elif change == 'string_audio_flag':
+        manifest['bundled_audio_runtime'] = 'false'
+    elif change == 'integer_audio_flag':
+        manifest['bundled_audio_runtime'] = 1
+    elif change == 'null_audio_flag':
+        manifest['bundled_audio_runtime'] = None
+    elif change == 'short_tree':
+        manifest['source_tree'] = 'a' * 39
+    elif change == 'uppercase_tree':
+        manifest['source_tree'] = 'A' * 40
+    elif change == 'nonstring_tree':
+        manifest['source_tree'] = 7
     raw = json.dumps(manifest)
     if change == 'duplicate_key':
         raw = '{"bundled_model":true,' + raw[1:]

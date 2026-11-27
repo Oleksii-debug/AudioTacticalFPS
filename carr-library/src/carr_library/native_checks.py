@@ -51,7 +51,8 @@ def _manifest(root):
     value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique_object)
     required = {'schema', 'target', 'bundled_python', 'bundled_model', 'bundled_ocr', 'files'}
     if (type(value) is not dict or not required <= value.keys()
-            or value.keys() - required - {'source_commit', 'bundled_native_runtime'}
+            or value.keys() - required - {'source_commit', 'source_tree',
+                                          'bundled_native_runtime', 'bundled_audio_runtime'}
             or type(value['schema']) is not int or value['schema'] != 1
             or value['target'] != TARGET
             or any(type(value[name]) is not bool
@@ -60,9 +61,14 @@ def _manifest(root):
         raise ValueError('Unsupported installation manifest or optional-component flags.')
     if ('bundled_native_runtime' in value and type(value['bundled_native_runtime']) is not bool):
         raise ValueError('The bundled_native_runtime installation flag must be a boolean.')
+    if ('bundled_audio_runtime' in value and type(value['bundled_audio_runtime']) is not bool):
+        raise ValueError('The bundled_audio_runtime installation flag must be a boolean.')
     if ('source_commit' in value and (not isinstance(value['source_commit'], str)
             or not re.fullmatch('[0-9a-f]{40}', value['source_commit']))):
         raise ValueError('Invalid installation source commit.')
+    if ('source_tree' in value and (not isinstance(value['source_tree'], str)
+            or not re.fullmatch('[0-9a-f]{40}', value['source_tree']))):
+        raise ValueError('Invalid installation source tree.')
     folded = set()
     for name, digest in value['files'].items():
         if not isinstance(name, str):
