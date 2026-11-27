@@ -285,4 +285,6 @@ def install_queue_controls(owner, page, layout):
         ('Resume saved position', lambda event: manager.restore(event, resume=True))):
         owner._button(page, row, label, action)
     layout.Add(row, 0, owner.wx.ALL, 5)
+    from .legacy_playlist import install_legacy_queue_controls
+    install_legacy_queue_controls(owner, page, layout)
     return manager

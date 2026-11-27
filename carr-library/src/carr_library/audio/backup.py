@@ -73,7 +73,7 @@ def _identity(info):
 def _allowed(name):
     if name in ('studio/project.json', 'studio/project.json.recovery.json'):
         return True
-    if (name in ('audio/render-journal.json', 'audio/playback-queue.json') or re.fullmatch('audio/plan-' + _HEX + r'\.json', name)
+    if (name in ('audio/render-journal.json', 'audio/playback-queue.json', 'audio/legacy-playback-queue.json') or re.fullmatch('audio/plan-' + _HEX + r'\.json', name)
             or re.fullmatch(r'audio/publication-[0-9a-f]{32}\.json', name)
             or re.fullmatch('audio/clip-consolidation-' + _HEX + r'\.json', name)):
         return True
@@ -221,6 +221,9 @@ def input_assets(project_file, project_dir, *, strict=False,
         required.add(receipt['output']['asset'])
     if len(required) + len(consolidation) > file_budget:
         raise ValueError('Sound inputs and provenance exceed the snapshot file budget.')
+    from .legacy_playlist_state import provenance_assets
+    original_queue = provenance_assets(project_dir, project['project_id'], cancelled=cancelled)
+    required.update(name.removeprefix('assets/') for name in original_queue if name.startswith('assets/'))
     from .playlist import inspect_queue
     queue = inspect_queue(project_dir, project['project_id'], cancelled=cancelled)
     if queue is not None:
@@ -231,7 +234,7 @@ def input_assets(project_file, project_dir, *, strict=False,
     if not directory.exists() and not directory.is_symlink():
         if required:
             raise ValueError('A referenced sound input is missing from the project assets folder.')
-        return {}
+        return {'audio/' + name: path for name, path in original_queue.items()}
     _safe(directory, directory=True)
     names = set(required)
     for count, path in enumerate(directory.iterdir(), 1):
@@ -269,6 +272,7 @@ def input_assets(project_file, project_dir, *, strict=False,
                 raise ValueError('The retained microphone input differs from its original receipt.')
             verify_recording_segments(directory / reference['asset'], receipt, cancelled=cancelled)
     files.update({'audio/' + name: path for name, (path, _) in consolidation.items()})
+    files.update({'audio/' + name: path for name, path in original_queue.items()})
     return files
 
 
@@ -497,6 +501,7 @@ def restore_project(snapshot, destination, *, byte_budget=DEFAULT_BYTE_BUDGET,
                               file_budget=file_budget, cancelled=cancelled)
         from .clip_consolidation import is_receipt_name
         expected_inputs = {name for name in records if name.startswith('audio/assets/')
+            or name == 'audio/legacy-playback-queue.json'
             or (name.startswith('audio/') and name.count('/') == 1
                 and is_receipt_name(name[6:]))}
         if set(assets) != expected_inputs:

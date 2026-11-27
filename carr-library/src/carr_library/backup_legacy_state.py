@@ -19,8 +19,9 @@ MAX_STATE_FILES = 100_000
 # 512 MiB metadata budget. Both remain bounded when retained as inert history.
 MAX_STATE_BYTES = 32 * 1024**3 + 512 * 1024**2
 # Only the exact typed canonical ASR envelope requests this larger aggregate.
-# Default callers retain the historical budget above.
-MAX_TYPED_ARCHIVE_BYTES = MAX_STATE_BYTES + 64 * 1024**3
+# Exact queue references add at most 32 GiB of retained original PCM. Default
+# callers and older state-folder envelopes retain their historical budget.
+MAX_TYPED_ARCHIVE_BYTES = MAX_STATE_BYTES + 64 * 1024**3 + 32 * 1024**3
 
 
 def relative_name(value):

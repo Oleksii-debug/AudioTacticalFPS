@@ -17,6 +17,11 @@ from .backup_legacy_state import (
     validate_state, verify_state, _inventory, _stamp,
 )
 from .ingest.bundle import _unique_object
+from .audio.legacy_playlist_state import (
+    NAME as LEGACY_QUEUE, ASSET as LEGACY_QUEUE_ASSET,
+    MAX_FILE_BYTES as MAX_QUEUE_FILE, MAX_TOTAL_BYTES as MAX_QUEUE_BYTES,
+    MAX_STATE_BYTES as MAX_QUEUE_METADATA,
+)
 
 DIRECTORY = 'state/historical-backups'
 MAX_ARCHIVES = 1000
@@ -89,7 +94,8 @@ def validate_manifest(manifest, *, max_files=MAX_STATE_FILES, max_bytes=MAX_TYPE
     validate_state(entries, max_files=max_files, max_bytes=max_bytes)
     if layout == 'root':
         from . import legacy_transcription_schema as transcription
-        metadata_bytes = media_bytes = input_bytes = 0
+        metadata_bytes = media_bytes = input_bytes = queue_candidates = 0
+        has_queue = any(item['filename'] == LEGACY_QUEUE for item in entries)
         for item in entries:
             name = item['filename']
             parts = name.split('/')
@@ -109,10 +115,17 @@ def validate_manifest(manifest, *, max_files=MAX_STATE_FILES, max_bytes=MAX_TYPE
                 input_bytes += item['size_bytes']
             elif _GENERATED_MEDIA.fullmatch(name):
                 media_bytes += item['size_bytes']
+            elif has_queue and LEGACY_QUEUE_ASSET.fullmatch(name) and item['size_bytes'] <= MAX_QUEUE_FILE:
+                # Only a preliminary envelope allowance. The content pass below
+                # grants it exclusively to exact validated queue references.
+                queue_candidates += item['size_bytes']
             else:
                 metadata_bytes += item['size_bytes']
+            if name == LEGACY_QUEUE and not 0 < item['size_bytes'] <= MAX_QUEUE_METADATA:
+                raise ValueError('Historical queue metadata exceeds its byte budget.')
         if (metadata_bytes > 512 * 1024**2 or media_bytes > 32 * 1024**3
-                or input_bytes > transcription.MAX_INPUT_BYTES):
+                or input_bytes > transcription.MAX_INPUT_BYTES
+                or metadata_bytes + queue_candidates > 512 * 1024**2 + MAX_QUEUE_BYTES):
             raise ValueError('Historical common-format sidecars exceed their byte budgets.')
     # None was a documented empty pending component only in legacy v5.
     if 'pending' in manifest and manifest['pending'] is None and layout != 'state-reading':
@@ -203,6 +216,7 @@ def validate_state_tree(root, *, cancelled=lambda: False):
             verify_state(path.parent / 'files', None, _payload_entries(manifest), cancelled=cancelled,
                          max_bytes=MAX_TYPED_ARCHIVE_BYTES)
             _validate_transcription(path.parent / 'files', manifest, stored=True, cancelled=cancelled)
+            _validate_queue(path.parent / 'files', manifest, stored=True, cancelled=cancelled)
 
 
 def retain_state(source, stage, manifest, expected_manifest_sha256, *, cancelled=lambda: False):
@@ -222,6 +236,7 @@ def retain_state(source, stage, manifest, expected_manifest_sha256, *, cancelled
                  cancelled=cancelled, destination_name=_file_key, ignored=ignored,
                  max_bytes=MAX_TYPED_ARCHIVE_BYTES)
     _validate_transcription(archive / 'files', manifest, stored=True, cancelled=cancelled)
+    _validate_queue(archive / 'files', manifest, stored=True, cancelled=cancelled)
     sync_directory(archive)
     prefix = (Path(DIRECTORY) / expected_manifest_sha256).as_posix()
     return [dict(path=prefix + '/manifest.json', size_bytes=len(raw), sha256=expected_manifest_sha256),
@@ -248,3 +263,26 @@ def verify_source(source, manifest, *, cancelled=lambda: False):
     verify_state(source, None, entries, cancelled=cancelled, ignored=ignored,
                  max_bytes=MAX_TYPED_ARCHIVE_BYTES)
     _validate_transcription(source, manifest, stored=False, cancelled=cancelled)
+    _validate_queue(source, manifest, stored=False, cancelled=cancelled)
+
+
+def _validate_queue(source, manifest, *, stored, cancelled):
+    from .audio.legacy_playlist_state import validate_historical
+    subdirectory, entries, _ = source_inventory(manifest)
+    normalized = [dict(row, filename=('state/' if subdirectory else '') + row['filename'])
+                  for row in entries]
+    def resolve(name):
+        original = name.removeprefix('state/') if subdirectory else name
+        return Path(source) / (_file_key(original) if stored else original)
+    selected = validate_historical(normalized, resolve, cancelled=cancelled)
+    if manifest_layout(manifest) == 'root':
+        from . import legacy_transcription_schema as transcription
+        metadata = 0
+        for row in normalized:
+            name = row['filename']
+            if (name in selected or _GENERATED_MEDIA.fullmatch(name)
+                    or name.startswith(transcription.PREFIX) and transcription.is_input(name)):
+                continue
+            metadata += row['size_bytes']
+        if metadata > 512 * 1024**2:
+            raise ValueError('Unreferenced historical input files exceed the metadata byte budget.')

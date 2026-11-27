@@ -200,6 +200,10 @@ jobs:
             'tests/assistant/test_workflow_template_handlers.py',
             'tests/audio/test_book_cli.py',
             'tests/audio/test_managed_playback_queue.py',
+            'tests/storage/test_legacy_playlist_backup.py',
+            'tests/audio/test_legacy_playlist.py',
+            'tests/ui/test_legacy_playlist_controls.py',
+            'tests/storage/test_legacy_playlist_acceptance.py',
             'tests/ui/test_managed_playback_queue.py',
             'tests/ui/test_measured_book_dialog.py',
             'tests/ingest/test_large_source_profiles.py',
@@ -641,7 +645,9 @@ jobs:
         run: |
           & $env:CARR_PYTHON -I -B scripts/windows_assistant_schedule_smoke.py --output ci-results/native-schedule.json 2>&1 | Tee-Object 'ci-results/native-schedule.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $env:CARR_PYTHON -I -B scripts/windows_managed_queue_smoke.py --output ci-results/native-managed-queue.json 2>&1 | Tee-Object 'ci-results/native-managed-queue.txt'
+          & $env:CARR_PYTHON -I -B scripts/windows_managed_queue_smoke.py --native --output ci-results/native-managed-queue.json 2>&1 | Tee-Object 'ci-results/native-managed-queue.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -I -B scripts/windows_legacy_playlist_smoke.py --native --output ci-results/native-legacy-queue.json 2>&1 | Tee-Object 'ci-results/native-legacy-queue.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON -I -B scripts/windows_assistant_templates_smoke.py --output ci-results/native-templates.json 2>&1 | Tee-Object 'ci-results/native-templates.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -903,7 +909,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_assistant_schedule_smoke.py --output ci-results/full-bundle-native-schedule.json 2>&1 | Tee-Object 'ci-results/full-bundle-native-schedule.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B scripts/windows_managed_queue_smoke.py --output ci-results/full-bundle-native-managed-queue.json 2>&1 | Tee-Object 'ci-results/full-bundle-native-managed-queue.txt'
+          & $installedPython -I -B scripts/windows_managed_queue_smoke.py --native --output ci-results/full-bundle-native-managed-queue.json 2>&1 | Tee-Object 'ci-results/full-bundle-native-managed-queue.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/windows_legacy_playlist_smoke.py --native --output ci-results/full-bundle-native-legacy-queue.json 2>&1 | Tee-Object 'ci-results/full-bundle-native-legacy-queue.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_assistant_templates_smoke.py --output ci-results/full-bundle-native-templates.json 2>&1 | Tee-Object 'ci-results/full-bundle-native-templates.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -1153,6 +1161,10 @@ jobs:
                             'tests/assistant/test_workflow_template_handlers.py',
                             'tests/audio/test_book_cli.py',
                             'tests/audio/test_managed_playback_queue.py',
+                            'tests/storage/test_legacy_playlist_backup.py',
+                            'tests/audio/test_legacy_playlist.py',
+                            'tests/ui/test_legacy_playlist_controls.py',
+                            'tests/storage/test_legacy_playlist_acceptance.py',
                             'tests/ui/test_managed_playback_queue.py',
                             'tests/ui/test_measured_book_dialog.py',
                             'tests/ingest/test_large_source_profiles.py',
@@ -1610,7 +1622,7 @@ jobs:
             tests/test_open_existing_library.py \
             tests/assistant/test_workflow_templates.py \
             tests/assistant/test_workflow_template_handlers.py \
-            tests/audio/test_book_cli.py tests/audio/test_managed_playback_queue.py tests/ui/test_managed_playback_queue.py \
+            tests/audio/test_book_cli.py tests/audio/test_managed_playback_queue.py tests/ui/test_managed_playback_queue.py tests/storage/test_legacy_playlist_backup.py tests/audio/test_legacy_playlist.py tests/ui/test_legacy_playlist_controls.py tests/storage/test_legacy_playlist_acceptance.py \
             tests/ui/test_measured_book_dialog.py \
             tests/ingest/test_large_source_profiles.py \
             tests/storage/test_large_source_backup.py \
