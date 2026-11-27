@@ -257,3 +257,19 @@ def test_pure_pending_checkpoint_validation_does_not_open_saved_paths_or_profile
 def test_all_seventeen_tools_are_explicit_with_no_dynamic_runtime_names():
     assert len(TOOLS) == 17 and 'audio.transcribe' in TOOLS
     assert not {'shell', 'python', 'runtime.install', 'profile.enable'} & TOOLS
+
+
+@pytest.mark.parametrize('changed', ['manifest', 'worker', 'model'])
+def test_changed_pinned_runtime_bytes_after_submit_refuse_before_preparation(environment, monkeypatch, changed):
+    e = environment
+    identity = e.submit()
+    target = {'manifest': e.manifest, 'worker': e.manifest.parent / 'worker.py',
+              'model': e.manifest.parent / 'models/small/model.bin'}[changed]
+    target.write_bytes(target.read_bytes() + b' ')
+    monkeypatch.setattr(domain.TranscriptionService, 'prepare', forbidden)
+    result = e.service.run(identity)
+    assert result.status in ('failed', 'attention') and result.completed == 0
+    value = e.service.store.load(identity)['steps'][0]['intent']['transcription']
+    assert value['prepare_dispatched'] is False and value['prepared'] is None
+    assert not (e.app.root / 'transcription-jobs').exists()
+    assert not tuple(e.outputs.iterdir())

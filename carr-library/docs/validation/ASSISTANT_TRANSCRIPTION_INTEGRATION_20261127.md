@@ -1,6 +1,6 @@
 # Current assistant transcription integration
 
-The public `audio.transcribe` tool now uses the existing supplied ASR domain service. The source and 69 focused boundary cases are implemented and independently reviewed. Windows execution is pending; this record does not claim model inference, language accuracy, NVDA speech or physical audio qualification.
+The public `audio.transcribe` tool now uses the existing supplied ASR domain service. The source and 72 focused boundary cases are implemented. The source and the first 69 cases received independent source review; the final three post-submission runtime-pin cases are additive and still await execution. Windows execution is pending; this record does not claim model inference, language accuracy, NVDA speech or physical audio qualification.
 
 ## Existing owners and review
 
@@ -23,9 +23,9 @@ The existing assistant snapshot validator now checks its prepared and accepted r
 | Population | Cases |
 | --- | ---: |
 | Retained assistant and topic source cases | 612 |
-| New adapter, process, recovery, CLI and UI cases | 69 |
-| Full focused source inventory | 681 |
-| Identical isolated installed inventory | 681 |
+| New adapter, process, recovery, CLI and UI cases | 72 |
+| Full focused source inventory | 684 |
+| Identical isolated installed inventory | 684 |
 | Native Windows checks | 30 |
 
 The new population includes ten actual isolated-process exit phases, complete and partial publication recovery, cancellation during the real owned synthetic child, current-profile/source changes, zero-byte output, forged receipts, passive restore/rebackup, and explicit current UI/CLI selection. The fixture substitutes only the test interpreter for an inert reviewed interpreter entry; the production process owner, complete manifest validation and receipt path remain in use.

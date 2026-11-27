@@ -7,7 +7,7 @@
   "source_checkpoint": "d24b517ed34b4d22a2d141c0c7b7c4d3bfbfe08d",
   "tests_checkpoint": "a809c0117dbda515659bbef4b66737b457b4a7b9",
   "source_peer_review": "GO: capacity_measurements; current owner cancellation and passive retained-job cross-binding included.",
-  "tests_peer_review": "GO: capacity_measurements; synthetic worker compatibility, ten actual isolated exit seams and passive restore/rebackup reviewed.",
+  "tests_peer_review": "GO: capacity_measurements; synthetic worker compatibility, ten actual isolated exit seams and passive restore/rebackup reviewed. The final three post-submit manifest/worker/model mutation cases are additive and still await execution.",
   "canonical_gap": "The previously OPEN public audio.transcribe assistant bridge is implemented through the existing supplied-worker service. Execution qualification remains separate.",
   "existing_owner": "carr_library.transcription_service.TranscriptionService",
   "interfaces": [
@@ -53,7 +53,7 @@
     "dynamic_TOOLS_parametrize_found": false,
     "scope": "Bounded direct source inspection; exact source/installed collection gates validate the retained declared population."
   },
-  "new_cases": 69,
+  "new_cases": 72,
   "new_function_counters": {
     "test_transcription_tools.py": {
       "test_guided_transcription_shows_all_effective_settings_without_creating_jobs": 2,
@@ -71,7 +71,8 @@
       "test_same_size_and_mtime_source_change_refuses_before_inference": 2,
       "test_new_output_directory_after_preview_preserves_foreign_data": 1,
       "test_pure_pending_checkpoint_validation_does_not_open_saved_paths_or_profiles": 1,
-      "test_all_seventeen_tools_are_explicit_with_no_dynamic_runtime_names": 1
+      "test_all_seventeen_tools_are_explicit_with_no_dynamic_runtime_names": 1,
+      "test_changed_pinned_runtime_bytes_after_submit_refuse_before_preparation": 3
     },
     "test_transcription_recovery.py": {
       "test_actual_process_exit_resumes_only_bound_work_and_never_replays_uncertain_inference": 10,
@@ -103,10 +104,10 @@
     }
   },
   "focused_gate": {
-    "source_cases": 681,
-    "installed_cases": 681,
+    "source_cases": 684,
+    "installed_cases": 684,
     "retained_cases": 612,
-    "new_cases": 69,
+    "new_cases": 72,
     "native_checks": 30,
     "oracle": "scripts/assistant_transcription_oracle.json",
     "workflow": ".github/workflows/carr-assistant-transcription.yml"
