@@ -111,6 +111,7 @@ jobs:
           & $env:CARR_PYTHON -I -B packaging/prepare_windows_audio.py --download --output $audioRuntime | Tee-Object 'ci-results/audio-runtime.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "CARR_AUDIO_RUNTIME=$audioRuntime" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          (Join-Path $audioRuntime 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Inspect only the exact reviewed capture device and its advertised formats
         timeout-minutes: 3
@@ -152,6 +153,16 @@ jobs:
                   if len(selected) != 1:
                       raise RuntimeError('Exact reviewed virtual input is unavailable or ambiguous.')
                   device = selected[0]
+          from carr_library.speech import output_devices as outputs
+          api = outputs._native()
+          count = int(api.waveOutGetNumDevs())
+          if not 0 <= count <= 64:
+              raise RuntimeError('Output inventory exceeds the reviewed bound.')
+          report['native_outputs'] = []
+          for index in range(count):
+              item = outputs._device(api, index, lambda: False)
+              report['native_outputs'].append({'index': item.index, 'name': item.name,
+                                                'interface_sha256': item.identity})
                   report['selected_device'] = {'id': device.id, 'name': device.name, 'alternative': device.alternative}
                   def invoke(name, options, *, listing=False):
                       args = [str(ffmpeg), '-hide_banner', '-nostdin', '-loglevel', 'debug',
