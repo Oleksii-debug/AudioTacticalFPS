@@ -17,6 +17,7 @@ RECORDING = re.compile(r'state/studio/recordings/(' + ID + r')\.(json|wav)\Z')
 PRESET = re.compile(r'state/studio/effect-presets/(' + ID + r')\.json\Z')
 BOOK = re.compile(r'state/studio/book-plans/(' + HEX + r')/(' + ID + r')\.json\Z')
 BATCH = re.compile(r'state/studio/book-batches/(' + HEX + r')/(' + ID + r')\.json\Z')
+PUBLICATION = re.compile(r'state/studio/publications/(' + ID + r')\.json\Z')
 BOOK_SOURCE = re.compile(r'state/studio/jobs/([A-Za-z0-9_-]{1,80})/book-source\.json\Z')
 INPUT_RECEIPT = 'state/studio/backup-inputs.json'
 INPUT_REVIEW = 'state/studio/legacy-input-review.json'
@@ -33,7 +34,8 @@ def limit(name):
         return 64 * 1024
     if BATCH.fullmatch(name):
         return 128 * 1024
-    if BOOK.fullmatch(name) or BOOK_SOURCE.fullmatch(name) or name in (INPUT_RECEIPT, INPUT_REVIEW):
+    if (BOOK.fullmatch(name) or BOOK_SOURCE.fullmatch(name) or PUBLICATION.fullmatch(name)
+            or name in (INPUT_RECEIPT, INPUT_REVIEW)):
         return 32 * 1024 * 1024
     return None
 
@@ -107,6 +109,9 @@ def validate(db, name, value):
                 or not db.execute('SELECT 1 FROM workspace_meta WHERE workspace=?',
                                   (batch.workspace,)).fetchone()):
             raise ValueError('Book batch differs from its saved library or fingerprint.')
+    elif match := PUBLICATION.fullmatch(name):
+        from .studio.publishing import validate_publication_receipt
+        validate_publication_receipt(value, match[1])
     elif BOOK_SOURCE.fullmatch(name):
         fields(value, {'schema', 'plan', 'plan_sha256', 'source_anchor', 'source_metadata',
                        'source_topic', 'warnings', 'source_sha256', 'part', 'notice'}, {'landmarks'})

@@ -508,6 +508,8 @@ def _ignored(name):
         return True
     if re.fullmatch(r'state/studio/book-batches/[0-9a-f]{64}/\.batch-[0-9a-f]{32}\.lock', name):
         return True
+    if re.fullmatch(r'state/studio/publications/\.[0-9a-f]{32}\.lock', name):
+        return True
     if name.startswith('state/studio/'):
         return path.name in ('.state.lock', '.render.lock') or path.name.startswith('.pending-')
     if path.parent.as_posix() == 'state/speech':
