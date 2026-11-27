@@ -78,10 +78,17 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
                 # its answer. Runtime/model pickers also use synthetic answers.
                 class ProfileAnswer(wx.SingleChoiceDialog):
                     def ShowModal(self):
-                        self.SetSelection(index)
+                        def accept():
+                            self.SetSelection(index)
+                            button = self.FindWindow(wx.ID_OK)
+                            assert button is not None, 'The native profile dialog has no OK action.'
+                            click(button)
+                        wx.CallAfter(accept)
+                        result = super().ShowModal()
                         expected = ('receipts-v1', 'whisper-v5-manifest-v1')[index]
-                        assert self.GetStringSelection().startswith(expected)
-                        return wx.ID_OK
+                        assert result == wx.ID_OK and self.GetSelection() == index
+                        assert self.GetStringSelection().startswith(expected), self.GetStringSelection()
+                        return result
                 answers = iter((str(Path(sys.executable).resolve()), str(chosen_worker)))
                 class RuntimeAnswer(FolderAnswer):
                     def __init__(self, *args, **kwargs):
@@ -181,5 +188,6 @@ print(json.dumps({'status':'PASS', 'checks':['actual named wx controls','shared 
     'actual named folder action','background folder intake','relative source and exclusion count',
     'actual isolated child protocol','six verified formats','separate edit revision','original unchanged'],
     'folder_picker_interaction':'NOT_RUN', 'folder_picker_answer':'controlled synthetic directory',
-    'profile_picker_interaction':'NOT_RUN', 'profile_picker_answer':'controlled selections on an actual wx choice dialog',
+    'profile_picker_interaction':'programmatic native selection and OK; manual interaction NOT_RUN',
+    'profile_picker_answer':'controlled selections on an actual wx choice dialog',
     'whisper_acoustic_inference':'NOT_RUN', 'manual_NVDA':'NOT_RUN'}, ensure_ascii=False))
