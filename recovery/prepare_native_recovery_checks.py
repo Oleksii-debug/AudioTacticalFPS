@@ -21,7 +21,7 @@ WORKFLOWS = (
 )
 CI_FILES = {
     'carr-library/scripts/ci_check.py': '67e42f01e73ef7bfcd3686ff34f646aab26c74f3',
-    'carr-library/tests/packaging/test_ci_check.py': '4cf1b76caf583fbe059680110d19ca38f9477ad7',
+    'carr-library/tests/packaging/test_ci_check.py': 'bc05942a32e086cc86238802bffc9023cc4123cd',
 }
 EXPRESSION = re.compile(r'\$\{\{[\s\S]*?\}\}')
 
