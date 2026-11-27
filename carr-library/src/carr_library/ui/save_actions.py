@@ -42,9 +42,10 @@ def install_save_actions(frame):
     timer = wx.Timer(frame)
     frame._draft_save_timer = timer
     previous = [None]
+    active = True
 
     def autosave(event):
-        if frame._closing or not frame._dirty() or frame.working:
+        if not active or frame._closing or not frame._dirty() or frame.working:
             return
         panel = frame.evidence
         if panel is None or panel.displayed is None or frame.active is None:
@@ -62,6 +63,24 @@ def install_save_actions(frame):
             # An autosave failure must be announced, while retaining the live editor.
             frame.status.SetValue(f'Research draft could not be saved automatically: {exc}. Keep this window open and use Save.')
 
+    def stop_autosave():
+        nonlocal active
+        if not active:
+            return
+        active = False
+        timer.Stop()
+        frame.Unbind(wx.EVT_TIMER, handler=autosave, source=timer)
+
+    # The accepted close path runs before deferred top-level destruction.
+    # Keep this idempotent because the destroy notification may follow it.
+    frame._stop_draft_autosave = stop_autosave
+
+    def destroyed(event):
+        if event.GetEventObject() is frame:
+            stop_autosave()
+        event.Skip()
+
+    frame.Bind(wx.EVT_WINDOW_DESTROY, destroyed)
     frame.Bind(wx.EVT_TIMER, autosave, timer)
     timer.Start(3000)
 

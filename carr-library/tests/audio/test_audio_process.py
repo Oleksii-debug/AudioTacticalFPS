@@ -114,3 +114,36 @@ def test_audio_publication_flushes_a_writable_handle(tmp_path, monkeypatch):
     monkeypatch.setattr(os, 'fsync', require_write_access)
     publish_file(staged, target)
     assert flushed and target.read_bytes() == staged.read_bytes() == b'Exact unchanged audio bytes'
+
+
+def test_watch_detects_actual_growth_while_child_keeps_file_open(tmp_path, monkeypatch):
+    from carr_library.audio import process as runner
+
+    children = []
+    original = runner.subprocess.Popen
+
+    def spawn(*args, **kwargs):
+        child = original(*args, **kwargs)
+        children.append(child)
+        return child
+
+    monkeypatch.setattr(runner.subprocess, 'Popen', spawn)
+    stage = tmp_path / 'worker'
+    stage.mkdir()
+    output, finished = stage / 'open-output', tmp_path / 'finished'
+    code = f'''
+import time
+from pathlib import Path
+output = open({str(output)!r}, 'wb', buffering=0)
+output.write(b'x' * 200000)
+time.sleep(10)
+output.close()
+Path({str(finished)!r}).write_bytes(b'Normal completion')
+'''
+    with pytest.raises(AudioError, match='disk budget'):
+        run_process([str(Path(sys.executable).resolve()), '-I', '-B', '-c', code],
+                    watch=(stage,), budget=AudioBudget(timeout=2, max_output_bytes=4096))
+
+    assert len(children) == 1 and children[0].poll() is not None
+    assert not finished.exists()
+    assert output.stat().st_size == 200000

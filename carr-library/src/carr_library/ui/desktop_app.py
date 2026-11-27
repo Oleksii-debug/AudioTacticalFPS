@@ -19,6 +19,7 @@ from ..research.saved_topic_query import SavedTopicQueries
 from ..research.topic_tree import TopicTree
 from ..reader.context import open_context
 from .workspace_shell import WorkspaceFrame
+from .export_destination import confirm_export_destination
 from .scope_bindings import ScopeServices, scope_labels
 from .paged_search_panel import PagedSearchPanel
 from .page_context_dialog import show_page_context
@@ -526,6 +527,8 @@ class DesktopFrame(WorkspaceFrame):
         install_save_actions(self)
         install_citation_actions(self)
         install_operation_progress(self)
+        from .transcription_dialog import install_transcription_actions
+        install_transcription_actions(self)
         install_keyboard_settings(self)
 
     def make_evidence_panel(self,parent,services):
@@ -620,6 +623,7 @@ class DesktopFrame(WorkspaceFrame):
 
     def run_job(self, title, operation, done=None, failed=None, *, with_progress=False):
         from concurrent.futures import CancelledError
+        from ..audio.models import AudioCancelled
         if self._closing:
             return
         if self.working:
@@ -697,7 +701,7 @@ class DesktopFrame(WorkspaceFrame):
                     if done is not None:
                         done(result)
                 except Exception as exc:
-                    finish_progress('cancelled' if isinstance(exc, (InterruptedError, CancelledError)) else 'failed')
+                    finish_progress('cancelled' if isinstance(exc, (InterruptedError, CancelledError, AudioCancelled)) else 'failed')
                     self.report(f'{title}: {exc}')
                     if failed is not None:
                         failed(exc)
@@ -1016,7 +1020,7 @@ class DesktopFrame(WorkspaceFrame):
             extensions = ('.md', '.txt', '.ris', '.bib', '.csv', '.docx', '.html')
             dialog = wx.FileDialog(self, 'Export topic', defaultFile='research-topic',
                 wildcard='Markdown (*.md)|*.md|Plain text (*.txt)|*.txt|RIS (*.ris)|*.ris|BibTeX (*.bib)|*.bib|CSV (*.csv)|*.csv|Word document (*.docx)|*.docx|HTML document (*.html)|*.html',
-                style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+                style=wx.FD_SAVE)
             try:
                 if dialog.ShowModal() != wx.ID_OK:
                     return
@@ -1029,15 +1033,16 @@ class DesktopFrame(WorkspaceFrame):
                 dialog.Destroy()
             if not path.suffix:
                 # Some native save dialogs append the filter's extension and
-                # others do not. Confirm the actual target if we append it.
+                # others do not. Capture and confirm the actual final target.
                 path = path.with_suffix(extension)
-                if path.exists() and wx.MessageBox(
-                    f'Replace the existing export {path.name}?', 'Replace export',
-                    wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, self) != wx.YES:
-                    return
             elif format in ('docx', 'html') and path.suffix.lower() != extension:
                 raise ValueError(f'The selected format needs a {extension} filename. '
                                  'Export again with the matching filename or file type.')
+
+            approval = confirm_export_destination(self, path, private_root=library.root,
+                                                  title='Replace export')
+            if approval is None:
+                return
 
             def selected_scope():
                 if self.library is not library or self.active != (workspace, topic):
@@ -1052,7 +1057,7 @@ class DesktopFrame(WorkspaceFrame):
                     raise TimeoutError('Export cancelled; the destination was not changed.')
                 writer = write_binary_export if format == 'docx' else write_export
                 writer(path,content,private_root=library.root,
-                       cancelled=self.cancel_event.is_set)
+                       cancelled=self.cancel_event.is_set, approval=approval)
 
             def done(result):
                 if format in ('ris','bibtex'):
@@ -1213,6 +1218,22 @@ class DesktopFrame(WorkspaceFrame):
             'Reading positions and bookmarks use their own export and import actions in the Reading menu; keep that export with your library backup.\n'
             'Printed pages are shown only when verified; otherwise physical PDF pages or unpaginated segments are identified.')
 
+    def _begin_shutdown(self):
+        if self._closing:
+            return
+        self._closing = True
+        self.cancel_event.set()
+        # Stop native delivery before the frame's C++ event target is deleted.
+        # The owner-destroy notification remains a fallback for other paths.
+        stop_autosave = getattr(self, '_stop_draft_autosave', None)
+        if stop_autosave is not None:
+            stop_autosave()
+        self.executor.shutdown(wait=False, cancel_futures=True)
+
+    def Destroy(self):
+        self._begin_shutdown()
+        return super().Destroy()
+
     def on_close(self, event):
         if self.working:
             if event.CanVeto():
@@ -1221,7 +1242,5 @@ class DesktopFrame(WorkspaceFrame):
                 return
         super().on_close(event)
         if not event.GetVeto():
-            self._closing = True
-            self.cancel_event.set()
-            self.executor.shutdown(wait=False, cancel_futures=True)
+            self._begin_shutdown()
 

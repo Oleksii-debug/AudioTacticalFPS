@@ -62,12 +62,64 @@ def _unique(pairs):
     return value
 
 
+def _open_json_file(path):
+    """Read one snapshot without blocking another process's atomic replacement."""
+    if os.name != 'nt':
+        return path.open('rb')
+    import ctypes
+    from ctypes import wintypes
+    import msvcrt
+
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    create = kernel.CreateFileW
+    create.argtypes = (wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                       ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE)
+    create.restype = wintypes.HANDLE
+    close = kernel.CloseHandle
+    close.argtypes, close.restype = (wintypes.HANDLE,), wintypes.BOOL
+    # GENERIC_READ; FILE_SHARE_READ | WRITE | DELETE; OPEN_EXISTING;
+    # FILE_FLAG_OPEN_REPARSE_POINT. No delete-on-close or write access is given.
+    handle = create(str(path), 0x80000000, 0x7, None, 3, 0x00200000, None)
+    if handle == ctypes.c_void_p(-1).value:
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        descriptor = msvcrt.open_osfhandle(handle, os.O_RDONLY | os.O_BINARY)
+    except BaseException:
+        close(handle)
+        raise
+    try:
+        return os.fdopen(descriptor, 'rb')
+    except BaseException:
+        os.close(descriptor)
+        raise
+
+
 def read_json(path):
-    path = local_path(path, exists=True)
-    if regular(path).st_size > MAX_JSON_BYTES:
-        raise ValueError('State exceeds its configured JSON budget.')
-    with path.open('rb') as stream:
-        raw = stream.read(MAX_JSON_BYTES + 1)
+    # An atomic writer can win between lstat and open. Retry that race only;
+    # linked paths and invalid opened objects still fail before reading bytes.
+    for _ in range(8):
+        path = local_path(path, exists=True)
+        before = regular(path)
+        if before.st_size > MAX_JSON_BYTES:
+            raise ValueError('State exceeds its configured JSON budget.')
+        with _open_json_file(path) as stream:
+            opened = os.fstat(stream.fileno())
+            # A valid snapshot can already have zero links after replacement;
+            # multiple links or reparse points are never admitted.
+            if (not stat.S_ISREG(opened.st_mode)
+                    or getattr(opened, 'st_file_attributes', 0) & 0x400
+                    or opened.st_nlink > 1):
+                raise ValueError('State must use regular local files, without links.')
+            if (opened.st_dev, opened.st_ino) != (before.st_dev, before.st_ino):
+                continue
+            # Recheck ancestors after opening, before consuming the bound handle.
+            local_path(path, exists=True)
+            if opened.st_size > MAX_JSON_BYTES:
+                raise ValueError('State exceeds its configured JSON budget.')
+            raw = stream.read(MAX_JSON_BYTES + 1)
+        break
+    else:
+        raise ValueError('State changed repeatedly while opening; retry the operation.')
     if len(raw) > MAX_JSON_BYTES:
         raise ValueError('State grew beyond its JSON budget.')
     return json.loads(raw.decode('utf-8'), object_pairs_hook=_unique,
@@ -100,13 +152,30 @@ def atomic_bytes(path, raw, *, replace=False):
             os.fsync(stream.fileno())
         if replace:
             os.replace(temporary, path)
+        elif os.name == 'nt':
+            # Windows rename refuses an existing destination and leaves no
+            # second hard link if the process exits immediately after success.
+            # POSIX rename can overwrite, so it must not use this branch.
+            os.rename(temporary, path)
+            temporary = None
         else:
-            # link is the portable same-filesystem no-replace publication primitive.
-            os.link(temporary, path)
-            temporary.unlink()
+            # The portable create-only fallback is atomic against a competing
+            # destination. Process death between link and unlink can still leave
+            # a residual link; this branch does not claim crash recovery.
+            os.link(temporary, path, follow_symlinks=False)
+            published_stage, temporary = temporary, None
+            try:
+                published_stage.unlink()
+            except OSError:
+                try:
+                    published_stage.unlink(missing_ok=True)
+                except OSError as exc:
+                    raise OSError('File was published, but its temporary link '
+                                  'could not be removed.') from exc
         sync_directory(path.parent)
     finally:
-        temporary.unlink(missing_ok=True)
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
     return path
 
 

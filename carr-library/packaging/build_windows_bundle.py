@@ -294,6 +294,9 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
             shutil.copyfile(regular(HERE / name), staged / name)
         shutil.copyfile(HERE.parent / "docs" / "RUNNING.md", staged / "README.txt")
         shutil.copyfile(HERE.parent / "docs" / "START_UK.txt", staged / "START_UK.txt")
+        guides = staged / "guides"
+        guides.mkdir(exist_ok=True)
+        shutil.copyfile(regular(HERE.parent / "docs" / "TRANSCRIPTION.md"), guides / "TRANSCRIPTION.md")
         if sbom is not None:
             (staged / "runtime-sbom.cdx.json").write_bytes(sbom_bytes)
         files = {p.relative_to(staged).as_posix(): sha256(p)

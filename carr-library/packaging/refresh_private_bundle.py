@@ -128,6 +128,11 @@ def refresh(source, wheel, output, source_commit, *, parent_manifest_sha256,
             shutil.copyfile(HERE / name, stage / name)
         shutil.copyfile(HERE.parent / 'docs' / 'RUNNING.md', stage / 'README.txt')
         shutil.copyfile(HERE.parent / 'docs' / 'START_V3_UK.txt', stage / 'START_V3_UK.txt')
+        guides = stage / 'guides'
+        guides.mkdir(exist_ok=True)
+        transcription_guide = HERE.parent / 'docs' / 'TRANSCRIPTION.md'
+        regular(transcription_guide)
+        shutil.copyfile(transcription_guide, guides / 'TRANSCRIPTION.md')
         (stage / 'runtime-sbom.cdx.json').write_bytes(sbom_bytes)
         for origin in (HERE / 'wheel-notices').iterdir():
             regular(origin)
@@ -148,7 +153,8 @@ def refresh(source, wheel, output, source_commit, *, parent_manifest_sha256,
                 shutil.copyfile(HERE / lock_name, stage / directory / 'provenance.json')
         (stage / 'application-source.json').write_text(json.dumps(identity, indent=2) + '\n', encoding='utf-8')
         manifest = {key: value for key, value in previous.items() if key not in ('files', 'source_commit')}
-        manifest.update(source_commit=source_commit, bundled_audio=bool(audio_files),
+        manifest.update(source_commit=source_commit, source_tree=identity['source_tree'],
+                        bundled_audio=bool(audio_files),
                         bundled_citation_runtime=bool(node_files), use_scope='private-personal-installation',
                         parent_source_commit=previous['source_commit'],
                         parent_manifest_sha256=parent_manifest_sha256,
