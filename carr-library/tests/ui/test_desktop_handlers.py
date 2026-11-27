@@ -138,6 +138,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
                               ('keyboard_settings', 'install_keyboard_settings'),
                               ('citation_formatting', 'install_citation_actions'),
                               ('operation_progress', 'install_operation_progress'),
+                              ('operations_dialog', 'install_operations_actions'),
                               ('save_actions', 'install_save_actions')]:
         callback = Mock()
         new_installers.append(callback)

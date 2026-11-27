@@ -38,7 +38,14 @@ def observe_wait(monkeypatch):
     return entered
 
 
-def test_actual_isolated_pdf_import_reserves_both_volumes_and_complete_replay_bypasses_admission(tmp_path, monkeypatch):
+@pytest.mark.parametrize('temporary_alias', [False, True], ids=['temporary-root', 'temporary-alias'])
+def test_actual_isolated_pdf_import_reserves_both_volumes_and_complete_replay_bypasses_admission(tmp_path, monkeypatch, temporary_alias):
+    if temporary_alias:
+        child = tmp_path / 'existing-temporary-child'
+        child.mkdir()
+        # Exercise the same physical-directory equivalence as Windows 8.3
+        # aliases without requiring a platform-specific short-name setting.
+        monkeypatch.setattr(tempfile, 'tempdir', str(child / '..'))
     app, workspace, source, broker = installation(tmp_path)
     original_bytes = source.read_bytes()
     invoke = worker._invoke
@@ -51,7 +58,8 @@ def test_actual_isolated_pdf_import_reserves_both_volumes_and_complete_replay_by
         assert state['usage']['cpu_slots'] == broker.limits.cpu_slots
         assert state['usage']['memory_bytes'] == broker.limits.memory_bytes
         request = ResourceRequest.from_dict(state['leases'][0]['request'])
-        assert {path for path, _ in request.disks} == {app.root, Path(tempfile.gettempdir())}
+        assert {path for path, _ in request.disks} == {
+            app.root, Path(tempfile.gettempdir()).resolve(strict=True)}
         return invoke(message, **kwargs)
 
     monkeypatch.setattr(worker, '_invoke', admitted)
