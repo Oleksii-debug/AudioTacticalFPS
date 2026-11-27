@@ -342,3 +342,195 @@ def test_initial_configuration_failure_callback_is_inert_after_frame_deletion(se
     held['failed'](ValueError('unreviewed configuration'))
     held['done'](session)
     assert frame.reports == [] and forbidden == []
+
+
+
+def _large_signed_source(session, repository):
+    payload = bytes(range(256)) * 4096
+    repository.publish(payload)
+    return payload
+
+
+def _hold_actual_prefix(monkeypatch):
+    from carr_library.security.download_state import TargetDownload
+    entered, released = threading.Event(), threading.Event()
+    seen = []
+    actual = TargetDownload.report
+    def report(transfer, *args):
+        actual(transfer, *args)
+        if transfer.received >= 65536 and not seen:
+            seen.append(transfer.received)
+            entered.set()
+            assert released.wait(10), 'The test must release its own retained-byte barrier.'
+    monkeypatch.setattr(TargetDownload, 'report', report)
+    return entered, released, seen
+
+
+def test_native_handlers_pause_real_signed_download_and_reopen_resume_without_activation(selected, monkeypatch):
+    session, repository = selected
+    raw = _large_signed_source(session, repository)
+    namespace, _wx, Frame, _Event, forbidden = logical_ui()
+    frame = Frame(session.app)
+    dialog = namespace['MaintenanceDialog'](frame, session)
+    dialog.on_check(); frame.drain()
+    entered, released, seen = _hold_actual_prefix(monkeypatch)
+    try:
+        dialog.on_download()
+        assert entered.wait(10) and dialog._busy and dialog._downloading
+        assert dialog.download_actions[0].enabled
+        dialog.on_pause_download()
+        assert dialog._pause.is_set() and not dialog._cancel.is_set()
+        assert not frame.cancel_event.is_set()
+        released.set(); frame.drain()
+        partial = session.download_state
+        assert type(partial) is PausedDownload and partial.received == seen[0]
+        assert session.package is None and session.last_result is None
+        assert operation_outcome(frame.results[-1]) == 'paused'
+        progress = frame.tasks[-1].snapshot()
+        assert progress.completed == partial.received and progress.total == len(raw)
+        assert progress.percent < 100
+        assert 'fragment cannot be installed' in dialog.status.value
+        assert not dialog.actions[1].enabled and not dialog.actions[2].enabled
+        assert dialog.download_actions[1].enabled and dialog.download_actions[2].enabled
+        retained = next(Path(session.configuration.checked()['cache']).glob('downloads/.paused-*'))
+        before = {path.name: path.read_bytes() for path in retained.iterdir()}
+        dialog.Destroy()
+        assert {path.name: path.read_bytes() for path in retained.iterdir()} == before
+
+        reopened = MaintenanceSession(session.app, session.configuration)
+        frame2 = Frame(session.app)
+        view = namespace['MaintenanceDialog'](frame2, reopened)
+        assert reopened.download_state is None, 'Construction is passive.'
+        view.on_check(); frame2.drain()
+        assert reopened.download_state == partial and reopened.package is None
+        assert view.download_actions[1].enabled and not view.actions[2].enabled
+        view.on_resume_download(); frame2.drain()
+        assert reopened.package.path.read_bytes() == raw
+        assert reopened.download_state is None and reopened.last_result is None
+        assert operation_outcome(frame2.results[-1]) == 'succeeded'
+        assert not retained.exists() and not frame2.cancel_event.is_set()
+        assert view.actions[2].enabled and not view.download_actions[1].enabled
+        assert forbidden == []
+    finally:
+        released.set(); frame.drain()
+
+
+@pytest.mark.parametrize('action', ['cancel', 'direct', 'native-parent'])
+def test_active_download_cancel_or_native_death_releases_only_its_actual_partial(
+        selected, monkeypatch, action):
+    session, repository = selected
+    raw = _large_signed_source(session, repository)
+    namespace, _wx, Frame, _Event, forbidden = logical_ui()
+    frame = Frame(session.app)
+    dialog = namespace['MaintenanceDialog'](frame, session)
+    dialog.on_check(); frame.drain()
+    cache = Path(session.configuration.checked()['cache'])
+    unrelated = cache / 'downloads/user-note.txt'
+    unrelated.write_bytes(b'keep this separate file')
+    entered, released, _seen = _hold_actual_prefix(monkeypatch)
+    try:
+        dialog.on_download()
+        assert entered.wait(10)
+        if action == 'cancel':
+            dialog.on_cancel_download()
+        elif action == 'direct':
+            dialog.Destroy()
+        else:
+            frame.native_delete()
+        assert dialog._cancel.is_set() and not frame.cancel_event.is_set()
+        released.set(); frame.drain()
+        assert session.package is None and session.download_state is None
+        assert session.last_result is None
+        assert operation_outcome(frame.results[-1]) == 'cancelled'
+        assert not tuple(cache.glob('downloads/.paused-*')) and not tuple(cache.glob('downloads/*.zip'))
+        assert unrelated.read_bytes() == b'keep this separate file'
+        target = repository.md['targets'].signed.targets[repository.target_path]
+        original = repository.root / 'targets' / (target.hashes['sha256'] + '.release.zip')
+        assert original.read_bytes() == raw
+        if action != 'cancel':
+            calls = frame.calls
+            dialog.on_pause_download(); dialog.on_resume_download(); dialog.on_cancel_download()
+            assert frame.calls == calls and not dialog._alive
+        assert forbidden == []
+    finally:
+        released.set(); frame.drain()
+
+
+@pytest.mark.parametrize('death', ['direct', 'native-parent'])
+def test_actual_verified_download_completed_before_owner_death_is_retained_without_late_widgets(
+        selected, monkeypatch, death):
+    session, repository = selected
+    raw = _large_signed_source(session, repository)
+    namespace, _wx, Frame, _Event, forbidden = logical_ui()
+    frame = Frame(session.app)
+    dialog = namespace['MaintenanceDialog'](frame, session)
+    dialog.on_check(); frame.drain()
+    entered, released = threading.Event(), threading.Event()
+    actual = session.download
+    def held(*args, **kwargs):
+        value = actual(*args, **kwargs)
+        assert value.path.read_bytes() == raw
+        entered.set()
+        assert released.wait(10)
+        return value
+    monkeypatch.setattr(session, 'download', held)
+    try:
+        dialog.on_download()
+        assert entered.wait(10)
+        package = session.package
+        before = package.path.read_bytes()
+        if death == 'direct':
+            dialog.Destroy()
+        else:
+            frame.native_delete()
+        released.set(); frame.drain()
+        assert session.package is package and package.path.read_bytes() == before == raw
+        assert session.last_result is None
+        assert frame.results[-1] is package and operation_outcome(package) == 'succeeded'
+        assert not frame.cancel_event.is_set() and forbidden == []
+    finally:
+        released.set(); frame.drain()
+
+
+@pytest.mark.parametrize('admission', [False, None, OSError, KeyboardInterrupt])
+def test_resume_admission_failure_keeps_real_checkpoint_and_allows_explicit_retry(
+        selected, monkeypatch, admission):
+    session, repository = selected
+    raw = _large_signed_source(session, repository)
+    release = session.check()
+    stop = threading.Event()
+    paused = session.download(release, paused=stop.is_set,
+                              progress=lambda done, total: stop.set() if done >= 65536 else None)
+    assert type(paused) is PausedDownload
+    cache = Path(session.configuration.checked()['cache'])
+    folder = next(cache.glob('downloads/.paused-*'))
+    before = {path.name: path.read_bytes() for path in folder.iterdir()}
+    namespace, _wx, Frame, _Event, forbidden = logical_ui()
+    frame = Frame(session.app); frame.admission = admission
+    dialog = namespace['MaintenanceDialog'](frame, session)
+    dialog.on_resume_download()
+    assert not dialog._busy and dialog._token is None and not dialog._downloading
+    assert dialog.download_actions[1].enabled and dialog.download_actions[2].enabled
+    assert {path.name: path.read_bytes() for path in folder.iterdir()} == before
+    assert session.package is None and not frame.cancel_event.is_set()
+    frame.admission = 'thread'
+    dialog.on_resume_download(); frame.drain()
+    assert session.package.path.read_bytes() == raw and session.last_result is None
+    assert forbidden == []
+
+
+def test_idle_cancel_and_pause_do_not_cancel_an_unrelated_desktop_operation(selected):
+    session, repository = selected
+    _large_signed_source(session, repository)
+    release = session.check()
+    stop = threading.Event()
+    session.download(release, paused=stop.is_set,
+                     progress=lambda done, total: stop.set() if done >= 65536 else None)
+    namespace, _wx, Frame, _Event, forbidden = logical_ui()
+    frame = Frame(session.app); frame.working = True
+    dialog = namespace['MaintenanceDialog'](frame, session)
+    retained = session.download_state
+    dialog.on_pause_download(); dialog.on_cancel_download()
+    assert frame.working and not frame.cancel_event.is_set()
+    assert frame.calls == 0 and session.download_state is retained
+    assert not dialog._cancel.is_set() and not dialog._busy and forbidden == []
