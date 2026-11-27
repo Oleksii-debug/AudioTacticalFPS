@@ -6,12 +6,59 @@ import argparse
 from concurrent.futures import ThreadPoolExecutor
 import os
 from pathlib import Path
+import signal
 import subprocess
 import sys
 import tempfile
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
+SUITE_TIMEOUT_SECONDS = 600
+
+
+def _terminate_process_tree(process: subprocess.Popen) -> None:
+    """Stop the owned suite tree before removing its temporary library files."""
+    cleanup_error = None
+    try:
+        if os.name == 'nt':
+            # Keep the parent alive until taskkill has enumerated descendants.
+            # Killing pytest first loses the ancestry needed by /T.
+            taskkill = Path(os.environ.get('SystemRoot', r'C:\Windows')) / 'System32' / 'taskkill.exe'
+            result = subprocess.run(
+                [str(taskkill), '/PID', str(process.pid), '/T', '/F'],
+                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL, timeout=15, check=False,
+            )
+            if result.returncode:
+                cleanup_error = OSError('Windows could not terminate the complete suite process tree.')
+        else:
+            os.killpg(process.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        cleanup_error = exc
+    if cleanup_error is not None:
+        # Reap our direct child even when tree termination failed; still fail
+        # closed and never report that the complete tree was cleaned up.
+        process.kill()
+    try:
+        process.wait(timeout=10)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait(timeout=5)
+    if cleanup_error is not None:
+        raise OSError('Required-suite process-tree cleanup failed.') from cleanup_error
+
+
+def _run_test_process(command, *, env) -> int:
+    isolation = ({'creationflags': subprocess.CREATE_NEW_PROCESS_GROUP}
+                 if os.name == 'nt' else {'start_new_session': True})
+    process = subprocess.Popen(command, cwd=ROOT, env=env, **isolation)
+    try:
+        return process.wait(timeout=SUITE_TIMEOUT_SECONDS)
+    except BaseException:
+        _terminate_process_tree(process)
+        raise
 
 # JUnit alone cannot distinguish a non-strict XPASS from a genuine pass.
 # Use pytest's own report classification in the isolated subprocess.
@@ -70,26 +117,28 @@ def run_suite(suite: str) -> bool:
     env['HF_HUB_OFFLINE'] = '1'
     env['HF_HUB_DISABLE_TELEMETRY'] = '1'
     env['DO_NOT_TRACK'] = '1'
-    with tempfile.TemporaryDirectory(prefix='carr-ci-') as tmp:
-        report = Path(tmp) / 'junit.xml'
-        try:
-            proc = subprocess.run([
+    try:
+        with tempfile.TemporaryDirectory(prefix='carr-ci-') as tmp:
+            report = Path(tmp) / 'junit.xml'
+            returncode = _run_test_process([
                 sys.executable, '-c', PYTEST_CHILD, '-o', 'addopts=',
                 '-o', 'xfail_strict=true', '--junitxml', str(report),
                 '--basetemp', str(Path(tmp) / 'pytest'),
                 '--', str(path),
-            ], cwd=ROOT, env=env, timeout=600, check=False)
+            ], env=env)
             cases = list(ET.parse(report).iter('testcase'))
-        except (OSError, subprocess.TimeoutExpired, ET.ParseError) as exc:
-            print(f'FAIL: required suite did not produce a valid report: {type(exc).__name__}', flush=True)
-            return False
-        failed = sum(any(c.find(tag) is not None for tag in ('failure', 'error')) for c in cases)
-        skipped = sum(c.find('skipped') is not None for c in cases)
-        passed = len(cases) - failed - skipped
-        ok = proc.returncode == 0 and passed > 0 and failed == skipped == 0
-        print(f'{"PASS" if ok else "FAIL"}: {suite}: junit_passed={passed}, failed={failed}, '
-              f'skipped={skipped}, pytest_exit={proc.returncode}', flush=True)
-        return ok
+            failed = sum(any(c.find(tag) is not None for tag in ('failure', 'error')) for c in cases)
+            skipped = sum(c.find('skipped') is not None for c in cases)
+            passed = len(cases) - failed - skipped
+            ok = returncode == 0 and passed > 0 and failed == skipped == 0
+            print(f'{"PASS" if ok else "FAIL"}: {suite}: junit_passed={passed}, failed={failed}, '
+                  f'skipped={skipped}, pytest_exit={returncode}', flush=True)
+            return ok
+    except (OSError, subprocess.TimeoutExpired, ET.ParseError) as exc:
+        # Cleanup failures also remain failed required suites, rather than
+        # escaping the aggregator and hiding other independently run verdicts.
+        print(f'FAIL: required suite did not produce a valid report: {type(exc).__name__}', flush=True)
+        return False
 
 
 def main() -> int:
