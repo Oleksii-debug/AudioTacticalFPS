@@ -147,6 +147,10 @@ class TranslationService:
                 raise ValueError('A completed translation chunk is damaged.')
         return job
 
+    def get(self, identity):
+        """Read one validated saved translation for explicit UI selection."""
+        return self._load(identity)
+
     def resume(self, identity, *, cancelled=lambda: False, progress=lambda *args: None):
         with self.jobs.lock(identity):
             job = self._load(identity)
