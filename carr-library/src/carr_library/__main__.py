@@ -123,7 +123,11 @@ def main(argv=None):
     parser.add_argument('--language', help='Exact language code filter for --search')
     parser.add_argument('--edition', help='Exact edition filter for --search')
     parser.add_argument('--limit-per-library', type=int, default=20,
-                        help='Maximum results from each selected library, 1 to 100')
+                        help='Results per library in legacy search, or per continuation page, 1 to 100')
+    parser.add_argument('--search-page', action='store_true',
+                        help='Return one bounded search page and a continuation cursor for all selected sources')
+    parser.add_argument('--search-cursor',
+                        help='Continue a prior --search-page with exactly the same query, scope and options')
     from .audio_cli import add_audio_arguments, audio_requested, validate_audio_arguments, run_audio
     add_audio_arguments(parser)
     args = parser.parse_args(arguments)
@@ -147,6 +151,8 @@ def main(argv=None):
     if args.ocr_profile and not ocr_operation:
         parser.error('--ocr-profile requires an OCR model operation.')
     args.ocr_profile = args.ocr_profile or 'fast'
+    if (args.search_page or args.search_cursor is not None) and args.search is None:
+        parser.error('--search-page and --search-cursor require --search.')
     if args.search is not None and not args.workspaces:
         parser.error('--search requires at least one --workspace; use --list-libraries to find its ID.')
     if args.workspaces and args.search is None and args.lookup_doi is None:
@@ -229,17 +235,27 @@ def main(argv=None):
         if args.search is not None:
             from .search.federated import FederatedSearch
             notices = []
-            session = FederatedSearch(app).search(args.workspaces, args.search,
+            service = FederatedSearch(app)
+            paged = args.search_page or args.search_cursor is not None
+            search = service.search_page if paged else service.search
+            continuation = {'cursor': args.search_cursor} if paged else {}
+            session = search(args.workspaces, args.search,
                 mode=args.search_mode, result_mode=args.result_mode, title=args.title,
                 author=args.author, language=args.language, edition=args.edition,
-                limit_per_library=args.limit_per_library, on_status=notices.append)
+                limit_per_library=args.limit_per_library, on_status=notices.append, **continuation)
+            page_info = ({'next_cursor': session.next_cursor, 'page_number': session.page_number,
+                          'libraries_examined': session.libraries_examined,
+                          'total_libraries': session.total_libraries,
+                          'source_pages_examined': session.source_pages_examined,
+                          'total_source_pages': session.total_source_pages,
+                          'ordering': session.ordering} if paged else {})
             print(json.dumps({'query': session.query, 'mode': session.mode,
                 'limit_per_library': session.limit_per_library,
                 'ordering': 'Selected libraries in selection order; relevance is local to each library.',
                 'notices': [*([app.semantic_notice] if app.semantic_notice else []), *notices],
                 'libraries': [{'id': group.workspace, 'name': group.library_name,
                                'results': [asdict(hit.result) for hit in group.hits]}
-                              for group in session.groups]}, ensure_ascii=False, indent=2))
+                              for group in session.groups], **page_info}, ensure_ascii=False, indent=2))
             return 0
         if args.backup:
             checksum = app.backup(args.backup)

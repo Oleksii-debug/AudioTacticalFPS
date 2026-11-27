@@ -968,58 +968,78 @@ class LibraryApp:
             else:
                 hits = literal.search(db, workspace, query, edition_ids=tuple(allowed),
                                       mode=mode, limit=limit, timeout=budget.remaining(), cancelled=budget.stopped)
-            # Catalog selection, active source selection, and metadata materialization
-            # all share this read transaction. No cached edition filters cross snapshots.
-            loader, metadata, attestor = self._loaders(db, workspace, cancelled=budget.stopped)
-            results = []
-            selections = {}
-            shown = set()
-            checked_assets = {}
-            for hit in hits:
-                budget.check()
-                row = db.execute('SELECT ordinal FROM page WHERE id=? AND revision=?',
-                    (hit['page_id'], hit['revision_id'])).fetchone()
-                if row is None:
-                    raise ValueError('The search returned an invalid source page.')
-                ref = uuid4().hex
-                selections[ref] = _Selection(workspace, hit['edition_id'], hit['revision_id'],
-                    row[0], hit['start'], hit['end'], collection)
-                selected, identity, locator, raw, meta = self._resolve_selection(
-                    db, workspace, selections[ref], hit['revision_id'],
-                    checked_assets=checked_assets, cancelled=budget.stopped)
-                if raw[selected.start:selected.end] != hit['raw_quote']:
-                    raise ValueError('Search quotation differs from the original source.')
-                if result_mode is not None:
-                    from .search.presentation import presentation_span
-                    start, end = presentation_span(raw, hit, query, result_mode, check=budget.check)
-                    selected = _Selection(workspace, selected.edition, selected.revision,
-                                          selected.ordinal, start, end, collection)
-                    selections[ref] = selected
-                    identity_span = (identity, locator, start, end)
-                    if identity_span in shown:
-                        del selections[ref]
-                        continue
-                    shown.add(identity_span)
-                verified = attestor(identity, locator, sha256(raw.encode('utf-8')).hexdigest()) is True
-                budget.check()
-                if verified:
-                    anchor = make_anchor(identity, locator, raw, selected.start, selected.end, meta, text_verified=True)
-                    citation = format_citation(anchor)
-                else:
-                    citation = ', '.join(filter(None, [meta.author or 'Unknown author', meta.title,
-                        meta.edition, locator.display()])) + ' [extracted text requires independent review]'
-                reason = hit.get('reason', 'literal source match')
-                if mode == 'semantic' and self.semantic_ranker is None:
-                    reason = 'Semantic model unavailable; using lexical thematic search.'
-                results.append(SearchResult(workspace, ref, identity.revision, identity.edition_id,
-                    meta.title, meta.author or 'Unknown author', meta.edition or '', locator.display(),
-                    raw[selected.start:selected.end], citation, verified, reason))
+            results, selections, _ = self._search_hits(db, workspace, query, hits,
+                collection=collection, mode=mode, result_mode=result_mode, budget=budget)
         # A stopped or failed operation must neither publish partial selections
         # nor evict selections belonging to the previous completed search.
         self._selections.update(selections)
         while len(self._selections) > 2000:
             del self._selections[next(iter(self._selections))]
         return tuple(results)
+
+    def _search_hits(self, db, workspace, query, hits, *, collection, mode,
+                     result_mode, budget, previous_span=None):
+        # Catalog selection, active source selection, and metadata materialization
+        # all share this read transaction. No cached edition filters cross snapshots.
+        loader, metadata, attestor = self._loaders(db, workspace, cancelled=budget.stopped)
+        results = []
+        selections = {}
+        shown = {tuple(previous_span)} if previous_span is not None else set()
+        last_span = previous_span
+        checked_assets = {}
+        for hit in hits:
+            budget.check()
+            row = db.execute('SELECT ordinal FROM page WHERE id=? AND revision=?',
+                (hit['page_id'], hit['revision_id'])).fetchone()
+            if row is None:
+                raise ValueError('The search returned an invalid source page.')
+            ref = uuid4().hex
+            selections[ref] = _Selection(workspace, hit['edition_id'], hit['revision_id'],
+                row[0], hit['start'], hit['end'], collection)
+            selected, identity, locator, raw, meta = self._resolve_selection(
+                db, workspace, selections[ref], hit['revision_id'],
+                checked_assets=checked_assets, cancelled=budget.stopped)
+            if raw[selected.start:selected.end] != hit['raw_quote']:
+                raise ValueError('Search quotation differs from the original source.')
+            if result_mode is not None:
+                from .search.presentation import presentation_span
+                start, end = presentation_span(raw, hit, query, result_mode, check=budget.check)
+                selected = _Selection(workspace, selected.edition, selected.revision,
+                                      selected.ordinal, start, end, collection)
+                selections[ref] = selected
+                identity_span = (selected.edition, selected.revision, selected.ordinal, start, end)
+                if identity_span in shown:
+                    del selections[ref]
+                    continue
+                shown.add(identity_span)
+            verified = attestor(identity, locator, sha256(raw.encode('utf-8')).hexdigest()) is True
+            budget.check()
+            if verified:
+                anchor = make_anchor(identity, locator, raw, selected.start, selected.end, meta, text_verified=True)
+                citation = format_citation(anchor)
+            else:
+                citation = ', '.join(filter(None, [meta.author or 'Unknown author', meta.title,
+                    meta.edition, locator.display()])) + ' [extracted text requires independent review]'
+            reason = hit.get('reason', 'literal source match')
+            if mode == 'semantic' and self.semantic_ranker is None:
+                reason = 'Semantic model unavailable; using lexical thematic search.'
+            last_span = (selected.edition, selected.revision, selected.ordinal, selected.start, selected.end)
+            results.append(SearchResult(workspace, ref, identity.revision, identity.edition_id,
+                meta.title, meta.author or 'Unknown author', meta.edition or '', locator.display(),
+                raw[selected.start:selected.end], citation, verified, reason))
+        return results, selections, last_span
+
+    def search_page(self, workspace, query, *, mode='phrase', collection=None, title=None,
+                    author=None, language=None, edition=None, limit=100, timeout=60.0,
+                    cancelled=lambda: False, authorized_topic=None, on_status=None,
+                    result_mode=None, cursor=None, page_budget=None):
+        """One bounded source/result page; its cursor continues the same scope."""
+        from .search.pagination import search_page
+        return search_page(self, workspace, query, mode=mode, collection=collection,
+            title=title, author=author, language=language, edition=edition, limit=limit,
+            timeout=timeout, cancelled=cancelled, authorized_topic=authorized_topic,
+            on_status=on_status, result_mode=result_mode, cursor=cursor,
+            page_budget=page_budget)
 
     def _anchor(self, db, workspace, ref, revision, *, cancelled=lambda: False):
         selected, identity, locator, raw, metadata = self._selected(

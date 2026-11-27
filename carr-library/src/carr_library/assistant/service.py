@@ -376,8 +376,12 @@ class AssistantService:
             return {'batch_id': intent['batch'], 'counts': batch['counts'],
                     'editions': [r['edition_id'] for r in batch['rows'] if r['state'] == 'complete']}
         if step.tool == 'library.search':
-            return {'results': _plain(self.app.search(workspace, cancelled=cancelled,
-                                                      timeout=min(60.0, scope.max_seconds), **args)),
+            page = self.app.search_page(workspace, cancelled=cancelled,
+                timeout=min(60.0, scope.max_seconds), **args)
+            return {'results': _plain(page.results), 'next_cursor': page.next_cursor,
+                    'page_number': page.page_number, 'ordering': page.ordering,
+                    'source_pages_examined': page.source_pages_examined,
+                    'total_source_pages': page.total_source_pages,
                     'notice': 'Search excerpts retain source verification status; assistant output does not approve quotations.'}
         if step.tool == 'library.extract':
             from ..reader.reading_desk import ReadingDesk

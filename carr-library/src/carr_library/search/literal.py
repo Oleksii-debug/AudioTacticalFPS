@@ -156,8 +156,20 @@ def _spans(folded, starts, ends, needle, check=lambda: None):
         yield starts[i], ends[j]
 
 
+def _page_ids(value):
+    """Optional source batch chosen by the already authorized host snapshot."""
+    if value is None:
+        return None
+    if (type(value) not in (tuple, list) or len(value) > 100
+            or any(type(item) is not int or item < 1 for item in value)
+            or len(set(value)) != len(value)):
+        raise ValueError('invalid source page batch')
+    return tuple(value)
+
+
 def search(db, workspace, query, *, mode='phrase', edition_ids=None,
-           limit=50, offset=0, timeout=5.0, cancelled=lambda: False):
+           limit=50, offset=0, timeout=5.0, cancelled=lambda: False,
+           page_ids=None, after=None):
     """One active workspace only; edition_ids is the catalog-resolved filter.
 
     phrase: literal punctuation and whitespace-equivalent contiguous phrase;
@@ -181,6 +193,15 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
             and 1 <= limit <= 100
             and 0 <= offset <= 10000 and 0 < timeout <= 60):
         raise ValueError('invalid search budget')
+    page_ids = _page_ids(page_ids)
+    if after is not None:
+        if (type(after) not in (tuple, list) or len(after) != 5
+                or not isinstance(after[0], str) or not after[0]
+                or any(type(item) is not int for item in after[1:])
+                or after[1] < 1 or after[2] < 1
+                or not 0 <= after[3] < after[4]):
+            raise ValueError('invalid literal continuation')
+        after = tuple(after)
     q = _fold(query).strip()
     if not q:
         return []
@@ -225,6 +246,11 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
             return []
         where += ' AND edition IN (' + ','.join('?' for _ in ids) + ')'
         params.extend(ids)
+    if page_ids is not None:
+        if not page_ids:
+            return []
+        where += ' AND id IN (' + ','.join('?' for _ in page_ids) + ')'
+        params.extend(page_ids)
     sql = ('SELECT id,workspace,edition,revision,asset,ordinal,physical,printed,'
            'verified,raw,digest FROM active_page WHERE ' + where +
            ' ORDER BY edition,ordinal,id')
@@ -272,6 +298,9 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
                 groups = ((s,) for s in _spans(folded, starts, ends, needles[0], check))
             for spans in groups:
                 check()
+                start, end = spans[0]
+                if after is not None and (edition, ordinal, page_id, start, end) <= after:
+                    continue
                 if seen < offset:
                     seen += 1
                     continue

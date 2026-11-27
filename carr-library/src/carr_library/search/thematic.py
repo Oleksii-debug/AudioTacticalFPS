@@ -170,7 +170,7 @@ def search(workspace, passages, query, limit=20, *, timeout=5.0, cancelled=lambd
 
 
 def search_active(db, workspace, edition_to_work, query, *, limit=20,
-                  timeout=5.0, cancelled=lambda: False):
+                  timeout=5.0, cancelled=lambda: False, page_ids=None):
     """Candidate handoff for the PR21 active_page view and PR23 locator V2.
 
     The caller supplies a catalog-authorized edition-to-work mapping for this
@@ -186,6 +186,8 @@ def search_active(db, workspace, edition_to_work, query, *, limit=20,
             type(timeout) not in (int, float) or not 0 < timeout <= 60 or
             not callable(cancelled)):
         raise ValueError('invalid active thematic scope or budget')
+    from .literal import _page_ids
+    page_ids = _page_ids(page_ids)
     allowed = dict(edition_to_work)
     deadline = monotonic() + timeout
     latched = False
@@ -198,13 +200,18 @@ def search_active(db, workspace, edition_to_work, query, *, limit=20,
     metadata = {}
 
     def passages():
-        if not allowed:
+        if not allowed or page_ids == ():
             return
         placeholders = ','.join('?' for _ in allowed)
         sql = ('SELECT id,workspace,edition,revision,asset,ordinal,physical,printed,'
                'verified,raw,digest FROM active_page WHERE workspace=? AND edition IN ('
-               + placeholders + ') ORDER BY edition,ordinal,id')
-        cursor = db.execute(sql, (workspace, *allowed))
+               + placeholders + ')')
+        params = (workspace, *allowed)
+        if page_ids is not None:
+            sql += ' AND id IN (' + ','.join('?' for _ in page_ids) + ')'
+            params += page_ids
+        sql += ' ORDER BY edition,ordinal,id'
+        cursor = db.execute(sql, params)
         try:
             for count, row in enumerate(cursor, 1):
                 if count > 20000:
