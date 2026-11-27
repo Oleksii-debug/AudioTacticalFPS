@@ -573,8 +573,20 @@ def _measurement_input(directory, name, data):
     return path
 
 
+@contextmanager
+def _journal_observer(path, *, timeout=5):
+    """Read an existing owned journal while permitting SQLite crash recovery."""
+    # A forcibly stopped worker can leave a hot rollback journal. SQLite must
+    # recover that transaction before SELECT; URI mode=ro cannot do so.
+    # mode=rw cannot create a missing database, and query_only forbids SQL data
+    # mutations while allowing SQLite's own recovery and lock bookkeeping.
+    with closing(sqlite3.connect(Path(path).as_uri() + '?mode=rw', uri=True, timeout=timeout)) as db:
+        db.execute('PRAGMA query_only=ON')
+        yield db
+
+
 def _journal_receipt(root, workspace, job):
-    with closing(sqlite3.connect((root / 'imports.sqlite').as_uri() + '?mode=ro', uri=True)) as db:
+    with _journal_observer(root / 'imports.sqlite') as db:
         row = db.execute('SELECT id,workspace,edition,asset,config,count,expected_active,state,error '
                          'FROM job WHERE id=? AND workspace=?', (job, workspace)).fetchone()
         checkpoints = tuple(db.execute(
@@ -633,7 +645,7 @@ def _public_recovery(app, workspace, inputs, budget, progress):
         if not os.path.lexists(journal):
             return False
         try:
-            with closing(sqlite3.connect(journal.as_uri() + '?mode=ro', uri=True, timeout=0)) as db:
+            with _journal_observer(journal, timeout=0) as db:
                 observed = db.execute('SELECT count(*) FROM checkpoint c JOIN job j ON j.id=c.job '
                     'WHERE j.workspace=? AND j.edition=? AND j.asset=?',
                     (workspace, edition, digest)).fetchone()[0]
@@ -643,6 +655,9 @@ def _public_recovery(app, workspace, inputs, budget, progress):
             # The new journal may be opened before its initial tables commit.
             if 'no such table' in str(error):
                 return False
+            progress.update(operation='observe-recovery-checkpoint',
+                sqlite_errorcode=getattr(error, 'sqlite_errorcode', None),
+                sqlite_errorname=getattr(error, 'sqlite_errorname', None))
             raise
         if observed >= 2:
             if requested is None:
@@ -667,6 +682,7 @@ def _public_recovery(app, workspace, inputs, budget, progress):
     job = record.get('job')
     require(record.get('asset_sha256') == digest and isinstance(job, str),
             'The stopped request lost its retained source/job binding.')
+    progress.update(operation='read-stopped-worker-checkpoints')
     before = _journal_receipt(app.root, workspace, job)
     require(before['row'][7] in ('pending', 'cancelled') and len(before['checkpoints']) >= 2,
             'Stopped durable checkpoint state differs.')

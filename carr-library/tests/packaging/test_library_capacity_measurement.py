@@ -396,3 +396,42 @@ def test_selected_profile_is_forwarded_to_each_real_backup_api_without_wire_auth
     assert not (root / 'library').exists()
     assert (root / 'retained-baseline-library/library.sqlite').is_file()
     assert (root / 'restored-library/library.sqlite').is_file()
+
+
+def test_real_hot_journal_observer_recovers_without_sql_write_authority(tmp_path):
+    journal = tmp_path / 'imports.sqlite'
+    with closing(sqlite3.connect(journal)) as db:
+        assert db.execute('PRAGMA journal_mode=DELETE').fetchone()[0] == 'delete'
+        db.execute('CREATE TABLE sentinel(id INTEGER PRIMARY KEY, value TEXT NOT NULL)')
+        db.execute('INSERT INTO sentinel VALUES(1, ?)', ('committed original',))
+        db.commit()
+    code = """import os, sqlite3, sys
+db = sqlite3.connect(sys.argv[1], isolation_level=None)
+db.execute('PRAGMA synchronous=FULL')
+db.execute('PRAGMA cache_size=1')
+db.execute('PRAGMA cache_spill=ON')
+db.execute('BEGIN IMMEDIATE')
+db.execute('UPDATE sentinel SET value=? WHERE id=1', ('uncommitted-' + 'x' * (2 * 1024 ** 2),))
+os._exit(73)
+"""
+    child = subprocess.run([benchmark.sys.executable, '-I', '-B', '-c', code, str(journal)],
+                           capture_output=True, timeout=30)
+    assert child.returncode == 73, (child.stdout, child.stderr)
+    rollback = Path(str(journal) + '-journal')
+    assert rollback.is_file() and rollback.stat().st_size > 512
+    assert rollback.read_bytes()[:8] != b'\x00' * 8
+    with closing(sqlite3.connect(journal.as_uri() + '?mode=ro', uri=True)) as readonly:
+        with pytest.raises(sqlite3.OperationalError, match='readonly'):
+            readonly.execute('SELECT value FROM sentinel').fetchone()
+    with benchmark._journal_observer(journal) as observer:
+        assert observer.execute('SELECT value FROM sentinel').fetchall() == [('committed original',)]
+        with pytest.raises(sqlite3.OperationalError, match='readonly'):
+            observer.execute("UPDATE sentinel SET value='forbidden' WHERE id=1")
+    assert not rollback.exists()
+    with closing(sqlite3.connect(journal.as_uri() + '?mode=ro', uri=True)) as readonly:
+        assert readonly.execute('SELECT value FROM sentinel').fetchall() == [('committed original',)]
+    absent = tmp_path / 'missing.sqlite'
+    with pytest.raises(sqlite3.OperationalError):
+        with benchmark._journal_observer(absent):
+            pytest.fail('An observer must never create a journal.')
+    assert not absent.exists()

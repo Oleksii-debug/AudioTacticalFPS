@@ -206,7 +206,7 @@ def test_legacy_publication_watermark_is_inert_and_removed_on_full_restore(tmp_p
     identity = request['request_id']
     request_path = app.root / 'import-requests' / (identity + '.json')
     request['publication_watermark'] = watermark
-    request_path.write_text(canonical(request) + '\n', encoding='utf-8')
+    request_path.write_bytes((canonical(request) + '\n').encode('utf-8'))
     source.unlink()
     backup, destination = tmp_path / 'backup', tmp_path / 'restored'
     def forbid(*args, **kwargs):
@@ -241,7 +241,7 @@ def test_legacy_publication_watermark_rejects_invalid_bounds_before_publication(
     backup, destination = tmp_path / 'backup', tmp_path / 'restored'
     if phase == 'snapshot':
         request['publication_watermark'] = watermark
-        (app.root / name).write_text(canonical(request) + '\n', encoding='utf-8')
+        (app.root / name).write_bytes((canonical(request) + '\n').encode('utf-8'))
         with pytest.raises(ValueError, match='publication boundary'):
             create_backup(app, backup)
         assert not backup.exists()

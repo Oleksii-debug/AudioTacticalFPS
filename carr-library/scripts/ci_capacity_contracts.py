@@ -19,7 +19,7 @@ import xml.etree.ElementTree as ET
 ROOT = Path(__file__).resolve().parents[1]
 SUITES = {
     'tests/packaging/test_library_scale_benchmark.py': 24,
-    'tests/packaging/test_library_capacity_measurement.py': 24,
+    'tests/packaging/test_library_capacity_measurement.py': 25,
     'tests/storage/test_backup_capacity.py': 28,
     'tests/storage/test_backup_capacity_cli.py': 3,
     'tests/ui/test_backup_capacity.py': 17,
@@ -30,17 +30,17 @@ SUITES = {
     'tests/storage/test_backup_schema_identity.py': 36,
 }
 PINS = {
-    'scripts/benchmark_library_scale.py': 'ec198e50daffd3d3687048e15882c3744c3c54c4',
+    'scripts/benchmark_library_scale.py': '74d8f3669444a7ae28df49c0c1f9636578a8cde7',
     'scripts/benchmark_semantic_cache.py': '898b05e37b5a50c018567e35c44ef71f1393535d',
     'tests/packaging/test_library_scale_benchmark.py': 'd4bd24dafe5dbc4c0bcd856ab0ff416f9f1f5411',
-    'tests/packaging/test_library_capacity_measurement.py': '5f2ab090a0baaad61d326c128dc6da453b1c4fc7',
+    'tests/packaging/test_library_capacity_measurement.py': 'a4677e149a71c76832896902db936b232f0f246e',
     'tests/storage/test_backup_capacity.py': '895aec39b689aea7101da23db0801413dac324ef',
     'tests/storage/test_backup_capacity_cli.py': '741a005ca9f351579b9d51b464a88dda9afb52b7',
     'tests/ui/test_backup_capacity.py': '26f03b8f46f6425460bb248f94bd3f1347787dc6',
     'tests/storage/test_library_backup.py': 'd14b278b356bb47fe66e822125a257807f2cd895',
     'tests/storage/test_crash_backup.py': '5e84ede7eee0b7406c687b5a6020b0fcd535ec2c',
     'tests/storage/test_complete_pending_backup.py': '36fe4b61a3a61351fecc1a88016c1e1db32275d5',
-    'tests/storage/test_backup_pending_common4.py': 'bbed36da78265d635317880b264fd90b59ed4235',
+    'tests/storage/test_backup_pending_common4.py': '20707e52c7a9220df5213668138db552ef74d2b9',
     'tests/storage/test_backup_schema_identity.py': 'ebed1d823de241c639877dd747de9aa4ce2085ed',
     'scripts/ci_check.py': '8a23ef36c2df93928b0aff3edd8b59a53c54684c',
     'packaging/source_wheel.py': '478de248451d59a44b35784eb808fb2974f0af67',

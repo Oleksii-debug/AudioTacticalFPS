@@ -1,0 +1,229 @@
+{
+  "schema": "resonance-capacity-observer-and-canonical-bytes-repair/1",
+  "parent_commit": "b524b3ac3453864903ec415ce7a5f048da09d700",
+  "parent_tree": "209daa1ab7b68192b5956ac2849ae183dc83ede1",
+  "status": "STATIC_REVIEWED_DIAGNOSTIC_SUCCESSOR_NOT_RUN",
+  "changes": [
+    {
+      "path": "carr-library/tests/storage/test_backup_pending_common4.py",
+      "base": "bbed36da78265d635317880b264fd90b59ed4235",
+      "sha": "20707e52c7a9220df5213668138db552ef74d2b9"
+    },
+    {
+      "path": "carr-library/scripts/benchmark_library_scale.py",
+      "base": "ec198e50daffd3d3687048e15882c3744c3c54c4",
+      "sha": "74d8f3669444a7ae28df49c0c1f9636578a8cde7"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_library_capacity_measurement.py",
+      "base": "5f2ab090a0baaad61d326c128dc6da453b1c4fc7",
+      "sha": "a4677e149a71c76832896902db936b232f0f246e"
+    },
+    {
+      "path": "carr-library/scripts/ci_capacity_contracts.py",
+      "base": "52964b9bd59f59694642ec13d6d23660b9ea5d69",
+      "sha": "671bfd9a3adccdb7f3bcdf13a59e30c9e9b4d1f1"
+    },
+    {
+      "path": ".github/workflows/carr-next9-capacity.yml",
+      "base": "3cda0948e0827a1af4323c6faa5445d624fed371",
+      "sha": "d65654a8868e1a324575c92746a513b63b059754"
+    },
+    {
+      "path": ".github/workflows/carr-next11-capacity-repair.yml",
+      "base": null,
+      "sha": "a44317b48fa8df607fb924dbd2382b4b88281538"
+    }
+  ],
+  "diagnosis": {
+    "actual_run": 46065560954,
+    "actual_windows_job": 140729900221,
+    "source": {
+      "passed": 166,
+      "failed": 11,
+      "skipped": 0,
+      "whole_suites": [
+        {
+          "status": "PASS",
+          "suite": "tests/packaging/test_library_scale_benchmark.py",
+          "passed": 24,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "status": "FAIL",
+          "suite": "tests/packaging/test_library_capacity_measurement.py",
+          "passed": 23,
+          "failed": 1,
+          "skipped": 0,
+          "exit": 1
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/storage/test_backup_capacity.py",
+          "passed": 28,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/storage/test_backup_capacity_cli.py",
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/ui/test_backup_capacity.py",
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/storage/test_library_backup.py",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/storage/test_crash_backup.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/storage/test_complete_pending_backup.py",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "status": "FAIL",
+          "suite": "tests/storage/test_backup_pending_common4.py",
+          "passed": 17,
+          "failed": 10,
+          "skipped": 0,
+          "exit": 1
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/storage/test_backup_schema_identity.py",
+          "passed": 36,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        }
+      ]
+    },
+    "installed": "NOT_RUN",
+    "native": "NOT_RUN",
+    "complete_capacity_cli": {
+      "status": "FAIL",
+      "cases": [
+        {
+          "requested_books": 2,
+          "status": "FAIL",
+          "phases": [
+            {
+              "phase": "build",
+              "status": "PASS",
+              "reason": null,
+              "diagnostic": null,
+              "progress": null,
+              "pid": 7080,
+              "exit_code": 0,
+              "process_reaped": true,
+              "process_wall_seconds": 0.7157331000000227
+            },
+            {
+              "phase": "measure",
+              "status": "PASS",
+              "reason": null,
+              "diagnostic": null,
+              "progress": null,
+              "pid": 3016,
+              "exit_code": 0,
+              "process_reaped": true,
+              "process_wall_seconds": 0.8875377999999898
+            },
+            {
+              "phase": "restart",
+              "status": "PASS",
+              "reason": null,
+              "diagnostic": null,
+              "progress": null,
+              "pid": 4344,
+              "exit_code": 0,
+              "process_reaped": true,
+              "process_wall_seconds": 0.7010218000000066
+            },
+            {
+              "phase": "operations",
+              "status": "FAIL",
+              "reason": "OperationalError",
+              "diagnostic": "attempt to write a readonly database",
+              "progress": {
+                "completed_public_imports": 3,
+                "phase": "operations"
+              },
+              "pid": 2876,
+              "exit_code": 1,
+              "process_reaped": true,
+              "process_wall_seconds": 3.9436284999999884,
+              "stderr_prefix": ""
+            }
+          ]
+        }
+      ]
+    },
+    "canonical_fixture": "Two existing canonical request writes used text-mode newline conversion on Windows. Byte writes retain exact UTF-8/LF wire and all27 test cases.",
+    "observer": "The complete CLI ran build, measure, restart and three public imports before Operations failed with SQLite readonly-database error at the owned cancellation/recovery segment. The exact exception frame was not retained.",
+    "repair_hypothesis": "The actual Ingest journal uses SQLite rollback journaling. A killed writer can leave a hot rollback journal that requires filesystem writes before a SELECT. Allow only an existing journal to recover through URI mode=rw while PRAGMA query_only=ON denies SQL mutations. The successor requires actual execution before this hypothesis is accepted.",
+    "actual_unchanged_linux": {
+      "job": 140729899840,
+      "source_passed": 177,
+      "installed_passed": 177,
+      "failed": 0,
+      "skipped": 0,
+      "artifact_id": 15230154329,
+      "artifact_sha256": "8430d42523f6fc7ec47b6d902b4425ff28da10669fc3cca834e6099a83388a1f"
+    },
+    "no_result_transfer": true
+  },
+  "new_regression": {
+    "name": "test_real_hot_journal_observer_recovers_without_sql_write_authority",
+    "actual_fixture": "A real isolated Python child in DELETE journal mode spills an uncommitted2MiB update and exits with os._exit(73). Require a real hot journal, readonly observer failure, recovery of original committed bytes, denied SQL UPDATE and no creation of an absent database.",
+    "preserved_cases": 24,
+    "new_cases": 1,
+    "status": "NOT_RUN"
+  },
+  "independent_review": {
+    "reviewer": "parallel peer review",
+    "status": "ACCEPTED_STATIC_NOT_RUN",
+    "concrete_blockers": 0,
+    "fixture_blob": "20707e52c7a9220df5213668138db552ef74d2b9",
+    "harness_blob": "74d8f3669444a7ae28df49c0c1f9636578a8cde7",
+    "tests_blob": "a4677e149a71c76832896902db936b232f0f246e"
+  },
+  "gate_scope": {
+    "whole_suites": 10,
+    "source_per_platform": 178,
+    "installed_per_platform": 178,
+    "installed_windows_native_checks": 44,
+    "installed_windows_native_module_identities": 12,
+    "diagnostic": "Exact two platform jobs copied from the full capacity workflow; full four-profile workflow and all strict deadlines remain present. Active C3 corpus and PR jobs are not cancelled or replaced.",
+    "full_integration_gate_union": "PENDING_BOOK_AND_LEGACY_FORMAT_SOURCE; this diagnostic tree is not a release candidate"
+  },
+  "runtime_package_source": "All runtime package source is identical to C3. No library data format, recovery decision, capacity limit or corpus size is changed.",
+  "source_authority": "Existing repository and operator-approved project scope only. No private inputs or audio binaries included."
+}

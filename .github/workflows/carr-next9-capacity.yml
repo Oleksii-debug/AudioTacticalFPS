@@ -55,9 +55,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Existing pinned capacity dependencies failed.' }
           & python -I -B -m pip check
           if ($LASTEXITCODE -ne 0) { throw 'Capacity dependencies are inconsistent.' }
-          & python -I -B -c "from hashlib import sha1; from pathlib import Path; p=Path('scripts/ci_capacity_contracts.py'); raw=p.read_bytes(); assert sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()=='52964b9bd59f59694642ec13d6d23660b9ea5d69'; compile(raw,str(p),'exec')"
+          & python -I -B -c "from hashlib import sha1; from pathlib import Path; p=Path('scripts/ci_capacity_contracts.py'); raw=p.read_bytes(); assert sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()=='671bfd9a3adccdb7f3bcdf13a59e30c9e9b4d1f1'; compile(raw,str(p),'exec')"
           if ($LASTEXITCODE -ne 0) { throw 'Capacity verifier source or syntax differs.' }
-      - name: Require all 177 source and 177 isolated installed cases
+      - name: Require all 178 source and 178 isolated installed cases
         timeout-minutes: 170
         run: |
           $ErrorActionPreference = 'Stop'
@@ -115,9 +115,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Existing pinned capacity dependencies failed.' }
           & python -I -B -m pip check
           if ($LASTEXITCODE -ne 0) { throw 'Capacity dependencies are inconsistent.' }
-          & python -I -B -c "from hashlib import sha1; from pathlib import Path; p=Path('scripts/ci_capacity_contracts.py'); raw=p.read_bytes(); assert sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()=='52964b9bd59f59694642ec13d6d23660b9ea5d69'; compile(raw,str(p),'exec')"
+          & python -I -B -c "from hashlib import sha1; from pathlib import Path; p=Path('scripts/ci_capacity_contracts.py'); raw=p.read_bytes(); assert sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()=='671bfd9a3adccdb7f3bcdf13a59e30c9e9b4d1f1'; compile(raw,str(p),'exec')"
           if ($LASTEXITCODE -ne 0) { throw 'Capacity verifier source or syntax differs.' }
-      - name: Require all 177 source and 177 isolated installed cases
+      - name: Require all 178 source and 178 isolated installed cases
         timeout-minutes: 170
         run: |
           $ErrorActionPreference = 'Stop'
@@ -386,7 +386,7 @@ jobs:
           import json, os
           from pathlib import Path
           pins = {
-            'scripts/benchmark_library_scale.py':'ec198e50daffd3d3687048e15882c3744c3c54c4',
+            'scripts/benchmark_library_scale.py':'74d8f3669444a7ae28df49c0c1f9636578a8cde7',
             'scripts/benchmark_semantic_cache.py':'898b05e37b5a50c018567e35c44ef71f1393535d',
             'src/carr_library/backup_capacity.py':'1fd11ab8d3a2be5434e32bdcba65447c55730ad7',
             'src/carr_library/application.py':'4544453f62a96993a2f05ed1522a563649289715',
