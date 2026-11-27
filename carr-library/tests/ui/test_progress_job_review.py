@@ -602,7 +602,8 @@ def test_reader_close_always_unregisters_playback_and_finishes_resource_cleanup(
         finished.result()
     for resource in (*registries, *providers):
         resource.close.assert_called_once_with()
-    if device_failure:
+    if device_failure or registry_failure:
+        # Retain the directory until every owning provider and playback device confirms closure.
         env['audio_files'].cleanup.assert_not_called()
     else:
         env['audio_files'].cleanup.assert_called_once_with()

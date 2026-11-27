@@ -35,10 +35,10 @@ class WinMM:
     def waveOutPrepareHeader(self, handle, pointer, size):
         value = C.cast(pointer, C.POINTER(monitor._WaveHeader)).contents
         self.calls.append(('prepare', value.data, value.length))
-        self.headers.append(value)
         assert size == C.sizeof(monitor._WaveHeader)
         if self.failure == 'prepare': return 1
         value.flags |= 2
+        self.headers.append(value)
         return 0
     def waveOutWrite(self, handle, pointer, size):
         value = C.cast(pointer, C.POINTER(monitor._WaveHeader)).contents
@@ -52,6 +52,12 @@ class WinMM:
         if self.failure == 'unprepare': return 33
         assert not value.flags & 16 or value.flags & 1
         value.flags &= ~2
+        # WinMM no longer owns a successfully unprepared header. A ctypes
+        # .contents view does not own the caller's _Buffer: keeping it here
+        # would make a later Reset write through released Python memory.
+        address = C.addressof(value)
+        self.headers[:] = [header for header in self.headers
+                           if C.addressof(header) != address]
         return 0
     def waveOutReset(self, handle):
         self.calls.append(('reset',))
@@ -62,7 +68,7 @@ class WinMM:
     def waveOutClose(self, handle):
         self.calls.append(('close',))
         if self.failure == 'close': return 33
-        assert all(not header.flags & 2 for header in self.headers)
+        assert not self.headers, 'A closed driver must own no prepared header.'
         return 0
 
 
@@ -106,9 +112,11 @@ def test_four_native_buffers_bound_latency_and_release_only_after_done_and_unpre
     owner.poll()
     assert tuple(owner.pending) == saved[1:]
     assert native.calls[-1] == ('unprepare', saved[0].header.data)
+    assert len(native.headers) == 3
+    assert all(C.addressof(header) != C.addressof(saved[0].header) for header in native.headers)
     assert owner.submit(data) and len(owner.pending) == 4
     owner.close()
-    assert not owner.handle.value and not owner.pending
+    assert not owner.handle.value and not owner.pending and not native.headers
 
 
 @pytest.mark.parametrize('failure', ['prepare', 'write'])
@@ -136,8 +144,10 @@ def test_unconfirmed_native_cleanup_retains_authority_and_prevents_new_monitor(n
         owner.close()
     assert owner.handle.value == 1234 and monitor._UNRELEASED_MONITORS == [owner]
     if failure != 'close':
-        assert len(owner.pending) == 1
+        assert len(owner.pending) == len(native.headers) == 1
         assert C.string_at(owner.pending[0].header.data, 4) == b'\x01\x02\x01\x02'
+    else:
+        assert not owner.pending and not native.headers
     before = list(native.calls)
     with pytest.raises(CaptureCleanupError, match='earlier buffers'):
         monitor.DryMonitor().open(24000, 1, DEVICE)
@@ -145,6 +155,37 @@ def test_unconfirmed_native_cleanup_retains_authority_and_prevents_new_monitor(n
     native.failure = None
     owner.close()
     assert not owner.handle.value and not owner.pending and not monitor._UNRELEASED_MONITORS
+
+
+def test_close_failure_retry_never_resets_or_unprepares_released_header(native):
+    owner = monitor.DryMonitor()
+    owner.open(24000, 1, DEVICE)
+    owner.submit(b'\x03\x04' * 20)
+    # Keep this test-owned token alive even on a failing baseline assertion:
+    # the old fixture's dangling view must fail the ownership assertion rather
+    # than corrupt the pytest process during its controlled cleanup.
+    token = owner.pending[0]
+    address = C.addressof(token.header)
+    native.failure = 'close'
+    try:
+        with pytest.raises(CaptureCleanupError):
+            owner.close()
+        assert not owner.pending
+        assert not native.headers, 'Acknowledged Unprepare must retire the exact driver pointer.'
+        assert owner.handle.value == 1234 and monitor._UNRELEASED_MONITORS == [owner]
+        unprepared = [call for call in native.calls if call[0] == 'unprepare']
+        assert unprepared == [('unprepare', token.header.data)]
+        # Poison the now application-owned header. Reset must not touch it.
+        token.header.flags = 0
+        native.failure = None
+        owner.close()
+        assert C.addressof(token.header) == address and token.header.flags == 0
+        assert [call for call in native.calls if call[0] == 'unprepare'] == unprepared
+        assert native.calls[-2:] == [('reset',), ('close',)]
+        assert not owner.handle.value and not monitor._UNRELEASED_MONITORS
+    finally:
+        native.failure = None
+        owner.close()
 
 
 def test_selected_output_displacement_during_open_closes_without_submitting(native, monkeypatch):

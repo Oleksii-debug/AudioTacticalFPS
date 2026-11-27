@@ -17,27 +17,27 @@ class Widget:
         self.owner, self.dead, self.handlers = get_ident(), False, {}
         self.value, self.selection = kwargs.get('value', kwargs.get('initial', '')), -1
         self.name, self.focused, self.running = '', 0, False
-    def check(self): assert get_ident() == self.owner and not self.dead
-    def SetName(self, value): self.check(); self.name = value
-    def Wrap(self, value): self.check()
-    def Add(self, *args, **kwargs): self.check()
-    def SetSizer(self, value): self.check()
-    def SetFocus(self): self.check(); self.focused += 1
-    def Bind(self, event, handler, *args, **kwargs): self.check(); self.handlers[event] = handler
-    def GetValue(self): self.check(); return self.value
-    def ChangeValue(self, value): self.check(); self.value = value
-    def GetFont(self): self.check(); return SimpleNamespace(SetPointSize=Mock())
-    def SetFont(self, value): self.check()
-    def GetSelection(self): self.check(); return self.selection
-    def SetSelection(self, *value): self.check(); self.selection = value[0] if len(value) == 1 else value
-    def GetLastPosition(self): self.check(); return len(self.value)
-    def GetRange(self, first, last): self.check(); return self.value[first:last]
-    def ShowPosition(self, value): self.check()
-    def SetAcceleratorTable(self, value): self.check()
-    def EndModal(self, result): self.check()
-    def Start(self, interval): self.check(); self.running = True
-    def Stop(self): self.check(); self.running = False
-    def Destroy(self): self.check(); self.dead = True
+    def _widget_check(self): assert get_ident() == self.owner and not self.dead
+    def SetName(self, value): self._widget_check(); self.name = value
+    def Wrap(self, value): self._widget_check()
+    def Add(self, *args, **kwargs): self._widget_check()
+    def SetSizer(self, value): self._widget_check()
+    def SetFocus(self): self._widget_check(); self.focused += 1
+    def Bind(self, event, handler, *args, **kwargs): self._widget_check(); self.handlers[event] = handler
+    def GetValue(self): self._widget_check(); return self.value
+    def ChangeValue(self, value): self._widget_check(); self.value = value
+    def GetFont(self): self._widget_check(); return SimpleNamespace(SetPointSize=Mock())
+    def SetFont(self, value): self._widget_check()
+    def GetSelection(self): self._widget_check(); return self.selection
+    def SetSelection(self, *value): self._widget_check(); self.selection = value[0] if len(value) == 1 else value
+    def GetLastPosition(self): self._widget_check(); return len(self.value)
+    def GetRange(self, first, last): self._widget_check(); return self.value[first:last]
+    def ShowPosition(self, value): self._widget_check()
+    def SetAcceleratorTable(self, value): self._widget_check()
+    def EndModal(self, result): self._widget_check()
+    def Start(self, interval): self._widget_check(); self.running = True
+    def Stop(self): self._widget_check(); self.running = False
+    def Destroy(self): self._widget_check(); self.dead = True
 
 
 @pytest.fixture

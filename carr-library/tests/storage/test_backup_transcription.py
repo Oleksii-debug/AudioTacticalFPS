@@ -328,10 +328,11 @@ def test_ready_job_needs_no_engine_and_collection_cancel_never_publishes(factory
     restored = restore_backup(tmp_path / 'ready', tmp_path / 'restored-ready',
                               expected_manifest_sha256=checksum)
     recovered = LibraryApp(restored).transcription(workspace)
-    assert recovered.get(identity) == job
+    assert recovered.get(identity) == {**job, 'execution_review_required': True}
     assert recovered.list()[0]['status'] == 'ready'
     assert not (recovered._path(identity) / 'results').exists()
-    with pytest.raises(ValueError, match='Configure'):
+    assert not (recovered.root / 'engine.json').exists()
+    with pytest.raises(transcription.RuntimeReviewError, match='Review and rebind'):
         recovered.run(identity, timeout=30)
 
     manifest = read_json(tmp_path / 'ready' / 'manifest.json')

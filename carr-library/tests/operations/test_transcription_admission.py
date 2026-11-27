@@ -11,7 +11,7 @@ import time
 
 import pytest
 
-from carr_library.audio import AudioCancelled
+from carr_library.durable_state import read_json
 from carr_library.operations import (OperationFacade, ResourceBroker, ResourceLimits,
     ResourceRequest, ResourceStateError, ResourceUnavailable)
 from carr_library.transcription import TranscriptionService
@@ -71,7 +71,7 @@ def test_actual_worker_receipts_hold_capacity_until_child_cleanup_and_completed_
 def test_cancelled_admission_does_not_read_engine_or_start_child(prepared, monkeypatch):
     service, broker, original, _ = admitted(prepared)
     identity = service.submit([original])
-    stopped, waiting, failures = threading.Event(), threading.Event(), []
+    stopped, waiting, failures, results = threading.Event(), threading.Event(), [], []
     real_reserve = broker.reserve
 
     def reserve(*args, **kwargs):
@@ -83,7 +83,7 @@ def test_cancelled_admission_does_not_read_engine_or_start_child(prepared, monke
 
     def run():
         try:
-            service.run(identity, cancelled=stopped.is_set, timeout=5)
+            results.append(service.run(identity, cancelled=stopped.is_set, timeout=5))
         except BaseException as error:
             failures.append(error)
     with real_reserve(ResourceRequest(cpu_slots=1), operation_id='occupied', timeout=0):
@@ -94,8 +94,12 @@ def test_cancelled_admission_does_not_read_engine_or_start_child(prepared, monke
             stopped.set()
             thread.join(3)
             assert not thread.is_alive()
-            assert len(failures) == 1 and isinstance(failures[0], AudioCancelled)
-            assert service.get(identity)['status'] == 'ready'
+            assert not failures and len(results) == 1
+            assert results[0]['status'] == 'stopped'
+            saved = service.get(identity)
+            assert saved['status'] == 'stopped' and saved['run_context'] is None
+            assert saved['done'] == 0 and saved['receipts'] == saved['artifacts'] == []
+            assert (service._path(identity) / 'input' / saved['sources'][0]['filename']).read_bytes() == original.read_bytes()
             assert [row['operation_id'] for row in broker.snapshot()['leases']] == ['occupied']
             assert not (service.jobs_root / identity / 'job_config.json').exists()
         finally:
@@ -104,7 +108,8 @@ def test_cancelled_admission_does_not_read_engine_or_start_child(prepared, monke
     assert broker.snapshot()['leases'] == []
 
 
-def test_actual_worker_stop_keeps_lease_through_cleanup_and_view_has_no_invented_controls(prepared, monkeypatch):
+@pytest.mark.parametrize('action,terminal', [('external', 'stopped'), ('pause', 'paused'), ('cancel', 'cancelled')])
+def test_actual_worker_stop_keeps_lease_through_cleanup_and_view_has_no_invented_controls(prepared, monkeypatch, action, terminal):
     service, broker, original, configure = admitted(prepared)
     configure('pause-once')
     identity = service.submit([original])
@@ -130,17 +135,24 @@ def test_actual_worker_stop_keeps_lease_through_cleanup_and_view_has_no_invented
             time.sleep(.01)
         assert (service.jobs_root / identity / 'job_status.json').exists()
         view = facade.get('asr', identity, workspace=service.workspace)
-        assert view.live is True and view.controls == () and view.completed == 0
-        for action in ('pause', 'cancel'):
-            with pytest.raises(ValueError, match='does not expose'):
-                facade.control('asr', identity, action, workspace=service.workspace)
-        stopped.set()
+        assert view.live is True and view.controls == ('pause', 'cancel') and view.completed == 0
+        with pytest.raises(ValueError, match='only explicit pause/cancel'):
+            facade.control('asr', identity, 'resume', workspace=service.workspace)
+        if action == 'external':
+            stopped.set()
+        else:
+            requested = facade.control('asr', identity, action, workspace=service.workspace)
+            assert requested.id == identity and requested.completed == 0
+            assert read_json(service._path(identity) / 'control.json')['action'] == action
         thread.join(7)
         assert not thread.is_alive() and not failures
-        assert results[0]['status'] == 'stopped' and results[0]['done'] == 0
+        assert results[0]['status'] == terminal and results[0]['done'] == 0
+        assert results[0]['receipts'] == results[0]['artifacts'] == []
         assert cleanup and [row['operation_id'] for row in cleanup[0]['leases']] == ['asr:' + identity]
         assert broker.snapshot()['leases'] == []
-        assert facade.get('asr', identity, workspace=service.workspace).controls == ()
+        current = facade.get('asr', identity, workspace=service.workspace)
+        expected_controls = {'stopped': ('pause', 'cancel'), 'paused': ('cancel',), 'cancelled': ()}
+        assert current.status == terminal and current.controls == expected_controls[terminal]
     finally:
         stopped.set()
         thread.join(7)

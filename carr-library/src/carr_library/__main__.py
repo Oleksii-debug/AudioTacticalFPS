@@ -70,6 +70,9 @@ def main(argv=None):
     if len(arguments) == 3 and arguments[0] == '--carr-sapi-native-worker':
         from .speech.sapi_native_worker import main as native_main
         return native_main(arguments[1:])
+    if arguments and arguments[0] == 'backup-incremental':
+        from .backup_incremental_cli import main as incremental_main
+        return incremental_main(arguments[1:])
     if arguments and arguments[0] == 'operations':
         from .operations.cli import main as operations_main
         return operations_main(arguments[1:])

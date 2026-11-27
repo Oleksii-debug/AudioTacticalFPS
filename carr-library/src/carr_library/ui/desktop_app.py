@@ -628,6 +628,8 @@ class DesktopFrame(WorkspaceFrame):
         install_transcription_actions(self)
         install_trust_actions(self)
         install_operations_actions(self)
+        from .backup_incremental_dialog import install_incremental_backup_actions
+        install_incremental_backup_actions(self)
         from .keyboard_settings import install_keyboard_settings
         install_keyboard_settings(self)
         from .progress_panel import install_progress_panel
