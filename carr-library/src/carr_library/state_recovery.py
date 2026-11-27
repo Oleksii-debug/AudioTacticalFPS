@@ -212,12 +212,8 @@ def _prepared(relative, value):
                 raise ValueError('Production operation options changed.')
         return {**value, 'restore_requires_new_output': True}
     if schema == 'carr.reader-session.v1':
-        from .speech.reading import ReadingDocument
-        from .speech.session import ReaderResume
-        if set(value) != {'schema', 'document', 'voice_id', 'rate', 'volume', 'cursor', 'audio_seconds'}:
-            raise ValueError('Unsupported restored reading session.')
-        ReaderResume(ReadingDocument.from_dict(value['document']), value['voice_id'],
-            value['rate'], value['volume'], value['cursor'], value['audio_seconds'])
+        from .speech.session import ReaderDraftStore
+        ReaderDraftStore.decode(value)
     return None
 
 

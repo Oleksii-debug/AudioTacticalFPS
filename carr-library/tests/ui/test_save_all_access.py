@@ -3,7 +3,7 @@ import ast
 from pathlib import Path
 from threading import Event
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import Mock, create_autospec
 
 import pytest
 
@@ -14,6 +14,7 @@ from carr_library.studio.project import ProjectStore as SceneProjectStore
 from carr_library.ui import audio_studio, save_actions, speech_dialog, studio_dialog
 from carr_library.ui.save_actions import cancel_save_all, install_save_coordinator, save_all_open
 from carr_library.ui.save_all import SaveCoordinator, SaveResult
+from carr_library.ui.reader_synthesis import ReaderSynthesisControls
 
 
 class Text:
@@ -121,7 +122,8 @@ def reader_callbacks(tmp_path, text='Changed reading copy', *, blocked=False):
     draft = ReaderDraftStore(tmp_path / 'library', slot='save-all-test')
     guard = Mock(side_effect=ValueError('Source authorization revoked') if blocked else None)
     env = dict(Path=Path, ReaderResume=ReaderResume, SaveResult=SaveResult,
-               SimpleNamespace=SimpleNamespace, reading_offset=speech_dialog.reading_offset)
+               SimpleNamespace=SimpleNamespace, reading_offset=speech_dialog.reading_offset,
+               create_autospec=create_autospec, ReaderSynthesisControls=ReaderSynthesisControls)
     make = callbacks(speech_dialog, 'show_speech_reader',
         ('sync_document', 'save_recovery', 'save_project', 'unsaved', 'save_registered'),
         '''
@@ -135,6 +137,8 @@ def make(document, editor, draft_store, source_guard):
     voice_choice = SimpleNamespace(GetSelection=lambda: -1)
     voices = ()
     rate, volume = Text(0), Text(80)
+    synthesis_controls = create_autospec(ReaderSynthesisControls, instance=True)
+    synthesis_controls.snapshot.return_value = (None, False)
     player = SimpleNamespace(position_seconds=0)
     report = lambda *args, **kwargs: None
     playback_guard = source_guard

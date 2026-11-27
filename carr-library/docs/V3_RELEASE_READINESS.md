@@ -22,10 +22,10 @@ qualify a later composition.
 
 | Requirement area | Current implementation contribution | Execution and remaining dependency |
 | --- | --- | --- |
-| V3-01/02 | Installed-language OCR controls, review-preserving automatic candidates and finite language-aware reading preparation | P3 native preparation, including current-editor Undo, passed in source and installed modes. P4 OCR consistency cases reached a fixture signature defect; their two-line repair is prepared. Automatic OCR still requires source review and does not approve quotations. Language and voice quality remain separate. |
-| V3-03/10/19 | Navigation, tabs/focus, device choice, reading edits, exact clipboard, opt-in global/tray controls, progress, favorites, exact-language defaults and named profiles | P3 native control groups passed, including the corrected preparation, preferences and Close behavior. The ordinary E3 gate still failed long-path queue playback, recorded EPUB playback and other named native stages. The reviewed route and EPUB successors are NOT_RUN. Manual Windows 11/NVDA remains open. |
-| V3-04/05 | Book/batch production, measured processed-master chapters, metadata/conversion and existing clip/player/Director contracts | P3 native source and installed Book controls passed. The P4 component run reports two Book assertions requiring the prepared real-preview/fixture corrections. Full capture and sealed-bundle acceptance remain open, as do neural long-form quality and physical audio review. |
-| V3-06/08 | Incremental backup and authenticated local portable snapshots over the canonical backup formats and schema 6 | Earlier native encrypted review/restore evidence remains retained. P4 native-format/foreign-flat backup regressions retain passive restored state; one obsolete iterator fixture needs the prepared scandir correction. These results do not establish a cloud/WebDAV service or shared live databases. |
+| V3-01/02 | Installed-language OCR controls, review-preserving automatic candidates and finite language-aware reading preparation | P3 native preparation, including current-editor Undo, passed in source and installed modes. The repaired OCR consistency suites are included in the clean 68777f9f Linux component source/installed results. Automatic OCR still requires source review and does not approve quotations. Language and voice quality remain separate. |
+| V3-03/10/19 | Navigation, tabs/focus, device choice, reading edits, exact clipboard, opt-in global/tray controls, progress, favorites, exact-language defaults and named profiles | P3 native control groups passed. At 68777f9f, source and installed reader/playback probes passed 198 checks each and EPUB/DAISY probes passed 65 each, including the repaired long-path queue and recorded publication playback. The new capability-checked pitch/punctuation controls are integrated but NOT_RUN. Manual Windows 11/NVDA remains open. |
+| V3-04/05 | Book/batch production, measured processed-master chapters, metadata/conversion and existing clip/player/Director contracts | P3 native source and installed Book controls passed. The real-preview/fixture corrections and publication-owner reconciliation are included in the clean 68777f9f Linux component source/installed results. Full capture and sealed-bundle acceptance remain open, as do neural long-form quality and physical audio review. |
+| V3-06/08 | Incremental backup and authenticated local portable snapshots over the canonical backup formats and schema 6 | Earlier native encrypted review/restore evidence remains retained. Native-format/foreign-flat backup regressions preserve passive restore; the scandir fixture correction is included in the clean 68777f9f Linux component source/installed results. These results do not establish a cloud/WebDAV service or shared live databases. |
 | V3-07 | Explicit streamed UTF-8 originals up to the selected 128 MiB limit, bounded fragments and source authority; scoped/ranked source windows and federated continuation | Actual greater-than-64-MiB suites and earlier native intake/literal/ranked/federated controls are retained. Ranking is local to each source window. Linux measurements through 50,000 pages are retained; the separate Windows 50,000-page source and installed experiment now completed with zero sampled search timeouts. Performance acceptance and multi-gigabyte PDF remain open. |
 | V3-08 | Existing CSL/source citations extended through reviewed live Word COM plans and named native review | The focused Word integration suite passed 84 cases in each of four Linux/Windows source/installed modes. Modeled COM and native review controls do not qualify an actual Microsoft Word installation, publisher deployment or human interaction. |
 | V3-09 | Typed current-reader and Book/batch assistant routes through existing services and stores | P3 native domain controls and earlier bounded state-I/O evidence are retained. The current full aggregate is incomplete. Deterministic tools do not certify a local LLM or grant model output shell authority. |
@@ -39,7 +39,46 @@ application archive excludes the separately set up audio runtime. No eligible
 delivery wheel, final private archive, signed installer or whole-platform
 completion is claimed by this checkpoint.
 
-## Latest measured checkpoint — after E3 main completion, 2026-11-27
+## Current successor and exact predecessor results — 2026-11-27, 23:11 UTC
+
+The successor of `68777f9f36b142ed1ce847ee47d82e20d0bdd132` adds native
+reader pitch/punctuation options, exact synthesis identity for saved/tabbed
+audio, and fresh ASR control reads through the existing coherent state reader.
+Unsupported engine requests remain explicit refusals; restore stays passive.
+The control-read change removes a redundant ancestor walk without caching pause
+or cancel, weakening read guards or changing any five-second ASR test budget.
+It includes 33 new control cases and 43 additive shared-reader cases.
+Two Windows catalog fixtures retain their original payloads and assertions while
+fixing an overlong pytest ID and unclosed SQLite connections.
+All new source and fixtures are **INTEGRATED / NOT_RUN** at composition.
+
+The exact predecessor's [native reader gate](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46075231974)
+passed all four source/installed probes, with 198 reader checks and 65
+EPUB/DAISY checks in each import mode. Its [component Linux jobs](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46075228427)
+each passed 1,701 cases; the installed job additionally passed 12 subtests.
+[Canonical compatibility](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46075232148)
+passed 1,166 cases per mode and seven installed subtests.
+[Bibliography/import](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46075232153)
+passed 1,092 source cases and 69 installed native checks. These are separate
+scopes and modes, not an additive unique-test count.
+
+The predecessor is still ineligible: its ordinary Windows transcription job
+has eight failed cases across two modules; selected capture and sealed-bundle
+steps failed in the main aggregate. Main/V3 long source selections and component
+Windows jobs were not complete at this composition checkpoint. The new ASR
+repair must resolve the original failures on its own exact source and wheel.
+Current runner diagnostics, private assets, per-engine/language qualification,
+human Windows 11/NVDA and the remaining implementation/interoperability scope
+remain required. Earlier passing heads cannot supply a final delivery wheel.
+
+See the [current integration checkpoint](INTEGRATION_REUSE_2026-11-27_READING_AUDIO.md)
+and [retained native evidence](../review/native-playback-68777f9f-2026-11-27/README.md)
+for exact identities and limits. All required gates retain their original
+failure and skip predicates. The four-mode focused voice gate and expanded
+component/transcription selectors test this successor without cancelling useful
+predecessor runs.
+
+## Historical measured checkpoint — after E3 main completion, 2026-11-27
 
 The following results describe different immutable candidates and must not be
 combined into a successful release gate.

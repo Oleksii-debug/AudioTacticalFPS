@@ -1,0 +1,175 @@
+{
+  "schema": "carr-native-playback-evidence-metadata/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_commit": "68777f9f36b142ed1ce847ee47d82e20d0bdd132",
+  "source_tree": "ab4bd12008e03e7b7ce6b65755776114ff6a0ffd",
+  "source_subtree": "883b1638c6894b6dfb970bed24884713ca8ea9b2",
+  "run": {
+    "id": 46075231974,
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46075231974",
+    "attempt": 1,
+    "event": "push",
+    "branch": "carr/ci-endpoint-evaluation-20261127",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-11-27T22:12:52Z",
+    "updated_at": "2026-11-27T22:15:38Z",
+    "workflow_path": ".github/workflows/carr-mci-path-evaluation.yml"
+  },
+  "job": {
+    "id": 140761298828,
+    "name": "Same-head source and installed reader / EPUB native playback",
+    "status": "completed",
+    "conclusion": "success",
+    "run_id": 46075231974,
+    "logs_url": null,
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1
+      },
+      {
+        "name": "Preserve exact committed source bytes",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2
+      },
+      {
+        "name": "Check out the exact triggering commit",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3
+      },
+      {
+        "name": "Verify exact event source and unchanged endpoint helper",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4
+      },
+      {
+        "name": "Set up native x64 CPython",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5
+      },
+      {
+        "name": "Build and prove the exact event wheel with locked desktop dependencies",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6
+      },
+      {
+        "name": "Start existing audio services without changing startup policy",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 7
+      },
+      {
+        "name": "Verify existing signature serialization under both PowerShell versions",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 8
+      },
+      {
+        "name": "Prepare only the exact already-reviewed signed render endpoint",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 9
+      },
+      {
+        "name": "Prepare the existing pinned private Windows audio runtime",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 10
+      },
+      {
+        "name": "Prepare the existing pinned offline DAISY validation schemas",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 11
+      },
+      {
+        "name": "Capture the exact freshly enumerated reviewed secondary output",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 12
+      },
+      {
+        "name": "Require actual source reader player and retained queue",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 13
+      },
+      {
+        "name": "Require actual installed reader player and retained queue",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 14
+      },
+      {
+        "name": "Require actual source EPUB recorded-audio ownership",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 15
+      },
+      {
+        "name": "Require actual installed EPUB recorded-audio ownership",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 16
+      },
+      {
+        "name": "Preserve only public bounded receipts and source identity",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 17
+      },
+      {
+        "name": "Post Set up native x64 CPython",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 33
+      },
+      {
+        "name": "Post Check out the exact triggering commit",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 34
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 35
+      }
+    ]
+  },
+  "artifact": {
+    "id": 15233929643,
+    "name": "carr-native-reader-playback-68777f9f36b142ed1ce847ee47d82e20d0bdd132-1",
+    "bytes": 64689,
+    "sha256": "d876a5af7bdd62dc011174ea1f2f00675af363a3b969d0ecb04e21968b3a1122",
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46075231974/artifacts/15233929643",
+    "created_at": "2026-11-27T22:15:33Z",
+    "expires_at": "2026-12-04T22:15:32Z",
+    "archive_bytes_decoded_for_this_record": false
+  },
+  "extraction": {
+    "source": "Completed GitHub workflow job log and read-only GitHub run/job/artifact metadata",
+    "decoded_log_characters": 332173,
+    "decoded_log_utf8_sha256": "cbbd852b02100264f1a31e1988b502f0f48af532d05a3dd8366719605f47d881",
+    "stdout_json": "Each .stdout.json is the exact JSON payload printed on one completed job log line, with the log timestamp removed and one LF added. These are not claimed to be original ZIP-member bytes.",
+    "epub_phases": "Each .phases.log retains the exact timestamped phase log lines from starting through complete. The exact probe appends one successful check for every intervening phase; no failed phase occurred.",
+    "original_archive_member_sha256": "NOT_RETRIEVED"
+  },
+  "source_pins": {
+    "workflow": "99b10c4bb3114d603c4c4ca12a1224b2ee932d37",
+    "reader_probe": "c29fa534013cbc185a65d827072b11db6fa0b19d",
+    "epub_daisy_probe": "81c91d56989edeeddd262dce6782e6c4d2523ca0",
+    "player": "a36bc5e38d25490965b9f124af37d557a8a1dd68",
+    "wave_output": "f2a977800ab2f7f2c877109346c3cfd241be1229",
+    "publishing": "06a4cf26f27636def80eaeb561989ea1348cfeac"
+  }
+}

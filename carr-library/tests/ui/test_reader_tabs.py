@@ -92,7 +92,8 @@ def view(tmp_path):
                            'voice:first', 2, 71, 3, 4.25)
     tabs = NativeReaderTabs(parent, root, initial, wx_module=wx)
     current = SimpleNamespace(state=tabs.current, voice=initial.voice_id,
-        rate=initial.rate, volume=initial.volume, cursor=initial.cursor, seconds=initial.audio_seconds)
+        rate=initial.rate, volume=initial.volume, cursor=initial.cursor, seconds=initial.audio_seconds,
+        pitch=initial.pitch, punctuation=initial.punctuation)
     def capture():
         state = current.state
         state.resume.document.set_text(state.editor.GetValue())
@@ -102,11 +103,13 @@ def view(tmp_path):
         # ReaderResume still rejects malformed saved recovery coordinates.
         current.cursor = min(max(0, current.cursor), len(state.resume.document.text))
         return (ReaderResume(state.resume.document, current.voice, current.rate,
-                current.volume, current.cursor, current.seconds), state.save_path)
+                current.volume, current.cursor, current.seconds,
+                pitch=current.pitch, punctuation=current.punctuation), state.save_path)
     def activate(state):
         current.state = state
         current.voice, current.rate, current.volume = state.resume.voice_id, state.resume.rate, state.resume.volume
         current.cursor, current.seconds = state.resume.cursor, state.resume.audio_seconds
+        current.pitch, current.punctuation = state.resume.pitch, state.resume.punctuation
         state.editor.SetFocus()
     def guard():
         if not context.authorized: raise ValueError('Library changed.')
@@ -513,3 +516,58 @@ def test_installed_probe_rejects_checkout_even_with_matching_distribution_record
     actual.write_text('# Checkout cannot satisfy installed acceptance', encoding='utf-8')
     with pytest.raises(RuntimeError, match='imported the checkout'):
         installed_root_probe([_distribution_record(checkout)], actual, checkout)
+
+
+def test_native_synthesis_options_inherit_then_remain_independent_across_tabs_and_reopen(view):
+    view.current.pitch, view.current.punctuation = 0, True
+    first = view.tabs.current
+    view.tabs.on_new()
+    assert len(view.tabs.states) == 2
+    assert (view.current.pitch, view.current.punctuation) == (0, True)
+    second = view.tabs.current
+    second.editor.ChangeValue('A different narrated reading copy.')
+    view.current.pitch, view.current.punctuation = 99, False
+    assert not view.tabs.notebook.select(0).vetoed
+    assert view.current.state is first
+    assert (view.current.pitch, view.current.punctuation) == (0, True)
+    assert not view.tabs.notebook.select(1).vetoed
+    assert view.current.state is second
+    assert (view.current.pitch, view.current.punctuation) == (99, False)
+    view.tabs.save_current()
+    reopened = NativeReaderTabs(view.parent, view.root, ReaderResume(ReadingDocument('ignored')),
+                                wx_module=view.wx)
+    assert [(row.resume.pitch, row.resume.punctuation) for row in reopened.states] == [(0, True), (99, False)]
+    assert reopened.current.resume.document.text == 'A different narrated reading copy.'
+    assert first.resume.document.source_text == '😀 First original.\r\nДругий рядок.'
+    reopened.close()
+
+
+def test_failed_tab_cas_keeps_unsaved_native_settings_and_prior_disk_record(view):
+    view.tabs.save_current()
+    first = view.tabs.current
+    original, token = first.store.load_with_token()
+    replacement = replace(original, pitch=40, punctuation=True)
+    newer = first.store.save_with_token(replacement, expected_token=token)
+    view.current.pitch, view.current.punctuation = 75, False
+    view.tabs.on_new()
+    assert len(view.tabs.states) == 1 and view.tabs.current is first
+    assert (view.current.pitch, view.current.punctuation) == (75, False)
+    persisted, actual_token = first.store.load_with_token()
+    assert actual_token == newer and (persisted.pitch, persisted.punctuation) == (40, True)
+    assert any('Another window' in report for report in view.context.reports)
+
+
+@pytest.mark.parametrize('field,value', [('voice_id', 'other:voice'), ('rate', 3), ('volume', 72),
+                                         ('pitch', 50), ('punctuation', True)])
+def test_saved_audio_position_binds_exact_synthesis_request(view, field, value):
+    state = view.tabs.current
+    saved = state.resume
+    request = dict(voice_id=saved.voice_id, rate=saved.rate, volume=saved.volume,
+                   pitch=saved.pitch, punctuation=saved.punctuation)
+    exact = tuple(request.values())
+    assert view.tabs.saved_audio_position(saved.document, synthesis=exact) == saved.audio_seconds == 4.25
+    request[field] = value
+    assert view.tabs.saved_audio_position(saved.document, synthesis=tuple(request.values())) == 0
+    assert state.resume is saved and state.resume.audio_seconds == 4.25
+    saved.document.replace(0, 1, 'Changed')
+    assert view.tabs.saved_audio_position(saved.document, synthesis=exact) == 0

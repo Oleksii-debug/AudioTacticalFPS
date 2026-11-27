@@ -19,6 +19,7 @@ from tempfile import TemporaryDirectory
 from threading import Event, get_ident
 import time
 import traceback
+import wave
 
 
 def _write_report(path, value):
@@ -61,7 +62,8 @@ def _module_evidence(args):
     namespace = runpy.run_path(str(helper))
     modules = [(name.replace('.', '/') + '.py', importlib.import_module('carr_library.' + name))
                for name in ('runtime_settings', 'speech.runtime', 'ui.voice_preferences',
-                            'language_qualification.catalog')]
+                            'language_qualification.catalog', 'speech.session', 'ui.reader_synthesis',
+                            'ui.speech_dialog', 'ui.reader_tabs', 'state_recovery', 'backup_producers')]
     return namespace['_module_evidence'](checkout, package.parent, modules,
         source_mode=not args.expect_installed, distribution=owner)
 
@@ -73,8 +75,10 @@ def _run(args, report):
     _write_report(args.report, report)
     import wx
     from carr_library import runtime_settings
-    from carr_library.speech import Voice, VoiceRegistry
+    from carr_library.speech import ReadingDocument, SpeechSettings, Voice, VoiceRegistry
+    from carr_library.speech.session import ReaderDraftStore, ReaderResume
     from carr_library.ui import voice_preferences
+    from carr_library.ui.reader_synthesis import ReaderSynthesisControls
 
     checks, errors, applied, futures = report['checks'], [], [], []
     def check(label, condition):
@@ -238,6 +242,121 @@ def _run(args, report):
                     if isinstance(item, wx.Dialog) and item.IsModal():
                         item.EndModal(wx.ID_CANCEL)
 
+        def synthesis_options_scenario():
+            native_voice = Voice('native:settings', 'Native option fixture', 'Synthetic PCM only', 'uk',
+                                 ('rate', 'volume', 'pitch', 'punctuation'))
+            limited_voice = Voice('native:limited', 'Default-only native option fixture', 'Synthetic PCM only', 'uk')
+            accepted, stops, calls, rendered = [], [], [], []
+            controls = ReaderSynthesisControls(frame, alive=lambda: not frame.IsBeingDeleted(),
+                busy=lambda: callback_count[0] != 0, guard=guard,
+                before_apply=lambda: stops.append('confirmed synthetic owner idle'),
+                changed=lambda: accepted.append(controls.snapshot()),
+                report=lambda message, **kwargs: errors.append(message), wx=wx)
+            layout = wx.BoxSizer(wx.VERTICAL)
+            layout.Add(controls.button, 0, wx.ALL, 8)
+            frame.SetSizerAndFit(layout)
+            controls.sync(native_voice, enabled=True)
+
+            def open_options(driver):
+                def drive_options():
+                    try:
+                        view = controls.view
+                        check('native synthesis options own the current modal',
+                              view is not None and view.window.IsModal() and view.window.IsShown())
+                        driver(view)
+                    except Exception:
+                        errors.append(traceback.format_exc())
+                        view = controls.view
+                        if view is not None and not view.destroyed and view.window.IsModal():
+                            view.close()
+                wx.CallLater(100, drive_options)
+                return controls.show()
+
+            def set_options(view):
+                press(find(view.window, 'Use native voice pitch'))
+                view.pitch.SetValue(62)
+                press(find(view.window, 'Read punctuation aloud'))
+
+            def cancel_options(view):
+                set_options(view)
+                press(find(view.window, 'Cancel native voice options'))
+            check('native Cancel retains default synthesis options', not open_options(cancel_options)
+                  and controls.snapshot() == (None, False) and not accepted and not stops)
+
+            def apply_options(view):
+                set_options(view)
+                press(find(view.window, 'Apply native voice options'))
+            check('native Apply captures pitch and punctuation without automatic synthesis',
+                  open_options(apply_options) and controls.snapshot() == (62, True)
+                  and accepted == [(62, True)] and len(stops) == 1 and not calls)
+
+            class SettingsProvider:
+                name = 'Native control synthetic PCM fixture'
+                def voices(self): return (native_voice, limited_voice)
+                def render(self, text, voice, output, settings, cancelled):
+                    if cancelled():
+                        raise InterruptedError('Native settings fixture was cancelled.')
+                    calls.append((voice.id, settings, get_ident()))
+                    with wave.open(str(output), 'wb') as audio:
+                        audio.setnchannels(1)
+                        audio.setsampwidth(2)
+                        audio.setframerate(8000)
+                        audio.writeframes(b'\x10\x00' * 400)
+
+            settings = controls.settings(-2, 55, native_voice)
+            synthesis_registry = VoiceRegistry([SettingsProvider()])
+            try:
+                execute(lambda: synthesis_registry.synthesize('Synthetic option forwarding, only.',
+                    native_voice.id, Path(temporary) / 'native-options.wav', settings=settings),
+                    rendered.append, on_error=lambda error: errors.append(str(error)))
+                pump(lambda: callback_count[0] == 0, 'Native synthesis settings worker did not settle')
+                check('native-selected settings reach the actual registry on the existing worker',
+                      len(calls) == 1 and calls[0][0] == native_voice.id
+                      and calls[0][1] == SpeechSettings(rate=-2, volume=55, pitch=62, punctuation=True)
+                      and calls[0][2] != main_thread and len(rendered) == 1
+                      and rendered[0].path.is_file() and rendered[0].frames == 400)
+            finally:
+                synthesis_registry.close()
+            store = ReaderDraftStore(Path(temporary) / 'reader-library')
+            store.save(ReaderResume(ReadingDocument('Exact original!'), native_voice.id, -2, 55,
+                                   pitch=settings.pitch, punctuation=settings.punctuation))
+            recovered = store.load()
+            check('native options survive passive exact draft recovery',
+                  (recovered.pitch, recovered.punctuation, recovered.rate, recovered.volume)
+                  == (62, True, -2, 55) and recovered.document.source_text == 'Exact original!')
+            check('incompatible current voice preserves and gates the requested settings',
+                  not controls.sync(limited_voice, enabled=True) and controls.snapshot() == (62, True))
+            try:
+                controls.settings(-2, 55, limited_voice)
+            except ValueError:
+                check('unsupported native request refuses without fallback or worker entry', len(calls) == 1)
+            else:
+                raise AssertionError('Unsupported native request was admitted.')
+
+            def reset_options(view):
+                check('unsupported native controls and Apply are disabled',
+                      not view.pitch_enabled.IsEnabled() and not view.pitch.IsEnabled()
+                      and not view.punctuation.IsEnabled() and not view.apply.IsEnabled()
+                      and 'does not support' in view.status.GetValue())
+                press(find(view.window, 'Reset native voice options'))
+                check('explicit native default reset makes Apply available', view.apply.IsEnabled())
+                press(find(view.window, 'Apply native voice options'))
+            check('native reset retains rate and volume without starting another render',
+                  open_options(reset_options) and controls.snapshot() == (None, False)
+                  and controls.settings(-2, 55, limited_voice) == SpeechSettings(rate=-2, volume=55)
+                  and len(calls) == 1)
+            controls.sync(native_voice, enabled=True)
+            controls.restore(62, True)
+            before = (controls.snapshot(), len(accepted), len(stops))
+            def destroy_options(view):
+                view.pitch.SetValue(31)
+                view.window.Destroy()
+            check('direct native modal destruction cannot publish pending options',
+                  not open_options(destroy_options) and controls.view.destroyed
+                  and (controls.snapshot(), len(accepted), len(stops)) == before)
+            check('all native settings operations leave the shared worker idle',
+                  callback_count[0] == 0 and all(item.done() for item in futures))
+
         def scenario():
             try:
                 wx.CallLater(100, drive)
@@ -254,6 +373,7 @@ def _run(args, report):
                 check('every fresh registry closes while the reader registry remains borrowed',
                       fresh_providers and all(item.closed for item in fresh_providers)
                       and not original_provider.closed)
+                synthesis_options_scenario()
             except Exception:
                 errors.append(traceback.format_exc())
             finally:
@@ -285,7 +405,7 @@ def main():
     report = {'status': 'FAIL', 'phase': 'starting', 'checks': [],
               'installed': args.expect_installed, 'python': sys.version,
               'source_commit': os.environ.get('GITHUB_SHA'),
-              'scope': 'native preference controls with explicit synthetic voice metadata',
+              'scope': 'native preference and synthesis-option controls with explicit synthetic metadata and PCM',
               'acoustic_quality': 'NOT_RUN', 'human_listening': 'NOT_RUN', 'NVDA': 'NOT_RUN'}
     _write_report(args.report, report)
     faulthandler.enable()

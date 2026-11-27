@@ -21,12 +21,15 @@ class ReaderResume:
     volume: int = 80
     cursor: int = 0
     audio_seconds: float = 0
+    pitch: int | None = None
+    punctuation: bool = False
 
     def __post_init__(self):
         if not isinstance(self.document, ReadingDocument):
             raise ValueError('Recovery requires a validated reading copy.')
         text_value(self.voice_id, 'voice identity', maximum=2048, empty=True)
-        SpeechSettings(rate=self.rate, volume=self.volume)
+        SpeechSettings(rate=self.rate, volume=self.volume,
+                       pitch=self.pitch, punctuation=self.punctuation)
         if type(self.cursor) is not int or not 0 <= self.cursor <= len(self.document.text):
             raise ValueError('The recovery cursor is outside the reading copy.')
         if (type(self.audio_seconds) not in (float, int) or not math.isfinite(self.audio_seconds)
@@ -60,6 +63,11 @@ class ReaderDraftStore:
         record = {'schema': 'carr.reader-session.v1', 'document': resume.document.to_dict(),
                   'voice_id': resume.voice_id, 'rate': resume.rate, 'volume': resume.volume,
                   'cursor': resume.cursor, 'audio_seconds': resume.audio_seconds}
+        # Keep legacy seven-key records byte-compatible for engine defaults.
+        if resume.pitch is not None:
+            record['pitch'] = resume.pitch
+        if resume.punctuation:
+            record['punctuation'] = resume.punctuation
         with state_lock(self.root, self.key):
             if resume.document.format_notice and self.path.exists():
                 raise ValueError('Use Save As to preserve the original pre-release reading draft.')
@@ -83,9 +91,12 @@ class ReaderDraftStore:
     @staticmethod
     def decode(record):
         """Validate a passive captured record without opening a store or engine."""
-        if (not isinstance(record, dict) or set(record) != {'schema', 'document', 'voice_id',
-                'rate', 'volume', 'cursor', 'audio_seconds'} or record['schema'] != 'carr.reader-session.v1'):
+        required = {'schema', 'document', 'voice_id', 'rate', 'volume', 'cursor', 'audio_seconds'}
+        if (not isinstance(record, dict) or not required <= set(record)
+                or set(record) - required - {'pitch', 'punctuation'}
+                or record['schema'] != 'carr.reader-session.v1'):
             raise ValueError('Unsupported reading-session recovery state.')
         document = ReadingDocument.from_dict(record['document'])
         return ReaderResume(document, record['voice_id'], record['rate'], record['volume'],
-                            record['cursor'], record['audio_seconds'])
+                            record['cursor'], record['audio_seconds'],
+                            pitch=record.get('pitch'), punctuation=record.get('punctuation', False))

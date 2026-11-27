@@ -291,3 +291,256 @@ def test_raw_snapshot_does_not_bypass_existing_path_and_size_guards(tmp_path, mo
                         lambda path: pytest.fail('Rejected state reached a payload open.'))
     with pytest.raises(ValueError):
         state.read_bytes_snapshot(selected, max_bytes=8)
+
+
+# Optional initial absence is a separate observation, not a general exception
+# fallback. These cases keep the original reader and real captured handles.
+@pytest.mark.parametrize('reader_name', ['read_bytes_snapshot', 'read_json_snapshot'])
+def test_missing_snapshot_requires_explicit_boolean_opt_in(tmp_path, monkeypatch, reader_name):
+    target = tmp_path / 'missing.json'
+    guarded = []
+    original = state.local_path
+    def guard(path, **kwargs):
+        guarded.append(kwargs.get('exists', False))
+        return original(path, **kwargs)
+    monkeypatch.setattr(state, 'local_path', guard)
+    monkeypatch.setattr(state, '_open_json_file',
+                        lambda path: pytest.fail('An absent state reached a payload open.'))
+    reader = getattr(state, reader_name)
+    with pytest.raises(FileNotFoundError):
+        reader(target)
+    assert guarded == [True]
+    guarded.clear()
+    with pytest.raises(FileNotFoundError):
+        reader(target, allow_missing=False)
+    assert guarded == [True]
+    guarded.clear()
+    assert reader(target, allow_missing=True) == (None, None)
+    assert guarded == [False] and not target.exists()
+
+
+@pytest.mark.parametrize('reader_name', ['read_bytes_snapshot', 'read_json_snapshot'])
+@pytest.mark.parametrize('value', [0, 1, None, 'true', [], {}],
+                         ids=['zero', 'one', 'none', 'text', 'list', 'mapping'])
+def test_missing_admission_rejects_non_boolean_before_path_access(tmp_path, monkeypatch, reader_name, value):
+    def forbidden(*args, **kwargs):
+        pytest.fail('A non-boolean missing-state option reached path admission.')
+    monkeypatch.setattr(state, 'local_path', forbidden)
+    monkeypatch.setattr(state, '_open_json_file', forbidden)
+    with pytest.raises(ValueError, match='boolean'):
+        getattr(state, reader_name)(tmp_path / 'state.json', allow_missing=value)
+
+
+def test_opt_in_json_null_has_the_exact_byte_token_instead_of_missing_token(tmp_path):
+    from hashlib import sha256
+    target = tmp_path / 'null.json'
+    raw = b' \r\nnull\t'
+    target.write_bytes(raw)
+    token = sha256(raw).hexdigest()
+    assert state.read_bytes_snapshot(target, allow_missing=True) == (raw, token)
+    assert state.read_json_snapshot(target, allow_missing=True) == (None, token)
+    assert state.read_json_snapshot(target) == (None, token)
+    assert target.read_bytes() == raw
+
+
+@pytest.mark.parametrize('reader_name', ['read_bytes_snapshot', 'read_json_snapshot'])
+@pytest.mark.parametrize('boundary', ['regular', 'open'])
+def test_opt_in_positive_observation_does_not_hide_disappearance(
+        tmp_path, monkeypatch, reader_name, boundary):
+    target = tmp_path / 'admitted.json'
+    target.write_bytes(b'{"accepted":true}')
+    original_guard, original_regular, original_open = state.local_path, state.regular, state._open_json_file
+    guarded, lost = [], []
+    def guard(path, **kwargs):
+        result = original_guard(path, **kwargs)
+        guarded.append(kwargs.get('exists', False))
+        return result
+    def regular(path, **kwargs):
+        # local_path has already finished the first full ancestor walk. The
+        # initial non-following absence observation also precedes this call.
+        if boundary == 'regular' and guarded and state.Path(path) == target and not lost:
+            target.unlink()
+            lost.append(boundary)
+        return original_regular(path, **kwargs)
+    def opened(path):
+        if boundary == 'open':
+            target.unlink()
+            lost.append(boundary)
+        return original_open(path)
+    monkeypatch.setattr(state, 'local_path', guard)
+    monkeypatch.setattr(state, 'regular', regular)
+    monkeypatch.setattr(state, '_open_json_file', opened)
+    with pytest.raises(FileNotFoundError):
+        getattr(state, reader_name)(target, allow_missing=True)
+    assert guarded == [False] and lost == [boundary]
+    assert not target.exists()
+
+
+@pytest.mark.parametrize('reader_name', ['read_bytes_snapshot', 'read_json_snapshot'])
+def test_opt_in_inode_retry_cannot_default_after_the_file_disappears(tmp_path, monkeypatch, reader_name):
+    target, replacement = tmp_path / 'state.json', tmp_path / 'replacement.json'
+    target.write_bytes(b'{"old":true}')
+    replacement.write_bytes(b'{"new":true}')
+    original_guard, original_open = state.local_path, state._open_json_file
+    guards, streams, reads = [], [], []
+    def guard(path, **kwargs):
+        guards.append(kwargs.get('exists', False))
+        return original_guard(path, **kwargs)
+    class Replaced:
+        def __init__(self, stream): self.stream = stream
+        def __enter__(self): return self
+        def fileno(self): return self.stream.fileno()
+        def read(self, maximum):
+            reads.append(maximum)
+            pytest.fail('A mismatched inode was read before a coherent retry.')
+        def __exit__(self, *args):
+            self.stream.close()
+            target.unlink()  # Lose the admitted replacement before retry #2.
+    def replaced(path):
+        assert not streams
+        os.replace(replacement, target)
+        stream = original_open(path)
+        streams.append(stream)
+        return Replaced(stream)
+    monkeypatch.setattr(state, 'local_path', guard)
+    monkeypatch.setattr(state, '_open_json_file', replaced)
+    with pytest.raises(FileNotFoundError):
+        getattr(state, reader_name)(target, allow_missing=True)
+    assert guards == [False, True]
+    assert len(streams) == 1 and streams[0].closed and reads == []
+    assert not target.exists()
+
+
+@pytest.mark.parametrize('reader_name', ['read_bytes_snapshot', 'read_json_snapshot'])
+def test_dangling_leaf_inserted_after_first_guard_is_not_absence(tmp_path, monkeypatch, reader_name):
+    import stat
+    target, missing = tmp_path / 'selected.json', tmp_path / 'unavailable.json'
+    target.write_bytes(b'{"original":true}')
+    original_guard, original_lstat = state.local_path, state.Path.lstat
+    before = target.lstat()
+    inserted = []
+    class ReparseStat:
+        # Windows symlink/reparse metadata is modeled explicitly: hosted
+        # filesystem privilege is not evidence of accepting a dangling leaf.
+        def __getattr__(self, name): return getattr(before, name)
+        st_mode = stat.S_IFLNK | stat.S_IMODE(before.st_mode)
+        st_file_attributes = getattr(before, 'st_file_attributes', 0) | 0x400
+    def lstat(path, *args, **kwargs):
+        if os.name == 'nt' and inserted and state.Path(path) == target:
+            return ReparseStat()
+        return original_lstat(path, *args, **kwargs)
+    def guard(path, **kwargs):
+        result = original_guard(path, **kwargs)
+        if not inserted:
+            target.unlink()
+            if os.name != 'nt':
+                target.symlink_to(missing)
+            inserted.append(result)
+        return result
+    monkeypatch.setattr(state.Path, 'lstat', lstat)
+    monkeypatch.setattr(state, 'local_path', guard)
+    monkeypatch.setattr(state, '_open_json_file',
+                        lambda path: pytest.fail('A substituted dangling leaf reached a payload open.'))
+    with pytest.raises(ValueError, match='without links'):
+        getattr(state, reader_name)(target, allow_missing=True)
+    assert inserted == [target] and not missing.exists()
+    if os.name != 'nt':
+        assert target.is_symlink() and os.path.lexists(target) and not target.exists()
+
+
+@pytest.mark.parametrize('reader_name', ['read_bytes_snapshot', 'read_json_snapshot'])
+@pytest.mark.parametrize('kind', ['permission', 'io'])
+def test_initial_metadata_probe_propagates_non_enoent_errors_unchanged(
+        tmp_path, monkeypatch, reader_name, kind):
+    target = tmp_path / 'state.json'
+    target.write_bytes(b'{"original":true}')
+    failure = PermissionError('Metadata access denied.') if kind == 'permission' else OSError('Metadata I/O failed.')
+    original_guard, original_lstat = state.local_path, state.Path.lstat
+    guarded = []
+    def guard(path, **kwargs):
+        result = original_guard(path, **kwargs)
+        guarded.append(result)
+        return result
+    def lstat(path, *args, **kwargs):
+        if guarded and state.Path(path) == target:
+            raise failure
+        return original_lstat(path, *args, **kwargs)
+    monkeypatch.setattr(state, 'local_path', guard)
+    monkeypatch.setattr(state.Path, 'lstat', lstat)
+    monkeypatch.setattr(state, '_open_json_file',
+                        lambda path: pytest.fail('A failed metadata probe reached a payload open.'))
+    with pytest.raises(type(failure)) as caught:
+        getattr(state, reader_name)(target, allow_missing=True)
+    assert caught.value is failure and guarded == [target]
+    assert target.read_bytes() == b'{"original":true}'
+
+
+@pytest.mark.parametrize('reader_name', ['read_bytes_snapshot', 'read_json_snapshot'])
+@pytest.mark.parametrize('kind', ['invalid-ancestor', 'hardlink'])
+def test_allow_missing_keeps_real_ancestor_and_hardlink_guards(tmp_path, monkeypatch, reader_name, kind):
+    target = tmp_path / 'state.json'
+    if kind == 'invalid-ancestor':
+        parent = tmp_path / 'not-a-directory'
+        parent.write_bytes(b'retained parent')
+        target = parent / 'missing.json'
+    else:
+        target.write_bytes(b'{"original":true}')
+        os.link(target, tmp_path / 'other-name.json')
+    monkeypatch.setattr(state, '_open_json_file',
+                        lambda path: pytest.fail('Rejected state reached a payload open.'))
+    with pytest.raises(ValueError, match='regular local'):
+        getattr(state, reader_name)(target, allow_missing=True)
+    if kind == 'invalid-ancestor':
+        assert parent.read_bytes() == b'retained parent'
+    else:
+        assert target.read_bytes() == b'{"original":true}' and target.stat().st_nlink == 2
+
+
+@pytest.mark.parametrize('raw', [
+    b'{"a":1,"a":2}', b'{"a":NaN}', b'Infinity', b'-Infinity', b'{invalid', b'\xff',
+], ids=['duplicate', 'nan', 'infinity', 'negative-infinity', 'malformed', 'invalid-utf8'])
+def test_allow_missing_json_keeps_strict_parsing_and_closes_actual_handle(tmp_path, monkeypatch, raw):
+    target = tmp_path / 'state.json'
+    target.write_bytes(raw)
+    original_open, streams = state._open_json_file, []
+    def capture(path):
+        stream = original_open(path)
+        streams.append(stream)
+        return stream
+    monkeypatch.setattr(state, '_open_json_file', capture)
+    with pytest.raises(ValueError):
+        state.read_json_snapshot(target, allow_missing=True)
+    assert len(streams) == 1 and streams[0].closed
+    assert target.read_bytes() == raw
+
+
+@pytest.mark.parametrize('reader_name', ['read_bytes_snapshot', 'read_json_snapshot'])
+@pytest.mark.parametrize('boundary', ['before-open', 'opened-size', 'read-growth'])
+def test_allow_missing_keeps_all_byte_budget_boundaries(tmp_path, monkeypatch, reader_name, boundary):
+    target = tmp_path / 'state.json'
+    larger = b'{"larger":"actual growing file"}'
+    target.write_bytes(larger if boundary == 'before-open' else b'{}')
+    original_open, streams, reads = state._open_json_file, [], []
+    class Observed:
+        def __init__(self, stream): self.stream = stream
+        def __enter__(self): return self
+        def __exit__(self, *args): self.stream.close()
+        def fileno(self): return self.stream.fileno()
+        def read(self, maximum):
+            reads.append(maximum)
+            if boundary == 'read-growth':
+                target.write_bytes(larger)
+            return self.stream.read(maximum)
+    def capture(path):
+        if boundary == 'opened-size':
+            target.write_bytes(larger)
+        stream = original_open(path)
+        streams.append(stream)
+        return Observed(stream)
+    monkeypatch.setattr(state, '_open_json_file', capture)
+    with pytest.raises(ValueError, match='budget'):
+        getattr(state, reader_name)(target, max_bytes=8, allow_missing=True)
+    assert len(streams) == (0 if boundary == 'before-open' else 1)
+    assert all(stream.closed for stream in streams)
+    assert reads == ([9] if boundary == 'read-growth' else [])
+    assert target.read_bytes() == larger

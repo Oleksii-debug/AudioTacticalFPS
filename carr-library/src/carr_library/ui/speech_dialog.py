@@ -13,6 +13,7 @@ from .reader_playback import ReaderPlaybackControls, show_reader_playback
 from .reader_transport import ReaderPlaybackSession
 from .reader_navigation import ReaderNavigation
 from .reader_preparation import show_reader_preparation
+from .reader_synthesis import ReaderSynthesisControls
 from ..speech.navigation import UNITS as READING_UNITS
 from .reader_output import ReaderOutputControls
 from .reader_presentation import ReaderPresentationControls
@@ -169,9 +170,17 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     voice_preferences_button = wx.Button(dialog, label='Voice preferences...')
     voice_preferences_button.SetName('Voice preferences')
     dialog.voice_preferences_button = voice_preferences_button
+    synthesis_controls = ReaderSynthesisControls(dialog,
+        pitch=recovered.pitch if recovered else None,
+        punctuation=recovered.punctuation if recovered else False,
+        alive=lambda: alive, busy=lambda: busy, guard=lambda: playback_guard(),
+        before_apply=lambda: before_native_options_apply(),
+        changed=lambda: native_options_changed(),
+        report=lambda message, focus=False: report(message, focus=focus), wx=wx)
+    dialog.reader_synthesis = synthesis_controls
     for control in (find_button, replace_button, pronunciation_button, preparation_button,
                     assistant_button, spelling_button, appearance_button, focus_button, keyboard_button,
-                    voice_preferences_button):
+                    voice_preferences_button, synthesis_controls.button):
         tools_row.Add(control, 0, wx.ALL, 4)
     layout.Add(tools_row, 0, wx.EXPAND)
     row = wx.BoxSizer(wx.HORIZONTAL)
@@ -236,10 +245,12 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             rate.SetValue(0)
         if current and 'volume' not in current.capabilities:
             volume.SetValue(100)
+        native_request_supported = synthesis_controls.sync(current,
+            enabled=source_loaded and alive and not busy)
         for button in (read, cursor, export_audio):
-            button.Enable(bool(current) and not busy)
+            button.Enable(native_request_supported and source_loaded and not busy and alive)
         for button in read_units.values():
-            button.Enable(bool(current) and source_loaded and not busy and alive)
+            button.Enable(native_request_supported and source_loaded and not busy and alive)
         for control in (navigation_unit, previous_unit, current_unit, next_unit):
             control.Enable(source_loaded and not busy and alive)
         for button in (find_button, replace_button, pronunciation_button, preparation_button, spelling_button, appearance_button, focus_button):
@@ -254,7 +265,27 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         if event is not None and current:
             remembered_voice_id = current.id
             report(f'{current.name}; {current.language}; {current.engine}. '
-                   f'Controls: {", ".join(current.capabilities) or "voice defaults only"}. {current.timing}')
+                   f'Controls: {", ".join(current.capabilities) or "voice defaults only"}. {current.timing} '
+                   + synthesis_controls.explanation(current))
+        elif current and not native_request_supported and alive and not busy:
+            report(synthesis_controls.explanation(current))
+
+    def before_native_options_apply():
+        nonlocal playback_generation, last_audio, last_reading_audio
+        if busy or not source_loaded:
+            raise ValueError('Wait for the current reader operation before applying native voice options.')
+        playback_guard()
+        playback_generation += 1
+        player.stop()  # Failed native cleanup vetoes changing the active request.
+        last_audio, last_reading_audio = None, None
+        if progress is not None:
+            progress.refresh_audio_state()
+
+    def native_options_changed():
+        capabilities()
+        save_recovery(force=True)
+        report('Native voice options applied. Read or Save WAV to synthesize with these settings. '
+               'Existing saved audio is unchanged.')
 
     def run(work, on_done, *, on_error=None):
         nonlocal busy
@@ -438,15 +469,17 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         sync_document()
         selected = voice_choice.GetSelection()
         voice_id = voices[selected].id if 0 <= selected < len(voices) else remembered_voice_id
+        pitch, punctuation = synthesis_controls.snapshot()
+        synthesis = (voice_id, rate.GetValue(), volume.GetValue(), pitch, punctuation)
         position = (player.position_seconds if last_audio is not None else
-                    reader_tabs.saved_audio_position(document) if reader_tabs is not None else 0)
+                    reader_tabs.saved_audio_position(document, synthesis=synthesis) if reader_tabs is not None else 0)
         cursor_offset = reading_offset(editor, editor.GetInsertionPoint())
         signature = (document._signature(), voice_id, rate.GetValue(), volume.GetValue(), cursor_offset,
-                     round(position, 1))
+                     round(position, 1), pitch, punctuation)
         if not force and signature == last_recovery_signature:
             return True
         resume = ReaderResume(document, voice_id, rate.GetValue(), volume.GetValue(),
-                              cursor_offset, position)
+                              cursor_offset, position, pitch=pitch, punctuation=punctuation)
         if reader_tabs is not None:
             reader_tabs.save_resume(resume, save_path=save_path)
         else:
@@ -484,7 +517,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 raise ValueError('The native reading selection changed. Select it again.')
             render_document, render_signature = document, document._signature()
             voice = voices[selected]
-            settings = SpeechSettings(rate=rate.GetValue(), volume=volume.GetValue())
+            settings = synthesis_controls.settings(rate.GetValue(), volume.GetValue(), voice)
             playback_generation += 1
             player.stop()
             if progress is not None:
@@ -500,11 +533,16 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                     sync_document()
                     if document is not render_document:
                         raise ValueError('The reading tab changed during synthesis.')
+                    current_index = voice_choice.GetSelection()
+                    current_voice = voices[current_index] if 0 <= current_index < len(voices) else None
+                    if (current_voice is None or current_voice.id != voice.id
+                            or synthesis_controls.settings(rate.GetValue(), volume.GetValue(), current_voice) != settings):
+                        raise ValueError('The native voice request changed during synthesis. Read again with the current settings.')
                     binding = ReadingAudio.from_render(render_document, render_signature,
                         render_start, render_end, content, result)
                 except ValueError:
                     if destination is not None:
-                        report(f'WAV saved: {result.path}. The current reading copy changed; '
+                        report(f'WAV saved: {result.path}. The current reading copy or native voice request changed; '
                                'the saved audio was not attached to it.', focus=True)
                         return
                     raise
@@ -923,10 +961,13 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         sync_document()
         selected = voice_choice.GetSelection()
         voice_id = voices[selected].id if 0 <= selected < len(voices) else remembered_voice_id
+        pitch, punctuation = synthesis_controls.snapshot()
+        synthesis = (voice_id, rate.GetValue(), volume.GetValue(), pitch, punctuation)
         resume = ReaderResume(document, voice_id, rate.GetValue(), volume.GetValue(),
             reading_offset(editor, editor.GetInsertionPoint()),
             player.position_seconds if last_audio is not None else
-            reader_tabs.saved_audio_position(document) if reader_tabs is not None else 0)
+            reader_tabs.saved_audio_position(document, synthesis=synthesis) if reader_tabs is not None else 0,
+            pitch=pitch, punctuation=punctuation)
         if reader_tabs is not None:
             reader_tabs.current.reading_rules = reading_rules
         return resume, save_path
@@ -948,6 +989,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         remembered_voice_id, reading_rules = recovered.voice_id, state.reading_rules
         rate.SetValue(recovered.rate)
         volume.SetValue(recovered.volume)
+        synthesis_controls.restore(recovered.pitch, recovered.punctuation)
         voice_choice.SetSelection(next((i for i, voice in enumerate(voices)
             if voice.id == remembered_voice_id), -1))
         dialog.reader_editor = editor

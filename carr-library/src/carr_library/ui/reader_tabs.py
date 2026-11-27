@@ -6,6 +6,11 @@ from ..speech.session import ReaderResume
 from ..speech.tabs import MAX_TABS, ReadingTab, ReadingTabs, PreparedTabs, prepare_tabs
 
 
+def _snapshot(resume):
+    return (resume.document._signature(), resume.voice_id, resume.rate, resume.volume,
+            resume.pitch, resume.punctuation)
+
+
 @dataclass
 class TabState:
     entry: ReadingTab
@@ -19,7 +24,7 @@ class TabState:
     reading_rules: tuple = ()
 
     def __post_init__(self):
-        self.audio_signature = self.resume.document._signature()
+        self.audio_signature = _snapshot(self.resume)
 
 
 class NativeReaderTabs:
@@ -134,13 +139,14 @@ class NativeReaderTabs:
         state = self.current
         state.token = state.store.save_with_token(resume, expected_token=state.token)
         state.resume, state.save_path = resume, save_path
-        state.audio_signature = resume.document._signature()
+        state.audio_signature = _snapshot(resume)
         self._publish()
 
-    def saved_audio_position(self, document):
+    def saved_audio_position(self, document, *, synthesis=None):
         state = self.current
+        requested = _snapshot(state.resume)[1:] if synthesis is None else synthesis
         return (state.resume.audio_seconds
-                if document._signature() == state.audio_signature else 0)
+                if (document._signature(), *requested) == state.audio_signature else 0)
 
     def save_current(self):
         value, path = self.capture()
@@ -210,7 +216,8 @@ class NativeReaderTabs:
             draft = self.store.draft(entry)
             previous = self.current.resume
             state = TabState(entry, ReaderResume(ReadingDocument('', title=entry.label),
-                previous.voice_id, previous.rate, previous.volume), draft, None)
+                previous.voice_id, previous.rate, previous.volume,
+                pitch=previous.pitch, punctuation=previous.punctuation), draft, None)
             state.token = draft.save_with_token(state.resume, expected_token=None)
             # This exact newly created empty document was just saved. Later
             # erasure of an existing copy must never be treated as clean.
@@ -310,7 +317,7 @@ class NativeReaderTabs:
             self.check()
             captured.token = captured.store.save_with_token(captured.resume,
                                                             expected_token=captured.token)
-            captured.audio_signature = captured.resume.document._signature()
+            captured.audio_signature = _snapshot(captured.resume)
             # An explicitly discarded new copy may not have a saved draft.
             # Keep the prior membership instead of publishing a missing file.
             if all(state.token is not None for state in self.states):

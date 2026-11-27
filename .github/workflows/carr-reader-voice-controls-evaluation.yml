@@ -1,0 +1,253 @@
+name: Resonance reader voice controls verification
+
+# Isolated qualification of native synthesis pitch/punctuation and passive state.
+# This does not replace the ordinary release gates or qualify an audio device.
+on:
+  push:
+    branches: [carr/reader-voice-controls-evaluation-20261127]
+    paths:
+      - carr-library/**
+      - .github/workflows/carr-reader-voice-controls-evaluation.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-reader-voice-controls-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  reader-voice-controls:
+    name: Reader voice controls / ${{ matrix.os }} / ${{ matrix.mode }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022]
+        mode: [source, installed]
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      CARR_TEST_MODE: ${{ matrix.mode }}
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      ORT_DISABLE_TELEMETRY: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      HF_HUB_DISABLE_IMPLICIT_TOKEN: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+
+    steps:
+      - name: Preserve exact committed source bytes
+        working-directory: ${{ github.workspace }}
+        run: |
+          git config --global core.autocrlf false
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Check out the exact triggering commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Set up native x64 CPython
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+
+      - name: Build and install the exact event wheel with existing dependency pins
+        id: installed
+        timeout-minutes: 8
+        run: |
+          New-Item -ItemType Directory -Force ci-reader-voice-results | Out-Null
+          $sourceCommit = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($sourceCommit -cne '${{ github.sha }}') { throw 'Checkout differs from the exact event head.' }
+          $sourceCommit | Set-Content ci-reader-voice-results/tested-commit.txt
+          $environment = Join-Path $env:RUNNER_TEMP 'carr-reader-voice-python'
+          $wheelDirectory = Join-Path $env:RUNNER_TEMP 'carr-reader-voice-wheel'
+          python -m venv $environment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $environment $(if ($IsWindows) { 'Scripts/python.exe' } else { 'bin/python' })
+          "CARR_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $dependencyFile = Join-Path $env:RUNNER_TEMP 'carr-reader-voice-dependencies.txt'
+          $verificationLock = Join-Path $env:RUNNER_TEMP 'carr-reader-voice-verification.lock'
+          $pins = @'
+          import hashlib, json, pathlib, re, sys
+          lock = pathlib.Path('packaging/windows-cp311.lock')
+          raw = lock.read_text(encoding='utf-8')
+          records = re.findall(r'(?m)^([A-Za-z0-9_.-]+)==([^\s]+)[^\n]*(?:\n[ \t]+[^\n]+)*', raw)
+          assert records and len(records) == len({name.lower() for name, _ in records})
+          excluded = set() if sys.platform == 'win32' else {'comtypes', 'wxpython'}
+          assert excluded <= {name.lower() for name, _ in records}
+          pins = {name: version for name, version in records if name.lower() not in excluded}
+          # The Windows lock includes platform-specific wheel hashes. Linux
+          # reuses its exact package versions, not those Windows-only hashes.
+          effective = raw if sys.platform == 'win32' else ''.join(
+              name + '==' + version + '\n' for name, version in pins.items())
+          pathlib.Path(sys.argv[1]).write_text(effective, encoding='utf-8')
+          semantic = pathlib.Path('packaging/windows-semantic-cp311.lock').read_text(encoding='utf-8')
+          packaging = re.findall(r'(?m)^packaging==[^\n]*(?:\n[ \t]+[^\n]+)*', semantic)
+          assert len(packaging) == 1 and '--hash=sha256:' in packaging[0]
+          pathlib.Path(sys.argv[2]).write_text(packaging[0] + '\n', encoding='utf-8')
+          receipt = dict(platform=sys.platform, pins=pins, excluded=sorted(excluded),
+                         repository_lock_sha256=hashlib.sha256(lock.read_bytes()).hexdigest(),
+                         effective_requirements_sha256=hashlib.sha256(effective.encode()).hexdigest(),
+                         windows_dependency_hashes_required=sys.platform == 'win32',
+                         pytest='9.0.2',
+                         verification_support=packaging[0].split()[0])
+          pathlib.Path('ci-reader-voice-results/dependency-selection.json').write_text(
+              json.dumps(receipt, sort_keys=True, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps(receipt, sort_keys=True))
+          '@
+          & $python -I -B -X utf8 -c $pins $dependencyFile $verificationLock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($IsWindows) {
+            & $python -m pip install --only-binary=:all: --require-hashes -r $dependencyFile
+          } else {
+            & $python -m pip install --only-binary=:all: --no-deps -r $dependencyFile
+          }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: --require-hashes -r $verificationLock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: pytest==9.0.2
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip wheel --no-deps --wheel-dir $wheelDirectory .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $wheels = @(Get-ChildItem -LiteralPath $wheelDirectory -Filter '*.whl' -File)
+          if ($wheels.Count -ne 1) { throw 'Expected exactly one application wheel.' }
+          & $python -I -B -X utf8 -c "import json,os,runpy,sys; verify=runpy.run_path('packaging/source_wheel.py')['verify_application_wheel']; print(json.dumps(verify(sys.argv[1], '..', os.environ['GITHUB_SHA']),sort_keys=True))" $wheels[0].FullName | Tee-Object ci-reader-voice-results/wheel-identity.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --no-deps $wheels[0].FullName
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_TEST_WHEEL=$($wheels[0].FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Prove complete source wheel and installed Python identity
+        id: inventory
+        if: ${{ !cancelled() && steps.installed.outcome == 'success' }}
+        run: |
+          $inventory = @'
+          import ast, hashlib, importlib.metadata as metadata, json, os, pathlib, re, runpy, sys, zipfile
+          import carr_library
+          checkout = pathlib.Path.cwd().resolve(strict=True)
+          owner = runpy.run_path('scripts/windows_reader_player_smoke.py')['_installed_package_root']
+          installed = owner(metadata.distributions(name='universal-research-library'), carr_library.__file__, checkout)
+          assert installed.is_relative_to(pathlib.Path(sys.prefix).resolve(strict=True))
+          with zipfile.ZipFile(os.environ['CARR_TEST_WHEEL']) as archive:
+              expected = {name: archive.read(name) for name in archive.namelist()
+                          if name.startswith('carr_library/') and name.endswith('.py')}
+          actual = {'carr_library/' + path.relative_to(installed).as_posix()
+                    for path in installed.rglob('*.py')}
+          source_names = {'carr_library/' + path.relative_to(checkout / 'src/carr_library').as_posix()
+                          for path in (checkout / 'src/carr_library').rglob('*.py')}
+          assert expected and actual == source_names == set(expected), 'Python namespace differs.'
+          rows = []
+          for name, data in sorted(expected.items()):
+              source, target = checkout / 'src' / name, installed.parent / name
+              assert source.stat().st_size == target.stat().st_size == len(data), name
+              assert source.read_bytes() == target.read_bytes() == data, name
+              rows.append(dict(path=name, bytes=len(data), sha256=hashlib.sha256(data).hexdigest()))
+          declared = json.loads(pathlib.Path('ci-reader-voice-results/dependency-selection.json').read_text(encoding='utf-8'))
+          assert {name: metadata.version(name) for name in declared['pins']} == declared['pins']
+          assert metadata.version('pytest') == declared['pytest']
+          support_name, support_version = declared['verification_support'].split('==')
+          assert metadata.version(support_name) == support_version
+          if sys.platform == 'win32':
+              assert metadata.version('wxPython') == '4.2.4'
+          suites = ["tests/ui/test_reader_synthesis.py","tests/storage/test_reader_synthesis_backup.py","tests/speech/test_session.py","tests/speech/test_reading_tabs.py","tests/ui/test_reader_tabs.py","tests/storage/test_reading_tabs_backup.py","tests/ui/test_save_all_access.py","tests/speech/test_source.py","tests/speech/test_voice_preferences.py","tests/ui/test_voice_preferences_dialog.py","tests/storage/test_voice_preferences_backup.py"]
+          for name in [*suites, 'scripts/windows_voice_preferences_smoke.py']:
+              path = checkout / name
+              assert path.is_file() and path.stat().st_size <= 2 * 1024 * 1024, name
+              ast.parse(path.read_text(encoding='utf-8'))
+          print(json.dumps(dict(status='PASS', source_commit=os.environ['GITHUB_SHA'],
+              mode=os.environ['CARR_TEST_MODE'], python=sys.version, executable=sys.executable,
+              prefix=sys.prefix, installed_package=str(installed),
+              source_package=str(checkout / 'src/carr_library'), python_files=rows,
+              required_suites=suites, dependency_selection=declared), sort_keys=True))
+          '@
+          & $env:CARR_PYTHON -I -B -X utf8 -c $inventory | Tee-Object ci-reader-voice-results/source-installed-python-inventory.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require source reader synthesis state and backup contracts
+        if: ${{ !cancelled() && matrix.mode == 'source' && steps.inventory.outcome == 'success' }}
+        timeout-minutes: 12
+        run: |
+          $suites = @(
+            'tests/ui/test_reader_synthesis.py',
+            'tests/storage/test_reader_synthesis_backup.py',
+            'tests/speech/test_session.py',
+            'tests/speech/test_reading_tabs.py',
+            'tests/ui/test_reader_tabs.py',
+            'tests/storage/test_reading_tabs_backup.py',
+            'tests/ui/test_save_all_access.py',
+            'tests/speech/test_source.py',
+            'tests/speech/test_voice_preferences.py',
+            'tests/ui/test_voice_preferences_dialog.py',
+            'tests/storage/test_voice_preferences_backup.py'
+          )
+          & $env:CARR_PYTHON -B -X utf8 scripts/ci_check.py --jobs 2 @suites 2>&1 | Tee-Object ci-reader-voice-results/source-contracts.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require the same contracts from the installed wheel
+        if: ${{ !cancelled() && matrix.mode == 'installed' && steps.inventory.outcome == 'success' }}
+        timeout-minutes: 12
+        run: |
+          $suites = @(
+            'tests/ui/test_reader_synthesis.py',
+            'tests/storage/test_reader_synthesis_backup.py',
+            'tests/speech/test_session.py',
+            'tests/speech/test_reading_tabs.py',
+            'tests/ui/test_reader_tabs.py',
+            'tests/storage/test_reading_tabs_backup.py',
+            'tests/ui/test_save_all_access.py',
+            'tests/speech/test_source.py',
+            'tests/speech/test_voice_preferences.py',
+            'tests/ui/test_voice_preferences_dialog.py',
+            'tests/storage/test_voice_preferences_backup.py'
+          )
+          # Reuse the unchanged existing offline and XFAIL/XPASS policy.
+          # -I plus an empty pytest pythonpath prevent checkout import injection.
+          $installedGate = @'
+          import pathlib, runpy, sys
+          import carr_library
+          source = pathlib.Path.cwd().resolve(strict=True)
+          origin = pathlib.Path(carr_library.__file__).resolve(strict=True)
+          assert not origin.is_relative_to(source), origin
+          assert origin.is_relative_to(pathlib.Path(sys.prefix).resolve(strict=True)), origin
+          policy = runpy.run_path('scripts/ci_check.py')['PYTEST_CHILD']
+          assert isinstance(policy, str) and policy
+          exec(compile(policy, 'scripts/ci_check.py:PYTEST_CHILD', 'exec'), {'__name__': '__main__'})
+          '@
+          & $env:CARR_PYTHON -I -B -X utf8 -c $installedGate -q -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-reader-voice-results/installed.xml @suites 2>&1 | Tee-Object ci-reader-voice-results/installed-contracts.txt
+          $testExit = $LASTEXITCODE
+          & $env:CARR_PYTHON -I -B -X utf8 -c "import xml.etree.ElementTree as E; cases=list(E.parse('ci-reader-voice-results/installed.xml').getroot().iter('testcase')); assert cases and all(c.find('failure') is None and c.find('error') is None and c.find('skipped') is None for c in cases); print('INSTALLED_CASES_PASS',len(cases))" 2>&1 | Tee-Object ci-reader-voice-results/installed-verdict.txt
+          if ($testExit -ne 0 -or $LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Require actual Windows voice option widgets in this mode
+        if: ${{ !cancelled() && runner.os == 'Windows' && steps.inventory.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          $modeArgs = if ($env:CARR_TEST_MODE -ceq 'source') { @('--source', '.') } else { @('--expect-installed') }
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_voice_preferences_smoke.py @modeArgs --report ci-reader-voice-results/native-voice-options.json 2>&1 | Tee-Object ci-reader-voice-results/native-voice-options.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -I -B -X utf8 -c "import json,pathlib; r=json.loads(pathlib.Path('ci-reader-voice-results/native-voice-options.json').read_text(encoding='utf-8')); assert r.get('status')=='PASS' and r.get('checks'); print('NATIVE_VOICE_OPTION_CHECKS_PASS',len(r['checks']))"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Preserve public synthetic receipts and exact source evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-reader-voice-controls-${{ matrix.os }}-${{ matrix.mode }}-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-reader-voice-results/
+          if-no-files-found: error
+          retention-days: 7

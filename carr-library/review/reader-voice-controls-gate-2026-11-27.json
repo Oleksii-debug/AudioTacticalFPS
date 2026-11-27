@@ -1,0 +1,93 @@
+{
+  "schema": "carr-focused-reader-voice-controls-gate-review/1",
+  "status": "SOURCE_PREPARED_NOT_RUN",
+  "baseline_commit": "68777f9f36b142ed1ce847ee47d82e20d0bdd132",
+  "baseline_tree": "ab4bd12008e03e7b7ce6b65755776114ff6a0ffd",
+  "pending_feature_source_tree": "ba3077d0e74c6551e3af9cb8e55205f025f77cb7",
+  "intended_branch": "carr/reader-voice-controls-evaluation-20261127",
+  "workflow_path": ".github/workflows/carr-reader-voice-controls-evaluation.yml",
+  "workflow_sha256": "d123ce28c29016f5ff0995bda7c795fa4499c4dfd9aa2b9d09b7b1fed132289c",
+  "root_only_publication": true,
+  "matrix": {
+    "os": [
+      "ubuntu-24.04",
+      "windows-2022"
+    ],
+    "mode": [
+      "source",
+      "installed"
+    ],
+    "fail_fast": false,
+    "cancel_in_progress": false
+  },
+  "prerequisite_reuse": {
+    "actions_from_687": {
+      "checkout": "3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "setup_python": "6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "upload_artifact": "cf430e030ddbb5b0abf93d22962f4752f3646cd9"
+    },
+    "fresh_virtual_environment": true,
+    "python": "3.11 x64; actual runtime version retained by inventory",
+    "windows_application_dependencies": "Exact existing packaging/windows-cp311.lock with required hashes.",
+    "linux_application_dependencies": "Exact versions projected from the same existing lock, excluding only Windows comtypes and wxpython; install no-deps with binary wheels, then pip check and exact version verification. Windows-specific wheel hashes are not claimed to apply to Linux.",
+    "verification": "Existing packaging stanza, including hashes, from windows-semantic-cp311.lock; no semantic model/runtime installation.",
+    "test_runner": "Existing pytest9.0.2 pin.",
+    "native_dependencies": "wxPython4.2.4 from the existing Windows lock; no FFmpeg, OCR, model, endpoint helper, service or consent changes."
+  },
+  "provenance": {
+    "checkout": "Exact github.sha with core.autocrlf false and HEAD equality.",
+    "wheel": "Existing verify_application_wheel against repository root and exact event SHA.",
+    "installed": "Existing _installed_package_root locates the unique actual universal-research-library RECORD owner outside checkout and inside sys.prefix.",
+    "inventory": "Complete source/wheel/installed .py namespace, byte length and bytes; SHA256 per Python file; all effective dependency versions; AST and presence checks for every required selector and native probe."
+  },
+  "selectors": [
+    "tests/ui/test_reader_synthesis.py",
+    "tests/storage/test_reader_synthesis_backup.py",
+    "tests/speech/test_session.py",
+    "tests/speech/test_reading_tabs.py",
+    "tests/ui/test_reader_tabs.py",
+    "tests/storage/test_reading_tabs_backup.py",
+    "tests/ui/test_save_all_access.py",
+    "tests/speech/test_source.py",
+    "tests/speech/test_voice_preferences.py",
+    "tests/ui/test_voice_preferences_dialog.py",
+    "tests/storage/test_voice_preferences_backup.py"
+  ],
+  "selectors_confirmed_by": "voice_reading; source and installed arrays plus inventory list compared exactly",
+  "execution": {
+    "source": "Unchanged scripts/ci_check.py --jobs2; original per-suite process ownership/deadline, offline socket policy, strict nonempty JUnit and XFAIL/XPASS rejection.",
+    "installed": "-I -B -Xutf8; empty pytest pythonpath and importlib mode; unmodified PYTEST_CHILD offline/XFAIL/XPASS policy from scripts/ci_check.py; preserve pytest exit and require nonempty JUnit with no failure/error/skipped case.",
+    "native": {
+      "windows_only": true,
+      "script": "scripts/windows_voice_preferences_smoke.py",
+      "source_arguments": [
+        "--source",
+        "."
+      ],
+      "installed_arguments": [
+        "--expect-installed"
+      ],
+      "report": "ci-reader-voice-results/native-voice-options.json",
+      "unchanged_watchdog_seconds": 90,
+      "step_timeout_minutes": 3,
+      "condition": "Run independently of portable test verdict after successful exact inventory."
+    }
+  },
+  "limits": {
+    "job_timeout_minutes": 25,
+    "setup_step_minutes": 8,
+    "each_unit_step_minutes": 12,
+    "native_step_minutes": 3,
+    "no_product_or_existing_test_timeout_changes": true,
+    "qualification": "Synthetic settings/control forwarding and passive state only; not model inference, audible quality, NVDA, capture or ordinary-release qualification."
+  },
+  "retained_artifacts": "Only ci-reader-voice-results/ public synthetic logs, JUnit, provenance and native receipt; no model/input assets.",
+  "validation": {
+    "complete_selector_lists_equal": true,
+    "action_pins_equal_687": true,
+    "existing_probe_cli_checked": true,
+    "no_endpoint_or_model_prerequisites": true,
+    "execution": "NOT_RUN",
+    "peer_review": "REQUESTED"
+  }
+}

@@ -42,7 +42,7 @@ def test_bad_root(roots):
         preview_epub(fixture(roots=roots))
 
 
-@pytest.mark.parametrize('xml', ['<!DOCTYPE package [<!ENTITY x "abc">]><package>&x;</package>', '<!DOCTYPE package SYSTEM "file:///synthetic"><package/>', '<notclosed>', 'x' * (MAX_XML + 1)])
+@pytest.mark.parametrize('xml', ['<!DOCTYPE package [<!ENTITY x "abc">]><package>&x;</package>', '<!DOCTYPE package SYSTEM "file:///synthetic"><package/>', '<notclosed>', pytest.param('x' * (MAX_XML + 1), id='xml-over-limit')])
 def test_bad_xml(xml):
     with pytest.raises(ValueError, match='preview rejected'):
         preview_epub(fixture(opf=xml))

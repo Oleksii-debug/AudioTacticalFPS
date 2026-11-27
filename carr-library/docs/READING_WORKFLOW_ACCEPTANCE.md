@@ -22,9 +22,9 @@ point; its result must be bound to the exact source and installed artifact.
 | RW-03 | Read typed or pasted text | Implemented | [Native reader](../src/carr_library/ui/speech_dialog.py), [desktop/clipboard owner](../src/carr_library/ui/desktop_integration.py); [reading gate](../tests/speech/test_reading.py), [native desktop gate](../scripts/windows_desktop_integration_smoke.py) | Independent reading copies use explicit native text editing. Opt-in clipboard watching retains an exact in-memory snapshot; a separate explicit command opens it. Startup never enables watching, global keys, tray hiding or speech. Clipboard derivatives have no quotation authority. |
 | RW-04 | Discover SAPI5 and registered local voices | Limited | [Speech registry](../src/carr_library/speech/runtime.py), [configured registry](../src/carr_library/runtime_settings.py), [voice preferences](VOICE_PREFERENCES.md); [registry gate](../tests/speech/test_registered_studio_voices.py), [preference gate](../tests/speech/test_voice_preferences.py) | Favorites, exact-language defaults and named rate/volume profiles retain exact voice IDs. Explicit Use checks fresh availability and the current reader registry; unavailable choices are reported without substitution or autoplay. Saved reader choices keep their priority. Bitness, installed assets and language/voice quality remain separate boundaries. |
 | RW-05 | Use SAPI4 or a separate Speech Platform route | Pending | [Current registry](../src/carr_library/speech/runtime.py); [contract gate](../tests/speech/test_runtime.py) | No qualified SAPI4 helper or distinct Speech Platform adapter is delivered. SAPI5 success does not establish legacy-engine parity. |
-| RW-06 | Change supported rate, volume and pitch | Limited | [Speech settings](../src/carr_library/speech/runtime.py), [Studio facade](../src/carr_library/speech/studio_voice_adapter.py); [facade gate](../tests/speech/test_registered_studio_voices.py) | The reader exposes rate and volume. Other controls depend on the selected engine; unsupported nondefault requests fail. Time stretching is identified separately. |
-| RW-07 | Play, pause, resume, stop and seek | Implemented | [Existing WavePlayer](../src/carr_library/speech/player.py); [transport gate](../tests/speech/test_player_controls.py), [OPEN ownership gate](../tests/speech/test_player_transport.py) | MCI supplies native Windows position; ffplay estimates position. P3 passes the exact Unicode filename through typed MCI OPEN and retains the existing player/cleanup path. Successful native replay of the observed P2 OPEN failure is still required; device and listening acceptance remain separate. |
-| RW-08 | Repeat an A/B range and use a sleep timer | Implemented | [Reader controls](../src/carr_library/ui/reader_playback.py), [queue](../src/carr_library/speech/playlist.py); [boundary gate](../tests/speech/test_player_controls.py), [installed probe](../scripts/windows_reader_controls_smoke.py) | Explicit repeat uses a native B endpoint. Sleep counts monotonic elapsed time including pauses. Lifecycle boundaries disarm both; they are never restored automatically. The separate explicit playlist reuses the current player; its native qualification remains open at the checkpoint below. |
+| RW-06 | Change supported rate, volume and pitch | Limited | [Speech settings](../src/carr_library/speech/runtime.py), [native voice options](../src/carr_library/ui/reader_synthesis.py), [Studio facade](../src/carr_library/speech/studio_voice_adapter.py), [user controls](VOICE_PREFERENCES.md#native-voice-pitch-and-punctuation); [reader forwarding gate](../tests/ui/test_reader_synthesis.py), [passive recovery gate](../tests/storage/test_reader_synthesis_backup.py), [facade gate](../tests/speech/test_registered_studio_voices.py) | The reader retains rate/volume and adds opt-in native pitch (0–99 on the engine's scale) and punctuation reading through its existing synthesis worker. Unsupported retained requests block Read/Save WAV until an explicit compatible voice or reset; no substitution occurs. Apply confirms playback stop, and tabs/recovery retain settings passively. Named rate/volume profiles keep their existing contract. Playback pitch/time stretching remain separate. The new native-options slice is source-complete with focused execution pending; engine and voice quality are not established by these controls. |
+| RW-07 | Play, pause, resume, stop and seek | Implemented | [Existing WavePlayer](../src/carr_library/speech/player.py); [transport gate](../tests/speech/test_player_controls.py), [OPEN ownership gate](../tests/speech/test_player_transport.py), [native playback and queue](../scripts/windows_reader_player_smoke.py) | MCI and the existing waveOut route report native Windows position; ffplay estimates position. The exact 68777f9f source and installed probes passed both the short-name MCI route and long retained queue paths through waveOut, including pause, seek and owned cleanup. Physical-device, listening and sealed-installation acceptance remain separate. |
+| RW-08 | Repeat an A/B range and use a sleep timer | Implemented | [Reader controls](../src/carr_library/ui/reader_playback.py), [queue](../src/carr_library/speech/playlist.py); [boundary gate](../tests/speech/test_player_controls.py), [installed probe](../scripts/windows_reader_controls_smoke.py), [native playback and queue](../scripts/windows_reader_player_smoke.py) | Explicit repeat stops at B. Sleep counts monotonic elapsed time including pauses. Lifecycle boundaries disarm both; they are never restored automatically. The explicit playlist reuses the current player. Source and installed A/B, sleep and queue controls passed at the focused checkpoint below; sealed-installation and human listening acceptance remain separate. |
 | RW-09 | Choose the reader output device | Implemented | [Output identity](../src/carr_library/speech/output_devices.py), [existing WavePlayer](../src/carr_library/speech/player.py), [native selector](../src/carr_library/ui/reader_output.py); [routing probe](../scripts/windows_reader_output_smoke.py) | Windows exposes an explicit per-reader output with an opaque endpoint ID, revalidation and paused-position retention. Selection disarms repeat/sleep and does not start playback or change system/NVDA output. Linux retains its declared default-device boundary; physical-device/listening acceptance is separate. |
 | RW-10 | Retain position and book bookmarks | Limited | [ReaderResume](../src/carr_library/speech/session.py), [book state](../src/carr_library/reader/reading_state.py); [session gate](../tests/speech/test_session.py), [book-state gate](../tests/reader/test_reading_state.py) | Text/source identity and playback position are separate. Recovery never starts speech, repeat or a timer automatically. |
 | RW-11 | Edit a separate copy with undo/redo and original comparison | Implemented | [ReadingDocument](../src/carr_library/speech/reading.py), [reader history controls](../src/carr_library/ui/speech_dialog.py); [reading gate](../tests/speech/test_reading.py), [history integration gate](../tests/ui/test_reader_preparation.py), [native preparation gate](../scripts/windows_reading_preparation_smoke.py) | Buttons and fixed Ctrl+Z/Ctrl+Y use the same reading history when the current reader editor has focus. Nested tool fields retain their own native editing. Source/busy checks and confirmed playback stop precede a history change. Original text and history survive save/reopen; legacy anchor import requires explicit Save As, and reading edits do not approve quotations. P3 source/installed native preparation confirms Ctrl+Z; sealed-installation evidence remains separate. |
@@ -56,31 +56,42 @@ The current technical authority is finalization blob
 corrections, gate selections and failures are recorded in the
 [integration ledger](INTEGRATION_REUSE_2026-11-27_READING_AUDIO.md).
 
-The source checkpoint described here is P3
-`10b9a4e36b6415cdf9a21fbc36bcd9ef2b72420a`. It includes local voice
-preferences, the fixed current-editor Undo/Redo route, typed Unicode MCI OPEN,
-and the reader Close/probe corrections. In the
+The focused native playback checkpoint is
+`68777f9f36b142ed1ce847ee47d82e20d0bdd132`. The
+[completed source and installed native run](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46075231974)
+(job `140761298828`) passed the reader/player probe with **198 checks in each
+mode**, and the recorded-EPUB/DAISY probe completed **65 checks in each mode**
+and reached its final complete state. The reader probe exercised actual native A/B, sleep, skip, listening-copy
+conversion and volume controls, plus retained-queue pause, save, passive reopen,
+direct destruction and owned Close. It used synthetic PCM and the explicitly
+reviewed output endpoint. Both the short-name MCI route and the existing waveOut
+route for long retained paths were exercised. The EPUB/DAISY lanes exported,
+imported and played recorded PCM and completed native Stop/Close.
+
+These results apply to that exact source and installed wheel in the focused
+job. They do not qualify the complete aggregate, a sealed installation, capture,
+voice-model quality, audible listening or human NVDA acceptance.
+
+Earlier P3 `10b9a4e36b6415cdf9a21fbc36bcd9ef2b72420a` remains the source identity
+for its separately recorded preparation and preference checks. In the
 [P3 preflight run](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46063639311),
-Windows job `140723613596` reports completed success for source and installed
-reading preparation (step 10) and voice preferences (step 11). Preparation
-exercises the actual Ctrl+Z path; the preferences probe uses real native
-controls and synthetic voice metadata.
+Windows job `140723613596` completed source and installed reading preparation
+(step 10) and voice preferences (step 11). Preparation exercised the actual
+Ctrl+Z path; the preferences probe used native controls and synthetic voice
+metadata. Those completed steps are historical evidence for their own source,
+rather than an aggregate or sealed-installation result.
 
-The Windows job is still running at this documentation checkpoint. Those
-completed steps do not qualify the entire candidate or its sealed installation,
-and they do not establish actual voice-model or listening results.
+The actual P2 Ctrl+Z, queue MCI 304 and recorded-EPUB playback failures remain
+failed predecessor receipts. The successful focused playback run above records
+new execution of the corrected queue and EPUB paths. It does not relabel the
+old runs or establish one shared cause for their failures. The complete Windows
+gate at `94ecfdd4` also remains a failed predecessor, with no eligible wheel
+from that run.
 
-Actual P2 evidence still contains a failure of Ctrl+Z after accepted preparation,
-a queue OPEN failure reporting MCI 304, and a recorded-EPUB playback wait that
-did not complete. The P3 changes do not turn those receipts into passes.
-The queue and EPUB failures must each be checked again; the shared cause of
-both has not been demonstrated. The complete Windows gate at `94ecfdd4` also
-remains a failed predecessor, with no eligible wheel from that run.
-
-Successful earlier appearance, output or editing checks cover only their
-recorded cases and source identity. No wording here transfers a predecessor
-PASS to P3, qualifies a physical device/model, establishes 135-language or
-performance coverage, or closes human Windows 11/NVDA acceptance.
+Successful appearance, output or editing checks cover only their recorded cases
+and source identity. This inventory does not transfer a predecessor PASS to
+another candidate, qualify a physical device/model, establish 135-language or
+performance coverage, or close human Windows 11/NVDA acceptance.
 
 ## Requested input formats
 
@@ -109,9 +120,9 @@ measured memory, disk, latency, cancellation and recovery results.
 
 These controls extend the existing speech player. They add no transport, job
 store or document format. A/B points are validated against the opened PCM WAV's
-frame duration; setting them alone does not enable repeat. Native MCI/ffplay
-endpoints stop each interval at B. A delayed GUI poll may delay the next
-iteration but must not extend the previous interval.
+frame duration; setting them alone does not enable repeat. MCI/ffplay interval
+endpoints and the existing waveOut frame limit stop each interval at B. A delayed
+GUI poll may delay the next iteration but must not extend the previous interval.
 
 Sleep uses monotonic elapsed time from the explicit user action, including
 pauses. The responsive GUI checks every 100 ms; this is not a hard-real-time
@@ -142,7 +153,7 @@ they do not replace editing in search, dictionary, spelling or preparation
 fields. Find/replace and pronunciation reuse the existing isolated
 regular-expression worker. Spelling
 uses the installed Windows Spell Checker API in a bounded owned child. Output
-selection extends the current MCI player. Appearance and voice preferences are
+selection extends the same Windows player. Appearance and voice preferences are
 passive state and do not grant engine, device or external-file permission on
 restore. Voice preferences retain favorites and exact choices; use requires a
 fresh current-voice check, and opening or saving them never starts speech.
@@ -150,10 +161,10 @@ fresh current-voice check, and opening or saving them never starts speech.
 The required Windows aggregate exercises source and installed forms of
 `windows_reading_tools_smoke.py`, `windows_spelling_smoke.py`,
 `windows_reader_presentation_smoke.py` and `windows_reader_output_smoke.py`.
-It also repeats these controls from the complete sealed installation. P3 adds
-`windows_voice_preferences_smoke.py` to the source, installed and sealed-bundle
-lanes and keeps `windows_reading_preparation_smoke.py`'s actual Ctrl+Z acceptance
-unchanged. The preference probe uses synthetic voice metadata to test real
+It also repeats these controls from the complete sealed installation. The source,
+installed and sealed-bundle lanes include `windows_voice_preferences_smoke.py`
+and retain `windows_reading_preparation_smoke.py`'s actual Ctrl+Z acceptance.
+The preference probe uses synthetic voice metadata to test real
 controls, settings and lifetime; it does not qualify a voice model or listening.
 
 The output probe requires an explicitly selected actual enumerated endpoint;

@@ -518,13 +518,8 @@ def validate(db, name, value):
         from .speech.presentation import ReadingAppearance
         ReadingAppearance.from_dict(value)
     elif READER.fullmatch(name):
-        from .speech.reading import ReadingDocument
-        from .speech.session import ReaderResume
-        fields(value, {'schema', 'document', 'voice_id', 'rate', 'volume', 'cursor', 'audio_seconds'})
-        if value['schema'] != 'carr.reader-session.v1':
-            raise ValueError('Invalid reader recovery schema.')
-        ReaderResume(ReadingDocument.from_dict(value['document']), value['voice_id'], value['rate'],
-                     value['volume'], value['cursor'], value['audio_seconds'])
+        from .speech.session import ReaderDraftStore
+        ReaderDraftStore.decode(value)
     elif match := PROFILE.fullmatch(name):
         from .assistant.profiles import ProviderProfile
         if type(value) is not dict or value.get('schema') != 'carr-provider-profile/1':

@@ -1,0 +1,277 @@
+{
+  "schema": "carr-reviewed-composition/1",
+  "base_commit": "68777f9f36b142ed1ce847ee47d82e20d0bdd132",
+  "base_tree": "ab4bd12008e03e7b7ce6b65755776114ff6a0ffd",
+  "status": "INTEGRATED_NOT_RUN",
+  "authority": {
+    "canonical_commit": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+    "agents_blob": "080bb9104d3224749e9317c2273d803c0ac37835",
+    "finalization_blob": "db8adbdc483a03c262885928c7ed214ca70bbaa7",
+    "audio_agent_blob": "d0b2761dd22b33233b311d4800230fb47f5d3d8b"
+  },
+  "preserved": {
+    "existing_asr_tests": "Unchanged service/admission test bytes and original five-second process budgets.",
+    "coherent_reader": "Default API and positive-read/inode-retry refusal preserved; initial absence requires explicit exact-Boolean opt-in and fresh full path admission.",
+    "reader_cleanup": "Existing worker/native cleanup and native probe watchdog retained; immutable synthesis identity checks added.",
+    "capture": "No consent, OS policy, selected-device refusal or endpoint branch guard changed.",
+    "release": "Full Windows aggregate plus six ordinary workflows at one exact head remain required."
+  },
+  "added_test_cases": {
+    "control_reads": 33,
+    "shared_reader": 43,
+    "execution": "NOT_RUN"
+  },
+  "files": [
+    {
+      "path": "carr-library/scripts/windows_voice_preferences_smoke.py",
+      "before": "c1685000994b4e7ad68df475bc07eacb0c8bc7f6",
+      "after": "442ec6d119f2d18e04f17e771058469c73d4d058",
+      "group": "voice"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_producers.py",
+      "before": "9e4aa109e91cb4e179913f179eb5d0d362d227cb",
+      "after": "ceb0b9f049782fa4b31628beade590fd96a16ce9",
+      "group": "voice"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/session.py",
+      "before": "0e38fb33928713b28fe8b0c102314f1232f05ab3",
+      "after": "811b233932f8227e3bc65ea8c58f34318ddc4ea1",
+      "group": "voice"
+    },
+    {
+      "path": "carr-library/src/carr_library/state_recovery.py",
+      "before": "5ed999241ecb430a38dd57f74feccee892ae3ffa",
+      "after": "42eb946ef09b2b41328a223a0494012a1ba4021e",
+      "group": "voice"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/reader_synthesis.py",
+      "before": null,
+      "after": "094be5e99f763b906bf638e588ff3c1f5b517368",
+      "group": "voice"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/reader_tabs.py",
+      "before": "5c2bf002d550a01d3710439662d95124a4a44050",
+      "after": "a6dc58c16eee4c48702299025408bf058829c213",
+      "group": "voice"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/speech_dialog.py",
+      "before": "c72a28297060775bb6be219773c9e10be285edff",
+      "after": "8760f3b119047124e4ead3596b5d0f6530e76992",
+      "group": "voice"
+    },
+    {
+      "path": "carr-library/tests/speech/test_session.py",
+      "before": "4106401bd8199b5cf1f3780fcce014a6d67681c1",
+      "after": "9207359af23603a9e340b4df182d38022fb82f94",
+      "group": "voice"
+    },
+    {
+      "path": "carr-library/tests/storage/test_reader_synthesis_backup.py",
+      "before": null,
+      "after": "79ce91ccb1d6eab758e0553208fcff99e71d9490",
+      "group": "voice"
+    },
+    {
+      "path": "carr-library/tests/ui/test_reader_synthesis.py",
+      "before": null,
+      "after": "23e300c6c2fa526180055473bcb91b48fb994151",
+      "group": "voice"
+    },
+    {
+      "path": "carr-library/tests/ui/test_reader_tabs.py",
+      "before": "f8306b3cac75ca0d65dcb8017714db629c3737e3",
+      "after": "ebb21375282412139a7a39c6733c777d5187434b",
+      "group": "voice"
+    },
+    {
+      "path": "carr-library/tests/ui/test_save_all_access.py",
+      "before": "e06774d1d0692b7c0bf4a089cbb6223ac30ab994",
+      "after": "f7feb3c511c44d3aad798284ab7bffc0a2673170",
+      "group": "voice"
+    },
+    {
+      "path": "carr-library/docs/READING_WORKFLOW_ACCEPTANCE.md",
+      "before": "b8eaeb4e38db4dfe37bc87c60f72ad4c3a3c16a6",
+      "after": "f32fabdb6fa3f1c72923058c0e0569277a7df15c",
+      "group": "voiceDocs"
+    },
+    {
+      "path": "carr-library/docs/VOICE_PREFERENCES.md",
+      "before": "2a795b8f6967b28b5d9c6d84dfdbb4bbb74d0bb6",
+      "after": "41065b252ca876f51612c6b729184539b32c9d60",
+      "group": "voiceDocs"
+    },
+    {
+      "path": "carr-library/tests/catalog/test_epub_metadata.py",
+      "before": "c7ad365ced54c0d43dd213475528f9d93f78a664",
+      "after": "7b1dc2c59861612bbec77e8edca89187092a15f4",
+      "group": "catalog"
+    },
+    {
+      "path": "carr-library/tests/catalog/test_registration.py",
+      "before": "d9d791b32434bca0fc8087750741a8b54744a8e2",
+      "after": "af5b5bc8efec62f68d7656dfd032c5287fa55662",
+      "group": "catalog"
+    },
+    {
+      "path": "carr-library/src/carr_library/durable_state.py",
+      "before": "b6afffbb18443ccb4ee8ebb192ec6583103e48cf",
+      "after": "31537c518245cca6450dc68510c5046f216d6dca",
+      "group": "asr"
+    },
+    {
+      "path": "carr-library/src/carr_library/transcription/service.py",
+      "before": "6db591ef1ad7530a32bd3491027c262a846a535b",
+      "after": "9466a1df497d747aa1a1cc5f8e498af17fb30d20",
+      "group": "asr"
+    },
+    {
+      "path": "carr-library/tests/transcription/test_control_reads.py",
+      "before": null,
+      "after": "b8401034667dea806eb37ef5bb73e6db0bb7fa73",
+      "group": "controlTests"
+    },
+    {
+      "path": "carr-library/tests/storage/test_state_json_reader.py",
+      "before": "d406f4cc476ac109b246b916c19f770a944430d3",
+      "after": "013f83a8ade1dd84e15f1af5ab8763cd73019ffa",
+      "group": "stateTests"
+    },
+    {
+      "path": ".github/workflows/carr-reader-voice-controls-evaluation.yml",
+      "before": null,
+      "after": "fbc0887a87b98e90c791edd5c2120513ae543388",
+      "group": "focusedWorkflow"
+    },
+    {
+      "path": "carr-library/review/reader-voice-controls-gate-2026-11-27.json",
+      "before": null,
+      "after": "b20d46840329ff0334cec23d5d6035f4a60d5178",
+      "group": "focusedWorkflow"
+    },
+    {
+      "path": ".github/workflows/carr-component-followup-evaluation.yml",
+      "before": "cd335a1e7bbfda75a7c640ee3e969e3ea8f209e9",
+      "after": "e6da75ba88f2d65a985c980ece5f6a53953da954",
+      "group": "gates"
+    },
+    {
+      "path": ".github/workflows/carr-platform-reconcile-dbbb.yml",
+      "before": "ced2e9337bfc43ea34869bd4f3e31d4ba373ba57",
+      "after": "d0696ca8b73c4fe16e16634e573aef7ba7935a8c",
+      "group": "gates"
+    },
+    {
+      "path": ".github/workflows/carr-transcription-bridge.yml",
+      "before": "53aa3aa836e07365c43c87495ba3bd237b39e20e",
+      "after": "b8ed4f861700c78303285f072e5353374879c862",
+      "group": "gates"
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "before": "533ac42119f9ab29d97a2060643b9de4c4909809",
+      "after": "6ae7cce5ce084731e7f0dda25c436010b553fd0a",
+      "group": "gates"
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "before": "7cdb0ad27cc017b524ab3811284f0cd564afba0e",
+      "after": "83f30a998d47224971e8757d1f6edf7d675c320b",
+      "group": "gates"
+    },
+    {
+      "path": "carr-library/review/native-playback-68777f9f-2026-11-27/README.md",
+      "before": null,
+      "after": "dc62246b9301fdbd49e963c300d949f8ddac6b9c",
+      "group": "nativeEvidence"
+    },
+    {
+      "path": "carr-library/review/native-playback-68777f9f-2026-11-27/installed-epub-daisy.phases.log",
+      "before": null,
+      "after": "5a8ec5f15668862c620467141299fcc1c43e62bd",
+      "group": "nativeEvidence"
+    },
+    {
+      "path": "carr-library/review/native-playback-68777f9f-2026-11-27/installed-reader-player.stdout.json",
+      "before": null,
+      "after": "f7d29506e857133542018972f0247cd1b1c73e56",
+      "group": "nativeEvidence"
+    },
+    {
+      "path": "carr-library/review/native-playback-68777f9f-2026-11-27/job-and-artifact.json",
+      "before": null,
+      "after": "2d21fe88e17c349b65d01eb185137eb7026f60ca",
+      "group": "nativeEvidence"
+    },
+    {
+      "path": "carr-library/review/native-playback-68777f9f-2026-11-27/manifest.json",
+      "before": null,
+      "after": "c5074452a8dd825656491a6f7e8310dbe4778dcd",
+      "group": "nativeEvidence"
+    },
+    {
+      "path": "carr-library/review/native-playback-68777f9f-2026-11-27/python-source-installed-inventory.stdout.json",
+      "before": null,
+      "after": "673a46141c84d98ad55a45a5e73d6d8db4cf6c7c",
+      "group": "nativeEvidence"
+    },
+    {
+      "path": "carr-library/review/native-playback-68777f9f-2026-11-27/qualification.json",
+      "before": null,
+      "after": "6ec7bf62c38f9d2343f0c09f44f9800a65368e49",
+      "group": "nativeEvidence"
+    },
+    {
+      "path": "carr-library/review/native-playback-68777f9f-2026-11-27/source-epub-daisy.phases.log",
+      "before": null,
+      "after": "ef94346419f3c8331884235c46673044abd67948",
+      "group": "nativeEvidence"
+    },
+    {
+      "path": "carr-library/review/native-playback-68777f9f-2026-11-27/source-reader-player.stdout.json",
+      "before": null,
+      "after": "7782026b7278abed41679603a327a9bd5080a292",
+      "group": "nativeEvidence"
+    },
+    {
+      "path": "carr-library/review/native-playback-68777f9f-2026-11-27/wheel-provenance.stdout.json",
+      "before": null,
+      "after": "41c179017d6f7d86cd5d51767448f5fc196bcec3",
+      "group": "nativeEvidence"
+    },
+    {
+      "path": "carr-library/review/component-followup-07425-windows-2026-11-27/rebind-phase-diagnostic.json",
+      "before": null,
+      "after": "c3f59c809c0702bc631bb8a5c04bb985523546e6",
+      "group": "asrEvidence"
+    },
+    {
+      "path": "carr-library/review/component-followup-07425-windows-2026-11-27/summary.json",
+      "before": null,
+      "after": "9750c173a27435c08416dd16f41d49d31512a4b2",
+      "group": "asrEvidence"
+    },
+    {
+      "path": "carr-library/review/component-followup-07425-windows-2026-11-27/test-admission-boundaries-failures.txt",
+      "before": null,
+      "after": "30c6f649e12ab940df275a87ac35d23116952342",
+      "group": "asrEvidence"
+    },
+    {
+      "path": "carr-library/review/component-followup-07425-windows-2026-11-27/test-service-failures.txt",
+      "before": null,
+      "after": "9238241a669884a1c2fb6c31b65753f056cb1bd1",
+      "group": "asrEvidence"
+    }
+  ],
+  "notes": [
+    "Source review and blob readback are not execution.",
+    "Historical 687 native and Linux evidence does not qualify new source.",
+    "Ledger/readiness text is composed alongside these files and does not recursively list its own hash."
+  ]
+}

@@ -19,7 +19,7 @@ from ..audio.process import publish_file, run_process
 from ..audio.cleanup import AudioCleanupPending
 from .ownership import operation_lock, retained_context
 from ..durable_state import (atomic_bytes, atomic_json, digest_file, encode, local_path,
-                             read_json, regular, state_lock, sync_directory)
+                             read_json, read_json_snapshot, regular, state_lock, sync_directory)
 from ..research.export_file import write_binary_export
 from .models import (AUDIO_EXTENSIONS, FORMATS, MAX_RESULT_BYTES, encoded_outputs,
                      fingerprint, settings as validate_settings, validated_result,
@@ -306,8 +306,20 @@ class TranscriptionService:
     jobs = list_jobs
 
     def _control(self, identity):
-        path = self._job_root(identity) / 'control.json'
-        value = read_json(path) if path.exists() else {'action': 'run'}
+        path = self.jobs_root / _id(identity) / 'control.json'
+        if '..' in path.parts or not path.is_relative_to(self.root):
+            raise ValueError('The transcription control path is outside the selected directory.')
+        # The shared reader checks every ancestor before and after opening.
+        # Keep those fresh checks and actual bytes on every call, without a
+        # redundant eager walk of the same present-file ancestors.
+        value, token = read_json_snapshot(path, allow_missing=True)
+        if token is None:
+            # Preserve the legacy absent-control default only after the
+            # original strict root check; a newly appeared control still wins.
+            path = self._job_root(identity) / 'control.json'
+            value, token = read_json_snapshot(path, allow_missing=True)
+            if token is None:
+                value = {'action': 'run'}
         if value.get('action') not in ('run', 'pause', 'cancel'):
             raise ValueError('Invalid transcription control state.')
         return value['action']

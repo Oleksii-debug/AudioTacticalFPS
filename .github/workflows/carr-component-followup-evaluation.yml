@@ -181,6 +181,10 @@ jobs:
             'tests/search/test_source_page_benchmark.py',
             'tests/packaging/test_windows_launcher_bundle.py',
             'tests/ui/test_federated_labels.py',
+            'tests/ui/test_reader_synthesis.py',
+            'tests/storage/test_reader_synthesis_backup.py',
+            'tests/storage/test_state_json_reader.py',
+            'tests/transcription/test_control_reads.py',
             'tests/studio/test_publishing.py',
             'tests/studio/test_daisy_publishing.py',
             'tests/studio/test_measured_audio.py'
@@ -243,6 +247,10 @@ jobs:
             'tests/search/test_source_page_benchmark.py',
             'tests/packaging/test_windows_launcher_bundle.py',
             'tests/ui/test_federated_labels.py',
+            'tests/ui/test_reader_synthesis.py',
+            'tests/storage/test_reader_synthesis_backup.py',
+            'tests/storage/test_state_json_reader.py',
+            'tests/transcription/test_control_reads.py',
             'tests/studio/test_publishing.py',
             'tests/studio/test_daisy_publishing.py',
             'tests/studio/test_measured_audio.py'

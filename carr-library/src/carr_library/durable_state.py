@@ -107,15 +107,27 @@ def read_json(path):
     return read_json_snapshot(path)[0]
 
 
-def read_bytes_snapshot(path, *, max_bytes=None):
-    """Capture bounded state bytes and their digest before optional typed parsing."""
+def read_bytes_snapshot(path, *, max_bytes=None, allow_missing=False):
+    """Capture bounded state bytes and their digest before optional typed parsing.
+
+    Opt-in absence is observed only after the first full path guard. A path
+    lost during an admitted read or an inode-race retry still raises.
+    """
     maximum = MAX_JSON_BYTES if max_bytes is None else max_bytes
     if type(maximum) is not int or not 0 < maximum <= MAX_JSON_BYTES:
         raise ValueError('Use a positive bounded JSON read budget.')
+    if type(allow_missing) is not bool:
+        raise ValueError('Missing-state admission must be a boolean.')
     # An atomic writer can win between lstat and open. Retry that race only;
     # linked paths and invalid opened objects still fail before reading bytes.
-    for _ in range(8):
-        path = local_path(path, exists=True)
+    for attempt in range(8):
+        initial_absence = allow_missing and attempt == 0
+        path = local_path(path, exists=not initial_absence)
+        if initial_absence:
+            try:
+                path.lstat()  # Do not follow a newly substituted dangling link.
+            except FileNotFoundError:
+                return None, None
         before = regular(path)
         if before.st_size > maximum:
             raise ValueError('State exceeds its configured JSON budget.')
@@ -142,9 +154,20 @@ def read_bytes_snapshot(path, *, max_bytes=None):
     return raw, sha256(raw).hexdigest()
 
 
-def read_json_snapshot(path, *, max_bytes=None):
-    """Return decoded state and a digest of the same bounded captured bytes."""
-    raw, token = read_bytes_snapshot(path, max_bytes=max_bytes)
+def read_json_snapshot(path, *, max_bytes=None, allow_missing=False):
+    """Return decoded state and a digest of the same bounded captured bytes.
+
+    With explicit missing-state admission, only initial guarded absence returns
+    (None, None). A JSON null has its actual nonempty byte digest.
+    """
+    if type(allow_missing) is not bool:
+        raise ValueError('Missing-state admission must be a boolean.')
+    if allow_missing:
+        raw, token = read_bytes_snapshot(path, max_bytes=max_bytes, allow_missing=True)
+        if token is None:
+            return None, None
+    else:
+        raw, token = read_bytes_snapshot(path, max_bytes=max_bytes)
     value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique,
                        parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Non-finite state number.')))
     return value, token

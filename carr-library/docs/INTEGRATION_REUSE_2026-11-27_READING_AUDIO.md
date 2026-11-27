@@ -10,6 +10,115 @@ Canonical `carr-library` was last checked at
 The existing composition is extended through its current services and persisted
 formats; the canonical service layout is not copied over competing implementations.
 
+## Reader synthesis and fresh ASR control successor — 2026-11-27, 23:11 UTC
+
+This successor is based on `68777f9f36b142ed1ce847ee47d82e20d0bdd132`.
+Its new source and fixtures are **INTEGRATED / NOT_RUN** at composition.
+The native and portable results below belong to that exact predecessor and
+do not qualify this successor. Earlier dated sections are historical checkpoints.
+
+### Reader options through the existing speech contract
+
+The reader's existing tools row now opens a native voice-options dialog for
+explicit pitch and punctuation. Apply, Cancel and Reset reuse the current
+SpeechSettings and selected engine capabilities. Unsupported requests stay
+visible and are refused before Read or Save WAV; no replacement voice or
+silent reset is selected. Applying a change requires confirmed player Stop.
+Pending native cleanup vetoes the mutation.
+
+Each worker captures immutable voice/settings values. Its completion may attach
+audio only if that exact request is still current. A completed explicitly saved
+WAV remains a valid saved result even when the reader's request has changed.
+Saved and tabbed playback positions now bind document, voice, rate, volume,
+pitch and punctuation. The default seven-key historical session shape remains
+byte-compatible; only nondefault settings add the validated optional fields.
+The same pure decoder validates native and foreign backup state. Restore remains
+passive and does not authorize speech, playback or an engine.
+
+The source contribution is the reviewed twelve-path tree
+`45cb35415300a237e9d22d0adee939a42ebdd9e4`. Existing worker cleanup,
+tab/Save All assertions and the native probe's 90-second watchdog remain.
+The native probe uses actual wx controls, the existing worker and synthetic
+speech output; it does not qualify an installed pitch-capable model or listening.
+The existing [voice guide](VOICE_PREFERENCES.md) and
+[28-workflow inventory](READING_WORKFLOW_ACCEPTANCE.md) retain these limits.
+
+### ASR control-read cost without stale commands
+
+The Windows ordinary transcription gate on the predecessor completed
+[46075232170](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46075232170)
+with 20 clean source modules and two failed modules: 638 cases passed and eight
+failed. Its Linux job passed. The recorded rebind case observed 1,446 fresh
+control reads taking 13.268 seconds inclusively during resume, while the
+uncancellable runtime inspection took 0.313 seconds. These nested timings
+identify repeated ancestor validation as a concrete cost; they are not additive
+phase times or proof of the worker's unobserved actual exit instant.
+
+The current coherent snapshot reader now accepts an exact-Boolean
+`allow_missing=False` option. Only an explicitly allowed, fully guarded absence
+on the first attempt returns `(None, None)`. A non-following lstat observes that
+absence. Positive admission, missing files during reads or inode retries,
+permission/I/O errors, links, byte limits and strict JSON retain their original
+refusal. Actual JSON null retains its nonempty byte digest.
+
+The existing ASR control method validates identity and lexical scope, then uses
+that reader directly. It still reads fresh bytes and performs both coherent-read
+ancestor checks on every call. Initial absence additionally requires the original
+strict job-root guard and a second snapshot, so a newly published pause/cancel
+wins. No control caching, polling delay, skipped profile hash or new state store
+is introduced. The service from `_set_control` onward is byte-identical; all
+existing ASR assertions and five-second worker budgets remain unchanged.
+
+Reviewed production tree `5811e1bc7914d557d4c0bbe07004ea28b4aa52b9` is
+accompanied by 33 new control cases and 43 additive shared-reader cases.
+The latter preserve the old test file as an exact prefix. Actual atomic
+replacement, disappearance, inode retries and handle closure are exercised.
+Only the new Windows post-open deletion case additionally permits its documented
+delete-pending access denial, requiring exact Win32 error 5 and the same
+no-default/closed-handle assertions. All these new cases remain NOT_RUN.
+
+### Windows fixture failures
+
+The previous Windows source result also exposed two independent fixture defects.
+The unchanged oversized EPUB XML payload now has the bounded test ID
+`xml-over-limit`, avoiding the one-megabyte automatic parameter value in
+Windows' environment variable. All payload and refusal assertions remain.
+Two read-only SQLite fixture connections now use contextlib.closing; the old
+transaction context did not close the handles before Windows temporary cleanup.
+The production registration transaction and all ten test bodies remain.
+
+The [07425 Windows evidence](../review/component-followup-07425-windows-2026-11-27/summary.json)
+records 29 clean and seven failed modules and the later job cutoff. Its huge
+serialized failure headings span much of the log-emission interval; that wall
+time is not attributed to an EPUB operation or Python voice helper.
+
+### Exact predecessor execution evidence
+
+| Gate at 68777f9f | Recorded result | Boundary |
+| --- | --- | --- |
+| [Focused native reader and EPUB/DAISY](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46075231974) | Source and installed reader probes each passed 198 checks; each EPUB/DAISY probe passed 65. Long retained queue output advanced its measured waveOut position, and all ownership/Close checks completed. | These are probe checks, including provenance and key events, not independent pytest-case totals. No human listening/NVDA or physical capture verdict. |
+| [Component Linux](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46075228427) | Source: 53/53 modules, 1,701 passed, zero failed/skipped. Installed: 1,701 passed plus 12 passed subtests; strict JUnit has no failure/error/skip. | Separate import modes, not 3,402 distinct tests. Windows jobs were still running at composition. |
+| [Canonical compatibility](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46075232148) | Source: 39/39 modules and 1,166 passed; installed: 1,166 passed plus seven passed subtests. | This scope does not replace the aggregate. |
+| [Bibliography/import](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46075232153) | 29/29 source modules, 1,092 passed; installed native citation/style probe passed 69 checks. | The 1,092 source cases are not claimed as installed pytest evidence. |
+| [Main Windows aggregate](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46075232185) | Native stages 34–63 completed successfully; selected capture and complete sealed-bundle steps failed. The long source stage was still running. | Current runner capture and sealed-bundle causes await their actual receipts; no predecessor diagnosis is transferred to this VM. |
+| [V3](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46075231946) | No completed failed step at composition; the final source selection was still running. | Pending is not PASS. |
+
+The [native evidence directory](../review/native-playback-68777f9f-2026-11-27/README.md)
+retains source/installed probe output, the complete 376-file Python inventory,
+wheel/source identities and extracted-log hashes. Its focused wheel SHA256 is
+`60e0218290c6aec7cc9e84b8acfc9270384999d7e3ba00550249bf1142568638`.
+The Python version was 3.11.9 x64, not the sealed-bundle 3.11.18 runtime.
+These hashes describe the written UTF-8 log excerpts, not unread ZIP members.
+
+The successor adds its new suites to the existing main, V3, reconciliation and
+ordinary transcription selectors. Component verification retains every earlier
+selector and grows to 56 common modules plus the existing Linux POSIX module.
+A separate four-mode voice-controls gate tests the exact triggering source and
+installed wheel, with complete source/RECORD inventory and required native
+Windows controls. Existing deadlines, strict failure/skip verdicts, endpoint
+branch/consent policy and publication gates remain. No final eligible wheel,
+private archive, model/language quality or complete-platform DONE is claimed.
+
 ## Publication ownership and playback fixture reconciliation — 2026-11-27, 22:10 UTC
 
 The successor reuses the renderer's exact `_owner_receipt(state)` in the existing

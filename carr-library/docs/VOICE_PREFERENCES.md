@@ -34,6 +34,28 @@ candidate languages, national accents or acoustic quality. Existing
 recovered reader choices retain their priority; this workflow does not
 guess a document language or automatically start speech.
 
+## Native voice pitch and punctuation
+
+Open **Native voice options...** in the reader. Enable **Use native voice
+pitch** to choose a value from **0 to 99** on the selected engine's scale,
+and use **Read punctuation aloud** when that voice supports it. Playback
+pitch is adjusted separately in **Playback controls**.
+
+**Apply native voice options** accepts the request after stopping current
+playback. Use Read or Save WAV to synthesize with it; existing saved audio
+stays unchanged. **Cancel native voice options** discards the dialog's
+changes. **Reset native voice options** selects engine-default pitch and
+turns punctuation reading off; press Apply to accept that reset.
+
+An unsupported saved request remains visible and blocks Read and Save WAV
+until you choose a compatible voice or explicitly reset it. Disabled
+controls and the status field explain the selected voice's limitations.
+
+Each reading tab and its recovery draft retain these options passively.
+Restoration never starts speech or substitutes an unavailable voice. Named
+voice profiles keep their existing exact voice, rate and volume contract;
+opening or applying a profile does not silently reset native options.
+
 ## Saving, cancellation and restoration
 
 Preferences are an optional strictly typed field in the existing schema-1
@@ -99,3 +121,7 @@ synthetic-inventory control and ownership scenario. Required suite reports,
 complete sealed-installation acceptance, actual voice-model inference and
 human NVDA/listening results remain separate evidence. The complete Windows
 preflight was still running when this checkpoint was recorded.
+
+Native pitch and punctuation were added after the P3 result above. Their
+focused execution is pending; that earlier result does not qualify the new
+controls.

@@ -1,0 +1,465 @@
+Completed source-mode pytest output, from the first admission-boundaries failure through its final verdict.
+Interleaving from the two-suite CI dispatcher is preserved; this is not a fresh test run.
+
+_ test_runtime_change_rejects_attempt_without_resurrecting_cache[False-before_commit] _
+
+setup = (<carr_library.transcription.service.TranscriptionService object at 0x000002436EE77850>, namespace(root=WindowsPath('C...owsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-84by5hb4/pytest/test_runtime_change_rejects_at0/second.wav')])
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000024372846910>
+timing = 'before_commit', historical = False
+
+    @pytest.mark.parametrize('timing', ['before_commit', 'after_commit'])
+    @pytest.mark.parametrize('historical', [False, True])
+    def test_runtime_change_rejects_attempt_without_resurrecting_cache(setup, monkeypatch, timing, historical):
+        service, runtime, profile, sources = setup
+        state = historical_job(setup) if historical else service.create_job(profile['id'], sources[:1])
+        previous = list(state['results'])
+        before_starts = starts(runtime)
+        model = runtime.model / 'model.bin'
+        original_model = model.read_bytes()
+        publish, process = service._publish_result, module.run_process
+        archive = getattr(service, '_archive_worker', None)
+        active, mutated, archived, committed = [False], [False], [], []
+    
+        def actual_child(*args, **kwargs):
+            active[0] = True
+            try:
+                return process(*args, **kwargs)
+            finally:
+                active[0] = False  # Underlying runner already closed child/readers.
+    
+        def mutate():
+            model.write_bytes(original_model + b' changed during current attempt')
+            mutated[0] = True
+    
+        def publication(state, source, result, provenance, **kwargs):
+            if not mutated[0] and timing == 'before_commit':
+                mutate()
+            publish(state, source, result, provenance, **kwargs)
+            committed.append(source['id'])
+            if not mutated[0]:
+                mutate()
+    
+        def inactive_archive(state, profile_id):
+            assert not active[0], 'A live worker workspace was moved.'
+            assert not ResourceBroker.for_app(service.library_root).snapshot()['leases']
+            archived.append(True)
+            return archive(state, profile_id)
+    
+        monkeypatch.setattr(module, 'run_process', actual_child)
+        monkeypatch.setattr(service, '_publish_result', publication)
+        monkeypatch.setattr(service, '_archive_worker', inactive_archive, raising=False)
+        rejected = service.resume(state['id'])
+        assert rejected['status'] == ('partial' if historical else 'failed'), rejected
+        assert rejected['results'] == previous and rejected['done'] == len(previous)
+        assert mutated[0] and archived == [True]
+        assert bool(committed) is (timing == 'after_commit')
+        assert 'New results from this attempt were rejected' in rejected['error']
+        root = service._job_root(state['id'])
+        assert list((root / 'worker-history').glob('*/logs/cache/**/*.cache.json'))
+        assert list((root / 'artifacts').glob('*/*/receipt.json')), 'Physical result evidence was removed.'
+        if previous:
+            assert service.read_transcript(state['id'], previous[0]['source_id'])['text']
+        else:
+            destination = runtime.root / 'rejected-export'; destination.mkdir()
+            with pytest.raises(ValueError, match='No verified'):
+                service.export(state['id'], destination)
+        model.write_bytes(original_model)
+        resumed = service.resume(state['id'])
+>       assert resumed['status'] == 'complete', resumed['error']
+E       AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable.
+E       assert 'partial' == 'complete'
+E         
+E         - complete
+E         + partial
+
+tests\transcription\test_admission_boundaries.py:281: AssertionError
+_ test_runtime_change_rejects_attempt_without_resurrecting_cache[False-after_commit] _
+
+setup = (<carr_library.transcription.service.TranscriptionService object at 0x0000024371C8DA50>, namespace(root=WindowsPath('C...owsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-84by5hb4/pytest/test_runtime_change_rejects_at1/second.wav')])
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000024371D1ACD0>
+timing = 'after_commit', historical = False
+
+    @pytest.mark.parametrize('timing', ['before_commit', 'after_commit'])
+    @pytest.mark.parametrize('historical', [False, True])
+    def test_runtime_change_rejects_attempt_without_resurrecting_cache(setup, monkeypatch, timing, historical):
+        service, runtime, profile, sources = setup
+        state = historical_job(setup) if historical else service.create_job(profile['id'], sources[:1])
+        previous = list(state['results'])
+        before_starts = starts(runtime)
+        model = runtime.model / 'model.bin'
+        original_model = model.read_bytes()
+        publish, process = service._publish_result, module.run_process
+        archive = getattr(service, '_archive_worker', None)
+        active, mutated, archived, committed = [False], [False], [], []
+    
+        def actual_child(*args, **kwargs):
+            active[0] = True
+            try:
+                return process(*args, **kwargs)
+            finally:
+                active[0] = False  # Underlying runner already closed child/readers.
+    
+        def mutate():
+            model.write_bytes(original_model + b' changed during current attempt')
+            mutated[0] = True
+    
+        def publication(state, source, result, provenance, **kwargs):
+            if not mutated[0] and timing == 'before_commit':
+                mutate()
+            publish(state, source, result, provenance, **kwargs)
+            committed.append(source['id'])
+            if not mutated[0]:
+                mutate()
+    
+        def inactive_archive(state, profile_id):
+            assert not active[0], 'A live worker workspace was moved.'
+            assert not ResourceBroker.for_app(service.library_root).snapshot()['leases']
+            archived.append(True)
+            return archive(state, profile_id)
+    
+        monkeypatch.setattr(module, 'run_process', actual_child)
+        monkeypatch.setattr(service, '_publish_result', publication)
+        monkeypatch.setattr(service, '_archive_worker', inactive_archive, raising=False)
+        rejected = service.resume(state['id'])
+        assert rejected['status'] == ('partial' if historical else 'failed'), rejected
+        assert rejected['results'] == previous and rejected['done'] == len(previous)
+        assert mutated[0] and archived == [True]
+        assert bool(committed) is (timing == 'after_commit')
+        assert 'New results from this attempt were rejected' in rejected['error']
+        root = service._job_root(state['id'])
+        assert list((root / 'worker-history').glob('*/logs/cache/**/*.cache.json'))
+        assert list((root / 'artifacts').glob('*/*/receipt.json')), 'Physical result evidence was removed.'
+        if previous:
+            assert service.read_transcript(state['id'], previous[0]['source_id'])['text']
+        else:
+            destination = runtime.root / 'rejected-export'; destination.mkdir()
+            with pytest.raises(ValueError, match='No verified'):
+                service.export(state['id'], destination)
+        model.write_bytes(original_model)
+        resumed = service.resume(state['id'])
+>       assert resumed['status'] == 'complete', resumed['error']
+E       AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable.
+E       assert 'partial' == 'complete'
+E         
+E         - complete
+E         + partial
+
+tests\transcription\test_admission_boundaries.py:281: AssertionError
+_ test_runtime_change_rejects_attempt_without_resurrecting_cache[True-before_commit] _
+
+setup = (<carr_library.transcription.service.TranscriptionService object at 0x000002436FF03610>, namespace(root=WindowsPath('C...owsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-84by5hb4/pytest/test_runtime_change_rejects_at2/second.wav')])
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000024370480690>
+timing = 'before_commit', historical = True
+
+    @pytest.mark.parametrize('timing', ['before_commit', 'after_commit'])
+    @pytest.mark.parametrize('historical', [False, True])
+    def test_runtime_change_rejects_attempt_without_resurrecting_cache(setup, monkeypatch, timing, historical):
+        service, runtime, profile, sources = setup
+        state = historical_job(setup) if historical else service.create_job(profile['id'], sources[:1])
+        previous = list(state['results'])
+        before_starts = starts(runtime)
+        model = runtime.model / 'model.bin'
+        original_model = model.read_bytes()
+        publish, process = service._publish_result, module.run_process
+        archive = getattr(service, '_archive_worker', None)
+        active, mutated, archived, committed = [False], [False], [], []
+    
+        def actual_child(*args, **kwargs):
+            active[0] = True
+            try:
+                return process(*args, **kwargs)
+            finally:
+                active[0] = False  # Underlying runner already closed child/readers.
+    
+        def mutate():
+            model.write_bytes(original_model + b' changed during current attempt')
+            mutated[0] = True
+    
+        def publication(state, source, result, provenance, **kwargs):
+            if not mutated[0] and timing == 'before_commit':
+                mutate()
+            publish(state, source, result, provenance, **kwargs)
+            committed.append(source['id'])
+            if not mutated[0]:
+                mutate()
+    
+        def inactive_archive(state, profile_id):
+            assert not active[0], 'A live worker workspace was moved.'
+            assert not ResourceBroker.for_app(service.library_root).snapshot()['leases']
+            archived.append(True)
+            return archive(state, profile_id)
+    
+        monkeypatch.setattr(module, 'run_process', actual_child)
+        monkeypatch.setattr(service, '_publish_result', publication)
+        monkeypatch.setattr(service, '_archive_worker', inactive_archive, raising=False)
+        rejected = service.resume(state['id'])
+        assert rejected['status'] == ('partial' if historical else 'failed'), rejected
+        assert rejected['results'] == previous and rejected['done'] == len(previous)
+        assert mutated[0] and archived == [True]
+        assert bool(committed) is (timing == 'after_commit')
+        assert 'New results from this attempt were rejected' in rejected['error']
+        root = service._job_root(state['id'])
+        assert list((root / 'worker-history').glob('*/logs/cache/**/*.cache.json'))
+        assert list((root / 'artifacts').glob('*/*/receipt.json')), 'Physical result evidence was removed.'
+        if previous:
+            assert service.read_transcript(state['id'], previous[0]['source_id'])['text']
+        else:
+            destination = runtime.root / 'rejected-export'; destination.mkdir()
+            with pytest.raises(ValueError, match='No verified'):
+                service.export(state['id'], destination)
+        model.write_bytes(original_model)
+        resumed = service.resume(state['id'])
+>       assert resumed['status'] == 'complete', resumed['error']
+E       AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable.
+E       assert 'partial' == 'complete'
+E         
+E         - complete
+E         + partial
+
+tests\transcription\test_admission_boundaries.py:281: AssertionError
+_ test_runtime_change_rejects_attempt_without_resurrecting_cache[True-after_commit] _
+
+setup = (<carr_library.transcription.service.TranscriptionService object at 0x000002437282B7D0>, namespace(root=WindowsPath('C...owsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-84by5hb4/pytest/test_runtime_change_rejects_at3/second.wav')])
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002436FF589D0>
+timing = 'after_commit', historical = True
+
+    @pytest.mark.parametrize('timing', ['before_commit', 'after_commit'])
+    @pytest.mark.parametrize('historical', [False, True])
+    def test_runtime_change_rejects_attempt_without_resurrecting_cache(setup, monkeypatch, timing, historical):
+        service, runtime, profile, sources = setup
+        state = historical_job(setup) if historical else service.create_job(profile['id'], sources[:1])
+        previous = list(state['results'])
+        before_starts = starts(runtime)
+        model = runtime.model / 'model.bin'
+        original_model = model.read_bytes()
+        publish, process = service._publish_result, module.run_process
+        archive = getattr(service, '_archive_worker', None)
+        active, mutated, archived, committed = [False], [False], [], []
+    
+        def actual_child(*args, **kwargs):
+            active[0] = True
+            try:
+                return process(*args, **kwargs)
+            finally:
+                active[0] = False  # Underlying runner already closed child/readers.
+    
+        def mutate():
+            model.write_bytes(original_model + b' changed during current attempt')
+            mutated[0] = True
+    
+        def publication(state, source, result, provenance, **kwargs):
+            if not mutated[0] and timing == 'before_commit':
+                mutate()
+            publish(state, source, result, provenance, **kwargs)
+            committed.append(source['id'])
+            if not mutated[0]:
+                mutate()
+    
+        def inactive_archive(state, profile_id):
+            assert not active[0], 'A live worker workspace was moved.'
+            assert not ResourceBroker.for_app(service.library_root).snapshot()['leases']
+            archived.append(True)
+            return archive(state, profile_id)
+    
+        monkeypatch.setattr(module, 'run_process', actual_child)
+        monkeypatch.setattr(service, '_publish_result', publication)
+        monkeypatch.setattr(service, '_archive_worker', inactive_archive, raising=False)
+        rejected = service.resume(state['id'])
+        assert rejected['status'] == ('partial' if historical else 'failed'), rejected
+        assert rejected['results'] == previous and rejected['done'] == len(previous)
+        assert mutated[0] and archived == [True]
+        assert bool(committed) is (timing == 'after_commit')
+        assert 'New results from this attempt were rejected' in rejected['error']
+        root = service._job_root(state['id'])
+        assert list((root / 'worker-history').glob('*/logs/cache/**/*.cache.json'))
+        assert list((root / 'artifacts').glob('*/*/receipt.json')), 'Physical result evidence was removed.'
+        if previous:
+            assert service.read_transcript(state['id'], previous[0]['source_id'])['text']
+        else:
+            destination = runtime.root / 'rejected-export'; destination.mkdir()
+            with pytest.raises(ValueError, match='No verified'):
+                service.export(state['id'], destination)
+        model.write_bytes(original_model)
+        resumed = service.resume(state['id'])
+>       assert resumed['status'] == 'complete', resumed['error']
+E       AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable.
+E       assert 'partial' == 'complete'
+E         
+E         - complete
+E         + partial
+
+tests\transcription\test_admission_boundaries.py:281: AssertionError
+___ test_failed_archive_keeps_durable_cache_rejection_until_retry[OSError] ____
+
+setup = (<carr_library.transcription.service.TranscriptionService object at 0x00000243726205D0>, namespace(root=WindowsPath('C...owsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-84by5hb4/pytest/test_failed_archive_keeps_dura0/second.wav')])
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002437046EC90>
+interruption = <class 'OSError'>
+
+    @pytest.mark.parametrize('interruption', [OSError, SystemExit])
+    def test_failed_archive_keeps_durable_cache_rejection_until_retry(setup, monkeypatch, interruption):
+        service, runtime, profile, sources = setup
+        state = service.create_job(profile['id'], sources[:1])
+        model = runtime.model / 'model.bin'; before = model.read_bytes()
+        publish, archive = service._publish_result, service._archive_worker
+        changed = []
+        def publication(*args, **kwargs):
+            publish(*args, **kwargs)
+            if not changed:
+                model.write_bytes(before + b' rejected runtime change')
+                changed.append(True)
+        def unavailable_archive(*args):
+            raise interruption('Synthetic archive failure/interruption while preserving worker evidence')
+        monkeypatch.setattr(service, '_publish_result', publication)
+        monkeypatch.setattr(service, '_archive_worker', unavailable_archive)
+        if interruption is SystemExit:
+            with pytest.raises(SystemExit, match='archive'):
+                service.run(state['id'])
+            failed = service._load(state['id'])
+        else:
+            failed = service.run(state['id'])
+        assert failed['results'] == [] and service._load(state['id'])['worker_cache_rejected'] is True
+        model.write_bytes(before)
+        monkeypatch.setattr(service, '_archive_worker', archive)
+        recovered = service.resume(state['id'])
+>       assert recovered['status'] == 'complete' and starts(runtime) == 2, recovered
+E       AssertionError: {'created': 1795814952.3203843, 'current': 'Synthetic protocol fixture', 'done': 1, 'edits': {}, ...}
+E       assert ('partial' == 'complete'
+E         
+E         - complete
+E         + partial)
+
+tests\transcription\test_admission_boundaries.py:312: AssertionError
+__ test_failed_archive_keeps_durable_cache_rejection_until_retry[SystemExit] __
+
+setup = (<carr_library.transcription.service.TranscriptionService object at 0x00000243703B9F90>, namespace(root=WindowsPath('C...owsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-84by5hb4/pytest/test_failed_archive_keeps_dura1/second.wav')])
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002436FF3FB50>
+interruption = <class 'SystemExit'>
+
+    @pytest.mark.parametrize('interruption', [OSError, SystemExit])
+    def test_failed_archive_keeps_durable_cache_rejection_until_retry(setup, monkeypatch, interruption):
+        service, runtime, profile, sources = setup
+        state = service.create_job(profile['id'], sources[:1])
+        model = runtime.model / 'model.bin'; before = model.read_bytes()
+        publish, archive = service._publish_result, service._archive_worker
+        changed = []
+        def publication(*args, **kwargs):
+            publish(*args, **kwargs)
+            if not changed:
+                model.write_bytes(before + b' rejected runtime change')
+                changed.append(True)
+        def unavailable_archive(*args):
+            raise interruption('Synthetic archive failure/interruption while preserving worker evidence')
+        monkeypatch.setattr(service, '_publish_result', publication)
+        monkeypatch.setattr(service, '_archive_worker', unavailable_archive)
+        if interruption is SystemExit:
+            with pytest.raises(SystemExit, match='archive'):
+                service.run(state['id'])
+            failed = service._load(state['id'])
+        else:
+            failed = service.run(state['id'])
+        assert failed['results'] == [] and service._load(state['id'])['worker_cache_rejected'] is True
+        model.write_bytes(before)
+        monkeypatch.setattr(service, '_archive_worker', archive)
+        recovered = service.resume(state['id'])
+>       assert recovered['status'] == 'complete' and starts(runtime) == 2, recovered
+E       AssertionError: {'created': 1795814975.9886038, 'current': 'Synthetic protocol fixture', 'done': 1, 'edits': {}, ...}
+E       assert ('partial' == 'complete'
+E         
+E         - complete
+E         + partial)
+
+tests\transcription\test_admission_boundaries.py:312: AssertionError
+__ test_actual_child_import_never_writes_or_replaces_python_bytecode[False] ___
+
+setup = (<carr_library.transcription.service.TranscriptionService object at 0x0000024372856110>, namespace(root=WindowsPath('C...owsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-84by5hb4/pytest/test_actual_child_import_never0/second.wav')])
+existing_cache = False
+
+    @pytest.mark.parametrize('existing_cache', [False, True])
+    def test_actual_child_import_never_writes_or_replaces_python_bytecode(setup, existing_cache):
+        service, runtime, profile, sources = setup
+        probe = runtime.root / 'synthetic_stdlib_probe.py'
+        probe.write_text("VALUE = 'old'\n", encoding='utf-8')
+        cached = Path(cache_from_source(str(probe)))
+        if existing_cache:
+            py_compile.compile(str(probe), doraise=True)
+        before = cached.read_bytes() if cached.exists() else None
+        probe.write_text("VALUE = 'current synthetic source value'\n", encoding='utf-8')
+        runtime.options.write_text(json.dumps({'import_probe': str(probe)}), encoding='utf-8')
+        result = service.run(service.create_job(profile['id'], sources[:1])['id'])
+>       assert result['status'] == 'complete', result['error']
+E       AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable.
+E       assert 'partial' == 'complete'
+E         
+E         - complete
+E         + partial
+
+tests\transcription\test_admission_boundaries.py:349: AssertionError
+___ test_actual_child_import_never_writes_or_replaces_python_bytecode[True] ___
+
+setup = (<carr_library.transcription.service.TranscriptionService object at 0x000002437282B7D0>, namespace(root=WindowsPath('C...owsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-84by5hb4/pytest/test_actual_child_import_never1/second.wav')])
+existing_cache = True
+
+    @pytest.mark.parametrize('existing_cache', [False, True])
+    def test_actual_child_import_never_writes_or_replaces_python_bytecode(setup, existing_cache):
+        service, runtime, profile, sources = setup
+        probe = runtime.root / 'synthetic_stdlib_probe.py'
+        probe.write_text("VALUE = 'old'\n", encoding='utf-8')
+        cached = Path(cache_from_source(str(probe)))
+        if existing_cache:
+            py_compile.compile(str(probe), doraise=True)
+        before = cached.read_bytes() if cached.exists() else None
+        probe.write_text("VALUE = 'current synthetic source value'\n", encoding='utf-8')
+        runtime.options.write_text(json.dumps({'import_probe': str(probe)}), encoding='utf-8')
+        result = service.run(service.create_job(profile['id'], sources[:1])['id'])
+>       assert result['status'] == 'complete', result['error']
+E       AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable.
+E       assert 'partial' == 'complete'
+E         
+E         - complete
+E         + partial
+
+tests\transcription\test_admission_boundaries.py:349: AssertionError
+- generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-84by5hb4\junit.xml -
+=========================== short test summary info ===========================
+FAILED tests/transcription/test_admission_boundaries.py::test_runtime_change_rejects_attempt_without_resurrecting_cache[False-before_commit] - AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable.
+assert 'partial' == 'complete'
+  
+  - complete
+  + partial
+FAILED tests/transcription/test_admission_boundaries.py::test_runtime_change_rejects_attempt_without_resurrecting_cache[False-after_commit] - AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable.
+assert 'partial' == 'complete'
+  
+  - complete
+  + partial
+FAILED tests/transcription/test_admission_boundaries.py::test_runtime_change_rejects_attempt_without_resurrecting_cache[True-before_commit] - AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable.
+assert 'partial' == 'complete'
+  
+  - complete
+  + partial
+FAILED tests/transcription/test_admission_boundaries.py::test_runtime_change_rejects_attempt_without_resurrecting_cache[True-after_commit] - AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable.
+assert 'partial' == 'complete'
+  
+  - complete
+  + partial
+FAILED tests/transcription/test_admission_boundaries.py::test_failed_archive_keeps_durable_cache_rejection_until_retry[OSError] - AssertionError: {'created': 1795814952.3203843, 'current': 'Synthetic protocol fixture', 'done': 1, 'edits': {}, ...}
+assert ('partial' == 'complete'
+  
+  - complete
+  + partial)
+FAILED tests/transcription/test_admission_boundaries.py::test_failed_archive_keeps_durable_cache_rejection_until_retry[SystemExit] - AssertionError: {'created': 1795814975.9886038, 'current': 'Synthetic protocol fixture', 'done': 1, 'edits': {}, ...}
+assert ('partial' == 'complete'
+  
+  - complete
+  + partial)
+FAILED tests/transcription/test_admission_boundaries.py::test_actual_child_import_never_writes_or_replaces_python_bytecode[False] - AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable.
+assert 'partial' == 'complete'
+  
+  - complete
+  + partial
+FAILED tests/transcription/test_admission_boundaries.py::test_actual_child_import_never_writes_or_replaces_python_bytecode[True] - AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable.
+assert 'partial' == 'complete'
+  
+  - complete
+  + partial
+=================== 8 failed, 6 passed in 269.27s (0:04:29) ===================
+FAIL: tests/transcription/test_admission_boundaries.py: junit_passed=6, failed=8, skipped=0, pytest_exit=1
