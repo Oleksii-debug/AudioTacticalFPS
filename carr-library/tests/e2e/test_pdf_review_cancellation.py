@@ -102,7 +102,10 @@ def test_cancel_stops_running_isolated_renderer(pdf_result, monkeypatch):
     children = []
 
     def delayed_renderer(command, *args, **kwargs):
-        child = original([sys.executable, '-I', '-c', 'import time; time.sleep(30)'],
+        # Preserve real Windows process-tree cleanup commands.
+        if command[0] != sys.executable:
+            return original(command, *args, **kwargs)
+        child = original([sys.executable, '-I', '-B', '-c', 'import time; time.sleep(30)'],
                          *args, **kwargs)
         children.append(child)
         return child

@@ -17,6 +17,9 @@ def show_assistant(frame, *, production=None, on_ready=None):
     executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='local-assistant')
     cancel = threading.Event()
     alive, busy, plan, job_id = True, False, None, None
+    progress = getattr(frame, 'operation_progress', None)
+    progress_token = None
+    bound_library = frame.library
     workspaces = frame.library.workspaces()
 
     def field(label, cls=wx.TextCtrl, proportion=0, **kwargs):
@@ -216,7 +219,7 @@ def show_assistant(frame, *, production=None, on_ready=None):
         future.add_done_callback(finish)
 
     def run(event=None):
-        nonlocal busy, job_id
+        nonlocal busy, job_id, progress_token
         if busy or (plan is None and job_id is None):
             return
         try:
@@ -230,17 +233,39 @@ def show_assistant(frame, *, production=None, on_ready=None):
             buttons['pause'].Enable()
             for control in (scope_choice, instruction, input_folder, output_folder, full_backup, budget, file_budget, deadline):
                 control.Disable()
-            future = executor.submit(service.resume, identity, cancelled=cancel.is_set,
-                                      progress=lambda completed, total, message: wx.CallAfter(report,
-                                          f'{completed}/{total}: {message}'))
+            token = progress.start('Running reviewed local plan', unit='operations').token if progress is not None else None
+            progress_token = token
+            def advanced(completed, total, message):
+                if progress is not None:
+                    progress.update(completed, total, message, token=token)
+                def display():
+                    if alive and frame.library is bound_library and progress_token == token:
+                        report(f'{completed}/{total}: {message}')
+                wx.CallAfter(display)
+            future = executor.submit(service.resume, identity, cancelled=cancel.is_set, progress=advanced)
         except Exception as exc:
             busy = False
+            if progress is not None and progress_token is not None:
+                progress.fail(exc, token=progress_token)
             report(str(exc))
             return
         def finish(done):
             def apply():
                 nonlocal busy
-                if not alive:
+                # The shared view still receives the durable checkpoint after
+                # the dialog closes. Only dialog widgets require its liveness.
+                try:
+                    result = done.result()
+                except Exception as exc:
+                    if progress is not None:
+                        if isinstance(exc, InterruptedError):
+                            progress.cancel(str(exc), token=token)
+                        else:
+                            progress.fail(exc, token=token)
+                else:
+                    if progress is not None:
+                        progress.finish_result(result, cancelled=cancel.is_set(), token=token)
+                if not alive or frame.library is not bound_library or progress_token != token:
                     return
                 busy = False
                 for key in ('preview', 'model', 'run', 'jobs'):
@@ -305,6 +330,8 @@ def show_assistant(frame, *, production=None, on_ready=None):
             return
         alive = False
         cancel.set()
+        if progress is not None and progress_token is not None:
+            progress.request_cancel()
         # The worker persists its paused checkpoint after releasing snapshot
         # locks. A concurrent control write here can be refused by that same
         # snapshot and must not prevent the native dialog from closing.

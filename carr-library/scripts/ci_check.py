@@ -117,7 +117,7 @@ def run_suite(suite: str) -> bool:
             cases = list(ET.parse(report).iter('testcase'))
         except (OSError, subprocess.TimeoutExpired, ET.ParseError) as exc:
             print(f'FAIL: {suite}: required suite did not produce a valid report: '
-                  f'{type(exc).__name__}', flush=True)
+                  f'{type(exc).__name__}: {exc}', flush=True)
             return False
         failed = sum(any(c.find(tag) is not None for tag in ('failure', 'error')) for c in cases)
         skipped = sum(c.find('skipped') is not None for c in cases)

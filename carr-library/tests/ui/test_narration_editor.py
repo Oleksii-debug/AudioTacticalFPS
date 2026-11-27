@@ -279,8 +279,9 @@ def test_studio_handoff_requires_successful_save_and_current_scope(controller):
     factory.assert_not_called()
 
 
+@pytest.mark.parametrize('save_all', [False, True])
 @pytest.mark.parametrize('edited', [False, True])
-def test_native_multiline_normalization_only_enters_saved_text_after_an_edit(tmp_path, monkeypatch, edited):
+def test_native_multiline_normalization_only_enters_saved_text_after_an_edit(tmp_path, monkeypatch, edited, save_all):
     """Drive actual editor callbacks with a control that displays CRLF as LF."""
     import itertools
     import sys
@@ -356,7 +357,7 @@ def test_native_multiline_normalization_only_enters_saved_text_after_an_edit(tmp
         assert controls['editor'].GetValue() == displayed
         dialog.handlers['timer'](None)
         assert store.load(project.id, draft=True)[0].current_text == original
-        controls['save'].handlers['button']()
+        controls['save_all' if save_all else 'save'].handlers['button']()
         assert store.load(project.id)[0].current_text == original
         assert len(controller.project.revisions) == 1
         if edited:

@@ -16,7 +16,8 @@ from tempfile import TemporaryDirectory
 from uuid import uuid4
 
 from ..reader.narration_text import NarrationDraft, decode_json, read_document, text_digest
-from ..research.export_file import write_export, _destination, _filename
+from ..research.export_file import write_export, capture_export_destination, _destination, _filename
+from .export_destination import approve_export_destination
 from ..audio.jobs import checked_directory, publish_noreplace
 from ..audio.runtime import resolve_ffmpeg
 from ..audio.managed import ManagedProjects
@@ -90,6 +91,9 @@ def plan_description(plan):
             display = 'yes' if item is True else 'no' if item is False else str(item)
             lines.append(prefix + ((label.replace('_', ' ').capitalize() + ': ') if label else '') + display)
     explain(value)
+    if value.get('output_format') in ('opus', 'wma') and value.get('sample_rate') != 48000:
+        lines.append(f"The {value['output_format'].upper()} encoded file uses 48,000 Hz. "
+                     f"The WAV master and timeline retain {value['sample_rate']} Hz.")
     return '\n'.join(lines)
 
 
@@ -249,7 +253,7 @@ class StudioController:
     def dirty(self):
         return self._saved_value != _json_text(self.to_dict())
 
-    def _write_checked(self, selected, value, expected, *, cancelled=lambda: False):
+    def _write_checked(self, selected, value, expected, *, cancelled=lambda: False, approval=None):
         def unchanged():
             if cancelled():
                 return True
@@ -259,6 +263,12 @@ class StudioController:
             elif not os.path.lexists(selected) or _path_digest(selected, budget=self.loading_budget) != expected:
                 raise ValueError('The saved destination changed while saving. Reopen it or use Save As.')
             return False
+        if approval is not None:
+            # Keep the destination selected before the native question, as
+            # well as the bounded content hash used by normal project saves.
+            write_export(selected, value, private_root=self.private_root,
+                         cancelled=unchanged, approval=approval)
+            return
         if expected is not None:
             # Keep the expected bytes across write_export's preflight and its
             # final existing-file replacement checks.
@@ -282,7 +292,7 @@ class StudioController:
                 raise ValueError('The save destination changed. Choose another filename.')
             publish_noreplace(stage, target)
 
-    def save(self, path=None, *, overwrite=False, cancelled=lambda: False):
+    def save(self, path=None, *, overwrite=False, cancelled=lambda: False, approval=None):
         selected = _local_path(path or self.project_path or '', 'project file')
         # Windows device names can appear to exist before any file is created.
         # Reject unsafe names before asking the filesystem about a destination.
@@ -301,6 +311,8 @@ class StudioController:
             raise ValueError('The saved project was removed. Use Save As to choose a destination.')
         managed = ManagedProjects(self.private_root)
         selected_root = managed.locate(selected, self.project_id)
+        if selected_root is not None and approval is not None:
+            raise ValueError('Save As requires a destination outside the private library. Use Save project for the managed copy.')
         value_data = self.to_dict()
         detach_output = (selected_root is None and self.project_path is not None
                          and managed.locate(self.project_path, self.project_id) is not None)
@@ -311,7 +323,7 @@ class StudioController:
             managed.write(self.project_id, selected, value,
                           expected_sha256=expected, cancelled=cancelled)
         else:
-            self._write_checked(selected, value, expected, cancelled=cancelled)
+            self._write_checked(selected, value, expected, cancelled=cancelled, approval=approval)
         if detach_output:
             self.output_dir = None
         self.project_path = selected
@@ -475,15 +487,17 @@ class StudioController:
         finally:
             self._render_lock.release()
 
-    def export_reading_copy(self, path, *, overwrite=False):
+    def export_reading_copy(self, path, *, overwrite=False, approval=None):
         selected = _local_path(path, 'reading-copy filename')
         _filename(selected.name)
         self._protect_original(selected)
+        if approval is None:
+            approval = capture_export_destination(selected, private_root=self.private_root)
         if selected.exists() and not overwrite:
             raise FileExistsError('Choose a new reading-copy filename or confirm replacement.')
         expected = _path_digest(selected, budget=self.loading_budget) if selected.exists() else None
         self.draft.assert_source()
-        self._write_checked(selected, self.script, expected)
+        self._write_checked(selected, self.script, expected, approval=approval)
 
 
 # Preserve the desktop import name while every caller shares one playback adapter.
@@ -529,6 +543,11 @@ class AudioStudioDialog:
         self.editing_dirty = False
         self._script_dirty = False
         self.playback = LocalPlayback(progress_hub=getattr(parent, 'progress_hub', None))
+        from .operation_progress import operation_progress_for
+        self.operation_progress = operation_progress_for(parent)
+        self._content_request = None
+        self._progress_unregister_player = (self.operation_progress.register_player(self.playback)
+            if self.operation_progress is not None else lambda: None)
         self.voice_rows = []
         self.controls = []
         self.windows_playback_controls = []
@@ -567,6 +586,7 @@ class AudioStudioDialog:
         script_layout.Add(self.script, 1, wx.EXPAND | wx.ALL, 5)
         script_buttons = wx.BoxSizer(wx.HORIZONTAL)
         self._button(script_page, script_buttons, 'Import text', self.import_text)
+        self._button(script_page, script_buttons, 'Add role effect', self.add_effect)
         self._button(script_page, script_buttons, 'Script and keyboard help', self.help)
         script_layout.Add(script_buttons, 0, wx.ALL, 5)
         script_page.SetSizer(script_layout)
@@ -691,6 +711,7 @@ class AudioStudioDialog:
                                ('Save project as', self.save_as), ('Recover draft', self.recover),
                                ('Back up audio project', self.backup), ('Restore audio snapshot', self.restore)):
             self._button(self.dialog, file_buttons, label, handler)
+        self._button(self.dialog, file_buttons, 'Save all open drafts', self.save_all, busy_safe=True)
         close_button = wx.Button(self.dialog, wx.ID_CANCEL, 'Close Audio Studio')
         close_button.SetName('Close Audio Studio')
         close_button.Bind(wx.EVT_BUTTON, self.close)
@@ -717,6 +738,7 @@ class AudioStudioDialog:
                 control.Disable()
         self._loading = False
         self._refresh_text()
+        self._register_save_participant()
 
     def _text(self, parent, layout, label, value):
         wx = self.wx
@@ -814,22 +836,41 @@ class AudioStudioDialog:
     def _run(self, label, action, done):
         if self.busy or self.closed:
             return
+        self._cancel_content_request()
         try:
             self.playback.stop()
         except Exception as exc:
             self._error(exc)
             return
         self.busy = True
+        job_token = self._job_token = object()
         self.cancelled.clear()
         for control in self.controls:
             control.Disable()
         self.cancel_button.Enable()
         self._message(label)
-        future = self.executor.submit(action)
+        progress = getattr(self, 'operation_progress', None)
+        token = progress.start(label, unit='steps').token if progress is not None else None
+        def observed_action():
+            if progress is None:
+                return action()
+            with progress.bind(token):
+                return action()
+        try:
+            future = self.executor.submit(observed_action)
+        except Exception as exc:
+            self.busy = False
+            for control in self.controls:
+                control.Enable(self.playback.native is not None or control not in self.windows_playback_controls)
+            self.cancel_button.Disable()
+            if progress is not None:
+                progress.fail(exc, token=token)
+            self._error(exc)
+            return
 
         def complete(completed):
             def apply():
-                if self.closed:
+                if self.closed or getattr(self, '_job_token', None) is not job_token:
                     return
                 self.busy = False
                 for control in self.controls:
@@ -837,8 +878,16 @@ class AudioStudioDialog:
                 self.cancel_button.Disable()
                 try:
                     result = completed.result()
+                    if progress is not None:
+                        progress.finish_result(result, cancelled=self.cancelled.is_set(), token=token)
+                        progress.tick()
                     done(result)
                 except Exception as exc:
+                    if progress is not None:
+                        if isinstance(exc, InterruptedError):
+                            progress.cancel(str(exc), token=token)
+                        else:
+                            progress.fail(exc, token=token)
                     self._error(exc)
                 if self.close_pending:
                     self.close_pending = False
@@ -872,11 +921,41 @@ class AudioStudioDialog:
         dialog = wx.FileDialog(self.dialog, title,
             wildcard='Text (*.txt)|*.txt|All files (*.*)|*.*' if text else 'Audio project (*.json)|*.json',
             defaultFile='audio-project.json' if save and not text else '',
-            style=(wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT) if save else (wx.FD_OPEN | wx.FD_FILE_MUST_EXIST))
+            # Replacement consent follows selection, after its exact state is captured.
+            style=wx.FD_SAVE if save else (wx.FD_OPEN | wx.FD_FILE_MUST_EXIST))
         try:
             return Path(dialog.GetPath()) if dialog.ShowModal() == wx.ID_OK else None
         finally:
             dialog.Destroy()
+
+    def _register_save_participant(self):
+        from .save_all import SaveCoordinator, coordinator_for
+        coordinator = coordinator_for(self.parent) or SaveCoordinator()
+        self._save_coordinator = self.dialog._save_coordinator = coordinator
+        self._save_unregister = coordinator.register(
+            f'studio.{id(self)}', 'Audio Studio — ' + self.controller.title,
+            dirty=lambda: not self.closed and (self.editing_dirty or self.controller.dirty),
+            save=self._save_for_all, focus=self.script.SetFocus)
+
+    def _save_for_all(self, completed):
+        from .save_all import SaveResult
+        if self.closed:
+            completed(SaveResult(False, 'The Audio Studio window is closed.'))
+        elif self.busy:
+            completed(SaveResult(False, 'An Audio Studio operation is running; the draft remains open.'))
+        else:
+            saved = self.save()
+            completed(SaveResult(saved, '' if saved else
+                                 'The project save was not completed; the draft remains open.'))
+
+    def save_all(self, event=None):
+        if self.closed:
+            return
+        def completed(summary):
+            if not self.closed:
+                self._message(summary.message(), focus=True)
+        if not self._save_coordinator.save_all(completed, cancelled=lambda: self.closed):
+            self._message('Save All is already waiting for a durable save result.', focus=True)
 
     def _unsaved(self):
         if not self.editing_dirty and not self.controller.dirty:
@@ -970,7 +1049,10 @@ class AudioStudioDialog:
             path = self._file('Save Audio Studio project as', save=True)
             if path is None:
                 return False
-            self.controller.save(path, overwrite=True)
+            approval = approve_export_destination(self.dialog, path, private_root=self.controller.private_root)
+            if approval is None:
+                return False
+            self.controller.save(path, overwrite=True, approval=approval)
             self._refresh_text()
             self._message('Project saved to ' + str(path), focus=True)
             return True
@@ -1155,14 +1237,38 @@ class AudioStudioDialog:
         self._show_text('Immutable original text — not edited by narration preparation', self.controller.draft.source_text)
 
     def help(self, event=None):
-        self._show_text('Audio Studio script and keyboard guide', SCRIPT_HELP)
+        from .audio_effects import effect_reference
+        self._show_text('Audio Studio script and keyboard guide', SCRIPT_HELP + '\n\n' + effect_reference())
+
+    def add_effect(self, event=None):
+        try:
+            self._capture()
+            if self.controller.input_kind != 'script':
+                raise ValueError('Choose Structured production script before adding a role effect.')
+            from ..audio.production import add_role_effect
+            from .audio_effects import choose_role_effect
+            selected = choose_role_effect(self.dialog, (role.name for role in self.controller.plan().roles))
+            if selected is None:
+                return
+            role, effect = selected
+            updated = add_role_effect(self.controller.script, role, effect,
+                                      voice=self.controller.voice, language=self.controller.language)
+            self.controller.edit_script(updated)
+            self._refresh_text()
+            self.script.SetFocus()
+            self._message(f'{effect.kind} added to {role}. Preview the plan before rendering.', focus=True)
+        except Exception as exc:
+            self._error(exc)
 
     def export_copy(self, event=None):
         try:
             self._capture()
             path = self._file('Export separate reading copy', save=True, text=True)
             if path is not None:
-                self.controller.export_reading_copy(path, overwrite=True)
+                approval = approve_export_destination(self.dialog, path, private_root=self.controller.private_root)
+                if approval is None:
+                    return
+                self.controller.export_reading_copy(path, overwrite=True, approval=approval)
                 self._message('Reading copy exported. Original sources and quotations are unchanged.', focus=True)
         except Exception as exc:
             self._error(exc)
@@ -1216,7 +1322,13 @@ class AudioStudioDialog:
                 return
 
             def progress(status):
-                self.wx.CallAfter(self._message, str(status))
+                from ..progress import report_progress
+                report_progress(phase=str(status))
+                token = getattr(self, '_job_token', None)
+                def apply():
+                    if not self.closed and getattr(self, '_job_token', None) is token:
+                        self._message(str(status))
+                self.wx.CallAfter(apply)
 
             def finished(result):
                 self._message('Audio render completed.\nMaster: ' + result['output'] +
@@ -1229,9 +1341,32 @@ class AudioStudioDialog:
 
     def cancel(self, event=None):
         self.cancelled.set()
+        progress = getattr(self, 'operation_progress', None)
+        if progress is not None:
+            progress.request_cancel()
         self._message('Cancellation requested. Waiting for the local worker to checkpoint and stop.', focus=True)
 
+    def _cancel_content_request(self):
+        request = getattr(self, '_content_request', None)
+        if request is not None:
+            request.close()
+            self._content_request = None
+
+    def _with_quiet_output(self, action):
+        self._cancel_content_request()
+        progress = getattr(self, 'operation_progress', None)
+        if progress is None:
+            action()
+            return
+        result = self.controller.result
+        self._content_request = progress.media_action(action,
+            alive=lambda: not self.closed and self.controller.result is result,
+            failed=self._error)
+
     def play(self, event=None):
+        self._with_quiet_output(lambda: self._play_after_progress(event))
+
+    def _play_after_progress(self, event=None):
         try:
             if self.controller.result is None:
                 raise ValueError('Render or resume the current script before playing its master.')
@@ -1257,6 +1392,7 @@ class AudioStudioDialog:
             self._error(exc)
 
     def stop_playback(self, event=None):
+        self._cancel_content_request()
         try:
             self.playback.stop()
             self.refresh_playback()
@@ -1277,6 +1413,7 @@ class AudioStudioDialog:
             self._message(message, focus=True)
 
     def _stop_for_project_change(self):
+        self._cancel_content_request()
         try:
             self.playback.stop()
             self.refresh_playback()
@@ -1291,8 +1428,11 @@ class AudioStudioDialog:
             if self.playback.native is None:
                 raise ValueError('Pause and resume use the native Windows player.')
             if status.state == 'paused':
-                self.playback.resume()
-                self._message('Playback resume requested.')
+                def resume():
+                    if self.playback.status().state == 'paused':
+                        self.playback.resume()
+                        self._message('Playback resume requested.')
+                self._with_quiet_output(resume)
             elif status.state in ('playing', 'starting'):
                 self.playback.pause()
                 self._message('Playback pause requested.')
@@ -1389,6 +1529,9 @@ class AudioStudioDialog:
             dialog.Destroy()
 
     def _playback_action(self, action):
+        self._with_quiet_output(lambda: self._playback_action_after_progress(action))
+
+    def _playback_action_after_progress(self, action):
         try:
             result = action()
             self._refresh_playback_choices()
@@ -1436,6 +1579,13 @@ class AudioStudioDialog:
     def close(self, event=None):
         if self.closed:
             return
+        coordinator = getattr(self, '_save_coordinator', None)
+        if coordinator is not None and coordinator.busy:
+            from .save_all import defer_close
+            if defer_close(self, coordinator, close=self.close,
+                           report=lambda message: self._message(message, focus=True),
+                           alive=lambda: not self.closed, post=self.wx.CallAfter, event=event):
+                return
         if self.busy:
             self.close_pending = True
             self.cancel()
@@ -1446,6 +1596,7 @@ class AudioStudioDialog:
             if event is not None and hasattr(event, 'CanVeto') and event.CanVeto():
                 event.Veto()
             return
+        self._cancel_content_request()
         try:
             self.playback.close()
         except Exception as exc:
@@ -1454,6 +1605,8 @@ class AudioStudioDialog:
                 event.Veto()
             return
         self.closed = True
+        getattr(self, '_progress_unregister_player', lambda: None)()
+        getattr(self, '_save_unregister', lambda: None)()
         self.cancelled.set()
         self.timer.Stop()
         self.playback_timer.Stop()
@@ -1470,6 +1623,9 @@ class AudioStudioDialog:
             self.dialog.ShowModal()
         finally:
             self.closed = True
+            self._cancel_content_request()
+            getattr(self, '_progress_unregister_player', lambda: None)()
+            getattr(self, '_save_unregister', lambda: None)()
             self.cancelled.set()
             self.timer.Stop()
             self.playback_timer.Stop()

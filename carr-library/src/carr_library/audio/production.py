@@ -44,7 +44,14 @@ language, pan (-1 to 1, left/center/right), rate (-10 to 10), pitch (-10 to
 [effect Narrator highpass frequency=80]
 [effect Narrator compressor threshold_db=-20 ratio=3 attack_ms=20 release_ms=250]
 [output format=wav sample_rate=48000 stems=true disk_budget_mb=32768]
-Effects: highpass, lowpass, equalizer, gate, compressor, delay, denoise.
+Effects: highpass, lowpass, equalizer, gate, compressor, delay, denoise, gain,
+lowshelf, highshelf, notch, limiter, declick, declip, deesser, reverb, chorus,
+tempo, pitch, width, loudness. Controls are numeric and bounded.
+[effect Narrator pitch semitones=2]
+[effect Narrator tempo factor=1.1]
+[effect Narrator loudness target_lufs=-18 peak_db=-1 range_lu=7]
+Reverb uses four reflections. Pitch is independent of output sample rate.
+Output formats: wav, flac, mp3, opus, m4a, m4b, aiff, ogg, aac, wma.
 Optional MusicGen: [music engine=musicgen model_manifest=musicgen/manifest.json]
 Optional SoundFont: [music engine=fluidsynth model_manifest=fluidsynth/manifest.json]
 Optional ACE-Step: [music engine=ace-step model_manifest=ace-step/manifest.json]
@@ -181,6 +188,39 @@ def parse_script(script, *, title='Audio project', voice='sapi5:default', langua
             raise ValueError(f'Script line {lineno}: {exc}') from exc
     finish()
     return ProductionPlan(title, script, tuple(roles.values()), tuple(scenes), **settings)
+
+
+def add_role_effect(script, role_name, effect, *, voice='sapi5:default', language='en'):
+    """Insert a typed effect before speech without rewriting the user's text."""
+    if not isinstance(effect, Effect) or not effect.enabled:
+        raise ValueError('Choose an enabled typed effect to add to the script.')
+    plan = parse_script(script, voice=voice, language=language)
+    role = next((item for item in plan.roles if item.name == role_name), None)
+    if role is None:
+        raise ValueError('Choose a role from the current production plan.')
+    if len(role.effects) >= 16:
+        raise ValueError('This role already has the maximum 16 effects.')
+    lines = script.splitlines(keepends=True)
+    insertion, declared = 0, False
+    for index, original in enumerate(lines):
+        line = original.strip()
+        if line.startswith('[') and line.endswith(']'):
+            parts = shlex.split(line[1:-1])
+            if len(parts) >= 2 and parts[0].lower() in ('role', 'effect') and parts[1] == role_name:
+                insertion = index + 1
+                declared = declared or parts[0].lower() == 'role'
+    ending = '\r\n' if '\r\n' in script else '\n'
+    name = shlex.quote(role_name)
+    prefix = f'[role {name}]{ending}' if not declared and role_name != 'Narrator' else ''
+    parameters = ''.join(f' {key}={value!r}' for key, value in effect.parameters)
+    directive = f'{prefix}[effect {name} {effect.kind}{parameters}]{ending}'
+    if insertion and not lines[insertion - 1].endswith(('\n', '\r')):
+        lines[insertion - 1] += ending
+    lines.insert(insertion, directive)
+    result = ''.join(lines)
+    # Keep the same parser and all its per-role/resource/ordering validation.
+    parse_script(result, voice=voice, language=language)
+    return result
 
 
 def plan_narration(text, *, title='Narration', voice='sapi5:default', language='en'):

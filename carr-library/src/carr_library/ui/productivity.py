@@ -27,6 +27,47 @@ def save_current(frame, event=None):
     return True
 
 
+def install_save_coordinator(frame):
+    """Bind existing draft stores to one completion-aware desktop coordinator."""
+    from .save_all import SaveCoordinator, SaveResult
+    coordinator = getattr(frame, '_save_coordinator', None)
+    if coordinator is None:
+        coordinator = frame._save_coordinator = SaveCoordinator()
+    if 'research.note' not in coordinator.participants:
+        def dirty():
+            panel = getattr(frame, 'evidence', None)
+            return panel is not None and panel._dirty()
+
+        def save_note(completed):
+            panel = getattr(frame, 'evidence', None)
+            if getattr(frame, '_closing', False):
+                completed(SaveResult(False, 'The main window is closing.'))
+            elif panel is None or not panel._dirty():
+                completed(SaveResult(True))
+            else:
+                panel.save_note(completed=completed)
+
+        coordinator.register('research.note', 'Research note', dirty=dirty, save=save_note,
+                             focus=lambda: frame._restore_note_focus())
+    return coordinator
+
+
+def save_all(frame, event=None):
+    """Wait for every captured draft's existing durable save operation."""
+    if getattr(frame, '_closing', False):
+        return False
+    coordinator = install_save_coordinator(frame)
+
+    def completed(result):
+        if not getattr(frame, '_closing', False):
+            frame.report(result.message())
+
+    started = coordinator.save_all(completed, cancelled=lambda: getattr(frame, '_closing', False))
+    if not started:
+        frame.report('Save All is already waiting for a durable save result.')
+    return started
+
+
 @dataclass
 class MenuBinding:
     command: Command
@@ -243,6 +284,7 @@ def install_productivity_actions(frame):
     The running application has one settings store and one keyboard manager.
     """
     from .keyboard_settings import install_keyboard_settings
+    install_save_coordinator(frame)
     if getattr(frame, 'narration_actions', None) is not None:
         return install_keyboard_settings(frame)
     import wx
@@ -254,7 +296,7 @@ def install_productivity_actions(frame):
     narration = NarrationActions(frame)
     file_menu = wx.Menu()
     append(file_menu, '&Save current changes\tCtrl+S', lambda event: save_current(frame, event))
-    append(file_menu, 'Save &all changes\tCtrl+Shift+S', lambda event: save_current(frame, event))
+    append(file_menu, 'Save &all changes\tCtrl+Shift+S', lambda event: save_all(frame, event))
     file_menu.AppendSeparator()
     append(file_menu, '&New reading copy...', narration.new)
     append(file_menu, '&Import text as a reading copy...', narration.import_text)

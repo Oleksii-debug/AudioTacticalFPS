@@ -261,6 +261,10 @@ class ImportCenterActions:
             token = object()
 
             def progress(batch):
+                from ..progress import batch_progress, current_progress
+                reporter = current_progress()
+                if reporter is not None:
+                    batch_progress(reporter, batch)
                 import wx
                 def apply():
                     if (not self.closed and self.busy and self.frame.library is self.library
