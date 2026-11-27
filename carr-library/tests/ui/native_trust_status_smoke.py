@@ -38,6 +38,7 @@ def main(argv=None):
         assert not Path(ui.__file__).resolve().is_relative_to(Path(__file__).resolve().parents[2])
         assert not Path(polling.__file__).resolve().is_relative_to(Path(__file__).resolve().parents[2])
     app = wx.App(False)
+    app.SetExitOnFrameDelete(False)
     checks = []
     def check(name, condition):
         if not condition:
@@ -94,134 +95,191 @@ def main(argv=None):
             max_package_bytes=1024**2, max_unpacked_bytes=2 * 1024**2, max_files=100))
         return repository, target.path, client
 
-    def pump_until(predicate, maximum=8):
-        deadline = time.monotonic() + maximum
-        while not predicate():
-            if time.monotonic() >= deadline:
-                raise AssertionError('Native timer lifecycle did not settle within its budget.')
-            app.Yield()
-            time.sleep(.01)
-        app.Yield()
+    def scenario():
+        with TemporaryDirectory(prefix='carr-trusted-native-') as temporary:
+            root = Path(temporary)
+            frame = DesktopFrame(LibraryApp(root / 'library'))
+            frame.Show()
+            yield None
+            try:
+                bar = frame.GetMenuBar()
+                help_menu = next(bar.GetMenu(index) for index in range(bar.GetMenuCount())
+                                 if bar.GetMenuLabelText(index) == 'Help')
+                item_id = help_menu.FindItem('License and signed updates')
+                check('Actual desktop Help exposes the signed client status', item_id != wx.NOT_FOUND)
+                calls = []
+                original = ui.show_trust_status
+                ui.show_trust_status = lambda host: calls.append(host)
+                try:
+                    event = wx.CommandEvent(wx.EVT_MENU.typeId, item_id)
+                    frame.GetEventHandler().ProcessEvent(event)
+                finally:
+                    ui.show_trust_status = original
+                check('Native Help event reaches the status action', calls == [frame])
+                default = ui.TrustStatusDialog(frame, TrustController())
+                default.Show()
+                yield None
+                check('Default status is a named native read-only multiline control',
+                      isinstance(default.text, wx.TextCtrl)
+                      and default.text.GetName() == 'License and update status'
+                      and bool(default.text.GetWindowStyleFlag() & wx.TE_READONLY)
+                      and bool(default.text.GetWindowStyleFlag() & wx.TE_MULTILINE))
+                check('Private default shows perpetual operation and no fake authority actions',
+                      'Private perpetual' in default.text.GetValue() and not default.buttons)
+                default.Destroy()
+                key = Ed25519PrivateKey.generate()
+                terms = 'Synthetic owner terms. No production account, billing or publisher is represented.'
+                terms_digest = sha256(terms.encode()).hexdigest()
+                now = int(time.time())
+                payload = json_bytes(dict(schema=1, product='synthetic', entitlement_id='native-fixture',
+                    subject='fixture', device='fixture-device', sequence=1, profile='perpetual',
+                    issued_at=now, not_before=now, expires_at=None, offline_until=None,
+                    refresh_interval=None, policy_version='fixture-policy', terms_sha256=terms_digest,
+                    features=['render'], revoked=False, request_nonce=None))
+                raw = json_bytes(dict(version=1, kind='carr-entitlement',
+                    key_id=sha256(key.public_key().public_bytes_raw()).hexdigest(),
+                    payload=base64.b64encode(payload).decode(),
+                    signature=base64.b64encode(key.sign(CONTEXT + payload)).decode()))
+                path = root / 'permission.json'
+                path.write_bytes(raw)
+                policy = TrustPolicy('synthetic', 'fixture', 'fixture-device',
+                    (PublicKey(key.public_key().public_bytes_raw()),), frozenset({'fixture-policy'}), frozenset({'render'}))
+                store = EntitlementStore(root / 'client', policy, SyntheticAnchor())
+                context = IntegrationContext('synthetic', 'fixture-build', 'stable')
+                controller = TrustController(entitlement=store, terms={terms_digest: terms}, context=context)
+                review = controller.preview_file(path)
+                dialog = ui.GrantReviewDialog(frame, review)
+                dialog.Show()
+                yield None
+                check('Terms and profile are readable before accepting',
+                      terms in dialog.text.GetValue() and 'Profile: perpetual' in dialog.text.GetValue())
+                check('Import requires explicit native checkbox acceptance', not dialog.import_button.IsEnabled())
+                dialog.accepted.SetValue(True)
+                event = wx.CommandEvent(wx.EVT_CHECKBOX.typeId, dialog.accepted.GetId())
+                event.SetEventObject(dialog.accepted)
+                dialog.accepted.GetEventHandler().ProcessEvent(event)
+                check('Native acceptance event enables import', dialog.import_button.IsEnabled())
+                controller.import_review(review, accepted=dialog.accepted.GetValue())
+                check('Reviewed signed grant is durably verified', store.current().sequence == 1)
+                dialog.Destroy()
 
-    with TemporaryDirectory(prefix='carr-trusted-native-') as temporary:
-        root = Path(temporary)
-        frame = DesktopFrame(LibraryApp(root / 'library'))
-        frame.Show()
-        app.Yield()
+                repository, target, client = signed_repository(root)
+                calls, original_check = [], client.check
+                def checked(*args, **kwargs):
+                    calls.append(threading.get_ident())
+                    return original_check(*args, **kwargs)
+                client.check = checked
+                poll_controller = TrustController(entitlement=store, terms={terms_digest: terms}, context=context,
+                    updates=client, target=target, update_repository=repository, automatic_updates=True)
+                class BusyDesktopFrame(DesktopFrame):
+                    def _menus(self):
+                        # Simulate an existing owning operation before the real
+                        # native installation sequence starts its wx.Timer.
+                        self.working = True
+                        super()._menus()
+                poll_frame = BusyDesktopFrame(LibraryApp(root / 'poll-library'), trust_controller=poll_controller)
+                poll_frame.Show()
+                host, timer = poll_frame.trust_update_poll_host, poll_frame.trust_client_timer
+                try:
+                    check('Configured polling uses an actual running wx.Timer', isinstance(timer, wx.Timer) and timer.IsRunning())
+                    start = time.monotonic()
+                    yield (lambda: time.monotonic() - start >= 1.2, 4,
+                           'Native busy hold did not finish.')
+                    check('Native idle timer holds metadata checks while the frame is working',
+                          not calls and host.status.phase == 'waiting' and not list(client.metadata.iterdir()))
+                    poll_frame.working = False
+                    yield (lambda: host.status.phase == 'available', 8,
+                           lambda: 'Native polling did not settle: phase=' + host.status.phase
+                           + ', calls=' + str(len(calls)) + ', worker_alive=' + str(host._thread.is_alive()))
+                    check('Native idle transition verifies signed metadata on the background thread',
+                          host.status.release.build == 2 and calls == [host._thread.ident]
+                          and calls[0] != threading.get_ident())
+                    check('Automatic native checks leave payloads and existing signed permission untouched',
+                          not list(client.downloads.iterdir()) and store.current().sequence == 1)
+                    configured_status = ui.TrustStatusDialog(poll_frame, poll_controller,
+                                                            status_text=poll_controller.status_text())
+                    configured_status.Show()
+                    yield None
+                    check('Configured update status retains the explicit native repository review action',
+                          'Automatic checks do not download' in configured_status.text.GetValue()
+                          and any(button.GetName() == 'Check offline update repository'
+                                  for button in configured_status.buttons))
+                    configured_status.Destroy()
+                finally:
+                    poll_frame.working = False
+                    poll_frame.Close()
+                    yield (lambda: host.status.phase == 'stopped', 8,
+                           lambda: 'Native owner destruction did not stop polling: phase=' + host.status.phase)
+                check('Native owner destruction stops the metadata worker', not host._thread.is_alive())
+                try:
+                    timer_stopped = not timer.IsRunning()
+                except RuntimeError:
+                    timer_stopped = not timer
+                check('Native owner destruction stops or destroys the actual timer', timer_stopped)
+            finally:
+                frame.Close()
+                yield None
+    # Run every native assertion from the real application event loop. Yielding
+    # a predicate schedules a bounded check; it never dispatches product timer
+    # callbacks, host idle changes or Destroy handlers directly.
+    steps = scenario()
+    state = {'finished': False, 'error': None}
+    def complete(error=None):
+        if state['finished']:
+            return
+        if error is not None and state['error'] is None:
+            state['error'] = error
+        state['finished'] = True
+        app.ExitMainLoop()
+
+    def advance(error=None):
+        if state['finished']:
+            return
+        if error is not None and state['error'] is None:
+            state['error'] = error
         try:
-            bar = frame.GetMenuBar()
-            help_menu = next(bar.GetMenu(index) for index in range(bar.GetMenuCount())
-                             if bar.GetMenuLabelText(index) == 'Help')
-            item_id = help_menu.FindItem('License and signed updates')
-            check('Actual desktop Help exposes the signed client status', item_id != wx.NOT_FOUND)
-            calls = []
-            original = ui.show_trust_status
-            ui.show_trust_status = lambda host: calls.append(host)
+            wait = steps.throw(error) if error is not None else next(steps)
+        except StopIteration:
+            complete()
+            return
+        except BaseException as failure:
+            complete(failure)
+            return
+        if wait is None:
+            wx.CallLater(10, advance)
+            return
+        predicate, maximum, description = wait
+        deadline = time.monotonic() + maximum
+        def poll():
+            if state['finished']:
+                return
             try:
-                event = wx.CommandEvent(wx.EVT_MENU.typeId, item_id)
-                frame.GetEventHandler().ProcessEvent(event)
-            finally:
-                ui.show_trust_status = original
-            check('Native Help event reaches the status action', calls == [frame])
-            default = ui.TrustStatusDialog(frame, TrustController())
-            default.Show()
-            app.Yield()
-            check('Default status is a named native read-only multiline control',
-                  isinstance(default.text, wx.TextCtrl)
-                  and default.text.GetName() == 'License and update status'
-                  and bool(default.text.GetWindowStyleFlag() & wx.TE_READONLY)
-                  and bool(default.text.GetWindowStyleFlag() & wx.TE_MULTILINE))
-            check('Private default shows perpetual operation and no fake authority actions',
-                  'Private perpetual' in default.text.GetValue() and not default.buttons)
-            default.Destroy()
-            key = Ed25519PrivateKey.generate()
-            terms = 'Synthetic owner terms. No production account, billing or publisher is represented.'
-            terms_digest = sha256(terms.encode()).hexdigest()
-            now = int(time.time())
-            payload = json_bytes(dict(schema=1, product='synthetic', entitlement_id='native-fixture',
-                subject='fixture', device='fixture-device', sequence=1, profile='perpetual',
-                issued_at=now, not_before=now, expires_at=None, offline_until=None,
-                refresh_interval=None, policy_version='fixture-policy', terms_sha256=terms_digest,
-                features=['render'], revoked=False, request_nonce=None))
-            raw = json_bytes(dict(version=1, kind='carr-entitlement',
-                key_id=sha256(key.public_key().public_bytes_raw()).hexdigest(),
-                payload=base64.b64encode(payload).decode(),
-                signature=base64.b64encode(key.sign(CONTEXT + payload)).decode()))
-            path = root / 'permission.json'
-            path.write_bytes(raw)
-            policy = TrustPolicy('synthetic', 'fixture', 'fixture-device',
-                (PublicKey(key.public_key().public_bytes_raw()),), frozenset({'fixture-policy'}), frozenset({'render'}))
-            store = EntitlementStore(root / 'client', policy, SyntheticAnchor())
-            context = IntegrationContext('synthetic', 'fixture-build', 'stable')
-            controller = TrustController(entitlement=store, terms={terms_digest: terms}, context=context)
-            review = controller.preview_file(path)
-            dialog = ui.GrantReviewDialog(frame, review)
-            dialog.Show()
-            app.Yield()
-            check('Terms and profile are readable before accepting',
-                  terms in dialog.text.GetValue() and 'Profile: perpetual' in dialog.text.GetValue())
-            check('Import requires explicit native checkbox acceptance', not dialog.import_button.IsEnabled())
-            dialog.accepted.SetValue(True)
-            event = wx.CommandEvent(wx.EVT_CHECKBOX.typeId, dialog.accepted.GetId())
-            event.SetEventObject(dialog.accepted)
-            dialog.accepted.GetEventHandler().ProcessEvent(event)
-            check('Native acceptance event enables import', dialog.import_button.IsEnabled())
-            controller.import_review(review, accepted=dialog.accepted.GetValue())
-            check('Reviewed signed grant is durably verified', store.current().sequence == 1)
-            dialog.Destroy()
+                ready = predicate()
+            except BaseException as failure:
+                advance(failure)
+                return
+            if ready:
+                wx.CallAfter(advance)
+            elif time.monotonic() >= deadline:
+                message = description() if callable(description) else description
+                advance(AssertionError(message))
+            else:
+                wx.CallLater(10, poll)
+        wx.CallAfter(poll)
 
-            repository, target, client = signed_repository(root)
-            calls, original_check = [], client.check
-            def checked(*args, **kwargs):
-                calls.append(threading.get_ident())
-                return original_check(*args, **kwargs)
-            client.check = checked
-            poll_controller = TrustController(entitlement=store, terms={terms_digest: terms}, context=context,
-                updates=client, target=target, update_repository=repository, automatic_updates=True)
-            class BusyDesktopFrame(DesktopFrame):
-                def _menus(self):
-                    # Simulate an existing owning operation before the real
-                    # native installation sequence starts its wx.Timer.
-                    self.working = True
-                    super()._menus()
-            poll_frame = BusyDesktopFrame(LibraryApp(root / 'poll-library'), trust_controller=poll_controller)
-            poll_frame.Show()
-            host, timer = poll_frame.trust_update_poll_host, poll_frame.trust_client_timer
-            try:
-                check('Configured polling uses an actual running wx.Timer', isinstance(timer, wx.Timer) and timer.IsRunning())
-                start = time.monotonic()
-                pump_until(lambda: time.monotonic() - start >= 1.2)
-                check('Native idle timer holds metadata checks while the frame is working',
-                      not calls and host.status.phase == 'waiting' and not list(client.metadata.iterdir()))
-                poll_frame.working = False
-                pump_until(lambda: host.status.phase == 'available')
-                check('Native idle transition verifies signed metadata on the background thread',
-                      host.status.release.build == 2 and calls == [host._thread.ident]
-                      and calls[0] != threading.get_ident())
-                check('Automatic native checks leave payloads and existing signed permission untouched',
-                      not list(client.downloads.iterdir()) and store.current().sequence == 1)
-                configured_status = ui.TrustStatusDialog(poll_frame, poll_controller,
-                                                        status_text=poll_controller.status_text())
-                configured_status.Show()
-                app.Yield()
-                check('Configured update status retains the explicit native repository review action',
-                      'Automatic checks do not download' in configured_status.text.GetValue()
-                      and any(button.GetName() == 'Check offline update repository'
-                              for button in configured_status.buttons))
-                configured_status.Destroy()
-            finally:
-                poll_frame.working = False
-                poll_frame.Close()
-                pump_until(lambda: host.status.phase == 'stopped')
-            check('Native owner destruction stops the metadata worker', not host._thread.is_alive())
-            try:
-                timer_stopped = not timer.IsRunning()
-            except RuntimeError:
-                timer_stopped = not timer
-            check('Native owner destruction stops or destroys the actual timer', timer_stopped)
-        finally:
-            frame.Close()
-            app.Yield()
+    def expired():
+        complete(AssertionError('Native application event loop exceeded its total 45-second budget.'))
+
+    watchdog = wx.CallLater(45000, expired)
+    wx.CallAfter(advance)
+    app.MainLoop()
+    watchdog.Stop()
+    if not state['finished']:
+        raise AssertionError('Native application event loop exited before the scenario finished.')
+    if state['error'] is not None:
+        print(json.dumps({'status': 'FAIL', 'checks': checks,
+                          'reason': str(state['error']), 'nvda': 'NOT_RUN'}), flush=True)
+        raise state['error']
     print(json.dumps({'status': 'PASS', 'checks': checks, 'nvda': 'NOT_RUN',
                       'production_authority': 'NOT_CONFIGURED', 'production_installer_upgrade': 'NOT_RUN',
                       'ui_module': str(Path(ui.__file__).resolve()),
