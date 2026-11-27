@@ -444,7 +444,7 @@ class DesktopFrame(WorkspaceFrame):
         self.working = False
         self._closing = False
         super().__init__(None, library.list_scopes, self._bind)
-        self.SetTitle('Universal Research Library')
+        self.SetTitle('Resonance')
         self.SetMinSize((760, 650))
         self._menus()
         if self.scopes:
@@ -684,7 +684,14 @@ class DesktopFrame(WorkspaceFrame):
                     if not self.working and (status is None or status.GetValue() == before):
                         label = {'succeeded': 'complete', 'paused': 'needs attention',
                                  'failed': 'failed', 'cancelled': 'cancelled'}[outcome]
-                        self.report(title + ': ' + label + '.')
+                        summary = title + ': ' + label + '.'
+                        if done is not None and status is not None:
+                            # The callback may focus a panel's detailed status,
+                            # results or reader without changing frame.status.
+                            # Keep that focus while recording the job summary.
+                            status.SetValue(summary)
+                        else:
+                            self.report(summary)
                 except Exception as exc:
                     if progress is not None:
                         if isinstance(exc, InterruptedError):
