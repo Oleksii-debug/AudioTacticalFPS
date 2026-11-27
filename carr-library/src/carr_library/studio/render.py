@@ -538,7 +538,11 @@ class ProductionService:
                     publish(path, f'chapters/{index:04d}-{_output_name(scene.title)}.wav')
                 if state['format'] != 'wav':
                     # Codec selection is delegated to the verified local runtime inventory.
-                    key = sha256(encode([digest_file(master), state['format'], runtime_identity])).hexdigest()
+                    encoding_identity = [digest_file(master), state['format'], runtime_identity]
+                    if state['format'] == 'm4b':
+                        encoding_identity.append({'schema': 'measured-m4b-chapters/1',
+                                                  'title': project.title, 'chapters': chapter_data})
+                    key = sha256(encode(encoding_identity)).hexdigest()
                     encoded = self.cache / (key + '.' + state['format'])
                     receipt = self.cache / (key + '-encoded.json')
                     try:
@@ -552,7 +556,11 @@ class ProductionService:
                     if not (cached and encoded.exists() and digest_file(encoded) == cached.get('sha256')):
                         if encoded.exists():
                             encoded = self.cache / (key + '-' + uuid4().hex[:10] + '.' + state['format'])
-                        runtime.convert(master, encoded, sample_rate=project.sample_rate, cancelled=stopping)
+                        if state['format'] == 'm4b':
+                            runtime.audiobook(master, encoded, chapters=chapter_data, title=project.title,
+                                              sample_rate=project.sample_rate, cancelled=stopping)
+                        else:
+                            runtime.convert(master, encoded, sample_rate=project.sample_rate, cancelled=stopping)
                         atomic_json(receipt, {'sha256': digest_file(encoded), 'file': encoded.name}, replace=receipt.exists())
                     publish(encoded, 'audiobook.' + state['format'])
                 for role_id, paths in stem_scenes.items():
@@ -586,13 +594,20 @@ class ProductionService:
                             'music_kind': 'procedural/MIDI/local-model as explicitly selected per scene',
                             'music_continuity': 'Neural segments are separate seeded variations with boundary fades; '
                                                 'continuous neural composition and perceptually seamless joins are not assumed.',
-                            'timing_notice': 'Line-level alignment from actual synthesized durations; no word timing claim.'}
+                            'timing_notice': 'Line-level alignment from actual synthesized durations; no word timing claim.',
+                            'lrc_notice': 'script.lrc uses measured line starts rounded to hundredths of a second. '
+                                'A U+2060 WORD JOINER prefixes the untouched lyric row, before any whitespace, '
+                                "when its first non-whitespace character is '['. Remove only this export-added "
+                                'marker after LRC parsing, never before. Original script and timeline line text '
+                                'are unchanged. FFmpeg parsing is tested; other players need separate qualification.'}
                 if project.schema >= 2:
                     metadata['clips'] = clip_timeline
                     metadata['clip_stems_notice'] = ('Clip stems align to the full master timeline. '
                         'Music stems are before ducking; recorded clips have no inferred transcript.')
+                from ..audio.audiobook import line_lrc
                 for name, raw in [('script.vtt', '\n'.join(subtitles).encode('utf-8')),
                                   ('script.srt', '\n'.join(srt).encode('utf-8')),
+                                  ('script.lrc', line_lrc(timeline).encode('utf-8')),
                                   ('timeline.json', encode(metadata)),
                                   ('project.json', encode(project.to_dict()))]:
                     source = job_root / name
