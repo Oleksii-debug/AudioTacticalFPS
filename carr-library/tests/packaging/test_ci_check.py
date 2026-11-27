@@ -169,10 +169,14 @@ def test_parallel_barrier():
         with original_temp(prefix='CARR timeout Ž ') as temporary:
             root = Path(temporary).resolve(strict=True)
             marker = root / 'descendant.pid'
+            # Publish only a complete PID; existence is the observer's readiness signal.
             (root / 'descendant.py').write_text(
                 "from pathlib import Path\nimport os,sys,time\n"
                 "held = open(sys.argv[1], 'wb')\n"
-                "Path(sys.argv[2]).write_text(str(os.getpid()), encoding='ascii')\n"
+                "marker = Path(sys.argv[2])\n"
+                "staged = marker.with_suffix('.tmp')\n"
+                "staged.write_text(str(os.getpid()), encoding='ascii')\n"
+                "staged.replace(marker)\n"
                 "while True: time.sleep(1)\n", encoding='utf-8')
             (root / 'test_timeout.py').write_text(
                 "from pathlib import Path\nimport subprocess,sys,time\n"

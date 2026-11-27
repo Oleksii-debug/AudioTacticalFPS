@@ -105,7 +105,7 @@ LibraryApp._import_file = _replay
 def test_barrier_leaves_other_processes_unchanged(tmp_path, monkeypatch, arguments, expected):
     marker = tmp_path / 'worker-only'
     _barrier(monkeypatch, marker, boundary='after')
-    result = subprocess.run([sys.executable, *arguments], capture_output=True,
+    result = subprocess.run([sys.executable, '-B', *arguments], capture_output=True,
                             text=True, timeout=5, check=True)
     assert expected in result.stdout + result.stderr
     assert not marker.exists()

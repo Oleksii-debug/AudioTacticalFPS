@@ -1,9 +1,12 @@
 """Real child-process termination tests for native SQLite persistence."""
+import os
+from pathlib import Path
 import subprocess
 import sys
 
 import pytest
 
+import carr_library
 from carr_library.storage.revisions import Page, Storage
 
 ASSET = 'a' * 64
@@ -17,8 +20,10 @@ def seed(path):
 
 
 def child(code, *paths):
-    p = subprocess.run([sys.executable, '-c', code, *map(str, paths)],
-                       capture_output=True, text=True, timeout=20)
+    package_root = Path(carr_library.__file__).resolve().parents[1]
+    env = dict(os.environ, PYTHONPATH=os.pathsep.join((str(package_root), str(package_root.parent))))
+    p = subprocess.run([sys.executable, '-B', '-c', code, *map(str, paths)],
+                       env=env, capture_output=True, text=True, timeout=20)
     assert p.returncode == 73, (p.returncode, p.stdout, p.stderr)
 
 
