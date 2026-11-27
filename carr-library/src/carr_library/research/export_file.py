@@ -110,7 +110,7 @@ def _windows_change_time(path):
             raise _windows_api_error('CloseHandle')
 
 
-def _inspect_destination(path, private_root):
+def _inspect_destination(path, private_root, expected=None, reject_existing=None):
     private = private_root.resolve()
     try:
         private_info = private.stat()
@@ -137,18 +137,28 @@ def _inspect_destination(path, private_root):
     target = parent / path.name
     if target.is_relative_to(private):
         raise ValueError('Choose an export destination outside the private library folder.')
+    parent_identity = _identity(parent.stat())
+    if expected is not None and (target, parent_identity) != expected[:2]:
+        raise ValueError('The export destination changed. Choose the destination again.')
     try:
         info = target.lstat()
     except FileNotFoundError:
         state = None
+        if expected is not None and expected[2] is not None:
+            raise ValueError('The export destination changed. Choose the destination again.')
     else:
+        if reject_existing is not None:
+            raise reject_existing
         if _linked(info) or not stat.S_ISREG(info.st_mode):
             raise ValueError('The export destination must be a regular file without links or reparse points.')
         if info.st_nlink != 1:
             raise ValueError('Choose an export destination without hard links.')
         state = _file_state(info)
+        # An earlier approval never authorizes inspection of a replacement.
+        # Reject its named metadata before native handle queries or byte reads.
+        if expected is not None and (expected[2] is None or state != expected[2][:len(state)]):
+            raise ValueError('The export destination changed. Choose the destination again.')
         if os.name == 'nt':
-            parent_identity = _identity(parent.stat())
             state = (*state, _windows_change_time(target))
             # Native ChangeTime supplements the later full-byte digest. Querying
             # this handle must not permit a redirected/replaced path approval.
@@ -156,15 +166,19 @@ def _inspect_destination(path, private_root):
             if (_linked(after) or _file_state(after) != _file_state(info)
                     or _identity(parent.stat()) != parent_identity):
                 raise ValueError('The export destination changed. Choose the destination again.')
-    return target, _identity(parent.stat()), state
+    if expected is not None and state != expected[2]:
+        raise ValueError('The export destination changed. Choose the destination again.')
+    if _identity(parent.stat()) != parent_identity:
+        raise ValueError('The export destination changed. Choose the destination again.')
+    return target, parent_identity, state
 
 
-def _destination(path, private_root):
-    return _inspect_destination(path, private_root)
+def _destination(path, private_root, expected=None, reject_existing=None):
+    return _inspect_destination(path, private_root, expected, reject_existing)
 
 
 def _recheck_scope(path, private_root, snapshot):
-    if _inspect_destination(path, private_root) != snapshot:
+    if _inspect_destination(path, private_root, snapshot) != snapshot:
         raise ValueError('The export destination changed. Choose the destination again.')
 
 
@@ -316,7 +330,15 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
         raise ValueError('A captured export destination approval is required.')
     if approval is not None and (approval.requested != requested or approval.private_root != private):
         raise ValueError('The export destination changed. Choose the destination again.')
-    target, parent_identity, previous = _destination(requested, private)
+    reject_existing = None
+    if approval is not None and approval.require_absent:
+        reject_existing = ValueError('The export destination changed. Choose the destination again.')
+    elif require_absent:
+        reject_existing = FileExistsError('The export destination already exists; replacement was not authorized.')
+    expected = ((approval.target, approval.parent_identity,
+                 approval.state[:-1] if approval.state is not None else None)
+                if approval is not None else None)
+    target, parent_identity, previous = _destination(requested, private, expected, reject_existing)
     # A caller approving ordinary replacement cannot approve a file that did
     # not exist at this snapshot. Protect every existing caller from a last-
     # moment competing create, even without the new explicit policy argument.
@@ -347,7 +369,10 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
             os.fsync(output.fileno())
 
         check_cancelled()
-        checked_target, checked_parent, current = _destination(requested, private)
+        reject_existing = (ValueError('The export destination changed. Choose the destination again.')
+                           if require_absent else None)
+        checked_target, checked_parent, current = _destination(
+            requested, private, (target, parent_identity, previous), reject_existing)
         if (checked_target != target or checked_parent != parent_identity or
                 current != previous):
             raise ValueError('The export destination changed. Choose the destination again.')

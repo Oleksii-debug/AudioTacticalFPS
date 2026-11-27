@@ -10,13 +10,13 @@ permissions:
 
 concurrency:
   group: completion-fix-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   source-corrections:
     name: Windows source corrections / actual retained codec
     runs-on: windows-2022
-    timeout-minutes: 25
+    timeout-minutes: 30
     defaults:
       run:
         shell: pwsh
@@ -41,6 +41,7 @@ jobs:
           python-version: '3.11'
           architecture: x64
       - name: Prepare locked dependencies and the existing pinned codec
+        id: prepare
         run: |
           New-Item -ItemType Directory -Force 'ci-completion-results' | Out-Null
           git rev-parse HEAD | Set-Content 'ci-completion-results/tested-commit.txt'
@@ -90,6 +91,25 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $summary = 'Required suites complete: ' + $completionSuites.Count + '; passed=' + $completionSuites.Count + '; failed=0'
           if (@(Select-String -LiteralPath 'ci-completion-results/source-regressions.txt' -SimpleMatch $summary).Count -ne 1) { throw 'The current composition source inventory is incomplete.' }
+      - name: Verify reconciled canonical export authority and existing publication boundaries
+        if: ${{ !cancelled() && steps.prepare.outcome == 'success' }}
+        run: |
+          $exportSuites = @(
+            'tests/reader/test_export_reconciliation.py',
+            'tests/reader/test_export_no_clobber.py',
+            'tests/reader/test_export_change_time.py',
+            'tests/reader/test_export_publication_boundary.py',
+            'tests/reader/test_file_export.py',
+            'tests/reader/test_binary_file_export.py',
+            'tests/ui/test_export_confirmation.py',
+            'tests/ui/test_export_destination.py'
+          )
+          & $env:CARR_COMPLETION_PYTHON scripts/ci_check.py --jobs 3 @exportSuites 2>&1 | Tee-Object 'ci-completion-results/canonical-export-regressions.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $summary = 'Required suites complete: ' + $exportSuites.Count + '; passed=' + $exportSuites.Count + '; failed=0'
+          if (@(Select-String -LiteralPath 'ci-completion-results/canonical-export-regressions.txt' -SimpleMatch $summary).Count -ne 1) { throw 'The reconciled export suite inventory is incomplete.' }
+          $pattern = '^PASS: tests/reader/test_export_reconciliation\.py: junit_passed=20, failed=0, skipped=0, pytest_exit=0$'
+          if (@(Select-String -LiteralPath 'ci-completion-results/canonical-export-regressions.txt' -Pattern $pattern).Count -ne 1) { throw 'All previous16 and incoming4 destination identity cases are required.' }
       - name: Retain source-only composition diagnostics
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9

@@ -143,4 +143,48 @@ def test_mismatched_existing_approval_rejected_before_open(tmp_path, monkeypatch
     assert target.read_bytes() == b'Independent work'
     assert not list(tmp_path.glob('.research-export-*'))
     assert not opened
+
+
+@pytest.mark.parametrize('phase', ('before-write', 'after-staging'))
+def test_replaced_existing_destination_not_opened(publication, monkeypatch, phase):
+    target, private, publish = publication
+    target.write_bytes(b'Approved')
+    approval = e.capture_export_destination(target, private_root=private)
+    replacement = target.with_name('independent')
+    unrelated = b'New independent work of different length'
+    replacement.write_bytes(unrelated)
+    changed = False
+
+    def replace_destination():
+        nonlocal changed
+        os.replace(replacement, target)
+        changed = True
+
+    if phase == 'before-write':
+        replace_destination()
+    else:
+        fsync = os.fsync
+        def competing_writer(fd):
+            fsync(fd)
+            replace_destination()
+        monkeypatch.setattr(e.os, 'fsync', competing_writer)
+
+    opened, native_queries = [], []
+    real_open, real_native = os.open, e._windows_change_time
+    def observe(path, *args, **kwargs):
+        if changed and Path(path) == target:
+            opened.append(path)
+        return real_open(path, *args, **kwargs)
+    def native_metadata(path):
+        if changed and Path(path) == target:
+            native_queries.append(path)
+        return real_native(path)
+    monkeypatch.setattr(e.os, 'open', observe)
+    monkeypatch.setattr(e, '_windows_change_time', native_metadata)
+    with pytest.raises(ValueError, match='destination changed'):
+        publish(approval=approval)
+    assert changed
+    assert not opened and not native_queries
+    assert target.read_bytes() == unrelated
+    assert not list(target.parent.glob('.research-export-*'))
     assert not inspected
