@@ -431,3 +431,5 @@ urllib3==2.8.0 \
 
 pycparser==3.12 \
     --hash=sha256:a076f3f489b39b43ed13563a1dafe42447445bec2e294154ec5c57fcdda4c85e
+py3langid==0.4.0 \
+    --hash=sha256:c25bd038147951ba3a89efe9ec12cc7d2116cb6f311ff8af84ade398a8bc0616

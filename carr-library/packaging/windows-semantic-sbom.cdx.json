@@ -36,6 +36,10 @@
       {
         "name": "carr:canonical-component-union",
         "value": "Canonical 966e5ccf QuickJS/runtime inventory plus existing cdf8de9b signed-client dependencies; exact versions and reviewed lock hash blocks preserved."
+      },
+      {
+        "name": "carr:offline-ocr-language-detector",
+        "value": "py3langid0.4.0 + exact packaged model; official wheel SHA256 and immutable inference/model/license Git identities verified in run46009967990. Existing NumPy profile retained."
       }
     ]
   },
@@ -917,6 +921,75 @@
           "url": "https://pypi.org/project/pycparser/3.12/"
         }
       ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "carr-ocr-py3langid@0.4.0",
+      "name": "py3langid",
+      "version": "0.4.0",
+      "purl": "pkg:pypi/py3langid@0.4.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause"
+          }
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "c25bd038147951ba3a89efe9ec12cc7d2116cb6f311ff8af84ade398a8bc0616"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/adbar/py3langid/tree/3b99caf00d0dcbc9416a9d06f8e5b690e919a74e"
+        },
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/project/py3langid/0.4.0/"
+        }
+      ],
+      "properties": [
+        {
+          "name": "carr:wheel",
+          "value": "py3langid-0.4.0-py3-none-any.whl; 4600605 bytes; verified without import in run46009967990"
+        }
+      ]
+    },
+    {
+      "type": "file",
+      "bom-ref": "carr-ocr-py3langid-model@0.4.0",
+      "name": "py3langid/data/model.npz.xz",
+      "version": "0.4.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "f4f4a2c3465ca1f081541037f9cac23021d68151c2f709c55ae5eedfca522963"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "carr:upstream-git-blob",
+          "value": "2221d7ba925849f78981d97d610fec208a89ed97"
+        },
+        {
+          "name": "carr:size",
+          "value": "4586720"
+        },
+        {
+          "name": "carr:qualification",
+          "value": "Packaged model identity verified; model confidence is not OCR accuracy or language-quality qualification."
+        }
+      ]
     }
   ],
   "dependencies": [
@@ -1197,7 +1270,8 @@
         "comtypes@1.5.0",
         "cryptography-trust@50.0.2",
         "tuf-trust@7.0.1",
-        "securesystemslib-trust@1.6.0"
+        "securesystemslib-trust@1.6.0",
+        "carr-ocr-py3langid@0.4.0"
       ]
     },
     {
@@ -1251,6 +1325,16 @@
     },
     {
       "ref": "pycparser-trust@3.12"
+    },
+    {
+      "ref": "carr-ocr-py3langid@0.4.0",
+      "dependsOn": [
+        "numpy-23@2.3.5",
+        "carr-ocr-py3langid-model@0.4.0"
+      ]
+    },
+    {
+      "ref": "carr-ocr-py3langid-model@0.4.0"
     }
   ]
 }

@@ -62,6 +62,16 @@ def runtime_identity(config):
             raise IdentityError('OCR fingerprint timed out')
         return seconds
 
+    if getattr(config, 'automatic_languages', False):
+        from .language_detection import detector_identity, DetectorUnavailable
+        identity['source_sha256'].update({
+            name: _hash(Path(__file__).parent / name, remaining=remaining)
+            for name in ('language_detection.py', 'ocr_regions.py')})
+        try:
+            identity['language_detector'] = detector_identity(remaining)
+        except DetectorUnavailable as exc:
+            identity['language_detector'] = {'state': 'unavailable', 'detail': str(exc)[:500]}
+
     try:
         selected = model_ids(config.languages)
         profile = getattr(config, 'model_profile', 'installed')

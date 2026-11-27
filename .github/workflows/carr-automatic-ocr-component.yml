@@ -1,0 +1,54 @@
+name: CARR automatic OCR component acceptance
+
+on:
+  push:
+    branches: [carr/automatic-ocr-regions-2aa-20261127, carr/automatic-ocr-regions-2aa-20261127-*]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  actual-offline-ocr:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install exact product dependencies and real local OCR
+        run: |
+          set -euo pipefail
+          git rev-parse HEAD 'HEAD^{tree}'
+          python -m pip install '.[test]'
+          python -m pip check
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng fonts-dejavu-core
+          tesseract --version
+          tesseract --list-langs
+      - name: Run real detector, source evidence, native OCR and passive restore regressions
+        run: |
+          set -euo pipefail
+          python -m compileall -q src scripts
+          python scripts/ci_check.py --jobs 1 \
+            tests/extract/test_language_detection.py \
+            tests/extract/test_ocr_language_regions.py \
+            tests/extract/test_automatic_ocr_native.py \
+            tests/storage/test_ocr_language_presets.py \
+            tests/ui/test_ocr_selection.py \
+            tests/extract/test_raster_pages.py \
+            tests/e2e/test_raster_import.py \
+            tests/e2e/test_raster_ocr_native.py
