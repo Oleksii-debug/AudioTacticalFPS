@@ -321,3 +321,37 @@ def test_refresh_preserves_exact_displayed_operation_or_clears_selection(change)
         native.controller.control.assert_not_called()
         native.buttons['cancel'].Enable.assert_called_with(False)
         native.detail.ChangeValue.assert_called_with('')
+
+
+@pytest.mark.parametrize('own_window', [True, False], ids=['native-dialog', 'child-control'])
+def test_native_destroy_identity_does_not_require_a_live_derived_wrapper(own_window):
+    """Exercise the installed handler; actual wx destruction stays in the native gate."""
+    import ast
+    from pathlib import Path
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+    from carr_library.ui import operations_dialog
+
+    source = Path(operations_dialog.__file__)
+    tree = ast.parse(source.read_text(encoding='utf-8'))
+    factory = next(node for node in tree.body if isinstance(node, ast.FunctionDef)
+                   and node.name == 'create_operations_dialog')
+    dialog = next(node for node in factory.body if isinstance(node, ast.ClassDef)
+                  and node.name == 'OperationsDialog')
+    handler = next(node for node in dialog.body if isinstance(node, ast.FunctionDef)
+                   and node.name == 'destroyed')
+    namespace = {}
+    exec(compile(ast.fix_missing_locations(ast.Module(body=[handler], type_ignores=[])),
+                 str(source), 'exec'), namespace)
+    controller = Mock()
+    native = SimpleNamespace(_window_id=41, controller=controller)
+    event = Mock()
+    event.GetId.return_value = 41 if own_window else 42
+    event.GetEventObject.side_effect = AssertionError('Derived wrapper identity is not durable.')
+    namespace['destroyed'](native, event)
+    event.GetEventObject.assert_not_called()
+    event.Skip.assert_called_once_with()
+    if own_window:
+        controller.dispose.assert_called_once_with()
+    else:
+        controller.dispose.assert_not_called()

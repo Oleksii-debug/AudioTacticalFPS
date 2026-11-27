@@ -174,11 +174,15 @@ def run_native_operations(frame, directory):
     wx.YieldIfNeeded()
     assert not controller.closed, 'A child destruction detached the whole task view.'
     before_status = controller.status
-    destroyed, late_reports = [], []
+    destroyed, late_reports, destroy_ids = [], [], []
+    detached_id, detached_handle = detached.GetId(), detached.GetHandle()
     deletion_loop = wx.GUIEventLoop()
 
     def observed_destruction(event):
-        if event.GetEventObject() is detached:
+        # Top-level destruction is sent after the derived C++/Python wrapper
+        # lifetime. Correlate the captured native ID, not Python ``is``.
+        destroy_ids.append(event.GetId())
+        if event.GetId() == detached_id:
             destroyed.append(True)
             wx.CallAfter(deletion_loop.Exit)
         event.Skip()
@@ -195,10 +199,19 @@ def run_native_operations(frame, directory):
         # Native top-level deletion happens on a later idle pass. Detachment
         # must already protect queued callbacks before that event is delivered.
         assert controller.closed and controller._token is None
+        # This probe runs before App.MainLoop. Service a real wx idle pass
+        # after the queued late callback, including native pending deletion.
+        wx.CallAfter(wx.GetApp().ProcessIdle)
         deletion_loop.Run()
     finally:
         watchdog.Stop()
-    assert destroyed == [True], 'The native task-view destruction event was not observed.'
+    assert destroyed == [True], ('The native task-view destruction event was not observed: '
+                                  + repr({'expected_id': detached_id, 'observed_ids': destroy_ids}))
+    import ctypes
+    from ctypes import wintypes
+    is_window = ctypes.WinDLL('user32', use_last_error=True).IsWindow
+    is_window.argtypes, is_window.restype = [wintypes.HWND], wintypes.BOOL
+    assert not is_window(detached_handle), 'The destroyed task view retained its native HWND.'
     assert late_reports == [True] and controller.status == before_status
     assert controller.closed and controller._token is None
     return {'status': 'PASS', 'host_executor_initialization': 'PASS',

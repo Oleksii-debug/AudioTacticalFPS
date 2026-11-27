@@ -284,6 +284,9 @@ def create_operations_dialog(frame, *, controller_factory=OperationsController):
             # Native indices belong to the rows actually displayed, never the
             # controller's newly arrived replacement inventory.
             self._displayed_jobs = ()
+            # The Python wrapper returned during a native destructor need not
+            # be the original derived instance. Capture its stable native ID.
+            self._window_id = self.GetId()
             self.controller = controller_factory(frame, changed=self.render, dispatch=wx.CallAfter)
             self._shown_policy = None
             outer = wx.BoxSizer(wx.VERTICAL)
@@ -434,7 +437,7 @@ def create_operations_dialog(frame, *, controller_factory=OperationsController):
             self.EndModal(wx.ID_CLOSE)
 
         def destroyed(self, event):
-            if event.GetEventObject() is self:
+            if event.GetId() == self._window_id:
                 self.controller.dispose()
             event.Skip()
 

@@ -70,3 +70,24 @@ def test_generic_coordinator_cannot_rebind_an_application_policy(tmp_path):
     with pytest.raises(ResourceConflict):
         ResourceBroker(broker.root, policy_path=root / 'alternate.json')
     assert not (root / 'alternate.json').exists()
+
+
+@pytest.mark.parametrize('application', [False, True])
+@pytest.mark.parametrize('active', [False, True])
+def test_existing_null_binding_is_corruption_even_without_a_live_lease(tmp_path, application, active):
+    from contextlib import nullcontext
+    root = tmp_path / 'library'
+    root.mkdir()
+    create = (lambda: ResourceBroker.for_app(root)) if application else (
+        lambda: ResourceBroker(root / 'coordinator'))
+    broker = create()
+    held = (broker.reserve(ResourceRequest(cpu_slots=1), operation_id='document:held')
+            if active else nullcontext())
+    with held:
+        binding = broker.root / '.policy-location.json'
+        binding.write_bytes(b'null')
+        with pytest.raises(ResourceConflict):
+            create()
+        assert binding.read_bytes() == b'null'
+        if active:
+            assert len(broker.snapshot()['leases']) == 1

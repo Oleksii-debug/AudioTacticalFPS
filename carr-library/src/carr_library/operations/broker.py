@@ -120,8 +120,9 @@ class ResourceBroker:
             location = ({'schema': 'carr-application-resource-policy/1',
                          'path': 'state/operations/resources.json'} if _application_policy else
                         {'schema': 'carr-resource-policy-location/1', 'path': str(self.policy_path)})
-            previous = _read(binding) if os.path.lexists(binding) else None
-            if previous is None:
+            binding_exists = os.path.lexists(binding)
+            previous = _read(binding) if binding_exists else None
+            if not binding_exists:
                 atomic_json(binding, location)
             elif previous != location:
                 # Runtime coordination is not part of typed backup. If an owner
