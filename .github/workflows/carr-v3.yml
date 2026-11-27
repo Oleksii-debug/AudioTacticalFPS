@@ -60,6 +60,7 @@ jobs:
             tests/ui/test_transcription_dialog.py tests/ui/test_progress_voice_actions.py \
             tests/ui/test_progress_media_quiet.py \
             tests/ingest/test_worker_publication_boundary.py tests/ingest/test_worker_isolated_launch.py \
+            tests/ingest/test_import_metadata_shape.py \
             tests/e2e/test_import_worker.py tests/storage/test_atomic_state_publication.py \
             tests/storage/test_state_backup_portability.py tests/storage/test_state_snapshot_portability.py \
             tests/storage/test_v3_state_backup.py tests/storage/test_pending_backup.py \
