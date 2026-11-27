@@ -53,6 +53,75 @@ jobs:
           architecture: x64
       - name: Install the declared application and test dependencies
         run: python -m pip install ".[test]"
+      - name: Verify installed studio project backup compatibility
+        shell: python
+        run: |
+          import os, subprocess, sys
+          from pathlib import Path
+          report = Path("ci-results/studio-installed.json").resolve()
+          report.parent.mkdir(exist_ok=True)
+          commit = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+          probe = r"""
+          from dataclasses import replace
+          from hashlib import sha1
+          import importlib
+          import json
+          from pathlib import Path
+          import sys
+          import sysconfig
+          import tempfile
+          
+          roots = tuple(Path(sysconfig.get_path(key)).resolve() for key in ("purelib", "platlib"))
+          expected = {
+              "carr_library.studio": "7e38d3875a79e43e24321e4a14f613a0bb7b5064",
+              "carr_library.studio.project": "1acf68727fdaadd14055d357e28f2eb140ab2a52",
+              "carr_library.backup_sidecars": "ebdc371d74f7fb54145980b6dba90351f3901ec8",
+          }
+          origins = {}
+          for name, expected_blob in expected.items():
+              module = importlib.import_module(name)
+              origin = Path(module.__file__).resolve()
+              assert any(origin.is_relative_to(root) for root in roots), (name, str(origin))
+              raw = origin.read_bytes()
+              blob = sha1(("blob " + str(len(raw)) + "\0").encode() + raw).hexdigest()
+              assert blob == expected_blob, (name, blob)
+              origins[name] = {"path": str(origin), "git_blob": blob}
+          
+          from carr_library.application import LibraryApp
+          from carr_library.library_backup import create_backup, verify_backup, restore_backup
+          from carr_library.studio import ProjectStore, parse_script
+          
+          with tempfile.TemporaryDirectory(prefix="carr-installed-studio-") as temporary:
+              root = Path(temporary)
+              app = LibraryApp(root / "source")
+              app.create_workspace("Installed studio schema")
+              first = parse_script("Narrator: Preserved Unicode text e\u0301.",
+                                   project_id="installed-project", title="Original project")
+              store = ProjectStore(app.root / "state" / "studio" / "projects")
+              store.save(first)
+              current = replace(first, title="Second revision", revision=2)
+              store.save(current, expected_revision=1)
+              original_files = {path.relative_to(store.root): path.read_bytes()
+                                for path in store.root.rglob("*.json")}
+              assert len(original_files) == 2
+              checksum = create_backup(app, root / "backup")
+              manifest = verify_backup(root / "backup", checksum)
+              restored = restore_backup(root / "backup", root / "restored", checksum)
+              restored_store = ProjectStore(restored / "state" / "studio" / "projects")
+              assert restored_store.load(current.id) == current
+              restored_files = {path.relative_to(restored_store.root): path.read_bytes()
+                                for path in restored_store.root.rglob("*.json")}
+              assert restored_files == original_files
+              report = {"status": "passed", "commit": sys.argv[2], "python": sys.version,
+                        "isolated": bool(sys.flags.isolated), "modules": origins,
+                        "manifest_sha256": checksum, "backup_version": manifest["version"],
+                        "project_revisions_preserved": len(restored_files)}
+              assert report["isolated"]
+              Path(sys.argv[1]).write_text(json.dumps(report, indent=2), encoding="utf-8")
+              print(json.dumps(report, indent=2), flush=True)
+          """
+          subprocess.run([sys.executable, "-I", "-c", probe, str(report), commit],
+                         cwd=os.environ["RUNNER_TEMP"], check=True)
       - name: Check dependency consistency
         run: python -m pip check
       - name: Prepare the actual Linux OCR and audio engines

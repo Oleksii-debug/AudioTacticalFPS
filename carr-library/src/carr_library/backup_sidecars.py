@@ -168,6 +168,9 @@ def validate_sidecar(db, name, raw):
         else:
             match = _STUDIO.fullmatch(name)
             project = _model('studio.project').Project.from_dict(_json(raw))
+            if any(scene.cues for scene in project.scenes):
+                raise ValueError('Studio projects with external media cues require a validated '
+                                 'media backup adapter; source audio was not captured.')
             if project.id != match[1] or (match[2] is not None and
                     (project.revision != int(match[2]) or project.fingerprint != match[3])):
                 raise ValueError('Audio project disagrees with its stored identity or revision.')
@@ -408,6 +411,18 @@ def snapshot(db, root, stage, *, max_bytes=MAX_TOTAL_BYTES, max_files=MAX_FILES,
         _check_cancelled(cancelled)
         entries.append(backup_audio.copy_record(root, name, stage / name, identity, cancelled))
     backup_audio.validate(stage, db, max_files=max_files, cancelled=cancelled)
+    # Equal-size source writes can retain observed Windows timestamps. Recheck
+    # copied JSON bytes before publication; media keeps its existing validator.
+    for entry in entries:
+        name = entry['filename']
+        if backup_audio.audio_name(name):
+            continue
+        _check_cancelled(cancelled)
+        raw = read_regular(root / name, min(sidecar_limit(name), entry['size_bytes']))
+        matches = len(raw) == entry['size_bytes'] and sha256(raw).hexdigest() == entry['sha256']
+        _check_cancelled(cancelled)
+        if not matches:
+            raise RestoreError('application state changed during backup; pause its producer and retry')
     if (_capture(root, cancelled=cancelled) != before or
             backup_audio.capture(root, include_generated=include_generated,
                 max_files=max_files, max_bytes=max_bytes, cancelled=cancelled) != audio):
