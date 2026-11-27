@@ -766,12 +766,15 @@ class DesktopFrame(WorkspaceFrame):
                     # paused/cancelled result must never announce completion.
                     outcome = (progress_outcome(result) if progress_outcome is not None else
                                'cancelled' if self.cancel_event.is_set() else 'completed')
-                    if outcome not in ('completed', 'cancelled', 'failed'):
+                    if outcome not in ('completed', 'cancelled', 'failed', 'paused'):
                         raise ValueError('The operation returned an invalid progress outcome.')
                     self.report(title + ': ' + ('complete' if outcome == 'completed' else outcome) + '.')
                     if done is not None:
                         done(result)
-                    tracker.finish(outcome, verified=outcome == 'completed')
+                    if outcome == 'paused':
+                        tracker.pause()
+                    else:
+                        tracker.finish(outcome, verified=outcome == 'completed')
                 except Exception as exc:
                     tracker.finish('cancelled' if self.cancel_event.is_set() else 'failed', phase=str(exc))
                     self.report(f'{title}: {exc}')

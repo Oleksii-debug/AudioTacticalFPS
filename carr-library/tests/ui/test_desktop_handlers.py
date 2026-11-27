@@ -784,7 +784,7 @@ def test_save_presentation_equivalent_topic_labels(classes, names, index):
 
 
 @pytest.mark.parametrize('status,cancelled,expected', [
-    ('paused', False, 'cancelled'), ('paused', True, 'cancelled'),
+    ('paused', False, 'paused'), ('paused', True, 'paused'),
     ('attention', False, 'failed'), ('complete', False, 'completed'),
     ('complete', True, 'completed'),
 ])

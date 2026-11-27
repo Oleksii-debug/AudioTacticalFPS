@@ -410,3 +410,17 @@ def test_chunking_and_integer_allocations_preserve_all_unicode():
     reserved = allocations(parts, 7)
     assert sum(value for value in reserved if value is not None) == 7
     assert all(value is None or type(value) is int for value in reserved)
+
+
+def test_decoded_detected_language_can_be_durably_checkpointed(ready, monkeypatch):
+    service, selected, _, transport = ready
+    identity = submit(service, selected)
+    def escaped_language(profile, route, payload, headers, **kwargs):
+        transport.calls.append(('text', profile.id, json.loads(payload), dict(headers)))
+        return b'{"data":{"translations":[{"translatedText":"Accepted text","detectedSourceLanguage":"&#101;n","model":"nmt"}]}}'
+    monkeypatch.setattr(transport, 'post', escaped_language)
+    assert service.resume(identity)['status'] == 'complete'
+    assert service.jobs.load(identity)['receipts'][0]['detected_source'] == 'en'
+    assert service.gateway.ledger.report(identity)[0]['state'] == 'complete'
+    assert service.resume(identity)['status'] == 'complete'
+    assert len(text_calls(transport)) == 1

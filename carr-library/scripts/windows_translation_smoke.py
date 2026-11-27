@@ -6,6 +6,7 @@ Google, claim translation quality, test a real account, or claim NVDA coverage.
 """
 from hashlib import sha256
 import json
+import socket
 from pathlib import Path
 import sys
 from tempfile import TemporaryDirectory
@@ -52,7 +53,14 @@ def main():
         hashes[name] = sha256(raw).hexdigest()
 
     original = 'Public synthetic source. Український текст. No private book content.'
-    requests, approvals, failures = [], [], []
+    requests, approvals, failures, network_attempts = [], [], [], []
+    def offline(*args, **kwargs):
+        network_attempts.append(True)
+        raise AssertionError('Network is disabled for synthetic translation acceptance.')
+    socket.getaddrinfo = offline
+    socket.create_connection = offline
+    socket.socket.connect = offline
+    socket.socket.connect_ex = offline
     def force_failure():
         import os
         try:
@@ -172,6 +180,8 @@ def main():
                     rows = service.list()
                     assert len(rows) == 1 and rows[0]['status'] == 'complete'
                     assert child(dialog, 'Accepted translation derivative; not a source quotation').GetValue().startswith('Синтетичний')
+                    measured = frame.progress_view.tracker.snapshot()
+                    assert measured.state == 'completed' and measured.percent == 100
                     assert not child(dialog, 'Selected text; originals remain unchanged').IsEnabled()
                     button(dialog, 'Export derivative')
                     phase[0] = 4
@@ -189,6 +199,7 @@ def main():
                         assert sha256((output / name).read_bytes()).hexdigest() == digest
                     assert len(approvals) == 2
                     assert [row[0] for row in requests] == ['languages', 'text']
+                    assert not network_attempts
                     final.update(schema='carr-native-translation-smoke/1', status='PASS',
                         installed_module=str(Path(providers.__file__).resolve()), native_controls=True,
                         windows_execution='PASS', source_commit=manifest['source_commit'],
@@ -196,7 +207,8 @@ def main():
                         synthetic_provider_requests=2, exact_reviewed_pair='en->uk', source_immutable=True,
                         quotation_authority=False, derivative_hashes=report['files'],
                         approval_and_folder_picker='injected explicit synthetic decisions',
-                        actual_google_api='NOT_RUN', actual_credential_vault='NOT_RUN', nvda='NOT_RUN')
+                        real_network='blocked', actual_google_api='NOT_RUN',
+                        actual_credential_vault='NOT_RUN', nvda='NOT_RUN')
                     phase[0] = 5
                     timer.Stop()
                     button(dialog, 'Close')

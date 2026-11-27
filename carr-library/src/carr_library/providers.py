@@ -503,8 +503,10 @@ def decode_translation_response(request, raw, *, secret=None):
             raise ValueError
         result = plain(row['translatedText'], 200000)
         detected = row.get('detectedSourceLanguage')
-        if detected is not None and not _LANGUAGE.fullmatch(plain(detected, 35)):
-            raise ValueError
+        if detected is not None:
+            detected = plain(detected, 35)
+            if not _LANGUAGE.fullmatch(detected):
+                raise ValueError
         if 'model' in row and plain(row['model'], 200) != 'nmt':
             raise ValueError
         return {'text': result, 'detected_source': detected}

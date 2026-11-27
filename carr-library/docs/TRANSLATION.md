@@ -118,7 +118,7 @@ Tools menu, before the existing productivity/keyboard collector. No competing
 command registry is installed.
 Reading actions can call show_translation(frame, initial_text=selected_text,
 title=source_title). The dialog uses the shared frame worker, cancellation and
-progress_tracker/progress_outcome contract. Paused jobs report cancellation;
+progress_tracker/progress_outcome contract. Paused jobs retain paused progress;
 only an accepted complete result can finish verified progress at 100 percent. Existing AI/API settings route Google profiles into it.
 
 New modules reside in the existing assistant and ui packages. No new dependency
@@ -134,11 +134,17 @@ Focused synthetic suites:
 - tests/e2e/test_google_translation_gateway.py
 - tests/assistant/test_translation.py
 - tests/ui/test_translation_dialog.py
+- tests/storage/test_backup_translation.py
 
 They cover exact authority/header routing, LOCAL ONLY, unchanged existing
 request hashes, reflected keys, cancellation/uncertain charges, restart, lost
 paid output, changed bindings, immutable exports, typed backup validation,
-real native locks and late UI callbacks. No Google request or real key is used.
+real native locks and late UI callbacks. The real library-backup tests include
+queued, paused and complete translations, disconnected restored profiles,
+known-unsent reservations, archive no-write checks, active-job rejection and
+shared aggregate byte/file limits. Existing tests/e2e/test_provider_gateway.py,
+tests/storage/test_backup_provider_state.py and tests/ui/test_desktop_handlers.py
+remain required regression gates. No Google request or real key is used.
 
 On Windows, after installing the wheel:
 
@@ -167,3 +173,27 @@ named gates on the composed tree before claiming acceptance.
 
 These establish API shape and authentication, not this build's acceptance,
 current account price or translation quality.
+
+
+## Reuse and integration checkpoint
+
+This slice reuses the typed translation service/state and synthetic boundary
+tests from commit 9fe6273d3e814b5f16abdaa67091c8befb20ccb6. PR99 was rechecked at
+6c7afdccf18e010c8deb16a61f22b367df19c339 before adaptation; the intervening
+translation change connected that dialog to its branch-specific keyboard
+registry. This application keeps its existing Tools menu and productivity
+collector instead.
+
+The provider adaptation preserves the existing strict profile decoder, portable
+SQLite validation, snapshot API, absolute record bounds and archive sanitation.
+A known-unsent reservation can be reused only with its original operation ID,
+approval digest, exact request and amount; all actual/uncertain requests remain
+charged in local history. Translation independently rejects unresolved pending
+intents. No second provider ledger, credential store or assistant tool executor
+is introduced.
+
+Receiving source and installed-wheel gates must include the four focused suites
+listed above. The installed native command requires both --bundle and --output.
+The final bundle must also ship this guide. Tests and native acceptance remain
+NOT_RUN until the exact composed tree is executed; this record does not claim
+paid-service, real-vault, translation-quality or manual NVDA acceptance.

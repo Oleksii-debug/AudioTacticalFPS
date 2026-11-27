@@ -17,7 +17,7 @@ def translation_outcome(result):
     status = result.get('status') if isinstance(result, dict) else None
     if status not in ('complete', 'paused', 'attention'):
         raise ValueError('Translation returned an unrecognized completion state.')
-    return {'complete': 'completed', 'paused': 'cancelled', 'attention': 'failed'}[status]
+    return {'complete': 'completed', 'paused': 'paused', 'attention': 'failed'}[status]
 
 
 class TranslationController:

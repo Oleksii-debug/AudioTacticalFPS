@@ -205,7 +205,7 @@ def test_busy_translation_action_does_not_create_state(monkeypatch):
     assert frame.report.called
 
 
-@pytest.mark.parametrize('status,expected', [('complete', 'completed'), ('paused', 'cancelled'),
+@pytest.mark.parametrize('status,expected', [('complete', 'completed'), ('paused', 'paused'),
                                              ('attention', 'failed')])
 def test_translation_outcome_never_promotes_incomplete_chunks(status, expected):
     from carr_library.ui.translation_dialog import translation_outcome
