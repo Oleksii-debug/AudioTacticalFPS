@@ -1,0 +1,118 @@
+{
+  "schema": 1,
+  "component": "fixed-synthetic-office-launch-diagnostics",
+  "date": "2026-11-27",
+  "observed": {
+    "commit": "2884d3b08b12e8c393e871c59bac59178a888cbb",
+    "run_id": 46021345143,
+    "job_id": 140581474060,
+    "status": "FAIL",
+    "source": {
+      "passed": 1,
+      "failed": 6,
+      "total": 7
+    },
+    "installed": "NOT_RUN",
+    "artifact": {
+      "id": 15211229840,
+      "bytes": 4565449,
+      "sha256": "080d906b5f8671475a0828848608ae6abc1c06f52d5990b917b620c00c551480"
+    },
+    "diagnostic": [
+      {
+        "adapter_module": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\conversion\\office.py",
+        "adapter_sha256": "dffa42daf99cd78c570ae24fd26036e6e7274f3dba6d20e4d0ca9a1a1845827d",
+        "arguments": [
+          "D:\\a\\_temp\\carr-converters-46021345143-1-office\\libreoffice\\program\\soffice.com",
+          "-env:UserInstallation=file:///D:/a/AudioTacticalFPS/AudioTacticalFPS/carr-library/converter-ci-results/source-tmp/test_real_selected_legacy_filt0/%D0%A7%D0%B8%D1%82%D0%B0%D0%BB%D1%8C%D0%BD%D0%B0%20%D0%BA%D0%BE%D0%BF%D1%96%D1%8F/.carr-diagnostic-wef15zno/libreoffice-profile",
+          "--headless",
+          "--nologo",
+          "--nodefault",
+          "--nofirststartwizard",
+          "--norestore",
+          "--version"
+        ],
+        "elapsed_seconds": 2.5,
+        "executable": "D:\\a\\_temp\\carr-converters-46021345143-1-office\\libreoffice\\program\\soffice.com",
+        "family": "office",
+        "reproduction_only": true,
+        "returncode": 0,
+        "schema": 1,
+        "source_sha256": "acce640c7ff34418e6621f3e625ab95741c6b206ff7c4335bb2f9206da232dd2",
+        "stderr": "",
+        "stdout": "LibreOffice 26.2.7.3 08dfbf04dcac895fc3a8d30dbf5a00de1b9dda5e\r\n\r\n"
+      },
+      {
+        "adapter_module": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\conversion\\office.py",
+        "adapter_sha256": "dffa42daf99cd78c570ae24fd26036e6e7274f3dba6d20e4d0ca9a1a1845827d",
+        "arguments": [
+          "D:\\a\\_temp\\carr-converters-46021345143-1-office\\libreoffice\\program\\soffice.com",
+          "-env:UserInstallation=file:///D:/a/AudioTacticalFPS/AudioTacticalFPS/carr-library/converter-ci-results/source-tmp/test_real_selected_legacy_filt0/%D0%A7%D0%B8%D1%82%D0%B0%D0%BB%D1%8C%D0%BD%D0%B0%20%D0%BA%D0%BE%D0%BF%D1%96%D1%8F/.carr-diagnostic-wef15zno/libreoffice-profile",
+          "--headless",
+          "--nologo",
+          "--nodefault",
+          "--nofirststartwizard",
+          "--norestore",
+          "--infilter=MS Word 97",
+          "--convert-to",
+          "odt:writer8",
+          "--outdir",
+          "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\converter-ci-results\\source-tmp\\test_real_selected_legacy_filt0\\Читальна копія\\.carr-diagnostic-wef15zno\\office-output",
+          "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\converter-ci-results\\source-tmp\\test_real_selected_legacy_filt0\\Читальна копія\\.carr-diagnostic-wef15zno\\source.doc"
+        ],
+        "elapsed_seconds": 2.780999999999949,
+        "executable": "D:\\a\\_temp\\carr-converters-46021345143-1-office\\libreoffice\\program\\soffice.com",
+        "family": "office",
+        "reproduction_only": true,
+        "returncode": 0,
+        "schema": 1,
+        "source_sha256": "acce640c7ff34418e6621f3e625ab95741c6b206ff7c4335bb2f9206da232dd2",
+        "stderr": "",
+        "stdout": ""
+      },
+      {
+        "error": "Selected LibreOffice did not produce its single declared intermediate.",
+        "error_type": "ConversionError",
+        "family": "office",
+        "intermediate_names": [],
+        "reproduction_only": true
+      }
+    ]
+  },
+  "hypotheses_not_causes": [
+    "Missing explicit local user directories in the narrowed child environment.",
+    "The same fixed input/profile under a short ASCII private directory.",
+    "Windows native component read-sharing compatibility.",
+    "Valid but unnecessary nodefault/nofirststartwizard flags."
+  ],
+  "bounded_reproduction": {
+    "variants": [
+      "baseline",
+      "selected-user-environment",
+      "short-ascii-stage",
+      "without-component-holds",
+      "minimal-startup-flags"
+    ],
+    "per_variant_seconds": 30,
+    "total_seconds": 180,
+    "source_bytes": 67108864,
+    "logs_bytes": 262144,
+    "printed_log_tail_bytes": 4096,
+    "macros_profile": "UNCHANGED",
+    "offline_firewall": "UNCHANGED",
+    "owned_child_cleanup": "UNCHANGED",
+    "test_case_count": 7,
+    "product_changes": 0,
+    "qualification_effect": "NONE"
+  },
+  "primary_sources": [
+    "https://help.libreoffice.org/latest/en-GB/text/shared/guide/start_parameters.html?DbPAR=BASIC&System=WIN",
+    "https://github.com/LibreOffice/core/blob/libreoffice-26.2.7.3/desktop/win32/source/loader.cxx",
+    "https://github.com/LibreOffice/core/blob/libreoffice-26.2.7.3/desktop/source/app/cmdlineargs.cxx"
+  ],
+  "validation": {
+    "source_review": "COMPLETE",
+    "python_compilation": "NOT_RUN",
+    "actual_matrix": "NOT_RUN"
+  }
+}
