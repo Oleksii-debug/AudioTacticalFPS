@@ -285,14 +285,26 @@ def describe_narration_receipt(record):
     anchor = narration['source_anchor']
     source = 'No retained-library source anchor.'
     if anchor is not None:
-        first, last = anchor['positions'][0], anchor['positions'][-1]
+        positions = anchor['positions']
+        kind = 'PDF pages' if positions[0]['kind'] == 'physical_page' else 'logical segments'
+        indices = ', '.join(str(row['index']) for row in positions[:16])
+        if len(positions) > 16:
+            indices += f', and {len(positions) - 16} more (listed in the receipt)'
         source = (f"Workspace {anchor['workspace']}; edition {anchor['edition']}; "
                   f"revision {anchor['revision']}; original SHA-256 {anchor['asset_sha256']}. "
-                  f"{first['kind']} indices {first['index']} to {last['index']}; "
+                  f"Captured snapshot {kind} ({len(positions)}): {indices}. "
+                  'These are snapshot positions, not necessarily the narrated selection; '
                   'printed page labels are not attested by this receipt.')
+    span = narration['source_span']
+    if span['start'] is None:
+        mapping = 'Narrated selection has no mapped source offsets.'
+    else:
+        precision = 'exact' if span['exact'] else 'approximate'
+        mapping = (f"Narrated selection has {precision} snapshot source offsets "
+                   f"{span['start']} to {span['end']} (end exclusive); not quotation authority.")
     voice = record['voice']
     runtime = voice['runtime_sha256'] or 'Unavailable'
-    return (f"PCM and receipt checksums match. {NOTICE}\n{source}\n"
+    return (f"PCM and receipt checksums match. {NOTICE}\n{source}\n{mapping}\n"
             f"Reading revision {narration['reading_revision']}; Unicode selection offsets "
             f"{selected['start']} to {selected['end']} (end exclusive). "
             f"Text SHA-256 {selected['text_sha256']}.\n"

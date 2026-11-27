@@ -84,7 +84,8 @@ def test_receipt_roundtrip_preserves_pcm_and_unicode_identity(tmp_path, bound, c
     assert record['pcm']['sha256'] == hash_bytes(pcm)
     assert 'never authorizes a quotation' in receipt.describe_narration_receipt(record)
     if bound:
-        assert 'indices 2 to 4' in receipt.describe_narration_receipt(record)
+        assert 'Captured snapshot PDF pages (2): 2, 4.' in receipt.describe_narration_receipt(record)
+        assert 'indices 2 to 4' not in receipt.describe_narration_receipt(record)
         assert 'printed page labels are not attested' in receipt.describe_narration_receipt(record)
 
 
@@ -230,3 +231,43 @@ def test_wrong_pcm_hash_refuses_attachment(tmp_path):
     with pytest.raises(ValueError, match='PCM changed'):
         add_receipt(path, Snapshot(), pcm + b'wrong')
     assert path.read_bytes() == before
+
+
+@pytest.mark.parametrize('span,expected', [
+    (SimpleNamespace(start=0, end=2, exact=True), 'exact snapshot source offsets 0 to 2'),
+    (SimpleNamespace(start=0, end=7, exact=False), 'approximate snapshot source offsets 0 to 7'),
+    (SimpleNamespace(start=None, end=None, exact=False), 'no mapped source offsets'),
+])
+def test_description_distinguishes_snapshot_from_selection(tmp_path, span, expected):
+    path = tmp_path / 'selection.wav'
+    snapshot = Snapshot()
+    snapshot.source_span = lambda start, end: span
+    pcm = plain_wave(path)
+    selection = receipt.capture_narration(snapshot, 0, 2)
+    receipt.append_narration_receipt(path, selection,
+        Voice('private-local-voice-id', 'Fixture', 'fixture', 'uk'),
+        SpeechSettings(), pcm_sha256=hash_bytes(pcm))
+    description = receipt.describe_narration_receipt(
+        receipt.read_narration_receipt(path, document=snapshot))
+    assert 'Captured snapshot PDF pages (2): 2, 4.' in description
+    assert 'not necessarily the narrated selection' in description
+    assert expected in description
+    assert 'never authorizes a quotation' in description
+
+
+def test_description_bounds_long_logical_snapshot_without_inventing_range(tmp_path):
+    path = tmp_path / 'logical.wav'
+    snapshot = Snapshot()
+    snapshot.source_text = snapshot.text = '\n\n'.join('x' for _ in range(20))
+    snapshot.source_sha256 = hash_bytes(snapshot.source_text)
+    snapshot.source_anchor['positions'] = [
+        {'ordinal': n + 1, 'kind': 'logical_segment', 'index': 2 * n + 1,
+         'start': 3 * n, 'end': 3 * n + 1, 'text_sha256': hash_bytes('x'),
+         'text_verified_at_capture': False} for n in range(20)]
+    add_receipt(path, snapshot, plain_wave(path))
+    description = receipt.describe_narration_receipt(
+        receipt.read_narration_receipt(path, document=snapshot))
+    assert 'Captured snapshot logical segments (20): 1, 3, 5, 7' in description
+    assert 'and 4 more (listed in the receipt)' in description
+    assert 'PDF pages' not in description
+    assert 'indices 1 to 39' not in description
