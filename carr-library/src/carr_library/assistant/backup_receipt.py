@@ -13,6 +13,8 @@ from pathlib import Path
 import re
 import stat
 
+from ..native_file_metadata import stream_change_time
+
 
 _SHA = re.compile(r'[0-9a-f]{64}')
 _SCHEMA = 'carr-backup-receipt/1'
@@ -50,6 +52,47 @@ def _root(value):
 def _stamp(value):
     return (value.st_dev, value.st_ino, value.st_mode, value.st_size,
             value.st_mtime_ns, value.st_ctime_ns)
+
+
+def _native_pin(path):
+    """A bounded final read handle pin; Windows ChangeTime is not creation time."""
+    before = _plain(path)
+    flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
+    fd = os.open(path, flags)
+    with os.fdopen(fd, 'rb') as stream:
+        if _stamp(os.fstat(stream.fileno())) != _stamp(before):
+            raise ValueError('The backup tree changed during verification.')
+        native = stream_change_time(stream)
+        if _stamp(os.fstat(stream.fileno())) != _stamp(before):
+            raise ValueError('The backup tree changed during verification.')
+    if _stamp(_plain(path)) != _stamp(before):
+        raise ValueError('The backup tree changed during verification.')
+    return _stamp(before) + (native,)
+
+
+def _final_pins(observed, native_pins):
+    """No external callback after this finite final namespace/payload pass."""
+    for path, (is_directory, stamp, expected) in observed.items():
+        try:
+            if _stamp(_plain(path, directory=is_directory)) != stamp:
+                raise ValueError('The backup tree changed during verification.')
+            if not is_directory:
+                if _native_pin(path) != native_pins[path]:
+                    raise ValueError('The backup tree changed during verification.')
+                continue
+            names = []
+            with os.scandir(path) as entries:
+                for entry in entries:
+                    if len(names) >= len(expected):
+                        raise ValueError('The backup tree changed during verification.')
+                    names.append(entry.name)
+            if (tuple(sorted(names)) != expected
+                    or _stamp(_plain(path, directory=True)) != stamp):
+                raise ValueError('The backup tree changed during verification.')
+        except (InterruptedError, TimeoutError):
+            raise
+        except OSError:
+            raise ValueError('The backup tree changed during verification.') from None
 
 
 @dataclass(frozen=True)
@@ -101,6 +144,7 @@ def capture_backup_receipt(directory, manifest_sha256, *, max_bytes, max_files,
     total = files = directories = visited = 0
     found_manifest = False
     observed = {}
+    native_pins = {}
 
     def check():
         if cancelled():
@@ -149,6 +193,7 @@ def capture_backup_receipt(directory, manifest_sha256, *, max_bytes, max_files,
             flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
             fd = os.open(child, flags)
             with os.fdopen(fd, 'rb') as stream:
+                native_before = stream_change_time(stream)
                 if _stamp(os.fstat(stream.fileno())) != _stamp(before_file):
                     raise ValueError('A backup file changed during verification.')
                 while block := stream.read(1024 * 1024):
@@ -157,7 +202,8 @@ def capture_backup_receipt(directory, manifest_sha256, *, max_bytes, max_files,
                     if total + count > max_bytes or count > before_file.st_size:
                         raise ValueError('The complete backup exceeds its approved budget or changed while reading.')
                     digest.update(block)
-                if _stamp(os.fstat(stream.fileno())) != _stamp(before_file):
+                if (_stamp(os.fstat(stream.fileno())) != _stamp(before_file)
+                        or stream_change_time(stream) != native_before):
                     raise ValueError('A backup file changed during verification.')
             if count != before_file.st_size or _stamp(_plain(child)) != _stamp(before_file):
                 raise ValueError('A backup file changed during verification.')
@@ -169,6 +215,7 @@ def capture_backup_receipt(directory, manifest_sha256, *, max_bytes, max_files,
                     raise ValueError('The backup manifest differs from the producer receipt.')
             add('file', relative, count, checksum)
             observed[child] = (False, _stamp(before_file), checksum)
+            native_pins[child] = _stamp(before_file) + (native_before,)
         if _stamp(_plain(path, directory=True)) != _stamp(before):
             raise ValueError('The backup directory changed during verification.')
         observed[path] = (True, _stamp(before), tuple(sorted(names)))
@@ -198,7 +245,8 @@ def capture_backup_receipt(directory, manifest_sha256, *, max_bytes, max_files,
             flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
             fd = os.open(path, flags)
             with os.fdopen(fd, 'rb') as stream:
-                if _stamp(os.fstat(stream.fileno())) != stamp:
+                if (_stamp(os.fstat(stream.fileno())) != stamp
+                        or stream_change_time(stream) != native_pins[path][-1]):
                     raise ValueError('The backup tree changed during verification.')
                 while block := stream.read(1024 * 1024):
                     check()
@@ -206,7 +254,8 @@ def capture_backup_receipt(directory, manifest_sha256, *, max_bytes, max_files,
                     if count > stamp[3]:
                         raise ValueError('The backup tree changed during verification.')
                     digest.update(block)
-                if _stamp(os.fstat(stream.fileno())) != stamp:
+                if (_stamp(os.fstat(stream.fileno())) != stamp
+                        or stream_change_time(stream) != native_pins[path][-1]):
                     raise ValueError('The backup tree changed during verification.')
             if (count != stamp[3] or digest.hexdigest() != expected
                     or _stamp(_plain(path)) != stamp):
@@ -218,6 +267,7 @@ def capture_backup_receipt(directory, manifest_sha256, *, max_bytes, max_files,
     check()
     if not found_manifest:
         raise ValueError('A completed backup manifest is required.')
+    _final_pins(observed, native_pins)
     return BackupReceipt(manifest_sha256, aggregate.hexdigest(), total, files, directories)
 
 

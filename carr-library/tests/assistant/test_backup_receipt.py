@@ -226,3 +226,80 @@ def test_second_pass_preserves_cancellation_and_deadline(tmp_path, monkeypatch, 
         capture(root, digest, cancelled=cancelled)
     assert ready and len(entered) == 2
     assert source.read_bytes() == original
+
+
+@pytest.mark.parametrize('trigger', ['later-file', 'last-callback'])
+@pytest.mark.parametrize('change', ['earlier-payload', 'new-file', 'new-directory'])
+def test_final_quiet_native_pins_reject_mutations_after_second_content_pass(
+        tmp_path, monkeypatch, trigger, change):
+    from contextlib import contextmanager
+    from carr_library.assistant import backup_receipt as receipt
+
+    root, digest = backup(tmp_path)
+    (root / 'z-last.txt').write_bytes(b'Last bounded payload.')
+    target = root / 'library.sqlite'
+    original = target.read_bytes()
+    arm, changed, visits = [], [], []
+    actual_open, actual_scandir = receipt.os.open, receipt.os.scandir
+
+    if trigger == 'later-file':
+        def open_file(path, *args, **kwargs):
+            fd = actual_open(path, *args, **kwargs)
+            if Path(path) == root / 'z-last.txt':
+                visits.append(True)
+                if len(visits) == 2:
+                    arm.append(True)
+            return fd
+        monkeypatch.setattr(receipt.os, 'open', open_file)
+    else:
+        @contextmanager
+        def scan(path):
+            with actual_scandir(path) as entries:
+                yield entries
+            if Path(path) == root:
+                visits.append(True)
+                if len(visits) == 2:
+                    arm.append(True)
+        monkeypatch.setattr(receipt.os, 'scandir', scan)
+
+    def cancelled():
+        if arm and not changed:
+            if change == 'earlier-payload':
+                stamp = target.stat()
+                target.write_bytes(bytes([original[0] ^ 1]) + original[1:])
+                os.utime(target, ns=(stamp.st_atime_ns, stamp.st_mtime_ns))
+                assert target.stat().st_size == stamp.st_size
+                assert target.stat().st_mtime_ns == stamp.st_mtime_ns
+            else:
+                parent = root / 'originals'
+                stamp = parent.stat()
+                extra = parent / 'after-second-pass'
+                if change == 'new-file':
+                    extra.write_bytes(b'Late new payload.')
+                else:
+                    extra.mkdir()
+                os.utime(parent, ns=(stamp.st_atime_ns, stamp.st_mtime_ns))
+            changed.append(change)
+        return False
+
+    with pytest.raises(ValueError, match='changed during verification'):
+        capture(root, digest, cancelled=cancelled)
+    assert arm and changed == [change]
+    assert (root / 'manifest.json').is_file()
+
+
+def test_no_external_callback_runs_after_the_final_native_pins_begin(tmp_path, monkeypatch):
+    from carr_library.assistant import backup_receipt as receipt
+    root, digest = backup(tmp_path)
+    actual = receipt._native_pin
+    entered = []
+    def pin(path):
+        entered.append(path)
+        return actual(path)
+    def cancelled():
+        if entered:
+            raise AssertionError('A late observer can mutate an already checked final payload.')
+        return False
+    monkeypatch.setattr(receipt, '_native_pin', pin)
+    assert capture(root, digest, cancelled=cancelled).files == 3
+    assert len(entered) == 3

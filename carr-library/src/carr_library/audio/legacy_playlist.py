@@ -178,7 +178,7 @@ def _review(library_root, source_root, *, manifest_id=None, voice, language,
     check = _check(cancelled)
     broker = ResourceBroker.for_app(library, cancelled=check)
     with broker.reserve(ResourceRequest(cpu_slots=1, memory_bytes=128 * 1024**2,
-                                       disk_bytes=0, disk_path=library),
+                                       disk_bytes=0),
                         operation_id='legacy-queue-review', cancelled=check,
                         timeout=30, run_timeout=MAX_SECONDS):
         if manifest_id is None:
@@ -353,7 +353,7 @@ def import_reviewed(review, *, cancelled=lambda: False):
                 accuracy='historical_cursor' if queue['index'] is not None else 'not_started',
                 controls=PlaybackControls(), cancelled=check)
             with broker.reserve(ResourceRequest(cpu_slots=1, memory_bytes=8 * 1024**2,
-                                               disk_bytes=0, disk_path=stage),
+                                               disk_bytes=0),
                                 operation_id='legacy-queue-verify:' + project_id,
                                 cancelled=check, timeout=30, run_timeout=MAX_SECONDS):
                 frozen = _freeze_stage(staged_root, queue,
