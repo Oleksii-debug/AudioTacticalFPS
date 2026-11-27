@@ -420,6 +420,7 @@ jobs:
                             'tests/integrations/test_dordiai_convergence.py',
                             'tests/speech/test_discovery_cancellation.py',
                             'tests/storage/test_state_snapshot_identity.py',
+                            'tests/ingest/test_worker_publication_reconcile.py',
                             'tests/extract/test_ocr_model_catalog.py',
                             'tests/extract/test_ocr_model_cli.py',
                             'tests/extract/test_ocr_model_store.py',
@@ -593,7 +594,8 @@ jobs:
             'tests/integrations/test_dordiai_probe_cancellation.py',
             'tests/integrations/test_dordiai_convergence.py',
             'tests/speech/test_discovery_cancellation.py',
-            'tests/storage/test_state_snapshot_identity.py'
+            'tests/storage/test_state_snapshot_identity.py',
+            'tests/ingest/test_worker_publication_reconcile.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

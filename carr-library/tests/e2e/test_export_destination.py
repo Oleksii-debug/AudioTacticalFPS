@@ -30,9 +30,13 @@ def research(tmp_path):
 
 
 def export_using_dialog(research, destination, monkeypatch, *, format_index=1):
+    needs_confirmation = destination.is_file() and not destination.is_relative_to(research.app.root)
+    confirmations = []
+
     class FileDialog:
         def __init__(self, *args, **kwargs):
-            pass
+            assert kwargs['style'] & desktop_app.wx.FD_SAVE
+            assert not kwargs['style'] & desktop_app.wx.FD_OVERWRITE_PROMPT
 
         def ShowModal(self):
             return desktop_app.wx.ID_OK
@@ -47,6 +51,15 @@ def export_using_dialog(research, destination, monkeypatch, *, format_index=1):
             pass
 
     monkeypatch.setattr(desktop_app.wx, 'FileDialog', FileDialog)
+
+    def confirm(message, caption, style, parent):
+        assert parent is frame
+        assert caption == 'Replace export' and destination.name in message
+        assert style & desktop_app.wx.YES_NO and style & desktop_app.wx.NO_DEFAULT
+        confirmations.append(destination)
+        return desktop_app.wx.YES
+
+    monkeypatch.setattr(desktop_app.wx, 'MessageBox', confirm)
     reports = []
 
     def run_job(title, operation, done=None, failed=None):
@@ -65,6 +78,7 @@ def export_using_dialog(research, destination, monkeypatch, *, format_index=1):
                             active=(research.workspace, research.topic),
                             report=reports.append, cancel_event=Event(), run_job=run_job)
     desktop_app.DesktopFrame.export_topic(frame, None)
+    assert confirmations == ([destination] if needs_confirmation else [])
     return reports
 
 

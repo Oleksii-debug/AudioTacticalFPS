@@ -10,8 +10,8 @@ import pytest
 
 from carr_library.integrations import dordiai_speech as bridge
 from carr_library.integrations import dordiai_voices as api
-from test_dordiai_speech import provider, shared_speech
-from test_dordiai_voices import ACTOR, requests, runtime
+from .test_dordiai_speech import provider, shared_speech
+from .test_dordiai_voices import ACTOR, requests, runtime
 
 
 def test_two_installations_with_same_profiles_route_to_their_own_workers(provider, shared_speech, runtime, tmp_path):

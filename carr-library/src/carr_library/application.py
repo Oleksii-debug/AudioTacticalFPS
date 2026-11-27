@@ -515,7 +515,7 @@ class LibraryApp:
             with self.read(workspace):
                 pass
             return run_request(self.root, workspace, path, metadata, config or Config(),
-                               cancelled=cancelled, timeout=timeout)
+                               cancelled=cancelled, timeout=timeout, _app=self)
         return self._import_file(workspace, path, **metadata, cancelled=cancelled, config=config)
 
     def resume_import(self, workspace, request_id, *, cancelled=lambda: False, timeout=120.0):
@@ -526,7 +526,7 @@ class LibraryApp:
             if request.get('workspace') != workspace:
                 raise ValueError('Import request belongs to another library.')
         return run_request(self.root, workspace, request['source'], {}, None,
-                           request_id=request_id, cancelled=cancelled, timeout=timeout)
+                           request_id=request_id, cancelled=cancelled, timeout=timeout, _app=self)
 
     def import_requests(self, workspace):
         """List resumable native requests without exposing paths as source authority."""
