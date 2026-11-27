@@ -344,9 +344,16 @@ class ProductionService:
                     operation_id='studio:' + job_id, cancelled=admission_cancelled, timeout=60))
             except Exception as exc:
                 from ..operations import ResourceCancelled
-                action = read_json(control).get('action') if control.exists() else None
-                state['status'] = ('cancelled' if action == 'cancel' else 'paused'
-                                   if admission_cancelled() or isinstance(exc, ResourceCancelled) else 'attention')
+                # Only the broker's typed interruption acknowledges a stop.
+                # A simultaneous request must not hide an admission failure,
+                # and unreadable control data must not prevent saving it.
+                state['status'] = 'attention'
+                if isinstance(exc, ResourceCancelled):
+                    try:
+                        action = read_json(control).get('action') if control.exists() else None
+                    except (ValueError, OSError, AttributeError):
+                        action = None
+                    state['status'] = 'cancelled' if action == 'cancel' else 'paused'
                 state['error'] = str(exc)[:2000]
                 self._save(state)
                 if isinstance(exc, ResourceCancelled):

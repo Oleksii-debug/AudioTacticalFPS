@@ -478,3 +478,38 @@ def test_voice_free_render_does_not_enumerate_speech_provider(tmp_path, voices, 
     completed = service.run(job)
     assert completed['status'] == 'complete'
     service._verify_artifacts(completed)
+
+
+@pytest.mark.parametrize('action', ['pause', 'cancel', 'malformed'])
+@pytest.mark.parametrize('interrupted', [False, True])
+def test_admission_outcome_preserves_typed_failure_and_control(submission, monkeypatch, action, interrupted):
+    from types import SimpleNamespace
+    from carr_library.operations import ResourceCancelled, ResourceUnavailable
+
+    service, project, output = submission
+    job = service.submit(project, output, stems=False, operation_id='admission-outcome')
+    control = service.jobs_root / job / 'control.json'
+    monkeypatch.setattr(service, '_runtime', lambda: object())
+    monkeypatch.setattr(service, '_resource_plan', lambda *args: (object(), {}))
+
+    def refuse(*args, **kwargs):
+        if action == 'malformed':
+            control.write_text('{', encoding='utf-8')
+        elif action == 'cancel':
+            service.cancel(job)
+        else:
+            service.request_pause(job)
+        if interrupted:
+            raise ResourceCancelled('Synthetic typed admission interruption')
+        raise ResourceUnavailable('Synthetic admission failure')
+
+    monkeypatch.setattr(service, '_broker', SimpleNamespace(reserve=refuse))
+    expected_error = InterruptedError if interrupted else ResourceUnavailable
+    with pytest.raises(expected_error):
+        service.run(job)
+    state = service.get(job)
+    expected = ('cancelled' if action == 'cancel' else 'paused') if interrupted else 'attention'
+    assert state['status'] == expected
+    assert state['error'] == ('Synthetic typed admission interruption' if interrupted else 'Synthetic admission failure')
+    assert not state['artifacts']
+    assert not Path(state['destination']).exists()
