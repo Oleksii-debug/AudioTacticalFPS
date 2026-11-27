@@ -12,6 +12,7 @@ and current verification status as ordinary text.
 Open the Reading menu with **Alt+D**. Select a source in Books and Collections
 and press **Ctrl+R**, or use **Reading,
 Read selected book**. If no source is selected, a named book chooser opens.
+Use **Alt+D** to open the Reading menu from the main window.
 
 - **Ctrl+PageDown / Ctrl+PageUp:** next / previous source location.
 - **Ctrl+G:** jump to a reading-order position.

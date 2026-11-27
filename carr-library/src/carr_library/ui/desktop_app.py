@@ -30,6 +30,7 @@ from .research_actions import install_research_actions
 from .source_review import install_source_review_actions
 from .academic_actions import install_academic_actions
 from .notebook_search import search_saved_research
+from .academic_tools import install_academic_actions as install_academic_tools
 from .reading_desk import install_reading_desk_actions
 from .catalog_insights_actions import install_catalog_insights_actions
 from .ebook_actions import install_ebook_actions
@@ -500,6 +501,7 @@ class DesktopFrame(WorkspaceFrame):
         install_research_actions(self)
         install_source_review_actions(self)
         install_academic_actions(self)
+        install_academic_tools(self)
         install_reading_desk_actions(self)
         from .ebook_reader import install_ebook_reader
         install_ebook_reader(self)
@@ -1171,6 +1173,8 @@ class DesktopFrame(WorkspaceFrame):
         show_text(self, 'Keyboard guide',
             'Use Alt+L for Library, Alt+R for Research, Alt+A for Academic, Alt+B for Bibliography, '
             'Alt+S for Source, Alt+D for Reading, and Alt+H for Help.\n'
+            'Ctrl+Alt+M compares saved sources in the active topic. Academic also exports filtered outlines, reviews RIS fields, and checks the catalog.\n'
+
             'Ctrl+N creates a library. Ctrl+I imports books. Ctrl+Shift+N adds original text.\n'
             'Library, Import Center opens folder scans, duplicate checks and saved import queues.\n'
             'Ctrl+R opens the selected book with page or segment resume, bookmarks and reading history.\n'

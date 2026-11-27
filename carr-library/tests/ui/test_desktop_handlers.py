@@ -122,6 +122,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     env['wx'].EVT_MENU, env['wx'].EVT_BUTTON = 'menu', 'button'
     installers = {name: Mock() for name in (
         'install_research_actions', 'install_source_review_actions', 'install_academic_actions',
+        'install_academic_tools',
         'install_reading_desk_actions', 'install_ebook_actions', 'install_catalog_insights_actions',
         'install_federated_search_actions', 'install_query_manager_actions')}
     env.update(installers)
@@ -776,6 +777,47 @@ def test_save_topic_dialog_cancel_or_invalid_selection_never_saves(classes, moda
     chooser.Destroy.assert_called_once()
     p.frame.run_job.assert_not_called()
     p.frame.library.save_hit.assert_not_called()
+
+
+@pytest.mark.parametrize('names', [
+    ('Café', 'Cafe\u0301'), ('Історія', 'Історія '),
+    ('Research  methods', 'Research methods'), ('Clinical\u00a0study', 'Clinical study'),
+    ('Research', 'research'), ('Fußnote', 'FUSSNOTE'),
+])
+def test_real_topic_save_labels_are_distinct_without_changing_names_or_routing(classes, tmp_path, names):
+    import unicodedata
+
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Topic choices')
+    with app.topic_transaction(workspace) as service:
+        for number, name in enumerate(names, 1):
+            service.create(f'topic-{number}', name)
+    topics = tuple(app.topics(workspace))
+    assert tuple(topic.name for topic in topics) == names
+    app.add_text(workspace, 'Original source', 'Exact historical railway passage.')
+    source, = app.search(workspace, 'railway passage')
+    hit = Hit(source.workspace, source.ref, source.revision, source.title, source.author,
+              source.edition, source.page, source.quote, source.citation)
+    p = panel(classes)
+    p.frame.library = p.bound_library = app
+    p.frame.active = workspace, None
+    p.bound_workspace = workspace
+    p.model.set_workspace(workspace)
+    p.selected = lambda: hit
+    chooser = classes[0]['wx'].SingleChoiceDialog
+    chooser.return_value.GetSelection.return_value = 1
+
+    p.save_selected(None)
+    labels = chooser.call_args.args[3]
+    assert len({' '.join(unicodedata.normalize('NFC', label).split()).casefold()
+                for label in labels}) == 2
+    assert all(label.startswith(topic.name) and f'topic {topic.id}' in label
+               for label, topic in zip(labels, topics))
+    saved = p.frame.run_job.call_args.args[1]()
+    assert [row.evidence_id for row in app.evidence(workspace, topics[1].id)] == [saved]
+    assert app.evidence(workspace, topics[0].id) == ()
+    assert tuple(app.topics(workspace)) == topics
+    chooser.return_value.Destroy.assert_called_once()
 
 @pytest.mark.parametrize('names', [
     ('Café', 'Cafe\u0301'),

@@ -78,7 +78,13 @@ def wheel(tmp_path, payload, *, record_mutation=None, extra=None):
     csv.writer(output, lineterminator='\n').writerows(rows)
     with ZipFile(path, 'w', ZIP_DEFLATED) as archive:
         for name, data in payload.items():
-            archive.writestr(name, data)
+            # A string passed to writestr is normalized by ZipInfo on Windows.
+            # Preserve the exact deliberately hostile member name, so this
+            # fixture tests the verifier instead of a mismatched RECORD.
+            member = ZipInfo()
+            member.filename = member.orig_filename = name
+            member.compress_type = ZIP_DEFLATED
+            archive.writestr(member, data)
         archive.writestr(record, output.getvalue().encode())
         if extra:
             archive.writestr(*extra)
@@ -149,6 +155,22 @@ def test_path_alias_and_bytecode_rejected(source, tmp_path, extra):
     payload[extra] = b'not safe payload\n'
     with pytest.raises(ValueError, match='path|bytecode'):
         verifier.verify_application_wheel(wheel(tmp_path, payload), repo, first)
+
+
+def test_raw_backslash_member_remains_hostile_on_windows(source, tmp_path, monkeypatch):
+    repo, first, _, payload = source
+    raw = 'fixture_app\\alias.py'
+    payload[raw] = b'not safe payload\n'
+    # Exercise the stdlib's Windows separator handling even on a Linux review
+    # host. Both ZIP writing and reading must retain the original spelling.
+    with monkeypatch.context() as patch:
+        patch.setattr('zipfile.os.sep', '\\')
+        candidate = wheel(tmp_path, payload)
+        with ZipFile(candidate) as archive:
+            member = next(info for info in archive.infolist() if info.orig_filename == raw)
+            assert member.filename == 'fixture_app/alias.py'
+        with pytest.raises(ValueError, match='Wheel path contains an embedded alias'):
+            verifier.verify_application_wheel(candidate, repo, first)
 
 
 def test_duplicate_zip_member_rejected(source, tmp_path):

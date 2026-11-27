@@ -299,6 +299,26 @@ an existing review. Reading the extraction or opening the original never grants
 approval. The reviewer must compare the full extracted page with the original;
 Cancel leaves it unchanged. Printed page numbers require separate verification.
 
+## Academic research tools
+
+Press **Alt+A** to open the **Academic** menu. In an open research topic,
+**Ctrl+Alt+M** compares saved source versions, themes, exact quotations and
+research notes. Include subtopics, filter by an exact tag, open selected evidence
+in its existing editor, or export the comparison as CSV/Markdown. **Export
+research outline with subtopics** writes the ordered topic structure as Markdown
+or plain text, keeping source quotations and your notes separately labelled.
+
+**Import bibliographic metadata from RIS** reviews a local RIS record for an
+already imported edition. Only checked title/author/language/edition/volume
+fields are applied; unchecked fields are preserved. Year, journal, DOI and other
+unsupported metadata are not imported, and no attachment or URL is opened.
+**Check catalog quality** reviews missing fields, unfiled editions and tentative
+duplicate hints in one library or collection. It does not merge records.
+
+See [the academic workflow guide](ACADEMIC_WORKFLOWS.md) for complete steps,
+limits and provenance. These commands add no runtime dependency or schema
+migration. Manual Windows/NVDA acceptance of these new workflows is **NOT_RUN**.
+
 ## Search across saved research topics
 
 Choose **Research, Search saved research** or press **Ctrl+Shift+F**. Search

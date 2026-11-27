@@ -83,6 +83,12 @@ instructions.
   Its bibliography exports use the same catalog service as the Bibliography
   menu. See [catalog tools](docs/CATALOG_TOOLS.md).
 
+- Compare saved source versions and research themes in the active topic, filter
+  subtopics and tags, and export matrices or outlines in Markdown/text/CSV.
+  Review selected RIS metadata for imported editions and inspect catalog quality
+  without automatic merges. Compare with **Ctrl+Alt+M** or use **Academic**.
+  See [Academic comparison](docs/ACADEMIC_COMPARISON.md).
+
 TXT quotation text is independently checked against retained original bytes.
 PDF extraction and OCR require explicit independent review before being treated
 as verified quotations. DOCX and EPUB are imported as logical segments, with unknown

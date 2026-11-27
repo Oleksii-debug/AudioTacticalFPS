@@ -7,6 +7,9 @@ import sys
 import struct
 import wave
 from tempfile import TemporaryDirectory
+import threading
+from time import monotonic
+import traceback
 
 
 def main():
@@ -21,12 +24,17 @@ def main():
     from carr_library.ui.assistant_dialog import show_assistant, show_provider_settings
     from carr_library.ui.engine_settings import show_engine_settings
     from carr_library.ui.translation_dialog import show_translation
-    app = wx.App(False)
+    gui_errors = []
+    class ProbeApp(wx.App):
+        def OnExceptionInMainLoop(self):
+            gui_errors.append(traceback.format_exc())
+            return True
+    app = ProbeApp(False)
     result = {'status': 'RUNNING', 'platform': sys.platform, 'manual_nvda': 'NOT_RUN', 'checks': []}
     with TemporaryDirectory(prefix='carr-native-v3-') as temporary:
         root = Path(temporary)
         library = LibraryApp(root / 'library')
-        library.create_workspace('Native acceptance')
+        workspace = library.create_workspace('Native acceptance')
         registry = VoiceRegistry.discover(include_flite=False)
         sapi = tuple(voice for voice in registry.voices() if voice.engine.startswith('SAPI 5'))
         if not sapi:
@@ -113,7 +121,213 @@ def main():
             open_dialog(frame)
             assert inspected == [True], 'Native dialog lacked a required accessible control name'
             app.Yield()
-        inspect_dialog(show_studio, ('Script', 'Production and save status', 'Default voice'))
+
+        def exercise_native_render():
+            """Drive this architecture's real Render/resume button and worker."""
+            from hashlib import sha256
+            from carr_library.reader.reading_desk import ReadingDesk
+            original_text = 'A retained original.\r\nIts source text must stay unchanged.'
+            imported = library.add_text(workspace, 'Native Render source sentinel', original_text)
+            assert imported['state'] == 'complete'
+            retained_before = ReadingDesk(library, workspace, imported['edition']).page(1)
+            assert retained_before.raw_text == original_text
+            native_script = ('[Scene: Native button]\nNarrator: A verified audio render.\n'
+                             '[Pause: 0.1]\n[Scene: Output]\nNarrator: The original stays unchanged.')
+            destination = root / 'chosen native render outputs'
+            destination.mkdir()
+            previous_jobs = {row['id'] for row in service.jobs()}
+            original_dialogs = {name: getattr(wx, name) for name in
+                ('DirDialog', 'FileDialog', 'MessageDialog', 'TextEntryDialog',
+                 'SingleChoiceDialog', 'MessageBox')}
+            active, controls, completed_state = [None], {}, {}
+            decisions = iter((wx.ID_OK, wx.ID_CANCEL))
+            choices = []
+            deadline = monotonic() + 150
+
+            def unexpected_dialog(*args, **kwargs):
+                message = 'Unexpected modal dialog in unattended native Render acceptance.'
+                gui_errors.append(message)
+                raise AssertionError(message)
+
+            class SelectedDirectory(original_dialogs['DirDialog']):
+                def __init__(self, parent, message, *args, **kwargs):
+                    assert parent is active[0]
+                    assert message == 'Choose the parent folder for new audio outputs'
+                    super().__init__(parent, message, *args, **kwargs)
+                    self.SetPath(str(destination))
+                    assert Path(self.GetPath()).samefile(destination)
+
+                def ShowModal(self):
+                    choice = next(decisions)
+                    choices.append(choice)
+                    return choice
+
+            def children(window):
+                for child in window.GetChildren():
+                    yield child
+                    yield from children(child)
+
+            def named(prefix, kind):
+                matches = [control for control in children(active[0])
+                           if isinstance(control, kind) and control.GetName().startswith(prefix)]
+                assert len(matches) == 1, (prefix, len(matches))
+                return matches[0]
+
+            def button(label):
+                return next(control for control in children(active[0])
+                            if isinstance(control, wx.Button)
+                            and control.GetLabel().replace('&', '') == label)
+
+            def click(control):
+                assert control.IsShown() and control.IsEnabled()
+                event = wx.CommandEvent(wx.EVT_BUTTON.typeId, control.GetId())
+                event.SetEventObject(control)
+                assert control.GetEventHandler().ProcessEvent(event)
+
+            def guarded(callback):
+                try:
+                    if gui_errors:
+                        raise AssertionError('\n'.join(gui_errors))
+                    if monotonic() >= deadline:
+                        raise TimeoutError('The native Render workflow exceeded its deadline.')
+                    callback()
+                except BaseException:
+                    gui_errors.append(traceback.format_exc())
+                    if active[0] is not None and active[0].IsModal():
+                        active[0].Close()
+
+            def later(callback):
+                wx.CallLater(40, lambda: guarded(callback))
+
+            def ready():
+                dialogs = [window for window in wx.GetTopLevelWindows()
+                           if isinstance(window, wx.Dialog) and window.IsShown()
+                           and window.GetTitle() == 'Audio Studio — script, voices and production']
+                if not dialogs:
+                    later(ready)
+                    return
+                assert len(dialogs) == 1
+                active[0] = dialogs[0]
+                controls.update(editor=named('Script', wx.TextCtrl),
+                    title=named('Project title', wx.TextCtrl),
+                    voices=named('Default voice', wx.Choice),
+                    format=named('Final audio format', wx.Choice),
+                    status=named('Production and save status', wx.TextCtrl),
+                    render=button('Render / resume (F6)'), pause=button('Pause (F8)'),
+                    close=button('Close'), preview=button('Listen to output'))
+                if not controls['render'].IsEnabled() or not controls['voices'].GetCount():
+                    later(ready)
+                    return
+                for key in ('editor', 'title', 'voices', 'format', 'status', 'render'):
+                    assert controls[key].GetName() and controls[key].AcceptsFocusFromKeyboard()
+                selected = controls['voices'].FindString(voice.name + '; ' + voice.language)
+                assert selected != wx.NOT_FOUND, 'The verified installed SAPI voice is absent from the native choice.'
+                controls['voices'].SetSelection(selected)
+                controls['title'].SetValue('Native button production')
+                controls['editor'].SetValue(native_script)
+                assert controls['format'].SetStringSelection('flac')
+                assert not list(destination.iterdir())
+                click(controls['render'])
+                assert choices == [wx.ID_OK]
+                assert controls['pause'].IsEnabled()
+                assert not controls['editor'].IsEnabled() and not controls['render'].IsEnabled()
+                later(completed)
+
+            def completed():
+                if controls['pause'].IsEnabled() or not controls['render'].IsEnabled():
+                    later(completed)
+                    return
+                assert controls['status'].GetValue().startswith('Production complete.'), controls['status'].GetValue()
+                assert wx.Window.FindFocus() is controls['status']
+                assert controls['editor'].IsEnabled() and controls['preview'].IsEnabled()
+                new_jobs = [row for row in service.jobs() if row['id'] not in previous_jobs]
+                assert len(new_jobs) == 1
+                row = new_jobs[0]
+                assert row['status'] == 'complete' and row['format'] == 'flac' and row['stems']
+                project = service.projects.load(row['project']['id'])
+                assert project.original_script == native_script
+                assert project.fingerprint == row['fingerprint']
+                assert all(role.voice_id in {item.id for item in sapi} for role in project.roles)
+                output = Path(row['destination'])
+                assert output.parent.samefile(destination) and len(list(destination.iterdir())) == 1
+                assert len(row['result']['chapters']) == 2 and not row['result']['loudness']['silent']
+                with wave.open(str(output / 'master.wav'), 'rb') as audio:
+                    frames, rate, channels = audio.getnframes(), audio.getframerate(), audio.getnchannels()
+                    assert frames > 0 and rate == project.sample_rate and channels == 2
+                    assert audio.getsampwidth() == 2 and audio.getcomptype() == 'NONE'
+                    read_frames, peak = 0, 0
+                    while raw := audio.readframes(8192):
+                        peak = max(peak, max(abs(value[0]) for value in struct.iter_unpack('<h', raw)))
+                        read_frames += len(raw) // (2 * channels)
+                    assert read_frames == frames and peak > 100
+                retained = ReadingDesk(library, workspace, imported['edition']).page(1)
+                assert retained.raw_text == original_text
+                assert retained.location.text_sha256 == sha256(original_text.encode('utf-8')).hexdigest()
+                completed_state.update(row=row, project=project.to_dict(), frames=frames,
+                                       sample_rate=rate, channels=channels, peak=peak)
+                # A second native Render event reopens the completed durable job,
+                # verifies its artifacts and returns without starting another job.
+                click(controls['render'])
+                assert controls['pause'].IsEnabled() and not controls['render'].IsEnabled()
+                later(resumed)
+
+            def resumed():
+                if controls['pause'].IsEnabled() or not controls['render'].IsEnabled():
+                    later(resumed)
+                    return
+                assert controls['status'].GetValue().startswith('Production complete.'), controls['status'].GetValue()
+                assert wx.Window.FindFocus() is controls['status']
+                row = completed_state['row']
+                assert service.get(row['id']) == row
+                assert {item['id'] for item in service.jobs()} == previous_jobs | {row['id']}
+                # Editing back to the same exact script opens the chooser for a
+                # new render. Declining it must not create another output/job.
+                controls['editor'].SetValue(native_script + ' ')
+                controls['editor'].SetValue(native_script)
+                click(controls['render'])
+                assert choices == [wx.ID_OK, wx.ID_CANCEL]
+                assert not controls['pause'].IsEnabled() and controls['render'].IsEnabled()
+                assert {item['id'] for item in service.jobs()} == previous_jobs | {row['id']}
+                assert len(list(destination.iterdir())) == 1
+                assert service.projects.load(row['project']['id']).to_dict() == completed_state['project']
+                assert controls['editor'].GetValue() == native_script
+                assert ReadingDesk(library, workspace, imported['edition']).page(1) == retained_before
+                assert not gui_errors
+                result['native_render'] = dict(status='PASS', button_event='PASS',
+                    completed_job_resume='PASS', chooser_cancellation='PASS',
+                    selected_output_parent='PASS', frames=completed_state['frames'],
+                    sample_rate=completed_state['sample_rate'], channels=completed_state['channels'],
+                    peak_pcm16=completed_state['peak'], completed_accessible_status=True,
+                    project_and_source_unchanged=True, unexpected_dialog_or_callback_errors=0)
+                result['checks'] += ['actual native Render button to verified SAPI PCM and FLAC',
+                    'native completed-job resume and chooser cancellation without duplicate output',
+                    'native completion focus and unchanged project/source']
+                click(controls['close'])
+
+            def hard_timeout():
+                import faulthandler
+                print(json.dumps({'status': 'FAIL', 'native_render': 'Native modal exceeded 180 seconds.',
+                                  'errors': gui_errors}), flush=True)
+                faulthandler.dump_traceback(all_threads=True)
+                os._exit(1)
+
+            hard_watchdog = threading.Timer(180, hard_timeout)
+            hard_watchdog.daemon = True
+            try:
+                for name in original_dialogs:
+                    setattr(wx, name, unexpected_dialog)
+                wx.DirDialog = SelectedDirectory
+                hard_watchdog.start()
+                later(ready)
+                show_studio(frame)
+                assert not gui_errors, '\n'.join(gui_errors)
+                assert result.get('native_render', {}).get('status') == 'PASS'
+            finally:
+                hard_watchdog.cancel()
+                for name, implementation in original_dialogs.items():
+                    setattr(wx, name, implementation)
+
+        exercise_native_render()
         inspect_dialog(show_assistant, ('Library scope', 'Goal', 'Plan preview'))
         inspect_dialog(show_provider_settings, ('Provider accounts', 'Connection configuration status'), wx.ID_CLOSE)
         inspect_dialog(show_engine_settings, ('Local engine configuration',), wx.ID_CLOSE)

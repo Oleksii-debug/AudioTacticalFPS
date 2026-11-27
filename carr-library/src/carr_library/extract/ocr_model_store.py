@@ -143,8 +143,19 @@ def _model_digest(path, model, *, output=None, remaining=lambda: None, progress=
         raise ModelStoreError('OCR model changed during validation.')
     if git.hexdigest() != model.blob_sha1:
         raise ModelStoreError(f'OCR model differs from the pinned official bytes: {model.identifier}.')
+    value = digest.hexdigest()
+    if output is not None:
+        # Same-size writes can leave Windows file stamps unchanged. Re-read
+        # the source before publication without copying or reporting twice.
+        try:
+            current = _model_digest(path, model, remaining=remaining,
+                                    allow_links=allow_links)
+        except ModelStoreError as exc:
+            raise ModelStoreError('OCR model changed during copying.') from exc
+        if current != value:
+            raise ModelStoreError('OCR model changed during copying.')
     remaining()
-    return digest.hexdigest()
+    return value
 
 
 def _recover_publication(target, verify):

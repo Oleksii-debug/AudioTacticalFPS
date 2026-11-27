@@ -319,6 +319,47 @@ def test_source_changed_while_streaming_is_not_activated(synthetic, monkeypatch)
     assert not (s.profile / 'tessdata/eng.traineddata').exists()
 
 
+@pytest.mark.parametrize('prior', [False, True])
+def test_same_size_source_change_with_unchanged_stamps_is_not_activated(synthetic, monkeypatch, prior):
+    s = synthetic
+    if prior:
+        s.store.install('fast', s.source, ('ukr',))
+    previous_manifest = s.manifest.read_bytes() if prior else None
+    source = s.source / 'eng.traineddata'
+    changed = bytearray(s.payloads['eng'])
+    changed[-1] ^= 1
+    events = []
+
+    # Real same-size file writes with timestamps that cannot distinguish them.
+    # Keep device, inode and length checks; do not replace reads or digests.
+    monkeypatch.setattr(store_module, '_stamp',
+                        lambda info: (info.st_dev, info.st_ino, info.st_size))
+    before = store_module._stamp(source.stat())
+
+    def progress(*event):
+        events.append(event)
+        source.write_bytes(changed)
+
+    with pytest.raises(store_module.ModelStoreError, match='changed'):
+        s.store.install('fast', s.source, ('eng',), progress=progress)
+    assert store_module._stamp(source.stat()) == before
+    assert source.read_bytes() == bytes(changed)
+    assert events == [('eng', len(changed), len(changed))]
+    assert s.store.available('fast') == (('ukr',) if prior else ())
+    assert not (s.profile / 'tessdata/eng.traineddata').exists()
+    assert not tuple((s.profile / 'tessdata').glob('.model-*.tmp'))
+    if prior:
+        assert s.manifest.read_bytes() == previous_manifest
+    else:
+        assert not s.manifest.exists()
+
+    source.write_bytes(s.payloads['eng'])
+    report = s.store.install('fast', s.source, ('eng',))
+    assert report.bytes == len(s.payloads['eng'])
+    assert s.store.select('fast', 'eng').languages == ('eng',)
+    assert s.store.available('fast') == (('eng', 'ukr') if prior else ('eng',))
+
+
 def test_streamed_model_hash_rejects_unread_mutation_with_unchanged_metadata(synthetic, monkeypatch):
     s = synthetic
     source = _large_streaming_model(s, monkeypatch)
