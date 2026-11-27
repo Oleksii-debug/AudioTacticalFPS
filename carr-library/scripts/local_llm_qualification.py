@@ -332,6 +332,11 @@ def main():
         report['elapsed_seconds'] = round(time.monotonic() - started, 3)
         (root / 'qualification-report.json').write_text(
             json.dumps(report, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+        if report['status'] != 'passed':
+            print('BOUNDED SYNTHETIC FAILURE DIAGNOSTICS', flush=True)
+            print(report.get('server_log_tail', 'No native server log was produced.'), flush=True)
+            print(json.dumps({key: report[key] for key in ('error_type', 'error', 'cases', 'actual_transport')
+                              if key in report}, ensure_ascii=False), flush=True)
         print(json.dumps({key: report[key] for key in ('status', 'actual_http_calls', 'assistant_jobs_created',
             'automatic_tools_executed', 'elapsed_seconds') if key in report}, ensure_ascii=False), flush=True)
         if 'cleanup_error' in report:
