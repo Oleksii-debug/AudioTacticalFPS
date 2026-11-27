@@ -130,6 +130,7 @@ jobs:
             'tests/audio/test_effect_presets.py',
             'tests/studio/test_clip_editing.py',
             'tests/studio/test_project_effects.py',
+            'tests/studio/test_processed_chapters.py',
             'tests/studio/test_clip_input_retention.py',
             'tests/studio/test_clip_admission.py',
             'tests/studio/test_clip_source_binding.py',
@@ -382,7 +383,7 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' && steps.audio.outcome == 'success' }}
         timeout-minutes: 12
         run: |
-          python -B scripts/ci_check.py --jobs 2 tests/audio/test_effect_presets.py tests/studio/test_clip_editing.py tests/studio/test_project_effects.py tests/studio/test_clip_input_retention.py tests/studio/test_clip_admission.py tests/studio/test_clip_source_binding.py tests/studio/test_clip_dialog.py tests/ui/test_worker_lifetime.py tests/storage/test_studio_timeline_backup.py tests/storage/test_studio_clip_inputs_backup.py tests/audio/test_recording_monitor.py tests/audio/test_recording_monitor_capture.py 2>&1 | Tee-Object 'ci-appearance-results/clip-monitor-source.txt' | Out-Null
+          python -B scripts/ci_check.py --jobs 2 tests/audio/test_effect_presets.py tests/studio/test_clip_editing.py tests/studio/test_project_effects.py tests/studio/test_processed_chapters.py tests/studio/test_clip_input_retention.py tests/studio/test_clip_admission.py tests/studio/test_clip_source_binding.py tests/studio/test_clip_dialog.py tests/ui/test_worker_lifetime.py tests/storage/test_studio_timeline_backup.py tests/storage/test_studio_clip_inputs_backup.py tests/audio/test_recording_monitor.py tests/audio/test_recording_monitor_capture.py 2>&1 | Tee-Object 'ci-appearance-results/clip-monitor-source.txt' | Out-Null
           $suiteExit = $LASTEXITCODE
           python -I -B scripts/ci_summarize_log.py 'ci-appearance-results/clip-monitor-source.txt'
           if ($LASTEXITCODE -ne 0) { throw 'The diagnostic log summary failed; full output remains retained.' }

@@ -798,6 +798,50 @@ class ProductionService:
                         lambda target: runtime.mix((Track(unprocessed_master, routing='stereo'),),
                             target, duration=master_info.duration, sample_rate=project.sample_rate,
                             effects=project.effects, cancelled=stopping))
+                if any(effect.enabled for effect in project.effects):
+                    # Chapters are ranges of the accepted processed master.
+                    # Reapplying a stateful bus effect per scene would restart
+                    # its state at each boundary and change the resulting PCM.
+                    if (type(master_info.frames) is not int or master_info.frames <= 0
+                            or master_info.sample_rate != project.sample_rate
+                            or any(type(info.frames) is not int or info.frames <= 0
+                                   or info.sample_rate != master_info.sample_rate
+                                   or info.channels != master_info.channels
+                                   for _, _, info in scene_results)
+                            or sum(info.frames for _, _, info in scene_results) != master_info.frames):
+                        raise AudioError('Processed chapters must exactly cover the measured master frame grid.')
+                    master_version = regular(master)
+                    master_stamp = source_stamp(master_version)
+                    master_digest = _checked_digest(master, master_version, stopping)
+
+                    def verify_master():
+                        check()
+                        if source_stamp(regular(master)) != master_stamp:
+                            raise AudioError('The accepted master changed while preparing processed chapters.')
+
+                    processed_scenes, first_frame = [], 0
+                    for scene, _, scene_info in scene_results:
+                        last_frame = first_frame + scene_info.frames
+                        chapter, chapter_info = node('processed master chapter',
+                            {'master_sha256': master_digest, 'start_frame': first_frame,
+                             'end_frame': last_frame, 'sample_rate': master_info.sample_rate,
+                             'channels': master_info.channels, 'codec': master_info.codec,
+                             'selection_grid': 'exact-master-pcm-frames-v1'},
+                            lambda target, first=first_frame, last=last_frame:
+                                runtime.extract_pcm_frames(master, target, start_frame=first,
+                                    end_frame=last, cancelled=stopping),
+                            verify_inputs=verify_master)
+                        if (chapter_info.frames != scene_info.frames
+                                or chapter_info.sample_rate != master_info.sample_rate
+                                or chapter_info.channels != master_info.channels
+                                or chapter_info.codec != master_info.codec):
+                            raise AudioError('A processed chapter differs from its accepted master frame range.')
+                        processed_scenes.append((scene, chapter, chapter_info))
+                        first_frame = last_frame
+                    verify_master()
+                    if _checked_digest(master, regular(master), stopping) != master_digest:
+                        raise AudioError('The accepted master bytes changed while preparing processed chapters.')
+                    scene_results = processed_scenes
                 verify_sources(tuple(cue for scene in project.scenes for cue in scene.cues))
                 check_source()
                 output = local_path(state['destination'])

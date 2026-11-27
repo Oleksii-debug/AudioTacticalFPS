@@ -7,7 +7,7 @@ the current finalization specification `db8adbdc483a03c262885928c7ed214ca70bbaa7
 and the detailed reading/audio requirements `d0b2761dd22b33233b311d4800230fb47f5d3d8b`.
 It extends the existing Resonance application in `carr-library/`.
 The canonical integration parent is `a44fac04072389caa40e0d6e799b13797712f797`;
-the previous composed product head is `e51d7db45ca8eb1f1ef2d77b32648d0bce4bd637`.
+the previous composed product head is `d913b7234369447051863344fb38fb26a03bbc55`.
 
 Status: **implemented source, reviewed within the scopes below, composed execution
 NOT_RUN at creation of this checkpoint**. This is not whole-platform DONE, a
@@ -63,9 +63,21 @@ existing document stack; only the independent CI structural check uses its DTD A
   backup_compat manifest normalizer. Its 128 layout controls and tampered actual
   restore case are preserved with the existing inventory projection. No donor
   module replaces this host's distinct native backup producer.
-- Native clipboard diagnostics now persist bounded starting/failure receipts,
-  exact loaded-module hashes and wheel RECORD provenance while retaining every
-  existing native assertion. No product cause is guessed from a missing report.
+- The failed native clipboard assertion was traced to wxTextDataObject newline
+  normalization in the pinned wxWidgets source. Windows now copies bounded
+  CF_UNICODETEXT under its own OpenClipboard/GlobalLock lifetime, releases both
+  owners, and strictly decodes the exact UTF-16 text. Original CRLF, whitespace,
+  all nine native assertions, bounded failure receipts, exact source hashes and
+  wheel RECORD provenance are retained. The borrowed HGLOBAL is never freed.
+- Enabled master effects now publish chapters as exact integer-frame intervals
+  of the accepted processed master. A stateful effect is applied once across the
+  whole work, and chapter nodes are cached against its digest and frame range.
+  Existing speech-cache and master-effect assertions remain unchanged. Added
+  real-FFmpeg controls cover continuity, interrupted resume, RF64 and one-frame
+  output refusal. Execution of this new composition is still required.
+- The clip-admission fixture now creates the library before broker admission.
+  The close fixture asserts both native-close phases before editor release and
+  final preview unlink; it preserves the real two-phase ownership contract.
 - A newly occupied publication destination is rejected without reading the
   competing file. Recorded EPUB shares the actual operation_progress owner.
 
@@ -81,10 +93,16 @@ exact e51 application plus diagnostics; it does not execute the new feature tree
 
 The earlier feature preflight
 [run 46016864492](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46016864492)
-at 4917e707 failed. Retained evidence identified the clip two-link cleanup failure;
-the native clipboard/other failed verdicts remain subject to the bounded evidence
-reader and the current rerun. Its successful unrelated steps are not borrowed as
-qualification for this checkpoint.
+at 4917e707 failed. The bounded evidence reader
+[run 46025168671](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46025168671)
+retained every module verdict and recovered the actual failures. Linux passed
+85 of 90 modules and the separate 55 provider-policy controls; Windows failed
+five of its twelve clip/effect modules. The causes were the owned two-link clip
+publication pair, missing library directories in two fixtures, a stale one-close
+fixture, and chapters copied before master effects. Both native clipboard runs
+failed exact original-whitespace equality. Both native reading-tabs and both
+appearance probes passed on that old head. The corrections above require a new
+run; these older successes do not qualify the newly composed product.
 
 The capture diagnosis at 905ee6fb showed format-query success but actual
 waveInOpen failure for every tested mono/stereo 44.1/48 kHz input. DirectShow also

@@ -141,11 +141,19 @@ def test_stop_invalidates_deferred_playback_and_releases_native_file(dialog, tmp
     path.write_bytes(b'fixture')
     dialog.previews = [path]
     dialog.player = Mock()
+    released = []
+    # Ordinary Close stops sound immediately; the retained editor finalizer
+    # independently confirms closure before releasing its owned preview.
+    dialog.player.close.side_effect = lambda: released.append(('player', path.exists()))
+    dialog.editor.close.side_effect = lambda: released.append(('editor', path.exists()))
     generation = dialog.playback_generation
     dialog.close()
     assert dialog.playback_generation > generation
-    dialog.player.close.assert_called_once()
+    assert released == [('player', True), ('player', True), ('editor', True)]
+    dialog.editor.close.assert_called_once_with()
     assert not path.exists()
+    dialog.close()
+    assert released == [('player', True), ('player', True), ('editor', True)]
 
 
 def test_copy_binds_the_original_selection_before_background_work(dialog):

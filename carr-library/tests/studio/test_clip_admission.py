@@ -29,6 +29,7 @@ def audio(path, *, frames=24000, sample=600):
 
 def configured(tmp_path, *, budget=None, total_disk_bytes=512 * 1024**2, limits=None):
     library, selected_root = tmp_path / 'library', tmp_path / 'selected'
+    library.mkdir()
     selected_root.mkdir()
     source = audio(selected_root / 'immutable.wav')
     broker = ResourceBroker.for_app(library, limits=limits or ResourceLimits(

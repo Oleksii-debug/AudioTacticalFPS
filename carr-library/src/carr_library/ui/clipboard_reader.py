@@ -8,6 +8,11 @@ from .speech_dialog import show_speech_reader
 def _read_clipboard_text(wx):
     """Read one user-requested snapshot while retaining native clipboard ownership."""
     from ..speech._io import text_value
+    if getattr(wx, 'Platform', None) == '__WXMSW__':
+        # wx.TextDataObject normalizes native CRLF. Preserve the exact Windows
+        # Unicode snapshot instead, with independent native open/close ownership.
+        from ..speech.clipboard_reader import capture_windows_text
+        return capture_windows_text()
     clipboard = wx.TheClipboard
     if not clipboard.Open():
         raise ValueError('The clipboard is busy. Try again when the other application releases it.')

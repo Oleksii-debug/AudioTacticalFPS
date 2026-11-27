@@ -481,6 +481,40 @@ class AudioRuntime:
                             sources=(source,), cancelled=cancelled, progress=progress,
                             before_publish=before_publish)
 
+    def extract_pcm_frames(self, source, output, *, start_frame, end_frame,
+                           cancelled=lambda: False, progress=None):
+        """Copy one exact interval of an accepted integer PCM master.
+
+        FFmpeg reads RIFF/RF64 through the existing owned rendering boundary.
+        No resampler, bus effect, limiter, or channel mapping is restarted here.
+        """
+        source = self._input(source)
+        target = self._output(output)
+        info = self.inspect(source, cancelled=cancelled)
+        widths = {'pcm_s16le': 16, 'pcm_s24le': 24, 'pcm_s32le': 32}
+        if (info.format != 'wav' or info.codec not in widths
+                or info.channels not in (1, 2) or type(info.frames) is not int
+                or info.frames <= 0 or target.suffix.lower() != '.wav'):
+            raise ValueError('Exact frame extraction requires an integer PCM WAV master and WAV output.')
+        integer(info.sample_rate, 'PCM sample rate', 8000, 192000)
+        integer(start_frame, 'First PCM frame', 0, info.frames - 1)
+        integer(end_frame, 'Final PCM frame', start_frame + 1, info.frames)
+        frames = end_frame - start_frame
+
+        def verify(candidate, staged):
+            if (candidate.frames != frames or candidate.codec != info.codec
+                    or candidate.sample_rate != info.sample_rate
+                    or candidate.channels != info.channels):
+                raise AudioError('The extracted chapter differs from its exact measured master frame range.')
+
+        filters = f'atrim=start_sample={start_frame}:end_sample={end_frame},asetpts=PTS-STARTPTS'
+        return self._render([*self._base_args(), *self._input_args(source, cancelled=cancelled),
+                             '-map', '0:a:0', '-af', filters], target,
+                            expected_duration=frames / info.sample_rate,
+                            rate=info.sample_rate, channels=info.channels,
+                            bit_depth=widths[info.codec], sources=(source,),
+                            cancelled=cancelled, progress=progress, before_publish=verify)
+
     def audiobook(self, source, output, *, chapters, title, sample_rate=24000,
                   channels=2, bitrate=192, cancelled=lambda: False, progress=None):
         from .audiobook import publish_m4b

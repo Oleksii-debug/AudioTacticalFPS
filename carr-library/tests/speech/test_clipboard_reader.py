@@ -307,3 +307,164 @@ def test_native_clipboard_probe_source_proof_rejects_oversize_before_hash(tmp_pa
         lambda value: pytest.fail('An oversized module reached hashing.'))
     with pytest.raises(RuntimeError, match='source-proof bound'):
         module._bounded_sha256(path)
+
+
+
+class NativeUnicodeClipboard:
+    """Borrowed native handle protocol, with real encoded bytes and exact calls."""
+    def __init__(self, raw):
+        self.raw, self.calls = raw, []
+        self.opened = self.locked = False
+        self.failure = None
+        self.reported_size = len(raw)
+        self.last_error = 0
+
+    def open(self, owner):
+        self.calls.append('open')
+        assert owner is None and not self.opened
+        if self.failure == 'busy':
+            return 0
+        self.opened = True
+        return 1
+
+    def available(self, format):
+        self.calls.append('available')
+        assert self.opened and format == 13
+        return self.failure != 'unsupported'
+
+    def get(self, format):
+        self.calls.append('get')
+        assert self.opened and format == 13
+        return 0 if self.failure == 'handle' else 37
+
+    def size(self, handle):
+        self.calls.append('size')
+        assert self.opened and handle == 37
+        return self.reported_size
+
+    def lock(self, handle):
+        self.calls.append('lock')
+        assert self.opened and handle == 37
+        if self.failure == 'lock':
+            return 0
+        self.locked = True
+        return 83
+
+    def copy(self, pointer, size):
+        self.calls.append('copy')
+        assert self.opened and self.locked and pointer == 83 and size == len(self.raw)
+        if self.failure == 'copy':
+            raise OSError('Synthetic native copy failure')
+        return self.raw
+
+    def clear_error(self):
+        self.last_error = 0
+
+    def error(self):
+        return self.last_error
+
+    def unlock(self, handle):
+        self.calls.append('unlock')
+        assert self.opened and self.locked and handle == 37
+        self.locked = False
+        if self.failure == 'unlock':
+            self.last_error = 5
+        # Zero with ERROR_SUCCESS is the documented successful last unlock.
+        return 0
+
+    def close(self):
+        self.calls.append('close')
+        assert self.opened and not self.locked
+        self.opened = False
+        return self.failure != 'close'
+
+
+@pytest.mark.parametrize('text', [
+    '  Український текст 😀.\r\nSecond line.\t ',
+    'Mixed\r\nWindows\nUnix\rOld line.\t ',
+    'A\u0400 B\u0100\r\n\U0001f600 ending',
+    '\ufeffLiteral leading BOM stays text.\r\n',
+], ids=['exact-failed-native-fixture', 'mixed-newlines', 'unaligned-nul-pairs', 'literal-bom'])
+def test_native_unicode_capture_preserves_exact_text_and_releases_borrowed_memory(text, monkeypatch):
+    from carr_library.speech import clipboard_reader as native
+
+    raw = text.encode('utf-16-le') + b'\0\0'
+    api = NativeUnicodeClipboard(raw)
+    original = native.text_value
+    def after_release(value, *args, **kwargs):
+        assert not api.opened and not api.locked
+        return original(value, *args, **kwargs)
+    monkeypatch.setattr(native, 'text_value', after_release)
+    assert native.capture_windows_text(_api=api) == text
+    assert api.raw == raw
+    assert api.calls == ['open', 'available', 'get', 'size', 'lock', 'copy', 'unlock', 'close']
+
+
+@pytest.mark.parametrize('failure', ['busy', 'unsupported', 'handle', 'lock', 'copy', 'unlock', 'close'])
+def test_native_unicode_capture_failed_boundary_never_hands_off_or_frees_clipboard(failure):
+    from carr_library.speech import clipboard_reader as native
+
+    api = NativeUnicodeClipboard('Purpose-written text.\r\n'.encode('utf-16-le') + b'\0\0')
+    api.failure = failure
+    with pytest.raises((ValueError, OSError)):
+        native.capture_windows_text(_api=api)
+    assert not api.opened and not api.locked
+    assert api.calls.count('close') == (0 if failure == 'busy' else 1)
+    assert api.calls.count('unlock') == (1 if failure in ('copy', 'unlock', 'close') else 0)
+
+
+@pytest.mark.parametrize('size', [0, 1, True, -1, 8_004_097],
+                         ids=['empty', 'short', 'bool', 'negative', 'over-budget'])
+def test_native_unicode_size_is_admitted_before_lock_or_copy(size):
+    from carr_library.speech import clipboard_reader as native
+
+    api = NativeUnicodeClipboard(b'A\0\0\0')
+    api.reported_size = size
+    with pytest.raises(ValueError, match='byte allowance'):
+        native.capture_windows_text(_api=api)
+    assert api.calls == ['open', 'available', 'get', 'size', 'close']
+    assert not api.opened and not api.locked
+
+
+@pytest.mark.parametrize('case', ['unterminated', 'surrogate', 'empty', 'whitespace', 'character-budget'])
+def test_native_unicode_decoder_rejects_malformed_or_unreadable_content_after_release(case):
+    from carr_library.speech import clipboard_reader as native
+
+    raw = {'unterminated': b'A\0', 'surrogate': b'\0\xd8\0\0',
+           'empty': b'\0\0', 'whitespace': ' \r\n\t'.encode('utf-16-le') + b'\0\0'}.get(case)
+    if case == 'character-budget':
+        raw = ('a' * 2_000_001).encode('utf-16-le') + b'\0\0'
+    api = NativeUnicodeClipboard(raw)
+    with pytest.raises(ValueError):
+        native.capture_windows_text(_api=api)
+    assert api.calls[-2:] == ['unlock', 'close'] and not api.opened and not api.locked
+
+
+def test_native_unicode_terminator_is_aligned_and_padding_is_not_exposed():
+    from carr_library.speech import clipboard_reader as native
+
+    # The high zero byte of A is not a UTF-16 terminator. Ignore only bytes
+    # after the first complete NUL code unit, including allocator padding.
+    assert native.decode_unicode_text(b'A\0\0\0padding\xd8') == 'A'
+
+
+def test_windows_ui_uses_exact_native_snapshot_before_reader_handoff(monkeypatch):
+    from carr_library.speech import clipboard_reader as native
+
+    text = '  Український текст 😀.\r\nSecond line.\t '
+    api = NativeUnicodeClipboard(text.encode('utf-16-le') + b'\0\0')
+    monkeypatch.setattr(native, '_windows_api', lambda: api)
+    def forbidden(*args, **kwargs):
+        pytest.fail('Windows read used the newline-normalizing wx text transfer.')
+    wx = SimpleNamespace(Platform='__WXMSW__', TextDataObject=forbidden,
+        TheClipboard=SimpleNamespace(Open=forbidden, Close=forbidden))
+    monkeypatch.setitem(sys.modules, 'wx', wx)
+    opened, reports = [], []
+    frame = SimpleNamespace(report=reports.append)
+    def receive(parent, **options):
+        assert parent is frame and not api.opened and not api.locked
+        opened.append(options)
+    monkeypatch.setattr(ui, 'show_speech_reader', receive)
+    ui.show_clipboard_reader(frame)
+    assert opened == [{'text': text, 'title': 'Clipboard reading copy', 'recovery_slot': 'clipboard'}]
+    assert not reports and api.calls[-2:] == ['unlock', 'close']

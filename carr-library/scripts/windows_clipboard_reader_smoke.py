@@ -119,7 +119,7 @@ def _run_probe(args, report):
     import wx
     import carr_library
     from carr_library.ui import clipboard_reader as ui, speech_dialog
-    from carr_library.speech import _io as speech_io
+    from carr_library.speech import _io as speech_io, clipboard_reader as native_clipboard
     report['wx_version'] = wx.version()
     _phase(args, report, 'verify-imported-module-origin')
     origin = Path(ui.__file__).resolve(strict=True)
@@ -128,7 +128,7 @@ def _run_probe(args, report):
                     importlib.metadata.distribution('universal-research-library'))
     report['modules'] = _module_evidence(checkout, package_root,
         (('ui/clipboard_reader.py', ui), ('ui/speech_dialog.py', speech_dialog),
-         ('speech/_io.py', speech_io)),
+         ('speech/_io.py', speech_io), ('speech/clipboard_reader.py', native_clipboard)),
         source_mode=bool(args.source), distribution=distribution)
     report['module_sha256'] = report['modules']['ui/clipboard_reader.py']['sha256']
     checks = report['checks']
@@ -157,18 +157,32 @@ def _run_probe(args, report):
     if wx.TheClipboard.Open():
         try:
             if wx.TheClipboard.IsSupported(wx.DataFormat(wx.DF_UNICODETEXT)):
-                previous = wx.TextDataObject()
+                previous = wx.CustomDataObject(wx.DataFormat(wx.DF_UNICODETEXT))
                 had_text = wx.TheClipboard.GetData(previous)
                 if had_text:
-                    original_clipboard = previous.GetText()
+                    original_clipboard = bytes(previous.GetData())
         finally:
             wx.TheClipboard.Close()
-    def set_text(text):
+    def set_unicode_bytes(raw):
         if not wx.TheClipboard.Open():
             raise RuntimeError('The actual Windows clipboard is unavailable.')
         try:
-            if not wx.TheClipboard.SetData(wx.TextDataObject(text)):
+            value = wx.CustomDataObject(wx.DataFormat(wx.DF_UNICODETEXT))
+            value.SetData(raw)
+            if not wx.TheClipboard.SetData(value):
                 raise RuntimeError('Windows rejected the purpose-written fixture.')
+        finally:
+            wx.TheClipboard.Close()
+    def set_text(text):
+        set_unicode_bytes(text.encode('utf-16-le') + b'\0\0')
+    def raw_snapshot():
+        if not wx.TheClipboard.Open():
+            raise RuntimeError('The actual Windows clipboard is unavailable.')
+        try:
+            value = wx.CustomDataObject(wx.DataFormat(wx.DF_UNICODETEXT))
+            if not wx.TheClipboard.GetData(value):
+                raise RuntimeError('The raw native Unicode fixture could not be verified.')
+            return bytes(value.GetData())
         finally:
             wx.TheClipboard.Close()
     def snapshot():
@@ -178,6 +192,8 @@ def _run_probe(args, report):
         _phase(args, report, 'write-purpose-written-clipboard-fixture')
         fixture = '  Український текст 😀.\r\nSecond line.\t '
         set_text(fixture)
+        raw_before = raw_snapshot()
+        report['fixture_cf_unicode_sha256'] = sha256(raw_before).hexdigest()
         item = ui.install_clipboard_reader(frame)
         check(snapshot() == fixture, 'native Unicode read preserves exact fixture whitespace')
         check(not opened and not reports, 'installing the native menu starts no reader or audio')
@@ -192,7 +208,8 @@ def _run_probe(args, report):
         frame.ProcessEvent(event)
         check(opened == [dict(text=fixture, title='Clipboard reading copy', recovery_slot='clipboard')],
               'actual native menu dispatch uses the independent recoverable reading slot')
-        check(snapshot() == fixture, 'reading leaves actual clipboard bytes unchanged')
+        check(snapshot() == fixture and raw_snapshot() == raw_before,
+              'reading leaves actual clipboard bytes unchanged')
         set_text('A later purpose-written clipboard value.')
         for _ in range(5):
             app.Yield()
@@ -220,7 +237,7 @@ def _run_probe(args, report):
             frame.Destroy()
             app.Yield()
             if had_text:
-                set_text(original_clipboard)
+                set_unicode_bytes(original_clipboard)
             elif wx.TheClipboard.Open():
                 try:
                     wx.TheClipboard.Clear()
