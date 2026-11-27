@@ -267,28 +267,44 @@ def test_asr_paths_and_sizes_are_narrowly_bounded():
 
 @pytest.mark.parametrize('worker', ['worker', 'worker-history/' + '1'*32 + '-' + '2'*32])
 @pytest.mark.parametrize('suffix', ['cache.json', 'receipt.json', 'json', 'txt'])
-@pytest.mark.parametrize('legacy', [False, True])
-def test_manifest_requires_explicit_optional_asr_cache_inclusion(worker, suffix, legacy):
+@pytest.mark.parametrize('layout', ['', '33/', 'verified-v1/', 'verified-v1/33/'])
+@pytest.mark.parametrize('shape', ['v3-implicit', 'v3-state', 'v4-sidecars', 'v5-state'])
+def test_manifest_requires_explicit_optional_asr_cache_inclusion(worker, suffix, layout, shape):
     job, source, key = '1'*32, '2'*32, '3'*64
     root = f'state/transcription/jobs/{job}/'
-    cache = root + f'{worker}/logs/cache/verified-v1/33/{key}.{suffix}'
+    cache = root + f'{worker}/logs/cache/{layout}{key}.{suffix}'
     retained = root + f'inputs/{source}/source.wav'
     accepted = root + f'artifacts/{source}/{job}/transcript.txt'
     worker_result = root + f'{worker}/results/{source}/source.txt'
     names = [retained, accepted, worker_result, cache]
-    entries = [dict(filename=name[6:] if legacy else name,
-                    size_bytes=1, sha256='4'*64) for name in names]
+    legacy = shape in ('v3-state', 'v5-state')
     field = 'state' if legacy else 'sidecars'
-    manifest = dict(version=3 if legacy else 4, kind='carr-library',
+    entries = [dict(filename=name[6:] if legacy else name,
+                    size_bytes=0 if name == cache and suffix == 'txt' else 1,
+                    sha256='4'*64) for name in names]
+    version = {'v3-implicit': 3, 'v3-state': 3, 'v4-sidecars': 4, 'v5-state': 5}[shape]
+    manifest = dict(version=version, kind='carr-library',
                     schema_version=5, schema_fingerprint='5'*64,
-                    database={}, assets=[], generated_audio_included=True)
+                    database={}, assets=[])
     manifest[field] = entries
-    assert {row['filename'] for row in backup_sidecars.normalize_manifest(manifest).entries} == set(names)
-    manifest['generated_audio_included'] = False
+    extra_names = set()
+    if shape == 'v5-state':
+        manifest['pending'] = None
+        manifest['reading_state'] = dict(filename='reading-state.json',
+                                         size_bytes=1, sha256='4'*64)
+        extra_names.add('reading-state.json')
+    if shape != 'v3-implicit':
+        manifest['generated_audio_included'] = True
+        inv = backup_sidecars.normalize_manifest(manifest)
+        assert inv.generated_audio_included is True
+        assert {row['filename'] for row in inv.entries} == set(names) | extra_names
+        manifest['generated_audio_included'] = False
     with pytest.raises(ValueError, match='Transcription cache requires explicit manifest inclusion'):
         backup_sidecars.normalize_manifest(manifest)
     manifest[field] = entries[:-1]
-    assert {row['filename'] for row in backup_sidecars.normalize_manifest(manifest).entries} == set(names[:-1])
+    inv = backup_sidecars.normalize_manifest(manifest)
+    assert inv.generated_audio_included is False
+    assert {row['filename'] for row in inv.entries} == set(names[:-1]) | extra_names
 
 
 def test_restore_rejects_cache_contradicting_manifest_inclusion(prepared, tmp_path):
