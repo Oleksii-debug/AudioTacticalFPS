@@ -8,7 +8,8 @@ from pathlib import Path
 
 import wx
 
-from ..research.export_file import write_export
+from ..research.export_file import write_export, capture_export_destination
+from .export_destination import confirm_export_destination, completion_message
 
 
 REPORT_MAX_CHARACTERS = 500_000
@@ -172,8 +173,13 @@ class LibraryToolsDialog(wx.Dialog):
 
         def work():
             if cancelled():
-                raise TimeoutError('Operation cancelled before completion.')
-            return operation(cancelled)
+                raise InterruptedError('Operation cancelled before completion.')
+            try:
+                return operation(cancelled)
+            except TimeoutError as exc:
+                if cancelled():
+                    raise InterruptedError(str(exc)) from exc
+                raise
 
         def finish(result=None, error=None):
             if self._closed or request != self._request:
@@ -189,8 +195,9 @@ class LibraryToolsDialog(wx.Dialog):
                 try:
                     complete(result)
                 except Exception as exc:
-                    self._message(f'{title} was not completed: {exc}')
-            if self._close_when_idle:
+                    if not self._closed and not getattr(self.frame, '_closing', False):
+                        self._message(f'{title} was not completed: {exc}')
+            if self._close_when_idle and not self.pending and not self._closed:
                 self._closed = True
                 self.EndModal(wx.ID_CANCEL)
 
@@ -239,12 +246,13 @@ class LibraryToolsDialog(wx.Dialog):
         if not self._available():
             return False
         dialog = None
+        selected_format = self.format.GetSelection() if kind == 'source-bibliography' else None
         try:
             collection = self._selected_collection()
             self._collection = collection
             dialog = wx.FileDialog(self, f'Export {name}', defaultFile=f'{kind}{extension}',
                 wildcard=f'{name} (*{extension})|*{extension}',
-                style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+                style=wx.FD_SAVE)
             if dialog.ShowModal() != wx.ID_OK:
                 self.status.SetValue('Export cancelled. No file was written.')
                 button.SetFocus()
@@ -264,23 +272,57 @@ class LibraryToolsDialog(wx.Dialog):
             self._message('The selected library or scope changed. Choose the export destination again.')
             return False
 
-        def publish(cancelled):
-            if kind == 'review-matrix':
-                value = self.library.export_review_matrix(self.workspace, collection=collection, cancelled=cancelled)
-            else:
-                value = self.library.export_catalog(self.workspace, collection=collection,
-                                                     format=format, cancelled=cancelled)
-            if cancelled():
-                raise TimeoutError('Export cancelled; the destination was not changed.')
-            write_export(path, value, private_root=self.private_root, cancelled=cancelled)
-            return path
+        cancel_event = self.frame.cancel_event
 
-        def exported(destination):
-            detail = ('Verified quotations and research notes are in separate columns.' if kind == 'review-matrix'
-                      else 'This file contains source metadata; it does not include saved quotations or notes.')
-            self._message(f'{name} exported to {destination}.\n{detail}')
+        def check_selection():
+            if (self._closed or self._close_when_idle or cancel_event.is_set()
+                    or self.frame.cancel_event is not cancel_event):
+                raise InterruptedError('Export cancelled; the destination was not changed.')
+            if (not self._same_host() or self._selected_collection() != collection
+                    or (selected_format is not None and self.format.GetSelection() != selected_format)):
+                raise ValueError('The selected library, scope or format changed. Choose the export destination again.')
 
-        return self._start(f'Exporting {name}', collection, publish, exported)
+        def captured(approval):
+            # This callback is on the UI thread after capture has finished.
+            # Inspect controls only here, never in either worker operation.
+            if self._closed or getattr(self.frame, '_closing', False):
+                return
+            check_selection()
+            approved = confirm_export_destination(self, approval, wx_module=wx)
+            if self._closed or getattr(self.frame, '_closing', False):
+                return
+            if approved is None:
+                self.status.SetValue('Export cancelled. No file was written.')
+                button.SetFocus()
+                return
+            # _start/run_job clears cancellation: consume modal Cancel/Close
+            # and selection changes before it can start the publication job.
+            if self._closed or getattr(self.frame, '_closing', False):
+                return
+            check_selection()
+
+            def publish(cancelled):
+                if kind == 'review-matrix':
+                    value = self.library.export_review_matrix(self.workspace, collection=collection, cancelled=cancelled)
+                else:
+                    value = self.library.export_catalog(self.workspace, collection=collection,
+                                                         format=format, cancelled=cancelled)
+                if cancelled():
+                    raise TimeoutError('Export cancelled; the destination was not changed.')
+                return write_export(path, value, private_root=self.private_root,
+                                    cancelled=cancelled, approval=approved)
+
+            def exported(receipt):
+                detail = ('Verified quotations and research notes are in separate columns.' if kind == 'review-matrix'
+                          else 'This file contains source metadata; it does not include saved quotations or notes.')
+                destination = getattr(receipt, 'path', path)
+                self._message(completion_message(f'{name} exported to {destination}.\n{detail}', receipt))
+
+            self._start(f'Exporting {name}', collection, publish, exported)
+
+        return self._start('Checking export destination', collection,
+            lambda cancelled: capture_export_destination(path, private_root=self.private_root,
+                                                          cancelled=cancelled), captured)
 
     def export_bibliography(self, event=None):
         index = self.format.GetSelection()

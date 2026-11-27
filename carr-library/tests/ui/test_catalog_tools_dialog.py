@@ -9,8 +9,10 @@ import sys
 import threading
 from types import ModuleType, SimpleNamespace
 from unittest.mock import patch
+from unittest.mock import Mock
 
 import pytest
+import carr_library
 
 
 class Control:
@@ -49,7 +51,8 @@ def module():
         setattr(wx, name, Control)
     for n, name in enumerate(('VERTICAL', 'HORIZONTAL', 'EXPAND', 'ALL', 'LEFT', 'RIGHT',
             'TOP', 'ALIGN_RIGHT', 'TE_MULTILINE', 'TE_READONLY', 'ID_CANCEL', 'ID_OK',
-            'EVT_BUTTON', 'EVT_CLOSE', 'EVT_CHOICE', 'FD_SAVE', 'FD_OVERWRITE_PROMPT')):
+            'EVT_BUTTON', 'EVT_CLOSE', 'EVT_CHOICE', 'FD_SAVE', 'FD_OVERWRITE_PROMPT',
+            'YES_NO', 'NO_DEFAULT', 'ICON_QUESTION', 'YES', 'NO')):
         setattr(wx, name, 1 << n)
     wx.callbacks = []
     wx.CallAfter = lambda callback: wx.callbacks.append(callback)
@@ -57,6 +60,7 @@ def module():
     wx.file_result = wx.ID_OK
     wx.file_path = ''
     wx.file_hook = None
+    wx.MessageBox = Mock(return_value=wx.YES)
 
     class FileDialog(Control):
         def __init__(self, *args, **kwargs):
@@ -69,7 +73,7 @@ def module():
             return wx.file_result
         def GetPath(self): return wx.file_path
     wx.FileDialog = FileDialog
-    path = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/catalog_tools_dialog.py'
+    path = Path(carr_library.__file__).resolve().parent / 'ui/catalog_tools_dialog.py'
     spec = importlib.util.spec_from_file_location('carr_library.ui._catalog_tools_independent', path)
     mod = importlib.util.module_from_spec(spec)
     with patch.dict(sys.modules, {'wx': wx}):
@@ -138,9 +142,13 @@ class Host:
             callback()
         self.wx.CallAfter(finish)
     def finish(self):
-        self.work()
-        while self.wx.callbacks:
-            self.wx.callbacks.pop(0)()
+        # Model both existing-dispatcher phases, preserving work()/queued UI
+        # completion as separately controllable boundaries in the tests.
+        assert self.jobs
+        while self.jobs:
+            self.work()
+            while self.wx.callbacks:
+                self.wx.callbacks.pop(0)()
 
 
 @pytest.fixture
@@ -207,7 +215,7 @@ def test_exports_forward_exact_scope_format_and_write_complete_utf8(module, setu
     assert getattr(form, 'export_' + kind)()
     assert module.wx.files[0].destroyed
     style = module.wx.files[0].options['style']
-    assert style & module.wx.FD_SAVE and style & module.wx.FD_OVERWRITE_PROMPT
+    assert style & module.wx.FD_SAVE and not style & module.wx.FD_OVERWRITE_PROMPT
     destination = Path(module.wx.file_path)
     assert not destination.exists() and library.calls == []
     frame.finish()
@@ -276,10 +284,25 @@ def test_checked_writer_refuses_private_source_overwrite(module, setup):
     form, frame, library = setup
     module.wx.file_path = str(library.original)
     assert form.export_inventory()
+    assert len(frame.jobs) == 1 and library.calls == []
     frame.finish()
+    assert not frame.jobs and library.calls == []
     assert library.original.read_bytes() == b'unchanged original source'
     assert 'outside the private library folder' in form.status.GetValue()
     assert not form.pending and form.inventory_button.enabled
+
+
+@pytest.mark.parametrize('kind', ['bibliography', 'inventory', 'matrix'])
+def test_catalog_export_preserves_file_changed_during_render(module, setup, kind):
+    form, frame, library = setup
+    target = Path(module.wx.file_path)
+    target.write_bytes(b'Approved previous export')
+    library.hook = lambda: target.write_bytes(b'Independent edit during rendering')
+    assert getattr(form, 'export_' + kind)()
+    frame.finish()
+    assert target.read_bytes() == b'Independent edit during rendering'
+    assert 'destination changed' in form.status.GetValue()
+    assert not list(target.parent.glob('.research-export-*'))
 
 
 def test_report_limit_is_explicit_and_does_not_show_a_partial_result(module, setup):
@@ -392,3 +415,55 @@ def test_wrapper_rejects_ambiguous_collection_identifiers(module, setup, monkeyp
     monkeypatch.setattr(library, 'collections', lambda workspace: rows)
     module.show_catalog_tools(frame)
     assert not module.wx.callbacks and 'Collection choices changed' in frame.messages[-1]
+
+
+@pytest.mark.parametrize('change', ['cancel', 'close', 'collection', 'format'])
+@pytest.mark.parametrize('accepted', [False, True], ids=['decline', 'accept'])
+def test_modal_confirmation_rechecks_cancel_close_and_all_selected_options(module, setup, change, accepted):
+    form, frame, library = setup
+    target = Path(module.wx.file_path)
+    target.write_bytes(b'Previous catalog export')
+    def confirm(*args):
+        if change == 'cancel':
+            frame.cancel_event.set()
+        elif change == 'close':
+            form.close()
+            form.status.SetValue = Mock(side_effect=AssertionError('Closed status control touched.'))
+            form.bibliography_button.SetFocus = Mock(side_effect=AssertionError('Closed export control touched.'))
+        elif change == 'collection':
+            form.scope.SetSelection(1)
+            form.on_scope_changed()
+        else:
+            form.format.SetSelection(0)
+        return module.wx.YES if accepted else module.wx.NO
+    module.wx.MessageBox.side_effect = confirm
+    assert form.export_bibliography()
+    assert len(frame.jobs) == 1 and library.calls == []
+    frame.finish()
+    assert target.read_bytes() == b'Previous catalog export'
+    assert library.calls == [] and frame.jobs == []
+    if change == 'close':
+        assert form._closed and form.modal_result == module.wx.ID_CANCEL
+        form.status.SetValue.assert_not_called()
+        form.bibliography_button.SetFocus.assert_not_called()
+    elif change == 'cancel':
+        assert frame.cancel_event.is_set()
+
+
+@pytest.mark.parametrize('change', ['cancel', 'close'])
+def test_capture_completion_does_not_open_confirmation_after_cancel_or_close(module, setup, change):
+    form, frame, library = setup
+    target = Path(module.wx.file_path)
+    target.write_bytes(b'Previous export')
+    assert form.export_inventory()
+    frame.work()  # Capture finished, UI completion is still queued.
+    if change == 'cancel':
+        form.cancel_operation()
+    else:
+        form.close()
+    frame.wx.callbacks.pop(0)()
+    module.wx.MessageBox.assert_not_called()
+    assert library.calls == [] and frame.jobs == []
+    assert target.read_bytes() == b'Previous export'
+    if change == 'close':
+        assert form._closed and form.modal_result == module.wx.ID_CANCEL

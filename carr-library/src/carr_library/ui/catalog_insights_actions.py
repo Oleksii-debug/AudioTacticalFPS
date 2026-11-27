@@ -10,6 +10,7 @@ from pathlib import Path
 from ..catalog.insights import analyze_catalog, display_value, format_checklist, format_overview, report_collections
 from ..catalog.membership import Catalog
 from ..research.export_file import write_export
+from .export_destination import start_export, completion_message
 from ..research.topic_tree import TopicTree
 from .research_actions import NativeDialogs
 
@@ -33,7 +34,7 @@ class InsightsDialogs(NativeDialogs):
         _, _, extension, wildcard = next(row for row in FORMATS if row[0] == format)
         dialog = wx.FileDialog(parent, 'Save source comparison matrix',
             defaultFile='source-comparison-matrix.' + extension, wildcard=wildcard,
-            style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+            style=wx.FD_SAVE)
         try:
             if dialog.ShowModal() != wx.ID_OK:
                 return None
@@ -73,6 +74,7 @@ class _Report:
 class _ExportReceipt:
     path: Path
     format: str
+    cleanup_warning: str | None = None
 
 
 class CatalogInsightsActions:
@@ -235,36 +237,41 @@ class CatalogInsightsActions:
             self._idle()
             self._authorize(scope, collection)
 
-            def operation():
+            def operation(approval, cancelled, check_live):
                 from ..research.literature_matrix import render_literature_matrix
 
                 analysis = self._analyze(scope, collection)
                 text = render_literature_matrix(analysis, format=format, include_trace=False,
-                                                cancelled=scope.cancel_event.is_set)
+                                                cancelled=cancelled)
                 # Recheck authorization and cancellation immediately before
                 # atomic publication. No reads of frame.library occur here.
-                self._authorize(scope, collection, cancellable=True)
-                write_export(path, text, private_root=scope.library.root,
-                             cancelled=scope.cancel_event.is_set)
+                check_live()
+                receipt = write_export(path, text, private_root=scope.library.root,
+                                       cancelled=cancelled, approval=approval)
                 # Once publication succeeds, cancellation cannot undo it. A
                 # receipt lets the callback describe that outcome truthfully.
-                return _ExportReceipt(path, format)
+                warning = getattr(receipt, 'cleanup_warning', None)
+                return _ExportReceipt(path, format, warning if isinstance(warning, str) else None)
 
             def done(result):
-                if result != _ExportReceipt(path, format):
+                if not isinstance(result, _ExportReceipt) or result.path != path or result.format != format:
                     raise ValueError('The export result does not match its requested destination.')
                 try:
                     self._authorize(scope, collection, cancellable=True)
                 except Exception:
                     if not getattr(self.frame, '_closing', False):
-                        self.frame.report('The matrix file was saved before cancellation or a library change '
-                                          'was detected. Reopen the command to make a current report.')
+                        self.frame.report(completion_message(
+                            'The matrix file was saved before cancellation or a library change '
+                            'was detected. Reopen the command to make a current report.', result))
                     return
-                self.frame.report('Source comparison matrix saved to ' + display_value(str(path))
-                                  + '. Quotations and notes are not included.')
+                self.frame.report(completion_message(
+                    'Source comparison matrix saved to ' + display_value(str(path))
+                    + '. Quotations and notes are not included.', result))
 
-            self.frame.run_job('Exporting source comparison matrix', operation, done,
-                               lambda error: self._failed(title, error))
+            start_export(self.frame, path, private_root=scope.library.root,
+                         check_scope=lambda: self._authorize(scope, collection),
+                         operation=operation, done=done, title='Exporting source comparison matrix',
+                         failed=lambda error: self._failed(title, error), declined=lambda: self._cancel(scope))
         except Exception as exc:
             self._failed(title, exc)
 

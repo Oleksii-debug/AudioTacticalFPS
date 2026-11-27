@@ -15,6 +15,7 @@ from ..extract.document_formats import file_dialog_wildcard, supported_formats_t
 from ..catalog.read_views import active_collections
 from ..citations.anchors import format_citation
 from ..research.export_file import write_export, write_binary_export
+from .export_destination import start_export, completion_message
 from ..reader.source_file import prepare_source_file, launch_source_file
 from ..research.saved_topic_query import SavedTopicQueries
 from ..research.topic_tree import TopicTree
@@ -1184,7 +1185,7 @@ class DesktopFrame(WorkspaceFrame):
             extensions = ('.md', '.txt', '.ris', '.bib', '.csv', '.docx', '.html')
             dialog = wx.FileDialog(self, 'Export topic', defaultFile='research-topic',
                 wildcard='Markdown (*.md)|*.md|Plain text (*.txt)|*.txt|RIS (*.ris)|*.ris|BibTeX (*.bib)|*.bib|CSV (*.csv)|*.csv|Word document (*.docx)|*.docx|HTML document (*.html)|*.html',
-                style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+                style=wx.FD_SAVE)
             try:
                 if dialog.ShowModal() != wx.ID_OK:
                     return
@@ -1196,43 +1197,42 @@ class DesktopFrame(WorkspaceFrame):
             finally:
                 dialog.Destroy()
             if not path.suffix:
-                # Some native save dialogs append the filter's extension and
-                # others do not. Confirm the actual target if we append it.
+                # Capture and confirm the final filename after any suffix.
                 path = path.with_suffix(extension)
-                if path.exists() and wx.MessageBox(
-                    f'Replace the existing export {path.name}?', 'Replace export',
-                    wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, self) != wx.YES:
-                    return
             elif format in ('docx', 'html') and path.suffix.lower() != extension:
                 raise ValueError(f'The selected format needs a {extension} filename. '
                                  'Export again with the matching filename or file type.')
 
             def selected_scope():
-                if self.library is not library or self.active != (workspace, topic):
+                if (getattr(self, '_closing', False) or self.library is not library
+                        or self.active != (workspace, topic)):
                     raise ValueError('The selected library or topic changed. Export again from the intended topic.')
 
-            def export():
-                selected_scope()
-                content = library.export_topic(workspace,topic,format=format,
-                                               cancelled=self.cancel_event.is_set)
-                selected_scope()
-                if self.cancel_event.is_set():
-                    raise TimeoutError('Export cancelled; the destination was not changed.')
+            def export(approval, cancelled, check_live):
+                content = library.export_topic(workspace,topic,format=format, cancelled=cancelled)
+                check_live()
                 writer = write_binary_export if format == 'docx' else write_export
-                writer(path,content,private_root=library.root,
-                       cancelled=self.cancel_event.is_set)
+                return writer(path,content,private_root=library.root,
+                              cancelled=cancelled, approval=approval)
 
             def done(result):
-                if format in ('ris','bibtex'):
-                    self.report('Bibliography exported. Quotations and research notes are not included.')
+                if getattr(self, '_closing', False):
+                    return
+                if self.library is not library or self.active != (workspace, topic):
+                    message = ('The selected export was saved before the library or topic changed. '
+                               'Open the command again for the current selection.')
+                elif format in ('ris','bibtex'):
+                    message = 'Bibliography exported. Quotations and research notes are not included.'
                 elif format in ('docx', 'html'):
-                    self.report('Research document exported with navigable headings, source citations, '
-                                'and quotations kept separate from research notes.')
+                    message = ('Research document exported with navigable headings, source citations, '
+                               'and quotations kept separate from research notes.')
                 else:
-                    self.report('Topic exported with quotations and research notes kept separate.')
+                    message = 'Topic exported with quotations and research notes kept separate.'
+                self.report(completion_message(message, result))
 
-            self.run_job('Exporting verified topic',export,done,
-                         lambda error: self.report(f'Export not completed: {error}'))
+            start_export(self, path, private_root=library.root, check_scope=selected_scope,
+                         operation=export, done=done, title='Exporting verified topic', wx_module=wx,
+                         failed=lambda error: self.report(f'Export not completed: {error}'))
         except Exception as exc:
             self.report(f'Export not completed: {exc}')
 

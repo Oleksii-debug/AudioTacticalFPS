@@ -7,10 +7,24 @@ maliciously replace directory entries at the instant of publication.
 """
 from dataclasses import dataclass
 from hashlib import sha256
+import logging
 from pathlib import Path, PureWindowsPath
 import os
 import stat
 from tempfile import NamedTemporaryFile
+from time import monotonic
+
+
+@dataclass(frozen=True)
+class ExportReceipt:
+    """A durable publication, including any remaining staging cleanup notice."""
+    path: Path
+    cleanup_warning: str | None = None
+
+
+_logger = logging.getLogger(__name__)
+_MAX_OVERWRITE_BYTES = 32 * 1024 * 1024
+_OVERWRITE_CHECK_SECONDS = 0.25
 
 
 def _filename(name):
@@ -49,6 +63,18 @@ def _content_state(path, info, check_cancelled):
     between chunks; a growing file cannot keep this snapshot running forever.
     The opened object and final path must still match the initial regular file.
     """
+    check_cancelled()
+    if info.st_size > _MAX_OVERWRITE_BYTES:
+        raise ValueError('The existing file is too large to verify for replacement. '
+                         'Choose a new filename.')
+    deadline = monotonic() + _OVERWRITE_CHECK_SECONDS
+
+    def budget():
+        check_cancelled()
+        if monotonic() >= deadline:
+            raise ValueError('The existing file could not be verified quickly enough. '
+                             'Choose a new filename.')
+
     previous = _file_state(info)
     flags = (os.O_RDONLY | getattr(os, 'O_BINARY', 0)
              | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_NONBLOCK', 0))
@@ -60,18 +86,19 @@ def _content_state(path, info, check_cancelled):
         digest = sha256()
         remaining = info.st_size
         while remaining:
-            check_cancelled()
-            block = stream.read(min(1024 * 1024, remaining))
+            budget()
+            block = stream.read(min(128 * 1024, remaining))
             if not block:
                 raise ValueError('The export destination changed. Choose the destination again.')
             digest.update(block)
             remaining -= len(block)
-        check_cancelled()
+        budget()
         current = path.lstat()
         if (stream.read(1) or _linked(current)
                 or _file_state(os.fstat(stream.fileno())) != previous
                 or _file_state(current) != previous):
             raise ValueError('The export destination changed. Choose the destination again.')
+    budget()
     return (*previous, digest.hexdigest())
 
 
@@ -150,7 +177,8 @@ def capture_export_destination(path, *, private_root, cancelled=lambda: False):
     Pass this same immutable snapshot to the writer after confirmation. It
     binds approval to the selected path, parent directory and existing file
     state and contents across queued work and rendering; it grants no
-    permission itself.
+    permission itself. Existing files over 32 MiB or exceeding the bounded
+    content-verification time require a new filename.
     """
     if not callable(cancelled):
         raise ValueError('An export cancellation callback is required.')
@@ -180,7 +208,7 @@ def write_export(path, content, *, private_root, cancelled=lambda: False,
     """
     if not isinstance(content, str):
         raise ValueError('Text export required.')
-    _write_payload(path, content.encode('utf-8'), private_root=private_root,
+    return _write_payload(path, content.encode('utf-8'), private_root=private_root,
                    cancelled=cancelled, require_absent=require_absent, approval=approval)
 
 
@@ -194,7 +222,7 @@ def write_binary_export(path, content, *, private_root, cancelled=lambda: False,
     """
     if not isinstance(content, bytes):
         raise ValueError('Binary document export required.')
-    _write_payload(path, content, private_root=private_root,
+    return _write_payload(path, content, private_root=private_root,
                    cancelled=cancelled, require_absent=require_absent, approval=approval)
 
 
@@ -235,6 +263,7 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
     if require_absent and previous is not None:
         raise FileExistsError('The export destination already exists; replacement was not authorized.')
     temporary = None
+    cleanup_warning = None
     try:
         check_cancelled()
         with NamedTemporaryFile(mode='wb', prefix='.research-export-',
@@ -268,11 +297,17 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
             except OSError:
                 try:
                     published_stage.unlink(missing_ok=True)
-                except OSError as exc:
-                    raise OSError('Export was published, but its temporary link could not be removed.') from exc
+                except OSError:
+                    cleanup_warning = ('The file is saved. Temporary-file cleanup is still pending; '
+                                       'the export does not need to be repeated.')
+                    try:
+                        _logger.warning('%s Export destination: %s', cleanup_warning, target)
+                    except Exception:
+                        pass
         else:
             os.replace(temporary, target)
         temporary = None
     finally:
         if temporary is not None:
             temporary.unlink(missing_ok=True)
+    return ExportReceipt(target, cleanup_warning)

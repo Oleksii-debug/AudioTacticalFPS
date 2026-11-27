@@ -47,24 +47,38 @@ def export_using_dialog(research, destination, monkeypatch, *, format_index=1):
             pass
 
     monkeypatch.setattr(desktop_app.wx, 'FileDialog', FileDialog)
-    reports = []
+    monkeypatch.setattr(desktop_app.wx, 'MessageBox', lambda *args: desktop_app.wx.YES)
+    reports, jobs, started = [], [], []
 
     def run_job(title, operation, done=None, failed=None):
+        frame.cancel_event.clear()
+        started.append(title)
+        jobs.append((operation, done, failed))
+
+    frame = SimpleNamespace(library=research.app,
+                            _topic=lambda: (research.workspace, research.topic),
+                            active=(research.workspace, research.topic), _closing=False,
+                            report=reports.append, cancel_event=Event(), run_job=run_job)
+    desktop_app.DesktopFrame.export_topic(frame, None)
+    # The real handler returns before destination inspection or rendering.
+    # This deterministic dispatcher keeps both queued boundaries visible; the
+    # separate native probe executes them on the actual desktop executor.
+    assert reports == [] and len(jobs) == 1
+    assert started == ['Checking export destination']
+    while jobs:
+        operation, done, failed = jobs.pop(0)
         try:
             result = operation()
+            if done is not None:
+                done(result)
         except Exception as error:
             if failed is None:
                 raise
             failed(error)
-        else:
-            if done is not None:
-                done(result)
-
-    frame = SimpleNamespace(library=research.app,
-                            _topic=lambda: (research.workspace, research.topic),
-                            active=(research.workspace, research.topic),
-                            report=reports.append, cancel_event=Event(), run_job=run_job)
-    desktop_app.DesktopFrame.export_topic(frame, None)
+    expected = ['Checking export destination']
+    if not destination.is_relative_to(research.app.root):
+        expected.append('Exporting verified topic')
+    assert started == expected
     return reports
 
 
@@ -98,6 +112,7 @@ def test_desktop_export_to_external_file_keeps_source_and_notes_separate(researc
     assert 'source exact quotation' in expected and 'Separate research note' in expected
     assert research.original.read_bytes() == before_original
     assert not list(tmp_path.glob('.carr-export-*'))
+    assert not list(tmp_path.glob('.research-export-*'))
 
 
 def test_failed_export_preserves_existing_output_and_library(research, tmp_path, monkeypatch):
@@ -118,6 +133,7 @@ def test_failed_export_preserves_existing_output_and_library(research, tmp_path,
     assert research.app.database.read_bytes() == before_database
     assert research.original.read_bytes() == before_original
     assert not list(tmp_path.glob('.carr-export-*'))
+    assert not list(tmp_path.glob('.research-export-*'))
 
 
 @pytest.mark.parametrize('format_index,extension', [(5, 'docx'), (6, 'html')])

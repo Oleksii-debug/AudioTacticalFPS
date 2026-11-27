@@ -285,7 +285,8 @@ def run_native(source=None):
                     check('second request reaches a committed note before the next participant',
                           pump(lambda: bool(frame.pending_ui)) and frame._save_coordinator.busy)
                     press(find_button(studio.dialog, 'Cancel Save All'))
-                    check('actual modal Cancel signals the shared request', frame.cancel_event.is_set())
+                    check('actual modal Cancel signals the shared request',
+                          pump(frame.cancel_event.is_set) and frame._save_coordinator.busy)
                     frame.release_completions()
                     check('cancelled Save All releases its request',
                           pump(lambda: not frame._save_coordinator.busy and not frame.working))

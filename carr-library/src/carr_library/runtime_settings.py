@@ -37,11 +37,57 @@ def validate_dordiai_configuration(value):
 
 
 
+def validate_legacy_dordiai_helper(value):
+    """Read a canonical helper declaration as data, without probing its assets.
+
+    Relative installation references remain readable for an explicit migration.
+    This legacy shape never authorizes the current reviewed voice adapter.
+    """
+    required = {'adapter', 'runtime_directory', 'rights_notice', 'enabled'}
+    optional = {'python_executable', 'expected_worker_sha256'}
+    if (type(value) is not dict or not required <= value.keys()
+            or value.keys() - required - optional
+            or value.get('adapter') != 'dordiai-voices'
+            or type(value.get('enabled')) is not bool):
+        raise ValueError('Invalid retained dordiai-voices helper declaration.')
+
+    def text(selected, maximum):
+        if (type(selected) is not str or not selected.strip()
+                or len(selected) > maximum or '\x00' in selected):
+            raise ValueError('Invalid retained local voice declaration text.')
+        try:
+            selected.encode('utf-8', errors='strict')
+        except UnicodeError as exc:
+            raise ValueError('Invalid retained local voice declaration text.') from exc
+
+    def path(selected):
+        text(selected, 32767)
+        normalized = selected.replace('\\', '/')
+        remainder = selected[2:] if re.match(r'^[A-Za-z]:', selected) else selected
+        if (normalized.startswith('//') or '://' in selected or ':' in remainder
+                or any(ord(character) < 32 for character in selected)):
+            raise ValueError('Retained voice references must be local filesystem declarations.')
+
+    text(value['runtime_directory'], 4096)
+    path(value['runtime_directory'])
+    text(value['rights_notice'], 4096)
+    if value.get('python_executable') is not None:
+        path(value['python_executable'])
+    expected = value.get('expected_worker_sha256')
+    if ('expected_worker_sha256' in value
+            and (type(expected) is not str or not re.fullmatch('[0-9a-f]{64}', expected))):
+        raise ValueError('A retained voice worker needs a lowercase SHA-256 fingerprint.')
+    return dict(value)
+
+
 def _require_supported_voice_declarations(value):
     # Retain canonical declarations for inspection/backup, but never silently
     # ignore an enabled old engine when another settings edit clears a restore
     # marker. Its assets must be migrated into the existing reviewed registry.
-    if value.get('dordiai') is not None and value['dordiai']['enabled']:
+    legacy_enabled = any(item.get('adapter') == 'dordiai-voices' and item.get('enabled') is True
+                         for item in value.get('voice_helpers', ()))
+    if ((value.get('dordiai') is not None and value['dordiai']['enabled'])
+            or legacy_enabled):
         raise ValueError('This retained dordiai-voices declaration requires explicit migration '
                          'into Local voice settings before activation or revalidation.')
 
@@ -104,6 +150,9 @@ def _settings_document(value):
                 or any(type(model) is not dict for model in item['models'])):
             raise ValueError('Invalid Piper voice declarations.')
     for item in value['voice_helpers']:
+        if 'adapter' in item:
+            validate_legacy_dordiai_helper(item)
+            continue
         if (set(item) - {'executable', 'sha256', 'engine_name', 'enabled', 'max_voices'}
                 or not {'executable', 'sha256', 'engine_name'} <= set(item)
                 or type(item.get('enabled', False)) is not bool):
@@ -185,6 +234,7 @@ def _check_review(cancelled):
 
 
 def _configured_voice_providers(value, *, cancelled=None):
+    _require_supported_voice_declarations(value)
     from .speech import PiperProvider, LocalHelperProvider
     from .audio.musicgen_worker import plain_local
     providers = []
