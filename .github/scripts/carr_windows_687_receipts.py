@@ -30,6 +30,7 @@ MAX_MEMBER_BYTES = 4 * 1024 * 1024
 MAX_EXPANDED_BYTES = 32 * 1024 * 1024
 MAX_OUTPUT_BYTES = 2 * 1024 * 1024
 BUNDLE_PREFIXES = ("bundle-", "full-bundle-", "core-bundle-", "offline-bundle-")
+ENDPOINT_RECEIPTS = frozenset(("audio-endpoint.json", "endpoint-evaluation.json", "audio-services.json"))
 ERROR_LINE = re.compile(r"Traceback|AssertionError|TimeoutError|RuntimeError|ValueError|"
                         r"PermissionError|OSError|FileNotFoundError|FAIL(?:ED)?\b|"
                         r"\bERROR\b|Exception|access violation", re.I)
@@ -93,7 +94,7 @@ def wanted(name, mode):
         return False
     if mode == "recording":
         return "recording" in path.name
-    return path.name.startswith(BUNDLE_PREFIXES)
+    return path.name.startswith(BUNDLE_PREFIXES) or path.name in ENDPOINT_RECEIPTS
 
 
 def text_content(raw):
@@ -214,7 +215,7 @@ def main():
                     emit(line("CARR_WINDOWS_JSON_SUMMARY", {**info, "summary": summary}))
                     failed = (str(parsed.get("status", "")).upper() in ("FAIL", "FAILED", "ERROR")
                               or bool(parsed.get("failure") or parsed.get("error") or parsed.get("errors")))
-                    if not failed:
+                    if not failed and name not in ENDPOINT_RECEIPTS:
                         continue
                 snippet, complete = excerpt(text)
                 emit(line("CARR_WINDOWS_TEXT", {
