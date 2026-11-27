@@ -39,6 +39,11 @@ MAX_TOTAL = 2 * 1024 ** 3 - 1
 INSTRUCTIONS = ("Extract both archives into the same destination so their shared "
                 "Universal-Research-Library folder contains the complete manifest inventory. "
                 "Only then run Install.cmd. The application ZIP alone is incomplete.")
+NATIVE_INSTRUCTIONS = ("Extract both archives into the same destination so their shared "
+                       "Universal-Research-Library folder contains the complete manifest inventory. "
+                       "Only then run ResearchLibrary.exe. The first launch installs the bundled "
+                       "offline environment and opens the application; later launches open it directly. "
+                       "The application ZIP alone is incomplete.")
 
 
 def _check(cancelled):
@@ -376,20 +381,30 @@ def _cleanup(stage, identity, parent_fd):
         shutil.rmtree(stage)
 
 
-def _start_here(application_name, source_name, reused):
+def _start_here(application_name, source_name, reused, *, native_launcher=False):
     source_note = ("Архів джерел використано повторно: він залишається у попередньому місці. "
                    "Візьміть його разом з архівом програми.\n" if reused else "")
-    return ("Universal Research Library — встановлення у Windows x64\n\n"
+    launch_note = (
+        "3. У спільній папці повинні бути ResearchLibrary.exe та ocr-corresponding-source.tar. "
+        "Лише після розпакування обох архівів запустіть ResearchLibrary.exe. Перший запуск "
+        "встановить комплектне офлайн-середовище й відкриє програму; дочекайтеся завершення. "
+        "Самого архіву програми недостатньо.\n\n"
+        "4. Для наступних запусків використовуйте той самий ResearchLibrary.exe. "
+        "Для перевірки встановлення використовуйте CheckInstallation.cmd. "
+        "Install.cmd і ResearchLibrary.cmd залишаються запасними засобами запуску.\n\n"
+        if native_launcher else
+        "3. У спільній папці повинні бути Install.cmd та ocr-corresponding-source.tar. "
+        "Лише після розпакування обох архівів запустіть Install.cmd і дочекайтеся "
+        "успішного завершення встановлення. Самого архіву програми недостатньо.\n\n"
+        "4. Запускайте програму через ResearchLibrary.cmd. Для перевірки встановлення "
+        "використовуйте CheckInstallation.cmd.\n\n")
+    return ("Резонанс — встановлення у Windows x64\n\n"
             "1. Потрібні обидва ZIP-архіви:\n"
             + application_name + "\n" + source_name + "\n" + source_note + "\n"
             "2. Розпакуйте ОБИДВА архіви в ОДНУ Й ТУ САМУ НОВУ папку призначення. "
             "Під час кожного розпакування вкажіть цю саму папку. Обидва архіви мають "
             "утворити одну спільну папку Universal-Research-Library.\n\n"
-            "3. У спільній папці повинні бути Install.cmd та ocr-corresponding-source.tar. "
-            "Лише після розпакування обох архівів запустіть Install.cmd і дочекайтеся "
-            "успішного завершення встановлення. Самого архіву програми недостатньо.\n\n"
-            "4. Запускайте програму через ResearchLibrary.cmd. Для перевірки встановлення "
-            "використовуйте CheckInstallation.cmd.\n\n"
+            + launch_note +
             "delivery-verification.json містить точну версію коду й контрольні суми архівів. "
             "Цей приватний пакет призначений для локального встановлення.\n")
 
@@ -440,7 +455,8 @@ def create_delivery(bundle, expected_source_commit, output, *, source_companion=
         report = {"schema": 1, "kind": "private-local-delivery", "source_commit": expected_source_commit,
                   "source_tree": _tree(expected_source_commit), "manifest_sha256": hashlib.sha256(raw).hexdigest(),
                   "manifest_bytes": len(raw), "manifest_payload_files": len(data["files"]),
-                  "archive_prefix": PREFIX, "archives": archives, "instructions": INSTRUCTIONS,
+                  "archive_prefix": PREFIX, "archives": archives,
+                  "instructions": NATIVE_INSTRUCTIONS if data.get("bundled_native_launcher", False) else INSTRUCTIONS,
                   "boundaries": {"manifest_unchanged": True, "both_archives_required": True,
                                  "inventory": "Only sealed files plus the exact bundle manifest",
                                  "source_claim": "Matches the expected commit; upstream canonical builder verifies wheel source",
@@ -453,7 +469,8 @@ def create_delivery(bundle, expected_source_commit, output, *, source_companion=
         report_stamp = _stamp(_plain(stage / "delivery-verification.json"))
         with (stage / "START_HERE_UK.txt").open("x", encoding="utf-8") as stream:
             stream.write(_start_here(app_name, json.dumps(companion.name, ensure_ascii=False),
-                                     source_companion is not None))
+                                     source_companion is not None,
+                                     native_launcher=data.get("bundled_native_launcher", False)))
             stream.flush()
             os.fsync(stream.fileno())
         instructions_stamp = _stamp(_plain(stage / "START_HERE_UK.txt"))

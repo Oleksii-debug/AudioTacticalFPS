@@ -329,10 +329,10 @@ def test_portable_native_orientation_uses_existing_cli_without_wrapper(native_bu
             'Documents are preserved in their original form.\n'
             'The source provides evidence for each statement.\n'
             'Different authors may use the same expression.')
-    try:
-        font = ImageFont.truetype('DejaVuSans.ttf', 48)
-    except OSError:
-        pytest.skip('DejaVu Sans needed for the fixed orientation acceptance fixture')
+    # The pinned test dependency supplies the same real font on every platform.
+    # Windows runners do not install the Linux DejaVu font family by default.
+    import reportlab
+    font = ImageFont.truetype(str(Path(reportlab.__file__).parent / 'fonts' / 'Vera.ttf'), 48)
     picture = Image.new('RGB', (1800, 1150), 'white')
     ImageDraw.Draw(picture).multiline_text((60, 60), text, fill='black', spacing=24, font=font)
     pdf = tmp_path / 'rotated.pdf'

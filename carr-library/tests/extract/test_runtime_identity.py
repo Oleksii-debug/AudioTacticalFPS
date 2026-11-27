@@ -6,6 +6,7 @@ import re
 import shutil
 import subprocess
 from unittest.mock import patch
+from types import SimpleNamespace
 
 import pytest
 from carr_library.extract import runtime_identity as ri
@@ -21,7 +22,14 @@ class Settings:
 
 
 @pytest.fixture(autouse=True)
-def source_fixture(tmp_path):
+def source_fixture(tmp_path, monkeypatch):
+    # These tests deliberately exercise PATH discovery and mutable model files.
+    # A surrounding installed bundle must not override that fixture boundary.
+    monkeypatch.delenv('CARR_OCR_DIR', raising=False)
+    isolated = tmp_path / 'isolated' / 'runtime' / 'python'
+    monkeypatch.setattr(ri.ocr_runtime, 'sys', SimpleNamespace(
+        prefix=str(isolated), base_prefix=str(isolated),
+        platform=ri.ocr_runtime.sys.platform))
     # Exercise real file hashing with synthetic source files; the pinned
     # model staging module is the exact upstream candidate, not a double.
     for name in ('page_ocr.py', 'orientation.py', 'ocr_orientation_bridge.py',
