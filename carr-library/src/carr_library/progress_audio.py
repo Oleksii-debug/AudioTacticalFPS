@@ -97,15 +97,18 @@ def speech_text(event, language='en'):
                     f'. {event.percent} ' + words['percent'] + '.')
 
 
-def configured_registry():
-    """Discover only existing local adapters; never install or download a voice."""
+def configured_registry(library_root=None):
+    """Use this library's reviewed registrations; never install or download a voice."""
     from .audio.engines import default_registry
     from .audio.runtime import resolve_ffmpeg
     try:
         ffmpeg = resolve_ffmpeg()
     except (ValueError, OSError, RuntimeError):
         ffmpeg = None
-    return default_registry(ffmpeg=ffmpeg)
+    if library_root is None:
+        return default_registry(ffmpeg=ffmpeg)
+    from .runtime_settings import configured_voice_registry
+    return configured_voice_registry(Path(library_root), ffmpeg=ffmpeg)
 
 
 def voice_fingerprint(registry, voice_id, language, *, cancelled=lambda: False):
@@ -187,8 +190,11 @@ class LocalNotificationOutput:
     A persisted identity may reconnect only to that exact local voice/runtime.
     No first-English-voice fallback or provider request is permitted.
     """
-    def __init__(self, *, registry_factory=configured_registry, player_factory=None):
+    def __init__(self, *, registry_factory=None, player_factory=None, library_root=None):
         self._registry_factory, self._player_factory = registry_factory, player_factory
+        self._library_root = None if library_root is None else Path(library_root)
+        self._registry_lock = threading.Lock()
+        self._registry_revision = 0
         self._registry = None
         self._possibly_audible = False
         self._retained = []
@@ -198,7 +204,21 @@ class LocalNotificationOutput:
         return not self._possibly_audible and not self._retained
 
     def set_registry(self, registry):
-        self._registry = registry
+        with self._registry_lock:
+            self._registry = registry
+            self._registry_revision += 1
+
+    def set_library_root(self, library_root):
+        # Changing the catalogue does not discard an audible player or a
+        # retained failed-close handle. Their existing quiescence still rules.
+        with self._registry_lock:
+            self._library_root = None if library_root is None else Path(library_root)
+            self._registry = None
+            self._registry_revision += 1
+
+    def _registry_changed(self, revision):
+        with self._registry_lock:
+            return revision != self._registry_revision
 
     def _play(self, path, cancelled):
         from .audio.player import WavePlayer
@@ -248,12 +268,20 @@ class LocalNotificationOutput:
                 or not all(isinstance(value, str) and value for value in selection)):
             raise RuntimeError('Choose a local progress voice in Progress settings. No substitute was used.')
         voice_id, language, expected = selection
+        with self._registry_lock:
+            registry, root, revision = self._registry, self._library_root, self._registry_revision
         deadline = time.monotonic() + 30
-        stopped = lambda: cancelled() or time.monotonic() >= deadline
-        registry = self._registry
+        stopped = lambda: (cancelled() or time.monotonic() >= deadline
+                           or self._registry_changed(revision))
         if registry is None:
-            registry = self._registry_factory()
-            self._registry = registry
+            registry = (self._registry_factory() if self._registry_factory is not None
+                        else configured_registry(root))
+            with self._registry_lock:
+                if revision != self._registry_revision:
+                    raise InterruptedError('The progress voice library or selection changed.')
+                self._registry = registry
+        if stopped():
+            raise InterruptedError('Progress speech stopped before voice admission.')
         if voice_fingerprint(registry, voice_id, language, cancelled=stopped) != expected:
             raise RuntimeError('The selected progress voice or runtime changed. Review and select it again.')
         def synthesize(path):
@@ -268,9 +296,9 @@ class LocalNotificationOutput:
 
 class NotificationWorker:
     """Bounded latest-state worker. offer and settings changes never wait."""
-    def __init__(self, preferences=None, *, output=None, clock=time.monotonic):
+    def __init__(self, preferences=None, *, output=None, clock=time.monotonic, library_root=None):
         self._preferences = preferences or ProgressPreferences()
-        self._output = output or LocalNotificationOutput()
+        self._output = output or LocalNotificationOutput(library_root=library_root)
         self._clock = clock
         self._condition = threading.Condition()
         self._events = {}
@@ -306,6 +334,14 @@ class NotificationWorker:
             setter = getattr(self._output, 'set_registry', None)
             if callable(setter):
                 setter(registry)
+            self._revision += 1
+            self._condition.notify_all()
+
+    def set_library_root(self, library_root):
+        with self._condition:
+            setter = getattr(self._output, 'set_library_root', None)
+            if callable(setter):
+                setter(library_root)
             self._revision += 1
             self._condition.notify_all()
 

@@ -1274,5 +1274,67 @@
     "source_digest_fields": {
       "fixture_source_sha256": "scripts/local_voice_contract_fixture.py"
     }
+  },
+  "registered-progress": {
+    "probe": "scripts/windows_progress_registered_smoke.py",
+    "arguments": [
+      "--work",
+      "ci-results/full-bundle-registered-progress-work"
+    ],
+    "subprocess_timeout_seconds": 240,
+    "modules": [
+      "carr_library.progress",
+      "carr_library.progress_audio",
+      "carr_library.runtime_settings",
+      "carr_library.audio.engines",
+      "carr_library.audio.model_manifest",
+      "carr_library.ui.operation_progress",
+      "carr_library.library_backup"
+    ],
+    "probe_modules": [
+      "carr_library.progress",
+      "carr_library.progress_audio",
+      "carr_library.runtime_settings",
+      "carr_library.audio.engines",
+      "carr_library.audio.model_manifest",
+      "carr_library.ui.operation_progress",
+      "carr_library.library_backup"
+    ],
+    "checks": {
+      "native_progress_owner_bound_to_first_library": 1,
+      "native_progress_settings_controls_named": 1,
+      "native_registered_voice_has_keyboard_focus": 1,
+      "native_first_library_registration_is_selectable": 1,
+      "native_notice_language_selection_is_explicit": 1,
+      "native_saved_voice_matches_current_registration_fingerprint": 1,
+      "native_synthetic_registration_did_not_enable_audio": 1,
+      "native_cancel_keeps_exact_preferences_and_runtime": 1,
+      "native_library_change_rebinds_same_private_output": 1,
+      "native_second_library_has_its_own_registered_choice": 1,
+      "native_second_library_saves_separate_voice_metadata": 1,
+      "native_changed_owner_refuses_old_voice_selection": 1,
+      "actual_disabled_registration_cannot_reuse_saved_selection": 1,
+      "actual_restore_preserves_preferences_without_machine_activation": 1,
+      "actual_original_voice_assets_unchanged": 1,
+      "native_progress_selection_workers_settled": 1
+    },
+    "fields": {
+      "status": "PASS",
+      "actual_windows": true,
+      "isolated": true,
+      "native_controls": true,
+      "synthetic_registration_assets": true,
+      "model_inference": "NOT_RUN",
+      "model_quality": "NOT_QUALIFIED",
+      "physical_audio": "NOT_RUN",
+      "nvda": "NOT_RUN"
+    },
+    "exact_metrics": {
+      "metrics.registered_libraries": 2,
+      "metrics.selected_registered_voices": 2,
+      "metrics.restored_active_registrations": 0,
+      "metrics.notification_audio_threads": 0,
+      "metrics.changed_owner_refusals": 1
+    }
   }
 }

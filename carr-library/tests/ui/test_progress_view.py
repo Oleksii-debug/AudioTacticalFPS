@@ -210,7 +210,8 @@ def test_failed_persistence_still_mutes_immediately_but_does_not_unmute(native_b
     _, view, notices = native_boundary
     view.configure(ProgressPreferences(mode='beep'))
     before = (view.root / 'progress-preferences.json').read_bytes()
-    def full(*args):
+    def full(*args, **kwargs):
+        assert set(kwargs) == {'expected_sha256'}
         raise OSError('Synthetic full disk')
     monkeypatch.setattr(native_progress, 'save_preferences', full)
     view.toggle_mute()
