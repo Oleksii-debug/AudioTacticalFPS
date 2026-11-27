@@ -394,3 +394,237 @@ def test_actual_native_review_driver_checks_canonical_book_paths_and_settings(ha
     assert not list(e.output.iterdir()) and not list(actual_output.iterdir())
     assert all(state['status'] == 'pending' and not state['artifacts']
                for state in e.production.jobs())
+
+
+@pytest.mark.parametrize('stage, approvals, verified', [
+    ('opened', 0, False), ('loaded', 0, False), ('reviewed', 0, False),
+    ('rendered', 1, False), ('rendered', 2, True),
+])
+def test_native_batch_deadline_records_pending_phase_without_driving_work(
+        tmp_path, monkeypatch, capsys, stage, approvals, verified):
+    """The actual timer keeps its deadline and exposes the real held worker stack."""
+    import ast
+    import faulthandler
+    import json
+    import traceback
+
+    script = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_v3_smoke.py'
+    tree = ast.parse(script.read_text(encoding='utf-8'), filename=str(script))
+    driver, = [node for node in ast.walk(tree)
+               if isinstance(node, ast.FunctionDef) and node.name == 'exercise_book_batch']
+    functions = [node for node in driver.body if isinstance(node, ast.FunctionDef)
+                 and node.name in ('diagnose', 'later')]
+    assert {node.name for node in functions} == {'diagnose', 'later'}
+    module = ast.fix_missing_locations(ast.Module(body=functions, type_ignores=[]))
+    entered, release = threading.Event(), threading.Event()
+
+    def held_book_worker():
+        entered.set()
+        assert release.wait(10)
+
+    worker = threading.Thread(target=held_book_worker, name='actual-book-diagnostic-barrier')
+    pending, closed, calls, errors = [], [], [], []
+    deadline = 100.0
+    clock = [deadline - 1]
+    frame = SimpleNamespace(working=True, status=SimpleNamespace(
+        GetValue=lambda: 'Rendering reviewed books through existing Studio jobs'))
+    controls = {
+        'Multiple book review and existing Studio checkpoints': SimpleNamespace(
+            GetValue=lambda: 'Book 2/2: exact retained source. ' + 'x' * 5000),
+        'Ordered books; review each book before Preview': SimpleNamespace(GetCount=lambda: 2),
+        'Run or resume batch': SimpleNamespace(IsEnabled=lambda: False),
+        'Preview entire batch': SimpleNamespace(IsEnabled=lambda: False),
+        'Close': SimpleNamespace(IsEnabled=lambda: True),
+    }
+
+    def named(name, kind):
+        return controls[name]
+
+    def callback():
+        calls.append('must not start or resume work after deadline')
+    callback.__name__ = stage
+    environment = dict(frame=frame, dialog=SimpleNamespace(Close=lambda: closed.append(True)),
+        named=named, wx=SimpleNamespace(TextCtrl=object, Choice=object, Button=object,
+            CallLater=lambda delay, fn: pending.append((delay, fn))),
+        monotonic=lambda: clock[0], deadline=deadline, approvals=['explicit Run'] * approvals,
+        before={'accepted output': ('sha256', 1)} if verified else {}, passed=[],
+        observed_phase=[None], gui_errors=errors, json=json, traceback=traceback)
+    exec(compile(module, str(script), 'exec'), environment)
+    dump = faulthandler.dump_traceback
+    stacks = tmp_path / 'actual-worker-stacks.txt'
+    worker.start()
+    try:
+        assert entered.wait(5)
+        with stacks.open('w', encoding='utf-8') as output:
+            monkeypatch.setattr(faulthandler, 'dump_traceback',
+                lambda *, all_threads: dump(file=output, all_threads=all_threads))
+            environment['later'](callback)
+            assert pending[0][0] == 40 and not closed and not calls
+            clock[0] = deadline
+            pending.pop()[1]()
+        assert not pending and not calls and closed == [True]
+        assert len(errors) == 1
+        assert 'TimeoutError: Native multi-book review/Run did not finish.' in errors[0]
+        assert 'held_book_worker' in stacks.read_text(encoding='utf-8')
+        records = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
+        assert [record['native_book_batch'] for record in records] == ['STAGE', 'FAIL']
+        assert all(record['stage'] == stage for record in records)
+        failure = records[-1]
+        assert failure['elapsed_seconds'] == 90 and failure['desktop_working']
+        assert failure['run_approvals'] == approvals and failure['first_result_verified'] is verified
+        assert failure['selected_books'] == 2 and failure['close_enabled']
+        assert not failure['run_enabled'] and not failure['preview_enabled']
+        assert len(failure['batch_status']) == 2048 and not failure['scenario_passed']
+    finally:
+        release.set()
+        worker.join(10)
+    assert not worker.is_alive()
+
+
+def test_native_batch_diagnostic_failure_cannot_replace_primary_error_or_skip_close(monkeypatch):
+    import ast
+    import faulthandler
+    import traceback
+
+    script = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_v3_smoke.py'
+    tree = ast.parse(script.read_text(encoding='utf-8'), filename=str(script))
+    driver, = [node for node in ast.walk(tree)
+               if isinstance(node, ast.FunctionDef) and node.name == 'exercise_book_batch']
+    later, = [node for node in driver.body if isinstance(node, ast.FunctionDef) and node.name == 'later']
+    module = ast.fix_missing_locations(ast.Module(body=[later], type_ignores=[]))
+    pending, observed, closed, errors = [], [], [], []
+
+    def diagnose(stage, *, failed=False):
+        observed.append((stage, failed))
+        if failed:
+            raise OSError('injected diagnostic observation error')
+
+    def render_callback():
+        raise ValueError('original native callback failure')
+
+    monkeypatch.setattr(faulthandler, 'dump_traceback',
+                        lambda **kwargs: pytest.fail('unreached after diagnostic error'))
+    environment = dict(diagnose=diagnose, monotonic=lambda: 1.0, deadline=90.0,
+        gui_errors=errors, traceback=traceback,
+        dialog=SimpleNamespace(Close=lambda: closed.append(True)),
+        wx=SimpleNamespace(CallLater=lambda delay, fn: pending.append((delay, fn))))
+    exec(compile(module, str(script), 'exec'), environment)
+    environment['later'](render_callback)
+    assert pending[0][0] == 40
+    pending.pop()[1]()
+    assert closed == [True] and not pending
+    assert observed == [('render_callback', False), ('render_callback', True)]
+    assert len(errors) == 2 and 'ValueError: original native callback failure' in errors[0]
+    assert 'OSError: injected diagnostic observation error' in errors[1]
+
+
+@pytest.mark.parametrize('observer_name, identity_name, event_name', [
+    ('frame_destroyed', 'frame_destroy_id', 'destroyed'),
+    ('bootstrap_closed', 'bootstrap_destroy_id', 'bootstrap_destroyed'),
+])
+def test_native_v3_destroy_observers_use_captured_id_not_python_wrapper(
+        observer_name, identity_name, event_name):
+    import ast
+
+    script = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_v3_smoke.py'
+    tree = ast.parse(script.read_text(encoding='utf-8'), filename=str(script))
+    observer, = [node for node in ast.walk(tree)
+                 if isinstance(node, ast.FunctionDef) and node.name == observer_name]
+    module = ast.fix_missing_locations(ast.Module(body=[observer], type_ignores=[]))
+    seen, skipped = threading.Event(), []
+    captured = [-31994]
+    environment = {identity_name: captured, event_name: seen}
+    exec(compile(module, str(script), 'exec'), environment)
+
+    class Event:
+        def __init__(self, identity):
+            self.identity = identity
+        def GetId(self):
+            return self.identity
+        def GetEventObject(self):
+            pytest.fail('A destroy observer must not depend on the old Python wrapper.')
+        def Skip(self):
+            skipped.append(self.identity)
+
+    environment[observer_name](Event(-31993))  # A child event must not satisfy owner destruction.
+    assert not seen.is_set()
+    environment[observer_name](Event(-31994))  # Same native owner, different/dead Python peer.
+    assert seen.is_set() and skipped == [-31993, -31994]
+    seen.clear()
+    captured[0] = None
+    environment[observer_name](Event(None))
+    assert not seen.is_set() and skipped[-1] is None
+
+    # Both IDs are captured from the real owner before the corresponding bind.
+    main, = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'main']
+    owner_name = 'frame' if observer_name == 'frame_destroyed' else 'bootstrap'
+    bind, = [node for node in ast.walk(main) if isinstance(node, ast.Call)
+             and isinstance(node.func, ast.Attribute) and node.func.attr == 'Bind'
+             and isinstance(node.func.value, ast.Name) and node.func.value.id == owner_name
+             and any(isinstance(arg, ast.Name) and arg.id == observer_name for arg in node.args)]
+    captured_assignment, = [node for node in ast.walk(main) if isinstance(node, ast.Assign)
+        and any(isinstance(target, ast.Subscript) and isinstance(target.value, ast.Name)
+                and target.value.id == identity_name for target in node.targets)]
+    assert captured_assignment.lineno < bind.lineno
+    assert isinstance(captured_assignment.value, ast.Call)
+    assert ast.unparse(captured_assignment.value) == owner_name + '.GetId()'
+
+
+@pytest.mark.parametrize('missing', ['frame-event', 'frame-wrapper', 'bootstrap-event', 'bootstrap-wrapper', None])
+def test_native_v3_cleanup_requires_native_events_and_separately_deleted_wrappers(missing):
+    import ast
+
+    script = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_v3_smoke.py'
+    tree = ast.parse(script.read_text(encoding='utf-8'), filename=str(script))
+    poll, = [node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef) and node.name == 'poll_cleanup']
+    module = ast.fix_missing_locations(ast.Module(body=[poll], type_ignores=[]))
+    pending, exits, failures, releases = [], [], [], []
+    destroyed, bootstrap_destroyed, loop_started, completed = (threading.Event() for _ in range(4))
+    loop_started.set()
+    if missing != 'frame-event':
+        destroyed.set()
+    if missing != 'bootstrap-event':
+        bootstrap_destroyed.set()
+
+    class Peer:
+        def __init__(self, alive):
+            self.alive = alive
+            self.executor = SimpleNamespace(_threads=())
+            self.progress_panel = SimpleNamespace(closed=True)
+        def __bool__(self):
+            return self.alive
+        def Destroy(self):
+            pytest.fail('Polling cannot replace the already requested native destruction.')
+
+    result = {'checks': []}
+    frame, bootstrap = Peer(missing == 'frame-wrapper'), Peer(missing == 'bootstrap-wrapper')
+    future = SimpleNamespace(done=lambda: True, result=lambda: releases.append('actual owned release'))
+    environment = dict(frame=frame, bootstrap=bootstrap, cleanup_executors=[],
+        cleanup_futures=[future], destroyed=destroyed, bootstrap_destroyed=bootstrap_destroyed,
+        loop_started=loop_started, completed=completed, bootstrap_closing=[True],
+        frame_destroy_id=[-31994], bootstrap_destroy_id=[-31995],
+        cleanup_deadline=[60.0], monotonic=lambda: 1.0, threading=threading,
+        selected_progress=None, failures=failures, gui_errors=[], result=result,
+        remember_failure=failures.append, app=SimpleNamespace(ExitMainLoop=lambda: exits.append(True)),
+        wx=SimpleNamespace(CallLater=lambda delay, callback: pending.append((delay, callback))))
+    exec(compile(module, str(script), 'exec'), environment)
+    environment['poll_cleanup']()
+    if missing is not None:
+        assert len(pending) == 1 and pending[0][0] == 25
+        assert not completed.is_set() and not exits and not releases and not failures
+        assert 'native_cleanup' not in result
+        # A missing native event/dead peer remains a genuine failure at the same deadline.
+        environment['monotonic'] = lambda: 60.0
+        pending.pop()[1]()
+        assert completed.is_set() and exits == [True] and len(failures) == 1
+        assert isinstance(failures[0], TimeoutError) and 'native_cleanup' not in result
+        assert not releases
+    else:
+        assert completed.is_set() and exits == [True] and not pending and not failures
+        assert releases == ['actual owned release']
+        assert result['native_cleanup']['destroy_event'] is True
+        assert result['native_cleanup']['bootstrap_destroy_event'] is True
+        assert result['native_cleanup']['frame_wrapper_deleted'] is True
+        assert result['native_cleanup']['bootstrap_wrapper_deleted'] is True
+        assert result['native_cleanup']['frame_destroy_native_id'] == -31994
+        assert result['native_cleanup']['bootstrap_destroy_native_id'] == -31995

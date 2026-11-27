@@ -48,6 +48,7 @@ def main():
     frame = library = registry = service = selected_progress = None
     bootstrap = None
     destroyed, bootstrap_destroyed, loop_started = (threading.Event() for _ in range(3))
+    frame_destroy_id, bootstrap_destroy_id = [None], [None]
     bootstrap_closing = [False]
     child_progress, cleanup_futures, cleanup_executors = [], [], []
     failures, completed = [], threading.Event()
@@ -65,7 +66,7 @@ def main():
         failures.append((error, error.__traceback__))
 
     def bootstrap_closed(event):
-        if event.GetEventObject() is bootstrap:
+        if bootstrap_destroy_id[0] is not None and event.GetId() == bootstrap_destroy_id[0]:
             bootstrap_destroyed.set()
         event.Skip()
 
@@ -136,9 +137,10 @@ def main():
                            'loudness': report['result']['loudness'],
                            'distinct_voice_tokens': len({role.voice_id for role in project.roles})}
         frame = DesktopFrame(library)
+        frame_destroy_id[0] = frame.GetId()
         app.SetTopWindow(frame)
         def frame_destroyed(event):
-            if event.GetEventObject() is frame:
+            if frame_destroy_id[0] is not None and event.GetId() == frame_destroy_id[0]:
                 destroyed.set()
             event.Skip()
         frame.Bind(wx.EVT_WINDOW_DESTROY, frame_destroyed)
@@ -540,7 +542,38 @@ def main():
                     event.SetEventObject(control)
                     assert control.GetEventHandler().ProcessEvent(event)
 
+                observed_phase = [None]
+
+                def diagnose(stage, *, failed=False):
+                    """Observe only this synthetic native scenario; never drive its state."""
+                    phase = (stage, len(approvals))
+                    if not failed and observed_phase[0] == phase:
+                        return
+                    observed_phase[0] = phase
+                    observed = {
+                        'native_book_batch': 'FAIL' if failed else 'STAGE',
+                        'stage': stage, 'elapsed_seconds': round(90 - (deadline - monotonic()), 3),
+                        'desktop_working': bool(frame.working), 'run_approvals': len(approvals),
+                        'first_result_verified': bool(before), 'scenario_passed': bool(passed),
+                    }
+                    if failed:
+                        def read(label, operation):
+                            try:
+                                observed[label] = operation()
+                            except Exception as error:
+                                observed[label] = {'unavailable': type(error).__name__ + ': ' + str(error)[:256]}
+                        read('desktop_status', lambda: frame.status.GetValue()[:2048])
+                        read('batch_status', lambda: named(
+                            'Multiple book review and existing Studio checkpoints', wx.TextCtrl).GetValue()[:2048])
+                        read('selected_books', lambda: named(
+                            'Ordered books; review each book before Preview', wx.Choice).GetCount())
+                        read('run_enabled', lambda: named('Run or resume batch', wx.Button).IsEnabled())
+                        read('preview_enabled', lambda: named('Preview entire batch', wx.Button).IsEnabled())
+                        read('close_enabled', lambda: named('Close', wx.Button).IsEnabled())
+                    print(json.dumps(observed, ensure_ascii=True, allow_nan=False), flush=True)
+
                 def later(callback):
+                    diagnose(callback.__name__)
                     def guarded():
                         try:
                             assert not gui_errors, '\n'.join(gui_errors)
@@ -549,7 +582,14 @@ def main():
                             callback()
                         except BaseException:
                             gui_errors.append(traceback.format_exc())
-                            dialog.Close()
+                            try:
+                                diagnose(callback.__name__, failed=True)
+                                import faulthandler
+                                faulthandler.dump_traceback(all_threads=True)
+                            except BaseException:
+                                gui_errors.append('Native book diagnostics failed:\n' + traceback.format_exc())
+                            finally:
+                                dialog.Close()
                     wx.CallLater(40, guarded)
 
                 def opened():
@@ -654,7 +694,7 @@ def main():
             workers = [thread for executor in executors for thread in executor._threads]
             voice_workers = [thread for thread in threading.enumerate()
                              if thread.name == 'progress-voice-cleanup']
-            waiting = ((frame is not None and not destroyed.is_set())
+            waiting = ((frame is not None and (not destroyed.is_set() or bool(frame)))
                        or any(not future.done() for future in cleanup_futures)
                        or any(thread.is_alive() for thread in workers + voice_workers))
             if waiting:
@@ -664,7 +704,7 @@ def main():
                 return
             # Keep a real top-level owner until all actual GUI/worker cleanup
             # has finished, then observe its native destruction before exiting.
-            if bootstrap is not None and not bootstrap_destroyed.is_set():
+            if bootstrap is not None and (not bootstrap_destroyed.is_set() or bool(bootstrap)):
                 if monotonic() >= cleanup_deadline[0]:
                     raise TimeoutError('Native event-loop bootstrap destruction did not finish.')
                 if not bootstrap_closing[0]:
@@ -673,6 +713,8 @@ def main():
                 wx.CallLater(25, poll_cleanup)
                 return
             assert loop_started.is_set() and bootstrap_destroyed.is_set()
+            assert frame is None or not bool(frame)
+            assert bootstrap is None or not bool(bootstrap)
             for future in cleanup_futures:
                 future.result()
             if frame is not None:
@@ -687,7 +729,11 @@ def main():
                 result['native_cleanup'] = {'status': 'PASS', 'destroy_event': destroyed.is_set(),
                     'private_worker_releases': len(cleanup_futures), 'voice_owner_released': True,
                     'scenario_started_in_main_loop': loop_started.is_set(),
-                    'bootstrap_destroy_event': bootstrap_destroyed.is_set()}
+                    'bootstrap_destroy_event': bootstrap_destroyed.is_set(),
+                    'frame_destroy_native_id': frame_destroy_id[0],
+                    'bootstrap_destroy_native_id': bootstrap_destroy_id[0],
+                    'frame_wrapper_deleted': frame is None or not bool(frame),
+                    'bootstrap_wrapper_deleted': bootstrap is None or not bool(bootstrap)}
         except BaseException as error:
             remember_failure(error)
         completed.set()
@@ -728,6 +774,7 @@ def main():
         # The real application frame is created by the queued scenario, so keep
         # a hidden native bootstrap owner alive before entering that first loop.
         bootstrap = wx.Frame(None, title='Native acceptance event-loop owner', size=(1, 1))
+        bootstrap_destroy_id[0] = bootstrap.GetId()
         bootstrap.Bind(wx.EVT_WINDOW_DESTROY, bootstrap_closed)
         app.SetTopWindow(bootstrap)
         assert bootstrap in wx.GetTopLevelWindows()
