@@ -678,6 +678,8 @@ class DesktopFrame(WorkspaceFrame):
         install_translation_actions(self)
         install_conversion_actions(self)
         install_citation_actions(self)
+        from .word_citations import install_word_actions
+        install_word_actions(self)
         install_operation_progress(self)
         from .transcription_dialog import install_transcription_actions
         install_transcription_actions(self)

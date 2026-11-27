@@ -188,6 +188,20 @@ Produce audio: [script text] / Озвуч: [текст сценарію]
 Transcription uses a JSON plan with an explicit installed local model, for example:
 {"steps":[{"tool":"audio.transcribe","arguments":{"path":"C:/Recordings/lecture.wav","name":"lecture-transcript","model":"small","word_timestamps":false}}]}
 Select the input/output folders and library in this dialog; configure the reviewed local transcription worker first. No model is downloaded.
+Additional local tools use the same typed JSON plan and separately selected scope:
+reader.read(edition, revision, first, last, topic?)
+evidence.search(query, field?, tag?, limit?), evidence.read(topic, evidence)
+evidence.export(topic, evidence_ids, name, format?)
+voice.list(language?, limit?), audio.effects(), audio.inspect(path)
+audio.convert(sources=[{"path":"selected.wav","sha256":"EXACT_INSPECT_SHA256"}], name, format?, settings?)
+audio.render is an alias of audio.produce; both use the same Studio callback.
+book.review(plan, plan_sha256, name), book.prepare(..., review_sha256), book.run(..., review_sha256)
+book.batch.review(batch, batch_sha256, names), book.batch.prepare(..., review_sha256), book.batch.run(..., review_sha256)
+Book names refer to existing explicit output parents inside the selected output folder.
+Save the Book selection in Book audio first. Review, Prepare and Run use separate exact fingerprints;
+the assistant never guesses a voice, book, output, approval or model.
+Open the assistant from the reader for player.status() and player.control(session, source_sha256, action).
+Current-player actions are only pause or stop, using the exact previous status receipt. No audio starts.
 Paths must be inside your selected input/output folders. No delete, shell or remote tools are available.'''
 
 

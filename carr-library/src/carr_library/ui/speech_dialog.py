@@ -154,6 +154,9 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     pronunciation_button.SetName('Reading pronunciation dictionary')
     preparation_button = wx.Button(dialog, label='Prepare for speech...')
     preparation_button.SetName('Prepare reading copy for speech')
+    assistant_button = wx.Button(dialog, label='Current-reader assistant...')
+    assistant_button.SetName('Assistant for this reader and current playback')
+    dialog.reader_assistant_button = assistant_button
     dialog.reader_preparation_button = preparation_button
     spelling_button = wx.Button(dialog, label='Check &spelling...')
     spelling_button.SetName('Check spelling in reading copy')
@@ -164,7 +167,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     keyboard_button = wx.Button(dialog, label='Reader &keyboard shortcuts...')
     keyboard_button.SetName('Voice reader keyboard shortcuts')
     for control in (find_button, replace_button, pronunciation_button, preparation_button,
-                    spelling_button, appearance_button, focus_button, keyboard_button):
+                    assistant_button, spelling_button, appearance_button, focus_button, keyboard_button):
         tools_row.Add(control, 0, wx.ALL, 4)
     layout.Add(tools_row, 0, wx.EXPAND)
     row = wx.BoxSizer(wx.HORIZONTAL)
@@ -237,6 +240,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             control.Enable(source_loaded and not busy and alive)
         for button in (find_button, replace_button, pronunciation_button, preparation_button, spelling_button, appearance_button, focus_button):
             button.Enable(source_loaded and not busy)
+        assistant_button.Enable(source_loaded and not busy
+                                and getattr(parent, 'desktop_integration', None) is not None)
         output_controls.sync()
         if reader_tabs is not None:
             reader_tabs.set_busy(busy)
@@ -747,6 +752,34 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         except Exception as exc:
             report(str(exc), focus=True)
 
+    def assistant_player_guard():
+        playback_guard()
+        if busy or not source_loaded or dialog_destroyed:
+            raise ValueError('Finish the current reader operation before reviewing playback commands.')
+
+    def assistant_player_snapshot():
+        from hashlib import sha256
+        from ..assistant.models import canonical
+        assistant_player_guard()
+        snapshot = capture_edit()
+        # Bind this exact live document, visible edit and already-opened audio.
+        # Pause/Stop do not change this source identity; another loaded recording does.
+        value = {'document': id(document), 'source': snapshot.signature,
+                 'visible_text_sha256': sha256(snapshot.text.encode('utf-8')).hexdigest(),
+                 'audio': str(player.path) if player.path is not None else None,
+                 'audio_identity': getattr(player, '_identity', None)}
+        return sha256(canonical(value).encode('utf-8')).hexdigest()
+
+    def choose_player_assistant(event=None):
+        from .assistant_dialog import show_assistant
+        try:
+            assistant_player_guard()
+            show_assistant(parent, reader_owner=dialog)
+            if alive and not dialog_destroyed:
+                editor.SetFocus()
+        except Exception as exc:
+            report(str(exc), focus=True)
+
     def check_spelling(event=None):
         try:
             from .reader_spelling import show_reader_spelling
@@ -960,6 +993,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         (original, compare), (seek, seek_audio), (playback_button, show_playback), (cleanup, clean),
         (find_button, find_replace), (replace_button, find_replace),
         (pronunciation_button, pronunciation_dictionary), (preparation_button, prepare_reading),
+        (assistant_button, choose_player_assistant),
         (spelling_button, check_spelling),
         (appearance_button, appearance.show), (focus_button, choose_reading_focus), (close, closing)):
         control.Bind(wx.EVT_BUTTON, handler)
@@ -1028,7 +1062,9 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         integration = getattr(parent, 'desktop_integration', None)
         if integration is not None:
             integration.attach_reader(dialog, pause, stop,
-                                      lambda: alive and not dialog_destroyed)
+                lambda: alive and not dialog_destroyed,
+                player=player, source_snapshot=assistant_player_snapshot,
+                player_guard=assistant_player_guard, pause_action=pause_audio, stop_action=stop_audio)
         capabilities()
         if tabs_requested:
             load_reading_tabs()

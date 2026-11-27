@@ -185,15 +185,15 @@ must still omit the optional audio runtime and offer explicit local setup.
 
 ## Remaining specification work, not reclassified as external-only blockers
 
-The audit also identified independent code work beyond the routes above:
-wider typed assistant/audio tool coverage; durable/scalable indexing, ranked
-continuation and larger bounded source/import operations beyond the exact-search
-paging added here; native Word
-citation workflows; conflict-reviewed multi-device sync; and the remaining
-recording-to-managed-voice lifecycle. These are not satisfied merely by existing
-nearby menus or isolated adapters. Separate current work must reconcile these
-routes without duplicating domain services or replacing safe limits with
-unbounded operations.
+The successor integration section below advances typed assistant/player/Book
+routes, native Word controls and the managed voice/reference lifecycle to source
+integration. None has new execution or manual qualification evidence yet.
+Durable/scalable indexing, ranked continuation and larger bounded source/import
+operations beyond exact-search paging still require work. Conflict-reviewed
+portable sync and explicit streamed large-source intake are being reconciled
+against the current backup and intake owners. Existing nearby menus and isolated
+adapters do not satisfy these requirements. Keep one domain service per route
+and retain bounded resource admission.
 
 Real authorized model/reference-voice execution, the per-capability 135-entry
 language matrix, native-speaker quality review, Windows 11/manual NVDA,
@@ -243,3 +243,106 @@ removed. Full source suites for these corrections remain required.
 These source-reviewed successor corrections are **NOT_RUN**. Neither the
 failing94ec aggregate nor earlier component successes qualify the new source.
 No eligible exact-head wheel or private final archive is available.
+
+
+## V3-03/08/09/21 domain composition (2026-11-27 17:46 UTC)
+
+This checkpoint composes the following source-reviewed adapters on
+`d3130096b1f9d09fd9f402a207c55c05d5b76993`, retaining canonical
+`e5c64a5245583f8f8b404a0f042f6ca438c24d7f` and its Save All correction.
+The technical-document identities remain unchanged. The immutable sparse
+trees below identify source selection, not executed or qualified artifacts.
+
+| Requirement | Reused boundary and delivered scenario | Exact reviewed tree | Execution and limitation |
+|---|---|---|---|
+| V3-03, V3-21 | Existing voice manager, registry, owner worker, broker and export publication: review, revoke, remove and data-only export of one exact installed version | `c451e43b3eb873643adef6d031e22646c8f51116` | INTEGRATED / NOT_RUN; unencrypted local export; real model/voice quality and redistribution rights unqualified |
+| V3-21 | Explicit Omnivoice reference preparation through the existing owner API; actual PCM/FFprobe review and a separately approved saved package | `7ff702a01842d33272123d6ddd98b4971a0a87e7` | INTEGRATED / NOT_RUN; no inference, training, registration or quality claim from making a package |
+| V3-08 | Current CSL and approved source citations, owned Word fields, bibliography and reviewed note operations through optional live Word COM | `823c81398a8979e979c0907d768bd32f2e3d0bf7` | INTEGRATED / NOT_RUN; native modeled-Word gates and real Office/NVDA acceptance are separate |
+| V3-09, V3-13 | Existing typed assistant plan/store/dispatcher: local library review, exact current reader status/pause/stop, and existing reviewed Book/batch plans | `508a9457db80cba53e1e5dbaadd93a1cfa2697d1` | INTEGRATED / NOT_RUN; no new player, job database or direct shell authority |
+| V3-10 | Existing package-dialog worker and actual desktop menu/keyboard capture | `e3c4cd1531402e917535cacda6a4650709f3c48b` | INTEGRATED / NOT_RUN; native keyboard controls do not certify manual NVDA speech |
+
+### Voice ownership, exact bytes and explicit decisions
+
+Removal binds the selected profile/version, current registry revision, manifest
+and index identities, and complete selected-file inventory. Revocation and
+deletion require distinct typed confirmation. The current owner uninstall API
+runs under its actual lock and the shared broker's exclusive voice-maintenance
+admission. Existing manifest tombstones prevent a revoked profile from silently
+reappearing; a new explicit approval is required to reactivate it.
+
+Package export captures the same staged inode and bounded bytes before and after
+the owner's inspection. The shared publisher revalidates destination parents,
+exact hash and stage identity after fsync immediately before create-only
+publication. Post-link reconciliation first proves the exact owned two-link
+inode, then checks the content; it never reads a competing destination as if it
+were the new package. An uncertain or foreign destination is not deleted.
+A proven durable receipt survives later cancellation or cleanup failure, with a
+separate cleanup warning. Focused negative tests cover inspection-time mutation,
+fsync-time mutation, competing output, changed parent, unexpected link count,
+post-link changes and late cancellation. They are new test source, NOT_RUN.
+
+The reference creator borrows the existing dialog worker. It reviews bounded
+PCM16 WAV frames and actual selected FFprobe results, exact transcript and
+metadata, and independent permission and quality checkboxes. It supports only
+the explicitly configured Omnivoice reference API; this is not training for
+Holos/OpenVoice. The existing recording dialog can return a verified recording
+after the user's explicit choice. Creating a data-only package does not install
+or authorize it. Optional parent handoff performs read-only inspection and
+leaves rights/language approval empty.
+
+The native reference probe has 20 fixed controls/receipt assertions, source and
+installed module hash proof, real FFprobe/PCM and an isolated synthetic owner
+process. Its file picker is explicitly synthetic; NVDA, human voice quality and
+model inference remain NOT_RUN. The existing parent dialog now revokes work on
+direct native destruction, ignores child destruction events, and rechecks the
+exact export review after a modal destination selection.
+
+### Existing Word and assistant owners
+
+Word operations bind the active document/window, selection, reviewed source
+citation and current preview before mutation. They preserve unrelated fields,
+prose and notes. A plan is consumed before writing; a partial operation is not
+automatically replayed or undone. A cancelled or overdue mutating COM call keeps
+its worker until the call actually returns. The adapter does not launch, open,
+save or quit Word. Native CI uses a declared modeled Word object with real
+wx controls/current services; real Office use requires an explicitly selected
+open document and its own acceptance.
+
+Assistant routes retain typed allowlists and current scope/approval checks.
+Player operations refer only to the exact current session and cannot start a
+replacement player. Book and batch execution reuses current stored plans,
+fingerprints, output reviews, cache/jobs and resource admission. Passive
+previews, restored checkpoints and verified completed results do not activate
+a local audio runtime. The CLI binds the selected runtime only for pending
+media work and closes the real producer before releasing that runtime. A causal
+pending native close retains the ordered release owner; later cleanup does not
+fall through and unbind the still-owned runtime.
+
+### Gate and actual-failure reconciliation
+
+The main workflow retains all 410 earlier individual test selectors and adds
+eleven new domain selectors to both source and installed inventories. The
+preflight retains all 185 earlier individual selectors and adds thirteen domain
+and lifecycle selectors. The V3 aggregate retains its whole existing selector
+set and adds three UI modules. Native Word/current-reader assistant and
+reference-package scenarios run from source and installed wheels, with the
+same probes also selected in the complete bundle. Scheduling budgets grow;
+individual native watchdogs, skip/xfail rejection and required evidence do not
+change. Full dependency count is corrected from 51 to the already retained
+52 exact pins, including py3langid.
+
+The actual compatibility run46031920482 at `94ecfdd4` failed only the
+existing composite-backup schema-type diagnostic assertion; the other38 modules
+passed. Boolean Studio-job schema was already rejected, but with a mismatching
+diagnostic. The one-path correction
+`32378f4073c1ec24b32979f3fda7b10aad20e8b0` restores the explicit schema-type
+message before decoding the project. No original test expectation is weakened.
+The V3 and transcription failures described above remain evidence for that old
+head only. Launcher run46031920446 passed both native compiler profiles.
+Main run46031920263 was still executing its final strict inventory, with actual
+earlier native/capture/bundle failures; bibliography remained queued.
+
+Every new adapter, fixture and corrected source at this checkpoint remains
+**NOT_RUN**. No earlier result is relabeled as evidence for this new composition.
+The full same-head Windows aggregate and all six ordinary workflows are still
+required. No eligible application wheel or private final archive exists.

@@ -180,13 +180,15 @@ def _record(root, entry):
         raise ValueError('Invalid typed Studio project JSON.') from None
     if job and (type(value) is not dict or 'schema' not in value and 'project' not in value):
         return None
+    if job and type(value.get('schema')) is not int:
+        raise ValueError('Invalid Studio job schema type.')
     project = Project.from_dict(value['project'] if job else value)
     if current and project.id != current[1]:
         raise ValueError('Studio project directory differs from its identity.')
     if revision and (project.id != revision[1] or project.revision != int(revision[2])
                      or project.fingerprint != revision[3]):
         raise ValueError('Studio revision filename differs from its content identity.')
-    if job and (type(value.get('schema')) is not int or value['schema'] != 1
+    if job and (value['schema'] != 1
                 or value.get('id') != job[1] or value.get('fingerprint') != project.fingerprint):
         raise ValueError('Historical Studio job differs from its bound project.')
     return ('current' if current else 'revision' if revision else 'job' if job else 'job-project'), project

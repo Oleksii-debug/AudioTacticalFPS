@@ -163,65 +163,113 @@ def assistant_main(argv=None):
                      'Save and review the proposed JSON, then use it as --instructions in a separate invocation.')
     if args.list_local_profiles and args.run:
         parser.error('--list-local-profiles does not execute a plan.')
+    from contextlib import ExitStack, contextmanager
+    from ..audio.cleanup import _pending_owners, pending_cleanup
+    bindings = ExitStack()
     production = None
-    try:
-        from ..application import LibraryApp
-        from ..assistant import AssistantService, Scope
-        from ..assistant.credentials import validate_profile_id
-        from ..assistant.models import local_path, text
-        if args.local_profile is not None:
-            validate_profile_id(args.local_profile)
-        instruction = None
-        if args.instructions:
-            path = local_path(args.instructions)
-            maximum = 512 * 1024 if args.local_profile is not None else 4 * 1024**2
-            with path.open('rb') as stream:
-                raw = stream.read(maximum + 1)
-            if len(raw) > maximum:
-                raise ValueError('Instruction file exceeds its budget.')
-            instruction = text(raw.decode('utf-8-sig'), 'assistant instruction', maximum=maximum)
-        app = LibraryApp(data_directory(args.data_dir))
-        production = ProductionService(app.root / 'state' / 'studio', input_roots=args.input_root)
-        def produce(arguments, output_directory, cancelled, progress):
-            # Pure proposals, previews, backups and searches do not activate audio.
-            from ..audio.local_runtime import open_local_audio_runtime
-            with open_local_audio_runtime(app.root, strict=True, cancelled=cancelled):
-                return production.assistant_callback(arguments, output_directory, cancelled, progress)
-        service = AssistantService(app, production=produce)
-        if args.list_local_profiles:
-            result = [{'id': profile.id, 'name': profile.name, 'endpoint': profile.endpoint,
-                       'model': profile.model} for profile in service.local_planner_profiles()]
-        elif args.resume:
-            if not args.run:
-                result = asdict(service.get(args.resume))
-            else:
-                result = asdict(service.resume(args.resume))
-        else:
-            scope = Scope(args.workspace, tuple(args.input_root), args.output_root,
-                          allow_create=args.allow_create, allow_full_backup=args.allow_full_backup)
+
+    @contextmanager
+    def lifetime():
+        # Release the producer before its selected runtime. A producer close
+        # can itself defer native shutdown, including after work already failed.
+        # One existing retry owner retains this ordered release; independent
+        # ExitStack callbacks would continue to unbind after a pending close.
+        waiting = {}
+
+        def release():
+            if any(not owner.quiescent for owner in waiting.values()):
+                return False
+            try:
+                if production is not None:
+                    production.close()
+            except BaseException as error:
+                owners = _pending_owners(error)
+                if not owners:
+                    raise
+                waiting.update((id(owner), owner) for owner in owners)
+                return False
+            bindings.close()
+            return True
+
+        try:
+            yield
+        finally:
+            error = sys.exc_info()[1]
+            waiting.update((id(owner), owner) for owner in _pending_owners(error))
+            if not release():
+                raise pending_cleanup(release, message=(
+                    'Assistant audio shutdown is pending; the selected runtime '
+                    'remains owned until its producer has closed.'))
+
+    with lifetime():
+        try:
+            from ..application import LibraryApp
+            from ..assistant import AssistantService, Scope
+            from ..assistant.credentials import validate_profile_id
+            from ..assistant.models import local_path, text
             if args.local_profile is not None:
-                plan = service.propose_local(instruction, scope, profile_id=args.local_profile)
-                print('Local proposal only. Review this JSON and its exact scope before running it in a separate invocation.',
-                      file=sys.stderr, flush=True)
+                validate_profile_id(args.local_profile)
+            instruction = None
+            if args.instructions:
+                path = local_path(args.instructions)
+                maximum = 512 * 1024 if args.local_profile is not None else 4 * 1024**2
+                with path.open('rb') as stream:
+                    raw = stream.read(maximum + 1)
+                if len(raw) > maximum:
+                    raise ValueError('Instruction file exceeds its budget.')
+                instruction = text(raw.decode('utf-8-sig'), 'assistant instruction', maximum=maximum)
+            app = LibraryApp(data_directory(args.data_dir))
+            production = ProductionService(app.root / 'state' / 'studio', input_roots=args.input_root)
+            service = AssistantService(app, production=production.assistant_callback)
+            def execute(identity, **options):
+                # Inspect the existing typed checkpoint before granting execution
+                # access. Passive proposals/reviews and verified completed results
+                # do not inspect or activate a selected media installation.
+                record, selected = service._load(identity)
+                media = {'audio.produce', 'audio.render', 'audio.transcribe',
+                         'audio.inspect', 'audio.effects', 'audio.convert',
+                         'book.run', 'book.batch.run'}
+                if any(step.tool in media and checkpoint['status'] != 'complete'
+                       for step, checkpoint in zip(selected.steps, record['steps'])):
+                    from ..audio.local_runtime import open_local_audio_runtime
+                    bindings.enter_context(open_local_audio_runtime(app.root, strict=True,
+                        cancelled=options.get('cancelled', lambda: False)))
+                return service.resume(identity, **options)
+            if args.list_local_profiles:
+                result = [{'id': profile.id, 'name': profile.name, 'endpoint': profile.endpoint,
+                           'model': profile.model} for profile in service.local_planner_profiles()]
+            elif args.resume:
+                if not args.run:
+                    result = asdict(service.get(args.resume))
+                else:
+                    result = asdict(execute(args.resume))
             else:
-                plan = service.preview(instruction, scope)
-            result = plan.to_dict()
-            if args.run:
-                identity = service.submit(plan)
-                print('Assistant job: ' + identity, file=sys.stderr, flush=True)
-                result = asdict(service.run(identity,
-                    progress=lambda complete, total, text: print(f'{complete}/{total}: {text}', file=sys.stderr, flush=True)))
-        print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
-        return 0
-    except KeyboardInterrupt:
-        print('Assistant interrupted. Resume the saved job to continue.', file=sys.stderr)
-        return 130
-    except (ValueError, OSError, RuntimeError) as exc:
-        print('Local assistant: ' + str(exc), file=sys.stderr)
-        return 1
-    finally:
-        if production is not None:
-            production.close()
+                scope = Scope(args.workspace, tuple(args.input_root), args.output_root,
+                              allow_create=args.allow_create, allow_full_backup=args.allow_full_backup)
+                if args.local_profile is not None:
+                    plan = service.propose_local(instruction, scope, profile_id=args.local_profile)
+                    print('Local proposal only. Review this JSON and its exact scope before running it in a separate invocation.',
+                          file=sys.stderr, flush=True)
+                else:
+                    plan = service.preview(instruction, scope)
+                result = plan.to_dict()
+                if args.run:
+                    identity = service.submit(plan)
+                    print('Assistant job: ' + identity, file=sys.stderr, flush=True)
+                    result = asdict(execute(identity,
+                        progress=lambda complete, total, text: print(f'{complete}/{total}: {text}', file=sys.stderr, flush=True)))
+            print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
+            return 0
+        except KeyboardInterrupt as exc:
+            if _pending_owners(exc):
+                raise
+            print('Assistant interrupted. Resume the saved job to continue.', file=sys.stderr)
+            return 130
+        except (ValueError, OSError, RuntimeError) as exc:
+            if _pending_owners(exc):
+                raise
+            print('Local assistant: ' + str(exc), file=sys.stderr)
+            return 1
 
 
 if __name__ == '__main__':

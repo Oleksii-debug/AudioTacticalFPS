@@ -96,7 +96,7 @@ class JobStore:
         path = self.path(identity).with_suffix('.lock')
         regular(path, missing=True)
         try:
-            with FileLock(path, mode=0o600).acquire(timeout=0):
+            with FileLock(path, mode=0o600, thread_local=False).acquire(timeout=0):
                 yield
         except Timeout as exc:
             raise RuntimeError('This assistant job is already running.') from exc
