@@ -5,6 +5,7 @@ from pathlib import Path
 import sys
 
 from .transcription_host import data_directory
+from .transcription import PROTOCOLS, RECEIPTS_PROTOCOL
 
 
 def main(argv=None):
@@ -16,17 +17,26 @@ def main(argv=None):
     configure.add_argument('--python', type=Path, required=True)
     configure.add_argument('--worker', type=Path, required=True)
     configure.add_argument('--models-dir', type=Path, required=True)
+    configure.add_argument('--protocol', choices=PROTOCOLS, default=RECEIPTS_PROTOCOL,
+        help='Explicit worker contract; use whisper-v5-manifest-v1 for the supplied repaired V5 worker and its two helpers')
     commands.add_parser('jobs', help='List saved library transcription jobs')
     create = commands.add_parser('create', help='Retain original media and save a transcription job')
     create.add_argument('files', type=Path, nargs='+')
-    create.add_argument('--title', default='Transcription')
-    create.add_argument('--model', default='small')
-    create.add_argument('--model-revision')
-    create.add_argument('--language', default='auto')
-    create.add_argument('--device', choices=('cpu', 'cuda'), default='cpu')
-    create.add_argument('--compute-type', default='int8')
-    create.add_argument('--multilingual', action='store_true')
-    create.add_argument('--no-word-timestamps', action='store_true')
+    folder = commands.add_parser('create-folder', help='Retain supported media from a local folder and its subfolders')
+    folder.add_argument('folder', type=Path)
+    for command in (create, folder):
+        command.add_argument('--title', default='Transcription')
+        command.add_argument('--model', default='small')
+        command.add_argument('--model-revision')
+        command.add_argument('--language', default='auto')
+        command.add_argument('--device', choices=('cpu', 'cuda'), default='cpu')
+        command.add_argument('--compute-type', default='int8')
+        command.add_argument('--multilingual', action='store_true')
+        command.add_argument('--no-word-timestamps', action='store_true')
+        command.add_argument('--protocol', choices=PROTOCOLS,
+            help='Persist this worker contract in the job; defaults to the configured profile')
+        command.add_argument('--max-attempts', type=int,
+            help='V5 requires 3 (its fixed, deduplicated same-language retry policy); receipts-v1 defaults to 1')
     run = commands.add_parser('run', help='Run or resume a job with the configured local worker')
     run.add_argument('job')
     run.add_argument('--timeout', type=float, default=86400)
@@ -49,15 +59,20 @@ def main(argv=None):
         app = LibraryApp(data_directory(args.data_dir))
         service = app.transcription(args.workspace)
         if args.operation == 'configure':
-            result = service.configure(args.python, args.worker, args.models_dir)
+            result = service.configure(args.python, args.worker, args.models_dir, protocol=args.protocol)
         elif args.operation == 'jobs':
             result = [{'id': job['id'], 'title': job['title'], 'status': job['status'],
-                       'done': job['done'], 'total': len(job['sources'])} for job in service.list()]
-        elif args.operation == 'create':
-            result = {'id': service.submit(args.files, title=args.title, options={
+                       'protocol': job['protocol'], 'done': job['done'], 'total': len(job['sources'])} for job in service.list()]
+        elif args.operation in ('create', 'create-folder'):
+            options = {
                 'model': args.model, 'model_revision': args.model_revision,
                 'language': args.language, 'device': args.device, 'compute_type': args.compute_type,
-                'multilingual': args.multilingual, 'word_timestamps': not args.no_word_timestamps})}
+                'multilingual': args.multilingual, 'word_timestamps': not args.no_word_timestamps}
+            if args.max_attempts is not None:
+                options['max_attempts'] = args.max_attempts
+            result = (service.submit_folder(args.folder, title=args.title, options=options, protocol=args.protocol)
+                      if args.operation == 'create-folder' else
+                      {'id': service.submit(args.files, title=args.title, options=options, protocol=args.protocol)})
         elif args.operation == 'run':
             result = service.run(args.job, timeout=args.timeout,
                 progress=lambda done, total, state: print(f'{done}/{total}: {state}', file=sys.stderr, flush=True))
