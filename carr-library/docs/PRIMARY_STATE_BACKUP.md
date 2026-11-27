@@ -98,3 +98,31 @@ and retry. Restore always requires a fresh destination and an independently
 retained manifest digest. This does not establish encrypted backups,
 incremental/multi-device migration or recovery of external credentials,
 engines or published files.
+
+## Cancellation and pending-import validation boundaries
+
+The same cancellation callback is checked during current and legacy manifest
+normalization, pending file/source binding validation, journal inventory and
+record/checkpoint validation, and immediately before restore publication.
+Malformed non-string membership fields in pending manifests are rejected as
+validation errors before dictionary lookup. This does not change the format,
+retained source identity, allowed filenames or existing aggregate budgets.
+Pending capture scans at most 50,000 total directory entries (including ignored transient files) across request, batch and nested review folders; exceeding the budget rejects the backup before publication. Pending capture scans committed and known transient names incrementally;
+restore copies retained journals by a single pass through the validated file
+inventory. The existing aggregate file/byte limits still apply. JSON decoding,
+individual SQLite queries, bounded source reads and synchronous filesystem
+calls are not preempted; cancellation is cooperative at the next boundary.
+These are correctness and algorithmic bounds, not a measured Windows latency
+or complete crash-recovery qualification.
+
+
+## Typed sidecar scan resource boundary
+
+Each typed capture pass streams directory entries and visits at most 100,000
+names, counting present registered root paths, included directories and files,
+ignored transient names and excluded cache roots. Excluded cache contents are
+not traversed. This independent scan bound prevents an unbounded ignored-name
+inventory; the existing retained-file, per-format and byte limits still apply.
+A scan that exceeds the bound or is cancelled cannot publish a backup. Pause
+the producer and clear only its known transient files before retrying. This
+does not raise the supported corpus size or claim measured Windows latency.

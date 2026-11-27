@@ -324,3 +324,98 @@ def test_restore_rejects_cache_contradicting_manifest_inclusion(prepared, tmp_pa
     with pytest.raises(ValueError, match='Transcription cache requires explicit manifest inclusion'):
         restore_backup(backup, destination, sha256(raw).hexdigest())
     assert not destination.exists()
+
+
+def _cancellation_manifest(tmp_path, shape):
+    root = 'state/transcription/jobs/' + '1' * 32 + '/'
+    entries = [dict(filename=root + 'inputs/' + '2' * 32 + '/source.wav', size_bytes=1, sha256='3' * 64),
+               dict(filename=root + 'worker/results/' + '2' * 32 + '/source.txt', size_bytes=1, sha256='4' * 64)]
+    version = {'v3-implicit': 3, 'v3-state': 3, 'v4-state': 4, 'v4-sidecars': 4, 'v5-state': 5}[shape]
+    manifest = dict(version=version, kind='carr-library', schema_version=5, schema_fingerprint='5' * 64,
+                    database={}, assets=[])
+    if shape.endswith('-state'):
+        manifest['state'] = [{**entry, 'filename': entry['filename'][6:]} for entry in entries]
+    else:
+        manifest['sidecars'] = entries
+    if shape != 'v3-implicit':
+        manifest['generated_audio_included'] = False
+    if shape == 'v4-state':
+        manifest['pending'] = dict(version=1, data_dir=str(tmp_path), files=[], assets=[], sources=[])
+    if shape == 'v5-state':
+        manifest['pending'] = None
+        manifest['reading_state'] = dict(filename='reading-state.json', size_bytes=1, sha256='6' * 64)
+    return manifest
+
+
+@pytest.mark.parametrize('shape', ('v3-implicit', 'v3-state', 'v4-state', 'v4-sidecars', 'v5-state'))
+@pytest.mark.parametrize('stop_after', (1, 2))
+def test_manifest_cancelled_during_sidecar_validation(tmp_path, monkeypatch, shape, stop_after):
+    manifest = _cancellation_manifest(tmp_path, shape)
+    original = backup_sidecars.sidecar_limit
+    assert len(backup_sidecars.normalize_manifest(manifest).entries) == (3 if shape == 'v5-state' else 2)
+    calls = 0
+
+    def counted(name):
+        nonlocal calls
+        result = original(name)
+        calls += 1
+        return result
+
+    monkeypatch.setattr(backup_sidecars, 'sidecar_limit', counted)
+    with pytest.raises(InterruptedError, match='cancelled'):
+        backup_sidecars.normalize_manifest(manifest, cancelled=lambda: calls >= stop_after)
+    assert calls == stop_after
+
+
+@pytest.mark.parametrize('shape', ('v3-state', 'v4-state', 'v5-state'))
+def test_manifest_cancelled_during_legacy_state_copy(tmp_path, monkeypatch, shape):
+    manifest = _cancellation_manifest(tmp_path, shape)
+    original = backup_sidecars.portable_name
+    stopped = False
+
+    def observed(name):
+        nonlocal stopped
+        result = original(name)
+        stopped = True
+        return result
+
+    def forbidden(name):
+        raise AssertionError('cancelled legacy copy reached sidecar validation')
+
+    monkeypatch.setattr(backup_sidecars, 'portable_name', observed)
+    monkeypatch.setattr(backup_sidecars, 'sidecar_limit', forbidden)
+    with pytest.raises(InterruptedError, match='cancelled'):
+        backup_sidecars.normalize_manifest(manifest, cancelled=lambda: stopped)
+
+
+def test_manifest_propagates_cancellation_into_pending_validator(tmp_path, monkeypatch):
+    from carr_library import pending_backup
+    manifest = _cancellation_manifest(tmp_path, 'v4-state')
+    original = pending_backup._source
+    stopped = False
+
+    def observed(value):
+        nonlocal stopped
+        result = original(value)
+        stopped = True
+        return result
+
+    monkeypatch.setattr(pending_backup, '_source', observed)
+    with pytest.raises(InterruptedError, match='cancelled'):
+        backup_sidecars.normalize_manifest(manifest, cancelled=lambda: stopped)
+    assert stopped
+
+
+@pytest.mark.parametrize('cancel_at', range(1, 5))
+def test_manifest_cancelled_even_with_empty_inventory(cancel_at):
+    manifest = dict(version=4, kind='carr-library', schema_version=5, schema_fingerprint='5' * 64,
+                    database={}, assets=[], sidecars=[], generated_audio_included=False)
+    calls = 0
+
+    def cancelled():
+        nonlocal calls
+        calls += 1
+        return calls >= cancel_at
+
+    with pytest.raises(InterruptedError, match='cancelled'):
+        backup_sidecars.normalize_manifest(manifest, cancelled=cancelled)
