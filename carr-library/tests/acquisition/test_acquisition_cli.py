@@ -11,6 +11,49 @@ from carr_library.acquisition.cli import run
 ISBN_REQUEST = ['--lookup-isbn', '9780306406157', '--allow-online-isbn', '--workspace', 'one']
 
 
+@pytest.mark.parametrize('lookup', (
+    ['--lookup-doi', '10.5555/example', '--allow-online-doi', '--workspace', 'one'],
+    ISBN_REQUEST,
+))
+@pytest.mark.parametrize('other', (
+    ['studio', 'voices'],
+    ['studio', 'render', '--script', 'synthetic.txt', '--output', 'synthetic-output'],
+    ['assistant', '--instructions', 'synthetic.txt', '--run'],
+    ['--document-formats'],
+))
+def test_canonical_entrypoint_rejects_mixed_identifier_operations_before_side_effects(
+        lookup, other, monkeypatch, capsys):
+    def forbidden(*args, **kwargs):
+        raise AssertionError('Mixed operations must not open a library, start audio or initialize acquisition.')
+    monkeypatch.setattr('carr_library.application.LibraryApp', forbidden)
+    monkeypatch.setattr('carr_library.studio.cli.ProductionService', forbidden)
+    monkeypatch.setattr('carr_library.acquisition.service.service_for', forbidden)
+    monkeypatch.setattr('carr_library.native_runtime.activate_bundled_runtime', forbidden)
+    # Canonical uses studio/assistant subcommands. The standalone format flag
+    # belongs to the separate producer and must not bypass lookup validation.
+    with pytest.raises(SystemExit) as result:
+        main([*other, *lookup])
+    assert result.value.code == 2 and 'error:' in capsys.readouterr().err
+
+
+def test_real_canonical_studio_jobs_cli_remains_offline_and_reopens_after_lookup_merge(
+        tmp_path, monkeypatch, capsys):
+    import sys
+    def forbidden(*args, **kwargs):
+        raise AssertionError('Listing local jobs must not initialize metadata acquisition or speech.')
+    monkeypatch.setattr('carr_library.acquisition.service.service_for', forbidden)
+    monkeypatch.setattr('carr_library.runtime_settings.voice_registry', forbidden)
+    monkeypatch.setitem(sys.modules, 'wx', None)
+    directory = tmp_path / 'canonical-studio-library'
+    arguments = ['studio', '--data-dir', str(directory), 'jobs']
+    assert main(arguments) == 0
+    assert json.loads(capsys.readouterr().out) == []
+    assert (directory / 'library.sqlite').is_file()
+    assert (directory / 'state' / 'studio' / 'jobs').is_dir()
+    assert main(arguments) == 0
+    assert json.loads(capsys.readouterr().out) == []
+
+
 @pytest.mark.parametrize('arguments', (
     ['--lookup-doi', '10.5555/example'],
     ['--lookup-doi', '10.5555/example', '--allow-online-doi'],

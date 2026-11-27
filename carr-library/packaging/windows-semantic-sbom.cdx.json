@@ -1,7 +1,7 @@
 {
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "version": 2,
+  "version": 3,
   "serialNumber": "urn:uuid:c0a01d9e-f9a9-47ef-87cd-48907b46d55b",
   "metadata": {
     "timestamp": "2026-11-26T17:54:24.006257631Z",
@@ -649,6 +649,32 @@
           "value": "sys_platform == 'win32'"
         }
       ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "comtypes@1.5.0",
+      "name": "comtypes",
+      "version": "1.5.0",
+      "purl": "pkg:pypi/comtypes@1.5.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "c648ed3b243b1eb3b7cb893a873d1b35104ca1c8922061f4b1efafeb255bacb5"
+        }
+      ],
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
     }
   ],
   "dependencies": [
@@ -922,7 +948,8 @@
         "typing-inspection-44@0.4.5",
         "urllib3-45@2.8.0",
         "win32-setctime-46@1.2.1",
-        "wxpython-47@4.2.4"
+        "wxpython-47@4.2.4",
+        "comtypes@1.5.0"
       ]
     },
     {
@@ -936,6 +963,9 @@
       "dependsOn": [
         "numpy-23@2.3.5"
       ]
+    },
+    {
+      "ref": "comtypes@1.5.0"
     }
   ]
 }

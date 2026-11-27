@@ -634,4 +634,3 @@ def test_new_provider_lookup_is_single_explicit_request_and_cancellable(kind):
     with pytest.raises(InterruptedError):
         lookup(completed_then_cancelled, lambda: cancelled)
     assert len(calls) == 2
-

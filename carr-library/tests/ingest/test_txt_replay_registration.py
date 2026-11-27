@@ -81,3 +81,31 @@ def test_txt_replay_rejects_conflicting_identity(imported):
     assert hit.title == meta['title'] and hit.revision == initial['id']
     assert app.search(other, 'railway history') == ()
     assert src.read_bytes() == raw
+
+
+def test_cancelled_completed_replay_never_adds_membership(imported):
+    app, ws, _, first, requested, src, _, meta, initial = imported
+    with pytest.raises(InterruptedError, match='cancelled'):
+        app.import_file(ws, src, collections=(first, requested), cancelled=lambda: True, **meta)
+    assert app.browse(ws, collection=requested) == ()
+    assert app.search(ws, 'railway history', collection=first)[0].revision == initial['id']
+
+
+def test_cancellation_during_completed_replay_validation_rolls_back_membership(imported, monkeypatch):
+    app, ws, _, first, requested, src, _, meta, initial = imported
+    stopped = False
+    original = Storage._check
+
+    def cancel_after_validating_membership(storage):
+        nonlocal stopped
+        original(storage)
+        if storage.db.execute('SELECT 1 FROM catalog_membership '
+                'WHERE workspace=? AND collection=? AND edition=?',
+                (ws, requested, meta['edition_id'])).fetchone():
+            stopped = True
+
+    monkeypatch.setattr(Storage, '_check', cancel_after_validating_membership)
+    with pytest.raises(InterruptedError, match='cancelled before commit'):
+        app.import_file(ws, src, collections=(first, requested), cancelled=lambda: stopped, **meta)
+    assert app.browse(ws, collection=requested) == ()
+    assert app.search(ws, 'railway history', collection=first)[0].revision == initial['id']
