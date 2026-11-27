@@ -111,11 +111,12 @@ def failure_frames(error):
     return rows
 
 
-def odf_census(root, extension='odt'):
-    """Read only this authored operation's bounded generated content.xml."""
+def odf_census(root, extension='odt', member_name='content.xml'):
+    """Read one explicitly named bounded XML member of this authored output."""
     from defusedxml import ElementTree
     from carr_library.conversion.office import file_identity, regular_file, verified_reader
     assert extension in ('odt', 'odp', 'ods')
+    assert member_name in ('content.xml', 'styles.xml')
     output = root / ('office-output/source.' + extension)
     if not output.exists():
         return {'present': False}
@@ -127,13 +128,13 @@ def odf_census(root, extension='odt'):
             members = archive.infolist()
             if len(members) > 256:
                 raise ValueError('Authored intermediate member inventory exceeded its bound.')
-            choices = [member for member in members if member.filename == 'content.xml']
+            choices = [member for member in members if member.filename == member_name]
             if len(choices) != 1 or not 0 < choices[0].file_size <= 256 * 1024:
-                raise ValueError('Authored content.xml is missing, duplicated or over its diagnostic bound.')
+                raise ValueError('Authored XML member is missing, duplicated or over its diagnostic bound.')
             with archive.open(choices[0]) as content:
                 raw = content.read(256 * 1024 + 1)
             if len(raw) != choices[0].file_size:
-                raise ValueError('Authored content.xml changed during its bounded capture.')
+                raise ValueError('Authored XML member changed during its bounded capture.')
     tree = ElementTree.fromstring(raw)
     counts, nodes, visibility = Counter(), 0, []
     visibility_seen, visibility_bytes, visibility_bounded = 0, 0, False
@@ -180,7 +181,7 @@ def odf_census(root, extension='odt'):
         if len(path) < 8:
             pending.extend((child, (*path, index)) for index, child in
                            reversed(list(enumerate(node, 1))))
-    return {'present': True, 'archive_bytes': info.st_size,
+    return {'present': True, 'member_name': member_name, 'archive_bytes': info.st_size,
             'content_bytes': len(raw), 'content_sha256': sha256(raw).hexdigest(),
             'tag_counts': dict(sorted(counts.items())), 'body_nodes': rows,
             'visibility_nodes': visibility,
@@ -192,7 +193,8 @@ def odf_census(root, extension='odt'):
 def observations(root, extension='odt'):
     result = {'stage_path': str(root), 'stage_length': len(str(root))}
     for key, operation in (('stage_files', namespace),
-                           ('odf_census', lambda path: odf_census(path, extension))):
+                           ('odf_census', lambda path: odf_census(path, extension)),
+                           ('odf_styles_census', lambda path: odf_census(path, extension, 'styles.xml'))):
         try:
             result[key] = operation(root)
         except Exception as error:
