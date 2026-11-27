@@ -106,6 +106,11 @@ class ManagedProjects:
                     raise ValueError('The saved project changed during Audio Studio save.')
                 if previous is None:
                     os.link(temporary, selected)
+                    # Retire our private twin before the directory commit. A
+                    # process exit after that commit must leave an ordinary
+                    # one-link document that readers and backups can reopen.
+                    temporary.unlink()
+                    temporary = None
                 else:
                     os.replace(temporary, selected)
                 _sync_directory(selected.parent)

@@ -141,3 +141,85 @@ def test_completion_manifest_write_is_checked_and_never_replaces_another_file(
     with pytest.raises(FileExistsError):
         create_backup(app, destination)
     assert (destination / 'manifest.json').read_bytes() == written
+
+
+@pytest.mark.parametrize('document', ['project', 'recovery'])
+def test_actual_exit_after_first_managed_document_commit_preserves_reopen_and_backup(
+        produced, tmp_path, document):
+    from carr_library.ui.audio_studio import StudioController
+    app, workspace, page, bookmark = produced
+    code = '''
+import os,sys
+from pathlib import Path
+from carr_library.audio import managed
+from carr_library.ui.audio_studio import StudioController
+studio=StudioController(private_root=Path(sys.argv[1]))
+studio.new('[pause 1]',title='Crash-safe saved project',input_kind='script')
+kind=sys.argv[2]
+if kind=='recovery':
+    studio.save_in_library()
+    studio.edit_script('[pause 2]')
+name='project.json' if kind=='project' else 'project.json.recovery.json'
+sync=managed._sync_directory
+def stop(directory):
+    sync(directory)
+    if (Path(directory)/name).is_file():
+        os._exit(75)
+managed._sync_directory=stop
+if kind=='project':
+    studio.save_in_library()
+else:
+    studio.save_recovery()
+'''
+    import carr_library.audio.managed as managed_module
+    source = Path(managed_module.__file__).resolve().parents[2]
+    env = {**os.environ, 'PYTHONPATH': os.pathsep.join((str(source), str(source.parent)))}
+    child = subprocess.run([sys.executable, '-c', code, str(app.root), document],
+                           env=env, capture_output=True, text=True, timeout=30)
+    assert child.returncode == 75, (child.stdout, child.stderr)
+    saved, = (app.root / 'audio-projects').glob('*/studio/project.json')
+    committed = saved if document == 'project' else saved.with_name(saved.name + '.recovery.json')
+    assert committed.stat().st_nlink == 1
+    assert not tuple(saved.parent.glob('.studio-save-*'))
+    raw = committed.read_bytes()
+    reopened = StudioController(private_root=app.root).open(saved)
+    assert not reopened.dirty and reopened.script == '[pause 1]'
+    if document == 'recovery':
+        reopened.recover()
+        assert reopened.script == '[pause 2]'
+    folder = tmp_path / 'post-crash-backup'
+    checksum = create_backup(app, folder)
+    assert verify_backup(folder, checksum)['version'] == 4
+    restored = restore_backup(folder, tmp_path / 'restored', checksum)
+    restored_saved = restored / saved.relative_to(app.root)
+    restored_project = StudioController(private_root=restored).open(restored_saved)
+    if document == 'recovery':
+        restored_project.recover()
+    assert restored_project.script == reopened.script
+    assert (restored / committed.relative_to(app.root)).read_bytes() == raw
+    assert ReadingDesk(LibraryApp(restored), workspace, 'edition').page(1).text == page.text
+    reopened.edit_script('[pause 3]')
+    reopened.save()
+    assert StudioController(private_root=app.root).open(saved).script == '[pause 3]'
+    assert (folder / committed.relative_to(app.root)).read_bytes() == raw
+
+
+def test_unknown_managed_document_hardlink_remains_rejected(produced, tmp_path):
+    from carr_library.audio.managed import ManagedProjects
+    from carr_library.ui.audio_studio import StudioController
+    app, *_ = produced
+    studio = StudioController(private_root=app.root)
+    studio.new('[pause 1]', input_kind='script')
+    saved = studio.save_in_library()
+    original = saved.read_bytes()
+    unrelated = tmp_path / 'unrelated-document.json'
+    os.link(saved, unrelated)
+    with pytest.raises(ValueError, match='hard link'):
+        ManagedProjects._state(saved)
+    with pytest.raises(ValueError):
+        StudioController(private_root=app.root).open(saved)
+    with pytest.raises(ValueError, match='hard link'):
+        create_backup(app, tmp_path / 'rejected')
+    assert not (tmp_path / 'rejected').exists()
+    assert saved.read_bytes() == original == unrelated.read_bytes()
+    assert unrelated.stat().st_nlink == 2
