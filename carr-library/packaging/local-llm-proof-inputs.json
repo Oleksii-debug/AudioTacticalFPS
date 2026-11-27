@@ -36,7 +36,7 @@
     }
   ],
   "product_source_sha256": {
-    "assistant/llm.py": "7b41efb0b2c813f9cd8a4df75f47e27e3467c0e60fc597fce5ef031c46fc2ff4",
+    "assistant/llm.py": "7b506d39ceae43a7452188e1da3f6763ecd9372a7cafcf99fc429b2d39b726dd",
     "assistant/models.py": "5a0521b5dcfef5bb9b57e01fec1e453b9dbee6db7883fee2ccd0178944d4ca1b",
     "assistant/service.py": "3b354f01d06396359b98233a59255a47530531c7d5d9d946f191b5d92e7928a7",
     "providers.py": "d41a3a484440404f838c29d70eae11047978de2e4adc66586ad1970ee940cc6f"
@@ -84,5 +84,16 @@
     "run": 45946002017,
     "artifact": 15174773154,
     "outcome": "English library-list proposal validated; Ukrainian bounded book request chose the wrong tool and failed the unchanged semantic assertion."
-  }
+  },
+  "qualification_history": [
+    {
+      "commit": "0e3ec0dc5e1d916e47a2f6201338726b95e93454",
+      "run": 45947558728,
+      "artifact": 15175282800,
+      "artifact_sha256": "d62ad93763dae09f4cffe8150d0c8c914502dece89734fb526f9b300a79535e3",
+      "model_sha256": "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
+      "outcome": "Actual English library.list validated. Actual Ukrainian library.catalog omitted the explicitly requested limit; unchanged semantic assertion failed. No proposal was executed.",
+      "response_sha256": "b33cd7e7d853642c633ff1ef02715412b3f9236ba0b3076d94d8a8d1d6d48020"
+    }
+  ]
 }

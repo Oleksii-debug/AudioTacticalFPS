@@ -33,6 +33,16 @@ The native 3 GiB address-space limit, CPU/time limits, fixed seed, product
 source, grammar and all four multilingual/permission cases are unchanged.
 No shared local workspace is used. A metadata PASS is not an inference PASS.
 
+The first actual 1.7B run, 45947558728 at 0e3ec0d, selected the correct English
+and Ukrainian tools within the unchanged native memory/time caps. It still
+omitted the explicitly requested Ukrainian catalog count while mentioning it
+in the summary. The unchanged semantic assertion rejected that proposal;
+artifact 15175282800 preserves the original response and failure.
+The product SYSTEM now makes a general constraint explicit: every supported
+limit, filter, path or option requested by the user must be in step arguments,
+not merely the summary. Unspecified optional fields remain omitted. No example
+number, tool choice or expected answer is supplied by that correction.
+
 The selected runtime uses two CPU threads, one slot, a 2,048-token context and a
 256-token prediction cap. Thinking is disabled with the pinned runtime's
 `--reasoning off` option. The exact upstream generic JSON grammar is passed
@@ -83,7 +93,7 @@ The parser, tool validator, caller scope, gateway and approval logic remain
 unchanged. The pinned source hash binds actual inference to this product prompt;
 synthetic user instructions contain only their requested operations. The fixed
 sampling seed, generic JSON grammar, all four semantic/boundary cases and
-no-execution controls are unchanged. The unchanged product prompt is now exercised against the pinned 1.7B candidate; its actual result is still required.
+no-execution controls are unchanged. The generically corrected product prompt is exercised against the same pinned 1.7B candidate; a complete actual result is still required.
 
 
 The probe requires actual English and Ukrainian model proposals to pass the
