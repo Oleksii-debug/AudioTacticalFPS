@@ -45,6 +45,24 @@ def test_offline():
         result = self.run_fixture(source, 'test_sample.py')
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
+    def test_loopback_mode_rejects_other_suites(self):
+        result = self.run_fixture('def test_ok(): assert True\n', '--loopback-only', 'test_sample.py')
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn('requires exactly the local planning protocol suite', result.stderr)
+
+    def test_loopback_mode_rejects_unisolated_child(self):
+        import socket
+        if (sys.platform == 'linux' and os.geteuid() != 0
+                and {name for _, name in socket.if_nameindex()} == {'lo'}):
+            self.fail('Run ordinary offline CI outside the dedicated namespace')
+        spec = importlib.util.spec_from_file_location('ci_namespace_guard', SCRIPT)
+        runner = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(runner)
+        result = subprocess.run([sys.executable, '-c', runner.PYTEST_CHILD, '--carr-loopback-only'],
+                                capture_output=True, text=True, timeout=10)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('requires an unprivileged loopback-only network namespace', result.stderr)
+
     def test_failure_not_green(self):
         result = self.run_fixture('def test_bad(): assert False\n', 'test_sample.py')
         self.assertEqual(result.returncode, 1)
