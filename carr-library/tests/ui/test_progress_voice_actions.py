@@ -1,6 +1,9 @@
 """Execute production voice/playback callbacks without claiming native UI input."""
 
 import ast
+import gc
+from tempfile import TemporaryDirectory
+import weakref
 from concurrent.futures import Future
 from contextlib import contextmanager
 from pathlib import Path
@@ -33,7 +36,7 @@ def callbacks(filename, window_name, names, values, *, globals_=None, cleanup=Fa
     result = ', '.join(repr(name) + ': ' + name for name in result_names)
     factory = ast.parse('def build(' + ', '.join(values) + '):\n    return {' + result + '}\n')
     factory.body[0].body[:0] = definitions
-    namespace = {'Path': Path, 'VoiceRegistry': VoiceRegistry,
+    namespace = {'Path': Path, 'VoiceRegistry': VoiceRegistry, 'threading': threading,
                  'play_when_quiet': play_when_quiet, '__package__': 'carr_library.ui'}
     namespace.update(globals_ or {})
     exec(compile(ast.fix_missing_locations(factory), str(source), 'exec'), namespace)
@@ -148,6 +151,11 @@ class ListedVoices:
 @pytest.fixture
 def reader(tmp_path, monkeypatch):
     from carr_library import runtime_settings
+    from carr_library.audio import cleanup as native_cleanup
+    retained_before = set(native_cleanup._RETAINED)
+    monkeypatch.setattr(native_cleanup, 'threading', SimpleNamespace(
+        Lock=threading.Lock, Event=threading.Event,
+        Thread=lambda **kwargs: SimpleNamespace(start=lambda: None)))
 
     progress, scheduler, work = Progress(), Scheduler(), WorkQueue()
     registry, roots, activations, created = VoiceRegistry([ListedVoices()]), [], [], []
@@ -186,6 +194,11 @@ def reader(tmp_path, monkeypatch):
     yield SimpleNamespace(handlers=handlers, progress=progress, scheduler=scheduler,
         work=work, roots=roots, activations=activations, created=created, values=values,
         parent=parent, choice=choice, reports=reports, registry=registry)
+    values['player'].close.side_effect = None
+    values['audio_files'].cleanup.side_effect = None
+    values['executor'].shutdown.side_effect = None
+    for owner in set(native_cleanup._RETAINED) - retained_before:
+        owner.close()
     for provider in created:
         provider.close()
 
@@ -672,3 +685,55 @@ def test_reader_save_audio_chooser_does_not_use_a_destroyed_native_selection(ori
     child.GetPath.assert_not_called()
     child.Destroy.assert_not_called()
     assert cancel.is_set()
+
+
+def test_reader_pending_close_keeps_actual_pcm_after_parent_and_callbacks_are_collected(
+        tmp_path, monkeypatch):
+    from carr_library.audio import cleanup as native_cleanup
+    before = set(native_cleanup._RETAINED)
+    monkeypatch.setattr(native_cleanup, 'threading', SimpleNamespace(
+        Lock=threading.Lock, Event=threading.Event,
+        Thread=lambda **kwargs: SimpleNamespace(start=lambda: None)))
+    state = {'allow_close': False, 'closed': 0}
+    class Player:
+        def close(self):
+            if not state['allow_close']:
+                raise RuntimeError('Native playback still owns its recording')
+            state['closed'] += 1
+    class Parent:
+        def report(self, message):
+            raise AssertionError('A destroyed parent must not be notified')
+    player, parent = Player(), Parent()
+    temporary = TemporaryDirectory(prefix='reader-owner-', dir=tmp_path)
+    path = Path(temporary.name) / 'still-playing.wav'
+    path.write_bytes(b'retained native playback bytes')
+    player_ref, parent_ref = weakref.ref(player), weakref.ref(parent)
+    queue = CleanupQueue()
+    values = dict(alive=True, playback_generation=0, cancel=threading.Event(),
+        native_destroyed=True, parent_destroyed=True, parent=parent, dialog=Mock(),
+        unregister=Mock(), autosave_timer=Mock(), player=player, progress=Progress(),
+        executor=queue, audio_files=temporary, owned_registries=set(),
+        owned_progress_voices=set(), wx=SimpleNamespace(CallAfter=lambda callback: callback()))
+    handlers = callbacks('speech_dialog.py', 'show_speech_reader', ['detach'],
+                         values, cleanup=True)
+    handlers.cleanup()
+    future = queue.finish()
+    assert future.exception() is not None
+    owners = set(native_cleanup._RETAINED) - before
+    assert len(owners) == 1
+    del owners, future, handlers, values, queue, parent, player, temporary
+    gc.collect()
+    assert parent_ref() is None
+    assert player_ref() is not None and path.read_bytes() == b'retained native playback bytes'
+    owner, = set(native_cleanup._RETAINED) - before
+    try:
+        assert owner.close() is False
+        assert path.exists()
+        state['allow_close'] = True
+        assert owner.close() is True
+        assert state['closed'] == 1
+        assert not path.parent.exists()
+        assert owner not in native_cleanup._RETAINED
+    finally:
+        state['allow_close'] = True
+        owner.close()

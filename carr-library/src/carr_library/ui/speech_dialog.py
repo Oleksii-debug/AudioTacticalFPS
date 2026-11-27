@@ -629,7 +629,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 notices.append(f'{label} could not be detached: {exc}')
         silence_confirmed = False
         try:
-            player.close()
+            if player.close() is False:
+                raise RuntimeError('The audio device has not confirmed Close.')
             silence_confirmed = True
         except Exception as exc:
             notices.append(f'Playback device reported a close error: {exc}')
@@ -646,20 +647,45 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 parent._reader_playback_retained = retained
             retained.append((player, audio_files, executor, resources))
 
-        # The serial worker releases registries and temporary output only after
-        # active synthesis/discovery exits; closing the UI never waits for it.
+        # The serial worker establishes quiescence before releasing registries.
+        # A failed close is retained by the existing independent audio owner,
+        # which never captures the dying dialog or depends on its parent.
+        worker_quiescent = threading.Event()
         class ReaderResources:
-            def close(self):
+            def _close_owned(self):
                 errors = []
+                try:
+                    if player.close() is False:
+                        raise RuntimeError('The audio device has not confirmed Close.')
+                except Exception as exc:
+                    errors.append(str(exc))
                 for owned in (*owned_registries, *owned_progress_voices):
                     try:
-                        owned.close()
+                        if owned.close() is False:
+                            raise RuntimeError('A reading voice has not confirmed Close.')
                     except Exception as exc:
                         errors.append(str(exc))
-                if silence_confirmed:
-                    audio_files.cleanup()
                 if errors:
                     raise RuntimeError('; '.join(errors))
+                audio_files.cleanup()
+                return True
+
+            def close(self):
+                # Queued on the same serial executor, after synthesis exits.
+                worker_quiescent.set()
+                return self._close_owned()
+
+            def retry(self):
+                if not worker_quiescent.is_set():
+                    # Only the independent daemon reaches this fallback if
+                    # scheduling cleanup failed. It may wait; the UI never does.
+                    executor.shutdown(wait=True, cancel_futures=False)
+                    worker_quiescent.set()
+                return self._close_owned()
+
+        def retain_cleanup(resources, message):
+            from ..audio.cleanup import pending_cleanup
+            return pending_cleanup(resources.retry, message=message).cleanup_owner
         resources = ReaderResources()
         if not silence_confirmed:
             retain_resources(resources)
@@ -675,6 +701,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                     # files alive and deliver its warning on the native queue.
                     retain_resources(resources)
                     message = f'Temporary reading audio cleanup needs attention: {exc}'
+                    retain_cleanup(resources, message)
                     def notify():
                         if parent_destroyed or getattr(parent, '_closing', False):
                             return
@@ -689,7 +716,9 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             cleanup_future.add_done_callback(cleanup_finished)
         except Exception as exc:
             retain_resources(resources)
-            notices.append(f'The reading worker has not confirmed cleanup: {exc}')
+            message = f'The reading worker has not confirmed cleanup: {exc}'
+            retain_cleanup(resources, message)
+            notices.append(message)
         finally:
             try:
                 if notices and not parent_destroyed and not getattr(parent, '_closing', False):
