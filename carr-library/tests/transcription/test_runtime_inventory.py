@@ -284,3 +284,55 @@ def test_bytecode_inventory_cancelled_on_empty_directory(tmp_path):
     directory.mkdir()
     with pytest.raises(InterruptedError):
         module._bytecode_inventory([directory], cancel=lambda: True)
+
+
+
+def test_real_isolated_python_reads_existing_modified_bytecode(tmp_path):
+    """Safe synthetic subprocess proof: -I -B does not prohibit cache reads."""
+    import py_compile
+    import subprocess
+    import sys
+    from hashlib import sha256
+
+    source = tmp_path / 'synthetic_source.py'
+    source.write_text("VALUE = 'safe'\n", encoding='utf-8')
+    source_digest = sha256(source.read_bytes()).hexdigest()
+    py_compile.compile(str(source), doraise=True)
+    cache = next((tmp_path / '__pycache__').glob('synthetic_source.*.pyc'))
+    original_bytecode = cache.read_bytes()
+    replacement = tmp_path / 'synthetic_replacement.py'
+    replacement.write_text("VALUE = 'changed'\n", encoding='utf-8')
+    py_compile.compile(str(replacement), doraise=True)
+    altered_bytecode = next((tmp_path / '__pycache__').glob('synthetic_replacement.*.pyc')).read_bytes()
+    cache.write_bytes(original_bytecode[:16] + altered_bytecode[16:])
+    assert source_digest == sha256(source.read_bytes()).hexdigest()
+    command = ("import sys; sys.path.insert(0, {!r}); "
+               "import synthetic_source; print(synthetic_source.VALUE)").format(str(tmp_path))
+    altered = subprocess.run([sys.executable, '-I', '-B', '-c', command],
+                             capture_output=True, text=True, check=True)
+    assert altered.stdout.strip() == 'changed'
+    clean = subprocess.run([sys.executable, '-I', '-B', '-X',
+                            f'pycache_prefix={tmp_path / "clean-cache"}', '-c', command],
+                           capture_output=True, text=True, check=True)
+    assert clean.stdout.strip() == 'safe'
+
+
+def test_reviewed_runtime_fingerprint_changes_for_unrecorded_bytecode(root):
+    base, site = root
+    executable = base / 'python.exe'
+    executable.write_bytes(b'synthetic interpreter is not executed')
+    worker = base / 'reviewed_worker.py'
+    worker.write_bytes(b'# synthetic reviewed worker')
+    model = base / 'model'
+    model.mkdir()
+    for name in ('model.bin', 'config.json', 'tokenizer.json'):
+        (model / name).write_bytes(b'synthetic model identity')
+    bytecode = site / '__pycache__' / 'synthetic_module.cpython-311.pyc'
+    bytecode.parent.mkdir()
+    bytecode.write_bytes(b'ORIGINAL')
+    initial = module.inspect_runtime(executable, worker, model)
+    bytecode.write_bytes(b'CHANGED!')
+    changed = module.inspect_runtime(executable, worker, model)
+    assert initial['runtime_distributions'] == changed['runtime_distributions']
+    assert initial['runtime_auxiliary'] != changed['runtime_auxiliary']
+    assert initial['fingerprint'] != changed['fingerprint']
