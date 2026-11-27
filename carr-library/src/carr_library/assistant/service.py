@@ -134,6 +134,8 @@ class AssistantService:
         return identity
 
     def _load(self, identity):
+        from .backup_state import require_reviewed
+        require_reviewed(self.store.directory, identity)
         record = self.store.load(identity)
         plan = Plan.from_dict(record['plan'])
         if record.get('data_dir') != str(self.app.root):
@@ -163,6 +165,10 @@ class AssistantService:
                          record.get('message', ''))
 
     def get(self, identity):
+        from .backup_state import restored_report
+        restored = restored_report(self.store.directory, identity)
+        if restored is not None:
+            return restored
         record, _ = self._load(identity)
         return self._report(record)
 

@@ -14,6 +14,7 @@ import time
 from .pinned_tessdata import MODELS, POLICY, stage_pinned_models
 from .ocr_runtime import OcrRuntimeError, discover_ocr_runtime
 from .ocr_languages import model_ids, split_languages
+from .ocr_process import run_ocr
 
 
 _MAX_OCR_OUTPUT_BYTES = 16 * 1024 * 1024
@@ -180,9 +181,7 @@ def extract_page(asset, physical_index, config=Config()):
 
                     with tempfile.TemporaryDirectory() as tmp:
                         def run(args):
-                            return subprocess.run(runtime.command(args), check=True, capture_output=True,
-                                                  timeout=remaining(), cwd=runtime.root,
-                                                  creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+                            return run_ocr(runtime, args, remaining=remaining)
 
                         model_args = []
                         if config.model_policy == POLICY:

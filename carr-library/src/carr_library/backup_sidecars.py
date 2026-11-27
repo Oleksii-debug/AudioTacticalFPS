@@ -21,11 +21,11 @@ from .reader.reading_state import MAX_BYTES as READING_BYTES, _decode
 MAX_FILES = 100_000
 MAX_BYTES = 512 * 1024 * 1024
 _SIMPLE = ('reading-state.json', 'keybindings.json', 'keyboard-shortcuts.json',
-           'evidence-drafts.json', 'ocr-language-presets.json')
+           'evidence-drafts.json', 'progress-preferences.json', 'ocr-language-presets.json')
 _DIRECTORIES = ('narration-projects', 'reading-copies', 'state')
 _ID = r'[A-Za-z0-9_-]{1,80}'
 _STUDIO = re.compile(r'state/studio/projects/(' + _ID + r')/(?:project\.json|revisions/(\d{8})-([0-9a-f]{64})\.json)\Z')
-_ASSISTANT = re.compile(r'state/assistant/[0-9a-f]{32}(?:\.control)?\.json\Z')
+_ASSISTANT = re.compile(r'state/assistant/[0-9a-f]{32}(?:\.(?:control|restore-review))?\.json\Z')
 
 
 def _check_cancelled(cancelled):
@@ -51,10 +51,18 @@ def portable_name(value):
 
 def _model(module):
     try:
-        return import_module('.' + module, 'carr_library')
+        model = import_module('.' + module, 'carr_library')
     except ImportError as exc:
         raise RestoreError('This backup needs the installed data validator for ' + module +
                            '; existing files were kept.') from exc
+    required = {
+        'extract.ocr_languages': ('MAX_PRESET_BYTES', 'validate_presets_bytes'),
+        'assistant.backup_state': ('MAX_BYTES', 'validate_state_bytes', 'restore_review_bytes'),
+    }.get(module, ())
+    if any(not hasattr(model, name) for name in required):
+        raise RestoreError('The installed data validator for ' + module +
+                           ' has an incompatible version; existing files were kept.')
+    return model
 
 
 def sidecar_limit(name):
@@ -66,6 +74,8 @@ def sidecar_limit(name):
         return _model('keybindings').MAX_BYTES
     if name == 'keyboard-shortcuts.json':
         return _model('keyboard_preferences').MAX_BYTES
+    if name == 'progress-preferences.json':
+        return _model('progress_preferences').MAX_BYTES
     if name == 'evidence-drafts.json':
         return _model('evidence_drafts').MAX_BYTES
     if name == 'ocr-language-presets.json':
@@ -130,6 +140,8 @@ def validate_sidecar(db, name, raw):
             _model('keybindings').decode_preferences(raw)
         elif name == 'keyboard-shortcuts.json':
             _model('keyboard_preferences').validate_keymap(raw)
+        elif name == 'progress-preferences.json':
+            _model('progress_preferences').validate_progress_preferences(raw)
         elif name == 'evidence-drafts.json':
             drafts = _model('evidence_drafts').validate_evidence_drafts(raw)
             for draft in drafts:
@@ -345,6 +357,7 @@ def snapshot(db, root, stage, *, max_bytes=MAX_BYTES, cancelled=lambda: False):
         entries.append(dict(filename=name, size_bytes=len(raw), sha256=sha256(raw).hexdigest()))
     if _capture(root, cancelled=cancelled) != before:
         raise RestoreError('application state changed during backup; pause its producer and retry')
+    _assistant_pairs(stage, entries)
     _check_cancelled(cancelled)
     return entries
 
@@ -367,6 +380,22 @@ def check_namespace(directory, inventory):
         _regular(directory / name)
 
 
+def _assistant_pairs(root, entries):
+    """Controls and restore gates must belong to the exact archived job."""
+    by_name = {entry['filename']: entry for entry in entries}
+    for name in by_name:
+        match = re.fullmatch(r'(state/assistant/[0-9a-f]{32})\.(control|restore-review)\.json', name)
+        if match is None:
+            continue
+        checkpoint = by_name.get(match[1] + '.json')
+        if checkpoint is None:
+            raise RestoreError('Assistant state has no matching job checkpoint.')
+        if match[2] == 'restore-review':
+            marker = _json(read_regular(root / name, sidecar_limit(name)))
+            if marker['checkpoint_sha256'] != checkpoint['sha256']:
+                raise RestoreError('Assistant restore review marker does not match its checkpoint.')
+
+
 def restore(db, source, stage, inventory, *, cancelled=lambda: False):
     for entry in inventory.entries:
         _check_cancelled(cancelled)
@@ -376,7 +405,28 @@ def restore(db, source, stage, inventory, *, cancelled=lambda: False):
             raise RestoreError('sidecar digest or size mismatch')
         validate_sidecar(db, name, raw)
         _write(stage, name, raw)
+    _assistant_pairs(stage, inventory.entries)
+    entries = list(inventory.entries)
+    names = {entry['filename'] for entry in entries}
+    total = sum(entry['size_bytes'] for entry in entries)
+    for entry in inventory.entries:
+        _check_cancelled(cancelled)
+        name = entry['filename']
+        if not re.fullmatch(r'state/assistant/[0-9a-f]{32}\.json', name):
+            continue
+        marker_name = name[:-5] + '.restore-review.json'
+        if marker_name in names:
+            continue
+        raw = read_regular(stage / name, sidecar_limit(name))
+        marker = _model('assistant.backup_state').restore_review_bytes(name, raw)
+        if len(entries) >= MAX_FILES or total + len(marker) > MAX_BYTES:
+            raise RestoreError('Restored assistant review markers exceed the sidecar budget.')
+        validate_sidecar(db, marker_name, marker)
+        _write(stage, marker_name, marker)
+        entries.append(dict(filename=marker_name, size_bytes=len(marker), sha256=sha256(marker).hexdigest()))
+        total += len(marker)
     _check_cancelled(cancelled)
+    return tuple(entries)
 
 
 def publish(stage, destination, entries, *, sync_directory):
