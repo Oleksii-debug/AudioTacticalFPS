@@ -15,6 +15,7 @@ from tempfile import TemporaryDirectory
 import threading
 import time
 import traceback
+import venv
 
 
 def run(report):
@@ -164,6 +165,60 @@ def run(report):
             if unrelated is not None:
                 unrelated.kill()
                 unrelated.wait(timeout=5)
+
+        # A Windows venv normally launches through a redirector. Its real
+        # interpreter, and a short child of that interpreter, can both finish
+        # before shutdown's current PID inventory. Keep this actual case in
+        # the installed probe; a base-Python-only test cannot qualify it.
+        environment = root / 'short-worker-venv'
+        venv.EnvBuilder(with_pip=False, symlinks=False).create(environment)
+        executable = environment / 'Scripts' / 'python.exe'
+        check('native short-worker venv is created without acquiring dependencies', executable.is_file())
+        report['short_venv_workers'] = []
+        worker_identity = (
+            "import ctypes,json,subprocess,sys\n"
+            "kernel=ctypes.WinDLL('kernel32',use_last_error=True)\n"
+            "kernel.GetModuleFileNameW.argtypes=(ctypes.c_void_p,ctypes.c_wchar_p,ctypes.c_uint32)\n"
+            "kernel.GetModuleFileNameW.restype=ctypes.c_uint32\n"
+            "image=ctypes.create_unicode_buffer(32768)\n"
+            "length=kernel.GetModuleFileNameW(None,image,len(image))\n"
+            "if not 0 < length < len(image): raise ctypes.WinError(ctypes.get_last_error())\n"
+        )
+        identity_output = (
+            "print(json.dumps({'prefix':sys.prefix,'base_prefix':sys.base_prefix,"
+            "'executable':sys.executable,'base_executable':sys._base_executable,"
+            "'native_image':image.value}),flush=True)\n"
+        )
+        for label, nested in (('short', ''), ('nested-short',
+                "child=subprocess.Popen([sys.executable,'-I','-B','-c','pass'])\n"
+                "if child.wait(timeout=5) != 0: raise RuntimeError('Short child failed')\n")):
+            observed = []
+            def observe_short(*args, **kwargs):
+                result = original_start(*args, **kwargs)
+                observed.append(result)
+                return result
+            process._start_process = observe_short
+            try:
+                result = process.run_process(
+                    [str(executable), '-I', '-B', '-c', worker_identity + nested + identity_output],
+                    owned_tree=True, budget=AudioBudget(timeout=10))
+            finally:
+                process._start_process = original_start
+            identity = json.loads(result.stdout.decode('utf-8'))
+            check(label + ' venv worker preserves the explicitly selected environment',
+                  Path(identity['prefix']).resolve() == environment.resolve()
+                  and Path(identity['executable']).resolve() == executable.resolve()
+                  and Path(identity['base_prefix']).resolve() != environment.resolve())
+            check(label + ' venv uses the real base interpreter behind its redirector',
+                  Path(identity['native_image']).resolve() == Path(identity['base_executable']).resolve()
+                  and Path(identity['native_image']).resolve() != executable.resolve())
+            job = observed[0]._carr_job
+            check(label + ' venv lifetime members and native streams finish before return',
+                  len(observed) == 1 and job._shutdown_total >= (4 if nested else 2)
+                  and job.handle is None and job.port is None
+                  and observed[0].stdout.closed and observed[0].stderr.closed)
+            report['short_venv_workers'].append(
+                dict(identity, case=label, lifetime_processes=job._shutdown_total))
     report['status'] = 'PASS'
 
 
