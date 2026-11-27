@@ -157,7 +157,8 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
             provider.SetSelection(0)
         load_languages()
 
-    def begin(label, operation, complete, *, progress_tracker=None, progress_outcome=None):
+    def begin(label, operation, complete, *, progress_tracker=None, progress_outcome=None,
+              done_is_observer=False):
         nonlocal busy
         if busy or not alive:
             return False
@@ -182,7 +183,8 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
             controls()
             report(str(error))
         started = frame.run_job(label, operation, done=finish, failed=failed,
-                                progress_tracker=progress_tracker, progress_outcome=progress_outcome)
+                                progress_tracker=progress_tracker, progress_outcome=progress_outcome,
+                                done_is_observer=done_is_observer)
         if started is False or (not getattr(frame, 'working', False) and busy):
             busy = False
             controls()
@@ -270,7 +272,7 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
                     wx.CallAfter(report, f'{done}/{total}: {phase}')
                 return service.resume(identity, cancelled=stopped, progress=advanced)
             begin('Translating explicitly approved text', translate, completed,
-                  progress_tracker=tracker, progress_outcome=translation_outcome)
+                  progress_tracker=tracker, progress_outcome=translation_outcome, done_is_observer=True)
         except Exception as exc:
             controls()
             report(str(exc))
@@ -342,7 +344,7 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
         begin('Exporting translation derivative',
               lambda: service.export(identity, destination, cancelled=stopped),
               lambda result: report('New derivative and immutable original saved in: ' + result['path']),
-              progress_outcome=translation_outcome)
+              progress_outcome=translation_outcome, done_is_observer=True)
 
     def close(event=None):
         nonlocal alive

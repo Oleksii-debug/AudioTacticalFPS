@@ -1,16 +1,21 @@
-# Universal Research Library
+# Резонанс / Resonance
 
-An offline research desktop for multiple libraries, authors and languages. Carr
-is an optional collection. All project changes stay in `carr-library/`; the
-unrelated repository's `main` branch is unchanged.
+A local desktop for research libraries, reading, derived documents and audio,
+by Sceneria Innovative Technologies. Carr is an optional collection. The Python
+package, existing data identities and internal CARR commands remain stable.
+The current platform requirements are in
+[V3 finalization](docs/UNIVERSAL_SCOPE_V3_FINALIZATION.md).
 
 ## Run the desktop
 
-The standalone Windows x64 candidate includes Python, dependencies and the
-verified local multilingual MiniLM model. Extract its complete folder, run
-`Install.cmd`, then `ResearchLibrary.cmd`. No Python installation or internet
-connection is needed for that bundle. `CheckInstallation.cmd` exercises a
-temporary synthetic library without touching personal research.
+The Windows x64 build tools assemble a self-contained installation folder with
+Python, pinned dependencies and the selected verified runtime/model components.
+Its native `ResearchLibrary.exe` entry verifies the folder, performs first
+installation when needed, and opens the desktop. The retained `Install.cmd`,
+`ResearchLibrary.cmd` and `CheckInstallation.cmd` entries remain available for
+installation, launch and a temporary synthetic self-test. A build is not a
+qualified delivery until its exact source, installed Windows behavior and
+component distribution profile have passed their separate acceptance gates.
 
 From a Python 3.11+ development environment:
 
@@ -69,6 +74,30 @@ instructions.
   matrix with exact quotations and separate notes through **Library tools**.
   Its bibliography exports use the same catalog service as the Bibliography
   menu. See [catalog tools](docs/CATALOG_TOOLS.md).
+- Create separate reading copies and narration plans without changing retained
+  originals; keep literal reading distinct from structured production scripts.
+- Render supported local speech/music projects through the existing audio
+  service, apply typed role effects, save projects and resume checked completed
+  work. The Studio includes bounded playback controls, device selection,
+  seeking, playlists and A–B repeat. See [Studio](docs/AUDIO_STUDIO_V3.md),
+  [effects](docs/LOCAL_STUDIO_EFFECTS.md) and [playback](docs/AUDIO_PLAYBACK.md).
+- Convert explicitly selected documents into separate UTF-8 text and provenance
+  files through isolated readers. Regenerate Word citations from the approved
+  bibliography and style while preserving source identities. See
+  [conversion](docs/DOCUMENT_CONVERSION.md) and
+  [citation regeneration](docs/WORD_CITATION_REGENERATION.md).
+- Prepare and review typed assistant plans through the same domain services.
+  Optional local LLM proposals do not grant additional tool or file authority.
+  Translation keeps the source and derived output separate and records provider
+  authorization, costs and uncertain interrupted requests. See
+  [assistant](docs/LOCAL_ASSISTANT.md) and [translation](docs/TRANSLATION.md).
+- Register an explicitly inspected external transcription runtime and model,
+  retain selected audio, admit checked results, save separate transcript edits
+  and export derivatives. Shared resource admission coordinates supported heavy
+  operations. Complete backups include accepted transcription work and edit
+  history while excluding external engines and transient worker caches; restored
+  execution requires review. See [transcription integration](docs/transcription_verified_protocol.md)
+  and [complete backup](docs/COMPLETE_BACKUP.md).
 
 TXT quotation text is independently checked against retained original bytes.
 PDF extraction and OCR require explicit independent review before being treated
@@ -79,12 +108,19 @@ score never approves a quotation.
 
 ## Candidate status and verification
 
-This is an integrated development candidate. The assembled services and installed
-Python package have real end-to-end tests, including offline local model
-inference, citation preservation, workspace isolation and backup recovery.
-The native Windows workflow also exercises installation, desktop controls, local
-model inference and scanned-source review. Manual NVDA acceptance remains a
-separate check; automated native UI tests do not establish its spoken behavior.
+This is an integrated development candidate. Required source and installed
+Windows workflows exercise actual subprocesses, local model inference, citation
+preservation, workspace isolation, backup recovery, native controls and scanned
+source review. Each result belongs to the exact tested source/tree and runtime;
+a passing component or earlier commit does not qualify a later whole build.
+Manual NVDA and listening acceptance remain separate checks.
+
+The complete V3 platform also requires the authorized owner voice engine,
+qualified real transcription/local-LLM/translation models, professional capture
+and multitrack workflows, the reviewed private signing/update/entitlement
+integration, and capability-specific language/quality acceptance. Adapter code,
+synthetic fixtures and the 135-language catalog do not establish those results.
+See [acceptance](docs/acceptance.md) for the complete required scope.
 
 The Windows bundle's hashes and dependency inventory are verified during
 assembly. Only local synthetic or lawfully supplied fixtures may be used in
@@ -104,6 +140,7 @@ python scripts/ci_check.py tests bootstrap docs/contracts/probes
 The adapters reuse SQLite/FTS5, pypdf, PDFium, Tesseract, python-docx, FastEmbed,
 ONNX Runtime and the already imported licensed components. Exact upstream
 notices and model/dependency pins are preserved with the source and distribution.
-See [scope](docs/UNIVERSAL_SCOPE_V2.md), [acceptance](docs/acceptance.md),
+See [current scope](docs/UNIVERSAL_SCOPE_V3_FINALIZATION.md),
+[retained library contracts](docs/UNIVERSAL_SCOPE_V2.md), [acceptance](docs/acceptance.md),
 [packaging](packaging/README.md), and
 [the control issue](https://github.com/Oleksii-debug/AudioTacticalFPS/issues/1).

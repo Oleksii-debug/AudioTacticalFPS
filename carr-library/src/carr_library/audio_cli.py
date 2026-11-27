@@ -43,7 +43,9 @@ def validate_audio_arguments(args, parser):
 def run_audio(args):
     from .audio.engines import default_registry
     from .audio.models import ProductionPlan
-    from .audio.production import parse_script, render_project
+    from .audio.production import parse_script
+    from .operations.studio import render_with_resources
+    from .operations.paths import data_directory
     from .reader.narration_text import decode_json, read_document
     from .audio.runtime import find_ffmpeg
     ffmpeg = find_ffmpeg(args.ffmpeg)
@@ -69,7 +71,8 @@ def run_audio(args):
         return 0
     if not ffmpeg:
         raise RuntimeError('Select an installed local FFmpeg executable with --ffmpeg.')
-    result = render_project(plan, args.audio_output, engine=registry, ffmpeg=Path(ffmpeg),
+    result = render_with_resources(data_directory(getattr(args, 'data_dir', None)),
+                            plan, args.audio_output, engine=registry, ffmpeg=Path(ffmpeg),
                             on_status=lambda text: print(text, file=sys.stderr, flush=True))
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0

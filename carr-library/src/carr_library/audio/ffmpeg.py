@@ -19,7 +19,7 @@ import tempfile
 import time
 
 from .jobs import checked_directory, check_cancelled, publish_new, regular_file, sha256_file
-from .models import Effect, FORMATS, SAMPLE_RATES, number
+from .models import Effect, EFFECT_CONTROLS, FORMATS, SAMPLE_RATES, number
 
 
 @dataclass(frozen=True)
@@ -127,7 +127,83 @@ def ffmpeg_identity(path):
     return {'binary_sha256': sha256_file(path), 'version': first}
 
 
-def effect_filters(effects):
+def _tempo_filters(value):
+    """Keep each atempo stage within its well supported 0.5..2 interval."""
+    filters = []
+    while value < 0.5:
+        filters.append('atempo=0.5')
+        value /= 0.5
+    while value > 2:
+        filters.append('atempo=2')
+        value /= 2
+    filters.append(f'atempo={value:.12g}')
+    return filters
+
+
+def _echo_decay(value):
+    """Keep positive echo gains representable by FFmpeg's float32 parser."""
+    # aecho rejects zero coefficients; normal float32 values also avoid
+    # dependence on a native worker's denormal/flush-to-zero mode.
+    if value < 2.0 ** -126:
+        raise ValueError('Echo reflection gain is too small. Choose zero mix for a dry signal '
+                         'or increase mix/decay.')
+    fixed = f'{value:.8f}'
+    # Preserve previously accepted fixed-format graphs and their defaults.
+    return fixed if float(fixed) > 0 else f'{value:.17g}'
+
+
+def _extended_effect(effect, sample_rate):
+    p = dict(effect.parameters)
+    values = {name: p.get(name, spec[0])
+              for name, spec in EFFECT_CONTROLS[effect.kind].items()}
+    kind, v = effect.kind, values
+    if kind == 'gain':
+        return [f'volume={v["gain_db"]:.8f}dB']
+    if kind in ('lowshelf', 'highshelf', 'notch'):
+        if v['frequency'] >= sample_rate / 2:
+            raise ValueError('Filter frequency must be below half the input sample rate.')
+        if kind == 'notch':
+            return [f'bandreject=f={v["frequency"]:.8f}:t=q:w={v["q"]:.8f}']
+        name = 'bass' if kind == 'lowshelf' else 'treble'
+        return [f'{name}=f={v["frequency"]:.8f}:t=q:w={v["q"]:.8f}:g={v["gain_db"]:.8f}']
+    if kind == 'limiter':
+        ceiling = 10 ** (v['ceiling_db'] / 20)
+        return [f'alimiter=limit={ceiling:.10f}:level=0:latency=1'
+                f':attack={v["attack_ms"]:.8f}:release={v["release_ms"]:.8f}']
+    if kind in ('declick', 'declip'):
+        return ['adeclick' if kind == 'declick' else 'adeclip']
+    if kind == 'deesser':
+        return [f'deesser=i={v["intensity"]:.8f}:m={v["max_reduction"]:.8f}:f={v["frequency"]:.8f}']
+    if kind == 'reverb':
+        if v['mix'] == 0:
+            return []
+        # Four bounded reflections, not convolution or an RT60 simulation.
+        delays = '|'.join(f'{v["room_ms"] * factor:.8f}' for factor in (1, 1.73, 2.39, 3.11))
+        decays = '|'.join(_echo_decay(v['mix'] * v['decay'] ** i) for i in (1, 2, 3, 4))
+        return [f'aecho=1:{1 / (1 + v["mix"]):.8f}:{delays}:{decays}']
+    if kind == 'chorus':
+        if v['mix'] == 0:
+            return []
+        return [f'chorus=1:{1 / (1 + v["mix"]):.8f}:{v["delay_ms"]:.8f}'
+                f':{v["mix"]:.8f}:{v["speed_hz"]:.8f}:{v["depth_ms"]:.8f}']
+    if kind == 'tempo':
+        return _tempo_filters(v['factor'])
+    if kind == 'pitch':
+        factor = 2 ** (v['semitones'] / 12)
+        # Establish the true input rate even when an earlier loudnorm stage
+        # negotiated a higher rate. A different output rate is not pitch.
+        return [f'aresample={sample_rate}', f'asetrate={sample_rate * factor:.12g}',
+                f'aresample={sample_rate}', *_tempo_filters(1 / factor)]
+    if kind == 'width':
+        return [f'extrastereo=m={v["factor"]:.8f}:c=0']
+    if kind == 'loudness':
+        return [f'loudnorm=I={v["target_lufs"]:.8f}:TP={v["peak_db"]:.8f}:LRA={v["range_lu"]:.8f}']
+    raise ValueError('Unsupported audio effect.')
+
+
+def effect_filters(effects, *, sample_rate=48000):
+    if type(sample_rate) is not int or not 8000 <= sample_rate <= 192000:
+        raise ValueError('Unsupported effect input sample rate.')
     filters = []
     for effect in effects:
         if not isinstance(effect, Effect):
@@ -135,22 +211,49 @@ def effect_filters(effects):
         if not effect.enabled:
             continue
         p = dict(effect.parameters)
-        if effect.kind == 'highpass':
-            filters.append(f"highpass=f={p.get('frequency', 80):.8f}")
-        elif effect.kind == 'lowpass':
-            filters.append(f"lowpass=f={p.get('frequency', 12000):.8f}")
+        if effect.kind in ('highpass', 'lowpass'):
+            default = 80 if effect.kind == 'highpass' else 12000
+            selected = f"{effect.kind}=f={p.get('frequency', default):.8f}"
+            if 'q' in p:
+                selected += f":t=q:w={p['q']:.8f}"
+            filters.append(selected)
         elif effect.kind == 'equalizer':
             filters.append(f"equalizer=f={p.get('frequency', 1000):.8f}:t=q:w={p.get('q', 1):.8f}:g={p.get('gain_db', 0):.8f}")
         elif effect.kind == 'gate':
             threshold = 10 ** (p.get('threshold_db', -45) / 20)
-            filters.append(f"agate=threshold={threshold:.10f}:attack={p.get('attack_ms', 10):.8f}:release={p.get('release_ms', 200):.8f}")
+            selected = f"agate=threshold={threshold:.10f}:attack={p.get('attack_ms', 10):.8f}:release={p.get('release_ms', 200):.8f}"
+            if 'ratio' in p:
+                selected += f":ratio={p['ratio']:.8f}"
+            if 'reduction_db' in p:
+                selected += f":range={10 ** (p['reduction_db'] / 20):.10f}"
+            filters.append(selected)
         elif effect.kind == 'compressor':
             threshold = 10 ** (p.get('threshold_db', -20) / 20)
-            filters.append(f"acompressor=threshold={threshold:.10f}:ratio={p.get('ratio', 3):.8f}:attack={p.get('attack_ms', 20):.8f}:release={p.get('release_ms', 250):.8f}")
+            selected = f"acompressor=threshold={threshold:.10f}:ratio={p.get('ratio', 3):.8f}:attack={p.get('attack_ms', 20):.8f}:release={p.get('release_ms', 250):.8f}"
+            if 'knee' in p:
+                selected += f":knee={p['knee']:.8f}"
+            if 'makeup_db' in p:
+                selected += f":makeup={10 ** (p['makeup_db'] / 20):.10f}"
+            if 'mix' in p:
+                selected += f":mix={p['mix']:.8f}"
+            filters.append(selected)
         elif effect.kind == 'delay':
-            filters.append(f"aecho=0.8:0.9:{p.get('delay_ms', 250):.8f}:{p.get('decay', 0.25):.8f}")
+            decay = p.get('decay', 0.25)
+            if decay == 0 or p.get('mix') == 0:
+                continue
+            if 'mix' in p:
+                reflection = _echo_decay(decay * p['mix'])
+                filters.append(f"aecho=1:{1 / (1 + p['mix']):.8f}:{p.get('delay_ms', 250):.8f}:{reflection}")
+            else:
+                reflection = _echo_decay(decay)
+                filters.append(f"aecho=0.8:0.9:{p.get('delay_ms', 250):.8f}:{reflection}")
         elif effect.kind == 'denoise':
-            filters.append(f"afftdn=nr={p.get('reduction_db', 10):.8f}")
+            selected = f"afftdn=nr={p.get('reduction_db', 10):.8f}"
+            if 'floor_db' in p:
+                selected += f":nf={p['floor_db']:.8f}"
+            filters.append(selected)
+        else:
+            filters.extend(_extended_effect(effect, sample_rate))
     return filters
 
 
@@ -174,10 +277,19 @@ def process_voice(source, output, *, ffmpeg, sample_rate=48000, pan=0.0, gain=1.
         raise ValueError('Unsupported sample rate.')
     number(pan, -1, 1, 'Pan')
     number(gain, 0, 2, 'Gain')
+    effects = tuple(effects)
+    selected_filters = effect_filters(effects, sample_rate=original.rate)
     left, right = math.sqrt((1 - pan) / 2), math.sqrt((1 + pan) / 2)
-    graph = ['aformat=sample_fmts=fltp:channel_layouts=mono', f'volume={gain:.9f}', *effect_filters(effects),
-             f'pan=stereo|c0={left:.9f}*c0|c1={right:.9f}*c0',
-             'alimiter=limit=0.95:level=0:latency=1']
+    placement = f'pan=stereo|c0={left:.9f}*c0|c1={right:.9f}*c0'
+    graph = ['aformat=sample_fmts=fltp:channel_layouts=mono', f'volume={gain:.9f}']
+    if any(effect.kind == 'width' and effect.enabled for effect in effects):
+        # A stereo width control needs the actual stereo placement. Preserve
+        # the declared chain order after placement when this new control is used.
+        graph.extend((placement, *selected_filters))
+    else:
+        # Existing projects keep their previous mono-effects-then-pan graph.
+        graph.extend((*selected_filters, placement))
+    graph.append('alimiter=limit=0.95:level=0:latency=1')
     with tempfile.TemporaryDirectory(prefix='.process-', dir=output.parent) as temp:
         target = Path(temp) / 'chunk.wav'
         run_ffmpeg(ffmpeg, ['-protocol_whitelist', 'file', '-f', 'wav', '-i', str(source),

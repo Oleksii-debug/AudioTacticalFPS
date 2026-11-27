@@ -38,10 +38,11 @@ This does not capture text still only in an open control: save it or allow its
 recovery draft to finish before starting the backup.
 
 Every included file has an exact byte count and SHA256 in the checked manifest.
-New backups use version 5 with the existing typed sidecars, explicit LOCAL ONLY
-restoration policy and a separate typed pending-import component. Even an empty
-queue has an explicit empty component. Restore still accepts the exact supported
-version-1 through version-4 layouts and validates their database schema. Older
+New backups use version 5, or version 6 when saved local transcription or resource
+policy state is present, with typed sidecars, explicit LOCAL ONLY restoration
+and a separate typed pending-import component. Even an empty queue has an explicit
+empty component. Restore still accepts the exact supported version-1 through
+version-6 layouts and validates their database schema. Older
 backups contain only the state supported by their original format; unknown or
 mixed manifest fields are rejected.
 
@@ -220,3 +221,44 @@ on a filesystem that supports hard links. This workflow coordinates application
 writers; it is not a guarantee against an unrelated process maliciously replacing
 directories during a backup. Native Windows/NVDA acceptance is tracked separately
 from portable file/database regression tests.
+
+
+## Typed local transcription and shared resource policy (conditional version 6)
+
+A library containing local transcription profiles/jobs or the saved cooperative
+resource policy uses complete-backup manifest version 6. A library without those
+files still writes the exact version-5 shape. Readers accept the exact supported
+version-1 through version-6 schemas; unknown fields and versions fail closed.
+
+The version-6 transcription component streams retained original audio/video,
+the job's accepted recognition receipts and every requested accepted export,
+separate saved edit history, inert runtime/model inventory records, and the
+small resource allowance policy. All payload hashes and sizes are checked against
+both the outer manifest and their typed cross-file bindings. Retained input
+identities, original recognition, edited derivatives and historical runtime
+provenance stay separate. Original source paths are historical labels and are
+not opened during backup or restore.
+
+The component shares the existing complete-backup aggregate byte and file limits.
+It cannot raise those limits. Large libraries or recordings that exceed the
+remaining allowance fail explicitly before publication; no job is silently
+dropped to make a snapshot fit. A job that is retaining a source, rendering
+recognition or saving an edit holds a shared state lock. Backup reports that
+state as busy and leaves the previous work intact.
+
+External Python installations, supplied worker source/helpers, model files,
+temporary worker caches and old launch controls, and live resource lease files
+are excluded. Their exclusion is recorded in the typed manifest. Accepted host
+results and edit history remain readable without those external installations.
+Unfinished recognition may need to repeat an unaccepted worker cache after
+restore; the backup does not claim to retain every temporary native-engine byte.
+External Audio Studio projects still use their separate explicit project archive.
+
+Restore revokes every runtime profile's execution trust and marks saved jobs for
+review. It does not load a model, start a worker, recreate a live lease or submit
+a remote operation. Incomplete jobs require a freshly inspected, explicitly
+trusted compatible runtime and an explicit rebind/resume. A completed job remains
+readable from its verified retained input and host receipts without re-execution.
+Recognition and reading edits remain unqualified derivatives, without citation
+authority. The saved resource allowances are cooperative policy, not a hardware
+capacity measurement.

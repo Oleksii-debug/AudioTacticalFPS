@@ -28,6 +28,10 @@
       {
         "name": "carr:academic-additions",
         "value": "bibtexparser 2.1.0, pylatexenc 2.11, quickjs-ng 0.18.0.2; verified Windows wheel hashes; prior uv inventory retained"
+      },
+      {
+        "name": "carr:runtime-addition",
+        "value": "packaging 26.4; exact verified universal wheel reused from the existing semantic lock; no runtime dependencies"
       }
     ]
   },
@@ -265,6 +269,34 @@
           "value": "CPython 3.11 Windows x64"
         }
       ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "carr-runtime-packaging@26.4",
+      "name": "packaging",
+      "version": "26.4",
+      "purl": "pkg:pypi/packaging@26.4",
+      "licenses": [
+        {
+          "expression": "Apache-2.0 OR BSD-2-Clause"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "81383611a09c1bc0b08b76e0fd5829d7c6824c65b27a6aee339da133f4233ea2"
+        }
+      ],
+      "properties": [
+        {
+          "name": "carr:target",
+          "value": "CPython 3.11 Windows x64"
+        },
+        {
+          "name": "carr:artifact",
+          "value": "packaging-26.4-py3-none-any.whl"
+        }
+      ]
     }
   ],
   "dependencies": [
@@ -318,7 +350,8 @@
         "wxpython-11@4.2.4",
         "carr-academic-bibtexparser@2.1.0",
         "carr-academic-pylatexenc@2.11",
-        "carr-academic-quickjs-ng@0.18.0.2"
+        "carr-academic-quickjs-ng@0.18.0.2",
+        "carr-runtime-packaging@26.4"
       ]
     },
     {
@@ -338,6 +371,9 @@
     },
     {
       "ref": "carr-academic-quickjs-ng@0.18.0.2"
+    },
+    {
+      "ref": "carr-runtime-packaging@26.4"
     }
   ]
 }

@@ -386,6 +386,7 @@ class ImportCenterActions:
 
 def show_import_center(frame, workspace):
     import wx
+    from wx.lib.scrolledpanel import ScrolledPanel
     from ..extract.page_ocr import Config
     from .ocr_options import config_summary
     from .progress_view import ProgressView
@@ -399,10 +400,16 @@ def show_import_center(frame, workspace):
             self.batch, self.summaries = None, ()
             self.mutable = []
             layout = wx.BoxSizer(wx.VERTICAL)
-            introduction = wx.StaticText(self, label='Prepare a file or folder import, review the plan, then start. '
+            # Keep progress and Cancel visible while the preparation controls
+            # scroll on a short display or with larger system fonts. The native
+            # scrolled panel also reveals children reached by keyboard focus.
+            content = self.content_panel = ScrolledPanel(self, style=wx.TAB_TRAVERSAL)
+            content.SetMinSize((760, 120))
+            content_layout = wx.BoxSizer(wx.VERTICAL)
+            introduction = wx.StaticText(content, label='Prepare a file or folder import, review the plan, then start. '
                        'Saved queues can be continued after restarting the program.')
             introduction.Wrap(750)
-            layout.Add(introduction, 0, wx.ALL, 8)
+            content_layout.Add(introduction, 0, wx.ALL, 8)
             options = wx.FlexGridSizer(cols=2, hgap=8, vgap=6)
             options.AddGrowableCol(1)
             self.collection_ids = [None]
@@ -410,60 +417,63 @@ def show_import_center(frame, workspace):
             for number, (identity, name) in enumerate(self.library.collections(workspace), 1):
                 self.collection_ids.append(identity)
                 collection_labels.append(f'{number}. Collection: {readable(name)}')
-            self.collection = wx.Choice(self, choices=collection_labels)
+            self.collection = wx.Choice(content, choices=collection_labels)
             self.collection.SetSelection(0)
             self.ocr_config = Config()
-            self.languages = wx.TextCtrl(self, value=config_summary(self.ocr_config),
+            self.languages = wx.TextCtrl(content, value=config_summary(self.ocr_config),
                                          style=wx.TE_READONLY | wx.TE_MULTILINE, size=(-1, 40))
             for label, control in [('Destination for new plans', self.collection),
                                    ('Text recognition languages for new plans', self.languages)]:
                 control.SetName(label)
-                options.Add(wx.StaticText(self, label=label), 0, wx.ALIGN_CENTER_VERTICAL)
+                options.Add(wx.StaticText(content, label=label), 0, wx.ALIGN_CENTER_VERTICAL)
                 options.Add(control, 1, wx.EXPAND)
             self.mutable.append(self.collection)
-            layout.Add(options, 0, wx.EXPAND | wx.ALL, 8)
-            models = self.ocr_models_button = wx.Button(self, label='Choose installed or managed OCR &models…')
+            content_layout.Add(options, 0, wx.EXPAND | wx.ALL, 8)
+            models = self.ocr_models_button = wx.Button(content, label='Choose installed or managed OCR &models…')
             models.SetName('Choose installed or managed OCR models for new plans')
             models.Bind(wx.EVT_BUTTON, self.choose_ocr_models)
             self.mutable.append(models)
-            layout.Add(models, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
-            self.recursive = wx.CheckBox(self, label='Include subfol&ders in new plans')
+            content_layout.Add(models, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+            self.recursive = wx.CheckBox(content, label='Include subfol&ders in new plans')
             self.recursive.SetValue(True)
             self.mutable.append(self.recursive)
-            layout.Add(self.recursive, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+            content_layout.Add(self.recursive, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
             add = wx.BoxSizer(wx.HORIZONTAL)
             for label, handler in [('&Add files...', self.add_files), ('Add &folder...', self.add_folder),
                                    ('Refresh saved &queues', self.refresh)]:
-                control = wx.Button(self, label=label)
+                control = wx.Button(content, label=label)
                 control.Bind(wx.EVT_BUTTON, handler)
                 self.mutable.append(control)
                 add.Add(control, 0, wx.RIGHT, 8)
-            layout.Add(add, 0, wx.ALL, 8)
-            layout.Add(wx.StaticText(self, label='Saved import batches'), 0, wx.LEFT | wx.RIGHT, 8)
-            self.batches = wx.ListBox(self, size=(-1, 65))
+            content_layout.Add(add, 0, wx.ALL, 8)
+            content_layout.Add(wx.StaticText(content, label='Saved import batches'), 0, wx.LEFT | wx.RIGHT, 8)
+            self.batches = wx.ListBox(content, size=(-1, 65))
             self.batches.SetName('Saved import batches')
             self.batches.Bind(wx.EVT_LISTBOX, self.select_batch)
             self.mutable.append(self.batches)
-            layout.Add(self.batches, 1, wx.EXPAND | wx.ALL, 8)
-            layout.Add(wx.StaticText(self, label='Files in the selected batch'), 0, wx.LEFT | wx.RIGHT, 8)
-            self.rows = wx.ListBox(self, size=(-1, 100))
+            content_layout.Add(self.batches, 1, wx.EXPAND | wx.ALL, 8)
+            content_layout.Add(wx.StaticText(content, label='Files in the selected batch'), 0, wx.LEFT | wx.RIGHT, 8)
+            self.rows = wx.ListBox(content, size=(-1, 100))
             self.rows.SetName('Files and import status')
             self.rows.Bind(wx.EVT_LISTBOX, self.select_row)
-            layout.Add(self.rows, 2, wx.EXPAND | wx.ALL, 8)
-            self.details = wx.TextCtrl(self, style=wx.TE_MULTILINE | wx.TE_READONLY, size=(-1, 70))
+            content_layout.Add(self.rows, 2, wx.EXPAND | wx.ALL, 8)
+            self.details = wx.TextCtrl(content, style=wx.TE_MULTILINE | wx.TE_READONLY, size=(-1, 70))
             self.details.SetName('Selected file details')
-            layout.Add(self.details, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
+            content_layout.Add(self.details, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
             actions = wx.FlexGridSizer(cols=2, hgap=8, vgap=6)
             actions.AddGrowableCol(0)
             actions.AddGrowableCol(1)
             for label, handler in [('&Start queued files', self.run),
                     ('&Retry failed or reviewed files', lambda event: self.run(event, retry=True)),
                     ('&Exclude or include selected file', self.toggle_row), ('Save re&port...', self.save_report)]:
-                control = wx.Button(self, label=label)
+                control = wx.Button(content, label=label)
                 control.Bind(wx.EVT_BUTTON, handler)
                 self.mutable.append(control)
                 actions.Add(control, 0, wx.EXPAND)
-            layout.Add(actions, 0, wx.EXPAND | wx.ALL, 8)
+            content_layout.Add(actions, 0, wx.EXPAND | wx.ALL, 8)
+            content.SetSizer(content_layout)
+            content.SetupScrolling(scroll_x=False, rate_y=12)
+            layout.Add(content, 1, wx.EXPAND)
             self.progress_view = ProgressView(self, settings_root=self.library.root,
                                               label='Import batch progress', wx_module=wx)
             layout.Add(self.progress_view.panel, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
@@ -484,7 +494,7 @@ def show_import_center(frame, workspace):
             bottom.Add(close)
             layout.Add(bottom, 0, wx.ALL, 8)
             self.SetSizer(layout)
-            self.SetMinSize((800, 650))
+            self.SetMinSize((800, 480))
             self.Bind(wx.EVT_CLOSE, self.close)
             self.refresh()
             self.batches.SetFocus() if self.summaries else self.collection.SetFocus()

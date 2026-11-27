@@ -14,7 +14,7 @@ concurrency:
 jobs:
   reconciled-source:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 45
     defaults:
       run:
         working-directory: carr-library
@@ -41,9 +41,9 @@ jobs:
           python -m pip install '.[test]'
           python -m pip check
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng
+          sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng ffmpeg
       - name: Verify every reconciled path with strict isolated suites
-        timeout-minutes: 15
+        timeout-minutes: 35
         run: |
           set -euo pipefail
           python -m compileall -q src bootstrap
@@ -105,5 +105,33 @@ jobs:
             tests/packaging/test_audio_runtime.py \
             tests/packaging/test_audio_acquisition.py \
             tests/audio/test_audio_runtime.py \
-            tests/packaging/test_windows_bundle.py
+            tests/packaging/test_windows_bundle.py \
+            tests/transcription/test_verified_protocol.py \
+            tests/transcription/test_verified_runtime.py \
+            tests/transcription/test_verified_runtime_dependencies.py \
+            tests/transcription/test_verified_runtime_launch.py \
+            tests/transcription/test_verified_runtime_recovery.py \
+            tests/transcription/test_verified_runtime_stdlib.py \
+            tests/transcription/test_verified_runtime_handoff_1.py \
+            tests/transcription/test_verified_runtime_handoff_2.py \
+            tests/transcription/test_verified_runtime_handoff_3.py \
+            tests/transcription/test_service.py \
+            tests/transcription/test_runtime_admission.py \
+            tests/operations/test_resources.py \
+            tests/operations/test_worker_start_cleanup.py \
+            tests/ui/test_transcription_dialog.py \
+            tests/ui/test_operations_policy.py \
+            tests/e2e/test_transcription_cli.py \
+            tests/ui/test_audio_studio.py \
+            tests/e2e/test_audio_cli.py \
+            tests/operations/test_root_production_admission.py \
+            tests/operations/test_root_facade.py \
+            tests/transcription/test_typed_backup.py \
+            tests/storage/test_library_backup.py \
+            tests/audio/test_extended_effects.py \
+            tests/ui/test_audio_effects.py \
+            tests/audio/test_playback.py \
+            tests/audio/test_player.py \
+            tests/ui/test_audio_playback_controls.py \
+            tests/operations/posix_fork_case.py
       # This source-only job supplements the complete native Windows/bundle gate.

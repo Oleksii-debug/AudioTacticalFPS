@@ -24,7 +24,7 @@ jobs:
   integrated-desktop:
     name: Windows x64 / CPython 3.11 / integrated desktop
     runs-on: windows-2022
-    timeout-minutes: 75
+    timeout-minutes: 120
     defaults:
       run:
         shell: pwsh
@@ -176,8 +176,20 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "CARR_CI_AUDIO_DIR=$audioRuntime" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
+      - name: Exercise native Import Center and durable batch workflow
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I tests/ui/native_import_center_smoke.py 2>&1 | Tee-Object 'ci-results/native-import-center.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise installed transcription controls and typed recovery before source suites
+        timeout-minutes: 20
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_asr_smoke.py --fixture-python (Join-Path $env:pythonLocation 'python.exe') --output 'ci-results/native-asr.json' 2>&1 | Tee-Object 'ci-results/native-asr.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Run required integrated source workflows
-        timeout-minutes: 30
+        timeout-minutes: 45
         run: |
           $env:CARR_OCR_DIR = $env:CARR_CI_OCR_DIR
           # Only this trusted test step needs command discovery for real fixtures.
@@ -375,15 +387,33 @@ jobs:
             'tests/storage/test_pending_backup.py',
             'tests/storage/test_complete_pending_backup.py',
             'tests/audio/test_narration_plan.py',
-            'tests/packaging/test_native_fresh_launcher.py'
+            'tests/packaging/test_native_fresh_launcher.py',
+            'tests/transcription/test_verified_protocol.py',
+            'tests/transcription/test_verified_runtime.py',
+            'tests/transcription/test_verified_runtime_dependencies.py',
+            'tests/transcription/test_verified_runtime_launch.py',
+            'tests/transcription/test_verified_runtime_recovery.py',
+            'tests/transcription/test_verified_runtime_stdlib.py',
+            'tests/transcription/test_verified_runtime_handoff_1.py',
+            'tests/transcription/test_verified_runtime_handoff_2.py',
+            'tests/transcription/test_verified_runtime_handoff_3.py',
+            'tests/transcription/test_service.py',
+            'tests/transcription/test_runtime_admission.py',
+            'tests/operations/test_resources.py',
+            'tests/operations/test_worker_start_cleanup.py',
+            'tests/ui/test_transcription_dialog.py',
+            'tests/ui/test_operations_policy.py',
+            'tests/e2e/test_transcription_cli.py',
+            'tests/operations/test_root_production_admission.py',
+            'tests/operations/test_root_facade.py',
+            'tests/transcription/test_typed_backup.py',
+            'tests/audio/test_extended_effects.py',
+            'tests/ui/test_audio_effects.py',
+            'tests/audio/test_playback.py',
+            'tests/audio/test_player.py',
+            'tests/ui/test_audio_playback_controls.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py --jobs 2 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Exercise native Import Center and durable batch workflow
-        timeout-minutes: 3
-        run: |
-          & $env:CARR_PYTHON -I tests/ui/native_import_center_smoke.py 2>&1 | Tee-Object 'ci-results/native-import-center.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise native reading copies, save commands and keyboard preferences
@@ -512,7 +542,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Build, install and exercise the complete bundle with runtime egress blocked
-        timeout-minutes: 30
+        timeout-minutes: 60
         run: |
           $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
           $wheelhouse = Join-Path $bundleWork 'wheelhouse'
@@ -603,6 +633,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path scripts/windows_academic_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-academic-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B tests/ui/native_import_center_smoke.py --bundle $bundle 2>&1 | Tee-Object 'ci-results/full-bundle-import-center-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_v3_reading_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-v3-reading-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_ocr_languages_smoke.py --require-bundled 2>&1 | Tee-Object 'ci-results/full-bundle-ocr-languages-native.txt'
@@ -620,6 +652,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_audio_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-audio-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/windows_audio_effects_smoke.py --native 2>&1 | Tee-Object 'ci-results/full-bundle-audio-effects-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B tests/ui/probe_advanced_search_native.py 2>&1 | Tee-Object 'ci-results/full-bundle-advanced-search.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B tests/ui/native_document_formats_smoke.py --native 2>&1 | Tee-Object 'ci-results/full-bundle-document-formats.txt'
@@ -629,6 +663,10 @@ jobs:
           & $installedPython -I -B scripts/windows_assistant_smoke.py --bundle $bundle 2>&1 | Tee-Object 'ci-results/full-bundle-assistant-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_translation_smoke.py --bundle $bundle --output 'ci-results/full-bundle-translation-native.json' 2>&1 | Tee-Object 'ci-results/full-bundle-translation-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/windows_conversion_smoke.py --bundle $bundle --output 'ci-results/full-bundle-conversion-native.json' 2>&1 | Tee-Object 'ci-results/full-bundle-conversion-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/windows_asr_smoke.py --fixture-python (Join-Path $env:pythonLocation 'python.exe') --output 'ci-results/full-bundle-asr-native.json' 2>&1 | Tee-Object 'ci-results/full-bundle-asr-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON -I -B packaging/native-launcher/probe_installed_windows.py --bundle-root $bundle --report 'ci-results/full-bundle-native-launcher.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -655,7 +693,7 @@ jobs:
           assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime'] and manifest['bundled_audio_runtime'] and manifest['bundled_native_launcher']
           # Test-only command discovery is scoped to this installed-package child.
           # Production calls bind the verified runtime and never mutate PATH.
-          os.environ['PATH'] = str(root / 'ocr') + os.pathsep + os.environ.get('PATH', '')
+          os.environ['PATH'] = str(root / 'audio-runtime' / 'bin') + os.pathsep + str(root / 'ocr') + os.pathsep + os.environ.get('PATH', '')
           os.environ['TESSDATA_PREFIX'] = str(root / 'ocr' / 'tessdata')
           runtime_handle = activate_bundled_runtime(bundle_root=root)
           assert runtime_handle is not None
@@ -752,6 +790,30 @@ jobs:
               'tests/storage/test_pending_backup.py',
               'tests/storage/test_complete_pending_backup.py',
               'tests/audio/test_narration_plan.py',
+              'tests/transcription/test_verified_protocol.py',
+              'tests/transcription/test_verified_runtime.py',
+              'tests/transcription/test_verified_runtime_dependencies.py',
+              'tests/transcription/test_verified_runtime_launch.py',
+              'tests/transcription/test_verified_runtime_recovery.py',
+              'tests/transcription/test_verified_runtime_stdlib.py',
+              'tests/transcription/test_verified_runtime_handoff_1.py',
+              'tests/transcription/test_verified_runtime_handoff_2.py',
+              'tests/transcription/test_verified_runtime_handoff_3.py',
+              'tests/transcription/test_service.py',
+              'tests/transcription/test_runtime_admission.py',
+              'tests/operations/test_resources.py',
+              'tests/operations/test_worker_start_cleanup.py',
+              'tests/ui/test_transcription_dialog.py',
+              'tests/ui/test_operations_policy.py',
+              'tests/e2e/test_transcription_cli.py',
+              'tests/operations/test_root_production_admission.py',
+              'tests/operations/test_root_facade.py',
+              'tests/transcription/test_typed_backup.py',
+              'tests/audio/test_extended_effects.py',
+              'tests/ui/test_audio_effects.py',
+              'tests/audio/test_playback.py',
+              'tests/audio/test_player.py',
+              'tests/ui/test_audio_playback_controls.py',
           ]
           # Preserve option/value pairs and run overlapping required suites once.
           arguments = sys.argv[2:]
@@ -782,6 +844,15 @@ jobs:
             foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
             foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
           }
+
+      - name: Qualify actual installed WinMM output and Studio playback controls
+        timeout-minutes: 5
+        run: |
+          $bundle = $env:CARR_CI_BUNDLE
+          if (!$bundle) { throw 'The complete installed bundle was not qualified.' }
+          $installedPython = Join-Path $bundle '.venv/Scripts/python.exe'
+          & $installedPython -I -B scripts/windows_playback_smoke.py --bundle $bundle --output 'ci-results/full-bundle-playback-native.json' 2>&1 | Tee-Object 'ci-results/full-bundle-playback-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       # Evidence only: no model, native DLLs, OCR source payload, or user documents
       # are uploaded. NVDA and final-download identity remain separate acceptance.

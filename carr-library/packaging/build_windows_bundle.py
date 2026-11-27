@@ -370,6 +370,7 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                      "ACCESSIBLE_PROGRESS.md", "CANONICAL_LANGUAGE_CATALOG.md",
                      "DOCUMENT_FORMATS_V3.md", "V3_BIBLIOGRAPHY.md", "LOCAL_ASSISTANT.md",
                      "WORD_CITATION_REGENERATION.md", "DOCUMENT_CONVERSION.md", "TRANSLATION.md",
+                    "LOCAL_STUDIO_EFFECTS.md", "AUDIO_PLAYBACK.md", "transcription_verified_protocol.md",
                      "UPSTREAM_CSL.md", "UPSTREAM_BIBTEX.md"):
             shutil.copyfile(regular(HERE.parent / "docs" / name), guides / name)
         if sbom is not None:

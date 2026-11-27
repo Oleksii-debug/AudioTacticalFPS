@@ -49,15 +49,57 @@ def digest(value):
     return hashlib.sha256(canonical(value).encode('utf-8')).hexdigest()
 
 
-EFFECT_PARAMETERS = {
-    'highpass': {'frequency': (20, 20000)},
-    'lowpass': {'frequency': (20, 20000)},
-    'equalizer': {'frequency': (20, 20000), 'gain_db': (-24, 24), 'q': (0.1, 20)},
-    'gate': {'threshold_db': (-90, 0), 'attack_ms': (0.1, 2000), 'release_ms': (1, 9000)},
-    'compressor': {'threshold_db': (-60, 0), 'ratio': (1, 20), 'attack_ms': (0.1, 2000), 'release_ms': (1, 9000)},
-    'delay': {'delay_ms': (1, 2000), 'decay': (0, 0.8)},
-    'denoise': {'reduction_db': (0.01, 30)},
+# Controls are data-only: (default, minimum, maximum, unit). Existing effects
+# retain their previous defaults when a newly exposed optional control is absent.
+EFFECT_CONTROLS = {
+    'highpass': {'frequency': (80, 20, 20000, 'Hz'), 'q': (0.707, 0.1, 20, 'Q')},
+    'lowpass': {'frequency': (12000, 20, 20000, 'Hz'), 'q': (0.707, 0.1, 20, 'Q')},
+    'equalizer': {'frequency': (1000, 20, 20000, 'Hz'), 'gain_db': (0, -24, 24, 'dB'),
+                  'q': (1, 0.1, 20, 'Q')},
+    'gate': {'threshold_db': (-45, -90, 0, 'dBFS'), 'attack_ms': (10, 0.1, 2000, 'ms'),
+             'release_ms': (200, 1, 9000, 'ms'), 'ratio': (2, 1, 100, 'ratio'),
+             'reduction_db': (-24, -120, 0, 'dB')},
+    'compressor': {'threshold_db': (-20, -60, 0, 'dBFS'), 'ratio': (3, 1, 20, 'ratio'),
+                   'attack_ms': (20, 0.1, 2000, 'ms'), 'release_ms': (250, 1, 9000, 'ms'),
+                   'knee': (2.828427, 1, 8, 'ratio'), 'makeup_db': (0, 0, 24, 'dB'),
+                   'mix': (1, 0, 1, 'fraction')},
+    'delay': {'delay_ms': (250, 1, 2000, 'ms'), 'decay': (0.25, 0, 0.8, 'fraction'),
+              'mix': (0.25, 0, 1, 'fraction')},
+    'denoise': {'reduction_db': (10, 0.01, 48, 'dB'), 'floor_db': (-50, -80, -20, 'dBFS')},
+    'gain': {'gain_db': (0, -120, 24, 'dB')},
+    'lowshelf': {'frequency': (120, 20, 20000, 'Hz'), 'gain_db': (0, -24, 24, 'dB'),
+                 'q': (0.707, 0.1, 20, 'Q')},
+    'highshelf': {'frequency': (5000, 20, 20000, 'Hz'), 'gain_db': (0, -24, 24, 'dB'),
+                  'q': (0.707, 0.1, 20, 'Q')},
+    'notch': {'frequency': (50, 20, 20000, 'Hz'), 'q': (10, 0.1, 100, 'Q')},
+    'limiter': {'ceiling_db': (-1, -24, 0, 'dBFS'), 'attack_ms': (5, 0.1, 80, 'ms'),
+                'release_ms': (50, 1, 8000, 'ms')},
+    'declick': {},
+    'declip': {},
+    'deesser': {'intensity': (0.3, 0, 1, 'fraction'), 'max_reduction': (0.5, 0, 1, 'fraction'),
+                'frequency': (0.5, 0, 1, 'normalized frequency')},
+    'reverb': {'room_ms': (40, 5, 200, 'ms'), 'decay': (0.4, 0.01, 0.85, 'fraction'),
+               'mix': (0.2, 0, 1, 'fraction')},
+    'chorus': {'delay_ms': (40, 1, 100, 'ms'), 'depth_ms': (2, 0.1, 10, 'ms'),
+               'speed_hz': (0.4, 0.1, 5, 'Hz'), 'mix': (0.25, 0, 1, 'fraction')},
+    'tempo': {'factor': (1, 0.25, 4, 'ratio')},
+    'pitch': {'semitones': (0, -12, 12, 'semitones')},
+    'width': {'factor': (1, 0, 2, 'ratio')},
+    'loudness': {'target_lufs': (-18, -40, -9, 'LUFS'), 'peak_db': (-1, -9, 0, 'dBTP'),
+                 'range_lu': (7, 1, 20, 'LU')},
 }
+EFFECT_PARAMETERS = {
+    kind: {name: (spec[1], spec[2]) for name, spec in values.items()}
+    for kind, values in EFFECT_CONTROLS.items()
+}
+
+
+def effect_controls():
+    """Return an independent, readable description for native controls/help."""
+    return {kind: {name: {'default': spec[0], 'minimum': spec[1],
+                         'maximum': spec[2], 'unit': spec[3]}
+                   for name, spec in values.items()}
+            for kind, values in EFFECT_CONTROLS.items()}
 
 
 @dataclass(frozen=True)

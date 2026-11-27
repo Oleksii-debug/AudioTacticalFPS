@@ -103,7 +103,8 @@ def convert_documents(frame):
 
     # DesktopFrame owns the worker, Cancel event and close-safe callback guards.
     frame.run_job('Converting reading documents', operation, done=done, failed=failed,
-                  progress_tracker=tracker, progress_outcome=lambda results: 'completed')
+                  progress_tracker=tracker, progress_outcome=lambda results: 'completed',
+                  done_is_observer=True)
 
 
 def install_conversion_actions(frame):

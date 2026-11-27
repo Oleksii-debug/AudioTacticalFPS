@@ -53,6 +53,7 @@ def test_save_open_preserves_immutable_source_and_derivative_and_dirty_state(con
     controller.save(path)
     assert not controller.dirty
     controller.edit_script(controller.script + '\nNew line.')
+    controller._operation_output = tmp_path / 'previous-render'
     assert controller.dirty
     controller.open(path)
     assert controller.draft.source_text == source
@@ -60,6 +61,7 @@ def test_save_open_preserves_immutable_source_and_derivative_and_dirty_state(con
     assert not controller.dirty
     assert controller.voice == 'test:local' and controller.output_dir == tmp_path
     assert controller.draft.can_undo
+    assert controller._operation_output is None
 
 
 def test_project_never_imports_an_executable_or_remote_mode(controller, tmp_path):

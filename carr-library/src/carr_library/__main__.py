@@ -63,6 +63,13 @@ def self_test():
 
 
 def main(argv=None):
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if arguments and arguments[0] in ('transcription', 'operations'):
+        if arguments[0] == 'transcription':
+            from .transcription_cli import main as command
+        else:
+            from .operations_cli import main as command
+        return command(arguments[1:])
     from . import __version__
     parser = argparse.ArgumentParser(description='Offline Universal Research Library')
     parser.add_argument('--version', action='version', version=__version__)

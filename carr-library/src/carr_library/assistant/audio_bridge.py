@@ -79,7 +79,7 @@ class LocalAudioProduction:
     def _produce(self, settings, output_root, cancelled, progress):
         from ..audio.jobs import atomic_json, checked_directory, check_cancelled, regular_file
         from ..audio.models import digest
-        from ..audio.production import render_project
+        from ..operations.studio import render_with_resources
 
         check_cancelled(cancelled)
         if self.ffmpeg is None:
@@ -118,8 +118,9 @@ class LocalAudioProduction:
         else:
             directory.mkdir(mode=0o700, exist_ok=False)
             atomic_json(directory / 'assistant-owner.json', expected)
-        result = render_project(plan, directory, engine=self.voices, ffmpeg=self.ffmpeg,
-                                cancelled=cancelled, on_status=progress)
+        result = render_with_resources(self.private_root, plan, directory,
+            engine=self.voices, ffmpeg=self.ffmpeg, operation_id='assistant-audio:' + identity,
+            cancelled=cancelled, on_status=progress)
         if result.get('status') != 'complete':
             raise RuntimeError('The renderer has not verified a completed output.')
         # Return every published output, not the private reusable render cache.
