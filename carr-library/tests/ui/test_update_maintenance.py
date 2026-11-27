@@ -5,6 +5,7 @@ operations below run on actual threads and use the existing TUF client/store.
 Only wx and the Desktop queue scheduling are supplied by this portable fixture.
 """
 import ast
+from contextlib import nullcontext
 from hashlib import sha256
 import json
 from pathlib import Path
@@ -136,7 +137,7 @@ def logical_ui():
             if task is not None:
                 self.tasks.append(task)
             def work():
-                with bind_progress(task):
+                with bind_progress(task) if task is not None else nullcontext():
                     value = operation()
                 self.results.append(value)
                 return value
