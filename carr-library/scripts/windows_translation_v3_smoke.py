@@ -107,6 +107,7 @@ def main():
         def close(self): pass
 
     actual_connection, actual_message, actual_directory = http.client.HTTPSConnection, wx.MessageBox, wx.DirDialog
+    actual_saved_chooser = wx.SingleChoiceDialog
     vault, reference, frame = WindowsCredentialVault(), None, None
     executor = ThreadPoolExecutor(max_workers=1)
     with TemporaryDirectory(prefix='resonance-translation-native-') as temporary:
@@ -119,17 +120,25 @@ def main():
             profile = profiles.save_google_token(store, vault, profile, 'SYNTHETIC_NATIVE_TOKEN', time() + 1800)
             reference = profile.credential_ref
             http.client.HTTPSConnection = SyntheticHTTPS
-            approvals = []
+            approvals, export_pickers, saved_choices = [], [], []
             def approve(message, *args, **kwargs):
                 approvals.append(message)
                 return wx.YES
             wx.MessageBox = approve
             class Directory:
-                def __init__(self, *args, **kwargs): pass
+                def __init__(self, *args, **kwargs): export_pickers.append(1)
                 def ShowModal(self): return wx.ID_OK
                 def GetPath(self): return str(root)
                 def Destroy(self): pass
             wx.DirDialog = Directory
+            class SavedChooser:
+                # Deterministic single saved-job selection; native outer controls are real.
+                def __init__(self, parent, message, title, choices):
+                    saved_choices.append(tuple(choices))
+                def ShowModal(self): return wx.ID_OK
+                def GetSelection(self): return 0
+                def Destroy(self): pass
+            wx.SingleChoiceDialog = SavedChooser
             frame = wx.Frame(None, title='Native Advanced v3 translation acceptance')
             frame.library = library
             frame.working = frame._closing = False
@@ -184,7 +193,40 @@ def main():
                     check('actual exported hashes', all(sha256((output / name).read_bytes()).hexdigest() == checksum for name, checksum in report['files'].items()))
                     check('verified glossary provenance', report['chunks'][0]['glossary_config']['glossary'] == glossary)
                     check('original selected text unchanged', selected.GetValue() == original)
-                    before = len(calls)
+                    # Exercise real outer native buttons against the existing saved job,
+                    # without another provider call, approval or destination picker.
+                    saved, = translation.TranslationService(library.root / 'state' / 'translation').list()
+                    fields = ((selected, original, 'Unrelated synthetic text'),
+                              (find('Source language code; auto detects'), 'en', 'auto'),
+                              (find('Target language code'), 'uk', 'sk'),
+                              (glossary_input, glossary, ''),
+                              (find('Maximum approved budget in USD; no default price'), saved['authorization']['budget'], '9'))
+                    price = find('Optional price per million characters in USD; your current contract rate')
+                    for control, expected, changed in fields:
+                        control.ChangeValue(changed)
+                    price.ChangeValue('99')
+                    before, approval_count, picker_count = len(calls), len(approvals), len(export_pickers)
+                    press(find('Saved jobs'))
+                    check('saved job label identifies exact account and job', len(saved_choices) == 1 and
+                          len(saved_choices[0]) == 1 and saved['id'] in saved_choices[0][0] and
+                          profile.id in saved_choices[0][0])
+                    for control, expected, changed in fields:
+                        check('restored native field: ' + control.GetName(), control.GetValue() == expected)
+                    check('restored job clears stale price', price.GetValue() == '')
+                    check('saved job status has focus and identity', wx.Window.FindFocus() is status and saved['id'] in status.GetValue())
+                    for control, expected, changed in fields:
+                        control.ChangeValue(changed)
+                        press(find('Translate / resume'))
+                        check('changed saved scope rejected: ' + control.GetName(),
+                              not frame.working and 'Visible settings differ' in status.GetValue() and
+                              wx.Window.FindFocus() is status and len(calls) == before and len(approvals) == approval_count)
+                        control.ChangeValue(expected)
+                    selected.ChangeValue('Unrelated synthetic text')
+                    press(find('Export'))
+                    check('mismatched saved export rejected before picker', not frame.working and
+                          'Visible settings differ' in status.GetValue() and wx.Window.FindFocus() is status and
+                          len(export_pickers) == picker_count and len(calls) == before)
+                    selected.ChangeValue(original)
                     press(find('Preview'))
                     glossary_input.ChangeValue(glossary + '-changed-after-review')
                     press(find('Translate / resume'))
@@ -208,6 +250,7 @@ def main():
         finally:
             executor.shutdown(wait=True, cancel_futures=True)
             http.client.HTTPSConnection, wx.MessageBox, wx.DirDialog = actual_connection, actual_message, actual_directory
+            wx.SingleChoiceDialog = actual_saved_chooser
             if reference:
                 vault.delete('native_translation', reference)
             if frame is not None:
@@ -218,7 +261,8 @@ def main():
         raise RuntimeError('\n'.join(errors))
     print(json.dumps({'status': 'PASS', 'checks': len(checks), 'synthetic_rest_calls': len(calls),
         'native_keyboard': 'PASS', 'live_google_api': 'WAITING_INPUT', 'billing_and_quality': 'WAITING_INPUT',
-        'native_approval_and_file_pickers': 'NOT_RUN', 'nvda': 'NOT_RUN'}), flush=True)
+        'native_approval_and_file_pickers': 'NOT_RUN', 'native_saved_job_picker': 'NOT_RUN',
+        'saved_job_outer_buttons': 'native; selection and field text supplied by probe', 'nvda': 'NOT_RUN'}), flush=True)
     return 0
 
 
