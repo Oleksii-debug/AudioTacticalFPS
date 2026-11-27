@@ -1209,7 +1209,8 @@ class AudioStudioDialog:
                         self.playback.resume()
                         self._message('Playback resume requested.')
                 self._with_quiet_output(resume)
-            elif status.state in ('playing', 'starting'):
+            elif (status.state in ('playing', 'starting')
+                  or status.state == 'completed' and self.playback.ab_loop is not None):
                 self.playback.pause()
                 self._message('Playback pause requested.')
             else:

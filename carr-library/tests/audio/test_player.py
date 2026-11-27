@@ -246,3 +246,44 @@ def test_empty_playlist_replacement_releases_device_without_closing_controller(t
     player.play(path)
     assert player.state == 'playing'
     player.close()
+
+
+@pytest.mark.parametrize('position', [0, .199, .7, 1])
+def test_seek_cannot_play_outside_an_active_repeat(tmp_path, native_player, position):
+    player, state = native_player
+    player.play(recording(tmp_path / 'range.wav'), device_id=7)
+    player.set_ab_loop(.2, .7)
+    player.pause()
+    before = list(state['plays'])
+    with pytest.raises(ValueError, match='active A–B range'):
+        player.seek(position)
+    assert state['plays'] == before and player.state == 'paused'
+    assert player.ab_loop == (.2, .7) and player.status().device_id == 7
+
+
+def test_pause_between_native_range_end_and_poll_holds_the_next_repeat(tmp_path, native_player):
+    player, state = native_player
+    player.play(recording(tmp_path / 'range.wav'), device_id=7)
+    player.set_ab_loop(.2, .7)
+    state.update(mode='completed', position=700)
+    assert player.pause() and player.state == 'paused'
+    assert state['plays'][-1] == {'path': player.path, 'start': .2, 'end': .7, 'device_id': 7}
+    before = len(state['plays'])
+    assert player.poll() is None and len(state['plays']) == before
+
+
+@pytest.mark.parametrize('end', [.7, 1])
+def test_clear_repeat_at_native_end_preserves_remaining_recording_before_queue(tmp_path, native_player, end):
+    player, state = native_player
+    first, second = recording(tmp_path / 'first.wav'), recording(tmp_path / 'second.wav')
+    player.set_playlist([first, second])
+    player.play_index(0, device_id=7)
+    player.set_ab_loop(.2, end)
+    state.update(mode='completed', position=round(end * 1000))
+    player.clear_ab_loop()
+    assert player.ab_loop is None
+    if end < 1:
+        assert player.poll() is None and player.playlist_index == 0
+        assert state['plays'][-1] == {'path': first, 'start': end, 'end': None, 'device_id': 7}
+        state.update(mode='completed', position=1000)
+    assert player.poll() == 'next' and player.path == second and player.playlist_index == 1

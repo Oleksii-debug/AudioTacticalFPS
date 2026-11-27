@@ -140,7 +140,12 @@ class WavePlayer:
         return getattr(self.native, operation)(*args)
 
     def pause(self):
-        if self.status().state not in ('playing', 'starting'):
+        state = self.status().state
+        if state == 'completed' and self._ab is not None and self.native is not None:
+            # The device can reach B between timer ticks. Keep Pause usable in
+            # that gap, before poll() starts the next repeat.
+            self._start(self.path, start_seconds=self._ab[0], end_seconds=self._ab[1])
+        elif state not in ('playing', 'starting'):
             return False
         self._native_control('pause')
         return True
@@ -158,8 +163,10 @@ class WavePlayer:
             raise ValueError('Choose a playback position within the recording.')
         if self.native is None:
             raise ValueError('Timeline seeking uses the native Windows player.')
+        if self._ab is not None and not self._ab[0] <= seconds < self._ab[1]:
+            raise ValueError('Choose a playback position inside the active A–B range, before B, or clear repeat first.')
         paused = self.state == 'paused'
-        end = self._ab[1] if self._ab is not None and seconds < self._ab[1] else None
+        end = self._ab[1] if self._ab is not None else None
         self._start(self.path, start_seconds=seconds, end_seconds=end)
         if paused:
             self.pause()
@@ -246,9 +253,11 @@ class WavePlayer:
                 self.pause()
 
     def clear_ab_loop(self):
-        state, position = self.state, self.position_seconds
+        snapshot = self.status()
+        state, position = snapshot.state, snapshot.position_seconds
+        finished_range = self._ab is not None and state == 'completed' and position < self.duration_seconds
         self._ab = None
-        if state in ('starting', 'playing', 'paused'):
+        if state in ('starting', 'playing', 'paused') or finished_range:
             self._start(self.path, start_seconds=position)
             if state == 'paused':
                 self.pause()

@@ -65,6 +65,15 @@ the next Play. Duplicate device names have numbered output labels. The GUI
 polls immutable state every 500 milliseconds without moving focus; the explicit
 Read playback status command moves focus to the readable status field.
 
+The Playback page adds a local playlist (at most 256 WAV/RF64 recordings),
+A–B repeat, a sleep timer and rendered chapter navigation. During A–B repeat,
+seeking must stay at or after A and before B; clear repeat to seek elsewhere.
+An invalid seek leaves the current device and playback state unchanged. Pause
+also works after the native stream reaches B but before the next timer tick.
+Clearing repeat at B continues the remainder of that recording before advancing
+the playlist. Repeat and queue transitions run on the existing GUI timer;
+native range endpoints prevent audio beyond B while waiting for that tick.
+
 Within Studio, Ctrl+Alt+Space pauses/resumes, Ctrl+Alt+Left/Right seeks ten seconds,
 and Ctrl+Alt+T reads playback status. Ctrl+Alt+P retains the existing current-operation
 progress command. Switching projects or importing another original
@@ -124,8 +133,9 @@ check the Windows ABI layouts and true RIFF/RF64 files. Those tests establish
 controller behavior and bounded reads, not Windows playback. Actual native
 device, audible quality and NVDA checks remain separate gates.
 
-This adaptation reuses playback.py and player.py unchanged from PR99, verified
-again at commit b74d9e26ea8c0a2f8dbed1c858deca48534366a4. Its Studio adapter keeps
+This adaptation reuses playback.py unchanged and the bounded player facade from
+PR99, verified again at commit b74d9e26ea8c0a2f8dbed1c858deca48534366a4. The facade
+adds the A–B boundary fixes described above. Its Studio adapter keeps
 the existing controller, render jobs, progress tracker and tone broker. Paused
 native playback retains tone suppression until stopped or completed; explicit
 resume cannot race an application progress tone.
@@ -139,6 +149,10 @@ identity and exercises public synthetic PCM through the actual WinMM API and
 native Studio controls. Physical speaker listening, manual keyboard and NVDA
 acceptance remain NOT_RUN until performed separately.
 
-Current cloud checkpoint execution is NOT_RUN. CI and installed evidence must
-name the exact composed source and runtime before this feature is treated as
-accepted for delivery.
+The final six-suite playback/Studio run passed 111 portable cases on Python
+3.12.14, with zero skips; the focused player/control subset passed all 50 cases.
+These runs used controlled native device doubles on Linux. The installed probe
+compiled and its actual non-Windows invocation returned 77/NOT_RUN. Windows
+device execution remains NOT_RUN for this checkpoint. CI and
+installed evidence must name the exact composed source and runtime before this
+feature is treated as accepted for delivery.

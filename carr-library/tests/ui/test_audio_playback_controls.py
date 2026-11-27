@@ -205,3 +205,12 @@ def test_native_cleanup_failure_keeps_progress_suppression_owned():
     view.playback.native = SimpleNamespace(_cleanup_error='Synthetic retained native buffers')
     view._sync_playback_media()
     view.progress_view.set_media_active.assert_called_once_with(True)
+
+
+def test_pause_toggle_accepts_the_native_range_end_before_the_next_timer_tick():
+    view = studio(state='completed')
+    view.playback.ab_loop = (.2, .7)
+    view.pause_resume()
+    view.playback.pause.assert_called_once_with()
+    view.playback.resume.assert_not_called()
+    view._error.assert_not_called()
