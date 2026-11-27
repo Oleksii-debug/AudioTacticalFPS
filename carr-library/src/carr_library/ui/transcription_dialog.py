@@ -191,11 +191,14 @@ class TranscriptionController:
         return self._job('Checking local transcription dependencies', work, done)
 
     def refresh(self):
-        def done(rows):
+        def done(value):
+            rows = value['jobs']
             self.jobs = rows
             self.report(f'{len(rows)} saved jobs. Select one to inspect verified results and its original settings.', focus=True)
+        # Listing an old failed job is a successful inspection, not a new failed
+        # operation. Do not feed historical row statuses to the host reducer.
         return self._job('Checking saved transcription jobs',
-                         lambda progress: self._service().jobs(cancelled=self._cancelled), done)
+                         lambda progress: {'jobs': self._service().jobs(cancelled=self._cancelled)}, done)
 
     def inspect(self, job_id):
         return self._job('Opening saved transcription job',
@@ -347,14 +350,14 @@ def create_transcription_dialog(frame, *, controller_factory=TranscriptionContro
 
             self.manifest = field('Local runtime &manifest', wx.TextCtrl, style=wx.TE_READONLY)
             self.choose_runtime, self.verify = buttons([
-                ('Choose &runtime manifest…', self.choose_manifest),
-                ('&Check local dependencies', lambda event: self.controller.verify_runtime())])
+                ('&Browse runtime manifest…', self.choose_manifest),
+                ('&Verify local dependencies', lambda event: self.controller.verify_runtime())])
             self.dependencies = field('Local dependency status', wx.TextCtrl,
                 style=wx.TE_READONLY | wx.TE_MULTILINE, size=(-1, 50))
             self.files = field('Audio &inputs', wx.ListBox, size=(-1, 65))
             self.choose_files_button, self.folder_inputs_button, self.new_button = buttons([
-                ('&Choose audio files…', self.choose_files),
-                ('&Add folder (direct files)…', self.choose_folder),
+                ('Choose &audio files…', self.choose_files),
+                ('Add &folder (direct files)…', self.choose_folder),
                 ('&New job', lambda event: self.controller.set_files(()))])
             settings = wx.FlexGridSizer(cols=4, hgap=6, vgap=4)
             self.settings_controls = []
@@ -365,7 +368,7 @@ def create_transcription_dialog(frame, *, controller_factory=TranscriptionContro
                 self.settings_controls.append(control)
                 return control
             self.language = setting('&Language (auto or code)', wx.TextCtrl(panel, value='auto'))
-            self.task = setting('Recognition &task', wx.Choice(panel, choices=['Transcribe spoken language', 'Translate to English']))
+            self.task = setting('Recognition tas&k', wx.Choice(panel, choices=['Transcribe spoken language', 'Translate to English']))
             self.device = setting('Processing &device', wx.Choice(panel, choices=['cpu', 'cuda']))
             self.compute = setting('Compute &type', wx.Choice(panel, choices=['int8', 'int8_float16', 'int8_float32', 'float16', 'float32']))
             for choice in (self.task, self.device, self.compute):
@@ -389,10 +392,10 @@ def create_transcription_dialog(frame, *, controller_factory=TranscriptionContro
             self.jobs = field('Saved transcription &jobs', wx.ListBox, proportion=1, size=(-1, 100))
             self.jobs.Bind(wx.EVT_LISTBOX, self.select_job)
             self.refresh_button, = buttons([('&Refresh jobs', lambda event: self.controller.refresh())])
-            self.results = field('Completed transcription &results', wx.ListBox, proportion=1, size=(-1, 100))
+            self.results = field('Completed transcription res&ults', wx.ListBox, proportion=1, size=(-1, 100))
             self.results.Bind(wx.EVT_LISTBOX, lambda event: self.render())
             self.edit_button, self.folder_button = buttons([
-                ('&Edit TXT reading copy', self.edit), ('Open result &folder', self.open_folder)])
+                ('&Edit TXT reading copy', self.edit), ('Open result f&older', self.open_folder)])
             job_page.SetSizer(layout)
             self.pages.AddPage(job_page, 'Saved jobs and results')
             root_layout.Add(self.pages, 1, wx.EXPAND | wx.ALL, 6)
@@ -405,7 +408,7 @@ def create_transcription_dialog(frame, *, controller_factory=TranscriptionContro
                                 style=wx.TE_READONLY | wx.TE_MULTILINE, size=(-1, 100))
             self.query_button, self.close_button = buttons([
                 ('Read pro&gress (Ctrl+Alt+G)', lambda event: self.status.SetFocus()),
-                ('C&lose', self.close)])
+                ('Close (Esc)', self.close)])
             self.SetSizer(layout)
             self.SetEscapeId(self.close_button.GetId())
             self.Bind(wx.EVT_CLOSE, self.close)

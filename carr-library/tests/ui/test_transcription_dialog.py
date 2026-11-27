@@ -409,3 +409,14 @@ def test_failed_folder_scan_keeps_previous_file_selection(setup):
     setup.host.finish()
     assert setup.controller.paths == ['/keep.wav']
     assert 'file-count limit' in setup.controller.status
+
+
+
+@pytest.mark.parametrize('status', ['queued', 'paused', 'failed', 'invalid'])
+def test_history_status_does_not_turn_refresh_into_new_failed_operation(setup, status):
+    from carr_library.ui.operation_progress import operation_outcome
+    setup.service.record['status'] = status
+    setup.controller.refresh()
+    result = setup.host.finish()['value']
+    assert operation_outcome(result) == 'succeeded'
+    assert setup.controller.jobs[0]['status'] == status
