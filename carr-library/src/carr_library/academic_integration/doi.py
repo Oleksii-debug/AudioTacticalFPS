@@ -740,7 +740,7 @@ class DoiMetadataClient:
         self.min_interval_seconds = float(min_interval_seconds)
         self._cache: OrderedDict[str, tuple[float, DoiMetadataPreview]] = OrderedDict()
         self._next_call: dict[str, float] = {}
-        self._cooldown: dict[str, float] = {}
+        self._cooldown: dict[str, int] = {}
         self._lock = Lock()
 
     def clear_cache(self) -> None:
@@ -773,9 +773,10 @@ class DoiMetadataClient:
             sources: list[MetadataProvenance] = []
             for provider in self.providers:
                 _cancel(cancelled)
-                cooldown = self._cooldown.get(provider, 0) - time.monotonic()
+                cooldown = self._cooldown.get(provider, 0) - time.monotonic_ns()
                 if cooldown > 0:
-                    raise DoiMetadataError("rate_limited", provider, retry_after_seconds=math.ceil(cooldown))
+                    raise DoiMetadataError("rate_limited", provider,
+                                           retry_after_seconds=(cooldown + 999_999_999) // 1_000_000_000)
                 while self._next_call.get(provider, 0) > time.monotonic():
                     _cancel(cancelled)
                     time.sleep(min(.05, max(0, self._next_call[provider] - time.monotonic())))
@@ -789,7 +790,8 @@ class DoiMetadataClient:
                     result = (_crossref if provider == "crossref" else _unpaywall)(value, request)
                 except DoiMetadataError as error:
                     if error.code == "rate_limited":
-                        self._cooldown[provider] = time.monotonic() + (error.retry_after_seconds or 60)
+                        self._cooldown[provider] = (time.monotonic_ns()
+                            + (error.retry_after_seconds or 60) * 1_000_000_000)
                     raise
                 except InterruptedError:
                     raise

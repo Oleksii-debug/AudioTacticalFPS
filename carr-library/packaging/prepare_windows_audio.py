@@ -229,7 +229,13 @@ def prepare(lock_path, cache, output, *, download=False):
             seen, selected = set(), {}
             total = 0
             for member in members:
-                name = member.filename.rstrip('/') if member.is_dir() else member.filename
+                # ZipInfo normalizes backslashes on Windows and truncates NUL.
+                # Validate the original archive spelling before either can hide
+                # a rejected member from the complete-inventory check.
+                raw_name = member.orig_filename
+                if raw_name != member.filename:
+                    raise ValueError('Unsafe relative path in audio ZIP.')
+                name = raw_name.rstrip('/') if member.is_dir() else raw_name
                 relative(name)
                 if name.casefold() in seen:
                     raise ValueError('Audio ZIP has duplicate or case-colliding paths.')
