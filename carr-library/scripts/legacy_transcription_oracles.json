@@ -3,7 +3,7 @@
   "feature": "Canonical earlier ASR recovery through current V43 preparation",
   "owner_provenance": "f8d5f85619b61fb52df24c7eb2f5dd4d1febc18f",
   "base": "99405f10d88768534f7d0ff1df3da86cea3f77ce",
-  "total_cases": 265,
+  "total_cases": 268,
   "fixture_multipliers": 1,
   "tests": {
     "tests/storage/test_legacy_transcription_recovery.py": {
@@ -176,7 +176,7 @@
       "test_changed_saved_profile_cannot_enter_supervisor": 3,
       "test_new_job_drops_machine_profile_selection_without_rebinding_outputs": 1,
       "test_saved_runtime_picker_shows_only_enabled_transcription_profiles": 1,
-      "test_shared_profile_selector_preserves_explicit_scope_and_contract": 0,
+      "test_shared_profile_selector_preserves_explicit_scope_and_contract": 3,
       "test_profile_cancel_or_invalid_choice_does_not_change_saved_selection": 2,
       "test_library_wide_profile_uses_one_entrypoint_without_adopting_active_workspace": 1,
       "test_workspace_profiles_keep_their_existing_active_scope_requirement": 2,
@@ -219,5 +219,14 @@
       "carr_library.ui.transcription_v43_dialog"
     ]
   },
-  "status": "DECLARED_REQUIRES_ACTUAL_EXECUTION"
+  "status": "DECLARED_REQUIRES_ACTUAL_EXECUTION",
+  "actual_collection_correction": {
+    "source_run": 46009009552,
+    "job": 140539398233,
+    "original_declared_total": 265,
+    "observed_total": 268,
+    "observed_passed_per_lane": 267,
+    "observed_failed_per_lane": 1,
+    "reason": "The range(3) profile-selector parametrization was incorrectly declared as zero; all three cases were actually executed."
+  }
 }
