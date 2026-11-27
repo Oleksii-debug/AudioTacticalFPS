@@ -16,6 +16,7 @@ from pathlib import Path
 import platform
 import socket
 import struct
+import subprocess
 import sys
 import sysconfig
 from tempfile import TemporaryDirectory
@@ -74,14 +75,10 @@ def main():
     user32.GetWindowThreadProcessId.restype = wintypes.DWORD
     user32.GetWindow.argtypes = [wintypes.HWND, wintypes.UINT]
     user32.GetWindow.restype = wintypes.HWND
-    user32.GetDlgItem.argtypes = [wintypes.HWND, ctypes.c_int]
-    user32.GetDlgItem.restype = wintypes.HWND
     user32.GetDlgCtrlID.argtypes = [wintypes.HWND]
     user32.GetDlgCtrlID.restype = ctypes.c_int
     user32.IsWindowVisible.argtypes = [wintypes.HWND]
     user32.IsWindowVisible.restype = wintypes.BOOL
-    user32.IsWindowEnabled.argtypes = [wintypes.HWND]
-    user32.IsWindowEnabled.restype = wintypes.BOOL
 
     def native_title(handle):
         title = ctypes.create_unicode_buffer(512)
@@ -100,6 +97,49 @@ def main():
                 and native_title(handle) == 'Replace bibliography file'):
             return handle
         return None
+
+    def accessible_buttons(handle):
+        # Modern TaskDialog buttons can be virtual DirectUI elements: their
+        # accessible focus is not the HWND returned by GetFocus(). Read the
+        # actual Windows UI Automation tree from a hidden, separate process.
+        # Keep the GUI thread dispatching messages while this worker runs.
+        script = r'''
+$ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
+$root = [System.Windows.Automation.AutomationElement]::FromHandle([IntPtr]__WINDOW_HANDLE__)
+if ($root.Current.ProcessId -ne __PROCESS_ID__) { throw 'The dialog belongs to another process.' }
+$condition = [System.Windows.Automation.PropertyCondition]::new(
+    [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
+    [System.Windows.Automation.ControlType]::Button)
+$elements = $root.FindAll([System.Windows.Automation.TreeScope]::Descendants, $condition)
+if ($elements.Count -gt 12) { throw 'Unexpected number of native dialog buttons.' }
+$buttons = @(
+    foreach ($element in $elements) {
+        $info = $element.Current
+        [ordered]@{
+            name = $info.Name
+            automation_id = $info.AutomationId
+            process_id = $info.ProcessId
+            focused = $info.HasKeyboardFocus
+            enabled = $info.IsEnabled
+            offscreen = $info.IsOffscreen
+            keyboard_focusable = $info.IsKeyboardFocusable
+        }
+    }
+)
+[ordered]@{name = $root.Current.Name; process_id = $root.Current.ProcessId; buttons = $buttons} |
+    ConvertTo-Json -Depth 4 -Compress
+'''.replace('__WINDOW_HANDLE__', str(int(handle))).replace('__PROCESS_ID__', str(os.getpid()))
+        powershell_path = (Path(os.environ['SystemRoot']) / 'System32' / 'WindowsPowerShell'
+                           / 'v1.0' / 'powershell.exe')
+        result = subprocess.run(
+            [str(powershell_path), '-NoLogo', '-NoProfile', '-NonInteractive', '-Mta', '-Command', script],
+            capture_output=True, text=True, encoding='utf-8', timeout=8,
+            creationflags=subprocess.CREATE_NO_WINDOW, check=False)
+        if result.returncode or len(result.stdout) > 32768:
+            raise RuntimeError('Native UI Automation observation failed: ' + result.stderr[:2000])
+        return json.loads(result.stdout.lstrip('\ufeff'))
 
     def check(name, condition):
         if not condition:
@@ -294,6 +334,7 @@ def main():
 
     frame = review = dialog = None
     executor = ObservedExecutor()
+    accessibility = ThreadPoolExecutor(max_workers=1, thread_name_prefix='native-dialog-observer')
     release = threading.Event()
     with TemporaryDirectory(prefix='research-bibliography-native-') as temporary:
         root = Path(temporary)
@@ -584,27 +625,43 @@ def main():
                     yield from pump_until(lambda: overwrite_prompt() is not None,
                                'The real native overwrite confirmation did not open.')
                     handle = overwrite_prompt()
-                    # Win32 standard IDs: IDYES=6, IDNO=7. wxMSW uses them for
-                    # both MessageBox and TaskDialogIndirect implementations.
-                    yes_button = user32.GetDlgItem(handle, 6)
-                    no_button = user32.GetDlgItem(handle, 7)
+                    buttons = yield from observe_overwrite_buttons(handle)
                     check('overwrite confirmation is an owned native dialog with Yes and No',
                           user32.GetWindow(handle, 4) == dialog.GetHandle()
-                          and yes_button and no_button
-                          and user32.IsWindowVisible(yes_button) and user32.IsWindowVisible(no_button)
-                          and user32.IsWindowEnabled(yes_button) and user32.IsWindowEnabled(no_button))
-                    yield from pump_until(lambda: user32.GetFocus() == no_button,
-                               'The real overwrite dialog did not focus its default No button.')
+                          and set(buttons) == {'yes', 'no'}
+                          and all(item['enabled'] and item['keyboard_focusable'] and not item['offscreen']
+                                  for item in buttons.values()))
                     check('the real overwrite confirmation starts with No focused by default',
-                          user32.GetFocus() == no_button)
-                    return handle, yes_button
+                          buttons['no']['focused'] and not buttons['yes']['focused'])
+                    return handle
 
-                def answer_yes(handle, yes_button):
+                def observe_overwrite_buttons(handle):
+                    future = accessibility.submit(accessible_buttons, handle)
+                    yield from pump_until(future.done,
+                               'Native UI Automation did not finish observing the overwrite dialog.')
+                    snapshot = future.result()
+                    print(json.dumps({'native_overwrite_accessibility': snapshot,
+                                      'native_handle': int(handle),
+                                      'owner_handle': int(user32.GetWindow(handle, 4) or 0),
+                                      'expected_owner_handle': int(dialog.GetHandle())}, sort_keys=True), flush=True)
+                    if (overwrite_prompt() != handle or snapshot['process_id'] != os.getpid()
+                            or snapshot['name'] != 'Replace bibliography file'):
+                        raise AssertionError('The observed native overwrite dialog changed identity.')
+                    buttons = {}
+                    for item in snapshot['buttons']:
+                        name = item['name'].replace('&', '').strip().casefold()
+                        if name in ('yes', 'no'):
+                            if name in buttons or item['process_id'] != os.getpid():
+                                raise AssertionError('Native overwrite buttons have ambiguous ownership.')
+                            buttons[name] = item
+                    return buttons
+
+                def answer_yes(handle):
                     yield from key(wx.WXK_TAB, wx.MOD_SHIFT)
-                    yield from pump_until(lambda: overwrite_prompt() == handle
-                                          and user32.GetFocus() == yes_button,
-                               'Shift+Tab did not reach the real overwrite Yes button.')
-                    check('native keyboard navigation reaches the overwrite Yes button', True)
+                    buttons = yield from observe_overwrite_buttons(handle)
+                    check('native keyboard navigation reaches the overwrite Yes button',
+                          set(buttons) == {'yes', 'no'}
+                          and buttons['yes']['focused'] and not buttons['no']['focused'])
                     yield from key(wx.WXK_RETURN)
 
                 def export_finished(count):
@@ -636,12 +693,12 @@ def main():
                     changed = root / 'native changed during confirmation.txt'
                     changed.write_bytes(b'Original file shown for replacement')
                     count = yield from begin_native_export(changed)
-                    handle, yes_button = yield from real_overwrite_prompt()
+                    handle = yield from real_overwrite_prompt()
                     competing = b'Newer work saved while the real confirmation is open'
                     changed.write_bytes(competing)
                     check('the competing save occurs while the actual overwrite question remains open',
                           overwrite_prompt() == handle and changed.read_bytes() == competing)
-                    yield from answer_yes(handle, yes_button)
+                    yield from answer_yes(handle)
                     job = yield from export_finished(count)
                     check('real Yes after a competing save fails closed and preserves the newer bytes',
                           isinstance(job['future'].exception(), ValueError)
@@ -652,8 +709,8 @@ def main():
                     approved = root / 'native approved overwrite.txt'
                     approved.write_bytes(b'Unchanged file explicitly approved for replacement')
                     count = yield from begin_native_export(approved)
-                    handle, yes_button = yield from real_overwrite_prompt()
-                    yield from answer_yes(handle, yes_button)
+                    handle = yield from real_overwrite_prompt()
+                    yield from answer_yes(handle)
                     job = yield from export_finished(count)
                     check('real Yes replaces only the unchanged approved destination',
                           approved.read_bytes() == job['future'].result().encode('utf-8')
@@ -843,6 +900,7 @@ def main():
                 raise RuntimeError('The native event loop stopped before completing every scenario.')
         finally:
             release.set()
+            accessibility.shutdown(wait=True, cancel_futures=True)
             executor.shutdown(wait=True, cancel_futures=True)
             if dialog is not None:
                 dialog.Destroy()
