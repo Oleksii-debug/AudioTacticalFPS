@@ -24,7 +24,7 @@ from .audio.model_manifest import (LocalModelManifest, _read_json_snapshot, dige
                                    local_path, offline_environment)
 from .audio.models import canonical
 from .audio.engines import _start_process
-from .transcription_host import read_worker_status
+from .transcription_host import read_worker_status, _STATUS_REPLACE_BOOTSTRAP
 from .ingest.writer_guard import exclusive_writer
 from .transcription_receipt import PROTOCOL, validate_settings, verify_completion
 from .transcription_state import (
@@ -34,6 +34,17 @@ from .transcription_state import (
 )
 
 _STATES = frozenset(('queued', 'verifying', 'running', 'paused', 'cancelled', 'failed', 'complete'))
+
+# The reviewed V43 protocol keeps its own worker policy. Share only the exact
+# status-file replacement startup used by the other supplied-worker profiles.
+_SUPPLIED_WORKER_BOOTSTRAP = (r'''
+import os, pathlib, runpy, sys
+job = pathlib.Path(sys.argv[2]).resolve(strict=True)
+worker = pathlib.Path(sys.argv[1]).resolve(strict=True)
+sys.dont_write_bytecode = True
+''' + _STATUS_REPLACE_BOOTSTRAP + r'''sys.argv = [str(worker), '--job-dir', str(job)]
+runpy.run_path(str(worker), run_name='__main__')
+''')
 
 
 def _now():
@@ -273,8 +284,9 @@ class TranscriptionService:
                 with tempfile.TemporaryFile() as output:
                     # The shared launcher owns the exact Windows Job Object
                     # and POSIX process group, including exited-helper descendants.
-                    process = _start_process([str(runtime.interpreter), '-B', '-I', str(runtime.worker),
-                                              '--job-dir', str(job)], stdin=subprocess.DEVNULL,
+                    process = _start_process([str(runtime.interpreter), '-B', '-I', '-c',
+                                              _SUPPLIED_WORKER_BOOTSTRAP, str(runtime.worker), str(job)],
+                                             stdin=subprocess.DEVNULL,
                                              stdout=output, stderr=output, cwd=job, env=environment,
                                              shell=False)
                     while True:

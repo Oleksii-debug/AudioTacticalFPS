@@ -7,6 +7,7 @@ and actual ASR inference remain separate acceptance gates.
 from dataclasses import replace
 import hashlib
 import json
+import os
 from pathlib import Path
 import shutil
 import sys
@@ -56,6 +57,13 @@ if mode == 'wait':
     raise SystemExit(130)
 if mode == 'status_race':
     time.sleep(.25)
+if mode == 'held_status':
+    deadline = time.monotonic() + 10
+    while not (job / 'reader-held.flag').is_file():
+        if time.monotonic() >= deadline:
+            raise RuntimeError('Synthetic live-status reader was not opened.')
+        time.sleep(.01)
+    (job / 'reader-held.flag').unlink()
 if mode == 'zero_only':
     status.update(state='завершено', done=len(config['inputs']))
     write(job / 'job_status.json', status)
@@ -512,3 +520,79 @@ def test_status_observation_keeps_its_original_one_mebibyte_budget(tmp_path):
     with pytest.raises(ValueError, match='JSON budget'):
         service.read_worker_status(path, max_bytes=1024 * 1024)
     assert path.stat().st_size > 1024 * 1024
+
+
+def test_actual_supplied_worker_replaces_status_while_original_host_snapshot_is_open(
+        prepared_environment, real_protocol_child, monkeypatch):
+    from carr_library import transcription_host
+    original_app, manifest, source, settings = prepared_environment(
+        'held_status', settings=dict(output_srt=True, output_vtt=True, output_json=True))
+    # Exercise the native rename's UTF-16 byte count as well as actual sharing.
+    library = original_app.library_root / 'Бібліотека-🎧'
+    library.mkdir()
+    app = service.TranscriptionService(library)
+    identity = app.prepare([source], manifest, settings)
+    original = source.read_bytes()
+    job = app._job(identity)
+    status_path = job / 'job_status.json'
+    release = job / 'reader-held.flag'
+    opened = transcription_host._open_worker_status
+    observed = {'claimed': False, 'replacement_while_open': False}
+
+    class HeldSnapshot:
+        def __init__(self, stream):
+            self.stream = stream
+
+        def __enter__(self):
+            self.stream.__enter__()
+            return self
+
+        def __exit__(self, *arguments):
+            return self.stream.__exit__(*arguments)
+
+        def fileno(self):
+            return self.stream.fileno()
+
+        def read(self, *arguments):
+            held = os.fstat(self.stream.fileno())
+            release.write_bytes(b'Release the actual synthetic child with its prior status still open.')
+            deadline = time.monotonic() + 10
+            while time.monotonic() < deadline:
+                current = status_path.stat()
+                if (current.st_dev, current.st_ino) != (held.st_dev, held.st_ino):
+                    assert not self.stream.closed
+                    observed['replacement_while_open'] = True
+                    with opened(status_path) as fresh:
+                        observed['fresh_snapshot'] = json.loads(fresh.read())
+                    break
+                time.sleep(.02)
+            assert observed['replacement_while_open'], 'The real child did not replace its held status snapshot.'
+            raw = self.stream.read(*arguments)
+            observed['old_snapshot'] = json.loads(raw)
+            return raw
+
+    def hold_first_snapshot(path):
+        stream = opened(path)
+        if not observed['claimed'] and Path(path).absolute() == status_path:
+            observed['claimed'] = True
+            observed['stream'] = stream
+            return HeldSnapshot(stream)
+        return stream
+
+    # Keep the real host HANDLE and the real child/os.replace. Only delay the
+    # first reader until the worker has published its complete replacement.
+    monkeypatch.setattr(transcription_host, '_open_worker_status', hold_first_snapshot)
+    result = app.run(identity, manifest, timeout=20)
+    assert observed['claimed'] and observed['replacement_while_open']
+    assert observed['stream'].closed and not release.exists()
+    assert observed['old_snapshot']['state'] == 'processing'
+    assert observed['old_snapshot']['done'] == 0
+    assert observed['fresh_snapshot']['state'] == 'завершено'
+    assert observed['fresh_snapshot']['done'] == 1
+    assert observed['fresh_snapshot']['run_id'] == result['run_id']
+    assert observed['fresh_snapshot']['completion_sha256'] == result['completion_sha256']
+    assert result['input_count'] == 1 and result['output_count'] == 4
+    assert {row['format'] for row in result['outputs']} == {'txt', 'srt', 'vtt', 'json'}
+    assert read_json(job / 'execution.json')['state'] == 'complete'
+    assert app.completed(identity)['outputs'] == result['outputs']
+    assert source.read_bytes() == original
