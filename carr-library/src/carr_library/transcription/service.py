@@ -180,6 +180,11 @@ def _verified_json(path, digest, *, cancel=None, changed_message='A saved transc
     stopped(cancel)
     payload = _export_payload(path, {'size': regular(path).st_size, 'sha256': digest},
                               cancel=cancel, maximum=MAX_JSON_BYTES, changed_message=changed_message)
+    return _decode_json(payload, cancel=cancel)
+
+
+def _decode_json(payload, *, cancel=None):
+    stopped(cancel)
     value = json.loads(payload.decode('utf-8'), object_pairs_hook=_unique,
                        parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Non-finite state number.')))
     stopped(cancel)
@@ -546,7 +551,11 @@ class TranscriptionService:
             return
         admitted = False
         for marker in self._checkpoints(cache_root, cancel=cancel):
-            checkpoint = read_json(marker)
+            marker_identity = file_identity(marker, cancel=cancel, maximum=MAX_JSON_BYTES)
+            checkpoint = _verified_json(marker, marker_identity['sha256'], cancel=cancel,
+                                        changed_message='The worker recognition checkpoint changed.')
+            if type(checkpoint) is not dict:
+                raise ValueError('Invalid worker recognition checkpoint.')
             identity = checkpoint.get('identity', {})
             source = sources.get(identity.get('source', {}).get('path'))
             if source is None or source['id'] in accepted:
@@ -568,12 +577,22 @@ class TranscriptionService:
                 raise ValueError('The worker checkpoint does not match the selected runtime/model identity.')
             self._verify_source(state, source, cancel=cancel)
             text_path, meta_path = marker.with_name(key + '.txt'), marker.with_name(key + '.json')
-            if (file_identity(text_path, cancel=cancel, maximum=MAX_RESULT_BYTES) != checkpoint.get('text') or
-                    file_identity(meta_path, cancel=cancel, maximum=MAX_RESULT_BYTES) != checkpoint.get('meta')):
-                raise ValueError('A worker recognition checkpoint was modified or incomplete.')
-            meta = read_json(meta_path)
+            # Decode the exact bytes verified against the captured checkpoint.
+            # A second pathname read would let an unverified local edit enter
+            # the immutable receipt after its digest had already passed.
+            message = 'A worker recognition checkpoint was modified or incomplete.'
+            for kind in ('text', 'meta'):
+                if type(checkpoint.get(kind)) is not dict or set(checkpoint[kind]) != {'size', 'sha256'}:
+                    raise ValueError(message)
+            text_payload = _export_payload(text_path, checkpoint['text'], cancel=cancel,
+                                           changed_message=message)
+            meta_payload = _export_payload(meta_path, checkpoint['meta'], cancel=cancel,
+                                           changed_message=message)
+            meta = _decode_json(meta_payload, cancel=cancel)
+            # Preserve Path.read_text's universal-newline behavior on Windows.
+            transcript = text_payload.decode('utf-8').replace('\r\n', '\n').replace('\r', '\n')
             stopped(cancel)
-            result = validated_result(meta, text_path.read_text(encoding='utf-8'))
+            result = validated_result(meta, transcript)
             stopped(cancel)
             effective = meta.get('effective_settings', meta.get('settings'))
             if not isinstance(effective, dict) or effective.get('language') != expected_settings['language'] or effective.get('task') != expected_settings['task']:
@@ -585,7 +604,7 @@ class TranscriptionService:
                           'worker_sha256': profile['worker_identity']['sha256'],
                           'python_sha256': profile['python_identity']['sha256'],
                           'runtime_identity_sha256': fingerprint(runtime),
-                          'worker_checkpoint_sha256': file_identity(marker, cancel=cancel, maximum=32 * 1024**2)['sha256'],
+                          'worker_checkpoint_sha256': marker_identity['sha256'],
                           'settings': state['settings'], 'effective_settings': effective,
                           'translation_target': 'en' if expected_settings['task'] == 'translate' else None,
                           'diarization': False}

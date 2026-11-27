@@ -578,3 +578,76 @@ def test_stop_during_historical_receipt_hash_preserves_durable_results(setup, mo
     assert resumed['status'] == 'complete', resumed
     assert resumed['results'][:len(previous)] == previous
     assert starts(runtime) == before_starts + (0 if completed else 1)
+
+@pytest.mark.parametrize('mutation', ['metadata', 'paired', 'marker'])
+def test_checkpoint_admission_binds_parsed_bytes_and_provenance(setup, monkeypatch, mutation):
+    from hashlib import sha256
+    service, runtime, profile, sources = setup
+    state = service.run(service.create_job(profile['id'], sources[:1])['id'])
+    assert state['status'] == 'complete', state['error']
+    original = service.read_transcript(state['id'])
+    cache = service._job_root(state['id']) / 'worker/logs/cache'
+    marker, = cache.rglob('*.cache.json')
+    key = marker.name[:-len('.cache.json')]
+    meta_path, text_path = marker.with_name(key + '.json'), marker.with_name(key + '.txt')
+    marker_bytes = marker.read_bytes()
+    changed = json.loads(meta_path.read_bytes())
+    changed['detected_language'] = 'sk'
+    if mutation == 'paired':
+        changed['text'] = 'Unverified synthetic result'
+        changed['segments'][0]['text'] = changed['text']
+    expected = worker_settings(state['settings'], profile['model_name'])
+    # Re-admit the real synthetic child's cache into an in-memory candidate.
+    # Capture publication, leaving the actual completed durable job untouched.
+    replay = {**state, 'results': [], 'done': 0}
+    published, reads = [], []
+    monkeypatch.setattr(service, '_publish_result',
+                        lambda state, source, result, provenance, **kwargs: published.append((result, provenance)))
+    original_open, original_json = Path.open, module.read_json
+
+    def swap_meta_on_second_read(self, mode='r', *args, **kwargs):
+        if self == meta_path and mode == 'rb':
+            reads.append(True)
+            if len(reads) == 2 and mutation != 'marker':
+                with original_open(meta_path, 'wb') as stream:
+                    stream.write(json.dumps(changed).encode('utf-8'))
+                if mutation == 'paired':
+                    with original_open(text_path, 'wb') as stream:
+                        stream.write(changed['text'].encode('utf-8'))
+        return original_open(self, mode, *args, **kwargs)
+
+    def swap_marker_after_decode(path):
+        value = original_json(path)
+        if Path(path) == marker and mutation == 'marker':
+            marker.write_bytes(marker_bytes + b' ')
+        return value
+
+    monkeypatch.setattr(Path, 'open', swap_meta_on_second_read)
+    monkeypatch.setattr(module, 'read_json', swap_marker_after_decode)
+    service._admit_results(replay, profile, expected)
+    assert len(published) == 1
+    result, provenance = published[0]
+    assert result['text'] == original['text']
+    assert result['language'] == original['language']
+    assert provenance['worker_checkpoint_sha256'] == sha256(marker_bytes).hexdigest()
+    assert len(reads) == 1
+    assert service._load(state['id'])['results'] == state['results']
+
+
+@pytest.mark.parametrize('mutation', ['metadata', 'text'])
+def test_checkpoint_admission_rejects_preexisting_corruption(setup, monkeypatch, mutation):
+    service, runtime, profile, sources = setup
+    state = service.run(service.create_job(profile['id'], sources[:1])['id'])
+    assert state['status'] == 'complete', state['error']
+    marker, = (service._job_root(state['id']) / 'worker/logs/cache').rglob('*.cache.json')
+    key = marker.name[:-len('.cache.json')]
+    path = marker.with_name(key + ('.json' if mutation == 'metadata' else '.txt'))
+    path.write_bytes(path.read_bytes() + b' ')
+    published = []
+    monkeypatch.setattr(service, '_publish_result', lambda *args, **kwargs: published.append(True))
+    with pytest.raises(ValueError, match='checkpoint was modified or incomplete'):
+        service._admit_results({**state, 'results': [], 'done': 0}, profile,
+                               worker_settings(state['settings'], profile['model_name']))
+    assert not published
+    assert service._load(state['id'])['results'] == state['results']
+
