@@ -226,7 +226,7 @@ print(json.dumps({'status': 'verified-build', 'source_commit': source, 'setup_sh
     $candidateSetup = Join-Path $handoff.build ('dist/Resonance-Setup-' + $handoff.source_commit.Substring(0, 12) + '.exe')
     $setupBytes = [Math]::Max($setupBytes, (Get-Item -LiteralPath $candidateSetup).Length)
     Require-Free (4 * ([long]$handoff.payload_bytes + [long]$handoff.installed_environment_bytes) +
-        8 * $setupBytes + 512MB) 'Actual A install, rejected B, verified B and retained target snapshots'
+        14 * $setupBytes + 512MB) 'Actual A, two rejected B generations, verified B and fresh-process TUF/target snapshots'
     $candidateProof = Get-Content -LiteralPath (Join-Path $handoff.bundle 'application-source.json') -Raw | ConvertFrom-Json
     Invoke-Checked $installedPython @('-I', '-B', 'packaging/probe_standard_update_windows.py',
         '--previous-build', $previousBuild, '--previous-bundle', $previousBundle,
@@ -236,6 +236,8 @@ print(json.dumps({'status': 'verified-build', 'source_commit': source, 'setup_sh
         '--candidate-source', $handoff.source_commit, '--candidate-setup-sha256', $handoff.setup_sha256,
         '--candidate-manifest-sha256', $handoff.manifest_sha256,
         '--candidate-version', $candidateProof.project_version, '--work', $probeWork,
+        '--library-test-wheels', (Join-Path $env:RUNNER_TEMP 'carr-test-wheels'),
+        '--library-report', (Join-Path $evidence 'library.json'),
         '--report', (Join-Path $evidence 'native.json'), '--disposable-ci') 'native-probe.log'
 
     $verify = @'
@@ -260,11 +262,11 @@ checks = ['installed-module-origin', 'two-distinct-source-bound-setups', 'native
     'old-process-and-sealed-a-retained', 'protected-anchor-b', 'actual-b-self-test',
     'actual-active-uninstall-refusal', 'quiescent-uninstall-preserves-user-data']
 true_flags = ['actual_two_compiled_generations', 'actual_native_activation', 'actual_guarded_rollback',
-    'actual_old_process_preserved', 'synthetic_publisher_and_anchor']
+    'actual_old_process_preserved', 'synthetic_publisher_and_anchor', 'actual_windows_vault', 'actual_restart_recovery']
 false_flags = ['production_authority_qualified', 'authenticode_verified', 'nvda_verified']
 fields = ['schema', 'status', 'checks', 'previous_source', 'candidate_source',
     'previous_setup_sha256', 'candidate_setup_sha256', 'previous_manifest_sha256',
-    'candidate_manifest_sha256', 'verified_target_sha256', 'backup_sha256']
+    'candidate_manifest_sha256', 'verified_target_sha256', 'backup_sha256', 'restart_recovery_proof_sha256']
 assert set(report) == set(fields + true_flags + false_flags)
 assert type(report['schema']) is int and report['schema'] == 1 and report['status'] == 'passed'
 assert type(report['checks']) is list and all(type(item) is str for item in report['checks'])
@@ -276,8 +278,26 @@ assert report['previous_setup_sha256'] == previous_setup_hash == digest(previous
 assert report['previous_manifest_sha256'] == previous_manifest_hash == digest(evidence / 'previous-manifest.json')
 assert report['candidate_setup_sha256'] == record['setup_sha256']
 assert report['candidate_manifest_sha256'] == record['manifest_sha256']
-for name in ('verified_target_sha256', 'backup_sha256'):
+library = json.loads((evidence / 'library.json').read_text(encoding='utf-8'))
+assert library['schema'] == 'carr-standard-library-qualification/1' and library['status'] == 'PASS'
+assert library['source_commit'] == record['source_commit']
+assert library['manifest_sha256'] == record['manifest_sha256']
+assert (library['passed'], library['failed'], library['skipped']) == (50, 0, 0)
+assert library['firewall']['profiles_restored'] is library['firewall']['owned_rules_removed'] is True
+functional = library['qualification']
+qualifier = module(project / 'scripts/qualify_standard_library.py', 'final_library_qualifier')
+assert functional['schema'] == 'carr-installed-library-qualification/1' and functional['status'] == 'PASS'
+assert functional['case_counts'] == qualifier.EXPECTED and functional['suites'] == qualifier.SUITES
+assert functional['source_commit'] == record['source_commit'] and functional['source_tree'] == record['source_tree']
+assert functional['manifest_sha256'] == record['manifest_sha256']
+assert all(functional[name] is True for name in ('installed_package', 'sealed_files_unchanged', 'production_distributions_unchanged'))
+assert functional['audio_payload'] is functional['expected_failures'] is False
+for name in ('verified_target_sha256', 'backup_sha256', 'restart_recovery_proof_sha256'):
     assert type(report[name]) is str and re.fullmatch('[0-9a-f]{64}', report[name])
+assert report['restart_recovery_proof_sha256'] == digest(evidence / 'native-restart-recover.json')
+restart = json.loads((evidence / 'native-restart-recover.json').read_text(encoding='utf-8'))
+assert restart['status'] == 'rolled-back' and restart['candidate_source'] == record['source_commit']
+assert all(restart[name] is True for name in ('actual_fresh_process', 'actual_windows_vault', 'fresh_tuf_verification'))
 assert digest(pathlib.Path(record['compiler'])) == inputs['compiler_sha256'] == record['compiler_sha256']
 delivery = module(project / 'packaging/create_delivery.py', 'final_update_delivery')
 probe = module(project / 'packaging/probe_standard_update_windows.py', 'final_update_probe')
@@ -299,8 +319,11 @@ report.update(previous_tree=inputs['previous_tree'], candidate_tree=inputs['cand
     previous_wheel_sha256=artifact['wheel_sha256'], candidate_wheel_sha256=artifact['candidate_wheel_sha256'],
     compiler_sha256=record['compiler_sha256'], check_count=15,
     existing_full_sealed_payload_unchanged=True, audio_transfer_guard='ENFORCED',
+    audio_free_installed_library_cases=50, audio_free_library_proof_sha256=digest(evidence / 'library.json'),
     source_files_sha256={name: digest(project / name) for name in (
         'scripts/ci_standard_update.ps1', 'packaging/probe_standard_update_windows.py',
+        'packaging/probe_standard_recovery_child.py', 'src/carr_library/security/standard_recovery.py',
+        'scripts/qualify_standard_library.py', 'scripts/qualify_standard_library.ps1',
         'src/carr_library/security/standard_installation.py', 'src/carr_library/security/standard_windows.py')})
 with (evidence / 'proof.json').open('x', encoding='utf-8') as stream:
     json.dump(report, stream, indent=2); stream.write('\n')

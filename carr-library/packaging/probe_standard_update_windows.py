@@ -15,9 +15,11 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import time
+from uuid import uuid4
 import zipfile
 
 HERE = Path(__file__).resolve().parent
@@ -108,7 +110,8 @@ def inspect(args):
     from carr_library.audio.jobs import verified_reader
     from carr_library.installation_lease import installation_lease
     from carr_library.library_backup import restore_backup
-    from carr_library.security._files import TrustError, directory, json_value, read_bytes
+    from carr_library.security._files import TrustError, directory, json_bytes, json_value, read_bytes
+    from carr_library.security.anchors import Anchor, WindowsVaultAnchor
     from carr_library.security.standard_installation import StandardUpdateTransaction
     from carr_library.security.standard_state import PENDING, REJECTED
     from carr_library.security.standard_windows import WindowsStandardHost, run_owned
@@ -214,7 +217,17 @@ def inspect(args):
         release = client.check(repository.root, repository.target_path)
         package = client.download(repository.root, repository.target_path, reviewed_sha256=release.sha256)
         checks.append(CHECKS[4])
-        anchor = fixtures.MemoryAnchor()
+        # Explicit synthetic provisioning in this disposable account, using the
+        # actual existing Windows vault. A real installation never provisions a
+        # missing protected anchor through this test path.
+        anchor = WindowsVaultAnchor('url-api-' + uuid4().hex,
+            sha256(str(work / 'update-work').encode('utf-8')).hexdigest(),
+            product=policy.product, profile_id='standard-update-ci')
+        if anchor.vault.get_optional(anchor.reference, anchor.vault_binding) is not None:
+            raise AssertionError('The fresh synthetic Windows anchor identity already exists.')
+        anchor.vault.put(anchor.reference, anchor.vault_binding, anchor.encode(Anchor()))
+        if anchor.load() != Anchor():
+            raise AssertionError('The actual Windows vault did not retain the synthetic starting anchor.')
         transaction = StandardUpdateTransaction(app, a_generation, work / 'update-work', policy, anchor, host)
         try:
             transaction.apply(package)
@@ -232,6 +245,50 @@ def inspect(args):
         if len(rejected) != 1 or not (rejected[0] / '.venv' / '.installation-complete').is_file():
             raise AssertionError('The rejected actual B generation was lost.')
         checks.append(CHECKS[7])
+        # A second actual B activation loses its controller process after the
+        # durable native checkpoint. A fresh installed process must freshly
+        # verify TUF and restore the exact A activation through the protected
+        # restart authority; it cannot borrow the parent's live prior snapshot.
+        policy_record = asdict(policy)
+        policy_record['bootstrap'] = policy.bootstrap.hex()
+        common = dict(schema='carr-disposable-standard-recovery/1',
+            data=str(data), generation=str(a_generation), work=str(transaction.work),
+            repository=str(repository.root), target=repository.target_path,
+            reviewed_sha256=package.release.sha256, policy=policy_record,
+            anchor=dict(reference=anchor.reference, binding=anchor.binding,
+                        product=anchor.product, profile_id=anchor.profile_id),
+            prior_sha256=sha256(json_bytes(prior)).hexdigest(), candidate_source=args.candidate_source)
+        recovery_reports = {}
+        report_root = directory(Path(args.library_report).absolute().parent)
+        for action, expected_code, seconds in (('crash-after-activation', 73, 2400), ('recover', 0, 900)):
+            configuration = work / ('native-restart-' + action + '.json')
+            raw_configuration = json_bytes(dict(common, action=action))
+            with configuration.open('xb') as stream:
+                stream.write(raw_configuration)
+                stream.flush()
+                os.fsync(stream.fileno())
+            child_report = report_root / ('native-restart-' + action + '.json')
+            code, _ = run_owned([sys.executable, '-I', '-B', '-X', 'utf8',
+                HERE / 'probe_standard_recovery_child.py', '--configuration', configuration,
+                '--configuration-sha256', sha256(raw_configuration).hexdigest(), '--report', child_report],
+                cwd=work, environment=dict(host.environment(), CI='true'), timeout=seconds)
+            if code != expected_code:
+                raise AssertionError('The owned native interruption/recovery child returned an unexpected exit code.')
+            recovery_reports[action] = json_value(read_bytes(child_report, 65536))
+        crash, recovered = recovery_reports['crash-after-activation'], recovery_reports['recover']
+        if (crash.get('status') != 'controlled-process-exit-after-activation'
+                or crash.get('exit_code') != 73 or crash.get('candidate_source') != args.candidate_source
+                or recovered.get('status') != 'rolled-back'
+                or recovered.get('candidate_source') != args.candidate_source
+                or recovered.get('prior_sha256') != common['prior_sha256']
+                or any(recovered.get(name) is not True for name in
+                       ('actual_fresh_process', 'actual_windows_vault', 'fresh_tuf_verification'))
+                or recovered.get('actual_process') == crash.get('actual_process')
+                or host.snapshot(root) != prior or anchor.load() != Anchor()):
+            raise AssertionError('Actual process-loss recovery did not preserve the exact protected A state.')
+        rejected = [path for path in (root / 'versions').iterdir() if (path / REJECTED).exists()]
+        if len(rejected) != 2 or any(not (path / '.venv' / '.installation-complete').is_file() for path in rejected):
+            raise AssertionError('Both rejected real B generations must remain for diagnostics.')
         host.reject = False
         result = transaction.apply(package)
         restored = work / 'restored-library'
@@ -257,6 +314,39 @@ def inspect(args):
         if code:
             raise AssertionError('The real committed B entrypoint failed.')
         checks.append(CHECKS[12])
+        # Qualify this exact audio-free installed B while its native generation
+        # still exists. The child owns/restores its separate firewall rules;
+        # source tests and full-bundle evidence cannot stand in for this proof.
+        test_wheels = directory(args.library_test_wheels)
+        library_report = Path(args.library_report).absolute()
+        directory(library_report.parent)
+        if os.path.lexists(library_report):
+            raise FileExistsError('Use a new exact installed-library qualification report.')
+        git_executable = shutil.which('git')
+        if not git_executable:
+            raise RuntimeError('The current B Git object database requires the installed CI Git executable.')
+        system = Path(os.environ['SystemRoot']) / 'System32'
+        shell = system / 'WindowsPowerShell' / 'v1.0' / 'powershell.exe'
+        qualification_environment = dict(host.environment(), CI='true', OS='Windows_NT',
+            PATH=os.pathsep.join((str(Path(git_executable).parent), str(system))))
+        code, _ = run_owned([shell, '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',
+            '-File', HERE.parent / 'scripts' / 'qualify_standard_library.ps1',
+            '-CurrentGeneration', b_generation, '-SourceCommit', args.candidate_source,
+            '-ManifestSha256', args.candidate_manifest_sha256, '-TestWheels', test_wheels,
+            '-Report', library_report, '-Project', HERE.parent], cwd=work,
+            environment=qualification_environment, timeout=1800)
+        if code:
+            raise AssertionError('The exact installed audio-free library qualification failed.')
+        qualification = json_value(read_bytes(library_report, 4 * 1024**2), maximum=4 * 1024**2)
+        if (qualification.get('schema') != 'carr-standard-library-qualification/1'
+                or qualification.get('status') != 'PASS'
+                or qualification.get('source_commit') != args.candidate_source
+                or qualification.get('manifest_sha256') != args.candidate_manifest_sha256
+                or qualification.get('generation') != str(b_generation)
+                or (qualification.get('passed'), qualification.get('failed'), qualification.get('skipped')) != (50, 0, 0)
+                or qualification.get('firewall', {}).get('profiles_restored') is not True
+                or qualification.get('firewall', {}).get('owned_rules_removed') is not True):
+            raise AssertionError('The installed-library proof differs from this exact native B generation.')
         uninstaller = Path(current['registration']['UninstallString']['value'].strip('"'))
         code, _ = run_owned([uninstaller, '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART'],
             cwd=root, environment=host.environment(), timeout=180)
@@ -275,9 +365,12 @@ def inspect(args):
             pass
         else:
             raise AssertionError('Quiescent uninstall left its registered current installation.')
-        if not app.search(workspace, 'exact user-owned research') or not (rejected[0] / REJECTED).is_file():
+        if not app.search(workspace, 'exact user-owned research') or any(not (path / REJECTED).is_file() for path in rejected):
             raise AssertionError('Uninstall erased research or retained failed-generation diagnostics.')
         checks.append(CHECKS[14])
+        anchor.vault.delete(anchor.reference, anchor.vault_binding)
+        if anchor.vault.get_optional(anchor.reference, anchor.vault_binding) is not None:
+            raise AssertionError('The owned synthetic Windows vault anchor was not removed after success.')
         return {'schema': 1, 'status': 'passed', 'checks': checks,
             'previous_source': args.previous_source, 'candidate_source': args.candidate_source,
             'previous_setup_sha256': args.previous_setup_sha256,
@@ -288,6 +381,8 @@ def inspect(args):
             'backup_sha256': result['backup_sha256'],
             'actual_two_compiled_generations': True, 'actual_native_activation': True,
             'actual_guarded_rollback': True, 'actual_old_process_preserved': True,
+            'actual_windows_vault': True, 'actual_restart_recovery': True,
+            'restart_recovery_proof_sha256': sha256(read_bytes(report_root / 'native-restart-recover.json', 65536)).hexdigest(),
             'synthetic_publisher_and_anchor': True, 'production_authority_qualified': False,
             'authenticode_verified': False, 'nvda_verified': False}
     finally:
@@ -308,6 +403,10 @@ def main(argv=None):
         parser.add_argument('--' + prefix + '-manifest-sha256', required=True)
     parser.add_argument('--candidate-version', required=True)
     parser.add_argument('--work', type=Path, required=True)
+    parser.add_argument('--library-test-wheels', type=Path, required=True,
+        help='Existing offline pytest/reportlab wheels acquired before runtime egress was blocked.')
+    parser.add_argument('--library-report', type=Path, required=True,
+        help='Fresh exact installed audio-free research qualification report.')
     parser.add_argument('--report', type=Path,
         help='Write the exact native JSON result to a new file after every check passes.')
     parser.add_argument('--disposable-ci', action='store_true')
