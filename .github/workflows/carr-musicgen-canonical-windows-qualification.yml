@@ -1,0 +1,120 @@
+# Explicit private noncommercial qualification of the existing canonical API.
+# No models, generated audio, runtime archives or caches are uploaded.
+name: CARR canonical real MusicGen Windows CPU qualification
+on:
+  push:
+    branches: [carr/musicgen-canonical-windows-qualification-20261127-137c]
+    paths:
+      - carr-library/scripts/musicgen_canonical_windows_qualification.py
+      - carr-library/scripts/musicgen_canonical_windows_preflight.py
+      - carr-library/src/carr_library/audio/music.py
+      - .github/workflows/carr-musicgen-canonical-windows-qualification.yml
+  workflow_dispatch:
+    inputs:
+      accept_nc_weights:
+        description: Acquire the pinned MusicGen CC-BY-NC weights for this personal-use test
+        required: true
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: carr-musicgen-canonical-windows-qualification-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  musicgen-windows-cpu:
+    if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/carr/musicgen-canonical-windows-qualification-20261127-137c') || inputs.accept_nc_weights == true }}
+    runs-on: windows-2022
+    timeout-minutes: 35
+    env:
+      OMP_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Record exact source and parse helpers before installation
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ((git rev-parse HEAD) -ne $env:GITHUB_SHA) { throw 'Source identity mismatch' }
+          git -c core.autocrlf=false -c core.eol=lf checkout-index --force --all
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git rev-parse HEAD 'HEAD^{tree}'
+          python -c "import ast,pathlib; ast.parse(pathlib.Path('carr-library/scripts/musicgen_canonical_windows_qualification.py').read_text(encoding='utf-8')); tree=ast.parse(pathlib.Path('carr-library/scripts/musicgen_canonical_windows_preflight.py').read_text(encoding='utf-8')); codes=[n.value for n in ast.walk(tree) if isinstance(n,ast.Assign) and any(isinstance(t,ast.Name) and t.id in ('NETWORK_PROBE','probe') for t in n.targets)]; assert len(codes)==2; [ast.parse(ast.literal_eval(v.right if isinstance(v,ast.BinOp) else v)) for v in codes]; print('Canonical helpers and both embedded probes parsed before acquisition')"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Prepare the proven physical Conda and CPU AudioCraft runtime without models
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python -B carr-library/scripts/musicgen_canonical_windows_preflight.py prepare --source-root "$env:GITHUB_WORKSPACE/carr-library" --root "$env:RUNNER_TEMP/carr-musicgen-canonical-win-install"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Prepare the canonical hash-pinned FFmpeg CLI with retained notices
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python -B carr-library/packaging/prepare_windows_audio.py --cache "$env:RUNNER_TEMP/carr-musicgen-ffmpeg-cache" --output "$env:RUNNER_TEMP/carr-musicgen-win-audio" --download
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Enforce outbound program rules and rerun the actual no-weight preflight
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (@(Get-NetFirewallProfile | Where-Object { $_.Enabled -ne 'True' }).Count -ne 0) {
+            throw 'Every Windows firewall profile must be enabled'
+          }
+          $programs = @{
+            python = (Get-Item -LiteralPath (Join-Path $env:RUNNER_TEMP 'carr-musicgen-canonical-win-install\runtime\python.exe')).FullName
+            ffmpeg = (Get-Item -LiteralPath (Join-Path $env:RUNNER_TEMP 'carr-musicgen-win-audio\bin\ffmpeg.exe')).FullName
+            ffprobe = (Get-Item -LiteralPath (Join-Path $env:RUNNER_TEMP 'carr-musicgen-win-audio\bin\ffprobe.exe')).FullName
+          }
+          foreach ($name in $programs.Keys) {
+            $rule = "CARR-Canonical-MusicGen-Inference-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT-$name"
+            New-NetFirewallRule -Name $rule -DisplayName $rule -Direction Outbound -Action Block -Program $programs[$name] -Profile Any -Enabled True | Out-Null
+            $active = Get-NetFirewallRule -PolicyStore ActiveStore -Name $rule
+            if ($active.Enabled -ne 'True' -or $active.Action -ne 'Block' -or $active.Direction -ne 'Outbound') {
+              throw 'An outbound block is not active'
+            }
+            $application = $active | Get-NetFirewallApplicationFilter
+            if ($application.Program -ne $programs[$name]) { throw 'The firewall rule targets a different application' }
+          }
+          python -B carr-library/scripts/musicgen_canonical_windows_preflight.py audit --source-root "$env:GITHUB_WORKSPACE/carr-library" --root "$env:RUNNER_TEMP/carr-musicgen-canonical-win-install" | Tee-Object -FilePath "$env:RUNNER_TEMP/carr-musicgen-canonical-win-preflight.jsonl"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Acquire six exact assets only after the successful canonical preflight
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $options = @('--source-root', "$env:GITHUB_WORKSPACE/carr-library", '--root', "$env:RUNNER_TEMP/carr-musicgen-canonical-win-install", '--ffmpeg-root', "$env:RUNNER_TEMP/carr-musicgen-win-audio", '--preflight-receipt', "$env:RUNNER_TEMP/carr-musicgen-canonical-win-preflight.jsonl", '--accept-personal-noncommercial')
+          python -B carr-library/scripts/musicgen_canonical_windows_qualification.py prepare-assets @options
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -B carr-library/scripts/musicgen_canonical_windows_qualification.py manifest @options
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Render genuine two-second neural audio through the canonical API offline
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $runtimePython = (Get-Item -LiteralPath (Join-Path $env:RUNNER_TEMP 'carr-musicgen-canonical-win-install\runtime\python.exe')).FullName
+          $options = @('--source-root', "$env:GITHUB_WORKSPACE/carr-library", '--root', "$env:RUNNER_TEMP/carr-musicgen-canonical-win-install", '--ffmpeg-root', "$env:RUNNER_TEMP/carr-musicgen-win-audio", '--preflight-receipt', "$env:RUNNER_TEMP/carr-musicgen-canonical-win-preflight.jsonl", '--output', "$env:RUNNER_TEMP/carr-musicgen-canonical-win-output/sample.wav", '--accept-personal-noncommercial')
+          & $runtimePython -I -B "$env:GITHUB_WORKSPACE/carr-library/scripts/musicgen_canonical_windows_qualification.py" render @options
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          foreach ($name in @('python', 'ffmpeg', 'ffprobe')) {
+            $rule = "CARR-Canonical-MusicGen-Inference-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT-$name"
+            $active = Get-NetFirewallRule -PolicyStore ActiveStore -Name $rule
+            if ($active.Enabled -ne 'True' -or $active.Action -ne 'Block' -or $active.Direction -ne 'Outbound') {
+              throw 'A qualification firewall rule changed during inference'
+            }
+          }
+      - name: Remove only the three ephemeral qualification firewall rules
+        if: always()
+        shell: pwsh
+        run: |
+          foreach ($name in @('python', 'ffmpeg', 'ffprobe')) {
+            $rule = "CARR-Canonical-MusicGen-Inference-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT-$name"
+            Remove-NetFirewallRule -Name $rule -ErrorAction SilentlyContinue
+          }
+      # Deliberately no upload-artifact, cache save, public WAV or model archive.
