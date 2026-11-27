@@ -267,9 +267,14 @@ imported after restoring the matching library.
 The complete inventory and resource budgets are documented in
 [checked library backups](COMPLETE_BACKUP.md). External Audio Studio projects,
 their generated files and cache use **Audio Studio, Back up audio project** and
-**Restore audio snapshot**. API credentials, installed model packs and pending
-import journals are separate. Restored assistant jobs require review of their
-unfinished steps with current folder permissions before a new plan can run.
+**Restore audio snapshot**. Pending import requests, batch plans, extraction
+checkpoints, validated review records and their required original files are
+included when present. Restore checks their bindings and rebinds local paths;
+it does not run jobs automatically. Process-attempt and unverified publication
+candidates are discarded, while durable catalog receipts remain in the database.
+API credentials, installed model packs and rebuildable runtime caches remain
+separate. Restored assistant jobs require review of their unfinished steps with
+current folder permissions before a new plan can run.
 
 ## Review the source catalog
 

@@ -1,4 +1,4 @@
-# Universal Research Library
+# Resonance — Sceneria Innovative Technologies
 
 An offline research desktop for multiple libraries, authors and languages. Carr
 is an optional collection. All project changes stay in `carr-library/`; the
@@ -59,8 +59,9 @@ instructions.
   and hear exact location information through native text controls. See
   [the reading desk guide](docs/READING_DESK.md).
 - Export Markdown, text, RIS, BibTeX and CSV with notes separate from quotations.
-  Back up completed libraries with original files and checksums; restore into a
-  new folder without overwriting the existing library.
+  Back up libraries, supported pending imports and required retained originals
+  with checksums; restore into a new folder without overwriting an existing
+  library. Restoring does not automatically resume pending jobs.
 - Review RIS or CSL-JSON reference metadata before applying selected fields to
   an existing book. Export a whole library or collection bibliography in
   CSL-JSON, RIS or BibTeX, and export a complete research topic branch with its
