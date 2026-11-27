@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "base_commit": "2c040db358e64bdb1c6bc27b9c911de6e734d574",
+  "status": "NOT_RUN",
+  "basis": "Source-derived function and parametrization inventory; executor unavailable.",
+  "new_cases": 42,
+  "suites": [
+    {
+      "path": "carr-library/tests/ingest/test_scan_continuation.py",
+      "cases": 14,
+      "named": {
+        "test_actual_5001_sources_continue_without_losing_or_repeating_a_path": 1,
+        "test_actual_20001_directory_entries_continue_in_bounded_pages": 1,
+        "test_nested_explicit_roots_resume_without_duplicate_path_admission": 2,
+        "test_continuation_does_not_reopen_previously_admitted_source_bytes": 1,
+        "test_stale_or_foreign_cursor_fails_before_another_source_read": 4,
+        "test_cancel_before_continuation_does_not_open_a_directory": 1,
+        "test_cancellation_inside_prefix_replay_keeps_the_saved_cursor_unchanged": 1,
+        "test_prefix_replay_has_a_real_time_budget": 1,
+        "test_reparse_source_is_rejected_without_snapshot": 1,
+        "test_existing_catalog_and_within_page_duplicate_binding_is_preserved": 1
+      }
+    },
+    {
+      "path": "carr-library/tests/e2e/test_import_scan_continuation.py",
+      "cases": 9,
+      "named": {
+        "test_saved_scan_reopens_and_imports_each_page_through_actual_workers": 1,
+        "test_lost_next_page_reply_reuses_the_already_durable_batch": 1,
+        "test_pending_pages_keep_existing_cross_batch_duplicate_publication_guard": 1,
+        "test_denied_continuation_does_not_publish_another_batch": 3,
+        "test_backup_restores_scanned_bytes_but_never_reacquires_external_scan_scope": 1,
+        "test_backup_refuses_malformed_cursor_even_when_scanned_rows_are_valid": 1,
+        "test_legacy_unpaged_batch_keeps_its_original_schema": 1
+      }
+    },
+    {
+      "path": "carr-library/tests/reader/test_ebook_reader.py",
+      "cases": 25,
+      "named": {
+        "test_chapters_are_available_without_search_and_keep_source_order": 1,
+        "test_invalid_chapter_positions_do_not_fall_back_to_another_chapter": 6,
+        "test_foreign_library_and_topic_are_rejected_before_original_is_read": 1,
+        "test_archived_topic_and_workspace_invalidate_reader_requests": 1,
+        "test_reader_cancellation_is_checked_before_original_access": 2,
+        "test_reader_checks_retained_original_again_on_every_section_request": 1,
+        "test_metadata_revision_does_not_retarget_an_existing_reader_location": 1,
+        "test_epub_pages_pass_500_with_exact_order_no_omission_and_real_source_open": 1,
+        "test_epub_cursor_rejects_stale_scope_or_revision_before_source_bytes": 4,
+        "test_cancelled_epub_page_never_enters_sqlite_authorization": 1,
+        "test_invalid_epub_cursor_is_refused_before_snapshot_loading": 4,
+        "test_epub_page_metadata_byte_budget_continues_instead_of_collecting_all_rows": 1,
+        "test_one_oversized_epub_entry_is_explicitly_refused": 1
+      }
+    },
+    {
+      "path": "carr-library/tests/ui/test_import_center.py",
+      "cases": 28,
+      "named": {
+        "test_import_report_keeps_file_changed_during_report_render": 2,
+        "test_plan_captures_choices_and_passes_live_cancellation_to_background_work": 1,
+        "test_invalid_plan_choices_never_start_a_job": 2,
+        "test_missing_ocr_configuration_never_starts_a_plan": 1,
+        "test_model_choice_updates_new_plans_only_and_cancel_preserves_previous": 3,
+        "test_busy_import_cannot_launch_model_configuration": 1,
+        "test_progress_is_marshaled_and_completion_preserves_quarantine_status": 1,
+        "test_previous_job_progress_cannot_replace_a_new_batch": 1,
+        "test_previous_job_completion_cannot_finish_the_next_job": 1,
+        "test_mismatched_progress_identity_is_ignored": 1,
+        "test_planning_cancel_and_close_do_not_claim_unsaved_queue_is_saved": 1,
+        "test_failure_restores_controls_then_close_ends_the_modal": 1,
+        "test_closed_view_drops_progress_and_completion": 1,
+        "test_replaced_data_directory_cannot_receive_old_completion": 1,
+        "test_out_of_bounds_file_selection_cannot_mutate_a_row": 2,
+        "test_explicit_file_selection_uses_stable_row_identity": 3,
+        "test_lost_authorization_clears_visible_batch_data": 1,
+        "test_continue_scan_captures_saved_page_and_reuses_background_cancellation": 1,
+        "test_complete_or_restored_scan_requires_new_explicit_source_selection": 2,
+        "test_continuation_completion_cannot_replace_a_different_library": 1
+      }
+    },
+    {
+      "path": "carr-library/tests/ui/test_ebook_reader.py",
+      "cases": 22,
+      "named": {
+        "test_session_retains_exact_edition_and_section_list": 1,
+        "test_session_rejects_stale_or_retargeted_section": 6,
+        "test_reader_loads_in_jobs_and_preserves_scope_and_focus": 1,
+        "test_stale_completed_listing_cannot_offer_books_from_another_context": 4,
+        "test_changed_library_before_section_read_rejects_without_touching_source": 1,
+        "test_invalid_native_chooser_index_cannot_pick_an_unintended_book": 3,
+        "test_cancelled_chooser_preserves_the_current_library": 1,
+        "test_busy_frame_does_not_start_reader_jobs": 1,
+        "test_dismissal_during_background_read_does_not_focus_disabled_control": 1,
+        "test_epub_chooser_uses_bounded_next_and_previous_without_caching_source_text": 1,
+        "test_stale_second_epub_page_cannot_replace_the_active_scope": 1,
+        "test_cancelling_after_epub_page_navigation_opens_no_section": 1
+      }
+    }
+  ],
+  "native": {
+    "existing_probe": "tests/ui/native_ebook_reader_smoke.py",
+    "changed": false,
+    "new_paging_and_import_control_execution": "NOT_RUN",
+    "nvda": "NOT_RUN"
+  }
+}

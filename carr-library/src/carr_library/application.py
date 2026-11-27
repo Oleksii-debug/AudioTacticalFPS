@@ -586,11 +586,15 @@ class LibraryApp:
             return tuple(rows)
 
     def plan_import_batch(self, workspace, paths, *, collections=(), recursive=True,
-                          config=None, cancelled=lambda: False):
+                          config=None, cancelled=lambda: False, paged=False):
         """Inspect selected files and persist a resumable private import queue."""
         from .ingest.batches import ImportBatchStore
         return ImportBatchStore(self).plan(workspace, paths, collections=collections,
-            recursive=recursive, config=config, cancelled=cancelled)
+            recursive=recursive, config=config, cancelled=cancelled, paged=paged)
+
+    def continue_import_scan(self, workspace, batch_id, *, cancelled=lambda: False):
+        from .ingest.batches import ImportBatchStore
+        return ImportBatchStore(self).continue_scan(workspace, batch_id, cancelled=cancelled)
 
     def import_batches(self, workspace):
         from .ingest.batches import ImportBatchStore

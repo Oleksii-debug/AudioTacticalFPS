@@ -207,3 +207,132 @@ def read_ebook_section(app, workspace, edition_id, revision, position, *,
         return EbookSection(identity, row[1], chapter.title, chapter.resource, position,
                             len(chapters), chapter.linear, page[0], chapters, warnings,
                             descriptions[position - 1])
+
+
+@dataclass(frozen=True)
+class EbookPage:
+    books: tuple[EbookBook, ...]
+    next_cursor: str | None
+    page_number: int
+
+
+_EBOOK_FIELDS = ('substr(e.id,1,201),substr(a.revision,1,65),substr(m.title,1,4001),'
+                 'substr(m.author,1,402001),substr(m.edition_label,1,4001)')
+_EBOOK_PAGE_BYTES = 8 * 1024 * 1024
+
+
+def _ebook_metadata(row):
+    limits = (200, 64, 4000, 402000, 4000, 64)
+    if any(value is not None and (not isinstance(value, str) or len(value) > limits[index])
+           for index, value in enumerate(row)):
+        raise ValueError('EPUB listing metadata exceeds its field budget.')
+    return canonical(tuple(row)).encode('utf-8')
+
+
+_EBOOK_FROM = '''FROM catalog_edition e JOIN catalog_asset f ON f.digest=e.asset
+    JOIN active a ON a.workspace=e.workspace AND a.edition=e.id
+    JOIN revision r ON r.id=a.revision AND r.asset=e.asset
+    JOIN sealed s ON s.revision=r.id
+    JOIN source_metadata m ON m.workspace=e.workspace AND m.edition=e.id AND m.revision=r.id
+    WHERE e.workspace=:workspace AND f.mime='application/epub+zip' '''
+
+
+def _ebook_cursor(value):
+    def unique(pairs):
+        result = {}
+        for key, item in pairs:
+            if key in result:
+                raise ValueError('Duplicate EPUB cursor field.')
+            result[key] = item
+        return result
+
+    if not isinstance(value, str) or not 0 < len(value) <= 8192:
+        raise ValueError('Invalid EPUB continuation.')
+    try:
+        value.encode('ascii')
+        data = json.loads(value, object_pairs_hook=unique)
+    except (ValueError, UnicodeError, RecursionError) as exc:
+        raise ValueError('Invalid EPUB continuation.') from exc
+    if (not isinstance(data, dict) or set(data) != {'version', 'scope', 'snapshot', 'after', 'page'}
+            or type(data['version']) is not int or data['version'] != 1
+            or type(data['page']) is not int or not 2 <= data['page'] <= 2 ** 31
+            or any(not isinstance(data[key], str) or len(data[key]) != 64
+                   or any(c not in '0123456789abcdef' for c in data[key])
+                   for key in ('scope', 'snapshot'))):
+        raise ValueError('Invalid EPUB continuation schema.')
+    from ..catalog.membership import _identity
+    _identity(data['after'])
+    return data
+
+
+def list_ebooks_page(app, workspace, *, authorized_topic=None, cursor=None,
+                     limit=100, timeout=30.0, cancelled=lambda: False):
+    """A bounded title/ID page with a fresh scoped catalogue snapshot.
+
+    The cursor binds all current EPUB revision/metadata identities, not a live
+    source-text capability. Every selected section still passes the retained
+    original and exact revision verification in read_ebook_section.
+    """
+    from ..application import _SearchBudget
+    from ..catalog.membership import _identity
+    budget = _SearchBudget(timeout, cancelled)
+    budget.check()
+    workspace = _identity(workspace)
+    if authorized_topic is not None:
+        authorized_topic = _identity(authorized_topic)
+    if type(limit) is not int or not 1 <= limit <= 500:
+        raise ValueError('An EPUB page must contain between 1 and 500 editions.')
+    scope = sha256(canonical([str(app.root), workspace, authorized_topic, limit]).encode('utf-8')).hexdigest()
+    previous = _ebook_cursor(cursor) if cursor is not None else None
+    if previous is not None and previous['scope'] != scope:
+        raise ValueError('The EPUB continuation belongs to another library or page selection.')
+    with app._search_read(workspace, budget.remaining(), budget.stopped) as (db, inner):
+        _topic(db, workspace, authorized_topic)
+        digest = sha256()
+        # Stream only bounded metadata rows. No source bytes or complete result
+        # list are retained; SQLite's existing progress handler owns the deadline.
+        for row in db.execute('SELECT ' + _EBOOK_FIELDS + ',substr(r.asset,1,65) '
+                              + _EBOOK_FROM + 'ORDER BY e.id COLLATE BINARY', {'workspace': workspace}):
+            inner.check()
+            raw = _ebook_metadata(row)
+            digest.update(len(raw).to_bytes(8, 'big'))
+            digest.update(raw)
+        snapshot = digest.hexdigest()
+        if previous is not None and previous['snapshot'] != snapshot:
+            raise ValueError('The EPUB library changed. Start the book list again.')
+        after_id, after_title = None, None
+        if previous is not None:
+            after_id = previous['after']
+            boundary = db.execute('SELECT COALESCE(m.title,\'\') ' + _EBOOK_FROM
+                                  + 'AND e.id=:edition', {'workspace': workspace, 'edition': after_id}).fetchone()
+            if boundary is None:
+                raise ValueError('The EPUB page boundary is unavailable.')
+            after_title = boundary[0]
+        rows, page_bytes, has_more = [], 0, False
+        for row in db.execute('SELECT ' + _EBOOK_FIELDS + ', '
+            + '(SELECT count(*) FROM page p WHERE p.revision=a.revision) '
+            + _EBOOK_FROM + '''
+            AND (:after_id IS NULL OR COALESCE(m.title,'') COLLATE NOCASE > :after_title COLLATE NOCASE
+                OR (COALESCE(m.title,'') COLLATE NOCASE = :after_title COLLATE NOCASE
+                    AND e.id COLLATE BINARY > :after_id))
+            ORDER BY COALESCE(m.title,'') COLLATE NOCASE,e.id COLLATE BINARY LIMIT :count''',
+            {'workspace': workspace, 'after_id': after_id, 'after_title': after_title, 'count': limit + 1}):
+            inner.check()
+            size = len(_ebook_metadata(tuple(row)[:5])) + 64
+            if len(rows) >= limit or page_bytes + size > _EBOOK_PAGE_BYTES:
+                if not rows:
+                    raise ValueError('One EPUB entry exceeds the page byte budget.')
+                has_more = True
+                break
+            rows.append(row)
+            page_bytes += size
+        inner.check()
+        books = tuple(EbookBook(workspace, row[0], row[1], row[2] or 'Unknown title',
+                               row[3] or 'Unknown author', row[4] or '', row[5])
+                      for row in rows[:limit])
+        number = previous['page'] if previous is not None else 1
+        following = (json.dumps(dict(version=1, scope=scope, snapshot=snapshot,
+                          after=books[-1].edition_id, page=number + 1),
+                          ensure_ascii=True, separators=(',', ':'))
+                     if has_more else None)
+        return EbookPage(books, following, number)

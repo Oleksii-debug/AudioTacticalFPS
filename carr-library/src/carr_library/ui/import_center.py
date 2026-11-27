@@ -15,7 +15,13 @@ def batch_summary(batch):
               ('duplicate', 'exact duplicates'), ('rejected', 'not accepted'),
               ('failed', 'failed'), ('quarantined', 'need page review'), ('excluded', 'excluded')]
     detail = ', '.join(f'{counts.get(key, 0)} {label}' for key, label in labels if counts.get(key, 0))
-    return f'{batch.get("total", len(batch.get("rows", ())))} files: {detail or "none"}.'
+    result = f'{batch.get("total", len(batch.get("rows", ())))} files: {detail or "none"}.'
+    scan = batch.get('scan')
+    if scan and scan['cursor'] is not None:
+        result += (' Unscanned external folders require a new selection after restore.'
+                   if scan['review_required'] else
+                   ' More selected sources remain. Use Continue scan for the next bounded page.')
+    return result
 
 
 def row_details(row):
@@ -200,7 +206,32 @@ class ImportCenterActions:
 
         self._job('Checking files and duplicates', lambda: self.library.plan_import_batch(
             self.workspace, paths, collections=collections, recursive=recursive, config=config,
-            cancelled=self.frame.cancel_event.is_set), done, planning=True)
+            cancelled=self.frame.cancel_event.is_set, paged=True), done, planning=True)
+
+    def continue_scan(self, event=None):
+        try:
+            self._bound()
+            batch = self.batch
+            if batch is None:
+                raise ValueError('Select a saved import batch first.')
+            scan = batch.get('scan')
+            if scan is None or scan['cursor'] is None:
+                raise ValueError('This scan is complete. Choose Add files or Add folder for new sources.')
+            if scan['review_required']:
+                raise ValueError('Unscanned external folders were not backed up. '
+                                 'Review and select those folders again; saved files remain available.')
+            batch_id = batch['batch_id']
+
+            def done(following):
+                self.refresh(selected=following['batch_id'])
+                self.report('Next scan page saved. ' + batch_summary(following) +
+                            ' Review its files before starting queued imports.')
+
+            self._job('Continuing the selected import scan',
+                lambda: self.library.continue_import_scan(self.workspace, batch_id,
+                    cancelled=self.frame.cancel_event.is_set), done, planning=True)
+        except Exception as exc:
+            self.report(str(exc))
 
     def choose_languages(self, event=None):
         from .ocr_options import choose_model_config, config_summary
@@ -393,7 +424,8 @@ def show_import_center(frame, workspace):
             layout.Add(self.recursive, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
             add = wx.BoxSizer(wx.HORIZONTAL)
             for label, handler in [('&Add files...', self.add_files), ('Add &folder...', self.add_folder),
-                                   ('Refresh saved &queues', self.refresh)]:
+                                   ('Refresh saved &queues', self.refresh),
+                                   ('Continue sca&n', self.continue_scan)]:
                 control = wx.Button(self, label=label)
                 control.Bind(wx.EVT_BUTTON, handler)
                 self.mutable.append(control)

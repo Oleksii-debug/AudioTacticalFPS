@@ -1,5 +1,7 @@
 """Cursor-only navigation and real service workflows; not native wx/NVDA proof."""
 from dataclasses import replace
+from importlib.util import module_from_spec, spec_from_file_location
+from pathlib import Path
 
 import pytest
 
@@ -8,8 +10,23 @@ from carr_library.search.pagination import MAX_CURSOR_BYTES
 from carr_library.ui.federated_search import SearchCenter, SearchOptions
 from carr_library.ui.search_paging import PageHistory
 
-from .test_federated_search import Frame, View, Dialogs
-from ..search.test_search_pagination import publish_text_corpus
+
+def _fixture_module(name, path):
+    """Load only the checked-in peer fixture, also under standalone pytest."""
+    spec = spec_from_file_location(name, path)
+    if spec is None or spec.loader is None:
+        raise ImportError('The exact search fixture is unavailable: ' + str(path))
+    module = module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+_TESTS = Path(__file__).resolve().parents[1]
+_federated = _fixture_module('carr_paging_federated_fixture',
+                            _TESTS / 'ui' / 'test_federated_search.py')
+Frame, View, Dialogs = _federated.Frame, _federated.View, _federated.Dialogs
+publish_text_corpus = _fixture_module('carr_paging_corpus_fixture',
+    _TESTS / 'search' / 'test_search_pagination.py').publish_text_corpus
 
 
 class PagingView(View):

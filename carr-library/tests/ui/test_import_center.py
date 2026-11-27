@@ -327,3 +327,49 @@ def test_lost_authorization_clears_visible_batch_data(center):
     center.refresh()
     assert center.batch is None and center.rows.items == [] and center.details.value == ''
     assert center.status.value == 'Library unavailable.'
+
+
+def test_continue_scan_captures_saved_page_and_reuses_background_cancellation(center):
+    first = batch()
+    first['scan'] = {'cursor': {'pending': True}, 'review_required': False}
+    center.batch = first
+    following = batch('following')
+    following['scan'] = {'cursor': None, 'review_required': False}
+    center.saved['following'] = following
+    center.library.continue_import_scan = Mock(return_value=following)
+    center.continue_scan()
+    assert center.busy and center.cancel.enabled
+    center.library.continue_import_scan.assert_not_called()
+    center.batch = batch('unrelated')
+    center.frame.cancel_event.set()
+    job = center.jobs[-1]
+    result = job.operation()
+    args, options = center.library.continue_import_scan.call_args
+    assert args == ('library', 'first') and options['cancelled']()
+    center.frame.cancel_event.clear()
+    complete(center, job, result)
+    assert center.batch['batch_id'] == 'following'
+    assert not center.busy and not center.cancel.enabled
+    assert 'Next scan page saved' in center.status.GetValue()
+
+
+@pytest.mark.parametrize('state', ['complete', 'restored'])
+def test_complete_or_restored_scan_requires_new_explicit_source_selection(center, state):
+    center.batch['scan'] = {'cursor': None if state == 'complete' else {'pending': True},
+                            'review_required': state == 'restored'}
+    center.library.continue_import_scan = Mock()
+    center.continue_scan()
+    center.library.continue_import_scan.assert_not_called()
+    assert not center.jobs and not center.busy
+    assert ('complete' if state == 'complete' else 'not backed up') in center.status.GetValue()
+
+
+def test_continuation_completion_cannot_replace_a_different_library(center):
+    center.batch['scan'] = {'cursor': {'pending': True}, 'review_required': False}
+    center.library.continue_import_scan = Mock()
+    center.continue_scan()
+    old = deepcopy(center.batch)
+    center.frame.library = SimpleNamespace()
+    complete(center, center.jobs[-1], batch('foreign-late'))
+    assert center.batch == old
+    assert 'library folder changed' in center.status.GetValue()

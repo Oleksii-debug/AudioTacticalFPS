@@ -40,6 +40,46 @@ _ROW_KEYS = {'row_id', 'work_id', 'edition_id', 'request_id', 'source', 'file', 
              'state', 'message', 'manifest', 'duplicate_of', 'result'}
 
 
+_BATCH_KEYS_V2 = _BATCH_KEYS | {'scan'}
+
+
+def batch_schema(record):
+    return (isinstance(record, dict) and type(record.get('version')) is int
+            and record['version'] in (1, 2)
+            and set(record) == (_BATCH_KEYS if record['version'] == 1 else _BATCH_KEYS_V2))
+
+
+def validate_batch_scan(record):
+    """Passive validation shared by live batches and typed backups."""
+    if record['version'] == 1:
+        return
+    from .batch_scan import validate_scan_cursor
+    scan = record['scan']
+    if (not isinstance(scan, dict) or set(scan) != {
+            'roots', 'cursor', 'next_batch_id', 'previous_batch_id',
+            'request_sha256', 'review_required', 'unscanned_sources'}
+            or not isinstance(scan['roots'], list)
+            or type(scan['review_required']) is not bool
+            or scan['unscanned_sources'] != 'external_not_copied'
+            or not isinstance(scan['request_sha256'], str)
+            or not re.fullmatch('[0-9a-f]{64}', scan['request_sha256'])):
+        raise ValueError('Invalid import scan continuation metadata.')
+    for key in ('next_batch_id', 'previous_batch_id'):
+        value = scan[key]
+        if value is not None and (not isinstance(value, str) or not _ID.fullmatch(value)
+                                  or value == record['batch_id']):
+            raise ValueError('Invalid continued import batch identity.')
+    if (scan['cursor'] is None) != (scan['next_batch_id'] is None):
+        raise ValueError('Import scan completion differs from its next page.')
+    validate_scan_cursor(scan['roots'], record['recursive'], scan['cursor'])
+
+
+def _scan_request(workspace, roots, recursive, collections, settings, cursor, previous):
+    from hashlib import sha256
+    return sha256(canonical([workspace, list(roots), recursive, list(collections),
+                             settings, cursor, previous]).encode('utf-8')).hexdigest()
+
+
 def _text(value, limit, *, empty=True):
     return (isinstance(value, str) and len(value) <= limit and '\x00' not in value
             and (empty or bool(value)))
@@ -102,8 +142,7 @@ class ImportBatchStore:
                 catalog._active_collection(collection)
 
     def _validate(self, record, batch_id):
-        if (not isinstance(record, dict) or set(record) != _BATCH_KEYS
-                or type(record['version']) is not int or record['version'] != 1
+        if (not batch_schema(record)
                 or record['batch_id'] != batch_id or record['data_dir'] != str(self.root)
                 or not _text(record['workspace'], 200, empty=False)
                 or not _text(record['created'], 64, empty=False)
@@ -117,6 +156,7 @@ class ImportBatchStore:
                 or not isinstance(record['rows'], list) or len(record['rows']) > MAX_ROWS):
             raise ValueError('Invalid import batch schema or data-directory binding.')
         Config(**record['config'])
+        validate_batch_scan(record)
         seen = {name: set() for name in ('row_id', 'work_id', 'edition_id', 'request_id')}
         for row in record['rows']:
             if (not isinstance(row, dict) or set(row) != _ROW_KEYS
@@ -215,7 +255,12 @@ class ImportBatchStore:
             temporary.unlink(missing_ok=True)
 
     def plan(self, workspace, paths, *, collections=(), recursive=True,
-             config=None, cancelled=lambda: False):
+             config=None, cancelled=lambda: False, paged=False):
+        if type(paged) is not bool:
+            raise ValueError('Invalid continued scan selection.')
+        if paged:
+            return self._plan_page(workspace, paths, collections=collections,
+                                   recursive=recursive, config=config, cancelled=cancelled)
         from .batch_scan import MAX_EXISTING_ASSETS, scan_paths
         if (not isinstance(collections, (list, tuple)) or len(collections) > 128
                 or type(recursive) is not bool or not callable(cancelled)):
@@ -244,6 +289,86 @@ class ImportBatchStore:
         with self._lock(record['batch_id']):
             self._store(record, create=True, paused=bool(cancelled()))
         return _copy(record)
+
+
+    def _plan_page(self, workspace, paths, *, collections=(), recursive=True,
+                   config=None, cancelled=lambda: False, cursor=None,
+                   batch_id=None, previous=None):
+        from .batch_scan import MAX_EXISTING_ASSETS, scan_paths_page
+        if (not isinstance(collections, (list, tuple)) or len(collections) > 128
+                or type(recursive) is not bool or not callable(cancelled)):
+            raise ValueError('Invalid import batch options.')
+        collections = tuple(dict.fromkeys(collections))
+        settings = asdict(config or Config())
+        Config(**settings)
+        if cancelled():
+            raise InterruptedError('Import scan cancelled.')
+        self._authorize(workspace, collections)
+        with self.app.read(workspace) as db:
+            existing = tuple(row[0] for row in db.execute(
+                'SELECT DISTINCT asset FROM catalog_edition WHERE workspace=? LIMIT ?',
+                (workspace, MAX_EXISTING_ASSETS + 1)))
+        page = scan_paths_page(paths, recursive=recursive, existing_assets=existing,
+                               cursor=cursor, cancelled=cancelled)
+        rows = [dict(row, row_id=uuid4().hex, work_id=uuid4().hex,
+                     edition_id=uuid4().hex, request_id=uuid4().hex, result=None)
+                for row in page.rows]
+        self._authorize(workspace, collections)
+        if cancelled():
+            raise InterruptedError('Import scan cancelled.')
+        record = dict(version=2, batch_id=batch_id or uuid4().hex, data_dir=str(self.root),
+                      workspace=workspace, created=_now(), updated=_now(), state='queued',
+                      collections=list(collections), recursive=recursive, config=settings,
+                      rows=rows, counts={}, total=len(rows),
+                      scan=dict(roots=list(page.roots), cursor=page.cursor,
+                          next_batch_id=uuid4().hex if page.cursor is not None else None,
+                          previous_batch_id=previous,
+                          request_sha256=_scan_request(workspace, page.roots, recursive,
+                              collections, settings, cursor, previous),
+                          review_required=False, unscanned_sources='external_not_copied'))
+        with self._lock(record['batch_id']):
+            self._store(record, create=True)
+        return _copy(record)
+
+    def continue_scan(self, workspace, batch_id, *, cancelled=lambda: False):
+        """Publish one next page once; a lost reply reopens that same batch."""
+        if not callable(cancelled):
+            raise ValueError('A cancellation callback is required.')
+        if cancelled():
+            raise InterruptedError('Import scan cancelled.')
+        self._authorize(workspace)
+        with self._lock(batch_id):
+            record = self.get(workspace, batch_id)
+            self._authorize(workspace, record['collections'])
+            if record['version'] != 2 or record['scan']['cursor'] is None:
+                raise ValueError('This import scan is complete. Select new sources to start another scan.')
+            scan = record['scan']
+            if scan['review_required']:
+                raise ValueError('Unscanned external sources were not copied into this backup. '
+                                 'Review and select the source folders again; saved files can still be imported.')
+            next_id = scan['next_batch_id']
+            expected = _scan_request(workspace, scan['roots'], record['recursive'],
+                                     record['collections'], record['config'], scan['cursor'], batch_id)
+            try:
+                following = self.get(workspace, next_id)
+            except FileNotFoundError:
+                following = None
+            if following is not None:
+                if (following['version'] != 2
+                        or following['scan']['previous_batch_id'] != batch_id
+                        or following['scan']['request_sha256'] != expected
+                        or following['scan']['roots'] != scan['roots']
+                        or following['recursive'] != record['recursive']
+                        or following['collections'] != record['collections']
+                        or following['config'] != record['config']):
+                    raise ValueError('The saved continuation belongs to another import scan.')
+                if cancelled():
+                    raise InterruptedError('Import scan cancelled.')
+                return _copy(following)
+            return self._plan_page(workspace, scan['roots'],
+                collections=record['collections'], recursive=record['recursive'],
+                config=Config(**record['config']), cancelled=cancelled,
+                cursor=scan['cursor'], batch_id=next_id, previous=batch_id)
 
     def get(self, workspace, batch_id):
         self._authorize(workspace)

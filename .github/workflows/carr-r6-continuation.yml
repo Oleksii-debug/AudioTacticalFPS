@@ -1,0 +1,140 @@
+name: CARR r6 import EPUB and search continuation
+
+on:
+  push:
+    branches: ['carr/v3-continuation-r6-*']
+    paths:
+      - carr-library/**
+      - .github/workflows/carr-r6-continuation.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-r6-continuation-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  exact-continuation:
+    name: Windows / continuation source and actual native controls
+    runs-on: windows-2022
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Install the current exact pinned integrated package
+        run: |
+          New-Item -ItemType Directory -Force ci-results | Out-Null
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-integrated-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git rev-parse HEAD | Set-Content ci-results/tested-commit.txt
+          git rev-parse 'HEAD^{tree}' | Set-Content ci-results/tested-tree.txt
+          $program = python -I -c "import sys; print(sys.executable)"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Set-NetFirewallProfile -Profile Domain,Private,Public -Enabled True -ErrorAction Stop
+          New-NetFirewallRule -Name 'carr-continuation-offline' -DisplayName 'CARR continuation offline probe' -Direction Outbound -Action Block -Profile Any -Program $program.Trim() -Enabled True -ErrorAction Stop | Out-Null
+          $rule = Get-NetFirewallRule -PolicyStore ActiveStore -Name 'carr-continuation-offline' -ErrorAction Stop
+          if ($rule.Enabled -ne 'True' -or $rule.Direction -ne 'Outbound' -or $rule.Action -ne 'Block') { throw 'Actual continuation offline firewall rule unavailable.' }
+      - name: Require all current continuation and UI integration cases
+        timeout-minutes: 12
+        run: |
+          $suites = @(
+            'tests/ingest/test_scan_continuation.py',
+            'tests/e2e/test_import_scan_continuation.py',
+            'tests/reader/test_ebook_reader.py',
+            'tests/ui/test_import_center.py',
+            'tests/ui/test_ebook_reader.py',
+            'tests/ui/test_desktop_query_jobs.py',
+            'tests/ui/test_desktop_result_modes.py',
+            'tests/ui/test_federated_labels.py',
+            'tests/ui/test_search_paging.py',
+            'tests/e2e/test_search_continuation.py'
+          )
+          python scripts/ci_check.py --jobs 2 @suites 2>&1 | Tee-Object ci-results/continuation-source.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          @'
+          import json,pathlib,re
+          expected={'tests/ingest/test_scan_continuation.py':14,
+              'tests/e2e/test_import_scan_continuation.py':9,
+              'tests/reader/test_ebook_reader.py':25,
+              'tests/ui/test_import_center.py':28,
+              'tests/ui/test_ebook_reader.py':22,
+              'tests/ui/test_desktop_query_jobs.py':7,
+              'tests/ui/test_desktop_result_modes.py':9,
+              'tests/ui/test_federated_labels.py':40,
+              'tests/ui/test_search_paging.py':11,
+              'tests/e2e/test_search_continuation.py':9}
+          raw=pathlib.Path('ci-results/continuation-source.txt').read_text(encoding='utf-8-sig')
+          observed={}
+          for verdict,path,count,failed,skipped,code in re.findall(r'(PASS|FAIL): (\S+): junit_passed=(\d+), failed=(\d+), skipped=(\d+), pytest_exit=(\d+)',raw):
+              assert path not in observed,path
+              assert verdict=='PASS' and failed==skipped==code=='0',(path,verdict,failed,skipped,code)
+              observed[path]=int(count)
+          assert observed==expected,(observed,expected)
+          report=dict(status='PASS',required_cases=observed,passed=sum(observed.values()),failed=0,skipped=0,
+              source_commit=pathlib.Path('ci-results/tested-commit.txt').read_text(encoding='utf-8-sig').strip(),
+              source_tree=pathlib.Path('ci-results/tested-tree.txt').read_text(encoding='utf-8-sig').strip(),
+              actual_windows=True,actual_offline_firewall=True,nvda='NOT_RUN',real_corpus_benchmark='NOT_RUN')
+          pathlib.Path('ci-results/continuation-source.json').write_text(json.dumps(report,sort_keys=True)+'\n',encoding='utf-8')
+          print(json.dumps(report,sort_keys=True))
+          '@ | python -I -B -
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Exercise actual import cancellation retry and EPUB next previous keys
+        timeout-minutes: 4
+        run: |
+          python -I -B -X utf8 tests/ui/probe_import_epub_continuation_native.py --native 2>&1 | Tee-Object ci-results/continuation-native.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          @'
+          from collections import Counter
+          from hashlib import sha256
+          import json,pathlib,sys
+          raw=pathlib.Path('ci-results/continuation-native.txt').read_text(encoding='utf-8-sig')
+          report=[json.loads(line) for line in raw.splitlines() if line.lstrip().startswith('{')][-1]
+          oracle=json.loads(pathlib.Path('docs/evidence/import-epub-continuation-native-oracle.json').read_text(encoding='utf-8'))
+          expected=oracle['strict_receipt']
+          assert report['result']=='PASS' and report['check_count']==expected['check_count']==26
+          assert Counter(report['checks'])==Counter(expected['checks']) and report['failures']==[]
+          assert all(report[name] is True for name in ('actual_native_keys','actual_domain_services','synthetic_sources'))
+          assert report['injected_test_page_limits']==expected['injected_test_page_limits']
+          assert report['nvda']==report['real_corpus_benchmark']=='NOT_RUN'
+          assert set(report['module_origins'])==set(oracle['required_module_origins'])
+          for name,record in report['module_origins'].items():
+              path=pathlib.Path(record['path']).resolve()
+              assert path.is_relative_to(pathlib.Path(sys.prefix).resolve()),str(path)
+              source=pathlib.Path('src')/pathlib.Path(*name.split('.')).with_suffix('.py')
+              assert record['sha256']==sha256(path.read_bytes()).hexdigest()==sha256(source.read_bytes()).hexdigest(),name
+          report['source_commit']=pathlib.Path('ci-results/tested-commit.txt').read_text(encoding='utf-8-sig').strip()
+          report['source_tree']=pathlib.Path('ci-results/tested-tree.txt').read_text(encoding='utf-8-sig').strip()
+          report['installed_package']=True
+          report['actual_offline_firewall']=True
+          pathlib.Path('ci-results/continuation-native.json').write_text(json.dumps(report,sort_keys=True)+'\n',encoding='utf-8')
+          print(json.dumps(report,sort_keys=True))
+          '@ | python -I -B -
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Preserve exact continuation evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-r6-continuation-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-results/
+          if-no-files-found: error
+          retention-days: 7

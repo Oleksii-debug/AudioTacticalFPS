@@ -1,4 +1,5 @@
 """Actual CLI processes and approved assistant plans share bounded continuation."""
+from importlib.util import module_from_spec, spec_from_file_location
 import json
 import os
 from pathlib import Path
@@ -11,7 +12,19 @@ from carr_library.application import LibraryApp
 from carr_library.assistant.models import Plan, Scope, Step
 from carr_library.assistant.service import AssistantService
 
-from ..search.test_search_pagination import publish_text_corpus
+
+def _fixture_module(name, path):
+    """Load only the checked-in peer fixture, also under standalone pytest."""
+    spec = spec_from_file_location(name, path)
+    if spec is None or spec.loader is None:
+        raise ImportError('The exact search fixture is unavailable: ' + str(path))
+    module = module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+publish_text_corpus = _fixture_module('carr_continuation_corpus_fixture',
+    Path(__file__).resolve().parents[1] / 'search' / 'test_search_pagination.py').publish_text_corpus
 
 
 ROOT = Path(__file__).resolve().parents[2]

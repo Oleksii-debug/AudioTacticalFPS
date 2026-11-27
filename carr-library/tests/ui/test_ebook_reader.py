@@ -10,7 +10,7 @@ from unittest.mock import Mock
 import pytest
 
 from carr_library.citations.anchors import Identity
-from carr_library.reader.ebook import EbookBook, EbookChapter, EbookSection
+from carr_library.reader.ebook import EbookBook, EbookChapter, EbookSection, EbookPage
 from carr_library.ui import ebook_reader
 
 
@@ -63,8 +63,8 @@ def actions(monkeypatch):
         cancel_event=Event(), _workspace=lambda: 'workspace')
     dialogs = SimpleNamespace(choose=Mock(return_value=0))
     show = Mock()
-    listing, reading = Mock(return_value=(book(),)), Mock(return_value=section())
-    monkeypatch.setattr(ebook_reader, 'list_ebooks', listing)
+    listing, reading = Mock(return_value=EbookPage((book(),), None, 1)), Mock(return_value=section())
+    monkeypatch.setattr(ebook_reader, 'list_ebooks_page', listing)
     monkeypatch.setattr(ebook_reader, 'read_ebook_section', reading)
     handler = ebook_reader.EbookReaderActions(frame, dialogs=dialogs, show=show)
     return handler, frame, listing, reading, dialogs, show
@@ -85,7 +85,7 @@ def test_reader_loads_in_jobs_and_preserves_scope_and_focus(actions):
     _, operation, done = frame.run_job.call_args.args
     done(operation())
     listing.assert_called_once_with(frame.library, 'workspace', authorized_topic='topic',
-                                    cancelled=frame.cancel_event.is_set)
+                                    cursor=None, cancelled=frame.cancel_event.is_set)
     reading.assert_not_called()
     _, operation, done = frame.run_job.call_args.args
     done(operation())
@@ -165,3 +165,55 @@ def test_dismissal_during_background_read_does_not_focus_disabled_control(action
     show.side_effect = lambda *args: setattr(frame, 'working', True)
     done(operation())
     frame.choice.SetFocus.assert_not_called()
+
+
+def test_epub_chooser_uses_bounded_next_and_previous_without_caching_source_text(actions):
+    handler, frame, listing, reading, dialogs, show = actions
+    following = replace(book(), edition_id='second-edition')
+    listing.side_effect = [EbookPage((book(),), 'next-cursor', 1),
+                           EbookPage((following,), None, 2),
+                           EbookPage((book(),), 'next-cursor', 1)]
+    dialogs.choose.side_effect = [1, 1, 0]
+    handler.read()
+    for _ in range(3):
+        _, operation, done = frame.run_job.call_args.args
+        done(operation())
+    assert [call.kwargs['cursor'] for call in listing.call_args_list] == [None, 'next-cursor', None]
+    assert dialogs.choose.call_args_list[0].args[3][-1] == 'Next page of EPUB books'
+    assert dialogs.choose.call_args_list[1].args[3][-1] == 'Previous page of EPUB books'
+    reading.assert_not_called()
+    _, operation, done = frame.run_job.call_args.args
+    done(operation())
+    reading.assert_called_once()
+    assert reading.call_args.args[2:4] == ('edition', 'revision')
+    show.assert_called_once()
+
+
+def test_stale_second_epub_page_cannot_replace_the_active_scope(actions):
+    handler, frame, listing, reading, dialogs, show = actions
+    listing.return_value = EbookPage((book(),), 'next-cursor', 1)
+    dialogs.choose.return_value = 1
+    handler.read()
+    _, operation, done = frame.run_job.call_args.args
+    done(operation())
+    _, operation, done = frame.run_job.call_args.args
+    frame.active = ('another-library', None)
+    done(EbookPage((book(),), None, 2))
+    assert dialogs.choose.call_count == 1
+    reading.assert_not_called()
+    show.assert_not_called()
+
+
+def test_cancelling_after_epub_page_navigation_opens_no_section(actions):
+    handler, frame, listing, reading, dialogs, show = actions
+    listing.side_effect = [EbookPage((book(),), 'next-cursor', 1),
+                           EbookPage((book(),), None, 2)]
+    dialogs.choose.side_effect = [1, None]
+    handler.read()
+    for _ in range(2):
+        _, operation, done = frame.run_job.call_args.args
+        done(operation())
+    assert frame.active == ('workspace', 'topic')
+    assert frame.run_job.call_count == 2
+    reading.assert_not_called()
+    show.assert_not_called()
