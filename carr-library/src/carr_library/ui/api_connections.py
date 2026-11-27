@@ -15,7 +15,7 @@ from ..providers import (BudgetLedger, JobApproval, ProfileStore, ProviderGatewa
                          ProviderProfile, ProviderRequest, ProviderError,
                          GOOGLE_TRANSLATION_ENDPOINT, GOOGLE_TRANSLATION_PROVIDERS,
                          TRANSLATION_PROVIDERS, LOCAL_TRANSLATION_PROVIDER,
-                         google_v3_parent)
+                         google_v3_parent, decode_profile_import, MAX_REQUEST)
 from ..research.export_file import _filename, _destination
 
 
@@ -34,6 +34,31 @@ class ConnectionsController:
         self.root = Path(root)
         self.store = ProfileStore(self.root / 'api-connections.json', vault)
         self.transport = transport
+        info = self.root.lstat()
+        self.import_root_identity = info.st_dev, info.st_ino
+
+    def review_profiles(self, path):
+        """Capture one bounded, immutable local settings file for explicit review."""
+        from ..audio.jobs import file_identity, regular_file, verified_reader
+        path = Path(path).absolute()
+        before = regular_file(path)
+        if before.st_nlink != 1 or not 0 < before.st_size <= MAX_REQUEST:
+            raise ProviderError('Choose a regular unlinked profile export within the byte budget.')
+        with verified_reader(path, expected_identity=file_identity(before)) as stream:
+            raw = stream.read(MAX_REQUEST + 1)
+        if len(raw) != before.st_size:
+            raise ProviderError('The selected profile export changed during review.')
+        return raw, decode_profile_import(raw)
+
+    def import_profiles(self, raw, *, approved=False):
+        if approved is not True:
+            raise ProviderError('Review the selected account settings before importing.')
+        from ..audio.jobs import checked_directory
+        checked = checked_directory(self.root)
+        info = checked.stat()
+        if (info.st_dev, info.st_ino) != self.import_root_identity:
+            raise ProviderError('The selected library changed. Reopen connection settings before importing.')
+        return self.store.import_profiles(raw)
 
     def run(self, profile, request, output, *, approved=False, estimate_micros=None,
             cancelled=lambda: False):
@@ -83,7 +108,8 @@ class ConnectionsController:
 
 def show_api_connections(frame):
     import wx
-    controller = ConnectionsController(frame.library.root)
+    library = frame.library
+    controller = ConnectionsController(library.root)
 
     class Dialog(wx.Dialog):
         def __init__(self):
@@ -97,14 +123,18 @@ def show_api_connections(frame):
             self.status = wx.TextCtrl(self, style=wx.TE_MULTILINE | wx.TE_READONLY)
             self.status.SetName('Connection status')
             self.layout.Add(self.status, 1, wx.EXPAND | wx.ALL, 8)
-            buttons = wx.BoxSizer(wx.HORIZONTAL)
-            for label, action in [('&Add profile', self.add), ('&Edit profile', self.edit),
-                                  ('&Remove profile and key', self.remove), ('&Export profiles', self.export),
-                                  ('Run a re&viewed task', self.run)]:
-                button = wx.Button(self, label=label)
-                button.Bind(wx.EVT_BUTTON, action)
-                buttons.Add(button, 0, wx.ALL, 4)
-            self.layout.Add(buttons)
+            for actions in (
+                    (('&Add profile', self.add), ('&Edit profile', self.edit),
+                     ('&Remove profile and key', self.remove)),
+                    (('&Export profiles', self.export), ('&Import profiles', self.import_profiles),
+                     ('Run a re&viewed task', self.run))):
+                buttons = wx.BoxSizer(wx.HORIZONTAL)
+                for label, action in actions:
+                    button = wx.Button(self, label=label)
+                    button.SetName(label.replace('&', ''))
+                    button.Bind(wx.EVT_BUTTON, action)
+                    buttons.Add(button, 0, wx.ALL, 4)
+                self.layout.Add(buttons, 0, wx.EXPAND)
             self.layout.Add(self.CreateButtonSizer(wx.CLOSE), 0, wx.ALL, 8)
             self.Bind(wx.EVT_BUTTON, lambda e: self.EndModal(wx.ID_CLOSE), id=wx.ID_CLOSE)
             self.SetSizer(self.layout)
@@ -269,6 +299,40 @@ def show_api_connections(frame):
                 self.status.SetFocus()
             except Exception as exc:
                 self.status.SetValue(str(exc))
+
+        def import_profiles(self, event):
+            dialog = wx.FileDialog(self, 'Import profiles without API keys',
+                wildcard='JSON files (*.json)|*.json', style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+            try:
+                if dialog.ShowModal() != wx.ID_OK:
+                    return
+                path = Path(dialog.GetPath())
+            finally:
+                dialog.Destroy()
+            try:
+                raw, selected = controller.review_profiles(path)
+                if not selected:
+                    self.status.SetValue('The selected export contains no accounts.')
+                    return
+                names = '\n'.join(profile.name + ' — ' + profile.provider for profile in selected[:20])
+                if len(selected) > 20:
+                    names += '\n... and ' + str(len(selected) - 20) + ' more accounts.'
+                notice = ('Import these ' + str(len(selected)) + ' captured account settings?\n\n' + names
+                    + '\n\nExisting accounts are never replaced. Credential references are cleared. '
+                    'Reconnect remote accounts explicitly; every task still needs its own review and approval. '
+                    'Importing sends no requests.')
+                if wx.MessageBox(notice, 'Review provider profile import',
+                        wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, self) != wx.YES:
+                    return
+                if frame.library is not library:
+                    raise ProviderError('The selected library changed. Reopen connection settings before importing.')
+                imported = controller.import_profiles(raw, approved=True)
+                self.refresh()
+                self.status.SetValue(str(len(imported)) + ' account settings imported without keys or approvals. '
+                    'No provider request was sent.')
+            except Exception as exc:
+                self.status.SetValue(str(exc))
+                self.status.SetFocus()
 
         def export(self, event):
             dialog = wx.FileDialog(self, 'Export profiles without API keys', wildcard='JSON files (*.json)|*.json', style=wx.FD_SAVE)

@@ -184,3 +184,33 @@ def test_local_requests_without_credentials_remain_available(tmp_path, monkeypat
     assert json.loads(payload)['model' if kind == 'llm' else 'source'] == (
         'reviewed-local-runtime' if kind == 'llm' else 'en')
     assert ledger.report('local-job')[0]['state'] == 'complete'
+
+
+@pytest.mark.parametrize('encoding', ['unicode', 'html'])
+@pytest.mark.parametrize('where', ['metadata', 'content'])
+def test_duplicate_json_cannot_hide_an_escaped_credential(tmp_path, encoding, where):
+    value = task(tmp_path, 'llm')
+    if where == 'metadata':
+        raw = '{"choices":[{"message":{"content":"Ordinary answer."}}],"metadata":"' + SECRET + '","metadata":"ordinary"}'
+    else:
+        raw = '{"choices":[{"message":{"content":"' + SECRET + '","content":"Ordinary answer."}}]}'
+    replacement = (''.join('\\u%04x' % ord(char) for char in SECRET) if encoding == 'unicode'
+        else ''.join('&#%d;' % ord(char) for char in SECRET))
+    value.transport.response = raw.replace(SECRET, replacement).encode('utf-8')
+    assert SECRET.encode() not in value.transport.response
+    refused(value)
+
+
+@pytest.mark.parametrize('kind', ['v2', 'v3'])
+@pytest.mark.parametrize('encoding', ['unicode', 'html'])
+def test_unknown_google_metadata_cannot_escape_as_completed_raw_bytes(tmp_path, kind, encoding):
+    value = task(tmp_path, kind)
+    if kind == 'v2':
+        body = {'data': {'translations': [{'translatedText': 'Ordinary translation.'}]}}
+    else:
+        body = {'translations': [{'translatedText': 'Ordinary translation.',
+            'model': 'projects/123/locations/global/models/general/nmt'}]}
+    body['metadata'] = {'discarded': [SECRET]}
+    value.transport.response = encoded(body, encoding)
+    assert SECRET.encode() not in value.transport.response
+    refused(value)

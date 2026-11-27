@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "base": "275a882be727aec2f2ed72e5f543fd449fcd40c3",
+  "source_status": "NOT_RUN",
+  "installed_status": "NOT_RUN",
+  "total_cases": 57,
+  "tests": {
+    "tests/e2e/test_provider_credential_echo.py": {
+      "test_llm_reflection_is_rejected_before_any_completed_receipt": 6,
+      "test_binary_audio_credential_reflection_cannot_complete": 3,
+      "test_translation_reflection_remains_fail_closed": 6,
+      "test_native_task_controller_never_publishes_reflected_credentials": 2,
+      "test_local_requests_without_credentials_remain_available": 2,
+      "test_duplicate_json_cannot_hide_an_escaped_credential": 4,
+      "test_unknown_google_metadata_cannot_escape_as_completed_raw_bytes": 4
+    },
+    "tests/e2e/test_provider_profile_import.py": {
+      "test_import_retains_settings_without_vault_bindings_or_authority": 6,
+      "test_import_rejects_untrusted_or_unbounded_documents_without_mutation": 13,
+      "test_conflict_refuses_the_complete_batch_without_overwriting_an_account": 1,
+      "test_atomic_publication_failure_preserves_prior_accounts": 1,
+      "test_real_concurrent_imports_use_one_writer_and_never_lose_an_account": 2,
+      "test_empty_export_is_a_noop_without_creating_settings": 1,
+      "test_native_controller_review_is_read_only_and_import_requires_explicit_approval": 1,
+      "test_reviewed_bytes_do_not_change_when_the_external_export_changes_later": 1,
+      "test_import_cannot_follow_a_replaced_library_root": 1,
+      "test_native_review_rejects_a_hard_linked_export": 1,
+      "test_native_review_refuses_invalid_inputs_before_any_import": 2
+    }
+  },
+  "network": "No sockets; the existing separately allowlisted loopback suite is unchanged."
+}
