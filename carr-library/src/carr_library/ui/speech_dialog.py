@@ -469,6 +469,12 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                     review.on_close()
                 review.Destroy()
             if alive:
+                # The selected library can change while the native modal is open.
+                # Do not refocus controls belonging to that stale reader scope.
+                try:
+                    guard()
+                except Exception:
+                    return
                 capabilities(); editor.SetFocus()
         except Exception as exc:
             report(str(exc), focus=True)

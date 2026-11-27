@@ -181,6 +181,7 @@ def test_deferred_reader_scope_rejects_changed_authority_before_apply(reader, tm
     state.driver = exercise
     command, _ = reader_hook(state); command()
     assert state.document.text == original and not state.saved and not state.stops
+    assert not state.editor.focused and state.capability_updates == 0
 
 
 @pytest.mark.parametrize('busy,loaded', [(True, True), (False, False)])

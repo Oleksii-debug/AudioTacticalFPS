@@ -339,5 +339,94 @@ package-dir = {"" = "src"}
                 self.build()
 
 
+    def test_optional_profile_preserves_canonical_core_and_semantic_locks(self):
+        core = builder.read_lock(ROOT / "packaging/windows-cp311.lock")
+        semantic = builder.read_lock(ROOT / "packaging/windows-semantic-cp311.lock")
+        optional = builder.read_lock(ROOT / "packaging/windows-semantic-trusted-cp311.lock")
+        trust = builder.read_lock(ROOT / "packaging/trusted-client.lock")
+        self.assertEqual((len(core), len(semantic), len(optional)), (15, 51, 56))
+        self.assertEqual(set(optional) - set(semantic),
+                         {"cryptography", "cffi", "pycparser", "tuf", "securesystemslib"})
+        for name, pin in semantic.items():
+            self.assertEqual(optional[name], pin)
+        for name, (version, _hashes) in core.items():
+            self.assertEqual(optional[name][0], version)
+        for name, (version, hashes) in trust.items():
+            self.assertEqual(optional[name][0], version)
+            self.assertTrue(hashes.issubset(optional[name][1]))
+        self.assertEqual(optional["urllib3"], semantic["urllib3"])
+
+    def test_optional_sbom_keeps_every_existing_component_and_reviewed_addition(self):
+        base = json.loads((ROOT / "packaging/windows-semantic-sbom.cdx.json").read_bytes())
+        full = json.loads((ROOT / "packaging/windows-semantic-trusted-sbom.cdx.json").read_bytes())
+        review = json.loads((ROOT / "packaging/trusted-client-dependencies.json").read_bytes())
+        components = {item["name"]: item for item in full["components"]}
+        self.assertEqual(len(full["components"]), 56)
+        self.assertEqual(len(components), 56)
+        for item in base["components"]:
+            self.assertEqual(components[item["name"]], item)
+        base_names = {item["name"] for item in base["components"]}
+        for item in review["dependencies"]:
+            component = components[item["name"]]
+            self.assertEqual(component["version"], item["version"])
+            if item["name"] not in base_names:
+                self.assertIn({"alg": "SHA-256", "content": item["sha256"]},
+                              component["hashes"])
+                self.assertTrue(component["licenses"])
+        refs = {item["bom-ref"] for item in full["components"]}
+        root = next(item for item in full["dependencies"]
+                    if item["ref"] == full["metadata"]["component"]["bom-ref"])
+        self.assertEqual(set(root["dependsOn"]), refs)
+        for item in full["dependencies"]:
+            self.assertTrue(set(item.get("dependsOn", ())).issubset(refs))
+
+    def test_optional_profile_cannot_certify_an_unrelated_dependency_lock(self):
+        with self.assertRaisesRegex(ValueError, "exact full optional dependency lock"):
+            builder.build_bundle(self.app, self.wheels, self.lock, self.output,
+                                 sbom=self.sbom(), trusted_client=True)
+        self.assertFalse(self.output.exists())
+
+    def test_optional_profile_requires_its_complete_sbom_before_copy(self):
+        with self.assertRaisesRegex(ValueError, "full optional runtime SBOM"):
+            builder.build_bundle(self.app, self.wheels,
+                                 ROOT / "packaging/windows-semantic-trusted-cp311.lock",
+                                 self.output, trusted_client=True)
+        self.assertFalse(self.output.exists())
+
+    def test_optional_profile_and_review_bytes_are_sealed_without_executing_payload(self):
+        # Substitute only the admitted lock catalogue with an inert fixture.
+        # The actual file copying, manifest and installed verifier remain real;
+        # the separate catalogue test above preserves all 56 release pins.
+        read_lock = builder.read_lock
+        expected = read_lock(self.lock)
+        def catalogue(path):
+            if Path(path) == builder.HERE / "windows-semantic-trusted-cp311.lock":
+                return expected
+            return read_lock(path)
+        with patch.object(builder, "read_lock", side_effect=catalogue):
+            builder.build_bundle(self.app, self.wheels, self.lock, self.output,
+                                 sbom=self.sbom(), trusted_client=True)
+        manifest = json.loads((self.output / "bundle-manifest.json").read_bytes())
+        self.assertIs(manifest["bundled_trusted_client"], True)
+        review = (ROOT / "packaging/trusted-client-dependencies.json").read_bytes()
+        self.assertEqual((self.output / "trusted-client-dependencies.json").read_bytes(), review)
+        self.assertEqual(manifest["files"]["trusted-client-dependencies.json"],
+                         hashlib.sha256(review).hexdigest())
+        installer.verify(self.output)
+        (self.output / "trusted-client-dependencies.json").write_bytes(b"changed review")
+        with self.assertRaisesRegex(ValueError, "checksum"):
+            installer.verify(self.output)
+
+    def test_optional_flag_cannot_hide_missing_inventory_or_use_truthy_text(self):
+        self.build()
+        target = self.output / "bundle-manifest.json"
+        manifest = json.loads(target.read_bytes())
+        for value, message in ((True, "incomplete trusted-client"), ("yes", "invalid trusted-client")):
+            manifest["bundled_trusted_client"] = value
+            target.write_text(json.dumps(manifest), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, message):
+                installer.verify(self.output)
+
+
 if __name__ == "__main__":
     unittest.main()

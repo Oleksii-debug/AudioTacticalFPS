@@ -301,3 +301,101 @@ def test_refresh_never_overwrites_existing_or_linked_output(bundle, kind, tmp_pa
         assert bundle.output.read_text() == 'Private existing file'
     else:
         assert bundle.output.is_symlink() and list(other.iterdir()) == []
+
+
+def _full_optional_fixture(bundle, tmp_path):
+    """Real 51+5 synthetic wheels; no executable/runtime/model is invoked."""
+    import build_windows_bundle as builder
+    semantic = builder.read_lock(ROOT / 'packaging/windows-semantic-cp311.lock')
+    optional = builder.read_lock(ROOT / 'packaging/windows-semantic-trusted-cp311.lock')
+    assert len(semantic) == 51 and len(optional) == 56
+    original = bundle.source / 'wheelhouse/fixture_dependency-1.0-py3-none-any.whl'
+    original.unlink()
+    extra = tmp_path / 'optional-five'
+    extra.mkdir()
+    pins = []
+    components = []
+    expected = {}
+    for name, (version, _hashes) in sorted(optional.items()):
+        folder = bundle.source / 'wheelhouse' if name in semantic else extra
+        wheel = _dependency(folder / (name.replace('-', '_') + '-' + version + '-py3-none-any.whl'),
+                            name, version)
+        pins.append(name + '==' + version + ' --hash=sha256:' + sha256(wheel.read_bytes()).hexdigest())
+        components.append({'name': name, 'version': version})
+        expected[wheel.name] = wheel.read_bytes()
+    (bundle.packaging / 'windows-semantic-trusted-cp311.lock').write_text('\n'.join(pins) + '\n')
+    (bundle.packaging / 'windows-semantic-trusted-sbom.cdx.json').write_text(json.dumps(
+        {'bomFormat': 'CycloneDX', 'specVersion': '1.5', 'components': components}))
+    (bundle.packaging / 'trusted-client-dependencies.json').write_text(
+        '{"fixture":"inert wheel review; no cryptographic execution"}\n')
+    target = bundle.source / 'bundle-manifest.json'
+    manifest = json.loads(target.read_bytes())
+    manifest['bundled_model'] = True
+    manifest['files'] = {p.relative_to(bundle.source).as_posix(): sha256(p.read_bytes()).hexdigest()
+                         for p in bundle.source.rglob('*') if p.is_file() and p != target}
+    raw = (json.dumps(manifest, sort_keys=True) + '\n').encode()
+    target.write_bytes(raw)
+    bundle.parent_hash = sha256(raw).hexdigest()
+    return extra, expected, raw
+
+
+def test_refresh_full_optional_profile_seals_56_exact_dependencies_and_preserves_parent(bundle, tmp_path):
+    extra, expected, before = _full_optional_fixture(bundle, tmp_path)
+    _refresh(bundle, extra_wheelhouse=extra, trusted_client=True)
+    manifest = json.loads((bundle.output / 'bundle-manifest.json').read_bytes())
+    assert manifest['bundled_trusted_client'] is True
+    assert manifest['bundled_audio'] is False
+    assert manifest['parent_manifest_sha256'] == bundle.parent_hash
+    locked = (bundle.output / 'install.lock').read_text().splitlines()
+    assert len(locked) == 57 and len({line.split('==')[0] for line in locked}) == 57
+    for name, raw in expected.items():
+        assert (bundle.output / 'wheelhouse' / name).read_bytes() == raw
+    review = bundle.output / 'trusted-client-dependencies.json'
+    assert review.read_bytes() == (bundle.packaging / review.name).read_bytes()
+    assert manifest['files'][review.name] == sha256(review.read_bytes()).hexdigest()
+    assert (bundle.source / 'bundle-manifest.json').read_bytes() == before
+    for name, raw in bundle.protected.items():
+        assert (bundle.output / name).read_bytes() == raw
+
+
+@pytest.mark.parametrize('fault', ['missing', 'extra', 'tampered', 'duplicate'])
+def test_refresh_optional_profile_refuses_an_incomplete_or_ambiguous_wheel_union(bundle, tmp_path, fault):
+    extra, _expected, before = _full_optional_fixture(bundle, tmp_path)
+    selected = next(extra.iterdir())
+    if fault == 'missing':
+        selected.unlink()
+    elif fault == 'extra':
+        _dependency(extra / 'alien_dependency-1.0-py3-none-any.whl', 'alien-dependency', '1.0')
+    elif fault == 'tampered':
+        selected.write_bytes(selected.read_bytes() + b'changed after prior review')
+    else:
+        shared = next((bundle.source / 'wheelhouse').glob('urllib3-*.whl'))
+        (extra / shared.name).write_bytes(shared.read_bytes())
+    with pytest.raises(ValueError):
+        _refresh(bundle, extra_wheelhouse=extra, trusted_client=True)
+    assert not bundle.output.exists()
+    assert (bundle.source / 'bundle-manifest.json').read_bytes() == before
+
+
+def test_refresh_full_optional_profile_requires_an_explicit_semantic_parent(bundle):
+    before = (bundle.source / 'bundle-manifest.json').read_bytes()
+    with pytest.raises(ValueError, match='verified semantic parent'):
+        _refresh(bundle, trusted_client=True)
+    assert not bundle.output.exists()
+    assert (bundle.source / 'bundle-manifest.json').read_bytes() == before
+
+
+def test_refresh_existing_optional_parent_cannot_silently_drop_optional_dependencies(bundle, tmp_path):
+    extra, _expected, _before = _full_optional_fixture(bundle, tmp_path)
+    _refresh(bundle, extra_wheelhouse=extra, trusted_client=True)
+    bundle.source = bundle.output
+    before = (bundle.source / 'bundle-manifest.json').read_bytes()
+    bundle.parent_hash = sha256(before).hexdigest()
+    bundle.output = tmp_path / 'next-refreshed'
+    with pytest.raises(ValueError, match='Preserve the optional parent profile'):
+        _refresh(bundle)
+    assert not bundle.output.exists()
+    assert (bundle.source / 'bundle-manifest.json').read_bytes() == before
+    _refresh(bundle, trusted_client=True)
+    assert json.loads((bundle.output / 'bundle-manifest.json').read_bytes())['bundled_trusted_client'] is True
+    assert len((bundle.output / 'install.lock').read_text().splitlines()) == 57

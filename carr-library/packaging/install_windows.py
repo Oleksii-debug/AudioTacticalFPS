@@ -30,6 +30,12 @@ def verify(root, *, manifest_bytes=None):
                 "CheckInstallation.cmd", "README.txt"}
     if not expected.issubset(files) or not any(p.startswith("wheelhouse/") for p in files):
         raise ValueError("incomplete installation bundle")
+    if "bundled_trusted_client" in manifest:
+        trusted_client = manifest["bundled_trusted_client"]
+        if type(trusted_client) is not bool:
+            raise ValueError("invalid trusted-client dependency flag")
+        if trusted_client and not {"runtime-sbom.cdx.json", "trusted-client-dependencies.json"}.issubset(files):
+            raise ValueError("incomplete trusted-client dependency inventory")
     # Older independently pinned portable bundles have no build receipt or
     # launcher flag. Their existing verification path remains available.
     if ("bundled_launcher" in manifest or "native-launcher-build.json" in files

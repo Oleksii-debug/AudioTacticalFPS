@@ -23,7 +23,8 @@ HERE = Path(__file__).resolve().parent
 
 
 def refresh(source, wheel, output, source_commit, *, parent_manifest_sha256,
-            audio=None, citations=None, extra_wheelhouse=None, launcher_dir=None):
+            audio=None, citations=None, extra_wheelhouse=None, launcher_dir=None,
+            trusted_client=False):
     source, wheel, output = local(source, exists=True), local(wheel, exists=True), local(output)
     if output.exists() or output.is_relative_to(source) or source.is_relative_to(output):
         raise ValueError('Choose a new bundle directory outside the previous one.')
@@ -34,6 +35,12 @@ def refresh(source, wheel, output, source_commit, *, parent_manifest_sha256,
     if hashlib.sha256(raw).hexdigest() != parent_manifest_sha256:
         raise ValueError('The parent bundle manifest differs from its recorded SHA256.')
     previous = _manifest(raw, json.loads(raw).get('source_commit'))
+    if type(trusted_client) is not bool:
+        raise ValueError('trusted-client packaging selection must be a boolean')
+    if previous.get('bundled_trusted_client') is True and not trusted_client:
+        raise ValueError('Preserve the optional parent profile with --trusted-client.')
+    if trusted_client and previous.get('bundled_model') is not True:
+        raise ValueError('The full optional profile requires a verified semantic parent bundle.')
     verify(source, manifest_bytes=raw)
     identity = verify_application_source(wheel, source_commit)
     launcher_snapshot = None
@@ -46,7 +53,9 @@ def refresh(source, wheel, output, source_commit, *, parent_manifest_sha256,
         # inventory still matches the newly selected application commit.
         launcher_snapshot = verify_native_launcher(source, source_commit,
                                                     receipt_name='native-launcher-build.json')
-    lock = read_lock(HERE / ('windows-semantic-cp311.lock' if previous.get('bundled_model') else 'windows-cp311.lock'))
+    profile = ('windows-semantic-trusted' if trusted_client else
+               ('windows-semantic' if previous.get('bundled_model') else 'windows'))
+    lock = read_lock(HERE / (profile + '-cp311.lock'))
     dependencies = {}
     selected = {}
     wheelhouses = [source / 'wheelhouse']
@@ -75,7 +84,7 @@ def refresh(source, wheel, output, source_commit, *, parent_manifest_sha256,
         raise ValueError('Expected exactly one application wheel.')
     selected[name] = (wheel, version, metadata)
     verify_dependency_closure(selected)
-    sbom_path = HERE / ('windows-semantic-sbom.cdx.json' if previous.get('bundled_model') else 'windows-sbom.cdx.json')
+    sbom_path = HERE / (profile + '-sbom.cdx.json')
     sbom_bytes = sbom_path.read_bytes()
     sbom = json.loads(sbom_bytes)
     components = sbom.get('components', [])
@@ -84,6 +93,11 @@ def refresh(source, wheel, output, source_commit, *, parent_manifest_sha256,
             or {(item['name'], item['version']) for item in components}
             != {(name, version) for name, (version, _) in lock.items()}):
         raise ValueError('The current runtime SBOM differs from the dependency lock.')
+    trusted_review = None
+    if trusted_client:
+        review = HERE / 'trusted-client-dependencies.json'
+        regular(review)
+        trusted_review = review.read_bytes()
     audio_files = {}
     if audio is not None:
         audio = local(audio, exists=True)
@@ -144,6 +158,8 @@ def refresh(source, wheel, output, source_commit, *, parent_manifest_sha256,
             (stage / 'ResearchLibrary.exe').write_bytes(launcher_snapshot[0])
             (stage / 'native-launcher-build.json').write_bytes(launcher_snapshot[1])
         (stage / 'runtime-sbom.cdx.json').write_bytes(sbom_bytes)
+        if trusted_review is not None:
+            (stage / 'trusted-client-dependencies.json').write_bytes(trusted_review)
         for origin in (HERE / 'wheel-notices').iterdir():
             regular(origin)
             target = stage / 'notices' / 'wheels' / origin.name
@@ -163,6 +179,8 @@ def refresh(source, wheel, output, source_commit, *, parent_manifest_sha256,
                 shutil.copyfile(HERE / lock_name, stage / directory / 'provenance.json')
         (stage / 'application-source.json').write_text(json.dumps(identity, indent=2) + '\n', encoding='utf-8')
         manifest = {key: value for key, value in previous.items() if key not in ('files', 'source_commit')}
+        if trusted_client:
+            manifest['bundled_trusted_client'] = True
         if launcher_snapshot is not None:
             manifest['bundled_launcher'] = True
         manifest.update(source_commit=source_commit, source_tree=identity['source_tree'],
@@ -188,11 +206,14 @@ def main():
     parser.add_argument('--citations')
     parser.add_argument('--extra-wheelhouse')
     parser.add_argument('--launcher-dir', help='Exact source-bound native build, after its native acceptance gate.')
+    parser.add_argument('--trusted-client', action='store_true',
+                        help='Preserve or add the exact full optional dependencies; never configures authority.')
     args = parser.parse_args()
     print(json.dumps(refresh(args.source, args.wheel, args.output, args.source_commit,
                              parent_manifest_sha256=args.parent_manifest_sha256,
                              audio=args.audio, citations=args.citations,
-                             extra_wheelhouse=args.extra_wheelhouse, launcher_dir=args.launcher_dir)))
+                             extra_wheelhouse=args.extra_wheelhouse, launcher_dir=args.launcher_dir,
+                             trusted_client=args.trusted_client)))
 
 
 if __name__ == '__main__':

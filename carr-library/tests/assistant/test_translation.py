@@ -1,6 +1,7 @@
 """Synthetic TLS-adapter, authorization, resume and original-integrity checks."""
 from decimal import Decimal
 from hashlib import sha256
+from pathlib import Path
 import http.client
 import json
 import ssl
@@ -782,8 +783,8 @@ def test_source_export_original_mutation_during_staging_never_publishes_completi
     target = tmp_path / 'changed-during-export'
     with pytest.raises(ValueError):
         case.service.export(identity, target)
-    assert (target / 'translation.reading.json').exists()
-    assert not (target / 'translation-provenance.json').exists()
+    assert not target.exists()
+    assert not list(tmp_path.glob('.pending-translation-export-*'))
     assert case.service.jobs.load(identity)['status'] == 'complete'
     assert len(connection['calls']) == 2
 
@@ -814,8 +815,14 @@ def test_source_export_serializes_archival_and_cancellation_never_claims_complet
     monkeypatch.setattr(ReadingDocument, 'save', cancelling_save)
     with pytest.raises(InterruptedError):
         case.service.export(identity, tmp_path / 'cancelled', cancelled=lambda: bool(stop))
-    assert not (tmp_path / 'cancelled' / 'translation-provenance.json').exists()
+    assert not (tmp_path / 'cancelled').exists()
+    assert not list(tmp_path.glob('.pending-translation-export-*'))
     assert case.service.jobs.load(identity)['status'] == 'complete'
+    monkeypatch.setattr(ReadingDocument, 'save', original_save)
+    # Re-export the completed paid job at the same destination without a call.
+    result = case.service.export(identity, tmp_path / 'cancelled')
+    assert result['status'] == 'complete'
+    assert (tmp_path / 'cancelled' / 'translation-provenance.json').is_file()
     assert len(connection['calls']) == 2
 
 
@@ -1587,3 +1594,116 @@ def test_detected_language_is_bound_to_independent_basic_receipt(tmp_path, conne
     with pytest.raises(ValueError, match='decoded translation receipt'):
         service.export(identity, tmp_path / 'unpublished')
     assert not (tmp_path / 'unpublished').exists() and len(connection['calls']) == calls
+
+
+@pytest.mark.parametrize('failure', ['write', 'racing-directory'])
+def test_translation_export_staging_does_not_clobber_or_repeat_calls(tmp_path, connection, monkeypatch, failure):
+    service, p, vault = ready(tmp_path, connection)
+    value = 'Synthetic private source.'
+    approval, cost = translation_approval(p, value, 'en', 'uk', '1')
+    identity = service.submit(p, value, 'en', 'uk', authorization=approval, per_call_cost=cost)
+    service.resume(identity)
+    calls, vault_calls = len(connection['calls']), len(vault.calls)
+    target = tmp_path / 'staged-export'
+    save = ReadingDocument.save
+
+    def interrupted(document, path):
+        result = save(document, path)
+        if failure == 'write':
+            raise OSError('synthetic staging write failure')
+        target.mkdir()
+        (target / 'owner.txt').write_bytes(b'prior owner data')
+        return result
+
+    with monkeypatch.context() as patch:
+        patch.setattr(ReadingDocument, 'save', interrupted)
+        with pytest.raises(OSError if failure == 'write' else FileExistsError):
+            service.export(identity, target)
+    assert not list(tmp_path.glob('.pending-translation-export-*'))
+    if failure == 'write':
+        assert not target.exists()
+        assert service.export(identity, target)['status'] == 'complete'
+    else:
+        assert list(target.iterdir()) == [target / 'owner.txt']
+        assert (target / 'owner.txt').read_bytes() == b'prior owner data'
+    assert len(connection['calls']) == calls and len(vault.calls) == vault_calls
+    assert service.jobs.load(identity)['status'] == 'complete'
+
+
+@pytest.mark.parametrize('failure', ['directory-sync', 'staging-cleanup'])
+def test_committed_translation_export_keeps_a_receipt_after_finalization_failure(tmp_path, connection, monkeypatch, failure):
+    import carr_library.assistant.translation as implementation
+    service, p, vault = ready(tmp_path, connection)
+    value = 'Synthetic private source.'
+    approval, cost = translation_approval(p, value, 'en', 'uk', '1')
+    identity = service.submit(p, value, 'en', 'uk', authorization=approval, per_call_cost=cost)
+    service.resume(identity)
+    calls, vault_calls = len(connection['calls']), len(vault.calls)
+    target = tmp_path / 'committed-translation'
+    if failure == 'directory-sync':
+        original = implementation.sync_directory
+        def unavailable(path):
+            if Path(path) == target.parent:
+                raise OSError('Synthetic post-rename directory sync failure')
+            return original(path)
+        monkeypatch.setattr(implementation, 'sync_directory', unavailable)
+    else:
+        original = implementation.TemporaryDirectory
+        class CleanupFailure(original):
+            def __exit__(self, *args):
+                super().__exit__(*args)
+                raise OSError('Synthetic post-rename staging cleanup failure')
+        monkeypatch.setattr(implementation, 'TemporaryDirectory', CleanupFailure)
+    with pytest.raises(implementation.TranslationExportedError) as caught:
+        service.export(identity, target)
+    result = caught.value
+    assert result.destination == str(target) and result.receipt['path'] == str(target)
+    assert result.durability_confirmed is (failure == 'staging-cleanup')
+    assert str(target) in str(result) and 'published' in str(result)
+    report = json.loads((target / 'translation-provenance.json').read_bytes())
+    assert result.receipt['files'] == report['files']
+    for name, expected in report['files'].items():
+        assert implementation.digest(target / name) == expected
+    assert service.jobs.load(identity)['status'] == 'complete'
+    assert len(connection['calls']) == calls and len(vault.calls) == vault_calls
+    with pytest.raises(FileExistsError):
+        service.export(identity, target)
+
+
+def test_translation_export_ignores_cancellation_after_the_exact_directory_commit(tmp_path, connection, monkeypatch):
+    import carr_library.assistant.translation as implementation
+    service, p, vault = ready(tmp_path, connection)
+    value = 'Synthetic private source.'
+    approval, cost = translation_approval(p, value, 'en', 'uk', '1')
+    identity = service.submit(p, value, 'en', 'uk', authorization=approval, per_call_cost=cost)
+    service.resume(identity)
+    target, stopped = tmp_path / 'committed-before-stop', []
+    original = implementation.publish_directory_no_replace
+    def committed(stage, destination):
+        original(stage, destination)
+        stopped.append(True)
+    monkeypatch.setattr(implementation, 'publish_directory_no_replace', committed)
+    result = service.export(identity, target, cancelled=lambda: bool(stopped))
+    assert result['status'] == 'complete' and result['path'] == str(target)
+    assert stopped and (target / 'translation-provenance.json').is_file()
+    assert not list(tmp_path.glob('.pending-translation-export-*'))
+
+
+def test_translation_atomic_commit_preserves_a_competing_empty_destination(tmp_path, connection, monkeypatch):
+    import carr_library.assistant.translation as implementation
+    service, p, vault = ready(tmp_path, connection)
+    value = 'Synthetic private source.'
+    approval, cost = translation_approval(p, value, 'en', 'uk', '1')
+    identity = service.submit(p, value, 'en', 'uk', authorization=approval, per_call_cost=cost)
+    service.resume(identity)
+    target = tmp_path / 'competing-empty-directory'
+    original = implementation.publish_directory_no_replace
+    def race(stage, destination):
+        Path(destination).mkdir()
+        return original(stage, destination)
+    monkeypatch.setattr(implementation, 'publish_directory_no_replace', race)
+    with pytest.raises(FileExistsError):
+        service.export(identity, target)
+    assert target.is_dir() and list(target.iterdir()) == []
+    assert not list(tmp_path.glob('.pending-translation-export-*'))
+    assert service.jobs.load(identity)['status'] == 'complete'

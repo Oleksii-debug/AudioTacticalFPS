@@ -201,7 +201,8 @@ def verify_native_launcher(directory, source_commit, *, receipt_name="build-evid
 
 def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                  model_dir=None, model_manifest=None, sbom=None, source_commit=None, ocr_dir=None,
-                 ocr_source_archive=None, native_launcher=None, launcher_dir=None):
+                 ocr_source_archive=None, native_launcher=None, launcher_dir=None,
+                 trusted_client=False):
     wheel, wheelhouse, lock, output = map(Path, (wheel, wheelhouse, lock, output))
     if output.exists() or output.is_symlink():
         raise ValueError("output must be a new directory")
@@ -220,7 +221,16 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
         native_launcher = regular(Path(native_launcher))
         if sha256(native_launcher) != NATIVE_LAUNCHER_SHA256:
             raise ValueError("Native launcher differs from the exact Windows-tested executable")
+    if type(trusted_client) is not bool:
+        raise ValueError("trusted-client packaging selection must be a boolean")
     pins = read_lock(lock)
+    trusted_review = None
+    if trusted_client:
+        if pins != read_lock(HERE / "windows-semantic-trusted-cp311.lock"):
+            raise ValueError("trusted-client bundle requires the exact full optional dependency lock")
+        if sbom is None:
+            raise ValueError("trusted-client bundle requires its full optional runtime SBOM")
+        trusted_review = regular(HERE / "trusted-client-dependencies.json").read_bytes()
     if sbom is not None:
         sbom = regular(Path(sbom))
         # Seal the very bytes whose dependency inventory was validated.
@@ -405,6 +415,8 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
             shutil.copyfile(regular(HERE / relative), target)
         if sbom is not None:
             (staged / "runtime-sbom.cdx.json").write_bytes(sbom_bytes)
+        if trusted_review is not None:
+            (staged / "trusted-client-dependencies.json").write_bytes(trusted_review)
         if native_launcher is not None:
             destination = staged / "ResearchLibrary.exe"
             shutil.copyfile(regular(native_launcher), destination)
@@ -425,6 +437,8 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                     "bundled_model": model_dir is not None,
                     "bundled_ocr": ocr_dir is not None,
                     "files": files}
+        if trusted_client:
+            manifest["bundled_trusted_client"] = True
         if launcher_snapshot is not None:
             manifest["bundled_launcher"] = True
         if source_commit is not None:
@@ -450,7 +464,7 @@ def main():
                         help="Optional pinned Windows CPython archive from windows-python.json")
     parser.add_argument("--model-dir", type=Path, help="Optional approved MiniLM model directory")
     parser.add_argument("--model-manifest", type=Path, help="Approved MiniLM manifest")
-    parser.add_argument("--sbom", type=Path, help="uv-generated runtime CycloneDX 1.5 inventory")
+    parser.add_argument("--sbom", type=Path, help="Reviewed runtime CycloneDX 1.5 inventory")
     parser.add_argument("--source-commit",
                         help="Full local Git commit; verify the application wheel against its committed package files")
     parser.add_argument("--ocr-dir", type=Path,
@@ -461,11 +475,13 @@ def main():
                         help="Optional exact Windows-tested ResearchLibrary.exe; its SHA256 is source-pinned")
     parser.add_argument("--launcher-dir", type=Path,
                         help="Source-bound private native build folder; requires its build receipt and exact source commit")
+    parser.add_argument("--trusted-client", action="store_true",
+                        help="Seal the exact 56-dependency optional profile; does not configure production authority")
     args = parser.parse_args()
     print(json.dumps(build_bundle(args.wheel, args.wheelhouse, args.lock, args.output,
                                   args.python_archive, args.model_dir, args.model_manifest,
                                   args.sbom, args.source_commit, args.ocr_dir, args.ocr_source_archive,
-                                  args.native_launcher, args.launcher_dir)))
+                                  args.native_launcher, args.launcher_dir, args.trusted_client)))
 
 
 if __name__ == "__main__":

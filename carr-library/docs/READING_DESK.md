@@ -84,6 +84,37 @@ shortcuts without taking native editing or screen-reader keys. Saved voice-reade
 carets use Unicode text offsets and restore through observed native text ranges.
 This is separate from the Reading Desk's page-level resume described above.
 
+## Finding and navigating a reading copy
+
+Choose **Word**, **Sentence** or **Paragraph** in **Navigation unit**, then use
+**Previous text unit**, **Select current text unit** or **Next text unit**.
+These commands select native text without starting speech or changing the copy.
+**Read current text unit** is a separate explicit action. At a boundary the
+selection stays in place; navigation does not wrap and speak the full document.
+Sentence and word boundaries follow the existing deterministic text rules.
+They are not a language-specific linguistic analysis or word-level audio timing.
+
+**Ctrl+F** opens **Find and replace**. Choose the whole reading copy or the
+selected range, enter a literal pattern or a bounded regular expression, and
+press **Preview matches**. The dialog lists exact character ranges and shows
+the proposed text. Moving through reviewed matches selects their corresponding
+native ranges, including text after non-BMP Unicode characters. Preview does
+not change the reading copy.
+
+Use **Replace selected match** for one reviewed occurrence or **Replace all
+reviewed** for the complete proposal. Either action creates one undoable
+reading-copy edit and saves the existing recovery draft. **Undo last replacement**
+restores that edit while it is still current. If recovery cannot be written,
+the dialog reports that the edit is only in memory and asks you to use Save As.
+The original source bytes and quotation authority remain unchanged.
+
+Changing the reading text, selected range or search form invalidates a preview.
+Switching the active library, changing its root, closing the reader, revoking its
+source scope or cancelling search prevents a late search result from being
+applied. The existing isolated regex worker enforces its time, match and output
+budgets. Find and navigation use the same configurable reader command registry;
+they create no additional job queue or reader state format.
+
 The native control probe uses a declared synthetic voice and playback sink.
 Actual installed voice quality, physical audio playback and Windows 11/NVDA
 acceptance require their separate evidence.

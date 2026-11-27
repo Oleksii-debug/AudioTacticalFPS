@@ -31,7 +31,8 @@ def test_legacy_manifest_without_optional_fields_is_accepted(tmp_path):
     assert _manifest(tmp_path) == expected
 
 
-@pytest.mark.parametrize("field", ["bundled_native_runtime", "bundled_audio_runtime"])
+@pytest.mark.parametrize("field", ["bundled_native_runtime", "bundled_audio_runtime",
+                                   "bundled_launcher", "bundled_trusted_client"])
 @pytest.mark.parametrize("invalid", ["true", 1, None])
 def test_optional_runtime_flags_remain_strict_booleans(tmp_path, field, invalid):
     write_manifest(tmp_path, **{field: invalid})
@@ -55,4 +56,15 @@ def test_unknown_installation_fields_are_still_rejected(tmp_path):
 
 def test_audio_runtime_false_and_source_commit_only_remain_valid(tmp_path):
     expected = write_manifest(tmp_path, source_commit="d" * 40, bundled_audio_runtime=False)
+    assert _manifest(tmp_path) == expected
+
+
+@pytest.mark.parametrize("included", [False, True])
+def test_exact_source_launcher_and_trusted_dependency_flags_are_accepted(tmp_path, included):
+    expected = write_manifest(tmp_path, source_commit="b" * 40, source_tree="c" * 40,
+                              bundled_launcher=included, bundled_trusted_client=included,
+                              files={"ResearchLibrary.exe": "a" * 64,
+                                     "native-launcher-build.json": "d" * 64,
+                                     "runtime-sbom.cdx.json": "e" * 64,
+                                     "trusted-client-dependencies.json": "f" * 64})
     assert _manifest(tmp_path) == expected
