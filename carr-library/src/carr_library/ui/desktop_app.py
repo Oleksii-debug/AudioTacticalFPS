@@ -609,6 +609,10 @@ class DesktopFrame(WorkspaceFrame):
         install_assistant_actions(self)
         install_conversion_actions(self)
         install_translation_actions(self)
+        from .transcription_dialog import install_transcription_actions
+        from .operations_dialog import install_operations_actions
+        install_transcription_actions(self)
+        install_operations_actions(self)
 
     def build_advanced_query(self, event=None):
         if self.working:

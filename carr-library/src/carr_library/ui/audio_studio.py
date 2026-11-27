@@ -99,6 +99,8 @@ class StudioController:
         self._saved_value = None
         self._recovery_hash = None
         self._render_lock = threading.Lock()
+        self._render_cancel = threading.Event()
+        self._operation_output = None
         self.result = None
         self.new()
 
@@ -111,6 +113,7 @@ class StudioController:
         self.input_kind = input_kind
         self.voice, self.language = 'sapi5:default', 'en'
         self.project_id = uuid4().hex
+        self._operation_output = None
         self.source_reference = source_reference
         self.project_path = self.output_dir = self.result = None
         self._file_hash = self._saved_value = self._recovery_hash = None
@@ -324,6 +327,11 @@ class StudioController:
         self._recovery_hash = hashlib.sha256(raw).hexdigest()
         self.result = None
 
+    def cancel_render(self, identity):
+        if identity != self.project_id:
+            raise ValueError('This cancellation belongs to another open audio project.')
+        self._render_cancel.set()
+
     def render(self, *, cancelled=lambda: False, on_status=lambda status: None):
         if not self._render_lock.acquire(blocking=False):
             raise ValueError('A render is already running in this studio.')
@@ -342,8 +350,21 @@ class StudioController:
             if renderer is None:
                 from ..audio.production import render_project
                 renderer = render_project
-            result = renderer(plan, folder, engine=self._registry(), ffmpeg=ffmpeg,
-                              cancelled=cancelled, on_status=on_status)
+            from ..operations import ResourceBroker, ResourceRequest
+            self._render_cancel.clear()
+            self._operation_output = folder
+            stopped = lambda: cancelled() or self._render_cancel.is_set()
+            from ..audio.jobs import checked_directory
+            checked_directory(self.private_root, create=True)
+            broker = ResourceBroker.for_app(self.private_root)
+            # Existing voices do not all declare GPU placement. This cooperative
+            # media lease serializes ASR/Studio without claiming measured RAM/VRAM.
+            request = ResourceRequest(cpu_slots=1, devices=('heavy-media',))
+            with broker.reserve(request, operation_id='studio:' + self.project_id,
+                                cancelled=stopped, timeout=60) as lease:
+                result = renderer(plan, folder, engine=self._registry(), ffmpeg=ffmpeg,
+                                  cancelled=lambda: stopped() or lease.cancelled(),
+                                  on_status=on_status)
             if not isinstance(result, dict) or result.get('status') != 'complete':
                 raise ValueError('The production service did not confirm a complete audio render.')
             output = _local_path(result.get('output', ''), 'rendered audio file')
@@ -1135,6 +1156,7 @@ class AudioStudioActions:
             return
         try:
             controller = StudioController(private_root=frame.library.root)
+            frame.active_studio_controller = controller
             self.studio_factory(frame, controller).show()
         except Exception as exc:
             frame.report('Audio Studio could not open: ' + str(exc))
@@ -1189,6 +1211,7 @@ class AudioStudioActions:
                 if not current() or frame.cancel_event.is_set():
                     frame.report('Narration import discarded because the selected source changed or was cancelled.')
                     return
+                frame.active_studio_controller = controller
                 self.studio_factory(frame, controller).show()
             frame.run_job('Preparing a separate narration copy of the selected source', read, show)
         except Exception as exc:
