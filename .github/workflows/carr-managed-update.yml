@@ -174,7 +174,12 @@ jobs:
               $manifest = (Get-FileHash (Join-Path $bundle 'bundle-manifest.json') -Algorithm SHA256).Hash.ToLowerInvariant()
               & $python -I -B packaging/windows_installer/build_setup.py --bundle $bundle --bundle-manifest-sha256 $manifest --output (Join-Path $build 'setup') --iscc (Join-Path $private 'inno/tools/ISCC.exe') --toolchain-receipt (Join-Path $private 'inno/toolchain-receipt.json') | Tee-Object (Join-Path $report ('setup-build-' + $label + '.txt'))
               if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-              Copy-Item (Join-Path $bundle 'application-source.json') (Join-Path $report ('wheel-source-' + $label + '.json'))
+              # Both existing builders verify the wheel but do not emit an
+              # application-source.json file. Record the actual sealed wheel
+              # through that same verifier and bind it to this bundle inventory.
+              $sealedWheel = Join-Path $bundle ('wheelhouse/' + $wheel[0].Name)
+              & $python -I -B -c "import hashlib,json,pathlib,runpy,subprocess,sys; wheel=pathlib.Path(sys.argv[1]); bundle=pathlib.Path(sys.argv[3]); verify=runpy.run_path('packaging/build_windows_bundle.py')['verify_application_source']; evidence=verify(wheel,sys.argv[2]); raw=(bundle/'bundle-manifest.json').read_bytes(); manifest=json.loads(raw); assert evidence['source_commit']==manifest['source_commit']==sys.argv[2]; assert manifest['files']['wheelhouse/'+wheel.name]==evidence['wheel_sha256']; evidence['source_tree']=subprocess.check_output(['git','rev-parse','--verify',sys.argv[2]+'^{tree}'],text=True).strip(); evidence['bundle_manifest_sha256']=hashlib.sha256(raw).hexdigest(); print(json.dumps(evidence,sort_keys=True))" $sealedWheel $expected $bundle | Tee-Object (Join-Path $report ('wheel-source-' + $label + '.json'))
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
               Copy-Item (Join-Path $build 'setup/setup-build.json') (Join-Path $report ('setup-source-' + $label + '.json'))
               if ($label -eq 'b') {
                 & $python -m pip install --no-deps --force-reinstall $wheel[0].FullName
