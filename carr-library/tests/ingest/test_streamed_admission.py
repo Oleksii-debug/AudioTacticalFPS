@@ -325,3 +325,61 @@ def test_ordinary_waiting_cancel_never_opens_source_or_releases_another_operatio
     assert not missing.exists() and app.browse(workspace) == ()
     assert tuple(app.assets_dir.iterdir()) == ()
     assert broker.snapshot()['leases'] == []
+
+
+def test_streamed_cancel_before_admission_revokes_old_candidate_without_republication(tmp_path):
+    app, workspace, source, request, raw = prepared(tmp_path)
+    completed = app.resume_import(workspace, request['request_id'])
+    assert completed['state'] == 'complete'
+    record = worker.load_request(app.root, request['request_id'])
+    assert record['publication_candidate'] is not None
+    old_attempt = record['attempt']
+    record['state'] = 'running'
+    record.pop('result')
+    worker._store(app.root, request['request_id'], record)
+    cancelled = app.resume_import(workspace, request['request_id'], cancelled=lambda: True)
+    current = worker.load_request(app.root, request['request_id'])
+    assert cancelled['state'] == 'cancelled'
+    assert current['attempt'] == current['attempt_id'] != old_attempt
+    assert current['publication_candidate'] is current['publication'] is None
+    assert source.read_bytes() == raw
+    with app.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+    assert ResourceBroker.for_app(app.root).snapshot()['leases'] == []
+
+
+@pytest.mark.parametrize('streamed', [False, True], ids=['ordinary', 'streamed'])
+def test_cancelled_admission_does_not_rewrite_a_concurrently_changed_request(
+        tmp_path, monkeypatch, streamed):
+    from carr_library.operations import ResourceRequest
+    factory = prepared if streamed else prepared_ordinary_document
+    app, workspace, source, request, raw = factory(tmp_path)
+    broker = ResourceBroker.for_app(app.root)
+    previous = broker.limits
+    broker.configure(replace(previous, cpu_slots=1))
+    changed = []
+    original_reason = ResourceBroker._reason
+
+    def mutate_when_waiting(self, wanted, volumes, active, limits):
+        reason = original_reason(self, wanted, volumes, active, limits)
+        if reason == 'cpu_slots' and not changed:
+            current = worker.load_request(app.root, request['request_id'])
+            current['metadata']['title'] = 'Concurrent selected request change'
+            worker._store(app.root, request['request_id'], current)
+            changed.append(worker._path(app.root, request['request_id']).read_bytes())
+        return reason
+
+    monkeypatch.setattr(ResourceBroker, '_reason', mutate_when_waiting)
+    monkeypatch.setattr(worker, '_invoke',
+                        lambda *a, **k: pytest.fail('Changed cancelled request started a child.'))
+    try:
+        with broker.reserve(ResourceRequest(cpu_slots=1), operation_id='existing:heavy') as owner:
+            with pytest.raises(ValueError, match='changed while waiting'):
+                app.resume_import(workspace, request['request_id'], cancelled=lambda: bool(changed))
+            assert worker._path(app.root, request['request_id']).read_bytes() == changed[0]
+            assert broker.snapshot()['leases'][0]['id'] == owner.id
+    finally:
+        broker.configure(previous)
+    assert source.read_bytes() == raw and app.browse(workspace) == ()
+    assert tuple(app.assets_dir.iterdir()) == ()
+    assert broker.snapshot()['leases'] == []

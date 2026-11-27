@@ -937,9 +937,21 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
                 return False
             return execute(stopped)
     except ResourceCancelled:
+        current = load_request(root, request_id)
+        if request_identity(current) != identity:
+            raise ValueError('The import request changed while waiting for shared resources.')
         result = dict(state='cancelled', message='Import stopped while waiting for shared resources.',
                       request_id=request_id, isolated=True)
-        record_progress(root, request_id, state='cancelled', result=result)
+        stopped_state = dict(state='cancelled', result=result,
+                             publication=None, publication_candidate=None)
+        if any(current.get(key) is not None for key in
+               ('attempt', 'attempt_id', 'publication', 'publication_candidate')):
+            # No new child ran, but an earlier attempt must not remain an
+            # authority for this cancelled dispatch. Preserve committed catalog
+            # rows; explicit later recovery still verifies their actual receipt.
+            attempt = uuid4().hex
+            stopped_state.update(attempt=attempt, attempt_id=attempt)
+        record_progress(root, request_id, **stopped_state)
         return result
 
 
