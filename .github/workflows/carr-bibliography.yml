@@ -121,6 +121,8 @@ jobs:
             'tests/ui/test_academic_export_handler.py',
             'tests/catalog/test_bibliography.py',
             'tests/catalog/test_reference_exchange.py',
+            'tests/catalog/test_archive_portability.py',
+            'tests/catalog/test_intake_portability.py',
             'tests/ingest/test_import_replay_identity.py',
             'tests/ingest/test_txt_replay_registration.py',
             'tests/reader/test_export_no_clobber.py',
