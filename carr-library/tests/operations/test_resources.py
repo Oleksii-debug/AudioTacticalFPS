@@ -360,6 +360,153 @@ def test_released_lock_leaf_may_disappear_before_native_acquisition(tmp_path, mo
         lock.release()
 
 
+
+def _release_during_local_path_validation(monkeypatch, path, replacement, *, repetitions=1):
+    """Reproduce a real missing metadata read, then change the unowned leaf."""
+    from carr_library.operations import _state
+    original, changed = _state.regular, []
+
+    def observed(selected, *, directory=False):
+        if Path(selected) == path and len(changed) < repetitions:
+            changed.append(True)
+            path.unlink()
+            try:
+                return original(selected, directory=directory)
+            except FileNotFoundError:
+                replacement()
+                raise
+        return original(selected, directory=directory)
+
+    monkeypatch.setattr(_state, 'regular', observed)
+    return changed
+
+
+@pytest.mark.parametrize('boundary', ('construction', 'acquisition'))
+@pytest.mark.parametrize('repetitions', (1, 2))
+def test_released_lock_leaf_recreated_before_missing_observation_recovers(tmp_path, monkeypatch, boundary, repetitions):
+    from carr_library.operations import _locks
+    path = tmp_path / '.recreated.lock'
+    path.write_bytes(b'')
+    existing = _locks.NativeLock(path) if boundary == 'acquisition' else None
+    changed = _release_during_local_path_validation(
+        monkeypatch, path, lambda: path.write_bytes(b''), repetitions=repetitions)
+    lock = existing or _locks.NativeLock(path)
+    try:
+        assert lock.acquire() is True and lock.held
+        assert changed == [True] * repetitions
+        info, held = path.stat(), os.fstat(lock.lock._context.lock_file_fd)
+        assert (info.st_dev, info.st_ino) == (held.st_dev, held.st_ino)
+    finally:
+        lock.release()
+
+
+@pytest.mark.parametrize('boundary', ('construction', 'acquisition'))
+@pytest.mark.parametrize('replacement', ('hardlink', 'directory', 'reparse'))
+def test_recreated_unowned_lock_is_revalidated_before_native_open(tmp_path, monkeypatch, boundary, replacement):
+    from carr_library.operations import _locks
+    path, outside = tmp_path / '.recreated.lock', tmp_path / 'unrelated-state'
+    path.write_bytes(b'')
+    outside.write_bytes(b'Preserve unrelated bytes.')
+    existing = _locks.NativeLock(path) if boundary == 'acquisition' else None
+    reparse = []
+
+    def replace_leaf():
+        if replacement == 'hardlink':
+            os.link(outside, path)
+        elif replacement == 'directory':
+            path.mkdir()
+        else:
+            path.write_bytes(b'')
+            reparse.append(True)
+
+    # Exercise the Windows reparse metadata refusal on either host without
+    # requiring permission to create a symlink or following an actual target.
+    original_lstat = Path.lstat
+    def attributes(selected, *args, **kwargs):
+        info = original_lstat(selected, *args, **kwargs)
+        if Path(selected) == path and reparse:
+            values = {name: getattr(info, name) for name in dir(info) if name.startswith('st_')}
+            values['st_file_attributes'] = getattr(info, 'st_file_attributes', 0) | 0x400
+            return SimpleNamespace(**values)
+        return info
+
+    monkeypatch.setattr(Path, 'lstat', attributes)
+    changed = _release_during_local_path_validation(monkeypatch, path, replace_leaf)
+    if existing is not None:
+        def refuse_native_open(*args, **kwargs):
+            pytest.fail('An unsafe replacement reached native lock acquisition.')
+        monkeypatch.setattr(existing.lock, 'acquire', refuse_native_open)
+    with pytest.raises(ValueError, match='hard-link|regular local audio file|Reparse'):
+        lock = existing or _locks.NativeLock(path)
+        lock.acquire()
+    assert changed == [True]
+    assert existing is None or not existing.held
+    assert outside.read_bytes() == b'Preserve unrelated bytes.'
+
+
+@pytest.mark.parametrize('replacement', ('missing', 'file'))
+def test_released_leaf_does_not_hide_a_missing_or_non_directory_parent(tmp_path, monkeypatch, replacement):
+    from carr_library.operations import _locks
+    parent = tmp_path / 'runtime'
+    parent.mkdir()
+    path = parent / '.released.lock'
+    path.write_bytes(b'')
+    lock = _locks.NativeLock(path)
+
+    def replace_parent():
+        parent.rmdir()
+        if replacement == 'file':
+            parent.write_bytes(b'Preserve the replacement parent.')
+
+    changed = _release_during_local_path_validation(monkeypatch, path, replace_parent)
+    with pytest.raises((OSError, ValueError)):
+        lock.acquire()
+    assert changed == [True] and not lock.held
+    if replacement == 'file':
+        assert parent.read_bytes() == b'Preserve the replacement parent.'
+    else:
+        assert not parent.exists()
+
+
+def test_recreated_unowned_leaf_does_not_hide_a_denied_validation(tmp_path, monkeypatch):
+    from carr_library.operations import _locks
+    path = tmp_path / '.recreated.lock'
+    path.write_bytes(b'')
+    lock = _locks.NativeLock(path)
+    changed = _release_during_local_path_validation(
+        monkeypatch, path, lambda: path.write_bytes(b''))
+    original, denied = _locks.regular, PermissionError('fixture denied metadata')
+
+    def denied_leaf(selected, **kwargs):
+        if Path(selected) == path:
+            raise denied
+        return original(selected, **kwargs)
+
+    monkeypatch.setattr(_locks, 'regular', denied_leaf)
+    with pytest.raises(PermissionError) as caught:
+        lock.acquire()
+    assert caught.value is denied
+    assert changed == [True] and not lock.held
+
+
+def test_repeated_unowned_leaf_churn_fails_without_native_acquisition(tmp_path, monkeypatch):
+    from carr_library.operations import _locks
+    path = tmp_path / '.unstable.lock'
+    path.write_bytes(b'')
+    lock = _locks.NativeLock(path)
+    changed = _release_during_local_path_validation(
+        monkeypatch, path, lambda: path.write_bytes(b''), repetitions=10)
+
+    def refuse_native_open(*args, **kwargs):
+        pytest.fail('An unstable path reached native lock acquisition.')
+
+    monkeypatch.setattr(lock.lock, 'acquire', refuse_native_open)
+    with pytest.raises(ResourceStateError, match='kept changing before native acquisition'):
+        lock.acquire()
+    assert changed == [True] * 3
+    assert not lock.held and path.read_bytes() == b''
+
+
 def test_unowned_lock_replacement_still_rejects_a_hardlink_alias(tmp_path, monkeypatch):
     from carr_library.operations import _locks
     path, outside = tmp_path / '.replaced.lock', tmp_path / 'other-state'

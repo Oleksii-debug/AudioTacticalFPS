@@ -7,6 +7,7 @@ import threading
 import weakref
 
 from filelock import FileLock, Timeout, UnixFileLock, WindowsFileLock
+from ..audio.jobs import checked_directory
 from ._state import local_path, regular
 from .models import ResourceStateError
 
@@ -37,21 +38,27 @@ if hasattr(os, 'register_at_fork'):
 def _unheld_path(value):
     """A released Windows lock may disappear before our native acquisition.
 
-    Only absence of the unowned leaf is benign. Its existing parent and every
-    present replacement still pass the normal local-file checks; the acquired
-    descriptor is compared with the path again before admission.
+    Absence of the unowned leaf is benign; a recreated leaf is revalidated.
+    Its existing parent and every present replacement still pass the normal
+    local-file checks. Repeated changes fail after bounded observations; the
+    acquired descriptor is compared with the path again before admission.
     """
     path = Path(value).expanduser().absolute()
-    try:
-        checked = local_path(path)
-        if os.path.lexists(checked):
-            regular(checked)
-        return checked
-    except FileNotFoundError:
-        parent = local_path(path.parent, exists=True)
-        if os.path.lexists(parent / path.name):
-            raise
-        return parent / path.name
+    for _ in range(3):
+        try:
+            checked = local_path(path)
+            if os.path.lexists(checked):
+                regular(checked)
+            return checked
+        except FileNotFoundError:
+            parent = checked_directory(local_path(path.parent, exists=True))
+            checked = parent / path.name
+            if not os.path.lexists(checked):
+                return checked
+            # Another contender recreated the unowned leaf. Revalidate its
+            # current type, aliases and parent instead of rethrowing an old
+            # missing-file observation or accepting an unchecked replacement.
+    raise ResourceStateError('A resource lock path kept changing before native acquisition.')
 
 
 class NativeLock:
