@@ -9,6 +9,7 @@ manual keyboard use, native pickers or accessible overwrite-button focus.
 Run with the installed interpreter: python -I -B scripts/windows_bibliography_interchange_smoke.py.
 """
 from collections import deque
+import faulthandler
 from hashlib import sha256
 from importlib.metadata import version
 import json
@@ -48,6 +49,9 @@ def main():
         }), flush=True)
         return 77
 
+    faulthandler.enable(file=sys.stderr, all_threads=True)
+    print(json.dumps({'native_process_started': os.getpid(),
+                      'faulthandler_enabled': faulthandler.is_enabled()}), flush=True)
     from carr_library.native_runtime import activate_bundled_runtime
     activate_bundled_runtime()
     import ctypes
@@ -172,6 +176,9 @@ def main():
                 raise TimeoutError(explanation)
             yield 20
 
+    def key_marker(phase, code, shift):
+        print(json.dumps({'native_key_phase': phase, 'key': code, 'shift': shift}), flush=True)
+
     def key(code, *, shift=False):
         diagnostics('before native key ' + str(code))
         if shift and not simulator.KeyDown(wx.WXK_SHIFT):
@@ -179,15 +186,19 @@ def main():
         try:
             if not simulator.KeyDown(code):
                 raise AssertionError('Native key-down was rejected.')
+            key_marker('after-KeyDown', code, shift)
             try:
                 yield 40
             finally:
+                key_marker('before-KeyUp', code, shift)
                 if not simulator.KeyUp(code):
                     raise AssertionError('Native key-up was rejected.')
+                key_marker('after-KeyUp', code, shift)
         finally:
             if shift:
                 simulator.KeyUp(wx.WXK_SHIFT)
         yield 80
+        key_marker('continuation', code, shift)
 
     def focus(control):
         top = wx.GetTopLevelParent(control)
@@ -523,9 +534,16 @@ def main():
 
 if __name__ == '__main__':
     try:
-        raise SystemExit(main())
+        exit_code = main()
     except Exception:
         print(json.dumps({'result': 'FAIL', 'error': traceback.format_exc(),
                           'native_overwrite_accessible_focus': 'NOT_RUN',
                           'native_file_pickers': 'NOT_RUN', 'nvda': 'NOT_RUN'}), flush=True)
         raise SystemExit(1)
+    except BaseException:
+        print(json.dumps({'result': 'FAIL', 'native_process_exit': 'unexpected BaseException',
+                          'error': traceback.format_exc()}), flush=True)
+        raise
+    else:
+        print(json.dumps({'native_process_exit': 'main returned', 'exit_code': exit_code}), flush=True)
+        raise SystemExit(exit_code)
