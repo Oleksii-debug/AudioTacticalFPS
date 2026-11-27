@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 import os
 from pathlib import Path
 import shutil
@@ -14,10 +15,63 @@ import time
 from .models import AudioBudget, AudioCancelled, AudioError
 
 
-# On Windows, Path.lstat opens a share-denying handle. While a worker may
-# replace its files, use regular-file metadata already returned by scandir.
-# The mandatory check after child exit always uses fresh lstat again.
-_USE_WINDOWS_CACHED_FILE_STATS = os.name == 'nt'
+# Query live Windows metadata without opening the file. Directory enumeration
+# can report a stale size until the writer closes; opening the destination can
+# block the worker's atomic replacement. The final check still uses fresh lstat.
+_USE_WINDOWS_LIVE_FILE_STATS = os.name == 'nt'
+
+
+@dataclass(frozen=True)
+class _FileObservation:
+    st_mode: int
+    st_size: int
+    st_file_attributes: int
+
+
+@lru_cache(maxsize=1)
+def _windows_metadata_query():
+    """Bind a current, handle-free Win32 file metadata query once."""
+    import ctypes
+
+    class FileAttributeData(ctypes.Structure):
+        _fields_ = [('attributes', ctypes.c_uint32),
+                    ('timestamps', ctypes.c_uint32 * 6),
+                    ('size_high', ctypes.c_uint32), ('size_low', ctypes.c_uint32)]
+
+    try:
+        query = ctypes.WinDLL('kernel32', use_last_error=True).GetFileAttributesExW
+    except (AttributeError, OSError) as error:
+        raise AudioError('Windows live file-size observation is unavailable.') from error
+    query.argtypes = [ctypes.c_wchar_p, ctypes.c_int32, ctypes.POINTER(FileAttributeData)]
+    query.restype = ctypes.c_int32
+
+    def observe(path):
+        text = os.path.abspath(os.fspath(path))
+        if '\x00' in text:
+            raise ValueError('Invalid watched path.')
+        # Preserve long Unicode and UNC paths without changing their target.
+        if not text.startswith('\\\\?\\'):
+            text = ('\\\\?\\UNC\\' + text[2:] if text.startswith('\\\\')
+                    else '\\\\?\\' + text)
+        result = FileAttributeData()
+        if not query(text, 0, ctypes.byref(result)):  # GetFileExInfoStandard
+            error = ctypes.WinError(ctypes.get_last_error())
+            error.filename = os.fspath(path)
+            raise error
+        mode = stat.S_IFDIR if result.attributes & 0x10 else stat.S_IFREG
+        if result.attributes & 0x40:  # FILE_ATTRIBUTE_DEVICE is not regular output.
+            mode = 0
+        return _FileObservation(mode, (result.size_high << 32) | result.size_low,
+                                result.attributes)
+
+    return observe
+
+
+def _live_file_info(path):
+    if os.name == 'nt':
+        return _windows_metadata_query()(path)
+    # Tests exercise the same walker on POSIX without simulating the Windows ABI.
+    return os.stat(path, follow_symlinks=False)
 
 
 @dataclass(frozen=True)
@@ -123,12 +177,12 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
         if time.monotonic() - started > budget.timeout:
             raise AudioError('Audio worker exceeded its time allowance; completed chunks remain reusable.')
         total, count = 0, 0
-        cache_files = _USE_WINDOWS_CACHED_FILE_STATS and process.poll() is None
-        pending = [(path, None) for path in watched]
+        live_files = _USE_WINDOWS_LIVE_FILE_STATS and process.poll() is None
+        pending = list(watched)
         while pending:
-            path, cached_info = pending.pop()
+            path = pending.pop()
             try:
-                info = path.lstat() if cached_info is None else cached_info
+                info = _live_file_info(path) if live_files else path.lstat()
             except FileNotFoundError:
                 continue
             if stat.S_ISLNK(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400:
@@ -139,19 +193,7 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
                         count += 1
                         if count > budget.max_staging_files:
                             raise AudioError('Audio worker exceeded its staging file budget.')
-                        cached_info = None
-                        if cache_files:
-                            try:
-                                candidate = entry.stat(follow_symlinks=False)
-                            except FileNotFoundError:
-                                continue
-                            if (stat.S_ISREG(candidate.st_mode)
-                                    and not getattr(candidate, 'st_file_attributes', 0) & 0x400):
-                                cached_info = candidate
-                        # Roots, directories and unsafe entry types keep the
-                        # existing fresh checks; no directory is followed on
-                        # the strength of an earlier enumeration alone.
-                        pending.append((Path(entry.path), cached_info))
+                        pending.append(Path(entry.path))
                 continue
             if not stat.S_ISREG(info.st_mode):
                 raise AudioError('Audio worker output is not a regular file.')

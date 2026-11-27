@@ -88,10 +88,14 @@ explicit resume. Public verification and transcript reading use the same
 existing per-job lock as recognition, so a competing read cannot open live
 worker status or race a replacement of the verified output.
 
-The Windows resource monitor reads regular-file metadata supplied by directory
-enumeration while the child is alive; it keeps fresh directory/reparse checks
-and a final fresh file check after the child exits. Byte, file-count, timeout and
-cancellation budgets remain enforced.
+The Windows resource monitor queries current size and attributes with
+`GetFileAttributesExW` while the child is alive. Directory enumeration sizes
+can remain stale while a writer keeps its file open. This query does not hold
+the worker's destination open; there is no cached-size or file-opening fallback.
+Reparse and nonregular entries remain invalid, and the final check after child
+exit uses fresh `lstat`. Byte, file-count, timeout and cancellation budgets remain
+enforced. See the [Win32 API](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfileattributesexw)
+and [CPython's current-size discussion](https://bugs.python.org/issue41106#msg372763).
 
 The private application-state publisher separately retries native Windows
 sharing/access refusals for at most half a second. A persistent refusal remains
