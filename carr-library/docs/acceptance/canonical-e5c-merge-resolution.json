@@ -1,0 +1,122 @@
+{
+  "schema": "carr-canonical-incremental-merge-resolution/1",
+  "prepared_at_utc": "2026-11-27T17:17:00Z",
+  "status": "SOURCE_REVIEWED_EXECUTION_PENDING",
+  "ancestry": {
+    "previous_canonical_commit": "a44fac04072389caa40e0d6e799b13797712f797",
+    "canonical_commit": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+    "canonical_tree": "344567db5c0d99f5d6d7ad24c105645ea75b65e8",
+    "actual_common_ancestor": "a44fac04072389caa40e0d6e799b13797712f797",
+    "selected_parent_commit": "d9fc48b0c1a423e2e22b63c72f0d951a92fc9fb1",
+    "selected_parent_tree": "3e9d588c3e1b2c9a664f49c0b431a649526a5d43",
+    "source_composition_commit": "8ea8a6ef8fe68bee83bde1f2d64287e4f495cc1e",
+    "source_composition_tree": "9985c289ea755e9d7d94d4a673a9a609d1f3eba8",
+    "ordered_merge_parents": [
+      "8ea8a6ef8fe68bee83bde1f2d64287e4f495cc1e",
+      "e5c64a5245583f8f8b404a0f042f6ca438c24d7f"
+    ]
+  },
+  "inventory": {
+    "method": "Full untruncated recursive Git trees compared by path/mode/blob, confirmed against canonical commit metadata.",
+    "canonical_tree_entries": 991,
+    "selected_composition_tree_entries": 1406,
+    "canonical_changed_leaf_paths": 2,
+    "unresolved_paths": 0,
+    "previous_481_path_ledger": "acceptance/canonical-e3cf-merge-resolution.json",
+    "previous_ledger_is_historical_and_preserved": true,
+    "technical_specifications_unchanged": true
+  },
+  "resolutions": [
+    {
+      "path": "carr-library/src/carr_library/ui/save_all.py",
+      "base": "ab58052ca846aa0261203fc88c523407178fa740",
+      "canonical": "c109f48ccb561b25fc9f348dacc4688f734f2e6b",
+      "current": "41de9f19a7fc7ddefbe03cc85bf2369fc32c4218",
+      "exact_current_base": false,
+      "exact_current_new": false,
+      "selected": "b255b86315f78c17dce26928424b8fea63c18587",
+      "resolution": "reviewed semantic port onto current owner",
+      "contract": "Preserve registration identity, late durable completion and first usable failed-draft focus, with current observer/deferred-close services retained."
+    },
+    {
+      "path": "carr-library/tests/ui/test_save_all.py",
+      "base": "47e40585e83dac5aa6fb5578f3b3182aabd527ac",
+      "canonical": "849fcdf2b0ad71d63be4a08ea1b044554f988881",
+      "current": "efef6ba9061570885f2e07967107a6dc14564cd8",
+      "exact_current_base": false,
+      "exact_current_new": false,
+      "selected": "cc7ea54b8ee03212039674ef690af00ed6a67523",
+      "resolution": "reviewed semantic port onto current owner",
+      "contract": "Retain all current 17 cases, all 14 exact canonical cases, and 2 observer/deferred-close composition cases; 33 expected, NOT_RUN at preparation."
+    }
+  ],
+  "preserved_current_contracts": {
+    "has_unsaved": "byte-identical method",
+    "after_current": "byte-identical method and completion observer order",
+    "defer_close": "entire function byte-identical",
+    "canonical_test_bodies": "all added canonical test bodies retained literally",
+    "independent_review": "author + root + packaging; no runtime result implied"
+  },
+  "other_reviewed_test_only_corrections": [
+    {
+      "commit": "69ca74dcc96c67f8e7f66fa685e1dbc58239b9a2",
+      "path": "carr-library/tests/audio/test_owned_audio_processes.py",
+      "contract": "Read-time procfs ESRCH still requires the existing second same-PID absence proof."
+    },
+    {
+      "commit": "8615da518abb83bf645381ac7079167a0f099105",
+      "path": "carr-library/tests/conversion/test_calibre_process_ownership.py",
+      "contract": "Recheck the same PID on absent procstat; live/unavailable/denied remains fail-closed."
+    },
+    {
+      "commit": "a96a201e3f6ee68511f24c1991eae6fc152885d9",
+      "path": "carr-library/tests/packaging/test_ci_check.py",
+      "contract": "Publish a complete closed PID marker atomically; retain native identity, timeout and descendant-settlement assertions."
+    }
+  ],
+  "invariants": {
+    "production_changes_since_5f184816": [
+      "carr-library/src/carr_library/ui/save_all.py"
+    ],
+    "build_script_workflow_changes_since_5f184816": [],
+    "package": "0.2.0.dev3",
+    "core_pins": 17,
+    "semantic_pins": 53,
+    "ffmpeg": "FULL 9.1",
+    "ffmpeg_archive_sha256": "f9a83be8f97b8989a223a15e4af234accd0842bacf7c126af5a3aae759785e48",
+    "pending_journal_recovery_unchanged_from_5f": true,
+    "large_source_and_corpus_owners_unchanged_from_5f": true
+  },
+  "execution": {
+    "new_composition": "NOT_RUN at preparation",
+    "unchanged_owner_runs": {
+      "source_commit": "5f18481654277425ab8af170575de978e7a2a69c",
+      "large_sources": 46032433858,
+      "capacity": 46032433929,
+      "retain_exact_executed_source_identity": true
+    },
+    "earlier_audio": {
+      "source_commit": "c55d24e310e2ed4e8919a9b63b1695cbbcca49fb",
+      "run": 46029884588,
+      "job": 140610712214,
+      "status": "SUCCESS",
+      "strict_suites": 80,
+      "strict_pass": 1579,
+      "strict_fail": 0,
+      "strict_skip": 0,
+      "loopback_pass": 31,
+      "broad_audio_pass": 1604,
+      "broad_audio_explicit_platform_or_asset_skips": 6,
+      "artifact_id": 15220185148,
+      "artifact_sha256": "7e3e881f61991aa1ac2d0a53c27f142cdbebe405e852e99d3903520b69eb47e3",
+      "not_evidence_of_new_SaveAll_execution": true
+    },
+    "latest_verdict_location": "PR99 and exact Actions run/job identities; this document records preparation, not a rolling all-green claim"
+  },
+  "external_acceptance": [
+    "manual NVDA",
+    "physical microphone/playback/monitoring and listening quality",
+    "owner-selected actual optional models/engines and language qualification",
+    "production signing, publisher authority and distribution rights"
+  ]
+}
