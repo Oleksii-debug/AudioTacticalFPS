@@ -1,0 +1,52 @@
+name: Bounded Windows status publication diagnostic
+on:
+  push:
+    branches: [carr/diag-windows-status-137c]
+    paths: [scripts/windows_status_diagnostic.py, .github/workflows/windows-status-diagnostic.yml]
+permissions:
+  contents: read
+concurrency:
+  group: windows-status-diagnostic-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  measure:
+    runs-on: windows-2022
+    timeout-minutes: 8
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - name: Preserve exact LF source bytes
+        shell: pwsh
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11.9'
+      - name: Measure unchanged no-watch, current-watch and direct-query paths
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $parent = (git log -1 --format=%P).Trim()
+          if ($parent -ne '8fa68b9d9041dd2f4f501f4084a5c9c50998c6f9') { throw 'Unexpected diagnostic parent' }
+          git rev-parse HEAD
+          $python = (python -I -B -c "import sys; print(sys.executable)").Trim()
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot resolve actual Python' }
+          $rule = 'CARR-status-diagnostic-' + $env:GITHUB_RUN_ID
+          try {
+            New-NetFirewallRule -DisplayName $rule -Direction Outbound -Program $python -Action Block -Profile Any | Out-Null
+            $active = Get-NetFirewallRule -DisplayName $rule
+            if ($active.Enabled -ne 'True' -or $active.Action -ne 'Block') { throw 'Missing Python outbound block' }
+            & $python -I -B -X utf8 scripts/windows_status_diagnostic.py
+            $result = $LASTEXITCODE
+          } finally {
+            Remove-NetFirewallRule -DisplayName $rule -ErrorAction SilentlyContinue
+          }
+          exit $result
