@@ -388,22 +388,31 @@ def create_operations_dialog(frame, *, controller_factory=OperationsController):
 def show_operations(frame):
     import wx
     dialog = create_operations_dialog(frame)
+    controller = dialog.controller
     handoff = None
     try:
         dialog.CentreOnParent()
-        wx.CallAfter(dialog.controller.refresh)
+        wx.CallAfter(controller.refresh)
         dialog.ShowModal()
-        handoff = dialog.handoff
+        if not controller.closed and dialog and not dialog.IsBeingDeleted():
+            handoff = dialog.handoff
     finally:
-        dialog.controller.dispose()
-        dialog.Destroy()
-    if handoff is not None:
+        controller.dispose()
+        # ShowModal can return before the deferred native destroy event.
+        if dialog and not dialog.IsBeingDeleted():
+            dialog.Destroy()
+    if (handoff is not None and not getattr(frame, '_closing', False)
+            and frame and not frame.IsBeingDeleted()
+            and frame.library is controller.library
+            and getattr(frame, 'active', None) == controller.active):
         from .transcription_dialog import show_transcription
         show_transcription(frame, job_id=handoff)
 
 
 def install_operations_actions(frame):
     import wx
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
     menu = next((frame.menu_bar.GetMenu(i) for i in range(frame.menu_bar.GetMenuCount())
                  if frame.menu_bar.GetMenuLabel(i).replace('&', '') == 'Tools'), None)
     if menu is None:
@@ -411,3 +420,5 @@ def install_operations_actions(frame):
         frame.menu_bar.Append(menu, '&Tools')
     item = menu.Append(wx.ID_ANY, 'Tasks and resources...')
     frame.Bind(wx.EVT_MENU, lambda event: show_operations(frame), item)
+    register_menu_command(frame, CommandSpec('operations.tasks',
+        'Tasks and resources...', 'main', ''), item)

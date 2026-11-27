@@ -46,11 +46,10 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
     original.write_bytes(b'Synthetic protocol audio placeholder; no acoustic inference.')
     sidecar = recordings / 'notes.txt'
     sidecar.write_text('Excluded synthetic nonmedia sidecar.', encoding='utf-8')
-    class FolderAnswer:
+    class FolderAnswer(wx.Dialog):
         """Control the picker answer; the actual folder button/service still run."""
-        def __init__(self, *args, **kwargs): pass
-        def __enter__(self): return self
-        def __exit__(self, *args): return False
+        def __init__(self, parent, *args, **kwargs):
+            super().__init__(parent, title='Controlled synthetic picker answer')
         def ShowModal(self): return wx.ID_OK
         def GetPath(self): return str(recordings)
     frame = DesktopFrame(library)
@@ -92,6 +91,7 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
                 answers = iter((str(Path(sys.executable).resolve()), str(chosen_worker)))
                 class RuntimeAnswer(FolderAnswer):
                     def __init__(self, *args, **kwargs):
+                        super().__init__(*args, **kwargs)
                         self.path = next(answers)
                     def GetPath(self): return self.path
                 class ModelsAnswer(FolderAnswer):
@@ -183,10 +183,125 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
         frame.executor.shutdown(wait=True, cancel_futures=True)
         frame.Destroy()
         desktop.Yield()
+
+    # Retain the completed result while exercising the same real service during
+    # direct native modal/parent destruction. No model or network is involved.
+    completed_id = state['job']
+    completed_root = service._path(completed_id)
+    def completed_bytes():
+        return {path.relative_to(completed_root).as_posix(): path.read_bytes()
+                for path in completed_root.rglob('*')
+                if path.is_file() and not path.name.endswith('.lock')}
+    completed_before = completed_bytes()
+    original_before = original.read_bytes()
+    pause_worker = root / 'synthetic-pause-worker.py'
+    pause_worker.write_text(fixture.SYNTHETIC_WORKER.replace('__MODE__', repr('pause-once')),
+                            encoding='utf-8')
+    service.configure(Path(sys.executable).resolve(), pause_worker, models)
+    lifetime_results = []
+    NativeDialog = wx.Dialog
+    for target in ('dialog', 'parent'):
+        identity = service.submit([original], title='Native lifetime ' + target)
+        job_root = service._path(identity)
+        owner = DesktopFrame(library)
+        owner.Show()
+        owned_executor, owned_cancel = owner.executor, owner.cancel_event
+        errors, peers, submitted = [], [], []
+        real_submit = owned_executor.submit
+        def tracked_submit(*args, **kwargs):
+            future = real_submit(*args, **kwargs)
+            submitted.append(future)
+            return future
+        observation = {'started': False, 'destroy_requested': False, 'destroy_calls': 0}
+        begin_at = time.monotonic()
+        class TrackedDialog(NativeDialog):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                if self.GetTitle() == 'Транскрипція — локальний Whisper':
+                    peers.append(self)
+            def Destroy(self):
+                observation['destroy_calls'] += 1
+                return super().Destroy()
+        def destroy_during_child():
+            try:
+                assert time.monotonic() - begin_at < 35, 'Native destruction case timed out.'
+                if not peers:
+                    wx.CallLater(25, destroy_during_child)
+                    return
+                peer = peers[0]
+                if not observation['started']:
+                    run = wx.FindWindowByName('Запустити / продовжити', peer)
+                    assert run is not None and run.IsEnabled()
+                    click(run)
+                    assert owner.working
+                    observation['started'] = True
+                # Metadata existence only: Windows never opens mutable status
+                # while the actual supplied-protocol child is still running.
+                if not (job_root / 'job_status.json').is_file():
+                    wx.CallLater(25, destroy_during_child)
+                    return
+                assert not (job_root / 'continued').exists()
+                observation['destroy_requested'] = True
+                if target == 'dialog':
+                    peer.Destroy()
+                else:
+                    owner.Destroy()
+            except BaseException:
+                errors.append(traceback.format_exc())
+                owned_cancel.set()
+                if peers and peers[0] and not peers[0].IsBeingDeleted():
+                    peers[0].EndModal(wx.ID_CANCEL)
+        recorded = None
+        with patch.object(wx, 'Dialog', TrackedDialog), \
+                patch.object(owned_executor, 'submit', tracked_submit):
+            wx.CallLater(25, destroy_during_child)
+            try:
+                show_transcription(owner, job_id=identity)
+                assert len(submitted) == 1, 'Expected the actual running transcription future.'
+                # Observe product-owned cancellation before fixture cleanup can
+                # signal it. Parent Destroy may already close the executor, so
+                # wait on its captured real future rather than submit new work.
+                submitted[0].result(timeout=10)
+                stopped_before_cleanup = service.get(identity)
+                recorded = {**observation, 'errors': tuple(errors),
+                    'status_before_cleanup': stopped_before_cleanup['status'],
+                    'continued_before_cleanup': (job_root / 'continued').is_file()}
+            finally:
+                owned_cancel.set()
+                owned_executor.shutdown(wait=True, cancel_futures=True)
+                # Dispose only surviving peers. Keep the earlier observation
+                # copied so cleanup cannot turn a failed case into evidence.
+                if peers and peers[0] and not peers[0].IsBeingDeleted():
+                    NativeDialog.Destroy(peers[0])
+                if owner and not owner.IsBeingDeleted():
+                    owner.Destroy()
+                desktop.Yield()
+        assert recorded is not None and not recorded['errors'], recorded
+        assert recorded['started'] and recorded['destroy_requested'], recorded
+        assert recorded['destroy_calls'] == (1 if target == 'dialog' else 0), recorded
+        assert recorded['status_before_cleanup'] == 'stopped', recorded
+        assert recorded['continued_before_cleanup'], recorded
+        stopped = service.get(identity)
+        assert stopped['status'] == 'stopped', stopped
+        assert not stopped['receipts'] and not stopped['artifacts']
+        assert (job_root / 'continued').is_file(), 'The actual child did not observe its stop flag.'
+        assert (job_root / 'input' / stopped['sources'][0]['filename']).read_bytes() == original_before
+        # A later explicit resume uses the same retained job; destruction never
+        # starts another inference or marks stopped files as accepted results.
+        resumed = service.run(identity, timeout=30)
+        assert resumed['status'] == 'completed', resumed
+        assert service.verify(identity)['id'] == identity
+        assert completed_bytes() == completed_before and original.read_bytes() == original_before
+        lifetime_results.append({'owner': target, 'python_destroy_calls': recorded['destroy_calls'],
+                                 'child_stopped': True, 'explicit_same_job_resume': True})
+
 print(json.dumps({'status':'PASS', 'checks':['actual named wx controls','shared background operation',
     'actual native profile choice and configure action','V5 three-source binding','explicit legacy reconfiguration',
     'actual named folder action','background folder intake','relative source and exclusion count',
-    'actual isolated child protocol','six verified formats','separate edit revision','original unchanged'],
+    'actual isolated child protocol','six verified formats','separate edit revision','original unchanged',
+    'direct modal and parent destruction with an actual pending child',
+    'owned stop and explicit same-job resume without changing historical receipts'],
+    'native_lifetime': lifetime_results,
     'folder_picker_interaction':'NOT_RUN', 'folder_picker_answer':'controlled synthetic directory',
     'profile_picker_interaction':'programmatic native selection and OK; manual interaction NOT_RUN',
     'profile_picker_answer':'controlled selections on an actual wx choice dialog',

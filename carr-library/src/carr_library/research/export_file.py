@@ -31,6 +31,12 @@ DESTINATION_CHECK_SECONDS = 0.25
 HASH_CHUNK_BYTES = 128 * 1024
 
 
+def export_completion(message, receipt):
+    """Keep completion text while exposing any saved-file cleanup notice."""
+    warning = getattr(receipt, 'cleanup_warning', None)
+    return message + (' ' + warning if warning else '')
+
+
 def _filename(name):
     # Validate the basename even when checks run on Linux: NTFS streams and
     # device aliases must not become a different destination on Windows.

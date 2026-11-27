@@ -212,7 +212,7 @@ def main():
             nonlocal dialog
             owner = DesktopFrame(library)
             owner.Show()
-            state = {'phase': 0, 'destroyed': False, 'finished': False}
+            state = {'phase': 0, 'destroyed': False, 'finished': False, 'destroy_calls': 0}
             before = len(captures)
             cancelled_before = len(cancelled_captures)
             limit = monotonic() + 30
@@ -249,6 +249,11 @@ def main():
                                 state['destroyed'] = True
                             event.Skip()
                         dialog.Bind(wx.EVT_WINDOW_DESTROY, destroyed)
+                        actual_destroy = dialog.Destroy
+                        def tracked_destroy():
+                            state['destroy_calls'] += 1
+                            return actual_destroy()
+                        dialog.Destroy = tracked_destroy
                         state['phase'] = 4
                         (owner if parent else dialog).Destroy()
                         return
@@ -258,6 +263,9 @@ def main():
                 wx.CallLater(25, guarded(drive_destruction))
                 result = dialog_module.show_recording(owner)
                 state['finished'] = True
+                # Record before any fixture cleanup can call Destroy.
+                check('recording modal return never destroys a pending native peer twice',
+                      state['destroy_calls'] == (0 if parent else 1))
                 while any(item['active'] for item in captures) and monotonic() < limit:
                     app.Yield(); sleep(.01)
                 # Drain the real worker's queued UI completion after native
@@ -285,9 +293,10 @@ def main():
                 for item in captures[before:]:
                     item['cancel'].set()
                 owner.executor.shutdown(wait=True, cancel_futures=True)
-                if not owner._native_destroyed:
+                if not owner._native_destroyed and owner and not owner.IsBeingDeleted():
                     owner.Destroy()
                 app.Yield()
+                print('MODAL-RECORDING-LIFETIME:', json.dumps(state), flush=True)
                 dialog = None
 
         def open_recording():

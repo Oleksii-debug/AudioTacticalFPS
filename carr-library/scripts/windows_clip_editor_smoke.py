@@ -181,6 +181,49 @@ def main():
                     if not owner._native_destroyed:
                         owner.Destroy()
                     gui.Yield()
+            def modal_destruction_case(parent):
+                owner = DesktopFrame(LibraryApp(root / ('modal-parent-close' if parent else 'modal-dialog-close')))
+                owner.Show()
+                probe = ui.ClipDialog(owner)
+                actual_factory, actual_destroy = ui.ClipDialog, probe.Destroy
+                observed = {'destroy_calls': 0, 'returned': False}
+                snapshot = {}
+                def tracked_destroy():
+                    observed['destroy_calls'] += 1
+                    return actual_destroy()
+                probe.Destroy = tracked_destroy
+                try:
+                    pump(lambda: not owner.working, 'Preparing modal clip owner')
+                    ui.ClipDialog = lambda selected: probe
+                    # This request precedes the wrapper's queued reload. The
+                    # queued callback must become inert before native deletion.
+                    wx.CallAfter((owner if parent else probe).Destroy)
+                    ui.show_clip_editor(owner)
+                    observed['returned'] = True
+                    snapshot = dict(observed)
+                    check('native clip modal footer never repeats native destruction',
+                          snapshot['returned'] and snapshot['destroy_calls'] == (0 if parent else 1))
+                    pump(lambda: probe.destroyed, 'Completing modal clip destruction')
+                    owner.executor.submit(lambda: None).result(timeout=10) if not parent else None
+                    drained = Event()
+                    wx.CallAfter(drained.set)
+                    pump(drained.is_set, 'Draining queued modal clip reload')
+                    check('native clip modal detaches before queued callbacks',
+                          probe.closed and not probe.pending and not errors)
+                except BaseException:
+                    snapshot = dict(observed)
+                    raise
+                finally:
+                    ui.ClipDialog = actual_factory
+                    owner.cancel_event.set()
+                    owner.executor.shutdown(wait=True, cancel_futures=True)
+                    if not probe.destroyed and probe and not probe.IsBeingDeleted():
+                        actual_destroy()
+                    if not owner._native_destroyed and owner and not owner.IsBeingDeleted():
+                        owner.Destroy()
+                    gui.Yield()
+                    print('MODAL-CLIP-LIFETIME:', json.dumps(snapshot or dict(observed)), flush=True)
+
             def scenario():
                 try:
                     check('real native main loop is active', gui.GetMainLoop() is not None)
@@ -232,6 +275,8 @@ def main():
                     check('native keyboard close finishes cleanly', dialog.closed)
                     destruction_case(False)
                     destruction_case(True)
+                    modal_destruction_case(False)
+                    modal_destruction_case(True)
                     check('native destruction leaves retained and supplied originals unchanged',
                           sha256(retained.read_bytes()).hexdigest() == original
                           and sha256(source.read_bytes()).hexdigest() == original)

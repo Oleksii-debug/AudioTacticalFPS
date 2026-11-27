@@ -221,6 +221,7 @@ def test_exports_forward_exact_scope_format_and_write_complete_utf8(module, setu
     assert not destination.exists() and library.calls == []
     frame.finish()
     assert library.calls == [expected]
+    assert destination.is_file(), form.status.GetValue()
     assert destination.read_bytes() == library.export_value.encode('utf-8')
     assert library.original.read_bytes() == b'unchanged original source'
     assert 'exported to' in form.status.GetValue() and form.status.focused

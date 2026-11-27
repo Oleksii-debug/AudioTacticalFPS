@@ -136,5 +136,16 @@ jobs:
             tests/assistant/test_local_assistant.py \
             tests/storage/test_backup_pending_common4.py \
             tests/assistant/test_translation_v3.py \
+            tests/storage/test_durable_state_publication.py \
+            tests/ui/test_academic_actions.py \
+            tests/ui/test_academic_export_handler.py \
+            tests/ui/test_academic_library_dialog.py \
+            tests/ui/test_catalog_tools_dialog.py \
+            tests/ui/test_reading_desk_actions.py \
+            tests/ui/test_operations_dialog.py \
+            tests/e2e/test_operations_cli.py \
+            tests/ui/test_transcription_lifetime.py \
+            tests/studio/test_clip_dialog.py \
+            tests/ui/test_recording_dialog.py \
             tests/packaging/test_ci_check.py
       # This source-only job supplements the complete native Windows/bundle gate.

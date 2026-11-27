@@ -133,6 +133,9 @@ def run_native(source, timeout):
                         check('save chooser leaves replacement to explicit approval',
                               bool(kwargs['style'] & wx.FD_SAVE)
                               and not kwargs['style'] & wx.FD_OVERWRITE_PROMPT)
+                        check('save picker preserves the selected destination state',
+                              destination.exists() is (before_bytes is not None)
+                              and (before_bytes is None or destination.read_bytes() == before_bytes))
                     def ShowModal(self): return wx.ID_OK
                     def GetPath(self): return str(destination)
                     def Destroy(self): pass

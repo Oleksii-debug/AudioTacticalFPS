@@ -188,3 +188,118 @@ publish()
     assert durable_state.atomic_bytes(target, published, replace=True) == target
     assert target.read_bytes() == published and target.stat().st_nlink == 1
     assert not list(tmp_path.glob('.pending-*'))
+
+
+@pytest.mark.parametrize('code', [5, 32, 33])
+def test_transient_windows_share_error_reuses_one_flushed_identity_before_native_replace(
+        tmp_path, monkeypatch, code):
+    from types import SimpleNamespace
+    target = tmp_path / 'state.bin'
+    target.write_bytes(b'Previous state')
+    native = durable_state._replace_state_file
+    stages, delays = [], []
+
+    def retry(source, destination, staged):
+        observed = source.stat()
+        stages.append((source, observed.st_dev, observed.st_ino, observed.st_size))
+        assert source.read_bytes() == PAYLOAD and destination.read_bytes() == b'Previous state'
+        assert (observed.st_dev, observed.st_ino, observed.st_size) == (
+            staged.st_dev, staged.st_ino, staged.st_size)
+        if len(stages) < 3:
+            error = PermissionError('Synthetic temporary Windows sharing denial')
+            error.winerror = code
+            raise error
+        return native(source, destination, staged)
+
+    monkeypatch.setattr(durable_state, '_replace_state_file', retry)
+    monkeypatch.setattr(durable_state, 'time', SimpleNamespace(sleep=delays.append))
+    assert durable_state.atomic_bytes(target, PAYLOAD, replace=True) == target
+    assert len(stages) == 3 and stages[0] == stages[1] == stages[2]
+    assert delays == [.01, .02]
+    assert target.read_bytes() == PAYLOAD and target.stat().st_nlink == 1
+    assert not list(tmp_path.glob('.pending-*'))
+
+
+@pytest.mark.parametrize('code', [5, 32, 33])
+def test_persistent_windows_share_error_has_a_finite_retry_budget_without_deleting_old_state(
+        tmp_path, monkeypatch, code):
+    from types import SimpleNamespace
+    target = tmp_path / 'state.bin'
+    original = b'Previous state remains authoritative'
+    target.write_bytes(original)
+    stages, delays = [], []
+
+    def deny(source, destination, staged):
+        observed = source.stat()
+        stages.append((source, observed.st_dev, observed.st_ino))
+        assert source.read_bytes() == PAYLOAD and destination.read_bytes() == original
+        error = PermissionError('Persistent Windows sharing denial')
+        error.winerror = code
+        raise error
+
+    monkeypatch.setattr(durable_state, '_replace_state_file', deny)
+    monkeypatch.setattr(durable_state, 'time', SimpleNamespace(sleep=delays.append))
+    with pytest.raises(PermissionError, match='Persistent Windows sharing denial'):
+        durable_state.atomic_bytes(target, PAYLOAD, replace=True)
+    assert len(stages) == 7 and len(set(stages)) == 1
+    assert delays == [.01, .02, .04, .08, .16, .32]
+    assert sum(delays) == pytest.approx(.63)
+    assert target.read_bytes() == original and target.stat().st_nlink == 1
+    assert not list(tmp_path.glob('.pending-*'))
+
+
+@pytest.mark.parametrize('code', [None, 87, 112], ids=['non-windows', 'invalid-parameter', 'disk-full'])
+def test_unrelated_replacement_errors_are_not_retried(tmp_path, monkeypatch, code):
+    from types import SimpleNamespace
+    target = tmp_path / 'state.bin'
+    target.write_bytes(b'Previous state')
+    calls, delays = [], []
+
+    def deny(source, destination, staged):
+        calls.append(source)
+        error = PermissionError('Unrelated replacement refusal')
+        if code is not None:
+            error.winerror = code
+        raise error
+
+    monkeypatch.setattr(durable_state, '_replace_state_file', deny)
+    monkeypatch.setattr(durable_state, 'time', SimpleNamespace(sleep=delays.append))
+    with pytest.raises(PermissionError, match='Unrelated replacement refusal'):
+        durable_state.atomic_bytes(target, PAYLOAD, replace=True)
+    assert len(calls) == 1 and delays == []
+    assert target.read_bytes() == b'Previous state'
+    assert not list(tmp_path.glob('.pending-*'))
+
+
+def test_retry_revalidates_captured_stage_identity_before_any_second_publication(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    target = tmp_path / 'state.bin'
+    target.write_bytes(b'Previous state')
+    native = durable_state._replace_state_file
+    calls, retained = [], []
+
+    def deny_once(source, destination, staged):
+        calls.append((source, staged))
+        if len(calls) == 1:
+            error = PermissionError('Synthetic sharing boundary')
+            error.winerror = 32
+            raise error
+        return native(source, destination, staged)
+
+    def replace_stage(delay):
+        assert delay == .01
+        source, captured = calls[0]
+        retained_path = tmp_path / 'externally-retained-stage'
+        source.rename(retained_path)
+        source.write_bytes(PAYLOAD)
+        assert (source.stat().st_dev, source.stat().st_ino) != (captured.st_dev, captured.st_ino)
+        retained.append(retained_path)
+
+    monkeypatch.setattr(durable_state, '_replace_state_file', deny_once)
+    monkeypatch.setattr(durable_state, 'time', SimpleNamespace(sleep=replace_stage))
+    with pytest.raises(ValueError, match='Staged state changed'):
+        durable_state.atomic_bytes(target, PAYLOAD, replace=True)
+    assert len(calls) == 2 and len(retained) == 1
+    assert retained[0].read_bytes() == PAYLOAD
+    assert target.read_bytes() == b'Previous state'
+    assert not list(tmp_path.glob('.pending-*'))

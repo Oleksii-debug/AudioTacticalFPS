@@ -553,3 +553,86 @@ def make(autosave, cancel, service, timer, dialog, progress, parent_progress, re
         player.close.side_effect = None
         assert retained[0].close()
         assert retained[0] not in cleanup._RETAINED
+
+
+@pytest.mark.parametrize('module,function', [
+    ('studio_dialog.py', 'show_studio'),
+    ('recording_dialog.py', 'show_recording'),
+    ('studio_clips.py', 'show_clip_editor'),
+])
+@pytest.mark.parametrize('native_state', ['live', 'pending-delete', 'deleted'])
+@pytest.mark.parametrize('alive', [False, True])
+def test_media_modal_finalizers_dispose_only_a_live_native_peer(module, function, native_state, alive):
+    """Execute the real cleanup footer; actual wx destruction has a separate native gate."""
+    path = Path(__file__).resolve().parents[2] / 'src/carr_library/ui' / module
+    parsed = ast.parse(path.read_text(encoding='utf-8'))
+    window = next(node for node in parsed.body
+                  if isinstance(node, ast.FunctionDef) and node.name == function)
+    final = next(node.finalbody for node in reversed(window.body)
+                 if isinstance(node, ast.Try) and node.finalbody)
+    destroyed, detached = [], []
+    class Peer:
+        destroyed = False  # The destruction event can still be pending.
+        def detach(self):
+            detached.append(True)
+        def __bool__(self):
+            return native_state != 'deleted'
+        def IsBeingDeleted(self):
+            assert native_state != 'deleted', 'A deleted native peer was inspected.'
+            return native_state == 'pending-delete'
+        def Destroy(self):
+            assert native_state == 'live', 'A pending/deleted native peer was destroyed twice.'
+            destroyed.append(True)
+
+    environment = {name: Mock() for name in (
+        'unregister', 'close', 'frame', 'on_destroy', 'detach', 'player', 'release_when_stopped')}
+    observers = (Mock(), Mock())
+    environment['frame'].IsBeingDeleted.return_value = False
+    environment.update(dialog=Peer(), alive=alive, destroyed=False, parent_destroyed=False,
+                       controllers=observers, wx=SimpleNamespace(EVT_WINDOW_DESTROY='destroy'),
+                       __package__='carr_library.ui')
+    exec(compile(ast.Module(body=final, type_ignores=[]), str(path), 'exec'), environment)
+    assert destroyed == ([True] if native_state == 'live' else [])
+    if function == 'show_studio':
+        environment['unregister'].assert_called_once_with()
+        assert environment['close'].call_count == int(alive and native_state == 'live')
+        assert environment['detach'].call_count == int(alive and native_state != 'live')
+        environment['frame'].Unbind.assert_called_once_with('destroy', handler=environment['on_destroy'])
+    elif function == 'show_recording':
+        environment['detach'].assert_called_once_with()
+        environment['player'].close.assert_called_once_with()
+        environment['release_when_stopped'].assert_called_once_with()
+        for observer in observers:
+            observer.unregister_player.assert_called_once_with(environment['player'], silence_confirmed=True)
+    elif function == 'show_clip_editor':
+        assert detached == [True]
+
+
+@pytest.mark.parametrize('timer_deleted', [False, True])
+def test_studio_plain_detachment_is_idempotent_without_native_controls(timer_deleted):
+    path = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/studio_dialog.py'
+    parsed = ast.parse(path.read_text(encoding='utf-8'))
+    window = next(node for node in parsed.body
+                  if isinstance(node, ast.FunctionDef) and node.name == 'show_studio')
+    detach = next(node for node in window.body
+                  if isinstance(node, ast.FunctionDef) and node.name == 'detach')
+    factory = ast.parse("""
+def make(cancel, timer, retire_playback, progress, retire_worker):
+    alive = True
+    return detach, lambda: alive
+""")
+    factory.body[0].body.insert(-1, detach)
+    environment = {}
+    exec(compile(ast.fix_missing_locations(factory), str(path), 'exec'), environment)
+    cancel, timer, retire_playback, progress, retire_worker = [Mock() for _ in range(5)]
+    if timer_deleted:
+        timer.Stop.side_effect = RuntimeError('Native timer already deleted')
+    detach, alive = environment['make'](cancel, timer, retire_playback, progress, retire_worker)
+    detach()
+    detach()
+    assert not alive()
+    cancel.set.assert_called_once_with()
+    timer.Stop.assert_called_once_with()
+    retire_playback.assert_called_once_with(notify=False)
+    progress.close.assert_called_once_with()
+    retire_worker.assert_called_once_with()

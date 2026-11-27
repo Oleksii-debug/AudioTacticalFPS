@@ -8,7 +8,7 @@ from pathlib import Path
 import threading
 
 from ..research.academic_library import AcademicLibrary
-from ..research.export_file import capture_export_destination, write_export
+from ..research.export_file import capture_export_destination, write_export, export_completion
 from .export_destination import confirm_export_destination
 
 
@@ -96,12 +96,19 @@ class AcademicController:
                 None if identity is None else (identity,), format=format, include_notes=include_notes)
 
     def export_to(self, destination, *, identity=None, format='text', include_notes=False,
-                  approval=None):
+                  approval=None, return_receipt=False):
+        content, receipt = self.export_result(destination, identity=identity, format=format,
+            include_notes=include_notes, approval=approval)
+        return receipt if return_receipt else content
+
+    def export_result(self, destination, *, identity=None, format='text', include_notes=False,
+                      approval=None):
+        """Return the rendered text and its publication receipt without rereading."""
         if approval is None:
             approval = capture_export_destination(destination, private_root=self.library.root)
         content = self.export(identity=identity, format=format, include_notes=include_notes)
-        write_export(destination, content, private_root=self.library.root, approval=approval)
-        return content
+        receipt = write_export(destination, content, private_root=self.library.root, approval=approval)
+        return content, receipt
 
     def books(self):
         return self.library.browse(self.workspace)
@@ -979,10 +986,11 @@ def create_academic_dialog(parent, controller, *, executor=None):
                 dialog.Destroy()
 
         def export_to(self, path, *, format='text', identity=None, include_notes=False, approval=None):
-            content = self.controller.export_to(path, identity=identity, format=format,
-                                                include_notes=include_notes, approval=approval)
-            report(self.status, f'Bibliography exported to {path}. '
-                   + ('Personal notes were included.' if include_notes else 'Personal notes were not included.'))
+            content, receipt = self.controller.export_result(path, identity=identity, format=format,
+                include_notes=include_notes, approval=approval)
+            message = (f'Bibliography exported to {path}. '
+                       + ('Personal notes were included.' if include_notes else 'Personal notes were not included.'))
+            report(self.status, export_completion(message, receipt))
             return content
 
         def on_export(self, event=None):

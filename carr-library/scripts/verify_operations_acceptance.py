@@ -19,6 +19,8 @@ import xml.etree.ElementTree as ET
 ROOT = Path(__file__).resolve().parents[1]
 ORIGINS = [
     "carr_library",
+    "carr_library.__main__",
+    "carr_library.operations_cli",
     "carr_library.state_backup",
     "carr_library.ingest.worker",
     "carr_library.application",
@@ -73,6 +75,7 @@ SUITES = [
     "tests/operations/test_worker_start_cleanup.py",
     "tests/operations/test_canonical_asr_admission.py",
     "tests/operations/test_facade.py",
+    "tests/e2e/test_operations_cli.py",
     "tests/ui/test_operations_policy.py",
     "tests/ui/test_operations_dialog.py",
     "tests/ui/test_desktop_handlers.py",
@@ -87,7 +90,8 @@ SUITES = [
     "tests/assistant/test_providers.py",
     "tests/assistant/test_translation_v3.py",
     "tests/assistant/test_translation_narration.py",
-    "tests/ui/test_profile_project_exports.py"
+    "tests/ui/test_profile_project_exports.py",
+    "tests/ui/test_transcription_lifetime.py"
 ]
 CROSS_PROCESS = {
     'test_actual_cross_process_studio_asr_contention_cancel_and_crash[' + outcome + ']'

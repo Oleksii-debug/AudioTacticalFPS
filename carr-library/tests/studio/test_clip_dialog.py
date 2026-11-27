@@ -303,3 +303,32 @@ def test_destroyed_clip_retains_failed_player_and_preview_after_dialog_collectio
         allowed.set()
         if retained is not None:
             retained.close()
+
+
+@pytest.mark.parametrize('outcome', ['preview', 'error'])
+def test_modal_detachment_precedes_native_event_and_queued_completion(dialog, tmp_path, outcome):
+    preview = tmp_path / 'clip-preview-before-native-destroy.wav'
+    preview.write_bytes(b'Owned late preview')
+    done = Mock()
+    assert dialog._run('Pending native clip close', lambda: preview, done)
+    operation, completed, failed = dialog.calls.pop()
+    value = operation()
+    dialog.detach()
+    dialog.detach()
+    assert dialog.closed and dialog.closing and not dialog.destroyed
+    assert dialog.cancel_event.is_set() and dialog.playback_generation == 1
+    dialog._enable = dialog.Hide = dialog.IsModal = Mock(
+        side_effect=AssertionError('A pending native peer was accessed'))
+    dialog.status.ChangeValue = dialog.status.SetFocus = Mock(
+        side_effect=AssertionError('A pending native control was accessed'))
+    if outcome == 'preview':
+        completed(value)
+        assert not preview.exists()
+    else:
+        failed(RuntimeError('Late native worker failure'))
+        assert preview.read_bytes() == b'Owned late preview'
+    dialog.on_destroy(destroy_event(dialog.owner_id))
+    assert dialog.destroyed and dialog.playback_generation == 1
+    assert not dialog.pending
+    done.assert_not_called()
+    assert dialog._run('Queued reload', Mock(), Mock()) is False

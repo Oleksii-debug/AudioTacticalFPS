@@ -52,15 +52,26 @@ interleaved progress labels and repeated suites are not a completed aggregate.
 This checkpoint includes reviewed corrections for those observed contracts,
 complete production inventories, atomic DOI selection, portable update recovery,
 and the shared audiobook publisher. The Linux qualification selection retains
-the existing 65 selectors and adds 24 affected suites. Every new combined result
+the existing 89 selectors and adds eleven affected canonical/UI/media suites (100 total).
+Native Tasks, Studio, recording, clip and transcription modal destruction probes
+retain their original checks and add deferred-deletion/owned-cleanup assertions. Every new combined result
 must carry this checkpoint's exact commit/tree identity; earlier donor results
 are not transferred. The final publisher/update interruption changes were
 reconstructed after executor loss and require fresh execution.
 
 Canonical `e69ba2403515f21509686d66f4bc8b3673756d81` reconciliation is still
-in progress at this qualification checkpoint. Its alternative transcription
-package must not shadow the current workspace-scoped module, job service or
-typed backup authority. This checkpoint is not the final canonical merge.
+in progress at this qualification checkpoint. Selected changes now include dev2
+metadata, bounded Windows state-publication retry, passive legacy publication
+watermarks, strict passive settings, export cleanup receipts/scope checks, Tasks
+command registration and the operations CLI. The existing stronger process,
+source, cancellation, update and publication contracts remain in place.
+
+The alternative transcription package must not shadow the current workspace-scoped
+module, job service or typed backup authority. Its runtime review, older worker
+protocol, durable pause/rebind and historical data compatibility are being adapted
+through those existing contracts. This checkpoint is not the final canonical merge.
+Every new source/native case is NOT_RUN until the exact combined source executes;
+independent static review is not execution evidence.
 
 ## Requirements still open
 

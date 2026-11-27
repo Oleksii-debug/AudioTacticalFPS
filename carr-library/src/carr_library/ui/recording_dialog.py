@@ -473,9 +473,10 @@ def show_recording(frame, *, on_selected=None):
                 except Exception:
                     pass
             release_when_stopped()
-            if not parent_destroyed:
+            if not parent_destroyed and frame and not frame.IsBeingDeleted():
                 frame.Unbind(wx.EVT_WINDOW_DESTROY, handler=on_destroy)
-            if not destroyed:
+            if (not destroyed and not parent_destroyed and dialog
+                    and not dialog.IsBeingDeleted()):
                 dialog.Destroy()
     return selected_result
 

@@ -1,0 +1,118 @@
+{
+  "schema": 1,
+  "status": "SOURCE_RECONCILIATION_IN_PROGRESS",
+  "canonical": "e69ba2403515f21509686d66f4bc8b3673756d81",
+  "base": "0a3b80d4a0ad323ca2b1b87a431fafdc042af152",
+  "selected_components": [
+    {
+      "ref": "c524a360d10f85235c742333eaaade7018ebbe5e",
+      "paths": [
+        "carr-library/docs/evidence/canonical-backup-state-export-reconciliation-20261127.json",
+        "carr-library/src/carr_library/backup_producers.py",
+        "carr-library/src/carr_library/durable_state.py",
+        "carr-library/src/carr_library/pending_backup.py",
+        "carr-library/src/carr_library/research/export_file.py",
+        "carr-library/tests/operations/test_resource_backup.py",
+        "carr-library/tests/reader/test_export_reconciliation.py",
+        "carr-library/tests/storage/test_backup_translation.py",
+        "carr-library/tests/storage/test_durable_state_publication.py",
+        "carr-library/tests/storage/test_pending_backup.py"
+      ]
+    },
+    {
+      "ref": "ff0948697e01dfe2dc38b89f287289d3cfe0991c",
+      "paths": [
+        "carr-library/src/carr_library/ui/academic_actions.py",
+        "carr-library/src/carr_library/ui/academic_library_dialog.py",
+        "carr-library/src/carr_library/ui/catalog_insights_actions.py",
+        "carr-library/src/carr_library/ui/catalog_tools_dialog.py",
+        "carr-library/src/carr_library/ui/desktop_app.py",
+        "carr-library/src/carr_library/ui/import_center.py",
+        "carr-library/src/carr_library/ui/operations_dialog.py",
+        "carr-library/src/carr_library/ui/reading_desk.py",
+        "carr-library/src/carr_library/ui/research_actions.py",
+        "carr-library/tests/e2e/test_export_destination.py",
+        "carr-library/tests/ui/native_catalog_tools_smoke.py",
+        "carr-library/tests/ui/probe_catalog_insights_actions.py",
+        "carr-library/tests/ui/test_academic_actions.py",
+        "carr-library/tests/ui/test_academic_export_handler.py",
+        "carr-library/tests/ui/test_academic_library_dialog.py",
+        "carr-library/tests/ui/test_catalog_tools_dialog.py",
+        "carr-library/tests/ui/test_reading_desk_actions.py",
+        "carr-library/tests/ui/test_studio_keyboard_registration.py"
+      ]
+    },
+    {
+      "ref": "3939d48a2ca21bae47a0edc5c5bc803a92b36bce",
+      "paths": [
+        "carr-library/src/carr_library/ui/operations_dialog.py",
+        "carr-library/tests/ui/native_operations_smoke.py",
+        "carr-library/tests/ui/test_operations_dialog.py"
+      ]
+    },
+    {
+      "ref": "4cf03054cc0f764231170160958113fc0191a229",
+      "paths": [
+        ".github/workflows/carr-native-launcher.yml",
+        "carr-library/src/carr_library/__main__.py",
+        "carr-library/src/carr_library/operations_cli.py",
+        "carr-library/tests/e2e/test_operations_cli.py"
+      ]
+    },
+    {
+      "ref": "2c5a811320bc389c69f2fde15d869d534108fd43",
+      "paths": [
+        ".github/workflows/carr-transcription-bridge.yml",
+        "carr-library/scripts/verify_operations_acceptance.py",
+        "carr-library/scripts/windows_transcription_smoke.py",
+        "carr-library/src/carr_library/ui/transcription_dialog.py",
+        "carr-library/tests/ui/test_transcription_lifetime.py"
+      ]
+    },
+    {
+      "ref": "f943b5d04c740952aa3b1cf8c84b5dc6e81a7aa6",
+      "paths": [
+        "carr-library/pyproject.toml",
+        "carr-library/src/carr_library/__init__.py",
+        "carr-library/packaging/windows-sbom.cdx.json",
+        "carr-library/packaging/windows-semantic-sbom.cdx.json",
+        "carr-library/docs/RUNNING.md",
+        "carr-library/docs/START_UK.txt"
+      ]
+    },
+    {
+      "ref": "48e608cbbcea666d774b8bce94c08ba246e742fb",
+      "paths": [
+        "carr-library/src/carr_library/ui/studio_dialog.py",
+        "carr-library/src/carr_library/ui/recording_dialog.py",
+        "carr-library/src/carr_library/ui/studio_clips.py",
+        "carr-library/tests/ui/test_progress_job_review.py",
+        "carr-library/tests/studio/test_clip_dialog.py",
+        "carr-library/scripts/windows_recording_smoke.py",
+        "carr-library/scripts/windows_clip_editor_smoke.py",
+        "carr-library/scripts/windows_v3_smoke.py"
+      ]
+    }
+  ],
+  "independent_static_review": "ACCEPTED",
+  "exact_combined_execution": "NOT_RUN",
+  "source_selectors": 100,
+  "retained_current_contracts": {
+    "broker": "retain e5; every differing hunk removes cancellation or pending cleanup handling",
+    "locks": "retain e5; canonical lexists precheck loses expected lock-file disappearance handling",
+    "audio_process": "retain e5; canonical is feature subset without owned family/recording/env guard",
+    "providers": "retain e5; canonical lacks decoded-text hash and revalidation",
+    "studio_cli": "retain reviewed publisher successor; canonical has no unique added behavior",
+    "studio_render": "retain reviewed publisher successor; e5 covers canonical shared admission and adds source-bound clips, retained cleanup, exact runtime fingerprints, restored input review",
+    "facade": "retain e5 scope-bound facade; e69 alternative flat transcription store requires explicit compatibility reconciliation",
+    "version": "reconcile dev2 metadata without dropping trust/academic packages"
+  },
+  "pending": [
+    "Reviewed optional ASR runtime fingerprints in the existing engine authority",
+    "Canonical V4.3 protocol and explicit translate task",
+    "Workspace job pause/interrupted review and explicit runtime rebind",
+    "Read-only, untrusted historical flat data import with typed backup",
+    "Shared import/OCR admission and cleanup"
+  ],
+  "evidence_rule": "Previous component, source and Windows results are never transferred to this composition."
+}

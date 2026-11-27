@@ -283,3 +283,127 @@ def test_all_libraries_view_requires_active_scope_before_transcription_handoff(t
     assert controller.open_transcription(row.key, opened.append) is False
     assert not opened and not frame.pending
     assert 'selected active library' in controller.status
+
+
+@pytest.mark.parametrize('ending', ['live', 'pending', 'deleted'])
+def test_modal_finally_detaches_before_deferred_or_completed_native_deletion(
+        tmp_path, monkeypatch, ending):
+    import sys
+    from carr_library.ui import operations_dialog
+
+    frame = QueuedFrame(LibraryApp(tmp_path / 'data'))
+    changes, callbacks, handoff_reads, destroy_calls = [], [], [], []
+    controller = OperationsController(frame, changed=lambda focus=False: changes.append(focus))
+
+    class NativeWindow:
+        live = True
+        pending = False
+
+        def __bool__(self):
+            return self.live
+
+        def CentreOnParent(self):
+            assert self.live and not self.pending
+
+        def IsBeingDeleted(self):
+            assert self.live, 'The deleted native wrapper must not be queried.'
+            return self.pending
+
+        def ShowModal(self):
+            # A native parent can schedule or complete deletion without the
+            # Python Destroy override or the EVT_DESTROY callback running yet.
+            self.pending = ending == 'pending'
+            self.live = ending != 'deleted'
+
+        @property
+        def handoff(self):
+            handoff_reads.append(True)
+            assert self.live and not self.pending
+            return None
+
+        def Destroy(self):
+            destroy_calls.append(True)
+            assert controller.closed and controller.cancelled()
+            assert self.live and not self.pending, 'A second native Destroy is forbidden.'
+            self.live = False
+
+    dialog = NativeWindow()
+    dialog.controller = controller
+    monkeypatch.setattr(operations_dialog, 'create_operations_dialog', lambda host: dialog)
+    monkeypatch.setitem(sys.modules, 'wx', SimpleNamespace(
+        CallAfter=lambda function, *args: callbacks.append(lambda: function(*args))))
+    operations_dialog.show_operations(frame)
+
+    assert destroy_calls == ([True] if ending == 'live' else [])
+    assert handoff_reads == ([True] if ending == 'live' else [])
+    assert controller.closed and controller.cancelled() and controller._token is None
+    assert len(callbacks) == 1
+    callbacks[0]()  # The already-queued initializer must not revive the view.
+    assert not changes and not frame.pending
+    assert not frame.cancel_event.is_set()
+    assert not (frame.library.root / 'runtime').exists()
+
+
+@pytest.mark.parametrize('owner_change', [
+    'none', 'pending', 'deleted', 'closing', 'library', 'workspace',
+])
+def test_modal_workstation_handoff_requires_its_surviving_selected_owner(
+        tmp_path, monkeypatch, owner_change):
+    import sys
+    from carr_library.ui import operations_dialog
+
+    class NativeFrame(QueuedFrame):
+        live = True
+        deleting = False
+
+        def __bool__(self):
+            return self.live
+
+        def IsBeingDeleted(self):
+            assert self.live, 'The deleted owner must not be queried.'
+            return self.deleting
+
+    frame = NativeFrame(LibraryApp(tmp_path / 'data'))
+    frame.active = ('selected-workspace', None)
+    controller = OperationsController(frame)
+    opened, callbacks, destroyed = [], [], []
+    identity = 'a' * 32
+
+    class NativeWindow:
+        live = True
+        handoff = identity
+
+        def __bool__(self): return self.live
+        def CentreOnParent(self): pass
+        def IsBeingDeleted(self): return False
+        def ShowModal(self): pass
+
+        def Destroy(self):
+            assert controller.closed
+            destroyed.append(True)
+            self.live = False
+            if owner_change == 'pending':
+                frame.deleting = True
+            elif owner_change == 'deleted':
+                frame.live = False
+            elif owner_change == 'closing':
+                frame._closing = True
+            elif owner_change == 'library':
+                frame.library = object()
+            elif owner_change == 'workspace':
+                frame.active = ('another-workspace', None)
+
+    dialog = NativeWindow()
+    dialog.controller = controller
+    monkeypatch.setattr(operations_dialog, 'create_operations_dialog', lambda host: dialog)
+    monkeypatch.setitem(sys.modules, 'wx', SimpleNamespace(
+        CallAfter=lambda function, *args: callbacks.append(lambda: function(*args))))
+    monkeypatch.setitem(sys.modules, 'carr_library.ui.transcription_dialog', SimpleNamespace(
+        show_transcription=lambda host, *, job_id: opened.append((host, job_id))))
+    operations_dialog.show_operations(frame)
+
+    assert destroyed == [True] and controller.closed and controller.cancelled()
+    assert opened == ([(frame, identity)] if owner_change == 'none' else [])
+    assert len(callbacks) == 1
+    callbacks[0]()
+    assert not frame.cancel_event.is_set()

@@ -117,3 +117,17 @@ def test_receipt_and_native_digest_shape_are_preserved(tmp_path):
     receipt = e.write_export(target, 'Цитата\r\nOriginal', private_root=private, approval=approval)
     assert receipt.path == target and receipt.cleanup_warning is None
     assert target.read_bytes() == 'Цитата\r\nOriginal'.encode()
+
+
+@pytest.mark.parametrize('warning', [None, 'The file is saved. Temporary-file cleanup is pending.'])
+def test_completion_message_preserves_actual_export_location_and_cleanup_notice(tmp_path, warning):
+    target = tmp_path / 'published.txt'
+    receipt = e.write_export(target, 'Exact retained output', private_root=tmp_path / 'private')
+    if warning is not None:
+        receipt = e.ExportReceipt(receipt.path, warning)
+    message = 'Saved bibliography: ' + str(receipt.path)
+    expected = message + (' ' + warning if warning else '')
+    assert e.export_completion(message, receipt) == expected
+    assert target.read_bytes() == b'Exact retained output'
+    assert receipt.path == target
+    assert e.export_completion(message, object()) == message
