@@ -199,12 +199,22 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
     monkeypatch.setattr('carr_library.runtime_settings.voice_registry',
                         lambda *args, **kwargs: VoiceRegistry((Provider(),)))
 
+    class Font:
+        """The existing native appearance controller gets a copied valid font."""
+        def __init__(self, other=None):
+            self.points = other.points if other is not None else 11.0
+        def GetFractionalPointSize(self): return self.points
+        def SetFractionalPointSize(self, value): self.points = float(value)
+        def IsOk(self): return self.points > 0
+
     class Control:
         def __init__(self, parent=None, *args, **kwargs):
             self.parent = parent
             self.label = kwargs.get('label', next((a for a in args if isinstance(a, str)), ''))
             self.value = kwargs.get('value', kwargs.get('initial', ''))
-            self.name, self.items, self.selection = '', [], -1
+            self.name, self.items, self.selection = '', list(kwargs.get('choices', ())), -1
+            self.font, self.foreground, self.background = Font(), '#000000', '#FFFFFF'
+            self.tooltip = ''
             self.enabled, self.destroyed, self.cursor = True, False, 0
             self.handlers = {}
             controls.append(self)
@@ -212,15 +222,41 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
             assert get_ident() == main
             assert not self.destroyed
         def SetName(self, value): self.native(); self.name = value
+        def GetName(self): self.native(); return self.name
+        def SetLabel(self, value): self.native(); self.label = value
+        def SetToolTip(self, value): self.native(); self.tooltip = value
         def SetValue(self, value): self.native(); self.value = value
         def ChangeValue(self, value): self.SetValue(value)
         def GetValue(self): self.native(); return self.value
+        def GetRange(self, first, last):
+            self.native()
+            if sys.platform == 'win32':
+                raw = self.value.replace('\n', '\r\n').encode('utf-16-le')
+                return raw[2 * first:2 * last].decode('utf-16-le').replace('\r\n', '\n')
+            return self.value[first:last]
+        def XYToPosition(self, column, row):
+            self.native()
+            lines = self.value.split('\n')
+            if row < 0 or row >= len(lines):
+                return -1
+            prefix = '\n'.join(lines[:row]) + ('\n' if row else '')
+            units = (len(prefix.replace('\n', '\r\n').encode('utf-16-le')) // 2
+                     if sys.platform == 'win32' else len(prefix))
+            return units + column
+        def GetFont(self): self.native(); return self.font
+        def SetFont(self, value): self.native(); self.font = Font(value)
+        def GetForegroundColour(self): self.native(); return self.foreground
+        def SetForegroundColour(self, value): self.native(); self.foreground = value
+        def GetBackgroundColour(self): self.native(); return self.background
+        def SetBackgroundColour(self, value): self.native(); self.background = value
+        def Refresh(self): self.native()
         def Set(self, values): self.native(); self.items = list(values)
         def SetSelection(self, value): self.native(); self.selection = value
         def GetSelection(self): self.native(); return self.selection
         def GetStringSelection(self): self.native(); return ''
         def SetInsertionPoint(self, value): self.native(); self.cursor = value
         def GetInsertionPoint(self): self.native(); return self.cursor
+        def IsEnabled(self): self.native(); return self.enabled
         def Enable(self, value=True): self.native(); self.enabled = value
         def Disable(self): self.Enable(False)
         def SetFocus(self): self.native(); assert self.enabled
@@ -228,7 +264,14 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
         def SetSizer(self, *args): self.native()
         def SetEscapeId(self, *args): self.native()
         def SetAcceleratorTable(self, *args): self.native()
-        def Bind(self, event, callback, *args, **kwargs): self.native(); self.handlers[event] = callback
+        def Bind(self, event, callback, *args, **kwargs):
+            self.native()
+            key = (event, kwargs['id']) if 'id' in kwargs else event
+            self.handlers[key] = callback
+        def Unbind(self, event, **kwargs):
+            self.native()
+            key = (event, kwargs['id']) if 'id' in kwargs else event
+            return self.handlers.pop(key, None) is not None
         def Start(self, *args): self.native()
         def Stop(self): self.native()
         def EndModal(self, result): self.native()
@@ -270,7 +313,7 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
     identifiers = count(10000)
     wx = SimpleNamespace(Dialog=Dialog, FileDialog=FileDialog, TextEntryDialog=FileDialog,
         TextCtrl=Control, StaticText=Control, Choice=Control, SpinCtrl=Control,
-        Button=Control, CheckBox=Control, BoxSizer=Control, Timer=Control,
+        Button=Control, CheckBox=Control, BoxSizer=Control, WrapSizer=Control, Timer=Control, Font=Font,
         CallAfter=lambda callback, *args: callbacks.put((callback, args)),
         NewIdRef=lambda: next(identifiers), AcceleratorTable=lambda entries: entries,
         MessageBox=lambda *args, **kwargs: 4, ID_OK=5100, ID_CANCEL=5101,
@@ -279,19 +322,21 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
     for constant in ('DEFAULT_DIALOG_STYLE', 'RESIZE_BORDER', 'VERTICAL', 'HORIZONTAL', 'LEFT',
             'TOP', 'RIGHT', 'EXPAND', 'ALL', 'ALIGN_CENTER_VERTICAL', 'ALIGN_RIGHT', 'TE_READONLY',
             'TE_MULTILINE', 'TE_DONTWRAP', 'FD_SAVE', 'FD_OPEN', 'FD_FILE_MUST_EXIST', 'YES_NO',
-            'ICON_QUESTION', 'ACCEL_CTRL', 'ACCEL_SHIFT', 'WXK_F6', 'WXK_F7', 'WXK_F8'):
+            'ICON_QUESTION', 'ACCEL_CTRL', 'ACCEL_ALT', 'ACCEL_SHIFT', 'WXK_F6', 'WXK_F7', 'WXK_F8'):
         setattr(wx, constant, 0)
     monkeypatch.setitem(sys.modules, 'wx', wx)
     monkeypatch.setattr(ui, 'WavePlayer', lambda: SimpleNamespace(
         position_seconds=0, state='stopped', stop=lambda: None, close=lambda: None,
         path=None, session_generation=0, repeat_enabled=False, repeat_count=0,
-        sleep_remaining_seconds=None))
+        sleep_remaining_seconds=None, output_selection_supported=False, output_device=None))
     parent = SimpleNamespace(library=app, report=statuses.append)
 
     ui.show_speech_reader(parent, source_guard=scope,
         source_loader=lambda cancelled: read_source_range(desk, 1, 1, guard=scope, cancelled=cancelled))
     assert app.assets.resolve(imported['asset']).read_bytes() == original.encode('utf-8')
     assert guard_calls
+    assert not any('could not be detached' in message
+                   or 'Temporary playback audio is retained' in message for message in statuses)
     if recovery_case in ('legacy', 'foreign', 'revision'):
         assert store.path.read_bytes() == prior_draft
         assert any('no matching source lineage' in message for message in statuses)
