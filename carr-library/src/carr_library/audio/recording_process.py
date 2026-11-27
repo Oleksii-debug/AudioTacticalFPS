@@ -7,6 +7,7 @@ retains its own staging/admission until native cleanup has been confirmed.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from hashlib import sha256
 import ctypes
 import math
 import os
@@ -65,6 +66,9 @@ class ProcessResult:
     elapsed: float
     returncode: int = 0
     stopped: bool = False
+    pcm_bytes: int = 0
+    pcm_sha256: str | None = None
+    pcm_error: str | None = None
 
 
 def native_audio_environment(environment=None):
@@ -130,7 +134,7 @@ def _stop_owned(process):
 
 def run_process(args, *, budget=None, cancelled=lambda: False,
                 watch=(), progress=None, env=None, cwd=None, owned_tree=False,
-                stop_requested=None, allow_failure=False):
+                stop_requested=None, allow_failure=False, pcm=None):
     """Run an already constructed argument vector, never a shell expression.
 
     Progress callbacks receive rendered seconds from FFmpeg's progress stream.
@@ -150,6 +154,8 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
         raise ValueError('Audio worker must use a resolved executable.')
     if stop_requested is not None and not callable(stop_requested):
         raise ValueError('Graceful audio stop requires a callback.')
+    if pcm is not None and (not callable(pcm) or stop_requested is None):
+        raise ValueError('A live PCM consumer requires explicit graceful capture control.')
     if type(allow_failure) is not bool or type(owned_tree) is not bool:
         raise ValueError('Audio process ownership and diagnostic exits must be explicit.')
     if cancelled():
@@ -158,6 +164,9 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
     overflow = threading.Event()
     buffers = {'stdout': bytearray(), 'stderr': bytearray()}
     latest = [None]
+    pcm_digest, pcm_bytes, pcm_failure = sha256(), [0], [None]
+    pcm_overflow = threading.Event()
+    reader_failures = []
     # The existing launcher assigns Windows Job Objects before resume and
     # creates private POSIX sessions. No process/PID discovery is performed.
     process = _start_process(args,
@@ -170,12 +179,47 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
     def read_pipe(pipe, name):
         count = 0
         partial = b''
+        progress_keys = (b'frame=', b'fps=', b'bitrate=', b'total_size=', b'out_time_us=', b'out_time_ms=',
+                         b'out_time=', b'dup_frames=', b'drop_frames=', b'speed=', b'progress=')
+
+        def keep(data):
+            nonlocal count
+            count += len(data)
+            if count > budget.max_log_bytes:
+                overflow.set()
+            available = budget.max_log_bytes - len(buffers[name])
+            buffers[name].extend(data[:max(0, available)])
+
+        def progress_line(line):
+            if len(line) > 1024:
+                overflow.set()
+            if line.startswith(b'out_time_us='):
+                try:
+                    latest[0] = max(0, int(line.split(b'=', 1)[1]) / 1000000)
+                except (ValueError, OverflowError):
+                    pass
+
         try:
             while True:
                 data = pipe.read1(4096)
                 if not data:
                     break
-                if name == 'stdout' and progress is not None:
+                if name == 'stdout' and pcm is not None:
+                    pcm_bytes[0] += len(data)
+                    if pcm_bytes[0] > budget.max_output_bytes:
+                        pcm_overflow.set()
+                    pcm_digest.update(data)
+                    if pcm_failure[0] is None:
+                        try:
+                            pcm(data)
+                        except Exception as exc:
+                            # Optional monitoring must not destroy an original.
+                            # Stop with the fixed q command and keep draining the
+                            # real stream while FFmpeg finalizes the owned WAV.
+                            pcm_failure[0] = (str(exc) or type(exc).__name__)[:1024]
+                    continue
+                if ((name == 'stdout' and progress is not None and pcm is None)
+                        or (name == 'stderr' and pcm is not None)):
                     partial += data
                     if len(partial) > budget.max_log_bytes:
                         overflow.set()
@@ -183,19 +227,19 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
                     lines = partial.split(b'\n')
                     partial = lines.pop()
                     for line in lines:
-                        if len(line) > 1024:
-                            overflow.set()
-                        if line.startswith(b'out_time_us='):
-                            try:
-                                latest[0] = max(0, int(line.split(b'=', 1)[1]) / 1000000)
-                            except (ValueError, OverflowError):
-                                pass
+                        if pcm is None or line.startswith(progress_keys):
+                            progress_line(line)
+                        else:
+                            keep(line + b'\n')
                     continue
-                count += len(data)
-                if count > budget.max_log_bytes:
-                    overflow.set()
-                available = budget.max_log_bytes - len(buffers[name])
-                buffers[name].extend(data[:max(0, available)])
+                keep(data)
+            if partial and pcm is not None and name == 'stderr':
+                if partial.startswith(progress_keys):
+                    progress_line(partial)
+                else:
+                    keep(partial)
+        except Exception as exc:
+            reader_failures.append(exc)
         finally:
             pipe.close()
 
@@ -207,7 +251,7 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
         if cancelled():
             raise AudioCancelled('Audio operation cancelled; incomplete output discarded.')
         if (stop_requested is not None and stopped_at is None
-                and stop_requested() and process.poll() is None):
+                and (stop_requested() or pcm_failure[0] is not None) and process.poll() is None):
             stopped_at = time.monotonic()
             try:
                 process.stdin.write(b'q\n')
@@ -218,6 +262,10 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
         if (stopped_at is not None and time.monotonic() - stopped_at > 5
                 and process.poll() is None):
             raise AudioError('Audio capture did not finalize within its stop allowance; incomplete output discarded.')
+        if reader_failures:
+            raise AudioError('Audio worker diagnostic stream could not be read.') from reader_failures[0]
+        if pcm_overflow.is_set():
+            raise AudioError('Live PCM exceeded the selected output allowance.')
         if overflow.is_set():
             raise AudioError('Audio worker exceeded its diagnostic output budget.')
         if time.monotonic() - started > budget.timeout:
@@ -273,7 +321,8 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
             raise AudioError(f'Local audio worker failed (exit {process.returncode}): {message.strip()}')
         return ProcessResult(bytes(buffers['stdout']), bytes(buffers['stderr']),
                              time.monotonic() - started, process.returncode,
-                             stopped_at is not None)
+                             stopped_at is not None, pcm_bytes[0],
+                             pcm_digest.hexdigest() if pcm is not None else None, pcm_failure[0])
     finally:
         def cleanup_process():
             return _stop_owned(process)

@@ -21,7 +21,7 @@ from types import SimpleNamespace
 
 from .recording_process import (CaptureBudget as AudioBudget, AudioCancelled,
                                 AudioError, AudioUnavailable, integer, run_process)
-from .cleanup import AudioCleanupPending
+from .cleanup import AudioCleanupPending, pending_cleanup
 from .jobs import (publish_new as publish_file, publish_noreplace, sha256_file, verified_reader,
                    file_identity, checked_directory, project_lock)
 from .runtime import resolve_ffmpeg
@@ -313,6 +313,7 @@ class RecordingService:
         self.progress_hub = progress_hub
         self.resource_broker = resource_broker
         self._devices, self._engine_hash = {}, None
+        self._outputs = {}
 
     def _runtime(self):
         selected = getattr(self.runtime, 'ffmpeg', self.ffmpeg)
@@ -342,19 +343,48 @@ class RecordingService:
         self._devices, self._engine_hash = {item.id: item for item in devices}, identity
         return devices
 
+    def monitor_devices(self, *, cancelled=lambda: False):
+        """Inspect existing outputs; never choose a default or start samples."""
+        from .playback import output_devices, PlaybackError
+        self._outputs = {}
+        if cancelled():
+            raise AudioCancelled('Output discovery cancelled.')
+        try:
+            devices = output_devices()
+        except PlaybackError as exc:
+            raise AudioUnavailable(str(exc)) from exc
+        if cancelled():
+            raise AudioCancelled('Output discovery cancelled.')
+        self._outputs = {item.id: item for item in devices}
+        return devices
+
+    def _new_monitor(self):
+        from .playback import PCMPlayer
+        return PCMPlayer(progress_hub=self.progress_hub)
+
     @staticmethod
     def _input_arguments(device):
         return ['-thread_queue_size', '128', '-rtbufsize', '16M', '-f', 'dshow',
                 '-i', 'audio=' + device.alternative]
 
     def capture(self, device_id, *, title='Microphone recording', options=None,
-                stop_requested=lambda: False, cancelled=lambda: False, progress=None, retake_of=None):
+                stop_requested=lambda: False, cancelled=lambda: False, progress=None, retake_of=None,
+                monitor=False, monitor_device_id=None):
         options = options or RecordingOptions()
         if not isinstance(options, RecordingOptions):
             raise ValueError('Validated recording options are required.')
         _text(title, 'recording title')
         if not callable(stop_requested) or not callable(cancelled):
             raise ValueError('Recording requires explicit stop and cancel callbacks.')
+        if type(monitor) is not bool:
+            raise ValueError('Choose explicitly whether live monitoring is enabled.')
+        output_device = None
+        if monitor:
+            if type(monitor_device_id) is not int or monitor_device_id not in self._outputs:
+                raise ValueError('Refresh outputs and explicitly select a current device for live monitoring.')
+            output_device = self._outputs[monitor_device_id]
+        elif monitor_device_id is not None:
+            raise ValueError('An output device requires explicitly enabled live monitoring.')
         device = self._devices.get(device_id)
         if device is None or self._engine_hash is None:
             raise ValueError('Refresh microphones and explicitly select a current device before Start.')
@@ -364,14 +394,17 @@ class RecordingService:
             raise ValueError('Choose an existing saved recording for another take.')
         from ..operations.broker import ResourceBroker
         from ..operations.models import ResourceRequest, ResourceCancelled
+        from .playback import PlaybackError
         reservation = _CaptureReservation(self.root, self.progress_hub)
-        admitted = False
+        admitted, player, saved, pending = False, None, None, None
         try:
             broker = self.resource_broker or ResourceBroker.for_app(self.library_root, cancelled=cancelled)
             maximum_pcm = options.max_seconds * options.sample_rate * options.channels * 2 + 4096
+            devices = ('microphone:' + device.id,)
+            if monitor:
+                devices += ('winmm-output:' + str(output_device.id),)
             request = ResourceRequest(cpu_slots=1, memory_bytes=256 * 1024**2,
-                disk_bytes=maximum_pcm + 64 * 1024**2, disk_path=self.root,
-                devices=('microphone:' + device.id,))
+                disk_bytes=maximum_pcm + 64 * 1024**2, disk_path=self.root, devices=devices)
             lease = reservation.admit(broker.reserve(request,
                 operation_id='capture:' + reservation.identity,
                 cancelled=lambda: cancelled() or (not admitted and stop_requested()),
@@ -381,19 +414,64 @@ class RecordingService:
                 raise AudioCancelled('Recording stopped before opening the microphone.')
             checked_cancelled = lease.cancelled
             previous = self.get(retake_of, cancelled=checked_cancelled) if retake_of is not None else None
-            return self._capture(device, title, options, stop_requested, checked_cancelled,
-                                 progress, reservation, previous)
+            if monitor:
+                player = self._new_monitor()
+                try:
+                    observed = player.start_monitor(sample_rate=options.sample_rate, channels=options.channels,
+                        max_frames=options.max_seconds * options.sample_rate, device_id=output_device.id,
+                        cancelled=lambda: checked_cancelled() or stop_requested())
+                except PlaybackError as exc:
+                    if checked_cancelled() or stop_requested():
+                        raise AudioCancelled('Recording stopped before opening the microphone.') from exc
+                    raise AudioUnavailable(str(exc)) from exc
+                if observed.device_name != output_device.name:
+                    raise AudioUnavailable('The selected output changed after discovery. Refresh outputs before recording.')
+            if checked_cancelled() or stop_requested():
+                raise AudioCancelled('Recording stopped before opening the microphone.')
+            saved = self._capture(device, title, options, stop_requested, checked_cancelled,
+                                  progress, reservation, previous, player)
+            return saved
         except ResourceCancelled as exc:
             raise AudioCancelled('Recording resource admission was cancelled before opening the microphone.') from exc
         except AudioCleanupPending as exc:
-            reservation.retain(exc.cleanup_owner)
-            exc.recording_reservation = reservation
+            pending = exc
             raise
         finally:
+            owners = [pending.cleanup_owner] if pending is not None else []
+            if player is not None:
+                try:
+                    if saved is not None and not saved['monitor']['error']:
+                        player.finish_monitor()
+                    else:
+                        player.stop()
+                except PlaybackError as exc:
+                    if saved is not None:
+                        saved['monitor']['error'] = str(exc)
+                # Reaching an error state is not native quiescence. A timed-out
+                # worker or quarantined WinMM handle keeps the exact reservation.
+                if not player.monitor_quiescent:
+                    delayed = pending_cleanup(player.confirm_monitor_shutdown,
+                        message='Live output cleanup is pending; its device reservation remains held.')
+                    owners.append(delayed.cleanup_owner)
+            if owners:
+                owner = owners[0] if len(owners) == 1 else pending_cleanup(
+                    lambda: all(item.quiescent for item in owners),
+                    message='Capture and live output cleanup are still pending.').cleanup_owner
+                reservation.retain(owner)
+                if pending is not None and len(owners) == 1:
+                    pending.recording_reservation = reservation
+                else:
+                    pending = AudioCleanupPending(
+                        'Recording cleanup is still pending; its devices remain reserved.',
+                        cleanup_owner=owner)
+                    pending.recording_reservation = reservation
+                    if saved is not None:
+                        pending.saved_recording = saved
+                    raise pending
             if not reservation.deferred:
                 reservation.close()
 
-    def _capture(self, device, title, options, stop_requested, cancelled, progress, reservation, previous=None):
+    def _capture(self, device, title, options, stop_requested, cancelled, progress, reservation, previous=None, monitor=None):
         identity = reservation.identity
         output, receipt = self.root / (identity + '.wav'), self.root / (identity + '.json')
         if os.path.lexists(output) or os.path.lexists(receipt):
@@ -417,12 +495,25 @@ class RecordingService:
         staged = Path(temporary) / 'capture.wav'
         command = [self.runtime.ffmpeg, '-hide_banner', '-loglevel', 'error', '-n', '-nostats',
             '-max_alloc', str(budget.max_alloc_bytes), '-threads', '1', '-stats_period', '0.1',
-            '-progress', 'pipe:1', *self._input_arguments(device), '-map', '0:a:0', '-vn',
+            '-progress', 'pipe:2' if monitor is not None else 'pipe:1',
+            *self._input_arguments(device), '-map', '0:a:0', '-vn',
             '-c:a', 'pcm_s16le', '-ar', str(options.sample_rate), '-ac', str(options.channels),
             '-t', str(options.max_seconds), '-f', 'wav', '-rf64', 'never', str(staged)]
+        if monitor is not None:
+            command.extend(['-map', '0:a:0', '-vn', '-c:a', 'pcm_s16le',
+                '-ar', str(options.sample_rate), '-ac', str(options.channels),
+                '-t', str(options.max_seconds), '-f', 's16le', 'pipe:1'])
+        process_options = {}
+        if monitor is not None:
+            process_options['pcm'] = lambda data: monitor.feed_pcm(data, cancelled=cancelled)
         result = run_process(command, budget=budget, cancelled=cancelled,
-            stop_requested=stop_requested, watch=(staged,), progress=report, cwd=temporary, owned_tree=True)
+            stop_requested=stop_requested, watch=(staged,), progress=report, cwd=temporary,
+            owned_tree=True, **process_options)
         audio = self._audio(staged, options, cancelled)
+        if monitor is not None:
+            if (result.pcm_bytes != audio['frames'] * options.channels * 2
+                    or self._pcm_digest(staged, cancelled) != result.pcm_sha256):
+                raise ValueError('The live PCM stream differs from the retained recording; no result was published.')
         if _digest(self.runtime.ffmpeg, cancelled) != self._engine_hash:
             raise ValueError('The FFmpeg runtime changed during recording; no result was published.')
         value = {'schema': 'carr-recording/1', 'id': identity, 'filename': output.name,
@@ -446,7 +537,30 @@ class RecordingService:
             atomic_json(receipt, value)
         except (OSError, ValueError) as exc:
             raise AudioError(f'The recorded WAV was retained at {output}, but its receipt could not be saved. Preserve the file for recovery.') from exc
-        return {**value, 'path': str(output)}
+        saved = {**value, 'path': str(output)}
+        if monitor is not None:
+            status = monitor.status()
+            saved['monitor'] = {'enabled': True, 'device_id': status.device_id,
+                'device_name': status.device_name, 'stream_frames': audio['frames'],
+                'pcm_matches_original': True, 'error': result.pcm_error}
+        return saved
+
+    @staticmethod
+    def _pcm_digest(path, cancelled):
+        from .ffmpeg import wav_info
+        with verified_reader(path) as stream:
+            info = wav_info(path)
+            stream.seek(info.data_offset)
+            remaining, digest = info.data_size, sha256()
+            while remaining:
+                if cancelled():
+                    raise AudioCancelled('Live PCM verification cancelled.')
+                block = stream.read(min(remaining, 1024 * 1024))
+                if not block:
+                    raise ValueError('The retained PCM is truncated.')
+                digest.update(block)
+                remaining -= len(block)
+            return digest.hexdigest()
 
     @staticmethod
     def _audio(path, options, cancelled):
