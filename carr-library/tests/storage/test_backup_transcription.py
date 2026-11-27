@@ -144,8 +144,19 @@ def test_actual_completed_roundtrip_keeps_receipts_edits_and_missing_engine_pass
     assert all(not backup_transcription.ignored(row['filename']) for row in manifest['sidecars'])
     shutil.rmtree(app.root)
     restored = restore_backup(destination, tmp_path / 'restored', expected_manifest_sha256=checksum)
-    assert _files(restored) == expected
-    assert (restored / 'state' / 'transcription' / 'engine.json').read_bytes() == engine
+    actual = _files(restored)
+    assert set(actual) == set(expected)
+    for name, raw in expected.items():
+        if name == 'state/transcription/engine.json':
+            assert json.loads(actual[name]) == {**json.loads(raw), 'execution_review_required': True}
+        elif '/transcription/profiles/' in name:
+            assert json.loads(actual[name]) == {**json.loads(raw), 'trusted': False, 'restored': True}
+        elif name.endswith('/job.json'):
+            assert json.loads(actual[name]) == {**json.loads(raw), 'execution_review_required': True}
+        else:
+            assert actual[name] == raw
+    assert json.loads(actual['state/transcription/engine.json']) == {
+        **json.loads(engine), 'execution_review_required': True}
     recovered = LibraryApp(restored).transcription(workspace)
     assert recovered.verify(identity)['status'] == 'completed'
     assert recovered.run(identity, timeout=30)['status'] == 'completed'
@@ -181,8 +192,13 @@ def test_real_v5_stop_keeps_unaccepted_bound_outputs_without_restoring_run_autho
     assert (recovered._path(identity) / manifest_name).read_bytes() == manifest
     assert not (recovered._path(identity) / 'stop.flag').exists()
     assert not (recovered._path(identity) / '.transcribe.lock').exists()
-    # Reading/listing does not execute. Only this explicit resume starts a new run.
-    resumed = recovered.run(identity, timeout=30)
+    # Restored selectors remain passive until a new local review and rebind.
+    with pytest.raises(ValueError, match='[Rr]eview'):
+        recovered.run(identity, timeout=30)
+    config = service.configuration()
+    approved = recovered.configure(config['python'], config['worker'], config['models_dir'], protocol=V5)
+    recovered.rebind_runtime(identity, approved['profile_id'])
+    resumed = recovered.resume(identity, timeout=30)
     assert resumed['status'] == 'completed' and resumed['done'] == 2, resumed['last_error']
     assert resumed['run_context']['host_run_id'] != stopped['run_context']['host_run_id']
     _remove_fixture_instrumentation(recovered, identity)

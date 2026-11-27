@@ -354,3 +354,76 @@ def test_malformed_asr_journal_stays_attention_without_aborting_valid_jobs(tmp_p
     assert rows[valid].status == 'ready'
     assert rows[invalid].status == 'attention' and rows[invalid].controls == ()
     assert 'Synthetic media' not in repr(rows[invalid])
+
+
+def test_asr_durable_controls_resolve_only_the_selected_library_service(tmp_path):
+    from carr_library.transcription import TranscriptionService
+    app = LibraryApp(tmp_path / 'data')
+    first, second = app.create_workspace('Selected controls'), app.create_workspace('Other controls')
+    original = tmp_path / 'clip.wav'
+    original.write_bytes(b'Synthetic retained media; no worker is started.')
+    one, two = TranscriptionService(app, first), TranscriptionService(app, second)
+    one_id, two_id = one.submit([original]), two.submit([original])
+    facade = OperationFacade.for_app(app, controls=True)
+    try:
+        row = facade.get('asr', one_id, workspace=first)
+        assert row.controls == ('pause', 'cancel') and row.status == 'ready'
+        accepted = facade.control('asr', one_id, 'pause', workspace=first)
+        assert accepted.status == 'ready'  # Last observation before the durable request.
+        assert one.get(one_id)['status'] == 'paused'
+        assert facade.get('asr', one_id, workspace=first).controls == ('cancel',)
+        facade.control('asr', one_id, 'cancel', workspace=first)
+        assert one.get(one_id)['status'] == 'cancelled'
+        assert facade.get('asr', one_id, workspace=first).controls == ()
+        assert two.get(two_id)['status'] == 'ready'
+        assert not (two.jobs_root / two_id / 'control.json').exists()
+        with pytest.raises((ValueError, OSError, PermissionError)):
+            facade.control('asr', two_id, 'pause', workspace=first)
+        borrowed = OperationFacade(app, transcription=one)
+        with pytest.raises(RuntimeError, match='another selected library'):
+            borrowed.control('asr', two_id, 'pause', workspace=second)
+        assert two.get(two_id)['status'] == 'ready'
+    finally:
+        facade.close()
+
+
+@pytest.mark.parametrize('flag', ['execution_review_required', 'recovery_review_required'])
+def test_asr_review_veto_suppresses_shared_controls(tmp_path, flag):
+    from carr_library.transcription import TranscriptionService
+    app = LibraryApp(tmp_path / 'data')
+    workspace = app.create_workspace('Passive restored operation')
+    source = tmp_path / 'media.wav'
+    source.write_bytes(b'Synthetic source')
+    service = TranscriptionService(app, workspace)
+    identity = service.submit([source])
+    path = service.jobs_root / identity / 'job.json'
+    value = read_json(path)
+    value[flag] = True
+    atomic_json(path, value, replace=True)
+    facade = OperationFacade(app, transcription=service)
+    assert facade.get('asr', identity, workspace=workspace).controls == ()
+    with pytest.raises(ValueError, match='does not expose'):
+        facade.control('asr', identity, 'cancel', workspace=workspace)
+    assert not (service.jobs_root / identity / 'control.json').exists()
+
+
+def test_asr_accepted_pause_is_not_invalidated_by_a_later_unreadable_checkpoint(tmp_path, monkeypatch):
+    from carr_library.transcription import TranscriptionService
+    app = LibraryApp(tmp_path / 'data')
+    workspace = app.create_workspace('Accepted pause')
+    source = tmp_path / 'media.wav'
+    source.write_bytes(b'Synthetic source')
+    service = TranscriptionService(app, workspace)
+    identity = service.submit([source])
+    facade = OperationFacade(app, transcription=service)
+    original_pause = service.pause
+    def unreadable(*_args, **_kwargs):
+        raise OSError('Checkpoint became temporarily unreadable after accepted pause.')
+    def pause(selected):
+        result = original_pause(selected)
+        monkeypatch.setattr(service, 'get', unreadable)
+        return result
+    monkeypatch.setattr(service, 'pause', pause)
+    accepted = facade.control('asr', identity, 'pause', workspace=workspace)
+    assert accepted.status == 'ready'
+    assert read_json(service.jobs_root / identity / 'control.json')['action'] == 'pause'

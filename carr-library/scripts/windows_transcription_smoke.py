@@ -1,4 +1,4 @@
-"""Real wx controls and shared child-process flow; synthetic ASR protocol only."""
+"""Real wx controls and the existing isolated worker; synthetic ASR protocol only."""
 import importlib.util
 import json
 from pathlib import Path
@@ -11,6 +11,7 @@ from unittest.mock import patch
 import wx
 
 from carr_library.application import LibraryApp
+from carr_library.durable_state import read_json
 from carr_library.ui.desktop_app import DesktopFrame
 from carr_library.ui.transcription_dialog import show_transcription
 
@@ -33,7 +34,6 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
     models.mkdir()
     worker = root / 'synthetic-worker.py'
     worker.write_text(fixture.SYNTHETIC_WORKER.replace('__MODE__', repr('complete')), encoding='utf-8')
-    service.configure(Path(sys.executable).resolve(), worker, models)
     v5_runtime = root / 'synthetic-v5-runtime'
     v5_runtime.mkdir()
     v5_worker = v5_runtime / 'worker.py'
@@ -46,125 +46,202 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
     original.write_bytes(b'Synthetic protocol audio placeholder; no acoustic inference.')
     sidecar = recordings / 'notes.txt'
     sidecar.write_text('Excluded synthetic nonmedia sidecar.', encoding='utf-8')
+    export_parent = root / 'exports'
+    export_parent.mkdir()
+
     class FolderAnswer:
-        """Control the picker answer; the actual folder button/service still run."""
+        """Control only the picker answer; the native button and service still run."""
+        directory = recordings
         def __init__(self, *args, **kwargs): pass
         def __enter__(self): return self
         def __exit__(self, *args): return False
         def ShowModal(self): return wx.ID_OK
-        def GetPath(self): return str(recordings)
+        def GetPath(self): return str(self.directory)
+
+    class ExportAnswer(FolderAnswer):
+        directory = export_parent
+
     frame = DesktopFrame(library)
     frame.Show()
+    destroyed = []
+    def observe_destroy(event):
+        if event.GetEventObject() is frame:
+            destroyed.append(True)
+        event.Skip()
+    frame.Bind(wx.EVT_WINDOW_DESTROY, observe_destroy)
     failures, state = [], {'phase': 0, 'finished': False, 'job': None}
     started = time.monotonic()
+
     def click(control):
         event = wx.CommandEvent(wx.EVT_BUTTON.typeId, control.GetId())
         event.SetEventObject(control)
         control.GetEventHandler().ProcessEvent(event)
+
     def drive():
         dialog = next((window for window in wx.GetTopLevelWindows()
-            if isinstance(window, wx.Dialog) and window.GetTitle() == 'Транскрипція — локальний Whisper'), None)
+            if isinstance(window, wx.Dialog) and window.GetTitle() == 'Local transcription workstation'), None)
         try:
-            assert time.monotonic() - started < 45, 'Native transcription workflow timed out.'
-            if dialog is None:
+            assert time.monotonic() - started < 120, 'Native transcription workflow timed out.'
+            if dialog is None or dialog.pending or frame.working:
                 wx.CallLater(50, drive)
                 return
+
             def find(name):
                 control = wx.FindWindowByName(name, dialog)
                 assert control is not None, 'Missing named control: ' + name
                 return control
-            def configure_profile(index, chosen_worker):
-                # Construct the actual native choice dialog, controlling only
-                # its answer. Runtime/model pickers also use synthetic answers.
-                class ProfileAnswer(wx.SingleChoiceDialog):
-                    def ShowModal(self):
-                        def accept():
-                            self.SetSelection(index)
-                            button = self.FindWindow(wx.ID_OK)
-                            assert button is not None, 'The native profile dialog has no OK action.'
-                            click(button)
-                        wx.CallAfter(accept)
-                        result = super().ShowModal()
-                        expected = ('receipts-v1', 'whisper-v5-manifest-v1')[index]
-                        assert result == wx.ID_OK and self.GetSelection() == index
-                        assert self.GetStringSelection().startswith(expected), self.GetStringSelection()
-                        return result
-                answers = iter((str(Path(sys.executable).resolve()), str(chosen_worker)))
-                class RuntimeAnswer(FolderAnswer):
-                    def __init__(self, *args, **kwargs):
-                        self.path = next(answers)
-                    def GetPath(self): return self.path
-                class ModelsAnswer(FolderAnswer):
-                    def GetPath(self): return str(models)
-                with patch.object(wx, 'SingleChoiceDialog', ProfileAnswer), \
-                        patch.object(wx, 'FileDialog', RuntimeAnswer), \
-                        patch.object(wx, 'DirDialog', ModelsAnswer):
-                    click(find('Підключити Whisper'))
+
+            def choose_protocol(index, chosen_worker, name):
+                dialog.pages.SetSelection(1)
+                protocol = find('Exact reviewed worker protocol')
+                assert isinstance(protocol, wx.Choice)
+                protocol.SetSelection(index)
+                expected = ('receipts-v1', 'whisper-v5-manifest-v1')[index]
+                assert protocol.GetStringSelection() == expected
+                event = wx.CommandEvent(wx.EVT_CHOICE.typeId, protocol.GetId())
+                event.SetEventObject(protocol)
+                protocol.GetEventHandler().ProcessEvent(event)
+                assert dialog.inspection is None
+                find('Runtime profile name').SetValue(name)
+                find('Python executable').SetValue(str(Path(sys.executable)))
+                find('Reviewed transcription worker').SetValue(str(chosen_worker))
+                find('Existing local model directory').SetValue(str(models))
+                assert not find('Explicit trust of inspected runtime, worker and model files').GetValue()
+                click(find('Inspect files'))
                 assert frame.working
-            if state['phase'] == 0:
-                assert frame.active[0] == workspace
+
+            def trust_inspected(protocol):
+                details = json.loads(find('Runtime inspection and fingerprint').GetValue())
+                assert details['protocol'] == protocol and details['fingerprint']
+                assert details['inference_qualified'] is False
+                assert not list(library.root.rglob('job_status.json'))
                 assert service.list() == ()
-                assert find('Збережені завдання').GetCount() == 0
-                assert find('Запис для редагування').GetCount() == 0
-                assert find('Часові мітки кожного слова').GetValue()
-                assert not find('Зупинити').IsEnabled()
-                assert not find('Текст: редагування зберігається окремою версією').IsEnabled()
-                configure_profile(1, v5_worker)
-                state['phase'] = 'configured-v5'
-            elif state['phase'] == 'configured-v5' and not frame.working:
-                configured = service.configuration(verify=True)
-                assert configured['protocol'] == 'whisper-v5-manifest-v1'
+                # Registration cannot be admitted until the real trust control is checked.
+                count = len(service.list_runtimes())
+                click(find('Register trusted runtime'))
+                assert not frame.working and len(service.list_runtimes()) == count
+                find('Explicit trust of inspected runtime, worker and model files').SetValue(True)
+                click(find('Register trusted runtime'))
+                assert frame.working
+
+            if state['phase'] == 0:
+                assert frame.active[0] == workspace and service.list() == ()
+                assert find('Saved transcription jobs').GetCount() == 0
+                assert find('Transcription source result').GetCount() == 0
+                assert find('Retain available word timestamps').GetValue()
+                assert not find('Pause at checkpoint').IsEnabled()
+                assert not find('Transcript reading copy').IsEnabled()
+                assert not find('Transcription task').IsEnabled()
+                assert 'unsupported' in find('Transcription task').GetStringSelection()
+                choose_protocol(1, v5_worker, 'Explicit synthetic V5 profile')
+                state['phase'] = 'inspect-v5'
+            elif state['phase'] == 'inspect-v5':
+                trust_inspected('whisper-v5-manifest-v1')
+                state['phase'] = 'registered-v5'
+            elif state['phase'] == 'registered-v5':
+                profile = next(row for row in service.list_runtimes()
+                               if row['configuration']['protocol'] == 'whisper-v5-manifest-v1')
+                configured = profile['configuration']
                 assert set(configured['wrapper_sources_sha256']) == {
                     'worker.py', 'local_models.py', 'transcript_features.py'}
-                assert 'whisper-v5-manifest-v1' in find('Стан транскрипції').GetValue()
-                configure_profile(0, worker)
-                state['phase'] = 'configured-legacy'
-            elif state['phase'] == 'configured-legacy' and not frame.working:
-                assert service.configuration(verify=True)['protocol'] == 'receipts-v1'
-                folder_button = find('Додати папку з підпапками')
-                assert folder_button.IsEnabled()
-                find('Назва нового завдання').SetValue('Native transcript workflow')
+                assert profile['trusted'] and profile['qualification'] == 'unqualified'
+                assert 'whisper-v5-manifest-v1' in find('Registered transcription runtime').GetStringSelection()
+                assert not find('Include text headers; unsupported by V5').IsEnabled()
+                choose_protocol(0, worker, 'Explicit synthetic receipts profile')
+                state['phase'] = 'inspect-receipts'
+            elif state['phase'] == 'inspect-receipts':
+                trust_inspected('receipts-v1')
+                state['phase'] = 'registered-receipts'
+            elif state['phase'] == 'registered-receipts':
+                profile = dialog.profiles[find('Registered transcription runtime').GetSelection()]
+                assert profile['configuration']['protocol'] == 'receipts-v1' and profile['trusted']
+                assert len(service.list_runtimes()) == 2
+                state['profile'] = profile['id']
+                dialog.pages.SetSelection(0)
+                find('Job title').SetValue('Native transcript workflow')
+                find('Include subfolders of selected folders').SetValue(True)
                 with patch.object(wx, 'DirDialog', FolderAnswer):
-                    click(folder_button)
+                    click(find('Add folder…'))
+                assert not frame.working and service.list() == ()
+                assert str(recordings) in find('Selected local audio or video').GetValue()
+                click(find('Prepare saved job'))
                 assert frame.working
-                state['phase'] = 'retaining'
-            elif state['phase'] == 'retaining' and not frame.working:
+                state['phase'] = 'retained'
+            elif state['phase'] == 'retained':
                 job, = service.list()
                 assert job['status'] == 'ready' and len(job['sources']) == 1
+                assert job['runtime_profile_id'] == state['profile']
                 assert job['sources'][0]['original_name'] == 'nested/Запис.wav'
+                assert job['artifacts'] == []
                 state['job'] = job['id']
-                assert find('Збережені завдання').GetCount() == 1
-                assert find('Запис для редагування').GetCount() == 1
-                notice = find('Стан транскрипції').GetValue()
-                assert 'Збережено записів: 1.' in notice
-                assert 'Непідтримуваних файлів пропущено: 1.' in notice
-                click(find('Запустити / продовжити'))
+                assert find('Saved transcription jobs').GetCount() == 1
+                assert find('Transcription source result').GetCount() == 1
+                notice = find('Transcription progress and result').GetValue()
+                assert 'Retained files: 1;' in notice and 'unsupported files excluded: 1.' in notice
+                assert 'No inference has run.' in notice
+                click(find('Pause at checkpoint'))
                 assert frame.working
-                state['phase'] = 1
-            elif state['phase'] == 1 and not frame.working:
+                state['phase'] = 'paused'
+            elif state['phase'] == 'paused':
+                assert service.get(state['job'])['status'] == 'paused'
+                click(find('Cancel operation'))
+                assert frame.working
+                state['phase'] = 'cancelled'
+            elif state['phase'] == 'cancelled':
+                assert service.get(state['job'])['status'] == 'cancelled'
+                click(find('Start / resume'))
+                assert frame.working
+                state['phase'] = 'recognized'
+            elif state['phase'] == 'recognized':
                 job = service.verify(state['job'])
                 assert job['status'] == 'completed' and len(job['artifacts']) == 6
-                editor = find('Текст: редагування зберігається окремою версією')
+                assert not find('Start / resume').IsEnabled()
+                assert not find('Pause at checkpoint').IsEnabled()
+                dialog.pages.SetSelection(2)
+                click(find('Load transcript'))
+                assert frame.working
+                state['phase'] = 'loaded'
+            elif state['phase'] == 'loaded':
+                editor = find('Transcript reading copy')
                 assert editor.IsEnabled() and 'Український' in editor.GetValue()
+                state['recognized'] = editor.GetValue()
+                assert 'Unverified recognition derivative' in find('Transcript provenance').GetValue()
                 editor.SetFocus()
                 editor.SetValue('Виправлена окрема версія.')
-                state['phase'] = 2
-            elif state['phase'] == 2:
-                save = find('Зберегти правки')
+                click(find('Undo reading edit'))
+                assert editor.GetValue() == state['recognized']
+                click(find('Redo reading edit'))
+                assert editor.GetValue() == 'Виправлена окрема версія.'
+                save = find('Save edits')
                 assert save.IsEnabled()
                 click(save)
-                state['phase'] = 3
-            elif state['phase'] == 3 and not frame.working:
-                job_id = state['job']
-                edit, = service.edits(job_id)
+                assert frame.working
+                state['phase'] = 'saved'
+            elif state['phase'] == 'saved':
+                edit, = service.edits(state['job'])
                 assert edit['text'] == 'Виправлена окрема версія.'
-                original_text = service.text(job_id, service.get(job_id)['sources'][0]['filename'])
-                assert original_text.startswith('Synthetic transcript.')
+                original_text = service.text(state['job'], service.get(state['job'])['sources'][0]['filename'])
+                assert original_text == state['recognized'] and original_text.startswith('Synthetic transcript.')
                 assert original.read_bytes().startswith(b'Synthetic protocol')
                 assert sidecar.read_text(encoding='utf-8') == 'Excluded synthetic nonmedia sidecar.'
-                assert not find('Зберегти правки').IsEnabled()
+                assert not find('Save edits').IsEnabled()
+                worker.unlink()  # Verified completed results/export are independent of a live engine.
+                find('Output SRT').SetValue(False)
+                find('Output VTT').SetValue(False)
+                with patch.object(wx, 'DirDialog', ExportAnswer):
+                    click(find('Export results…'))
+                assert frame.working
+                state['phase'] = 'exported'
+            elif state['phase'] == 'exported':
+                destination, = export_parent.iterdir()
+                manifest = read_json(destination / 'transcription-manifest.json')
+                assert manifest['status'] == 'completed' and len(manifest['artifacts']) == 2
+                assert {Path(row['filename']).suffix for row in manifest['artifacts']} == {'.txt', '.json'}
+                assert manifest['edits'][0]['text'] == 'Виправлена окрема версія.'
+                assert len(service.verify(state['job'])['artifacts']) == 6
+                assert not list(destination.rglob('*.srt')) and not list(destination.rglob('*.vtt'))
                 state['finished'] = True
-                click(find('Закрити'))
+                click(find('Close'))
                 return
             wx.CallLater(50, drive)
         except BaseException:
@@ -172,6 +249,7 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
             frame.cancel_event.set()
             if dialog is not None:
                 dialog.EndModal(wx.ID_CANCEL)
+
     wx.CallLater(50, drive)
     try:
         show_transcription(frame)
@@ -181,13 +259,24 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
     finally:
         frame.cancel_event.set()
         frame.executor.shutdown(wait=True, cancel_futures=True)
-        frame.Destroy()
-        desktop.Yield()
-print(json.dumps({'status':'PASS', 'checks':['actual named wx controls','shared background operation',
-    'actual native profile choice and configure action','V5 three-source binding','explicit legacy reconfiguration',
-    'actual named folder action','background folder intake','relative source and exclusion count',
-    'actual isolated child protocol','six verified formats','separate edit revision','original unchanged'],
-    'folder_picker_interaction':'NOT_RUN', 'folder_picker_answer':'controlled synthetic directory',
-    'profile_picker_interaction':'programmatic native selection and OK; manual interaction NOT_RUN',
-    'profile_picker_answer':'controlled selections on an actual wx choice dialog',
-    'whisper_acoustic_inference':'NOT_RUN', 'manual_NVDA':'NOT_RUN'}, ensure_ascii=False))
+        # Use the actual close hook: tray, trust polling, progress and shared
+        # cleanup owners must be stopped before temporary library removal.
+        frame.working = False
+        frame.Close()
+        deadline = time.monotonic() + 5
+        while not destroyed and time.monotonic() < deadline:
+            desktop.Yield()
+            time.sleep(.01)
+        assert destroyed, 'The real desktop window did not complete destruction.'
+print(json.dumps({'status': 'PASS', 'checks': [
+    'actual named wx controls', 'shared background operation',
+    'actual native protocol choices and explicit trust registration', 'V5 three-source binding',
+    'two exact named profiles without global substitution',
+    'actual named folder action', 'background folder intake before inference',
+    'relative source and exclusion count', 'durable native pause/cancel/resume',
+    'actual isolated child protocol', 'six verified formats',
+    'separate edit revision and Undo/Redo', 'original unchanged',
+    'subset export after engine removal', 'real desktop close and destruction'],
+    'folder_picker_interaction': 'NOT_RUN', 'folder_picker_answer': 'controlled synthetic directory',
+    'profile_picker_interaction': 'programmatic real wx.Choice selection; manual interaction NOT_RUN',
+    'whisper_acoustic_inference': 'NOT_RUN', 'manual_NVDA': 'NOT_RUN'}, ensure_ascii=False))

@@ -56,6 +56,7 @@ class OperationFacade:
         self.services = {'studio': studio, 'assistant': assistant, 'asr': transcription,
                          'translation': translation}
         self._owned_services = ()
+        self._asr_controls_enabled = transcription is not None
         self._validate_scope()
 
     @classmethod
@@ -71,6 +72,7 @@ class OperationFacade:
             studio.close()
             raise
         value._owned_services = (studio,)
+        value._asr_controls_enabled = True
         return value
 
     def close(self):
@@ -110,13 +112,30 @@ class OperationFacade:
             path = self.root / directory / (identity + '.json' if pattern == '*.json' else identity + '/job.json')
         return local_path(path, root=self.root)
 
+    def _asr_service(self, workspace):
+        self._validate_scope()
+        service = self.services.get('asr') or self.app.transcription(workspace)
+        if (service.workspace != workspace or Path(service.app.root) != self.root
+                or service.root != self.root / 'state' / 'transcription'):
+            raise ResourceStateError('The transcription service belongs to another selected library.')
+        return service
+
+    def _asr_controls(self, service, summary):
+        if (not self._asr_controls_enabled or summary.get('recovery_review_required')
+                or summary.get('execution_review_required')):
+            return ()
+        choices = {'ready': ('pause', 'cancel'), 'running': ('pause', 'cancel'),
+                   'stopped': ('pause', 'cancel'), 'partial': ('pause', 'cancel'),
+                   'paused': ('cancel',)}
+        return tuple(action for action in choices.get(summary['status'], ())
+                     if callable(getattr(service, action, None)))
+
     def _controls(self, kind, status):
         service = self.services.get(kind)
         if service is None or status in _TERMINAL:
             return ()
         if kind == 'asr':
-            # The canonical service has no durable cross-process stop API.
-            # Its current native/CLI execution owns cancellation directly.
+            # ASR controls are selected from its exact scoped service and review flags.
             return ()
         values = []
         pause = 'request_pause' if kind == 'studio' else 'pause'
@@ -144,9 +163,7 @@ class OperationFacade:
                 raise PermissionError('The transcription job belongs to another selected library.')
             if path != self._path(kind, identity, workspace=selected):
                 raise ResourceStateError('The transcription journal path does not match its library.')
-            service = self.services.get('asr') or self.app.transcription(selected)
-            if service.workspace != selected or Path(service.app.root) != self.root:
-                raise ResourceStateError('The transcription service belongs to another selected library.')
+            service = self._asr_service(selected)
             try:
                 summary = service.get(identity)
             except (KeyError, TypeError, AttributeError) as exc:
@@ -161,7 +178,7 @@ class OperationFacade:
                 raise ResourceStateError('Invalid saved transcription update time.')
             return OperationView(kind, identity, selected, status, completed, total,
                 'Stored transcription checkpoint; accepted receipt counts. Open its original workstation to verify outputs.',
-                str(updated), (), path.relative_to(self.root).as_posix())
+                str(updated), self._asr_controls(service, summary), path.relative_to(self.root).as_posix())
         data = read_json(path)
         if not isinstance(data, dict):
             raise ResourceStateError('Operation checkpoint is not an object.')
@@ -329,7 +346,7 @@ class OperationFacade:
             raise ValueError('This operation does not expose that control through its current canonical service.')
         self._authorize(value.workspace)
         self._validate_scope()
-        service = self.services[kind]
+        service = self._asr_service(value.workspace) if kind == 'asr' else self.services[kind]
         method = 'request_pause' if action == 'pause' and kind == 'studio' else action
         getattr(service, method)(job_id)
         # A requested stop is not a completed stop. The owning service updates

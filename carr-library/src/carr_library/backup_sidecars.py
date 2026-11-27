@@ -753,6 +753,8 @@ def rebind_restored_inputs(db, stage, destination, inventory, *, cancelled):
     if not state_entries:
         return inventory
     restore_inputs(stage / 'state', destination / 'state', state_entries, cancelled=cancelled)
+    from . import backup_transcription
+    backup_transcription.revoke_restored_execution(db, stage, inventory.entries, cancelled=cancelled)
     # Input relocation changes project fingerprints/revision filenames and removes
     # source-machine approvals. Enumerate only the same registered data formats.
     files, _directories = _capture(stage,

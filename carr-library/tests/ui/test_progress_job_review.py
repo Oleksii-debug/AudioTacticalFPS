@@ -573,6 +573,7 @@ def test_reader_close_always_unregisters_playback_and_finishes_resource_cleanup(
     env = {name: Mock() for name in ('unregister', 'autosave_timer', 'playback_timer',
         'cancel', 'player', 'progress', 'parent', 'audio_files', 'dialog')}
     env.update(__package__='carr_library.ui', executor=CleanupQueue(),
+               reader_tabs=None, owned_listening=set(),
                wx=SimpleNamespace(CallAfter=lambda action: action()))
     registries, providers = [Mock(), Mock()], [Mock()]
     env['owned_registries'], env['owned_progress_voices'] = registries, providers

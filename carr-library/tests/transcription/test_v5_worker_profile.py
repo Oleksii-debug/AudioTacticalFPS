@@ -441,7 +441,12 @@ def test_v5_partial_backup_preserves_receipts_and_resumes_only_retained_sources(
     assert (path / manifest_name).read_bytes() == original_manifest
     assert {name: (path / 'input' / name).read_bytes() for name in source_bytes} == source_bytes
     mode(recovered, identity, 'success')
-    completed = recovered.run(identity, timeout=10)
+    with pytest.raises(ValueError, match='[Rr]eview'):
+        recovered.run(identity, timeout=10)
+    config = service.configuration()
+    approved = recovered.configure(config['python'], config['worker'], config['models_dir'], protocol=PROTOCOL)
+    recovered.rebind_runtime(identity, approved['profile_id'])
+    completed = recovered.resume(identity, timeout=10)
     assert completed['status'] == 'completed' and completed['done'] == 2, completed['last_error']
     assert completed['run_context']['host_run_id'] != partial['run_context']['host_run_id']
     assert completed['run_context']['input_root'] == str((path / 'input').resolve())

@@ -73,10 +73,10 @@ def main(argv=None):
     if arguments and arguments[0] == 'operations':
         from .operations.cli import main as operations_main
         return operations_main(arguments[1:])
-    if arguments and arguments[0] == 'transcribe':
+    if arguments and arguments[0] in ('transcribe', 'transcription'):
         from .transcription_cli import main as transcription_main
         return transcription_main(arguments[1:])
-    if arguments and arguments[0] == 'translate':
+    if arguments and arguments[0] in ('translate', 'translation'):
         from .assistant.translation_cli import main as translation_main
         return translation_main(arguments[1:])
     if arguments and arguments[0] in ('studio', 'assistant'):

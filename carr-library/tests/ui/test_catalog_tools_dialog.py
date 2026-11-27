@@ -82,6 +82,8 @@ def module(monkeypatch):
     path = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/catalog_tools_dialog.py'
     spec = importlib.util.spec_from_file_location('carr_library.ui._catalog_tools_independent', path)
     mod = importlib.util.module_from_spec(spec)
+    # Restore only wx. Rolling back the entire module map removes newly imported
+    # export_file while the dialog retains its old ExportDestination class.
     monkeypatch.setitem(sys.modules, 'wx', wx)
     spec.loader.exec_module(mod)
     return mod
@@ -222,6 +224,7 @@ def test_exports_forward_exact_scope_format_and_write_complete_utf8(module, setu
     assert not destination.exists() and library.calls == []
     frame.finish()
     assert library.calls == [expected]
+    assert destination.is_file(), form.status.GetValue()
     assert destination.read_bytes() == library.export_value.encode('utf-8')
     assert library.original.read_bytes() == b'unchanged original source'
     assert 'exported to' in form.status.GetValue() and form.status.focused
@@ -440,3 +443,23 @@ def test_catalog_overwrite_decline_restores_button_without_render(module, setup)
     assert form.export_inventory() is False
     assert frame.jobs == [] and library.calls == [] and form.inventory_button.focused
     assert destination.read_bytes() == b'Keep work' and module.wx.overwrites[0].style & module.wx.NO_DEFAULT
+
+
+@pytest.mark.parametrize('kind', ['bibliography', 'inventory', 'matrix'])
+def test_catalog_export_keeps_published_receipt_cleanup_notice(module, setup, monkeypatch, kind):
+    from carr_library.research.export_file import ExportReceipt
+    form, frame, library = setup
+    destination = Path(module.wx.file_path)
+    actual_writer = module.write_export
+    notice = 'The export is saved; temporary cleanup needs attention.'
+
+    def completed_with_notice(*args, **kwargs):
+        receipt = actual_writer(*args, **kwargs)
+        return ExportReceipt(receipt.path, notice)
+
+    monkeypatch.setattr(module, 'write_export', completed_with_notice)
+    assert getattr(form, 'export_' + kind)()
+    frame.finish()
+    assert destination.read_bytes() == library.export_value.encode('utf-8')
+    assert notice in form.status.GetValue() and 'exported to' in form.status.GetValue()
+    assert not form.pending
