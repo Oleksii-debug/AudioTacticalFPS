@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "status": "FROZEN_LOCAL_COMPONENT_NOT_FINAL_INTEGRATION",
+  "source_directory": "resonance-sync-proof-20261127-1042/carr-library",
+  "completed_checkpoint": "durable-sync-local-review-20261127/final-sync/manifest.json",
+  "scope": "Metadata retained after executor disconnect; this is not a source reconstruction.",
+  "sha256": {
+    "src/carr_library/library_backup.py": "44dc85f9459e2a86f22d3c0f2fd8f435d663fab94858270219d2c87b97bcecbf",
+    "src/carr_library/backup_compat/archive.py": "4223203f2e91e38a7ec98ea62cd2b1f3e7ef898e70b67d8460fc76d9f719383f",
+    "src/carr_library/sync/service.py": "f20f5cfb090ab8de11320da5c2e1beec53c8a3005805e45e1071e36c46728465",
+    "src/carr_library/sync/vault.py": "4798b2d7ed8560353d224f2a13e53a8f0f1a31a3269e0df4cb3fc2805f09e330",
+    "src/carr_library/ui/portable_sync.py": "73dcac877f96b0ae9310f737e0bc712d18f8077c5fa2f0e1d7f5c0f231b904e8",
+    "tests/sync/test_complete_state.py": "badb8c1a1f43438a61011a0b3a879aa8b8c64cad41a918da9e7afaf2618ad63e",
+    "tests/sync/test_service.py": "798445e1368116ec9393d429fd0b8f4097a4e9414d3be44a81184709b24de4dd",
+    "tests/sync/test_vault.py": "bb39faeb8eb790d403ab865adc51c0c9725e3d4f674c01e85df0d7cb6cf1532c",
+    "tests/sync/test_publication_outcomes.py": "0b1dd53e0a4b6daebe36e70ac84b1a6529d32e70805709dc370f66f159e78231",
+    "tests/ui/test_portable_sync.py": "31ca8890fa41588d368f829d5551289646ab5dad20a738c10a42234ee467fe49",
+    "tests/storage/test_backup_legacy_compat.py": "48fae88b1a70148661d99b165e5e11b8e962a380cd444bed5de9b639d94080bb"
+  },
+  "unchanged_crypto_sha256": "529e49fe9bd25c2f106adbe5c74b900e061da9ee12f522da2bba09f664c29ff0",
+  "tests": {
+    "passed": 320,
+    "failed": 0,
+    "skipped": 0,
+    "seconds": 41.55
+  },
+  "independent_source_review": "ACCEPTED",
+  "native_windows": "NOT_RUN",
+  "pending_backup_checkpoint": "The later 7-file backup manifest copy was interrupted; final SHA readback was not confirmed."
+}

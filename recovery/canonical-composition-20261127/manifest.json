@@ -4,7 +4,7 @@
   "canonical_commit": "966e5ccf892243ead6942c635af5fbab47e72551",
   "canonical_tree": "682b267cb237804c7a15e6ac0285b9b6861b847c",
   "status": "DRAFT_COMPONENT_RECOVERY_NOT_FINAL_APPLICATION",
-  "source_execution": "Checkpoint6 exact candidate/configuration check PASS; actual Python3.11 citation five suites279PASS185.03s; Windows actual PowerShell64blocks0errors. Windows finite runner suite failed first on a synthetic partial PID-marker publication before ownership admission; checkpoint7 corrects only that fixture and requires fresh Windows/POSIX runs. Full local application integration is interrupted by unavailable executor.",
+  "source_execution": "Published checkpoint6:150 source identities/configuration checks,279citation tests onPython3.11 and64actualPowerShell blocks PASS. Exact runner67e42 + atomic-marker testbc059: Windows25+5subtestsPASS run45984033388; POSIX25+5subtestsPASS run45984384730. New public provider cancellation fix is independently source-reviewed; its exact baseline/fixed CI is pending. Final application/source composition is not complete and its executor is unavailable.",
   "files": [
     {
       "path": ".github/workflows/carr-bibliography.yml",
@@ -457,12 +457,14 @@
       "path": "carr-library/src/carr_library/integrations/dordiai_speech.py",
       "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
       "base_blob": "99d0afb0d117cb2acc1f9df6da9a1db4e756d847",
-      "new_blob": "ece549fa8ff660fa2285eb8a8ea6c3a5151bdb7f",
+      "new_blob": "b042c9f31e65aaae4819a1ec40422895cf8be9ff",
       "sha256": "647a0051572a3d7d1049b3bb72d22f6a21d58ed07f3c367d813e5a1ede8c13b9",
-      "status": "DRAFT_SOURCE_ONLY_NOT_EXECUTED",
-      "readback": "EXACT",
+      "status": "INDEPENDENT_SOURCE_REVIEW_ACCEPTED_RUNTIME_PENDING",
+      "readback": true,
       "owner": "asr",
-      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/integrations/dordiai_speech.py"
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/integrations/dordiai_speech.py",
+      "supersedes_blob": "ece549fa8ff660fa2285eb8a8ea6c3a5151bdb7f",
+      "review_note": "Cold discovery now observes both current-operation cancellation and the provider Stop event; same admitted operation/adapter/cleanup owner, unchanged real-child assertions. Root and two independent reviewers accepted the exact 5404-character public facade. Bounded old-negative/new-positive Windows/POSIX run45985132540 is pending."
     },
     {
       "path": "carr-library/src/carr_library/integrations/dordiai_voices.py",
@@ -1836,7 +1838,8 @@
     "The current Windows workflow candidate still has two explicit review findings (no-audio standard-installer input and command-registry import path). It must not be activated unchanged.",
     "Checkpoint5 corrects only the bounded legacy citation memory profile and reviewed workflow source. Actual PowerShell parsing and CPython3.11 replay are pending a separate validation run. Archive objects are not a final platform build.",
     "Checkpoint6 repairs the archived Windows workflow transport using bounded chunks and verified Git blob dd71a09369ec77e6d00181111c534fe25857c5aa; adds recovery-local .gitattributes '* -text' so native source hash gates use unchanged committed bytes. Validation failures were retained and not relabelled.",
-    "Checkpoint7 keeps the native failure evidence and repairs only atomic readiness publication inside the existing synthetic descendant fixture. No production process cleanup change or timeout/assertion relaxation. Fresh Windows and POSIX full finite runner selections replace no earlier evidence."
+    "Checkpoint7 keeps the native failure evidence and repairs only atomic readiness publication inside the existing synthetic descendant fixture. No production process cleanup change or timeout/assertion relaxation. Fresh Windows and POSIX full finite runner selections replace no earlier evidence.",
+    "Checkpoint8 records actual Windows/POSIX runner success without copying either result to application or native-audio qualification. It preserves an honest finite remaining-scope audit and the local sync hash inventory while executor transport is unavailable."
   ],
   "root_notes": {
     "builder": {
@@ -1976,6 +1979,51 @@
         "production_failure_proven": false
       },
       "release_claim": false
+    },
+    {
+      "validation_commit": "c0a1a59f357829835889f19d756d9fd24e6ca991",
+      "run_id": 45983837946,
+      "status": "FAIL_BEFORE_TESTS",
+      "cause": "Native preparer correctly refused the new reviewed test blob until its explicit selected-source pin was updated."
+    },
+    {
+      "validation_commit": "250cd28ad50b931906df08675d13bdbe89c389c2",
+      "run_id": 45984033388,
+      "runner_blob": "67e42f01e73ef7bfcd3686ff34f646aab26c74f3",
+      "test_blob": "bc05942a32e086cc86238802bffc9023cc4123cd",
+      "windows": {
+        "job_id": 140454938998,
+        "status": "PASS",
+        "tests": 25,
+        "subtests": 5,
+        "seconds": 6.6
+      },
+      "posix": {
+        "job_id": 140454938503,
+        "status": "FAIL",
+        "cause": "Workflow invoked the venv interpreter with an unnormalized relative path; exact interpreter identity assertion correctly rejected that representation."
+      },
+      "application_native": "NOT_RUN"
+    },
+    {
+      "validation_commit": "b1e0cf5e8a6a769270864e847bc570088dd761aa",
+      "run_id": 45984384730,
+      "job_id": 140456134164,
+      "status": "PASS",
+      "scope": "Unchanged runner/test pair on POSIX using absolute venv entry",
+      "tests": 25,
+      "subtests": 5,
+      "seconds": 4.9,
+      "application_native": "NOT_RUN",
+      "installed": "NOT_RUN",
+      "nvda": "NOT_RUN"
+    },
+    {
+      "validation_commit": "5e1f7385c13badf4a53f0a4c8a677afa7daceb42",
+      "run_id": 45985132540,
+      "status": "PENDING",
+      "scope": "Exact public provider facade; original real-child negative and four unchanged fixed suites on Windows/POSIX",
+      "real_voice_or_model": "NOT_RUN"
     }
   ],
   "deletions": [
@@ -1991,7 +2039,7 @@
     "shared": "8c981c7e947f8d144c8706b5ea022990517c7dd9",
     "note": "Latest public deltas are being reconciled in an isolated local composition; this archive still changes only recovery records and does not activate the application."
   },
-  "checkpoint": 7,
+  "checkpoint": 8,
   "public_composition_decisions": {
     "manifest_blob": "e4060c83eca99e44a58cd7b4ea682110a9aad29c",
     "shared_parent": "96294e97498f2133bf93f02ce72f84b6e709c72b",

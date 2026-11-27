@@ -32,11 +32,16 @@ class DordiaiSpeechProvider(DordiaiProvider):
                          settings_guard=unchanged, clock=lambda: monotonic())
 
     def voices(self, *, cancelled=lambda: False):
+        from ..speech._io import check_cancelled
         # A rejected concurrent request must not clear cancellation belonging
         # to an already active render/discovery operation.
-        with self.operation(cancelled=cancelled):
+        with self.operation(cancelled=cancelled) as active:
             self._requested_stop.clear()
-            return super().voices(cancelled=cancelled)
+            def stopped():
+                active()
+                check_cancelled(self._requested_stop.is_set)
+                return False
+            return super().voices(cancelled=stopped)
 
     def render(self, text, voice, output, settings, cancelled):
         from ..speech._io import check_cancelled, new_output, text_value

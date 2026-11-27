@@ -53,3 +53,9 @@ Checkpoint 5 validation run 45980167359 failed before the citation tests and Pow
 ## Checkpoint 7: native fixture admission race
 
 Run 45982468090 confirmed all 150 candidate identities/configuration checks, 279 actual citation tests on Python 3.11 and 64 PowerShell blocks with zero parse errors. Its Windows process suite failed before process ownership admission: the parent observed a created but empty synthetic PID marker. This checkpoint publishes that PID only after a complete sibling write using `os.replace`, while preserving the open held-file lock and all existing exit/cleanup/identity assertions. Production `ci_check.py` remains unchanged. The new finite Windows and POSIX runs are pending; full application integration remains interrupted by executor unavailability.
+
+## Checkpoint 8: actual native runner proof and remaining scope
+
+The unchanged production runner with the atomic synthetic PID marker passed all 25 tests and five subtests on Windows (run45984033388, 6.60s) and POSIX (run45984384730, 4.90s). The Windows-specific original cleanup scenario is now exercised rather than inferred. These are runner-component results; no installed application/NVDA/audio-device claim follows.
+
+The newly discovered provider Stop propagation defect has a separately reviewed public fix and a bounded baseline/fixed proof on both systems (run45985132540, pending). [Remaining implementation scope](REMAINING_SCOPE.md) explicitly distinguishes missing code from qualification. [Execution/recovery record](EXECUTION_AND_RECOVERY.md) and the local sync hash inventory retain the interrupted composition's boundaries. The final application merge still requires the unavailable executor and actual integrated verification.
