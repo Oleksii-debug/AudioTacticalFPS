@@ -133,7 +133,41 @@ Run `scripts/epubcheck_acceptance.py --archive VALIDATION_CACHE/epubcheck-5.3.0.
 --java ABSOLUTE_JAVA_EXECUTABLE --report NEW_EPUB_REPORT.json`, then
 `scripts/daisy_schema_acceptance.py --schemas VALIDATION_CACHE/daisy-schemas
 --report NEW_DAISY_REPORT.json`. Add `--require-installed` to each installed
-acceptance run. Supply Java and the test-only `lxml==6.1.1` through CI tool setup;
-the production dependency locks are unchanged. The preparation helper's twelve
+acceptance run. Supply Java explicitly and use the `lxml` version admitted by
+that CI environment. The historical local report used 6.1.1; the composed
+Windows runtime already pins 6.1.3. Do not downgrade an installed production
+runtime to reproduce a historical report. The production dependency locks
+are unchanged. The preparation helper's twelve
 focused tests cover offline reuse, exact/short/excess/changed bytes, competing
 file creation, refused redirects, cleanup and actual ZIP notice inspection.
+
+## Optional Braille qualification
+
+BRF is an optional V3-20 capability and is not implemented by this publication
+service. The reviewed prepared exporter also reports it unavailable: no qualified
+Liblouis runtime/table profile was configured. EPUB/DAISY XML and audio checks do
+not establish tactile translation or page-layout correctness.
+
+The technical project's [Liblouis source pin](https://github.com/liblouis/liblouis/tree/457d5484a631e7c18ad4f57c1256c6496af14dd0)
+contains an LGPL-2.1-or-later library, separately GPL-3.0-or-later command-line tools
+and table-specific notices; inspect the exact selected files rather than applying
+a single repository-wide license. Its [manual](https://github.com/liblouis/liblouis/blob/457d5484a631e7c18ad4f57c1256c6496af14dd0/doc/liblouis.texi)
+describes `lou_translate` and related programs as translation tests and directs
+Braille transcription applications to `file2brl` from liblouisutdml. A test-tool
+invocation alone is not a qualified document transcription and layout workflow.
+
+A future optional adapter must bind an explicitly selected local executable and
+its complete runtime/table/configuration inputs by version, size and hash. It
+must retain the full table include closure and per-file notices, a chosen language
+and Braille convention, explicit BRF display encoding, and verified cell/line/page
+layout. The [Ukrainian table](https://github.com/liblouis/liblouis/blob/457d5484a631e7c18ad4f57c1256c6496af14dd0/tables/uk.utb)
+has its own language rules and includes further tables; another language's
+profile cannot be silently substituted. Exact table tests, tactile review and
+layout acceptance remain specific to each admitted language/profile.
+
+Reuse the existing bounded process, destination approval, source/derived
+identity and recovery contracts. Any optional plugin remains disabled until
+its publisher/capabilities and isolated worker are verified; no new general
+extension loader, automatic tool installation or custom Braille translator is
+introduced here. No Liblouis or liblouisutdml executable/table pack is bundled
+by this change.
