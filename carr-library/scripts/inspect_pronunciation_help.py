@@ -166,7 +166,7 @@ def inspect(chm, binary):
             raise ValueError('Unknown author-declared help encoding.')
         parser = Paragraphs()
         parser.feed(raw.decode(encoding, 'strict'))
-        paragraphs = [' '.join(part.split()) for part in ''.join(parser.parts).splitlines()]
+        paragraphs = [' '.join(part.split()) for part in ''.join(parser.parts).splitlines() if part.strip()]
         whole = '\n'.join(paragraphs)
         if not topic_words.search(whole):
             continue
