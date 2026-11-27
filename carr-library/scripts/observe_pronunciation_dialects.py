@@ -46,11 +46,11 @@ def prepare(root):
         members = archive.infolist()
         if len(members) > 512:
             raise ValueError('The official archive has too many entries.')
-        choices = [entry for entry in members if entry.filename.replace('\\', '/').split('/')[-1].casefold() == 'blb2txt.exe']
+        choices = [entry for entry in members if entry.filename == 'blb2txt.exe']
         print(json.dumps({'archive_members': [{'name': item.filename[:240], 'bytes': item.file_size}
               for item in members]}, ensure_ascii=False), flush=True)
-        if not 1 <= len(choices) <= 2:
-            raise ValueError('Expected one publisher text executable, or its two architecture variants.')
+        if len(choices) != 1:
+            raise ValueError('Expected the exact root blb2txt.exe from the official archive.')
         eligible = []
         for candidate in choices:
             candidate_mode = candidate.external_attr >> 16
@@ -68,14 +68,9 @@ def prepare(root):
             if machine not in (0x14c, 0x8664):
                 raise ValueError('The text executable has an unsupported machine architecture.')
             eligible.append((candidate, machine))
-        # The native x64 research host selects the exact AMD64 variant when
-        # the publisher supplies both. No name-order or arbitrary-EXE fallback.
-        selected_variants = [item for item, machine in eligible if machine == 0x8664]
-        if not selected_variants and len(eligible) == 1:
-            selected_variants = [eligible[0][0]]
-        if len(selected_variants) != 1:
-            raise ValueError('The publisher text executable architecture is ambiguous.')
-        entry = selected_variants[0]
+        # The recorded official ZIP also has a separate Without PDF build.
+        # Select only the author's exact default root member, never that variant.
+        entry = eligible[0][0]
         mode = entry.external_attr >> 16
         if (entry.is_dir() or stat.S_ISLNK(mode) or entry.flag_bits & 1
                 or not 0 < entry.file_size <= 32 * 1024**2):
@@ -88,6 +83,7 @@ def prepare(root):
     selected.write_bytes(executable)
     record = dict(schema=1, official_url=URL, downloaded_at=datetime.now(timezone.utc).isoformat(),
                   archive_sha256=sha256(raw).hexdigest(), archive_bytes=len(raw),
+                  archive_member=entry.filename, executable_machine=hex(eligible[0][1]),
                   executable_sha256=digest(selected), executable_bytes=selected.stat().st_size,
                   use='authored format research only; no binary distribution')
     (root / 'selected.json').write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding='utf-8')
