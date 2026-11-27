@@ -220,3 +220,65 @@ On Windows the credential test creates, reads and deletes only a new synthetic
 credential. On other hosts it verifies the vault refuses storage. Local tests
 do not establish native Windows/NVDA interaction, actual vendor acceptance,
 real local-LLM inference quality or voice/music listening quality.
+
+
+## Typed local reader, evidence, voice and DSP commands
+
+These commands extend the same reviewed Plan, Scope and assistant JobStore.
+Preview and Submit do not enumerate a voice engine, start FFmpeg, open a reader
+source or publish an output. Run uses the existing assistant worker and the
+shared resource broker where a native engine is needed.
+
+| Tool | Explicit arguments | Existing boundary |
+| --- | --- | --- |
+| reader.read | edition, revision, first, last; optional topic | ReadingDesk and retained source positions; at most 128 selected positions |
+| evidence.search | query; optional field, tag, limit | Authenticated saved notebook quotations and separately labelled notes |
+| evidence.read | topic, evidence | One existing saved evidence ID, never a newly approved quotation |
+| evidence.export | topic, ordered evidence_ids, name; optional format | Existing research exporter and no-clobber writer; 1–32 selected IDs |
+| voice.list | optional exact language, limit | Actually configured VoiceRegistry; owned discovery closes after the result |
+| audio.effects | none | Measured installed FFmpeg capabilities plus existing numeric DSP control bounds |
+| audio.inspect | path | Existing measured audio information and exact source SHA-256 |
+| audio.convert | sources, name; optional format, settings | Existing AudioConversionBatch, resource admission and per-file publication receipts |
+| audio.render | text or structured script, with the existing production options | The same ProductionService callback as audio.produce |
+
+Guided commands include `List voices`, `Покажи голоси`, `Audio effects`,
+`Покажи аудіоефекти`, `Inspect audio "C:/Audio/source.wav"` and
+`Search evidence "railway"`. Exact source IDs, revisions, ranges and selected
+evidence IDs use the versioned JSON plan shown by Preview. The reader's `first`
+and `last` are 1-based reading positions in the retained document; they do not
+assert verified printed page labels.
+
+For conversion, first run audio.inspect under the selected input scope. Review
+its actual source hash, then provide the explicit conversion input as
+`{"path":"C:/Audio/source.wav","sha256":"<the measured 64-character hash>"}`.
+The placeholder is explanatory and is rejected as input. `sources` is an
+ordered array of 1–64 such objects, and `name` selects a new child directory
+under the reviewed output directory. Optional settings are only the existing
+numeric `sample_rate`, `channels`, `start`, `duration`, `bit_depth`, `bitrate`
+and typed `effects` objects (`kind`, `parameters`, `enabled`). There is no
+arbitrary FFmpeg filter, command, URL, hidden input scan or new renderer.
+
+Source reading and saved evidence are reauthenticated on completed-job reuse.
+A changed revision, retained original, topic permission or saved note refuses
+reuse; originals and previous outputs remain untouched. Research export creates
+a new file only. An interrupted export with unknown publication outcome requires
+a fresh explicit output review, rather than inferring ownership from a pathname.
+A committed export remains accepted if cancellation arrives afterward.
+
+Conversion uses the existing external conversion manifest as its per-file
+authority. An explicit resume can reuse only the exact reviewed source/tool/
+settings plan and verified completed output receipts. It does not re-encode
+completed files or overwrite unrelated destinations. A late stop preserves
+committed items and prevents the next item from starting. The assistant stores
+the same plan and receipt references in its existing checkpoint.
+
+Passive backup preserves these typed plans and reading/evidence results without
+starting any engine. A restored assistant checkpoint keeps its original data
+directory binding and cannot automatically replay output or provider authority.
+Review and submit a new plan in the restored library.
+
+The local planner may propose these allowlisted shapes but cannot invent source
+revisions, evidence identities, voice IDs or source hashes. Its proposal still
+passes the same scoped validator and the user approves Run separately. Voice
+inventory is not a pronunciation or quality qualification; audio capabilities
+report the actual selected runtime, not a guaranteed hardware resource ceiling.

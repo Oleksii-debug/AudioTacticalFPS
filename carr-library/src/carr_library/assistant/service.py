@@ -13,6 +13,7 @@ from .models import JobReport, Plan, Scope, canonical, local_path, text
 from .planner import preview
 from .state import JobStore, now, regular
 from .backup_receipt import capture_backup_receipt, verify_backup_receipt
+from . import local_tools
 
 
 _KEYS = {
@@ -31,7 +32,9 @@ _KEYS = {
 
 
 def _check_arguments(step):
-    required, optional = _KEYS[step.tool]
+    if step.tool in local_tools.RULES:
+        return local_tools.check_arguments(step)
+    required, optional = _KEYS['audio.produce' if step.tool == 'audio.render' else step.tool]
     if set(step.arguments) - required - optional or not required <= set(step.arguments):
         raise ValueError(f'Invalid arguments for {step.tool}.')
     for key, value in step.arguments.items():
@@ -54,7 +57,7 @@ def _check_arguments(step):
                 raise ValueError('Invalid result page size.')
         else:
             text(value, key, maximum=4 * 1024 * 1024 if key == 'text' else 32768)
-    if step.tool == 'audio.produce' and (('text' in step.arguments) == ('script' in step.arguments)):
+    if step.tool in ('audio.produce', 'audio.render') and (('text' in step.arguments) == ('script' in step.arguments)):
         raise ValueError('Provide either script text or a structured audio script.')
     if 'mode' in step.arguments and step.arguments['mode'] not in ('word', 'phrase', 'terms', 'thematic', 'semantic'):
         raise ValueError('Unsupported search mode.')
@@ -84,6 +87,14 @@ def _plain(value):
     if isinstance(value, Path):
         return str(value)
     return value
+
+
+def _observe(callback, *values):
+    if callback is not None:
+        try:
+            callback(*values)
+        except Exception:
+            pass  # Optional observation cannot reverse a durable tool result.
 
 
 class AssistantService:
@@ -143,8 +154,11 @@ class AssistantService:
                 if i != 0:
                     raise ValueError('Create a new library as the first step.')
                 workspace = '<new>'
-            if step.tool not in ('library.create', 'library.list', 'library.backup', 'audio.produce', 'audio.transcribe') and not workspace:
+            if step.tool not in ('library.create', 'library.list', 'library.backup', 'audio.produce', 'audio.render',
+                                 'audio.transcribe', 'voice.list', 'audio.effects', 'audio.inspect', 'audio.convert') and not workspace:
                 raise PermissionError('Choose a library before this operation.')
+            if step.tool in local_tools.RULES:
+                local_tools.validate_scope(step, plan.scope, self.app)
             if step.tool.startswith('library.import'):
                 path = plan.scope.input(step.arguments['path'])
                 if step.tool.endswith('_folder') != path.is_dir():
@@ -155,7 +169,7 @@ class AssistantService:
                     raise FileExistsError('The selected output already exists; choose another name.')
             if step.tool == 'library.backup' and not plan.scope.allow_full_backup:
                 raise PermissionError('Complete backup includes all libraries; enable that explicit permission first.')
-            if step.tool == 'audio.produce':
+            if step.tool in ('audio.produce', 'audio.render'):
                 if plan.scope.output_root is None:
                     raise PermissionError('Choose the audio output directory.')
                 if self.production is None:
@@ -288,18 +302,26 @@ class AssistantService:
                         with self.app.read(record['workspace']):
                             pass
                     if checkpoint['status'] == 'complete':
+                        if step.tool in local_tools.RULES:
+                            local_tools.verify_result(self.app, record['workspace'], plan.scope, step,
+                                                      checkpoint['result'], stopped)
                         self._verify_completed(checkpoint['result'], plan.scope, stopped)
                         continue
                     checkpoint['status'] = 'running'
                     checkpoint['message'] = ''
                     persist()
-                    if progress:
-                        progress(index, len(plan.steps), step.tool)
+                    _observe(progress, index, len(plan.steps), step.tool)
                     result = self._execute(step, plan.scope, record, checkpoint, persist, stopped, progress, index)
                     result = _plain(result)
                     if not isinstance(result, dict):
                         raise RuntimeError('Tool returned an invalid result.')
-                    result['artifacts'] = self._artifacts(result, plan.scope, stopped)
+                    # Cancellation after a locally committed publication cannot
+                    # erase its receipt or cause the same output to run again.
+                    committed = (step.tool in local_tools.PUBLICATION_TOOLS
+                                 and checkpoint['intent'].get('publication_committed') is True)
+                    if step.tool in local_tools.RULES and not committed and stopped():
+                        raise InterruptedError('Local assistant operation stopped before result acceptance.')
+                    result['artifacts'] = self._artifacts(result, plan.scope, (lambda: False) if committed else stopped)
                     checkpoint['result'] = result
                     checkpoint['status'] = 'complete'
                     persist()
@@ -318,8 +340,7 @@ class AssistantService:
                         checkpoint['status'] = 'failed'
                         checkpoint['message'] = record['message']
             persist()
-            if progress:
-                progress(sum(s['status'] == 'complete' for s in record['steps']), len(plan.steps), record['status'])
+            _observe(progress, sum(s['status'] == 'complete' for s in record['steps']), len(plan.steps), record['status'])
             return self._report(record)
 
     def _input_files(self, path, scope, cancelled):
@@ -356,6 +377,10 @@ class AssistantService:
         args = step.arguments
         workspace = record['workspace']
         intent = checkpoint['intent']
+        if step.tool in local_tools.RULES:
+            return local_tools.execute(self.app, workspace, scope, step, intent, persist, cancelled,
+                lambda done, total, phase: _observe(progress, index, len(record['steps']), phase),
+                record['id'] + ':' + str(index))
         if step.tool == 'library.create':
             from ..application import _name
             from ..catalog.membership import _metadata
@@ -464,14 +489,13 @@ class AssistantService:
                 max_files=scope.max_files, cancelled=cancelled)
             return {'directory': str(target), 'manifest_sha256': checksum, 'backup_receipt': receipt.to_dict(),
                     'artifacts': [str(target / 'manifest.json')], 'includes': 'All workspaces in this application data directory'}
-        if step.tool == 'audio.produce':
+        if step.tool in ('audio.produce', 'audio.render'):
             if self.production is None:
                 raise RuntimeError('Audio production is unavailable.')
             settings = dict(args)
             settings['operation_id'] = uuid5(NAMESPACE_URL, 'carr-assistant:' + record['id'] + ':' + str(index)).hex
             def production_progress(message):
-                if progress:
-                    progress(index, len(record['steps']), message)
+                _observe(progress, index, len(record['steps']), message)
             result = self.production(settings, local_path(scope.output_root), cancelled, production_progress)
             if not isinstance(result, dict) or not result.get('artifacts'):
                 raise RuntimeError('Audio production did not return completed audio artifacts.')
@@ -480,8 +504,7 @@ class AssistantService:
             if self.transcription is None:
                 raise RuntimeError('The reviewed supplied transcription installation is unavailable.')
             def transcription_progress(message):
-                if progress:
-                    progress(index, len(record['steps']), message)
+                _observe(progress, index, len(record['steps']), message)
             return self.transcription.transcribe(scope.input(args['path']), scope.output(args['name']),
                 options={key: value for key, value in args.items() if key not in ('path', 'name')},
                 intent=intent, persist=persist, state_dir=self.store.directory,
