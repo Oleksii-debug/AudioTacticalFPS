@@ -31,6 +31,7 @@ MANIFEST = '{urn:oasis:names:tc:opendocument:xmlns:manifest:1.0}'
 STYLE = '{urn:oasis:names:tc:opendocument:xmlns:style:1.0}'
 FO = '{urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0}'
 FORM = '{urn:oasis:names:tc:opendocument:xmlns:form:1.0}'
+SVG = '{urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0}'
 REL = '{http://schemas.openxmlformats.org/package/2006/relationships}'
 R = '{http://schemas.openxmlformats.org/officeDocument/2006/relationships}'
 CT = '{http://schemas.openxmlformats.org/package/2006/content-types}'
@@ -253,6 +254,53 @@ def _opc(archive, primary, budget):
         budget.warnings.add('embedded_media_not_read')
 
 
+def _empty_disabled_header(element):
+    # LibreOffice emits inactive empty master-page slots. Any authored content,
+    # unknown setting or visibility attribute still follows the strict refusal.
+    return (element.tag in {STYLE + name for name in (
+                'header', 'header-left', 'header-first', 'footer', 'footer-left', 'footer-first')}
+            and element.attrib == {STYLE + 'display': 'false'} and not len(element)
+            and not (element.text and element.text.strip())
+            and not (element.tail and element.tail.strip()))
+
+
+def _static_shape_geometry(element):
+    """Accept only an empty declarative geometry leaf; never evaluate formulae."""
+    allowed = {SVG + 'viewBox', DRAW + 'type', DRAW + 'enhanced-path'}
+    if (len(element) or (element.text and element.text.strip())
+            or set(element.attrib) != allowed
+            or any(len(value) > 4096 for value in element.attrib.values())):
+        raise ValueError('Unsupported drawing geometry requires review.')
+    number = r'[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?'
+    coordinates = element.get(SVG + 'viewBox').split()
+    if (len(coordinates) != 4 or any(re.fullmatch(number, part) is None for part in coordinates)
+            or any(not math.isfinite(float(part)) or abs(float(part)) > 1_000_000_000
+                   for part in coordinates)
+            or float(coordinates[2]) <= 0 or float(coordinates[3]) <= 0
+            or re.fullmatch(r'[A-Za-z_][A-Za-z0-9_.-]{0,127}', element.get(DRAW + 'type')) is None):
+        raise ValueError('Unsupported drawing geometry requires review.')
+    path = element.get(DRAW + 'enhanced-path')
+    if not path.lstrip().startswith('M'):
+        raise ValueError('Unsupported drawing geometry requires review.')
+    # Consume contiguous tokens once. Repeating a variable-width numeric regex
+    # inside another repetition lets a malformed long path backtrack without
+    # bound even though the XML attribute itself has a small byte budget.
+    numeric = re.compile(number)
+    index = 0
+    while index < len(path):
+        char = path[index]
+        if char in 'MLCQZNFSTUABWVXY,' or char.isspace():
+            index += 1
+            continue
+        token = numeric.match(path, index)
+        if token is None:
+            raise ValueError('Unsupported drawing geometry requires review.')
+        value = float(token.group())
+        if not math.isfinite(value) or abs(value) > 1_000_000_000:
+            raise ValueError('Unsupported drawing geometry requires review.')
+        index = token.end()
+
+
 def _check_odf_visibility(root, budget):
     blocked = {TEXT + name for name in ('tracked-changes', 'change', 'change-start',
         'change-end', 'hidden-text', 'hidden-paragraph', 'conditional-text',
@@ -271,7 +319,7 @@ def _check_odf_visibility(root, budget):
             raise ValueError('Conditional, changed or active document text requires review.')
         if (element.get(TEXT + 'display') in ('none', 'false')
                 or element.get(FO + 'visibility') in ('hidden', 'collapse')
-                or element.get(STYLE + 'display') == 'false'):
+                or element.get(STYLE + 'display') == 'false') and not _empty_disabled_header(element):
             raise ValueError('Hidden document text requires review.')
 
 
@@ -310,6 +358,10 @@ def _odf_text(element, budget):
 
 def _odf_blocks(element, budget, locator, path=()):
     budget.check()
+    if element.tag == DRAW + 'enhanced-geometry':
+        _static_shape_geometry(element)
+        budget.warnings.add('drawing_geometry_not_rendered')
+        return
     if element.tag == OFFICE + 'forms':
         # The complete tree already passed _check_odf_visibility, including
         # the empty-content and bounded settings checks for this container.

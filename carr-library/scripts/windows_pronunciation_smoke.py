@@ -395,7 +395,8 @@ def _run_native():
             return bool(view is not None and button.IsEnabled() and not view['live'].core.busy
                         and view['document']().source_text == source.text)
 
-        def open_review():
+        def open_review(ready=None):
+            ready = dictionary_ready if ready is None else ready
             reader = top_with_title('Voice reader and reading copy')
             editor = named(reader, 'Reading copy (editable; Ctrl+S saves)')
             initial = editor.GetValue()
@@ -406,7 +407,7 @@ def _run_native():
             editor.SetSelection(start, start + 3)
             observed.update(reader=reader, editor=editor, initial=initial)
             key(editor, ord('N'), lambda: until(
-                lambda: top_with_title('Pronunciation rules') is not None, dictionary_ready), wx.MOD_ALT)
+                lambda: top_with_title('Pronunciation rules') is not None, ready), wx.MOD_ALT)
 
         def dictionary_ready():
             dialog = top_with_title('Pronunciation rules')
@@ -483,7 +484,21 @@ def _run_native():
             check('native undo restores the reading copy', observed['editor'].GetValue() == observed['initial'])
             check('undo leaves dictionary rules saved', dialog.store.load()[0] == dialog.rules)
             observed['saved_dictionary'] = dialog.store.path.read_bytes()
-            import_foreign()
+            reopen_for_foreign()
+
+        def reopen_for_foreign():
+            # Applying/undoing rebuilds the native editor and does not promise to
+            # retain its selection. Repeat the real user gesture: close this
+            # modal, select the intended text, and explicitly reopen its review.
+            dialog = observed['dialog']
+            press(dialog.buttons['close'], lambda: until(
+                lambda: top_with_title('Pronunciation rules') is None,
+                lambda: open_review(foreign_ready)))
+
+        def foreign_ready():
+            dialog = top_with_title('Pronunciation rules')
+            observed['dialog'] = dialog
+            until(lambda: dialog.loaded and not dialog.busy, import_foreign)
 
         def import_foreign():
             dialog = observed['dialog']
@@ -535,7 +550,10 @@ def _run_native():
                   and path.read_bytes() == raw and original_asset.read_bytes() == asset_bytes
                   and dialog.store.path.read_bytes() == observed['saved_dictionary'])
             observed['foreign'] += 1
-            import_foreign()
+            if observed['foreign'] == len(foreign):
+                press(dialog.buttons['close'], close_reader)
+            else:
+                reopen_for_foreign()
 
         def close_reader():
             until(lambda: top_with_title('Pronunciation rules') is None, finish_reader)

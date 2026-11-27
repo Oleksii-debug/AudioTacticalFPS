@@ -100,7 +100,9 @@ class MaintenanceDialog(wx.Dialog):
         self._pause.clear()
         host_cancel = self.frame.cancel_event
         self._capabilities()
-        def work():
+        def work(_report_progress=None):
+            # Measured Desktop jobs pass their reporting callback. Download
+            # bytes update the same bound task through current_progress().
             if self._cancel.is_set() or getattr(self.frame, 'library', None) is not self.app:
                 raise InterruptedError('Update review owner changed before work.')
             return operation(lambda: self._cancel.is_set() or host_cancel.is_set())

@@ -113,7 +113,8 @@ def logical_ui():
     names = {'_live', 'MaintenanceDialog', 'show_maintenance', 'choose_update_configuration'}
     selected = ast.Module(body=[node for node in tree.body
         if isinstance(node, (ast.FunctionDef, ast.ClassDef)) and node.name in names], type_ignores=[])
-    namespace = dict(wx=wx, threading=threading, UpdateConfiguration=UpdateConfiguration,
+    namespace = dict(__name__='carr_library.ui.update_maintenance', __package__='carr_library.ui',
+                     wx=wx, threading=threading, UpdateConfiguration=UpdateConfiguration,
                      MaintenanceSession=MaintenanceSession, release_text=release_text,
                      PausedDownload=PausedDownload, UpdateCancelled=UpdateCancelled)
     exec(compile(selected, str(path), 'exec'), namespace)
@@ -136,9 +137,12 @@ def logical_ui():
             task = self.hub.start(label, unit='bytes') if with_progress else None
             if task is not None:
                 self.tasks.append(task)
+            def report_progress(completed=None, total=None, phase=None):
+                if task is not None:
+                    task.update(completed=completed, total=total, phase=phase)
             def work():
                 with bind_progress(task) if task is not None else nullcontext():
-                    value = operation()
+                    value = operation(report_progress) if with_progress else operation()
                 self.results.append(value)
                 return value
             if self.admission == 'sync':
@@ -149,15 +153,17 @@ def logical_ui():
                 else:
                     self.working = False; done(value)
                 return None
+            def deliver(callback, value):
+                # Desktop keeps the owner busy until its GUI completion runs.
+                self.working = False
+                callback(value)
             def run():
                 try:
                     value = work()
                 except (Exception, KeyboardInterrupt) as error:
-                    self.queue.append(lambda error=error: failed(error))
+                    self.queue.append(lambda error=error: deliver(failed, error))
                 else:
-                    self.queue.append(lambda value=value: done(value))
-                finally:
-                    self.working = False
+                    self.queue.append(lambda value=value: deliver(done, value))
             worker = threading.Thread(target=run)
             self.threads.append(worker); worker.start()
             return None
