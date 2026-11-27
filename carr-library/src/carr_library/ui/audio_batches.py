@@ -71,6 +71,7 @@ class AudioBatchDialog:
         self.draft = BatchDraft()
         self.batch_id = None
         self.batch = None
+        self.duration_reviewed = None
         self.busy = self.closed = self.close_pending = False
         self.token = None
         self.dialog = wx.Dialog(host.dialog, title='Local audio batches and audiobooks', size=(940, 800),
@@ -151,6 +152,23 @@ class AudioBatchDialog:
         self._button(actions, 'cancel', 'Cancel queue', lambda event: self.control('cancel'), busy_safe=True)
         self._button(actions, 'export', 'Save verified output as', self.export)
         layout.Add(actions, 0, wx.ALL, 4)
+        duration = wx.WrapSizer(wx.HORIZONTAL)
+        duration.Add(wx.StaticText(self.dialog, label='Seconds per measured book part'), 0, wx.ALL, 4)
+        self.duration_seconds = wx.TextCtrl(self.dialog, value='1800')
+        self.duration_seconds.SetName('Reviewed duration per audiobook part in seconds')
+        self.duration_seconds.Bind(wx.EVT_TEXT, self.duration_changed)
+        duration.Add(self.duration_seconds, 0, wx.ALL, 4)
+        self.duration_format = wx.Choice(self.dialog, choices=list(FORMATS))
+        self.duration_format.SetName('Measured audiobook part output format')
+        self.duration_format.SetStringSelection('wav')
+        self.duration_format.Bind(wx.EVT_CHOICE, self.duration_changed)
+        duration.Add(self.duration_format, 0, wx.ALL, 4)
+        self.controls.extend((self.duration_seconds, self.duration_format))
+        self._button(duration, 'duration-review', 'Review measured book parts', self.review_duration)
+        self._button(duration, 'duration-open', 'Open saved duration review', self.open_duration)
+        self._button(duration, 'duration-publish', 'Publish reviewed book parts', self.publish_duration)
+        self._button(duration, 'duration-export', 'Save verified book part as', self.export_duration)
+        layout.Add(duration, 0, wx.ALL, 4)
         self.status = wx.TextCtrl(self.dialog, style=wx.TE_READONLY | wx.TE_MULTILINE)
         self.status.SetName('Audio queue status and acknowledged checkpoint')
         layout.Add(self.status, 0, wx.EXPAND | wx.ALL, 4)
@@ -214,6 +232,20 @@ class AudioBatchDialog:
             self.buttons[key].Enable(not self.busy and self.batch_id is not None)
         self.buttons['pause'].Enable(self.batch_id is not None)
         self.buttons['cancel'].Enable(self.batch_id is not None or self.busy)
+        index = self.items.GetSelection()
+        selected = self.batch.items[index] if self.batch is not None and 0 <= index < len(self.batch.items) else None
+        available = not self.busy and selected is not None and selected.kind == 'book' and selected.state == 'complete'
+        self.buttons['duration-review'].Enable(available)
+        self.buttons['duration-open'].Enable(available)
+        reviewed = self.duration_reviewed
+        if reviewed is not None and (selected is None or reviewed['item_id'] != selected.id
+                                      or reviewed['batch_id'] != self.batch_id):
+            self.duration_reviewed = reviewed = None
+        self.buttons['duration-publish'].Enable(available and reviewed is not None)
+        self.buttons['duration-export'].Enable(available and reviewed is not None)
+        if reviewed is not None:
+            self.preview.AppendText('\n\nMeasured duration review (exact accepted PCM sample intervals):\n'
+                                    + json.dumps(reviewed, ensure_ascii=False, indent=2))
 
     def selected(self, event=None):
         index = self.items.GetSelection()
@@ -490,6 +522,119 @@ class AudioBatchDialog:
                 lambda report: service.export_file(identity, item.id, filename, destination,
                     approval=approval, cancelled=self.host.cancelled.is_set),
                 lambda result: self.message('Verified copy saved: ' + result['output']))
+        except Exception as error:
+            self.message(error, focus=True)
+
+    def duration_changed(self, event=None):
+        self.duration_reviewed = None
+        if not self.busy and not self.closed:
+            self.refresh()
+
+    def _duration_item(self):
+        self._guard()
+        index = self.items.GetSelection()
+        if self.batch is None or not 0 <= index < len(self.batch.items):
+            raise ValueError('Choose one completed audiobook in a saved queue.')
+        item = self.batch.items[index]
+        if item.kind != 'book' or item.state != 'complete':
+            raise ValueError('Measured parts use a completed audiobook PCM master, without resynthesising it.')
+        return item
+
+    def review_duration(self, event=None):
+        try:
+            item = self._duration_item()
+            seconds, format = self.duration_seconds.GetValue(), self.duration_format.GetStringSelection()
+            service, batch_id = self.service, self.batch_id
+            def accepted(value):
+                self.duration_reviewed = value
+                self.message('Accepted PCM retained. Review every exact output name and sample interval, then choose Publish reviewed book parts.')
+            self._start('Measure and retain the accepted audiobook PCM',
+                lambda report: service.review_duration(batch_id, item.id, seconds, output_format=format,
+                    cancelled=self.host.cancelled.is_set, on_status=report), accepted)
+        except Exception as error:
+            self.message(error, focus=True)
+
+    def open_duration(self, event=None):
+        try:
+            item = self._duration_item()
+            service, batch_id = self.service, self.batch_id
+            def choose(values):
+                if not values:
+                    self.message('This completed audiobook has no saved measured-duration review.')
+                    return
+                picker = self.wx.SingleChoiceDialog(self.dialog, 'Choose an immutable duration review.',
+                    'Saved measured book parts', [
+                        f'{row["seconds"]} seconds; {row["parts"]} parts; {row["format"]}; {row["id"]}'
+                        for row in values])
+                try:
+                    if picker.ShowModal() != self.wx.ID_OK:
+                        return
+                    chosen = values[picker.GetSelection()]
+                finally:
+                    picker.Destroy()
+                def accepted(value):
+                    self.duration_reviewed = value['review']
+                    self.duration_seconds.ChangeValue(value['review']['requested_seconds'])
+                    self.duration_format.SetStringSelection(value['review']['preset']['output_format'])
+                    self.message('Saved exact review opened. Publish resumes it or verifies already completed parts.')
+                # Start after this owned worker callback returns and the host
+                # clears its busy state; do not nest another worker ownership.
+                self.wx.CallAfter(lambda: self._start('Verify saved accepted PCM and duration review',
+                    lambda report: service.describe_duration(batch_id, item.id, chosen['id'],
+                        cancelled=self.host.cancelled.is_set), accepted)
+                    if not self.closed and not self.busy and not self.host.busy else None)
+            self._start('Read saved measured-duration review identities',
+                lambda report: service.saved_duration_reviews(batch_id, item.id,
+                    cancelled=self.host.cancelled.is_set), choose)
+        except Exception as error:
+            self.message(error, focus=True)
+
+    def publish_duration(self, event=None):
+        try:
+            item = self._duration_item()
+            value = self.duration_reviewed
+            if value is None or value['item_id'] != item.id or value['batch_id'] != self.batch_id:
+                raise ValueError('Review this exact completed audiobook and its part names before publishing.')
+            service, batch_id = self.service, self.batch_id
+            self._start('Publish the reviewed sample intervals through the existing audio worker',
+                lambda report: service.publish_duration(batch_id, item.id, value['id'],
+                    approved_sha256=value['sha256'], cancelled=self.host.cancelled.is_set, on_status=report),
+                lambda result: self.message('Verified duration parts published. Existing originals and whole/chapter outputs are unchanged.'))
+        except Exception as error:
+            self.message(error, focus=True)
+
+    def export_duration(self, event=None):
+        try:
+            item = self._duration_item()
+            review = self.duration_reviewed
+            if review is None or review['item_id'] != item.id or review['batch_id'] != self.batch_id:
+                raise ValueError('Open the exact saved duration review first.')
+            names = [row['name'] for row in review['parts']]
+            chooser = self.wx.SingleChoiceDialog(self.dialog, 'Choose one completed reviewed part.',
+                                                  'Verified measured audiobook parts', names)
+            try:
+                if chooser.ShowModal() != self.wx.ID_OK:
+                    return
+                filename = names[chooser.GetSelection()]
+            finally:
+                chooser.Destroy()
+            picker = self.wx.FileDialog(self.dialog, 'Save an independent measured audiobook part',
+                                        defaultFile=filename, style=self.wx.FD_SAVE)
+            try:
+                if picker.ShowModal() != self.wx.ID_OK:
+                    return
+                destination = Path(picker.GetPath()).absolute()
+            finally:
+                picker.Destroy()
+            from ..research.export_file import capture_export_destination
+            approval = capture_export_destination(destination, private_root=self.service.library)
+            if not approval.require_absent:
+                raise FileExistsError('Choose a new filename; a book part never replaces an existing file.')
+            service, batch_id = self.service, self.batch_id
+            self._start('Export a verified measured audiobook part',
+                lambda report: service.export_duration(batch_id, item.id, review['id'], filename,
+                    destination, approval=approval, cancelled=self.host.cancelled.is_set),
+                lambda result: self.message('Verified book part saved: ' + result['output']))
         except Exception as error:
             self.message(error, focus=True)
 

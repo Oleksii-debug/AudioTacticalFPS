@@ -128,7 +128,8 @@ def run_native():
                           and queue.dialog.GetName() == 'Local audio batches and audiobooks')
                     check('native source actions and durable queue controls are named',
                           set(queue.buttons) == {'runtime', 'audio', 'video', 'books', 'open', 'new',
-                              'apply', 'up', 'down', 'remove', 'create', 'run', 'resume', 'retry', 'pause', 'cancel', 'export'}
+                              'apply', 'up', 'down', 'remove', 'create', 'run', 'resume', 'retry', 'pause', 'cancel', 'export',
+                              'duration-review', 'duration-open', 'duration-publish', 'duration-export'}
                           and all(button.GetName() == button.GetLabel() for button in queue.buttons.values()))
                     check('native per-item format rate channel and split selectors',
                           all(isinstance(queue.fields[name], wx.Choice)

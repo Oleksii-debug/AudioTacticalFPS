@@ -34,7 +34,9 @@ def validate_audio_arguments(args, parser):
         validate_batch(args, parser)
         return
     if any((getattr(args, 'audio_batch_action', None), getattr(args, 'audio_batch_item', None),
-            getattr(args, 'audio_batch_file', None), getattr(args, 'audio_batch_export', None))):
+            getattr(args, 'audio_batch_file', None), getattr(args, 'audio_batch_export', None),
+            getattr(args, 'audio_duration_seconds', None), getattr(args, 'audio_duration_format', None),
+            getattr(args, 'audio_duration_review', None), getattr(args, 'audio_duration_approved', None))):
         parser.error('Batch controls require --audio-batch, --audio-batches or --audio-batch-plan.')
     requested = audio_requested(args)
     if requested and (args.self_test or args.backup or args.restore or args.list_libraries or args.search is not None):

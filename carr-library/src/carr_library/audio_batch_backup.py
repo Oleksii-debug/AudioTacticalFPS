@@ -35,6 +35,11 @@ def state_path(value):
         return False
     if parts[2:] in (['batch.json'], ['control.json']):
         return True
+    if len(parts) >= 5 and parts[2] == 'duration' and _ID.fullmatch(parts[3]):
+        from .audio.book_duration import PART
+        return ((len(parts) == 5 and parts[4] in ('review.json', 'source.wav'))
+                or (len(parts) == 6 and parts[4] == 'outputs'
+                    and (parts[5] == 'receipt.json' or PART.fullmatch(parts[5]) is not None)))
     if len(parts) == 4 and parts[2] == 'sources':
         return bool(re.fullmatch(r'[0-9a-f]{32}(?:-[0-9a-f]{32})?\.(?:studio\.json|wav|flac|mp3|m4a|m4b|aac|aif|aiff|ogg|opus|wma|mp4|m4v|mov|mkv|webm|avi)', parts[3]))
     if len(parts) == 5 and parts[2] == 'outputs' and _ID.fullmatch(parts[3]):
@@ -53,7 +58,7 @@ def state_limit(value):
         raise ValueError('Invalid audio queue backup member.')
     if value.endswith('.json'):
         return MAX_STATE_BYTES
-    return MAX_INPUT_BYTES if '/sources/' in value else MAX_OUTPUT_BYTES
+    return MAX_INPUT_BYTES if '/sources/' in value or value.endswith('/source.wav') else MAX_OUTPUT_BYTES
 
 
 def _children(path, *, limit):
@@ -148,10 +153,12 @@ def state_paths(library_root, *, cancelled=lambda: False):
             elif _CHECKPOINT.fullmatch(entry.name):
                 if regular(entry).st_size > MAX_STATE_BYTES:
                     raise ValueError('An interrupted queue checkpoint exceeds its metadata allowance.')
-            elif entry.name in ('sources', 'outputs'):
+            elif entry.name in ('sources', 'outputs', 'duration'):
                 regular(entry, directory=True)
             elif _PENDING_ITEM.fullmatch(entry.name):
                 _pending(entry, batch)
+            elif entry.name.startswith('.pending-duration-'):
+                duration_pending(entry, batch)
             else:
                 raise ValueError('Unknown audio queue state must not be silently omitted.')
         source_names = {item.source.file for item in batch.items}
@@ -170,6 +177,7 @@ def state_paths(library_root, *, cancelled=lambda: False):
             if {path.name for path in files} != {*items[output.name].outputs, 'receipt.json'}:
                 raise ValueError('An audio output is incomplete or contains undeclared files.')
             result.extend(files)
+        result.extend(duration_state_paths(directory, batch, cancelled=cancelled))
     if len(result) > MAX_FILES:
         raise ValueError('Audio queue files exceed the backup allowance.')
     for path in result:
@@ -253,4 +261,120 @@ def validate_state_tree(library_root, *, db=None, cancelled=lambda: False):
                             record['sample_rate'], record['channels'], record['frames']):
                         raise ValueError('A retained WAV differs from its completed sample receipt.')
             completed.append((batch.id, item.id))
+        validate_duration_tree(directory, batch, cancelled=cancelled)
     return tuple(completed)
+
+
+def duration_pending(path, batch):
+    """Only typed derived duration scratch may be omitted after a stopped owner."""
+    from .audio.book_duration import PENDING, REVIEW_SCHEMA, validate_review
+    match = PENDING.fullmatch(path.name)
+    if match is None:
+        raise ValueError('Unknown duration scratch must not be silently omitted.')
+    regular(path, directory=True)
+    entries = _children(path, limit=8)
+    checkpoints = [entry for entry in entries if _CHECKPOINT.fullmatch(entry.name)]
+    for entry in checkpoints:
+        if regular(entry).st_size > MAX_STATE_BYTES:
+            raise ValueError('Duration scratch checkpoint exceeds its metadata allowance.')
+    entries = tuple(entry for entry in entries if entry not in checkpoints)
+    if not entries:
+        return
+    if {entry.name for entry in entries} - {'owner.json', 'work', 'publish'}:
+        raise ValueError('Unknown duration scratch content must not be silently omitted.')
+    owner = read_json(path / 'owner.json', limit=8192)
+    if (type(owner) is not dict or set(owner) != {'schema', 'action', 'batch_id', 'item_id', 'review_id'}
+            or owner['schema'] != REVIEW_SCHEMA or owner['action'] not in ('review', 'publish')
+            or owner['batch_id'] != batch.id or owner['review_id'] != match.group(1)):
+        raise ValueError('Interrupted duration scratch lost its exact owner.')
+    item = next((row for row in batch.items if row.id == owner['item_id']), None)
+    if item is None or item.kind != 'book':
+        raise ValueError('Duration scratch belongs to an unknown audiobook item.')
+    allowed = {'review.json', 'source.wav'}
+    if owner['action'] == 'publish':
+        review = validate_review(read_json(path.parent / 'duration' / owner['review_id'] / 'review.json',
+                                          limit=MAX_STATE_BYTES), batch, item)
+        allowed = {row['name'] for row in review['parts']} | {'receipt.json'}
+    for entry in entries:
+        if entry.name == 'owner.json':
+            regular(entry)
+            continue
+        names = {'decoded.wav', 'verified.wav'} if entry.name == 'work' else allowed
+        for file in _children(entry, limit=len(names) + 2):
+            if file.name not in names and _CHECKPOINT.fullmatch(file.name) is None:
+                raise ValueError('Interrupted duration publication has undeclared derived files.')
+            if regular(file).st_size > (MAX_STATE_BYTES if file.suffix == '.json'
+                                        or file.name.startswith('.checkpoint-') else MAX_OUTPUT_BYTES):
+                raise ValueError('Interrupted duration work exceeded its typed byte allowance.')
+
+
+def duration_state_paths(directory, batch, *, cancelled=lambda: False):
+    from .audio.book_duration import MAX_REVIEWS, validate_review, validate_receipt
+    from .audio.batch_models import digest
+    base = directory / 'duration'
+    if not optional_present(base):
+        return ()
+    result = []
+    items = {item.id: item for item in batch.items}
+    for path in _children(base, limit=MAX_REVIEWS):
+        check_cancelled(cancelled)
+        if _ID.fullmatch(path.name) is None:
+            raise ValueError('Unknown duration review state must not be silently omitted.')
+        regular(path, directory=True)
+        raw = read_json(path / 'review.json', limit=MAX_STATE_BYTES)
+        item = items.get(raw.get('item_id')) if type(raw) is dict else None
+        if item is None or item.state != 'complete':
+            raise ValueError('A measured duration review lost its completed source item.')
+        review = validate_review(raw, batch, item)
+        if review['id'] != path.name:
+            raise ValueError('A duration review is stored under another identity.')
+        receipt = receipt_value(read_json(directory / 'outputs' / item.id / 'receipt.json',
+                                         limit=MAX_STATE_BYTES), batch, item)
+        if review['queue_receipt_sha256'] != digest(receipt) or review['render'] != receipt['render']:
+            raise ValueError('The measured duration review lost its completed source receipt.')
+        members = _children(path, limit=3)
+        if {member.name for member in members} not in (
+                {'review.json', 'source.wav'}, {'review.json', 'source.wav', 'outputs'}):
+            raise ValueError('A duration review contains unknown or missing members.')
+        result.extend((path / 'review.json', path / 'source.wav'))
+        if optional_present(path / 'outputs'):
+            output = path / 'outputs'
+            files = _children(output, limit=len(review['parts']) + 1)
+            if {file.name for file in files} != {row['name'] for row in review['parts']} | {'receipt.json'}:
+                raise ValueError('A completed duration directory lost its reviewed inventory.')
+            validate_receipt(read_json(output / 'receipt.json', limit=MAX_STATE_BYTES), review)
+            result.extend(files)
+        if len(result) > MAX_FILES:
+            raise ValueError('Duration reviews exceed the complete backup file allowance.')
+    return tuple(result)
+
+
+def validate_duration_tree(directory, batch, *, cancelled=lambda: False):
+    from .audio.book_duration import validate_review, validate_receipt
+    base = directory / 'duration'
+    if not optional_present(base):
+        return
+    items = {item.id: item for item in batch.items}
+    # state_paths has already validated the entire passive namespace and its
+    # retained queue receipt relationship; revalidate exact content here.
+    for path in _children(base, limit=1000):
+        check_cancelled(cancelled)
+        raw = read_json(path / 'review.json', limit=MAX_STATE_BYTES)
+        item = items[raw['item_id']]
+        review = validate_review(raw, batch, item)
+        source = review['source']
+        AudioBatchService._verify_file(path / 'source.wav', source['bytes'], source['sha256'], cancelled)
+        info = wav_info(path / 'source.wav')
+        if (info.rate, info.channels, info.frames) != (
+                source['sample_rate'], source['channels'], source['frames']):
+            raise ValueError('Retained accepted PCM differs from its measured duration review.')
+        if optional_present(path / 'outputs'):
+            output = path / 'outputs'
+            receipt = validate_receipt(read_json(output / 'receipt.json', limit=MAX_STATE_BYTES), review)
+            for row in receipt['files']:
+                AudioBatchService._verify_file(output / row['name'], row['bytes'], row['sha256'], cancelled)
+                if review['preset']['output_format'] == 'wav':
+                    info = wav_info(output / row['name'])
+                    if (info.rate, info.channels, info.frames) != (
+                            row['sample_rate'], row['channels'], row['frames']):
+                        raise ValueError('A retained duration WAV differs from its exact sample receipt.')

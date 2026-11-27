@@ -420,12 +420,19 @@ def publish_noreplace(source, destination, *, cancelled=lambda: False):
         _sync_directory(source.parent)
 
 
-def publish_new(source, destination, *, cancelled=lambda: False, expected_identity=None):
+def publish_new(source, destination, *, cancelled=lambda: False, expected_identity=None,
+                expected_sha256=None):
     """Publish an independent, durable copy without altering a source or output.
 
     Copy in bounded blocks to a private writable stage. Exporting a cache chunk
     must not leave a shared inode that an editor can modify through the export.
+    A supplied receipt digest is checked against the bytes actually copied before
+    the destination can become visible, closing the verification-to-copy gap.
     """
+    if expected_sha256 is not None and (type(expected_sha256) is not str
+            or len(expected_sha256) != 64 or any(c not in '0123456789abcdef' for c in expected_sha256)):
+        raise ValueError('The expected audio publication digest is invalid.')
+    copied = hashlib.sha256() if expected_sha256 is not None else None
     source, destination = Path(source), Path(destination)
     parent = checked_directory(destination.parent)
     if destination.exists() or destination.is_symlink():
@@ -442,7 +449,11 @@ def publish_new(source, destination, *, cancelled=lambda: False, expected_identi
                     if not block:
                         raise RuntimeError('An audio input was truncated during publication.')
                     target.write(block)
+                    if copied is not None:
+                        copied.update(block)
                     remaining -= len(block)
+            if copied is not None and copied.hexdigest() != expected_sha256:
+                raise ValueError('Copied audio bytes differ from the expected publication digest.')
             target.flush()
             os.fsync(target.fileno())
         check_cancelled(cancelled)
