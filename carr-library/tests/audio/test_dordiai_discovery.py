@@ -197,7 +197,10 @@ def test_missing_required_installed_helper_fails_before_discovery(installed):
     json.dumps({'protocol': DISCOVERY_PROTOCOL, 'voices': [
         {'id': 'demo', 'name': 'Synthetic', 'languages': []}]}).encode(),
     b'x' * (MAX_RESPONSE_BYTES + 1),
-])
+], ids=(
+    'invalid-json', 'non-object', 'wrong-protocol', 'duplicate-voices',
+    'unsafe-voice-id', 'invalid-language', 'missing-languages', 'oversized-response',
+))
 def test_malformed_discovery_response_never_publishes_voices(installed, monkeypatch, payload):
     provider = engine(installed)
     monkeypatch.setattr(engines, '_run', lambda *a, **k: payload)
