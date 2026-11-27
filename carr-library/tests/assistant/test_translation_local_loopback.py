@@ -357,3 +357,118 @@ def test_actual_stalled_local_body_is_cancelled_and_scope_guards_stay_on_request
         release.set()
         canceller.join(5)
         assert not canceller.is_alive()
+
+
+@pytest.mark.parametrize('cancel_body', [False, True], ids=['complete-tls', 'cancel-close-delimited-tls-body'])
+def test_actual_tls_keeps_socket_owner_after_http_response_transfer(tmp_path, monkeypatch, cancel_body):
+    from datetime import datetime, timedelta, timezone
+    import ipaddress
+    import ssl
+    from cryptography import x509
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    from cryptography.x509.oid import NameOID, ExtendedKeyUsageOID
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, 'CARR synthetic loopback TLS')])
+    stamp = datetime.now(timezone.utc)
+    certificate = (x509.CertificateBuilder().subject_name(name).issuer_name(name)
+        .public_key(key.public_key()).serial_number(x509.random_serial_number())
+        .not_valid_before(stamp - timedelta(minutes=5)).not_valid_after(stamp + timedelta(days=1))
+        .add_extension(x509.BasicConstraints(ca=True, path_length=0), critical=True)
+        .add_extension(x509.SubjectAlternativeName([x509.IPAddress(ipaddress.ip_address('127.0.0.1'))]), critical=False)
+        .add_extension(x509.KeyUsage(digital_signature=True, content_commitment=False,
+            key_encipherment=True, data_encipherment=False, key_agreement=False,
+            key_cert_sign=True, crl_sign=True, encipher_only=False, decipher_only=False), critical=True)
+        .add_extension(x509.ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH]), critical=False)
+        .sign(key, hashes.SHA256()))
+    cert_path, key_path = tmp_path / 'fixture-cert.pem', tmp_path / 'fixture-key.pem'
+    cert_path.write_bytes(certificate.public_bytes(serialization.Encoding.PEM))
+    key_path.write_bytes(key.private_bytes(serialization.Encoding.PEM,
+        serialization.PrivateFormat.TraditionalOpenSSL, serialization.NoEncryption()))
+    server_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    server_context.load_cert_chain(cert_path, key_path)
+    original_context = ssl.create_default_context
+    def trusted_fixture_context(*args, **kwargs):
+        context = original_context(*args, **kwargs)
+        context.load_verify_locations(cafile=str(cert_path))
+        assert context.check_hostname and context.verify_mode == ssl.CERT_REQUIRED
+        return context
+    monkeypatch.setattr(ssl, 'create_default_context', trusted_fixture_context)
+    received, release, stop = Event(), Event(), Event()
+    requests, owners = [], []
+    class Handler(BaseHTTPRequestHandler):
+        protocol_version = 'HTTP/1.0'
+        def log_message(self, *args): pass
+        def do_POST(self):
+            raw = self.rfile.read(int(self.headers['Content-Length']))
+            request = json.loads(raw)
+            requests.append((self.path, request))
+            result = json.dumps({'translatedText': 'TLS selected derivative &amp;'}).encode()
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Connection', 'close')
+            # Deliberately omit Content-Length: HTTPResponse now owns the socket.
+            self.end_headers()
+            if cancel_body:
+                self.wfile.write(result[:1])
+                self.wfile.flush()
+                received.set()
+                release.wait(10)
+                try:
+                    self.wfile.write(result[1:])
+                except (OSError, ssl.SSLError):
+                    pass
+            else:
+                self.wfile.write(result)
+    host = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+    host.daemon_threads = True
+    host.socket = server_context.wrap_socket(host.socket, server_side=True)
+    serving = Thread(target=lambda: host.serve_forever(poll_interval=0.02), daemon=True)
+    serving.start()
+    original_response = providers._Connection.getresponse
+    def observed_response(owner):
+        response = original_response(owner)
+        owners.append(owner)
+        assert owner.connection.sock is None
+        assert isinstance(owner.active_socket, ssl.SSLSocket)
+        return response
+    monkeypatch.setattr(providers._Connection, 'getresponse', observed_response)
+    def cancel_after_byte():
+        if received.wait(5):
+            stop.set()
+    canceller = Thread(target=cancel_after_byte, daemon=True) if cancel_body else None
+    if canceller is not None:
+        canceller.start()
+    try:
+        p = ProviderProfile('tls_local', 'Synthetic TLS protocol fixture', 'libretranslate-local',
+            'https://127.0.0.1:' + str(host.server_port), 'synthetic-protocol-only',
+            ('translation.text', 'translation.languages'), local=True, enabled=True)
+        gateway = Gateway(tmp_path / 'tls-ledger')
+        approval, cost = translation_approval(p, 'Selected TLS text', 'en', 'uk', '0')
+        def invoke():
+            return gateway.request(p, 'translation.text',
+                {'q': 'Selected TLS text', 'source': 'en', 'target': 'uk'},
+                task_id=approval.task_id, data_class='selected-excerpt',
+                authorization=approval, max_cost=cost, operation_id='tls_request',
+                cancelled=stop.is_set, interrupt_cancelled=stop.is_set, timeout=8)
+        started = monotonic()
+        if cancel_body:
+            with pytest.raises(InterruptedError):
+                invoke()
+            assert received.is_set() and monotonic() - started < 5
+        else:
+            assert invoke()['text'] == 'TLS selected derivative &amp;'
+        assert requests == [('/translate', {'q': 'Selected TLS text', 'source': 'en', 'target': 'uk', 'format': 'text'})]
+        assert len(owners) == 1 and not owners[0].watcher.is_alive()
+        assert owners[0].active_socket.fileno() == -1
+        assert gateway.ledger.get(approval.id)['operations']['tls_request']['status'] == (
+            'uncertain' if cancel_body else 'complete')
+    finally:
+        release.set()
+        if canceller is not None:
+            canceller.join(5)
+            assert not canceller.is_alive()
+        host.shutdown()
+        host.server_close()
+        serving.join(5)
+        assert not serving.is_alive()
