@@ -25,18 +25,23 @@ import ctypes, json, os, pathlib, subprocess, sys, time
 from carr_library.installation_lease import installed_entrypoint
 from carr_library.audio import windows_process
 
+def write_json(path, value):
+    temporary = path.with_name(path.name + '.pending')
+    temporary.write_text(json.dumps(value), encoding='utf-8')
+    os.replace(temporary, path)
+
 @installed_entrypoint
 def main(arguments=None):
     mode, folder, *forwarded = arguments
     root = pathlib.Path(folder)
     if mode == 'stdin':
-        (root / 'callback.json').write_text(json.dumps(
-            {'pid': os.getpid(), 'arguments': forwarded, 'stdin': sys.stdin.read()}), encoding='utf-8')
+        write_json(root / 'callback.json',
+                   {'pid': os.getpid(), 'arguments': forwarded, 'stdin': sys.stdin.read()})
         return 0
     child = subprocess.Popen([sys.executable, '-I', '-S', '-B', '-c',
         "import pathlib,sys,time; p=pathlib.Path(sys.argv[1]); p.write_text('ready'); time.sleep(30)",
         str(root / 'grandchild-ready')], close_fds=True)
-    (root / 'callback.json').write_text(json.dumps({'pid': os.getpid(), 'child': child.pid}), encoding='utf-8')
+    write_json(root / 'callback.json', {'pid': os.getpid(), 'child': child.pid})
     deadline = time.monotonic() + 30
     while not (root / 'release-parent').exists():
         if time.monotonic() > deadline:
@@ -47,14 +52,15 @@ def main(arguments=None):
 if __name__ == '__main__':
     mode, folder = sys.argv[1:3]
     root = pathlib.Path(folder)
-    if mode in ('before-assign', 'after-assign', 'failed-assign', 'wrong-job', 'wrong-lease'):
+    if mode in ('before-assign', 'after-assign', 'failed-assign', 'wrong-job', 'wrong-lease',
+                'missing-receipt', 'wrong-receipt-owner'):
         original = windows_process._Job.assign
         def barrier(job, handle):
             kernel = ctypes.WinDLL('kernel32', use_last_error=True)
             kernel.GetProcessId.argtypes, kernel.GetProcessId.restype = (ctypes.c_void_p,), ctypes.c_uint32
-            if mode in ('after-assign', 'wrong-job', 'wrong-lease'):
+            if mode in ('after-assign', 'wrong-job', 'wrong-lease', 'missing-receipt', 'wrong-receipt-owner'):
                 original(job, handle)
-            (root / 'admission-child.json').write_text(json.dumps({'pid': kernel.GetProcessId(handle)}))
+            write_json(root / 'admission-child.json', {'pid': kernel.GetProcessId(handle)})
             deadline = time.monotonic() + 30
             while not (root / 'release-assignment').exists():
                 if time.monotonic() > deadline:
@@ -65,22 +71,43 @@ if __name__ == '__main__':
             if mode == 'before-assign':
                 original(job, handle)
         windows_process._Job.assign = barrier
+    if mode in ('cleanup-barrier', 'cleanup-failure'):
+        original_cleanup = windows_process._Job.stop_and_wait
+        def cleanup(job, handle=None):
+            (root / 'cleanup-ready').write_text('ready')
+            deadline = time.monotonic() + 30
+            while not (root / 'release-cleanup').exists():
+                if time.monotonic() >= deadline:
+                    raise TimeoutError('Cleanup observation barrier was not released')
+                time.sleep(.01)
+            if mode == 'cleanup-failure':
+                raise TimeoutError('Synthetic unconfirmed Job cleanup')
+            return original_cleanup(job, handle)
+        windows_process._Job.stop_and_wait = cleanup
     wrong_job = wrong_lease = None
-    if mode in ('wrong-job', 'wrong-lease'):
+    if mode in ('wrong-job', 'wrong-lease', 'missing-receipt', 'wrong-receipt-owner'):
         import msvcrt
         from carr_library import portable_entry
         original_json = json.dumps
         if mode == 'wrong-job':
             wrong_job = windows_process._Job()
-        else:
+        elif mode == 'wrong-lease':
             wrong_lease = (root / 'unrelated-lease').open('wb')
         def changed_packet(value, *args, **kwargs):
             if isinstance(value, dict) and 'owner' in value and value['owner'].get('protocol') == 1:
                 value = dict(value, owner=dict(value['owner']))
                 if wrong_job is not None:
                     value['owner']['job'] = int(wrong_job.handle)
-                else:
+                elif wrong_lease is not None:
                     value['owner']['lease'] = msvcrt.get_osfhandle(wrong_lease.fileno())
+                else:
+                    value['owner']['receipt'] = 'f' * 32
+                    if mode == 'wrong-receipt-owner':
+                        control = portable_entry.control_root(pathlib.Path(value['owner']['program']))
+                        receipt = {'schema': 'carr-portable-owner/1', 'id': 'f' * 32,
+                                   'program': value['owner']['program'], 'owner_pid': os.getpid() + 1}
+                        (control / ('owner-' + 'f' * 32 + '.json')).write_text(
+                            original_json(receipt), encoding='utf-8')
             return original_json(value, *args, **kwargs)
         portable_entry.json.dumps = changed_packet
     try:
@@ -93,12 +120,12 @@ if __name__ == '__main__':
 '''
 
 
-@pytest.fixture(scope='module')
-def owned_fixture(tmp_path_factory):
+@pytest.fixture
+def owned_fixture(tmp_path):
     assert sys.version_info[:2] == (3, 11) and ctypes.sizeof(ctypes.c_void_p) == 8, \
         'This native gate requires the supported Windows x64 / Python 3.11 profile.'
-    root = tmp_path_factory.mktemp('owned-portable-Україна') / 'program'
-    root.mkdir()
+    root = tmp_path / 'owned-portable-Україна' / 'program'
+    root.mkdir(parents=True)
     environment = root / '.venv'
     venv.EnvBuilder(with_pip=False).create(environment)
     executable = environment / 'Scripts/python.exe'
@@ -111,7 +138,8 @@ def owned_fixture(tmp_path_factory):
     # are exact production source bytes, not mocks or altered alternatives.
     (package / '__init__.py').write_text('', encoding='utf-8')
     (package / 'audio/__init__.py').write_text('', encoding='utf-8')
-    for name in ('installation_lease.py', 'portable_entry.py', 'portable_bootstrap.py'):
+    for name in ('installation_lease.py', 'portable_entry.py', 'portable_bootstrap.py',
+                 'durable_state.py', 'windows_state.py'):
         shutil.copyfile(Path(carr_library.__file__).resolve().parent / name, package / name)
     shutil.copyfile(Path(windows_process.__file__), package / 'audio/windows_process.py')
     (package / '__main__.py').write_text(_ENTRY, encoding='utf-8')
@@ -186,7 +214,9 @@ def test_parent_death_before_admission_runs_no_site_or_application_code(owned_fi
         assert not (tmp_path / 'grandchild-ready').exists()
         assert not (tmp_path / ('site-' + str(child))).exists()
         with leases.installation_lease(portable_entry.control_root(root), exclusive=True):
-            pass
+            with pytest.raises(RuntimeError, match='did not confirm complete cleanup'):
+                portable_entry.require_clean_owners(root)
+        assert list(portable_entry.control_root(root).glob('owner-*.json'))
     finally:
         (tmp_path / 'release-assignment').touch()
         stop(parent)
@@ -213,7 +243,8 @@ def test_actual_assignment_failure_never_admits_application_work(owned_fixture, 
         assert api.WaitForSingleObject(handle, 5000) == 0
         assert not (tmp_path / 'callback.json').exists()
         with leases.installation_lease(portable_entry.control_root(root), exclusive=True):
-            pass
+            portable_entry.require_clean_owners(root)
+        assert not list(portable_entry.control_root(root).glob('owner-*.json'))
     finally:
         (tmp_path / 'release-assignment').touch()
         stop(parent)
@@ -221,8 +252,8 @@ def test_actual_assignment_failure_never_admits_application_work(owned_fixture, 
             api.CloseHandle(handle)
 
 
-@pytest.mark.parametrize('proof', ['wrong-job', 'wrong-lease'])
-def test_native_admission_rejects_unrelated_live_job_or_lease_handle(owned_fixture, tmp_path, proof):
+@pytest.mark.parametrize('proof', ['wrong-job', 'wrong-lease', 'missing-receipt', 'wrong-receipt-owner'])
+def test_native_admission_rejects_unrelated_job_lease_or_cleanup_receipt(owned_fixture, tmp_path, proof):
     root, executable = owned_fixture
     parent = subprocess.Popen([str(executable), '-I', '-B', '-m', 'carr_library', proof, str(tmp_path)],
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -234,13 +265,26 @@ def test_native_admission_rejects_unrelated_live_job_or_lease_handle(owned_fixtu
         (tmp_path / 'release-assignment').touch()
         _output, errors = parent.communicate(timeout=15)
         assert parent.returncode != 0
-        expected = b'exact lifetime owner' if proof == 'wrong-job' else b'does not own this portable'
+        expected = {'wrong-job': b'exact lifetime owner', 'wrong-lease': b'does not own this portable',
+                    'missing-receipt': b'FileNotFoundError',
+                    'wrong-receipt-owner': b'cleanup receipt belongs to another owner'}[proof]
         assert expected in errors
         assert api.WaitForSingleObject(handle, 5000) == 0
         assert not (tmp_path / ('site-' + str(child))).exists()
         assert not (tmp_path / 'callback.json').exists()
-        with leases.installation_lease(portable_entry.control_root(root), exclusive=True):
-            pass
+        control = portable_entry.control_root(root)
+        with leases.installation_lease(control, exclusive=True):
+            if proof == 'wrong-receipt-owner':
+                with pytest.raises(RuntimeError, match='did not confirm complete cleanup'):
+                    portable_entry.require_clean_owners(root)
+                forged = control / ('owner-' + 'f' * 32 + '.json')
+                assert json.loads(forged.read_bytes())['owner_pid'] == parent.pid + 1
+                assert list(control.glob('owner-*.json')) == [forged]
+                # Delete only this test's known inert forged row; product
+                # cleanup must not delete any unrelated owner evidence.
+                forged.unlink()
+            portable_entry.require_clean_owners(root)
+        assert not list(control.glob('owner-*.json'))
     finally:
         (tmp_path / 'release-assignment').touch()
         stop(parent)
@@ -277,7 +321,12 @@ def test_lease_and_job_cover_actual_descendants_until_application_shutdown(owned
         if finish == 'normal-return':
             assert parent.returncode == 0, parent.stderr.read().decode(errors='replace')
         with leases.installation_lease(portable_entry.control_root(root), exclusive=True):
-            pass
+            if finish == 'guardian-death':
+                with pytest.raises(RuntimeError, match='did not confirm complete cleanup'):
+                    portable_entry.require_clean_owners(root)
+            else:
+                portable_entry.require_clean_owners(root)
+        assert bool(list(portable_entry.control_root(root).glob('owner-*.json'))) == (finish == 'guardian-death')
     finally:
         (tmp_path / 'release-parent').touch()
         stop(parent)
@@ -320,3 +369,57 @@ def test_compiled_launcher_obeys_same_portable_lease_before_python_start(owned_f
     available = subprocess.run([str(launcher), '--launcher-check'], capture_output=True, timeout=10)
     assert available.returncode == 0, available.stderr.decode(errors='replace')
     assert json.loads(available.stdout)['state'] == 'ready'
+
+
+@pytest.mark.parametrize('mode', ['cleanup-barrier', 'cleanup-failure'])
+def test_exclusive_activation_never_uses_direct_child_exit_as_tree_cleanup(
+        owned_fixture, tmp_path, mode):
+    root, executable = owned_fixture
+    parent = subprocess.Popen([str(executable), '-I', '-B', '-m', 'carr_library', mode, str(tmp_path)],
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                              env=dict(os.environ, CARR_PORTABLE_TEST_SITE_ROOT=str(tmp_path)))
+    handles = []
+    try:
+        data = json.loads(wait_file(tmp_path / 'callback.json', parent).read_bytes())
+        wait_file(tmp_path / 'grandchild-ready', parent)
+        handles = [process_handle(data[name]) for name in ('pid', 'child')]
+        control = portable_entry.control_root(root)
+        (tmp_path / 'release-parent').touch()
+        wait_file(tmp_path / 'cleanup-ready', parent)
+        # The direct entry has returned. A real descendant is still live,
+        # exactly the interval missed by a direct Popen.wait() alone.
+        assert handles[0][0].WaitForSingleObject(handles[0][1], 0) == 0
+        assert handles[1][0].WaitForSingleObject(handles[1][1], 0) == 258
+        assert parent.poll() is None
+        with pytest.raises(RuntimeError, match='running jobs'):
+            with leases.installation_lease(control, exclusive=True):
+                pytest.fail('Guardian released its lease before descendant acknowledgement')
+        assert len(list(control.glob('owner-*.json'))) == 1
+        (tmp_path / 'release-cleanup').touch()
+        _output, errors = parent.communicate(timeout=15)
+        if mode == 'cleanup-barrier':
+            assert parent.returncode == 0, errors.decode(errors='replace')
+            # No wait for either descendant occurs before this zero-time
+            # assertion and the actual exclusive activation admission.
+            assert all(api.WaitForSingleObject(handle, 0) == 0 for api, handle in handles)
+            with leases.installation_lease(control, exclusive=True):
+                portable_entry.require_clean_owners(root)
+            assert not list(control.glob('owner-*.json'))
+        else:
+            assert parent.returncode != 0
+            assert b'Synthetic unconfirmed Job cleanup' in errors
+            # Even if the fallback Job close has already stopped the children,
+            # unconfirmed cleanup must not be silently relabelled as idle.
+            with leases.installation_lease(control, exclusive=True):
+                with pytest.raises(RuntimeError, match='did not confirm complete cleanup'):
+                    portable_entry.require_clean_owners(root)
+            assert len(list(control.glob('owner-*.json'))) == 1
+    finally:
+        (tmp_path / 'release-parent').touch()
+        (tmp_path / 'release-cleanup').touch()
+        stop(parent)
+        for api, handle in handles:
+            try:
+                assert api.WaitForSingleObject(handle, 10000) == 0
+            finally:
+                api.CloseHandle(handle)

@@ -21,6 +21,7 @@ import zipfile
 from .. import installation_lease as leases
 from ..portable_entry import (
     PORTABLE_CONTRACT, PORTABLE_MARKER, control_root, installed_ownership, managed_layout, portable_contract,
+    require_clean_owners,
 )
 from ._files import TrustError, directory, json_value, read_bytes
 from .installation import (
@@ -175,6 +176,7 @@ class PortableUpdateHandoff:
                 raise TrustError('Managed updates require an authenticated setup handoff that preserves Repair and Uninstall ownership.')
             control = control_root(self.program, create=True)
             with leases.installation_lease(control, exclusive=True):
+                require_clean_owners(self.program, control)
                 _cancel(cancelled)
                 if recovering:
                     record, before, release = transaction._record()

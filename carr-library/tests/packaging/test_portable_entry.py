@@ -95,6 +95,7 @@ def test_exact_bootstrap_self_test_does_not_open_a_completed_public_bypass(tmp_p
 
 
 @pytest.mark.parametrize('name', ['installation_lease.py', 'portable_entry.py',
+                                 'durable_state.py', 'windows_state.py',
                                  'audio/windows_process.py', 'native_checks.py', 'unchanged'])
 def test_portable_builder_rejects_old_or_changed_ownership_sources(tmp_path, monkeypatch, name):
     import importlib.util
@@ -108,7 +109,8 @@ def test_portable_builder_rejects_old_or_changed_ownership_sources(tmp_path, mon
     fixture_packaging.mkdir(parents=True)
     package = fixture_packaging.parent / 'src/carr_library'
     loaded = Path(portable_entry.__file__).resolve().parent
-    relatives = ('installation_lease.py', 'portable_entry.py', 'portable_bootstrap.py', 'audio/windows_process.py',
+    relatives = ('installation_lease.py', 'portable_entry.py', 'portable_bootstrap.py',
+                 'durable_state.py', 'windows_state.py', 'audio/windows_process.py',
                  '__main__.py', 'native_checks.py', 'transcription_cli.py', 'security/__main__.py',
                  'studio/cli.py', 'extract/ocr_model_catalog.py', 'assistant/translation_cli.py', 'operations/cli.py')
     for relative in relatives:
@@ -199,3 +201,51 @@ def test_public_native_check_uses_same_installed_lease(tmp_path, monkeypatch, ca
     with leases.installation_lease(managed, exclusive=True):
         assert native_checks.main(['--bundle-root', str(root)]) == 1
     assert 'running jobs' in capsys.readouterr().err
+
+
+def test_old_marker_only_profile_cannot_claim_receipt_based_ownership(tmp_path):
+    root = program(tmp_path)
+    marker = root / portable_entry.PORTABLE_MARKER
+    marker.write_bytes(b'[Resonance portable updates]\nProtocol=1\nOwner=windows-job-v1\n')
+    manifest = root / 'bundle-manifest.json'
+    value = json.loads(manifest.read_bytes())
+    value['files'][marker.name] = sha256(marker.read_bytes()).hexdigest()
+    manifest.write_text(json.dumps(value), encoding='utf-8')
+    with pytest.raises(ValueError, match='no supported child-ownership contract'):
+        portable_entry.portable_contract(root)
+
+
+def test_confirmed_owner_cleanup_removes_only_its_exact_receipt(tmp_path):
+    root = program(tmp_path)
+    control = portable_entry.control_root(root, create=True)
+    with leases.installation_lease(control):
+        first = portable_entry._record_owner(root, control)
+        second = portable_entry._record_owner(root, control)
+        portable_entry._clear_owner(first)
+        assert not first[0].exists()
+        assert second[0].read_bytes() == second[1]
+    with leases.installation_lease(control, exclusive=True):
+        with pytest.raises(RuntimeError, match='did not confirm complete cleanup'):
+            portable_entry.require_clean_owners(root)
+    with leases.installation_lease(control):
+        portable_entry._clear_owner(second)
+    with leases.installation_lease(control, exclusive=True):
+        portable_entry.require_clean_owners(root)
+    assert not list(control.glob('owner-*'))
+
+
+def test_changed_cleanup_receipt_is_retained_instead_of_certifying_idle(tmp_path):
+    root = program(tmp_path)
+    control = portable_entry.control_root(root, create=True)
+    with leases.installation_lease(control):
+        receipt = portable_entry._record_owner(root, control)
+        original = json.loads(receipt[1])
+        assert original['owner_pid'] == os.getpid()
+        changed = dict(original, owner_pid=os.getpid() + 1)
+        receipt[0].write_text(json.dumps(changed), encoding='utf-8')
+        with pytest.raises(RuntimeError, match='receipt changed'):
+            portable_entry._clear_owner(receipt)
+        assert json.loads(receipt[0].read_bytes()) == changed
+    with leases.installation_lease(control, exclusive=True):
+        with pytest.raises(RuntimeError, match='did not confirm complete cleanup'):
+            portable_entry.require_clean_owners(root)

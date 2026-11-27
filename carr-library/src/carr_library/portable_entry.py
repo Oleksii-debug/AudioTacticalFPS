@@ -18,11 +18,12 @@ from pathlib import Path
 import subprocess
 import sys
 import zipfile
+from uuid import uuid4
 
 from .installation_lease import LEASE, MARKER, installation_lease, plain
 
 PORTABLE_MARKER = 'portable-update.ini'
-PORTABLE_CONTRACT = b'[Resonance portable updates]\nProtocol=1\nOwner=windows-job-v1\n'
+PORTABLE_CONTRACT = b'[Resonance portable updates]\nProtocol=2\nOwner=windows-job-receipt-v1\n'
 CONTROL_SUFFIX = '.update-control'
 _CALLBACKS = {
     ('carr_library.__main__', 'main'),
@@ -37,6 +38,7 @@ _CALLBACKS = {
 }
 OWNED_SOURCES = (
     'installation_lease.py', 'portable_entry.py', 'portable_bootstrap.py',
+    'durable_state.py', 'windows_state.py',
     'audio/windows_process.py', '__main__.py', 'native_checks.py',
     'transcription_cli.py', 'security/__main__.py', 'studio/cli.py',
     'extract/ocr_model_catalog.py', 'assistant/translation_cli.py', 'operations/cli.py',
@@ -157,6 +159,43 @@ def control_root(program, *, create=False):
     return root
 
 
+def require_clean_owners(program, root=None):
+    """An unclean receipt vetoes activation; it can never prove a process idle.
+
+    Called only while the external helper holds the exclusive installation
+    lease. Never clear a receipt from a PID, an empty Job count, a missing Job
+    name or a clock heuristic. An abrupt owner exit requires explicit recovery
+    or a separately verified new bundle at a different program location.
+    """
+    root = control_root(program) if root is None else Path(root)
+    plain(root, directory=True)
+    with os.scandir(root) as entries:
+        for entry in entries:
+            if entry.name.casefold().startswith('owner-'):
+                raise RuntimeError(
+                    'A previous application owner did not confirm complete cleanup. '
+                    'Automatic activation is blocked; preserve its owner receipt and use '
+                    'owner recovery or a separately verified new bundle.')
+
+
+def _record_owner(program, root):
+    from .durable_state import atomic_json, encode
+    identity = uuid4().hex
+    value = {'schema': 'carr-portable-owner/1', 'id': identity,
+             'program': str(program), 'owner_pid': os.getpid()}
+    receipt = root / ('owner-' + identity + '.json')
+    raw = encode(value)
+    atomic_json(receipt, value)
+    return receipt, raw
+
+
+def _clear_owner(receipt):
+    path, expected = receipt
+    if _read(path, 4096) != expected:
+        raise RuntimeError('The owned cleanup receipt changed; automatic activation remains blocked.')
+    path.unlink()
+
+
 def active_program(prefix=None):
     environment = Path(sys.prefix if prefix is None else prefix).absolute()
     if environment.name.casefold() != '.venv':
@@ -234,9 +273,11 @@ def run_entry(callback, arguments, program):
         raise ValueError('Portable ownership requires the selected installed interpreter and entrypoint.')
     root = control_root(program, create=True)
     with installation_lease(root) as lease:
-        read_fd = write_fd = process = None
-        job = _Job()
+        read_fd = write_fd = process = job = None
+        receipt = _record_owner(program, root)
+        cleanup_confirmed = False
         try:
+            job = _Job()
             read_fd, write_fd = os.pipe()
             read_handle = msvcrt.get_osfhandle(read_fd)
             os.set_handle_inheritable(read_handle, True)
@@ -256,7 +297,7 @@ def run_entry(callback, arguments, program):
                 read_fd = None
             admission = json.dumps({'owner': {'protocol': 1, 'pid': os.getpid(),
                                     'job': int(job.handle), 'lease': int(lease),
-                                    'program': str(program)},
+                                    'program': str(program), 'receipt': receipt[0].stem[6:]},
                                     'entry': [module, name, *arguments]},
                                    ensure_ascii=False, separators=(',', ':')).encode('utf-8')
             if len(admission) > 256 * 1024:
@@ -267,20 +308,34 @@ def run_entry(callback, arguments, program):
                     raise OSError('The portable owner admission was incomplete.')
             return process.wait()
         finally:
-            if read_fd is not None:
-                os.close(read_fd)
-            if write_fd is not None:
-                os.close(write_fd)
             try:
-                job.close()
-            finally:
-                if process is not None:
-                    try:
-                        if process.poll() is None:
-                            process.kill()
+                try:
+                    if read_fd is not None:
+                        os.close(read_fd)
+                    if write_fd is not None:
+                        os.close(write_fd)
+                finally:
+                    if job is not None:
+                        job.stop_and_wait(int(process._handle) if process is not None else None)
+                    if process is not None:
                         process.wait(timeout=5)
-                    finally:
-                        process._handle.Close()
+                    cleanup_confirmed = True
+            finally:
+                try:
+                    if job is not None:
+                        job.close()
+                finally:
+                    if process is not None:
+                        try:
+                            if process.poll() is None:
+                                process.kill()
+                            process.wait(timeout=5)
+                        finally:
+                            process._handle.Close()
+                if cleanup_confirmed:
+                    _clear_owner(receipt)
+                # A failure or abrupt owner death leaves its durable veto.
+                # Dropping the shared lease therefore cannot certify idle.
 
 
 def activation_status(prefix=None):
@@ -292,6 +347,7 @@ def activation_status(prefix=None):
                 'Repair and Uninstall ownership together. Generic folder activation is unavailable.')
     if active_program(prefix) is not None:
         return ('This portable bundle declares owned application entries. Activation requires '
-                'a separately configured trusted helper outside the program, and an idle installation.')
+                'a separately configured trusted helper outside the program and confirmed cleanup. '
+                'Any unclean owner receipt blocks automatic activation until owner recovery.')
     return ('Automatic activation is not enabled for this portable layout. '
             'Use a separately verified new bundle; existing research data remains available.')

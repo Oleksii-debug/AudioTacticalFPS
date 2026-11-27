@@ -182,7 +182,8 @@ def verify_portable_entry_sources(wheel, launcher_payload):
     """A marker cannot opt an older/unowned application wheel into activation."""
     package = HERE.parent / "src" / "carr_library"
     with ZipFile(wheel) as archive:
-        for relative in ("installation_lease.py", "portable_entry.py", "portable_bootstrap.py", "audio/windows_process.py",
+        for relative in ("installation_lease.py", "portable_entry.py", "portable_bootstrap.py",
+                         "durable_state.py", "windows_state.py", "audio/windows_process.py",
                          "__main__.py", "native_checks.py", "transcription_cli.py", "security/__main__.py",
                          "studio/cli.py", "extract/ocr_model_catalog.py", "assistant/translation_cli.py", "operations/cli.py"):
             current = regular(package / relative).read_bytes()

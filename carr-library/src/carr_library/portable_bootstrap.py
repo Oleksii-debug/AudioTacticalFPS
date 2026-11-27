@@ -75,6 +75,32 @@ class _ExtendedLimits(ctypes.Structure):
                 ('peak_process_memory', ctypes.c_size_t), ('peak_job_memory', ctypes.c_size_t)]
 
 
+def _owner_receipt(control, program, admission):
+    identity = admission['receipt']
+    if (type(identity) is not str or len(identity) != 32
+            or any(character not in '0123456789abcdef' for character in identity)):
+        raise ValueError('Invalid portable cleanup receipt identity.')
+    path = control / ('owner-' + identity + '.json')
+    _plain(path)
+    before = path.lstat()
+    if before.st_size > 4096:
+        raise ValueError('The portable cleanup receipt exceeds its bound.')
+    with path.open('rb') as stream:
+        opened = os.fstat(stream.fileno())
+        raw = stream.read(4097)
+        finished = os.fstat(stream.fileno())
+    _plain(path)
+    current = path.lstat()
+    stamp = lambda value: (value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns, value.st_ctime_ns)
+    if len(raw) != before.st_size or any(stamp(info) != stamp(before) for info in (opened, finished, current)):
+        raise ValueError('The portable cleanup receipt changed during admission.')
+    value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique)
+    expected = {'schema': 'carr-portable-owner/1', 'id': identity,
+                'program': str(program), 'owner_pid': admission['pid']}
+    if type(value) is not dict or value != expected or type(value.get('owner_pid')) is not int:
+        raise ValueError('The portable cleanup receipt belongs to another owner.')
+
+
 @contextmanager
 def owner_lease(program, admission):
     """Verify exact live ownership and keep only its duplicated shared lease."""
@@ -86,7 +112,7 @@ def owner_lease(program, admission):
     _plain(control, directory=True)
     _plain(control / 'installation.lease')
     if (type(admission) is not dict
-            or set(admission) != {'protocol', 'pid', 'job', 'lease', 'program'}
+            or set(admission) != {'protocol', 'pid', 'job', 'lease', 'program', 'receipt'}
             or type(admission['protocol']) is not int or admission['protocol'] != 1
             or any(type(admission[key]) is not int or admission[key] <= 0
                    for key in ('pid', 'job', 'lease'))
@@ -128,6 +154,7 @@ def owner_lease(program, admission):
         expected = os.path.normcase(str((control / 'installation.lease').resolve(strict=True)))
         if not 0 < size < len(buffer) or actual != expected:
             raise ValueError('The guardian does not own this portable installation lease.')
+        _owner_receipt(control, program, admission)
         # Retaining this Job duplicate would defeat kill-on-owner-close.
         if not api.CloseHandle(job):
             raise OSError(ctypes.get_last_error(), 'Cannot release the temporary Job proof handle.')

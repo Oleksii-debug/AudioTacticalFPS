@@ -524,3 +524,58 @@ def test_legacy_adapter_cannot_claim_missing_previous_a_from_directory_existence
     assert transaction.recover() == 'rolled-back'
     assert (transaction.installed / 'version.txt').read_bytes() == b'A'
     assert_preserved(setup_update)
+
+
+@pytest.mark.parametrize('receipt_kind', ['current-owner', 'dead-owner', 'malformed', 'casefold'])
+def test_unclean_owner_veto_refuses_activation_before_backup_or_displacement(ready, receipt_kind):
+    helper, package, _manifest, calls, _original = ready
+    control = portable_entry.control_root(helper.program, create=True)
+    with leases.installation_lease(control):
+        receipt, _expected = portable_entry._record_owner(helper.program, control)
+    if receipt_kind == 'dead-owner':
+        value = json.loads(receipt.read_bytes())
+        value['owner_pid'] = 0  # No PID liveness guess may erase an uncertain owner.
+        receipt.write_bytes(json_bytes(value))
+    elif receipt_kind == 'malformed':
+        receipt.write_bytes(b'Incomplete owner evidence')
+    elif receipt_kind == 'casefold':
+        replacement = receipt.with_name(receipt.name.upper())
+        receipt.rename(replacement)
+        receipt = replacement
+    original_receipt = receipt.read_bytes()
+    # There is no surviving shared handle. That alone must not certify idle.
+    with leases.installation_lease(control, exclusive=True):
+        with pytest.raises(RuntimeError, match='did not confirm complete cleanup'):
+            portable_entry.require_clean_owners(helper.program)
+    with pytest.raises(RuntimeError, match='did not confirm complete cleanup'):
+        helper.apply(package)
+    assert receipt.read_bytes() == original_receipt
+    assert calls == []
+    assert not list(helper.work.glob('stage-*'))
+    assert not list(helper.work.glob('backup-*'))
+    assert not (helper.work / 'activation.json').exists()
+    assert_original(ready)
+
+
+def test_unclean_owner_veto_leaves_interrupted_update_and_reader_drafts_unchanged(ready, monkeypatch):
+    helper, package, _manifest, _calls, original = ready
+    _interrupt_update_write(helper, package, monkeypatch, 'new-active')
+    journal = helper.work / 'activation.json'
+    before = journal.read_bytes()
+    control = portable_entry.control_root(helper.program)
+    with leases.installation_lease(control):
+        receipt = portable_entry._record_owner(helper.program, control)
+    with pytest.raises(RuntimeError, match='did not confirm complete cleanup'):
+        helper.recover(package)
+    assert journal.read_bytes() == before
+    assert receipt[0].read_bytes() == receipt[1]
+    assert (helper.program / 'version.txt').read_bytes() == b'B'
+    assert helper.anchor.load().sequence == 1 and helper._completed is None
+    assert_preserved(original)
+    # This test owns the inert synthetic receipt. Product recovery never
+    # clears unknown/crashed owner evidence to make an activation proceed.
+    with leases.installation_lease(control):
+        portable_entry._clear_owner(receipt)
+    assert helper.recover(package) == 'rolled-back'
+    assert (helper.program / 'version.txt').read_bytes() == b'A'
+    assert_preserved(original)

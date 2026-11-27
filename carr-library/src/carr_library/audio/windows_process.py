@@ -9,6 +9,7 @@ from __future__ import annotations
 import ctypes
 from functools import lru_cache
 import subprocess
+import time
 from types import FunctionType, SimpleNamespace
 
 
@@ -82,6 +83,96 @@ class _Job:
             raise self.api.error()
         if previous != 1:
             raise OSError('The local worker initial thread did not resume from its owned suspended state.')
+
+    def stop_and_wait(self, process=None):
+        """Confirm exact member exit before a caller releases an idle lease.
+
+        This is separate from close(): the existing launcher and crash cleanup
+        keep their original semantics. A bounded failure does not certify idle.
+        The caller must retain an unclean-owner receipt before releasing its
+        lease after any failure or abrupt owner death.
+        """
+        if self.handle is None:
+            raise OSError('Owned Job cleanup has already released its handle.')
+        kernel = self.api.kernel
+        handle, dword, boolean = ctypes.c_void_p, ctypes.c_uint32, ctypes.c_int
+        for name, arguments, result in (
+                ('QueryInformationJobObject', (handle, ctypes.c_int, ctypes.c_void_p, dword, ctypes.c_void_p), boolean),
+                ('OpenProcess', (dword, boolean, dword), handle),
+                ('GetProcessId', (handle,), dword),
+                ('IsProcessInJob', (handle, handle, ctypes.POINTER(boolean)), boolean),
+                ('TerminateProcess', (handle, dword), boolean),
+                ('WaitForSingleObject', (handle, dword), dword)):
+            function = getattr(kernel, name)
+            function.argtypes, function.restype = arguments, result
+
+        class ProcessIds(ctypes.Structure):
+            _fields_ = [('assigned', dword), ('count', dword),
+                        ('identities', ctypes.c_size_t * 256)]
+
+        handles, owned = {}, []
+        deadline = time.monotonic() + 5
+
+        def members():
+            value = ProcessIds()
+            if not kernel.QueryInformationJobObject(
+                    self.handle, 3, ctypes.byref(value), ctypes.sizeof(value), None):
+                raise self.api.error()
+            if value.assigned > 256 or value.count > 256 or value.count < value.assigned:
+                raise OSError('The owned process tree exceeds its cleanup allowance.')
+            return tuple(value.identities[:value.count])
+
+        def status(value, milliseconds=0):
+            result = kernel.WaitForSingleObject(value, milliseconds)
+            if result not in (0, 258):
+                raise self.api.error()
+            return result
+
+        try:
+            if process is not None:
+                identity = kernel.GetProcessId(process)
+                if not identity:
+                    raise self.api.error()
+                # The caller retains this exact already-assigned Popen handle.
+                # It is borrowed, and must not be closed by this method.
+                handles[identity] = process
+            while True:
+                if time.monotonic() >= deadline:
+                    raise TimeoutError('Owned process cleanup exceeded its time allowance.')
+                for identity in members():
+                    if identity in handles:
+                        continue
+                    if len(handles) >= 256:
+                        raise OSError('The owned process tree exceeds its cleanup allowance.')
+                    value = kernel.OpenProcess(0x00100000 | 0x1000 | 0x0001, False, identity)
+                    if not value:
+                        if ctypes.get_last_error() == 87:
+                            continue
+                        raise self.api.error()
+                    owned.append(value)
+                    member = boolean()
+                    if not kernel.IsProcessInJob(value, self.handle, ctypes.byref(member)):
+                        raise self.api.error()
+                    if not member.value:
+                        raise OSError('Owned process identity changed during cleanup.')
+                    handles[identity] = value
+                for value in handles.values():
+                    if status(value) == 258 and not kernel.TerminateProcess(value, 1):
+                        if status(value) != 0:
+                            raise self.api.error()
+                for value in handles.values():
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0 or status(value, max(1, int(remaining * 1000))) != 0:
+                        raise TimeoutError('Owned process termination remains unconfirmed.')
+                if all(identity in handles and status(handles[identity]) == 0
+                       for identity in members()):
+                    return
+        finally:
+            closed = True
+            for value in owned:
+                closed = bool(kernel.CloseHandle(value)) and closed
+            if not closed:
+                raise OSError('An owned cleanup process handle could not be released.')
 
     def close(self):
         handle, self.handle = self.handle, None
