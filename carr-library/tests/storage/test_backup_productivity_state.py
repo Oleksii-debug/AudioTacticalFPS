@@ -38,8 +38,8 @@ def test_both_keymap_generations_and_uncommitted_evidence_roundtrip(tmp_path):
     folder = tmp_path / 'backup'
     digest = create_backup(app, folder)
     manifest = json.loads((folder / 'manifest.json').read_bytes())
-    assert manifest['version'] == 3
-    assert {row['filename'] for row in manifest['sidecars']} == set(names)
+    assert manifest['version'] == 5
+    assert {row['path'] for row in manifest['sidecars']} == set(names)
     restored = LibraryApp(restore_backup(folder, tmp_path / 'restored', digest))
     assert {name: (restored.root / name).read_bytes() for name in names} == original
     assert KeymapStore(restored.root / 'keyboard-shortcuts.json').load() == {'library.search': 'Ctrl+Shift+F'}

@@ -43,6 +43,7 @@ from .acquisition_dialog import show_acquisition_dialog
 from .assistant_dialog import install_assistant_actions
 from .portable_sync import install_portable_sync_actions
 from .language_matrix import install_language_actions
+from .translation_dialog import install_translation_actions
 
 
 def text_dialog(parent, title, label, value='', *, multiline=False):
@@ -495,7 +496,7 @@ class DesktopFrame(WorkspaceFrame):
         self.working = False
         self._closing = False
         super().__init__(None, library.list_scopes, self._bind)
-        self.SetTitle('Universal Research Library')
+        self.SetTitle('Resonance')
         self.SetMinSize((760, 650))
         self._menus()
         from .productivity import install_productivity_actions
@@ -571,6 +572,7 @@ class DesktopFrame(WorkspaceFrame):
         install_audio_studio_actions(self)
         install_language_actions(self)
         install_api_connection_actions(self)
+        install_translation_actions(self)
         install_assistant_actions(self)
         install_portable_sync_actions(self)
 
@@ -711,7 +713,11 @@ class DesktopFrame(WorkspaceFrame):
                 self._finish_job_controls()
                 try:
                     result = future.result()
-                    self.report(title + ': complete.')
+                    if done is not None and getattr(self, 'status', None) is not None:
+                        # The result callback owns its panel/reader focus.
+                        self.status.SetValue(title + ': complete.')
+                    else:
+                        self.report(title + ': complete.')
                     if done is not None:
                         done(result)
                 except Exception as exc:
@@ -1102,7 +1108,7 @@ class DesktopFrame(WorkspaceFrame):
             self.report(str(exc))
 
     def backup(self, event):
-        dialog = wx.DirDialog(self, 'Choose a parent folder for a backup of completed libraries; unfinished imports are excluded')
+        dialog = wx.DirDialog(self, 'Choose a parent folder for a backup of libraries and retained import jobs')
         try:
             if dialog.ShowModal() != wx.ID_OK:
                 return
@@ -1115,9 +1121,11 @@ class DesktopFrame(WorkspaceFrame):
             show_text(self, 'Backup complete', f'Backup folder: {destination}\n\n'
                 'All completed libraries, original files, saved evidence, notes, tags, searches, '
                 'reading positions, bookmarks and saved reading-copy projects are included. '
-                'Unfinished imports and their pending reviews are excluded.\n\n'
+                'Retained import jobs, required source snapshots and pending reviews are included. '
+                'External model packs and credentials require separate recovery; inspect the manifest.\n\n'
                 f'Keep this checksum separately; it is needed to verify a restore:\n{checksum}')
-        self.run_job('Backing up all libraries', lambda: self.library.backup(destination), done)
+        self.run_job('Backing up all libraries', lambda: self.library.backup(
+            destination, cancelled=self.cancel_event.is_set), done)
 
     def restore_backup(self, event):
         dialog = wx.DirDialog(self, 'Select the backup folder')
@@ -1147,7 +1155,8 @@ class DesktopFrame(WorkspaceFrame):
             else:
                 show_text(self,'Restore complete',f'Restored library folder: {path}\n\n'
                     'You can open it later through Library, Open existing library folder.')
-        self.run_job('Restoring backup', lambda: restore_backup(source, destination, expected_manifest_sha256=checksum.strip()),
+        self.run_job('Restoring backup', lambda: restore_backup(source, destination, expected_manifest_sha256=checksum.strip(),
+                cancelled=self.cancel_event.is_set),
             done)
 
     def check_installation(self, event):
@@ -1222,7 +1231,7 @@ class DesktopFrame(WorkspaceFrame):
             'DOCX and EPUB extraction remains unverified. Reading or bookmarking does not approve quotations.\n'
             'The Source menu records or withdraws an independent review of the selected PDF page.\n'
             'For quarantined OCR imports, use Library, Review pending imported page; each page needs explicit independent comparison.\n'
-            'Backups include completed libraries. Unfinished imports and pending reviews are excluded.\n'
+            'Backups include completed libraries, retained pending imports and their required inputs. Review restored jobs before resuming.\n'
             'Reading positions, bookmarks and reading-copy projects are included in complete library backups. '
             'The Reading menu also provides separate bookmark export and import.\n'
             'Printed pages are shown only when verified; otherwise physical PDF pages or unpaginated segments are identified.')

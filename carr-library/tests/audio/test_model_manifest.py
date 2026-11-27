@@ -93,6 +93,73 @@ def test_linked_asset_is_rejected(tmp_path):
         local_path(linked)
 
 
+def test_local_path_checks_each_component_with_one_lstat(tmp_path, monkeypatch):
+    from collections import Counter
+
+    asset = tmp_path / 'runtime' / 'package' / 'model.bin'
+    asset.parent.mkdir(parents=True)
+    asset.write_bytes(b'synthetic asset')
+    expected = asset.resolve()
+    calls = Counter()
+    original_lstat = Path.lstat
+
+    def counted_lstat(path, *args, **kwargs):
+        calls[path] += 1
+        return original_lstat(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, 'lstat', counted_lstat)
+    assert local_path(asset) == expected
+    assert calls == Counter({part: 1 for part in (asset, *asset.parents)})
+
+
+@pytest.mark.parametrize('component', ['asset', 'parent'])
+@pytest.mark.parametrize('kind', ['symlink', 'reparse'])
+def test_local_path_rejects_links_from_the_component_stat(tmp_path, monkeypatch, component, kind):
+    import stat
+    from types import SimpleNamespace
+
+    asset = tmp_path / 'runtime' / 'model.bin'
+    asset.parent.mkdir()
+    asset.write_bytes(b'synthetic asset')
+    selected = asset if component == 'asset' else asset.parent
+    original_lstat = Path.lstat
+
+    def linked_lstat(path, *args, **kwargs):
+        info = original_lstat(path, *args, **kwargs)
+        if path == selected:
+            return SimpleNamespace(
+                st_mode=stat.S_IFLNK if kind == 'symlink' else info.st_mode,
+                st_file_attributes=(0 if kind == 'symlink' else
+                                    getattr(stat, 'FILE_ATTRIBUTE_REPARSE_POINT', 0x400)),
+            )
+        return info
+
+    monkeypatch.setattr(Path, 'lstat', linked_lstat)
+    message = 'Linked paths' if kind == 'symlink' else 'Reparse points'
+    with pytest.raises(ModelManifestError, match=message):
+        local_path(asset)
+
+
+def test_local_path_still_requires_existence_after_component_checks(tmp_path, monkeypatch):
+    asset = tmp_path / 'model.bin'
+    asset.write_bytes(b'synthetic asset')
+    original_lstat = Path.lstat
+    removed = False
+
+    def remove_after_stat(path, *args, **kwargs):
+        nonlocal removed
+        info = original_lstat(path, *args, **kwargs)
+        if path == asset and not removed:
+            removed = True
+            asset.unlink()
+        return info
+
+    monkeypatch.setattr(Path, 'lstat', remove_after_stat)
+    with pytest.raises(FileNotFoundError):
+        local_path(asset)
+    assert removed
+
+
 def test_manifest_byte_budget_and_cancellation(tmp_path):
     model = LocalModelManifest.load(manifest(tmp_path))
     with pytest.raises(ModelManifestError, match='budget'):

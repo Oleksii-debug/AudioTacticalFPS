@@ -45,7 +45,8 @@ def _directory(path):
         info = item.lstat()
         if not stat.S_ISDIR(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400:
             raise OcrRuntimeError('OCR staging folders cannot be links or reparse points.')
-    return path
+    # Inspect links/reparse points before collapsing equivalent path spellings.
+    return path.resolve(strict=True)
 
 
 def _copy(source, target, limit, remaining, expected=None):
@@ -184,15 +185,20 @@ def prepare_ocr_query(runtime, argv):
 
 
 def _model_expectations(runtime, directory):
-    if isinstance(runtime, PackOcrRuntime):
-        if directory != Path(runtime.tessdata).absolute():
+    managed = getattr(runtime, 'managed', False)
+    pack = isinstance(runtime, PackOcrRuntime)
+    if not (pack or managed or runtime.portable):
+        return {}
+    if not directory.samefile(runtime.tessdata):
+        if pack:
             raise OcrRuntimeError('OCR staging requested a different selected verified model pack.')
-        # Reviewed external packs have their own verified byte identities.
-        # Their model folder is outside the base portable runtime inventory.
+        return {}
+    if pack:
+        # External packs retain their distinct reviewed content authority.
         return {code: digest for code, _, digest in runtime.pack.models}
-    if getattr(runtime, 'managed', False) and directory == Path(runtime.tessdata).absolute():
+    if managed:
         return dict(runtime.selection.model_sha256)
-    if runtime.portable and directory == Path(runtime.tessdata).absolute():
+    if runtime.portable:
         prefix = Path(runtime.tessdata).relative_to(runtime.root).as_posix() + '/'
         return {name[len(prefix):-len('.traineddata')]: value
                 for name, value in runtime.files_sha256

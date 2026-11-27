@@ -119,7 +119,11 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
             return item
 
     env['wx'].Menu = Menu
-    env['wx'].MenuBar = lambda: SimpleNamespace(Append=lambda menu, label: menus.update({label: menu}))
+    env['wx'].MenuBar = lambda: SimpleNamespace(
+        Append=lambda menu, label: menus.update({label: menu}),
+        GetMenuCount=lambda: len(menus),
+        GetMenu=lambda index: tuple(menus.values())[index],
+        GetMenuLabel=lambda index: tuple(menus)[index])
     env['wx'].Button = Mock(return_value=Mock())
     env['wx'].ID_ANY, env['wx'].ALL = -1, 1
     env['wx'].EVT_MENU, env['wx'].EVT_BUTTON = 'menu', 'button'
@@ -132,8 +136,10 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     env.update(installers)
     from carr_library.ui.audio_studio import install_audio_studio_actions
     from carr_library.ui.api_connections import install_api_connection_actions
+    from carr_library.ui.translation_dialog import install_translation_actions
     env.update(install_audio_studio_actions=install_audio_studio_actions,
-               install_api_connection_actions=install_api_connection_actions)
+               install_api_connection_actions=install_api_connection_actions,
+               install_translation_actions=install_translation_actions)
     monkeypatch.setitem(sys.modules, 'wx', env['wx'])
     ebook = Mock()
     monkeypatch.setitem(sys.modules, 'carr_library.ui.ebook_reader',
@@ -147,6 +153,9 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     assert len(mnemonics) == len(set(mnemonics))
     assert 'Open Audio Studio...\tCtrl+Alt+A' in labels
     assert 'AI and API &connections...' in labels
+    assert 'Translate selected te&xt...' in labels
+    assert any(spec.command_id == 'translation.text'
+               for spec, _ in value._pending_keyboard_commands)
     assert 'Academic library...\tCtrl+Shift+B' in labels
     assert 'DOI lookup and open-access sources...' in labels
     assert 'Document formats' in labels
@@ -268,7 +277,8 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
                 ('api_connections', 'install_api_connection_actions'),
                 ('assistant_dialog', 'install_assistant_actions'),
                 ('portable_sync', 'install_portable_sync_actions'),
-                ('language_matrix', 'install_language_actions')):
+                ('language_matrix', 'install_language_actions'),
+                ('translation_dialog', 'install_translation_actions')):
             if action_name in menu_globals:
                 module = importlib.import_module('carr_library.ui.' + module_name)
                 if hasattr(module, 'wx'):
@@ -300,6 +310,7 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
         assert 'File/Open saved reading copy' in bindings
         assert 'library.portable_snapshots' in keyboard.bindings
         assert 'audio.language_evidence' in keyboard.bindings
+        assert 'translation.text' in keyboard.bindings
         assert 'Options/Keyboard shortcuts' in bindings
         assert value.menu_bar.GetMenuLabel(0) == '&File'
         shortcuts = [shortcut.casefold() for shortcut in bindings.values() if shortcut]

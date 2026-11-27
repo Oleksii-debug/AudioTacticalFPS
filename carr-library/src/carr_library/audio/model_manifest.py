@@ -46,12 +46,14 @@ def local_path(path: Path | str, *, must_exist: bool = True) -> Path:
     except ValueError as exc:
         raise ModelManifestError(str(exc)) from exc
     for part in (path, *path.parents):
-        if part.is_symlink():
-            raise ModelManifestError('Linked paths are not accepted for local engine assets.')
         try:
-            attributes = getattr(part.lstat(), 'st_file_attributes', 0)
+            info = part.lstat()
         except FileNotFoundError:
             continue
+        # One non-following stat supplies both link checks for this component.
+        if stat.S_ISLNK(info.st_mode):
+            raise ModelManifestError('Linked paths are not accepted for local engine assets.')
+        attributes = getattr(info, 'st_file_attributes', 0)
         if attributes & getattr(stat, 'FILE_ATTRIBUTE_REPARSE_POINT', 0x400):
             raise ModelManifestError('Reparse points are not accepted for local engine assets.')
     if must_exist and not path.exists():

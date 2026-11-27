@@ -90,7 +90,7 @@ def combined(tmp_path, request):
     return app, root, page, bookmark, reading, reading_draft
 
 
-def test_one_v4_snapshot_preserves_reader_editor_and_canonical_studio(combined, tmp_path):
+def test_one_v5_snapshot_preserves_reader_editor_and_canonical_studio(combined, tmp_path):
     app, root, page, bookmark, reading, reading_draft = combined
     for name in ('models/private.bin', 'profiles/account.json', 'cache/quarantine/private.wav',
                  '.work-unsafe/private.wav', 'unrelated.txt'):
@@ -100,7 +100,7 @@ def test_one_v4_snapshot_preserves_reader_editor_and_canonical_studio(combined, 
     backup = tmp_path / 'backup'
     digest = create_backup(app, backup)
     manifest = json.loads((backup / 'manifest.json').read_bytes())
-    assert manifest['version'] == 4
+    assert manifest['version'] == 5
     entries = manifest['sidecars']
     names = {entry['path'] for entry in entries}
     assert {'reading-state.json', 'keybindings.json', 'ocr-language-presets.json',

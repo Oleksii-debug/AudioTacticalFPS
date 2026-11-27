@@ -52,6 +52,11 @@ jobs:
           python-version: '3.11'
           architecture: x64
 
+      - name: Compile the exact source and regression entrypoints
+        run: |
+          python -m compileall -q src tests scripts packaging
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Install the actual desktop package in a fresh environment
         run: |
           $environment = Join-Path $env:RUNNER_TEMP 'carr-windows-python'
@@ -166,13 +171,15 @@ jobs:
           $audioBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Run required integrated source workflows
-        timeout-minutes: 25
+        timeout-minutes: 30
         run: |
-          # Bind actual OCR regressions to the already verified engine/models.
-          # This environment applies only to the test step and its children.
-          $env:PATH = "$env:CARR_CI_OCR_DIR;$env:PATH"
+          # These real-engine source tests must discover the exact prepared
+          # runtime. Restrict the override to this source-test process.
+          $env:PATH = $env:CARR_CI_OCR_DIR + [IO.Path]::PathSeparator + $env:PATH
           $env:CARR_OCR_DIR = $env:CARR_CI_OCR_DIR
           $env:TESSDATA_PREFIX = Join-Path $env:CARR_CI_OCR_DIR 'tessdata'
+          & $env:CARR_PYTHON -I -B -c "import os,pathlib; from carr_library.extract.ocr_runtime import verify_ocr_bundle; runtime=verify_ocr_bundle(pathlib.Path(os.environ['CARR_CI_OCR_DIR'])); runtime.require_languages('eng+ukr+slk',orientation=True); print('Verified prepared OCR runtime admitted for strict native source cases.')"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $suites = @(
             'tests/assistant',
             'tests/audio/test_audio_runtime.py',
@@ -183,7 +190,6 @@ jobs:
             'tests/audio/test_audio_signal_measurements.py',
             'tests/audio/test_narration_plan.py',
             'tests/audio/test_windows_fsync.py',
-            'tests/audio/test_windows_process.py',
             'tests/e2e/test_provider_transport_contract.py',
             'tests/audio/test_audio_publication.py',
             'tests/audio/test_managed_projects.py',
@@ -241,7 +247,6 @@ jobs:
             'tests/extract/test_clipping_visibility.py',
             'tests/extract/test_ocr_model_catalog.py',
             'tests/storage/test_library_backup.py',
-            'tests/assistant/test_backup_receipt.py',
             'tests/storage/test_library_backup_reading_state.py',
             'tests/storage/test_backup_boundary.py',
             'tests/storage/test_backup_recovery_and_verify.py',
@@ -255,6 +260,7 @@ jobs:
             'tests/research/test_csl_author_boundaries.py',
             'tests/citations/test_csl.py',
             'tests/citations/test_custom_csl.py',
+            'tests/citations/test_documents.py',
             'tests/citations/test_bibliography_workbench.py',
             'tests/citations/test_custom_workbench.py',
             'tests/e2e/test_academic_workflow.py',
@@ -286,7 +292,6 @@ jobs:
             'tests/reader/test_topic_literature_matrix.py',
             'tests/reader/test_outline_export.py',
             'tests/catalog/test_ris_apply.py',
-            'tests/catalog/test_ris_apply_v4.py',
             'tests/catalog/test_quality.py',
             'tests/ui/test_academic_tools.py',
             'tests/ui/test_literature_matrix.py',
@@ -367,11 +372,37 @@ jobs:
             'tests/packaging/test_delivery_archive.py',
             'tests/audio/test_audio_backup.py',
             'tests/storage/test_backup_unified_audio.py',
-            'tests/extract/test_ocr_packs.py',
-            'tests/extract/test_ocr_pack_path_binding.py',
+            'tests/citations/test_csl_contexts.py',
+            'tests/ui/test_citation_styles_jobs.py',
+            'tests/reader/test_export_no_clobber.py',
+            'tests/reader/test_export_publication_boundary.py',
+            'tests/storage/test_pending_backup.py',
+            'tests/storage/test_complete_pending_backup.py',
+            'tests/storage/test_backup_pending_integration.py',
+            'tests/storage/test_pending_backup_ocr.py',
             'tests/language_qualification',
+            'tests/test_delivery_contract.py',
+            'tests/e2e/test_google_translation_gateway.py',
+            'tests/ui/test_translation_dialog.py',
+            'tests/audio/test_windows_process.py',
+            'tests/assistant/test_backup_receipt.py',
+            'tests/catalog/test_ris_apply_v4.py',
+            'tests/extract/test_ocr_packs.py',
+            'tests/extract/test_ocr_pack_path_binding.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise actual native citations and destination confirmation
+        timeout-minutes: 4
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_citation_styles_smoke.py 2>&1 | Tee-Object 'ci-results/citation-styles-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise installed native translation approval and immutable derivatives
+        timeout-minutes: 4
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_translation_smoke.py --output ci-results/translation-native.json 2>&1 | Tee-Object 'ci-results/translation-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise installed language evidence and explicit native voice refresh
@@ -589,6 +620,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path scripts/windows_academic_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-academic-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/windows_citation_styles_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-citation-styles.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/windows_translation_smoke.py --output ci-results/full-bundle-translation-native.json 2>&1 | Tee-Object 'ci-results/full-bundle-translation-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_language_matrix_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-language-matrix.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B tests/audio/native_playback_probe.py 2>&1 | Tee-Object 'ci-results/full-bundle-native-playback.txt'
@@ -643,39 +678,63 @@ jobs:
           import pytest
           # Keep the shared workflow list intact while exercising the additive
           # contents reader in this same installed-package/native-runtime process.
-          contents_suites = ['tests/reader/test_ebook_contents.py',
-                            'tests/e2e/test_epub_library.py', 'tests/e2e/test_epub_reading_desk.py',
-                            'tests/reader/test_narration.py', 'tests/ui/test_narration_editor.py',
-                            'tests/ui/test_productivity.py', 'tests/storage/test_backup_reading_state.py',
-                            'tests/storage/test_backup_source_binding_review.py',
-                            'tests/extract/test_ocr_languages.py', 'tests/ui/test_ocr_language_dialog.py',
-                            'tests/extract/test_ocr_model_catalog.py', 'tests/extract/test_ocr_model_cli.py',
-                            'tests/extract/test_ocr_model_store.py', 'tests/extract/test_managed_ocr.py',
-                            'tests/e2e/test_managed_ocr_import.py',
-                            'tests/ui/test_ocr_selection.py', 'tests/ui/test_ocr_model_manager.py',
-                            'tests/acquisition/test_providers.py',
-                            'tests/acquisition/test_acquisition_security.py',
-                            'tests/acquisition/test_acquisition_workflow.py',
-                            'tests/acquisition/test_acquisition_cli.py',
-                            'tests/ui/test_native_acquisition.py',
-                            'tests/extract/test_ocr_packs.py',
-                            'tests/extract/test_ocr_pack_path_binding.py',
-                            'tests/audio/test_audio_backup.py',
-                            'tests/audio/test_managed_projects.py',
-                            'tests/audio/test_audio_signal_measurements.py',
-                            'tests/audio/test_windows_process.py',
-                            'tests/audio/test_subprocess_environment.py',
-                            'tests/ingest/test_import_metadata_shape.py',
-                            'tests/ingest/test_terminal_replay_registration.py',
-                            'tests/ingest/test_txt_replay_registration.py',
-                            'tests/storage/test_backup_unified_audio.py',
-                            'tests/storage/test_library_backup.py',
-                            'tests/assistant/test_backup_receipt.py',
-                            'tests/catalog/test_ris_apply_v4.py',
-                            'tests/ui/test_academic_tools.py',
-                            'tests/extract/test_ocr_model_cli.py',
-                            'tests/extract/test_managed_ocr.py',
-                            ]
+          contents_suites = [
+              'tests/reader/test_ebook_contents.py',
+              'tests/e2e/test_epub_library.py',
+              'tests/e2e/test_epub_reading_desk.py',
+              'tests/reader/test_narration.py',
+              'tests/ui/test_narration_editor.py',
+              'tests/ui/test_productivity.py',
+              'tests/storage/test_backup_reading_state.py',
+              'tests/storage/test_backup_source_binding_review.py',
+              'tests/extract/test_ocr_languages.py',
+              'tests/ui/test_ocr_language_dialog.py',
+              'tests/extract/test_ocr_model_catalog.py',
+              'tests/extract/test_ocr_model_cli.py',
+              'tests/extract/test_ocr_model_store.py',
+              'tests/extract/test_managed_ocr.py',
+              'tests/e2e/test_managed_ocr_import.py',
+              'tests/ui/test_ocr_selection.py',
+              'tests/ui/test_ocr_model_manager.py',
+              'tests/acquisition/test_providers.py',
+              'tests/acquisition/test_acquisition_security.py',
+              'tests/acquisition/test_acquisition_workflow.py',
+              'tests/acquisition/test_acquisition_cli.py',
+              'tests/ui/test_native_acquisition.py',
+              'tests/extract/test_ocr_packs.py',
+              'tests/audio/test_audio_backup.py',
+              'tests/audio/test_managed_projects.py',
+              'tests/audio/test_audio_signal_measurements.py',
+              'tests/storage/test_backup_unified_audio.py',
+              'tests/citations/test_csl.py',
+              'tests/citations/test_custom_csl.py',
+              'tests/citations/test_documents.py',
+              'tests/citations/test_bibliography_workbench.py',
+              'tests/citations/test_custom_workbench.py',
+              'tests/citations/test_csl_contexts.py',
+              'tests/ui/test_citation_styles_jobs.py',
+              'tests/reader/test_export_no_clobber.py',
+              'tests/reader/test_export_publication_boundary.py',
+              'tests/storage/test_pending_backup.py',
+              'tests/storage/test_complete_pending_backup.py',
+              'tests/storage/test_backup_pending_integration.py',
+              'tests/storage/test_pending_backup_ocr.py',
+              'tests/assistant/test_local_llm.py',
+              'tests/assistant/test_translation.py',
+              'tests/e2e/test_google_translation_gateway.py',
+              'tests/ui/test_translation_dialog.py',
+              'tests/test_delivery_contract.py',
+              'tests/extract/test_ocr_pack_path_binding.py',
+              'tests/audio/test_windows_process.py',
+              'tests/audio/test_subprocess_environment.py',
+              'tests/ingest/test_import_metadata_shape.py',
+              'tests/ingest/test_terminal_replay_registration.py',
+              'tests/ingest/test_txt_replay_registration.py',
+              'tests/storage/test_library_backup.py',
+              'tests/assistant/test_backup_receipt.py',
+              'tests/catalog/test_ris_apply_v4.py',
+              'tests/ui/test_academic_tools.py',
+          ]
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:
               raise SystemExit(status)
@@ -695,7 +754,7 @@ jobs:
           '@
           $runInstalledTests | & $python -I -B - $bundle -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-results/full-bundle-workflows.xml tests/e2e/test_semantic_runtime.py tests/e2e/test_import_worker.py tests/e2e/test_import_batches_ocr.py tests/e2e/test_notebook_research_workflow.py tests/e2e/test_epub_import.py tests/e2e/test_extended_document_workflows.py tests/reader/test_ebook_reader.py tests/e2e/test_catalog_insights_workflow.py tests/e2e/test_academic_workflows.py tests/e2e/test_academic_workflow.py tests/e2e/test_academic_document_export.py tests/e2e/test_result_presentation.py tests/e2e/test_advanced_research_search.py tests/search/test_advanced_search.py 2>&1 | Tee-Object 'ci-results/full-bundle-workflows.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $python -I -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-results/full-bundle-workflows.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); passed=len(cases)-failed-skipped; required={'test_real_selected_bytes_execute_even_with_wrong_base_directory_and_environment','test_real_list_languages_uses_managed_model_directory','test_real_pdf_managed_profile_preserves_review_boundary_and_exact_provenance','test_real_managed_batch_quarantines_reopens_reviews_and_resumes_without_source_changes','test_tampered_managed_model_blocks_reviewed_resume_without_publication','test_actual_semantic_snapshot_survives_concurrent_membership_revocation','test_actual_multilingual_ranker_and_complete_token_coverage','test_actual_application_semantic_scope_and_original_quotes','test_scanned_pdf_requires_explicit_review_for_each_exact_page_before_publication','test_reviewed_import_rejects_changed_approval_without_publishing','test_quarantined_batch_waits_for_explicit_review_and_refreshes_external_completion','test_notebook_search_fresh_navigation_and_backup_restore','test_academic_reference_roundtrip_preserves_source_evidence','test_academic_import_is_atomic_and_exports_preserve_metadata'} | {'test_long_ascii_source_search_copy_and_context_use_exact_tail['+mode+'-'+retrieval+']' for mode in ('short','thematic') for retrieval in ('thematic','semantic')} | {'test_application_exports_the_selected_topic_with_readable_title['+format+']' for format in ('docx','html')}; assert required<={c.get('name') for c in cases} and failed==skipped==0; print(json.dumps(dict(status='PASS',passed=passed,failed=failed,skipped=skipped,semantic_inference='PASS',scanned_source_workflow='PASS',import_batch_review='PASS',academic_workflow='PASS',notebook_research='PASS',large_source_presentation='PASS',academic_documents='PASS',nvda='NOT_RUN')))" | Tee-Object 'ci-results/full-bundle-workflows.json'
+          & $python -I -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-results/full-bundle-workflows.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); passed=len(cases)-failed-skipped; required={'test_valid_unicode_metadata_is_stored_by_real_import[list]','test_valid_unicode_metadata_is_stored_by_real_import[tuple]','test_real_selected_bytes_execute_even_with_wrong_base_directory_and_environment','test_real_list_languages_uses_managed_model_directory','test_real_pdf_managed_profile_preserves_review_boundary_and_exact_provenance','test_real_managed_batch_quarantines_reopens_reviews_and_resumes_without_source_changes','test_tampered_managed_model_blocks_reviewed_resume_without_publication','test_actual_semantic_snapshot_survives_concurrent_membership_revocation','test_actual_multilingual_ranker_and_complete_token_coverage','test_actual_application_semantic_scope_and_original_quotes','test_scanned_pdf_requires_explicit_review_for_each_exact_page_before_publication','test_reviewed_import_rejects_changed_approval_without_publishing','test_quarantined_batch_waits_for_explicit_review_and_refreshes_external_completion','test_notebook_search_fresh_navigation_and_backup_restore','test_academic_reference_roundtrip_preserves_source_evidence','test_academic_import_is_atomic_and_exports_preserve_metadata'} | {'test_long_ascii_source_search_copy_and_context_use_exact_tail['+mode+'-'+retrieval+']' for mode in ('short','thematic') for retrieval in ('thematic','semantic')} | {'test_application_exports_the_selected_topic_with_readable_title['+format+']' for format in ('docx','html')}; assert required<={c.get('name') for c in cases} and failed==skipped==0; print(json.dumps(dict(status='PASS',passed=passed,failed=failed,skipped=skipped,semantic_inference='PASS',scanned_source_workflow='PASS',import_batch_review='PASS',academic_workflow='PASS',notebook_research='PASS',large_source_presentation='PASS',academic_documents='PASS',nvda='NOT_RUN')))" | Tee-Object 'ci-results/full-bundle-workflows.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & (Join-Path $bundle 'runtime/python.exe') -I -B -c "import importlib.util,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); print('PASS: sealed bundle unchanged after native inference and OCR workflows')" $bundle
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

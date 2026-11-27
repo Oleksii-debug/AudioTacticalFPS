@@ -9,6 +9,7 @@ from carr_library.application import LibraryApp
 from carr_library.evidence_drafts import EvidenceDrafts
 from carr_library.keyboard_preferences import KeymapStore
 from carr_library.library_backup import create_backup, restore_backup, verify_backup
+from .backup_compat_fixture import historical_backup
 from carr_library.reader.narration import NarrationStore, new_project, revise
 from carr_library.reader.reading_desk import ReadingDesk
 from carr_library.reader.reading_state import ReadingState
@@ -32,16 +33,17 @@ def recovery_library(tmp_path):
     return app, workspace, topic, evidence, draft
 
 
-@pytest.mark.parametrize('extended', [False, True], ids=['current-v3', 'compatible-v4'])
-def test_recovery_notes_and_keymap_keep_exact_bindings(recovery_library, tmp_path, extended):
+@pytest.mark.parametrize('historical', [None, 3, 4], ids=['current-v5', 'compatible-v3', 'compatible-v4'])
+def test_recovery_notes_and_keymap_keep_exact_bindings(recovery_library, tmp_path, historical):
     app, workspace, topic, evidence, draft = recovery_library
     expected = {name: (app.root / name).read_bytes()
                 for name in ('evidence-drafts.json', 'keyboard-shortcuts.json', 'reading-state.json')}
     backup = tmp_path / 'backup'
     digest = create_backup(app, backup)
-    if extended:
-        # The earlier registered-state layout used version 4. Keep that exact
-        # format readable while current reader/preferences-only backups use v3.
+    if historical is not None:
+        digest = historical_backup(backup)
+    if historical == 4:
+        # Preserve the earlier path/sidecars shape as an explicit fixture.
         manifest_path = backup / 'manifest.json'
         manifest = json.loads(manifest_path.read_bytes())
         (backup / 'sidecars').mkdir()
@@ -53,8 +55,8 @@ def test_recovery_notes_and_keymap_keep_exact_bindings(recovery_library, tmp_pat
         manifest_path.write_text(json.dumps(manifest), encoding='utf-8')
         digest = sha256(manifest_path.read_bytes()).hexdigest()
     manifest = verify_backup(backup, digest)
-    assert manifest['version'] == (4 if extended else 3)
-    field = 'path' if extended else 'filename'
+    assert manifest['version'] == (historical or 5)
+    field = 'filename' if historical == 3 else 'path'
     assert {entry[field] for entry in manifest['sidecars']} == set(expected)
     restored = restore_backup(backup, tmp_path / 'restored', digest)
     assert {name: (restored / name).read_bytes() for name in expected} == expected
@@ -99,14 +101,14 @@ def test_resigned_or_corrupt_registered_state_cannot_be_verified(recovery_librar
     app, *_ = recovery_library
     backup = tmp_path / 'backup'
     digest = create_backup(app, backup)
-    path = backup / name
+    path = backup / 'sidecars' / name
     path.write_bytes(b'x' * path.stat().st_size)
     with pytest.raises(ValueError):
         verify_backup(backup, digest)
     # A new outer hash cannot turn invalid state syntax into valid recovery.
     manifest_path = backup / 'manifest.json'
     manifest = json.loads(manifest_path.read_bytes())
-    entry = next(item for item in manifest['sidecars'] if item['filename'] == name)
+    entry = next(item for item in manifest['sidecars'] if item['path'] == name)
     entry['sha256'] = sha256(path.read_bytes()).hexdigest()
     manifest_path.write_text(json.dumps(manifest), encoding='utf-8')
     with pytest.raises(ValueError):
@@ -122,6 +124,7 @@ def test_verify_preserves_supported_old_formats(tmp_path, version):
         ReadingState(app.root).remember(ReadingDesk(app, workspace, book['edition']).page(1).location)
     backup = tmp_path / 'backup'
     create_backup(app, backup)
+    historical_backup(backup)
     manifest_path = backup / 'manifest.json'
     manifest = json.loads(manifest_path.read_bytes())
     manifest['version'] = version
