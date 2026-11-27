@@ -101,7 +101,7 @@ def validate_arguments(step):
         raise ValueError('An allowed typed interactive command is required.')
     value = step.arguments
     action = value.get('action')
-    if (step.tool, action) not in _EFFECTS:
+    if type(action) is not str or (step.tool, action) not in _EFFECTS:
         raise ValueError('The selected native reader/player action is not supported.')
     expected = {'target', 'action'}
     if step.tool == 'reader.control':
@@ -203,6 +203,7 @@ def validate_result(step, result, scope_dict, intent):
             raise ValueError('Playback start/resume was not actually observed.')
     if step.tool == 'player.control' and action == 'pause' and (playback is None or playback['state'] != 'paused'):
         raise ValueError('The selected player did not reach its paused state.')
-    if step.tool == 'player.control' and action == 'seek' and playback is None:
+    if step.tool == 'player.control' and action == 'seek' and (playback is None or
+            abs(playback['position_frames'] / playback['sample_rate'] - args['seconds']) > .25):
         raise ValueError('The selected native player did not report its sought position.')
     return result

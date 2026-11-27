@@ -46,6 +46,7 @@ class NativeReaderBridge:
     def _current(self):
         if (self.closed or getattr(self.frame, '_closing', False) or self.frame.library is not self.library
                 or self.reader.closed or self.reader.close_pending or self.reader.destroyed
+                or self.reader._assistant_session_id != self.session_id
                 or Path(self.library.root).absolute() != self.root or self.reader.root != self.root):
             raise ValueError('The selected native reader is closed or its library owner changed.')
         info = self.root.stat()

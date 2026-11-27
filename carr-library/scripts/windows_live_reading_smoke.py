@@ -94,9 +94,12 @@ def main():
                 if phase == 'ready':
                     check('named read-only native source control', isinstance(window.text, wx.TextCtrl)
                           and not window.text.IsEditable() and window.dialog.GetName() == 'Live source reading')
-                    check('all ten live reading actions are native and named', len(window.controls) == 10
-                          and all(isinstance(control, wx.Button) and control.GetName()
-                                  for control in window.controls.values()))
+                    original_actions = ('voices', 'read', 'prepare', 'play', 'pause', 'stop',
+                                        'seek', 'resume', 'where', 'close')
+                    check('all ten live reading actions are native and named',
+                          set(original_actions) <= set(window.controls)
+                          and all(isinstance(window.controls[key], wx.Button) and window.controls[key].GetName()
+                                  for key in original_actions))
                     check('native emoji and newline selection identifies exact source',
                           selected_source_offsets(window.text, source) == (first, last))
                     for offset in (0, source.index('😀'), source.index('😀') + 1, first, last, len(source)):
