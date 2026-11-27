@@ -12,10 +12,12 @@ unchanged until a verified migration; visible application titles use Resonance.
 | Area | Implemented behavior | Evidence and limits |
 | --- | --- | --- |
 | Library and OCR | Scoped originals, exact quotations, academic references, managed Fast/Best OCR profiles and installed model selection | Actual SQLite and OCR tests; native installed OCR manager runs on Windows |
+| Research search | Explicit Boolean/NEAR query mode, keyboard query builder, scoped multi-library search and retained reading positions | Bounded source-authenticated queries and backup round trips; results preserve exact source passages |
 | Reading and voices | Source-preserving reading derivatives, pronunciation edits, local voice discovery, playback and SAPI5 native COM worker | Real Windows SAPI PCM with outbound network blocked; local Flite rendering; other engine assets require separate qualification |
 | Audio studio | Roles, scenes, explicit voice/position, pauses, procedural score, DSP, chapters, stems, subtitles, verified resume/cache and formats | Real FFmpeg production and Windows restart; 1/3/10-hour streaming fixtures are not equivalent to full-length neural inference |
-| Documents and citations | Isolated bounded conversion, local citeproc-js styles/locales, editable DOCX with citation provenance, opt-in DOI previews | Actual local processor, generated documents and integrity tests; no live Word add-in |
-| Recovery | Manifest-bound backup v4 includes pending import bytes, identities, settings and project state | Real backup/restore and resumed import tests; externally exported audio and OS credential secrets are separate |
+| Documents and citations | Isolated bounded conversion, reviewed BibTeX/RIS/CSL import, local citeproc-js styles/locales, editable DOCX with citation provenance, destination approval and opt-in DOI previews | Actual local processor, generated documents, parser limits and integrity tests; no live Word add-in |
+| Recovery | Manifest-bound backup v5 includes pending import bytes, identities, settings, project state and reading positions; older supported backups remain readable | Real backup/restore and resumed import tests; exact publication reconciliation preserves completed imports after late cancellation; externally exported audio and OS credential secrets are separate |
+| Transcription | One existing job service for supplied-worker profiles, retained audio/video files or folders, cancellation/resume, verified results, editable derivatives and text/subtitle export | Synthetic child-process and native control checks; private V5 wrapper interoperability uses a controlled backend and does not qualify neural inference or recording quality |
 | Keyboard and progress | Configurable menu keys, named native controls, measured or indeterminate progress, optional tones and explicitly selected local-voice notices in English/Ukrainian/Slovak; playback/recording quieting and settings backup | Actual Windows key injection and progress/result regressions; human NVDA and listening review remain required; the recording quiet contract does not implement microphone capture |
 | Language inventory | Exact canonical 135 entries, source audit and searchable capability matrix | Resource inventory is separate from acoustic qualification; no claim of 135 working voices |
 | Assistant and providers | Typed scoped tools, durable jobs, local-only default, protected credential references and per-request consent/budget | Local and synthetic provider tests; no paid provider call was made during implementation |
@@ -42,17 +44,27 @@ The following cannot be labelled DONE by passing the current core tests:
 - Actual installed dordiai/SAPI4 compatibility, MusicGen/ACE-Step model inference,
   the remaining approved Balabolka-equivalent workflow checklist and synchronized
   publishing/Braille workflows.
+- Professional microphone capture, real-time monitoring and complete accessible
+  multitrack/clip editing. The existing offline scene renderer, microphone track
+  role and recording-quiet policy do not implement these device workflows.
+- Actual local-model planning through the existing validated plan adapter, and
+  the qualified local/Google Advanced translation paths. Guided commands,
+  synthetic transports and a configured local server are separate evidence from
+  executed model inference and language quality.
 - Independent qualification of every required capability for the canonical 135
   entries; registry/resource counts never establish language quality.
 - Human Windows 11/NVDA and listening review. Automated Windows Server native
   execution is useful evidence, but does not substitute for that review.
 
-The supplied Whisper Transcribe V4.3 implementation has been received and
-statically reviewed; transcription is part of the approved platform scope.
-The current library/audio preview leaves its integration, real execution and
-qualification pending. The existing worker must be corrected and adapted through
-shared jobs and an isolated reviewed engine pack; no competing ASR stack or
-unverified runtime is bundled. See [the source review](TRANSCRIPTION_INTEGRATION_REVIEW.md).
+The supplied Whisper projects, including the owner's corrected V5 worker, have
+been reviewed against the application's existing transcription service. Each
+supported protocol has an explicit profile; configuring one does not make other
+worker versions compatible. Original media, result receipts and edits stay in the
+shared library lifecycle, while private worker/runtime/model files remain local
+external dependencies. Actual neural inference, mixed-language quality and human
+Windows 11/NVDA use still require separate qualification. See
+[transcription](TRANSCRIPTION.md) and the historical
+[source review](TRANSCRIPTION_INTEGRATION_REVIEW.md).
 
 The private build retains local operation and access to user-owned data. Private delivery does not waive dependency rights, notices or source obligations.
 This work does not authorize external distribution, pricing, billing, a public site,
