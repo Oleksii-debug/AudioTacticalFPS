@@ -13,6 +13,11 @@ import stat
 from tempfile import NamedTemporaryFile
 
 
+# Preserve the integrated desktop policy: inspect at most the largest research
+# matrix export before asking the user to replace an existing destination.
+MAX_DESTINATION_BYTES = 64 * 1024 * 1024
+
+
 def _filename(name):
     # Validate the basename even when checks run on Linux: NTFS streams and
     # device aliases must not become a different destination on Windows.
@@ -86,6 +91,8 @@ def _destination(path, private_root, check_cancelled=lambda: None):
     target, parent_identity, state = snapshot
     if state is None:
         return snapshot
+    if state[3] > MAX_DESTINATION_BYTES:
+        raise ValueError('The existing export exceeds the 64 MiB verification budget; choose a new filename.')
 
     check_cancelled()
     # Guard before opening, then bind the descriptor before reading any bytes.
@@ -100,9 +107,9 @@ def _destination(path, private_root, check_cancelled=lambda: None):
             if (_file_state(opened) != state
                     or _inspect_destination(path, private_root) != snapshot):
                 raise ValueError('The export destination changed. Choose the destination again.')
-            # There is no global export-file size cap. Read the complete
-            # captured length with constant memory and one extra byte solely
-            # to detect growth; never accept a sampled or truncated digest.
+            # Read the complete captured length with constant memory and one
+            # extra byte solely to detect growth; never accept a sampled or
+            # truncated digest.
             digest, remaining = sha256(), opened.st_size
             while remaining:
                 check_cancelled()
@@ -133,6 +140,10 @@ class ExportDestination:
     state: tuple | None
 
     @property
+    def content_sha256(self):
+        return self.state[-1] if self.state is not None else None
+
+    @property
     def require_absent(self):
         return self.state is None
 
@@ -147,17 +158,26 @@ def _export_paths(path, private_root):
     return requested, Path(private_root).absolute()
 
 
-def capture_export_destination(path, *, private_root):
+def capture_export_destination(path, *, private_root, cancelled=lambda: False):
     """Inspect a chosen path before asking to replace its existing file.
 
     Pass this same immutable snapshot to the writer after confirmation. It
     binds approval to the selected path, parent directory and complete existing
     file contents across queued work and rendering; it grants no permission
-    itself. Existing files are streamed in full with constant-memory reads,
-    bounded to their captured size; this is not a fixed-time operation.
+    itself. Existing destinations up to 64 MiB are streamed in full with
+    constant-memory reads, bounded to their captured size. Larger files require
+    a new destination; cancellation is checked between read blocks.
     """
+    if not callable(cancelled):
+        raise ValueError('An export cancellation callback is required.')
+
+    def check_cancelled():
+        if cancelled():
+            raise TimeoutError('Export cancelled; the destination was not changed.')
+
+    check_cancelled()
     requested, private = _export_paths(path, private_root)
-    target, parent_identity, state = _destination(requested, private)
+    target, parent_identity, state = _destination(requested, private, check_cancelled)
     return ExportDestination(requested, private, target, parent_identity, state)
 
 
