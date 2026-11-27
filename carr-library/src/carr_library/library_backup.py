@@ -54,6 +54,10 @@ from .reader.reading_state import (
     FILENAME as READING_STATE, MAX_BYTES as MAX_READING_STATE, ReadingState,
     ReadingLocation, _decode as _decode_reading_state, _file_identity,
 )
+from .reader.live_speech import (
+    FILENAME as LIVE_READING_STATE, MAX_STATE_BYTES as MAX_LIVE_READING_STATE,
+    decode_positions as decode_speech_positions, saved_locations as saved_speech_locations,
+)
 from .reader.narration import (
     DIRECTORY as NARRATION_DIRECTORY, MAX_PROJECT_BYTES, MAX_PROJECTS,
     MAX_SNAPSHOT_BYTES as MAX_NARRATION_BYTES,
@@ -98,6 +102,7 @@ MAX_SIDECAR_JSON_BYTES = 64 * 1024**2
 MAX_AUDIO_PROJECTS = 1000
 _PROJECT_ID = re.compile(r'[0-9a-f]{32}')
 _SIMPLE_SIDECARS = {
+    LIVE_READING_STATE: (MAX_LIVE_READING_STATE, decode_speech_positions),
     KEYBINDINGS: (MAX_KEYBINDINGS, decode_preferences),
     'keyboard-shortcuts.json': (MAX_KEYMAP_BYTES, validate_keymap),
     EVIDENCE_DRAFTS: (MAX_EVIDENCE_DRAFTS, validate_evidence_drafts),
@@ -192,6 +197,8 @@ def _validate_readers(db, sidecars, *, cancelled=lambda: False):
                 positions, bookmarks, _ = _decode_reading_state(raw.decode('utf-8'))
                 locations = {row[0] for row in positions.values()} | {
                     bookmark.location for bookmark in bookmarks.values()}
+            elif name == LIVE_READING_STATE:
+                locations = set(saved_speech_locations(raw))
             elif name in _SIMPLE_SIDECARS:
                 _SIMPLE_SIDECARS[name][1](raw)
                 locations = set()
