@@ -1,0 +1,68 @@
+name: CARR pending import common4 acceptance
+on:
+  push:
+    branches: [carr/pending-common4-411a-20261127]
+    paths:
+      - carr-library/**
+      - .github/workflows/carr-pending-common4.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: carr-pending-common4-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  reconciled-source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install the source package and required synthetic-test dependencies
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          mkdir -p ci-pending-results
+          git rev-parse HEAD 'HEAD^{tree}' | tee ci-pending-results/source-identity.txt
+          python -m pip install '.[test]'
+          python -m pip check
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng
+      - name: Require real pending producer and common-format recovery
+        timeout-minutes: 8
+        run: |
+          set -euo pipefail
+          python -m compileall -q src bootstrap
+          python scripts/ci_check.py --jobs 3 \
+            tests/storage/test_backup_pending_common4.py \
+            tests/storage/test_pending_backup.py \
+            tests/storage/test_backup_v4_sidecars.py \
+            tests/storage/test_library_backup.py \
+            tests/storage/test_library_backup_reading_state.py \
+            tests/storage/test_v3_state_backup.py \
+            tests/storage/test_backup_generated_audio.py \
+            tests/storage/test_backup_translation.py 2>&1 | tee ci-pending-results/strict-tests.txt
+      # This source-only job supplements the complete native Windows/bundle gate.
+      - name: Retain exact text acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: pending-common4-${{ github.sha }}
+          path: carr-library/ci-pending-results/
+          if-no-files-found: error
+          retention-days: 7
