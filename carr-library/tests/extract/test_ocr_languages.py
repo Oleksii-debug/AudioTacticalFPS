@@ -154,7 +154,7 @@ def test_runtime_inventory_does_not_normalize_an_invalid_model_identifier(langua
 
 
 def test_native_windows_inventory_canonicalizes_script_separator_without_relaxing_selection(monkeypatch):
-    monkeypatch.setattr(models, 'sys', SimpleNamespace(platform='win32'), raising=False)
+    _use_windows_report_paths(monkeypatch)
     listing = report('eng', 'osd', r'script\EnglishFixture')
     assert models.parse_language_report(listing) == ('eng', 'osd', 'script/EnglishFixture')
     assert not models.valid_model_code(r'script\EnglishFixture')
@@ -169,13 +169,13 @@ def test_native_windows_inventory_canonicalizes_script_separator_without_relaxin
 ], ids=('parent', 'script-parent', 'empty-part', 'other-directory',
         'drive', 'unc', 'canonical-duplicate'))
 def test_native_windows_inventory_rejects_unsafe_paths_and_separator_aliases(monkeypatch, codes):
-    monkeypatch.setattr(models, 'sys', SimpleNamespace(platform='win32'), raising=False)
+    _use_windows_report_paths(monkeypatch)
     with pytest.raises(ValueError, match='invalid model inventory'):
         models.parse_language_report(report(*codes))
 
 
 def test_nonwindows_inventory_does_not_reinterpret_a_backslash_filename(monkeypatch):
-    monkeypatch.setattr(models, 'sys', SimpleNamespace(platform='linux'), raising=False)
+    monkeypatch.setattr(models, 'os', SimpleNamespace(name='posix', path=models.os.path))
     with pytest.raises(ValueError, match='invalid model inventory'):
         models.parse_language_report(report(r'script\EnglishFixture'))
 
@@ -422,3 +422,106 @@ def test_invalid_profile_bindings_do_not_change_a_valid_preset_file(tmp_path, da
 def test_config_cannot_mix_a_managed_profile_and_an_existing_reviewed_pack(tmp_path):
     with pytest.raises(ValueError, match='cannot be combined'):
         Config(model_profile='fast', model_pack_path=str(tmp_path / 'pack'), model_pack_sha256='a' * 64)
+
+def test_native_windows_script_separators_are_normalized_only_in_inventory(monkeypatch):
+    _use_windows_report_paths(monkeypatch)
+    assert models.parse_language_report(report('eng', r'script\Latin', 'osd')) == (
+        'eng', 'script/Latin', 'osd')
+    with pytest.raises(ValueError):
+        models.model_ids(r'script\Latin')
+
+
+@pytest.mark.parametrize('codes', [
+    ('script/Latin', r'script\Latin'), (r'script\..\eng',),
+    (r'C:\eng',), (r'\script\Latin',), (r'other\Latin',),
+])
+def test_native_separator_normalization_keeps_collision_and_path_guards(codes, monkeypatch):
+    _use_windows_report_paths(monkeypatch)
+    with pytest.raises(ValueError):
+        models.parse_language_report(report(*codes))
+
+
+
+def _use_windows_report_paths(monkeypatch):
+    # Change only this module's OS binding, not global os.name/Path behavior.
+    monkeypatch.setattr(models, 'os', SimpleNamespace(name='nt', path=models.os.path))
+
+
+def test_windows_report_script_separator_is_canonicalized_only_at_engine_boundary(monkeypatch):
+    _use_windows_report_paths(monkeypatch)
+    assert models.parse_language_report(report('eng', r'script\EnglishFixture', 'osd')) == (
+        'eng', 'script/EnglishFixture', 'osd')
+    assert not models.valid_model_code(r'script\EnglishFixture')
+    with pytest.raises(ValueError):
+        models.split_languages(r'script\EnglishFixture')
+
+
+@pytest.mark.parametrize('codes', [
+    (r'script\EnglishFixture', 'script/EnglishFixture'),
+    (r'script\EnglishFixture', 'script/englishfixture'),
+], ids=('native-canonical-alias', 'case-folded-alias'))
+def test_windows_report_rejects_duplicate_script_aliases_after_canonicalization(monkeypatch, codes):
+    _use_windows_report_paths(monkeypatch)
+    with pytest.raises(ValueError, match='invalid model inventory'):
+        models.parse_language_report(report(*codes))
+
+
+@pytest.mark.parametrize('code', [
+    'script\\', r'script\\EnglishFixture', r'script\..\eng',
+    r'script\Latin\eng', r'\script\Latin', r'\\host\share\eng',
+    r'C:\models\eng', r'other\Latin', r'script\CON',
+    'script\\Latin ', r'script\Latin --psm 1',
+], ids=('missing-name', 'repeated-separator', 'parent-traversal', 'nested-path',
+        'rooted-path', 'unc-path', 'drive-path', 'other-prefix', 'device-name',
+        'trailing-whitespace', 'arguments'))
+def test_windows_report_separator_handling_rejects_malformed_native_identifiers(monkeypatch, code):
+    _use_windows_report_paths(monkeypatch)
+    with pytest.raises(ValueError):
+        models.parse_language_report(report('eng', code))
+
+
+def test_posix_report_does_not_reinterpret_a_literal_backslash_filename(monkeypatch):
+    monkeypatch.setattr(models, 'os', SimpleNamespace(name='posix', path=models.os.path))
+    with pytest.raises(ValueError, match='invalid model inventory'):
+        models.parse_language_report(report(r'script\EnglishFixture'))
+
+
+def test_windows_report_keeps_exact_count_and_directory_binding(monkeypatch, tmp_path):
+    _use_windows_report_paths(monkeypatch)
+    listing = f'List of available languages in "{tmp_path}" (2):\nscript\\EnglishFixture\n'
+    with pytest.raises(ValueError, match='invalid model inventory'):
+        models.parse_language_report(listing, expected_directory=tmp_path)
+    listing = f'List of available languages in "{tmp_path}" (1):\nscript\\EnglishFixture\n'
+    with pytest.raises(ValueError, match='different model directory'):
+        models.parse_language_report(listing, expected_directory=tmp_path / 'other')
+
+
+def _diagnostic_engine_response(monkeypatch, listing):
+    from carr_library.extract import ocr_process
+    native = SimpleNamespace(executable='synthetic response fixture', portable=False,
+        tessdata=Path('installed models'), manifest_sha256=None, assert_unchanged=Mock())
+    monkeypatch.setattr(ocr_runtime, 'discover_ocr_runtime', lambda *args, **kwargs: native)
+    execute = Mock(side_effect=[SimpleNamespace(stdout=raw) for raw in
+        (b'tesseract 5.5.4\n', listing.encode('utf-8'), b'RESEARCH\n')])
+    monkeypatch.setattr(ocr_process, 'run_ocr', execute)
+    return native, execute
+
+
+def test_runtime_diagnostic_preserves_windows_script_inventory_using_shared_parser(monkeypatch):
+    _use_windows_report_paths(monkeypatch)
+    native, execute = _diagnostic_engine_response(
+        monkeypatch, report('eng', 'osd', r'script\EnglishFixture'))
+    result = ocr_runtime.check_runtime()
+    assert result['languages'] == ['eng', 'osd', 'script/EnglishFixture']
+    assert execute.call_count == 3
+    native.assert_unchanged.assert_called_once()
+
+
+def test_runtime_diagnostic_rejects_invalid_entries_instead_of_silently_filtering(monkeypatch):
+    _use_windows_report_paths(monkeypatch)
+    native, execute = _diagnostic_engine_response(
+        monkeypatch, report('eng', r'script\..\outside'))
+    with pytest.raises(ValueError, match='invalid model inventory'):
+        ocr_runtime.check_runtime()
+    assert execute.call_count == 2
+    native.assert_unchanged.assert_not_called()
