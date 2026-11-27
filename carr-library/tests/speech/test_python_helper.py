@@ -55,9 +55,10 @@ else:
     assert request["voice_id"] == "synthetic-uk"
     if (root / "block-render").exists():
         child_code = (
-            "import os,sys,time; from pathlib import Path; "
+            "import json,os,sys,time; from pathlib import Path; "
             "p=Path(sys.argv[1]); t=p.with_suffix('.pending'); "
-            "t.write_text(str(os.getpid()),encoding='ascii'); t.replace(p); time.sleep(60)"
+            "t.write_text(json.dumps({'pid':os.getpid(),'parent':os.getppid()}),encoding='ascii'); "
+            "t.replace(p); time.sleep(60)"
         )
         child_marker = root / "descendant.pid"
         child = subprocess.Popen(
@@ -68,10 +69,16 @@ else:
             if child.poll() is not None or time.monotonic() >= deadline:
                 raise RuntimeError("Synthetic descendant did not become ready")
             time.sleep(.02)
-        assert int(child_marker.read_text(encoding="ascii")) == child.pid
+        child_identity = json.loads(child_marker.read_text(encoding="ascii"))
+        assert all(type(child_identity[key]) is int and child_identity[key] > 0 for key in ("pid", "parent"))
+        assert child_identity["parent"] == (os.getpid() if child_identity["pid"] == child.pid else child.pid)
         ready = root / "render-ready.json"
         pending = ready.with_suffix(".pending")
-        pending.write_text(json.dumps({"parent": os.getpid(), "child": child.pid}), encoding="ascii")
+        pending.write_text(json.dumps({
+            "parent": os.getpid(), "parent_parent": os.getppid(),
+            "child": child_identity["pid"], "child_parent": child_identity["parent"],
+            "child_launcher": child.pid,
+        }), encoding="ascii")
         pending.replace(ready)
         time.sleep(60)
         raise RuntimeError("Synthetic blocked render unexpectedly resumed")
@@ -387,7 +394,7 @@ def test_actual_python_helper_stop_reaps_parent_and_descendant(helper, tmp_path,
     (root / "block-render").write_bytes(b"synthetic blocking render")
     ready = root / "render-ready.json"
     original_popen = speech_io.subprocess.Popen
-    processes, descendants = [], []
+    processes, descendants, identities = [], [], []
 
     def launch_at_boundary(args, *positional, **options):
         process = original_popen(args, *positional, **options)
@@ -398,14 +405,29 @@ def test_actual_python_helper_stop_reaps_parent_and_descendant(helper, tmp_path,
         try:
             deadline = time.monotonic() + 30
             while not ready.exists():
-                assert process.poll() is None, "Synthetic helper exited before readiness"
+                if process.poll() is not None:
+                    # This is a public synthetic fixture, never private engine stderr.
+                    options["stderr"].seek(0)
+                    diagnostic = options["stderr"].read(8192).decode("utf-8", errors="replace")
+                    raise AssertionError(f"Synthetic helper exited before readiness ({process.returncode}): {diagnostic}")
                 assert time.monotonic() < deadline, "Synthetic helper never reached readiness"
                 time.sleep(.02)
             identity = json.loads(ready.read_text(encoding="ascii"))
-            assert identity["parent"] == process.pid
-            descendant = _OwnedDescendant(identity["child"], process.pid)
-            descendants.append(descendant)
-            assert descendant.alive()
+            assert set(identity) == {"parent", "parent_parent", "child", "child_parent", "child_launcher"}
+            assert all(type(value) is int and value > 0 for value in identity.values())
+            # Windows venv python.exe is a launcher. Its interpreted process and
+            # a nested interpreted child can have different PIDs from Popen.pid.
+            assert identity["parent_parent"] == (os.getpid() if identity["parent"] == process.pid else process.pid)
+            assert identity["child_parent"] == (identity["parent"]
+                if identity["child"] == identity["child_launcher"] else identity["child_launcher"])
+            assert identity["child"] != identity["parent"]
+            assert identity["child_launcher"] != identity["parent"]
+            identities.append(identity)
+            owned = {identity["parent"], identity["child_launcher"], identity["child"]} - {process.pid}
+            for pid in sorted(owned):
+                descendant = _OwnedDescendant(pid, process.pid)
+                descendants.append(descendant)
+                assert descendant.alive()
             assert process.poll() is None
             return process
         except BaseException:
@@ -425,11 +447,13 @@ def test_actual_python_helper_stop_reaps_parent_and_descendant(helper, tmp_path,
         assert ready.exists()
         identity = json.loads(ready.read_text(encoding="ascii"))
         assert len(processes) == 1
-        assert processes[0].pid == identity["parent"]
+        assert identities == [identity]
         assert processes[0].poll() is not None
-        assert len(descendants) == 1
-        assert descendants[0].pid == identity["child"]
-        assert descendants[0].wait_for_exit(5), "Speech stop leaked its real descendant"
+        owned = {identity["parent"], identity["child_launcher"], identity["child"]} - {processes[0].pid}
+        assert {descendant.pid for descendant in descendants} == owned
+        assert len(descendants) == len(owned)
+        for descendant in descendants:
+            assert descendant.wait_for_exit(5), "Speech stop leaked an owned interpreted process or launcher"
         assert time.monotonic() - started < 60
         assert not target.exists()
         assert not list(tmp_path.glob(".speech-*"))

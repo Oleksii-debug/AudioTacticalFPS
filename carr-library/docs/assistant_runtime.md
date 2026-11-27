@@ -154,6 +154,13 @@ flow; an actual local model and its planning quality require separate acceptance
 | ElevenLabs | Speech | Official `/v1/text-to-speech/{voice_id}`, selected model and text; MP3 response |
 | ElevenLabs | Instrumental music | Official `/v1/music`, explicit prompt/duration and instrumental flag; MP3 response |
 | ElevenLabs | Sound effect | Official `/v1/sound-generation`, selected prompt and duration; MP3 response |
+| Google Basic v2 | Plain-text translation and supported-language declarations | Official fixed endpoint, `nmt`, explicitly selected text, API key in the OS vault |
+| Google Advanced v3 | Plain-text translation, existing glossaries and directional language declarations | Explicit numeric project and region, `general/nmt`, exact model/glossary receipts and an expiring OAuth token in the OS vault |
+
+The [translation workspace guide](translation_workstation.md) describes account
+setup, source-bound book/range selection, transfer approval, restart, offline
+export and the shared CLI. Translation uses the same provider and durable-job
+boundaries; its local-model and linguistic-quality limits remain explicit there.
 
 Remote speech recognition, vendor polling, native voice-catalog discovery and
 dynamic vendor pricing are not implemented by this adapter set. These entries
