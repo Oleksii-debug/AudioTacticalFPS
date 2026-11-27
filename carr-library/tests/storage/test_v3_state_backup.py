@@ -48,7 +48,7 @@ def test_backup_restores_exact_state_sources_and_evidence_without_cache(populate
     original_files = {p.name: p.read_bytes() for p in app.assets_dir.iterdir()}
     folder = tmp_path / 'backup'
     digest = create_backup(app, folder)
-    manifest = json.loads((folder / 'manifest.json').read_text())
+    manifest = json.loads((folder / 'manifest.json').read_text(encoding='utf-8'))
     assert manifest['version'] == 4 and manifest['generated_audio_included'] is False
     assert {entry['filename'] for entry in manifest['state']} == set(values)
     for entry in manifest['state']:
@@ -71,7 +71,7 @@ def test_optional_generated_cache_roundtrips_exactly(populated, tmp_path):
     app, *_ = populated
     folder = tmp_path / 'with-cache'
     digest = create_backup(app, folder, include_generated=True)
-    manifest = json.loads((folder / 'manifest.json').read_text())
+    manifest = json.loads((folder / 'manifest.json').read_text(encoding='utf-8'))
     assert manifest['generated_audio_included'] is True
     destination = restore_backup(folder, tmp_path / 'restored-with-cache', digest)
     assert (destination / 'state/studio/cache/chunk.wav').read_bytes() == b'synthetic-generated-audio-cache'
@@ -95,7 +95,7 @@ def test_corrupt_state_never_publishes_usable_restore(populated, tmp_path, damag
         import shutil
         shutil.rmtree(folder / 'state')
     else:
-        manifest = json.loads((folder / 'manifest.json').read_text())
+        manifest = json.loads((folder / 'manifest.json').read_text(encoding='utf-8'))
         manifest['state'][0]['size_bytes'] += 1
         raw = json.dumps(manifest).encode()
         (folder / 'manifest.json').write_bytes(raw)
@@ -248,7 +248,7 @@ def test_legacy_backup_still_restores_without_state(tmp_path):
     # Construct the historical v2 shape from the same verified catalog bytes.
     # New backups also preserve the import journal, which did not exist in v2.
     import shutil
-    manifest = json.loads((backup / 'manifest.json').read_text())
+    manifest = json.loads((backup / 'manifest.json').read_text(encoding='utf-8'))
     manifest['version'] = 2
     for key in ('state', 'generated_audio_included', 'pending'):
         manifest.pop(key, None)
