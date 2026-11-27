@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-          fetch-depth: 2
+          fetch-depth: 0
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
           python-version: '3.11'
@@ -35,7 +35,7 @@ jobs:
           New-Item -ItemType Directory -Force 'ci-outer-results' | Out-Null
           git rev-parse HEAD | Set-Content 'ci-outer-results/tested-commit.txt'
           git rev-parse 'HEAD^{tree}' | Set-Content 'ci-outer-results/tested-tree.txt'
-          python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-semantic-cp311.lock
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -57,7 +57,7 @@ jobs:
           }
       - name: Require actual process, committed data, cancellation and replay checks
         run: |
-          python scripts/ci_check.py tests/ingest/test_worker_publication_boundary.py tests/ingest/test_worker_isolated_launch.py tests/ingest/test_import_publication_point.py 2>&1 | Tee-Object 'ci-outer-results/required-tests.txt'
+          python scripts/ci_check.py tests/ingest/test_worker_publication_boundary.py tests/ingest/test_worker_isolated_launch.py tests/ingest/test_import_publication_point.py tests/e2e/test_import_files_cancellation.py tests/reader/test_export_publication_boundary.py tests/reader/test_export_no_clobber.py tests/citations/test_bibliography_workbench.py tests/ui/test_citation_styles_jobs.py 2>&1 | Tee-Object 'ci-outer-results/required-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           git diff --exit-code
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

@@ -20,6 +20,16 @@ def source_file(tmp_path, kind):
         document = Document()
         document.add_paragraph('Committed railway source. Київ.')
         document.save(path)
+    elif kind == 'pdf':
+        from reportlab.pdfgen.canvas import Canvas
+        canvas = Canvas(str(path))
+        canvas.drawString(72, 700, 'Committed railway source.')
+        canvas.showPage()
+        canvas.save()
+    elif kind == 'epub':
+        import runpy
+        fixture = Path(__file__).resolve().parents[1] / 'e2e' / 'test_epub_import.py'
+        runpy.run_path(str(fixture))['write_epub'](path)
     else:
         path.write_text('Committed railway source. Київ.', encoding='utf-8')
     return path
@@ -69,7 +79,7 @@ def publication_barrier(monkeypatch, marker, *, before=False, crash=False):
     return processes
 
 
-@pytest.mark.parametrize('kind', ('docx', 'md', 'txt'))
+@pytest.mark.parametrize('kind', ('docx', 'md', 'txt', 'pdf', 'epub'))
 @pytest.mark.parametrize('stop', ('cancel', 'timeout', 'crash'))
 def test_durable_publication_survives_stopped_worker(tmp_path, monkeypatch, kind, stop):
     app = LibraryApp(tmp_path / 'library')
@@ -96,7 +106,7 @@ def test_durable_publication_survives_stopped_worker(tmp_path, monkeypatch, kind
     assert result['state'] == 'complete', result
     assert result['recovered_publication'] is True
     assert result['worker_state'] == {'cancel': 'cancelled', 'timeout': 'timed_out', 'crash': 'failed'}[stop]
-    assert result['completed'] == 1
+    assert result['completed'] == (2 if kind == 'epub' else 1)
     assert len(processes) == 1 and processes[0].poll() is not None
     assert source.read_bytes() == original
     request = worker.load_request(app.root, result['request_id'])
@@ -188,3 +198,19 @@ def test_corrupted_retained_bytes_cannot_authorize_reconciliation(tmp_path):
     raw[-1] ^= 1
     retained.write_bytes(raw)
     assert worker._published_after_stop(app, initial, 0) is None
+
+
+@pytest.mark.parametrize('binding', ('job', 'configuration'))
+def test_pdf_reconciliation_requires_its_exact_saved_job_and_config(tmp_path, binding):
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('PDF request binding')
+    source = source_file(tmp_path, 'pdf')
+    result = app.import_file(workspace, source)
+    assert result['state'] == 'complete'
+    request = worker.load_request(app.root, result['request_id'])
+    if binding == 'job':
+        request['job'] = 'f' * 64
+    else:
+        request['config']['dpi'] += 1
+    worker._store(app.root, result['request_id'], request)
+    assert worker._published_after_stop(app, request, 0) is None
