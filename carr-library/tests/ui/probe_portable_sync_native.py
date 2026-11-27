@@ -307,14 +307,50 @@ def answer_successor_password(responses, *, confirmation_gone, find_dialog, answ
     return True
 
 
+class TaskDialogAnswer:
+    """Post a native common-button click, then observe the owned dialog close.
+
+    TDM_CLICK_BUTTON delivers TDN_BUTTON_CLICKED and honours a callback veto.
+    Posting is not a completion receipt: a dialog that stays open fails the
+    deadline, and the caller still verifies actual publication/restore effects.
+    https://learn.microsoft.com/windows/win32/controls/tdm-click-button
+    """
+    def __init__(self, confirmations, request):
+        self.confirmations, self.request = confirmations, request
+        self.deadline = monotonic() + 5
+        confirmations._validate_task_dialog(request)
+        confirmations.api.SetActiveWindow(request['hwnd'])
+        # CommCtrl.h: WM_USER + 102; wxMSW's wx.YES_NO maps to IDYES/IDNO.
+        if not confirmations.api.PostMessageW(
+                request['hwnd'], 0x0400 + 102, request['button_id'], 0):
+            raise AssertionError('Could not dispatch the owned TaskDialog answer button')
+
+    def poll(self):
+        if monotonic() >= self.deadline:
+            raise AssertionError('The owned TaskDialog did not close after its button click')
+        if self.confirmations.api.IsWindow(self.request['hwnd']):
+            self.confirmations._validate_task_dialog(self.request)
+            return False
+        print(json.dumps(dict(status='NATIVE_DIALOG', method='TDM_CLICK_BUTTON',
+                              pid=self.request['pid'], hwnd=self.request['hwnd'],
+                              owner=self.request['owner'], title=self.request['title'],
+                              button_id=self.request['button_id'], closed=True)), flush=True)
+        return True
+
+    def close(self):
+        # No helper process or native handle is owned by this observer.
+        pass
+
+
 class WindowsConfirmations:
     """Click only this process's owned native message/task dialog buttons.
 
     wxMSW MessageDialog does not run wx.Dialog's modal loop. IsModal/EndModal
     cannot be used to discover or dismiss its TaskDialogIndirect window.
     """
-    def __init__(self, *, yes_label='Yes', no_label='No'):
+    def __init__(self, *, yes_label='Yes', no_label='No', task_dialog_titles=()):
         self.yes_label, self.no_label = yes_label, no_label
+        self.task_dialog_titles = frozenset(task_dialog_titles)
         self.pending = None
         import ctypes
         from ctypes import wintypes
@@ -330,6 +366,7 @@ class WindowsConfirmations:
             'GetWindow': ([wintypes.HWND, wintypes.UINT], wintypes.HWND),
             'GetDlgCtrlID': ([wintypes.HWND], ctypes.c_int),
             'IsWindow': ([wintypes.HWND], wintypes.BOOL),
+            'IsChild': ([wintypes.HWND, wintypes.HWND], wintypes.BOOL),
             'IsWindowVisible': ([wintypes.HWND], wintypes.BOOL),
             'IsWindowEnabled': ([wintypes.HWND], wintypes.BOOL),
             'SetActiveWindow': ([wintypes.HWND], wintypes.HWND),
@@ -367,6 +404,31 @@ class WindowsConfirmations:
                 return True
         return False
 
+    def _validate_task_dialog(self, request):
+        """Recheck the exact owned wx.YES_NO TaskDialog before native dispatch."""
+        window, pane = request['hwnd'], request['pane']
+        if (request['pid'] != os.getpid() or request['title'] not in self.task_dialog_titles
+                or request['button_id'] not in (6, 7)
+                or not self.api.IsWindow(window) or not self.api.IsWindow(pane)
+                or not self.api.IsChild(window, pane)
+                or self._string(self.api.GetClassNameW, window) != '#32770'
+                or self._string(self.api.GetWindowTextW, window) != request['title']
+                or self._string(self.api.GetClassNameW, pane).casefold() != 'directuihwnd'):
+            raise AssertionError('The owned TaskDialog identity changed')
+        for handle in (window, pane):
+            pid = self.types.DWORD()
+            self.api.GetWindowThreadProcessId(handle, self.ctypes.byref(pid))
+            if (pid.value != request['pid'] or not self.api.IsWindowVisible(handle)
+                    or not self.api.IsWindowEnabled(handle)):
+                raise AssertionError('The owned TaskDialog identity changed')
+        seen, current = set(), self.api.GetWindow(window, 4)
+        while current and current not in seen and len(seen) < 32:
+            if current == request['owner']:
+                return
+            seen.add(current)
+            current = self.api.GetWindow(current, 4)
+        raise AssertionError('The TaskDialog owner changed')
+
     def pending_dialog_is_gone(self, owner, title, *, accept):
         if self.pending is None:
             return False
@@ -401,6 +463,7 @@ class WindowsConfirmations:
             pid = self.types.DWORD()
             self.api.GetWindowThreadProcessId(window, self.ctypes.byref(pid))
             if (pid.value != os.getpid() or not self.api.IsWindowVisible(window)
+                    or not self.api.IsWindowEnabled(window)
                     or self._string(self.api.GetClassNameW, window) != '#32770'
                     or self._string(self.api.GetWindowTextW, window) != title):
                 return True
@@ -440,6 +503,14 @@ class WindowsConfirmations:
 
         self.api.EnumChildWindows(window, child, 0)
         if not buttons and len(direct_ui) == 1:
+            if title in self.task_dialog_titles:
+                # These two production confirmations use wx.YES_NO, with the
+                # standard enabled IDYES/IDNO pair. Some Windows runner images
+                # expose their DirectUI pane but no UIA descendants.
+                self.pending = (TaskDialogAnswer(self, dict(
+                    hwnd=window, pane=direct_ui[0], owner=owner, pid=os.getpid(),
+                    title=title, button_id=identifier)), key)
+                return False
             print(json.dumps(dict(status='NATIVE_DIALOG_UIA_START', pid=os.getpid(),
                                   hwnd=window, owner=owner, answer='yes' if accept else 'no',
                                   control_count=len(controls))), flush=True)
@@ -496,11 +567,12 @@ def run_native(source=None, *, encrypted=False):
                for module in (portable_sync, service_module)}
     timers = []
     state = {'finished': False}
-    windows = WindowsConfirmations(
-        yes_label=wx.GetStockLabel(wx.ID_YES).replace('&', ''),
-        no_label=wx.GetStockLabel(wx.ID_NO).replace('&', '')) if sys.platform == 'win32' else None
     confirmation_titles = ('Publish all saved libraries in this data folder?',
                            'Restore the verified snapshot into a new folder?')
+    windows = WindowsConfirmations(
+        yes_label=wx.GetStockLabel(wx.ID_YES).replace('&', ''),
+        no_label=wx.GetStockLabel(wx.ID_NO).replace('&', ''),
+        task_dialog_titles=confirmation_titles) if sys.platform == 'win32' else None
 
     def check(label, condition):
         if not condition:

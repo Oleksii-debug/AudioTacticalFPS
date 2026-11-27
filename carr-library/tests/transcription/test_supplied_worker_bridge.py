@@ -67,12 +67,20 @@ if MODE == 'network':
     socket.create_connection(('127.0.0.1', 9))
 if MODE == 'outside-write':
     (pathlib.Path(cfg['models_dir']) / 'forbidden.txt').write_text('not allowed')
-if MODE == 'status-outside-source':
-    os.replace(pathlib.Path(cfg['models_dir']) / 'guarded.json', job / 'job_status.json')
-if MODE == 'status-outside-target':
-    temp = job / 'status.tmp'
-    temp.write_text('Unapproved replacement.', encoding='utf-8')
-    os.replace(temp, pathlib.Path(cfg['models_dir']) / 'guarded.json')
+if MODE in ('status-outside-source', 'status-outside-target'):
+    try:
+        if MODE == 'status-outside-source':
+            os.replace(pathlib.Path(cfg['models_dir']) / 'guarded.json', job / 'job_status.json')
+        else:
+            temp = job / 'status.tmp'
+            temp.write_text('Unapproved replacement.', encoding='utf-8')
+            os.replace(temp, pathlib.Path(cfg['models_dir']) / 'guarded.json')
+    except PermissionError as error:
+        expected = 'Transcription writes must remain inside its private job.'
+        assert str(error) == expected
+        (job / 'logs').mkdir(exist_ok=True)
+        (job / 'logs' / 'status-write-refused.txt').write_text(expected, encoding='utf-8')
+        raise
 if MODE == 'child-command':
     subprocess.run([sys.executable, '-c', 'raise SystemExit(0)'], check=True)
 if MODE == 'timeout':
@@ -865,7 +873,12 @@ def test_status_publication_keeps_actual_child_writes_inside_its_job(prepared, m
     identity = service.submit([original])
     result = service.run(identity, timeout=10)
     assert result['status'] == 'failed' and result['artifacts'] == []
-    assert 'Transcription writes must remain inside its private job' in result['last_error']
+    # The current host deliberately hides raw child diagnostics, which may
+    # contain private source text or paths. Prove the exact audit rejection
+    # inside the real child without changing that public error boundary.
+    assert result['last_error'] == 'Local engine failed with exit code 1.'
+    proof = service._path(identity) / 'logs' / 'status-write-refused.txt'
+    assert proof.read_text(encoding='utf-8') == 'Transcription writes must remain inside its private job.'
     assert guarded.read_bytes() == b'External state must remain unchanged.'
     assert original.read_bytes() == retained
     assert read_json(service._path(identity) / 'job_status.json')['done'] == 0

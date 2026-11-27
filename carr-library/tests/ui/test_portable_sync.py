@@ -667,11 +667,12 @@ def test_native_confirmation_failed_helper_cannot_report_success(confirmation_pr
         operation.poll()
 
 
-def _native_confirmation_tree(probe, monkeypatch, *, controls=None, owner=99, pid=None):
+def _native_confirmation_tree(probe, monkeypatch, *, controls=None, owner=99, pid=None, task_dialog=False):
     import ctypes
     from ctypes import wintypes
     confirmation = probe.WindowsConfirmations.__new__(probe.WindowsConfirmations)
     confirmation.yes_label, confirmation.no_label = 'Yes', 'No'
+    confirmation.task_dialog_titles = frozenset({'Synthetic confirmation'} if task_dialog else ())
     confirmation.pending = None
     confirmation.ctypes, confirmation.types = ctypes, wintypes
     confirmation.callback = lambda callback: callback
@@ -679,7 +680,12 @@ def _native_confirmation_tree(probe, monkeypatch, *, controls=None, owner=99, pi
                        pid=probe.os.getpid() if pid is None else pid, visible=True, enabled=True, id=0)}
     nodes.update(controls or {201: dict(kind='DirectUIHWND', text='', owner=0,
                                       visible=True, enabled=True, id=0)})
+    for node in nodes.values():
+        node.setdefault('pid', probe.os.getpid())
+    confirmation._native_nodes = nodes
     api = Mock()
+    api.IsWindow.return_value = True
+    api.IsChild.side_effect = lambda parent, child: parent == 101 and child in nodes and child != 101
     api.EnumWindows.side_effect = lambda callback, unused: callback(101, 0)
     api.EnumChildWindows.side_effect = lambda window, callback, unused: [
         callback(handle, 0) for handle in nodes if handle != 101]
@@ -1063,3 +1069,142 @@ def test_native_successor_never_consumes_response_for_another_pending_confirmati
     find.assert_not_called()
     answer.assert_not_called()
     confirmation.api.IsWindow.assert_not_called()
+
+
+@pytest.mark.parametrize(('accept', 'identifier'), [(True, 6), (False, 7)])
+def test_native_task_dialog_uses_real_common_button_then_waits_for_close(
+        confirmation_probe, monkeypatch, accept, identifier):
+    confirmation, _, constructor = _native_confirmation_tree(
+        confirmation_probe, monkeypatch, task_dialog=True)
+    assert confirmation.reply(99, 'Synthetic confirmation', accept=accept) is False
+    confirmation.api.PostMessageW.assert_called_once_with(101, 0x0466, identifier, 0)
+    constructor.assert_not_called()
+    assert confirmation.reply(99, 'Synthetic confirmation', accept=accept) is False
+    confirmation.api.IsWindow.return_value = False
+    assert confirmation.reply(99, 'Synthetic confirmation', accept=accept) is True
+    assert confirmation.pending is None
+
+
+def test_native_task_dialog_post_is_not_success_if_callback_keeps_dialog_open(
+        confirmation_probe, monkeypatch):
+    confirmation, _, constructor = _native_confirmation_tree(
+        confirmation_probe, monkeypatch, task_dialog=True)
+    assert confirmation.reply(99, 'Synthetic confirmation', accept=True) is False
+    operation, _ = confirmation.pending
+    monkeypatch.setattr(confirmation_probe, 'monotonic', lambda: operation.deadline)
+    with pytest.raises(AssertionError, match='did not close'):
+        confirmation.reply(99, 'Synthetic confirmation', accept=True)
+    assert confirmation.pending is None
+    constructor.assert_not_called()
+    confirmation.api.PostMessageW.assert_called_once_with(101, 0x0466, 6, 0)
+
+
+@pytest.mark.parametrize(('handle', 'field', 'value'), [
+    (101, 'pid', 0), (101, 'owner', 98), (101, 'text', 'Other confirmation'),
+    (101, 'kind', 'OtherClass'), (101, 'visible', False), (101, 'enabled', False),
+    (201, 'pid', 0), (201, 'kind', 'OtherClass'), (201, 'visible', False),
+    (201, 'enabled', False),
+])
+def test_native_task_dialog_rechecks_identity_after_window_discovery(
+        confirmation_probe, monkeypatch, handle, field, value):
+    confirmation, _, constructor = _native_confirmation_tree(
+        confirmation_probe, monkeypatch, task_dialog=True)
+    original = confirmation.api.EnumChildWindows.side_effect
+
+    def replaced(window, callback, unused):
+        original(window, callback, unused)
+        confirmation._native_nodes[handle][field] = value
+
+    confirmation.api.EnumChildWindows.side_effect = replaced
+    with pytest.raises(AssertionError, match='TaskDialog (identity|owner) changed'):
+        confirmation.reply(99, 'Synthetic confirmation', accept=True)
+    confirmation.api.PostMessageW.assert_not_called()
+    constructor.assert_not_called()
+    assert confirmation.pending is None
+
+
+def test_native_task_dialog_rejects_nonchild_directui_pane(confirmation_probe, monkeypatch):
+    confirmation, _, constructor = _native_confirmation_tree(
+        confirmation_probe, monkeypatch, task_dialog=True)
+    confirmation.api.IsChild.side_effect = None
+    confirmation.api.IsChild.return_value = False
+    with pytest.raises(AssertionError, match='identity changed'):
+        confirmation.reply(99, 'Synthetic confirmation', accept=True)
+    confirmation.api.PostMessageW.assert_not_called()
+    constructor.assert_not_called()
+
+
+def test_native_task_dialog_requires_native_message_dispatch(confirmation_probe, monkeypatch):
+    confirmation, _, constructor = _native_confirmation_tree(
+        confirmation_probe, monkeypatch, task_dialog=True)
+    confirmation.api.PostMessageW.return_value = False
+    with pytest.raises(AssertionError, match='Could not dispatch'):
+        confirmation.reply(99, 'Synthetic confirmation', accept=True)
+    assert confirmation.pending is None
+    constructor.assert_not_called()
+
+
+def test_native_task_dialog_rechecks_open_window_identity_while_waiting(
+        confirmation_probe, monkeypatch):
+    confirmation, _, _ = _native_confirmation_tree(
+        confirmation_probe, monkeypatch, task_dialog=True)
+    assert not confirmation.reply(99, 'Synthetic confirmation', accept=True)
+    confirmation._native_nodes[101]['pid'] = 0
+    with pytest.raises(AssertionError, match='identity changed'):
+        confirmation.reply(99, 'Synthetic confirmation', accept=True)
+    confirmation.api.PostMessageW.assert_called_once()
+    assert confirmation.pending is None
+
+
+def test_native_task_dialog_requires_unique_visible_directui_pane(
+        confirmation_probe, monkeypatch):
+    controls = {handle: dict(kind='DirectUIHWND', text='', owner=0,
+                             visible=True, enabled=True, id=0) for handle in (201, 202)}
+    confirmation, _, constructor = _native_confirmation_tree(
+        confirmation_probe, monkeypatch, controls=controls, task_dialog=True)
+    with pytest.raises(AssertionError, match='no unique native answer'):
+        confirmation.reply(99, 'Synthetic confirmation', accept=True)
+    confirmation.api.PostMessageW.assert_not_called()
+    constructor.assert_not_called()
+
+
+def test_native_task_dialog_cleanup_drains_the_same_pending_no_without_reposting(
+        confirmation_probe, monkeypatch):
+    confirmation, _, constructor = _native_confirmation_tree(
+        confirmation_probe, monkeypatch, task_dialog=True)
+    assert not confirmation.reply(99, 'Synthetic confirmation', accept=False)
+    pending = confirmation.pending
+    assert confirmation.dismiss(99, ('Synthetic confirmation',)) is True
+    assert confirmation.pending is pending
+    confirmation.api.PostMessageW.assert_called_once_with(101, 0x0466, 7, 0)
+    confirmation.api.IsWindow.return_value = False
+    assert confirmation.dismiss(99, ('Synthetic confirmation',)) is True
+    assert confirmation.pending is None
+    confirmation.api.PostMessageW.assert_called_once_with(101, 0x0466, 7, 0)
+    constructor.assert_not_called()
+
+
+def test_native_task_dialog_successor_preserves_pending_confirmation_until_close_receipt(
+        confirmation_probe, monkeypatch):
+    confirmation, _, constructor = _native_confirmation_tree(
+        confirmation_probe, monkeypatch, task_dialog=True)
+    assert not confirmation.reply(99, 'Synthetic confirmation', accept=True)
+    pending = confirmation.pending
+    password = object()
+    responses = [('Synthetic confirmation', None), ('Snapshot password', 'synthetic-password')]
+    find, answer = Mock(return_value=password), Mock()
+    assert not confirmation_probe.answer_successor_password(
+        responses, confirmation_gone=confirmation.pending_dialog_is_gone(
+            99, 'Synthetic confirmation', accept=True), find_dialog=find, answer=answer)
+    find.assert_not_called()
+    confirmation.api.IsWindow.return_value = False
+    assert confirmation_probe.answer_successor_password(
+        responses, confirmation_gone=confirmation.pending_dialog_is_gone(
+            99, 'Synthetic confirmation', accept=True), find_dialog=find, answer=answer)
+    assert confirmation.pending is pending
+    assert responses == [('Synthetic confirmation', None)]
+    answer.assert_called_once_with(password, 'synthetic-password')
+    assert confirmation.reply(99, 'Synthetic confirmation', accept=True) is True
+    assert confirmation.pending is None
+    confirmation.api.PostMessageW.assert_called_once_with(101, 0x0466, 6, 0)
+    constructor.assert_not_called()
