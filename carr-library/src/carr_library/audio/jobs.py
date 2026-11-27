@@ -373,7 +373,7 @@ def atomic_json(path, value):
             os.unlink(name)
 
 
-def publish_noreplace(source, destination):
+def publish_noreplace(source, destination, *, cancelled=lambda: False):
     """Move a complete local stage atomically without replacing any destination.
 
     Windows rename has no-replace semantics. Linux needs RENAME_NOREPLACE,
@@ -381,6 +381,7 @@ def publish_noreplace(source, destination):
     after a crash. A directory-sync error can occur after the move succeeds.
     """
     source, destination = Path(source), Path(destination)
+    check_cancelled(cancelled)
     checked_directory(source.parent)
     checked_directory(destination.parent)
     if source.is_dir():
@@ -392,7 +393,10 @@ def publish_noreplace(source, destination):
         # writable; immutable/read-only inputs use publish_new's private copy.
         with source.open('r+b') as stream:
             os.fsync(stream.fileno())
+    # The last flush can block. Cancellation stops only before the atomic
+    # move; once it succeeds, finish the committed outcome without rechecking.
     if os.name == 'nt':
+        check_cancelled(cancelled)
         os.rename(source, destination)
     elif sys.platform.startswith('linux'):
         library = ctypes.CDLL(None, use_errno=True)
@@ -401,6 +405,7 @@ def publish_noreplace(source, destination):
             raise RuntimeError('This runtime does not support atomic no-replace publication.')
         rename.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint]
         rename.restype = ctypes.c_int
+        check_cancelled(cancelled)
         if rename(-100, os.fsencode(source), -100, os.fsencode(destination), 1):
             error = ctypes.get_errno()
             raise OSError(error, os.strerror(error), str(destination))
@@ -437,7 +442,7 @@ def publish_new(source, destination, *, cancelled=lambda: False, expected_identi
             target.flush()
             os.fsync(target.fileno())
         check_cancelled(cancelled)
-        publish_noreplace(stage, destination)
+        publish_noreplace(stage, destination, cancelled=cancelled)
     finally:
         stage.unlink(missing_ok=True)
 

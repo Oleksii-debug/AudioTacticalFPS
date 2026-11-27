@@ -33,6 +33,7 @@ from bootstrap.vendor.cairn_extractors.hasher import hash_file
 from .ingest.bundle import _plain, _unique_object
 from .ingest.catalog_asset_copy import copy_catalog_assets, verify_catalog_assets
 from .ingest.retained_assets import MAX_BYTES, SUFFIXES, RetainedAssets
+from .catalog.streaming_pdf import valid_original_size
 from .ingest.restore import RestoreError
 from .ingest.writer_guard import exclusive_writer, _regular_if_present
 from .data_paths import guard_data_directory
@@ -852,7 +853,8 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
                 raise RestoreError('database exceeds backup size limit')
             with closing(Storage(snapshot, schema_version=CURRENT_SCHEMA_VERSION)) as snapshot_storage:
                 entries = copy_catalog_assets(snapshot_storage.db, app.assets, stage / ORIGINALS,
-                    include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
+                    include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES,
+                    cancelled=cancelled)
                 fingerprint = schema_fingerprint(snapshot_storage.db)
                 _validate_readers(snapshot_storage.db, _snapshot_readers(app.root, cancelled=cancelled),
                                   cancelled=cancelled)
@@ -1047,7 +1049,7 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
                 or not re.fullmatch(r'[0-9a-f]{64}', asset['sha256'])
                 or not isinstance(asset['mime'], str) or asset['mime'] not in SUFFIXES
                 or asset['filename'] != asset['sha256'] + SUFFIXES[asset['mime']]
-                or type(asset['size_bytes']) is not int or not 0 < asset['size_bytes'] <= MAX_BYTES):
+                or not valid_original_size(asset['mime'], asset['size_bytes'])):
             raise RestoreError('invalid asset manifest')
         if asset['filename'] in filenames or asset['sha256'] in digests:
             raise RestoreError('duplicate asset manifest')
@@ -1220,12 +1222,14 @@ def _verify_contents(source, stage, manifest, *, copy_files=False,
             _validate_recordings(checked_root, cancelled=cancelled)
         original_store = RetainedAssets(source / ORIGINALS)
         entries = verify_catalog_assets(storage.db, original_store,
-            include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
+            include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES,
+            cancelled=cancelled)
         if _asset_manifest(entries) != manifest['assets']:
             raise RestoreError('asset manifest disagrees with the database')
         if copy_files:
             copy_catalog_assets(storage.db, original_store, stage / ORIGINALS,
-                include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
+                include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES,
+                cancelled=cancelled)
     if any(_identity(_sidecar_info(sidecar_source, name)) != identity
            for name, identity in identities.items()):
         raise RestoreError('sidecar changed during verification')

@@ -1,0 +1,883 @@
+{
+  "schema": 1,
+  "status": "CASE_TIMEOUT_AFTER_TWO_COMPLETED_SCALES",
+  "recorded_at_utc": "2026-11-27T09:57:38.994375+00:00",
+  "executed_checkout_commit": "c32b6c3ab8d97a84d017551df3ca4db77215ea5b",
+  "public_tree_identical_commit": "65a25db77d92e3130263b4d854761093558ba038",
+  "verified_identical_tree": "3b10674ac97363315c71107a353384aeec3cf2a5",
+  "source_manifest_sha256": "09c26226dba65be2bc55231e994b8e2bf11858c44c8e937e510d6c6d5b92834b",
+  "source_unchanged_after_attempt": true,
+  "environment_observed_after_timeout": {
+    "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+    "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+    "sqlite": "3.53.1",
+    "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+    "logical_cpus": 9,
+    "affinity_cpus": 9,
+    "cgroup_limits": {},
+    "fixture_filesystem": "tmpfs",
+    "peak_rss_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss; KiB converted to bytes",
+    "exclusive_host": false,
+    "gpu_or_vram": "NOT_USED_OR_MEASURED",
+    "free_fixture_filesystem_bytes_at_observation": 1895346176
+  },
+  "configuration": {
+    "sizes": [
+      1000,
+      10000,
+      50000
+    ],
+    "samples": 20,
+    "max_search_pages": 0,
+    "case_timeout_seconds": 1800,
+    "keep_fixtures": false
+  },
+  "cases": [
+    {
+      "status": "PASS",
+      "requested_synthetic_editions": 1000,
+      "source_sha256": "09c26226dba65be2bc55231e994b8e2bf11858c44c8e937e510d6c6d5b92834b",
+      "elapsed_seconds": 5.67596903800586,
+      "baseline_peak_rss_bytes": 29368320,
+      "process_peak_rss_bytes": 41889792,
+      "fixture": {
+        "unique_originals_in_measured_workspace": 1,
+        "original_bytes": 94,
+        "source_sha256": "3abf0298972f706ede6b68b857fa7499753537433617668ab0613fdebf1d5e6e",
+        "segments_per_edition": 1,
+        "stored_counts": {
+          "catalog_edition": 1000,
+          "active_page": 1000
+        },
+        "isolation_control_editions": 1,
+        "post_construction_disk": {
+          "apparent_bytes": 2756724,
+          "allocated_bytes": 2764800,
+          "files": 3
+        }
+      },
+      "direct_catalogue_construction": {
+        "elapsed_seconds": 0.4057622759937658,
+        "editions_per_second": 2464.4972171226786,
+        "batch_size": 1000,
+        "batch_latency": {
+          "samples": 1,
+          "p50_seconds": 0.4057316389953485,
+          "p95_seconds": 0.4057316389953485,
+          "min_seconds": 0.4057316389953485,
+          "max_seconds": 0.4057316389953485,
+          "total_seconds": 0.4057316389953485,
+          "seconds": [
+            0.4057316389953485
+          ],
+          "percentile_method": "nearest rank; ceil(p * sample count), one based"
+        },
+        "is_actual_import_throughput": false
+      },
+      "fresh_empty_application": {
+        "samples": 1,
+        "p50_seconds": 0.07505212099931668,
+        "p95_seconds": 0.07505212099931668,
+        "min_seconds": 0.07505212099931668,
+        "max_seconds": 0.07505212099931668,
+        "total_seconds": 0.07505212099931668,
+        "seconds": [
+          0.07505212099931668
+        ],
+        "percentile_method": "nearest rank; ceil(p * sample count), one based"
+      },
+      "catalogue_pages": {
+        "latency": {
+          "samples": 3,
+          "p50_seconds": 0.002800904003379401,
+          "p95_seconds": 0.003156318998662755,
+          "min_seconds": 0.0011947780003538355,
+          "max_seconds": 0.003156318998662755,
+          "total_seconds": 0.007152001002395991,
+          "seconds": [
+            0.002800904003379401,
+            0.003156318998662755,
+            0.0011947780003538355
+          ],
+          "percentile_method": "nearest rank; ceil(p * sample count), one based"
+        },
+        "page_limit": 500,
+        "editions_checked": 1000,
+        "all_ids_exact": true
+      },
+      "search_first_page": {
+        "samples": 20,
+        "p50_seconds": 0.07298217099742033,
+        "p95_seconds": 0.08810374900349416,
+        "min_seconds": 0.06720825299998978,
+        "max_seconds": 0.11433453499921598,
+        "total_seconds": 1.5228767779990449,
+        "seconds": [
+          0.11433453499921598,
+          0.06720825299998978,
+          0.07298217099742033,
+          0.06969081900024321,
+          0.0743382209984702,
+          0.07139491199632175,
+          0.07498152400512481,
+          0.07105494100687793,
+          0.08581099299772177,
+          0.06985364299907815,
+          0.07032911900023464,
+          0.07071371799975168,
+          0.07109959799709031,
+          0.07655459600209724,
+          0.07479969500127481,
+          0.07303492000210099,
+          0.08176200599700678,
+          0.06861108500015689,
+          0.08810374900349416,
+          0.07621827999537345
+        ],
+        "percentile_method": "nearest rank; ceil(p * sample count), one based"
+      },
+      "search_traversal": {
+        "latency": {
+          "samples": 10,
+          "p50_seconds": 0.07174153599771671,
+          "p95_seconds": 0.11706677300389856,
+          "min_seconds": 0.06839318000129424,
+          "max_seconds": 0.11706677300389856,
+          "total_seconds": 0.7863370710037998,
+          "seconds": [
+            0.080950686999131,
+            0.07324465599958785,
+            0.11706677300389856,
+            0.07088756600569468,
+            0.0716600500018103,
+            0.07174153599771671,
+            0.06839318000129424,
+            0.08942516299430281,
+            0.0725668540035258,
+            0.07040060599683784
+          ],
+          "percentile_method": "nearest rank; ceil(p * sample count), one based"
+        },
+        "page_limit": 100,
+        "pages": 10,
+        "results_verified": 1000,
+        "elapsed_seconds": 0.8236627070000395,
+        "all_pages_completed": true,
+        "configured_page_cap": 0,
+        "all_observed_ids_exact": true
+      },
+      "open_context": {
+        "samples": 20,
+        "p50_seconds": 0.0014868180005578324,
+        "p95_seconds": 0.0019256169980508275,
+        "min_seconds": 0.0012764399943989702,
+        "max_seconds": 0.0027871410056832246,
+        "total_seconds": 0.03169240897841519,
+        "seconds": [
+          0.0019256169980508275,
+          0.0016235529983532615,
+          0.0016994670004351065,
+          0.0027871410056832246,
+          0.0018835429946193472,
+          0.0016206750005949289,
+          0.0016296890025842004,
+          0.0016750189970480278,
+          0.0015609019974363036,
+          0.0016038289977586828,
+          0.001377057000354398,
+          0.0013128170030540787,
+          0.0014496389994747005,
+          0.0013088720006635413,
+          0.0013774879989796318,
+          0.0014868180005578324,
+          0.0013708079932257533,
+          0.0012764399943989702,
+          0.0012980539977434091,
+          0.0014249809973989613
+        ],
+        "percentile_method": "nearest rank; ceil(p * sample count), one based"
+      },
+      "copy_exact_quote": {
+        "samples": 20,
+        "p50_seconds": 0.0017010599985951558,
+        "p95_seconds": 0.002069945003313478,
+        "min_seconds": 0.001519397999800276,
+        "max_seconds": 0.002704296995943878,
+        "total_seconds": 0.03610769498482114,
+        "seconds": [
+          0.001954911000211723,
+          0.002069945003313478,
+          0.0019149009967804886,
+          0.0020355489978101104,
+          0.0018282469973200932,
+          0.0017442969983676448,
+          0.0019311369978822768,
+          0.0020185329995001666,
+          0.0016337550041498616,
+          0.0016001029944163747,
+          0.001661508998950012,
+          0.0018107099967892282,
+          0.0016168889997061342,
+          0.0016787150016170926,
+          0.002704296995943878,
+          0.0017010599985951558,
+          0.0015566459987894632,
+          0.0015901980004855432,
+          0.001519397999800276,
+          0.0015368950043921359
+        ],
+        "percentile_method": "nearest rank; ceil(p * sample count), one based"
+      },
+      "cancellation": {
+        "status": "CANCELLED",
+        "requested_after_seconds": 0.02009945299505489,
+        "response_seconds": 0.0004316600025049411,
+        "operation_seconds": 0.02053111299755983,
+        "previous_selection_preserved": true,
+        "recovery_source_copy_verified": true
+      },
+      "isolation": {
+        "foreign_query_empty": true,
+        "cross_workspace_selection_rejected": true
+      },
+      "restart": {
+        "cases": [
+          {
+            "status": "PASS",
+            "application_startup_seconds": 0.08588360399880912,
+            "continued_search_seconds": 0.07473073500295868,
+            "continued_results": 100,
+            "old_selection_rejected": true,
+            "source_and_copy_verified": true,
+            "process_peak_rss_bytes": 41889792,
+            "fresh_process_wall_seconds": 0.420271042996319
+          },
+          {
+            "status": "PASS",
+            "application_startup_seconds": 0.08297715399385197,
+            "continued_search_seconds": 0.07481037899560761,
+            "continued_results": 100,
+            "old_selection_rejected": true,
+            "source_and_copy_verified": true,
+            "process_peak_rss_bytes": 41889792,
+            "fresh_process_wall_seconds": 0.4000142969962326
+          },
+          {
+            "status": "PASS",
+            "application_startup_seconds": 0.091032748001453,
+            "continued_search_seconds": 0.10642991900385823,
+            "continued_results": 100,
+            "old_selection_rejected": true,
+            "source_and_copy_verified": true,
+            "process_peak_rss_bytes": 41889792,
+            "fresh_process_wall_seconds": 0.464749311999185
+          },
+          {
+            "status": "PASS",
+            "application_startup_seconds": 0.08290675599710084,
+            "continued_search_seconds": 0.0819236120005371,
+            "continued_results": 100,
+            "old_selection_rejected": true,
+            "source_and_copy_verified": true,
+            "process_peak_rss_bytes": 41889792,
+            "fresh_process_wall_seconds": 0.41829563999635866
+          },
+          {
+            "status": "PASS",
+            "application_startup_seconds": 0.1078230019993498,
+            "continued_search_seconds": 0.0852876959979767,
+            "continued_results": 100,
+            "old_selection_rejected": true,
+            "source_and_copy_verified": true,
+            "process_peak_rss_bytes": 41889792,
+            "fresh_process_wall_seconds": 0.6398549529985758
+          }
+        ],
+        "application_startup": {
+          "samples": 5,
+          "p50_seconds": 0.08588360399880912,
+          "p95_seconds": 0.1078230019993498,
+          "min_seconds": 0.08290675599710084,
+          "max_seconds": 0.1078230019993498,
+          "total_seconds": 0.45062326399056474,
+          "seconds": [
+            0.08588360399880912,
+            0.08297715399385197,
+            0.091032748001453,
+            0.08290675599710084,
+            0.1078230019993498
+          ],
+          "percentile_method": "nearest rank; ceil(p * sample count), one based"
+        },
+        "fresh_process_wall": {
+          "samples": 5,
+          "p50_seconds": 0.420271042996319,
+          "p95_seconds": 0.6398549529985758,
+          "min_seconds": 0.4000142969962326,
+          "max_seconds": 0.6398549529985758,
+          "total_seconds": 2.343185244986671,
+          "seconds": [
+            0.420271042996319,
+            0.4000142969962326,
+            0.464749311999185,
+            0.41829563999635866,
+            0.6398549529985758
+          ],
+          "percentile_method": "nearest rank; ceil(p * sample count), one based"
+        },
+        "cursor_and_original_verified": true
+      },
+      "actual_small_txt_imports": {
+        "count": 20,
+        "source_bytes": 2370,
+        "latency": {
+          "samples": 20,
+          "p50_seconds": 0.007939745002659038,
+          "p95_seconds": 0.008821815004921518,
+          "min_seconds": 0.005831133996252902,
+          "max_seconds": 0.009860606005531736,
+          "total_seconds": 0.15504220901493682,
+          "seconds": [
+            0.008821815004921518,
+            0.00853160599945113,
+            0.007870941000874154,
+            0.008031131001189351,
+            0.00781346399890026,
+            0.007939745002659038,
+            0.008229210005083587,
+            0.008814002998406067,
+            0.008197932998882607,
+            0.008122710001771338,
+            0.00847780500043882,
+            0.00844700999732595,
+            0.007886254003096838,
+            0.006908488998305984,
+            0.009860606005531736,
+            0.006708978995447978,
+            0.006330878000881057,
+            0.005831133996252902,
+            0.006354012002702802,
+            0.005864484002813697
+          ],
+          "percentile_method": "nearest rank; ceil(p * sample count), one based"
+        },
+        "files_per_second": 128.99713005297284,
+        "all_original_bytes_verified": true,
+        "scope": "Small unique synthetic TXT files in a separate empty library; no large-book throughput claim"
+      },
+      "disk": {
+        "final": {
+          "apparent_bytes": 3089144,
+          "allocated_bytes": 3256320,
+          "files": 45
+        },
+        "sampled_peak": {
+          "apparent_bytes": 3133444,
+          "allocated_bytes": 3256320,
+          "files": 45
+        },
+        "samples": 111,
+        "interval_seconds": 0.05,
+        "peak_is_sampled_lower_bound": true,
+        "scope": "Owned fixture files including originals, inputs, databases and journals; excludes interpreter/source/environment"
+      }
+    },
+    {
+      "status": "PASS",
+      "requested_synthetic_editions": 10000,
+      "source_sha256": "09c26226dba65be2bc55231e994b8e2bf11858c44c8e937e510d6c6d5b92834b",
+      "elapsed_seconds": 84.75472615099716,
+      "baseline_peak_rss_bytes": 29368320,
+      "process_peak_rss_bytes": 44769280,
+      "fixture": {
+        "unique_originals_in_measured_workspace": 1,
+        "original_bytes": 94,
+        "source_sha256": "3abf0298972f706ede6b68b857fa7499753537433617668ab0613fdebf1d5e6e",
+        "segments_per_edition": 1,
+        "stored_counts": {
+          "catalog_edition": 10000,
+          "active_page": 10000
+        },
+        "isolation_control_editions": 1,
+        "post_construction_disk": {
+          "apparent_bytes": 25030772,
+          "allocated_bytes": 25038848,
+          "files": 3
+        }
+      },
+      "direct_catalogue_construction": {
+        "elapsed_seconds": 17.209895905005396,
+        "editions_per_second": 581.0610392530939,
+        "batch_size": 1000,
+        "batch_latency": {
+          "samples": 10,
+          "p50_seconds": 1.5667883819987765,
+          "p95_seconds": 2.903724677002174,
+          "min_seconds": 0.33300840399897425,
+          "max_seconds": 2.903724677002174,
+          "total_seconds": 17.20917481399374,
+          "seconds": [
+            0.33300840399897425,
+            0.81591836699954,
+            1.1923229680032819,
+            1.5581075590016553,
+            1.5667883819987765,
+            1.6508542989977286,
+            1.9750885179964826,
+            2.3940209439970204,
+            2.8193406959981075,
+            2.903724677002174
+          ],
+          "percentile_method": "nearest rank; ceil(p * sample count), one based"
+        },
+        "is_actual_import_throughput": false
+      },
+      "fresh_empty_application": {
+        "samples": 1,
+        "p50_seconds": 0.0971082629985176,
+        "p95_seconds": 0.0971082629985176,
+        "min_seconds": 0.0971082629985176,
+        "max_seconds": 0.0971082629985176,
+        "total_seconds": 0.0971082629985176,
+        "seconds": [
+          0.0971082629985176
+        ],
+        "percentile_method": "nearest rank; ceil(p * sample count), one based"
+      },
+      "catalogue_pages": {
+        "latency": {
+          "samples": 21,
+          "p50_seconds": 0.002765557997918222,
+          "p95_seconds": 0.0030345039995154366,
+          "min_seconds": 0.001520706995506771,
+          "max_seconds": 0.003350922001118306,
+          "total_seconds": 0.057335683013661765,
+          "seconds": [
+            0.0028384379984345287,
+            0.0025679400059743784,
+            0.0024337270006071776,
+            0.0028624640035559423,
+            0.002550422002968844,
+            0.0025311839999631047,
+            0.002618176004034467,
+            0.0026339190008002333,
+            0.002616623001813423,
+            0.0026806189998751506,
+            0.00275462099671131,
+            0.002765557997918222,
+            0.002808302000630647,
+            0.0029155539959901944,
+            0.0028779670028598048,
+            0.003022516000783071,
+            0.0030345039995154366,
+            0.0029657100021722727,
+            0.0029858100024284795,
+            0.003350922001118306,
+            0.001520706995506771
+          ],
+          "percentile_method": "nearest rank; ceil(p * sample count), one based"
+        },
+        "page_limit": 500,
+        "editions_checked": 10000,
+        "all_ids_exact": true
+      },
+      "search_first_page": {
+        "samples": 20,
+        "p50_seconds": 0.4870814650057582,
+        "p95_seconds": 0.6272060310002416,
+        "min_seconds": 0.4146490490020369,
+        "max_seconds": 0.7637011609986075,
+        "total_seconds": 10.208414124019328,
+        "seconds": [
+          0.4357596490008291,
+          0.6233192409999901,
+          0.48020544100290863,
+          0.5281939289998263,
+          0.4359149529991555,
+          0.49804841200239025,
+          0.4870814650057582,
+          0.44885045800037915,
+          0.4286916220007697,
+          0.5367900490018656,
+          0.5411322029976873,
+          0.47917647299618693,
+          0.5440139920028741,
+          0.6272060310002416,
+          0.7637011609986075,
+          0.44064355100272223,
+          0.5172616800045944,
+          0.45675389700045343,
+          0.5210208680000505,
+          0.4146490490020369
+        ],
+        "percentile_method": "nearest rank; ceil(p * sample count), one based"
+      },
+      "search_traversal": {
+        "latency": {
+          "samples": 100,
+          "p50_seconds": 0.4960256609992939,
+          "p95_seconds": 0.6430029919938534,
+          "min_seconds": 0.40834801500022877,
+          "max_seconds": 0.7129178059985861,
+          "total_seconds": 50.98786555803963,
+          "seconds": [
+            0.4140703540033428,
+            0.4629066689958563,
+            0.5391219049997744,
+            0.590785419997701,
+            0.494942612000159,
+            0.5145715699982247,
+            0.5895377810011269,
+            0.45547920699755196,
+            0.44012501800170867,
+            0.45115012799942633,
+            0.4921008380042622,
+            0.44044240600487683,
+            0.4868190550041618,
+            0.4534786169970175,
+            0.4727103570039617,
+            0.4454367150028702,
+            0.4880301170051098,
+            0.42568558000493795,
+            0.4402874929946847,
+            0.4361785810033325,
+            0.5104817290048231,
+            0.41313360500498675,
+            0.44442297099885764,
+            0.5090235169991502,
+            0.6469482819957193,
+            0.5592149250005605,
+            0.5192475320000085,
+            0.42539909799961606,
+            0.5107181259954814,
+            0.42742088100203546,
+            0.4902583970033447,
+            0.5209963570014224,
+            0.5279375259997323,
+            0.6796587819990236,
+            0.4883688859990798,
+            0.4475942249991931,
+            0.4409039810052491,
+            0.5328244409975014,
+            0.46621324500301853,
+            0.4663232350067119,
+            0.4508672150041093,
+            0.5202943830008735,
+            0.5495559819974005,
+            0.5006952210023883,
+            0.45004372599942144,
+            0.6211623449999024,
+            0.5183108800047194,
+            0.5861231820017565,
+            0.5278495689999545,
+            0.6175346050004009,
+            0.5297320899990154,
+            0.5908610400001635,
+            0.5579953870037571,
+            0.7129178059985861,
+            0.5608057880017441,
+            0.5278123780008173,
+            0.46480100299959304,
+            0.5209237639937783,
+            0.534813521997421,
+            0.46706514499965124,
+            0.5496515500053647,
+            0.619258140999591,
+            0.42604269000003114,
+            0.5122220180055592,
+            0.545058859999699,
+            0.4960256609992939,
+            0.5625445759942522,
+            0.4888129780010786,
+            0.5193470300000627,
+            0.6430029919938534,
+            0.48515204599971185,
+            0.5197351710012299,
+            0.600388787999691,
+            0.5771791540028062,
+            0.5164251850001165,
+            0.4910854429981555,
+            0.4947660950056161,
+            0.6205935309990309,
+            0.4720098209945718,
+            0.46577755399630405,
+            0.5056214180003735,
+            0.5870171589995152,
+            0.436946206005814,
+            0.4627804589981679,
+            0.43760430199472466,
+            0.45911941699887393,
+            0.4560956719942624,
+            0.555673286995443,
+            0.6490953820029972,
+            0.662765742999909,
+            0.5476454929957981,
+            0.5884824599997955,
+            0.4757523440057412,
+            0.544306156996754,
+            0.4450984060022165,
+            0.45009994900465244,
+            0.4121604610045324,
+            0.40834801500022877,
+            0.4789136269973824,
+            0.4481451220053714
+          ],
+          "percentile_method": "nearest rank; ceil(p * sample count), one based"
+        },
+        "page_limit": 100,
+        "pages": 100,
+        "results_verified": 10000,
+        "elapsed_seconds": 51.06998620200466,
+        "all_pages_completed": true,
+        "configured_page_cap": 0,
+        "all_observed_ids_exact": true
+      },
+      "open_context": {
+        "samples": 20,
+        "p50_seconds": 0.001723622001009062,
+        "p95_seconds": 0.00244747399847256,
+        "min_seconds": 0.0015486870033782907,
+        "max_seconds": 0.002608237002277747,
+        "total_seconds": 0.036887406997266226,
+        "seconds": [
+          0.0016415200007031672,
+          0.0019046949964831583,
+          0.0016427100053988397,
+          0.0022118990018498152,
+          0.002266661002067849,
+          0.002608237002277747,
+          0.00244747399847256,
+          0.0016300299976137467,
+          0.0019036129961023107,
+          0.0019239139946876094,
+          0.0017537070016260259,
+          0.0015486870033782907,
+          0.001772805000655353,
+          0.001602750999154523,
+          0.0015812290002941154,
+          0.0018045859978883527,
+          0.0016037329987739213,
+          0.001723622001009062,
+          0.0017096700030378997,
+          0.0016058639957918786
+        ],
+        "percentile_method": "nearest rank; ceil(p * sample count), one based"
+      },
+      "copy_exact_quote": {
+        "samples": 20,
+        "p50_seconds": 0.0017419209980289452,
+        "p95_seconds": 0.0024281649966724217,
+        "min_seconds": 0.0015785639989189804,
+        "max_seconds": 0.0030475089952233247,
+        "total_seconds": 0.03718829998979345,
+        "seconds": [
+          0.001725226000417024,
+          0.0018444539964548312,
+          0.0016008570019039325,
+          0.0024281649966724217,
+          0.0016861049953149632,
+          0.0030475089952233247,
+          0.0023096160002751276,
+          0.001583309996931348,
+          0.0017099109973059967,
+          0.001781529004801996,
+          0.0016521139987162314,
+          0.0017561209970153868,
+          0.0016828199950396083,
+          0.001652536004257854,
+          0.0015785639989189804,
+          0.0018562830009614117,
+          0.0017419209980289452,
+          0.001989152005990036,
+          0.0017871980016934685,
+          0.0017749090038705617
+        ],
+        "percentile_method": "nearest rank; ceil(p * sample count), one based"
+      },
+      "cancellation": {
+        "status": "CANCELLED",
+        "requested_after_seconds": 0.02387640199594898,
+        "response_seconds": 0.0004753079992951825,
+        "operation_seconds": 0.024351709995244164,
+        "previous_selection_preserved": true,
+        "recovery_source_copy_verified": true
+      },
+      "isolation": {
+        "foreign_query_empty": true,
+        "cross_workspace_selection_rejected": true
+      },
+      "restart": {
+        "cases": [
+          {
+            "status": "PASS",
+            "application_startup_seconds": 0.3011274040036369,
+            "continued_search_seconds": 0.4100532000011299,
+            "continued_results": 100,
+            "old_selection_rejected": true,
+            "source_and_copy_verified": true,
+            "process_peak_rss_bytes": 44769280,
+            "fresh_process_wall_seconds": 0.9957753389971913
+          },
+          {
+            "status": "PASS",
+            "application_startup_seconds": 0.2321965610026382,
+            "continued_search_seconds": 0.43922763199952897,
+            "continued_results": 100,
+            "old_selection_rejected": true,
+            "source_and_copy_verified": true,
+            "process_peak_rss_bytes": 44769280,
+            "fresh_process_wall_seconds": 0.8996240790002048
+          },
+          {
+            "status": "PASS",
+            "application_startup_seconds": 0.383235840999987,
+            "continued_search_seconds": 0.4332467159983935,
+            "continued_results": 100,
+            "old_selection_rejected": true,
+            "source_and_copy_verified": true,
+            "process_peak_rss_bytes": 44769280,
+            "fresh_process_wall_seconds": 1.0553633559975424
+          },
+          {
+            "status": "PASS",
+            "application_startup_seconds": 0.24997317800443852,
+            "continued_search_seconds": 0.3863499779981794,
+            "continued_results": 100,
+            "old_selection_rejected": true,
+            "source_and_copy_verified": true,
+            "process_peak_rss_bytes": 44769280,
+            "fresh_process_wall_seconds": 0.8721209100040141
+          },
+          {
+            "status": "PASS",
+            "application_startup_seconds": 0.23636671699932776,
+            "continued_search_seconds": 0.5121346989981248,
+            "continued_results": 100,
+            "old_selection_rejected": true,
+            "source_and_copy_verified": true,
+            "process_peak_rss_bytes": 44769280,
+            "fresh_process_wall_seconds": 0.9787062579998747
+          }
+        ],
+        "application_startup": {
+          "samples": 5,
+          "p50_seconds": 0.24997317800443852,
+          "p95_seconds": 0.383235840999987,
+          "min_seconds": 0.2321965610026382,
+          "max_seconds": 0.383235840999987,
+          "total_seconds": 1.4028997010100284,
+          "seconds": [
+            0.3011274040036369,
+            0.2321965610026382,
+            0.383235840999987,
+            0.24997317800443852,
+            0.23636671699932776
+          ],
+          "percentile_method": "nearest rank; ceil(p * sample count), one based"
+        },
+        "fresh_process_wall": {
+          "samples": 5,
+          "p50_seconds": 0.9787062579998747,
+          "p95_seconds": 1.0553633559975424,
+          "min_seconds": 0.8721209100040141,
+          "max_seconds": 1.0553633559975424,
+          "total_seconds": 4.801589941998827,
+          "seconds": [
+            0.9957753389971913,
+            0.8996240790002048,
+            1.0553633559975424,
+            0.8721209100040141,
+            0.9787062579998747
+          ],
+          "percentile_method": "nearest rank; ceil(p * sample count), one based"
+        },
+        "cursor_and_original_verified": true
+      },
+      "actual_small_txt_imports": {
+        "count": 20,
+        "source_bytes": 2370,
+        "latency": {
+          "samples": 20,
+          "p50_seconds": 0.006347362999804318,
+          "p95_seconds": 0.0072512209953856654,
+          "min_seconds": 0.0054580770010943525,
+          "max_seconds": 0.008030498996959068,
+          "total_seconds": 0.1297718619753141,
+          "seconds": [
+            0.0072512209953856654,
+            0.005735917999118101,
+            0.006347362999804318,
+            0.008030498996959068,
+            0.006502877004095353,
+            0.0054580770010943525,
+            0.005867006002517883,
+            0.007021311997959856,
+            0.006968050998693798,
+            0.006289103999733925,
+            0.00604131900036009,
+            0.006258377994527109,
+            0.006732935995387379,
+            0.006651651994616259,
+            0.006523839998408221,
+            0.007223508000606671,
+            0.0058429689961485565,
+            0.005863960999704432,
+            0.0061813610009266995,
+            0.00698050999926636
+          ],
+          "percentile_method": "nearest rank; ceil(p * sample count), one based"
+        },
+        "files_per_second": 154.11661430737973,
+        "all_original_bytes_verified": true,
+        "scope": "Small unique synthetic TXT files in a separate empty library; no large-book throughput claim"
+      },
+      "disk": {
+        "final": {
+          "apparent_bytes": 25363192,
+          "allocated_bytes": 25530368,
+          "files": 45
+        },
+        "sampled_peak": {
+          "apparent_bytes": 28344646,
+          "allocated_bytes": 27959296,
+          "files": 45
+        },
+        "samples": 1651,
+        "interval_seconds": 0.05,
+        "peak_is_sampled_lower_bound": true,
+        "scope": "Owned fixture files including originals, inputs, databases and journals; excludes interpreter/source/environment"
+      }
+    }
+  ],
+  "failed_case": {
+    "requested_synthetic_editions": 50000,
+    "status": "CASE_TIMEOUT",
+    "timeout_seconds": 1800,
+    "message": "Combined construction and read-profile subprocess exceeded its configured 1800-second deadline. No complete case result was returned.",
+    "retained_fixture_verified_counts_after_timeout": [
+      {
+        "workspace_name": "Isolation control",
+        "editions": 1,
+        "active_segments": 1
+      },
+      {
+        "workspace_name": "Synthetic capacity measurement",
+        "editions": 50000,
+        "active_segments": 50000
+      }
+    ],
+    "database_bytes_after_timeout": 124993536,
+    "search_completion": "NOT_ESTABLISHED_BY_THIS_ATTEMPT",
+    "search_latency": "NOT_RETAINED_BY_INTERRUPTED_CASE",
+    "construction_latency": "NOT_RETAINED_BY_INTERRUPTED_CASE",
+    "peak_rss": "NOT_RETAINED_BY_INTERRUPTED_CASE",
+    "next_step": "Reuse committed fixture and measure all 500 result pages plus open/copy/cancel/restart with a separately recorded source identity and 3600-second bound.",
+    "benchmark_driver_exit_code": 1
+  },
+  "claims": {
+    "real_book_corpus": "NOT_RUN",
+    "large_book_import_throughput": "NOT_MEASURED",
+    "windows_or_nvda": "NOT_RUN",
+    "full_50000_case": "NOT_COMPLETED_IN_THIS_ATTEMPT"
+  }
+}

@@ -58,6 +58,20 @@ class WindowsBundleTests(unittest.TestCase):
         installer.verify(self.output)
         self.assertIn("universal-research-library==1.0", (self.output / "install.lock").read_text())
         self.assertEqual((self.output / "wheelhouse" / self.app.name).read_bytes(), self.app.read_bytes())
+        manifest = json.loads((self.output / "bundle-manifest.json").read_text())
+        audio_helpers = {
+            "SetupLocalAudio.cmd": "SetupLocalAudio.cmd",
+            "tools/audio-setup/setup_local_audio.py": "setup_local_audio.py",
+            "tools/audio-setup/prepare_ffmpeg_runtime.py": "prepare_ffmpeg_runtime.py",
+        }
+        for relative, source in audio_helpers.items():
+            expected = (ROOT / "packaging" / source).read_bytes()
+            self.assertEqual((self.output / relative).read_bytes(), expected)
+            self.assertEqual(manifest["files"][relative], hashlib.sha256(expected).hexdigest())
+        installer.verify(self.output)
+        (self.output / "tools/audio-setup/setup_local_audio.py").write_bytes(b"changed helper")
+        with self.assertRaisesRegex(ValueError, "checksum"):
+            installer.verify(self.output)
 
     def sbom(self, version="1.0"):
         path = self.root / "input-sbom.json"

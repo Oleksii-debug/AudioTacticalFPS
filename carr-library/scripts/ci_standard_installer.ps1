@@ -351,6 +351,25 @@ print(json.dumps(report, sort_keys=True))
     Invoke-Logged $installedPython @('-I', '-B', '-c', $verifyNative, $evidence,
         $sourceCommit, $sourceTree, $manifestSha, $setup, $setupSha, $failedSetup, $failedSetupSha,
         $CompilerPath, $compilerSha, $fullManifest, $fullBefore, $project) 'verdict.log'
+
+    # A later, separate A-to-B gate may reuse this exact compiled B. This is a
+    # private path handoff, written only after the original native gate passes.
+    # Its consumer rechecks these hashes and the complete sealed payload.
+    $handoff = Join-Path $private 'standard-update-inputs.json'
+    @{
+        schema = 1; kind = 'verified-standard-installer-ci-inputs'
+        source_commit = $sourceCommit; source_tree = $sourceTree
+        build = $goodBuild; bundle = $bundle; setup_sha256 = $setupSha
+        manifest_sha256 = $manifestSha; compiler = $CompilerPath
+        compiler_sha256 = $compilerSha; installed_python = $installedPython
+        full_manifest = $fullManifest; full_manifest_sha256 = $fullBefore
+        native_proof = (Join-Path $evidence 'proof.json')
+        native_proof_sha256 = (Get-Sha256 (Join-Path $evidence 'proof.json'))
+        payload_bytes = $payloadBytes; installed_environment_bytes = $environmentBytes
+    } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $handoff -Encoding utf8
+    if (-not [string]::IsNullOrWhiteSpace($env:GITHUB_ENV)) {
+        "CARR_STANDARD_B_HANDOFF=$handoff" | Add-Content -LiteralPath $env:GITHUB_ENV -Encoding utf8
+    }
 }
 finally {
     # Preserve only fixed, synthetic native text logs in public CI evidence.

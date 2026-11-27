@@ -318,8 +318,12 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                 shutil.copyfile(regular(audio_dir / name), destination / name)
             (destination / "ffmpeg-runtime.json").write_bytes(audio_manifest_bytes)
             verify_runtime(destination)
-        for name in ("install_windows.py", "Install.cmd", "ResearchLibrary.cmd", "CheckInstallation.cmd"):
+        for name in ("install_windows.py", "Install.cmd", "ResearchLibrary.cmd", "CheckInstallation.cmd", "SetupLocalAudio.cmd"):
             shutil.copyfile(regular(HERE / name), staged / name)
+        audio_setup = staged / "tools" / "audio-setup"
+        audio_setup.mkdir(parents=True)
+        for name in ("setup_local_audio.py", "prepare_ffmpeg_runtime.py"):
+            shutil.copyfile(regular(HERE / name), audio_setup / name)
         shutil.copyfile(HERE.parent / "docs" / "RUNNING.md", staged / "README.txt")
         shutil.copyfile(HERE.parent / "docs" / "START_UK.txt", staged / "START_UK.txt")
         if sbom is not None:

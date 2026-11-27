@@ -131,7 +131,7 @@ def test_backup_refuses_malformed_cursor_even_when_scanned_rows_are_valid(select
     changed = deepcopy(first)
     changed['scan']['cursor']['stack'][0]['path'] = str(tmp_path)
     path = app.root / 'import-batches' / (first['batch_id'] + '.json')
-    path.write_text(canonical(changed) + '\n', encoding='utf-8')
+    path.write_bytes((canonical(changed) + '\n').encode('utf-8'))
     with pytest.raises(ValueError, match='scan|root'):
         create_backup(app, tmp_path / 'backup')
     assert not (tmp_path / 'backup').exists()

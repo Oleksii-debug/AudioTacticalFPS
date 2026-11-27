@@ -15,7 +15,7 @@ UninstallLogMode=append
 UninstallDisplayIcon={code:PayloadDir}\ResearchLibrary.exe
 AppModifyPath="{code:PayloadDir}\maintenance-setup.exe"
 AppReadmeFile={code:PayloadDir}\README.txt
-SetupMutex=Resonance.StandardInstall
+SetupMutex=Resonance.StandardInstall,Global\Resonance.StandardInstall
 CloseApplications=no
 RestartApplications=no
 AllowCancelDuringInstall=no
@@ -160,6 +160,80 @@ begin
   Result := SelectedPayload;
 end;
 
+function LowerHex(const Value: String; Size: Integer): Boolean;
+var
+  I: Integer;
+begin
+  Result := Length(Value) = Size;
+  if not Result then exit;
+  for I := 1 to Length(Value) do
+    if not (Value[I] in ['0'..'9', 'a'..'f']) then begin
+      Result := False;
+      exit;
+    end;
+end;
+
+function PreviousGeneration(const Value: String): Boolean;
+var
+  I: Integer;
+begin
+  Result := (Length(Value) >= 23) and (Length(Value) <= 28)
+    and (Copy(Value, 1, 9) = 'versions/')
+    and LowerHex(Copy(Value, 10, 12), 12);
+  if not Result then exit;
+  Result := (Value[22] = '-') and (Value[23] <> '0');
+  if not Result then exit;
+  for I := 23 to Length(Value) do
+    if not (Value[I] in ['0'..'9']) then begin
+      Result := False;
+      exit;
+    end;
+end;
+
+procedure CheckPendingUpdate;
+var
+  Root, Pending, Token, Previous, Python, PythonDigest, SetupDigest: String;
+  Code: Integer;
+begin
+  Root := RemoveBackslashUnlessRoot(ExpandFileName(ExpandConstant('{app}')));
+  Pending := AddBackslash(Root) + 'standard-update-pending.ini';
+  Token := ExpandConstant('{param:CARRUPDATE|}');
+  if not FileExists(Pending) then begin
+    if Token <> '' then RaiseException('The signed update handoff is unavailable.');
+    if FileExists(AddBackslash(Root) + 'standard-update-prior.json') then
+      RaiseException('Recover the previous signed update before repairing this installation.');
+    exit;
+  end;
+  if not PlainParents(Pending) or not LowerHex(Token, 32)
+    or (GetIniString('update', 'schema', '', Pending) <> 'resonance-standard-update/1')
+    or (GetIniString('update', 'transaction', '', Pending) <> Token)
+    or (GetIniString('update', 'candidate_source', '', Pending) <> '@SOURCE@')
+    or (GetIniString('update', 'candidate_manifest', '', Pending) <> '@MANIFEST@') then
+    RaiseException('Another or unreviewed signed update is pending. Recover it before installing.');
+  Previous := GetIniString('update', 'previous_generation', '', Pending);
+  PythonDigest := GetIniString('update', 'previous_python_sha256', '', Pending);
+  SetupDigest := GetIniString('update', 'candidate_setup', '', Pending);
+  if not PreviousGeneration(Previous) or not LowerHex(PythonDigest, 64)
+    or not LowerHex(SetupDigest, 64) then
+    RaiseException('The reviewed installer handoff has invalid identities.');
+  if Lowercase(GetSHA256OfFile(ExpandConstant('{srcexe}'))) <> SetupDigest then
+    RaiseException('The setup executable differs from the reviewed signed target.');
+  StringChangeEx(Previous, '/', '\', True);
+  Python := AddBackslash(Root) + Previous + '\.venv\Scripts\python.exe';
+  if not FileExists(Python) or not PlainParents(Python)
+    or (Lowercase(GetSHA256OfFile(Python)) <> PythonDigest) then
+    RaiseException('The retained previous interpreter changed; automatic upgrade stopped.');
+  { Run only the fixed module in the already installed A. It compares actual
+    registration, uninstaller and shortcut bytes under this setup mutex, then
+    reserves exactly this fresh B generation. No candidate code is imported. }
+  if not ExecAndLogOutput(Python,
+    '-I -B -X utf8 -m carr_library.security.standard_installation --reserve-generation "'
+      + Root + '" "' + Token + '" "' + PayloadDir('') + '" "@SOURCE@" "@MANIFEST@" "'
+      + SetupDigest + '"', Root, SW_SHOWNORMAL, ewWaitUntilTerminated, Code, nil)
+    or (Code <> 0) then
+    RaiseException('The previous registered installation changed or cannot verify this handoff.');
+end;
+
 function CheckInstallDirectory(): String;
 var
   Root, Data: String;
@@ -257,6 +331,7 @@ begin
         RaiseException('The program ownership marker could not be saved.');
     end;
     EnsureInstallationLease;
+    CheckPendingUpdate;
     if not CreateDir(PayloadDir('')) then
       RaiseException('Another operation created this generation; retry in a fresh directory.');
     ExtractTemporaryFiles('{tmp}\resonance-payload\*');
@@ -304,6 +379,12 @@ function InitializeUninstall(): Boolean;
 var
   Count: Integer;
 begin
+  Result := False;
+  if FileExists(ExpandConstant('{app}\standard-update-pending.ini'))
+    or FileExists(ExpandConstant('{app}\standard-update-prior.json')) then begin
+    SuppressibleMsgBox('Recover the pending signed update before uninstalling. No program or research data was removed.', mbError, MB_OK, IDOK);
+    exit;
+  end;
   Result := AcquireUninstallLease;
   if not Result then begin
     SuppressibleMsgBox('Close Resonance and its running jobs before uninstalling. No application was closed automatically.', mbError, MB_OK, IDOK);

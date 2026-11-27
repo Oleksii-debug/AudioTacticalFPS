@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import runpy
+import shutil
 import subprocess
 import sys
 
@@ -21,6 +22,47 @@ spec.loader.exec_module(installer)
 
 def sha(value):
     return hashlib.sha256(value).hexdigest()
+
+
+@pytest.mark.parametrize('damage', ['none', 'manifest', 'payload', 'setup'])
+def test_update_probe_rechecks_separately_retained_bundle_after_builder_copy_removed(
+        native_bundle, tmp_path, damage):
+    """Exercise input validation only; the setup is explicitly inert bytes."""
+    prepared = prepare(native_bundle, tmp_path)
+    output = Path(prepared['output'])
+    report_path = output / 'installer-build.json'
+    report = json.loads(report_path.read_bytes())
+    raw_manifest = (native_bundle / 'bundle-manifest.json').read_bytes()
+    manifest_sha = sha(raw_manifest)
+    setup_name = 'dist/Resonance-Setup-' + COMMIT[:12] + '.exe'
+    executable = output / setup_name
+    executable.parent.mkdir(exist_ok=True)
+    executable.write_bytes(b'INERT TEST SETUP, NEVER EXECUTE')
+    setup_sha = sha(executable.read_bytes())
+    report.update(status='compiled', installer={'path': setup_name,
+        'bytes': executable.stat().st_size, 'sha256': setup_sha})
+    report_path.write_text(json.dumps(report), encoding='utf-8')
+    shutil.rmtree(output / 'payload')
+    if damage == 'manifest':
+        (native_bundle / 'bundle-manifest.json').write_bytes(raw_manifest + b'\n')
+    elif damage == 'payload':
+        (native_bundle / 'ResearchLibrary.exe').write_bytes(b'foreign payload')
+    elif damage == 'setup':
+        executable.write_bytes(b'foreign setup')
+    spec = importlib.util.spec_from_file_location('carr_update_probe_inputs',
+        ROOT / 'packaging/probe_standard_update_windows.py')
+    probe = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(probe)
+    if damage == 'none':
+        checked, checked_report, checked_manifest = probe.build_inputs(output, COMMIT,
+            setup_sha, manifest_sha, installer._delivery(), bundle=native_bundle)
+        assert checked == executable and checked_manifest == raw_manifest
+        assert json.loads(checked_report) == report
+    else:
+        with pytest.raises((AssertionError, ValueError)):
+            probe.build_inputs(output, COMMIT, setup_sha, manifest_sha,
+                installer._delivery(), bundle=native_bundle)
+    assert not (output / 'payload').exists()
 
 
 @pytest.fixture
@@ -65,6 +107,7 @@ def test_prepare_preserves_exact_seal_and_excludes_user_files(native_bundle, tmp
     assert report["native_install_repair_uninstall"] == "NOT_RUN"
     assert report["authenticode_verified"] is False
     assert report["update_or_entitlement_authority"] is False
+    assert report["managed_update_protocol"] == "resonance-standard-update/1"
     script = (output / "Resonance.iss").read_text(encoding="utf-8-sig")
     assert "@PAYLOAD" not in script and "@SOURCE" not in script
     assert 'Source: "payload\\ocr-corresponding-source.tar"' in script
@@ -75,9 +118,14 @@ def test_prepare_preserves_exact_seal_and_excludes_user_files(native_bundle, tmp
     assert "CloseApplications=no" in script and "PrivilegesRequired=lowest" in script
     assert "UninstallLogMode=append" in script
     assert "EnsureInstallationLease;" in script
+    assert "SetupMutex=Resonance.StandardInstall,Global\\Resonance.StandardInstall" in script
+    assert "--reserve-generation" in script
+    assert "standard-update-pending.ini" in script
+    assert "standard-update-prior.json" in script
     assert "Result := AcquireUninstallLease;" in script
     preparation = script.split("function PrepareToInstall", 1)[1].split("function PlainTree", 1)[0]
     assert "AcquireUninstallLease" not in preparation
+    assert preparation.index("CheckPendingUpdate;") < preparation.index("CreateDir(PayloadDir")
     assert "procedure DeinitializeUninstall" in script
     assert 'Type: filesandordirs; Name: "{code:PayloadDir}\\.venv"' in script
     assert 'Type: filesandordirs; Name: "{app}"' not in script

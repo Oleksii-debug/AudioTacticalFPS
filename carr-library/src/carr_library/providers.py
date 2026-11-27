@@ -289,8 +289,17 @@ class WindowsCredentialVault:
             ctypes.memset(buffer, 0, len(raw))
 
     def get(self, reference, binding):
+        value = self.get_optional(reference, binding)
+        if value is None:
+            raise ProviderError('Reconnect this profile: its API key is unavailable.')
+        return value
+
+    def get_optional(self, reference, binding):
+        """Return None only for native ERROR_NOT_FOUND; never hide other vault errors."""
         pointer = ctypes.POINTER(self.Credential)()
         if not self.api.CredReadW(self._target(reference, binding), 1, 0, ctypes.byref(pointer)):
+            if ctypes.get_last_error() == 1168:
+                return None
             raise ProviderError('Reconnect this profile: its API key is unavailable.')
         try:
             record = pointer.contents

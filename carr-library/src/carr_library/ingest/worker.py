@@ -95,9 +95,12 @@ def record_progress(root, request_id, **changes):
 
 def _request_identity(record):
     """Stable request identity; progress and publication candidates are not authority."""
-    return {key: record.get(key) for key in (
+    result = {key: record.get(key) for key in (
         'version', 'request_id', 'data_dir', 'workspace', 'source',
         'metadata', 'config', 'expected_manifest')}
+    if 'pdf_max_bytes' in record:
+        result['pdf_max_bytes'] = record['pdf_max_bytes']
+    return result
 
 
 def _publication_state(db, record, revision, *, allow_superseded=False):
@@ -210,6 +213,7 @@ def record_publication_candidate(root, request_id, db, workspace, revision, *,
             or any(record.get(key) != expected[key] for key in
                    ('version', 'request_id', 'data_dir', 'source', 'workspace',
                     'metadata', 'config', 'expected_manifest'))
+            or record.get('pdf_max_bytes') != expected.get('pdf_max_bytes')
             or config is None
             or asdict(config) != asdict(validate_configuration(expected['config']))
             or expected['pinned_asset'] not in (None, record.get('asset_sha256'))
@@ -283,8 +287,8 @@ class RuntimeBoundIngest(Ingest):
         self.review_asset = review_asset
         self.validated_reviews = {}
 
-    def _plan(self, asset, config):
-        count, settings, segments = super()._plan(asset, config)
+    def _plan(self, asset, config, *, cancelled=lambda: False):
+        count, settings, segments = super()._plan(asset, config, cancelled=cancelled)
         if asset.mime == 'application/pdf':
             from ..extract.runtime_identity import runtime_identity
             data = json.loads(settings)
@@ -310,12 +314,15 @@ class RuntimeBoundIngest(Ingest):
         review = self.reviews.get(str(physical))
         if review is None:
             return False
+        from ..catalog.streaming_pdf import FileAsset
+        review_digest = (self.review_asset.digest if isinstance(self.review_asset, FileAsset) else
+                         sha256(self.review_asset).hexdigest() if isinstance(self.review_asset, bytes) else None)
         if (record.get('status') != 'review_required' or not record.get('raw_text', '').strip()
-                or type(physical) is not int or not isinstance(self.review_asset, bytes)
+                or type(physical) is not int or review_digest is None
                 or not isinstance(review, dict)
                 or review.get('physical') != physical
                 or review.get('asset_sha256') != record['provenance'].get('asset_sha256')
-                or review.get('asset_sha256') != sha256(self.review_asset).hexdigest()
+                or review.get('asset_sha256') != review_digest
                 or review.get('raw_sha256') != sha256(record['raw_text'].encode('utf-8')).hexdigest()
                 or review.get('checkpoint_sha256') != sha256(canonical(record).encode('utf-8')).hexdigest()
                 or not isinstance(review.get('reviewer'), str) or not review['reviewer'].strip()):
@@ -412,7 +419,10 @@ def _pending_review(root, workspace, request_id):
                 or not isinstance(record.get('raw_text'), str) or not record['raw_text'].strip()):
             raise ValueError('No intact extracted PDF text is available for review.')
         from .retained_assets import RetainedAssets
-        data = RetainedAssets(Path(root) / 'originals').resolve(job['asset']).read_bytes()
+        from ..catalog.streaming_pdf import FileAsset, snapshot_original
+        path = RetainedAssets(Path(root) / 'originals').resolve(job['asset'])
+        original = snapshot_original(path.parent, path.name)
+        data = original if isinstance(original, FileAsset) else original.data
         renderer, fingerprint = isolated_render_fingerprint(data, row['ordinal'])
         binding = dict(request_id=request_id, workspace=workspace, job=job['id'], edition=job['edition'],
                        asset_sha256=job['asset'], physical=row['ordinal'],
@@ -491,7 +501,8 @@ def _stop(process):
         process.wait(timeout=2)
 
 
-def _request_record(root, workspace, source, metadata, config, request_id, expected_manifest=None):
+def _request_record(root, workspace, source, metadata, config, request_id, expected_manifest=None,
+                    pdf_max_bytes=None):
     metadata = dict(metadata)
     if metadata.get('title') in (None, ''):
         metadata['title'] = Path(source).stem
@@ -500,15 +511,18 @@ def _request_record(root, workspace, source, metadata, config, request_id, expec
     record = dict(version=1, request_id=request_id, data_dir=str(Path(root).resolve()),
                   workspace=workspace, source=str(Path(source).absolute()),
                   metadata=metadata, config=asdict(config), state='pending')
+    from ..catalog.streaming_pdf import MAX_PDF_BYTES, pdf_budget, valid_original_size
+    if pdf_max_bytes is not None:
+        record['pdf_max_bytes'] = pdf_budget(pdf_max_bytes)
     if expected_manifest is not None:
-        from ..catalog.intake import MAX_BYTES
         if (not isinstance(expected_manifest, dict)
                 or set(expected_manifest) != {'sha256', 'mime', 'size'}
                 or not isinstance(expected_manifest['sha256'], str)
                 or not re.fullmatch('[0-9a-f]{64}', expected_manifest['sha256'])
                 or expected_manifest['mime'] not in MIME_SUFFIXES
                 or type(expected_manifest['size']) is not int
-                or not 0 < expected_manifest['size'] <= MAX_BYTES):
+                or not valid_original_size(expected_manifest['mime'], expected_manifest['size'],
+                                           pdf_max_bytes=record.get('pdf_max_bytes', MAX_PDF_BYTES))):
             raise ValueError('Invalid planned source manifest.')
         record['expected_manifest'] = dict(expected_manifest)
     # Compare the exact representation persisted by JSON, including sequences.
@@ -516,7 +530,7 @@ def _request_record(root, workspace, source, metadata, config, request_id, expec
 
 
 def prepare_request(root, workspace, source, metadata, config, *, request_id=None,
-                    expected_manifest=None):
+                    expected_manifest=None, pdf_max_bytes=None):
     """Persist stable import identities without opening or processing the source.
 
     A batch can save its request ID first and safely repeat this preparation
@@ -525,7 +539,7 @@ def prepare_request(root, workspace, source, metadata, config, *, request_id=Non
     request_id = request_id or uuid4().hex
     with request_lock(root, request_id):
         planned = _request_record(root, workspace, source, metadata, config,
-                                  request_id, expected_manifest)
+                                  request_id, expected_manifest, pdf_max_bytes)
         try:
             existing = load_request(root, request_id)
         except FileNotFoundError:
@@ -533,20 +547,21 @@ def prepare_request(root, workspace, source, metadata, config, *, request_id=Non
             return planned
         identity = set(planned) - {'state'}
         if (any(existing.get(key) != planned[key] for key in identity)
-                or existing.get('expected_manifest') != planned.get('expected_manifest')):
+                or existing.get('expected_manifest') != planned.get('expected_manifest')
+                or existing.get('pdf_max_bytes') != planned.get('pdf_max_bytes')):
             raise ValueError('Persisted import request differs from its planned identity.')
         return existing
 
 
 def run_request(root, workspace, source, metadata, config, *, cancelled=lambda: False,
-                timeout=120.0, request_id=None, broker=None):
+                timeout=120.0, request_id=None, broker=None, pdf_max_bytes=None):
     """Execute a new or resumed document request without parsing in the caller."""
     new = request_id is None
     request_id = request_id or uuid4().hex
     with request_lock(root, request_id):
         return _run_request(root, workspace, source, metadata, config,
                             cancelled=cancelled, timeout=timeout,
-                            request_id=request_id, new=new, broker=broker)
+                            request_id=request_id, new=new, broker=broker, pdf_max_bytes=pdf_max_bytes)
 
 
 def _published_after_stop(app, initial, attempt_id):
@@ -559,17 +574,20 @@ def _published_after_stop(app, initial, attempt_id):
 
 
 def _run_request(root, workspace, source, metadata, config, *, cancelled,
-                 timeout, request_id, new, broker=None):
+                 timeout, request_id, new, broker=None, pdf_max_bytes=None):
     if (not callable(cancelled) or type(timeout) not in (int, float)
             or not math.isfinite(timeout) or not 0.1 <= timeout <= 600):
         raise ValueError('Import timeout must be between 0.1 and 600 seconds.')
     if new:
-        record = _request_record(root, workspace, source, metadata, config, request_id)
+        record = _request_record(root, workspace, source, metadata, config, request_id,
+                                 pdf_max_bytes=pdf_max_bytes)
         _store(root, request_id, record, create=True)
     else:
         record = load_request(root, request_id)
         if record.get('workspace') != workspace:
             raise ValueError('Import request belongs to another library.')
+        if pdf_max_bytes is not None and record.get('pdf_max_bytes') != pdf_max_bytes:
+            raise ValueError('Import PDF byte budget changed; prepare a new request.')
         if record.get('state') == 'complete' and isinstance(record.get('result'), dict):
             return dict(record['result'], request_id=request_id, isolated=True)
     from ..audio.jobs import checked_directory
@@ -594,11 +612,26 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
         if (selected.root != library / 'runtime' / 'resources'
                 or selected.policy_path != library / 'state' / 'operations' / 'resources.json'):
             raise ResourceStateError('The resource coordinator belongs to another library directory.')
-        request = document_request(library, Path(gettempdir()), selected.limits)
+        from ..catalog.streaming_pdf import MAX_PDF_BYTES, valid_original_size
+        from ..audio.jobs import regular_file
+        source_path = Path(record['source'])
+        if record.get('asset_sha256'):
+            from .retained_assets import RetainedAssets
+            source_path = RetainedAssets(library / 'originals').resolve(record['asset_sha256'], cancelled=cancelled)
+        source_info = regular_file(source_path)
+        source_mime = 'application/pdf' if source_path.suffix.casefold() == '.pdf' else ''
+        if (source_info.st_nlink != 1 or not valid_original_size(source_mime, source_info.st_size,
+                pdf_max_bytes=record.get('pdf_max_bytes', MAX_PDF_BYTES))):
+            raise ValueError('Document original exceeds its declared format byte budget.')
+        from ..catalog.intake import MAX_BYTES
+        pdf_limit = (min(record.get('pdf_max_bytes', MAX_PDF_BYTES),
+                         max(MAX_BYTES, source_info.st_size)) if source_mime == 'application/pdf' else None)
+        request = document_request(library, Path(gettempdir()), selected.limits,
+                                   original_bytes=pdf_limit or source_info.st_size)
         admission = selected.reserve(request, operation_id='document:' + request_id,
                                      cancelled=cancelled, timeout=60)
         return _execute_request(root, workspace, record, request_id,
-                                admission=admission, timeout=timeout)
+                                admission=admission, timeout=timeout, pdf_limit=pdf_limit)
     except ResourceCancelled:
         result = dict(state='cancelled', message='Import stopped while waiting for shared resources.',
                       request_id=request_id, isolated=True)
@@ -606,7 +639,7 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
         return result
 
 
-def _execute_request(root, workspace, record, request_id, *, admission, timeout):
+def _execute_request(root, workspace, record, request_id, *, admission, timeout, pdf_limit=None):
     # The resource reservation spans the actual child and its owned cleanup.
     # Receipt reconciliation can perform another accepted operation and must
     # not retain the completed child's full-pool compute reservation.
@@ -637,9 +670,12 @@ def _execute_request(root, workspace, record, request_id, *, admission, timeout)
         with app.read(workspace):
             pass
         record_progress(root, request_id, state='running')
-        result = _invoke({'data_dir': str(Path(root).resolve()), 'request_id': request_id,
-                          'attempt_id': attempt_id, 'request_sha256': fingerprint,
-                          'source': record['source'], 'timeout': timeout},
+        message = {'data_dir': str(Path(root).resolve()), 'request_id': request_id,
+                   'attempt_id': attempt_id, 'request_sha256': fingerprint,
+                   'source': record['source'], 'timeout': timeout}
+        if pdf_limit is not None:
+            message['pdf_max_bytes'] = pdf_limit
+        result = _invoke(message,
                          timeout=timeout, cancelled=lease.cancelled,
                          on_started=worker_started)
     if started and result.get('state') in ('cancelled', 'timed_out', 'failed'):
@@ -748,15 +784,24 @@ def isolated_render_fingerprint(data, physical, *, cancelled=lambda: False):
     """Reuse the citation renderer in the same bounded isolated worker."""
     if not callable(cancelled):
         raise ValueError('A review cancellation callback is required.')
-    if type(data) is not bytes or not 0 < len(data) <= 64 * 1024 * 1024:
+    from ..catalog.streaming_pdf import FileAsset
+    if not isinstance(data, FileAsset) and (type(data) is not bytes or not 0 < len(data) <= 64 * 1024 * 1024):
         raise ValueError('Invalid PDF review bytes.')
     if type(physical) is not int or not 1 <= physical <= 1000:
         raise ValueError('Invalid PDF review page.')
-    with TemporaryDirectory(prefix='carr-review-') as temporary:
-        source = Path(temporary) / 'page-source.pdf'
-        source.write_bytes(data)
-        result = _invoke(dict(action='render', source=str(source), sha256=sha256(data).hexdigest(),
-                              physical=physical, timeout=30), timeout=30, cancelled=cancelled)
+    if isinstance(data, FileAsset):
+        # The parent retains the verified read handle across the owned child.
+        # Windows denies mutation; POSIX revalidates its digest after rendering.
+        with data.open(cancelled=cancelled):
+            result = _invoke(dict(action='render', source=str(data.path), sha256=data.digest,
+                                  source_size=data.size, source_identity=list(data.identity),
+                                  physical=physical, timeout=30), timeout=30, cancelled=cancelled)
+    else:
+        with TemporaryDirectory(prefix='carr-review-') as temporary:
+            source = Path(temporary) / 'page-source.pdf'
+            source.write_bytes(data)
+            result = _invoke(dict(action='render', source=str(source), sha256=sha256(data).hexdigest(),
+                                  physical=physical, timeout=30), timeout=30, cancelled=cancelled)
     if (isinstance(result, dict) and result.get('state') == 'cancelled') or cancelled():
         raise InterruptedError('PDF source verification cancelled.')
     if (not isinstance(result, dict) or set(result) != {'renderer', 'fingerprint'}
@@ -774,10 +819,12 @@ def main():
             raise ValueError('Import worker request exceeded its limit.')
         message = json.loads(raw)
         import_keys = {'data_dir', 'request_id', 'attempt_id', 'request_sha256', 'source', 'timeout'}
+        file_import_keys = import_keys | {'pdf_max_bytes'}
         render_keys = {'action', 'source', 'sha256', 'physical', 'timeout'}
+        file_render_keys = render_keys | {'source_size', 'source_identity'}
         conversion_keys = {'action', 'source', 'output', 'report', 'sha256', 'source_size',
                            'budget', 'ocr_config', 'timeout'}
-        if not isinstance(message, dict) or set(message) not in (import_keys, render_keys, conversion_keys):
+        if not isinstance(message, dict) or set(message) not in (import_keys, file_import_keys, render_keys, file_render_keys, conversion_keys):
             raise ValueError('Invalid import worker request schema.')
         timeout = message['timeout']
         if type(timeout) not in (int, float) or not math.isfinite(timeout) or not 0.1 <= timeout <= 600:
@@ -796,16 +843,23 @@ def main():
                 result = convert_request(message)
             print(canonical({'result': result}))
             return 0
-        if set(message) == render_keys:
+        if set(message) in (render_keys, file_render_keys):
             if message['action'] != 'render' or not isinstance(message['source'], str):
                 raise ValueError('Invalid render request.')
             source = Path(message['source'])
-            info = source.lstat()
-            if not stat.S_ISREG(info.st_mode) or not 0 < info.st_size <= 64 * 1024 * 1024:
-                raise ValueError('Invalid PDF review source.')
-            data = source.read_bytes()
-            if sha256(data).hexdigest() != message['sha256']:
-                raise ValueError('PDF review source digest changed.')
+            if set(message) == file_render_keys:
+                from ..catalog.streaming_pdf import FileAsset
+                data = FileAsset.capture(source,
+                    expected_manifest=dict(sha256=message['sha256'], mime='application/pdf',
+                                           size=message['source_size']),
+                    expected_identity=message['source_identity'])
+            else:
+                info = source.lstat()
+                if not stat.S_ISREG(info.st_mode) or not 0 < info.st_size <= 64 * 1024 * 1024:
+                    raise ValueError('Invalid PDF review source.')
+                data = source.read_bytes()
+                if sha256(data).hexdigest() != message['sha256']:
+                    raise ValueError('PDF review source digest changed.')
             from ..citations.pdf_review_attestation import render_fingerprint
             with redirect_stdout(sys.stderr):
                 renderer, fingerprint = render_fingerprint(data, message['physical'])
@@ -827,6 +881,13 @@ def main():
             raise ValueError('Import request changed before this worker attempt.')
         from ..application import LibraryApp
         from ..extract.page_ocr import Config
+        from ..catalog.streaming_pdf import MAX_PDF_BYTES, pdf_budget
+        pdf_limit = record.get('pdf_max_bytes', MAX_PDF_BYTES)
+        if 'pdf_max_bytes' in message:
+            admitted = pdf_budget(message['pdf_max_bytes'])
+            if admitted > pdf_limit:
+                raise ValueError('PDF launch allowance exceeds the immutable request budget.')
+            pdf_limit = admitted
         metadata = dict(record['metadata'])
         if not isinstance(metadata['authors'], list) or not isinstance(metadata['collections'], list):
             raise ValueError('Invalid import metadata sequences.')
@@ -841,7 +902,8 @@ def main():
                                       config=Config(**record['config']),
                                       _request_id=record['request_id'], _resume_job=record.get('job'),
                                       _expected_manifest=record.get('expected_manifest'),
-                                      _publication_attempt=attempt)
+                                      _publication_attempt=attempt,
+                                      pdf_max_bytes=pdf_limit)
         print(canonical({'result': result}))
         return 0
     except Exception as exc:

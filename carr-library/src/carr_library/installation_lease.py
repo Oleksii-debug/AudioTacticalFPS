@@ -196,6 +196,12 @@ def application_lease(arguments=(), *, prefix=None, allow_bootstrap_self_test=Fa
         yield
         return
     plain(root / LEASE)
+    if environment.parent.parent.name.casefold() == 'versions':
+        from .security.standard_state import check_generation_start
+        with _application_hold_lock:
+            already_running = (os.getpid(), os.path.normcase(str(root))) in _application_holds
+        check_generation_start(root, environment, arguments,
+            bootstrap=allow_bootstrap_self_test, already_running=already_running)
     if not (environment / '.installation-complete').is_file():
         # Only the offline bootstrap may run the exact isolated self-test.
         # The legacy app-slot installer already holds its own exclusive lease;

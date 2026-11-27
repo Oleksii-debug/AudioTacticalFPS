@@ -143,6 +143,7 @@ def prepare(bundle, source_commit, manifest_sha256, output, *, compiler=None,
         if delivery._read_manifest(bundle, cancelled) != raw:
             raise ValueError("Bundle manifest changed during installer preparation.")
         report = {"schema": 1, "kind": "standard-windows-installer",
+                  "managed_update_protocol": "resonance-standard-update/1",
                   "source_commit": source_commit, "manifest_sha256": manifest_sha256,
                   "payload_files": len(files), "status": "prepared",
                   "recipe_sha256": hashlib.sha256((stage / "Resonance.iss").read_bytes()).hexdigest(),

@@ -48,6 +48,8 @@ jobs:
           New-Item -ItemType Directory -Force ci-results | Out-Null
           python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-integrated-cp311.lock
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-sync-test-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pip install --no-deps .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           git rev-parse HEAD | Set-Content ci-results/tested-commit.txt
@@ -62,7 +64,7 @@ jobs:
       - name: Require every selected source case without skips
         timeout-minutes: 32
         run: |
-          $suites = if ('${{ matrix.group }}' -eq 'word') {
+          [string[]]$suites = @(if ('${{ matrix.group }}' -eq 'word') {
             @('tests/citations/test_word_com.py')
           } else {
             @('tests/operations/test_resources.py',
@@ -71,7 +73,7 @@ jobs:
               'tests/security/test_domain_admission.py',
               'tests/packaging/test_ci_check.py',
               'tests/storage/test_legacy_state_portability.py')
-          }
+          })
           python scripts/ci_check.py --jobs 2 @suites 2>&1 | Tee-Object ci-results/exact-regressions.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           @'

@@ -31,9 +31,10 @@ class ReviewedPage:
 def render_fingerprint(data, physical):
     """Reuse PDFium; include dimensions and renderer version in review binding."""
     import pypdfium2 as pdfium
-    if type(data) is not bytes or not 0 < len(data) <= MAX_BYTES:
+    from ..catalog.streaming_pdf import FileAsset, pdf_document
+    if not isinstance(data, FileAsset) and (type(data) is not bytes or not 0 < len(data) <= MAX_BYTES):
         raise ValueError('invalid PDF bytes')
-    with pdfium.PdfDocument(data) as doc:
+    with pdf_document(data) as doc:
         if type(physical) is not int or not 1 <= physical <= len(doc) <= 1000:
             raise ValueError('invalid PDF page')
         with closing(doc[physical - 1]) as page:
@@ -74,10 +75,16 @@ def pdf_review_attestor(workspace, resolve_asset, lookup_review, *, renderer=ren
                     or not review.reviewer.strip()):
                 return False
             data = resolve_asset(identity)
-            if (type(data) is not bytes or not 0 < len(data) <= MAX_BYTES
-                    or sha256(data).hexdigest() != identity.asset_sha256):
+            from ..catalog.streaming_pdf import FileAsset
+            digest = (data.digest if isinstance(data, FileAsset) else
+                      sha256(data).hexdigest() if type(data) is bytes and 0 < len(data) <= MAX_BYTES else None)
+            if digest != identity.asset_sha256:
                 return False
-            renderer_identity, fingerprint = renderer(data, locator.index)
+            if isinstance(data, FileAsset):
+                with data.open():
+                    renderer_identity, fingerprint = renderer(data, locator.index)
+            else:
+                renderer_identity, fingerprint = renderer(data, locator.index)
             return review.renderer == renderer_identity and review.rendered_sha256 == fingerprint
         except (OSError, LookupError, ValueError, RuntimeError, ImportError):
             return False

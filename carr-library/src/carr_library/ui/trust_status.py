@@ -60,6 +60,8 @@ class TrustStatusDialog(wx.Dialog):
             add('Check renewal now', self.on_refresh)
         if controller.updates is not None:
             add('Check offline update repository', self.on_update)
+        if controller.standard_update is not None:
+            add('Recover reviewed standard update', self.on_recover_update)
         actions.Add(wx.Button(self, wx.ID_CANCEL, label='Close'), 0, wx.ALL, 5)
         layout.Add(actions, 0, wx.ALIGN_RIGHT)
         self.SetSizer(layout)
@@ -98,6 +100,45 @@ class TrustStatusDialog(wx.Dialog):
             lambda: self.controller.check_repository(repository, cancelled=self.frame.cancel_event.is_set),
             done=lambda release: show_update_review(self.frame, self.controller, repository, release))
 
+    def on_recover_update(self, event=None):
+        _same_update_library(self.frame, self.controller)
+        self.EndModal(wx.ID_OK)
+        recover_standard_update(self.frame, self.controller)
+
+
+def recover_standard_update(frame, controller, repository=None):
+    _same_update_library(frame, controller)
+    def failed(error):
+        from ..security.standard_installation import RecoveryReviewRequired
+        if isinstance(error, RecoveryReviewRequired) and repository is None:
+            try:
+                _same_update_library(frame, controller)
+            except ValueError:
+                frame.report('Reopen the configured library before recovering this standard update.')
+                return
+            with wx.DirDialog(frame, 'Reverify the pending update from its signed offline repository') as chooser:
+                if chooser.ShowModal() != wx.ID_OK:
+                    frame.report('Recovery was not started. The previous program, research data and pending evidence are retained.')
+                    return
+                selected = chooser.GetPath()
+            recover_standard_update(frame, controller, selected)
+            return
+        frame.report('Recovery needs attention. The pending journal, previous program '
+                     'and research backup have been preserved.')
+    frame.run_job('Recover reviewed standard update',
+        lambda: controller.recover_update(repository, cancelled=frame.cancel_event.is_set),
+        done=lambda state: frame.report('Standard update recovery: ' + state
+            + '. Existing research and retained program generations remain available.'),
+        failed=failed)
+
+
+def _same_update_library(frame, controller):
+    transaction = controller.standard_update
+    library = getattr(frame, 'library', None)
+    if transaction is None or library is None or transaction.app.root != library.root:
+        from ..security._files import TrustError
+        raise TrustError('Reopen the configured library before activating or recovering this standard update.')
+
 
 def show_permission_review(frame, controller, review):
     with GrantReviewDialog(frame, review) as dialog:
@@ -129,8 +170,44 @@ def show_update_review(frame, controller, repository, release):
         dialog.Destroy()
     frame.run_job('Prepare signed update package',
         lambda: controller.download_review(repository, release, cancelled=frame.cancel_event.is_set),
-        done=lambda package: frame.report('Verified update package prepared: ' + str(package.path)
-            + '\nThe running application and open work are unchanged. Use the owner-provided installation procedure for activation.'))
+        done=lambda package: show_install_review(frame, controller, package))
+
+
+def show_install_review(frame, controller, package):
+    if controller.standard_update is None:
+        frame.report('Verified update package prepared: ' + str(package.path)
+            + '\nStandard activation is WAITING_INPUT until the owner configures the installation transaction.')
+        return
+    _same_update_library(frame, controller)
+    dialog = wx.Dialog(frame, title='Activate reviewed standard update', size=(760, 560),
+                       style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+    layout = wx.BoxSizer(wx.VERTICAL)
+    description = release_text(package.release) + (
+        '\n\nThis separate action creates a complete backup of the configured library, installs a new '
+        'program generation, and checks the installed application before activation. The previous '
+        'version, its running jobs and user-owned files are retained. A failed or interrupted update '
+        'keeps recovery evidence. No data-schema migration will run.')
+    text = wx.TextCtrl(dialog, value=description, style=wx.TE_MULTILINE | wx.TE_READONLY)
+    text.SetName('Reviewed standard activation details')
+    layout.Add(text, 1, wx.EXPAND | wx.ALL, 8)
+    layout.Add(dialog.CreateStdDialogButtonSizer(wx.OK | wx.CANCEL), 0, wx.ALIGN_RIGHT | wx.ALL, 8)
+    dialog.FindWindow(wx.ID_OK).SetLabel('Back up and activate this verified update')
+    dialog.FindWindow(wx.ID_OK).SetName('Back up and activate this verified update')
+    dialog.SetSizer(layout)
+    text.SetFocus()
+    try:
+        if dialog.ShowModal() != wx.ID_OK:
+            return
+    finally:
+        dialog.Destroy()
+    _same_update_library(frame, controller)
+    frame.run_job('Back up and activate reviewed standard update',
+        lambda: controller.install_review(package, accepted=True, cancelled=frame.cancel_event.is_set),
+        done=lambda result: frame.report('Verified standard update activated: build ' + str(result['build'])
+            + '. The previous version and running work remain available. The complete library backup is at '
+            + result['backup'] + '.'),
+        failed=lambda error: frame.report('The standard update did not complete. Existing work remains '
+            'available. Use Recover reviewed standard update to inspect the retained transaction.'))
 
 
 def _display_status(frame, controller, value=None):
@@ -193,6 +270,9 @@ def install_trust_actions(frame):
     frame.trust_client_timer = timer
     if controller.refresh is not None:
         frame.trust_renewal_timer = timer
+    # Capture native identity before destruction; wx can expose a different
+    # wrapper after the Python frame subclass has begun to tear down.
+    owner_id = frame.GetId()
     closed = False
     def idle(event=None):
         if closed:
@@ -202,7 +282,7 @@ def install_trust_actions(frame):
             host.set_idle(available)
     def close(event):
         nonlocal closed
-        if event.GetEventObject() is frame and not closed:
+        if event.GetId() == owner_id and not closed:
             closed = True
             timer.Stop()
             for host in hosts:

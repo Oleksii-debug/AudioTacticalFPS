@@ -116,7 +116,7 @@ def _central_budget(stream, max_files):
 
 def unpack(package, destination, policy, *, cancelled=lambda: False):
     """Bounded extraction of a TUF-verified ZIP into a new local directory."""
-    require_verified_package(package)
+    require_verified_package(package, policy=policy)
     if not 0 < package.release.length <= policy.max_package_bytes:
         raise TrustError('Update target exceeds the download budget.')
     destination = Path(destination).absolute()

@@ -91,24 +91,33 @@ class VerifiedPackage:
     def __post_init__(self):
         if (type(self.release) is not Release or not isinstance(self.path, Path)
                 or self.path != self.path.absolute()
-                or type(self._proof) is not tuple or len(self._proof) != 3
+                or type(self._proof) is not tuple or len(self._proof) != 4
                 or self._proof[0] is not _TUF_VERIFIED
-                or self._proof[1:] != (self.release, self.path)):
+                or self._proof[1:3] != (self.release, self.path)
+                or type(self._proof[3]) is not tuple or len(self._proof[3]) != 4):
             raise TrustError('Obtain the verified package through the TUF client; a pathname and checksum are not publisher approval.')
 
 
-def require_verified_package(package):
+def _authority(policy):
+    if type(policy) is not UpdatePolicy:
+        raise TrustError('Use the explicitly configured update policy.')
+    return (policy.product, policy.channel, policy.bootstrap_sha256, policy.data_schema)
+
+
+def require_verified_package(package, *, policy=None):
     if type(package) is not VerifiedPackage:
         raise TrustError('A TUF-verified package receipt is required.')
     package.__post_init__()
+    if policy is not None and package._proof[3] != _authority(policy):
+        raise TrustError('The package was verified under a different trusted publisher root or installation scope.')
     return package
 
 
-def _verified_package(release, path):
+def _verified_package(release, path, policy):
     path = Path(path).absolute()
-    # Bind the capability to the precise metadata and path. dataclasses.replace
-    # must not carry a generic approval sentinel onto different release bytes.
-    return VerifiedPackage(release, path, (_TUF_VERIFIED, release, path))
+    # Bind metadata/path and the independently pinned publisher scope. More
+    # restrictive consumption budgets remain valid; another root never does.
+    return VerifiedPackage(release, path, (_TUF_VERIFIED, release, path, _authority(policy)))
 
 
 def _release(info, policy):
@@ -276,7 +285,7 @@ class LocalRepositoryClient:
             if os.path.lexists(destination):
                 file_info(destination)
                 if updater.find_cached_target(info, str(destination)):
-                    return _verified_package(release, destination)
+                    return _verified_package(release, destination, self.policy)
                 raise TrustError('Cached package is corrupt. Remove it explicitly before retrying.')
             if shutil.disk_usage(self.cache).free < release.length + 16 * 1024**2:
                 raise TrustError('Not enough free space to prepare the update.')
@@ -289,4 +298,4 @@ class LocalRepositoryClient:
                     os.fsync(stream.fileno())
                 publish_noreplace(candidate, destination)
                 sync_directory(self.downloads)
-            return _verified_package(release, destination)
+            return _verified_package(release, destination, self.policy)

@@ -18,7 +18,7 @@ from ..installation_lease import installed_entrypoint
 
 
 @installed_entrypoint
-def main(argv=None):
+def main(argv=None, *, controller=None, cancelled=lambda: False):
     parser = argparse.ArgumentParser(description='Private status and independently trusted offline verification.')
     commands = parser.add_subparsers(dest='command', required=True)
     commands.add_parser('status', help='Show the default private perpetual status.')
@@ -42,10 +42,35 @@ def main(argv=None):
         action.add_argument('--target', required=True)
         if name == 'download-update':
             action.add_argument('--reviewed-sha256', required=True)
+    activate = commands.add_parser('install-standard-update',
+        help='Activate a reviewed target only through the explicitly injected current installation controller.')
+    activate.add_argument('--repository', type=Path, required=True)
+    activate.add_argument('--reviewed-sha256', required=True)
+    activate.add_argument('--accept-reviewed', action='store_true', required=True)
+    recover = commands.add_parser('recover-standard-update', help='Recover the explicitly configured standard transaction.')
+    recover.add_argument('--repository', type=Path,
+        help='Reverify an uncommitted release with the already configured publisher before rollback.')
     args = parser.parse_args(argv)
     try:
+        if controller is not None and type(controller) is not TrustController:
+            raise ValueError('Use the existing explicitly configured trust controller.')
+        selected = controller if controller is not None else TrustController()
         if args.command == 'status':
-            print(TrustController().status_text())
+            print(selected.status_text())
+            return 0
+        if args.command == 'recover-standard-update':
+            print(json.dumps({'status': selected.recover_update(args.repository, cancelled=cancelled)}, sort_keys=True))
+            return 0
+        if args.command == 'install-standard-update':
+            if selected.standard_update is None:
+                print('WAITING_INPUT: no standard installation transaction is configured.', file=sys.stderr)
+                return 2
+            release = selected.check_repository(args.repository)
+            if release.sha256 != args.reviewed_sha256:
+                raise ValueError('The signed target changed after review.')
+            package = selected.download_review(args.repository, release)
+            result = selected.install_review(package, accepted=args.accept_reviewed)
+            print(json.dumps(result, ensure_ascii=False, sort_keys=True))
             return 0
         if args.command == 'verify-permission':
             policy = TrustPolicy(args.product, args.subject, args.device,

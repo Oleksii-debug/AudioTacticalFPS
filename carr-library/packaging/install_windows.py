@@ -155,7 +155,7 @@ def main():
                    check=True, env=bootstrap_environment, cwd=destination)
     subprocess.run([str(executable), "-I", "-B", "-X", "utf8", "-m", "pip", "--isolated", "--disable-pip-version-check",
                     "install", "--no-index", "--only-binary=:all:", "--require-hashes",
-                    "--no-cache-dir", "--find-links", str(root / "wheelhouse"),
+                    "--no-cache-dir", "--no-compile", "--find-links", str(root / "wheelhouse"),
                     "-r", str(root / "install.lock")], check=True, env=environment)
     subprocess.run([str(executable), "-I", "-B", "-X", "utf8", "-m",
                     "carr_library.native_checks", "--bundle-root", str(root)],

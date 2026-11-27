@@ -9,7 +9,8 @@ import os
 import re
 import stat
 
-from ..catalog.intake import snapshot
+from ..catalog.intake import MAX_BYTES, snapshot
+from ..catalog.streaming_pdf import MAX_PDF_BYTES, pdf_budget, snapshot_original
 from ..extract.document_formats import SUPPORTED_SUFFIXES
 
 
@@ -60,7 +61,7 @@ def _row(path, root, state, message, manifest=None, duplicate_of=None):
                 message=message, manifest=manifest, duplicate_of=duplicate_of)
 
 
-def planned_snapshot(path):
+def planned_snapshot(path, *, pdf_max_bytes=MAX_PDF_BYTES, cancelled=lambda: False):
     """Read one planned source under the preflight file policy.
 
     Import workers reuse this helper when consuming a saved plan. They compare
@@ -76,7 +77,12 @@ def planned_snapshot(path):
         raise ValueError('The planned source must be a regular file without links or reparse points.')
     if before.st_nlink != 1:
         raise ValueError('Hard-linked source files are not imported.')
-    asset = snapshot(path.parent, path.name)
+    pdf_budget(pdf_max_bytes)
+    if path.suffix.casefold() == '.pdf' and before.st_size > pdf_max_bytes:
+        raise ValueError('PDF original exceeds its selected byte budget.')
+    asset = (snapshot_original(path.parent, path.name, pdf_max_bytes=pdf_max_bytes, cancelled=cancelled)
+             if path.suffix.casefold() == '.pdf' and before.st_size > MAX_BYTES else
+             snapshot(path.parent, path.name))
     after = path.lstat()
     _parents(path)
     if _linked(after) or after.st_nlink != 1 or _stamp(after) != _stamp(before):
@@ -215,7 +221,7 @@ def scan_paths(paths, *, recursive=True, existing_assets=(), cancelled=lambda: F
                 raise ValueError('Hard-linked source files are not imported.')
             check()
             if file_manifest is None:
-                asset = planned_snapshot(path)
+                asset = planned_snapshot(path, cancelled=cancelled)
                 manifest = asset.manifest()
                 del asset
             else:
@@ -486,7 +492,7 @@ def scan_paths_page(paths, *, recursive=True, existing_assets=(), cursor=None,
             attempts += 1
             if info.st_nlink != 1:
                 raise ValueError('Hard-linked source files are not imported.')
-            asset = planned_snapshot(path)
+            asset = planned_snapshot(path, cancelled=lambda: cancelled() or time.monotonic() >= deadline)
             manifest = asset.manifest()
             del asset
             check()

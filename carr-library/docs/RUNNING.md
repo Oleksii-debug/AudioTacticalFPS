@@ -53,6 +53,25 @@ library data and backup/restore destinations inside that folder, including paths
 that resolve there through an alias or junction. Existing saved library locations
 use the same check. Choose a separate location for your research and backups.
 
+### Prepare local audio separately
+
+The package also includes `SetupLocalAudio.cmd`. Open it to read the exact
+FFmpeg archive version, download address, size, checksum and proposed local
+destination. This first step only shows a plan. Obtain that archive separately,
+then run the command with your chosen archive and library location:
+
+```console
+SetupLocalAudio.cmd --archive "C:\Downloads\ffmpeg-pinned.zip" --destination "C:\LocalRuntimes\audio-new" --library-root "C:\Research\Library" --interactive
+```
+
+Read the plan and type `YES` to prepare and verify the runtime. Choose a new
+folder outside the application and your library. Preparation checks the archive,
+the extracted files and the actual Windows executables. After success, select
+the printed FFmpeg and FFprobe paths in the library's engine settings. This
+command does not change those settings automatically. Keep research data in its
+existing location. See [local audio preparation](LOCAL_AUDIO_SETUP.md) in the
+source documentation for the non-interactive command and evidence boundaries.
+
 To uninstall, close the application and check your selected library, backup and
 export locations first. Earlier builds may have allowed research or backups
 inside the extracted program folder. Copy any such personal files to a separate
