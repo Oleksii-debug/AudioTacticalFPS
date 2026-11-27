@@ -415,3 +415,109 @@ def test_complete_dialog_construction_keeps_monitoring_off_and_never_opens_input
     progress.close.assert_called_once_with()
     executor.shutdown.assert_called_once_with(wait=False, cancel_futures=True)
     wx.Dialog.return_value.Destroy.assert_called_once_with()
+
+
+@pytest.mark.parametrize('delivered_id,same_wrapper,wrapper_live,worker_kind,accepted', [
+    pytest.param(-31994, False, False, None, True, id='native-id-new-python-wrapper'),
+    pytest.param(-31994, True, False, None, True, id='native-id-same-python-wrapper'),
+    pytest.param(-31995, False, False, None, False, id='child-event-is-not-owner-destruction'),
+    pytest.param(None, False, False, None, False, id='dead-wrapper-without-native-event'),
+    pytest.param(-31994, False, True, None, False, id='native-event-with-live-wrapper'),
+    pytest.param(-31994, False, False, 'desktop', False, id='desktop-worker-still-live'),
+    pytest.param(-31994, False, False, 'recording', False, id='recording-worker-still-live'),
+])
+def test_native_recording_close_requires_owner_event_dead_wrapper_and_reaped_threads(
+        delivered_id, same_wrapper, wrapper_live, worker_kind, accepted):
+    """Run both exact native observer/cleanup closures, with real held workers."""
+    path = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_recording_smoke.py'
+    tree = ast.parse(path.read_text(encoding='utf-8'), filename=str(path))
+    functions = [node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)
+                 and node.name in {'owner_destroyed', 'finish_owner_close'}]
+    assert {node.name for node in functions} == {'owner_destroyed', 'finish_owner_close'}
+    assert len(functions) == 2
+
+    class Frame:
+        def __bool__(self):
+            return wrapper_live
+
+    frame, destroyed, release = Frame(), threading.Event(), threading.Event()
+    worker = None
+    if worker_kind is not None:
+        worker = threading.Thread(
+            target=release.wait,
+            name='carr-recording-native-test' if worker_kind == 'recording' else 'desktop-native-test')
+        worker.start()
+    frame.executor = SimpleNamespace(_threads={worker} if worker_kind == 'desktop' else set())
+    frame.Destroy = Mock()
+    checks = []
+
+    def check(name, condition):
+        assert condition, name
+        checks.append(name)
+
+    namespace = {
+        'frame': frame, 'captured_frame_id': -31994, 'frame_destroyed': destroyed,
+        'threading': threading, 'deadline': 80, 'monotonic': lambda: 81,
+        'guarded': lambda callback: callback, 'check': check,
+        'wx': SimpleNamespace(CallLater=Mock()),
+        'app': SimpleNamespace(ExitMainLoop=Mock()),
+    }
+    exec(compile(ast.Module(body=functions, type_ignores=[]), str(path), 'exec'), namespace)
+    try:
+        if delivered_id is not None:
+            event = SimpleNamespace(
+                GetId=lambda: delivered_id,
+                GetEventObject=lambda: frame if same_wrapper else object(), Skip=Mock())
+            namespace['owner_destroyed'](event)
+            event.Skip.assert_called_once_with()
+        assert destroyed.is_set() is (delivered_id == -31994)
+        if accepted:
+            namespace['finish_owner_close']()
+            assert checks == [
+                'actual native frame destruction finishes owned workers',
+                'native recording frame wrapper is no longer live',
+            ]
+            namespace['app'].ExitMainLoop.assert_called_once_with()
+        else:
+            if delivered_id == -31994 and wrapper_live and worker_kind is None:
+                with pytest.raises(AssertionError, match='wrapper is no longer live'):
+                    namespace['finish_owner_close']()
+            else:
+                with pytest.raises(TimeoutError, match='owners did not finish closing'):
+                    namespace['finish_owner_close']()
+            namespace['app'].ExitMainLoop.assert_not_called()
+        namespace['wx'].CallLater.assert_not_called()
+        frame.Destroy.assert_not_called()
+    finally:
+        release.set()
+        if worker is not None:
+            worker.join(timeout=5)
+            assert not worker.is_alive()
+
+
+@pytest.mark.parametrize('wrapper_live', [False, True], ids=['already-deleted', 'still-live'])
+def test_native_recording_failure_cleanup_never_destroys_a_deleted_wrapper(wrapper_live):
+    path = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_recording_smoke.py'
+    tree = ast.parse(path.read_text(encoding='utf-8'), filename=str(path))
+    guards = [node for node in ast.walk(tree)
+              if isinstance(node, ast.If) and ast.unparse(node.test) == 'frame is not None'
+              and any(isinstance(call, ast.Call) and ast.unparse(call.func) == 'frame.Destroy'
+                      for call in ast.walk(node))]
+    assert len(guards) == 1
+
+    class Frame:
+        def __bool__(self):
+            return wrapper_live
+
+    frame = Frame()
+    frame.cancel_event = SimpleNamespace(set=Mock())
+    frame.executor = SimpleNamespace(shutdown=Mock())
+    frame.Destroy = Mock()
+    namespace = {'frame': frame, 'frame_destroyed': threading.Event()}
+    exec(compile(ast.Module(body=guards, type_ignores=[]), str(path), 'exec'), namespace)
+    frame.cancel_event.set.assert_called_once_with()
+    frame.executor.shutdown.assert_called_once_with(wait=True, cancel_futures=True)
+    if wrapper_live:
+        frame.Destroy.assert_called_once_with()
+    else:
+        frame.Destroy.assert_not_called()

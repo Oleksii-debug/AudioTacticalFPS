@@ -330,7 +330,7 @@ def main():
             wx.CallLater(25, guarded(drive))
 
         def owner_destroyed(event):
-            if event.GetEventObject() is frame:
+            if event.GetId() == captured_frame_id:
                 frame_destroyed.set()
             event.Skip()
 
@@ -344,6 +344,7 @@ def main():
                 wx.CallLater(25, guarded(finish_owner_close))
                 return
             check('actual native frame destruction finishes owned workers', frame_destroyed.is_set())
+            check('native recording frame wrapper is no longer live', not frame)
             app.ExitMainLoop()
 
         def open_recording():
@@ -367,6 +368,7 @@ def main():
 
         try:
             frame = DesktopFrame(library)
+            captured_frame_id = frame.GetId()
             frame.Bind(wx.EVT_WINDOW_DESTROY, owner_destroyed)
             app.SetTopWindow(frame)
             frame.Show()
@@ -382,7 +384,7 @@ def main():
             if frame is not None:
                 frame.cancel_event.set()
                 frame.executor.shutdown(wait=True, cancel_futures=True)
-                if not frame_destroyed.is_set():
+                if frame:
                     frame.Destroy()
             if native_handle is not None:
                 native_handle.close()

@@ -159,6 +159,85 @@ def main():
             return bool(destroyed) and not bool(frame)
         frame.Bind(wx.EVT_WINDOW_DESTROY, frame_destroyed)
 
+        def direct_destroy_integration():
+            """Exercise this owner without DesktopFrame's pre-destruction Close hook."""
+            direct = wx.Frame(None, title='Direct native desktop cleanup acceptance')
+            direct.library, direct.active = library, (workspace, None)
+            direct._closing, direct.working = False, False
+            direct.keyboard_commands = controller.hotkeys.manager
+            direct_messages, direct_events, close_events = [], [], []
+            direct.report = direct_messages.append
+            integration = desktop_integration.DesktopIntegration(direct)
+            direct_id, direct_handle = direct.GetId(), direct.GetHandle()
+
+            def observe_direct_destroy(event):
+                if event.GetId() == direct_id:
+                    current = event.GetEventObject()
+                    direct_events.append({
+                        'id': event.GetId(), 'handle': current.GetHandle(),
+                        'original_alive': bool(direct), 'same_wrapper': current is direct,
+                    })
+                event.Skip()
+
+            def observe_direct_close(event):
+                close_events.append(event.GetId())
+                event.Skip()
+
+            direct.Bind(wx.EVT_WINDOW_DESTROY, observe_direct_destroy)
+            direct.Bind(wx.EVT_CLOSE, observe_direct_close)
+            icon = None
+            try:
+                direct.Show()
+                put_clipboard('Direct-destruction clipboard snapshot.')
+                integration.watch_clipboard(True)
+                integration._tick()
+                integration.set_tray(True)
+                icon = integration.tray
+                integration.hotkeys.enable({'desktop.show': 'Ctrl+Alt+Shift+J'})
+                check('direct native owner holds real timer, tray and global key before Destroy',
+                      integration.timer.IsRunning() and integration.watch.pending is not None
+                      and icon.IsIconInstalled() and integration.hotkeys._registered
+                      and not integration.closed)
+                direct.Destroy()
+                pump(lambda: bool(direct_events) and not bool(direct),
+                     'Direct native integration owner did not finish destruction.')
+                check('direct Destroy bypassed the ordinary Close cleanup hook', not close_events)
+                check('actual Destroy exposes the same HWND through a different live base proxy',
+                      len(direct_events) == 1 and direct_events[0]['id'] == direct_id
+                      and direct_events[0]['handle'] == direct_handle
+                      and not direct_events[0]['original_alive'] and not direct_events[0]['same_wrapper'])
+                check('dead-frame Destroy completed every owned cleanup without a hidden error',
+                      integration.closed and integration._cleanup_complete
+                      and not getattr(integration, 'cleanup_error', None))
+                check('direct Destroy clears clipboard contents and stops its actual timer',
+                      integration.watch.closed and not integration.watch.enabled
+                      and integration.watch.pending is None and not integration.timer.IsRunning())
+                check('direct Destroy revokes and releases its exact native global registrations',
+                      integration.hotkeys.closed and not integration.hotkeys.enabled
+                      and not integration.hotkeys._registered and integration.hotkeys._cleanup_complete)
+                check('direct Destroy removed its actual system tray icon',
+                      integration.tray is None and not icon.active)
+                pump(lambda: not bool(icon), 'The direct owner tray object did not finish native destruction.')
+                receiver = desktop_integration.WindowsHotkeyAPI(outside)
+                acquired = receiver.register(0x4303, 'Ctrl+Alt+Shift+J')
+                check('another actual window can acquire the direct-destroyed owner key', acquired)
+                if acquired:
+                    check('direct Destroy acceptance releases its recovered key', receiver.unregister(0x4303))
+                integration.close()
+                check('repeated cleanup after native deletion remains complete', integration._cleanup_complete)
+            finally:
+                if bool(direct):
+                    try:
+                        integration.close()
+                    finally:
+                        direct.Destroy()
+                    pump(lambda: bool(direct_events) and not bool(direct),
+                         'Failure-path direct owner cleanup did not finish.', allow_errors=True)
+                elif not integration._cleanup_complete:
+                    # Preserve any unresolved release error; do not manufacture
+                    # success from the missing original Python/native wrapper.
+                    integration.close()
+
         def settings_driver():
             try:
                 dialog, = [window for window in wx.GetTopLevelWindows()
@@ -348,6 +427,7 @@ def main():
                 receiver = desktop_integration.WindowsHotkeyAPI(outside)
                 check('closed owner actually released the OS key', receiver.register(0x4302, 'Ctrl+Alt+Shift+J'))
                 check('probe releases the recovered key', receiver.unregister(0x4302))
+                direct_destroy_integration()
                 settle()
             except Exception:
                 errors.append(traceback.format_exc())
