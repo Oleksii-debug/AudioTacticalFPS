@@ -11,6 +11,7 @@ from carr_library import native_checks
 def bundle(tmp_path, *, model=False, ocr=False):
     manifest = {'schema': 1, 'target': native_checks.TARGET, 'bundled_python': True,
                 'bundled_model': model, 'bundled_ocr': ocr,
+                'bundled_launcher': False, 'bundled_audio_runtime': False,
                 'source_commit': 'a' * 40, 'files': {'README.txt': 'b' * 64}}
     (tmp_path / 'bundle-manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
     return manifest
@@ -178,6 +179,82 @@ def test_invalid_manifest_rejected_before_native_imports(tmp_path, monkeypatch, 
     elif change == 'bad_json':
         raw = '{'
     (tmp_path / 'bundle-manifest.json').write_text(raw, encoding='utf-8')
+    events = []
+    controlled_imports(monkeypatch, events)
+    report = native_checks.check_native_dependencies(tmp_path)
+    assert report['status'] == 'FAIL'
+    assert report['failed_component'] == 'installation manifest'
+    assert not events
+
+
+@pytest.mark.parametrize('name', [
+    'bundled_native_runtime', 'bundled_launcher', 'bundled_audio_runtime',
+])
+@pytest.mark.parametrize('flag', [False, True])
+def test_current_optional_flags_are_preserved_for_native_admission(
+        tmp_path, monkeypatch, name, flag):
+    manifest = bundle(tmp_path)
+    manifest[name] = flag
+    raw = json.dumps(manifest).encode('utf-8')
+    path = tmp_path / 'bundle-manifest.json'
+    path.write_bytes(raw)
+    events = []
+    controlled_imports(monkeypatch, events)
+
+    assert native_checks._manifest(tmp_path) == manifest
+    assert native_checks.check_native_dependencies(tmp_path)['status'] == 'PASS'
+    assert events[0] == 'carr_library.native_runtime'
+    assert path.read_bytes() == raw
+
+
+@pytest.mark.parametrize('name', [
+    'bundled_native_runtime', 'bundled_launcher', 'bundled_audio_runtime',
+])
+@pytest.mark.parametrize('value', [None, 0, 1, 'false'])
+def test_optional_flags_reject_non_boolean_values_before_loading(
+        tmp_path, monkeypatch, name, value):
+    manifest = bundle(tmp_path)
+    manifest[name] = value
+    (tmp_path / 'bundle-manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+    events = []
+    controlled_imports(monkeypatch, events)
+    report = native_checks.check_native_dependencies(tmp_path)
+    assert report['status'] == 'FAIL'
+    assert report['failed_component'] == 'installation manifest'
+    assert not events
+
+
+def test_legacy_manifest_without_additive_optional_fields_remains_supported(
+        tmp_path, monkeypatch):
+    manifest = bundle(tmp_path)
+    manifest.pop('bundled_launcher')
+    manifest.pop('bundled_audio_runtime')
+    (tmp_path / 'bundle-manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+    events = []
+    controlled_imports(monkeypatch, events)
+    assert native_checks._manifest(tmp_path) == manifest
+    assert native_checks.check_native_dependencies(tmp_path)['status'] == 'PASS'
+
+
+def test_exact_source_tree_identity_is_accepted_without_changing_manifest(
+        tmp_path, monkeypatch):
+    manifest = bundle(tmp_path)
+    manifest['source_tree'] = 'c' * 40
+    raw = json.dumps(manifest).encode('utf-8')
+    path = tmp_path / 'bundle-manifest.json'
+    path.write_bytes(raw)
+    events = []
+    controlled_imports(monkeypatch, events)
+    assert native_checks._manifest(tmp_path) == manifest
+    assert native_checks.check_native_dependencies(tmp_path)['status'] == 'PASS'
+    assert path.read_bytes() == raw
+
+
+@pytest.mark.parametrize('value', [True, None, 'HEAD', 'c' * 39, 'C' * 40, 'c' * 41])
+def test_invalid_source_tree_is_rejected_before_native_loading(tmp_path, monkeypatch, value):
+    manifest = bundle(tmp_path)
+    manifest['source_tree'] = value
+    (tmp_path / 'bundle-manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
     events = []
     controlled_imports(monkeypatch, events)
     report = native_checks.check_native_dependencies(tmp_path)

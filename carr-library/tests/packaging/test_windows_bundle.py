@@ -59,6 +59,40 @@ class WindowsBundleTests(unittest.TestCase):
         self.assertIn("universal-research-library==1.0", (self.output / "install.lock").read_text())
         self.assertEqual((self.output / "wheelhouse" / self.app.name).read_bytes(), self.app.read_bytes())
 
+
+    def test_actual_sealed_builder_manifest_reaches_native_installation_checks(self):
+        # Build and verify the real bundle format with public synthetic wheels.
+        # Only extension loading is substituted; the manifest is never filtered,
+        # reconstructed, or allowed to bypass native_checks._manifest.
+        from types import SimpleNamespace
+        from carr_library import native_checks
+
+        self.build()
+        installer.verify(self.output)
+        path = self.output / "bundle-manifest.json"
+        raw = path.read_bytes()
+        manifest = json.loads(raw)
+        self.assertIs(manifest["bundled_launcher"], False)
+        self.assertIs(manifest["bundled_audio_runtime"], False)
+        self.assertEqual(native_checks._manifest(self.output), manifest)
+        loaded = []
+
+        def load(name):
+            loaded.append(name)
+            if name == "carr_library.native_runtime":
+                return SimpleNamespace(activate_bundled_runtime=lambda *, bundle_root: None)
+            self.assertIn(name, [module for _, module in native_checks.NATIVE_MODULES])
+            return SimpleNamespace()
+
+        with patch.object(native_checks, "import_module", side_effect=load):
+            report = native_checks.check_native_dependencies(self.output)
+        self.assertEqual(report["status"], "PASS", report)
+        self.assertEqual(loaded, ["carr_library.native_runtime",
+                                 *[module for _, module in native_checks.NATIVE_MODULES]])
+        self.assertEqual(report["semantic"]["status"], "NOT_INCLUDED")
+        self.assertEqual(report["ocr"]["status"], "NOT_INCLUDED")
+        self.assertEqual(path.read_bytes(), raw)
+
     def sbom(self, version="1.0"):
         path = self.root / "input-sbom.json"
         path.write_text(json.dumps({
