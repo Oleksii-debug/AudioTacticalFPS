@@ -889,6 +889,7 @@ def restore_pending(source, stage, new_root, metadata, *, cancelled=lambda: Fals
                 # explicit resume verifies the existing source/journal again.
                 request.pop('attempt', None)
                 request.pop('publication_candidate', None)
+                request.pop('publication_watermark', None)
                 _write(stage / 'import-requests' / (request_id + '.json'), (canonical(request) + '\n').encode('utf-8'))
             for batch_id, batch in batches.items():
                 batch['data_dir'] = str(new_root)

@@ -16,6 +16,8 @@ from unittest.mock import patch
 
 import pytest
 import carr_library
+from carr_library.application import LibraryApp
+from carr_library.research.topic_tree import TopicTree
 
 
 class Control:
@@ -130,9 +132,19 @@ def preview_fixture(workspace='a', *, sources=True):
         fetched_utc='2026-11-26T12:00:00Z', cached=False)
 
 
-class Library:
+class Library(LibraryApp):
+    """Real authorized SQLite scopes; external acquisition calls are controlled."""
+
     def __init__(self, root):
-        self.root, self.calls, self.hook = root, [], None
+        super().__init__(root)
+        # Stable fixture identities retain all existing handler assertions while
+        # exercising the actual read transaction and TopicTree visibility gate.
+        with self.write() as db:
+            db.execute('INSERT INTO workspace(id) VALUES(?)', ('a',))
+            db.execute('INSERT INTO workspace_meta(workspace,name,description,archived) '
+                       'VALUES(?,?,?,0)', ('a', 'Synthetic acquisition library', ''))
+            TopicTree(db, 'a').create('topic-a', 'Synthetic research topic')
+        self.calls, self.hook = [], None
         self.preview = preview_fixture()
         self.ignore_cancel = False
         self.error = None
@@ -858,3 +870,20 @@ def test_windows_native_dialog_async_lookup_focus_and_close(tmp_path):
         form.Destroy()
         host.Destroy()
         app.ProcessPendingEvents()
+
+
+@pytest.mark.parametrize('scope', ('workspace', 'topic'))
+def test_archived_database_scope_rejects_lookup_before_submission(setup, scope):
+    form, frame, library = setup
+    form.doi.SetValue('10.1234/reading')
+    form.online.SetValue(True)
+    if scope == 'workspace':
+        library.archive_workspace('a')
+    else:
+        with library.topic_transaction('a') as tree:
+            tree.archive('topic-a')
+    before = list(library.calls)
+    assert form.lookup() is False
+    assert frame.jobs == []
+    assert library.calls == before
+    assert not form.pending

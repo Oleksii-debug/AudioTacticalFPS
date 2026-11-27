@@ -98,5 +98,9 @@ def test_studio_disk_budget_does_not_weaken_current_job_validation(tmp_path, dis
     with pytest.raises(ValueError):
         create_backup(app, tmp_path / 'rejected')
     assert not (tmp_path / 'rejected').exists()
-    assert path.read_bytes() == before and state['project'] == project.to_dict()
+    assert path.read_bytes() == before
+    # The retained JSON uses arrays; the immutable project model uses tuples.
+    # Compare every field through the same JSON wire shape, not Python container types.
+    expected_project = json.loads(json.dumps(project.to_dict(), ensure_ascii=False, allow_nan=False))
+    assert read_json(path)['project'] == expected_project
     assert service.close() is True

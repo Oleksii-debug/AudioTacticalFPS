@@ -141,6 +141,7 @@ class LiveReadingControls:
         voices.Add(self.voice, 1, wx.EXPAND | wx.ALL, 4)
         self.discover_button = self._button(voices, "Discover local voices", self.discover, "reader.speech_voices")
         self.output_button = self._button(voices, "Playback output...", self.choose_output, "reader.output_device")
+        self._button(voices, "Tray and session hotkeys...", self.session_controls, "reader.session_controls")
         voices.Add(wx.StaticText(dialog, label="Synthesis rate (-10 to 10)"), 0, wx.ALL | wx.ALIGN_CENTER_VERTICAL, 4)
         self.rate = wx.SpinCtrl(dialog, min=-10, max=10, initial=0)
         self.rate.SetName("Speech rate for the next reading operation")
@@ -207,6 +208,11 @@ class LiveReadingControls:
             self.core.discover_voices()
         except Exception as exc:
             self._report(exc)
+
+    def session_controls(self, event=None):
+        if not self.closed:
+            from .reader_background import show_session_controls
+            show_session_controls(self, event)
 
     def choose_output(self, event=None):
         if self.closed:
@@ -411,6 +417,8 @@ class LiveReadingControls:
         if self.closed:
             return
         self.closed = True
+        from .reader_background import close_session_controls
+        close_session_controls(self)
         try:
             self.timer.Stop()
         except (OSError, RuntimeError):

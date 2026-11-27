@@ -43,12 +43,20 @@ def view(tmp_path, monkeypatch):
     class Widget:
         def __init__(self, parent=None, *args, value='', label='', **kwargs):
             self.name, self.value, self.destroyed = '', value, False
+            self.parent, self.title = parent, kwargs.get('title', '')
+            self.handlers, self.enabled = {}, True
             widgets.append(self)
         def check(self):
             if get_ident() != owner or self.destroyed:
                 forbidden.append(self.name or type(self).__name__)
             assert get_ident() == owner and not self.destroyed, 'Native access after dialog close or from worker'
         def __bool__(self): return not self.destroyed
+        def GetId(self): self.check(); return id(self)
+        def Bind(self, event, callback, *args): self.check(); self.handlers[event] = callback
+        def Enable(self, enabled=True): self.check(); self.enabled = enabled
+        def ChangeValue(self, value): self.check(); self.value = value
+        def SetFocus(self): self.check(); self.focused = True
+        def FindWindowById(self, identity): self.check(); return self
         def SetName(self, value): self.check(); self.name = value
         def GetValue(self): self.check(); return fields.get(self.name, self.value)
         def SetSizer(self, *args): self.check()
@@ -68,9 +76,10 @@ def view(tmp_path, monkeypatch):
         def __init__(self, *args): pass
         def Add(self, *args): pass
     constants = ('FD_OPEN', 'FD_FILE_MUST_EXIST', 'ID_OK', 'ID_CANCEL', 'FD_SAVE', 'DEFAULT_DIALOG_STYLE',
-                 'RESIZE_BORDER', 'VSCROLL', 'VERTICAL', 'ALL', 'EXPAND', 'OK', 'CANCEL')
+                 'RESIZE_BORDER', 'VSCROLL', 'VERTICAL', 'ALL', 'EXPAND', 'OK', 'CANCEL',
+                 'TE_READONLY', 'TE_MULTILINE', 'EVT_BUTTON', 'EVT_WINDOW_DESTROY')
     wx = SimpleNamespace(**{name: 1 << index for index, name in enumerate(constants)})
-    for name in ('Dialog', 'ScrolledWindow', 'StaticText', 'TextCtrl'):
+    for name in ('Dialog', 'ScrolledWindow', 'StaticText', 'TextCtrl', 'Button'):
         setattr(wx, name, Widget)
     wx.CheckBox, wx.FileDialog, wx.BoxSizer = Checkbox, Picker, Sizer
     monkeypatch.setitem(sys.modules, 'wx', wx)
@@ -323,3 +332,217 @@ def test_nested_source_options_destination_modal_returns_after_parent_death_with
     assert calls == list(range(modal_index + 1))
     assert view.forbidden == [] and not view.jobs and not view.calls and not output.exists()
 
+
+
+
+def _conversion_button(view, name):
+    return next(widget for widget in view.widgets if widget.name == name)
+
+
+def _finish_effect_inventory(view, job):
+    # The actual selected audio runtime and broker run on a real worker. Only
+    # the surrounding native modal decisions are supplied by this fixture.
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        result = executor.submit(job[1]).result(timeout=30)
+    job[2](result)
+    return result
+
+
+@pytest.mark.parametrize('chain_kind', ['dry', 'gain', 'two-tempos-and-bypass'])
+def test_reviewed_ordered_chain_reaches_actual_conversion_with_shared_admission(
+        view, monkeypatch, chain_kind):
+    from carr_library.audio import Effect
+    from carr_library.operations import ResourceBroker
+    from carr_library.ui import effects_dialog
+
+    chains = {'dry': (), 'gain': (Effect('gain', gain_db=-7),),
+              'two-tempos-and-bypass': (Effect('tempo', factor=1.25),
+                  Effect('tempo', factor=.8), Effect('tempo', factor=.5, enabled=False))}
+    selected = chains[chain_kind]
+    broker = ResourceBroker.for_app(view.frame.library.root)
+    capabilities, convert = AudioRuntime.capabilities, AudioRuntime.convert
+    admissions, conversions, workers = [], [], []
+    def inspect(runtime, **kwargs):
+        rows = broker.snapshot()['leases']
+        assert len(rows) == 1
+        if rows[0]['operation_id'].startswith('effect-capabilities:'):
+            admissions.append(rows[0])
+            workers.append(get_ident())
+            assert rows[0]['request']['cpu_slots'] == runtime.budget.threads
+        return capabilities(runtime, **kwargs)
+    def converted(runtime, source, output, **kwargs):
+        assert kwargs['effects'] == selected
+        row, = broker.snapshot()['leases']
+        assert row['operation_id'].startswith('conversion:')
+        # Multiple enabled tempo stages multiply; an absent or bypassed tempo
+        # cannot make reservation computation fail before actual rendering.
+        assert row['request']['disk_bytes'] > runtime.budget.reserve_disk_bytes
+        conversions.append(tuple(kwargs['effects']))
+        return convert(runtime, source, output, **kwargs)
+    monkeypatch.setattr(AudioRuntime, 'capabilities', inspect)
+    monkeypatch.setattr(AudioRuntime, 'convert', converted)
+
+    def review(parent, root, initial, *, sample_rate, available, guard):
+        guard()
+        assert root == view.frame.library.root and sample_rate == 24000
+        assert all(effect.kind in available for effect in selected if effect.enabled)
+        return selected
+    monkeypatch.setattr(effects_dialog, 'show_effect_chain', review)
+    def modal(widget):
+        widget.check()
+        if widget.title == 'Convert audio and apply effects':
+            _conversion_button(view, 'Edit ordered effect chain and presets').handlers[view.wx.EVT_BUTTON](None)
+            assert not _conversion_button(view, RATE).enabled
+            _finish_effect_inventory(view, view.jobs[0])
+            assert not _conversion_button(view, 'Gain in decibels, -60 to 12').enabled
+            assert 'Ordered chain active' in _conversion_button(view, 'Audio conversion effect settings').value
+            assert broker.snapshot()['leases'] == []
+        return view.wx.ID_OK
+    monkeypatch.setattr(view.widget_type, 'ShowModal', modal)
+    output = view.root / (chain_kind + '.wav')
+    before = sha256(view.source.read_bytes()).hexdigest()
+    view.choices.extend([view.source, output])
+    ui.show_audio_conversion(view.frame)
+    assert len(view.jobs) == 2 and len(admissions) == 1
+    assert workers and all(identity != get_ident() for identity in workers)
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        result = executor.submit(view.jobs[1][1]).result(timeout=30)
+    view.jobs[1][2](result)
+    info, measured, warning = result
+    assert conversions == [selected] and measured is not None and warning == ''
+    assert info.sha256 == sha256(output.read_bytes()).hexdigest()
+    assert sha256(view.source.read_bytes()).hexdigest() == before
+    assert view.notices[-1].startswith('Saved ') and not view.forbidden
+    assert broker.snapshot()['leases'] == []
+
+
+@pytest.mark.parametrize('decision', ['cancel-chain', 'return-to-basic'])
+def test_cancelled_or_reset_ordered_review_preserves_basic_conversion_controls(view, monkeypatch, decision):
+    from carr_library.audio import Effect
+    from carr_library.ui import effects_dialog
+
+    def review(*args, **kwargs):
+        kwargs['guard']()
+        return None if decision == 'cancel-chain' else (Effect('gain', gain_db=-12),)
+    monkeypatch.setattr(effects_dialog, 'show_effect_chain', review)
+    def modal(widget):
+        widget.check()
+        if widget.title == 'Convert audio and apply effects':
+            _conversion_button(view, 'Edit ordered effect chain and presets').handlers[view.wx.EVT_BUTTON](None)
+            _finish_effect_inventory(view, view.jobs[0])
+            if decision == 'return-to-basic':
+                _conversion_button(view, 'Use basic effect controls').handlers[view.wx.EVT_BUTTON](None)
+            assert _conversion_button(view, 'Gain in decibels, -60 to 12').enabled
+            assert not _conversion_button(view, 'Use basic effect controls').enabled
+        return view.wx.ID_OK
+    monkeypatch.setattr(view.widget_type, 'ShowModal', modal)
+    view.fields['Gain in decibels, -60 to 12'] = '-4'
+    output = view.root / 'basic-retained.wav'
+    view.choices.extend([view.source, output])
+    ui.show_audio_conversion(view.frame)
+    # Inspect the actual frozen job input by wrapping the existing converter;
+    # the converter still runs and verifies a real output.
+    convert, observed = AudioRuntime.convert, []
+    def selected(runtime, source, output, **kwargs):
+        observed.extend(kwargs['effects'])
+        return convert(runtime, source, output, **kwargs)
+    monkeypatch.setattr(AudioRuntime, 'convert', selected)
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        result = executor.submit(view.jobs[1][1]).result(timeout=30)
+    assert next(effect for effect in observed if effect.kind == 'gain').parameters['gain_db'] == -4
+    assert result[0].sha256 == sha256(output.read_bytes()).hexdigest()
+
+
+def test_shared_policy_denial_rejects_effect_inventory_without_starting_native_process(view, monkeypatch):
+    from carr_library.operations import ResourceBroker, ResourceUnavailable
+
+    broker = ResourceBroker.for_app(view.frame.library.root)
+    broker.configure(replace(broker.limits, memory_bytes=0))
+    def forbidden(*args, **kwargs):
+        pytest.fail('Denied effect inventory must not run the native capability process.')
+    monkeypatch.setattr(AudioRuntime, 'capabilities', forbidden)
+    def modal(widget):
+        widget.check()
+        if widget.title == 'Convert audio and apply effects':
+            _conversion_button(view, 'Edit ordered effect chain and presets').handlers[view.wx.EVT_BUTTON](None)
+            job = view.jobs[0]
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                with pytest.raises(ResourceUnavailable) as error:
+                    executor.submit(job[1]).result(timeout=10)
+            job[3](error.value)
+            assert 'Effect review did not open' in _conversion_button(view, 'Audio conversion effect settings').value
+            return view.wx.ID_CANCEL
+        return view.wx.ID_OK
+    monkeypatch.setattr(view.widget_type, 'ShowModal', modal)
+    view.choices.append(view.source)
+    ui.show_audio_conversion(view.frame)
+    assert len(view.jobs) == 1 and broker.snapshot()['leases'] == []
+    assert not view.forbidden
+
+
+@pytest.mark.parametrize('close_path', ['direct', 'native-parent'])
+def test_completed_effect_inventory_cannot_reopen_an_editor_after_native_owner_death(view, monkeypatch, close_path):
+    from carr_library.operations import ResourceBroker
+    from carr_library.ui import effects_dialog
+
+    results, deliveries = [], []
+    def forbidden(*args, **kwargs):
+        pytest.fail('A completed inventory cannot open a modal on a deleted conversion owner.')
+    monkeypatch.setattr(effects_dialog, 'show_effect_chain', forbidden)
+    def modal(widget):
+        widget.check()
+        if widget.title == 'Convert audio and apply effects':
+            _conversion_button(view, 'Edit ordered effect chain and presets').handlers[view.wx.EVT_BUTTON](None)
+            job = view.jobs[0]
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                result = executor.submit(job[1]).result(timeout=30)
+            results.append(result)
+            identity = widget.GetId()
+            if close_path == 'direct':
+                widget.Destroy()
+            else:
+                view.widget_type.Destroy(widget)
+                widget.handlers[view.wx.EVT_WINDOW_DESTROY](SimpleNamespace(
+                    GetId=lambda: identity, GetEventObject=lambda: SimpleNamespace(),
+                    Skip=lambda: None))
+            for peer in view.widgets:
+                peer.destroyed = True
+            assert widget._effect_alive is False
+            job[2](result)
+            job[3](RuntimeError('An already queued reporting failure'))
+            deliveries.extend(('success', 'failure'))
+            return view.wx.ID_OK
+        return view.wx.ID_OK
+    monkeypatch.setattr(view.widget_type, 'ShowModal', modal)
+    view.choices.append(view.source)
+    ui.show_audio_conversion(view.frame)
+    assert results and deliveries == ['success', 'failure'] and len(view.jobs) == 1
+    assert not view.frame.cancel_event.is_set() and not view.forbidden
+    assert ResourceBroker.for_app(view.frame.library.root).snapshot()['leases'] == []
+
+
+
+def test_closing_conversion_cancels_its_queued_inventory_without_stopping_an_unrelated_host_job(view, monkeypatch):
+    from carr_library.operations import ResourceBroker, ResourceCancelled
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('A cancelled effect inventory must not start its native capability process.')
+    monkeypatch.setattr(AudioRuntime, 'capabilities', forbidden)
+    def modal(widget):
+        widget.check()
+        if widget.title == 'Convert audio and apply effects':
+            _conversion_button(view, 'Edit ordered effect chain and presets').handlers[view.wx.EVT_BUTTON](None)
+            widget.Destroy()
+            return view.wx.ID_CANCEL
+        return view.wx.ID_OK
+    monkeypatch.setattr(view.widget_type, 'ShowModal', modal)
+    view.choices.append(view.source)
+    ui.show_audio_conversion(view.frame)
+    assert len(view.jobs) == 1 and not view.frame.cancel_event.is_set()
+    job = view.jobs[0]
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        with pytest.raises(ResourceCancelled) as error:
+            executor.submit(job[1]).result(timeout=10)
+    job[3](error.value)
+    assert not view.frame.cancel_event.is_set() and not view.forbidden
+    assert ResourceBroker.for_app(view.frame.library.root).snapshot()['leases'] == []

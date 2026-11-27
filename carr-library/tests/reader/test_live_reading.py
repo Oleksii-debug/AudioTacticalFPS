@@ -676,7 +676,9 @@ def test_live_state_strict_roundtrip_cancellation_and_no_clobber(source):
         validate_live_state(forged)
 
 
-@pytest.mark.parametrize('field', ['text_sha256', 'sha256', 'voice_id', 'path'])
+@pytest.mark.parametrize('field', ['text_sha256', 'sha256', 'voice_id', 'path',
+                                  'sample_rate', 'channels', 'frames', 'duration_seconds',
+                                  'chunks', 'boolean_channels'])
 def test_wav_export_rejects_mismatched_render_receipt(source, tmp_path, field):
     from carr_library.reader.live_export import export_document_speech
     app, _, _, desk, _ = source
@@ -689,8 +691,36 @@ def test_wav_export_rejects_mismatched_render_receipt(source, tmp_path, field):
     def render(*args, **kwargs):
         result = renderer(*args, **kwargs)
         incorrect = {'text_sha256': '0' * 64, 'sha256': '0' * 64,
-                     'voice_id': 'wrong:voice', 'path': destination}
+                     'voice_id': 'wrong:voice', 'path': destination,
+                     'sample_rate': 16000, 'channels': 2, 'frames': 1599,
+                     'duration_seconds': .4, 'chunks': 0}
+        if field == 'boolean_channels':
+            return replace(result, channels=True)
         return replace(result, **{field: incorrect[field]})
+
+    with pytest.raises(ValueError, match='receipt'):
+        export_document_speech(sequence, destination, start=0, end=10,
+                               voice_id=VOICE.id, render=render)
+    assert not destination.exists()
+    assert not list(tmp_path.glob('.speech-*'))
+
+
+@pytest.mark.parametrize('malformed', ['non-wave', 'truncated'])
+def test_wav_export_rejects_invalid_pcm_even_with_matching_hash(source, tmp_path, malformed):
+    from carr_library.reader.live_export import export_document_speech
+    app, _, _, desk, _ = source
+    page = desk.page(1)
+    sequence = DocumentSequence(app.root, ReadingDocument(page.raw_text),
+                                source_locations=(page.location,))
+    destination = tmp_path / 'invalid-pcm.wav'
+    renderer = SyntheticRender()
+
+    def render(*args, **kwargs):
+        result = renderer(*args, **kwargs)
+        data = result.path.read_bytes()
+        changed = b'not a WAV' if malformed == 'non-wave' else data[:-2]
+        result.path.write_bytes(changed)
+        return replace(result, sha256=hashlib.sha256(changed).hexdigest())
 
     with pytest.raises(ValueError, match='receipt'):
         export_document_speech(sequence, destination, start=0, end=10,
@@ -774,7 +804,6 @@ def test_native_copy_probe_loads_actual_source_keyed_draft_without_using_legacy_
     assert recovered.audio_seconds == 0 and recovered.document.undo()
     assert recovered.document.text == original
     assert legacy.path.read_bytes() == old_bytes
-
 
 def test_explicit_output_is_owned_by_current_reader_worker_and_preserves_exact_source(source, make_reader):
     from carr_library.audio.output_devices import OutputDevice

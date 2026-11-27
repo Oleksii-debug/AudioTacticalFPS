@@ -40,7 +40,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install exact source and declared tests
-        run: python -m pip install ".[test]"
+        run: python -m pip install ".[test,sync]"
       - name: Install actual Windows desktop
         if: runner.os == 'Windows'
         run: python -m pip install ".[desktop]"
@@ -69,7 +69,19 @@ jobs:
             tests/speech/test_voice_preferences_handlers.py \
             tests/storage/test_state_json_budget.py \
             tests/storage/test_voice_preferences_backup.py \
+            tests/audio/test_effect_presets.py \
+            tests/ui/test_effects_dialog.py \
+            tests/ui/test_audio_conversion_controls.py \
+            tests/storage/test_effect_presets_backup.py \
+            tests/ui/test_reader_background.py \
+            tests/ui/test_reader_dialog_lifetime.py \
+            tests/ui/test_keyboard_manager.py \
+            tests/reader/test_export_no_clobber.py \
+            tests/reader/test_export_reconciliation.py \
             tests/packaging/test_ci_check.py 2>&1 | tee ci-output-review/boundaries.txt
+      - name: Require real POSIX snapshot race refusal
+        if: runner.os == 'Linux'
+        run: python scripts/ci_check.py tests/storage/test_json_snapshot_posix.py 2>&1 | tee ci-output-review/posix-snapshots.txt
       - name: Require the installed native reader and exact bookmarks
         if: runner.os == 'Windows'
         run: python -I -B -X utf8 tests/ui/native_reading_desk_smoke.py --native 2>&1 | tee ci-output-review/native-reader.txt

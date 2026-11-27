@@ -1078,6 +1078,8 @@ def show_audio_conversion(frame):
     import os
     from uuid import uuid4
     from ..durable_state import local_path
+    from ..audio.effect_presets import checked_chain
+    from .effects_dialog import _owned_window, _alive, _close, show_effect_chain
     from ..research.export_file import capture_export_destination
     selected_library = frame.library
     selected_root = local_path(selected_library.root, exists=True)
@@ -1102,7 +1104,9 @@ def show_audio_conversion(frame):
     finally:
         if chooser:
             chooser.Destroy()
-    dialog = wx.Dialog(frame, title='Convert audio and apply effects', size=(760, 750),
+    inspect_cancel = threading.Event()
+    dialog = _owned_window(wx, wx.Dialog, frame, on_dispose=inspect_cancel.set,
+                       title='Convert audio and apply effects', size=(760, 750),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
     panel = wx.ScrolledWindow(dialog, style=wx.VSCROLL)
     panel.SetScrollRate(0, 12)
@@ -1125,6 +1129,18 @@ def show_audio_conversion(frame):
     effects = wx.CheckBox(panel, label='Apply speech noise reduction and gentle compression')
     effects.SetName('Apply speech noise reduction and gentle compression')
     layout.Add(effects, 0, wx.ALL, 6)
+    advanced = wx.Button(panel, label='Edit ordered effect chain and presets')
+    advanced.SetName('Edit ordered effect chain and presets')
+    basic = wx.Button(panel, label='Use basic effect controls')
+    basic.SetName('Use basic effect controls')
+    basic.Enable(False)
+    layout.Add(advanced, 0, wx.ALL, 6)
+    layout.Add(basic, 0, wx.ALL, 6)
+    effect_status = wx.TextCtrl(panel,
+        value='Basic controls are active. Ordered effects use the current output sample rate.',
+        style=wx.TE_READONLY | wx.TE_MULTILINE)
+    effect_status.SetName('Audio conversion effect settings')
+    layout.Add(effect_status, 0, wx.EXPAND | wx.ALL, 6)
     notice = wx.StaticText(panel, label='The new filename selects its audio format. Bit depth applies to PCM/FLAC; '
         'bitrate applies to the listed compressed encoders. Ogg Vorbis uses the existing quality setting. '
         'The installed runtime verifies the actual rate and channels before saving. Originals stay unchanged.')
@@ -1133,22 +1149,136 @@ def show_audio_conversion(frame):
     outer = wx.BoxSizer(wx.VERTICAL); outer.Add(panel, 1, wx.EXPAND)
     outer.Add(dialog.CreateButtonSizer(wx.OK | wx.CANCEL), 0, wx.ALL, 6)
     dialog.SetSizer(outer); panel.FitInside()
-    try:
-        if dialog.ShowModal() != wx.ID_OK or not dialog or not native_alive():
-            return
+
+    advanced_chain = None
+    pending = False
+    def editor_guard():
+        if not _alive(dialog):
+            raise ValueError('The audio conversion editor is closed.')
         guard()
-        options = audio_conversion_settings(sample_rate=int(sample_rate.GetValue()),
+        if not _alive(dialog):
+            raise ValueError('The audio conversion editor is closed.')
+
+    def read_options():
+        return audio_conversion_settings(sample_rate=int(sample_rate.GetValue()),
             channels=int(channels.GetValue()), bit_depth=int(bit_depth.GetValue()), bitrate=int(bitrate.GetValue()),
             start=float(start.GetValue()), duration=float(duration.GetValue()) if duration.GetValue().strip() else None,
-            gain=float(gain.GetValue()), tempo=float(tempo.GetValue()),
-            loudness=float(loudness.GetValue()) if loudness.GetValue().strip() else None,
-            cleanup=effects.GetValue())
+            gain=float(gain.GetValue()) if advanced_chain is None else 0,
+            tempo=float(tempo.GetValue()) if advanced_chain is None else 1,
+            loudness=(float(loudness.GetValue()) if loudness.GetValue().strip() else None)
+                     if advanced_chain is None else None,
+            cleanup=effects.GetValue() if advanced_chain is None else False)
+
+    def effect_message(message):
+        if _alive(dialog) and native_alive():
+            effect_status.ChangeValue(str(message))
+
+    def effect_controls():
+        if not _alive(dialog):
+            return
+        for control in (gain, tempo, loudness, effects):
+            control.Enable(not pending and advanced_chain is None)
+        for control in (start, duration, sample_rate, channels, bit_depth, bitrate):
+            control.Enable(not pending)
+        advanced.Enable(not pending)
+        basic.Enable(not pending and advanced_chain is not None)
+        dialog.FindWindowById(wx.ID_OK).Enable(not pending)
+
+    def use_basic(event=None):
+        nonlocal advanced_chain
+        if not _alive(dialog):
+            return
+        try:
+            editor_guard()
+            advanced_chain = None
+            effect_controls()
+            effect_message('Basic controls are active; ordered settings have been left unchanged in saved presets.')
+            gain.SetFocus()
+        except Exception as exc:
+            effect_message(exc)
+
+    def edit_chain(event=None):
+        nonlocal pending
+        if not _alive(dialog):
+            return
+        try:
+            editor_guard()
+            if pending or getattr(frame, 'working', False):
+                raise ValueError('Wait for the current operation or cancel it before reviewing effects.')
+            options = read_options()
+            selected_rate = options['sample_rate']
+            frozen = checked_chain(advanced_chain if advanced_chain is not None else options['effects'],
+                                   selected_rate)
+        except Exception as exc:
+            effect_message(exc)
+            return
+        pending = True
+        effect_controls()
+        effect_message('Checking installed local audio effects...')
+
+        def inspect():
+            from ..runtime_settings import audio_runtime
+            guard()
+            runtime = audio_runtime(selected_root / 'state' / 'audio-conversion',
+                                    state_root=selected_root / 'state', input_roots=(source.parent,))
+            service = ProductionService(selected_root / 'state' / 'studio')
+            cancelled = lambda: inspect_cancel.is_set() or frame.cancel_event.is_set()
+            with service._audio_admission(runtime, operation_id='effect-capabilities:' + uuid4().hex,
+                                           cancelled=cancelled) as stopping:
+                guard()
+                return tuple(runtime.capabilities(cancelled=stopping)['effects'])
+
+        def failed(error):
+            nonlocal pending
+            pending = False
+            if not _alive(dialog) or not native_alive():
+                return
+            effect_controls()
+            effect_message('Effect review did not open: ' + str(error))
+
+        def reviewed(available):
+            nonlocal pending, advanced_chain
+            if not _alive(dialog) or not native_alive():
+                return
+            try:
+                editor_guard()
+                value = show_effect_chain(dialog, selected_root, frozen,
+                    sample_rate=selected_rate, available=available, guard=editor_guard)
+                editor_guard()
+                if value is not None:
+                    advanced_chain = checked_chain(value, selected_rate, available=available)
+                    effect_message(f'Ordered chain active: {len(advanced_chain)} effects. Basic controls are inactive.')
+                else:
+                    effect_message('Effect review cancelled; previous settings are retained.')
+            except Exception as exc:
+                effect_message(exc)
+            finally:
+                pending = False
+                if _alive(dialog) and native_alive():
+                    effect_controls()
+                    advanced.SetFocus()
+
+        try:
+            frame.run_job('Checking local audio effects', inspect, reviewed, failed)
+        except Exception as exc:
+            failed(exc)
+
+    advanced.Bind(wx.EVT_BUTTON, edit_chain)
+    basic.Bind(wx.EVT_BUTTON, use_basic)
+    try:
+        if dialog.ShowModal() != wx.ID_OK or not _alive(dialog) or not native_alive():
+            return
+        editor_guard()
+        if pending:
+            raise ValueError('Wait for the effect inventory or cancel before converting audio.')
+        options = read_options()
+        if advanced_chain is not None:
+            options['effects'] = checked_chain(advanced_chain, options['sample_rate'])
     except Exception as exc:
         report_error(exc)
         return
     finally:
-        if dialog:
-            dialog.Destroy()
+        _close(dialog)
     chooser = wx.FileDialog(frame, 'Save converted audio to a new file', defaultFile=source.stem + '-converted.wav',
                             wildcard='Audio (*.wav;*.flac;*.mp3;*.m4a;*.m4b;*.aac;*.ogg;*.opus;*.aiff;*.aif;*.wma)|*.wav;*.flac;*.mp3;*.m4a;*.m4b;*.aac;*.ogg;*.opus;*.aiff;*.aif;*.wma',
                             style=wx.FD_SAVE)
@@ -1192,7 +1322,8 @@ def show_audio_conversion(frame):
             inspected = runtime.inspect(source, cancelled=stopping)
         remaining = max(0, inspected.duration - options['start'])
         duration_seconds = remaining if options['duration'] is None else min(remaining, options['duration'])
-        speed = next(effect.parameters['factor'] for effect in options['effects'] if effect.kind == 'tempo')
+        speed = math.prod(float(effect.parameters.get('factor', 1)) for effect in options['effects']
+                          if effect.kind == 'tempo' and effect.enabled)
         expected_seconds = duration_seconds / speed
         reserved = 2 * math.ceil((expected_seconds + 1) * options['sample_rate']
             * options['channels'] * (options['bit_depth'] // 8)) + 1024**2 + runtime.budget.reserve_disk_bytes

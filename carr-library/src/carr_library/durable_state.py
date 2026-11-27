@@ -75,7 +75,16 @@ def _open_json_file(path):
     filesystems without that operation retain the bounded replacement retry.
     """
     if os.name != 'nt':
-        return path.open('rb')
+        # Refuse a substituted FIFO before any potentially blocking read.
+        # The shared reader validates the opened descriptor before consuming it.
+        descriptor = os.open(path, os.O_RDONLY | os.O_NONBLOCK
+                             | getattr(os, 'O_NOFOLLOW', 0)
+                             | getattr(os, 'O_CLOEXEC', 0))
+        try:
+            return os.fdopen(descriptor, 'rb')
+        except BaseException:
+            os.close(descriptor)
+            raise
     import ctypes
     from ctypes import wintypes
     import msvcrt

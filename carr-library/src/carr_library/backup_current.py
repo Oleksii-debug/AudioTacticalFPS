@@ -29,6 +29,7 @@ _HEX = r'[0-9a-f]{64}'
 _UUID = r'[0-9a-f]{32}'
 _LINKS = re.compile(r'state/speech/' + _HEX + r'\.reader-links\.json\Z')
 _PUBLICATION = re.compile(r'state/studio/publications/(' + _UUID + r')\.json\Z')
+_EFFECT_PRESET = re.compile(r'state/studio/effect-presets/(' + _UUID + r')\.json\Z')
 _RECORDING = re.compile(r'state/studio/recordings/(' + _UUID + r')\.(json|wav)\Z')
 _INPUT = re.compile(r'state/studio/inputs/' + _HEX + r'\.audio\Z')
 _TRANSCRIPTION = re.compile(r'state/transcription/(' + _HEX + r')/(.+)\Z')
@@ -59,6 +60,8 @@ def limit(name):
         return 8_000_000
     if name == 'state/studio/draft.json':
         return 32 * 1024**2
+    if _EFFECT_PRESET.fullmatch(name):
+        return 64 * 1024
     if (_LINKS.fullmatch(name) or _PUBLICATION.fullmatch(name)
             or name in ('state/studio/backup-inputs.json', 'state/studio/legacy-input-review.json')):
         return MAX_JSON
@@ -184,6 +187,10 @@ def validate(db, name, raw):
                 or any(type(key) is not str or not re.fullmatch(_HEX, key) for key in value['copies'])
                 or len(set(value['copies'])) != len(value['copies'])):
             raise ValueError('Invalid reading recovery-family identities.')
+    elif match := _EFFECT_PRESET.fullmatch(name):
+        from .audio.effect_presets import EffectPreset
+        if EffectPreset.from_dict(value).id != match[1]:
+            raise ValueError('The effect preset identity differs from its exact saved filename.')
     elif match := _PUBLICATION.fullmatch(name):
         from .studio.publishing import validate_publication_receipt
         validate_publication_receipt(value, publication_id=match[1])
@@ -224,6 +231,8 @@ def legacy_empty_directories(entries):
 
 
 def validate_collection(db, stage, entries, *, independent=True, cancelled=lambda: False):
+    if sum(bool(_EFFECT_PRESET.fullmatch(entry['filename'])) for entry in entries) > 256:
+        raise RestoreError('The effect preset inventory exceeds its 256-record allowance.')
     state = state_entries(entries)
     database = db.execute('PRAGMA database_list').fetchone()[2]
     allowed = [row[0] for row in db.execute('SELECT id FROM workspace')]
