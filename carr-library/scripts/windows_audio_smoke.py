@@ -89,7 +89,7 @@ def main():
         library = LibraryApp(root / 'library')
         frame = DesktopFrame(library)
         controller = StudioController(private_root=library.root, registry=registry, ffmpeg=ffmpeg)
-        controller.new(script, title='Synthetic local production')
+        controller.new(script, title='Synthetic local production', input_kind='script')
         (root / 'desktop-output').mkdir()
         controller.configure(voice=voice, language='en', output_dir=root / 'desktop-output')
         controller.save(root / 'studio-project.json')
@@ -112,8 +112,24 @@ def main():
             studio.preview()
             application.Yield()
             assert studio.plan_text.GetValue()
+            assert studio.input_kind.GetName() == 'Text interpretation: literal narration or structured production script'
+            assert studio.input_kind.GetSelection() == 1 and controller.input_kind == 'script'
+            studio.notebook.SetSelection(0)
+            studio.input_kind.SetFocus()
+            application.Yield()
+            assert wx.Window.FindFocus() is studio.input_kind
+            studio.input_kind.SetSelection(0)
+            mode_event = wx.CommandEvent(wx.EVT_CHOICE.typeId, studio.input_kind.GetId())
+            mode_event.SetEventObject(studio.input_kind)
+            studio.input_kind.GetEventHandler().ProcessEvent(mode_event)
+            studio.preview()
+            application.Yield()
+            literal = controller.plan()
+            assert controller.input_kind == 'narration' and literal.original_script == script
+            assert len(literal.roles) == 1 and all(scene.music is None for scene in literal.scenes)
             checks.extend(['native Studio named controls', 'real editable script focus', 'native voice list',
-                           'native plan preview', 'project save and readback'])
+                           'native plan preview', 'project save and readback',
+                           'native text-interpretation choice focus and literal preview'])
         finally:
             studio.timer.Stop()
             studio.cancelled.set()
