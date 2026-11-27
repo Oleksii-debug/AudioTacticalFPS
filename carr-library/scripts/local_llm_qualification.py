@@ -26,7 +26,7 @@ from uuid import uuid4
 PRODUCT = Path(__file__).resolve().parents[1]
 PINS = PRODUCT / 'packaging' / 'local-llm-proof-inputs.json'
 GRAMMAR = PRODUCT / 'packaging' / 'local-llm-proof-json.gbnf'
-ALIAS = 'carr-qwen3-06b-q8-qualification'
+ALIAS = 'carr-qwen3-17b-q8-qualification'
 
 
 def require(condition, message):
