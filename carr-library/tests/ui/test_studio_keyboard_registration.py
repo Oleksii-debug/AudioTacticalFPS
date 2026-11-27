@@ -37,7 +37,7 @@ def test_studio_queues_named_commands_before_final_keyboard_install(monkeypatch)
         def GetMenu(self, index):
             return self.menus[index][0]
 
-    monkeypatch.setitem(sys.modules, 'wx', SimpleNamespace(Menu=Menu, ID_ANY=-1, EVT_MENU='menu'))
+    monkeypatch.setitem(sys.modules, 'wx', SimpleNamespace(Menu=Menu, Dialog=object, ID_ANY=-1, EVT_MENU='menu'))
     frame = SimpleNamespace(Bind=Mock(), menu_bar=MenuBar())
     frame.GetMenuBar = lambda: frame.menu_bar
     install_speech_actions(frame)
@@ -46,7 +46,8 @@ def test_studio_queues_named_commands_before_final_keyboard_install(monkeypatch)
     install_library_assistant_actions(frame)
     pending = frame._pending_keyboard_commands
     assert [spec.command_id for spec, _ in pending] == [
-        'voice.reader', 'voice.book', 'audio.studio', 'audio.convert', 'audio.engines',
+        'voice.reader', 'voice.book', 'audio.studio', 'audio.clips', 'audio.recording',
+        'audio.publishing', 'audio.convert', 'audio.engines',
         'assistant.local', 'assistant.providers', 'library.workflows']
     registry = CommandRegistry((*builtin_commands(), *(spec for spec, _ in pending)))
     assert registry.shortcut('audio.studio', {}) == 'Ctrl+Alt+A'
@@ -57,6 +58,6 @@ def test_studio_queues_named_commands_before_final_keyboard_install(monkeypatch)
     assert registry.shortcut('audio.studio', {'audio.studio': 'Ctrl+Alt+U'}) == 'Ctrl+Alt+U'
     assert [label for _, label in frame.menu_bar.menus] == ['&Voice', 'Audio St&udio', '&Tools']
     assert len(frame.menu_bar.menus[-1][0].items) == 3
-    assert frame.Bind.call_count == 8
+    assert frame.Bind.call_count == 11
     for (_, item), call in zip(pending, frame.Bind.call_args_list):
         assert call.args[2] is item
