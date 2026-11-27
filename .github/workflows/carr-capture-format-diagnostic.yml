@@ -1,0 +1,203 @@
+name: Resonance bounded capture-format diagnosis
+
+# An isolated test-first experiment, not the application's recurring CI or
+# installer. This branch is created once for the 2026-11-27 evaluation.
+on:
+  push:
+    branches: [carr/ci-endpoint-evaluation-20261127]
+    paths:
+      - .github/workflows/carr-capture-format-diagnostic.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-capture-format-diagnostic-20261127
+  cancel-in-progress: false
+
+jobs:
+  endpoint-evaluation:
+    name: Exact reviewed input / native DirectShow format diagnosis
+    runs-on: windows-2022
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      HF_HUB_DISABLE_IMPLICIT_TOKEN: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - name: Check out the exact evaluation commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up native x64 CPython
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.11'
+          architecture: x64
+
+      - name: Install the exact application source and pinned desktop dependencies
+        id: install_runtime
+        run: |
+          $environment = Join-Path $env:RUNNER_TEMP 'carr-endpoint-evaluation-python'
+          python -m venv $environment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $environment 'Scripts/python.exe'
+          "CARR_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          New-Item -ItemType Directory -Force 'ci-results' | Out-Null
+          git rev-parse HEAD | Set-Content 'ci-results/tested-commit.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Start existing audio services without changing startup policy
+        timeout-minutes: 2
+        run: |
+          $evidence = @()
+          foreach ($serviceName in @('AudioEndpointBuilder', 'Audiosrv')) {
+            $service = Get-Service -Name $serviceName -ErrorAction Stop
+            $before = $service.Status.ToString()
+            try {
+              if ($service.Status -eq 'Stopped') {
+                $service.Start()
+              } elseif ($service.Status -notin @('Running', 'StartPending')) {
+                throw "Unsupported service state: $serviceName $before"
+              }
+              $service.WaitForStatus([System.ServiceProcess.ServiceControllerStatus]::Running, [TimeSpan]::FromSeconds(20))
+            } finally {
+              $service.Refresh()
+              $evidence += @{ name=$serviceName; before=$before; after=$service.Status.ToString(); start_type=$service.StartType.ToString() }
+              $service.Dispose()
+              @{ services=$evidence; startup_policy_changed=$false } | ConvertTo-Json -Depth 5 | Set-Content 'ci-results/audio-services.json'
+            }
+          }
+
+      - name: Verify only JSON serialization in separate PowerShell 5.1 and 7 processes
+        timeout-minutes: 2
+        run: |
+          $legacy = Join-Path ([Environment]::GetFolderPath('System')) 'WindowsPowerShell/v1.0/powershell.exe'
+          $modern = Join-Path $env:ProgramFiles 'PowerShell/7/pwsh.exe'
+          & $legacy -NoLogo -NoProfile -NonInteractive -File tests/ci_endpoint/verify_authenticode_serialization.ps1 -Report ci-results/signature-json-ps51.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $modern -NoLogo -NoProfile -NonInteractive -File tests/ci_endpoint/verify_authenticode_serialization.ps1 -Report ci-results/signature-json-ps7.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Evaluate the exact signed driver under normal Windows policy
+        timeout-minutes: 4
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/ci_audio_endpoint.py --receipt ci-results/endpoint-evaluation.json 2>&1 | Tee-Object 'ci-results/endpoint-evaluation.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Prepare the unchanged pinned audio runtime
+        timeout-minutes: 10
+        run: |
+          $audioRuntime = Join-Path $env:RUNNER_TEMP 'carr-audio-format-runtime'
+          & $env:CARR_PYTHON -I -B packaging/prepare_windows_audio.py --download --output $audioRuntime | Tee-Object 'ci-results/audio-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_AUDIO_RUNTIME=$audioRuntime" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Inspect only the exact reviewed capture device and its advertised formats
+        timeout-minutes: 3
+        run: |
+          $probe = @'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          import re
+          import sys
+          from tempfile import TemporaryDirectory
+          import traceback
+          from carr_library.audio.models import AudioBudget
+          from carr_library.audio.process import run_process
+          from carr_library.audio.recording import RecordingService
+          from carr_library.native_runtime import activate_bundled_runtime
+          
+          if os.name != 'nt' or os.environ.get('GITHUB_REF') != 'refs/heads/carr/ci-endpoint-evaluation-20261127':
+              raise RuntimeError('This diagnosis is limited to the existing reviewed disposable Windows evaluation.')
+          ffmpeg = Path(os.environ['CARR_AUDIO_RUNTIME']) / 'bin' / 'ffmpeg.exe'
+          report_path = Path('ci-results/capture-format-diagnostic.json')
+          report = {'schema': 'carr-ci-capture-format-diagnostic/1', 'status': 'FAILED',
+                    'source_commit': os.environ['GITHUB_SHA'], 'device_fallback': False,
+                    'physical_microphone': 'NOT_RUN', 'human_listening': 'NOT_RUN',
+                    'input_format_changes': 'diagnostic invocations only; application unchanged',
+                    'ffmpeg_sha256': hashlib.sha256(ffmpeg.read_bytes()).hexdigest(),
+                    'trials': []}
+          budget = AudioBudget(timeout=18, max_output_bytes=1024*1024, max_log_bytes=256*1024,
+                               max_alloc_bytes=64*1024*1024, threads=1)
+          native = activate_bundled_runtime()
+          try:
+              with TemporaryDirectory(prefix='carr-capture-format-') as temporary:
+                  library = Path(temporary) / 'library'
+                  library.mkdir()
+                  service = RecordingService(library, ffmpeg=str(ffmpeg))
+                  devices = service.devices()
+                  selected = [device for device in devices if device.name == 'CABLE Output (VB-Audio Virtual Cable)']
+                  if len(selected) != 1:
+                      raise RuntimeError('Exact reviewed virtual input is unavailable or ambiguous.')
+                  device = selected[0]
+                  report['selected_device'] = {'id': device.id, 'name': device.name, 'alternative': device.alternative}
+                  def invoke(name, options, *, listing=False):
+                      args = [str(ffmpeg), '-hide_banner', '-nostdin', '-loglevel', 'debug',
+                              '-max_alloc', str(budget.max_alloc_bytes), '-threads', '1']
+                      args += options + ['-f', 'dshow', '-i', 'audio=' + device.alternative]
+                      if not listing:
+                          args += ['-map', '0:a:0', '-vn', '-t', '1', '-f', 'null', '-']
+                      try:
+                          result = run_process(args, budget=budget, owned_tree=True, allow_failure=True)
+                          row = {'name': name, 'input_options': options, 'exit_code': result.returncode,
+                                 'stdout': result.stdout.decode('utf-8', errors='replace'),
+                                 'stderr': result.stderr.decode('utf-8', errors='replace')}
+                          report['trials'].append(row)
+                          return row
+                      finally:
+                          report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
+                  capabilities = invoke('list-exact-device-options', ['-list_options', 'true'], listing=True)
+                  formats = {(int(ch), int(bits), int(rate)) for ch, bits, rate in
+                             re.findall(r'ch=\s*(\d+), bits=\s*(\d+), rate=\s*(\d+)', capabilities['stderr'])}
+                  report['advertised_formats'] = [list(item) for item in sorted(formats)]
+                  invoke('current-default-format', ['-rtbufsize', '16M'])
+                  for channels in (2, 1):
+                      if (channels, 16, 48000) in formats:
+                          invoke('advertised-pcm16-48000-' + str(channels),
+                                 ['-rtbufsize', '16M', '-sample_rate', '48000',
+                                  '-sample_size', '16', '-channels', str(channels)])
+                  report['status'] = 'DIAGNOSED'
+          except BaseException:
+              report['error'] = traceback.format_exc()
+              raise
+          finally:
+              if native is not None:
+                  native.close()
+              report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
+              print(json.dumps(report, ensure_ascii=False, indent=2), flush=True)
+          '@
+          $path = Join-Path $env:RUNNER_TEMP 'carr-capture-format-diagnostic.py'
+          $probe | Set-Content -LiteralPath $path -Encoding utf8
+          & $env:CARR_PYTHON -I -B $path
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Retain only bounded synthetic text evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-capture-format-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-results/*.json
+          if-no-files-found: error
+          retention-days: 7
