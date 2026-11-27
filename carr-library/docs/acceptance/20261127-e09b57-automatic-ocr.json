@@ -1,0 +1,86 @@
+{
+  "schema": 1,
+  "recorded_utc": "2026-11-27T15:38:22Z",
+  "tested_commit": "e09b572759131ba94d57a6491f6a3935194ba302",
+  "tested_tree": "e8820515c24cd0fa36109bae769fbdbd19ab15ef",
+  "evidence_source": "Returned completed exact GitHub Actions job logs.",
+  "strict_suite_origin": "Checkout source under ci_check.py; installed native probes are separate.",
+  "unique_test_count": "Selections overlap; do not add as unique coverage.",
+  "status": "PASS",
+  "run_id": 46025186667,
+  "job_id": 140594649007,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46025186667/job/140594649007",
+  "suites": [
+    {
+      "suite": "tests/extract/test_language_detection.py",
+      "passed": 22,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/extract/test_ocr_language_regions.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/extract/test_automatic_ocr_native.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/storage/test_ocr_language_presets.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_ocr_selection.py",
+      "passed": 52,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/extract/test_raster_pages.py",
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/e2e/test_raster_import.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/e2e/test_raster_ocr_native.py",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    }
+  ],
+  "totals": {
+    "passed": 133,
+    "failed": 0,
+    "skipped": 0
+  },
+  "qualification": {
+    "actual_tesseract": "English PDF/PNG/JPEG/TIFF",
+    "detector_examples": [
+      "English",
+      "Ukrainian",
+      "Slovak"
+    ],
+    "all_135_language_quality": "NOT_RUN",
+    "manual_nvda": "NOT_RUN"
+  }
+}

@@ -1,0 +1,217 @@
+{
+  "schema": 1,
+  "recorded_utc": "2026-11-27T15:31:36Z",
+  "tested_commit": "391beff3b479ed322d0ffa206d03ba2ac9da0aaa",
+  "tested_tree": "908accd8e5f306138b80443d51e30381cbcbf1a1",
+  "evidence_source": "Returned completed exact GitHub Actions job logs.",
+  "unique_test_count": "Selections overlap; do not add as unique coverage.",
+  "status": "FAIL",
+  "run_id": 46020539927,
+  "job_id": 140583060029,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46020539927/job/140583060029",
+  "completed_strict_suites": {
+    "suites": [
+      {
+        "suite": "tests/research/test_bibtex_import.py",
+        "passed": 95,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/catalog/test_ris_apply.py",
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/reader/test_export_no_clobber.py",
+        "passed": 80,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/reader/test_export_reconciliation.py",
+        "passed": 20,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/storage/test_durable_state_publication.py",
+        "passed": 8,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/ui/test_export_destination.py",
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/ingest/test_initial_publication_completion.py",
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      }
+    ],
+    "totals": {
+      "passed": 228,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "completed_native_reports": [
+    {
+      "schema": 1,
+      "status": "passed",
+      "checks": [
+        "unicode-spaces-fixed-argv-offline-optional-runtimes",
+        "read-only-ready-probe",
+        "fixed-installation-check",
+        "child-exit-status-propagated",
+        "extra-arguments-rejected",
+        "incomplete-state-preserved-without-reinstall",
+        "missing-runtime-does-not-search-path",
+        "fresh-package-reuses-fixed-offline-installer",
+        "research-data-sentinel-preserved"
+      ],
+      "check_count": 9,
+      "launcher_sha256": "d8116a69d4a04983e032d80adef6e36c861fbe48b672633066f383193c3d616a",
+      "synthetic_child_sha256": "c0112243896c7eee158b715c4b1f80de87d0867c1692f5f356742d0109906294",
+      "native_launcher_execution_verified": true,
+      "actual_python_installation_verified": false,
+      "nvda_verified": false,
+      "authenticode_verified": false
+    },
+    {
+      "status": "PASS",
+      "passed": 26,
+      "skipped": 0,
+      "windows": "actual Job, process handles, files and exclusive leases"
+    },
+    {
+      "status": "PASS",
+      "source_lock_sha256": "fba184226c559a39684810ce34b823b86b75a3708711b599dfbd437c5511f80a",
+      "files": [
+        {
+          "name": "ffmpeg-n9.0.2-982-g836df4e858-win64-lgpl-shared-9.0.zip",
+          "url": "https://github.com/FFmpeg-Builds/FFmpeg-Builds/releases/download/autobuild-2026-11-26-12-56/ffmpeg-n9.0.2-982-g836df4e858-win64-lgpl-shared-9.0.zip",
+          "size": 77787475,
+          "sha256": "f7ba27e7986a2d0835881e742a682dec17896f6dc2cdcf9e596f043d2763d894",
+          "local_path": "D:\\a\\_temp\\carr-canonical-audio\\inputs\\ffmpeg-n9.0.2-982-g836df4e858-win64-lgpl-shared-9.0.zip",
+          "reused": false
+        },
+        {
+          "name": "FFmpeg-836df4e85894b757debe268f84ffc08c57623a73.tar.gz",
+          "url": "https://codeload.github.com/FFmpeg/FFmpeg/tar.gz/836df4e85894b757debe268f84ffc08c57623a73",
+          "size": 17387251,
+          "sha256": "5490d8410d95889639976ab1ac8b569a30b060f1a99d5463949174acbedf431c",
+          "local_path": "D:\\a\\_temp\\carr-canonical-audio\\inputs\\FFmpeg-836df4e85894b757debe268f84ffc08c57623a73.tar.gz",
+          "reused": false
+        },
+        {
+          "name": "FFmpeg-Builds-d05871a37b5fc80e00714c708edec35c7b9ebfb0.tar.gz",
+          "url": "https://codeload.github.com/FFmpeg-Builds/FFmpeg-Builds/tar.gz/d05871a37b5fc80e00714c708edec35c7b9ebfb0",
+          "size": 119568,
+          "sha256": "94a8469b1db8628932c54a30beadd2ec656e8465d3f2de6a47b3ffdacc15ebf8",
+          "local_path": "D:\\a\\_temp\\carr-canonical-audio\\inputs\\FFmpeg-Builds-d05871a37b5fc80e00714c708edec35c7b9ebfb0.tar.gz",
+          "reused": false
+        }
+      ],
+      "native_execution": "NOT_RUN"
+    },
+    {
+      "schema": 1,
+      "status": "PASS",
+      "epubcheck_archive": "D:\\a\\_temp\\carr-publication-validation\\epubcheck-5.3.0.zip",
+      "daisy_schemas": "D:\\a\\_temp\\carr-publication-validation\\daisy-schemas",
+      "files": {
+        "epubcheck-5.3.0.zip": {
+          "size": 33071108,
+          "sha256": "6c07e68584b2e2ce2f89fe06e1246dfead3eb36b46b340e7d93524f29dcff6c5"
+        },
+        "daisy-schemas/SMIL10.dtd": {
+          "size": 7496,
+          "sha256": "2d99e59884b8e43870aafebc7510a8dc58a4b65cbe30096dcde1574c92f8e786"
+        },
+        "daisy-schemas/xhtml-lat1.ent": {
+          "size": 11775,
+          "sha256": "3da1daad08f93b8aff7a32d5447f94853d517561d9c7d0c7bc3ee5c002d12a38"
+        },
+        "daisy-schemas/xhtml-special.ent": {
+          "size": 4131,
+          "sha256": "7f9518026c59ccee47a02ed74e43f8946d92207d438a7f540a0f3c28f05fa27e"
+        },
+        "daisy-schemas/xhtml-symbol.ent": {
+          "size": 13848,
+          "sha256": "a6cd0f9c59e488b8c8e2de80c31c6811f316a3919cd9a0725b5390a8fc785d61"
+        },
+        "daisy-schemas/xhtml1-transitional.dtd": {
+          "size": 32111,
+          "sha256": "28905cd059167bfa1a5866053799d55fd335c0717920a7048de400c8a32b9d93"
+        }
+      },
+      "license_notices": {
+        "epubcheck-5.3.0/LICENSE.txt": {
+          "size": 1561,
+          "sha256": "30639fa2b228607910b33c58b3748e7a94c29795d14e1134cbb5f287daf284e9"
+        },
+        "epubcheck-5.3.0/THIRD-PARTY.txt": {
+          "size": 2555,
+          "sha256": "d7c5ab8c2be53106872536734e275873be7a43aba7068734183e28b82a8dc80d"
+        }
+      },
+      "manifest_sha256": {
+        "epubcheck.json": "a8e1b142cba7879a08e25f98cebd0e40b13491af54a0fa24580b180089f30569",
+        "daisy-validation-schemas.json": "5d130fcdaa843b6a64330608db6cf0049b451910001b366572714956f0546699"
+      },
+      "execution": "NONE",
+      "installation": "NONE"
+    },
+    {
+      "status": "PASS",
+      "checks": [
+        "original import",
+        "scoped search",
+        "exact quotation",
+        "workspace isolation",
+        "saved research",
+        "reopen persistence",
+        "academic reading list",
+        "bibliography export",
+        "backup and restore"
+      ],
+      "native_gui": "NOT_RUN",
+      "windows_nvda": "NOT_RUN"
+    },
+    {
+      "status": "PASS",
+      "installed_package": true,
+      "platform": "win32",
+      "catalogue_models": {
+        "fast": 162,
+        "best": 162
+      },
+      "module_cli": "PASS",
+      "real_bundled_model_preparation": "NOT_REQUESTED",
+      "nvda": "NOT_RUN"
+    }
+  ],
+  "failure": {
+    "step": "Exercise installed BibTeX import and real overwrite confirmation",
+    "trace": "Traceback (most recent call last):\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_bibliography_interchange_smoke.py\", line 455, in advance\n    delay = next(scenario)\n            ^^^^^^^^^^^^^^\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_bibliography_interchange_smoke.py\", line 401, in scenarios\n    yield from answer_yes(handle, attempts)\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_bibliography_interchange_smoke.py\", line 379, in answer_yes\n    yield from until(lambda: overwrite_prompt() is None\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_bibliography_interchange_smoke.py\", line 168, in until\n    raise TimeoutError(explanation)\nTimeoutError: Shift+Tab and Enter did not approve exactly one real export.\n",
+    "cause": "Probe observer overrides old export_to while production native handler calls receipt-bearing export_result; real confirmation closes but observer never increments.",
+    "correction_commit": "1450ac101f1f63bde952ba940ac26759e9efe3ff",
+    "corrected_execution": "NOT_RUN on this failed391 checkpoint."
+  },
+  "subsequent_bundle_phases": "SKIPPED because of step14 failure; no installed-bundle success is inferred.",
+  "strict_suite_origin": "Windows source checkout: ci_check.py sets PYTHONPATH to ROOT/src. Package installation alone does not qualify these suites as installed-package execution.",
+  "native_probe_origin": "Only native reports with explicit module-origin checks qualify installed-package execution."
+}
