@@ -32,6 +32,7 @@ from .storage.schema_identity import expected_schema_fingerprint, schema_fingerp
 
 MAX_JOURNAL = 512 * 1024**2
 MAX_FILES = 25_000
+MAX_SCAN_ENTRIES = 50_000  # Counts all scanned names, even ignored transients.
 MAX_TOTAL = 8 * 1024**3
 MAX_JOBS = 10_000
 MAX_CHECKPOINTS = 100_000
@@ -496,6 +497,7 @@ def pending_roots(root):
 def _inventory(root, *, cancelled=lambda: False):
     """Recognize canonical committed sidecars; stream and allow cancellation."""
     found = {}
+    scanned = 0
     for name in ('import-requests', 'import-batches'):
         _check(cancelled)
         directory = root / name
@@ -506,12 +508,18 @@ def _inventory(root, *, cancelled=lambda: False):
         with os.scandir(directory) as children:
             for child in children:
                 _check(cancelled)
+                scanned += 1
+                if scanned > MAX_SCAN_ENTRIES:
+                    raise ValueError('Too many pending import directory entries.')
                 path = directory / child.name
                 if path.name == 'reviews' and name == 'import-requests':
                     regular(path, directory=True)
                     with os.scandir(path) as reviews:
                         for child_review in reviews:
                             _check(cancelled)
+                            scanned += 1
+                            if scanned > MAX_SCAN_ENTRIES:
+                                raise ValueError('Too many pending import directory entries.')
                             review = path / child_review.name
                             info = regular(review)
                             if re.fullmatch('[0-9a-f]{32}\\.tmp', review.name):
