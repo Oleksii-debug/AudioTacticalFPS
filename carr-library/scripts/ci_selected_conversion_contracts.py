@@ -35,7 +35,7 @@ PINS = {
     "src/carr_library/conversion/worker.py": "722d3c7b61717890dc242d8113d0617714d53a67",
     "src/carr_library/conversion/service.py": "5a50e9e1c28517e7851d0d67a39df4b5bae172ab",
     "src/carr_library/ui/document_conversion.py": "83a48872bd07a0e4611ee68b1a59155fe4468239",
-    "tests/conversion/test_selected_conversion.py": "8030a214a238d6bad568fc2ded2c61021baaca42",
+    "tests/conversion/test_selected_conversion.py": "7732eee3d6f4753efb2fb466315281320649a74c",
     "tests/conversion/test_calibre_admission.py": "5383663ad30f71ea2782c991826afe16d3f92017",
     "tests/conversion/test_office_admission.py": "b60d2784e25df42d29f486396010393865a2aa1b",
     "tests/ui/test_document_conversion.py": "a92b5e20180462812634dda50266a61df8b9d4e3",

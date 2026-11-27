@@ -397,7 +397,7 @@ def test_reading_folder_swap_at_actual_import_boundary_refuses_before_ingest(sel
         rows = []
     assert entered == [True]
     assert not any(row.get('state') == 'complete' for row in rows)
-    assert app.browse(workspace) == []
+    assert app.browse(workspace) == ()
     assert not any(path.is_file() for path in app.assets_dir.rglob('*'))
 
 
