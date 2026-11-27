@@ -1,0 +1,117 @@
+{
+  "schema": "resonance-capacity-actual-job-evidence/1",
+  "recorded_at_utc": "2026-11-27T22:08:20Z",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source": {
+    "head": "b524b3ac3453864903ec415ce7a5f048da09d700",
+    "tree": "209daa1ab7b68192b5956ac2849ae183dc83ede1",
+    "harness": "ec198e50daffd3d3687048e15882c3744c3c54c4"
+  },
+  "run": 46065560954,
+  "job": 140730553121,
+  "job_conclusion": "failure",
+  "actual_report_status": "PARTIAL",
+  "declared": {
+    "books": 50000,
+    "segments_per_book": 40,
+    "total_segments": 2000000,
+    "segment_bytes": 256,
+    "construction": "retained-fixture",
+    "public_samples": 12,
+    "complete_backup": true,
+    "backup_capacity_profile": "large-source-v1",
+    "phase_seconds": 3600,
+    "max_disk_bytes": 25769803776,
+    "min_free_bytes": 1073741824
+  },
+  "log_records": [
+    {
+      "completed_case": 50000,
+      "status": "PARTIAL"
+    },
+    {
+      "status": "PARTIAL",
+      "evidence": "/home/runner/work/_temp/resonance-large-backup-capacity-50000-40-46065560954-1/library-corpus-scale.json"
+    },
+    {
+      "books": 50000,
+      "phases": [
+        {
+          "phase": "build",
+          "reason": null,
+          "status": "PASS"
+        },
+        {
+          "phase": "measure",
+          "reason": "BudgetExceeded",
+          "status": "PARTIAL"
+        }
+      ],
+      "qualification": "Measured exact declared synthetic source profile only; no native GUI, acoustic or sustained whole-corpus import claim.",
+      "retained": {
+        "50000/build.json": {
+          "bytes": 5767,
+          "sha256": "ef0231fbae06cbfbf93eefc49ac553179984e78db605a39193063e76c341fe73"
+        },
+        "50000/build.stderr.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "50000/build.stdout.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "50000/measure.json": {
+          "bytes": 5141,
+          "sha256": "370d9ee8a2010c1e000c59023e78028bec9f1008643e6ccddfa3fa2be8309647"
+        },
+        "50000/measure.stderr.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "50000/measure.stdout.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "configuration.json": {
+          "bytes": 5245,
+          "sha256": "c2e533029dd5a95e101e8e6ef7f1262aef03c05e99504944e6accac5f0e12766"
+        },
+        "library-corpus-scale.json": {
+          "bytes": 18360,
+          "sha256": "c4249589a9b5cfe2b1dd9fe9941d4c50fe15dbee1c58b6b3ac1f6f523ce67996"
+        }
+      },
+      "segments": 2000000,
+      "source_commit": "b524b3ac3453864903ec415ce7a5f048da09d700",
+      "status": "PARTIAL"
+    }
+  ],
+  "artifact": {
+    "id": 15234810136,
+    "size_in_bytes": 12570,
+    "sha256": "e5eb6ec3586a85589f28357d58cd1803eb79c737d854ea60af1b2a1a8c6670d6",
+    "name": "retained-capacity-large-source-v1-50000x40-b524b3ac3453864903ec415ce7a5f048da09d700-1",
+    "workflow_run": {
+      "id": 46065560954,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/ci-next9-capacity-c2-20261127-5a9e",
+      "head_sha": "b524b3ac3453864903ec415ce7a5f048da09d700"
+    }
+  },
+  "not_run": [
+    "restart",
+    "operations",
+    "backup"
+  ],
+  "interpretation": "Actual build PASS and measure PARTIAL BudgetExceeded. Exact phase timing, RSS, disk and interruption checkpoint await verified artifact JSON. This is not a successful 50k/2M qualification.",
+  "other_profile": {
+    "job": 140730553147,
+    "books": 50000,
+    "segments_per_book": 20,
+    "status_at_last_poll": "in_progress",
+    "mutation": "none"
+  },
+  "new_source_claim": "none"
+}
