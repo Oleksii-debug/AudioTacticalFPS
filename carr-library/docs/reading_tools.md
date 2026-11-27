@@ -6,7 +6,7 @@ The Voice reader and reading copy window uses the same ReadingDocument history a
 
 Open **Find in reading copy** (default Ctrl+F) or **Find and replace** (Ctrl+H). Both open the same native review dialog. Find Next and Find Previous select exact current text. Options include case sensitivity, whole words, wrap, and the reading selection captured when the dialog opened.
 
-Literal search treats replacement backslashes literally. Regular expressions use the existing isolated regex worker; Python-style replacement backreferences are supported. Enter an empty replacement to remove matching text. Preview Replace One requires the exact match selected by Find. Preview Replace All prepares one complete, reversible operation. Apply reviewed changes commits it; Reject discards it. The reader's Undo and Redo act on the entire accepted operation.
+Literal search treats replacement backslashes literally. Regular expressions use the existing isolated regex worker; Python-style replacement backreferences are supported. Enter an empty replacement to remove matching text. Preview Replace One requires the exact match selected by Find. Preview Replace All prepares one complete, reversible operation. Apply reviewed changes commits it; Reject discards it. The reader's Undo and Redo act on the entire accepted operation. After returning focus to the main reading editor, fixed Ctrl+Z and Ctrl+Y use that same history. Wait until the current operation finishes; fields inside a tool dialog keep their own native editing.
 
 All regex work runs on the reader's existing worker and in a bounded child process. The maximum pattern is 1,024 characters, replacement 4,096 characters, result 10,000 matches, and reading copy 2,000,000 characters. Each search has a three-second child deadline. A cancelled or stale preview cannot edit the current copy. Reopen a preview after typing, undo, source revocation, or another accepted operation.
 
@@ -22,7 +22,7 @@ A dictionary preview has a ten-second total deadline in addition to each regex c
 
 ## Keyboard and lifecycle
 
-The Voice reader adds a voice_reader context to the existing shared keyboard preference file. Its defaults preserve F6/F7/F8 and Ctrl+S/Ctrl+Shift+S. Reader keyboard shortcuts uses the same command chooser, collision validation, import/migration and persisted overrides as the main window and Reading Desk. Ordinary text editing and Insert/Caps Lock/NVDA prefixes remain reserved. No global hotkeys are installed.
+The Voice reader adds a voice_reader context to the existing shared keyboard preference file. Its defaults preserve F6/F7/F8 and Ctrl+S/Ctrl+Shift+S. Reader keyboard shortcuts uses the same command chooser, collision validation, import/migration and persisted overrides as the main window and Reading Desk. Ordinary text editing, fixed Ctrl+Z/Ctrl+Y and Insert/Caps Lock/NVDA prefixes remain reserved. This reader shortcut dialog does not register global hotkeys. Optional desktop hotkeys use the separate explicit desktop integration controls and remain inactive after restart or restore.
 
 The tools borrow the reader's single executor. Cancel and closing the tool discard unaccepted results; they never shut down that shared executor. Destroy events use the captured live owner ID because a native wrapper can already be invalid when destruction is reported. A successful dictionary export remains reported as committed if cancellation arrives after its durable return.
 
@@ -43,4 +43,4 @@ Actual installed probe, without injecting checkout source:
 
     python -I -B scripts/windows_reading_tools_smoke.py --expect-installed --output ci-results/reading-tools-installed.json
 
-The native probe exercises actual wx controls and OS key dispatch, real isolated regex children, source-preserving history and dictionary/store persistence. External file chooser answers are controlled temporary fixtures. It requires no audio endpoint and performs no speech inference. Manual NVDA remains a separate acceptance activity. The final composed source/native gates must run before claiming these new controls qualified.
+The native probe exercises actual wx controls and OS key dispatch, real isolated regex children, source-preserving history and dictionary/store persistence. External file chooser answers are controlled temporary fixtures. It requires no audio endpoint and performs no speech inference. Manual NVDA remains a separate acceptance activity. The final composed source/native gates must run before claiming these new controls qualified. The [finite workflow checklist](READING_WORKFLOW_ACCEPTANCE.md) records the current source checkpoint and open native acceptance; source-level support for Undo does not by itself prove OS-key delivery.

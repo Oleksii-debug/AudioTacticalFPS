@@ -262,9 +262,11 @@ def _validate_engine_settings(value):
             if 'expected_worker_sha256' in helper:
                 checksum(helper['expected_worker_sha256'])
         else:
-            fields(helper, {'executable', 'sha256', 'engine_name'}, {'enabled', 'max_voices'})
+            fields(helper, {'executable', 'sha256', 'engine_name'},
+                   {'enabled', 'max_voices', 'script', 'script_sha256'})
             path(helper['executable'])
             checksum(helper['sha256'])
+            _model('runtime_settings').validate_helper_script_configuration(helper)
             text(helper['engine_name'], 128)
             if 'enabled' in helper:
                 boolean(helper['enabled'])
@@ -607,29 +609,33 @@ def check_namespace(directory, inventory, *, cancelled=lambda: False):
         _check_cancelled(cancelled)
         parent = pending.pop()
         _plain(parent, directory=True)
-        # Consume lazily. Reject the first extra member, even if the rest of
-        # the directory cannot be enumerated or would exceed a memory budget.
-        for child in parent.iterdir():
-            _check_cancelled(cancelled)
-            name = child.relative_to(directory).as_posix()
-            if name in optional:
-                if name in optional_seen:
-                    raise RestoreError('Duplicate optional transcription cache directory.')
-                _plain(child, directory=True)
-                optional_seen.add(name)
-                pending.append(child)
-                continue
-            if name not in expected or name in seen:
-                raise RestoreError('incomplete backup or unexpected sidecar entry: ' + name)
-            seen.add(name)
-            if name in directories:
-                _plain(child, directory=True)
-                if name != 'originals':
+        # Stream the actual entries on every supported Python version.
+        # Reject the first extra name before stat or consuming another name.
+        with os.scandir(parent) as children:
+            for entry in children:
+                _check_cancelled(cancelled)
+                child = parent / entry.name
+                name = child.relative_to(directory).as_posix()
+                if name in optional:
+                    if name in optional_seen:
+                        raise RestoreError('Duplicate optional transcription cache directory.')
+                    _plain(child, directory=True)
+                    optional_seen.add(name)
                     pending.append(child)
-            elif name in names:
-                _regular(child)
-            else:
-                _plain(child)
+                    continue
+                if name not in expected or name in seen:
+                    raise RestoreError('incomplete backup or unexpected sidecar entry: ' + name)
+                seen.add(name)
+                if name in directories:
+                    _plain(child, directory=True)
+                    if name != 'originals':
+                        pending.append(child)
+                elif name in names:
+                    _regular(child)
+                else:
+                    _plain(child)
+        _check_cancelled(cancelled)
+    _check_cancelled(cancelled)
     if seen != expected:
         missing = ', '.join(sorted(expected - seen)[:10])
         raise RestoreError('incomplete sidecar backup: ' + missing)

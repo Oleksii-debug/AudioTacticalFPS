@@ -189,7 +189,10 @@ def show_engine_settings(frame):
                 message = ('Enable this explicitly reviewed local helper?\n\n'
                            'Engine: ' + str(row.get('engine_name', ''))[:256] + '\n'
                            'Executable: ' + str(row.get('executable', ''))[:2048] + '\n'
-                           'Expected SHA256: ' + str(row.get('sha256', ''))[:128] + '\n\n'
+                           'Expected SHA256: ' + str(row.get('sha256', ''))[:128] + '\n'
+                           + ('Script: ' + str(row.get('script', ''))[:32768] + '\n'
+                              'Expected script SHA256: ' + str(row.get('script_sha256', ''))[:128] + '\n'
+                              if 'script' in row or 'script_sha256' in row else '') + '\n'
                            'It will run with your account permissions during review and synthesis.')
                 if wx.MessageBox(message, 'Enable local voice helper',
                                  wx.YES_NO | wx.NO_DEFAULT, dialog) != wx.YES:

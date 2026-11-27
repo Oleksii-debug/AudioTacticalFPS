@@ -142,3 +142,62 @@ def test_deferred_region_evidence_still_obeys_the_shared_byte_bound(monkeypatch)
             Config(automatic_languages=True), lambda: 30, fixture_recognize(calls))
     assert result['status'] == 'regional_evidence_budget'
     assert not calls and not result['regions'] and candidate is None
+
+
+def test_disagreeing_baseline_layout_cannot_choose_regions_or_initialize_detector(monkeypatch):
+    raw, tsv = EN, layout([UK])
+    calls = []
+
+    def forbidden_detector(**kwargs):
+        pytest.fail('A conflicting baseline cannot reach language detection.')
+
+    monkeypatch.setattr(regions, 'Detector', forbidden_detector)
+    with Image.new('RGB', (1000, 400), 'white') as image:
+        original = sha256(image.tobytes()).hexdigest()
+        observations, selected = regions.language_candidates(image, raw, tsv,
+            Config(languages='eng+ukr', automatic_languages=True), lambda: 30,
+            fixture_recognize(calls))
+        assert sha256(image.tobytes()).hexdigest() == original
+
+    assert selected is None and calls == []
+    assert observations['status'] == 'language_review_failed_or_timed_out'
+    assert 'OCR layout and raw text disagree' in observations['detail']
+    assert observations['regions'] == []
+    assert raw == EN and tsv == layout([UK])
+
+
+@pytest.mark.parametrize('phase', ['region', 'page'])
+def test_conflicting_alternative_layout_cannot_replace_baseline_or_expose_word_boxes(phase):
+    raw, tsv, calls = EN, layout([EN]), []
+    recognize = fixture_recognize(calls)
+
+    def conflicting(image, name, **kwargs):
+        actual_raw, actual_tsv = recognize(image, name, **kwargs)
+        if ((phase == 'region' and name.startswith('language-region-'))
+                or (phase == 'page' and name == 'language-page')):
+            return actual_raw + ' changed', actual_tsv
+        return actual_raw, actual_tsv
+
+    with Image.new('RGB', (1000, 200), 'white') as image:
+        original = sha256(image.tobytes()).hexdigest()
+        observations, selected = regions.language_candidates(image, raw, tsv,
+            Config(languages='eng+ukr', automatic_languages=True), lambda: 30, conflicting)
+        assert sha256(image.tobytes()).hexdigest() == original
+
+    assert selected is None
+    assert observations['status'] == 'language_review_failed_or_timed_out'
+    assert 'OCR layout and raw text disagree' in observations['detail']
+    assert raw == EN and tsv == layout([EN])
+    assert 'chosen_page_model' not in observations
+    if phase == 'region':
+        assert [call['name'] for call in calls] == ['language-region-1']
+        assert observations['regions'] == []
+    else:
+        assert [call['name'] for call in calls] == ['language-region-1', 'language-page']
+        assert len(observations['regions']) == 1
+        accepted = observations['regions'][0]
+        assert accepted['status'] == 'ocr_candidate'
+        assert accepted['coordinate_frame'] == 'source_render_pixels_top_left'
+        assert accepted['crop_coordinate_frame'].startswith('crop_pixels_top_left;')
+        assert ''.join(accepted['raw_text'].split()) == ''.join(
+            part for word in accepted['blocks'] for part in word['text'].split())

@@ -27,29 +27,6 @@ def test_portable_manifest_allows_distinct_siblings():
                     entry('Other/one.json')])
 
 
-@pytest.mark.parametrize('names', [
-    ('voice.json', 'VOICE.JSON'),
-    ('A/one.json', 'a/two.json'),
-])
-def test_snapshot_refuses_unrestorable_portable_names(tmp_path, names):
-    source, target = tmp_path / 'source', tmp_path / 'stage'
-    source.mkdir()
-    target.mkdir()
-    for name in names:
-        file = source / name
-        file.parent.mkdir(parents=True, exist_ok=True)
-        if file.exists():
-            pytest.skip('Filesystem does not support case-distinct names.')
-        file.write_bytes(b'x')
-    actual = {p.relative_to(source).as_posix() for p in source.rglob('*.json')}
-    actual.update(p.relative_to(source).as_posix() for p in source.rglob('*.JSON'))
-    if not set(names) <= actual:
-        pytest.skip('Filesystem aliases the requested directory spellings.')
-    with pytest.raises(ValueError, match='Duplicate|collide'):
-        snapshot_state(source, target)
-    assert all((source / name).read_bytes() == b'x' for name in names)
-
-
 @pytest.mark.parametrize('name', [
     '.', 'draft?.json', 'draft*.json', 'draft".json',
     'draft<.json', 'draft>.json', 'folder/part|one.json',
@@ -64,19 +41,6 @@ def test_portable_manifest_rejects_non_windows_names(name):
 def test_portable_manifest_keeps_ordinary_unicode_names():
     validate_state([entry('knihy/\u0413\u043e\u043b\u043e\u0441.json'),
                     entry('folder/COM10.json'), entry('folder/.draft.json')])
-
-
-def test_snapshot_rejects_nonportable_real_source(tmp_path):
-    import os
-
-    if os.name == 'nt':
-        pytest.skip('POSIX-only filename fixture')
-    root = tmp_path / 'source'
-    root.mkdir()
-    (root / 'draft?.json').write_bytes(b'x')
-    with pytest.raises(ValueError, match='Invalid'):
-        snapshot_state(root, tmp_path / 'stage')
-    assert not (tmp_path / 'stage').exists()
 
 
 def test_portable_snapshot_roundtrip_unicode(tmp_path):

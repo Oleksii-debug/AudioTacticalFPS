@@ -225,6 +225,9 @@ class VoiceRegistry:
         elif isinstance(provider, LocalHelperProvider):
             provider._verify()
             identity['helper_contract'] = 'carr.local-voice.v1'
+            if provider.script is not None:
+                identity['helper_script_sha256'] = provider.expected_script_hash
+                identity['helper_launch'] = 'isolated-python-script.v1'
         elif isinstance(provider, SapiProvider):
             identity.update(token=provider._tokens[voice_id], architecture=provider.architecture,
                             model_identity='opaque-installed-SAPI-token')
@@ -285,6 +288,7 @@ class VoiceRegistry:
                     if not chunk.strip():
                         continue
                     part = staged.parent / 'utterance.wav'
+                    remove_part = True
                     try:
                         provider.render(chunk, voice, part, options, cancelled)
                         rate, channels, size, width = _wave_info(part)
@@ -303,8 +307,15 @@ class VoiceRegistry:
                                 combined.writeframesraw(block)
                         frames += size
                         count += 1
+                    except BaseException as error:
+                        from ..audio.cleanup import _pending_owners
+                        # new_output retains this exact directory until every
+                        # causal process owner is quiet; do not unlink its chunk.
+                        remove_part = not _pending_owners(error)
+                        raise
                     finally:
-                        part.unlink(missing_ok=True)
+                        if remove_part:
+                            part.unlink(missing_ok=True)
             rate, channels, frames, _ = _wave_info(staged)
             checksum = digest(staged)
         return SpeechResult(target, checksum, frames / rate, rate, channels, frames,
@@ -549,11 +560,15 @@ class LocalHelperProvider:
     name = 'Opt-in local voice helper'
 
     def __init__(self, executable, *, sha256, engine_name, enabled=False, max_voices=1024,
-                 cancelled=lambda: False):
+                 script=None, script_sha256=None, cancelled=lambda: False):
         if enabled is not True:
             raise ValueError('Explicitly enable a reviewed local voice helper before running it.')
         self.executable = local_file(executable)
         self.expected_hash = sha256
+        if (script is None) != (script_sha256 is None):
+            raise ValueError('A Python helper script and its SHA256 must be configured together.')
+        self.script = local_file(script) if script is not None else None
+        self.expected_script_hash = script_sha256
         self.engine_name = text_value(engine_name, 'engine name', maximum=128)
         if type(max_voices) is not int or not 1 <= max_voices <= 10000:
             raise ValueError('Set a voice catalog limit from 1 to 10000.')
@@ -565,12 +580,23 @@ class LocalHelperProvider:
         if (not isinstance(self.expected_hash, str) or not re.fullmatch('[0-9a-f]{64}', self.expected_hash)
                 or digest(local_file(self.executable), cancelled=cancelled) != self.expected_hash):
             raise ValueError('Local voice helper hash verification failed.')
+        if self.script is not None and (
+                not isinstance(self.expected_script_hash, str)
+                or not re.fullmatch('[0-9a-f]{64}', self.expected_script_hash)
+                or digest(local_file(self.script), cancelled=cancelled) != self.expected_script_hash):
+            raise ValueError('Local voice helper script hash verification failed.')
 
     def _request(self, payload, *, cancelled=lambda: False, timeout=30, output=None, budget=512*1024*1024):
         self._verify(cancelled=cancelled)
         raw = json.dumps({'schema': 'carr.local-voice.v1', **payload}, ensure_ascii=False).encode('utf-8')
-        reply, _, _ = run_process([self.executable], input_bytes=raw, cancelled=cancelled,
-                                 timeout=timeout, output_file=output, max_output=budget)
+        command = [self.executable]
+        if self.script is not None:
+            # A reviewed stdlib bridge gets only this fixed isolated invocation.
+            # User text remains UTF-8 JSON; no caller-supplied Python argv.
+            command.extend(('-I', '-B', '-S', str(self.script)))
+        reply, _, _ = run_process(command, input_bytes=raw, cancelled=cancelled,
+                                 timeout=timeout, output_file=output, max_output=budget,
+                                 owned_tree=True)
         data = json.loads(reply.decode('utf-8'))
         if not isinstance(data, dict) or data.get('schema') != 'carr.local-voice.v1':
             raise ValueError('Unsupported local voice-helper response.')

@@ -4,9 +4,10 @@ from dataclasses import replace
 import json
 from pathlib import Path
 import threading
+from uuid import uuid4
 
 from ..durable_state import atomic_json, atomic_bytes, read_json
-from ..studio.project import Project, parse_script
+from ..studio.project import Project, parse_script, validate_studio_draft
 from ..studio.render import ProductionService
 from .operation_progress import OperationProgress, operation_outcome
 from ..speech.progress_speech import activate_progress_voice, play_when_quiet
@@ -38,16 +39,54 @@ class StudioController:
         self.service = service or ProductionService(library.root / 'state' / 'studio')
         self.draft = library.root / 'state' / 'studio' / 'draft.json'
         self.project = None
+        self.draft_warning = ''
 
     def autosave(self, text, title, voice_ids):
-        atomic_json(self.draft, {'schema': 1, 'text': text, 'title': title,
-                    'voice_ids': list(voice_ids), 'project_id': self.project.id if self.project else None},
-                    replace=self.draft.exists())
+        project = self.project
+        value = {'schema': 1, 'text': text, 'title': title,
+                 'voice_ids': list(voice_ids), 'project_id': project.id if project else None,
+                 'project_revision': project.revision if project else None,
+                 'project_fingerprint': project.fingerprint if project else None}
+        validate_studio_draft(value)
+        atomic_json(self.draft, value, replace=self.draft.exists())
+
+    def restore_draft_project(self, draft):
+        """Restore the exact edit baseline, never rebase recovered text silently."""
+        self.project = None
+        validate_studio_draft(draft)
+        identity = draft['project_id']
+        if identity is None:
+            return ''
+        store = self.service.projects
+        latest = store.load(identity)
+        revision, fingerprint = draft.get('project_revision'), draft.get('project_fingerprint')
+        if revision is None:
+            if (draft['text'], draft['title']) == (latest.original_script, latest.title):
+                self.project = latest
+                return ''
+            return ('Recovered an unversioned draft as a separate project; '
+                    'the existing project will not be overwritten.')
+        if (latest.revision, latest.fingerprint) == (revision, fingerprint):
+            self.project = latest
+            return ''
+        historical = store.directory(identity) / 'revisions' / f'{revision:08d}-{fingerprint}.json'
+        snapshot = Project.from_dict(read_json(historical))
+        if (snapshot.id, snapshot.revision, snapshot.fingerprint) != (identity, revision, fingerprint):
+            raise ValueError('Draft revision identity did not match its historical project.')
+        self.project = snapshot
+        return ('Recovered a historical revision. Saving over the newer project is blocked; '
+                'the draft is retained.')
 
     def save(self, text, title, voice_ids):
         # Keep even an invalid script draft, and report the validation failure.
+        self.draft_warning = ''
         self.autosave(text, title, voice_ids)
         previous_project = self.project
+        if previous_project is not None:
+            latest = self.service.projects.load(previous_project.id)
+            if latest.to_dict() != previous_project.to_dict():
+                raise ValueError('Project changed since this revision was opened. The draft is retained; '
+                                 'open the current project or create a separate output from the saved job.')
         if previous_project and text == previous_project.original_script:
             # JSON projects can contain recorded clips, source bindings and
             # non-default render settings which the prose grammar cannot express.
@@ -88,6 +127,11 @@ class StudioController:
             expected_revision=previous_project.revision if previous_project else None,
             expected_fingerprint=previous_project.fingerprint if previous_project else None)
         self.project = project
+        try:
+            self.autosave(text, title, voice_ids)
+        except Exception as exc:
+            # Project publication succeeded; a recovery-anchor error cannot undo it.
+            self.draft_warning = ' Project saved, but refreshing the recovery draft failed: ' + str(exc)
         return project
 
 
@@ -178,6 +222,8 @@ def show_studio(frame):
         editor.Enable(not busy)
         title.Enable(not busy)
         voice_choice.Enable(not busy)
+        format_choice.Enable(not busy)
+        stems.Enable(not busy)
 
     def run(operation, complete, *, phase='Audio Studio operation', with_progress=False):
         nonlocal busy
@@ -342,7 +388,8 @@ def show_studio(frame):
             saved_signature = signature
             draft_dirty = editor_signature() != signature
             newer = ' Newer unsaved edits are retained.' if draft_dirty else ''
-            report(f'Saved project revision {result.revision}. {len(result.scenes)} scenes, {len(result.roles)} roles.{newer}', True)
+            report(f'Saved project revision {result.revision}. {len(result.scenes)} scenes, {len(result.roles)} roles.'
+                   + controller.draft_warning + newer, True)
             return result
         except Exception as exc:
             report(f'Project validation failed: {exc} The editable draft was retained if its save succeeded.', True)
@@ -460,38 +507,100 @@ def show_studio(frame):
             detail.Destroy()
 
     def render(event=None):
-        nonlocal current_job
-        if busy:
+        nonlocal current_job, draft_dirty, saved_signature
+        if busy or not alive:
             return
-        if current_job is None:
-            project = save()
-            if project is None:
-                return
-            chooser = wx.DirDialog(dialog, 'Choose the parent folder for new audio outputs')
-            try:
-                if chooser.ShowModal() != wx.ID_OK:
-                    return
-                current_job = service.submit(project, Path(chooser.GetPath()),
-                    format=formats[format_choice.GetSelection()], stems=stems.GetValue())
-            except Exception as exc:
-                report(str(exc), True)
-                return
-            finally:
-                chooser.Destroy()
+        try:
+            if (frame.library is not save_library or frame.library.root != save_root
+                    or getattr(frame, '_closing', False)):
+                raise ValueError('The library folder changed or is closing. Reopen this production.')
+            selection = format_choice.GetSelection()
+            if not 0 <= selection < len(formats):
+                raise ValueError('Choose a final audio format.')
+            chosen_format, chosen_stems = formats[selection], stems.GetValue()
+            if type(chosen_stems) is not bool:
+                raise ValueError('Choose whether to export separate stems.')
+            previous = service.get(current_job) if current_job is not None else None
+            if previous is not None and (previous['format'] not in formats or type(previous['stems']) is not bool):
+                raise ValueError('The saved job has unsupported output settings.')
+            changed_options = previous is not None and (previous['format'], previous['stems']) != (chosen_format, chosen_stems)
+            if previous is None or changed_options:
+                snapshot = Project.from_dict(previous['project']) if changed_options else None
+                reviewed_job, signature = current_job, editor_signature()
+                message = ('Output settings changed. Choose a folder for a NEW production job from the saved revision. '
+                           'A historical revision is copied to a separate project; the previous job and project are retained.'
+                           if changed_options else 'Choose the parent folder for new audio outputs')
+                chooser = wx.DirDialog(dialog, message)
+                try:
+                    decision = chooser.ShowModal()
+                    if not alive:
+                        return
+                    if (frame.library is not save_library or frame.library.root != save_root
+                            or getattr(frame, '_closing', False)):
+                        raise ValueError('The library folder changed or is closing. Reopen this production.')
+                    if current_job != reviewed_job or editor_signature() != signature:
+                        raise ValueError('The selected production changed while choosing its output. Review it again.')
+                    if decision != wx.ID_OK:
+                        if changed_options:
+                            format_choice.SetSelection(formats.index(previous['format']))
+                            stems.SetValue(previous['stems'])
+                            report('New output cancelled. Previous job and its output settings retained.', True)
+                        return
+                    if snapshot is None:
+                        project = save()
+                        if project is None:
+                            return
+                    else:
+                        # Keep every cue, source binding and effect of the exact
+                        # saved revision, including when a newer project exists.
+                        latest = service.projects.load(snapshot.id)
+                        project = (snapshot if latest.to_dict() == snapshot.to_dict() else
+                                   replace(snapshot, id=uuid4().hex, revision=1))
+                    current_job = service.submit(project, Path(chooser.GetPath()),
+                        format=chosen_format, stems=chosen_stems)
+                    if snapshot is not None:
+                        controller.project = project
+                        draft_dirty = True
+                        saved_signature = signature
+                finally:
+                    chooser.Destroy()
+        except Exception as exc:
+            report(str(exc), True)
+            return
         identity = current_job
-        run(lambda measured: service.run(identity, cancelled=cancel.is_set, progress=measured),
+
+        def produce(measured):
+            if (not alive or cancel.is_set() or frame.library is not save_library
+                    or frame.library.root != save_root or getattr(frame, '_closing', False)):
+                raise InterruptedError('Production stopped before execution; its saved job is retained.')
+            return service.run(identity, cancelled=cancel.is_set, progress=measured)
+
+        run(produce,
             lambda result: report('Production complete. ' + result['destination'] +
                 '\nWAV, chapters, requested stems, subtitles and checksums are saved.', True),
             phase='Rendering audio production', with_progress=True)
 
     def jobs(event=None):
-        nonlocal current_job
+        nonlocal current_job, saved_signature, draft_dirty
+        if busy or not alive:
+            return
         try:
+            if (frame.library is not save_library or frame.library.root != save_root
+                    or getattr(frame, '_closing', False)):
+                raise ValueError('The library folder changed or is closing. Reopen this production.')
             rows = service.jobs()
             chooser = wx.SingleChoiceDialog(dialog, 'Select a saved job to inspect, resume, or replay.', 'Production jobs',
-                [f'{row["project"]["title"]}; {row["status"]}; {row["progress"]}' for row in rows])
+                [f'{row["project"]["title"]}; {row["status"]}; {row["progress"]}; '
+                 f'{row["format"]}; separate stems: {"Yes" if row["stems"] else "No"}; job {row["id"]}'
+                 for row in rows])
             try:
-                if chooser.ShowModal() != wx.ID_OK:
+                decision = chooser.ShowModal()
+                if not alive:
+                    return
+                if (frame.library is not save_library or frame.library.root != save_root
+                        or getattr(frame, '_closing', False)):
+                    raise ValueError('The library folder changed or is closing. Reopen this production.')
+                if decision != wx.ID_OK:
                     return
                 index = chooser.GetSelection()
             finally:
@@ -499,12 +608,23 @@ def show_studio(frame):
             if not 0 <= index < len(rows):
                 return
             row = rows[index]
+            if row['format'] not in formats or type(row['stems']) is not bool:
+                raise ValueError('The saved job has unsupported output settings.')
             project = Project.from_dict(row['project'])
-            controller.project = service.projects.load(project.id)
+            latest = service.projects.load(project.id)
+            historical = latest.to_dict() != project.to_dict()
+            controller.project = project
             editor.ChangeValue(project.original_script)
             title.ChangeValue(project.title)
+            format_choice.SetSelection(formats.index(row['format']))
+            stems.SetValue(row['stems'])
             current_job = row['id']
-            report(f'{row["status"]}. {row["error"]}\nChoose Render / resume to continue or Listen to output after completion.', True)
+            saved_signature = editor_signature()
+            draft_dirty = False
+            report(f'{row["status"]}. {row["error"]}\nFinal format: {row["format"]}; separate stems: '
+                   + ('Yes' if row['stems'] else 'No')
+                   + ('. Historical revision selected; saving over the newer project is blocked.' if historical else '')
+                   + '. Choose Render / resume to continue or Listen to output after completion.', True)
             controls()
         except Exception as exc:
             report(str(exc), True)
@@ -605,13 +725,14 @@ def show_studio(frame):
         voice_choice.SetItems([v.name + '; ' + v.language for v in voices])
         if voices:
             voice_choice.SetSelection(0)
+        recovery_notice = ''
         if controller.draft.exists():
             try:
                 draft = read_json(controller.draft)
+                validate_studio_draft(draft)
                 editor.ChangeValue(draft['text'])
                 title.ChangeValue(draft['title'])
-                if draft.get('project_id'):
-                    controller.project = service.projects.load(draft['project_id'])
+                recovery_notice = controller.restore_draft_project(draft)
                 choices = draft.get('voice_ids', ())
                 for index, voice in enumerate(voices):
                     if voice.id in choices:
@@ -625,9 +746,11 @@ def show_studio(frame):
         if controller.project is not None and (editor.GetValue(), title.GetValue()) == (
                 controller.project.original_script, controller.project.title):
             saved_signature = editor_signature()
-        report(f'{len(voices)} installed voices available. Enter a script and choose roles, then Render.'
-               if voices else 'No local voice is installed. Configure a local SAPI/Piper voice before narration.', True)
-        editor.SetFocus()
+        notice = (f'{len(voices)} installed voices available. Enter a script and choose roles, then Render.'
+                  if voices else 'No local voice is installed. Configure a local SAPI/Piper voice before narration.')
+        report((recovery_notice + ' ' if recovery_notice else '') + notice, True)
+        if not recovery_notice:
+            editor.SetFocus()
 
     from .save_all import SaveResult, coordinator_for
     coordinator = coordinator_for(frame)

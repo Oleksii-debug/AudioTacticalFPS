@@ -1,7 +1,7 @@
 """Explicit local engine configuration; no installers, remote fallback or secrets."""
 import json
 import os
-from pathlib import Path, PureWindowsPath
+from pathlib import Path, PurePosixPath, PureWindowsPath
 import re
 
 from .durable_state import MAX_JSON_BYTES, atomic_json, read_json, state_lock
@@ -286,7 +286,7 @@ def _declared_path(value):
             or value.startswith(('//', '\\\\')) or '://' in value
             or any(ord(char) < 32 for char in value)):
         raise ValueError('Choose an explicit absolute local engine path.')
-    native, windows = Path(value), PureWindowsPath(value)
+    native, windows = PurePosixPath(value), PureWindowsPath(value)
     if (not native.is_absolute() and not
             (windows.is_absolute() and re.fullmatch('[A-Za-z]:', windows.drive))):
         raise ValueError('Choose an explicit absolute local engine path.')
@@ -294,6 +294,23 @@ def _declared_path(value):
             or any(':' in part for part in windows.parts[1:])):
         raise ValueError('Engine paths cannot contain traversal or alternate streams.')
 
+
+
+def validate_helper_script_configuration(value):
+    """Validate inert script/hash declarations without probing external assets."""
+    if type(value) is not dict:
+        raise ValueError('A local helper declaration must be an object.')
+    pair = {'script', 'script_sha256'}
+    present = pair.intersection(value)
+    if not present:
+        return
+    if present != pair:
+        raise ValueError('A local helper script and its identity must be configured together.')
+    script, expected = value['script'], value['script_sha256']
+    _declared_path(script)
+    script.encode('utf-8', errors='strict')
+    if type(expected) is not str or not re.fullmatch('[0-9a-f]{64}', expected):
+        raise ValueError('A helper script needs a lowercase SHA-256 fingerprint.')
 
 
 def validate_audio_runtime_binding(value):
@@ -343,11 +360,13 @@ def _settings_document(value):
         if 'adapter' in item:
             validate_legacy_dordiai_helper(item)
             continue
-        if (set(item) - {'executable', 'sha256', 'engine_name', 'enabled', 'max_voices'}
+        if (set(item) - {'executable', 'sha256', 'engine_name', 'enabled', 'max_voices',
+                         'script', 'script_sha256'}
                 or not {'executable', 'sha256', 'engine_name'} <= set(item)
                 or type(item.get('enabled', False)) is not bool):
             raise ValueError('Invalid local voice helper declaration.')
         _declared_path(item['executable'])
+        validate_helper_script_configuration(item)
     for item in value['music_models']:
         if (set(item) - {'engine', 'python', 'directory', 'manifest', 'device',
                          'private_noncommercial', 'max_chunk_seconds'}

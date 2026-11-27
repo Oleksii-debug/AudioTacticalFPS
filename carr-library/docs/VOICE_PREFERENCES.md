@@ -89,5 +89,13 @@ python -I -B -X utf8 scripts/windows_voice_preferences_smoke.py --expect-install
 Installed acceptance binds every loaded dependency to the actual wheel
 RECORD and exact source bytes through the shared native provenance helper.
 An independent 90-second watchdog keeps an unhandled modal or cleanup hang
-a failed result. All new code and cases are NOT_RUN until the actual source,
-installed and native gates execute.
+a failed result.
+
+The source and installed Windows native scenarios passed in
+[P3 preflight run 46063639311](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46063639311),
+job `140723613596`, step 11, on source
+`10b9a4e36b6415cdf9a21fbc36bcd9ef2b72420a`. This result covers the stated
+synthetic-inventory control and ownership scenario. Required suite reports,
+complete sealed-installation acceptance, actual voice-model inference and
+human NVDA/listening results remain separate evidence. The complete Windows
+preflight was still running when this checkpoint was recorded.

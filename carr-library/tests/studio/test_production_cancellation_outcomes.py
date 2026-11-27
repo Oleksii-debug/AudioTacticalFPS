@@ -252,11 +252,14 @@ def test_submission_does_not_adopt_unreceipted_recovery_data(submission):
     assert not (directory / 'job.json').exists()
 
 
-def test_submission_does_not_adopt_existing_unreceipted_output(submission):
-    from carr_library.studio.render import _output_name
+@pytest.mark.parametrize('legacy', [False, True])
+def test_submission_does_not_adopt_existing_unreceipted_output(submission, legacy):
+    from carr_library.studio.render import _output_name, _production_output_name
     service, project, output = submission
     job = 'existing-output'
-    existing = output / f'{_output_name(project.title)}-{job[:12]}'
+    name = (f'{_output_name(project.title)}-{job[:12]}' if legacy
+            else _production_output_name(project.title, job))
+    existing = output / name
     existing.mkdir()
     master = existing / 'master.wav'
     master.write_bytes(b'preserve existing output')
@@ -424,3 +427,130 @@ def test_completed_replay_requires_full_inventory_and_owner(tmp_path, voices, mo
     atomic_json(marker, owner, replace=True)
     assert service.run(job) == complete
     assert {name: sha256(Path(name).read_bytes()).hexdigest() for name in original} == original
+
+
+def test_pending_operation_options_are_bound(submission):
+    from carr_library.durable_state import atomic_json, read_json
+    service, project, output = submission
+    job = service.submit(project, output, format='flac', stems=True)
+    receipt = service.jobs_root / job / 'job.json'
+    saved = read_json(receipt)
+    for options in ({'format': 'wav'}, {'stems': False}, {'stems': 1}):
+        damaged = {**saved, **options}
+        atomic_json(receipt, damaged, replace=True)
+        with pytest.raises(ValueError, match='production options|operation options'):
+            service.get(job)
+        assert read_json(receipt) == damaged
+    atomic_json(receipt, saved, replace=True)
+    assert service.get(job) == saved
+
+
+def test_completed_operation_options_cannot_hide_missing_outputs(tmp_path, voices, monkeypatch):
+    from copy import deepcopy
+    from carr_library.durable_state import atomic_json, read_json
+    from carr_library.studio.render import _operation_sha256
+    registry, selected_voice = voices
+    service = ProductionService(tmp_path / 'state', voices=registry)
+    project = service.create('Synthetic options test.', voice_ids=(selected_voice,))
+    output = tmp_path / 'output'
+    output.mkdir()
+    job = service.submit(project, output, format='flac', stems=True)
+    complete = service.run(job)
+    receipt = service.jobs_root / job / 'job.json'
+    marker = Path(complete['destination']) / 'production-owner.json'
+    owner = read_json(marker)
+    assert owner['operation_sha256'] == complete['operation_sha256']
+    assert any(Path(a['path']).name == 'audiobook.flac' for a in complete['artifacts'])
+    assert any(Path(a['path']).parent.name == 'stems' for a in complete['artifacts'])
+    monkeypatch.setattr(service, '_runtime', lambda: pytest.fail('Must not render committed output.'))
+    damaged = deepcopy(complete)
+    damaged['format'], damaged['stems'] = 'wav', False
+    damaged['artifacts'] = [a for a in complete['artifacts']
+                            if Path(a['path']).name != 'audiobook.flac'
+                            and Path(a['path']).parent.name != 'stems']
+    atomic_json(receipt, damaged, replace=True)
+    with pytest.raises(ValueError, match='operation options changed'):
+        service.run(job)
+    # The separately published owner receipt rejects a recalculated identity
+    # or a missing new field; neither is treated as a legacy owner.
+    damaged['operation_sha256'] = _operation_sha256(damaged)
+    atomic_json(receipt, damaged, replace=True)
+    with pytest.raises(ValueError, match='owner receipt changed'):
+        service.run(job)
+    del damaged['operation_sha256']
+    atomic_json(receipt, damaged, replace=True)
+    with pytest.raises(ValueError, match='owner receipt changed'):
+        service.run(job)
+    assert read_json(marker) == owner
+    atomic_json(receipt, complete, replace=True)
+    assert service.run(job) == complete
+
+    # Legacy jobs have no separate option identity. Keep them readable and
+    # verify the complete inventory; never silently backfill historical proof.
+    legacy = {k: v for k, v in complete.items() if k != 'operation_sha256'}
+    legacy_owner = {k: v for k, v in owner.items() if k != 'operation_sha256'}
+    atomic_json(receipt, legacy, replace=True)
+    atomic_json(marker, legacy_owner, replace=True)
+    assert service.run(job) == legacy
+    assert read_json(receipt) == legacy
+    assert read_json(marker) == legacy_owner
+
+
+
+def test_production_distinct_full_operation_ids_do_not_share_output(submission):
+    service, project, output = submission
+    first = 'sameprefix12-first'
+    second = 'sameprefix12-second'
+    assert first[:12] == second[:12]
+    assert service.submit(project, output, operation_id=first) == first
+    assert service.submit(project, output, operation_id=second) == second
+    saved_first, saved_second = service.get(first), service.get(second)
+    assert saved_first['destination'] != saved_second['destination']
+    assert Path(saved_first['destination']).parent == output
+    assert Path(saved_second['destination']).parent == output
+    reopened = ProductionService(service.root, voices=service.voices)
+    assert reopened.submit(project, output, operation_id=first) == first
+    assert reopened.submit(project, output, operation_id=second) == second
+    assert reopened.get(first) == saved_first
+    assert reopened.get(second) == saved_second
+
+
+def test_production_preserves_legacy_destination_on_replay(submission):
+    from carr_library.durable_state import atomic_json, read_json
+    from carr_library.studio.render import _output_name, _owner_receipt
+    service, project, output = submission
+    first, second = 'sameprefix12-first', 'sameprefix12-second'
+    service.submit(project, output, operation_id=first)
+    path = service.jobs_root / first / 'job.json'
+    state = service.get(first)
+    legacy = output / f'{_output_name(project.title)}-{first[:12]}'
+    state['destination'] = str(legacy)
+    atomic_json(path, state, replace=True)
+    legacy.mkdir()
+    marker = legacy / 'production-owner.json'
+    atomic_json(marker, _owner_receipt(state))
+    original = legacy / 'master.wav'
+    original.write_bytes(b'synthetic retained output')
+    raw, owner_raw = path.read_bytes(), marker.read_bytes()
+
+    # Replay of a prior receipt keeps its original location and bytes.
+    assert service.submit(project, output, operation_id=first) == first
+    assert service.get(first) == state
+    assert service.submit(project, output, operation_id=second) == second
+    assert Path(service.get(second)['destination']) != legacy
+    assert path.read_bytes() == raw and marker.read_bytes() == owner_raw
+    assert original.read_bytes() == b'synthetic retained output'
+    assert read_json(marker) == _owner_receipt(state)
+    # An orphaned legacy output of this operation still cannot be adopted.
+    path.unlink()
+    with pytest.raises(FileExistsError, match='without a matching job receipt'):
+        service.submit(project, output, operation_id=first)
+    assert original.read_bytes() == b'synthetic retained output'
+
+
+def test_production_output_component_stays_bounded():
+    from carr_library.studio.render import _production_output_name
+    name = _production_output_name('Український' * 100, 'a' * 80)
+    assert len(name) <= 83
+    assert len(name.encode('utf-8')) <= 255
+    assert name != _production_output_name('Український' * 100, 'a' * 79 + 'b')

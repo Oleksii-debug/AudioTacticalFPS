@@ -61,7 +61,7 @@ def language_candidates(image, raw, tsv, config, remaining, recognize):
     recognize remains the caller's one verified Tesseract runtime; this helper
     cannot launch a process, choose another executable, or discover new models.
     """
-    from .page_ocr import _ocr_blocks
+    from .page_ocr import _matching_ocr_blocks
     selected = model_ids(config.languages)
     result = {'policy': POLICY, 'package_version': VERSION,
               'model_sha256': MODEL_SHA256, 'status': 'not_run',
@@ -95,7 +95,7 @@ def language_candidates(image, raw, tsv, config, remaining, recognize):
         return True
     try:
         extra_remaining()
-        blocks = _ocr_blocks(tsv, image.size)
+        blocks = _matching_ocr_blocks(tsv, image.size, raw)
         grouped, truncated = _regions(blocks)
         result['region_inventory_truncated'] = truncated
         detector = Detector(remaining=extra_remaining)
@@ -146,7 +146,7 @@ def language_candidates(image, raw, tsv, config, remaining, recognize):
                 candidate_raw, candidate_tsv = recognize(crop, f'language-region-{index}',
                     languages=model, psm=6, maximum=MAX_SECOND_PASS_BYTES, budget=extra_remaining)
                 # Validate all boxes before presenting any regional coordinates.
-                candidate_blocks = _ocr_blocks(candidate_tsv, crop.size)
+                candidate_blocks = _matching_ocr_blocks(candidate_tsv, crop.size, candidate_raw)
                 observation.update(status='ocr_candidate', raw_text=candidate_raw,
                                    raw_tsv=candidate_tsv, blocks=candidate_blocks)
             if not append_observation(observation):
@@ -162,7 +162,7 @@ def language_candidates(image, raw, tsv, config, remaining, recognize):
                 and config.languages != chosen):
             candidate_raw, candidate_tsv = recognize(image, 'language-page',
                 languages=chosen, psm=3, maximum=MAX_SECOND_PASS_BYTES, budget=extra_remaining)
-            _ocr_blocks(candidate_tsv, image.size)
+            _matching_ocr_blocks(candidate_tsv, image.size, candidate_raw)
             extra_remaining()
             if _bytes({**result, 'first_pass_raw_text': raw, 'first_pass_raw_tsv': tsv,
                        'candidate_raw_text': candidate_raw, 'candidate_raw_tsv': candidate_tsv}) > MAX_EVIDENCE_BYTES:

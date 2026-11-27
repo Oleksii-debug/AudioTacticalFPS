@@ -1,7 +1,6 @@
 """Atomic JSON checkpoints; OS locks release on crash and are not backup data."""
 from contextlib import contextmanager
 from datetime import datetime, timezone
-import json
 import os
 from pathlib import Path
 import re
@@ -10,7 +9,7 @@ from uuid import uuid4
 
 from filelock import FileLock, Timeout
 from ..durable_state import _open_json_file, _replace_state
-from .models import canonical, local_path
+from .models import canonical, local_path, strict_json_loads
 
 
 MAX_CHECKPOINT_BYTES = 64 * 1024 * 1024
@@ -89,7 +88,7 @@ def read_json(path, *, maximum=MAX_CHECKPOINT_BYTES):
         raise ValueError('Assistant checkpoint changed repeatedly while opening.')
     if len(raw) > maximum:
         raise ValueError('Assistant checkpoint exceeds its budget.')
-    return json.loads(raw)
+    return strict_json_loads(raw)
 
 
 class JobStore:

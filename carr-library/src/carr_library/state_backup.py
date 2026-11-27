@@ -9,11 +9,14 @@ from hashlib import sha256
 import os
 from pathlib import Path, PurePosixPath
 import re
+import stat
 import unicodedata
 
 from .durable_state import local_path, regular, sync_directory
 
 MAX_STATE_FILES = 100_000
+# Every discovered entry counts, including excluded caches and temporary names.
+MAX_STATE_SCAN_ENTRIES = 100_000
 MAX_STATE_BYTES = 32 * 1024**3
 
 
@@ -64,20 +67,42 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
     root = local_path(root, exists=True)
     regular(root, directory=True)
     def inventory():
-        found = {}
-        for directory, dirs, files in os.walk(root, followlinks=False, onerror=_walk_error):
+        found, pending, scanned = {}, [root], 1
+        if scanned > MAX_STATE_SCAN_ENTRIES:
+            raise ValueError('Application state scan exceeds its entry budget.')
+        while pending:
             if cancelled():
                 raise InterruptedError('Backup cancelled.')
-            for name in dirs:
-                regular(Path(directory) / name, directory=True)
-            dirs[:] = [name for name in dirs if _include((Path(directory) / name).relative_to(root), include_generated)]
-            for name in sorted(files):
-                source = Path(directory) / name
-                relative = source.relative_to(root)
-                if _include(relative, include_generated):
-                    found[relative] = _stamp(regular(source))
-                    if len(found) > MAX_STATE_FILES:
-                        raise ValueError('Application state exceeds the file budget.')
+            directory = pending.pop()
+            regular(directory, directory=True)
+            with os.scandir(directory) as children:
+                for child in children:
+                    if cancelled():
+                        raise InterruptedError('Backup cancelled.')
+                    scanned += 1
+                    if scanned > MAX_STATE_SCAN_ENTRIES:
+                        raise ValueError('Application state scan exceeds its entry budget.')
+                    source = directory / child.name
+                    relative = source.relative_to(root)
+                    info = source.lstat()
+                    is_directory = stat.S_ISDIR(info.st_mode)
+                    if is_directory:
+                        regular(source, directory=True)
+                    elif stat.S_ISLNK(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400:
+                        # Excluded names do not permit following a directory link.
+                        regular(source)
+                    if not _include(relative, include_generated):
+                        continue
+                    if is_directory:
+                        pending.append(source)
+                    else:
+                        found[relative] = _stamp(regular(source))
+                        if len(found) > MAX_STATE_FILES:
+                            raise ValueError('Application state exceeds the file budget.')
+            if cancelled():
+                raise InterruptedError('Backup cancelled.')
+        if cancelled():
+            raise InterruptedError('Backup cancelled.')
         return found
     before_inventory = inventory()
     entries, total = [], 0
@@ -190,20 +215,41 @@ def restore_state(source, target, entries, *, cancelled=lambda: False):
     source = local_path(source, exists=True)
     regular(source, directory=True)
     missing = {item['filename'] for item in entries}
-    for directory, dirs, files in os.walk(source, followlinks=False, onerror=_walk_error):
+    # Released native manifests list files, not empty directories. Reserve the
+    # declared namespace first, then bound additional directory discovery without
+    # lowering the existing accepted file capacity or silently omitting a subtree.
+    declared_directories = {str(parent) for name in missing
+                            for parent in PurePosixPath(name).parents if str(parent) != '.'}
+    scan_limit = 1 + len(missing) + len(declared_directories) + MAX_STATE_SCAN_ENTRIES
+    pending, scanned = [source], 1
+    while pending:
         if cancelled():
             raise InterruptedError('Restore cancelled.')
-        for name in dirs:
-            regular(Path(directory) / name, directory=True)
-        for name in files:
-            path = Path(directory) / name
-            regular(path)
-            # Reject the first unexpected file rather than accumulating an
-            # attacker-controlled inventory beyond the manifest's file budget.
-            relative = path.relative_to(source).as_posix()
-            if relative not in missing:
-                raise ValueError('Backup has missing or unlisted application state.')
-            missing.remove(relative)
+        directory = pending.pop()
+        regular(directory, directory=True)
+        with os.scandir(directory) as children:
+            for entry in children:
+                if cancelled():
+                    raise InterruptedError('Restore cancelled.')
+                scanned += 1
+                if scanned > scan_limit:
+                    raise ValueError('Application state restore scan exceeds its entry budget.')
+                path = directory / entry.name
+                if entry.is_dir(follow_symlinks=False):
+                    regular(path, directory=True)
+                    pending.append(path)
+                else:
+                    # Reject an undeclared name before opening or inspecting its
+                    # file bytes; do not consume the rest of an unknown listing.
+                    relative = path.relative_to(source).as_posix()
+                    if relative not in missing:
+                        raise ValueError('Backup has missing or unlisted application state.')
+                    regular(path)
+                    missing.remove(relative)
+        if cancelled():
+            raise InterruptedError('Restore cancelled.')
+    if cancelled():
+        raise InterruptedError('Restore cancelled.')
     if missing:
         raise ValueError('Backup has missing or unlisted application state.')
     target = Path(target)

@@ -81,6 +81,14 @@ instructions.
   resume the last opened page, keep named bookmarks, navigate back/forward,
   and hear exact location information through native text controls. See
   [the reading desk guide](docs/READING_DESK.md).
+- Edit and speak a separate reading copy with reviewed find/replace,
+  pronunciation rules, installed-dictionary spelling and reader appearance.
+  The active reading editor's Ctrl+Z/Ctrl+Y share the Undo/Redo history.
+  Save favorites, exact-language voice defaults and named rate/volume profiles;
+  explicit Use rechecks the current voice and does not start speech. See
+  [voice preferences](docs/VOICE_PREFERENCES.md) and the
+  [finite reading checklist](docs/READING_WORKFLOW_ACCEPTANCE.md) for the
+  implemented scope and the native checks still awaiting successful execution.
 - Export Markdown, text, RIS, BibTeX and CSV with notes separate from quotations.
   Back up completed libraries with original files and checksums; restore into a
   new folder without overwriting the existing library.

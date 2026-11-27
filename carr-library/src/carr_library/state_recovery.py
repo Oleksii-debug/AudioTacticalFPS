@@ -111,6 +111,10 @@ def validate_resource_policy(value):
 def _prepared(relative, value):
     """Return a modified typed record, or None for unchanged opaque state."""
     path = _dispatch_path(relative)
+    if path == PurePosixPath('studio/draft.json'):
+        from .studio.project import validate_studio_draft
+        validate_studio_draft(value)
+        return None
     if path == PurePosixPath('audio-metadata/choices.json'):
         from .audio.metadata_review import validate_choices
         validate_choices(value)
@@ -162,6 +166,9 @@ def _prepared(relative, value):
             raise ValueError('Invalid restored local-engine configuration.')
         from .runtime_settings import validate_audio_runtime_binding, validate_dordiai_configuration
         validate_audio_runtime_binding(value)
+        from .runtime_settings import validate_helper_script_configuration
+        for helper in value['voice_helpers']:
+            validate_helper_script_configuration(helper)
         if 'dordiai' in value:
             validate_dordiai_configuration(value['dordiai'])
         if 'voice_preferences' in value:
@@ -197,6 +204,12 @@ def _prepared(relative, value):
             raise ValueError('Restored production plan identity changed.')
         if type(value.get('destination')) is not str:
             raise ValueError('Invalid restored production destination.')
+        if 'operation_sha256' in value:
+            from .studio.render import _operation_sha256
+            if (value.get('format') not in ('wav', 'flac', 'mp3', 'ogg', 'opus', 'm4a', 'm4b', 'aiff', 'wma')
+                    or type(value.get('stems')) is not bool
+                    or value['operation_sha256'] != _operation_sha256(value)):
+                raise ValueError('Production operation options changed.')
         return {**value, 'restore_requires_new_output': True}
     if schema == 'carr.reader-session.v1':
         from .speech.reading import ReadingDocument
@@ -330,14 +343,16 @@ def validate_state_documents(root, entries, *, cancelled=lambda: False, restored
             if (relative.as_posix().startswith(('assistant/', 'translation/', 'providers/',
                                               'studio/jobs/', 'studio/publications/', 'speech/', 'transcription/'))
                     or relative.name.endswith(('.profile.json', '.usage.json'))
-                    or relative in (PurePosixPath('audio/engines.json'), PurePosixPath('operations/resources.json'))):
+                    or relative in (PurePosixPath('audio/engines.json'), PurePosixPath('operations/resources.json'),
+                                    PurePosixPath('studio/draft.json'))):
                 raise ValueError('Typed application state exceeds its recovery JSON budget.')
             continue
         try:
             value = read_json(path)
         except (UnicodeError, json.JSONDecodeError):
             if (_publication_path(relative)
-                    or relative in (PurePosixPath('audio-metadata/choices.json'),
+                    or relative in (PurePosixPath('studio/draft.json'),
+                                    PurePosixPath('audio-metadata/choices.json'),
                                     PurePosixPath('speech/presentation.json'),
                                     PurePosixPath('transcription/engine.json'), PurePosixPath('audio/engines.json'),
                                     PurePosixPath('operations/resources.json'))

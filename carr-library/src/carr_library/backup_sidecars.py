@@ -188,32 +188,42 @@ def _ignored(parts):
     return temporary or (len(parts) >= 3 and parts[0] == 'projects' and parts[2].startswith('work-'))
 
 
-def _walk(root, *, exclude_temporary=False, cancelled=lambda: False):
+def _walk(root, *, exclude_temporary=False, exclude_cache=False, cancelled=lambda: False):
     """Never follow a directory link, including one in an excluded temp entry."""
     _plain(root, directory=True)
     pending, files, visited = [(root, ())], [], 0
     while pending:
         _check(cancelled)
         parent, parts = pending.pop()
-        for child in parent.iterdir():
-            _check(cancelled)
-            visited += 1
-            relative = (*parts, child.name)
-            if visited > MAX_FILES * 3 or len(relative) > 7:
-                raise RestoreError('sidecar tree resource limit')
-            info = child.lstat()
-            is_directory = stat.S_ISDIR(info.st_mode)
-            _plain(child, directory=is_directory)
-            if exclude_temporary and _ignored(relative):
-                continue
-            if is_directory:
-                pending.append((child, relative))
-            else:
-                files.append(('/'.join(relative), child))
-                if len(files) > MAX_FILES:
-                    raise RestoreError('sidecar file count limit')
+        _plain(parent, directory=True)
+        with os.scandir(parent) as children:
+            for entry in children:
+                _check(cancelled)
+                visited += 1
+                child = parent / entry.name
+                relative = (*parts, child.name)
+                if visited > MAX_FILES * 3 or len(relative) > 7:
+                    raise RestoreError('sidecar tree resource limit')
+                info = child.lstat()
+                is_directory = stat.S_ISDIR(info.st_mode)
+                _plain(child, directory=is_directory)
+                if exclude_temporary and _ignored(relative):
+                    continue
+                # Only this existing primary-project cache namespace is optional.
+                # Unknown directories still pass through the typed file checks.
+                if (exclude_cache and is_directory and len(relative) == 3
+                        and relative[0] == 'projects' and relative[2] == 'cache'
+                        and re.fullmatch(_ID, relative[1])):
+                    continue
+                if is_directory:
+                    pending.append((child, relative))
+                else:
+                    files.append(('/'.join(relative), child))
+                    if len(files) > MAX_FILES:
+                        raise RestoreError('sidecar file count limit')
+        _check(cancelled)
+    _check(cancelled)
     return sorted(files)
-
 
 @contextmanager
 def state_locks(root):
@@ -470,7 +480,8 @@ def snapshot(app, stage, registered_assets, *, db, include_pending=True,
         path = root / name
         if _present(path):
             selected.extend((name + '/' + relative, item)
-                            for relative, item in _walk(path, exclude_temporary=True, cancelled=cancelled))
+                            for relative, item in _walk(path, exclude_temporary=True,
+                                exclude_cache=(name == 'studio' and not include_generated), cancelled=cancelled))
     for relative, path in selected:
         _path(relative)
     if not include_generated:

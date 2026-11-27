@@ -46,6 +46,7 @@ def _ocr_blocks(tsv, render_size):
         raise ValueError('unexpected OCR layout header')
     width, height = render_size
     blocks = []
+    seen_words = set()
     for row in rows:
         if None in row or any(value is None for value in row.values()):
             raise ValueError('incomplete OCR layout row')
@@ -57,14 +58,29 @@ def _ocr_blocks(tsv, render_size):
         confidence = float(row['conf'])
         left, top, box_width, box_height = (int(row[k]) for k in ('left', 'top', 'width', 'height'))
         line = tuple(int(row[k]) for k in ('block_num', 'par_num', 'line_num'))
-        if (not math.isfinite(confidence) or not -1 <= confidence <= 100
+        word = (*line, int(row['word_num']))
+        if (word in seen_words or not row['text'].strip()
+                or not math.isfinite(confidence) or not -1 <= confidence <= 100
                 or not (0 <= left < width and 0 <= top < height)
                 or not (0 < box_width <= width - left and 0 < box_height <= height - top)
                 or any(part < 1 for part in line) or int(row['word_num']) < 1
                 or '\x00' in row['text']):
             raise ValueError('invalid OCR layout word')
+        seen_words.add(word)
         blocks.append(dict(text=row['text'], confidence=confidence,
                            bbox=(left, top, box_width, box_height), line=line))
+    return blocks
+
+
+def _matching_ocr_blocks(tsv, render_size, raw):
+    """Admit layout only when its text agrees with the raw OCR candidate.
+
+    Ignore layout whitespace, not punctuation, Unicode code points or order.
+    This is a consistency check, not proof that OCR recognized the source.
+    """
+    blocks = _ocr_blocks(tsv, render_size)
+    if ''.join(raw.split()) != ''.join(part for block in blocks for part in block['text'].split()):
+        raise ValueError('OCR layout and raw text disagree')
     return blocks
 
 
@@ -270,7 +286,7 @@ def extract_page(asset, physical_index, config=Config()):
                     return result
     provenance.update(method='ocr_candidate', ocr_text=raw, ocr_tsv=tsv, psm=3)
     try:
-        result['blocks'] = _ocr_blocks(tsv, provenance['render_size'])
+        result['blocks'] = _matching_ocr_blocks(tsv, provenance['render_size'], raw)
     except (csv.Error, ValueError, OverflowError):
         # Preserve both raw outputs for review, but never expose a partial or
         # malformed layout as usable word-coordinate evidence.

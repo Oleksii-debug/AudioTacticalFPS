@@ -20,14 +20,14 @@ point; its result must be bound to the exact source and installed artifact.
 | RW-01 | Open supported books/documents | Limited | [Importer](../src/carr_library/extract/document_formats.py), [explicit streamed TXT](LARGE_SOURCE_PROFILES.md); [workflow gate](../tests/e2e/test_extended_document_workflows.py), [large-source gate](../tests/e2e/test_streamed_source_import.py) | Ordered text subsets preserve original bytes. Ordinary intake stays at 64 MiB; an explicit UTF-8 TXT profile permits a selected limit up to 128 MiB and bounded logical fragments. This is not multi-gigabyte/PDF-scale or complete visual-format qualification. |
 | RW-02 | Read a source range, selection or text from the cursor | Implemented | [Source range](../src/carr_library/speech/source.py), [reader](../src/carr_library/ui/speech_dialog.py), [navigation](../src/carr_library/ui/reader_navigation.py); [source gate](../tests/speech/test_source.py), [native navigation](../scripts/windows_reader_navigation_smoke.py) | Source authorization and retained-source anchors remain separate from reading edits. Explicit word/line/sentence/paragraph navigation uses the reading copy. Word highlighting and unattended whole-book navigation are separate requirements. |
 | RW-03 | Read typed or pasted text | Implemented | [Native reader](../src/carr_library/ui/speech_dialog.py), [desktop/clipboard owner](../src/carr_library/ui/desktop_integration.py); [reading gate](../tests/speech/test_reading.py), [native desktop gate](../scripts/windows_desktop_integration_smoke.py) | Independent reading copies use explicit native text editing. Opt-in clipboard watching retains an exact in-memory snapshot; a separate explicit command opens it. Startup never enables watching, global keys, tray hiding or speech. Clipboard derivatives have no quotation authority. |
-| RW-04 | Discover SAPI5 and registered local voices | Limited | [Speech registry](../src/carr_library/speech/runtime.py), [configured registry](../src/carr_library/runtime_settings.py); [registry gate](../tests/speech/test_registered_studio_voices.py) | Observed IDs and capabilities are preserved. Bitness and installed assets matter; discovery does not qualify every language or voice. |
+| RW-04 | Discover SAPI5 and registered local voices | Limited | [Speech registry](../src/carr_library/speech/runtime.py), [configured registry](../src/carr_library/runtime_settings.py), [voice preferences](VOICE_PREFERENCES.md); [registry gate](../tests/speech/test_registered_studio_voices.py), [preference gate](../tests/speech/test_voice_preferences.py) | Favorites, exact-language defaults and named rate/volume profiles retain exact voice IDs. Explicit Use checks fresh availability and the current reader registry; unavailable choices are reported without substitution or autoplay. Saved reader choices keep their priority. Bitness, installed assets and language/voice quality remain separate boundaries. |
 | RW-05 | Use SAPI4 or a separate Speech Platform route | Pending | [Current registry](../src/carr_library/speech/runtime.py); [contract gate](../tests/speech/test_runtime.py) | No qualified SAPI4 helper or distinct Speech Platform adapter is delivered. SAPI5 success does not establish legacy-engine parity. |
 | RW-06 | Change supported rate, volume and pitch | Limited | [Speech settings](../src/carr_library/speech/runtime.py), [Studio facade](../src/carr_library/speech/studio_voice_adapter.py); [facade gate](../tests/speech/test_registered_studio_voices.py) | The reader exposes rate and volume. Other controls depend on the selected engine; unsupported nondefault requests fail. Time stretching is identified separately. |
-| RW-07 | Play, pause, resume, stop and seek | Implemented | [Existing WavePlayer](../src/carr_library/speech/player.py); [transport gate](../tests/speech/test_player_controls.py) | MCI supplies native Windows position; ffplay estimates position. Device and listening acceptance remain separate. |
-| RW-08 | Repeat an A/B range and use a sleep timer | Implemented | [Reader controls](../src/carr_library/ui/reader_playback.py), [queue](../src/carr_library/speech/playlist.py); [boundary gate](../tests/speech/test_player_controls.py), [installed probe](../scripts/windows_reader_controls_smoke.py) | Explicit repeat uses a native B endpoint. Sleep counts monotonic elapsed time including pauses. Lifecycle boundaries disarm both; they are never restored automatically. The separate explicit playlist reuses the current player; the observed native queue timeout still needs successful successor evidence. |
-| RW-09 | Choose the reader output device | Implemented | [Output identity](../src/carr_library/speech/output_devices.py), [existing WavePlayer](../src/carr_library/speech/player.py), [native selector](../src/carr_library/ui/reader_output.py); [routing probe](../scripts/windows_reader_output_smoke.py) | Windows exposes an explicit per-reader output with stable interface identity, revalidation and paused-position retention. Selection disarms repeat/sleep and does not start playback or change system/NVDA output. Linux retains its declared default-device boundary; physical-device/listening acceptance is separate. |
+| RW-07 | Play, pause, resume, stop and seek | Implemented | [Existing WavePlayer](../src/carr_library/speech/player.py); [transport gate](../tests/speech/test_player_controls.py), [OPEN ownership gate](../tests/speech/test_player_transport.py) | MCI supplies native Windows position; ffplay estimates position. P3 passes the exact Unicode filename through typed MCI OPEN and retains the existing player/cleanup path. Successful native replay of the observed P2 OPEN failure is still required; device and listening acceptance remain separate. |
+| RW-08 | Repeat an A/B range and use a sleep timer | Implemented | [Reader controls](../src/carr_library/ui/reader_playback.py), [queue](../src/carr_library/speech/playlist.py); [boundary gate](../tests/speech/test_player_controls.py), [installed probe](../scripts/windows_reader_controls_smoke.py) | Explicit repeat uses a native B endpoint. Sleep counts monotonic elapsed time including pauses. Lifecycle boundaries disarm both; they are never restored automatically. The separate explicit playlist reuses the current player; its native qualification remains open at the checkpoint below. |
+| RW-09 | Choose the reader output device | Implemented | [Output identity](../src/carr_library/speech/output_devices.py), [existing WavePlayer](../src/carr_library/speech/player.py), [native selector](../src/carr_library/ui/reader_output.py); [routing probe](../scripts/windows_reader_output_smoke.py) | Windows exposes an explicit per-reader output with an opaque endpoint ID, revalidation and paused-position retention. Selection disarms repeat/sleep and does not start playback or change system/NVDA output. Linux retains its declared default-device boundary; physical-device/listening acceptance is separate. |
 | RW-10 | Retain position and book bookmarks | Limited | [ReaderResume](../src/carr_library/speech/session.py), [book state](../src/carr_library/reader/reading_state.py); [session gate](../tests/speech/test_session.py), [book-state gate](../tests/reader/test_reading_state.py) | Text/source identity and playback position are separate. Recovery never starts speech, repeat or a timer automatically. |
-| RW-11 | Edit a separate copy with undo/redo and original comparison | Implemented | [ReadingDocument](../src/carr_library/speech/reading.py); [reading gate](../tests/speech/test_reading.py) | Canonical source anchors, original text and edit history survive save/reopen. Legacy anchor import requires explicit Save As; reading edits do not approve quotations. |
+| RW-11 | Edit a separate copy with undo/redo and original comparison | Implemented | [ReadingDocument](../src/carr_library/speech/reading.py), [reader history controls](../src/carr_library/ui/speech_dialog.py); [reading gate](../tests/speech/test_reading.py), [history integration gate](../tests/ui/test_reader_preparation.py), [native preparation gate](../scripts/windows_reading_preparation_smoke.py) | Buttons and fixed Ctrl+Z/Ctrl+Y use the same reading history when the current reader editor has focus. Nested tool fields retain their own native editing. Source/busy checks and confirmed playback stop precede a history change. Original text and history survive save/reopen; legacy anchor import requires explicit Save As, and reading edits do not approve quotations. P3 source/installed native preparation confirms Ctrl+Z; sealed-installation evidence remains separate. |
 | RW-12 | Find and replace text | Implemented | [Reading tools](../src/carr_library/speech/reading_tools.py), [native tools](../src/carr_library/ui/reading_tools.py); [native gate](../scripts/windows_reading_tools_smoke.py) | Native next/previous, case/whole-word, selection/all, literal or bounded isolated-regex preview, replace one/all and undo use the existing reading copy. Source and selection identity are rechecked before applying. Another application's undocumented special-code dialect is not promised. |
 | RW-13 | Apply pronunciation substitutions | Implemented | [Shared reading tools](../src/carr_library/speech/reading_tools.py), [native dictionary](../src/carr_library/ui/reading_tools.py); [reading-tools gate](../tests/speech/test_reading_tools.py) | The reader exposes scoped, ordered literal/regex rules with preview and explicit acceptance. Studio retains its separate scoped literal dictionary and source-linked narration workflow. Existing carr.pronunciations.v1 import/export and original preservation remain. Voice/language scopes do not establish pronunciation quality or support for every external dictionary dialect. |
 | RW-14 | Apply bounded regex pronunciation rules | Limited | [Isolated regex worker](../src/carr_library/speech/regex_worker.py), [reading service](../src/carr_library/speech/reading.py); [reading gate](../tests/speech/test_reading.py) | Reading rules have time/output/cancellation limits. Studio's distinct literal dictionary stays literal; no implicit phoneme or regex conversion occurs. |
@@ -40,7 +40,7 @@ point; its result must be bound to the exact source and installed artifact.
 | RW-21 | Produce synchronized text and chapter outputs | Limited | [Director](../src/carr_library/audio/director.py), [publication service](../src/carr_library/studio/publishing.py), [DAISY interchange](../src/carr_library/studio/daisy.py); [director gate](../tests/audio/test_director.py), [publication gate](../tests/studio/test_publishing.py), [DAISY gate](../tests/studio/test_daisy_publishing.py) | Book and scene publication use measured segment/chapter boundaries. EPUB/DAISY format validation is a required gate, independent of actual reader interoperability. Segment timing is not word/phoneme alignment, acoustic transcription or Braille qualification. |
 | RW-22 | Controlled command-line production | Limited | [Audio CLI](../src/carr_library/audio/cli.py), [scene CLI](../src/carr_library/studio/cli.py) | Existing commands reuse these services and typed projects. Their flags are not another product's command-line contract. |
 | RW-23 | Batch import or conversion | Limited | [Conversion service](../src/carr_library/conversion/service.py), [Import Center](../src/carr_library/ui/import_center.py), [audio batch review](../src/carr_library/ui/audio_conversion_dialog.py), [Book batch](../src/carr_library/studio/book_batch.py); [conversion gate](../tests/conversion/test_conversion.py), [audio batch gate](../tests/ui/test_audio_conversion_dialog.py) | Explicit captured inputs, settings, output folders and reviewed per-item plans use the existing owned workers. Completed outputs survive cancellation; resume requires matching identities. No unattended watcher or automatic external application is implied. |
-| RW-24 | Customize keyboard commands | Limited | [Command registry](../src/carr_library/keybindings.py), [desktop integration](../src/carr_library/ui/desktop_integration.py); [keyboard gate](../tests/ui/test_keyboard_settings.py), [native desktop gate](../scripts/windows_desktop_integration_smoke.py) | One inventory supplies conflict checks, persistence and palette search. Explicit global hotkeys, clipboard actions and tray/hide controls are implemented through the same desktop owner. Conflicts are visible; registration is not automatic after restart/restore. Human NVDA and actual window/device combinations remain separate acceptance. |
+| RW-24 | Customize keyboard commands | Limited | [Command registry](../src/carr_library/keybindings.py), [desktop integration](../src/carr_library/ui/desktop_integration.py); [keyboard gate](../tests/ui/test_keyboard_settings.py), [native desktop gate](../scripts/windows_desktop_integration_smoke.py) | One inventory supplies conflict checks, persistence and palette search. Ctrl+Z/Ctrl+Y remain fixed editor commands outside configurable bindings. Explicit global hotkeys, clipboard actions and tray/hide controls are implemented through the same desktop owner. Conflicts are visible; registration is not automatic after restart/restore. Human NVDA and actual window/device combinations remain separate acceptance. |
 | RW-25 | Customize reader presentation | Limited | [Appearance controls](../src/carr_library/ui/reader_presentation.py), [reading tabs](../src/carr_library/ui/reader_tabs.py), [focus-reading controls](../src/carr_library/ui/reading_focus.py); [native appearance gate](../scripts/windows_reader_presentation_smoke.py), [tab gate](../tests/ui/test_reader_tabs.py), [focus gate](../tests/ui/test_reading_focus.py) | Font, foreground/background and 50–400% zoom have preview, explicit Apply/Cancel/Reset, durable preferences and backup. Tabs and bounded focus-reading have source implementations. Presentation preserves source identity; timers/playback are not restored automatically. Final-wheel/native/NVDA and per-engine acceptance remain independent. |
 | RW-26 | Accessible and optional audible progress | Implemented | [Shared controller](../src/carr_library/ui/operation_progress.py); [progress gate](../tests/ui/test_operation_progress.py), [native probe](../scripts/windows_progress_smoke.py) | Notifications default to Off, preserve focus and respect actual playback/quiet holds. Ctrl+Alt+G queries progress. Manual NVDA/listening are independent checks. |
 | RW-27 | Install, repair, uninstall and update | Limited | [Offline installer](../packaging/install_windows.py); [bundle gate](../tests/packaging/test_windows_bundle.py) | Verified installation and an optional unsigned launcher do not establish a signed standard installer, automatic repair/uninstall or signed updater. Transfer eligibility remains component-specific. |
@@ -56,13 +56,31 @@ The current technical authority is finalization blob
 corrections, gate selections and failures are recorded in the
 [integration ledger](INTEGRATION_REUSE_2026-11-27_READING_AUDIO.md).
 
-The completed full Windows run at `94ecfdd4` failed and retained no eligible
-wheel. At `142de6b6`, the subsequent native reference-package and encrypted
-snapshot source/installed steps passed, while DAISY, preparation and the combined
-Word/assistant native block failed; the full preflight was still running when
-these results were recorded. Later source changes require their own execution.
-No wording in this checklist transfers a predecessor PASS to another commit,
-qualifies a physical device/model or closes human Windows 11/NVDA acceptance.
+The source checkpoint described here is P3
+`10b9a4e36b6415cdf9a21fbc36bcd9ef2b72420a`. It includes local voice
+preferences, the fixed current-editor Undo/Redo route, typed Unicode MCI OPEN,
+and the reader Close/probe corrections. In the
+[P3 preflight run](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46063639311),
+Windows job `140723613596` reports completed success for source and installed
+reading preparation (step 10) and voice preferences (step 11). Preparation
+exercises the actual Ctrl+Z path; the preferences probe uses real native
+controls and synthetic voice metadata.
+
+The Windows job is still running at this documentation checkpoint. Those
+completed steps do not qualify the entire candidate or its sealed installation,
+and they do not establish actual voice-model or listening results.
+
+Actual P2 evidence still contains a failure of Ctrl+Z after accepted preparation,
+a queue OPEN failure reporting MCI 304, and a recorded-EPUB playback wait that
+did not complete. The P3 changes do not turn those receipts into passes.
+The queue and EPUB failures must each be checked again; the shared cause of
+both has not been demonstrated. The complete Windows gate at `94ecfdd4` also
+remains a failed predecessor, with no eligible wheel from that run.
+
+Successful earlier appearance, output or editing checks cover only their
+recorded cases and source identity. No wording here transfers a predecessor
+PASS to P3, qualifies a physical device/model, establishes 135-language or
+performance coverage, or closes human Windows 11/NVDA acceptance.
 
 ## Requested input formats
 
@@ -118,19 +136,30 @@ device matrix remain NOT_RUN unless independently recorded.
 ## Reader editing and presentation acceptance
 
 The source routes above share the current reading document, undo history,
-background executor, source authorization and process owner. Find/replace and
-pronunciation reuse the existing isolated regular-expression worker. Spelling
+background executor, source authorization and process owner. Ctrl+Z/Ctrl+Y
+dispatch to that same history only while the active reading editor has focus;
+they do not replace editing in search, dictionary, spelling or preparation
+fields. Find/replace and pronunciation reuse the existing isolated
+regular-expression worker. Spelling
 uses the installed Windows Spell Checker API in a bounded owned child. Output
-selection extends the current MCI player. Appearance preferences are passive
-state and do not grant engine, device or external-file permission on restore.
+selection extends the current MCI player. Appearance and voice preferences are
+passive state and do not grant engine, device or external-file permission on
+restore. Voice preferences retain favorites and exact choices; use requires a
+fresh current-voice check, and opening or saving them never starts speech.
 
 The required Windows aggregate exercises source and installed forms of
 `windows_reading_tools_smoke.py`, `windows_spelling_smoke.py`,
 `windows_reader_presentation_smoke.py` and `windows_reader_output_smoke.py`.
-It also repeats these controls from the complete sealed installation. The output
-probe requires an explicitly selected actual enumerated endpoint; no simulated
-endpoint can satisfy that native gate. Individual source checkpoints or the
-supplementary reader workflow do not qualify a delivery artifact by themselves.
+It also repeats these controls from the complete sealed installation. P3 adds
+`windows_voice_preferences_smoke.py` to the source, installed and sealed-bundle
+lanes and keeps `windows_reading_preparation_smoke.py`'s actual Ctrl+Z acceptance
+unchanged. The preference probe uses synthetic voice metadata to test real
+controls, settings and lifetime; it does not qualify a voice model or listening.
+
+The output probe requires an explicitly selected actual enumerated endpoint;
+no simulated endpoint can satisfy that native gate. Individual source
+checkpoints or the supplementary reader workflow do not qualify a delivery
+artifact by themselves.
 
 ## Official comparison references
 

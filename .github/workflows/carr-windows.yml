@@ -435,6 +435,13 @@ jobs:
           & $env:CARR_PYTHON -I -B -c "import importlib.metadata as m,json,pathlib,re; pairs=re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)',pathlib.Path('packaging/windows-semantic-cp311.lock').read_text(),re.M); pins=dict(pairs); assert pins and len(pairs)==len({re.sub(r'[-_.]+','-',n).lower() for n,_ in pairs}), 'Empty or duplicate normalized dependency pins'; actual={n:m.version(n) for n in pins}; bom=json.loads(pathlib.Path('packaging/windows-semantic-sbom.cdx.json').read_text()); expected={c['name']:c['version'] for c in bom['components']}; assert len(pins)==55 and len(pins)==len(bom['components']) and actual==pins==expected; print(json.dumps(actual,sort_keys=True))" | Tee-Object 'ci-results/full-lock-source-inventory.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Prepare the pinned public font required by unchanged OCR fixtures
+        if: ${{ !cancelled() && steps.desktop_dependencies.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B ../.github/scripts/carr_prepare_test_font.py --report ci-results/test-font.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Prepare the verified OCR engine before its required source regression
         if: ${{ !cancelled() && steps.desktop_dependencies.outcome == 'success' }}
         id: ocr_runtime
@@ -626,6 +633,16 @@ jobs:
             'tests/speech/test_voice_preferences.py',
             'tests/ui/test_voice_preferences_dialog.py',
             'tests/storage/test_voice_preferences_backup.py',
+            'tests/catalog/test_archive_portability.py',
+            'tests/catalog/test_intake_portability.py',
+            'tests/storage/test_production_operation_backup.py',
+            'tests/ui/test_studio_output_settings.py',
+            'tests/storage/test_studio_draft_backup.py',
+            'tests/storage/test_backup_scan_bounds.py',
+            'tests/transcription/test_runtime_inventory.py',
+            'tests/storage/test_asr_additional_profile.py',
+            'tests/speech/test_python_helper.py',
+            'tests/storage/test_python_helper_backup.py',
             'tests/speech/test_navigation.py',
             'tests/ui/test_reader_navigation.py',
             'tests/extract/test_language_detection.py',
@@ -1630,6 +1647,16 @@ jobs:
             'tests/speech/test_voice_preferences.py',
             'tests/ui/test_voice_preferences_dialog.py',
             'tests/storage/test_voice_preferences_backup.py',
+            'tests/catalog/test_archive_portability.py',
+            'tests/catalog/test_intake_portability.py',
+            'tests/storage/test_production_operation_backup.py',
+            'tests/ui/test_studio_output_settings.py',
+            'tests/storage/test_studio_draft_backup.py',
+            'tests/storage/test_backup_scan_bounds.py',
+            'tests/transcription/test_runtime_inventory.py',
+            'tests/storage/test_asr_additional_profile.py',
+            'tests/speech/test_python_helper.py',
+            'tests/storage/test_python_helper_backup.py',
               'tests/audio/test_director_path_identity.py',
               'tests/audio/test_voices.py',
               'tests/audio/test_model_voices.py',

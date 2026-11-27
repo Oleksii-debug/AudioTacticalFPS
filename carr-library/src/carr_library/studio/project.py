@@ -1,12 +1,13 @@
 """Versioned, editable performances kept separate from immutable source quotations."""
 from dataclasses import dataclass, field, fields
 from hashlib import sha256
+import json
 import math
 from pathlib import Path
 import re
 from uuid import uuid4
 
-from ..durable_state import atomic_json, encode, local_path, read_json, state_lock
+from ..durable_state import MAX_JSON_BYTES, atomic_json, encode, local_path, read_json, state_lock
 from ..audio.models import Effect
 from ..audio.effect_presets import checked_chain, read_effect
 
@@ -27,6 +28,45 @@ def _number(value, label, lower, upper):
 def _id(value):
     if not isinstance(value, str) or not re.fullmatch(r'[a-zA-Z0-9_-]{1,80}', value):
         raise ValueError('Invalid stable project identifier.')
+    return value
+
+
+def validate_studio_draft(value):
+    """Validate inert recovery text and its optional exact project baseline."""
+    required = {'schema', 'text', 'title', 'voice_ids', 'project_id'}
+    anchors = {'project_revision', 'project_fingerprint'}
+    if (type(value) is not dict or not required <= value.keys()
+            or value.keys() - required - anchors
+            or type(value['schema']) is not int or value['schema'] != 1):
+        raise ValueError('Invalid Studio recovery draft.')
+    _text(value['text'], 'draft text', 16_000_000, True)
+    _text(value['title'], 'draft title', 512, True)
+    voices = value['voice_ids']
+    if type(voices) is not list or len(voices) > 10000:
+        raise ValueError('Invalid Studio draft voice selection.')
+    for voice in voices:
+        _text(voice, 'draft voice', 2048, True)
+    identity = value['project_id']
+    if identity is not None:
+        _id(identity)
+    present = anchors & value.keys()
+    if present and present != anchors:
+        raise ValueError('Incomplete Studio draft revision identity.')
+    revision, fingerprint = value.get('project_revision'), value.get('project_fingerprint')
+    if (revision is None) != (fingerprint is None):
+        raise ValueError('Incomplete Studio draft revision identity.')
+    if revision is not None and (identity is None or type(revision) is not int
+            or revision < 1 or type(fingerprint) is not str
+            or re.fullmatch(r'[0-9a-f]{64}', fingerprint) is None):
+        raise ValueError('Invalid Studio draft revision identity.')
+    # The existing durable JSON reader and backup limits also bound this writer.
+    # A Unicode draft can fit the character budget but exceed its encoded budget.
+    size = 1
+    encoder = json.JSONEncoder(ensure_ascii=False, allow_nan=False, separators=(',', ':'))
+    for part in encoder.iterencode(value):
+        size += len(part.encode('utf-8', 'strict'))
+        if size > MAX_JSON_BYTES:
+            raise ValueError('Studio recovery draft exceeds the durable JSON byte budget.')
     return value
 
 

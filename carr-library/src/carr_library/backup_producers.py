@@ -23,6 +23,9 @@ SUBTITLE = re.compile(r'state/studio/jobs/(' + ID + r')/script\.(srt|vtt)\Z')
 
 
 def limit(name):
+    if name.casefold() == 'state/studio/draft.json':
+        from .durable_state import MAX_JSON_BYTES
+        return MAX_JSON_BYTES
     if name.casefold() == 'state/speech/presentation.json':
         from .speech.presentation import MAX_BYTES
         return MAX_BYTES
@@ -88,10 +91,11 @@ def artifacts(values):
 
 def _studio_job(value, identity):
     from .studio.project import Project
+    from .studio.render import _operation_sha256
     fields(value, {'schema', 'id', 'status', 'project', 'fingerprint', 'destination',
                    'format', 'stems', 'nodes', 'artifacts', 'progress', 'created',
                    'updated', 'error', 'runtime'},
-           {'result', 'resource_plan', 'total_disk_bytes', 'restore_requires_new_output'})
+           {'result', 'resource_plan', 'total_disk_bytes', 'restore_requires_new_output', 'operation_sha256'})
     if 'restore_requires_new_output' in value and type(value['restore_requires_new_output']) is not bool:
         raise ValueError('Invalid restored production output authorization.')
     if 'total_disk_bytes' in value:
@@ -134,6 +138,11 @@ def _studio_job(value, identity):
         raise ValueError('Invalid production output format.')
     if type(value['stems']) is not bool or type(value['nodes']) is not dict or len(value['nodes']) > 100000:
         raise ValueError('Invalid production options or nodes.')
+    # Immutable operation choices survive backup; legacy records gain no invented proof.
+    if 'operation_sha256' in value:
+        digest(value['operation_sha256'])
+        if value['operation_sha256'] != _operation_sha256(value):
+            raise ValueError('Production operation options changed.')
     path(value['destination'])
     for name in ('created', 'updated'):
         number(value[name])
@@ -502,7 +511,10 @@ def _translation_job(value, identity):
 
 
 def validate(db, name, value):
-    if name.casefold() == 'state/speech/presentation.json':
+    if name.casefold() == 'state/studio/draft.json':
+        from .studio.project import validate_studio_draft
+        validate_studio_draft(value)
+    elif name.casefold() == 'state/speech/presentation.json':
         from .speech.presentation import ReadingAppearance
         ReadingAppearance.from_dict(value)
     elif READER.fullmatch(name):

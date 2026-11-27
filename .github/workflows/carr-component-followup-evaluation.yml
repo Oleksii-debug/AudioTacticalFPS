@@ -1,0 +1,228 @@
+name: CARR updated project component verification
+on:
+  push:
+    branches: [carr/component-followup-evaluation-20261127]
+    paths: ['carr-library/**', '.github/workflows/carr-component-followup-evaluation.yml']
+permissions:
+  contents: read
+concurrency:
+  group: carr-component-followup-${{ github.sha }}
+  cancel-in-progress: false
+jobs:
+  updated-components:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022]
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - name: Preserve exact committed source bytes
+        working-directory: ${{ github.workspace }}
+        run: |
+          git config --global core.autocrlf false
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Require actual portable audio and OCR commands
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install --no-install-recommends -y ffmpeg tesseract-ocr tesseract-ocr-eng tesseract-ocr-ukr fonts-dejavu-core
+          ffmpeg -version
+          ffprobe -version
+      - name: Install exact application and component test prerequisites
+        id: install
+        run: |
+          New-Item -ItemType Directory -Force ci-component-results | Out-Null
+          $sourceCommit = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($sourceCommit -cne '${{ github.sha }}') { throw 'Checkout differs from the exact event head.' }
+          $sourceCommit | Set-Content ci-component-results/tested-commit.txt
+          $extras = if ($IsWindows) { '.[test,desktop,sync]' } else { '.[test,sync]' }
+          python -m pip install --only-binary=cryptography,cffi $extras 'lxml==6.1.3' 'cffi==2.1.1' 'pycparser==3.12'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Prepare pinned audio for actual clip processing and native controls
+        id: audio
+        if: ${{ !cancelled() && runner.os == 'Windows' && steps.install.outcome == 'success' }}
+        timeout-minutes: 5
+        run: |
+          $audio = Join-Path $env:RUNNER_TEMP 'carr-component-audio'
+          python -I -B packaging/prepare_windows_audio.py --output $audio --download | Tee-Object 'ci-component-results/audio-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          "CARR_AUDIO_RUNTIME=$audio" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Prepare the existing verified OCR engine for automatic-language controls
+        id: ocr
+        if: ${{ !cancelled() && runner.os == 'Windows' && steps.install.outcome == 'success' }}
+        timeout-minutes: 10
+        run: |
+          python -m pip install --only-binary=:all: zstandard==0.25.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $work = Join-Path $env:RUNNER_TEMP 'carr-component-ocr'
+          New-Item -ItemType Directory -Path $work | Out-Null
+          $ocr = Join-Path $work 'ocr'
+          python -I -B packaging/prepare_windows_ocr.py --cache (Join-Path $work 'cache') --output $ocr --source-archive (Join-Path $work 'ocr-source.tar') --download | Tee-Object 'ci-component-results/ocr-preparation.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_CI_OCR_DIR=$ocr" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $ocr | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          "TESSDATA_PREFIX=$(Join-Path $ocr 'tessdata')" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Prepare the pinned public font required by unchanged OCR fixtures
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          python -I -B ../.github/scripts/carr_prepare_test_font.py --report ci-component-results/test-font.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require installed module origin and exact complete Python source inventory
+        id: inventory
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: |
+          $proof = @'
+          import hashlib, json
+          from pathlib import Path
+          import carr_library
+          source = Path('src/carr_library').resolve()
+          installed = Path(carr_library.__file__).resolve().parent
+          assert not installed.is_relative_to(source), installed
+          def inventory(root):
+              return {path.relative_to(root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+                      for path in root.rglob('*.py') if '__pycache__' not in path.parts}
+          expected, actual = inventory(source), inventory(installed)
+          assert expected and expected == actual, ('Installed application inventory mismatch',
+              sorted(set(expected) ^ set(actual)), [key for key in expected.keys() & actual.keys()
+              if expected[key] != actual[key]])
+          digest = hashlib.sha256(json.dumps(expected, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+          print(json.dumps(dict(status='PASS', module_origin=str(installed),
+              python_modules=len(expected), source_inventory_sha256=digest)))
+          '@
+          $proof | python -I -B -X utf8 - | Tee-Object ci-component-results/application-source.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require source and installed native additional-document imports
+        if: ${{ !cancelled() && runner.os == 'Windows' && steps.inventory.outcome == 'success' }}
+        timeout-minutes: 5
+        run: |
+          $failures = @()
+          python -B tests/ui/native_document_formats_smoke.py --native --source (Get-Location).Path 2>&1 | Tee-Object ci-component-results/source-native-document-formats.txt
+          if ($LASTEXITCODE -ne 0) { $failures += 'source-native-document-formats' }
+          python -I -B tests/ui/native_document_formats_smoke.py --native 2>&1 | Tee-Object ci-component-results/installed-native-document-formats.txt
+          if ($LASTEXITCODE -ne 0) { $failures += 'installed-native-document-formats' }
+          if ($failures.Count) { throw ('Native additional-document imports failed: ' + ($failures -join ', ')) }
+      - name: Require source updated components and adjacent contracts
+        if: ${{ !cancelled() && steps.inventory.outcome == 'success' && (runner.os != 'Windows' || (steps.audio.outcome == 'success' && steps.ocr.outcome == 'success')) }}
+        run: |
+          $suites = @(
+            'tests/assistant/test_local_planning.py',
+            'tests/assistant/test_state_io.py',
+            'tests/catalog/test_archive_portability.py',
+            'tests/catalog/test_intake_portability.py',
+            'tests/catalog/test_epub_metadata.py',
+            'tests/catalog/test_registration.py',
+            'tests/extract/test_page_ocr.py',
+            'tests/extract/test_ocr_language_regions.py',
+            'tests/extract/test_ocr_evidence_fidelity.py',
+            'tests/extract/test_automatic_ocr_native.py',
+            'tests/studio/test_production_cancellation_outcomes.py',
+            'tests/studio/test_production.py',
+            'tests/studio/test_production_hardening.py',
+            'tests/studio/test_book_audio.py',
+            'tests/storage/test_production_operation_backup.py',
+            'tests/ui/test_studio_output_settings.py',
+            'tests/storage/test_studio_draft_backup.py',
+            'tests/storage/test_backup_scan_bounds.py',
+            'tests/storage/test_state_backup_portability.py',
+            'tests/storage/test_v3_state_backup.py',
+            'tests/storage/test_backup_sidecars.py',
+            'tests/storage/test_canonical_backup_compat.py',
+            'tests/transcription/test_runtime_inventory.py',
+            'tests/transcription/test_runtime_admission.py',
+            'tests/transcription/test_admission_boundaries.py',
+            'tests/transcription/test_service.py',
+            'tests/storage/test_asr_additional_profile.py',
+            'tests/storage/test_transcription_backup.py',
+            'tests/packaging/test_windows_bundle.py',
+            'tests/speech/test_python_helper.py',
+            'tests/storage/test_python_helper_backup.py',
+            'tests/speech/test_runtime_settings_restore.py',
+            'tests/ui/test_engine_settings_review.py',
+            'tests/audio/test_cleanup_contexts.py',
+            'tests/audio/test_audio_process.py',
+            'tests/audio/test_process_deadline.py',
+          )
+          if (-not $IsWindows) { $suites += 'tests/storage_posix/test_state_backup_names.py' }
+          python -B scripts/ci_check.py --jobs 2 @suites 2>&1 | Tee-Object ci-component-results/source.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require installed updated components and adjacent contracts
+        if: ${{ !cancelled() && steps.inventory.outcome == 'success' && (runner.os != 'Windows' || (steps.audio.outcome == 'success' && steps.ocr.outcome == 'success')) }}
+        run: |
+          python -I -B -c "from pathlib import Path; import carr_library; path=Path(carr_library.__file__).resolve(); assert not path.is_relative_to(Path('src').resolve()), path; print(path)"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $suites = @(
+            'tests/assistant/test_local_planning.py',
+            'tests/assistant/test_state_io.py',
+            'tests/catalog/test_archive_portability.py',
+            'tests/catalog/test_intake_portability.py',
+            'tests/catalog/test_epub_metadata.py',
+            'tests/catalog/test_registration.py',
+            'tests/extract/test_page_ocr.py',
+            'tests/extract/test_ocr_language_regions.py',
+            'tests/extract/test_ocr_evidence_fidelity.py',
+            'tests/extract/test_automatic_ocr_native.py',
+            'tests/studio/test_production_cancellation_outcomes.py',
+            'tests/studio/test_production.py',
+            'tests/studio/test_production_hardening.py',
+            'tests/studio/test_book_audio.py',
+            'tests/storage/test_production_operation_backup.py',
+            'tests/ui/test_studio_output_settings.py',
+            'tests/storage/test_studio_draft_backup.py',
+            'tests/storage/test_backup_scan_bounds.py',
+            'tests/storage/test_state_backup_portability.py',
+            'tests/storage/test_v3_state_backup.py',
+            'tests/storage/test_backup_sidecars.py',
+            'tests/storage/test_canonical_backup_compat.py',
+            'tests/transcription/test_runtime_inventory.py',
+            'tests/transcription/test_runtime_admission.py',
+            'tests/transcription/test_admission_boundaries.py',
+            'tests/transcription/test_service.py',
+            'tests/storage/test_asr_additional_profile.py',
+            'tests/storage/test_transcription_backup.py',
+            'tests/packaging/test_windows_bundle.py',
+            'tests/speech/test_python_helper.py',
+            'tests/storage/test_python_helper_backup.py',
+            'tests/speech/test_runtime_settings_restore.py',
+            'tests/ui/test_engine_settings_review.py',
+            'tests/audio/test_cleanup_contexts.py',
+            'tests/audio/test_audio_process.py',
+            'tests/audio/test_process_deadline.py',
+          )
+          if (-not $IsWindows) { $suites += 'tests/storage_posix/test_state_backup_names.py' }
+          python -I -B -m pytest -q -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-component-results/installed.xml @suites 2>&1 | Tee-Object ci-component-results/installed.txt
+          $testExit = $LASTEXITCODE
+          python -I -B -c "import xml.etree.ElementTree as E; cases=list(E.parse('ci-component-results/installed.xml').getroot().iter('testcase')); assert cases and all(c.find('failure') is None and c.find('error') is None and c.find('skipped') is None for c in cases); print('INSTALLED_CASES_PASS',len(cases))"
+          if ($testExit -ne 0 -or $LASTEXITCODE -ne 0) { exit 1 }
+      - name: Retain public synthetic source and installed evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-component-followup-${{ matrix.os }}-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-component-results/
+          if-no-files-found: error
+          retention-days: 7
