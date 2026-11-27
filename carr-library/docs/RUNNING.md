@@ -13,6 +13,12 @@ requires the applicable Microsoft redistribution grant.
 
 ## Windows offline package
 
+Before the first launch of an updated application, use the previous application
+to back up any existing library. Startup may reopen the remembered or default
+library and migrate its database before you select a menu command. Keep the old
+program and backup; restore that backup into a new data folder if you need to
+return to the previous version.
+
 The Windows x64 package targets CPython 3.11. The complete package includes its
 own Python runtime. Extract the complete package into a new folder, then open
 `Install.cmd`. Installation creates a local
@@ -27,6 +33,17 @@ startup fails, so a screen reader can read the error. Installation and
 load before reporting success, then run the synthetic application self-test.
 When OCR is included, the checks also recognize a generated test image.
 These checks do not change your research data.
+
+New transfer packages omit the owner-local FFmpeg and FFprobe binaries until
+their exact redistribution package has been reviewed. Library, research and OCR
+do not require them. Audio Studio rendering and procedural music require both,
+including when the selected output is WAV. To use a trusted installation that
+you obtained directly from its publisher, open **Audio Studio > Local voice and
+music engines**, select **Choose FFmpeg executable** and **Choose FFprobe
+executable**, then reopen the Studio. The application does not download them.
+See `START_V3_UK.txt` for the exact reviewed publisher release and setup steps.
+The absence of these optional executables is recorded in the bundle manifest;
+it is not a claim that Studio rendering works before local setup.
 
 The launchers require the installation-complete marker created after all install
 checks succeed. If installation fails or is interrupted, extract the package to
