@@ -290,8 +290,15 @@ def run_entry(callback, arguments, program):
                        str(read_handle)]
             try:
                 spawn_attempted = True
-                process = subprocess.Popen(command, cwd=program, close_fds=True,
-                                           startupinfo=startup, creationflags=subprocess.CREATE_NO_WINDOW)
+                # With an explicit inherited handle list, omitted stdio is
+                # not inherited on Windows. Let Popen duplicate exactly the
+                # current streams alongside the private admission read handle.
+                process = subprocess.Popen(
+                    command, cwd=program, close_fds=True, startupinfo=startup,
+                    stdin=sys.stdin if sys.stdin is not None else subprocess.DEVNULL,
+                    stdout=sys.stdout if sys.stdout is not None else subprocess.DEVNULL,
+                    stderr=sys.stderr if sys.stderr is not None else subprocess.DEVNULL,
+                    creationflags=subprocess.CREATE_NO_WINDOW)
                 job.assign(int(process._handle))
             finally:
                 os.set_handle_inheritable(read_handle, False)
