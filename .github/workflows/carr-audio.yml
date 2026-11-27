@@ -7,7 +7,7 @@ on:
       - carr-library/**
       - .github/workflows/carr-audio.yml
   push:
-    branches: [carr-library, carr/v3-reading-foundation-20261126]
+    branches: [carr-library, carr/v3-reading-foundation-20261126, carr/lgpl-runtime-reuse-20261127]
     paths:
       - carr-library/**
       - .github/workflows/carr-audio.yml
@@ -52,13 +52,15 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pip install --no-deps .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $audioArchive = Join-Path $env:RUNNER_TEMP 'ffmpeg-pinned.zip'
-          $audioBin = Join-Path $env:RUNNER_TEMP 'carr-audio-tools'
-          $audioUrl = python -I -B -c "from carr_library.audio.runtime import FFMPEG_ARCHIVE_URL; print(FFMPEG_ARCHIVE_URL)"
+          New-Item -ItemType Directory -Force 'ci-audio-results' | Out-Null
+          $audioInputs = Join-Path $env:RUNNER_TEMP 'carr-audio-inputs'
+          $audioRuntime = Join-Path $env:RUNNER_TEMP 'carr-audio-tools'
+          python packaging/acquire_audio_runtime.py --output $audioInputs --download | Tee-Object 'ci-audio-results/runtime-acquisition.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          Invoke-WebRequest -Uri $audioUrl -OutFile $audioArchive
-          python packaging/prepare_ffmpeg_runtime.py --archive $audioArchive --destination $audioBin --verify-native
+          $audioArchive = Join-Path $audioInputs 'ffmpeg-n9.0.2-982-g836df4e858-win64-lgpl-shared-9.0.zip'
+          python packaging/prepare_audio_runtime.py --archive $audioArchive --sources-dir $audioInputs --output $audioRuntime | Tee-Object 'ci-audio-results/runtime-preparation.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $audioBin = Join-Path $audioRuntime 'bin'
           $binary = Join-Path $audioBin 'ffmpeg.exe'
           "CARR_FFMPEG=$binary" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           $audioBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
@@ -69,7 +71,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force 'ci-audio-results' | Out-Null
           git rev-parse HEAD | Set-Content 'ci-audio-results/tested-commit.txt'
-          python -m pytest -q tests/audio tests/reader/test_narration_text.py tests/ui/test_audio_studio.py tests/ui/test_api_connections.py tests/e2e/test_provider_gateway.py tests/e2e/test_audio_cli.py tests/test_progress.py tests/ui/test_progress_view.py tests/ui/test_reading_audio_bridge.py --import-mode=importlib --junitxml=ci-audio-results/audio-tests.xml
+          python -m pytest -q tests/audio tests/packaging/test_audio_runtime.py tests/packaging/test_audio_acquisition.py tests/packaging/test_windows_bundle.py tests/packaging/test_delivery_archive.py tests/reader/test_narration_text.py tests/ui/test_audio_studio.py tests/ui/test_api_connections.py tests/e2e/test_provider_gateway.py tests/e2e/test_audio_cli.py tests/test_progress.py tests/ui/test_progress_view.py tests/ui/test_reading_audio_bridge.py --import-mode=importlib --junitxml=ci-audio-results/audio-tests.xml
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify real offline SAPI output, native controls and OS credential vault
         run: |

@@ -332,3 +332,146 @@ def test_committed_audio_lock_remains_explicitly_uncleared():
     assert lock['review']['public_distribution_clearance'] is False
     assert lock['review']['third_party_complete_source_bundle'] is False
     assert lock['use_scope'] == 'private-owner-local-installation'
+
+
+def test_existing_studio_discovers_shared_payload_without_path_changes(bundle, monkeypatch):
+    from carr_library.audio import runtime as studio_runtime
+
+    root, output, report, *_ = bundle
+    monkeypatch.delenv('CARR_FFMPEG', raising=False)
+    monkeypatch.setenv('PATH', 'unchanged-user-selection')
+    monkeypatch.setattr(studio_runtime.sys, 'prefix', str(root / '.venv'))
+    assert studio_runtime.verify_runtime(output) == report
+    inventory = studio_runtime.runtime_inventory(output)
+    assert inventory[runtime.MANIFEST] == report['manifest_sha256']
+    assert inventory == {
+        path.relative_to(output).as_posix(): digest(path.read_bytes())
+        for path in output.rglob('*') if path.is_file()
+    }
+    selected = studio_runtime.find_ffmpeg()
+    assert selected.samefile(output / runtime.TOOLS['ffmpeg'])
+    assert os.environ['PATH'] == 'unchanged-user-selection'
+
+
+@pytest.mark.parametrize('change', ['missing_inner', 'mixed_legacy', 'extra_dll', 'wrong_outer', 'false_flag'])
+def test_shared_layout_cannot_fall_back_to_legacy_or_bypass_outer_seal(bundle, change):
+    from carr_library.audio import runtime as studio_runtime
+
+    root, output, *_ = bundle
+    if change == 'missing_inner':
+        (output / runtime.MANIFEST).unlink()
+    elif change == 'mixed_legacy':
+        (output / 'ffmpeg-runtime.json').write_bytes(b'{}\n')
+    elif change == 'extra_dll':
+        (output / 'bin/unreviewed.dll').write_bytes(binary())
+    else:
+        outer_path = root / 'bundle-manifest.json'
+        outer = json.loads(outer_path.read_bytes())
+        if change == 'wrong_outer':
+            outer['files']['audio-runtime/bin/ffmpeg.exe'] = '0' * 64
+        else:
+            outer['bundled_audio_runtime'] = False
+        outer_path.write_bytes(encode(outer))
+    with pytest.raises((ValueError, OSError)):
+        studio_runtime.verify_bundle_audio(root)
+
+
+def _packaging_module(name):
+    path = PREPARE.parent / (name + '.py')
+    spec = importlib.util.spec_from_file_location('carr_shared_audio_' + name, path)
+    result = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(result)
+    return result
+
+
+def _minimal_windows_inputs(tmp_path):
+    wheelhouse = tmp_path / 'shared-wheels'
+    wheelhouse.mkdir()
+
+    def wheel(folder, name, *, requires=(), application=False):
+        path = folder / (name + '-1.0-py3-none-any.whl')
+        metadata = 'Metadata-Version: 2.3\nName: ' + name + '\nVersion: 1.0\n'
+        metadata += ''.join('Requires-Dist: ' + value + '\n' for value in requires)
+        with zipfile.ZipFile(path, 'w') as archive:
+            archive.writestr(name + '-1.0.dist-info/METADATA', metadata)
+            if application:
+                archive.writestr('carr_library/__main__.py', "print('synthetic-only wheel')\n")
+        return path
+
+    dependency = wheel(wheelhouse, 'fixture')
+    application = wheel(tmp_path, 'universal_research_library',
+                        requires=('fixture==1.0',), application=True)
+    lock = tmp_path / 'shared-windows.lock'
+    lock.write_text('fixture==1.0 --hash=sha256:' + digest(dependency.read_bytes()) + '\n')
+    return application, wheelhouse, lock
+
+
+def test_actual_bundle_builder_and_installer_keep_complete_shared_inventory(bundle, tmp_path):
+    from carr_library.audio import runtime as studio_runtime
+
+    _, audio, report, *_ = bundle
+    builder, installer = map(_packaging_module, ('build_windows_bundle', 'install_windows'))
+    application, wheelhouse, lock = _minimal_windows_inputs(tmp_path)
+    destination = tmp_path / 'assembled shared audio'
+    before = studio_runtime.runtime_inventory(audio)
+    builder.build_bundle(application, wheelhouse, lock, destination, audio_dir=audio)
+    installer.verify(destination)
+    assert studio_runtime.runtime_inventory(destination / runtime.DIRECTORY) == before
+    assert studio_runtime.verify_bundle_audio(destination).samefile(
+        destination / runtime.DIRECTORY / runtime.TOOLS['ffmpeg'])
+    manifest = json.loads((destination / 'bundle-manifest.json').read_bytes())
+    assert manifest['bundled_audio_runtime'] is True
+    assert {
+        name.removeprefix('audio-runtime/'): value
+        for name, value in manifest['files'].items() if name.startswith('audio-runtime/')
+    } == before
+    assert runtime.verify_audio_runtime(audio) == report
+    changed = destination / 'audio-runtime/bin/avutil.dll'
+    changed.write_bytes(binary() + b'tampered')
+    with pytest.raises(ValueError, match='checksum'):
+        installer.verify(destination)
+
+
+def test_changed_shared_payload_during_assembly_never_publishes(bundle, tmp_path, monkeypatch):
+    _, audio, *_ = bundle
+    builder = _packaging_module('build_windows_bundle')
+    application, wheelhouse, lock = _minimal_windows_inputs(tmp_path)
+    destination = tmp_path / 'unpublished shared audio'
+    source = audio / runtime.TOOLS['ffmpeg']
+    before = source.read_bytes()
+    original = builder.shutil.copyfile
+
+    def copy_then_change(incoming, outgoing, *args, **kwargs):
+        result = original(incoming, outgoing, *args, **kwargs)
+        if Path(incoming).resolve() == source.resolve():
+            Path(outgoing).write_bytes(b'changed after copy')
+        return result
+
+    monkeypatch.setattr(builder.shutil, 'copyfile', copy_then_change)
+    with pytest.raises(ValueError, match='integrity'):
+        builder.build_bundle(application, wheelhouse, lock, destination, audio_dir=audio)
+    assert source.read_bytes() == before
+    assert not destination.exists()
+
+
+@pytest.mark.parametrize('change', ['extra_file', 'missing_inner_member'])
+def test_bootstrap_rejects_unlisted_or_disagreeing_shared_inventory(bundle, tmp_path, change):
+    _, audio, *_ = bundle
+    builder, installer = map(_packaging_module, ('build_windows_bundle', 'install_windows'))
+    application, wheelhouse, lock = _minimal_windows_inputs(tmp_path)
+    destination = tmp_path / 'bootstrap shared audio'
+    builder.build_bundle(application, wheelhouse, lock, destination, audio_dir=audio)
+    root = destination / 'audio-runtime'
+    if change == 'extra_file':
+        (root / 'bin/extra.dll').write_bytes(binary())
+    elif change == 'missing_inner_member':
+        inner_path = root / runtime.MANIFEST
+        inner = json.loads(inner_path.read_bytes())
+        del inner['files']['README.txt']
+        inner_path.write_bytes(encode(inner))
+        outer_path = destination / 'bundle-manifest.json'
+        outer = json.loads(outer_path.read_bytes())
+        outer['files']['audio-runtime/' + runtime.MANIFEST] = digest(inner_path.read_bytes())
+        outer_path.write_bytes(encode(outer))
+    with pytest.raises(ValueError, match='audio|linked'):
+        installer.verify(destination)

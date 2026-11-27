@@ -167,12 +167,12 @@ jobs:
         run: |
           $audioWork = Join-Path $env:RUNNER_TEMP 'carr-audio-ci'
           New-Item -ItemType Directory -Force $audioWork | Out-Null
-          $audioArchive = Join-Path $audioWork 'ffmpeg-pinned.zip'
+          $audioInputs = Join-Path $audioWork 'inputs'
           $audioRuntime = Join-Path $audioWork 'audio-runtime'
-          $audioUrl = & $env:CARR_PYTHON -I -B -c "from carr_library.audio.runtime import FFMPEG_ARCHIVE_URL; print(FFMPEG_ARCHIVE_URL)"
+          & $env:CARR_PYTHON packaging/acquire_audio_runtime.py --output $audioInputs --download | Tee-Object 'ci-results/audio-runtime-acquisition.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          Invoke-WebRequest -Uri $audioUrl -OutFile $audioArchive
-          & $env:CARR_PYTHON packaging/prepare_ffmpeg_runtime.py --archive $audioArchive --destination $audioRuntime --verify-native | Tee-Object 'ci-results/audio-runtime-preparation.json'
+          $audioArchive = Join-Path $audioInputs 'ffmpeg-n9.0.2-982-g836df4e858-win64-lgpl-shared-9.0.zip'
+          & $env:CARR_PYTHON packaging/prepare_audio_runtime.py --archive $audioArchive --sources-dir $audioInputs --output $audioRuntime | Tee-Object 'ci-results/audio-runtime-preparation.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "CARR_CI_AUDIO_DIR=$audioRuntime" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
@@ -183,7 +183,7 @@ jobs:
           # Only this trusted test step needs command discovery for real fixtures.
           $env:PATH = $env:CARR_CI_OCR_DIR + [System.IO.Path]::PathSeparator + $env:PATH
           $env:TESSDATA_PREFIX = Join-Path $env:CARR_CI_OCR_DIR 'tessdata'
-          $env:CARR_FFMPEG = Join-Path $env:CARR_CI_AUDIO_DIR 'ffmpeg.exe'
+          $env:CARR_FFMPEG = Join-Path $env:CARR_CI_AUDIO_DIR 'bin/ffmpeg.exe'
           $suites = @(
             'tests/packaging/test_offline_runtime_policy.py',
             'tests/packaging/test_install_bytecode.py',
@@ -308,6 +308,8 @@ jobs:
             'tests/extract/test_ocr_languages.py',
             'tests/ui/test_ocr_language_dialog.py',
             'tests/audio/test_audio_runtime.py',
+            'tests/packaging/test_audio_runtime.py',
+            'tests/packaging/test_audio_acquisition.py',
             'tests/packaging/test_native_checks.py',
             'tests/ui/test_command_palette.py',
             'tests/ui/test_reading_audio_bridge.py',
@@ -542,7 +544,7 @@ jobs:
           & $env:CARR_PYTHON packaging/prepare_native_runtime.py --package $nativePackage --output $nativeRuntime | Tee-Object 'ci-results/native-runtime-preparation.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $audioRuntime = $env:CARR_CI_AUDIO_DIR
-          if (!(Test-Path -LiteralPath (Join-Path $audioRuntime 'ffmpeg.exe') -PathType Leaf)) { throw 'Verified source-test FFmpeg runtime is missing.' }
+          if (!(Test-Path -LiteralPath (Join-Path $audioRuntime 'bin/ffmpeg.exe') -PathType Leaf)) { throw 'Verified source-test FFmpeg runtime is missing.' }
           $sourceCommit = (git rev-parse HEAD).Trim()
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON packaging/build_windows_bundle.py --wheel $applicationWheel --wheelhouse $wheelhouse --lock packaging/windows-semantic-cp311.lock --sbom packaging/windows-semantic-sbom.cdx.json --python-archive $pythonArchive --model-dir $env:CARR_CI_MODEL_DIR --model-manifest $env:CARR_CI_MODEL_MANIFEST --ocr-dir $ocr --ocr-source-archive $ocrSource --audio-dir $audioRuntime --launcher "$env:RUNNER_TEMP/carr-integrated-native-launcher/ResearchLibrary.exe" --launcher-evidence "$env:RUNNER_TEMP/carr-integrated-native-launcher/build-evidence.json" --source-commit $sourceCommit --output $baseBundle | Tee-Object 'ci-results/full-bundle-build.json'
@@ -565,7 +567,7 @@ jobs:
           New-Item -ItemType Directory -Force $testWheels | Out-Null
           & $env:CARR_PYTHON -m pip download --only-binary=:all: --dest $testWheels pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $programs = @((Join-Path $bundle 'ResearchLibrary.exe'), $bundledPython, (Join-Path $bundle 'runtime/pythonw.exe'), $installedPython, (Join-Path $bundle '.venv/Scripts/pythonw.exe'), (Join-Path $bundle 'ocr/tesseract.exe'), (Join-Path $bundle 'audio-runtime/ffmpeg.exe'), (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'), (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe')) | ForEach-Object { [System.IO.Path]::GetFullPath($_) }
+          $programs = @((Join-Path $bundle 'ResearchLibrary.exe'), $bundledPython, (Join-Path $bundle 'runtime/pythonw.exe'), $installedPython, (Join-Path $bundle '.venv/Scripts/pythonw.exe'), (Join-Path $bundle 'ocr/tesseract.exe'), (Join-Path $bundle 'audio-runtime/bin/ffmpeg.exe'), (Join-Path $bundle 'audio-runtime/bin/ffprobe.exe'), (Join-Path $bundle 'audio-runtime/bin/ffplay.exe'), (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'), (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe')) | ForEach-Object { [System.IO.Path]::GetFullPath($_) }
           $rulePrefix = 'CARR-offline-' + [guid]::NewGuid().ToString('N')
           $ruleNames = @()
           $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
@@ -614,6 +616,8 @@ jobs:
           # No executable environment override: the installed Studio must find
           # and authenticate the exact sealed runtime from its own bundle.
           Remove-Item Env:CARR_FFMPEG -ErrorAction SilentlyContinue
+          & $installedPython -I -B scripts/windows_audio_runtime_smoke.py --bundle $bundle 2>&1 | Tee-Object 'ci-results/full-bundle-audio-runtime-native.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_audio_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-audio-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B tests/ui/probe_advanced_search_native.py 2>&1 | Tee-Object 'ci-results/full-bundle-advanced-search.txt'
@@ -683,6 +687,8 @@ jobs:
               'tests/e2e/test_provider_gateway.py',
               'tests/e2e/test_audio_cli.py',
               'tests/audio/test_audio_runtime.py',
+              'tests/packaging/test_audio_runtime.py',
+              'tests/packaging/test_audio_acquisition.py',
               'tests/storage/test_backup_provider_state.py',
               'tests/language_catalog/test_canonical_catalog.py',
               'tests/audio/test_dordiai_profile_languages.py',
