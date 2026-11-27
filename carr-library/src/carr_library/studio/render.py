@@ -804,6 +804,7 @@ class ProductionService:
 
                 def publish(source, name):
                     check()
+                    check_source()
                     target = local_path(output / name, root=output)
                     target.parent.mkdir(parents=True, exist_ok=True)
                     identity = digest_file(source)
@@ -842,6 +843,7 @@ class ProductionService:
                                 raise ValueError('Audio changed during publication.')
                             # Hashing and flushing large outputs can take time.
                             # Stop before publication, never after the link commits.
+                            check_source()
                             check()
                             os.link(temporary, target)
                         finally:
