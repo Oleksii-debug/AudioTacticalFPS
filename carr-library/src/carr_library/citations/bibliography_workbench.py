@@ -147,7 +147,11 @@ class BibliographyWorkbench:
             return preview.citations
         raise ValueError('Choose bibliography or citation examples to copy.')
 
-    def export(self, preview, destination, *, format='text', cancelled=lambda: False, require_absent=False):
+    def export(self, preview, destination, *, format='text', cancelled=lambda: False,
+               require_absent=False, return_receipt=False):
+        """Export exact content, optionally returning its publication receipt."""
+        if type(return_receipt) is not bool:
+            raise ValueError('The export receipt option must be boolean.')
         snapshot = self.check(preview)
         if cancelled():
             raise TimeoutError('Bibliography export cancelled; no output was changed.')
@@ -175,9 +179,9 @@ class BibliographyWorkbench:
             self.check(preview)
             return False
 
-        writer(destination, content, private_root=self.controller.library.root,
-               cancelled=cancelled_or_changed, require_absent=require_absent)
-        return content
+        receipt = writer(destination, content, private_root=self.controller.library.root,
+                         cancelled=cancelled_or_changed, require_absent=require_absent)
+        return receipt if return_receipt else content
 
 
 class _InlineMarkup(HTMLParser):
