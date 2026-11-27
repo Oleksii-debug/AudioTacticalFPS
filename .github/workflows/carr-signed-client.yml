@@ -73,7 +73,6 @@ jobs:
           $programs = @($python, $basePython,
             (Join-Path (Split-Path $python) 'pythonw.exe'),
             (Join-Path (Split-Path $basePython) 'pythonw.exe'),
-            (Get-Command node.exe).Source,
             (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'),
             (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe')) |
             Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |

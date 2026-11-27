@@ -30,6 +30,8 @@ TRANSCRIPTION = re.compile(r'state/transcription/(?P<workspace>[0-9a-f]{64})/job
 _ASR_DOCUMENT = re.compile(r'(?:job|job_config|job_status|host_status)\.json|receipts/[0-9a-f]{64}\.result\.json|edits/[0-9a-f]{32}\.json')
 _ASR_OUTPUT = re.compile(r'(?:results|cache)/[A-Za-z0-9_./ -]+\.(?:json|txt|srt|vtt)')
 _ASR_INPUT = re.compile(r'input/[0-9]{3}-[0-9a-f]{32}\.[A-Za-z0-9]{1,8}')
+_ASR_CACHE = re.compile(r'logs/cache_v5/([0-9a-f]{2})/([0-9a-f]{64})\.(json|txt)\Z')
+_ASR_LOG = re.compile(r'logs/(?:progress|failed)\.log\Z')
 
 
 def is_media(name):
@@ -42,7 +44,8 @@ def is_media(name):
 def is_text(name):
     match = TRANSCRIPTION.fullmatch(name)
     return bool(SUBTITLE.fullmatch(name) or (match and (
-        match['relative'] == 'stop.flag'
+        match['relative'] == 'stop.flag' or _ASR_LOG.fullmatch(match['relative'])
+        or (_ASR_CACHE.fullmatch(match['relative']) and name.endswith('.txt'))
         or (_ASR_OUTPUT.fullmatch(match['relative']) and not name.endswith('.json')))))
 
 
@@ -69,6 +72,12 @@ def limit(name):
         relative = match['relative']
         if relative == 'stop.flag':
             return 5
+        if _ASR_LOG.fullmatch(relative):
+            return 16 * 1024**2
+        if cache := _ASR_CACHE.fullmatch(relative):
+            if cache[1] != cache[2][:2]:
+                return None
+            return 64 * 1024**2 if cache[3] == 'json' else 16 * 1024**2
         if _ASR_DOCUMENT.fullmatch(relative) or _ASR_OUTPUT.fullmatch(relative):
             return 64 * 1024**2 if relative.endswith('.json') else 16 * 1024**2
     if READER.fullmatch(name) or STUDIO.fullmatch(name) or SUBTITLE.fullmatch(name):
@@ -478,10 +487,13 @@ def _translation_job(db, value, identity):
     _translation_language(value['target_language'])
     if value['source_language'] == value['target_language']:
         raise ValueError('Translation needs different source and target languages.')
-    by_chunk, cost = _approved_requests(profile, chunks, value['source_language'],
-        value['target_language'], approval, value['per_call_cost'],
-        data_class='selected-script' if value['kind'] == 'translation/2' else 'selected-excerpt',
-        glossary=value.get('glossary'))
+    try:
+        by_chunk, cost = _approved_requests(profile, chunks, value['source_language'],
+            value['target_language'], approval, value['per_call_cost'],
+            data_class='selected-script' if value['kind'] == 'translation/2' else 'selected-excerpt',
+            glossary=value.get('glossary'))
+    except PermissionError as exc:
+        raise ValueError('Invalid saved translation approval.') from exc
     receipts = value['receipts']
     if type(receipts) is not list or len(receipts) > len(chunks):
         raise ValueError('Invalid translation receipt inventory.')
@@ -638,7 +650,8 @@ def _transcription_record(db, value, match):
             raise ValueError('Transcription receipt filename differs from its identity.')
     elif type(value) is not dict:
         # The two reviewed worker protocols own their status/timed JSON
-        # schemas. Backup retains these bounded objects as inert checkpoints;
+        # schemas, including the reviewed logs/cache_v5 JSON checkpoints.
+        # Backup retains these bounded objects as inert checkpoints;
         # only the normal service may admit them as recognized results.
         raise ValueError('Invalid supplied-worker checkpoint object.')
 
@@ -802,7 +815,7 @@ def validate(db, name, value):
 def validate_collection(db, root, entries, *, cancelled):
     """Cross-bind saved data without opening external paths or running jobs."""
     from dataclasses import asdict
-    from .durable_state import read_json
+    from .backup_sidecars import _json, read_regular
     from .assistant.models import canonical
     from .assistant.providers import money
     from .ingest.restore import RestoreError
@@ -815,14 +828,14 @@ def validate_collection(db, root, entries, *, cancelled):
                 raise RestoreError('A retained Studio input differs from its content-addressed filename.')
         translation = TRANSLATION.fullmatch(name)
         if translation and not translation[2]:
-            value = read_json(root / name, maximum=64 * 1024**2)
+            value = _json(read_regular(root / name, limit(name)))
             profile, approval, requests, cost = _translation_job(db, value, translation[1])
             accepted = [index for index in range(len(value['receipts'])) if requests[index] is not None]
             if accepted:
                 ledger_name = 'state/translation/provider/usage/' + approval.id + '.usage.json'
                 if ledger_name not in files:
                     raise RestoreError('Accepted translation has no retained usage evidence.')
-                usage = read_json(root / ledger_name, maximum=64 * 1024**2)
+                usage = _json(read_regular(root / ledger_name, limit(ledger_name)))
                 if (usage['authorization'] != sha256(canonical(asdict(approval)).encode()).hexdigest()
                         or usage['currency'] != approval.currency):
                     raise RestoreError('Translation usage belongs to another approval.')
@@ -846,7 +859,7 @@ def validate_collection(db, root, entries, *, cancelled):
                         raise RestoreError('Accepted translation text differs from its decoded-output proof.')
         match = TRANSCRIPTION.fullmatch(name)
         if match and match['relative'] == 'job.json':
-            value = read_json(root / name, maximum=64 * 1024**2)
+            value = _json(read_regular(root / name, limit(name)))
             base = name[:-len('job.json')]
             expected = {base + 'input/' + row['filename']: row for row in value['sources']}
             actual = {item for item in files if item.startswith(base + 'input/')}

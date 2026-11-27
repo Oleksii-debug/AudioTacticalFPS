@@ -49,6 +49,7 @@ jobs:
           python -m compileall -q src bootstrap tests scripts packaging
           python scripts/ci_check.py --jobs 3 \
             tests/research/test_academic_library.py \
+            tests/reader/test_export_reconciliation.py \
             tests/e2e/test_search_operation_budget.py \
             tests/e2e/test_catalog_insights_workflow.py \
             tests/storage/test_academic_migration.py \

@@ -123,7 +123,33 @@ def assistant_retained(request, tmp_path):
     # configuration/model identities, real receipts and the one ASR job store.
     helpers = runpy.run_path(str(Path(__file__).parents[1] /
                                 'assistant' / 'test_library_transcription.py'))
-    return helpers['prepared'].__wrapped__(SimpleNamespace(param=request.param), tmp_path)
+    prepared = helpers['prepared'].__wrapped__(SimpleNamespace(param=request.param), tmp_path)
+    if request.param == 'whisper-v5-manifest-v1':
+        # Test-only run counting belongs in disposable runtime state. The
+        # retained cache uses the reviewed worker's exact hashed filename shape.
+        native, worker, models = prepared[2], prepared[7], prepared[8]
+        configuration = native.configuration()
+        source = worker.read_text(encoding='utf-8')
+        replacements = {
+            "history_path = job / 'fixture-runs.json'":
+                "history_path = job / 'runtime-home' / 'fixture-runs.json'",
+            "cache = job / 'logs' / 'cache_v5'":
+                "cache = job / 'logs' / 'cache_v5' / 'aa'",
+            "'synthetic-retained.txt'": "('a' * 64 + '.txt')",
+        }
+        for original, replacement in replacements.items():
+            assert source.count(original) == 1
+            source = source.replace(original, replacement)
+        cache_marker = "(cache / ('a' * 64 + '.txt')).write_text('Synthetic cache; no inference.', encoding='utf-8')"
+        assert source.count(cache_marker) == 1
+        source = source.replace(cache_marker, cache_marker + "\n" +
+            "(cache / ('a' * 64 + '.json')).write_text(json.dumps({'complete': False, "
+            "'text': 'Unverified synthetic cache checkpoint.'}), encoding='utf-8')\n" +
+            "(job / 'logs' / 'progress.log').write_text('Synthetic progress only.\\n', encoding='utf-8')\n" +
+            "(job / 'logs' / 'failed.log').write_text('', encoding='utf-8')")
+        worker.write_text(source, encoding='utf-8')
+        native.configure(configuration['python'], worker, models, protocol=request.param)
+    return prepared
 
 
 @pytest.mark.parametrize('state', ('paused', 'complete'))
@@ -150,6 +176,11 @@ def test_shared_assistant_asr_backup_keeps_child_but_not_relocated_plan_authorit
     child = native.get(child_id)
     assert child['status'] == ('stopped' if state == 'paused' else 'completed')
     assert len(native.list()) == 1
+    cached = {path.relative_to(native._path(child_id)): path.read_bytes()
+              for path in (native._path(child_id) / 'logs').rglob('*') if path.is_file()}
+    if child['protocol'] == 'whisper-v5-manifest-v1':
+        assert len(cached) == 4
+        assert json.loads(cached[Path('logs/cache_v5/aa') / ('a' * 64 + '.json')])['complete'] is False
     if state == 'complete':
         assert native.verify(child_id)['done'] == 1
         assert intent['transcription_export']
@@ -174,6 +205,8 @@ def test_shared_assistant_asr_backup_keeps_child_but_not_relocated_plan_authorit
     assert restored.store.load(identity) == saved
     recovered = restored_app.transcription(workspace)
     assert recovered.get(child_id) == child
+    assert {relative: (recovered._path(child_id) / relative).read_bytes()
+            for relative in cached} == cached
     retained_source = recovered._path(child_id) / 'input' / child['sources'][0]['filename']
     assert retained_source.read_bytes() == original_source
     if state == 'complete':
@@ -188,3 +221,18 @@ def test_shared_assistant_asr_backup_keeps_child_but_not_relocated_plan_authorit
     assert ({path.relative_to(outputs): path.read_bytes()
              for path in destination.rglob('*') if path.is_file()}
             if destination.exists() else {}) == exported
+
+
+@pytest.mark.parametrize('relative', [
+    'logs/cache_v5/bb/' + 'a' * 64 + '.json',
+    'logs/cache_v5/aa/unbound.json', 'logs/unregistered.log', 'fixture-runs.json',
+])
+def test_transcription_cache_registration_does_not_admit_arbitrary_job_files(retained, tmp_path, relative):
+    app, workspace, service, identity, source, policy = retained
+    path = service._path(identity) / relative
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text('{"complete": false}\n', encoding='utf-8')
+    folder = tmp_path / 'unregistered-cache'
+    with pytest.raises(ValueError, match='backup adapter'):
+        create_backup(app, folder)
+    assert not folder.exists()

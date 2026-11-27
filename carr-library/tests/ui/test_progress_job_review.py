@@ -242,6 +242,41 @@ def test_progress_observer_failure_cannot_reclassify_committed_work(desktop, obs
     assert reports == ['Import…']
 
 
+def test_finish_observer_warning_preserves_the_committed_output_location(desktop):
+    frame, queued, reports = desktop
+    future, done, failed = Future(), Mock(), Mock()
+    frame.executor.submit.return_value = future
+    frame.operation_progress.finish = Mock(side_effect=RuntimeError('Progress device unavailable'))
+    location = 'Saved verified output to the selected private directory.'
+    def published(result):
+        done(result)
+        frame.status.SetValue(location)
+    frame.run_job('Export', lambda: 'committed', published, failed)
+    future.set_result('committed')
+    queued.pop()()
+    done.assert_called_once_with('committed')
+    failed.assert_not_called()
+    assert frame.status.GetValue().startswith(location + '\n')
+    assert 'Progress reporting is unavailable' in frame.status.GetValue()
+    assert reports == ['Export…']
+
+
+def test_old_finish_observer_failure_does_not_overwrite_a_new_operation(desktop):
+    frame, queued, reports = desktop
+    first, second = Future(), Future()
+    frame.executor.submit.side_effect = [first, second]
+    frame.operation_progress.finish = Mock(side_effect=RuntimeError('Old observer detached'))
+    frame.run_job('Prepare', lambda: None,
+                  lambda result: frame.run_job('Render', lambda: None))
+    first.set_result(None)
+    queued.pop()()
+    assert frame.working and frame.busy
+    assert frame.operation_progress.event.phase == 'Render'
+    assert frame.operation_progress.event.state == 'running'
+    assert frame.status.GetValue() == 'Render…'
+    assert reports == ['Prepare…', 'Render…']
+
+
 def test_receipt_classifier_failure_preserves_successful_publication(desktop, monkeypatch):
     import carr_library.progress as progress_module
     frame, queued, reports = desktop
@@ -416,7 +451,7 @@ def test_reader_close_always_unregisters_playback_and_finishes_resource_cleanup(
     reader = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'show_speech_reader')
     cleanup = next(node.finalbody for node in reversed(reader.body) if isinstance(node, ast.Try) and node.finalbody)
     env = {name: Mock() for name in ('autosave_timer', 'cancel', 'player', 'progress', 'parent',
-                                      'executor', 'audio_files', 'dialog', 'unregister')}
+                                      'executor', 'audio_files', 'dialog', 'unregister', 'on_destroy')}
     env.update(__package__='carr_library.ui', owned_registries=set(), owned_progress_voices=set(),
                threading=threading, native_destroyed=False, parent_destroyed=False,
                wx=SimpleNamespace(CallAfter=lambda callback: callback(), EVT_WINDOW_DESTROY='destroy'))

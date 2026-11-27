@@ -201,6 +201,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           "CARR_V3_AUDIO=$audio" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $mediaAudio = Join-Path $env:RUNNER_TEMP 'carr-v3-media-audio'
+          python -I -B packaging/prepare_windows_audio.py --cache (Join-Path $env:RUNNER_TEMP 'carr-v3-media-audio-cache') --output $mediaAudio --download | Tee-Object 'ci-v3-results/media-audio-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_MEDIA_AUDIO=$mediaAudio" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
       - name: Real native SAPI, scene production, keyboard controls and restart
         run: |
           $python = (Get-Command python.exe).Source
@@ -210,7 +214,10 @@ jobs:
             (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'),
             (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe'),
             (Join-Path $env:CARR_V3_AUDIO 'bin/ffmpeg.exe'),
-            (Join-Path $env:CARR_V3_AUDIO 'bin/ffprobe.exe')) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | ForEach-Object { [System.IO.Path]::GetFullPath($_) } | Sort-Object -Unique
+            (Join-Path $env:CARR_V3_AUDIO 'bin/ffprobe.exe'),
+            (Join-Path $env:CARR_V3_AUDIO 'bin/ffplay.exe'),
+            (Join-Path $env:CARR_MEDIA_AUDIO 'bin/ffmpeg.exe'),
+            (Join-Path $env:CARR_MEDIA_AUDIO 'bin/ffprobe.exe')) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | ForEach-Object { [System.IO.Path]::GetFullPath($_) } | Sort-Object -Unique
           $rulePrefix = 'CARR-v3-offline-' + [guid]::NewGuid().ToString('N')
           $ruleNames = @()
           $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
@@ -228,10 +235,16 @@ jobs:
             $filters = @($active | Get-NetFirewallApplicationFilter -ErrorAction Stop | Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })
             if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Offline rules do not cover the selected runtime programs.' }
             @{ status='PASS'; blocked_programs=$filters; scope='tested runtime executables, not a whole-machine network claim' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-v3-results/runtime-firewall.json'
-            & $python -I -B scripts/verify_operations_acceptance.py --audio-root $env:CARR_V3_AUDIO --results 'ci-v3-results' 2>&1 | Tee-Object 'ci-v3-results/installed-operations.txt'
-            if ($LASTEXITCODE -ne 0) { throw 'Installed shared-resource and canonical operation acceptance failed.' }
-            & $python -I -B scripts/verify_media_acceptance.py --audio-root $env:CARR_V3_AUDIO --results 'ci-v3-results' 2>&1 | Tee-Object 'ci-v3-results/installed-media.txt'
-            if ($LASTEXITCODE -ne 0) { throw 'Installed recording, clip, EPUB and media recovery acceptance failed.' }
+            $nativePath = $env:PATH
+            try {
+              $env:PATH = (Join-Path $env:CARR_MEDIA_AUDIO 'bin') + [IO.Path]::PathSeparator + $nativePath
+              & $python -I -B scripts/verify_operations_acceptance.py --audio-root $env:CARR_MEDIA_AUDIO --results 'ci-v3-results' 2>&1 | Tee-Object 'ci-v3-results/installed-operations.txt'
+              if ($LASTEXITCODE -ne 0) { throw 'Installed shared-resource and canonical operation acceptance failed.' }
+              & $python -I -B scripts/verify_media_acceptance.py --audio-root $env:CARR_MEDIA_AUDIO --results 'ci-v3-results' 2>&1 | Tee-Object 'ci-v3-results/installed-media.txt'
+              if ($LASTEXITCODE -ne 0) { throw 'Installed recording, clip, EPUB and media recovery acceptance failed.' }
+            } finally {
+              $env:PATH = $nativePath
+            }
             & $python -I -B scripts/windows_recording_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-recording.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Native recording lifetime acceptance failed.' }
             & $python -I -B scripts/windows_clip_editor_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-clip-editor.txt'
