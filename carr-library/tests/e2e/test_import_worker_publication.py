@@ -121,9 +121,10 @@ def test_stopped_child_reports_verified_fresh_commit(tmp_path, monkeypatch, kind
     original = source.read_bytes()
     marker = tmp_path / 'after-commit'
     _barrier(monkeypatch, marker, boundary='after', exit_after=termination == 'crash')
+    # Native PDF initialization can exceed 3s before the injected 20s pause.
     result = worker.run_request(app.root, workspace, source, _metadata((collection,)), Config(),
         cancelled=lambda: termination == 'cancel' and marker.exists(),
-        timeout=3.0 if termination == 'timeout' else 15.0)
+        timeout=(10.0 if kind == 'pdf' else 3.0) if termination == 'timeout' else 15.0)
     assert marker.exists(), result
     assert result['state'] == 'complete', result
     assert result['publication_recovered'] is True
@@ -156,9 +157,10 @@ def test_stopped_child_before_commit_never_reports_completion(tmp_path, monkeypa
     source = _source(tmp_path, kind)
     marker = tmp_path / 'before-commit'
     _barrier(monkeypatch, marker, boundary='before', exit_after=termination == 'crash')
+    # Native PDF initialization can exceed 3s before the injected 20s pause.
     result = worker.run_request(app.root, workspace, source, _metadata(), Config(),
         cancelled=lambda: termination == 'cancel' and marker.exists(),
-        timeout=3.0 if termination == 'timeout' else 15.0)
+        timeout=(10.0 if kind == 'pdf' else 3.0) if termination == 'timeout' else 15.0)
     assert marker.exists(), result
     assert result['state'] == {'cancel': 'cancelled', 'crash': 'failed', 'timeout': 'timed_out'}[termination]
     assert app.browse(workspace) == ()
