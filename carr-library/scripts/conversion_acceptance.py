@@ -99,8 +99,9 @@ def strict_junit(path, expected_functions):
     return {'cases': len(cases), 'functions': expected_functions}
 
 
-def run_population(mode, checkout, output, expected_functions):
-    selectors = tuple(name.replace('.', '/') + '.py' for name in expected_functions)
+def run_population(mode, checkout, output, expected_functions, selectors=None):
+    if selectors is None:
+        selectors = tuple(name.replace('.', '/') + '.py' for name in expected_functions)
     child = runpy.run_path(str(checkout / 'scripts/ci_check.py'))['PYTEST_CHILD']
     origins = output / (mode + '-origins.json')
     binding = r'''

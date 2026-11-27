@@ -3,6 +3,7 @@ from pathlib import Path
 
 from ..conversion import ConversionBudget, ConversionService, capabilities
 from ..conversion.capabilities import IMAGES, OFFICE_SUFFIXES
+from ..conversion.legacy import QUALIFIED_SUFFIXES, kind_for
 from ..extract.document_formats import file_dialog_wildcard
 
 
@@ -52,6 +53,24 @@ def choose_pandoc(frame):
         dialog.Destroy()
 
 
+def choose_legacy(frame, kind):
+    """A document never supplies an executable or silently chooses PATH."""
+    import wx
+    labels = {'calibre': ('calibre ebook-convert', 'ebook-convert.exe;ebook-convert'),
+              'djvu': ('DjVuLibre djvutxt', 'djvutxt.exe;djvutxt'),
+              'chm': ('7-Zip', '7z.exe;7zz;7z')}
+    label, names = labels[kind]
+    dialog = wx.FileDialog(frame, 'Select installed ' + label + ' executable',
+        wildcard='Selected local executable|' + names + '|All files|*',
+        style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+    try:
+        if dialog.ShowModal() != wx.ID_OK:
+            return None
+        return Path(dialog.GetPath()).absolute()
+    finally:
+        dialog.Destroy()
+
+
 def choose_office(frame):
     import wx
     dialog = wx.FileDialog(frame, 'Select installed LibreOffice program/soffice executable',
@@ -76,7 +95,7 @@ def convert_documents(frame):
         frame.report('An operation is already running. Wait or choose Cancel current operation.')
         return
     dialog = wx.FileDialog(frame, 'Choose documents for new reading text',
-                           wildcard=('Selected legacy documents and raster images|*.doc;*.ppt;*.xls;*.wpd;*.pdb;*.rtf;*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff;*.webp|'
+                           wildcard=(('Qualified selected book formats|' + ';'.join('*' + item for item in sorted(QUALIFIED_SUFFIXES)) + '|') if QUALIFIED_SUFFIXES else '') + ('Selected legacy documents and raster images|*.doc;*.ppt;*.xls;*.wpd;*.pdb;*.rtf;*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff;*.webp|'
                                      + file_dialog_wildcard()),
                            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST | wx.FD_MULTIPLE)
     try:
@@ -116,8 +135,14 @@ def convert_documents(frame):
             office = choose_office(frame)
             if office is None:
                 return
+        selected_legacy = {}
+        for kind in sorted({kind_for(path.suffix.casefold()) for path in sources
+                            if path.suffix.casefold() in QUALIFIED_SUFFIXES}):
+            selected_legacy[kind] = choose_legacy(frame, kind)
+            if selected_legacy[kind] is None:
+                return
         converter = ConversionService(destination, input_roots=sources, ocr_config=config,
-                                      pandoc=pandoc, image_ocr=image_ocr, office=office)
+                                      pandoc=pandoc, image_ocr=image_ocr, office=office, **selected_legacy)
     except Exception as error:
         frame.report('Document conversion could not start. ' + str(error))
         return

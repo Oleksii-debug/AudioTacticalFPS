@@ -1,0 +1,286 @@
+"""Boundary tests for unqualified legacy adapters; these do not certify vendors."""
+from dataclasses import asdict
+from hashlib import sha256
+import json
+from pathlib import Path
+import runpy
+import struct
+import subprocess
+import sys
+import time
+
+import pytest
+
+from carr_library.conversion import ConversionBudget, ConversionError, ConversionService, ConversionUnavailable
+from carr_library.conversion.capabilities import capabilities
+from carr_library.conversion import legacy, legacy_runtime
+from carr_library.conversion.worker import convert_request
+from carr_library.extract.page_ocr import Config
+
+FIXTURES = runpy.run_path(str(Path(__file__).with_name('legacy_fixtures.py')))
+
+
+def runtime(tmp_path, kind='chm'):
+    root = tmp_path / ('runtime-' + kind)
+    root.mkdir()
+    names = {'chm': ('7z.exe', '7z.dll'), 'djvu': ('djvutxt.exe', 'djvused.exe', 'libdjvulibre-21.dll'),
+             'calibre': ('ebook-convert.exe', 'calibre-debug.exe', 'python.zip')}[kind]
+    for name in names:
+        (root / name).write_bytes(('synthetic trusted test component ' + name).encode())
+    return root / names[0]
+
+
+def request(stage, suffix, raw, selected):
+    source = stage / ('source' + suffix)
+    source.write_bytes(raw)
+    return dict(action='convert', source=str(source), output=str(stage / 'reading.txt'),
+                report=str(stage / 'details.json'), sha256=sha256(raw).hexdigest(),
+                source_size=len(raw), budget=asdict(ConversionBudget()),
+                ocr_config=asdict(Config()), timeout=120.0,
+                adapter={'kind': legacy.kind_for(suffix), 'runtime': selected})
+
+
+@pytest.mark.parametrize('suffix', sorted(legacy.LEGACY_SUFFIXES))
+def test_unexecuted_native_formats_never_become_available_from_selection_alone(suffix, monkeypatch):
+    import importlib
+    module = importlib.import_module('carr_library.conversion.capabilities')
+    monkeypatch.setattr(module, 'QUALIFIED_SUFFIXES', frozenset())
+    rows = {row['extension']: row for row in capabilities(
+        calibre_selected=True, djvu_selected=True, chm_selected=True)}
+    assert rows[suffix]['available'] is False
+    assert rows[suffix]['qualification'] == 'native_fixture_not_qualified'
+
+
+@pytest.mark.parametrize('kind,path', [('calibre', 'ebook-convert.exe'), ('djvu', 'djvutxt.exe'), ('chm', '7z.exe')])
+def test_relative_or_path_discovered_runtime_is_never_selected(kind, path, monkeypatch):
+    monkeypatch.setenv('PATH', '/a/foreign/tool')
+    with pytest.raises(ConversionUnavailable, match='absolute'):
+        legacy_runtime.ToolSelection.capture(Path(path), kind)
+
+
+@pytest.mark.parametrize('change', ['edit', 'replace', 'add', 'remove'])
+def test_selected_component_change_cannot_start_a_conversion(tmp_path, change):
+    executable = runtime(tmp_path)
+    selection = legacy_runtime.ToolSelection.capture(executable, 'chm')
+    component = executable.with_name('7z.dll')
+    if change == 'edit':
+        component.write_bytes(b'changed bytes')
+    elif change == 'replace':
+        component.unlink()
+        component.write_bytes(b'replaced bytes')
+    elif change == 'add':
+        executable.with_name('plugin.dll').write_bytes(b'foreign')
+    else:
+        component.unlink()
+    stage = tmp_path / 'stage'
+    stage.mkdir()
+    with pytest.raises(ConversionError, match='changed'):
+        selection.snapshot(stage)
+    assert not list(stage.iterdir())
+
+
+def test_large_component_inventory_keeps_existing_worker_request_bound(tmp_path):
+    executable = runtime(tmp_path)
+    for index in range(700):
+        executable.with_name('data-' + str(index) + '.txt').write_text(str(index))
+    stage = tmp_path / 'stage'
+    stage.mkdir()
+    descriptor = legacy_runtime.ToolSelection.capture(executable, 'chm').snapshot(stage)
+    assert len(json.dumps(descriptor).encode()) < 1000
+    assert descriptor['bytes'] > 64_000
+    value = legacy_runtime._load(descriptor, stage, 'chm', time.monotonic() + 30)
+    assert len(value['files']) == 702
+
+
+def test_cancel_during_runtime_snapshot_creates_no_manifest(tmp_path):
+    executable = runtime(tmp_path)
+    selected = legacy_runtime.ToolSelection.capture(executable, 'chm')
+    stage = tmp_path / 'stage'
+    stage.mkdir()
+    with pytest.raises(InterruptedError):
+        selected.snapshot(stage, cancelled=lambda: True)
+    assert not list(stage.iterdir())
+
+
+def test_resealed_foreign_inventory_path_is_not_authority(tmp_path):
+    executable = runtime(tmp_path)
+    stage = tmp_path / 'stage'
+    stage.mkdir()
+    selected = legacy_runtime.ToolSelection.capture(executable, 'chm').snapshot(stage)
+    external = tmp_path / 'foreign.json'
+    external.write_bytes((stage / legacy_runtime.INVENTORY_NAME).read_bytes())
+    selected['path'] = str(external)
+    with pytest.raises(ConversionError, match='private'):
+        legacy_runtime._load(selected, stage, 'chm', time.monotonic() + 30)
+
+
+def test_unqualified_service_requires_explicit_fixture_preview(tmp_path, monkeypatch):
+    source = tmp_path / 'source.chm'
+    source.write_bytes(FIXTURES['sample_chm']())
+    output = tmp_path / 'output'
+    output.mkdir()
+    monkeypatch.setattr('carr_library.conversion.service.QUALIFIED_SUFFIXES', frozenset())
+    service = ConversionService(output, input_roots=(source,), chm=runtime(tmp_path))
+    monkeypatch.setattr('carr_library.conversion.service._invoke', lambda *a, **k: pytest.fail('worker must not start'))
+    with pytest.raises(ConversionUnavailable, match='qualification'):
+        service.extract(source, 'reading.txt')
+    assert not list(output.iterdir())
+
+
+@pytest.mark.parametrize('suffix', ['.mobi', '.prc'])
+def test_encrypted_palm_header_is_refused_before_native_reader(suffix):
+    with pytest.raises(ConversionUnavailable, match='Encrypted'):
+        legacy._calibre_header(FIXTURES['palm'](encrypted=True), suffix)
+
+
+@pytest.mark.parametrize('marker', [b'/DRMStorage/Licenses/EUL', b'/DRMStorage/DRMBookplate'])
+def test_protected_lit_marker_is_refused_before_calibre(marker):
+    raw = b'ITOLITLS' + struct.pack('<I', 1) + b'\0' * 40 + marker
+    with pytest.raises(ConversionUnavailable, match='Protected'):
+        legacy._calibre_header(raw, '.lit')
+
+
+@pytest.mark.parametrize('suffix,raw', [
+    ('.mobi', b'\xeaDRMION\xee' + b'\0' * 200), ('.azw', b'TPZ0' + b'\0' * 200),
+    ('.azw3', b'not a book'), ('.lit', b'ordinary renamed text'), ('.tcr', b'ordinary renamed text'),
+])
+def test_renamed_or_foreign_book_formats_are_not_conversion_inputs(suffix, raw):
+    with pytest.raises(ConversionError):
+        legacy._calibre_header(raw, suffix)
+
+
+def test_djvu_shared_or_external_reference_is_refused_before_native_reader():
+    raw = FIXTURES['iff'](b'DJVU', (b'INCL', b'outside.djvu'))
+    with pytest.raises(ConversionUnavailable, match='references'):
+        legacy._djvu_pages(raw, 10)
+
+
+@pytest.mark.parametrize('mutation', ['truncated', 'size', 'page_budget', 'indirect'])
+def test_djvu_framing_and_page_authority_are_bounded(mutation):
+    raw = FIXTURES['iff'](b'DJVU', (b'INFO', b'\0' * 10))
+    maximum = 10
+    if mutation == 'truncated':
+        raw = raw[:-1]
+    elif mutation == 'size':
+        raw = raw[:8] + struct.pack('>I', 0xffffffff) + raw[12:]
+    elif mutation == 'page_budget':
+        maximum = 0
+    else:
+        raw = FIXTURES['iff'](b'DJVM', (b'DIRM', b'\0\0\0'))
+    with pytest.raises(ConversionError):
+        legacy._djvu_pages(raw, maximum)
+
+
+@pytest.mark.parametrize('name', ['../private.htm', 'C:/private.htm', '/absolute.htm', 'a//b.htm', 'a/./b.htm', 'a.htm\nSize = 0'])
+def test_chm_member_path_cannot_escape_or_spoof_listing(name):
+    with pytest.raises(ConversionError):
+        legacy._member(name)
+
+
+@pytest.mark.parametrize('raw', [
+    b'Path = a.htm\nSize = 3\n\nPath = A.HTM\nSize = 4',
+    b'Path = a.htm\nSize = 3\nSize = 4',
+    b'Path = a.htm\nSize = 3\nEncrypted = +',
+    b'Path = a.htm\nSize = 10000',
+    b'Path = a.htm\nSize = 3\nUnknown = value',
+])
+def test_chm_ambiguous_or_excessive_listing_never_selects_members(raw):
+    with pytest.raises(ConversionError):
+        legacy._chm_listing(raw, 100)
+
+
+def test_chm_worker_uses_declared_toc_and_existing_inert_html_reader(tmp_path, monkeypatch):
+    executable = runtime(tmp_path)
+    stage = tmp_path / 'stage'
+    stage.mkdir()
+    selected = legacy_runtime.ToolSelection.capture(executable, 'chm').snapshot(stage)
+    members = {
+        'a.htm': b'<html><body><p>Second page</p><script>UNSAFE_SCRIPT_TEXT</script></body></html>',
+        'z.htm': b'<html><body><p>First page</p></body></html>',
+        'contents.hhc': b'<param name="Local" value="z.htm"><param name="Local" value="a.htm">',
+    }
+    calls = []
+    def native(args, *other, **options):
+        calls.append(args)
+        if args[1] == 'l':
+            return '\n\n'.join('Path = ' + name + '\nSize = ' + str(len(raw)) + '\nMethod = Copy'
+                               for name, raw in members.items()).encode()
+        assert args[1:7] == ['x', '-so', '-y', '-spd', '-sccUTF-8', '-tchm']
+        return members[args[-1]]
+    monkeypatch.setattr(legacy, '_run', native)
+    result = convert_request(request(stage, '.chm', FIXTURES['sample_chm'](), selected))
+    text = (stage / 'reading.txt').read_text()
+    assert result['state'] == 'complete' and text == 'First page\n\nSecond page'
+    assert 'UNSAFE_SCRIPT_TEXT' not in text
+    details = json.loads((stage / 'details.json').read_text())
+    assert [row['logical_locator']['chm_member'] for row in details['segments']] == ['z.htm', 'a.htm']
+    assert all(row['physical_index'] is None and row['status'] == 'review_required' for row in details['segments'])
+    assert all('--' in arguments for arguments in calls)
+
+
+def test_chm_truncated_member_publishes_no_complete_worker_report(tmp_path, monkeypatch):
+    executable = runtime(tmp_path)
+    stage = tmp_path / 'stage'
+    stage.mkdir()
+    selected = legacy_runtime.ToolSelection.capture(executable, 'chm').snapshot(stage)
+    monkeypatch.setattr(legacy, '_run', lambda args, *a, **k:
+                        b'Path = a.htm\nSize = 10' if args[1] == 'l' else b'bad')
+    with pytest.raises(ConversionError, match='differ'):
+        convert_request(request(stage, '.chm', FIXTURES['sample_chm'](), selected))
+    assert not (stage / 'reading.txt').exists() and not (stage / 'details.json').exists()
+
+
+@pytest.mark.parametrize('operation', ['outside_read', 'outside_write', 'socket', 'process', 'allowed_output'])
+def test_fixed_calibre_wrapper_enforces_private_io_and_no_network_or_programs(tmp_path, operation):
+    stage, root = tmp_path / 'stage', tmp_path / 'runtime'
+    stage.mkdir()
+    root.mkdir()
+    (stage / 'calibre-config').mkdir()
+    source, target = stage / 'source.tcr', stage / 'calibre.txt'
+    source.write_bytes(b'!!8-Bit!!synthetic')
+    target.write_bytes(b'')
+    helper = stage / 'calibre_guard.py'
+    helper.write_bytes(Path(legacy.__file__).with_name('calibre_guard.py').read_bytes())
+    sentinel = tmp_path / 'private.txt'
+    sentinel.write_text('PRIVATE_MARKER', encoding='utf-8')
+    program = r'''
+import os, pathlib, runpy, socket, subprocess, sys, types
+for name in ('calibre', 'calibre.ebooks', 'calibre.ebooks.conversion', 'calibre.ebooks.conversion.cli', 'calibre.constants'):
+    module = types.ModuleType(name)
+    module.__path__ = []
+    sys.modules[name] = module
+sys.modules['calibre.constants'].__version__ = '9.19.0'
+operation, private = sys.argv[1:3]
+def convert(args):
+    if operation == 'outside_read':
+        pathlib.Path(private).read_text()
+    elif operation == 'outside_write':
+        pathlib.Path(private).write_text('CHANGED')
+    elif operation == 'socket':
+        socket.socket()
+    elif operation == 'process':
+        subprocess.run([sys.executable, '-c', 'pass'], check=True)
+    pathlib.Path(args[2]).write_text('Allowed output', encoding='utf-8')
+    return 0
+sys.modules['calibre.ebooks.conversion.cli'].main = convert
+sys.argv = sys.argv[3:]
+os.environ['CALIBRE_CONFIG_DIRECTORY'] = str(pathlib.Path(sys.argv[0]).parent / 'calibre-config')
+runpy.run_path(sys.argv[0], run_name='__main__')
+'''
+    result = subprocess.run([sys.executable, '-I', '-B', '-c', program, operation, str(sentinel),
+        str(helper), str(source), str(target), str(root), '1024'],
+        cwd=stage, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=15, check=False)
+    if operation == 'allowed_output':
+        assert result.returncode == 0, result.stderr.decode('utf-8', 'replace')
+        assert target.read_text() == 'Allowed output'
+    else:
+        assert result.returncode != 0
+        assert target.read_bytes() == b''
+    assert sentinel.read_text() == 'PRIVATE_MARKER'
+
+
+@pytest.mark.parametrize('raw', [b'!!8-Bit!!', b'!!8-Bit!!' + b'\xff' + b'x' * 5,
+                                b'!!8-Bit!!' + b'\xff' + b'x' * 255 + b'\0' * 255 + b'\0' * 20])
+def test_tcr_dictionary_and_actual_expansion_are_bounded_before_native_decoder(raw):
+    with pytest.raises(ConversionError, match='dictionary|budget'):
+        legacy._calibre_header(raw, '.tcr', 1024)

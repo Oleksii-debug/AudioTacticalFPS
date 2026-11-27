@@ -1,0 +1,186 @@
+name: CARR selected legacy document qualification
+on:
+  push:
+    branches: ['carr/v3-acceptance-*', 'carr/legacy-converters-*']
+    paths: ['carr-library/**', '.github/workflows/carr-legacy-converters.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-legacy-converters-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  native-converters:
+    name: Windows / installed and source / ${{ matrix.family }}
+    runs-on: windows-2022
+    timeout-minutes: 65
+    strategy:
+      fail-fast: false
+      matrix:
+        family: [calibre, djvu, chm]
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      ORT_DISABLE_TELEMETRY: '1'
+      DO_NOT_TRACK: '1'
+      CARR_CONVERTER_FAMILY: ${{ matrix.family }}
+    steps:
+      - name: Check out exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181353ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Record candidate and initial unqualified state
+        run: |
+          New-Item -ItemType Directory converter-ci-results -ErrorAction Stop | Out-Null
+          $head = (& git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $head -ne $env:GITHUB_SHA) { throw 'Candidate checkout differs from the event.' }
+          $tree = (& git rev-parse 'HEAD^{tree}').Trim()
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot resolve candidate tree.' }
+          @{
+            schema = 1; status = 'NOT_RUN'; family = $env:CARR_CONVERTER_FAMILY
+            source_commit = $head; source_tree = $tree
+            workflow_sha = $env:GITHUB_WORKFLOW_SHA; workflow_ref = $env:GITHUB_WORKFLOW_REF
+            run_id = $env:GITHUB_RUN_ID; run_attempt = $env:GITHUB_RUN_ATTEMPT
+          } | ConvertTo-Json | Set-Content -Encoding utf8 converter-ci-results/source-provenance.json
+          @{schema = 1; status = 'NOT_RUN'; reason = 'Required native qualification has not completed.'} |
+            ConvertTo-Json | Set-Content -Encoding utf8 converter-ci-results/legacy-converter-gate.json
+          "CARR_CONVERTER_COMMIT=$head" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARR_CONVERTER_TREE=$tree" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          & git diff --exit-code HEAD --
+          if ($LASTEXITCODE -ne 0) { throw 'Tracked source differs from the exact candidate.' }
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+
+      - name: Build and install an exact source-bound wheel
+        timeout-minutes: 10
+        run: |
+          $work = Join-Path $env:RUNNER_TEMP ("carr-legacy-converters-" + $env:GITHUB_RUN_ID + "-" + $env:GITHUB_RUN_ATTEMPT + "-" + $env:CARR_CONVERTER_FAMILY)
+          if (Test-Path -LiteralPath $work) { throw 'Qualification environment must be fresh.' }
+          $wheels = Join-Path $work 'wheels'
+          New-Item -ItemType Directory $wheels -ErrorAction Stop | Out-Null
+          python -m pip install --only-binary=:all: setuptools==84.2.1 wheel==0.48.0 packaging==26.4
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip wheel --no-deps --no-build-isolation --wheel-dir $wheels .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $built = @(Get-ChildItem -LiteralPath $wheels -Filter '*.whl')
+          if ($built.Count -ne 1) { throw 'Expected exactly one application wheel.' }
+          $venv = Join-Path $work 'installed'
+          python -m venv $venv
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $venv 'Scripts/python.exe'
+          & $python -I -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -I -m pip install --no-deps --no-index --no-compile $built[0].FullName
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -I -m pip install --only-binary=:all: pytest==9.0.2 zstandard==0.25.0 packaging==26.4
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $inventory = @'
+          import importlib.metadata as metadata, json, pathlib, re, struct, sys
+          pins = dict(re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)', pathlib.Path('packaging/windows-cp311.lock').read_text(), re.M))
+          assert len(pins) == 17 and {name: metadata.version(name) for name in pins} == pins
+          assert sys.platform == 'win32' and sys.flags.isolated and struct.calcsize('P') == 8
+          print(json.dumps(pins, sort_keys=True))
+          '@
+          & $python -I -B -c $inventory | Tee-Object converter-ci-results/runtime-17-pins.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_CONVERTER_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARR_CONVERTER_WORK=$work" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARR_CONVERTER_WHEEL=$($built[0].FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Prepare only fixed publisher legacy tools and reviewed dependencies
+        timeout-minutes: 15
+        run: |
+          if ($env:CARR_CONVERTER_FAMILY -eq 'djvu') {
+            $ocr = Join-Path $env:CARR_CONVERTER_WORK 'ocr-dependencies'
+            & $env:CARR_CONVERTER_PYTHON -I -B packaging/prepare_windows_ocr.py --cache (Join-Path $env:CARR_CONVERTER_WORK 'ocr-cache') --output $ocr --source-archive (Join-Path $env:CARR_CONVERTER_WORK 'ocr-corresponding-source.tar') --download |
+              Tee-Object converter-ci-results/dependency-preparation.json
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          $arguments = @('--family', $env:CARR_CONVERTER_FAMILY, '--destination',
+                         (Join-Path $env:CARR_CONVERTER_WORK 'optional'), '--download')
+          if ($env:CARR_CONVERTER_FAMILY -eq 'djvu') { $arguments += @('--ocr-root', $ocr) }
+          & $env:CARR_CONVERTER_PYTHON -I -B packaging/prepare_legacy_conversion_runtimes.py @arguments 2>&1 |
+            Tee-Object converter-ci-results/runtime-preparation.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $prepared = Get-Content (Join-Path $env:CARR_CONVERTER_WORK 'optional/preparation.json') -Raw | ConvertFrom-Json
+          if ($prepared.status -ne 'PASS') { throw 'Pinned legacy runtime preparation did not complete.' }
+          Copy-Item -LiteralPath (Join-Path $env:CARR_CONVERTER_WORK 'optional/preparation.json') converter-ci-results/publisher-identities.json
+          "CARR_LEGACY_ROOT=$($prepared.runtime_root)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $variable = @{calibre='CARR_CALIBRE'; djvu='CARR_DJVUTXT'; chm='CARR_7ZIP'}[$env:CARR_CONVERTER_FAMILY]
+          "$variable=$($prepared.executable)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          if ($env:CARR_CONVERTER_FAMILY -eq 'chm') {
+            "CARR_7ZIP_HELP=$($prepared.help_fixture)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          }
+
+      - name: Keep every prepared native program offline during fixtures
+        timeout-minutes: 4
+        run: |
+          $programs = @($env:CARR_CONVERTER_PYTHON)
+          $programs += @(Get-ChildItem -LiteralPath $env:CARR_LEGACY_ROOT -Recurse -File |
+                          Where-Object { $_.Extension -in @('.exe', '.bin', '.com') } |
+                          ForEach-Object { $_.FullName })
+          $names = @()
+          foreach ($program in $programs) {
+            if (-not (Test-Path -LiteralPath $program -PathType Leaf)) { throw 'A prepared native executable is missing.' }
+            $name = 'CARR-legacy-converters-' + $env:GITHUB_RUN_ID + '-' + $env:CARR_CONVERTER_FAMILY + '-' + $names.Count
+            New-NetFirewallRule -Name $name -DisplayName $name -Direction Outbound -Program $program -Action Block -Profile Any -Enabled True -ErrorAction Stop | Out-Null
+            $rule = Get-NetFirewallRule -Name $name -ErrorAction Stop
+            if ($rule.Enabled -ne 'True' -or $rule.Action -ne 'Block' -or $rule.Direction -ne 'Outbound') { throw 'Native offline rule is not active.' }
+            $names += $name
+          }
+          $names | ConvertTo-Json -AsArray | Set-Content -Encoding utf8 converter-ci-results/firewall-rules.json
+          $programs | ConvertTo-Json -AsArray | Set-Content -Encoding utf8 converter-ci-results/firewall-programs.json
+
+      - name: Require source and installed boundaries and every selected native fixture
+        timeout-minutes: 40
+        run: |
+          & $env:CARR_CONVERTER_PYTHON -I -B -X utf8 scripts/legacy_conversion_acceptance.py --family $env:CARR_CONVERTER_FAMILY --checkout (Get-Location).Path --wheel $env:CARR_CONVERTER_WHEEL --output (Join-Path (Get-Location) 'converter-ci-results') --runtime-root $env:CARR_LEGACY_ROOT --source-commit $env:CARR_CONVERTER_COMMIT --source-tree $env:CARR_CONVERTER_TREE 2>&1 |
+            Tee-Object converter-ci-results/acceptance.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $report = Get-Content converter-ci-results/legacy-converter-gate.json -Raw | ConvertFrom-Json
+          $expected = if ($env:CARR_CONVERTER_FAMILY -eq 'calibre') { 9 } else { 4 }
+          if ($report.status -ne 'PASS' -or $report.native_source_cases -ne $expected -or $report.native_installed_cases -ne $expected -or
+              $report.portable_source_cases -ne 135 -or $report.portable_installed_cases -ne 135 -or
+              $report.source_commit -ne $env:CARR_CONVERTER_COMMIT -or $report.source_tree -ne $env:CARR_CONVERTER_TREE -or
+              -not $report.installed_identity.isolated) { throw 'Actual legacy fixture qualification is incomplete.' }
+          & git diff --exit-code HEAD --
+          if ($LASTEXITCODE -ne 0) { throw 'Tracked source changed during native qualification.' }
+
+      - name: Preserve preparation diagnostics and remove only owned firewall rules
+        if: always()
+        run: |
+          if ($env:CARR_CONVERTER_WORK) {
+            $preparation = Join-Path $env:CARR_CONVERTER_WORK 'optional/preparation.json'
+            if (Test-Path -LiteralPath $preparation -PathType Leaf) {
+              Copy-Item -LiteralPath $preparation converter-ci-results/publisher-identities.json -Force
+              Get-ChildItem -LiteralPath (Split-Path $preparation) -File -Filter 'prepare-*' | Copy-Item -Destination converter-ci-results -Force
+            }
+          }
+          Get-NetFirewallRule -Name ('CARR-legacy-converters-' + $env:GITHUB_RUN_ID + '-' + $env:CARR_CONVERTER_FAMILY + '-*') -ErrorAction SilentlyContinue |
+            Remove-NetFirewallRule -ErrorAction Stop
+
+      - name: Upload complete raw legacy-tool evidence even after failure
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-legacy-converters-${{ matrix.family }}-${{ github.sha }}
+          path: |
+            carr-library/converter-ci-results
+          if-no-files-found: error
+          retention-days: 14
