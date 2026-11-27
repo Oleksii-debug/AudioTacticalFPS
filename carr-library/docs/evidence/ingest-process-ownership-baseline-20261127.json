@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "baseline_commit": "5c1cce605e857537db91e0780976c5fda831b80a",
+  "baseline_tree": "741bef3e93725385a7f79b6ce268aa5393002195",
+  "test_only_overlay": "tests/ingest/test_worker_process_ownership.py",
+  "python": "3.12.14",
+  "platform": "linux",
+  "filelock": "3.29.0",
+  "pytest": "9.0.2",
+  "command": "PYTHONPATH=<checkout>/carr-library/src PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest tests/ingest/test_worker_process_ownership.py -q",
+  "outcome": "FAIL",
+  "passed": 0,
+  "failed": 4,
+  "skipped": 0,
+  "cases": [
+    "test_return_or_stop_waits_for_actual_descendant_native_lock[orphan-complete]",
+    "test_return_or_stop_waits_for_actual_descendant_native_lock[cancel-cancelled]",
+    "test_return_or_stop_waits_for_actual_descendant_native_lock[timeout-timed_out]",
+    "test_return_or_stop_waits_for_actual_descendant_native_lock[overflow-failed]"
+  ],
+  "observation": "The current supervisor returns while the actual SIGTERM-resistant descendant still holds its native file lock; a surrounding broker reservation has already released. Every test cleans up its exact synthetic child group in finally.",
+  "limits": [
+    "Linux native-process evidence only; no Windows execution.",
+    "Fixed actors exercise ownership, not parsing, OCR recognition, or catalog publication.",
+    "This test-only negative checkpoint must not be merged as a passing product change."
+  ]
+}
