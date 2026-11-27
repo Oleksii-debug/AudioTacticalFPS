@@ -138,6 +138,7 @@ def policy_ui(tmp_path, monkeypatch):
         sync_document=lambda: doc.set_text(editor.GetValue()), save_recovery=save,
         run=worker.run, cancel=Event())
     created = []
+    show_policy = reading_narration.show_reading_narration
     monkeypatch.setattr(reading_tools, 'show_reading_tools',
                         lambda owner, **options: options['content_policy'](owner))
     def open_policy(owner, **options):
@@ -149,7 +150,8 @@ def policy_ui(tmp_path, monkeypatch):
     dialog = created[0]
     worker.finish()
     state = SimpleNamespace(worker=worker, document=doc, editor=editor, parent=parent, scope=scope,
-        store=store, saves=saves, dialog=dialog, values=values, change_document=change)
+        store=store, saves=saves, dialog=dialog, values=values, change_document=change,
+        show_policy=show_policy)
     yield state
     if dialog.alive:
         dialog.close()
@@ -441,7 +443,7 @@ def test_actual_policy_close_still_ends_and_destroys_after_cancel_callback_failu
     dialog.EndModal = end
     monkeypatch.setattr(reading_narration, 'create_reading_narration', lambda *_a, **_k: dialog)
     with pytest.raises(RuntimeError, match='cancel callback failure'):
-        reading_narration.show_reading_narration(object())
+        state.show_policy(object())  # Actual ShowModal/finally wrapper, not the opener fixture.
     assert dialog.dead and not dialog.alive and dialog.cancel_pending is None
     ended.assert_called_once()
     state.worker.finish()
