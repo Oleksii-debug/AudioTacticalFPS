@@ -11,6 +11,7 @@ import weakref
 
 from ..keyboard_preferences import KeymapStore
 from ..research.export_file import write_export
+from .export_destination import confirm_export_destination
 from .builtin_keyboard_commands import MAIN_COMMANDS, builtin_commands, plain_caption
 from .command_registry import CommandRegistry, normalize_shortcut
 
@@ -443,7 +444,7 @@ class KeyboardSettingsDialog:
     def export_map(self, event=None):
         wx = self.wx
         chooser = wx.FileDialog(self.dialog, 'Export keyboard shortcuts', defaultFile='keyboard-shortcuts.json',
-                                wildcard='Keymap JSON (*.json)|*.json', style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+                                wildcard='Keymap JSON (*.json)|*.json', style=wx.FD_SAVE)
         try:
             if chooser.ShowModal() != wx.ID_OK:
                 return
@@ -454,8 +455,14 @@ class KeyboardSettingsDialog:
             normalized = self.manager.validate(self.draft)
             root = (self.manager.store.path.parent if self.manager.store is not None
                     else self.manager.private_root)
+            approval = confirm_export_destination(self.dialog, path, private_root=root,
+                                                   title='Replace keyboard shortcuts')
+            if approval is None:
+                return
+            if self.original_store is not self.manager.store:
+                raise ValueError('The active library folder changed. Close and reopen keyboard settings.')
             content = json.dumps({'version': 1, 'bindings': normalized}, ensure_ascii=False, indent=2) + '\n'
-            write_export(path, content, private_root=root)
+            write_export(path, content, private_root=root, approval=approval)
             self._message('The draft keymap was exported. Application shortcuts change only after Save.')
         except (ValueError, OSError, AttributeError) as exc:
             self._message('Keymap not exported. ' + str(exc))
