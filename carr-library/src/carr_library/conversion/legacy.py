@@ -194,7 +194,7 @@ def _djvu_pages(data, maximum):
             tag = data[position:position + 4]
             size = struct.unpack_from('>I', data, position + 4)[0]
             start, stop = position + 8, position + 8 + size
-            if stop > end or stop + (size & 1) > end:
+            if stop > end:
                 raise ConversionError('DjVu chunk exceeds its containing form.')
             if tag == b'INCL':
                 # The selected subset never follows an indirect dictionary/file.
@@ -211,7 +211,9 @@ def _djvu_pages(data, maximum):
                 if nested == b'DJVU':
                     pages += 1
                 pending.append((start + 4, stop, nested, depth + 1))
-            position = stop + (size & 1)
+            # IFF aligns the next sibling, not the end of its containing FORM.
+            # DjVuLibre closes an odd final chunk without an in-form pad byte.
+            position = stop if stop == end else stop + (size & 1)
     if not 1 <= pages <= maximum or form == b'DJVM' and not dirm:
         raise ConversionError('DjVu page inventory is absent or exceeds its budget.')
     return pages

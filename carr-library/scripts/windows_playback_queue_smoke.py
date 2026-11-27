@@ -293,7 +293,7 @@ def main():
             if identity() != before:
                 raise ValueError('Installed retained queue implementations changed during native execution.')
             result.update(installed_mode=True, isolated=True, module_origins=before,
-                          source_commit=os.environ['GITHUB_SHA'])
+                          source_commit=os.environ.get('CARR_EXPECTED_SOURCE_COMMIT', os.environ['GITHUB_SHA']))
         print(json.dumps(result, ensure_ascii=False, sort_keys=True), flush=True)
         return 0 if result['status'] == 'PASS' else 1
     except BaseException as error:

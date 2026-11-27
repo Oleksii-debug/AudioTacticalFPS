@@ -1,7 +1,7 @@
 name: CARR exact source syntax preflight
 on:
   push:
-    branches: ['carr/source-compile-*']
+    branches: ['carr/source-compile-*', 'carr/final-windows-*']
     paths: ['carr-library/**', '.github/workflows/carr-source-syntax.yml']
   workflow_dispatch:
 permissions:

@@ -1,4 +1,4 @@
-"""Exact Windows source/installed regression gate for observed R7 failures."""
+"""Exact Windows source/installed cleanup and canonical provider/data regressions."""
 from argparse import ArgumentParser
 import importlib.util
 import json
@@ -78,7 +78,9 @@ def finalize(results):
                     == gate['qualification_adapter_sha256'], 'The qualification adapter changed.')
         gate.update(status='PASS', wheel_sha256=installed['wheel_sha256'],
                     actual_ffmpeg=runtime, actual_windows_file_handles='PASS',
-                    previously_failing_cases_retained=55, new_boundary_cases=3)
+                    previously_failing_cases_retained=55, new_boundary_cases=3,
+                    canonical_provider_cases=ORACLE.get('canonical_provider_cases', 0),
+                    canonical_preserved_cases=ORACLE.get('canonical_preserved_cases', 0))
     except Exception as error:
         print(''.join(traceback.format_exception(type(error), error, error.__traceback__)),
               file=sys.stderr, flush=True)

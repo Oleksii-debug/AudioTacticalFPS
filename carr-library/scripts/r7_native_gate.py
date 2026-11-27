@@ -48,15 +48,35 @@ def main():
         before = identities()
         probe = root / config["probe"]
         digest = sha256(probe.read_bytes()).hexdigest()
-        namespace = runpy.run_path(str(probe), run_name="carr_composed_native_probe")
-        original_argv = sys.argv
-        sys.argv = [str(probe), *config.get("arguments", [])]
-        try:
-            with redirect_stdout(output):
-                status = namespace["main"]()
-        finally:
-            sys.argv = original_argv
-            print(output.getvalue(), end="", flush=True)
+        timeout = config.get("subprocess_timeout_seconds")
+        if timeout is not None:
+            if type(timeout) is not int or not 1 <= timeout <= 300:
+                raise ValueError("The finite native subprocess allowance is invalid.")
+            try:
+                process = subprocess.run(
+                    [sys.executable, "-I", "-B", "-X", "utf8", str(probe),
+                     *config.get("arguments", [])],
+                    cwd=root, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT, encoding="utf-8", errors="replace",
+                    timeout=timeout, check=False)
+                output.write(process.stdout)
+                status = process.returncode
+            except subprocess.TimeoutExpired as error:
+                raw = error.stdout or ""
+                output.write(raw.decode("utf-8", errors="replace") if isinstance(raw, bytes) else raw)
+                raise
+            finally:
+                print(output.getvalue(), end="", flush=True)
+        else:
+            namespace = runpy.run_path(str(probe), run_name="carr_composed_native_probe")
+            original_argv = sys.argv
+            sys.argv = [str(probe), *config.get("arguments", [])]
+            try:
+                with redirect_stdout(output):
+                    status = namespace["main"]()
+            finally:
+                sys.argv = original_argv
+                print(output.getvalue(), end="", flush=True)
         if status != 0:
             raise ValueError("Native probe returned a nonzero result.")
         if identities() != before or sha256(probe.read_bytes()).hexdigest() != digest:
@@ -101,6 +121,22 @@ def main():
                 value = value[part]
             if not isinstance(value, str) or re.fullmatch("[0-9a-f]{64}", value) is None:
                 raise ValueError("Native digest is missing: " + field)
+        def metric(field):
+            value = report
+            for part in field.split("."):
+                value = value[part]
+            return value
+
+        for left, right in config.get("equal_fields", []):
+            a, b = metric(left), metric(right)
+            if type(a) is not type(b) or a != b:
+                raise ValueError("Native retained identities differ: " + left + " / " + right)
+        for field, count in config.get("digest_lists", {}).items():
+            values = metric(field)
+            if (type(values) is not list or len(values) != count or len(set(values)) != count
+                    or any(type(value) is not str or re.fullmatch("[0-9a-f]{64}", value) is None
+                           for value in values)):
+                raise ValueError("Native retained digest inventory is incomplete: " + field)
         if args.kind in ("live", "live-playback"):
             source = "Prefix 😀.\r\nSelected source sentence 🦉. Second source sentence.\nLast paragraph."
             if report["actual_sapi_pcm"]["source_sha256"] != sha256(source.encode("utf-8")).hexdigest():
@@ -123,6 +159,11 @@ def main():
                 raise ValueError("Native PCM does not identify the gate-verified runtime.")
         commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
         tree = subprocess.check_output(["git", "rev-parse", "HEAD^{tree}"], cwd=root, text=True).strip()
+        expected_commit = os.environ.get("CARR_EXPECTED_SOURCE_COMMIT", os.environ.get("GITHUB_SHA"))
+        if expected_commit and commit != expected_commit:
+            raise ValueError("The installed native probe does not belong to the exact event source.")
+        if "source_commit" in report and report["source_commit"] != commit:
+            raise ValueError("The native receipt names a different source commit.")
         evidence.update(status="PASS", source_commit=commit, source_tree=tree, installed_package=True,
                         module_origins=before, probe_sha256=digest, native=report,
                         checks=sum(expected.values()), full_platform="NOT_CLAIMED")

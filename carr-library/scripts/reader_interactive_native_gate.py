@@ -39,7 +39,7 @@ def main():
         readers = runpy.run_path(str(source / names[1]), run_name='native_receipt_helpers')
         commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=source, text=True).strip()
         tree = subprocess.check_output(['git', 'rev-parse', 'HEAD^{tree}'], cwd=source, text=True).strip()
-        if commit != os.environ['GITHUB_SHA']:
+        if commit != os.environ.get('CARR_EXPECTED_SOURCE_COMMIT', os.environ['GITHUB_SHA']):
             raise ValueError('The installed native gate is bound to another event source.')
         report.update(source_commit=commit, source_tree=tree, source_files=before, native={})
         with TemporaryDirectory(prefix='carr-full-reader-native-') as temporary:

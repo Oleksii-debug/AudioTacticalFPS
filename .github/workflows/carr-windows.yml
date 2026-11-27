@@ -7,7 +7,7 @@ on:
       - carr-library/**
       - .github/workflows/carr-windows.yml
   push:
-    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/academic-research-workbench, carr/academic-search-20261126, carr/notebook-release-ascii-e021-20261126, carr/v3-local-studio-20261126-a4f9, 'carr/v3-acceptance-*']
+    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/academic-research-workbench, carr/academic-search-20261126, carr/notebook-release-ascii-e021-20261126, carr/v3-local-studio-20261126-a4f9, 'carr/v3-acceptance-*', 'carr/final-windows-*']
     paths:
       - carr-library/**
       - .github/workflows/carr-windows.yml
@@ -41,6 +41,7 @@ jobs:
       HF_HUB_DISABLE_IMPLICIT_TOKEN: '1'
       TRANSFORMERS_OFFLINE: '1'
       DO_NOT_TRACK: '1'
+      CARR_EXPECTED_SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - name: Check out the exact event commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -591,7 +592,35 @@ jobs:
             'tests/ui/test_legacy_transcription_recovery.py',
             'tests/audio/test_clip_consolidation.py',
             'tests/audio/test_clip_input_ownership.py',
-            'tests/conversion/test_legacy_adapters.py'
+            'tests/conversion/test_legacy_adapters.py',
+            'tests/audio/test_retained_playlist.py',
+            'tests/audio/test_playlist_session.py',
+            'tests/audio/test_playlist_player_boundary.py',
+            'tests/storage/test_playback_queue_backup.py',
+            'tests/ui/test_playback_queue.py',
+            'tests/audio/test_book_duration.py',
+            'tests/storage/test_book_duration_backup.py',
+            'tests/e2e/test_book_duration_cli.py',
+            'tests/ui/test_book_duration.py',
+            'tests/audio/test_publish_new_digest.py',
+            'tests/assistant/test_canonical_backup.py',
+            'tests/assistant/test_checkpoint_publication.py',
+            'tests/assistant/test_dialog_lifecycle.py',
+            'tests/assistant/test_local_assistant.py',
+            'tests/assistant/test_local_llm.py',
+            'tests/assistant/test_planning_handlers.py',
+            'tests/assistant/test_planning_runtime.py',
+            'tests/assistant/test_production_bridge.py',
+            'tests/assistant/test_state_validation.py',
+            'tests/assistant/test_workflow_templates.py',
+            'tests/assistant/test_workflow_template_handlers.py',
+            'tests/assistant/test_workflow_template_binding.py',
+            'tests/assistant/test_workflow_template_cli.py',
+            'tests/e2e/test_import_files_cancellation.py',
+            'tests/ingest/test_import_publication_point.py',
+            'tests/ui/test_operations_policy.py',
+            'tests/e2e/test_provider_credential_echo.py',
+            'tests/e2e/test_provider_profile_import.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -1142,6 +1171,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/r7_native_gate.py live --report ci-results/full-bundle-r7-live-native.json 2>&1 | Tee-Object 'ci-results/full-bundle-r7-live-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -X utf8 scripts/r7_native_gate.py live-playback --report ci-results/full-bundle-live-playback-native.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/r7_native_gate.py streamed --report ci-results/full-bundle-r7-streamed-native.json 2>&1 | Tee-Object 'ci-results/full-bundle-r7-streamed-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/r7_native_gate.py effects --report ci-results/full-bundle-r7-effects-native.json 2>&1 | Tee-Object 'ci-results/full-bundle-r7-effects-native.txt'
@@ -1189,6 +1220,12 @@ jobs:
           & $installedPython -I -B -X utf8 scripts/r7_native_gate.py legacy-asr --report ci-results/full-bundle-legacy-asr-native.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -X utf8 scripts/reader_interactive_native_gate.py --results ci-results/full-bundle-reader-interactive-native
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -X utf8 scripts/r7_native_gate.py playback-queue --report ci-results/full-bundle-playback-queue-native.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -X utf8 scripts/r7_native_gate.py workflow-templates --report ci-results/full-bundle-workflow-templates-native.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -X utf8 scripts/r7_native_gate.py book-duration --report ci-results/full-bundle-book-duration-native.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $runInstalledTests = @'
           import ctypes, hashlib, json, os, pathlib, sys
@@ -1547,7 +1584,26 @@ jobs:
               'tests/storage/test_backup_v3_compatibility.py',
               'tests/audio/test_clip_consolidation.py',
               'tests/audio/test_clip_input_ownership.py',
-              'tests/conversion/test_legacy_adapters.py'
+              'tests/conversion/test_legacy_adapters.py',
+              'tests/assistant/test_workflow_templates.py',
+              'tests/assistant/test_workflow_template_handlers.py',
+              'tests/assistant/test_workflow_template_binding.py',
+              'tests/assistant/test_workflow_template_cli.py',
+              'tests/audio/test_retained_playlist.py',
+              'tests/audio/test_playlist_session.py',
+              'tests/audio/test_playlist_player_boundary.py',
+              'tests/storage/test_playback_queue_backup.py',
+              'tests/ui/test_playback_queue.py',
+              'tests/audio/test_book_duration.py',
+              'tests/storage/test_book_duration_backup.py',
+              'tests/e2e/test_book_duration_cli.py',
+              'tests/ui/test_book_duration.py',
+              'tests/audio/test_publish_new_digest.py',
+              'tests/e2e/test_import_files_cancellation.py',
+              'tests/ingest/test_import_publication_point.py',
+              'tests/ui/test_operations_policy.py',
+              'tests/e2e/test_provider_credential_echo.py',
+              'tests/e2e/test_provider_profile_import.py'
           ]
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:
@@ -1700,6 +1756,83 @@ jobs:
           '@
           $loopbackProbe | & $installedPython -I -B - $bundle $stage $sourceCommit 2>&1 | Tee-Object 'ci-results/full-bundle-local-planning-loopback.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Verify local and existing translation through the exact sealed application
+        timeout-minutes: 40
+        run: |
+          $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
+          $bundle = Join-Path $bundleWork 'complete bundle'
+          $python = Join-Path $bundle '.venv/Scripts/python.exe'
+          $wheels = @(Get-ChildItem -LiteralPath (Join-Path $bundle 'wheelhouse') -Filter 'universal_research_library-*.whl')
+          if ($wheels.Count -ne 1) { throw 'The sealed bundle must contain one exact application wheel.' }
+          $sourceCommit = (& git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot resolve the tested source.' }
+          $sourceTree = (& git rev-parse 'HEAD^{tree}').Trim()
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot resolve the tested source tree.' }
+          $output = Join-Path (Get-Location) 'ci-results/full-bundle-local-translation'
+          New-Item -ItemType Directory -Path $output -ErrorAction Stop | Out-Null
+          $ruleName = 'CARR-final-local-translation-' + $env:GITHUB_RUN_ID + '-' + $env:GITHUB_RUN_ATTEMPT
+          $profiles = @(Get-NetFirewallProfile -ErrorAction Stop | ForEach-Object {
+            @{ name = $_.Name; enabled = [string]$_.Enabled }
+          })
+          $firewall = @{ schema = 1; status = 'RUNNING'; source_commit = $sourceCommit
+            source_tree = $sourceTree; profiles_before = $profiles; cleanup_status = 'NOT_RUN'
+            policy = 'Block installed Python external egress; only explicit numeric-loopback test policy permits local TCP.'
+          }
+          try {
+            Set-NetFirewallProfile -Profile Domain,Private,Public -Enabled True -ErrorAction Stop
+            New-NetFirewallRule -Name $ruleName -DisplayName 'CARR final local translation fixture' -Direction Outbound -Program $python -Action Block -Profile Any -ErrorAction Stop | Out-Null
+            $rule = Get-NetFirewallRule -Name $ruleName -ErrorAction Stop
+            $program = Get-NetFirewallApplicationFilter -AssociatedNetFirewallRule $rule -ErrorAction Stop
+            $active = @(Get-NetFirewallProfile -ErrorAction Stop)
+            if ($rule.Direction -ne 'Outbound' -or $rule.Action -ne 'Block' -or
+                $rule.Enabled -ne 'True' -or $program.Program -ne $python -or
+                $active.Count -ne 3 -or @($active | Where-Object { $_.Enabled -ne 'True' }).Count -ne 0) {
+              throw 'The actual installed-Python egress block is incomplete.'
+            }
+            $firewall.actual_rule = @{ name = $ruleName; program = $program.Program
+              direction = [string]$rule.Direction; action = [string]$rule.Action
+              enabled = [string]$rule.Enabled }
+            $firewall.profiles_enabled = @($active | ForEach-Object { @{ name = $_.Name; enabled = [string]$_.Enabled } })
+            $arguments = @('--checkout', (Get-Location).Path, '--wheel', $wheels[0].FullName,
+              '--output', $output, '--source-commit', $sourceCommit, '--source-tree', $sourceTree)
+            & $python -I -B -X utf8 scripts/local_translation_acceptance.py @arguments 2>&1 |
+              Tee-Object (Join-Path $output 'acceptance.txt')
+            if ($LASTEXITCODE -ne 0) { throw 'The exact sealed local/Google translation population failed.' }
+            $report = Get-Content (Join-Path $output 'local-translation-gate.json') -Raw | ConvertFrom-Json
+            if ($report.status -ne 'PASS' -or $report.source_cases -ne 306 -or
+                $report.installed_cases -ne 306 -or $report.native_flows -ne 8 -or
+                $report.local_loopback_cases_per_population -ne 38 -or
+                $report.existing_cases_per_population -ne 268 -or
+                $report.source_commit -ne $sourceCommit -or $report.source_tree -ne $sourceTree) {
+              throw 'The sealed translation receipt is incomplete or belongs to another candidate.'
+            }
+            $firewall.status = 'PASS'
+          } finally {
+            Get-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue |
+              Remove-NetFirewallRule -ErrorAction Stop
+            foreach ($profile in $profiles) {
+              Set-NetFirewallProfile -Profile $profile.name -Enabled $profile.enabled -ErrorAction Stop
+            }
+            $restored = @(Get-NetFirewallProfile -ErrorAction Stop | ForEach-Object {
+              @{ name = $_.Name; enabled = [string]$_.Enabled }
+            })
+            if (Get-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue) {
+              throw 'The owned translation firewall rule was not removed.'
+            }
+            foreach ($profile in $profiles) {
+              $actual = @($restored | Where-Object { $_.name -eq $profile.name })
+              if ($actual.Count -ne 1 -or $actual[0].enabled -ne $profile.enabled) {
+                throw 'A saved firewall profile was not restored.'
+              }
+            }
+            $firewall.profiles_restored = $restored
+            $firewall.owned_rule_absent = $true
+            $firewall.cleanup_status = 'PASS'
+            if ($firewall.status -ne 'PASS') { $firewall.status = 'FAIL' }
+            $firewall | ConvertTo-Json -Depth 8 |
+              Set-Content -Encoding utf8 (Join-Path $output 'firewall.json')
+          }
 
       - name: Verify actual standard installation repair and uninstall with retained user work
         timeout-minutes: 60

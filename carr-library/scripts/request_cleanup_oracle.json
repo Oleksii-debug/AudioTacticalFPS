@@ -1,8 +1,8 @@
 {
   "schema": 1,
-  "component": "Owned parser request cleanup and speech flush cancellation",
+  "component": "Observed request cleanup and canonical provider/data boundaries",
   "authoring_status": "NOT_RUN",
-  "derivation": "Preserves all 55 observed case-start multiplicities from run45993629737, plus three boundary regressions. Actual Windows source and isolated installed JUnit Counters remain mandatory.",
+  "derivation": "Retain all 58 observed request/publication cases; add all 57 reviewed provider regressions and 17 unchanged canonical import/resource cases.",
   "failure_source_commit": "523aa40f9215569a276f0625d09fcc0fa84bb520",
   "failure_run_id": 45993629737,
   "tests": {
@@ -42,7 +42,45 @@
       "test_owned_request_waits_for_native_read_handle_release": 1,
       "test_request_access_error_remains_visible_and_preserves_owned_bytes": 1,
       "test_constructor_failure_closes_request_before_directory_cleanup": 1
+    },
+    "tests/e2e/test_provider_credential_echo.py": {
+      "test_llm_reflection_is_rejected_before_any_completed_receipt": 6,
+      "test_binary_audio_credential_reflection_cannot_complete": 3,
+      "test_translation_reflection_remains_fail_closed": 6,
+      "test_native_task_controller_never_publishes_reflected_credentials": 2,
+      "test_local_requests_without_credentials_remain_available": 2,
+      "test_duplicate_json_cannot_hide_an_escaped_credential": 4,
+      "test_unknown_google_metadata_cannot_escape_as_completed_raw_bytes": 4
+    },
+    "tests/e2e/test_provider_profile_import.py": {
+      "test_import_retains_settings_without_vault_bindings_or_authority": 6,
+      "test_import_rejects_untrusted_or_unbounded_documents_without_mutation": 13,
+      "test_conflict_refuses_the_complete_batch_without_overwriting_an_account": 1,
+      "test_atomic_publication_failure_preserves_prior_accounts": 1,
+      "test_real_concurrent_imports_use_one_writer_and_never_lose_an_account": 2,
+      "test_empty_export_is_a_noop_without_creating_settings": 1,
+      "test_native_controller_review_is_read_only_and_import_requires_explicit_approval": 1,
+      "test_reviewed_bytes_do_not_change_when_the_external_export_changes_later": 1,
+      "test_import_cannot_follow_a_replaced_library_root": 1,
+      "test_native_review_rejects_a_hard_linked_export": 1,
+      "test_native_review_refuses_invalid_inputs_before_any_import": 2
+    },
+    "tests/e2e/test_import_files_cancellation.py": {
+      "test_cancel_after_committed_text_leaves_next_original_unopened": 1,
+      "test_precancelled_selection_opens_no_source": 1,
+      "test_interrupted_error_is_acknowledged_cancellation_and_stops_selection": 1,
+      "test_cancelled_receipt_stops_even_if_later_callback_is_clear": 1,
+      "test_ordinary_file_error_does_not_cancel_later_valid_source": 1
+    },
+    "tests/ingest/test_import_publication_point.py": {
+      "test_cancel_after_committed_publication_returns_complete_and_keeps_replay_guard": 2
+    },
+    "tests/ui/test_operations_policy.py": {
+      "test_explicit_native_policy_persists_without_enabling_unlisted_gpu": 1,
+      "test_invalid_gpu_policy_is_rejected_without_persistence": 9
     }
   },
-  "total_cases": 58
+  "total_cases": 132,
+  "canonical_provider_cases": 57,
+  "canonical_preserved_cases": 17
 }

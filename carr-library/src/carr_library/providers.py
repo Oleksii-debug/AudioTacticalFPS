@@ -122,6 +122,40 @@ def _digest(value):
     return sha256(_json(value)).hexdigest()
 
 
+def _reject_credential_material(value, secret):
+    """Reject reflected credentials before any result or completion receipt escapes.
+
+    Binary audio needs the same raw guard as JSON. Structured responses also
+    need inspection after JSON/HTML decoding; escaped keys or metadata are not
+    a safe place to retain a live credential. Nothing here displays the value.
+    """
+    if not secret:
+        return
+    if isinstance(value, bytes):
+        if secret.encode('utf-8') in value:
+            raise ProviderError('Provider returned credential material; no response was saved.')
+        return
+    pending = [value]
+    while pending:
+        current = pending.pop()
+        if isinstance(current, str):
+            probe = current
+            for _ in range(5):
+                if secret in probe:
+                    raise ProviderError('Provider returned credential material; no response was saved.')
+                following = unescape(probe)
+                if following == probe:
+                    break
+                probe = following
+            else:
+                raise ProviderError('Unsupported nested response escapes; no response was saved.')
+        elif isinstance(current, dict):
+            pending.extend(current.keys())
+            pending.extend(current.values())
+        elif isinstance(current, (list, tuple)):
+            pending.extend(current)
+
+
 def translation_receipt_sha256(value, detected_source):
     """Bind accepted decoded text and language independently of its wire hash."""
     return _digest({'text': value, 'detected_source': detected_source})
@@ -330,6 +364,35 @@ class WindowsCredentialVault:
             raise ProviderError('Windows could not remove the API key.')
 
 
+def decode_profile_import(raw):
+    """Decode only an inert export of current nonsecret provider settings."""
+    try:
+        if isinstance(raw, str):
+            raw = raw.encode('utf-8', errors='strict')
+        if not isinstance(raw, bytes) or not 0 < len(raw) <= MAX_REQUEST:
+            raise ProviderError('Profile import exceeds its byte budget or is empty.')
+        value = json.loads(raw, object_pairs_hook=_unique_json,
+            parse_constant=lambda item: (_ for _ in ()).throw(ValueError()))
+        if (type(value) is not dict or set(value) != {'version', 'profiles'}
+                or type(value['version']) is not int or value['version'] != 1
+                or type(value['profiles']) is not list or len(value['profiles']) > 1000):
+            raise ProviderError('Unsupported provider profile export.')
+        profiles, identities = [], set()
+        for row in value['profiles']:
+            selected = ProviderProfile.from_dict(row)
+            if selected.id in identities:
+                raise ProviderError('Profile import contains duplicate account identities.')
+            identities.add(selected.id)
+            # A file never authorizes another machine or this user's old vault.
+            # Local profiles also require a fresh exact per-task approval.
+            profiles.append(ProviderProfile(**{**asdict(selected), 'credential_ref': None}))
+        return tuple(profiles)
+    except ProviderError:
+        raise
+    except (ValueError, TypeError, UnicodeError, RecursionError):
+        raise ProviderError('Invalid provider profile export. No accounts were imported.') from None
+
+
 class ProfileStore:
     def __init__(self, path: Path, vault: CredentialVault | None = None):
         self.path, self.vault = _plain(path), vault
@@ -435,6 +498,24 @@ class ProfileStore:
         _atomic_json(self.path, {'version': 1, 'profiles': [asdict(p) for p in profiles if p.id != identity]})
         if found.credential_ref:
             self._discard_key(found)
+
+    def import_profiles(self, raw):
+        """Atomically add reviewed settings; never overwrite or open a vault."""
+        from .ingest.writer_guard import exclusive_writer
+        profiles = decode_profile_import(raw)
+        if not profiles:
+            return ()
+        self.warning = ''
+        with exclusive_writer(self.path.parent, timeout=10):
+            current = self.profiles()
+            existing = {profile.id for profile in current}
+            if any(profile.id in existing for profile in profiles):
+                raise FileExistsError('Profile import does not overwrite existing accounts. Choose distinct account identities.')
+            if len(current) + len(profiles) > 1000:
+                raise ProviderError('Profile import exceeds the account count budget.')
+            _atomic_json(self.path, {'version': 1,
+                'profiles': [asdict(profile) for profile in (*current, *profiles)]})
+        return profiles
 
     def export_profiles(self):
         return {'version': 1, 'profiles': [{**asdict(p), 'credential_ref': None} for p in self.profiles()]}
@@ -623,19 +704,9 @@ def _decode_advanced_translation_response(profile, request, raw, *, secret=None)
                              parse_constant=lambda item: (_ for _ in ()).throw(ValueError()))
         if type(decoded) is not dict:
             raise ValueError
-        # Inspect every returned string, including an unselected base translation,
-        # after JSON decoding. HTML decoding is used only for secret detection.
-        if secret:
-            probe = _json(decoded).decode('utf-8')
-            for _ in range(5):
-                if secret in probe:
-                    raise ProviderError('Provider returned credential material; no response was saved.')
-                following = unescape(probe)
-                if following == probe:
-                    break
-                probe = following
-            else:
-                raise ProviderError('Unsupported nested response escapes; no response was saved.')
+        # Inspect the complete wire object, including an unselected glossary
+        # or base result, before choosing a typed derivative.
+        _reject_credential_material(decoded, secret)
 
         def plain(value, maximum, *, empty=False):
             if (not isinstance(value, str) or len(value) > maximum or '\x00' in value
@@ -763,6 +834,7 @@ def decode_translation_response(request, raw, *, secret=None, profile=None):
     try:
         decoded = json.loads(raw, object_pairs_hook=unique,
                              parse_constant=lambda value: (_ for _ in ()).throw(ValueError()))
+        _reject_credential_material(decoded, secret)
         if type(decoded) is not dict or set(decoded) != {'data'} or type(decoded['data']) is not dict:
             raise ValueError
         data = decoded['data']
@@ -1120,15 +1192,19 @@ class ProviderGateway:
                 output = self.transport.post(profile, route, raw, headers, **transport_options)
             if not isinstance(output, bytes) or not 0 < len(output) <= MAX_RESPONSE:
                 raise ProviderError('Invalid or oversized provider result.')
+            _reject_credential_material(output, secret)
             decoded_translation_sha256 = None
             if isinstance(request, GoogleTranslationRequest):
                 decoded = decode_translation_response(request, output, secret=secret, profile=profile)
+                _reject_credential_material(decoded, secret)
                 if request.operation == 'text':
                     decoded_translation_sha256 = translation_receipt_sha256(
                         decoded['text'], decoded['detected_source'])
             elif request.capability == 'llm':
                 try:
-                    decoded = json.loads(output)
+                    decoded = json.loads(output, object_pairs_hook=_unique_json,
+                        parse_constant=lambda item: (_ for _ in ()).throw(ValueError()))
+                    _reject_credential_material(decoded, secret)
                     message = decoded['choices'][0]['message']
                     if message.get('tool_calls') or not isinstance(message['content'], str):
                         raise ValueError

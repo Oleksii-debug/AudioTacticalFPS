@@ -9,6 +9,7 @@ import subprocess
 import pytest
 
 from carr_library.conversion import ConversionBudget, ConversionError, ConversionService
+from carr_library.conversion.legacy import _djvu_pages
 
 FIXTURES = runpy.run_path(str(Path(__file__).with_name('legacy_fixtures.py')))
 
@@ -166,6 +167,7 @@ def test_real_djvulibre_reads_every_embedded_text_page(tmp_path, multiple):
 def test_real_djvu_without_text_layer_is_not_reported_as_ocr(tmp_path):
     source = djvu(tmp_path, text=False)
     before = source.read_bytes()
+    assert _djvu_pages(before, 1) == 1  # Accept actual cjb2 framing before refusing absent text.
     with pytest.raises(ConversionError, match='embedded text|fixed operation'):
         convert(tmp_path, source, 'djvu')
     assert source.read_bytes() == before and not list((tmp_path / 'reading-output').iterdir())

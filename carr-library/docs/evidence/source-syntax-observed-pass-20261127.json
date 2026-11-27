@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "status": "PASS",
+  "scope": "SYNTAX_ONLY",
+  "run_id": 46013009890,
+  "job_id": 140552996417,
+  "source_commit": "48e038ef1993879605ecb83e0dfa17794382a851",
+  "source_tree": "d7b948b93397525b7e956afc564fa7a6742fd8f1",
+  "syntax_files": 1002,
+  "failures": {},
+  "entrypoints": {
+    "scripts:research-library": "carr_library.__main__:main",
+    "scripts:research-library-bibliography": "carr_library.bibliography_cli:main",
+    "scripts:research-library-translate": "carr_library.translation_cli:main",
+    "scripts:research-library-ocr-models": "carr_library.extract.ocr_model_catalog:main",
+    "scripts:research-library-trust": "carr_library.security.__main__:main",
+    "gui-scripts:research-library-desktop": "carr_library.__main__:main"
+  },
+  "runtime_tests": "NOT_RUN",
+  "installed_windows": "NOT_RUN",
+  "nvda": "NOT_RUN",
+  "artifact": {
+    "id": 15205237985,
+    "bytes": 47641,
+    "sha256": "17a326e2d7ff357285b226aad24c67681c45f866b60229459466a6b187ccb472"
+  },
+  "limits": "CPython 3.11 AST parsing of all 1002 tracked Python sources, declared entrypoint presence and two current standard-harness Python here-strings. No execution or later source pass is implied."
+}
