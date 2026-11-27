@@ -127,7 +127,8 @@ def run_native():
     ui_module.NativeLibraryWorkflow = ObservedNativeWorkflow
     try:
         with TemporaryDirectory(prefix='carr-native-library-workflow-') as temporary:
-            root = Path(temporary)
+            # The reviewed service renders canonical allowed-folder paths.
+            root = Path(temporary).resolve(strict=True)
             inputs, outputs = root / 'selected inputs', root / 'selected outputs'
             inputs.mkdir()
             outputs.mkdir()
@@ -210,7 +211,9 @@ def run_native():
                 assert 'Plan ready for review' in view.status.GetValue()
                 assert wx.Window.FindFocus() is view.status
                 assert 'LOCAL ONLY' in view.review.GetValue()
-                assert str(inputs) in view.review.GetValue() and str(outputs) in view.review.GetValue()
+                review_text = view.review.GetValue()
+                assert str(inputs) in review_text, ('Expected input folder', str(inputs), review_text)
+                assert str(outputs) in review_text, ('Expected output folder', str(outputs), review_text)
                 assert 'import_text' in view.review.GetValue() and 'export_topic' in view.review.GetValue()
                 assert not view.controller.service.journal.exists()
                 assert len(library.browse(workspace)) == 1 and len(library.topics(workspace)) == 1
@@ -270,7 +273,10 @@ def run_native():
                 view = state['view']
                 assert view.controller.job_id == state['job_id'] and view.run.IsEnabled(), view.status.GetValue()
                 assert 'Saved plan loaded' in view.status.GetValue()
-                assert view.input_root.GetValue() == str(inputs) and view.output_root.GetValue() == str(outputs)
+                assert view.input_root.GetValue() == str(inputs), (
+                    'Restored input folder', str(inputs), view.input_root.GetValue())
+                assert view.output_root.GetValue() == str(outputs), (
+                    'Restored output folder', str(outputs), view.output_root.GetValue())
                 assert not view.backup_permission.GetValue()
                 assert 'Completed steps: 1/4' in view.results.GetValue()
                 assert len(library.browse(workspace)) == 2 and len(library.topics(workspace)) == 1

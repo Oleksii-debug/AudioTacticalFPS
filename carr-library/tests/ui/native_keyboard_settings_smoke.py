@@ -155,179 +155,202 @@ def run_native(source=None, timeout=120):
             frame.SetSize((1100, 900))
             frame.Show()
             frame.Raise()
-            check('production DesktopFrame opens the synthetic evidence topic',
-                  pump(lambda: frame.active == (workspace, topic) and frame.evidence is not None
-                       and frame.evidence.displayed is not None
-                       and frame.evidence.displayed.evidence_id == evidence_id and not frame.working))
-            frame._restore_note_focus()
-            frame.evidence.note.SetValue(draft)
-            focus(frame.evidence.note)
-            check('probe starts with a real unsaved research note', preserved())
-            if source is None:
-                check('application and keyboard modules load from the installed distribution',
-                      all(not Path(origin).is_relative_to(checkout) for origin in origins.values()))
-
-            menu = wx.Menu()
-            action = menu.Append(wx.ID_ANY, test_caption + '\tCtrl+Shift+J')
-            frame.GetMenuBar().Append(menu, '&Probe')
-            frame.Bind(wx.EVT_MENU, lambda event: calls.append(event.GetId()), action)
-            manager = frame.keyboard_commands
-            manager.register_menu_command(CommandSpec(test_id, test_caption, 'main', 'Ctrl+Shift+J'), action)
-            check('extension command uses the production stable-ID registry', manager.available(test_id))
-            keymap = manager.store.path
-
-            def host_key(letter):
-                frame.Raise()
+            # Create the real host window before entering wx.App.MainLoop.
+            # Run retained key assertions with native menu/button dispatch active.
+            def exercise():
+                check('production DesktopFrame opens the synthetic evidence topic',
+                      pump(lambda: frame.active == (workspace, topic) and frame.evidence is not None
+                           and frame.evidence.displayed is not None
+                           and frame.evidence.displayed.evidence_id == evidence_id and not frame.working))
                 frame._restore_note_focus()
+                frame.evidence.note.SetValue(draft)
                 focus(frame.evidence.note)
-                press(ord(letter), wx.MOD_CONTROL | wx.MOD_SHIFT)
+                check('probe starts with a real unsaved research note', preserved())
+                if source is None:
+                    check('application and keyboard modules load from the installed distribution',
+                          all(not Path(origin).is_relative_to(checkout) for origin in origins.values()))
 
-            host_key('J')
-            check('actual default shortcut dispatches the current native menu handler',
-                  pump(lambda: len(calls) == 1) and calls == [action.GetId()])
+                menu = wx.Menu()
+                action = menu.Append(wx.ID_ANY, test_caption + '\tCtrl+Shift+J')
+                frame.GetMenuBar().Append(menu, '&Probe')
+                frame.Bind(wx.EVT_MENU, lambda event: calls.append(event.GetId()), action)
+                manager = frame.keyboard_commands
+                manager.register_menu_command(CommandSpec(test_id, test_caption, 'main', 'Ctrl+Shift+J'), action)
+                check('extension command uses the production stable-ID registry', manager.available(test_id))
+                keymap = manager.store.path
 
-            def settings_session(operation):
-                nonlocal settings
-                settings = KeyboardSettingsDialog(frame, manager)
-                errors = []
+                def host_key(letter):
+                    frame.Raise()
+                    frame._restore_note_focus()
+                    focus(frame.evidence.note)
+                    press(ord(letter), wx.MOD_CONTROL | wx.MOD_SHIFT)
 
-                def edit():
+                host_key('J')
+                check('actual default shortcut dispatches the current native menu handler',
+                      pump(lambda: len(calls) == 1) and calls == [action.GetId()])
+
+                def settings_session(operation):
+                    nonlocal settings
+                    settings = KeyboardSettingsDialog(frame, manager)
+                    errors = []
+
+                    def edit():
+                        try:
+                            check('settings use named native controls in a real modal dialog',
+                                  settings.dialog.IsModal() and isinstance(settings.shortcut, wx.TextCtrl)
+                                  and settings.context.GetName() == 'Command context')
+                            settings.search.SetValue(test_caption)
+                            if not pump(lambda: len(settings.rows) == 1
+                                        and settings.rows[0].command_id == test_id):
+                                raise AssertionError('Native command filter did not find the stable test command.')
+                            operation(settings)
+                        except BaseException as exc:
+                            errors.append(exc)
+                        finally:
+                            if settings.dialog.IsModal() and settings.dialog.IsShown():
+                                settings.dialog.EndModal(wx.ID_CANCEL)
+
+                    wx.CallAfter(edit)
                     try:
-                        check('settings use named native controls in a real modal dialog',
-                              settings.dialog.IsModal() and isinstance(settings.shortcut, wx.TextCtrl)
-                              and settings.context.GetName() == 'Command context')
-                        settings.search.SetValue(test_caption)
-                        if not pump(lambda: len(settings.rows) == 1
-                                    and settings.rows[0].command_id == test_id):
-                            raise AssertionError('Native command filter did not find the stable test command.')
-                        operation(settings)
-                    except BaseException as exc:
-                        errors.append(exc)
+                        result = settings.show()
                     finally:
-                        if settings.dialog.IsModal():
-                            settings.dialog.EndModal(wx.ID_CANCEL)
+                        settings = None
+                    if errors:
+                        raise errors[0]
+                    healthy()
+                    return result
 
-                wx.CallAfter(edit)
+                def remap(dialog):
+                    dialog.shortcut.SetValue('Ctrl+Shift+K')
+                    activate(button(dialog.dialog, caption='Assign shortcut'))
+                    check('native Assign edits a draft before persistence',
+                          dialog.draft[test_id] == 'Ctrl+Shift+K'
+                          and manager.shortcut(test_id) == 'Ctrl+Shift+J' and not keymap.exists())
+                    activate(button(dialog.dialog, identifier=wx.ID_OK))
+
+                check('native Save closes the settings dialog successfully', settings_session(remap))
+                check('saved native settings persist a semantic command ID and update the menu',
+                      KeymapStore(keymap).load()[test_id] == 'Ctrl+Shift+K'
+                      and action.GetItemLabel().endswith('\tCtrl+Shift+K'))
+                host_key('J')
+                check('old native menu accelerator stops after remapping', len(calls) == 1)
+                host_key('K')
+                check('new native menu accelerator dispatches exactly once', pump(lambda: len(calls) == 2))
+
+                action.Enable(False)
+                host_key('K')
+                check('actual shortcut cannot dispatch a disabled native menu item',
+                      len(calls) == 2 and not manager.available(test_id))
+                action.Enable(True)
+                before = keymap.read_bytes()
+
+                def cancel(dialog):
+                    dialog.shortcut.SetValue('Ctrl+Alt+J')
+                    activate(button(dialog.dialog, caption='Assign shortcut'))
+                    check('cancel probe has an unapplied native settings draft',
+                          dialog.draft[test_id] == 'Ctrl+Alt+J' and manager.shortcut(test_id) == 'Ctrl+Shift+K')
+                    press(wx.WXK_ESCAPE)
+
+                check('actual Escape cancels the native settings dialog', not settings_session(cancel))
+                check('Cancel preserves saved bindings and the complete unsaved evidence note',
+                      keymap.read_bytes() == before and manager.shortcut(test_id) == 'Ctrl+Shift+K' and preserved())
+
+                def conflict(dialog):
+                    dialog.shortcut.SetValue('Ctrl+N')
+                    activate(button(dialog.dialog, identifier=wx.ID_OK))
+                    check('conflicting shortcut remains in the open native settings dialog',
+                          dialog.dialog.IsModal() and 'not saved' in dialog.status.GetValue().lower()
+                          and 'both' in dialog.status.GetValue().lower())
+                    check('failed native Save preserves the previous file, binding, source, and note',
+                          keymap.read_bytes() == before and manager.shortcut(test_id) == 'Ctrl+Shift+K'
+                          and preserved())
+                    press(wx.WXK_ESCAPE)
+
+                check('rejected settings can be cancelled without publication', not settings_session(conflict))
+
+                def unassign(dialog):
+                    dialog.shortcut.SetValue('')
+                    activate(button(dialog.dialog, identifier=wx.ID_OK))
+
+                check('native settings support explicit unassignment', settings_session(unassign)
+                      and manager.shortcut(test_id) == '' and '\t' not in action.GetItemLabel())
+                host_key('K')
+                check('unassigned native accelerator no longer dispatches', len(calls) == 2)
+
+                launcher_errors = []
+
+                def choose_command():
+                    dialog = None
+                    try:
+                        dialog = next(window for window in wx.GetTopLevelWindows()
+                                      if isinstance(window, wx.Dialog) and window.GetTitle() == 'Find a command')
+                        search = next(child for child in dialog.GetChildren()
+                                      if child.GetName() == 'Search commands by name')
+                        results = next(child for child in dialog.GetChildren()
+                                       if child.GetName() == 'Matching commands and shortcuts')
+                        search.SetValue(test_caption)
+                        check('native launcher finds an available command with no assigned shortcut',
+                              pump(lambda: results.GetCount() == 1)
+                              and 'Not assigned' in results.GetString(0))
+                        activate(button(dialog, identifier=wx.ID_OK))
+                    except BaseException as exc:
+                        launcher_errors.append(exc)
+                    finally:
+                        if dialog is not None and dialog.IsModal() and dialog.IsShown():
+                            dialog.EndModal(wx.ID_CANCEL)
+
+                wx.CallAfter(choose_command)
+                launched = show_command_launcher(frame, manager)
+                if launcher_errors:
+                    raise launcher_errors[0]
+                check('native launcher invokes the original current menu handler', launched and len(calls) == 3)
+
+                def reset(dialog):
+                    activate(button(dialog.dialog, caption='Reset selected'))
+                    check('native reset selects the original command shortcut',
+                          dialog.shortcut.GetValue() == 'Ctrl+Shift+J')
+                    activate(button(dialog.dialog, identifier=wx.ID_OK))
+
+                check('native settings save the reset shortcut', settings_session(reset)
+                      and manager.shortcut(test_id) == 'Ctrl+Shift+J')
+                host_key('K')
+                check('reset removes the previously custom native accelerator', len(calls) == 3)
+                host_key('J')
+                check('reset restores the original native accelerator', pump(lambda: len(calls) == 4))
+                focus(frame.evidence.note)
+                frame.evidence.note.SetSelection(0, 0)
+                press(ord('A'), wx.MOD_CONTROL)
+                check('native Ctrl+A still selects editable note text',
+                      frame.evidence.note.GetStringSelection() == draft and len(calls) == 4)
+                check('all keyboard workflows preserve the original data root, source, saved note, and unsaved draft',
+                      preserved())
+                print(json.dumps({'status': 'PASS', 'checks': len(checks), 'wx': wx.version(),
+                                  'platform': platform.system(), 'origins': origins,
+                                  'native_key_backend': 'wx.UIActionSimulator',
+                                  'settings_controls': 'native; command filter and shortcut text supplied by probe',
+                                  'source_override': str(source) if source is not None else None,
+                                  'nvda': 'NOT_RUN'}, sort_keys=True), flush=True)
+                return 0
+            loop_results = []
+            loop_failures = []
+
+            def dispatch():
                 try:
-                    result = settings.show()
+                    loop_results.append(exercise())
+                except BaseException as error:
+                    loop_failures.append((error, error.__traceback__))
                 finally:
-                    settings = None
-                if errors:
-                    raise errors[0]
-                healthy()
-                return result
+                    application.ExitMainLoop()
 
-            def remap(dialog):
-                dialog.shortcut.SetValue('Ctrl+Shift+K')
-                activate(button(dialog.dialog, caption='Assign shortcut'))
-                check('native Assign edits a draft before persistence',
-                      dialog.draft[test_id] == 'Ctrl+Shift+K'
-                      and manager.shortcut(test_id) == 'Ctrl+Shift+J' and not keymap.exists())
-                activate(button(dialog.dialog, identifier=wx.ID_OK))
-
-            check('native Save closes the settings dialog successfully', settings_session(remap))
-            check('saved native settings persist a semantic command ID and update the menu',
-                  KeymapStore(keymap).load()[test_id] == 'Ctrl+Shift+K'
-                  and action.GetItemLabel().endswith('\tCtrl+Shift+K'))
-            host_key('J')
-            check('old native menu accelerator stops after remapping', len(calls) == 1)
-            host_key('K')
-            check('new native menu accelerator dispatches exactly once', pump(lambda: len(calls) == 2))
-
-            action.Enable(False)
-            host_key('K')
-            check('actual shortcut cannot dispatch a disabled native menu item',
-                  len(calls) == 2 and not manager.available(test_id))
-            action.Enable(True)
-            before = keymap.read_bytes()
-
-            def cancel(dialog):
-                dialog.shortcut.SetValue('Ctrl+Alt+J')
-                activate(button(dialog.dialog, caption='Assign shortcut'))
-                check('cancel probe has an unapplied native settings draft',
-                      dialog.draft[test_id] == 'Ctrl+Alt+J' and manager.shortcut(test_id) == 'Ctrl+Shift+K')
-                press(wx.WXK_ESCAPE)
-
-            check('actual Escape cancels the native settings dialog', not settings_session(cancel))
-            check('Cancel preserves saved bindings and the complete unsaved evidence note',
-                  keymap.read_bytes() == before and manager.shortcut(test_id) == 'Ctrl+Shift+K' and preserved())
-
-            def conflict(dialog):
-                dialog.shortcut.SetValue('Ctrl+N')
-                activate(button(dialog.dialog, identifier=wx.ID_OK))
-                check('conflicting shortcut remains in the open native settings dialog',
-                      dialog.dialog.IsModal() and 'not saved' in dialog.status.GetValue().lower()
-                      and 'both' in dialog.status.GetValue().lower())
-                check('failed native Save preserves the previous file, binding, source, and note',
-                      keymap.read_bytes() == before and manager.shortcut(test_id) == 'Ctrl+Shift+K'
-                      and preserved())
-                press(wx.WXK_ESCAPE)
-
-            check('rejected settings can be cancelled without publication', not settings_session(conflict))
-
-            def unassign(dialog):
-                dialog.shortcut.SetValue('')
-                activate(button(dialog.dialog, identifier=wx.ID_OK))
-
-            check('native settings support explicit unassignment', settings_session(unassign)
-                  and manager.shortcut(test_id) == '' and '\t' not in action.GetItemLabel())
-            host_key('K')
-            check('unassigned native accelerator no longer dispatches', len(calls) == 2)
-
-            launcher_errors = []
-
-            def choose_command():
-                dialog = None
-                try:
-                    dialog = next(window for window in wx.GetTopLevelWindows()
-                                  if isinstance(window, wx.Dialog) and window.GetTitle() == 'Find a command')
-                    search = next(child for child in dialog.GetChildren()
-                                  if child.GetName() == 'Search commands by name')
-                    results = next(child for child in dialog.GetChildren()
-                                   if child.GetName() == 'Matching commands and shortcuts')
-                    search.SetValue(test_caption)
-                    check('native launcher finds an available command with no assigned shortcut',
-                          pump(lambda: results.GetCount() == 1)
-                          and 'Not assigned' in results.GetString(0))
-                    activate(button(dialog, identifier=wx.ID_OK))
-                except BaseException as exc:
-                    launcher_errors.append(exc)
-                finally:
-                    if dialog is not None and dialog.IsModal():
-                        dialog.EndModal(wx.ID_CANCEL)
-
-            wx.CallAfter(choose_command)
-            launched = show_command_launcher(frame, manager)
-            if launcher_errors:
-                raise launcher_errors[0]
-            check('native launcher invokes the original current menu handler', launched and len(calls) == 3)
-
-            def reset(dialog):
-                activate(button(dialog.dialog, caption='Reset selected'))
-                check('native reset selects the original command shortcut',
-                      dialog.shortcut.GetValue() == 'Ctrl+Shift+J')
-                activate(button(dialog.dialog, identifier=wx.ID_OK))
-
-            check('native settings save the reset shortcut', settings_session(reset)
-                  and manager.shortcut(test_id) == 'Ctrl+Shift+J')
-            host_key('K')
-            check('reset removes the previously custom native accelerator', len(calls) == 3)
-            host_key('J')
-            check('reset restores the original native accelerator', pump(lambda: len(calls) == 4))
-            focus(frame.evidence.note)
-            frame.evidence.note.SetSelection(0, 0)
-            press(ord('A'), wx.MOD_CONTROL)
-            check('native Ctrl+A still selects editable note text',
-                  frame.evidence.note.GetStringSelection() == draft and len(calls) == 4)
-            check('all keyboard workflows preserve the original data root, source, saved note, and unsaved draft',
-                  preserved())
-            print(json.dumps({'status': 'PASS', 'checks': len(checks), 'wx': wx.version(),
-                              'platform': platform.system(), 'origins': origins,
-                              'native_key_backend': 'wx.UIActionSimulator',
-                              'settings_controls': 'native; command filter and shortcut text supplied by probe',
-                              'source_override': str(source) if source is not None else None,
-                              'nvda': 'NOT_RUN'}, sort_keys=True), flush=True)
-            return 0
+            application.SetExitOnFrameDelete(False)
+            wx.CallAfter(dispatch)
+            application.MainLoop()
+            if loop_failures:
+                error, original_traceback = loop_failures[0]
+                raise error.with_traceback(original_traceback)
+            if len(loop_results) != 1:
+                raise RuntimeError('The native keyboard scenario did not complete.')
+            return loop_results[0]
         except Exception as exc:
             print(json.dumps({'status': 'FAIL', 'checks_passed': len(checks), 'error': str(exc),
                               'nvda': 'NOT_RUN'}), flush=True)

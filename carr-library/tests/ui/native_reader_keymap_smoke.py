@@ -247,23 +247,45 @@ def run_native(source=None):
                 reader.close()
 
         try:
-            wx.CallAfter(scenario)
-            reader.dialog.ShowModal()
-            if failures:
-                raise failures[0]
-            parent.Raise()
-            note.SetFocus()
-            check('host accepts native keyboard focus after Reader closes',
-                  pump(lambda: wx.Window.FindFocus() == note, timeout=3))
-            press(ord('B'), wx.MOD_CONTROL | wx.MOD_SHIFT)
-            check('same chord invokes the host context only after Reader closes',
-                  pump(lambda: len(host_calls) == 1)
-                  and len(answers.choice_calls) == 1)
-            print(json.dumps({'status': 'PASS', 'checks': len(checks), 'wx': wx.version(),
-                              'platform': platform.system(), 'origins': origins,
-                              'native_key_backend': 'wx.UIActionSimulator',
-                              'source_override': str(source) if source is not None else None,
-                              'nvda': 'NOT_RUN'}, sort_keys=True), flush=True)
+            # Create the real host window before entering wx.App.MainLoop.
+            # Run retained key assertions with native menu/button dispatch active.
+            def exercise():
+                wx.CallAfter(scenario)
+                reader.dialog.ShowModal()
+                if failures:
+                    raise failures[0]
+                parent.Raise()
+                note.SetFocus()
+                check('host accepts native keyboard focus after Reader closes',
+                      pump(lambda: wx.Window.FindFocus() == note, timeout=3))
+                press(ord('B'), wx.MOD_CONTROL | wx.MOD_SHIFT)
+                check('same chord invokes the host context only after Reader closes',
+                      pump(lambda: len(host_calls) == 1)
+                      and len(answers.choice_calls) == 1)
+                print(json.dumps({'status': 'PASS', 'checks': len(checks), 'wx': wx.version(),
+                                  'platform': platform.system(), 'origins': origins,
+                                  'native_key_backend': 'wx.UIActionSimulator',
+                                  'source_override': str(source) if source is not None else None,
+                                  'nvda': 'NOT_RUN'}, sort_keys=True), flush=True)
+            loop_results = []
+            loop_failures = []
+
+            def dispatch():
+                try:
+                    loop_results.append(exercise())
+                except BaseException as error:
+                    loop_failures.append((error, error.__traceback__))
+                finally:
+                    application.ExitMainLoop()
+
+            application.SetExitOnFrameDelete(False)
+            wx.CallAfter(dispatch)
+            application.MainLoop()
+            if loop_failures:
+                error, original_traceback = loop_failures[0]
+                raise error.with_traceback(original_traceback)
+            if len(loop_results) != 1:
+                raise RuntimeError('The native keyboard scenario did not complete.')
         finally:
             release_worker.set()
             reader.close()

@@ -165,45 +165,66 @@ def run_native(source=None):
         frame.Show()
         frame.Raise()
         try:
-            check('native evidence asynchronously loads its authorized source',
-                  pump(lambda: panel.displayed is not None and not frame.working))
-            check('note is a named native editable text control',
-                  isinstance(panel.note, wx.TextCtrl) and panel.note.IsEditable()
-                  and panel.note.GetName() == 'Research note (editable)')
-            check('recovery is available as a named native button', any(
-                isinstance(child, wx.Button) and child.GetLabel() == 'Recover research note draft...'
-                for child in panel.GetChildren()))
-            panel.note.SetValue('First native edit — Україна 🚂')
-            check('native text event publishes its first recovery checkpoint',
-                  pump(lambda: store.get(workspace, topic, evidence) is not None))
-            panel.note.SetValue('Final pending edit — Slovenská poznámka 🚂')
-            frame.layout.Detach(panel)
-            frame.evidence = None
-            panel.Destroy()
-            check('destroy flushes pending native edit to the actual sidecar', pump(lambda:
-                store.get(workspace, topic, evidence).text == 'Final pending edit — Slovenská poznámka 🚂'))
-            check('recovery checkpoint does not commit research note',
-                  library.evidence(workspace, topic)[0].note == 'Saved baseline')
+            def exercise():
+                check('native evidence asynchronously loads its authorized source',
+                      pump(lambda: panel.displayed is not None and not frame.working))
+                check('note is a named native editable text control',
+                      isinstance(panel.note, wx.TextCtrl) and panel.note.IsEditable()
+                      and panel.note.GetName() == 'Research note (editable)')
+                check('recovery is available as a named native button', any(
+                    isinstance(child, wx.Button) and child.GetLabel() == 'Recover research note draft...'
+                    for child in panel.GetChildren()))
+                panel.note.SetValue('First native edit — Україна 🚂')
+                check('native text event publishes its first recovery checkpoint',
+                      pump(lambda: store.get(workspace, topic, evidence) is not None))
+                panel.note.SetValue('Final pending edit — Slovenská poznámka 🚂')
+                frame.layout.Detach(panel)
+                frame.evidence = None
+                panel.Destroy()
+                check('destroy flushes pending native edit to the actual sidecar', pump(lambda:
+                    store.get(workspace, topic, evidence).text == 'Final pending edit — Slovenská poznámka 🚂'))
+                check('recovery checkpoint does not commit research note',
+                      library.evidence(workspace, topic)[0].note == 'Saved baseline')
 
-            choose_recovery_with_keyboard()
-            restored = frame.open_panel()
-            check('keyboard recovery restores exact text into reopened native editor',
-                  pump(lambda: restored.note.GetValue() == 'Final pending edit — Slovenská poznámka 🚂'))
-            check('recovery returns keyboard focus to the note',
-                  pump(lambda: wx.Window.FindFocus() == restored.note))
-            check('restored draft remains unsaved until explicit Save',
-                  restored._dirty() and library.evidence(workspace, topic)[0].note == 'Saved baseline')
-            button = restored.save_button
-            button.SetFocus()
-            check('Save note receives actual keyboard focus', pump(lambda: wx.Window.FindFocus() == button))
-            check('native Space key activates Save note', wx.UIActionSimulator().Char(wx.WXK_SPACE))
-            check('native save commits note and removes its recovery copy', pump(lambda:
-                not frame.working and store.get(workspace, topic, evidence) is None
-                and library.evidence(workspace, topic)[0].note == 'Final pending edit — Slovenská poznámka 🚂'))
-            check('no native background or keyboard error occurred', not errors)
-            print(json.dumps(dict(status='PASS', checks=len(checks), wx=wx.version(),
-                                  platform=platform.system(), origins=origins, nvda='NOT_RUN',
-                                  source_override=str(source) if source is not None else None), sort_keys=True), flush=True)
+                choose_recovery_with_keyboard()
+                restored = frame.open_panel()
+                check('keyboard recovery restores exact text into reopened native editor',
+                      pump(lambda: restored.note.GetValue() == 'Final pending edit — Slovenská poznámka 🚂'))
+                check('recovery returns keyboard focus to the note',
+                      pump(lambda: wx.Window.FindFocus() == restored.note))
+                check('restored draft remains unsaved until explicit Save',
+                      restored._dirty() and library.evidence(workspace, topic)[0].note == 'Saved baseline')
+                button = restored.save_button
+                button.SetFocus()
+                check('Save note receives actual keyboard focus', pump(lambda: wx.Window.FindFocus() == button))
+                check('native Space key activates Save note', wx.UIActionSimulator().Char(wx.WXK_SPACE))
+                check('native save commits note and removes its recovery copy', pump(lambda:
+                    not frame.working and store.get(workspace, topic, evidence) is None
+                    and library.evidence(workspace, topic)[0].note == 'Final pending edit — Slovenská poznámka 🚂'))
+                check('no native background or keyboard error occurred', not errors)
+                print(json.dumps(dict(status='PASS', checks=len(checks), wx=wx.version(),
+                                      platform=platform.system(), origins=origins, nvda='NOT_RUN',
+                                      source_override=str(source) if source is not None else None), sort_keys=True), flush=True)
+
+            # wxPython starts MainLoop only after a real top-level window exists.
+            # The actual Host above owns the test controls; input runs in this loop.
+            outcome, failure = [], []
+            def dispatch():
+                try:
+                    outcome.append(exercise())
+                except BaseException as error:
+                    failure.append((error, error.__traceback__))
+                finally:
+                    app.ExitMainLoop()
+
+            app.SetExitOnFrameDelete(False)
+            wx.CallAfter(dispatch)
+            app.MainLoop()
+            if failure:
+                error, original_traceback = failure[0]
+                raise error.with_traceback(original_traceback)
+            if len(outcome) != 1:
+                raise RuntimeError('Native draft scenario did not finish inside the application event loop.')
         finally:
             frame._closing = True
             frame.cancel_event.set()

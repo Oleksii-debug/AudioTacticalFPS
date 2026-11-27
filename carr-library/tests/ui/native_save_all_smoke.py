@@ -143,6 +143,10 @@ def main():
             pump(lambda: not frame.working and frame.evidence is not None and frame.evidence.displayed is not None)
             panel = frame.evidence
             panel.note.SetValue('First native Save All snapshot')
+            check('EPUB reading remains registered in Library after File menu insertion',
+                  frame.keyboard_commands.bindings['library.epub_reader'].top_index
+                  == frame.menu_bar.FindMenu('Library')
+                  and frame.keyboard_commands.shortcut('library.epub_reader') == 'Ctrl+Shift+R')
             frame.keyboard_commands.apply_overrides({'file.save_all': 'Ctrl+Alt+F12'})
             binding = frame.keyboard_commands.bindings['file.save_all']
             check('personalized Save All menu and F1 guide agree',
