@@ -7,6 +7,7 @@ from pathlib import Path
 import runpy
 import shutil
 import struct
+import threading
 from types import SimpleNamespace
 import wave
 
@@ -376,3 +377,67 @@ def test_optional_observer_failure_cannot_fail_actual_published_audio(book, obse
     assert failures and all(row['status'] == 'complete' for row in result)
     assert all(e.production.get(row['job'])['status'] == 'complete' for row in result)
     assert not e.production.broker.snapshot()['leases']
+
+
+@pytest.mark.parametrize('stop', ['callback', 'close'])
+def test_real_retained_source_cancellation_after_admission_is_paused_and_resumable(book, monkeypatch, stop):
+    require_audio()
+    e = book
+    candidate, ready = prepared(e)
+    cancel, armed, entered = threading.Event(), threading.Event(), []
+    save, retained = e.production._save, e.app._retained_source
+    def saved(state):
+        save(state)
+        if 'resource_plan' in state and state['status'] == 'queued':
+            armed.set()
+    def checked(*args, **kwargs):
+        if armed.is_set() and not entered:
+            entered.append(True)
+            if stop == 'callback':
+                cancel.set()
+            else:
+                e.service.close()
+        # This is the actual retained-source implementation and its real
+        # cancellation surface, not a manufactured validation exception.
+        return retained(*args, **kwargs)
+    with monkeypatch.context() as patch:
+        patch.setattr(e.production, '_save', saved)
+        patch.setattr(e.app, '_retained_source', checked)
+        with pytest.raises(InterruptedError):
+            e.service.run(candidate.id, e.output, approval=ready.fingerprint, cancelled=cancel.is_set)
+    assert entered and e.voices.received == [] and not list(e.output.iterdir())
+    assert e.production.get(candidate.job_id(1))['status'] == 'paused'
+    assert not e.production.broker.snapshot()['leases']
+    cancel.clear()
+    reopened = BookAudioService(e.app, e.workspace, production=e.production)
+    try:
+        result = reopened.run(candidate.id, e.output, approval=ready.fingerprint)
+        assert all(row['status'] == 'complete' for row in result)
+        assert len(e.voices.received) == 2
+    finally:
+        reopened.close()
+
+
+def test_cancel_between_items_retains_first_verified_result_and_resumes_only_pending_item(book, monkeypatch):
+    require_audio()
+    e = book
+    candidate, ready = prepared(e)
+    cancel = threading.Event()
+    save = e.production._save
+    def saved(state):
+        save(state)
+        if state['id'] == candidate.job_id(1) and state['status'] == 'complete':
+            cancel.set()
+    with monkeypatch.context() as patch:
+        patch.setattr(e.production, '_save', saved)
+        with pytest.raises(InterruptedError):
+            e.service.run(candidate.id, e.output, approval=ready.fingerprint, cancelled=cancel.is_set)
+    assert e.production.get(candidate.job_id(1))['status'] == 'complete'
+    assert e.production.get(candidate.job_id(2))['status'] == 'pending'
+    assert len(e.voices.received) == 1
+    first = {row['path']: sha256(Path(row['path']).read_bytes()).hexdigest()
+             for row in e.production.get(candidate.job_id(1))['artifacts']}
+    cancel.clear()
+    complete = e.service.run(candidate.id, e.output, approval=ready.fingerprint)
+    assert all(row['status'] == 'complete' for row in complete) and len(e.voices.received) == 2
+    assert first == {name: sha256(Path(name).read_bytes()).hexdigest() for name in first}

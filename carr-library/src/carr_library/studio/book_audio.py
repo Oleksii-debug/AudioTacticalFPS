@@ -386,9 +386,17 @@ class BookAudioService:
         source = plan.source
         if source['source_anchor']['workspace'] != self.workspace:
             raise ValueError('This book plan belongs to another library scope.')
-        validate_source(self.library, source['text'], source['source_anchor'],
-                        source['source_metadata'], source['source_topic'],
-                        cancelled=stopped, guard=guard)
+        try:
+            validate_source(self.library, source['text'], source['source_anchor'],
+                            source['source_metadata'], source['source_topic'],
+                            cancelled=stopped, guard=guard)
+        except (ValueError, OSError, RuntimeError) as exc:
+            # ReadingDesk/native retained-source checks may surface their own
+            # bounded-read error when interrupted. Only an actual stop signal
+            # acknowledges cancellation; all other source failures stay errors.
+            if stopped():
+                raise InterruptedError('Book source validation was cancelled; saved items are retained.') from exc
+            raise
         _check(stopped, guard)
 
     def _parent(self, value):
