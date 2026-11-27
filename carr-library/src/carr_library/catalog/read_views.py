@@ -37,19 +37,10 @@ def active_collections(catalog: Catalog):
     return rows
 
 
-def browse_editions(catalog: Catalog, *, collection=None, title=None, author=None,
-                    language=None, edition=None, edition_id=None, after=None, limit=100):
-    """Bounded edition page, ordered by ID. Pass last ID as after for next page.
-
-    Title/author are literal, case-sensitive Unicode substrings (not LIKE or
-    FTS syntax). Language/edition are exact matches. None disables a filter.
-    Author lists remain complete and in source order, even with author filter.
-    Keep one caller snapshot across pages when consistent pagination is needed.
-    Metadata is catalog data, not independent source/citation attestation.
-    """
+def _selection(catalog, *, collection=None, title=None, author=None,
+               language=None, edition=None, edition_id=None, after=None):
+    """One catalog authorization/filter contract for browsing and search pages."""
     db, scope = _snapshot(catalog)
-    if type(limit) is not int or not 1 <= limit <= 500:
-        raise ValueError('invalid page size')
     if after is not None:
         after = _identity(after)
     if edition_id is not None:
@@ -60,7 +51,7 @@ def browse_editions(catalog: Catalog, *, collection=None, title=None, author=Non
     title, author, language, edition = map(_metadata, (title, author, language, edition))
     if any(v == '' for v in (title, author, language, edition)):
         raise ValueError('empty filter')
-    rows = db.execute('''WITH selected AS (
+    sql = '''
         SELECT e.workspace,e.id,e.work,e.asset,w.title,e.language,e.edition,e.volume
         FROM catalog_edition e JOIN catalog_work w ON w.workspace=e.workspace AND w.id=e.work
         WHERE e.workspace=:scope AND (:after IS NULL OR e.id COLLATE BINARY > :after)
@@ -71,13 +62,31 @@ def browse_editions(catalog: Catalog, *, collection=None, title=None, author=Non
         AND (:author IS NULL OR EXISTS (SELECT 1 FROM catalog_author a
             WHERE a.workspace=e.workspace AND a.work=e.work AND instr(a.name,:author)>0))
         AND (:language IS NULL OR e.language=:language)
-        AND (:edition IS NULL OR e.edition=:edition)
+        AND (:edition IS NULL OR e.edition=:edition)'''
+    return db, sql, dict(scope=scope, after=after, edition_id=edition_id,
+        collection=collection, title=title, author=author, language=language, edition=edition)
+
+
+def browse_editions(catalog: Catalog, *, collection=None, title=None, author=None,
+                    language=None, edition=None, edition_id=None, after=None, limit=100):
+    """Bounded edition page, ordered by ID. Pass last ID as after for next page.
+
+    Title/author are literal, case-sensitive Unicode substrings (not LIKE or
+    FTS syntax). Language/edition are exact matches. None disables a filter.
+    Author lists remain complete and in source order, even with author filter.
+    Keep one caller snapshot across pages when consistent pagination is needed.
+    Metadata is catalog data, not independent source/citation attestation.
+    """
+    if type(limit) is not int or not 1 <= limit <= 500:
+        raise ValueError('invalid page size')
+    db, selected, params = _selection(catalog, collection=collection, title=title,
+        author=author, language=language, edition=edition, edition_id=edition_id, after=after)
+    rows = db.execute('WITH selected AS (' + selected + '''
         ORDER BY e.id COLLATE BINARY LIMIT :limit
     ) SELECT s.id,s.work,s.asset,s.title,s.language,s.edition,s.volume,a.name
       FROM selected s LEFT JOIN catalog_author a ON a.workspace=s.workspace AND a.work=s.work
       ORDER BY s.id COLLATE BINARY,a.position''',
-        dict(scope=scope, after=after, edition_id=edition_id, collection=collection, title=title,
-             author=author, language=language, edition=edition, limit=limit))
+        dict(params, limit=limit))
     grouped = {}
     for row in rows:
         fields, name = tuple(row)[:7], row[7]

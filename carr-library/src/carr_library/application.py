@@ -1073,24 +1073,36 @@ class LibraryApp:
     def search_page(self, workspace, query, *, mode='phrase', collection=None, title=None,
                     author=None, language=None, edition=None, limit=100, timeout=60.0,
                     cancelled=lambda: False, authorized_topic=None, on_status=None,
-                    result_mode=None, cursor=None):
-        """Continue exact/Boolean results using current source authorization."""
-        if mode not in ('word', 'phrase', 'terms', 'advanced'):
-            raise ValueError('Paged search currently supports exact and advanced source search.')
+                    result_mode=None, cursor=None, page_budget=500,
+                    character_budget=5_000_000):
+        """Continue the current authorized source search through bounded pages.
+
+        Compatible exact scopes retain the existing literal route. Ranked and
+        larger scopes use source windows; their ordering never claims a global
+        relevance rank. An empty page may still carry a continuation.
+        """
+        from .search.source_windows import validate_budgets
+        validate_budgets(page_budget, character_budget)
+        if mode not in ('word', 'phrase', 'terms', 'advanced', 'thematic', 'semantic'):
+            raise ValueError('Unknown search mode.')
         request = request_identity(workspace, query, mode=mode, collection=collection,
             title=title, author=author, language=language, edition=edition, limit=limit,
-            authorized_topic=authorized_topic, result_mode=result_mode)
+            authorized_topic=authorized_topic, result_mode=result_mode,
+            page_budget=page_budget, character_budget=character_budget)
         continuation = self._search_cursors.begin(request, cursor)
+        if continuation.kind not in ('literal', 'window'):
+            raise ValueError('The search continuation belongs to another search scope.')
         return self._search(workspace, query, mode=mode, collection=collection,
             title=title, author=author, language=language, edition=edition,
             limit=limit, timeout=timeout, cancelled=cancelled,
             authorized_topic=authorized_topic, on_status=on_status,
-            result_mode=result_mode, _continuation=continuation)
+            result_mode=result_mode, _continuation=continuation,
+            _window_budget=(page_budget, character_budget))
 
     def _search(self, workspace, query, *, mode='phrase', collection=None, title=None,
                 author=None, language=None, edition=None, limit=100, timeout=60.0,
                 cancelled=lambda: False, authorized_topic=None, on_status=None,
-                result_mode=None, _continuation=None):
+                result_mode=None, _continuation=None, _window_budget=None):
         if mode not in ('word', 'phrase', 'terms', 'thematic', 'semantic', 'advanced'):
             raise ValueError('Unknown search mode.')
         if result_mode not in (None, 'short', 'thematic'):
@@ -1102,37 +1114,59 @@ class LibraryApp:
         with self._search_read(workspace, timeout, cancelled) as (db, budget):
             if authorized_topic is not None:
                 TopicTree(db, workspace)._visible(authorized_topic)
-            catalog = Catalog(db, workspace)
-            views = browse_editions(catalog, collection=collection, title=title, author=author,
-                                    language=language, edition=edition, limit=500)
-            budget.check()
-            if len(views) == 500:
-                more = browse_editions(catalog, collection=collection, title=title, author=author,
-                    language=language, edition=edition, after=views[-1].edition_id, limit=1)
-                budget.check()
-                if more:
-                    raise ValueError('Narrow the search to at most 500 editions using filters.')
-            allowed = {v.edition_id: v.work_id for v in views}
+            counts = None
+            windowed = False
             if _continuation is not None:
-                page = literal.search_page(db, workspace, query, edition_ids=tuple(allowed),
-                    mode=mode, limit=limit, timeout=budget.remaining(), cancelled=budget.stopped,
-                    after=_continuation.after, expected_snapshot=_continuation.snapshot,
-                    scope_key=catalog_snapshot(_continuation.request, views), result_mode=result_mode)
+                from .search import source_windows
+                page_budget, character_budget = _window_budget
+                filters = dict(collection=collection, title=title, author=author,
+                               language=language, edition=edition)
+                counts = source_windows.scope_statistics(db, workspace, filters, budget)
+                windowed = (_continuation.kind == 'window' or (
+                    _continuation.after is None and (
+                        mode in ('thematic', 'semantic') or counts[0] > 500
+                        or counts[1] > literal.MAX_PAGES or counts[2] > literal.MAX_CHARS
+                        or page_budget != source_windows.DEFAULT_PAGE_SOURCES
+                        or character_budget != source_windows.MAX_PAGE_CHARACTERS)))
+            if windowed:
+                page = source_windows.candidates(db, workspace, query,
+                    continuation=_continuation, mode=mode, filters=filters,
+                    limit=limit, page_budget=page_budget, character_budget=character_budget,
+                    result_mode=result_mode, budget=budget, ranker=self.semantic_ranker,
+                    cache=self.semantic_cache, on_status=on_status)
                 hits = page.hits
-            elif mode in ('thematic', 'semantic'):
-                if mode == 'semantic' and self.semantic_ranker is not None:
-                    from .semantic import search_snapshot
-                    hits = search_snapshot(db, workspace, allowed, query, self.semantic_ranker,
-                                           limit=limit, timeout=budget.remaining(), cancelled=budget.stopped,
-                                           on_status=on_status, cache=self.semantic_cache)
-                else:
-                    if mode == 'semantic' and on_status is not None:
-                        on_status('Local model unavailable; keyword search used.')
-                    hits = thematic.search_active(db, workspace, allowed, query, limit=limit,
-                                                  timeout=budget.remaining(), cancelled=budget.stopped)
             else:
-                hits = literal.search(db, workspace, query, edition_ids=tuple(allowed),
-                                      mode=mode, limit=limit, timeout=budget.remaining(), cancelled=budget.stopped)
+                catalog = Catalog(db, workspace)
+                views = browse_editions(catalog, collection=collection, title=title, author=author,
+                                        language=language, edition=edition, limit=500)
+                budget.check()
+                if len(views) == 500:
+                    more = browse_editions(catalog, collection=collection, title=title, author=author,
+                        language=language, edition=edition, after=views[-1].edition_id, limit=1)
+                    budget.check()
+                    if more:
+                        raise ValueError('Narrow the search to at most 500 editions using filters.')
+                allowed = {v.edition_id: v.work_id for v in views}
+                if _continuation is not None:
+                    page = literal.search_page(db, workspace, query, edition_ids=tuple(allowed),
+                        mode=mode, limit=limit, timeout=budget.remaining(), cancelled=budget.stopped,
+                        after=_continuation.after, expected_snapshot=_continuation.snapshot,
+                        scope_key=catalog_snapshot(_continuation.request, views), result_mode=result_mode)
+                    hits = page.hits
+                elif mode in ('thematic', 'semantic'):
+                    if mode == 'semantic' and self.semantic_ranker is not None:
+                        from .semantic import search_snapshot
+                        hits = search_snapshot(db, workspace, allowed, query, self.semantic_ranker,
+                                               limit=limit, timeout=budget.remaining(), cancelled=budget.stopped,
+                                               on_status=on_status, cache=self.semantic_cache)
+                    else:
+                        if mode == 'semantic' and on_status is not None:
+                            on_status('Local model unavailable; keyword search used.')
+                        hits = thematic.search_active(db, workspace, allowed, query, limit=limit,
+                                                      timeout=budget.remaining(), cancelled=budget.stopped)
+                else:
+                    hits = literal.search(db, workspace, query, edition_ids=tuple(allowed),
+                                          mode=mode, limit=limit, timeout=budget.remaining(), cancelled=budget.stopped)
             # Catalog selection, active source selection, and metadata materialization
             # all share this read transaction. No cached edition filters cross snapshots.
             loader, metadata, attestor = self._loaders(db, workspace, cancelled=budget.stopped)
@@ -1183,7 +1217,9 @@ class LibraryApp:
         # nor evict selections belonging to the previous completed search.
         prepared = None
         if _continuation is not None:
-            answer, prepared = self._search_cursors.prepare(_continuation, results, page)
+            answer, prepared = self._search_cursors.prepare(_continuation, results, page,
+                scanned_segments=None if windowed else counts[1],
+                scope_editions=None if windowed else counts[0])
         self._selections.update(selections)
         while len(self._selections) > 2000:
             del self._selections[next(iter(self._selections))]

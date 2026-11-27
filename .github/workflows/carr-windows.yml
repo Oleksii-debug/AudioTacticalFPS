@@ -550,6 +550,16 @@ jobs:
           & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_protected_voice_smoke.py --expect-installed --report ci-results/installed-protected-voice.json
           if ($LASTEXITCODE -ne 0) { $failures += 'installed-protected-voice' }
           if ($failures.Count) { throw ('Required native protected voice controls failed: ' + ($failures -join ', ')) }
+      - name: Require native scoped ranked and federated result continuation
+        if: ${{ !cancelled() && steps.desktop_dependencies.outcome == 'success' }}
+        timeout-minutes: 8
+        run: |
+          $failures = @()
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_source_pagination_smoke.py --source . --report ci-results/source-source-pagination.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'source-source-pagination' }
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_source_pagination_smoke.py --expect-installed --report ci-results/installed-source-pagination.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'installed-source-pagination' }
+          if ($failures.Count) { throw ('Required native source continuation failed: ' + ($failures -join ', ')) }
       - name: Record required integrated source-suite inventory
         if: ${{ !cancelled() && steps.desktop_dependencies.outcome == 'success' && steps.ocr_runtime.outcome == 'success' }}
         timeout-minutes: 20
@@ -567,6 +577,8 @@ jobs:
             'tests/sync/test_admission.py',
             'tests/sync/test_state.py',
             'tests/ui/test_portable_sync.py',
+            'tests/search/test_source_pagination.py',
+            'tests/search/test_federated_pagination.py',
             'tests/audio/test_protected_voice_packages.py',
             'tests/ui/test_protected_voice_packages.py',
             'tests/citations/test_streamed_text_attestation.py',
@@ -1416,6 +1428,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'bundle streamed source intake failed' }
           & $installedPython -I -B -X utf8 scripts/windows_protected_voice_smoke.py --expect-installed --report ci-results/bundle-protected-voice.json
           if ($LASTEXITCODE -ne 0) { throw 'bundle protected voice controls failed' }
+          & $installedPython -I -B -X utf8 scripts/windows_source_pagination_smoke.py --expect-installed --report ci-results/bundle-source-pagination.json
+          if ($LASTEXITCODE -ne 0) { throw 'bundle source continuation failed' }
           & $installedPython -I -B -X utf8 scripts/windows_desktop_integration_smoke.py --installed 2>&1 | Tee-Object 'ci-results/bundle-desktop.txt'
           if ($LASTEXITCODE -ne 0) { throw 'bundle-desktop failed' }
           & $installedPython -I -B -X utf8 scripts/windows_incremental_backup_smoke.py --installed --output ci-results/bundle-incremental-backup.json 2>&1 | Tee-Object 'ci-results/bundle-incremental-backup.txt'
@@ -1549,6 +1563,9 @@ jobs:
               'tests/sync/test_admission.py',
               'tests/sync/test_state.py',
               'tests/ui/test_portable_sync.py',
+              'tests/ui/test_federated_search.py',
+              'tests/search/test_source_pagination.py',
+              'tests/search/test_federated_pagination.py',
               'tests/audio/test_protected_voice_packages.py',
               'tests/ui/test_protected_voice_packages.py',
               'tests/e2e/test_source_file.py',

@@ -142,7 +142,25 @@ def test_current_source_verification_is_still_required_after_first_page(library)
 
 
 @pytest.mark.parametrize('mode', ['thematic', 'semantic'])
-def test_ranked_results_do_not_claim_unimplemented_continuation(library, mode):
-    app, workspace, _, _ = library
-    with pytest.raises(ValueError, match='currently supports'):
-        app.search_page(workspace, 'needle', mode=mode)
+def test_ranked_continuation_is_local_to_bounded_windows_and_keeps_source_attestation(library, mode):
+    app, workspace, imported, original = library
+    cursor, results, notices = None, [], []
+    for _ in range(20):
+        page = app.search_page(workspace, 'needle', mode=mode, limit=17, page_budget=17,
+                               cursor=cursor, on_status=notices.append)
+        assert page.scanned_segments <= 17 and len(page) <= 17
+        assert 'local to each window' in page.ordering
+        assert page.scope_editions == 1
+        results.extend(page)
+        cursor = page.next_cursor
+        if cursor is None:
+            break
+    assert cursor is None and len(results) == 137
+    for row in (results[0], results[-1]):
+        assert row.verified and row.revision == imported['id']
+        assert app.copy(workspace, row.ref, row.revision, 'quote') == row.quote
+        context = app.context(workspace, row.ref, row.revision).pages[0]
+        assert context.raw_text in original
+    assert app.assets.resolve(imported['asset']).read_bytes() == original.encode('utf-8')
+    if mode == 'semantic':
+        assert notices and all('keyword' in message for message in notices)

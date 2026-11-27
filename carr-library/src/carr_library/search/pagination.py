@@ -17,6 +17,13 @@ from threading import RLock
 class SearchPage(Sequence):
     results: tuple
     next_cursor: str | None
+    scanned_segments: int = 0
+    scope_editions: int = 0
+    ordering: str = 'Source edition, segment and raw offset.'
+
+    @property
+    def complete(self):
+        return self.next_cursor is None
 
     def __len__(self):
         return len(self.results)
@@ -30,13 +37,16 @@ class Continuation:
     request: str
     snapshot: str | None = None
     after: tuple | None = None
+    kind: str = 'literal'
 
 
 def request_identity(workspace, query, *, mode, collection, title, author,
-                     language, edition, limit, authorized_topic, result_mode):
+                     language, edition, limit, authorized_topic, result_mode,
+                     page_budget=None, character_budget=None):
     values = dict(workspace=workspace, query=query, mode=mode,
         collection=collection, title=title, author=author, language=language,
-        edition=edition, limit=limit, topic=authorized_topic, result_mode=result_mode)
+        edition=edition, limit=limit, topic=authorized_topic, result_mode=result_mode,
+        page_budget=page_budget, character_budget=character_budget)
     # Public service validation still owns semantic validation. Reject objects
     # with executable serialization or an unbounded opaque token before lookup.
     if any(value is not None and type(value) not in (str, int)
@@ -81,13 +91,32 @@ class CursorStore:
             # A failed or cancelled attempt must not mutate even the LRU order.
             return value
 
-    def prepare(self, continuation, results, literal_page):
-        if literal_page.after is None:
-            return SearchPage(tuple(results), None), None
+    def fork(self):
+        """Isolate tokens with the existing temporary LibraryApp search copy."""
+        result = CursorStore(self.maximum)
+        with self._lock:
+            result._values = self._values.copy()
+        return result
+
+    def stage(self, continuation):
+        """Prepare an internal typed position; failed callers publish nothing."""
+        if type(continuation) is not Continuation or continuation.kind not in ('literal', 'window', 'federated'):
+            raise ValueError('Invalid internal search continuation.')
         token = token_urlsafe(32)
-        return (SearchPage(tuple(results), token),
-                (token, Continuation(continuation.request,
-                                     literal_page.snapshot, literal_page.after)))
+        return token, (token, continuation)
+
+    def prepare(self, continuation, results, literal_page, *, scanned_segments=None, scope_editions=None):
+        scanned = (getattr(literal_page, 'scanned_segments', 0)
+                   if scanned_segments is None else scanned_segments)
+        editions = (getattr(literal_page, 'scope_editions', 0)
+                    if scope_editions is None else scope_editions)
+        ordering = getattr(literal_page, 'ordering', 'Source edition, segment and raw offset.')
+        if literal_page.after is None:
+            return SearchPage(tuple(results), None, scanned, editions, ordering), None
+        value = Continuation(continuation.request, literal_page.snapshot, literal_page.after,
+                             getattr(literal_page, 'kind', 'literal'))
+        token, prepared = self.stage(value)
+        return SearchPage(tuple(results), token, scanned, editions, ordering), prepared
 
     def publish(self, prepared):
         if prepared is None:

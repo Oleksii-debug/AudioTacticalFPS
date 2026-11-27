@@ -248,7 +248,7 @@ class DesktopSearchPanel(PagedSearchPanel):
             self.retrieval.SetFocus()
             return
         mode = self.MODES[retrieval]
-        paged = mode in ('phrase', 'word', 'terms', 'advanced')
+        paged = mode in ('phrase', 'word', 'terms', 'advanced', 'thematic', 'semantic')
         if _direction not in ('new', 'next', 'previous') or (
                 _direction != 'new' and not paged):
             raise ValueError('Invalid search page action.')
@@ -318,9 +318,15 @@ class DesktopSearchPanel(PagedSearchPanel):
             self.model.replace(workspace, (Hit(r.workspace, r.ref, r.revision, r.title,
                 r.author, r.edition, r.page, r.quote, r.citation) for r in rows))
             self.grid.refresh()
-            info = (f'Page {page_number}: {len(rows)} results.' if paged and rows else
+            info = (f'Page {page_number}: {len(rows)} results.' if paged else
                     f'{len(rows)} results.' if rows else
                     'No results. Change the query or source filters.')
+            if paged:
+                info += (f' Inspected {value.scanned_segments} source segments across '
+                         f'{value.scope_editions} selected editions. ' + value.ordering)
+                if not rows:
+                    info += (' More source windows remain; choose Next results.'
+                             if self._next_cursor else ' This selected search is complete.')
             if rows:
                 info += (' Short source quotations.' if result_mode == 'short' else
                          ' Expanded source excerpts from the matching page or text segment.')

@@ -176,3 +176,42 @@ def test_repeated_next_while_worker_owns_operation_does_not_change_page(panel):
     panel.on_next_page()
     assert old == (panel._page_cursor, panel._next_cursor, panel._page_number, panel.model.hits)
     panel.frame.run_job.assert_not_called()
+
+
+@pytest.mark.parametrize('mode', ['thematic', 'semantic'])
+def test_ranked_pages_use_same_background_grid_and_keep_next_previous(panel, mode):
+    panel.retrieval.selection = panel.MODES.index(mode)
+    panel.on_search(None)
+    first, _ = execute(panel)
+    assert len(first) == 100 and panel.next_page.enabled
+    assert 'local to each window' in panel.status.value
+    first_sources = {(row.page, row.quote) for row in first}
+    panel.on_next_page()
+    second, _ = execute(panel)
+    assert len(second) == 100 and panel.next_page.enabled and panel.previous_page.enabled
+    assert not first_sources.intersection((row.page, row.quote) for row in second)
+    panel.on_next_page()
+    last, _ = execute(panel)
+    assert len(last) == 5 and not panel.next_page.enabled
+    panel.on_previous_page()
+    repeated, _ = execute(panel)
+    assert {(row.page, row.quote) for row in repeated} == {(row.page, row.quote) for row in second}
+
+
+def test_empty_ranked_window_keeps_explicit_next_without_claiming_no_more_sources(panel):
+    panel.frame.library.add_text(panel.bound_workspace, 'Windowed source',
+        '\f'.join(['unrelated text'] * 200 + ['needle source']))
+    panel.filters['title'] = Control('Windowed source')
+    panel.retrieval.selection = panel.MODES.index('thematic')
+    panel.on_search(None)
+    empty, _ = execute(panel)
+    assert len(empty) == 0 and panel.next_page.enabled
+    assert 'More source windows remain' in panel.status.value
+    assert 'Change the query' not in panel.status.value
+    panel.on_next_page()
+    second, _ = execute(panel)
+    assert len(second) == 0 and panel.next_page.enabled
+    panel.on_next_page()
+    final, _ = execute(panel)
+    assert len(final) == 1 and final[0].verified and not panel.next_page.enabled
+    assert panel.grid.focus_row.call_args.args == (0,)

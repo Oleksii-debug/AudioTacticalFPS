@@ -113,7 +113,7 @@ def candidate(tmp_path, monkeypatch):
                  'WORD_NATIVE_INTEGRATION.md',
                  'ASSISTANT_DOMAINS.md',
                  'PORTABLE_SNAPSHOTS.md',
-                 'LARGE_SOURCE_PROFILES.md', 'PROTECTED_VOICE_PACKAGES.md', 'SYNC_DEPENDENCIES.md'):
+                 'LARGE_SOURCE_PROFILES.md', 'PROTECTED_VOICE_PACKAGES.md', 'SOURCE_WINDOW_PAGINATION.md', 'SYNC_DEPENDENCIES.md'):
         (package / 'docs' / name).write_text('Synthetic packaging boundary fixture.\n', encoding='utf-8')
     (package / 'pyproject.toml').write_text('''[project]
 name = "universal-research-library"

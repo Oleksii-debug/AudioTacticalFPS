@@ -601,3 +601,44 @@ The DAISY-schema/publication, reading-preparation and combined Word/assistant
 native steps failed and require their actual retained diagnostics. This does not
 make the overall preflight or any later composition PASS. No eligible wheel has
 been retained and no manual/model/language qualification is inferred.
+
+## Bounded ranked and federated source continuation (2026-11-27)
+
+The peer-reviewed final checkpoint `22d9af6f84b85ceadf650fb6defe757c3726a894`
+reconciles the reviewed PR99 source-window/federated route with the current
+opaque cursor store and source authority. Only four exact application search
+hunks and two Desktop search presentation hunks are applied to the already
+composed streamed-intake/Word/Sync files; the hunk record is blob
+`266e6e9fd4d12e0ed8eb984d9c0a52656e94eb9f`. No stale whole application file
+replaces the current import/backup source.
+
+Compatible small literal searches retain their current route. Wider scoped
+and ranked searches inspect finite source windows, preserve whole-scope raw
+integrity and revalidate exact source resolution. Ordering is explicitly local
+to a window, not global relevance. An empty result page can retain an opaque
+Next cursor. Every resumed request binds filters, budgets and current authority.
+SQLite type/NUL/actual-byte admission runs before raw text materialization; an
+embedded NUL cannot exploit length(TEXT) to bypass the finite bound.
+
+Federated continuation uses the same owner-bound cursor store and a bounded fork
+for provisional work. It visits at most twenty selected libraries per page,
+continues the current library first and permits further selected libraries on
+later pages. Failed/cancelled pages neither publish a cursor nor evict live old
+state through provisional token activity. The existing unpaged twenty-library
+API remains unchanged. UI completion uses captured native window IDs and an
+owned worker; a destroyed parent cannot receive a late page or a focus retry.
+
+The source, installed and V3 inventories include both new search suites and all
+three modified e2e/UI suites. Existing literal/cursor/attestation assertions are
+retained; obsolete ranked-denial cases now exercise actual bounded continuation.
+The native `08ab2f7f` probe drives actual ranked windows and twenty-plus-five
+library continuation, including empty windows and exact source-copy authority,
+with exact imported-byte/RECORD proof and unconditional same-worker cleanup.
+Source, installed and full-bundle invocations remain required and NOT_RUN.
+SOURCE_WINDOW_PAGINATION.md is included in the guide list. The finite reading
+checklist and existing release-readiness map are reconciled with current source;
+no new requirement catalog or qualification claim is introduced.
+
+Preflight now retains bounded native JSON/text diagnostics before its long source
+suite, using the same public synthetic-fixture scope. No test, failure, timeout
+or device gate is removed to obtain those diagnostics earlier.

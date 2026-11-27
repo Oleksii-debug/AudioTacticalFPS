@@ -28,6 +28,7 @@ class View:
         self.verified = self.selected = self.busy = False
         self.copied, self.focus = [], None
         self.busy_history = []
+        self.next_available = False
 
     def clear_results(self):
         self.labels, self.details, self.index = (), '', -1
@@ -48,6 +49,9 @@ class View:
     def set_busy(self, busy):
         self.busy = busy
         self.busy_history.append(busy)
+
+    def set_next_page(self, available):
+        self.next_available = bool(available)
 
     def report(self, text, *, focus=False):
         self.messages.append(text)
@@ -470,12 +474,15 @@ def test_forced_window_destruction_never_hides_or_destroys_deleted_controls(cent
     native.window = Mock()
     native.controller = center.controller
     native._window_alive = True
+    native._window_id = 91
     native._deferred_destroy = False
     center.view.finish_disposal = native.finish_disposal
     center.frame.deferred = True
     search(center)
     event = Mock()
-    event.GetEventObject.return_value = native.window
+    event.GetId.return_value = 91
+    event.GetEventObject.side_effect = AssertionError('Do not resolve a dying native wrapper')
+    native.window.GetId.side_effect = AssertionError('The native owner is already deleted')
     native.window.ShowModal.side_effect = lambda: native._destroyed(event)
     native.window.Hide.side_effect = AssertionError('The native window was already deleted')
     native.window.Destroy.side_effect = AssertionError('The native window was already deleted')
@@ -491,6 +498,8 @@ def test_forced_window_destruction_never_hides_or_destroys_deleted_controls(cent
     native.window.Hide.assert_not_called()
     native.window.Destroy.assert_not_called()
     native.window.EndModal.assert_not_called()
+    event.GetEventObject.assert_not_called()
+    native.window.GetId.assert_not_called()
 
 
 def test_menu_installer_keeps_notebook_shortcut_and_dispatches_independent_search(monkeypatch):
@@ -648,3 +657,125 @@ def test_result_ordinals_distinguish_repeated_page_and_unknown_edition():
     assert 'Unknown edition' in controller.view.labels[2]
     assert 'Unverified extraction' in controller.view.labels[2]
     assert 'Unverified extraction' in controller.view.messages[-1]
+
+
+def test_paged_center_visits_25_explicit_libraries_on_same_worker_without_switching_notebook(center):
+    selected = [center.one, center.two]
+    for number in range(23):
+        workspace = center.app.create_workspace(f'Additional selected library {number}')
+        center.app.add_text(workspace, f'Book {number}', 'Railway history.')
+        selected.append(workspace)
+    options = SearchOptions(tuple(selected), 'Railway history')
+    with pytest.raises(ValueError, match='20'):
+        options.validate()  # The original one-shot API remains bounded.
+    assert options.validate(paged=True) is options
+    center.controller.search_page(options)
+    first = center.controller.rows
+    assert len(first) == 20 and center.view.next_available
+    assert center.controller.service.current.workspaces == tuple(selected[:20])
+    assert '25 explicitly selected libraries' in center.view.messages[-1]
+    center.controller.next_page()
+    assert len(center.controller.rows) == 5 and not center.view.next_available
+    assert center.controller.service.current.workspaces == tuple(selected[20:])
+    with pytest.raises(ValueError, match='latest'):
+        center.controller.service.copy(first[0], 'quote')
+    center.controller.copy('quote')
+    assert center.view.copied[-1] == center.controller.rows[0].result.quote
+    assert center.frame.active == (center.one, center.local_topic)
+    assert center.frame.unsaved_note == 'An unsaved notebook draft — retain exactly.'
+    assert all(identity != get_ident() for identity in center.frame.worker_threads)
+    center.frame.refresh_scopes.assert_not_called()
+    center.frame._open_workspace.assert_not_called()
+
+
+def test_empty_ranked_page_keeps_next_action_and_source_verification(center):
+    center.app.add_text(center.one, 'Rank window', 'Unrelated source.\fRailway history.')
+    options = SearchOptions((center.one,), 'Railway history', mode='thematic',
+                            title='Rank window', limit_per_library=1)
+    center.controller.search_page(options)
+    assert center.controller.rows == () and center.view.next_available
+    assert 'More source windows remain' in center.view.messages[-1]
+    center.controller.next_page()
+    assert len(center.controller.rows) == 1 and not center.view.next_available
+    center.controller.copy('quote')
+    assert center.view.copied[-1] == center.controller.rows[0].result.quote
+    assert center.controller.rows[0].result.verified
+
+
+def test_changing_options_discards_paged_cursor_without_dispatching_old_next(center):
+    center.app.add_text(center.one, 'Repeated', 'Railway.\fRailway.')
+    options = SearchOptions((center.one,), 'Railway', title='Repeated', limit_per_library=1)
+    center.controller.search_page(options)
+    assert center.controller.next_cursor and center.view.next_available
+    count = len(center.frame.jobs)
+    center.controller.options_changed()
+    assert center.controller.next_cursor is None and center.controller.page_options is None
+    assert not center.view.next_available and center.controller.service.current is None
+    center.controller.next_page()
+    assert len(center.frame.jobs) == count and center.controller.rows == ()
+
+
+@pytest.mark.parametrize('change', ['active', 'cancel', 'dispose'])
+def test_late_paged_completion_does_not_publish_next_token_or_touch_closed_view(center, change):
+    center.app.add_text(center.one, 'Repeated', 'Railway.\fRailway.')
+    options = SearchOptions((center.one,), 'Railway', title='Repeated', limit_per_library=1)
+    center.controller.search_page(options)
+    assert center.controller.next_cursor
+    center.frame.deferred = True
+    center.controller.next_page()
+    if change == 'active':
+        center.frame.active = (center.two, center.destination)
+    elif change == 'cancel':
+        center.controller.cancel()
+    else:
+        center.controller.dispose()
+    before = center.view.messages[:]
+    center.frame.finish()
+    assert center.controller.rows == () and center.controller.next_cursor is None
+    assert not center.view.next_available and not center.controller.running
+    if change == 'dispose':
+        assert center.view.messages == before
+
+
+def test_child_destroy_does_not_revoke_search_owner_or_current_page(center):
+    native = NativeSearchCenter.__new__(NativeSearchCenter)
+    native.window = Mock()
+    native._window_id, native._window_alive, native._deferred_destroy = 91, True, False
+    native.controller = center.controller
+    center.controller.search_page(SearchOptions((center.one,), 'Railway'))
+    rows = center.controller.rows
+    event = SimpleNamespace(GetId=lambda: 92, GetEventObject=Mock(side_effect=AssertionError('No wrapper access')),
+                            Skip=Mock())
+    native._destroyed(event)
+    assert native._window_alive and center.controller.alive and center.controller.rows is rows
+    event.Skip.assert_called_once_with()
+    event.GetEventObject.assert_not_called()
+
+
+@pytest.mark.parametrize('close_parent', [False, True])
+def test_search_action_restores_focus_only_while_captured_parent_is_live(center, monkeypatch, close_parent):
+    from carr_library.ui.federated_search import FederatedSearchActions
+    handlers, focused = [], Mock(side_effect=RuntimeError('Previous native focus was destroyed'))
+    center.frame.GetId = lambda: 41
+    center.frame.Bind = lambda event, handler: handlers.append(handler)
+    center.frame.Unbind = Mock(return_value=True)
+    center.frame.status = SimpleNamespace(SetFocus=Mock(side_effect=AssertionError('No fallback to deleted status')))
+    center.frame.report = Mock(side_effect=AssertionError('A destroyed parent cannot report'))
+    wx = SimpleNamespace(EVT_WINDOW_DESTROY=object(),
+                         Window=SimpleNamespace(FindFocus=lambda: SimpleNamespace(SetFocus=focused)))
+    monkeypatch.setitem(sys.modules, 'wx', wx)
+    def show():
+        if close_parent:
+            handlers[0](SimpleNamespace(GetId=lambda: 41, Skip=Mock()))
+            raise RuntimeError('The native parent was destroyed')
+    monkeypatch.setattr('carr_library.ui.federated_search.NativeSearchCenter',
+                        lambda *args: SimpleNamespace(show=show))
+    FederatedSearchActions(center.frame).open()
+    center.frame.report.assert_not_called()
+    center.frame.status.SetFocus.assert_not_called()
+    if close_parent:
+        focused.assert_not_called()
+        center.frame.Unbind.assert_not_called()
+    else:
+        focused.assert_called_once_with()
+        center.frame.Unbind.assert_called_once()
