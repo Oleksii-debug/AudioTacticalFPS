@@ -384,7 +384,7 @@ def test_owned_responsive_window_holds_the_original_process_handle_until_normal_
     # WM_NULL returned zero; successful API delivery is what matters.
     process.close_window(window)
     assert process.kernel.opened == [42]  # no PID-based reopen before WM_CLOSE
-    assert process.kernel.membership == [(30, 10), (30, 10)]
+    assert process.kernel.membership == [(30, 10), (30, 10), (30, 10)]
     assert process.user.posted == [(123, 0x10, 0, 0)]
     assert not process.gui_exited()
     process.kernel.alive = False
@@ -478,3 +478,27 @@ def test_failed_probe_report_never_asserts_acceptance(tmp_path, monkeypatch):
     assert result["actual_fresh_installation_verified"] is False
     assert result["first_launch_gui_boot_close_verified"] is False
     assert result["manual_acceptance"] == {"nvda": "NOT_RUN", "signing": "NOT_RUN"}
+
+
+@pytest.mark.parametrize("failure", ["changed_pid", "changed_job", "exited"])
+def test_close_rechecks_ownership_after_responsiveness_wait(native_window_boundary, failure):
+    process = native_window_boundary
+    window = process._window(123)
+    deliver = process.user.SendMessageTimeoutW
+
+    def change_during_delivery(*args):
+        success = deliver(*args)
+        if failure == "changed_pid":
+            process.user.pid = 77
+        elif failure == "changed_job":
+            process.kernel.belongs = False
+        else:
+            process.kernel.alive = False
+        return success
+
+    process.user.SendMessageTimeoutW = change_during_delivery
+    with pytest.raises(RuntimeError, match="changed before normal close"):
+        process.close_window(window)
+    assert process.user.posted == []
+    assert process.kernel.opened == [42]
+    assert process.kernel.closed == []

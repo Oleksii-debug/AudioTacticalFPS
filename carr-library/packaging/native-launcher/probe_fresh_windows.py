@@ -257,6 +257,16 @@ class _OwnedProcess:
     def close_window(self, record):
         if self.gui_process is None or self._window(record["handle"], self.gui_process) != record:
             raise RuntimeError("The accepted native window changed before normal close.")
+        # WM_NULL above can wait: recheck ownership after it, immediately before
+        # posting. Win32 does not atomically bind HWND messages to process handles.
+        pid, belongs = DWORD(), BOOL()
+        if (not self.user.GetWindowThreadProcessId(record["handle"], C.byref(pid))
+                or pid.value != record["pid"]
+                or pid.value != self.kernel.GetProcessId(self.gui_process)
+                or self.kernel.WaitForSingleObject(self.gui_process, 0) != WAIT_TIMEOUT
+                or not self.kernel.IsProcessInJob(self.gui_process, self.job, C.byref(belongs))
+                or not belongs.value):
+            raise RuntimeError("The accepted native window changed before normal close.")
         if not self.user.PostMessageW(record["handle"], 0x10, 0, 0):  # WM_CLOSE
             raise C.WinError(C.get_last_error())
 
