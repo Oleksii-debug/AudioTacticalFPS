@@ -4,11 +4,13 @@ import hashlib
 import json
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import Mock
 import wave
 
 import pytest
 
-from carr_library.ui.audio_studio import StudioController, AudioStudioActions, plan_description
+from carr_library.ui.audio_studio import StudioController, AudioStudioActions, AudioStudioDialog, plan_description
+from carr_library.ui.save_all import SaveCoordinator
 
 
 @dataclass
@@ -39,6 +41,75 @@ def controller(tmp_path):
     ffmpeg = tmp_path / 'ffmpeg-test-placeholder'
     ffmpeg.write_text('No subprocess is launched in controller tests.', encoding='utf-8')
     return StudioController(private_root=tmp_path / 'private', registry=Registry(), parser=parser, ffmpeg=ffmpeg)
+
+
+@pytest.fixture
+def save_view(controller, tmp_path):
+    controller.new('Immutable original text.')
+    controller.save(tmp_path / 'studio-project.json')
+    view = object.__new__(AudioStudioDialog)
+    view.controller = controller
+    view.busy = view.closed = False
+    view.editing_dirty = True
+    view.parent = SimpleNamespace(save_coordinator=SaveCoordinator())
+    view.script = SimpleNamespace(SetFocus=Mock())
+    view._capture = lambda: controller.edit_script('Explicit reading-copy edit.')
+    view._refresh_text = lambda: setattr(view, 'editing_dirty', controller.dirty)
+    view._message, view._error = Mock(), Mock()
+    view._register_save_all()
+    return view
+
+
+def test_save_all_studio_completion_follows_actual_project_write(save_view):
+    summaries = []
+    save_view.parent.save_coordinator.save_all(summaries.append)
+    assert len(summaries) == 1 and summaries[0].complete
+    assert summaries[0].saved == ('Audio Studio project',)
+    assert not save_view.editing_dirty and not save_view.controller.dirty
+    payload = json.loads(save_view.controller.project_path.read_text(encoding='utf-8'))
+    restored = StudioController(private_root=save_view.controller.private_root)
+    restored.open(save_view.controller.project_path)
+    assert restored.script == 'Explicit reading-copy edit.'
+    assert restored.draft.source_text == 'Immutable original text.'
+    assert payload['project_id'] == save_view.controller.project_id
+
+
+def test_save_all_studio_conflict_preserves_file_and_unsaved_editor(save_view):
+    path = save_view.controller.project_path
+    external = path.read_bytes() + b'\n'
+    path.write_bytes(external)
+    summaries = []
+    save_view.parent.save_coordinator.save_all(summaries.append)
+    assert not summaries[0].complete
+    assert path.read_bytes() == external
+    assert save_view.controller.dirty and save_view.editing_dirty
+    assert save_view.controller.script == 'Explicit reading-copy edit.'
+    save_view._error.assert_called_once()
+
+
+def test_save_all_studio_save_as_cancellation_retains_draft(save_view):
+    save_view.controller.project_path = None
+    save_view._file = Mock(return_value=None)
+    summaries = []
+    save_view.parent.save_coordinator.save_all(summaries.append)
+    assert not summaries[0].complete and save_view.controller.dirty
+    assert save_view.editing_dirty and save_view.controller.project_path is None
+    assert 'cancelled' in summaries[0].remaining[0][1]
+
+
+def test_save_all_studio_unregisters_only_its_live_participant(save_view):
+    coordinator = save_view.parent.save_coordinator
+    assert len(coordinator.participants) == 1
+    save_view._unregister_save_all()
+    save_view._unregister_save_all()
+    assert not coordinator.participants
+
+
+def test_save_all_studio_does_not_accept_truthy_save_without_clean_baseline(save_view):
+    save_view.save = Mock(return_value=True)
+    reports = []
+    save_view._save_for_all(reports.append)
+    assert len(reports) == 1 and reports[0].saved is False
 
 
 def test_save_open_preserves_immutable_source_and_derivative_and_dirty_state(controller, tmp_path):
@@ -190,6 +261,46 @@ def test_readable_preview_and_voice_choices_no_wx_dependency(controller):
     assert controller.voice_status() == 'test: available'
 
 
+def test_literal_mode_preserves_source_that_looks_like_script(tmp_path):
+    from carr_library.audio.models import Line
+    controller = StudioController(private_root=tmp_path / 'private')
+    source = 'Date: 2026-11-26\n[pause 2]\n# A heading\fSecond source segment.'
+    controller.new(source)
+    plan = controller.plan()
+    assert controller.input_kind == 'narration'
+    assert plan.original_script == source
+    assert len(plan.roles) == 1 and len(plan.scenes) == 2
+    assert all(isinstance(event, Line) for scene in plan.scenes for event in scene.events)
+    assert '\f'.join(''.join(event.text for event in scene.events) for scene in plan.scenes) == source
+    assert controller.draft.source_text == source
+
+
+def test_saved_interpretation_and_legacy_projects_are_unambiguous(controller, tmp_path):
+    path = tmp_path / 'project.json'
+    controller.new('Label: unchanged source')
+    controller.save(path)
+    controller.configure(input_kind='script')
+    assert controller.dirty
+    controller.open(path)
+    assert controller.input_kind == 'narration' and not controller.dirty
+    saved = controller.to_dict()
+    legacy = {key: value for key, value in saved.items() if key != 'input_kind'}
+    legacy['version'] = 1
+    path.write_text(json.dumps(legacy), encoding='utf-8')
+    controller.open(path)
+    assert controller.input_kind == 'script'
+    legacy['source_reference'] = {'kind': 'library-source-reading-copy'}
+    path.write_text(json.dumps(legacy), encoding='utf-8')
+    controller.open(path)
+    assert controller.input_kind == 'narration'
+    invalid = {**saved, 'input_kind': 'execute'}
+    path.write_text(json.dumps(invalid), encoding='utf-8')
+    before = controller.to_dict()
+    with pytest.raises(ValueError, match='mode'):
+        controller.open(path)
+    assert controller.to_dict() == before
+
+
 def test_original_imported_file_cannot_be_replaced_by_project_or_reading_export(controller, tmp_path):
     original = tmp_path / 'source.txt'
     original.write_text('Original source', encoding='utf-8')
@@ -224,6 +335,8 @@ def test_selected_book_import_uses_exact_pages_and_retains_revision(tmp_path):
     assert not reports
     controller = captured[0]
     assert controller.script == raw
+    assert controller.input_kind == 'narration'
+    assert controller.plan().original_script == raw
     assert controller.source_reference['edition'] == book['edition']
     assert len(controller.source_reference['pages']) == 2
     assert controller.source_reference['pages'][0]['location']['text_sha256'] == hashlib.sha256(raw.split('\f')[0].encode()).hexdigest()

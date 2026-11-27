@@ -300,6 +300,8 @@ class KeyboardManager:
             'Within the Reading Desk, open Reader keyboard guide for its current contextual bindings.',
             'Choose a library or research topic before running scoped actions. The original handlers still check access and selections.',
             'Library, Import Center manages files, folders and resumable import queues.',
+            'File, Save all open drafts waits for committed research notes and audio projects; its final message lists any remaining edits.',
+            'Audio Studio also has a Save all open drafts button. Its Ctrl+S and Save project as remain local to that project.',
             'Academic library manages references, reading progress, tags and notes. Bibliography exports references.',
             'Research Search Center searches only the libraries you explicitly select.',
             'Original source text stays read-only. Put your commentary in Evidence and Notes.',

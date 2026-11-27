@@ -64,7 +64,9 @@ python packaging/add_audio_runtime.py --bundle ABS_NATIVE_SUPPLEMENTED_BUNDLE --
 The adapter copies only sealed installation inputs, preserves the exact source
 commit and tree, verifies the application wheel contains this runtime verifier,
 and adds every audio file plus its inner manifest to the existing outer seal.
-It publishes the acceptance manifest last. Previously delivered bundles,
+It publishes the acceptance manifest last and checks that it still owns the
+output directory around every publication move. Failure cleanup preserves any
+replacement directory and unrelated files. Previously delivered bundles,
 installed environments, caches and private library data are never inputs to
 this copy. The existing source-wheel verifier records the exact commit's tree;
 the installer recognizes the optional audio flag and checks its complete layout.
@@ -100,6 +102,7 @@ its audio workflows. Keep the Python/OCR blocks and all existing tests.
 
 ```text
 INSTALLED_PYTHON -I -B scripts/windows_audio_runtime_smoke.py --bundle ABS_BUNDLE
+INSTALLED_PYTHON -I -B scripts/windows_installed_audio_smoke.py --bundle ABS_BUNDLE
 ```
 
 The smoke checks installed-package identity, automatic studio/CLI selection,
@@ -111,6 +114,18 @@ duration/channels, and verifies unchanged original bytes. It emits eleven passed
 cases only after execution. On a non-Windows host it returns `NOT_RUN` and exit
 77. Do not treat that result as a green native gate.
 
+The separate installed studio smoke verifies the same sealed bundle and uses
+the common direct tool selector without changing PATH. Its fifteen named cases
+cover installed source identity, actual SAPI synthesis, stereo production,
+measured duration/clipping, chapters/subtitles/stems, immutable source, complete
+output reuse, literal narration, Windows Credential Manager isolation, native
+Studio controls/focus/voice list/preview and saved project readback. The existing
+source-only `windows_audio_smoke.py` entry point remains separate and does not
+claim to execute the sealed delivery runtime. Preserve the existing native DLL
+activation wrapper and block both the selected media tools and SAPI PowerShell
+outbound before the installed probes. Neither probe establishes manual NVDA
+acceptance or human listening quality.
+
 This runtime smoke does not establish speaker playback, recording, speech
 quality, neural inference, MusicGen, long-duration scene continuity, human
 listening assessment or NVDA acceptance. Those belong to the integrated audio
@@ -121,7 +136,22 @@ Focused source regressions:
 ```text
 python scripts/ci_check.py tests/packaging/test_audio_runtime.py tests/packaging/test_audio_acquisition.py
 python scripts/ci_check.py tests/packaging/test_audio_bundle.py tests/audio/test_tool_selection.py
+python scripts/ci_check.py tests/audio/test_narration_plan.py tests/ui/test_audio_studio.py tests/audio/test_project_backup.py
 ```
+
+## Literal source narration
+
+New Studio projects and imported book text use literal narration by default.
+Headings, speaker-like labels and bracketed phrases remain spoken text. Form
+feeds identify source segments, and every spoken chunk is bound to exact
+code-point offsets in the retained input. Select Structured production script
+explicitly to interpret role, pause, music or output directives. Changing the
+interpretation invalidates previous rendered results.
+
+Version 2 Studio projects save this choice. Existing version 1 independent
+scripts keep script interpretation; version 1 source-linked projects reopen as
+literal narration. Project backup and restore accept both versions without
+rewriting the original source or selecting executable paths from project data.
 
 ## Reused source identity
 
@@ -133,3 +163,7 @@ discovery correction and safe PATH search reuse the relevant functions from
 `1386bf9c9abe36544f2641a15a70434ff0ad1e9d`. Integration adapts only the tool
 selector, existing bundle metadata, installer gates and their acceptance probes;
 it does not introduce a second production renderer or acquisition pipeline.
+Literal narration and the separate installed studio probe also reuse that
+existing CARR11 implementation through reviewed commit
+`10d31b848bc116f043c12c3d747168b195eb0e13`; its output-directory ownership
+correction is retained alongside the newer sealed tool selector.

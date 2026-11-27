@@ -197,6 +197,39 @@ def test_interrupted_publication_removes_only_its_incomplete_output(inputs, monk
     assert (bundle / 'private-database.sqlite').read_bytes() == b'Private, unlisted fixture.'
 
 
+@pytest.mark.parametrize('boundary', ['completed_move', 'failed_manifest_move'])
+def test_replaced_publication_directory_is_preserved_and_never_sealed(inputs, monkeypatch, boundary):
+    bundle, audio, output, _ = inputs
+    displaced = output.with_name('displaced owned output')
+    move = helper.shutil.move
+    replaced = False
+
+    def replace_output():
+        nonlocal replaced
+        output.rename(displaced)
+        output.mkdir()
+        (output / 'unrelated-user-file.txt').write_bytes(b'Preserve unrelated replacement data.')
+        replaced = True
+
+    def interrupted(source, destination):
+        if boundary == 'failed_manifest_move' and Path(source).name == 'bundle-manifest.json':
+            replace_output()
+            raise OSError('Synthetic replaced manifest destination')
+        result = move(source, destination)
+        if boundary == 'completed_move' and not replaced:
+            replace_output()
+        return result
+
+    monkeypatch.setattr(helper.shutil, 'move', interrupted)
+    with pytest.raises((OSError, ValueError)):
+        helper.attach_runtime(bundle, audio, output)
+    assert replaced
+    assert (output / 'unrelated-user-file.txt').read_bytes() == b'Preserve unrelated replacement data.'
+    assert not (output / 'bundle-manifest.json').exists()
+    assert displaced.is_dir()
+    assert (bundle / 'private-database.sqlite').read_bytes() == b'Private, unlisted fixture.'
+
+
 @pytest.mark.parametrize('field', ['source_commit', 'source_tree'])
 def test_missing_exact_source_identity_fails_before_copy(inputs, field):
     bundle, audio, output, manifest = inputs

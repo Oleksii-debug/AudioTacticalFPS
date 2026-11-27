@@ -62,6 +62,19 @@ def _copy_file(source, target, expected):
         raise ValueError('Source bundle or audio file changed while being copied.')
 
 
+def _directory_identity(path):
+    info = _plain(path, directory=True)
+    return info.st_dev, info.st_ino
+
+
+def _owned_directory(path, identity):
+    try:
+        _directory(path)
+        return _directory_identity(path) == identity
+    except (OSError, ValueError):
+        return False
+
+
 def attach_runtime(bundle, audio_runtime, output):
     """Publish a fresh bundle with its acceptance manifest written last."""
     bundle, audio_runtime, output = map(_absolute, (bundle, audio_runtime, output))
@@ -127,13 +140,25 @@ def attach_runtime(bundle, audio_runtime, output):
         installer.verify(stage)
         runtime.bundled_audio_tools(stage)
         output.mkdir(exist_ok=False)
+        output_identity = _directory_identity(output)
+
+        def publish(path):
+            if not _owned_directory(output, output_identity):
+                raise ValueError('Audio bundle output directory changed during publication.')
+            shutil.move(str(path), output / path.name)
+            if not _owned_directory(output, output_identity):
+                raise ValueError('Audio bundle output directory changed during publication.')
+
         try:
             for path in stage.iterdir():
                 if path.name != 'bundle-manifest.json':
-                    shutil.move(str(path), output / path.name)
-            shutil.move(str(stage / 'bundle-manifest.json'), output / 'bundle-manifest.json')
+                    publish(path)
+            publish(stage / 'bundle-manifest.json')
         except BaseException:
-            shutil.rmtree(output)
+            # Match the delivery helper's ownership rule: a pathname can now
+            # belong to another operation, even though this call created it.
+            if _owned_directory(output, output_identity):
+                shutil.rmtree(output)
             raise
     audio_report['tools'] = {name: str(output / runtime.DIRECTORY / path) for name, path in runtime.TOOLS.items()}
     return {'output': str(output), 'manifest_sha256': hashlib.sha256(raw).hexdigest(),

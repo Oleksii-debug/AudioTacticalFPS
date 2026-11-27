@@ -77,6 +77,9 @@ def configured_registry(library_root, *, ffmpeg=None):
     settings = load_settings(library_root)
     selected = asdict(settings)
     if ffmpeg is not None:
-        selected['ffmpeg'] = str(ffmpeg)
-    _verify_selected(EngineSettings(**selected))
+        selected['ffmpeg'] = ffmpeg
+    validated = dict(selected)
+    if validated['ffmpeg'] is not None:
+        validated['ffmpeg'] = str(validated['ffmpeg'])
+    _verify_selected(EngineSettings(**validated))
     return default_registry(**selected)

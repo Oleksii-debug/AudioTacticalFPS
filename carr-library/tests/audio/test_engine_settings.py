@@ -26,7 +26,9 @@ def test_settings_roundtrip_and_studio_share_one_registry(tmp_path, monkeypatch)
     monkeypatch.setattr('carr_library.audio.engines.default_registry', factory)
     assert configured_registry(library) is registry
     assert StudioController(private_root=library)._registry() is registry
-    assert calls == [dict(ffmpeg=str(binary), piper_executable=None, piper_manifest=None, dordiai_manifest=None)] * 2
+    stored = dict(ffmpeg=str(binary), piper_executable=None, piper_manifest=None, dordiai_manifest=None)
+    # The persisted format contains strings; Studio supplies its selected Path.
+    assert calls == [stored, {**stored, 'ffmpeg': binary}]
 
 
 @pytest.mark.parametrize('bad', [{'api_key': 'synthetic'}, {'helper': '/tmp/program'}, {'piper_executable': '/tmp/piper'},
@@ -54,8 +56,10 @@ def test_linked_setting_file_and_untrusted_linked_executable_preserve_previous(t
         save_settings(library, EngineSettings())
 
 
-def test_restored_configuration_validates_without_applying_missing_executables():
-    settings = EngineSettings(ffmpeg='/a/missing/installed/ffmpeg')
+def test_restored_configuration_validates_without_applying_missing_executables(tmp_path):
+    missing = tmp_path / 'not-installed' / 'ffmpeg.exe'
+    assert not missing.exists()
+    settings = EngineSettings(ffmpeg=str(missing))
     assert validate_settings_bytes(json.dumps(settings.to_dict()).encode()) == settings
 
 
@@ -63,7 +67,7 @@ def test_optional_flite_discovery_failure_does_not_disable_other_local_engines(t
     from carr_library.audio import engines
     binary = tmp_path / 'ffmpeg-placeholder'
     binary.write_bytes(b'Not executed')
-    monkeypatch.setattr(engines.shutil, 'which', lambda name: None)
+    monkeypatch.setattr(engines, 'find_local_tool', lambda name: None)
     def unavailable(*args):
         raise engines.EngineUnavailable('No libflite in this build')
     monkeypatch.setattr(engines, 'FliteEngine', unavailable)

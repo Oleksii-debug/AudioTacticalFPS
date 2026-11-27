@@ -12,6 +12,7 @@ import pytest
 
 from carr_library.application import LibraryApp
 from carr_library.citations.anchors import format_citation
+from carr_library.ui.save_all import SaveCoordinator
 
 
 class Control:
@@ -129,6 +130,109 @@ def test_note_commits_in_worker_and_updates_ui_only_after_commit(evidence):
     assert app.evidence(current.workspace,current.topic)[0].note == 'Draft to save'
     assert current.displayed.note == 'Draft to save' and not current._dirty()
     assert current.note.focused
+
+
+def test_save_all_waits_for_database_commit_and_visible_baseline(evidence):
+    current, app, _ = evidence
+    coordinator, summaries = SaveCoordinator(), []
+    coordinator.register('note', 'Research note', dirty=current._dirty,
+                         save=lambda done: current.save_note(completed=done))
+    current.note.SetValue('Save All durable snapshot')
+    assert coordinator.save_all(summaries.append)
+    assert coordinator.busy and not summaries
+    assert app.evidence(current.workspace, current.topic)[0].note == 'Saved note'
+    _, operation, complete, _ = current.frame.run_job.call_args.args
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        saved = pool.submit(operation).result()
+    assert app.evidence(current.workspace, current.topic)[0].note == 'Save All durable snapshot'
+    assert current.displayed.note == 'Saved note'
+    assert coordinator.busy and not summaries
+    complete(saved)
+    assert not coordinator.busy and len(summaries) == 1
+    assert summaries[0].complete and summaries[0].saved == ('Research note',)
+    assert not current._dirty()
+
+
+def test_save_all_retains_and_reports_newer_edit_after_a_committed_snapshot(evidence):
+    current, app, _ = evidence
+    coordinator, summaries = SaveCoordinator(), []
+    coordinator.register('note', 'Research note', dirty=current._dirty,
+                         save=lambda done: current.save_note(completed=done))
+    current.note.SetValue('Snapshot being saved')
+    coordinator.save_all(summaries.append)
+    _, operation, complete, _ = current.frame.run_job.call_args.args
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        saved = pool.submit(operation).result()
+    current.note.SetValue('Newer unsaved editor text')
+    complete(saved)
+    assert app.evidence(current.workspace, current.topic)[0].note == 'Snapshot being saved'
+    assert current.note.GetValue() == 'Newer unsaved editor text' and current._dirty()
+    assert not summaries[0].complete
+    assert summaries[0].remaining[0][0] == 'Research note'
+
+
+def test_failed_note_save_completes_once_and_other_participants_still_run(evidence):
+    from carr_library.ui.save_all import SaveResult
+    current, app, _ = evidence
+    transaction = current.transaction
+    @contextmanager
+    def rejected():
+        with transaction() as service:
+            yield service
+            raise OSError('Synthetic commit failure')
+    current.transaction = rejected
+    coordinator, summaries, other = SaveCoordinator(), [], {'dirty': True}
+    coordinator.register('note', 'Research note', dirty=current._dirty,
+                         save=lambda done: current.save_note(completed=done))
+    def save_other(completed):
+        other['dirty'] = False
+        completed(SaveResult(True))
+    coordinator.register('other', 'Other draft', dirty=lambda: other['dirty'], save=save_other)
+    current.note.SetValue('Keep this failed draft')
+    coordinator.save_all(summaries.append)
+    assert not execute(current)
+    assert len(summaries) == 1 and not coordinator.busy
+    assert not summaries[0].complete and summaries[0].saved == ('Other draft',)
+    assert 'commit failure' in summaries[0].remaining[0][1]
+    assert app.evidence(current.workspace, current.topic)[0].note == 'Saved note'
+    assert current.note.GetValue() == 'Keep this failed draft'
+
+
+@pytest.mark.parametrize('unavailable', ['busy', 'closing', 'selection'])
+def test_unavailable_note_reports_save_all_completion_without_starting_job(evidence, unavailable):
+    current, _, _ = evidence
+    if unavailable == 'busy':
+        current.frame.working = True
+    elif unavailable == 'closing':
+        current.frame._closing = True
+    else:
+        current.items.SetSelection(-1)
+    reports = []
+    current.save_note(completed=reports.append)
+    assert len(reports) == 1 and reports[0].saved is False
+    current.frame.run_job.assert_not_called()
+
+
+@pytest.mark.parametrize('change', ['scope', 'epoch', 'closed'])
+def test_save_all_receives_failure_when_view_changes_before_commit_confirmation(evidence, change):
+    current, app, _ = evidence
+    current.note.SetValue('Committed older view snapshot')
+    reports = []
+    current.save_note(completed=reports.append)
+    _, operation, complete, _ = current.frame.run_job.call_args.args
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        saved = pool.submit(operation).result()
+    if change == 'scope':
+        current.frame.active = ('another workspace', 'another topic')
+    elif change == 'epoch':
+        current._evidence_epoch += 1
+    else:
+        current.frame._closing = True
+    complete(saved)
+    assert len(reports) == 1 and reports[0].saved is False
+    assert 'before save confirmation' in reports[0].message
+    assert current.displayed.note == 'Saved note'
+    assert app.evidence(current.workspace, current.topic)[0].note == 'Committed older view snapshot'
 
 
 def test_commit_failure_preserves_draft_and_allows_retry(evidence):

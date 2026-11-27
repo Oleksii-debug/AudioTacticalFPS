@@ -40,6 +40,12 @@ jobs:
       TRANSFORMERS_OFFLINE: '1'
       DO_NOT_TRACK: '1'
     steps:
+      - name: Preserve the exact committed source bytes
+        working-directory: ${{ github.workspace }}
+        run: |
+          git config --global core.autocrlf false
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Check out the exact event commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -109,6 +115,12 @@ jobs:
           & $env:CARR_PYTHON -I -B tests/ui/probe_advanced_search_native.py 2>&1 | Tee-Object 'ci-results/native-advanced-search.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Exercise installed native BibTeX and citation controls
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_citation_styles_smoke.py 2>&1 | Tee-Object 'ci-results/native-citation-styles.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Retain core-only fallback and offline startup coverage
         timeout-minutes: 5
         run: |
@@ -140,13 +152,27 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "CARR_CI_OCR_DIR=$ocr" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
+      - name: Prepare the pinned shared audio runtime before its source regressions
+        timeout-minutes: 10
+        run: |
+          $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
+          $audioInputs = Join-Path $bundleWork 'audio-inputs'
+          $audioRuntime = Join-Path $bundleWork 'audio-runtime'
+          & $env:CARR_PYTHON packaging/acquire_audio_runtime.py --output $audioInputs --download | Tee-Object 'ci-results/audio-runtime-acquisition.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $audioLock = Get-Content packaging/audio-runtime/source-lock.json -Raw | ConvertFrom-Json
+          & $env:CARR_PYTHON packaging/prepare_audio_runtime.py --archive (Join-Path $audioInputs $audioLock.archive.name) --sources-dir $audioInputs --output $audioRuntime | Tee-Object 'ci-results/audio-runtime-preparation.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_CI_AUDIO_DIR=$audioRuntime" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       - name: Run required integrated source workflows
         timeout-minutes: 25
         run: |
-          # Use the already verified real OCR engine and pinned model bytes for
-          # source fixtures. Keep explicit runtime selection unset so tests that
-          # exercise developer discovery can still verify its failure paths.
-          $env:PATH = "$env:CARR_CI_OCR_DIR;$env:PATH"
+          # Use the verified real OCR engine, shared audio runtime and pinned
+          # model bytes for source fixtures. Keep explicit runtime selection unset
+          # so discovery tests can still exercise their failure paths.
+          $audioBin = Join-Path $env:CARR_CI_AUDIO_DIR 'bin'
+          $env:PATH = "$audioBin;$env:CARR_CI_OCR_DIR;$env:PATH"
           $env:TESSDATA_PREFIX = Join-Path $env:CARR_CI_OCR_DIR 'tessdata'
           $suites = @(
             'tests/packaging/test_offline_runtime_policy.py',
@@ -205,6 +231,7 @@ jobs:
             'tests/storage/test_backup_v4_sidecars.py',
             'tests/storage/test_backup_publication_recovery.py',
             'tests/storage/test_backup_keyboard_drafts.py',
+            'tests/storage/test_backup_voice_reader.py',
             'tests/catalog/test_metadata_backup_roundtrip.py',
             'tests/reader/test_context.py',
             'tests/reader/test_topic_tree.py',
@@ -212,8 +239,11 @@ jobs:
             'tests/storage/test_academic_migration.py',
             'tests/research/test_academic_library.py',
             'tests/research/test_bibtex_import.py',
+            'tests/research/test_csl_author_boundaries.py',
             'tests/citations/test_csl.py',
+            'tests/citations/test_custom_csl.py',
             'tests/citations/test_bibliography_workbench.py',
+            'tests/citations/test_custom_workbench.py',
             'tests/ui/test_citation_styles_jobs.py',
             'tests/reader/test_export_no_clobber.py',
             'tests/ingest/test_import_replay_identity.py',
@@ -257,6 +287,7 @@ jobs:
             'tests/search/test_thematic_work_diversity.py',
             'tests/search/test_literal_v2_composition.py',
             'tests/search/test_advanced_search.py',
+            'tests/search/test_federated_advanced.py',
             'tests/ui/test_desktop_query_jobs.py',
             'tests/ui/test_scope_labels.py',
             'tests/ui/test_desktop_handlers.py',
@@ -273,6 +304,7 @@ jobs:
             'tests/storage/test_keyboard_preferences.py',
             'tests/storage/test_evidence_drafts.py',
             'tests/ui/test_evidence_draft_recovery.py',
+            'tests/ui/test_save_all.py',
             'tests/ui/probe_workspace_shell.py',
             'tests/ui/probe_catalog_insights_actions.py',
             'tests/ui/test_academic_library_dialog.py',
@@ -301,6 +333,9 @@ jobs:
             'tests/storage/test_finish_workspace_integrity.py',
             'tests/extract/test_docx_hidden_styles.py',
             'tests/packaging/test_windows_bundle.py',
+            'tests/packaging/test_audio_acquisition.py',
+            'tests/packaging/test_audio_runtime.py',
+            'tests/packaging/test_audio_bundle.py',
             'tests/library_assistant/test_library_workflow.py',
             'tests/library_assistant/test_library_workflow_ui.py',
             'tests/ingest/test_txt_replay_registration.py',
@@ -311,9 +346,16 @@ jobs:
             'tests/e2e/test_provider_transport_boundaries.py',
             'tests/e2e/test_audio_cli.py',
             'tests/audio/test_engine_settings.py',
+            'tests/audio/test_tool_selection.py',
             'tests/speech/test_live_reader.py',
             'tests/speech/test_source.py',
-            'tests/speech/test_player.py'
+            'tests/speech/test_player.py',
+            'tests/audio/test_narration_plan.py',
+            'tests/audio/test_project_backup.py',
+            'tests/audio/test_production.py',
+            'tests/ui/test_audio_studio.py',
+            'tests/packaging/test_delivery_archive.py',
+            'tests/ingest/test_import_publication_point.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py --jobs 2 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -415,6 +457,12 @@ jobs:
           & $env:CARR_PYTHON -I -B tests/ui/native_evidence_drafts_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-evidence-drafts.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Exercise native Save All after durable note and studio commits
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B -X utf8 tests/ui/native_save_all_smoke.py 2>&1 | Tee-Object 'ci-results/native-save-all.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Prepare the pinned local model through the existing upstream verifier
         timeout-minutes: 10
         run: |
@@ -457,6 +505,7 @@ jobs:
           $wheelhouse = Join-Path $bundleWork 'wheelhouse'
           $applicationWheels = Join-Path $bundleWork 'application'
           $baseBundle = Join-Path $bundleWork 'base bundle'
+          $nativeBundle = Join-Path $bundleWork 'native bundle'
           $bundle = Join-Path $bundleWork 'complete bundle'
           New-Item -ItemType Directory -Force $wheelhouse, $applicationWheels | Out-Null
           & $env:CARR_PYTHON -m pip download --only-binary=:all: --no-deps --require-hashes -r packaging/windows-semantic-cp311.lock --dest $wheelhouse
@@ -482,18 +531,27 @@ jobs:
           $nativeRuntime = Join-Path $bundleWork 'native-runtime'
           & $env:CARR_PYTHON packaging/prepare_native_runtime.py --package $nativePackage --output $nativeRuntime | Tee-Object 'ci-results/native-runtime-preparation.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $audioRuntime = $env:CARR_CI_AUDIO_DIR
           $sourceCommit = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $sourceTree = (git rev-parse 'HEAD^{tree}').Trim()
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON packaging/build_windows_bundle.py --wheel $applicationWheel --wheelhouse $wheelhouse --lock packaging/windows-semantic-cp311.lock --python-archive $pythonArchive --model-dir $env:CARR_CI_MODEL_DIR --model-manifest $env:CARR_CI_MODEL_MANIFEST --ocr-dir $ocr --ocr-source-archive $ocrSource --source-commit $sourceCommit --sbom packaging/windows-semantic-sbom.cdx.json --output $baseBundle | Tee-Object 'ci-results/full-bundle-build.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $env:CARR_PYTHON packaging/add_native_runtime.py --bundle $baseBundle --native-runtime $nativeRuntime --output $bundle | Tee-Object 'ci-results/full-bundle-native-runtime.json'
+          & $env:CARR_PYTHON packaging/add_native_runtime.py --bundle $baseBundle --native-runtime $nativeRuntime --output $nativeBundle | Tee-Object 'ci-results/full-bundle-native-runtime.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON packaging/add_audio_runtime.py --bundle $nativeBundle --audio-runtime $audioRuntime --output $bundle | Tee-Object 'ci-results/full-bundle-audio-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -I -B -c "import json,sys; from carr_library.audio_runtime import bundled_audio_tools; tools=bundled_audio_tools(sys.argv[1]); assert tools is not None; print(json.dumps(tools,sort_keys=True))" $bundle | Set-Content 'ci-results/sealed-audio-tools.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $audioTools = Get-Content -Raw -LiteralPath 'ci-results/sealed-audio-tools.json' | ConvertFrom-Json
           $manifest = Join-Path $bundle 'bundle-manifest.json'
           $expectedSbom = (Get-FileHash -Algorithm SHA256 -LiteralPath 'packaging/windows-semantic-sbom.cdx.json').Hash.ToLowerInvariant()
           $sealedSbom = Join-Path $bundle 'runtime-sbom.cdx.json'
           if (!(Test-Path -LiteralPath $sealedSbom -PathType Leaf)) { throw 'Missing sealed SBOM' }
           $actualSbom = (Get-FileHash -Algorithm SHA256 -LiteralPath $sealedSbom).Hash.ToLowerInvariant()
           $sbomManifest = Get-Content -Raw -LiteralPath $manifest | ConvertFrom-Json
+          if ($sbomManifest.source_commit -ne $sourceCommit -or $sbomManifest.source_tree -ne $sourceTree -or $sbomManifest.bundled_audio_runtime -ne $true) { throw 'Final audio bundle source identity or runtime flag mismatch.' }
           if ($actualSbom -ne $expectedSbom -or $sbomManifest.files.'runtime-sbom.cdx.json' -ne $expectedSbom) { throw 'SBOM seal mismatch' }
           @{ status='PASS'; sha256=$actualSbom } | ConvertTo-Json | Set-Content 'ci-results/sealed-sbom.json'
           $manifestBefore = (Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash
@@ -504,7 +562,15 @@ jobs:
           New-Item -ItemType Directory -Force $testWheels | Out-Null
           & $env:CARR_PYTHON -m pip download --only-binary=:all: --dest $testWheels pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $programs = @($bundledPython, (Join-Path $bundle 'runtime/pythonw.exe'), $installedPython, (Join-Path $bundle '.venv/Scripts/pythonw.exe'), (Join-Path $bundle 'ocr/tesseract.exe')) | ForEach-Object { [System.IO.Path]::GetFullPath($_) }
+          $sapiPowerShell = Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'
+          if (!(Test-Path -LiteralPath $sapiPowerShell -PathType Leaf)) { throw 'The native SAPI PowerShell host is missing.' }
+          $programs = @($bundledPython, (Join-Path $bundle 'runtime/pythonw.exe'), $installedPython,
+                        (Join-Path $bundle '.venv/Scripts/pythonw.exe'), (Join-Path $bundle 'ocr/tesseract.exe'),
+                        $audioTools.ffmpeg, $audioTools.ffprobe, $audioTools.ffplay, $sapiPowerShell)
+          # Voice discovery may enumerate the installed 32-bit SAPI host too.
+          $sapiPowerShell32 = Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe'
+          if (Test-Path -LiteralPath $sapiPowerShell32 -PathType Leaf) { $programs += $sapiPowerShell32 }
+          $programs = @($programs | ForEach-Object { [System.IO.Path]::GetFullPath($_) } | Sort-Object -Unique)
           $rulePrefix = 'CARR-offline-' + [guid]::NewGuid().ToString('N')
           $ruleNames = @()
           $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
@@ -523,10 +589,18 @@ jobs:
           if ($active.Count -ne $programs.Count -or @($active | Where-Object { $_.Enabled -ne 'True' -or $_.Direction -ne 'Outbound' -or $_.Action -ne 'Block' }).Count -ne 0) { throw 'Offline execution rules are not active.' }
           $filters = @($active | Get-NetFirewallApplicationFilter -ErrorAction Stop | Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })
           if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Offline execution rules do not cover the intended programs.' }
-          @{ status='PASS'; profiles_enabled=@($profiles.Name); outbound_blocked_programs=$filters; phase='installation, native desktop, multilingual inference and scanned-source research' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-results/full-bundle-firewall.json'
+          @{ status='PASS'; profiles_enabled=@($profiles.Name); outbound_blocked_programs=$filters; phase='installation, native desktop, multilingual inference, scanned-source research and local audio' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-results/full-bundle-firewall.json'
           & $bundledPython -I -B (Join-Path $bundle 'install_windows.py') 2>&1 | Tee-Object 'ci-results/core-bundle-install.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -m carr_library --self-test | Tee-Object 'ci-results/core-bundle-self-test.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/windows_audio_runtime_smoke.py --bundle $bundle 2>&1 | Tee-Object 'ci-results/installed-audio-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Hold the verified native DLL handle, and pass only --bundle to
+          # the installed Studio probe's argparse interface.
+          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; script=sys.argv.pop(1); runpy.run_path(script,run_name='__main__')" (Resolve-Path scripts/windows_installed_audio_smoke.py).Path --bundle $bundle 2>&1 | Tee-Object 'ci-results/installed-audio-studio.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path tests/ui/native_save_all_smoke.py).Path 2>&1 | Tee-Object 'ci-results/installed-save-all.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/ocr_catalog_smoke.py --model-directory (Join-Path $bundle 'ocr/tessdata') | Tee-Object 'ci-results/offline-bundle-ocr-catalogue.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -542,8 +616,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B tests/ui/probe_advanced_search_native.py 2>&1 | Tee-Object 'ci-results/full-bundle-advanced-search.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/windows_citation_styles_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-citation-styles-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if ((Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash -ne $manifestBefore) { throw 'Bundle manifest changed during installation or startup.' }
-          & $bundledPython -I -B -c "import importlib.util,json,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); manifest=json.loads((root/'bundle-manifest.json').read_text()); assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime']; assert 'runtime-sbom.cdx.json' in manifest['files']; assert (root/'runtime-sbom.cdx.json').read_bytes()==pathlib.Path('packaging/windows-semantic-sbom.cdx.json').read_bytes(); print(json.dumps(dict(status='PASS',runtime_sbom='VERIFIED',python=sys.version,manifest_unchanged=True,sealed_files_verified=True,model='INCLUDED',ocr='INCLUDED',private_native_runtime='INCLUDED',nvda='NOT_RUN')))" $bundle | Tee-Object 'ci-results/full-bundle-verified.json'
+          & $bundledPython -I -B -c "import importlib.util,json,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); manifest=json.loads((root/'bundle-manifest.json').read_text()); assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime'] and manifest['bundled_audio_runtime']; assert manifest['source_commit']==sys.argv[2] and manifest['source_tree']==sys.argv[3]; assert 'runtime-sbom.cdx.json' in manifest['files']; assert (root/'runtime-sbom.cdx.json').read_bytes()==pathlib.Path('packaging/windows-semantic-sbom.cdx.json').read_bytes(); print(json.dumps(dict(status='PASS',runtime_sbom='VERIFIED',python=sys.version,manifest_unchanged=True,sealed_files_verified=True,model='INCLUDED',ocr='INCLUDED',private_native_runtime='INCLUDED',audio_runtime='INCLUDED',source_commit=manifest['source_commit'],source_tree=manifest['source_tree'],nvda='NOT_RUN')))" $bundle $sourceCommit $sourceTree | Tee-Object 'ci-results/full-bundle-verified.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "CARR_CI_BUNDLE=$bundle" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
@@ -562,7 +638,7 @@ jobs:
           root = pathlib.Path(sys.argv[1]).resolve()
           assert pathlib.Path(carr_library.__file__).resolve().is_relative_to(root / '.venv')
           manifest = json.loads((root / 'bundle-manifest.json').read_text())
-          assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime']
+          assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime'] and manifest['bundled_audio_runtime']
           # Test-only command discovery is scoped to this installed-package child.
           # Production calls bind the verified runtime and never mutate PATH.
           os.environ['PATH'] = str(root / 'ocr') + os.pathsep + os.environ.get('PATH', '')
@@ -574,11 +650,15 @@ jobs:
           import carr_library.library_assistant, carr_library.backup_sidecars
           import carr_library.ui.keyboard_settings, carr_library.extract.document_formats
           import carr_library.audio.production, carr_library.providers
+          import carr_library.citations.csl, carr_library.citations.bibliography_workbench
+          import carr_library.research.bibtex_import, carr_library.ui.citation_styles_dialog
           for component in (carr_library.acquisition.service, carr_library.acquisition.transport,
                             carr_library.acquisition.providers, carr_library.ui.acquisition_dialog,
                             carr_library.library_assistant, carr_library.backup_sidecars,
                             carr_library.ui.keyboard_settings, carr_library.extract.document_formats,
-                            carr_library.audio.production, carr_library.providers):
+                            carr_library.audio.production, carr_library.providers,
+                            carr_library.citations.csl, carr_library.citations.bibliography_workbench,
+                            carr_library.research.bibtex_import, carr_library.ui.citation_styles_dialog):
               assert pathlib.Path(component.__file__).resolve().is_relative_to(root / '.venv')
           print(json.dumps({'installed_package': True, 'source_commit': manifest['source_commit']}), flush=True)
           import pytest
@@ -595,6 +675,7 @@ jobs:
                             'tests/library_assistant/test_library_workflow_ui.py',
                             'tests/storage/test_backup_v4_sidecars.py',
                             'tests/storage/test_backup_keyboard_drafts.py',
+                            'tests/storage/test_backup_voice_reader.py',
                             'tests/storage/test_library_backup_reading_state.py',
                             'tests/e2e/test_provider_transport_boundaries.py',
                             'tests/extract/test_ocr_model_catalog.py',
@@ -608,8 +689,11 @@ jobs:
                             'tests/speech/test_source.py',
                             'tests/speech/test_player.py',
                             'tests/research/test_bibtex_import.py',
+                            'tests/research/test_csl_author_boundaries.py',
                             'tests/citations/test_csl.py',
+                            'tests/citations/test_custom_csl.py',
                             'tests/citations/test_bibliography_workbench.py',
+                            'tests/citations/test_custom_workbench.py',
                             'tests/reader/test_export_no_clobber.py',
                             'tests/storage/test_backup_publication_recovery.py']
           status = pytest.main([*sys.argv[2:], *contents_suites])
@@ -629,11 +713,12 @@ jobs:
               assert pathlib.Path(actual.value).samefile(root / 'native-runtime' / 'bin' / name), name + ' loaded outside the private bundle'
           print(json.dumps({'status': 'PASS', 'private_native_dll_paths': 'PASS'}), flush=True)
           '@
-          $runInstalledTests | & $python -I -B - $bundle -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-results/full-bundle-workflows.xml tests/e2e/test_semantic_runtime.py tests/e2e/test_import_worker.py tests/e2e/test_import_batches_ocr.py tests/e2e/test_notebook_research_workflow.py tests/e2e/test_epub_import.py tests/e2e/test_extended_document_workflows.py tests/reader/test_ebook_reader.py tests/e2e/test_catalog_insights_workflow.py tests/e2e/test_academic_workflows.py tests/e2e/test_academic_workflow.py tests/e2e/test_academic_document_export.py tests/e2e/test_result_presentation.py tests/e2e/test_advanced_research_search.py tests/search/test_advanced_search.py 2>&1 | Tee-Object 'ci-results/full-bundle-workflows.txt'
+          $runInstalledTests | & $python -I -B - $bundle -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-results/full-bundle-workflows.xml tests/e2e/test_semantic_runtime.py tests/e2e/test_import_worker.py tests/e2e/test_import_batches_ocr.py tests/e2e/test_notebook_research_workflow.py tests/e2e/test_epub_import.py tests/e2e/test_extended_document_workflows.py tests/reader/test_ebook_reader.py tests/e2e/test_catalog_insights_workflow.py tests/e2e/test_academic_workflows.py tests/e2e/test_academic_workflow.py tests/e2e/test_academic_document_export.py tests/e2e/test_result_presentation.py tests/e2e/test_advanced_research_search.py tests/search/test_advanced_search.py tests/search/test_federated_advanced.py tests/e2e/test_research_search_cli.py 2>&1 | Tee-Object 'ci-results/full-bundle-workflows.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $python -I -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-results/full-bundle-workflows.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); passed=len(cases)-failed-skipped; required={'test_actual_semantic_snapshot_survives_concurrent_membership_revocation','test_actual_multilingual_ranker_and_complete_token_coverage','test_actual_application_semantic_scope_and_original_quotes','test_scanned_pdf_requires_explicit_review_for_each_exact_page_before_publication','test_reviewed_import_rejects_changed_approval_without_publishing','test_quarantined_batch_waits_for_explicit_review_and_refreshes_external_completion','test_notebook_search_fresh_navigation_and_backup_restore','test_academic_reference_roundtrip_preserves_source_evidence','test_academic_import_is_atomic_and_exports_preserve_metadata'} | {'test_long_ascii_source_search_copy_and_context_use_exact_tail['+mode+'-'+retrieval+']' for mode in ('short','thematic') for retrieval in ('thematic','semantic')} | {'test_application_exports_the_selected_topic_with_readable_title['+format+']' for format in ('docx','html')}; assert required<={c.get('name') for c in cases} and failed==skipped==0; print(json.dumps(dict(status='PASS',passed=passed,failed=failed,skipped=skipped,semantic_inference='PASS',scanned_source_workflow='PASS',import_batch_review='PASS',academic_workflow='PASS',notebook_research='PASS',large_source_presentation='PASS',academic_documents='PASS',nvda='NOT_RUN')))" | Tee-Object 'ci-results/full-bundle-workflows.json'
+          & $python -I -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-results/full-bundle-workflows.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); passed=len(cases)-failed-skipped; required={'test_advanced_selected_libraries_preserve_exact_witnesses_and_saved_evidence','test_final_result_page_after_ten_thousand_matches_is_not_rejected','test_advanced_cli_pages_keep_originals_and_selected_libraries','test_actual_semantic_snapshot_survives_concurrent_membership_revocation','test_actual_multilingual_ranker_and_complete_token_coverage','test_actual_application_semantic_scope_and_original_quotes','test_scanned_pdf_requires_explicit_review_for_each_exact_page_before_publication','test_reviewed_import_rejects_changed_approval_without_publishing','test_quarantined_batch_waits_for_explicit_review_and_refreshes_external_completion','test_notebook_search_fresh_navigation_and_backup_restore','test_academic_reference_roundtrip_preserves_source_evidence','test_academic_import_is_atomic_and_exports_preserve_metadata'} | {'test_long_ascii_source_search_copy_and_context_use_exact_tail['+mode+'-'+retrieval+']' for mode in ('short','thematic') for retrieval in ('thematic','semantic')} | {'test_application_exports_the_selected_topic_with_readable_title['+format+']' for format in ('docx','html')}; assert required<={c.get('name') for c in cases} and failed==skipped==0; print(json.dumps(dict(status='PASS',passed=passed,failed=failed,skipped=skipped,semantic_inference='PASS',scanned_source_workflow='PASS',import_batch_review='PASS',academic_workflow='PASS',notebook_research='PASS',large_source_presentation='PASS',academic_documents='PASS',nvda='NOT_RUN')))" | Tee-Object 'ci-results/full-bundle-workflows.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & (Join-Path $bundle 'runtime/python.exe') -I -B -c "import importlib.util,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); print('PASS: sealed bundle unchanged after native inference and OCR workflows')" $bundle
+          if ((Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash -ne $manifestBefore) { throw 'Bundle manifest changed during installed workflow acceptance.' }
+          & (Join-Path $bundle 'runtime/python.exe') -I -B -c "import importlib.util,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); print('PASS: sealed bundle unchanged after native inference, OCR and audio workflows')" $bundle
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           } finally {
             foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }

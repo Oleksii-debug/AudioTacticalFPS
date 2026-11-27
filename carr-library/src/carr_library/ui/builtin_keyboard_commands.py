@@ -9,6 +9,7 @@ from .command_registry import CommandSpec
 
 # id, menu caption, existing command caption, default application shortcut
 MAIN_COMMANDS = (
+    ('file.save_all', 'File', 'Save all open drafts', 'Ctrl+Alt+S'),
     ('library.new', 'Library', 'New library', 'Ctrl+N'),
     ('library.open', 'Library', 'Open existing library folder', ''),
     ('library.rename', 'Library', 'Rename or describe library', ''),

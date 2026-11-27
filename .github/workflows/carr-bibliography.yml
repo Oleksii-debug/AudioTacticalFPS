@@ -7,7 +7,7 @@ on:
       - carr-library/**
       - .github/workflows/carr-bibliography.yml
   push:
-    branches: [carr-library, 'carr/v3-academic-interchange-*']
+    branches: [carr-library, 'carr/v3-academic-interchange-*', carr/complete-v3-foundation-20261126-3954]
     paths:
       - carr-library/**
       - .github/workflows/carr-bibliography.yml
@@ -98,14 +98,23 @@ jobs:
           & $python -I -c "import json,platform,sqlite3,struct,sys,wx; assert sys.platform=='win32' and struct.calcsize('P')==8 and sys.version_info[:2]==(3,11); print(json.dumps(dict(python=sys.version,windows=platform.platform(),sqlite=sqlite3.sqlite_version,wx=wx.version())))" | Tee-Object 'ci-bibliography-results/native-runtime.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Exercise installed native BibTeX and citation controls
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_citation_styles_smoke.py 2>&1 | Tee-Object 'ci-bibliography-results/native-citation-styles.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Run strict bibliography, replay and export acceptance
         timeout-minutes: 8
         run: |
           $suites = @(
             'tests/research/test_bibtex_import.py',
+            'tests/research/test_csl_author_boundaries.py',
             'tests/research/test_academic_library.py',
             'tests/citations/test_csl.py',
+            'tests/citations/test_custom_csl.py',
             'tests/citations/test_bibliography_workbench.py',
+            'tests/citations/test_custom_workbench.py',
             'tests/ui/test_citation_styles_jobs.py',
             'tests/ui/test_academic_library_dialog.py',
             'tests/ui/test_academic_actions.py',
@@ -127,12 +136,6 @@ jobs:
             'tests/e2e/test_export_destination.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py @suites 2>&1 | Tee-Object 'ci-bibliography-results/strict-acceptance.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Exercise installed native BibTeX and citation controls
-        timeout-minutes: 3
-        run: |
-          & $env:CARR_PYTHON -I -B scripts/windows_citation_styles_smoke.py 2>&1 | Tee-Object 'ci-bibliography-results/native-citation-styles.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Retain text acceptance evidence only

@@ -144,6 +144,8 @@ class DesktopSearchPanel(PagedSearchPanel):
             control.Bind(wx.EVT_TEXT, self.on_options_changed)
 
     def on_build_query(self, event=None):
+        if getattr(self.frame, '_closing', False):
+            return
         if self.frame.working:
             self.frame.report('An operation is already running. Wait or choose Cancel current operation.')
             return
@@ -153,16 +155,25 @@ class DesktopSearchPanel(PagedSearchPanel):
             self.query.SetFocus()
             return
         from carr_library.ui.advanced_search import show_query_builder
-        query = show_query_builder(self, current_query=self.query.GetValue())
+        current, epoch = self.query.GetValue(), self._context_epoch
+        active = getattr(self.frame, 'active', None)
+        query = show_query_builder(self, current_query=current)
+        if getattr(self.frame, '_closing', False):
+            return
+        if (self.model.workspace != workspace or self.frame.library is not self.bound_library
+                or getattr(self.frame, 'active', None) != active):
+            self.frame.report('The library changed. Open its Search section again.')
+            return
         if query is None:
             self.query.SetFocus()
             return
-        if self.model.workspace != workspace or self.frame.library is not self.bound_library:
-            self.frame.report('The library changed. Open its Search section again.')
+        if (self._context_epoch != epoch or self.query.GetValue() != current
+                or self.frame.working or getattr(self.frame, '_closing', False)):
+            self.frame.report('Search options changed while the query builder was open. Open it again.')
             return
+        self.on_options_changed()
         self.retrieval.SetSelection(self.MODES.index('advanced'))
         self.query.ChangeValue(query)
-        self.on_options_changed()
         self.status.ChangeValue('Advanced query ready. Press Enter in the query field to search the selected library.')
         self.query.SetFocus()
 
@@ -194,6 +205,8 @@ class DesktopSearchPanel(PagedSearchPanel):
                                 'The selected collection is no longer available. Choose a collection and search again.')
 
     def on_search(self, event):
+        if getattr(self.frame, '_closing', False):
+            return
         if self.frame.working:
             self.frame.report('An operation is already running. Wait or choose Cancel current operation.')
             return
@@ -203,6 +216,12 @@ class DesktopSearchPanel(PagedSearchPanel):
             self.status.ChangeValue('Select a library and enter a query.')
             self.query.SetFocus()
             return
+        library, active = self.frame.library, getattr(self.frame, 'active', None)
+        if library is not self.bound_library or (active is not None
+                and active != (workspace, self.bound_topic)):
+            self.frame.report('The library changed. Open its Search section again.')
+            return
+        data_identity = library.root, library.database, library.assets_dir, library.assets.root
         retrieval = self.retrieval.GetSelection()
         if not 0 <= retrieval < len(self.MODES):
             self.status.ChangeValue('Choose a search mode first.')
@@ -239,8 +258,17 @@ class DesktopSearchPanel(PagedSearchPanel):
         self.details.ChangeValue('')
         notes = []
 
+        def current_scope():
+            return (self._context_epoch == epoch and self.model.workspace == workspace
+                    and self.frame.library is library and getattr(self.frame, 'active', None) == active
+                    and not getattr(self.frame, '_closing', False)
+                    and (library.root, library.database, library.assets_dir, library.assets.root) == data_identity)
+
+        def stopped():
+            return self.frame.cancel_event.is_set() or not current_scope()
+
         def done(rows):
-            if self._context_epoch != epoch or self.model.workspace != workspace:
+            if stopped():
                 return
             self.results = {r.ref: r for r in rows}
             self.model.replace(workspace, (Hit(r.workspace, r.ref, r.revision, r.title,
@@ -266,9 +294,13 @@ class DesktopSearchPanel(PagedSearchPanel):
             else:
                 self.status.SetFocus()
 
-        self.frame.run_job('Searching the selected library', lambda: self.frame.library.search(
-            workspace, query, mode=mode, result_mode=result_mode, cancelled=self.frame.cancel_event.is_set,
-            authorized_topic=self.bound_topic, on_status=notes.append, **options), done)
+        def load():
+            if stopped():
+                raise InterruptedError('The search query, library, or data folder changed before searching.')
+            return library.search(workspace, query, mode=mode, result_mode=result_mode,
+                cancelled=stopped, authorized_topic=self.bound_topic, on_status=notes.append, **options)
+
+        self.frame.run_job('Searching the selected library', load, done)
 
     def on_more(self, event):
         if self.frame.working:
@@ -492,6 +524,9 @@ class DesktopFrame(WorkspaceFrame):
         self.cancel_event = threading.Event()
         self.working = False
         self._closing = False
+        from .save_all import SaveCoordinator
+        self.save_coordinator = SaveCoordinator()
+        self.last_save_all_summary = None
         super().__init__(None, library.list_scopes, self._bind)
         self.SetTitle('Universal Research Library')
         self.SetMinSize((760, 650))
@@ -513,7 +548,8 @@ class DesktopFrame(WorkspaceFrame):
 
     def _menus(self):
         self.menu_bar = wx.MenuBar()
-        menus = [('&Library', [('New library\tCtrl+N', self.new_library),
+        menus = [('&File', [('Save all open drafts\tCtrl+Alt+S', self.save_all)]),
+            ('&Library', [('New library\tCtrl+N', self.new_library),
             ('Open existing library folder',self.open_library_folder),
             ('Rename or describe library', self.rename_library), ('Archive library', self.archive_library),
             ('Restore archived library', self.unarchive_library),
@@ -567,6 +603,27 @@ class DesktopFrame(WorkspaceFrame):
         install_api_connection_actions(self)
         from .keyboard_settings import install_keyboard_settings
         install_keyboard_settings(self)
+
+    def save_all(self, event=None, *, completed=None):
+        """Start coordinated saves; only its completion reports durable success."""
+        if self._closing:
+            return False
+        if self.working or self.save_coordinator.busy:
+            self.report('A save or another operation is already running. Wait or cancel it first.')
+            return False
+        self.cancel_event.clear()
+        self.last_save_all_summary = None
+        self.report('Saving open research notes and audio projects...')
+
+        def finished(summary):
+            self.last_save_all_summary = summary
+            if not self._closing:
+                self.report(summary.message())
+                if completed is not None:
+                    completed(summary)
+
+        return self.save_coordinator.save_all(finished,
+            cancelled=lambda: self._closing or self.cancel_event.is_set())
 
     def build_advanced_query(self, event=None):
         if self.working:
@@ -1160,9 +1217,11 @@ class DesktopFrame(WorkspaceFrame):
             show_text(self, 'Keyboard guide', self.keyboard_commands.help_text())
             return
         show_text(self, 'Keyboard guide',
-            'Use Alt+L for Library, Alt+R for Research, Alt+A for Academic, Alt+B for Bibliography, '
+            'Use Alt+F for File, Alt+L for Library, Alt+R for Research, Alt+A for Academic, Alt+B for Bibliography, '
             'Alt+S for Source, Alt+D for Reading, Alt+T for Tools, and Alt+H for Help.\n'
             'Tools, Local library workflow assistant previews and runs selected local library operations with saved recovery checkpoints.\n'
+            'File, Save all open drafts (Ctrl+Alt+S by default) waits for research notes and audio projects to finish saving. '
+            'Its final message lists any failed, cancelled or newer unsaved changes.\n'
             'Ctrl+Alt+M compares saved sources in the active topic. Academic also exports filtered outlines, reviews RIS metadata and checks the catalog.\n'
             'Ctrl+N creates a library. Ctrl+I imports books. Ctrl+Shift+N adds original text.\n'
             'Library, Import Center opens folder scans, duplicate checks and saved import queues.\n'
@@ -1197,6 +1256,8 @@ class DesktopFrame(WorkspaceFrame):
             'and Export source comparison matrix for this library or one of its collections.\n'
             'Choose a library or topic, then Open selected scope. The Search tab stays inside that library.\n'
             'Research Search Center searches only the libraries explicitly checked in its dialog.\n'
+            'Its Build advanced query command also uses Ctrl+Alt+Q and keeps checked libraries and filters.\n'
+            'All words and Advanced searches offer Previous and Next result pages; changing options starts a new search.\n'
             'Search mode chooses how matches are found. Result mode chooses Short quotations or Thematic excerpts.\n'
             'Advanced mode supports uppercase AND, OR, NOT, parentheses, quoted phrases and NEAR/5.\n'
             'NEAR/5 means at most five intervening words, in either order, within one page or text segment.\n'
