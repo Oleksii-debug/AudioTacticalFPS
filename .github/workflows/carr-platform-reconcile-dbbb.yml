@@ -140,6 +140,7 @@ jobs:
             'tests/audio/test_recording_windows_process.py',
             'tests/audio/test_recording_process.py',
             'tests/audio/test_audio_process.py',
+            'tests/audio/test_process_deadline.py',
             'tests/audio/test_local_runtime_cli.py',
             'tests/audio_acceptance/test_primary_publication_budget.py'
           )
@@ -268,7 +269,7 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         timeout-minutes: 2
         run: |
-          python -B scripts/ci_check.py --jobs 2 tests/speech/test_output_devices.py tests/storage/test_reader_presentation_backup.py tests/storage/test_reading_tabs_backup.py tests/transcription_windows/test_protocol_fixture_handles.py tests/operations_windows/test_native_lock_release.py tests/audio/test_recording_windows_process.py tests/audio/test_recording_process.py tests/speech/test_reading_tabs.py tests/speech/test_reading_focus.py tests/ui/test_reader_tabs.py tests/ui/test_reading_focus.py tests/audio/test_audio_process.py tests/speech/test_clipboard_reader.py 2>&1 | Tee-Object 'ci-appearance-results/strict-source.txt'
+          python -B scripts/ci_check.py --jobs 2 tests/speech/test_output_devices.py tests/storage/test_reader_presentation_backup.py tests/storage/test_reading_tabs_backup.py tests/transcription_windows/test_protocol_fixture_handles.py tests/operations_windows/test_native_lock_release.py tests/audio/test_recording_windows_process.py tests/audio/test_recording_process.py tests/speech/test_reading_tabs.py tests/speech/test_reading_focus.py tests/ui/test_reader_tabs.py tests/ui/test_reading_focus.py tests/audio/test_audio_process.py tests/audio/test_process_deadline.py tests/speech/test_clipboard_reader.py 2>&1 | Tee-Object 'ci-appearance-results/strict-source.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Require native owned descendants and fresh venv redirectors
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
