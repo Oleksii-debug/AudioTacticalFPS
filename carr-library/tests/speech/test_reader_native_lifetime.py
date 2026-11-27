@@ -23,6 +23,8 @@ def reader_boundary():
     template = ast.parse("""
 def build(wx, executor, cancel, controls, report):
     alive, busy, resources_closed = True, False, False
+    controls.appearance_closed = False
+    appearance = SimpleNamespace(close=lambda: setattr(controls, 'appearance_closed', True))
     owned_registries = controls.owned_registries
     ownership_lock = RLock()
     parent = SimpleNamespace(report=report)
@@ -111,6 +113,7 @@ def test_reader_detaches_before_nested_modal_unwinds_and_discards_actual_complet
         native.dead = True
         assert state() == (False, True) and cancel.is_set()
         assert controls.live_closes == 1
+        assert controls.appearance_closed
         release.set()
         if when == 'worker-pending':
             executor.shutdown(wait=True, cancel_futures=False)

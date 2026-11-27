@@ -59,6 +59,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     if library_root is None:
         raise ValueError('Open a local library folder before using the voice reader.')
     root = Path(library_root)
+    selected_library = parent.library
     class ReaderWindow(wx.Dialog):
         def Destroy(self):
             detach = getattr(self, '_reader_detach', None)
@@ -78,6 +79,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     progress = getattr(parent, 'operation_progress', None)
     source_locations = ()
     alive, busy, resources_closed = True, False, False
+    appearance = None
     owned_registries = set()
     ownership_lock = threading.RLock()
 
@@ -85,6 +87,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         nonlocal alive
         alive = False
         cancel.set()
+        if appearance is not None:
+            appearance.close()
 
     dialog._reader_detach = detach_reader
 
@@ -208,6 +212,10 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             status.ChangeValue(message)
             if focus:
                 status.SetFocus()
+
+    from .reader_appearance import ReaderAppearance
+    appearance = ReaderAppearance(dialog, editor, selected_library,
+        current_library=lambda: parent.library, alive=lambda: alive, report=report)
 
     def with_recovery_warning(message):
         warning = getattr(draft_store, 'discovery_warning', '')
@@ -684,6 +692,76 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         except Exception as exc:
             report(str(exc), focus=True)
 
+    def spelling(event=None):
+        if not alive:
+            return
+        try:
+            if busy or live.core.busy or not source_loaded:
+                raise ValueError('Wait for the reader operation to finish before reviewing spelling.')
+            from ..durable_state import local_path
+            from .spellcheck_dialog import ReadingSnapshot, apply_spelling_preview, create_spellcheck_dialog
+            selected_library = parent.library
+            selected_root = local_path(selected_library.root, exists=True)
+
+            def guard():
+                if (not alive or getattr(parent, '_closing', False) or parent.library is not selected_library
+                        or local_path(parent.library.root, exists=True) != selected_root):
+                    raise ValueError('The library changed or the reader closed. Reopen spelling review.')
+                source_guard()
+
+            def capture():
+                guard(); sync_document()
+                native_start, native_end = editor.GetSelection()
+                if native_start == native_end:
+                    start, _ = reading_range(editor, document.text, 'cursor')
+                    end = start
+                else:
+                    start, end = reading_range(editor, document.text, 'selection')
+                return ReadingSnapshot.capture(document, (start, end))
+
+            def synchronize():
+                display_document()
+                try:
+                    save_recovery(force=True)
+                except Exception as exc:
+                    return f'The reading change is in memory, but recovery save failed: {exc}. Use Save As before closing.'
+                return with_recovery_warning('')
+
+            def apply(preview):
+                guard()
+                live.stop()
+                guard()
+                apply_spelling_preview(document, preview, capture())
+                warning = synchronize()
+                return capture(), warning
+
+            def undo_spelling(expected):
+                guard()
+                if capture() != expected:
+                    raise ValueError('The reading copy changed after applying. Use the reader undo history explicitly.')
+                live.stop()
+                guard()
+                if capture() != expected:
+                    raise ValueError('The reading copy changed while stopping playback.')
+                if not document.undo():
+                    raise ValueError('The spelling edit is no longer available to undo.')
+                return synchronize()
+
+            review = create_spellcheck_dialog(dialog, library_root=selected_root, capture=capture,
+                apply=apply, undo=undo_spelling, guard=guard, run=run, cancel=cancel)
+            try:
+                review.ShowModal()
+            finally:
+                if review.alive:
+                    review.finish_close()
+                if review:
+                    review.Destroy()
+            if alive:
+                live.capabilities(); editor.SetFocus()
+        except Exception as exc:
+            report(str(exc), focus=True)
+
+
     def clean(event=None):
         if not alive:
             return
@@ -827,6 +905,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     button('Original and &diff', compare, 'diff')
     button('Normalize s&paces', clean, 'cleanup')
     button('&Find and replace', find_replace, 'find_replace')
+    button('Review &spelling', spelling, 'spelling')
+    button('Reader appearance...', appearance.show, 'appearance')
     button('Pronunciatio&n rules', pronunciations, 'pronunciations')
     button('Save &WAV', save_audio, 'export_audio')
     progress_voice = button('Use voice for progress...', select_progress_voice, 'progress_voice')

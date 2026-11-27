@@ -381,7 +381,7 @@ def test_reader_host_delegates_audio_cleanup_without_blocking_native_close(clean
     helpers = [next(node for node in reader.body
                     if isinstance(node, ast.FunctionDef) and node.name == name) for name in names]
     factory = ast.parse('''
-def make(autosave_timer, cancel, live, executor, parent, owner):
+def make(autosave_timer, cancel, live, executor, parent, owner, appearance):
     alive, resources_closed = True, False
     ownership_lock = threading.RLock()
     owned_registries = {owner}
@@ -394,12 +394,13 @@ def make(autosave_timer, cancel, live, executor, parent, owner):
     env['parent']._reader_registry_retained = []
     owner = Mock()
     owner.close.return_value = not cleanup_pending
+    env['appearance'] = Mock(spec=['close'])
     completion = Future()
     if not cleanup_pending:
         completion.set_result(None)
     env['live'].close.return_value = completion
     close_resources, is_alive, release_owner, owned_registries = factory_environment['make'](
-        *(env[name] for name in ('autosave_timer', 'cancel', 'live', 'executor', 'parent')), owner)
+        *(env[name] for name in ('autosave_timer', 'cancel', 'live', 'executor', 'parent')), owner, env['appearance'])
     env['close_resources'] = close_resources
     close_resources()  # The native Close callback may precede the modal's final unwind.
     exec(compile(ast.Module(body=cleanup, type_ignores=[]), str(path), 'exec'), env)
@@ -407,6 +408,7 @@ def make(autosave_timer, cancel, live, executor, parent, owner):
     env['executor'].shutdown.assert_called_once_with(wait=False, cancel_futures=True)
     env['cancel'].set.assert_called_once_with()
     env['autosave_timer'].Stop.assert_called_once_with()
+    env['appearance'].close.assert_called_once_with()
     env['dialog'].Destroy.assert_called_once_with()
     assert is_alive() is False
     assert completion.done() is not cleanup_pending

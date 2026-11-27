@@ -33,6 +33,7 @@ license-files = [
 ]
 
 [project.optional-dependencies]
+spellcheck = ["spylls==0.1.7+carr.1"]
 sync = ["cryptography==50.0.2"]
 trusted-client = ["cryptography==50.0.2", "tuf==7.0.1", "securesystemslib==1.6.0",
                   "urllib3==2.8.0", "cffi==2.1.1", "pycparser==3.12"]
@@ -115,7 +116,7 @@ bootstrap = "bootstrap"
 "carr_library.extract" = ["ocr-model-catalog.json", "TESSDATA_FAST_LICENSE", "TESSDATA_BEST_LICENSE"]
 "carr_library.academic_integration" = ["styles/*.csl", "locales/*.xml", "vendor/*", "csl_worker.cjs"]
 "carr_library.language_qualification" = ["data/*.md"]
-"carr_library.speech" = ["COMTYPES_LICENSE.txt"]
+"carr_library.speech" = ["COMTYPES_LICENSE.txt", "spellcheck_backend.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "bootstrap", "docs/contracts/probes"]

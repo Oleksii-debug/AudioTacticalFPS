@@ -171,6 +171,7 @@ class ReadingDialog:
         self.closed = self.busy = self._destroy_requested = False
         self.cancelled = threading.Event()
         self._audio_dialog = None
+        self._appearance = None
         self.executor = None
         owner = self
         class NativeDialog(wx.Dialog):
@@ -232,6 +233,10 @@ class ReadingDialog:
         self.status.SetName('Reading operation status')
         self.status.SetMinSize((-1, 65))
         layout.Add(self.status, 0, wx.EXPAND | wx.ALL, 8)
+        from .reader_appearance import ReaderAppearance
+        self._appearance = ReaderAppearance(self.dialog, self.text, parent.library,
+            current_library=lambda: parent.library, alive=lambda: not self.closed, report=self._error)
+        self._button(bookmarks, 'Reader appearance...', self._appearance.show)
         footer = wx.BoxSizer(wx.HORIZONTAL)
         self.cancel = wx.Button(self.dialog, label='Cancel reader operation')
         self.cancel.Bind(wx.EVT_BUTTON, lambda _: self.cancelled.set())
@@ -525,6 +530,8 @@ class ReadingDialog:
         self.cancelled.set()
         notices = []
         operations = []
+        if getattr(self, '_appearance', None) is not None:
+            operations.append(('Reader appearance', self._appearance.close))
         if hasattr(self, 'live'):
             operations.append(('Live reading', self.live.close))
         if self._audio_dialog is not None:

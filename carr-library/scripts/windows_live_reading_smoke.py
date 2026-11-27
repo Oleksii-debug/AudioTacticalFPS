@@ -91,6 +91,23 @@ def independent_reading_desk(desk):
     return fresh
 
 
+def _independent_probe_desk(library, previous):
+    """Compatibility seam: one fresh owner keeps the complete selected scope."""
+    if library is not previous.library:
+        raise ValueError('The native reading probe changed its library owner.')
+    return independent_reading_desk(previous)
+
+
+def _source_probe_draft(library, desk, slot):
+    """Inspect the same source-keyed recovery producer as the canonical reader."""
+    from carr_library.speech.session import ReaderDraftStore
+    from carr_library.speech.source import read_source_range
+    source = read_source_range(desk, 1, 1, cancelled=lambda: False)
+    legacy = ReaderDraftStore(library.root, slot=slot)
+    store = legacy.for_source(source)
+    return source, legacy, store, store.load()
+
+
 def canonical_copy_probe(wx, library, desk, discover, render):
     """Exercise the real canonical dialog, draft format and shared controller."""
     from carr_library.reader.live_reading import LiveReader
@@ -155,10 +172,7 @@ def canonical_copy_probe(wx, library, desk, discover, render):
                 context['dialog'].GetEventHandler().ProcessEvent(command)
                 # Source loading moves recovery into its exact identity slot.
                 # The original caller slot remains an unchanged legacy lookup.
-                source = read_source_range(desk, 1, 1)
-                legacy_store = ReaderDraftStore(library.root, slot=slot)
-                source_store = legacy_store.for_source(source)
-                recovered = source_store.load()
+                source, legacy_store, source_store, recovered = _source_probe_draft(library, desk, slot)
                 assert recovered is not None and recovered.source_locations == (desk.page(1).location,)
                 assert source_store.key != legacy_store.key and legacy_store.load() is None
                 assert recovered.document.source_text == original and recovered.document.text == document.text

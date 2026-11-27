@@ -35,6 +35,11 @@ class NativeWidget:
     def Bind(self, event, callback, *args, **kwargs): self.native(); self.handlers[event] = callback
     def SetName(self, name): self.native(); self.name = name
     def SetToolTip(self, value): self.native(); self.tooltip = value
+    def GetDefaultAttributes(self): self.native(); return SimpleNamespace(font=NativeFont())
+    def SetFont(self, value): self.native(); self.font = value
+    def SetForegroundColour(self, value): self.native(); self.foreground = value
+    def SetBackgroundColour(self, value): self.native(); self.background = value
+    def Refresh(self): self.native()
     def SetMinSize(self, *args): self.native()
     def SetSizer(self, *args): self.native()
     def CreateStdDialogButtonSizer(self, *args): self.native(); return Sizer()
@@ -70,6 +75,13 @@ class NativeWidget:
         return True
 
 
+class NativeFont:
+    def __init__(self, other=None):
+        self.points = other.GetFractionalPointSize() if other is not None else 10.0
+    def GetFractionalPointSize(self): return self.points
+    def SetFractionalPointSize(self, value): self.points = value
+
+
 class Sizer:
     def __init__(self, *args): pass
     def Add(self, *args): pass
@@ -89,15 +101,19 @@ def windows(monkeypatch, tmp_path):
              'ACCEL_CTRL', 'ACCEL_SHIFT', 'ACCEL_ALT', 'ACCEL_NORMAL', 'WXK_PAGEUP',
              'WXK_PAGEDOWN', 'WXK_LEFT', 'WXK_RIGHT', 'WXK_F1', 'TOP', 'BOTTOM',
              'ALIGN_CENTER_VERTICAL', 'TE_PROCESS_ENTER', 'WXK_F6', 'WXK_F7', 'WXK_F8', 'WXK_F9',
-             'OK', 'CANCEL', 'ID_OK', 'YES_NO', 'NO_DEFAULT', 'ICON_QUESTION', 'ID_YES')
+             'OK', 'CANCEL', 'ID_OK', 'YES_NO', 'NO_DEFAULT', 'ICON_QUESTION', 'ID_YES',
+             'SYS_COLOUR_WINDOWTEXT', 'SYS_COLOUR_WINDOW')
     wx = SimpleNamespace(**{name: index + 1 for index, name in enumerate(names)})
     for name in ('EVT_CLOSE', 'EVT_BUTTON', 'EVT_LISTBOX', 'EVT_TIMER', 'EVT_MENU',
-                 'EVT_TEXT', 'EVT_TEXT_ENTER', 'EVT_CHOICE'):
+                 'EVT_TEXT', 'EVT_TEXT_ENTER', 'EVT_CHOICE', 'EVT_SYS_COLOUR_CHANGED'):
         setattr(wx, name, name)
     wx.EVT_WINDOW_DESTROY = NativeWidget.destroy_event
     wx.Dialog = wx.StaticText = wx.TextCtrl = wx.ListBox = wx.Button = NativeWidget
     wx.Notebook = wx.Panel = wx.Choice = wx.SpinCtrl = wx.CheckBox = NativeWidget
     wx.NOT_FOUND = -1
+    wx.Font = NativeFont
+    wx.NullFont, wx.NullColour = object(), object()
+    wx.SystemSettings = SimpleNamespace(GetColour=lambda colour: colour)
     wx.BoxSizer = wx.WrapSizer = Sizer
     wx.Timer = Timer
     wx.NewIdRef = lambda: 100
@@ -106,10 +122,10 @@ def windows(monkeypatch, tmp_path):
     wx.CallAfter = lambda callback: callbacks.put(callback)
     monkeypatch.setitem(sys.modules, 'wx', wx)
     owners = []
-    parent = SimpleNamespace(operation_progress=None)
+    parent = SimpleNamespace(operation_progress=None, library=SimpleNamespace(root=tmp_path))
     def make(kind):
         desk = SimpleNamespace(title='Retained source', cancelled=lambda: False,
-                               library=SimpleNamespace(root=tmp_path))
+                               library=parent.library)
         owner = (EbookAudioDialog(parent, desk, 1, lambda: None) if kind == 'audio'
                  else ReadingDialog(parent, desk, object(), lambda: None))
         owners.append(owner)

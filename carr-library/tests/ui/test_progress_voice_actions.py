@@ -26,6 +26,8 @@ def callbacks(filename, window_name, names, values, *, globals_=None, cleanup=Fa
     names = set(names)
     if filename == 'speech_dialog.py':
         names.update(('detach_reader', 'transfer_owner', 'release_owner'))
+        values = dict(values)
+        values.setdefault('appearance', None)
     definitions = [node for node in window.body
                    if isinstance(node, ast.FunctionDef) and node.name in names]
     assert {node.name for node in definitions} == set(names)

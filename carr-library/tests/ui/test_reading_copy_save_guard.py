@@ -252,6 +252,7 @@ def test_reader_file_chooser_cannot_resume_into_deleted_owner(tmp_path, action, 
     build = _host_callbacks("""
 def build(document, wx, state, touch, reports, root):
     alive, busy, source_loaded = True, False, True
+    appearance = None
     save_path, source_loader, draft_store = None, None, None
     source_locations, recovery_notice = (), ''
     cancel = Event()

@@ -185,6 +185,12 @@ def _exercise_reader_project(tmp_path, monkeypatch, *, archive_during_picker=Fal
     monkeypatch.setattr('carr_library.runtime_settings.voice_registry',
                         lambda *args, **kwargs: VoiceRegistry((Provider(),)))
 
+    class Font:
+        def __init__(self, other=None):
+            self.points = other.GetFractionalPointSize() if other is not None else 10.0
+        def GetFractionalPointSize(self): return self.points
+        def SetFractionalPointSize(self, value): self.points = value
+
     class Control:
         def __init__(self, parent=None, *args, **kwargs):
             self.parent = parent
@@ -198,8 +204,14 @@ def _exercise_reader_project(tmp_path, monkeypatch, *, archive_during_picker=Fal
         def native(self):
             assert get_ident() == main
             assert not self.destroyed
+        def __bool__(self): return not self.destroyed
         def SetName(self, value): self.native(); self.name = value
         def SetToolTip(self, value): self.native(); self.tooltip = value
+        def GetDefaultAttributes(self): self.native(); return SimpleNamespace(font=Font())
+        def SetFont(self, value): self.native(); self.font = value
+        def SetForegroundColour(self, value): self.native(); self.foreground = value
+        def SetBackgroundColour(self, value): self.native(); self.background = value
+        def Refresh(self): self.native()
         def SetValue(self, value): self.native(); self.value = value
         def ChangeValue(self, value): self.SetValue(value)
         def GetValue(self): self.native(); return self.value
@@ -329,12 +341,15 @@ def _exercise_reader_project(tmp_path, monkeypatch, *, archive_during_picker=Fal
         MessageBox=lambda *args, **kwargs: 4, ID_OK=5100, ID_CANCEL=5101,
         NOT_FOUND=-1, YES=2, NO=4, CANCEL=8, EVT_BUTTON='button', EVT_MENU='menu',
         EVT_CHOICE='choice', EVT_CLOSE='close', EVT_TIMER='timer', EVT_TEXT='text',
-        EVT_WINDOW_DESTROY='destroy')
+        EVT_WINDOW_DESTROY='destroy', EVT_SYS_COLOUR_CHANGED='colours',
+        Font=Font, NullFont=object(), NullColour=object(),
+        SystemSettings=SimpleNamespace(GetColour=lambda colour: colour))
     for constant in ('DEFAULT_DIALOG_STYLE', 'RESIZE_BORDER', 'VERTICAL', 'HORIZONTAL', 'LEFT',
             'TOP', 'RIGHT', 'EXPAND', 'ALL', 'ALIGN_CENTER_VERTICAL', 'ALIGN_RIGHT', 'TE_READONLY',
             'TE_MULTILINE', 'TE_DONTWRAP', 'FD_SAVE', 'FD_OPEN', 'FD_FILE_MUST_EXIST', 'YES_NO',
             'ICON_QUESTION', 'ACCEL_CTRL', 'ACCEL_SHIFT', 'ACCEL_ALT', 'BOTTOM',
-            'WXK_F6', 'WXK_F7', 'WXK_F8', 'WXK_F9'):
+            'WXK_F6', 'WXK_F7', 'WXK_F8', 'WXK_F9',
+            'SYS_COLOUR_WINDOWTEXT', 'SYS_COLOUR_WINDOW'):
         setattr(wx, constant, 0)
     monkeypatch.setitem(sys.modules, 'wx', wx)
     parent = SimpleNamespace(library=app, report=statuses.append)
@@ -1123,6 +1138,12 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
     monkeypatch.setattr('carr_library.runtime_settings.voice_registry',
                         lambda *args, **kwargs: VoiceRegistry((Provider(),)))
 
+    class Font:
+        def __init__(self, other=None):
+            self.points = other.GetFractionalPointSize() if other is not None else 10.0
+        def GetFractionalPointSize(self): return self.points
+        def SetFractionalPointSize(self, value): self.points = value
+
     class Control:
         def __init__(self, parent=None, *args, **kwargs):
             self.parent = parent
@@ -1136,8 +1157,14 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
         def native(self):
             assert get_ident() == main
             assert not self.destroyed
+        def __bool__(self): return not self.destroyed
         def SetName(self, value): self.native(); self.name = value
         def SetToolTip(self, value): self.native(); self.tooltip = value
+        def GetDefaultAttributes(self): self.native(); return SimpleNamespace(font=Font())
+        def SetFont(self, value): self.native(); self.font = value
+        def SetForegroundColour(self, value): self.native(); self.foreground = value
+        def SetBackgroundColour(self, value): self.native(); self.background = value
+        def Refresh(self): self.native()
         def SetValue(self, value): self.native(); self.value = value
         def ChangeValue(self, value): self.SetValue(value)
         def GetValue(self): self.native(); return self.value
@@ -1222,12 +1249,15 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
         MessageBox=lambda *args, **kwargs: 4, ID_OK=5100, ID_CANCEL=5101,
         NOT_FOUND=-1, YES=2, NO=4, CANCEL=8, EVT_BUTTON='button', EVT_MENU='menu',
         EVT_CHOICE='choice', EVT_CLOSE='close', EVT_TIMER='timer', EVT_TEXT='text',
-        EVT_WINDOW_DESTROY='destroy')
+        EVT_WINDOW_DESTROY='destroy', EVT_SYS_COLOUR_CHANGED='colours',
+        Font=Font, NullFont=object(), NullColour=object(),
+        SystemSettings=SimpleNamespace(GetColour=lambda colour: colour))
     for constant in ('DEFAULT_DIALOG_STYLE', 'RESIZE_BORDER', 'VERTICAL', 'HORIZONTAL', 'LEFT',
             'TOP', 'RIGHT', 'EXPAND', 'ALL', 'ALIGN_CENTER_VERTICAL', 'ALIGN_RIGHT', 'TE_READONLY',
             'TE_MULTILINE', 'TE_DONTWRAP', 'FD_SAVE', 'FD_OPEN', 'FD_FILE_MUST_EXIST', 'YES_NO',
             'ICON_QUESTION', 'ACCEL_CTRL', 'ACCEL_SHIFT', 'ACCEL_ALT', 'BOTTOM',
-            'WXK_F6', 'WXK_F7', 'WXK_F8', 'WXK_F9'):
+            'WXK_F6', 'WXK_F7', 'WXK_F8', 'WXK_F9',
+            'SYS_COLOUR_WINDOWTEXT', 'SYS_COLOUR_WINDOW'):
         setattr(wx, constant, 0)
     monkeypatch.setitem(sys.modules, 'wx', wx)
     parent = SimpleNamespace(library=app, report=statuses.append)
