@@ -147,7 +147,10 @@ def test_unconnected_exported_profile_cannot_call_remote(setup):
     b'\xff',
     b'[' * 2000 + b']' * 2000,
     b'x' * (MAX_TRANSLATION_RESPONSE + 1),
-])
+], ids=('empty-translations', 'multiple-translations', 'duplicate-text',
+        'missing-detected-language', 'null-text', 'invalid-language', 'wrong-model',
+        'unexpected-tools', 'unpaired-surrogate', 'nul-text', 'nonfinite-number',
+        'html-response', 'invalid-utf8', 'excessive-nesting', 'oversized-response'))
 def test_malformed_response_is_uncertain_and_cannot_be_automatically_rebilled(setup, output):
     setup[2].output = output
     with pytest.raises(ProviderError, match='uncertain charge') as raised:
