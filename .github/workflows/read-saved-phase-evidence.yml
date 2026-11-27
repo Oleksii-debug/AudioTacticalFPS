@@ -30,16 +30,16 @@ jobs:
           import zipfile
 
           REPOSITORY = "Oleksii-debug/AudioTacticalFPS"
-          ARTIFACT_ID = 15238365533
-          SOURCE_RUN = 46078579632
+          ARTIFACT_ID = 15236849980
+          SOURCE_RUN = 46078579722
           SOURCE_HEAD = "95efc7d06a82f19e9d247acadd027894608d7891"
-          ZIP_BYTES = 62876
-          ZIP_SHA256 = "114e229344d241952adccb3f9a18a72d10b3c6f5743b8984bfbf59a71a67f22d"
+          ZIP_BYTES = 88847
+          ZIP_SHA256 = "652105ad652e36db2c251d3aed402e87b12c7f8c1d1ff3c4cca951851441e99e"
           MAX_MEMBERS = 128
           MAX_MEMBER_BYTES = 2 * 1024 * 1024
           MAX_TOTAL_BYTES = 16 * 1024 * 1024
           CHUNK_CHARACTERS = 4096
-          REQUIRED_FILES = {"v3-tests.txt", "v3-tests.xml"}
+          REQUIRED_FILES = {"tested-commit.txt", "full-bundle-build.json"}
 
           def fixed_get(endpoint, limit):
               result = subprocess.run(
@@ -105,7 +105,7 @@ jobs:
                   text = content.decode("utf-8")
                   decoded.append((name, content, text))
               if required != {name: 1 for name in REQUIRED_FILES}:
-                  raise ValueError("The two required broad-service diagnostics are absent or ambiguous.")
+                  raise ValueError("The two required complete-bundle phase diagnostics are absent or ambiguous.")
 
           print(json.dumps({
               "artifact_verified": True, "artifact_id": ARTIFACT_ID,
