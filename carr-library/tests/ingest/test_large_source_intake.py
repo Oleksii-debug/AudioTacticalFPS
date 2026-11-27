@@ -203,7 +203,7 @@ def test_large_partial_checkpoint_backup_restores_exact_job_after_originals_disa
         journal = app.root / 'imports.sqlite'
         if not journal.exists():
             return False
-        with sqlite3.connect(journal) as observer:
+        with closing(sqlite3.connect(journal)) as observer:
             return observer.execute('SELECT count(*) FROM checkpoint').fetchone()[0] >= 1
     initial = app._import_file(workspace, original['path'], **fields,
         cancelled=cancelled, _request_id=request['request_id'], _expected_manifest=manifest)

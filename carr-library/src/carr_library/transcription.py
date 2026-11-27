@@ -786,9 +786,11 @@ class TranscriptionService:
         excluded = sum(row['state'] == 'excluded' for row in rows)
         if not files:
             raise ValueError(f'No supported audio or video files were found; {excluded} unsupported files excluded.')
+        # Scanner labels retain each selected folder's relative provenance.
+        # They are display metadata; manifests and copied bytes retain authority.
         identity = self.submit(files, title=title, options=options, cancelled=cancelled,
             source_root=_source_root, source_manifests=manifests, protocol=protocol,
-            profile_id=profile_id)
+            profile_id=profile_id, _source_labels=[row['file'] for row in accepted])
         return {'id': identity, 'files': len(files), 'excluded_files': excluded,
                 'excluded_folders': sum(row['state'] == 'excluded-folder' for row in rows)}
 

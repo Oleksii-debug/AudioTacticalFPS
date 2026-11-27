@@ -579,7 +579,16 @@ def main():
                     status = named('Multiple book review and existing Studio checkpoints', wx.TextCtrl)
                     assert 'Batch review SHA-256:' in status.GetValue()
                     assert voice.id in status.GetValue() and second_voice.id in status.GetValue()
-                    assert '; volume 55' in status.GetValue() and str(second_output) in status.GetValue()
+                    displayed_review = status.GetValue()
+                    assert '; volume 55' in displayed_review, displayed_review
+                    # The producer reviews a canonical path. Windows TEMP can
+                    # use a short spelling for the same selected directory.
+                    second_review = prepared.books[1]
+                    assert second_review.output_parent == str(second_output.resolve()), (
+                        second_review.output_parent, str(second_output), str(second_output.resolve()))
+                    assert 'Output parent: ' + second_review.output_parent in displayed_review, displayed_review
+                    assert all('Output folder: ' + path in displayed_review
+                               for path in second_review.destinations), displayed_review
                     assert wx.Window.FindFocus() is status and not list(second_output.iterdir())
                     click('Run or resume batch')
                     assert approvals and frame.working

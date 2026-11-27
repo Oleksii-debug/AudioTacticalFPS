@@ -814,3 +814,59 @@ def test_fresh_library_refresh_adopts_empty_profiles_without_runtime_or_state(vi
     assert view.current_job is None and not view.trust.GetValue()
     assert '0 registered runtimes; 0 saved jobs.' in view.status.value
     assert not service.root.exists()
+
+
+@pytest.mark.parametrize('delivered_id,same_wrapper,wrapper_live,accepted', [
+    pytest.param(-31994, False, False, True, id='native-id-new-python-wrapper'),
+    pytest.param(-31994, True, False, True, id='native-id-same-python-wrapper'),
+    pytest.param(-31995, False, False, False, id='child-destroy-is-not-frame-destroy'),
+    pytest.param(None, False, False, False, id='dead-wrapper-without-native-event'),
+    pytest.param(-31994, False, True, False, id='native-event-with-still-live-wrapper'),
+])
+def test_actual_native_destroy_observer_requires_frame_event_and_dead_wrapper(
+        delivered_id, same_wrapper, wrapper_live, accepted):
+    import ast
+
+    path = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_transcription_smoke.py'
+    tree = ast.parse(path.read_text(encoding='utf-8'), filename=str(path))
+    observers = [node for node in ast.walk(tree)
+                 if isinstance(node, ast.FunctionDef) and node.name == 'observe_destroy']
+    checks = [node for node in ast.walk(tree)
+              if isinstance(node, ast.Assert) and ast.unparse(node.test) in {'destroyed', 'not frame'}]
+    assert len(observers) == 1 and len(checks) == 2
+
+    class Frame:
+        def __bool__(self):
+            return wrapper_live
+
+    frame, observed, scheduled = Frame(), [], []
+    exit_loop = Mock()
+    namespace = {
+        'frame': frame, 'captured_frame_id': -31994, 'destroyed': [],
+        'record_close': lambda stage, window, **details: observed.append((stage, window, details)),
+        'wx': SimpleNamespace(CallAfter=scheduled.append),
+        'desktop': SimpleNamespace(ExitMainLoop=exit_loop),
+    }
+    exec(compile(ast.Module(body=observers, type_ignores=[]), str(path), 'exec'), namespace)
+    if delivered_id is not None:
+        target = frame if same_wrapper else object()
+        event = SimpleNamespace(GetId=lambda: delivered_id, GetEventObject=lambda: target, Skip=Mock())
+        namespace['observe_destroy'](event)
+        event.Skip.assert_called_once_with()
+        assert observed[0][0] == 'destroy-event' and observed[0][1] is frame
+        assert observed[0][2]['captured_frame_id'] == -31994
+        assert observed[0][2]['event_id'] == delivered_id
+        assert observed[0][2]['event_object_is_frame'] is same_wrapper
+    else:
+        assert not observed
+    matches = delivered_id == -31994
+    assert bool(namespace['destroyed']) is matches
+    assert scheduled == ([exit_loop] if matches else [])
+    exit_loop.assert_not_called()  # The real observer schedules the outer loop; it never forces destruction.
+    final_checks = compile(ast.Module(body=checks, type_ignores=[]), str(path), 'exec')
+    if accepted:
+        exec(final_checks, namespace)
+    else:
+        message = ('still live' if matches else 'did not complete destruction')
+        with pytest.raises(AssertionError, match=message):
+            exec(final_checks, namespace)

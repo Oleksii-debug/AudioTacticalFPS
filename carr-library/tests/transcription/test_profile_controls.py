@@ -206,3 +206,61 @@ def test_passive_runtime_inventory_rechecks_non_directory_state(tmp_path, collis
     with pytest.raises(ValueError, match='regular local files'):
         service.list_runtimes()
     assert target.read_bytes() == original
+
+
+@pytest.mark.parametrize('selection', ['folder', 'mixed'])
+def test_scanned_intake_retains_relative_labels_and_each_exact_source(tmp_path, monkeypatch, selection):
+    from hashlib import sha256
+    import carr_library.transcription as transcription
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Retained folder provenance')
+    service = app.transcription(workspace)
+    folder = tmp_path / 'chosen'
+    nested = folder / 'nested' / 'Запис.wav'
+    top = folder / 'top.wav'
+    other = tmp_path / 'other' / 'another' / 'Запис.wav'
+    explicit = tmp_path / 'explicit' / 'Запис.wav'
+    originals = {
+        nested: b'First nested reviewed media.',
+        top: b'Top-level reviewed media.',
+        other: b'Different selected folder, same basename.',
+        explicit: b'Explicit selected file, same basename.',
+    }
+    for path, raw in originals.items():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(raw)
+    expected = {
+        sha256(originals[nested]).hexdigest(): 'nested/Запис.wav',
+        sha256(originals[top]).hexdigest(): 'top.wav',
+    }
+    paths = [folder]
+    if selection == 'mixed':
+        paths = [explicit, folder, other.parent.parent]
+        expected.update({
+            sha256(originals[other]).hexdigest(): 'another/Запис.wav',
+            sha256(originals[explicit]).hexdigest(): 'Запис.wav',
+        })
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('Reviewing retained source names inspected or started a runtime.')
+
+    monkeypatch.setattr(transcription, 'inspect_python', forbidden)
+    monkeypatch.setattr(transcription, 'inspect_models', forbidden)
+    monkeypatch.setattr(transcription, 'run_process', forbidden)
+    intake = service.submit_sources(paths, recursive=True)
+    saved = read_json(service._path(intake['id']) / 'job.json')
+    assert intake['files'] == len(expected)
+    assert intake['excluded_files'] == intake['excluded_folders'] == 0
+    assert {row['sha256']: row['original_name'] for row in saved['sources']} == expected
+    assert len({row['filename'] for row in saved['sources']}) == len(expected)
+    for row in saved['sources']:
+        retained = service._path(intake['id']) / 'input' / row['filename']
+        raw = retained.read_bytes()
+        assert sha256(raw).hexdigest() == row['sha256']
+        assert len(raw) == row['size_bytes']
+        assert expected[row['sha256']] == row['original_name']
+    assert all(path.read_bytes() == raw for path, raw in originals.items())
+    assert saved['status'] == 'ready' and saved['run_context'] is None
+    assert saved['receipts'] == saved['artifacts'] == []
+    assert not (service._path(intake['id']) / 'job_status.json').exists()
+    assert not (service.root / 'engine.json').exists()

@@ -356,3 +356,70 @@ def test_native_metadata_abort_continues_owned_cleanup_after_an_earlier_cleanup_
     assert window.closed == 1 and window.ended == [2] and not window.modal
     assert driver.exits == [1] and errors[0] == 'original failure' and len(errors) == 2
     assert 'injected ' + failed_step + ' failure' in errors[1]
+
+
+def _native_metadata_lifetime_selection(windows, host):
+    """Execute the actual begin() selection, including its real helper when present."""
+    import ast
+
+    path = Path(__file__).resolve().parents[2] / 'scripts/windows_audio_metadata_smoke.py'
+    parsed = ast.parse(path.read_text(encoding='utf-8'))
+    begins = [node for node in ast.walk(parsed)
+              if isinstance(node, ast.FunctionDef) and node.name == 'begin']
+    assert len(begins) == 1
+    entry = next(node for node in begins[0].body if isinstance(node, ast.Try)).body[0]
+    assert isinstance(entry, ast.Assign)
+    assert len(entry.targets) == 1 and isinstance(entry.targets[0], ast.Name)
+    assert entry.targets[0].id == 'window'
+    helpers = [node for node in ast.walk(parsed)
+               if isinstance(node, ast.FunctionDef) and node.name == 'current_metadata_dialog']
+    assert len(helpers) <= 1
+    environment = {
+        'host': host,
+        'wx': SimpleNamespace(Dialog=_ProbeMetadataWindow,
+                              GetTopLevelWindows=lambda: list(windows)),
+    }
+    exec(compile(ast.fix_missing_locations(ast.Module(body=[*helpers, entry], type_ignores=[])),
+                 str(path), 'exec'), environment)
+    return environment['window']
+
+
+def _selectable_metadata_modal(parent, *, closed=False, destroying=False, modal=True):
+    window = _ProbeMetadataWindow(parent)
+    window.modal = modal
+    window._destroy_requested = destroying
+    window.metadata_controller.closed = closed
+    return window
+
+
+def test_native_metadata_lifetime_selects_current_modal_after_previous_owner_close():
+    parent, foreign_parent = object(), object()
+    previous = _selectable_metadata_modal(parent, closed=True, destroying=True, modal=False)
+    wrong_owner = _selectable_metadata_modal(foreign_parent)
+    current = _selectable_metadata_modal(parent)
+    selected = _native_metadata_lifetime_selection(
+        [previous, wrong_owner, current], parent)
+    assert selected is current
+    assert not current.metadata_controller.closed and current.modal
+    assert previous.metadata_controller.closed and previous._destroy_requested
+    assert previous.closed == wrong_owner.closed == current.closed == 0
+    assert previous.ended == wrong_owner.ended == current.ended == []
+
+
+@pytest.mark.parametrize('state', ['closed', 'destroying', 'not-modal'])
+def test_native_metadata_lifetime_does_not_adopt_an_inactive_owner(state):
+    parent = object()
+    window = _selectable_metadata_modal(parent,
+        closed=state == 'closed', destroying=state == 'destroying', modal=state != 'not-modal')
+    with pytest.raises(AssertionError, match='exactly one live metadata modal'):
+        _native_metadata_lifetime_selection([window], parent)
+    assert window.closed == 0 and window.ended == []
+
+
+def test_native_metadata_lifetime_rejects_ambiguous_live_modals():
+    parent = object()
+    first, second = (_selectable_metadata_modal(parent) for _ in range(2))
+    with pytest.raises(AssertionError, match='exactly one live metadata modal'):
+        _native_metadata_lifetime_selection([first, second], parent)
+    assert first.closed == second.closed == 0
+    assert first.ended == second.ended == []

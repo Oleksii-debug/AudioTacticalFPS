@@ -97,6 +97,41 @@ def main():
                 assert not dialog.cancel.IsEnabled()
                 assert dialog.GetSizer().GetMinSize().width <= dialog.GetClientSize().width
                 assert dialog.GetSizer().GetMinSize().height <= dialog.GetClientSize().height
+                # The added bounded-scan controls must remain reachable in a
+                # real smaller window, without hiding the fixed Close footer.
+                original_size = dialog.GetSize()
+                dialog.SetSize((800, 650))
+                dialog.Layout()
+                wx.YieldIfNeeded()
+                body = dialog.body
+                assert body.GetName() == 'Import Center scrollable options and results'
+                assert dialog.collection.GetParent() is body and dialog.status.GetParent() is body
+                assert dialog.GetSizer().GetMinSize().height <= dialog.GetClientSize().height
+                assert body.GetVirtualSize().height > body.GetClientSize().height
+                dialog.status.SetFocus()
+                wx.YieldIfNeeded()
+                assert wx.Window.FindFocus() is dialog.status
+                bottom_scroll = body.GetViewStart()[1]
+                assert bottom_scroll > 0
+                body_rect = body.GetScreenRect()
+                status_rect = dialog.status.GetScreenRect()
+                assert status_rect.y >= body_rect.y
+                assert status_rect.GetBottom() <= body_rect.GetBottom()
+                close = wx.FindWindowByName('Close Import Center', dialog)
+                assert close is not None and close.GetParent() is dialog
+                assert close.IsShownOnScreen() and close.AcceptsFocusFromKeyboard()
+                assert dialog.status.Navigate()
+                wx.YieldIfNeeded()
+                assert wx.Window.FindFocus() is close
+                dialog.collection.SetFocus()
+                wx.YieldIfNeeded()
+                assert wx.Window.FindFocus() is dialog.collection
+                assert body.GetViewStart()[1] < bottom_scroll
+                collection_rect = dialog.collection.GetScreenRect()
+                assert collection_rect.y >= body.GetScreenRect().y
+                assert collection_rect.GetBottom() <= body.GetScreenRect().GetBottom()
+                dialog.SetSize(original_size)
+                dialog.Layout()
                 dialog.plan((sources,))
                 assert dialog.busy and dialog.cancel.IsEnabled()
                 wx.CallLater(50, poll, planned)

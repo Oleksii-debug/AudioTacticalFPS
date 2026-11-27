@@ -280,13 +280,21 @@ def test_actual_library_import_and_resume_receipts_keep_their_outcome(host, tmp_
         source.write_text('Exact retained manuscript for progress verification.')
     if scenario == 'resumed':
         from carr_library.extract.page_ocr import Config
-        from carr_library.ingest.worker import prepare_request, record_progress
+        from carr_library.ingest.worker import load_request, prepare_request, record_progress
         metadata = dict(title='Retained manuscript', authors=[], language=None,
                         edition=None, volume=None, collections=[])
         request = prepare_request(library.root, workspace, source, metadata, Config())
+        def cancel_after_job_binding():
+            # Cancellation now reaches source intake too. Wait for the actual
+            # durable request/job binding, so this fixture has something to resume.
+            return bool(load_request(library.root, request['request_id']).get('job'))
         stopped = library._import_file(workspace, source, **request['metadata'],
-            _request_id=request['request_id'], cancelled=lambda: True)
+            _request_id=request['request_id'], cancelled=cancel_after_job_binding)
         assert stopped['state'] == 'cancelled'
+        bound = load_request(library.root, request['request_id'])
+        assert bound['job'] == stopped['id'] and stopped['completed'] == 0
+        assert library.assets.resolve(bound['asset_sha256']).read_bytes() == source.read_bytes()
+        assert library.browse(workspace) == ()
         record_progress(library.root, request['request_id'], state='cancelled', result=stopped)
         source.unlink()
         operation = lambda: library.resume_import(workspace, request['request_id'])
@@ -298,6 +306,8 @@ def test_actual_library_import_and_resume_receipts_keep_their_outcome(host, tmp_
     assert len(receipts) == 1
     actual = receipts[0] if scenario == 'resumed' else receipts[0][0]
     assert actual['state'] == {'failed': 'failed', 'cancelled': 'cancelled', 'succeeded': 'complete'}[state]
+    if scenario == 'resumed':
+        assert actual['id'] == stopped['id']
     snapshot = frame.progress_panel.active_task.snapshot()
     assert snapshot.state == state and not frame.working
     assert (snapshot.percent == 100) == (state == 'succeeded')

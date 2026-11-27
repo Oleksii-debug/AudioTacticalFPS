@@ -362,3 +362,61 @@ def test_unchanged_v1_receipt_remains_passively_readable(receipt):
     value['schema'] = 'carr-recording/1'
     assert recording.validate_recording_receipt(value, value['id']) == value
     recording.verify_recording_segments(path, value)
+
+
+@pytest.mark.parametrize('boundary', ['after-digest', 'before-wave-open'])
+def test_assembly_uses_verified_bytes_when_native_stamps_cannot_distinguish_writes(
+        receipt, tmp_path, monkeypatch, boundary):
+    path, value = receipt
+    options = RecordingOptions(**value['limits'])
+    original, expected_pcm = path.read_bytes(), pcm(path)
+    actual_regular, actual_fstat = recording.regular, recording.os.fstat
+    actual_digest, actual_wave_open = recording._digest, recording.wave.open
+    before = actual_regular(path)
+    changed = []
+
+    def frozen_regular(target, *args, **kwargs):
+        info = actual_regular(target, *args, **kwargs)
+        return before if Path(target) == path else info
+
+    def frozen_fstat(descriptor):
+        info = actual_fstat(descriptor)
+        return before if (info.st_dev, info.st_ino) == (before.st_dev, before.st_ino) else info
+
+    def mutate():
+        data = bytearray(original)
+        data[-1] ^= 1
+        path.write_bytes(data)
+        changed.append(bytes(data))
+
+    def verified_then_changed(target, cancelled=lambda: False):
+        digest = actual_digest(target, cancelled)
+        if Path(target) == path and boundary == 'after-digest' and not changed:
+            mutate()
+        return digest
+
+    def before_pcm_open(target, mode=None):
+        if mode == 'rb' and boundary == 'before-wave-open' and not changed:
+            mutate()
+        return actual_wave_open(target, mode)
+
+    # Model native timestamp granularity without faking the hash or PCM reads.
+    # The same actual inode is modified; both observations intentionally retain
+    # the old metadata, as the failing Windows assembly did.
+    monkeypatch.setattr(recording, 'regular', frozen_regular)
+    monkeypatch.setattr(recording.os, 'fstat', frozen_fstat)
+    monkeypatch.setattr(recording, '_digest', verified_then_changed)
+    monkeypatch.setattr(recording.wave, 'open', before_pcm_open)
+    output = tmp_path / 'joined.wav'
+    parts = [(path, value['audio'], 'device-ended')]
+    if boundary == 'after-digest':
+        with pytest.raises(ValueError, match='segment changed during assembly'):
+            RecordingService._join_segments(parts, output, options, lambda: False)
+    else:
+        ranges = RecordingService._join_segments(parts, output, options, lambda: False)
+        assert pcm(output) == expected_pcm
+        assert ranges == [{'start_frame': 0, 'frames': value['audio']['frames'],
+                           'pcm_sha256': sha256(expected_pcm).hexdigest(), 'ended_by': 'device-ended'}]
+    assert len(changed) == 1 and path.read_bytes() == changed[0] and changed[0] != original
+    assert actual_digest(path) != value['audio']['sha256']
+    assert not list(tmp_path.glob('.segment-snapshot-*'))

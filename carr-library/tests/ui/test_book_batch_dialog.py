@@ -304,3 +304,93 @@ def test_existing_per_book_review_mode_captures_profile_without_jobs(handlers):
     finally:
         close()
 
+
+
+@pytest.mark.parametrize('changed', [None, 'volume', 'parent', 'destination'])
+def test_actual_native_review_driver_checks_canonical_book_paths_and_settings(handlers, changed):
+    """Run the real native-driver closure over genuine saved Book reviews."""
+    import ast
+    from carr_library.studio.book_batch import select_books
+
+    e = handlers
+    second_source = e.app.add_text(e.workspace, 'Native driver second book',
+                                  'A separate exact second book.')
+    first = capture_plan(e.app, e.workspace, e.imported['edition'],
+        options=SplitOptions('document'),
+        role=Role('narrator', 'Narrator', 'synthetic-listed-voice', 'en'))
+    second = capture_plan(e.app, e.workspace, second_source['edition'],
+        options=SplitOptions('document'),
+        role=Role('narrator', 'Narrator', 'synthetic-listed-voice', 'en', volume=55),
+        format='flac')
+    spelling = e.output.parent / 'selected-path-spelling'
+    spelling.mkdir()
+    actual_output = e.output.parent / 'second-native-output'
+    actual_output.mkdir()
+    selected_output = spelling / '..' / actual_output.name
+    assert selected_output.is_dir()
+    assert str(selected_output) != str(selected_output.resolve())
+    groups = BookBatchService(e.service)
+    group = select_books((first, second), title='Native exact review contract')
+    parents = (e.output, selected_output)
+    previewed = groups.review(group, parents, plans=(first, second))
+    prepared = groups.prepare(group, parents, plans=(first, second),
+                              approval=previewed.fingerprint)
+    displayed = book_batch_dialog.batch_review_text(group, (first, second), prepared)
+    canonical = str(selected_output.resolve())
+    assert prepared.books[1].output_parent == canonical
+    assert 'Output parent: ' + canonical in displayed
+    assert str(selected_output) not in displayed  # The old literal-path assertion fails here.
+    assert '; volume 55' in displayed
+    assert all(state['status'] == 'pending' and not state['artifacts']
+               for state in e.production.jobs())
+    assert not list(e.output.iterdir()) and not list(actual_output.iterdir())
+    if changed == 'volume':
+        displayed = displayed.replace('; volume 55', '; volume 54')
+    elif changed == 'parent':
+        displayed = displayed.replace('Output parent: ' + canonical,
+                                      'Output parent: ' + str(e.output))
+    elif changed == 'destination':
+        displayed = displayed.replace('Output folder: ' + prepared.books[1].destinations[0],
+                                      'Output folder: ' + str(e.output / 'unreviewed'))
+
+    script = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_v3_smoke.py'
+    tree = ast.parse(script.read_text(encoding='utf-8'), filename=str(script))
+    batch_driver, = [node for node in ast.walk(tree)
+                     if isinstance(node, ast.FunctionDef) and node.name == 'exercise_book_batch']
+    reviewed, = [node for node in batch_driver.body
+                 if isinstance(node, ast.FunctionDef) and node.name == 'reviewed']
+    module = ast.fix_missing_locations(ast.Module(body=[reviewed], type_ignores=[]))
+    status = SimpleNamespace(GetValue=lambda: displayed)
+    frame = SimpleNamespace(working=False)
+    clicked, scheduled, approvals = [], [], []
+
+    def named(name, kind):
+        assert name == 'Multiple book review and existing Studio checkpoints'
+        return status
+
+    def click(name):
+        assert name == 'Run or resume batch'
+        clicked.append(name)
+        approvals.append('explicit native Run')
+        frame.working = True
+
+    rendered = object()
+    environment = dict(frame=frame, named=named,
+        wx=SimpleNamespace(TextCtrl=object, Window=SimpleNamespace(FindFocus=lambda: status)),
+        voice=SimpleNamespace(id=first.role.voice_id),
+        second_voice=SimpleNamespace(id=second.role.voice_id), second_output=selected_output,
+        prepared=prepared, click=click, approvals=approvals,
+        later=scheduled.append, rendered=rendered)
+    exec(compile(module, str(script), 'exec'), environment)
+    if changed is None:
+        environment['reviewed']()
+        assert clicked == ['Run or resume batch'] and approvals == ['explicit native Run']
+        assert scheduled == [rendered]
+    else:
+        with pytest.raises(AssertionError):
+            environment['reviewed']()
+        assert not clicked and not scheduled and not approvals
+        assert not frame.working
+    assert not list(e.output.iterdir()) and not list(actual_output.iterdir())
+    assert all(state['status'] == 'pending' and not state['artifacts']
+               for state in e.production.jobs())
