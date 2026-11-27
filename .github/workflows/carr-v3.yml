@@ -345,7 +345,7 @@ jobs:
   # native-studio; every matrix row and the broad service job remain required
   # for the workflow to succeed. The canonical inventory is pinned separately.
   canonical-source:
-    name: V3 required source shard ${{ matrix.shard }}/2
+    name: V3 required source shard ${{ matrix.shard }}/3
     runs-on: windows-2022
     timeout-minutes: 45
     defaults:
@@ -361,7 +361,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2]
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -422,7 +422,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $selection = Get-Content 'ci-v3-results/source-coverage.json' -Raw | ConvertFrom-Json
           $suites = @($selection.suites)
-          if ($selection.status -ne 'COVERAGE_VALID' -or $selection.required_count -ne 139 -or $selection.shard -ne ${{ matrix.shard }}) { throw 'V3 source coverage identity differs.' }
+          if ($selection.status -ne 'COVERAGE_VALID' -or $selection.required_count -ne 139 -or $selection.shard_count -ne 3 -or $selection.shard -ne ${{ matrix.shard }}) { throw 'V3 source coverage identity differs.' }
           python scripts/ci_check.py --jobs 2 @suites 2>&1 | Tee-Object 'ci-v3-results/canonical-production-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Keep this source shard and coverage evidence only

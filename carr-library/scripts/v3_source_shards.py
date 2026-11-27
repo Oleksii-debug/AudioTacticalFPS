@@ -1,4 +1,4 @@
-"""Select the exact reviewed V3 source suites for two independent Windows jobs.
+"""Select the exact reviewed V3 source suites for three independent Windows jobs.
 
 This helper proves coverage only. The unchanged ci_check.py remains the test
 runner and retains its isolated child, offline policy, 600-second suite bound,
@@ -15,7 +15,8 @@ ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = Path(__file__).with_name('v3_source_suites.json')
 MANIFEST_GIT_BLOB = '37c38b6153c183f8dd5924a97ac8edef35f83108'
 SOURCE_SUITE_COUNT = 139
-SHARD_COUNT = 2
+SHARD_COUNT = 3
+DEDICATED_BOOK_BATCH = 'tests/studio/test_book_batch.py'
 MAX_MANIFEST_BYTES = 64 * 1024
 
 
@@ -52,22 +53,31 @@ def required_suites(manifest=MANIFEST):
     return tuple(value['suites'])
 
 
+def _reviewed_assignment(required):
+    # Keep the original two alternating assignments in order. Only the measured
+    # long Book batch moves to its own required VM and starts without queued work.
+    ordinary = tuple(
+        tuple(suite for suite in required[index::2] if suite != DEDICATED_BOOK_BATCH)
+        for index in range(2)
+    )
+    return (*ordinary, (DEDICATED_BOOK_BATCH,))
+
+
 def validate_partition(required, shards):
     if (len(shards) != SHARD_COUNT or any(not part for part in shards)
             or sum(map(len, shards)) != len(required)
             or len({suite for part in shards for suite in part}) != len(required)
             or {suite for part in shards for suite in part} != set(required)):
         raise ValueError('V3 shards must cover every required suite exactly once.')
-    if any(tuple(part) != tuple(required[index::SHARD_COUNT])
-           for index, part in enumerate(shards)):
+    if tuple(tuple(part) for part in shards) != _reviewed_assignment(required):
         raise ValueError('The reviewed V3 source-shard assignment changed.')
 
 
 def selection(shard, *, manifest=MANIFEST, root=ROOT):
-    if type(shard) is not int or shard not in (1, 2):
-        raise ValueError('Choose V3 source shard 1 or 2.')
+    if type(shard) is not int or shard not in (1, 2, 3):
+        raise ValueError('Choose V3 source shard 1, 2 or 3.')
     required = required_suites(manifest)
-    shards = tuple(required[index::SHARD_COUNT] for index in range(SHARD_COUNT))
+    shards = _reviewed_assignment(required)
     validate_partition(required, shards)
     root = Path(root).resolve(strict=True)
     for suite in required:
@@ -86,7 +96,7 @@ def selection(shard, *, manifest=MANIFEST, root=ROOT):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--shard', type=int, choices=(1, 2), required=True)
+    parser.add_argument('--shard', type=int, choices=(1, 2, 3), required=True)
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args(argv)
     try:
