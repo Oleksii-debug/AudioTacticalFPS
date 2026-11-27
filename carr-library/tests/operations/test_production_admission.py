@@ -287,7 +287,7 @@ def test_source_changed_after_resource_review_does_not_start_render(tmp_path, mo
             selected_audio(source, sample=200)
 
     monkeypatch.setattr(service, '_save', saved)
-    with pytest.raises(ValueError, match='changed while waiting'):
+    with pytest.raises(ValueError, match='reviewed legacy Studio input changed'):
         service.run(job)
     assert changed and not capabilities
     assert service.get(job)['status'] == 'failed'

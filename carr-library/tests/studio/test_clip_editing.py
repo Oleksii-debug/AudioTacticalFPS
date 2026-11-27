@@ -442,3 +442,48 @@ def test_editor_close_preserves_a_borrowed_service_and_closes_its_own(tmp_path, 
     assert owned.service._closed.is_set()
     with pytest.raises(ValueError, match='closed'):
         owned.create()
+
+
+@pytest.mark.parametrize('source_rate, output_rate, split_frames', [
+    (44100, 24000, 12001), (44100, 48000, 17003), (48000, 24000, 12001)])
+def test_split_preserves_pcm_when_resampling_and_cut_is_not_a_source_sample(
+        editor, tmp_path, source_rate, output_rate, split_frames):
+    selected = tmp_path / 'Foreign rate original.wav'
+    values = [round(7000 * math.sin(2 * math.pi * 713 * i / source_rate)
+                    + 3000 * math.sin(2 * math.pi * 3911 * i / source_rate))
+              for i in range(source_rate * 2)]
+    with wave.open(str(selected), 'wb') as stream:
+        stream.setnchannels(1)
+        stream.setsampwidth(2)
+        stream.setframerate(source_rate)
+        stream.writeframes(struct.pack('<' + 'h' * len(values), *values))
+    original = selected.read_bytes()
+    project = editor.create('Resampled cuts')
+    project = editor.service.projects.save(replace(project, revision=2, sample_rate=output_rate),
+        expected_revision=project.revision, expected_fingerprint=project.fingerprint)
+    scene_id = project.scenes[0].id
+    project = editor.add(project, scene_id, selected, trim_start=.125 + .2 / output_rate,
+                         duration=1, start=.25, pan=-1, gain_db=0)
+    cue = project.scenes[0].cues[0]
+    def rendered(value, name):
+        destination = tmp_path / name
+        destination.mkdir()
+        saved = editor.service.run(editor.service.submit(value, destination))
+        paths = (Path(saved['destination']) / 'master.wav',
+                 Path(saved['destination']) / 'stems' / 'clips' / 'sfx.wav')
+        result = []
+        for path in paths:
+            with wave.open(str(path), 'rb') as stream:
+                count = stream.getnframes()
+                result.append((stream.getframerate(), stream.getnchannels(), count,
+                               sha256(stream.readframes(count)).hexdigest()))
+        return result
+    before = rendered(project, 'unbroken')
+    position = split_frames / output_rate
+    divided = editor.split(project, scene_id, cue.id, position)
+    left, right = divided.scenes[0].cues
+    assert right.trim_start * source_rate != round(right.trim_start * source_rate)
+    assert rendered(divided, 'cut') == before
+    joined = editor.join(divided, scene_id, right.id, left.id)
+    assert rendered(joined, 'rejoined') == before
+    assert selected.read_bytes() == Path(cue.path).read_bytes() == original

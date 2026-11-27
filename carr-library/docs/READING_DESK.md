@@ -148,3 +148,58 @@ buttons and next-word accelerator, checks paragraph/Unicode selection,
 unchanged source bytes and saved character offsets. This API-composed change
 requires fresh execution; no new Linux, Windows, NVDA or listening PASS is
 claimed from source review alone.
+
+## Find and replace in a reading copy
+
+Open **Find and replace** or press **Ctrl+F** in the reader. Enter a literal
+pattern and replacement, or explicitly select regular-expression mode. Literal
+replacement preserves backslashes as text. Regex replacement supports the
+existing worker's capture-group expansion. Case-insensitive matching is optional.
+Choose the whole reading copy or the selected text before pressing **Preview
+matches**.
+
+The preview shows the exact before/after scope and each occurrence's character
+range. Previous/Next selects a reviewed occurrence without changing the text or
+starting audio; it does not wrap at either end. **Replace selected match** changes
+only that occurrence. **Replace all reviewed** applies the complete scope shown
+in the preview as one undoable edit. Both invalidate the preview, so further
+replacements require another explicit review. **Undo last replacement** restores
+the preceding reading-copy revision; the reader's normal undo history and
+recovery file remain available after the dialog closes.
+
+Unicode selection uses the native control's observed prefixes, including UTF-16
+and line-ending differences. A changed text, selection, form or library invalidates
+the proposal. Search runs through the reader's existing worker and isolated
+substitution process, with the existing text, result and match limits and a
+one-second search allowance. Cancel or closing the dialog requests termination
+of that owned search; a late result cannot apply an edit.
+
+Source text, retained asset bytes and quotation authority remain unchanged.
+Playback is stopped before a replacement; applying or undoing a text edit does
+not start it again. A recovery-save failure keeps the change undoable in memory
+and reports that **Save As** is needed before closing. Search itself never applies
+a replacement.
+
+The focused source suites exercise the real isolated worker, cancellation and
+deadline cleanup, Unicode offsets, exact selected scope, queued callbacks, stale
+authority and recovery. The existing installed Windows pronunciation/reader probe
+also drives Ctrl+F, native match selection, single/all replacements and durable
+undo using real controls. Prepared source requires its own CI execution; these
+checks do not qualify a voice or NVDA behavior.
+
+## Native playback transport guards
+
+On Windows, seeking while paused sends a silent MCI seek and keeps the reader
+paused until explicit Resume. It does not restart the recording just to pause it
+again. A failed native Close retains the alias and its temporary audio for a
+confirmed retry; a successful Close establishes silence even if Stop reported an
+error. These narrow guards are reused from the reviewed canonical-compatible
+PR149 player changes. The existing FFplay environment filtering is preserved.
+
+The focused transport suite checks the real PCM input and MCI command/cleanup
+contracts. `scripts/windows_reader_player_smoke.py` requires the installed package
+and actual Windows MCI; it measures pause, silent seek, explicit resume, stop and
+file release on a silent synthetic recording. A missing native output device
+fails that gate. It does not establish audible quality, NVDA acceptance or
+physical microphone behavior. This transport increment does not claim A–B repeat,
+sleep-timer or configurable-skip completion.

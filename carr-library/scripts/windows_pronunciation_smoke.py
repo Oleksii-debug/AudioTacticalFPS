@@ -300,7 +300,73 @@ def _run_native():
             press(dialog.buttons['close'], close_reader)
 
         def close_reader():
-            until(lambda: top_with_title('Pronunciation rules') is None, finish_reader)
+            until(lambda: top_with_title('Pronunciation rules') is None, open_find)
+
+        def open_find():
+            reader, editor = observed['reader'], observed['editor']
+            key(editor, ord('F'), lambda: until(
+                lambda: top_with_title('Find and replace') is not None, find_ready), wx.MOD_CONTROL)
+
+        def find_ready():
+            dialog = top_with_title('Find and replace')
+            observed['find_dialog'] = dialog
+            check('native find controls have accessible names', all(control.GetName() for control in
+                  (dialog.pattern, dialog.replacement, dialog.scope, dialog.list, dialog.before, dialog.after)))
+            dialog.pattern.ChangeValue('Dr.')
+            dialog.replacement.ChangeValue('Doctor')
+            dialog.scope.SetSelection(0)
+            press(dialog.buttons['preview'], lambda: until(lambda: not dialog.busy, find_previewed))
+
+        def find_previewed():
+            dialog, editor = observed['find_dialog'], observed['editor']
+            initial = observed['initial']
+            check('actual bounded search previews two exact native matches',
+                  dialog.preview is not None and len(dialog.preview.matches) == 2
+                  and dialog.before.GetValue() == initial
+                  and dialog.after.GetValue() == initial.replace('Dr.', 'Doctor')
+                  and editor.GetValue() == initial and editor.GetStringSelection() == 'Dr.')
+            check('find keeps focus in the review window', wx.GetTopLevelParent(wx.Window.FindFocus()) is dialog)
+            press(dialog.buttons['next'], find_second)
+
+        def find_second():
+            dialog, editor = observed['find_dialog'], observed['editor']
+            start, end = editor.GetSelection()
+            check('native next match selects the second Unicode-offset occurrence',
+                  dialog.index == 1 and editor.GetRange(0, start).endswith('speaks. ')
+                  and editor.GetRange(start, end) == 'Dr.')
+            press(dialog.buttons['one'], find_one_applied)
+
+        def find_one_applied():
+            dialog, editor = observed['find_dialog'], observed['editor']
+            initial = observed['initial']; start = initial.rindex('Dr.')
+            check('native single replacement changes only the reviewed occurrence',
+                  editor.GetValue() == initial[:start] + 'Doctor' + initial[start + 3:]
+                  and dialog.preview is None and original_asset.read_bytes() == asset_bytes)
+            press(dialog.buttons['undo'], find_one_undone)
+
+        def find_one_undone():
+            dialog, editor = observed['find_dialog'], observed['editor']
+            check('native replacement undo restores exact reading text', editor.GetValue() == observed['initial'])
+            press(dialog.buttons['preview'], lambda: until(lambda: not dialog.busy,
+                  lambda: press(dialog.buttons['all'], find_all_applied)))
+
+        def find_all_applied():
+            dialog, editor = observed['find_dialog'], observed['editor']
+            check('native Replace all applies the complete reviewed scope once',
+                  editor.GetValue() == observed['initial'].replace('Dr.', 'Doctor')
+                  and original_asset.read_bytes() == asset_bytes)
+            press(dialog.buttons['undo'], find_all_undone)
+
+        def find_all_undone():
+            dialog, editor = observed['find_dialog'], observed['editor']
+            recovered = ReaderDraftStore(library.root, slot='pronunciation-native').load()
+            check('native find undo is durably recoverable with exact source lineage',
+                  editor.GetValue() == observed['initial'] and recovered is not None
+                  and recovered.document.text == observed['initial']
+                  and recovered.document.source_anchor == source.reading_document().source_anchor
+                  and recovered.document.source_text == source.text)
+            press(dialog.buttons['close'], lambda: until(
+                lambda: top_with_title('Find and replace') is None, finish_reader))
 
         def finish_reader():
             reader = observed['reader']

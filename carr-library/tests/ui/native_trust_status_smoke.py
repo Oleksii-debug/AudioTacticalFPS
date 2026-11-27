@@ -223,6 +223,12 @@ def main(argv=None):
     # a predicate schedules a bounded check; it never dispatches product timer
     # callbacks, host idle changes or Destroy handlers directly.
     steps = scenario()
+    # wxPython 4.2.4 wxPyApp::MainLoop returns without dispatching CallAfter
+    # when wxTopLevelWindows is empty, even with ExitOnFrameDelete(False).
+    # Prime only the actual DesktopFrame creation/show before entering the loop;
+    # the first yield precedes every scenario assertion and product timer action.
+    initial = next(steps)
+    assert initial is None and wx.GetTopLevelWindows(), 'Create the native owner before MainLoop.'
     state = {'finished': False, 'error': None}
     def complete(error=None):
         if state['finished']:

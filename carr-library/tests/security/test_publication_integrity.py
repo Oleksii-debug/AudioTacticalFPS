@@ -126,8 +126,16 @@ def test_source_receipt_cannot_be_added_outside_verified_inventory(tmp_path):
 
 @pytest.mark.parametrize('stop', ['close', 'deadline'])
 def test_stop_during_final_canonical_vault_compare_prevents_protected_put(
-        tmp_path, signer, policy, clock, stop):
+        tmp_path, signer, policy, clock, stop, monkeypatch):
+    from types import SimpleNamespace
+    from carr_library.security import refresh as refresh_module
+
     entered, release = threading.Event(), threading.Event()
+    # Advance only after the actual canonical vault comparison is blocked.
+    # Patching this module's clock leaves threading/Event waits on real time;
+    # slow Windows signing or disk I/O cannot consume the tested deadline early.
+    elapsed = [100.0]
+    monkeypatch.setattr(refresh_module, 'time', SimpleNamespace(monotonic=lambda: elapsed[0]))
 
     class BarrierVault(CanonicalVault):
         refresh_reads = 0
@@ -137,7 +145,7 @@ def test_stop_during_final_canonical_vault_compare_prevents_protected_put(
                 self.refresh_reads += 1
                 if self.refresh_reads == 2:
                     entered.set()
-                    assert release.wait(2)
+                    assert release.wait(5)
             return super().get(profile_id, reference)
 
     vault = BarrierVault()
@@ -157,15 +165,16 @@ def test_stop_during_final_canonical_vault_compare_prevents_protected_put(
                            clock=clock, timeout_seconds=.05 if stop == 'deadline' else 20)
     try:
         assert worker.tick(manual=True)
-        assert entered.wait(1)
+        assert entered.wait(5)
+        assert vault.refresh_reads == 2
         if stop == 'close':
             worker.close(0)
         else:
-            time.sleep(.07)
+            elapsed[0] += worker.timeout_seconds + .01
     finally:
         release.set()
         if worker._thread is not None:
-            worker._thread.join(2)
+            worker._thread.join(5)
         worker.close()
     assert not worker.running
     assert anchor.load().sequence == 1

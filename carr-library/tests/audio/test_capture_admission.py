@@ -83,3 +83,18 @@ def test_failed_lifetime_admission_never_activates_capture_and_reaps_launcher(
     assert len(children) == 1 and children[0].poll() is not None
     assert children[0].stdin.closed and children[0].stdout.closed and children[0].stderr.closed
 
+
+def test_cleanup_failure_still_reaps_launcher_and_closes_owned_pipes(tmp_path, monkeypatch):
+    children = []
+
+    def protect(child):
+        children.append(child)
+        def unconfirmed():
+            raise module.CaptureCleanupError('Synthetic cleanup acknowledgement failure')
+        return unconfirmed
+
+    monkeypatch.setattr(module, '_capture_lifetime', protect)
+    with pytest.raises(module.CaptureCleanupError, match='acknowledgement'):
+        _execute('print("finished")', stop_requested=lambda: False)
+    assert len(children) == 1 and children[0].poll() is not None
+    assert children[0].stdin.closed and children[0].stdout.closed and children[0].stderr.closed

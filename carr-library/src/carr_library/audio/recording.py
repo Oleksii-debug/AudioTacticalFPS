@@ -14,12 +14,12 @@ import os
 from pathlib import Path
 import re
 import shutil
-from tempfile import TemporaryDirectory
+from tempfile import mkdtemp
 import threading
 from uuid import uuid4
 
 from .models import AudioBudget, AudioCancelled, AudioError, AudioUnavailable, integer
-from .process import publish_file, run_process
+from .process import CaptureCleanupError, publish_file, run_process
 from ..durable_state import atomic_json, local_path, read_json, regular, state_lock
 
 _CAPTURE = threading.Lock()
@@ -168,11 +168,18 @@ class RecordingService:
             raise AudioCancelled('Recording stopped before opening the microphone.')
         if not _CAPTURE.acquire(blocking=False):
             raise RuntimeError('Another microphone recording is active. Stop it before starting another.')
+        release_capture = True
         try:
             with state_lock(self.root, 'recording'):
                 return self._capture(device, title, options, stop_requested, cancelled, progress)
+        except CaptureCleanupError:
+            # An unconfirmed stop must not allow a second microphone session
+            # in this host. Restarting the host resets this conservative latch.
+            release_capture = False
+            raise
         finally:
-            _CAPTURE.release()
+            if release_capture:
+                _CAPTURE.release()
 
     def _capture(self, device, title, options, stop_requested, cancelled, progress):
         identity = uuid4().hex
@@ -194,7 +201,9 @@ class RecordingService:
                 except Exception:
                     progress = None  # An observer cannot destroy captured audio.
 
-        with TemporaryDirectory(prefix='.pending-recording-', dir=self.root) as temporary:
+        temporary = mkdtemp(prefix='.pending-recording-', dir=self.root)
+        cleanup = True
+        try:
             staged = Path(temporary) / 'capture.wav'
             command = [self.runtime.ffmpeg, '-hide_banner', '-loglevel', 'error', '-n', '-nostats',
                 '-max_alloc', str(budget.max_alloc_bytes), '-threads', '1', '-stats_period', '0.1',
@@ -220,6 +229,14 @@ class RecordingService:
                 atomic_json(receipt, value)
             except (OSError, ValueError) as exc:
                 raise AudioError(f'The recorded WAV was retained at {output}, but its receipt could not be saved. Preserve the file for recovery.') from exc
+        except CaptureCleanupError as exc:
+            cleanup = False
+            raise CaptureCleanupError(
+                f'Microphone cleanup is unconfirmed. Incomplete recording retained at {temporary}; '
+                'close the application before starting another recording.') from exc
+        finally:
+            if cleanup:
+                shutil.rmtree(temporary)
         return {**value, 'path': str(output)}
 
     @staticmethod
