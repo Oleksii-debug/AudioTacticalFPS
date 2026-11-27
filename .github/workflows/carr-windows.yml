@@ -870,6 +870,7 @@ jobs:
             'tests/assistant/test_backup_receipt.py',
             'tests/integrations/test_dordiai_voices.py',
             'tests/packaging/test_delivery_archive.py',
+            'tests/packaging/test_prepare_windows_audio.py',
             'tests/ui/test_save_all.py',
             'tests/ui/test_studio_keyboard_registration.py',
             'tests/voice_acceptance/test_dordiai_acceptance.py',
