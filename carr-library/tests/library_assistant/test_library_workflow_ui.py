@@ -13,6 +13,20 @@ from carr_library.library_assistant import LocalLibraryAssistant
 from carr_library.ui.library_assistant import LibraryWorkflowController, install_library_assistant_actions
 
 
+def _checked_child_program(program):
+    """Keep the crash fixture on the parent's exact package origins."""
+    from pathlib import Path
+    import carr_library
+    import bootstrap
+    expected = [str(Path(module.__file__).resolve()) for module in (carr_library, bootstrap)]
+    roots = [str(Path(path).parents[1]) for path in expected]
+    return ('import sys\nassert sys.dont_write_bytecode\n'
+            f'sys.path[:0] = {roots!r}\n'
+            'import pathlib,carr_library,bootstrap\n'
+            'assert [str(pathlib.Path(module.__file__).resolve()) for module in '
+            f'(carr_library,bootstrap)] == {expected!r}\n' + program)
+
+
 class Frame:
     def __init__(self, library, workspace):
         self.library, self.active = library, (workspace, None)
@@ -138,7 +152,7 @@ os.link = crash_after_publication
 app = LibraryApp(sys.argv[1])
 LocalLibraryAssistant.open_job(app, sys.argv[2], sys.argv[3]).run(sys.argv[3])
 '''
-    stopped = subprocess.run([sys.executable, '-I', '-c', child,
+    stopped = subprocess.run([sys.executable, '-I', '-B', '-X', 'utf8', '-c', _checked_child_program(child),
         str(state.library.root), state.workspace, job['id']], timeout=20, check=False)
     assert stopped.returncode == 73
     target = outputs / 'outline.md'

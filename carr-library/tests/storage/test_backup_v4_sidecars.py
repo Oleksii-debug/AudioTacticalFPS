@@ -15,6 +15,20 @@ from carr_library.reader.reading_desk import ReadingDesk
 from carr_library.reader.reading_state import ReadingState
 
 
+def _checked_child_program(program):
+    """Keep the crash fixture on the parent's exact package origins."""
+    from pathlib import Path
+    import carr_library
+    import bootstrap
+    expected = [str(Path(module.__file__).resolve()) for module in (carr_library, bootstrap)]
+    roots = [str(Path(path).parents[1]) for path in expected]
+    return ('import sys\nassert sys.dont_write_bytecode\n'
+            f'sys.path[:0] = {roots!r}\n'
+            'import pathlib,carr_library,bootstrap\n'
+            'assert [str(pathlib.Path(module.__file__).resolve()) for module in '
+            f'(carr_library,bootstrap)] == {expected!r}\n' + program)
+
+
 def resign(folder, manifest):
     raw = (json.dumps(manifest, ensure_ascii=False, sort_keys=True, separators=(',', ':')) + '\n').encode()
     (folder / 'manifest.json').write_bytes(raw)
@@ -256,7 +270,9 @@ os.link=interrupt
 if operation=='backup':create_backup(LibraryApp(root),target)
 else:restore_backup(source,target,digest)
 '''
-    result = subprocess.run([sys.executable, '-c', code, str(app.root), str(folder), str(destination), digest, operation],
+    result = subprocess.run([sys.executable, '-B', '-s', '-P', '-X', 'utf8', '-c',
+                             _checked_child_program(code), str(app.root), str(folder),
+                             str(destination), digest, operation],
         env={**os.environ, 'PYTHONPATH': os.pathsep.join(sys.path)}, capture_output=True, timeout=20)
     assert result.returncode == 73, result.stderr
     if operation == 'backup':

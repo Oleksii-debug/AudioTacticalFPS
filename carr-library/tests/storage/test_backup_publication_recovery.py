@@ -19,6 +19,20 @@ from carr_library.reader.reading_desk import ReadingDesk
 from carr_library.reader.reading_state import ReadingState
 
 
+def _checked_child_program(program):
+    """Keep the crash fixture on the parent's exact package origins."""
+    from pathlib import Path
+    import carr_library
+    import bootstrap
+    expected = [str(Path(module.__file__).resolve()) for module in (carr_library, bootstrap)]
+    roots = [str(Path(path).parents[1]) for path in expected]
+    return ('import sys\nassert sys.dont_write_bytecode\n'
+            f'sys.path[:0] = {roots!r}\n'
+            'import pathlib,carr_library,bootstrap\n'
+            'assert [str(pathlib.Path(module.__file__).resolve()) for module in '
+            f'(carr_library,bootstrap)] == {expected!r}\n' + program)
+
+
 def _files(root):
     return {path.relative_to(root).as_posix(): path.read_bytes()
             for path in root.rglob('*') if path.is_file()}
@@ -66,7 +80,8 @@ service.run(sys.argv[3])
     import carr_library.library_assistant as assistant_module
     source = Path(assistant_module.__file__).resolve().parents[1]
     env = {**os.environ, 'PYTHONPATH': os.pathsep.join((str(source), str(source.parent)))}
-    child = subprocess.run([sys.executable, '-c', code, str(app.root), workspace, job['id'], str(target)],
+    child = subprocess.run([sys.executable, '-B', '-s', '-P', '-X', 'utf8', '-c',
+                            _checked_child_program(code), str(app.root), workspace, job['id'], str(target)],
                            env=env, capture_output=True, text=True, timeout=30)
     assert child.returncode == 74, (child.stdout, child.stderr)
     before = _files(target)

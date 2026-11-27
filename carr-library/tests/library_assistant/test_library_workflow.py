@@ -10,6 +10,20 @@ from carr_library.application import LibraryApp
 from carr_library.library_assistant import LocalLibraryAssistant, describe_job, describe_plan
 
 
+def _checked_child_program(program):
+    """Keep the crash fixture on the parent's exact package origins."""
+    from pathlib import Path
+    import carr_library
+    import bootstrap
+    expected = [str(Path(module.__file__).resolve()) for module in (carr_library, bootstrap)]
+    roots = [str(Path(path).parents[1]) for path in expected]
+    return ('import sys\nassert sys.dont_write_bytecode\n'
+            f'sys.path[:0] = {roots!r}\n'
+            'import pathlib,carr_library,bootstrap\n'
+            'assert [str(pathlib.Path(module.__file__).resolve()) for module in '
+            f'(carr_library,bootstrap)] == {expected!r}\n' + program)
+
+
 @pytest.fixture
 def environment(tmp_path):
     app = LibraryApp(tmp_path / 'private-library')
@@ -488,7 +502,8 @@ service.run(sys.argv[3])
     source = str(Path(assistant_module.__file__).resolve().parents[1])
     project = str(Path(source).parent)
     env['PYTHONPATH'] = os.pathsep.join((source, project))
-    process = subprocess.run([sys.executable, '-c', code, str(app.root), ws, job['id']],
+    process = subprocess.run([sys.executable, '-B', '-s', '-P', '-X', 'utf8', '-c',
+                              _checked_child_program(code), str(app.root), ws, job['id']],
                              env=env, capture_output=True, text=True, timeout=30)
     assert process.returncode == 73, (process.stdout, process.stderr)
     assert len(app.topics(ws)) == 1
@@ -523,7 +538,8 @@ service.run(sys.argv[3])
     env = dict(os.environ)
     source = str(Path(assistant_module.__file__).resolve().parents[1])
     env['PYTHONPATH'] = os.pathsep.join((source, str(Path(source).parent)))
-    process = subprocess.run([sys.executable, '-c', code, str(app.root), ws, job['id']],
+    process = subprocess.run([sys.executable, '-B', '-s', '-P', '-X', 'utf8', '-c',
+                              _checked_child_program(code), str(app.root), ws, job['id']],
                              env=env, capture_output=True, text=True, timeout=30)
     assert process.returncode == 73, (process.stdout, process.stderr)
     target = outputs / 'once.md'

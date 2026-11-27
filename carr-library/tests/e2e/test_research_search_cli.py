@@ -10,7 +10,23 @@ import pytest
 from carr_library.application import LibraryApp
 
 
-ROOT = Path(__file__).resolve().parents[2]
+def _python_child(cwd):
+    """Use the parent's tested packages without changing a sealed runtime."""
+    import carr_library
+    import bootstrap
+    expected = [Path(module.__file__).resolve() for module in (carr_library, bootstrap)]
+    env = dict(os.environ)
+    env['PYTHONPATH'] = os.pathsep.join(str(path.parents[1]) for path in expected)
+    env['PYTHONUTF8'] = '1'
+    env['PYTHONDONTWRITEBYTECODE'] = '1'
+    prefix = [sys.executable, '-B', '-s', '-P', '-X', 'utf8']
+    origin = subprocess.run(prefix + ['-c', 'import carr_library,bootstrap,json,sys; '
+        'print(json.dumps([carr_library.__file__,bootstrap.__file__,sys.dont_write_bytecode]))'],
+        cwd=cwd, env=env, check=True, capture_output=True, text=True, encoding='utf-8', timeout=30)
+    paths = json.loads(origin.stdout)
+    assert [Path(path).resolve() for path in paths[:2]] == expected
+    assert paths[2] is True
+    return prefix, env
 
 
 @pytest.fixture
@@ -23,11 +39,9 @@ def cli(tmp_path):
         imported = app.add_text(workspace, 'Synthetic source', 'Railway history — Straße.',
                                 authors=(author,), language=language, edition='First')
         assert imported['state'] == 'complete'
-    env = dict(os.environ)
-    env['PYTHONPATH'] = os.pathsep.join((str(ROOT / 'src'), str(ROOT)))
-    env['PYTHONUTF8'] = '1'
+    prefix, env = _python_child(tmp_path)
     def run(*arguments, expected=0):
-        result = subprocess.run([sys.executable, '-m', 'carr_library', '--data-dir', str(app.root),
+        result = subprocess.run([*prefix, '-m', 'carr_library', '--data-dir', str(app.root),
                                  *map(str, arguments)], cwd=tmp_path, env=env, text=True,
                                 encoding='utf-8', capture_output=True, timeout=30)
         assert result.returncode == expected, (result.stdout, result.stderr, result.returncode)
@@ -64,10 +78,11 @@ def test_existing_modes_and_metadata_filters_apply_in_each_selected_library(cli,
 
 
 def test_missing_library_selection_is_an_error_and_does_not_create_data(tmp_path):
-    env = dict(os.environ, PYTHONPATH=os.pathsep.join((str(ROOT / 'src'), str(ROOT))))
+    prefix, env = _python_child(tmp_path)
     destination = tmp_path / 'must-not-exist'
-    result = subprocess.run([sys.executable, '-m', 'carr_library', '--data-dir', str(destination),
-                             '--search', 'history'], env=env, capture_output=True, text=True, timeout=30)
+    result = subprocess.run([*prefix, '-m', 'carr_library', '--data-dir', str(destination),
+                             '--search', 'history'], cwd=tmp_path, env=env, capture_output=True,
+                            text=True, encoding='utf-8', timeout=30)
     assert result.returncode == 2 and '--workspace' in result.stderr
     assert not destination.exists()
 
