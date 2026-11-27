@@ -2661,6 +2661,11 @@
       "test_native_workspace_free_space_is_checked_before_snapshot_or_worker": 1,
       "test_excessive_native_temporary_root_is_rejected_without_creating_another_location": 1,
       "test_office_uses_ascii_relative_file_arguments_with_original_inactive_profile": 1
+    },
+    "tests.extract.test_model_pack_manifest_identity": {
+      "test_manifest_replacement_cannot_install_an_unapproved_model": 1,
+      "test_approved_checksum_does_not_relax_strict_json": 2,
+      "test_oversized_manifest_cannot_substitute_the_empty_content_checksum": 1
     }
   },
   "installed": {
@@ -5254,6 +5259,11 @@
       "test_native_workspace_free_space_is_checked_before_snapshot_or_worker": 1,
       "test_excessive_native_temporary_root_is_rejected_without_creating_another_location": 1,
       "test_office_uses_ascii_relative_file_arguments_with_original_inactive_profile": 1
+    },
+    "tests.extract.test_model_pack_manifest_identity": {
+      "test_manifest_replacement_cannot_install_an_unapproved_model": 1,
+      "test_approved_checksum_does_not_relax_strict_json": 2,
+      "test_oversized_manifest_cannot_substitute_the_empty_content_checksum": 1
     }
   },
   "native_trust": [

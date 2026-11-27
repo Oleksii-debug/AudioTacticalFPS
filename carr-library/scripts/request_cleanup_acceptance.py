@@ -91,7 +91,8 @@ def finalize(results):
                     canonical_progress_numeric_cases=ORACLE.get('canonical_progress_numeric_cases', 0),
                     canonical_conversion_cases=ORACLE.get('canonical_conversion_cases', 0),
                     canonical_studio_keyboard_cases=ORACLE.get('canonical_studio_keyboard_cases', 0),
-                    office_workspace_cases=ORACLE.get('office_workspace_cases', 0))
+                    office_workspace_cases=ORACLE.get('office_workspace_cases', 0),
+                    canonical_ocr_manifest_cases=ORACLE.get('canonical_ocr_manifest_cases', 0))
     except Exception as error:
         print(''.join(traceback.format_exception(type(error), error, error.__traceback__)),
               file=sys.stderr, flush=True)

@@ -2,7 +2,7 @@
   "schema": 1,
   "component": "Preserved publication, canonical recovery, progress settings, native manifests and headless admission",
   "authoring_status": "NOT_RUN",
-  "derivation": "Retain the exact prior132 cases; add39 passive-provider recovery,9 headless admission,32 canonical progress preference and20 unchanged canonical manifest cases. Retain all232 and add27 observed-write, publication and settings-dialog conflict cases. Retain all259; restore7 canonical generic-state publication cases, protect6 existing resource-state cases through the shared retry owner, and add7 actual-child FFmpeg diagnostic boundary cases. Retain279 and restore21 canonical numeric-progress and count-boundary cases. Retain300; add41 explicit-TXT source/receipt/worker boundaries and4 current Studio semantic-keymap cases. Retain345 and add9 parent-owned Office native/publication workspace, resource, identity and argv boundaries.",
+  "derivation": "Retain the exact prior132 cases; add39 passive-provider recovery,9 headless admission,32 canonical progress preference and20 unchanged canonical manifest cases. Retain all232 and add27 observed-write, publication and settings-dialog conflict cases. Retain all259; restore7 canonical generic-state publication cases, protect6 existing resource-state cases through the shared retry owner, and add7 actual-child FFmpeg diagnostic boundary cases. Retain279 and restore21 canonical numeric-progress and count-boundary cases. Retain300; add41 explicit-TXT source/receipt/worker boundaries and4 current Studio semantic-keymap cases. Retain345 and add9 parent-owned Office native/publication workspace, resource, identity and argv boundaries. Retain354 and restore4 canonical OCR manifest snapshot, rehashed malformed JSON and oversize checksum regressions on the current installer.",
   "failure_source_commit": "523aa40f9215569a276f0625d09fcc0fa84bb520",
   "failure_run_id": 45993629737,
   "tests": {
@@ -190,9 +190,14 @@
       "test_native_workspace_free_space_is_checked_before_snapshot_or_worker": 1,
       "test_excessive_native_temporary_root_is_rejected_without_creating_another_location": 1,
       "test_office_uses_ascii_relative_file_arguments_with_original_inactive_profile": 1
+    },
+    "tests/extract/test_model_pack_manifest_identity.py": {
+      "test_manifest_replacement_cannot_install_an_unapproved_model": 1,
+      "test_approved_checksum_does_not_relax_strict_json": 2,
+      "test_oversized_manifest_cannot_substitute_the_empty_content_checksum": 1
     }
   },
-  "total_cases": 354,
+  "total_cases": 358,
   "canonical_provider_cases": 96,
   "canonical_preserved_cases": 37,
   "canonical_progress_cases": 59,
@@ -202,5 +207,6 @@
   "canonical_progress_numeric_cases": 21,
   "canonical_conversion_cases": 41,
   "canonical_studio_keyboard_cases": 4,
-  "office_workspace_cases": 9
+  "office_workspace_cases": 9,
+  "canonical_ocr_manifest_cases": 4
 }

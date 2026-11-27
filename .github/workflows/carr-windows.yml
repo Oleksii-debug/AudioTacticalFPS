@@ -646,7 +646,8 @@ jobs:
             'tests/ui/test_progress_numeric_limits.py',
             'tests/conversion/test_explicit_text_encoding.py',
             'tests/ui/test_audio_studio_keyboard.py',
-            'tests/conversion/test_office_workspace.py'
+            'tests/conversion/test_office_workspace.py',
+            'tests/extract/test_model_pack_manifest_identity.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -1670,6 +1671,7 @@ jobs:
               'tests/conversion/test_explicit_text_encoding.py',
               'tests/ui/test_audio_studio_keyboard.py',
               'tests/conversion/test_office_workspace.py',
+              'tests/extract/test_model_pack_manifest_identity.py',
           ]
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:
