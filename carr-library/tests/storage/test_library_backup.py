@@ -254,6 +254,19 @@ def test_copy_holds_draft_narration_and_renderer_locks(with_sidecars, tmp_path, 
     assert attempts
 
 
+def test_initial_invalid_audio_draft_keeps_validation_diagnostic(with_sidecars, tmp_path):
+    app, project, *_ = with_sidecars
+    saved = project / 'studio' / 'project.json'
+    _json(saved, {'plan': ''})
+    original = saved.read_bytes()
+    destination = tmp_path / 'backup'
+    with pytest.raises(ValueError, match='A saved local Audio Studio project is required'):
+        create_backup(app, destination)
+    assert saved.read_bytes() == original
+    assert not destination.exists()
+    assert not tuple(tmp_path.glob('.carr-library-backup-*'))
+
+
 @pytest.mark.parametrize('change', ['replace', 'new_file', 'new_project'])
 def test_noncooperating_changes_abort_before_publication(with_sidecars, tmp_path, monkeypatch, change):
     from carr_library import library_backup
@@ -444,3 +457,54 @@ def test_sidecar_publication_interruption_keeps_completion_marker_absent(with_si
             LibraryApp(target)
     else:
         assert not (target / 'manifest.json').exists()
+
+
+def test_progress_notification_preferences_roundtrip_with_exact_typed_bytes(populated, tmp_path):
+    from carr_library.progress import (
+        FILENAME, ProgressPreferences, load_preferences, save_preferences)
+    app, *_ = populated
+    preferences = ProgressPreferences(mode='beep_speech', interval_seconds=8.5,
+        volume=.27, muted=False, quiet=True, background=True, suppress_during_media=True)
+    save_preferences(app.root, preferences)
+    expected = (app.root / FILENAME).read_bytes()
+    folder = tmp_path / 'progress-backup'
+    digest = create_backup(app, folder)
+    manifest = json.loads((folder / 'manifest.json').read_text(encoding='utf-8'))
+    field = 'path' if manifest['version'] >= 4 else 'filename'
+    row, = (entry for entry in manifest['sidecars'] if entry[field] == FILENAME)
+    assert row == {field: FILENAME, 'size_bytes': len(expected), 'sha256': sha256(expected).hexdigest()}
+    target = restore_backup(folder, tmp_path / 'progress-restored', digest)
+    assert (target / FILENAME).read_bytes() == expected
+    assert load_preferences(target) == preferences
+    assert (app.root / FILENAME).read_bytes() == expected
+
+
+@pytest.mark.parametrize('where', ['source', 'resealed-backup'])
+def test_invalid_media_suppression_preference_is_rejected_by_typed_backup(populated, tmp_path, where):
+    from carr_library.progress import FILENAME, ProgressPreferences, save_preferences
+    app, *_ = populated
+    save_preferences(app.root, ProgressPreferences(mode='beep'))
+    value = json.loads((app.root / FILENAME).read_text(encoding='utf-8'))
+    value['preferences']['suppress_during_media'] = 'yes'
+    malformed = json.dumps(value).encode('utf-8')
+    folder, target = tmp_path / 'invalid-progress-backup', tmp_path / 'invalid-progress-restored'
+    if where == 'source':
+        (app.root / FILENAME).write_bytes(malformed)
+        with pytest.raises(ValueError, match=r'^suppress_during_media must be true or false\.$'):
+            create_backup(app, folder)
+        assert not folder.exists()
+        assert (app.root / FILENAME).read_bytes() == malformed
+    else:
+        create_backup(app, folder)
+        manifest_path = folder / 'manifest.json'
+        manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+        field = 'path' if manifest['version'] >= 4 else 'filename'
+        source = folder / 'sidecars' / FILENAME if manifest['version'] >= 4 else folder / FILENAME
+        source.write_bytes(malformed)
+        row = next(entry for entry in manifest['sidecars'] if entry[field] == FILENAME)
+        row.update(size_bytes=len(malformed), sha256=sha256(malformed).hexdigest())
+        _json(manifest_path, manifest)
+        digest = sha256(manifest_path.read_bytes()).hexdigest()
+        with pytest.raises(ValueError, match=r'^suppress_during_media must be true or false\.$'):
+            restore_backup(folder, target, digest)
+        assert not target.exists()

@@ -23,6 +23,8 @@ from .audio.jobs import (atomic_json, checked_directory, file_identity, project_
 from .audio.model_manifest import (LocalModelManifest, _read_json_snapshot, digest_file,
                                    local_path, offline_environment)
 from .audio.models import canonical
+from .audio.engines import _start_process
+from .transcription_host import read_worker_status, _STATUS_REPLACE_BOOTSTRAP
 from .ingest.writer_guard import exclusive_writer
 from .transcription_receipt import PROTOCOL, validate_settings, verify_completion
 from .transcription_state import (
@@ -32,6 +34,17 @@ from .transcription_state import (
 )
 
 _STATES = frozenset(('queued', 'verifying', 'running', 'paused', 'cancelled', 'failed', 'complete'))
+
+# The reviewed V43 protocol keeps its own worker policy. Share only the exact
+# status-file replacement startup used by the other supplied-worker profiles.
+_SUPPLIED_WORKER_BOOTSTRAP = (r'''
+import os, pathlib, runpy, sys
+job = pathlib.Path(sys.argv[2]).resolve(strict=True)
+worker = pathlib.Path(sys.argv[1]).resolve(strict=True)
+sys.dont_write_bytecode = True
+''' + _STATUS_REPLACE_BOOTSTRAP + r'''sys.argv = [str(worker), '--job-dir', str(job)]
+runpy.run_path(str(worker), run_name='__main__')
+''')
 
 
 def _now():
@@ -264,16 +277,18 @@ class TranscriptionService:
             environment = offline_environment()
             for name in ('PYTHONPATH', 'PYTHONHOME', 'PYTHONSTARTUP', 'PYTHONINSPECT'):
                 environment.pop(name, None)
-            options = ({'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)}
-                       if os.name == 'nt' else {'start_new_session': True})
             process, started, last_status = None, time.monotonic(), None
+            observer_available = progress is not None
             self._state(job, 'running', run_id)
             try:
                 with tempfile.TemporaryFile() as output:
-                    process = subprocess.Popen([str(runtime.interpreter), '-B', '-I', str(runtime.worker),
-                                                '--job-dir', str(job)], stdin=subprocess.DEVNULL,
-                                               stdout=output, stderr=output, cwd=job, env=environment,
-                                               shell=False, **options)
+                    # The shared launcher owns the exact Windows Job Object
+                    # and POSIX process group, including exited-helper descendants.
+                    process = _start_process([str(runtime.interpreter), '-B', '-I', '-c',
+                                              _SUPPLIED_WORKER_BOOTSTRAP, str(runtime.worker), str(job)],
+                                             stdin=subprocess.DEVNULL,
+                                             stdout=output, stderr=output, cwd=job, env=environment,
+                                             shell=False)
                     while True:
                         check_cancelled(cancelled)
                         if time.monotonic() - started >= timeout:
@@ -286,7 +301,7 @@ class TranscriptionService:
                             # can race its snapshot; the final completion read below
                             # remains strict and must validate the complete receipt.
                             try:
-                                status, _ = _read_json_snapshot(status_path, max_bytes=1024 * 1024)
+                                status = read_worker_status(status_path, max_bytes=1024 * 1024)
                             except (OSError, ValueError):
                                 status = None
                             if (type(status) is dict and status.get('run_id') == run_id
@@ -294,8 +309,13 @@ class TranscriptionService:
                                 pair = status.get('done'), status.get('total'), status.get('state')
                                 if (pair != last_status and type(pair[0]) is int and type(pair[1]) is int
                                         and 0 <= pair[0] <= pair[1] == len(inputs)):
-                                    if progress is not None:
-                                        progress(pair[0], pair[1], str(pair[2])[:100])
+                                    if observer_available:
+                                        try:
+                                            progress(pair[0], pair[1], str(pair[2])[:100])
+                                        except Exception:
+                                            # A detached observer cannot stop,
+                                            # retry or reclassify real inference.
+                                            observer_available = False
                                     last_status = pair
                         exit_code = process.poll()
                         if exit_code is not None:
@@ -334,7 +354,7 @@ class TranscriptionService:
         """
         job = self._job(identity)
         definition = read_definition(job, cancelled=cancelled)
-        from .transcription_backup import verify_saved_completion
+        from .supplied_transcription_backup import verify_saved_completion
         return verify_saved_completion(job, definition, cancelled=cancelled)
 
     def reading_copy(self, identity, output_relative, *, cancelled=lambda: False):

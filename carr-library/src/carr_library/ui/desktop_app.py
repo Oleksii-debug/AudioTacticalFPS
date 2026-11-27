@@ -46,7 +46,6 @@ from .portable_sync import install_portable_sync_actions
 from .language_matrix import install_language_actions
 from .translation_dialog import install_translation_actions
 from .document_conversion import install_conversion_actions
-from .transcription_dialog import install_transcription_actions
 
 
 def text_dialog(parent, title, label, value='', *, multiline=False):
@@ -502,10 +501,12 @@ class DesktopFrame(WorkspaceFrame):
         self.SetTitle('Resonance')
         self.SetMinSize((760, 650))
         self._menus()
-        from .operation_progress import install_operation_progress
-        install_operation_progress(self)
         from .productivity import install_productivity_actions
         keyboard = install_productivity_actions(self)
+        from .operation_progress import install_operation_progress
+        install_operation_progress(self)
+        from .transcription_dialog import install_transcription_actions
+        install_transcription_actions(self)
         if self.scopes:
             self.choice.SetSelection(0)
             self.open_selected()
@@ -580,7 +581,6 @@ class DesktopFrame(WorkspaceFrame):
         install_assistant_actions(self)
         install_translation_actions(self)
         install_conversion_actions(self)
-        install_transcription_actions(self)
         install_portable_sync_actions(self)
 
     def build_advanced_query(self, event=None):
@@ -691,7 +691,10 @@ class DesktopFrame(WorkspaceFrame):
         self.cancel_event.set()
         progress = getattr(self, 'operation_progress', None)
         if progress is not None:
-            progress.request_cancel()
+            try:
+                progress.request_cancel()
+            except Exception:
+                pass  # A stale observer must not suppress the actual Stop signal.
         self.report('Cancellation requested. Waiting for the operation to stop or save its result.')
 
     def run_job(self, title, operation, done=None, failed=None, *, progress_total=None, progress_unit='items'):
@@ -702,38 +705,48 @@ class DesktopFrame(WorkspaceFrame):
             return
         library = getattr(self, 'library', None)
         progress = getattr(self, 'operation_progress', None)
-        token = None
         self.working = self.busy = True
         self.cancel_event.clear()
         self.cancel_button.Enable()
         self.choice.Disable()
         if self.book is not None:
             self.book.Disable()
-        for i in range(self.menu_bar.GetMenuCount()):
-            # Read-only help and the explicit progress query stay available
-            # while write commands and scoped navigation are disabled.
-            keep_help = progress is not None and i == self.menu_bar.FindMenu('Help')
-            self.menu_bar.EnableTop(i, keep_help)
+        view = progress or getattr(self, 'progress_view', None)
+        if view is not None:
+            view.set_busy(True)
+        else:
+            for i in range(self.menu_bar.GetMenuCount()):
+                self.menu_bar.EnableTop(i, False)
         self.report(title + '…')
+        from .progress_view import shared_hub, run_observed, finish_observed, fail_operation
+        task = None
         try:
             if progress is not None:
-                token = progress.start(title, total=progress_total, unit=progress_unit).token
-            def observed_operation():
-                if progress is None:
-                    return operation()
-                with progress.bind(token):
-                    return operation()
-            future = self.executor.submit(observed_operation)
+                progress.start(title, total=progress_total, unit=progress_unit)
+                task = progress.reporter
+            else:
+                task = shared_hub(self).start(title, total=progress_total, unit=progress_unit)
+            future = self.executor.submit(lambda: run_observed(task, operation, finalize=False))
         except Exception as exc:
+            fail_operation(task, exc)
             self._finish_job_controls()
-            if progress is not None and token is not None:
-                progress.fail(exc, token=token)
             self.report(f'{title}: could not start: {exc}')
             if failed is not None:
                 failed(exc)
             return
 
         def finish(future):
+            if future.cancelled():
+                fail_operation(task, InterruptedError('The queued operation was cancelled.'))
+            else:
+                try:
+                    result = future.result()
+                except BaseException as exc:
+                    fail_operation(task, exc)
+                else:
+                    # Finalize only the real Future result, including during
+                    # shutdown. A late stop cannot undo its typed durable receipt.
+                    finish_observed(task, result, cancelled=self.cancel_event.is_set())
             if self._closing:
                 return
             def apply():
@@ -743,33 +756,31 @@ class DesktopFrame(WorkspaceFrame):
                 try:
                     result = future.result()
                 except Exception as exc:
-                    if progress is not None:
-                        if isinstance(exc, InterruptedError):
-                            progress.cancel(str(exc), token=token)
-                        else:
-                            progress.fail(exc, token=token)
                     self.report(f'{title}: {exc}')
                     if failed is not None:
                         failed(exc)
                     return
+                try:
+                    outcome = task.event
+                    message = (title + ': complete.' if outcome.state == 'complete' and outcome.verified
+                               else outcome.text)
+                except Exception:
+                    # A detached/evicted observer cannot suppress the real
+                    # result callback or retry an already committed operation.
+                    message = title + ': operation returned; progress status is unavailable.'
                 if progress is not None:
-                    outcome = progress.finish_result(result,
-                        cancelled=self.cancel_event.is_set(), token=token)
-                    summary = outcome.text if outcome is not None else title + ': result returned.'
-                    progress.tick()
-                else:
-                    summary = title + ': complete.'
+                    try:
+                        progress.tick()
+                    except Exception:
+                        pass  # The callback still receives the durable result.
                 try:
                     if done is not None and getattr(self, 'status', None) is not None:
-                        # The result callback owns its panel/reader focus.
-                        self.status.SetValue(summary)
+                        self.status.SetValue(message)
                     else:
-                        self.report(summary)
+                        self.report(message)
                     if done is not None:
                         done(result)
                 except Exception as exc:
-                    # The service already returned; a display error cannot
-                    # retroactively undo or misreport its durable result.
                     self.report(f'{title}: result returned, but its display failed: {exc}')
                     if failed is not None:
                         failed(exc)
@@ -782,8 +793,12 @@ class DesktopFrame(WorkspaceFrame):
         self.choice.Enable()
         if self.book is not None:
             self.book.Enable()
-        for i in range(self.menu_bar.GetMenuCount()):
-            self.menu_bar.EnableTop(i, True)
+        view = getattr(self, 'operation_progress', None) or getattr(self, 'progress_view', None)
+        if view is not None:
+            view.set_busy(False)
+        else:
+            for i in range(self.menu_bar.GetMenuCount()):
+                self.menu_bar.EnableTop(i, True)
 
     def _open_workspace(self, workspace, topic=None):
         self.refresh_scopes()
@@ -1308,9 +1323,9 @@ class DesktopFrame(WorkspaceFrame):
         super().on_close(event)
         if not event.GetVeto():
             self._closing = True
-            self.cancel_event.set()
-            progress = getattr(self, 'operation_progress', None)
+            progress = getattr(self, 'operation_progress', None) or getattr(self, 'progress_view', None)
             if progress is not None:
                 progress.close()
+            self.cancel_event.set()
             self.executor.shutdown(wait=False, cancel_futures=True)
 

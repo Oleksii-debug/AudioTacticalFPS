@@ -782,49 +782,153 @@ def test_native_confirmation_failed_cleanup_retains_handle_for_retry(confirmatio
     assert confirmation.pending is None
 
 
-def _uia_failure(probe):
-    return dict(status='UIA_FAILURE', pid=301, hwnd=101, owner=99,
-                stage='invoke', reason='native_exception', hresult=-2147220991,
-                controls=[dict(pid=301, hwnd=0, type=50000, yes=True, no=False,
-                               enabled=True, offscreen=False)])
+def test_native_confirmation_waits_for_answer_controls_to_become_ready(confirmation_probe, monkeypatch):
+    controls = {201: dict(kind='Button', text='Yes', owner=0,
+                         visible=False, enabled=True, id=6)}
+    confirmation, _, constructor = _native_confirmation_tree(
+        confirmation_probe, monkeypatch, controls=controls)
+    assert confirmation.reply(99, 'Synthetic confirmation', accept=True) is False
+    confirmation.api.PostMessageW.assert_not_called()
+    constructor.assert_not_called()
+    confirmation.api.IsWindowVisible.side_effect = lambda window: True
+    assert confirmation.reply(99, 'Synthetic confirmation', accept=True) is True
+    confirmation.api.PostMessageW.assert_called_once_with(201, 0x00F5, 0, 0)
 
 
-def test_native_confirmation_failure_reports_stage_without_text_or_password(confirmation_probe, capsys):
-    failure = _uia_failure(confirmation_probe)
-    secret = 'synthetic-private-password-must-not-appear'
-    failure['message'] = secret
-    failure['controls'][0]['name'] = secret
-    operation, _ = _accessible_operation(confirmation_probe, output=failure, returncode=1)
+def test_native_confirmation_cleanup_drains_current_title_without_retargeting(confirmation_probe, monkeypatch):
+    confirmation, operation, constructor = _native_confirmation_tree(confirmation_probe, monkeypatch)
+    titles = ('Other confirmation', 'Synthetic confirmation')
+    assert confirmation.dismiss(99, titles) is True
+    assert constructor.call_args.args[0]['answer'] == 'No'
+    assert confirmation.dismiss(99, titles) is True
+    constructor.assert_called_once()
+    operation.poll.return_value = True
+    assert confirmation.dismiss(99, titles) is True
+    assert confirmation.pending is None
+
+
+def test_native_confirmation_cleanup_rejects_another_owner(confirmation_probe, monkeypatch):
+    confirmation, operation, _ = _native_confirmation_tree(confirmation_probe, monkeypatch)
+    assert confirmation.reply(99, 'Synthetic confirmation', accept=False) is False
+    with pytest.raises(AssertionError, match='cannot retarget'):
+        confirmation.dismiss(98, ('Synthetic confirmation',))
+    operation.poll.assert_not_called()
+    operation.close.assert_not_called()
+
+
+def test_native_confirmation_helper_expires_without_wx_polling(confirmation_probe, monkeypatch):
+    import subprocess
+    process = Mock()
+    process.poll.return_value = None
+    monkeypatch.setattr(subprocess, 'Popen', Mock(return_value=process))
+    monkeypatch.setenv('SystemRoot', str(Path.cwd()))
+    timer = Mock()
+    timer_factory = Mock(return_value=timer)
+    monkeypatch.setattr(confirmation_probe, 'Timer', timer_factory)
+    request = dict(hwnd=101, owner=99, pid=301, title='Synthetic confirmation',
+                   yes='Yes', no='No', answer='Yes')
+    operation = confirmation_probe.AccessibleAnswer(request)
+    interval, expire = timer_factory.call_args.args
+    assert interval == 8 and timer.daemon is True
+    timer.start.assert_called_once()
+    process.kill.assert_not_called()
+    expire()  # The UI thread never calls operation.poll().
+    process.kill.assert_called_once()
+    process.poll.return_value = 1
+    operation.close()
+    timer.cancel.assert_called_once()
+    process.communicate.assert_called_once_with(timeout=1)
+
+
+def test_native_confirmation_helper_thread_failure_closes_launched_process(confirmation_probe, monkeypatch):
+    import subprocess
+    process = Mock()
+    process.poll.return_value = None
+    monkeypatch.setattr(subprocess, 'Popen', Mock(return_value=process))
+    monkeypatch.setenv('SystemRoot', str(Path.cwd()))
+    timer = Mock()
+    timer.start.side_effect = RuntimeError('Synthetic timer startup failure')
+    monkeypatch.setattr(confirmation_probe, 'Timer', Mock(return_value=timer))
+    with pytest.raises(RuntimeError, match='timer startup failure'):
+        confirmation_probe.AccessibleAnswer(dict(hwnd=101))
+    process.kill.assert_called_once()
+    process.communicate.assert_called_once_with(timeout=1)
+    timer.cancel.assert_called_once()
+
+
+def test_native_uia_failure_exposes_stage_and_matches_without_private_text(confirmation_probe, capsys):
+    secret = 'Purpose-written private control message and local path'
+    payload = dict(status='NATIVE_DIALOG_UIA_FAILED', stage='answer_match',
+        error_type='System.Management.Automation.RuntimeException',
+        inner_type='System.Windows.Automation.ElementNotAvailableException', hresult=-2146233087,
+        button_count=2, yes_matches=0, no_matches=None, owner_match=True,
+        dialog_match=dict(pid=True, title=True, hwnd=True, **{'class': True}),
+        controls=[dict(type=50000, pid_match=True, yes_exact=False, no_exact=False,
+            yes_without_mnemonic=True, no_without_mnemonic=False, enabled=True, offscreen=False,
+            name=secret)], message=secret, stack=secret)
+    operation, _ = _accessible_operation(confirmation_probe, output=payload, returncode=1)
+    operation.process.communicate.return_value = (
+        confirmation_probe.json.dumps(payload).encode('utf-8'), secret.encode('utf-8'))
     with pytest.raises(AssertionError, match='interaction failed'):
         operation.poll()
-    diagnostic = capsys.readouterr().out
-    assert secret not in diagnostic
-    value = confirmation_probe.json.loads(diagnostic)
-    assert value['stage'] == 'invoke' and value['hresult'] == -2147220991
-    assert value['controls'][0]['yes'] is True
-    assert 'name' not in value['controls'][0]
+    output = capsys.readouterr().out
+    diagnostic = confirmation_probe.json.loads(output)
+    assert diagnostic['stage'] == 'helper_exit' and diagnostic['helper_stage'] == 'answer_match'
+    assert diagnostic['error_type'] == payload['error_type']
+    assert diagnostic['inner_type'] == payload['inner_type']
+    assert diagnostic['returncode'] == 1 and diagnostic['yes_matches'] == 0
+    assert diagnostic['controls'][0]['yes_without_mnemonic'] is True
+    assert diagnostic['controls'][0]['yes_exact'] is False
+    assert secret not in output and 'message' not in diagnostic and 'stack' not in diagnostic
 
 
-@pytest.mark.parametrize('changed', ['owner', 'stage', 'hresult', 'control', 'oversized'])
-def test_native_confirmation_rejects_uncorrelated_or_unbounded_diagnostic(
-        confirmation_probe, capsys, changed):
-    failure = _uia_failure(confirmation_probe)
-    if changed == 'owner':
-        failure['owner'] = 98
-    elif changed == 'stage':
-        failure['stage'] = 'synthetic-secret-text'
-    elif changed == 'hresult':
-        failure['hresult'] = True
-    elif changed == 'control':
-        failure['controls'][0]['yes'] = 'synthetic-secret-text'
-    else:
-        failure['message'] = 'x' * 17000
-    operation, _ = _accessible_operation(confirmation_probe, output=failure, returncode=1)
+def test_native_uia_failure_rejects_untyped_unbounded_diagnostic_metadata(confirmation_probe, capsys):
+    secret = 'Purpose-written diagnostic input, not a message to publish'
+    payload = dict(status='NATIVE_DIALOG_UIA_FAILED', stage=[secret], error_type=secret,
+        inner_type='System.Invalid\\nType', hresult=True, button_count=secret,
+        yes_matches=True, owner_match=secret, dialog_match=dict(title=secret),
+        controls=[dict(type=True, enabled=True, name=secret) for _ in range(40)])
+    operation, _ = _accessible_operation(confirmation_probe, output=payload, returncode=1)
     with pytest.raises(AssertionError, match='interaction failed'):
         operation.poll()
-    value = confirmation_probe.json.loads(capsys.readouterr().out)
-    assert value == dict(status='NATIVE_DIALOG_FAILED', helper_exit=1,
-                         reason='invalid_helper_diagnostic')
+    output = capsys.readouterr().out
+    diagnostic = confirmation_probe.json.loads(output)
+    assert 'helper_stage' not in diagnostic and 'error_type' not in diagnostic
+    assert 'inner_type' not in diagnostic and 'hresult' not in diagnostic
+    assert 'yes_matches' not in diagnostic and 'owner_match' not in diagnostic
+    assert diagnostic['dialog_match'] == {}
+    assert diagnostic['controls'] == [dict(enabled=True)] * 32
+    assert secret not in output and len(output) < 4096
+
+
+def test_native_uia_receipt_mismatch_logs_field_names_only(confirmation_probe, capsys):
+    operation, receipt = _accessible_operation(confirmation_probe)
+    secret = 'Purpose-written foreign window or control name'
+    receipt.update(title=secret, button_name=secret)
+    operation.process.communicate.return_value = (
+        confirmation_probe.json.dumps(receipt).encode('utf-8'), b'')
+    with pytest.raises(AssertionError, match='does not match'):
+        operation.poll()
+    output = capsys.readouterr().out
+    diagnostic = confirmation_probe.json.loads(output)
+    assert diagnostic['stage'] == 'receipt_mismatch'
+    assert diagnostic['mismatched_fields'] == ['title', 'button_name']
+    assert secret not in output
+
+
+@pytest.mark.parametrize('kind, stage', [('json', 'helper_json'), ('oversized', 'helper_output_budget'),
+                                        ('expired', 'helper_timeout')])
+def test_native_uia_transport_failure_remains_bounded_and_cannot_pass(confirmation_probe, capsys, kind, stage):
+    operation, _ = _accessible_operation(confirmation_probe, returncode=1)
+    private = b'Purpose-written private child diagnostic'
+    operation.process.communicate.return_value = (private if kind != 'oversized' else private * 500, private)
+    operation.expired = kind == 'expired'
+    with pytest.raises(AssertionError, match='interaction failed'):
+        operation.poll()
+    output = capsys.readouterr().out
+    diagnostic = confirmation_probe.json.loads(output)
+    assert diagnostic['stage'] == stage and diagnostic['returncode'] == 1
+    assert private.decode() not in output and len(output) < 1024
 
 
 def test_native_successor_password_does_not_accept_pending_confirmation(confirmation_probe):
@@ -906,6 +1010,8 @@ def test_native_failed_cleanup_does_not_retarget_pending_no_to_other_title(confi
         return True
 
     windows.reply = reply
+    windows.dismiss = lambda owner, titles: confirmation_probe.WindowsConfirmations.dismiss(
+        windows, owner, titles)
     namespace = dict(wx=SimpleNamespace(GetTopLevelWindows=lambda: [], Dialog=type('Dialog', (), {})),
                      windows=windows, native=SimpleNamespace(_window_alive=True,
                      window=SimpleNamespace(GetHandle=lambda: 99)),
@@ -914,7 +1020,8 @@ def test_native_failed_cleanup_does_not_retarget_pending_no_to_other_title(confi
     dismiss = _native_dismiss_function(confirmation_probe, namespace)
     assert dismiss() is True
     assert calls == [(99, 'Publish', False)]
-    assert dismiss() is False
+    assert dismiss() is True  # The existing controller reports its completed No action.
+    assert windows.pending is None
     assert calls == [(99, 'Publish', False), (99, 'Publish', False)]
 
 
@@ -928,13 +1035,15 @@ def test_native_failed_cleanup_releases_wx_successor_before_polling_uia(confirma
         def EndModal(self, value): self.answer = value
 
     dialog = Dialog()
-    windows = SimpleNamespace(reply=Mock(side_effect=AssertionError('UIA still waits for password')))
+    windows = SimpleNamespace(dismiss=Mock(side_effect=AssertionError('UIA still waits for password')))
     namespace = dict(wx=SimpleNamespace(GetTopLevelWindows=lambda: [dialog], Dialog=Dialog, ID_CANCEL=7),
-                     windows=windows, native=None, frame=frame, confirmation_titles=('Publish', 'Restore'),
+                     windows=windows, native=SimpleNamespace(_window_alive=True,
+                     window=SimpleNamespace(GetHandle=lambda: 99)),
+                     frame=frame, confirmation_titles=('Publish', 'Restore'),
                      descendant=lambda *_: True)
     dismiss = _native_dismiss_function(confirmation_probe, namespace)
     assert dismiss() is True and dialog.answer == 7
-    windows.reply.assert_not_called()
+    windows.dismiss.assert_not_called()
 
 
 @pytest.mark.parametrize(('owner', 'title', 'accept'), [
@@ -1056,4 +1165,46 @@ def test_native_task_dialog_requires_unique_visible_directui_pane(
     with pytest.raises(AssertionError, match='no unique native answer'):
         confirmation.reply(99, 'Synthetic confirmation', accept=True)
     confirmation.api.PostMessageW.assert_not_called()
+    constructor.assert_not_called()
+
+
+def test_native_task_dialog_cleanup_drains_the_same_pending_no_without_reposting(
+        confirmation_probe, monkeypatch):
+    confirmation, _, constructor = _native_confirmation_tree(
+        confirmation_probe, monkeypatch, task_dialog=True)
+    assert not confirmation.reply(99, 'Synthetic confirmation', accept=False)
+    pending = confirmation.pending
+    assert confirmation.dismiss(99, ('Synthetic confirmation',)) is True
+    assert confirmation.pending is pending
+    confirmation.api.PostMessageW.assert_called_once_with(101, 0x0466, 7, 0)
+    confirmation.api.IsWindow.return_value = False
+    assert confirmation.dismiss(99, ('Synthetic confirmation',)) is True
+    assert confirmation.pending is None
+    confirmation.api.PostMessageW.assert_called_once_with(101, 0x0466, 7, 0)
+    constructor.assert_not_called()
+
+
+def test_native_task_dialog_successor_preserves_pending_confirmation_until_close_receipt(
+        confirmation_probe, monkeypatch):
+    confirmation, _, constructor = _native_confirmation_tree(
+        confirmation_probe, monkeypatch, task_dialog=True)
+    assert not confirmation.reply(99, 'Synthetic confirmation', accept=True)
+    pending = confirmation.pending
+    password = object()
+    responses = [('Synthetic confirmation', None), ('Snapshot password', 'synthetic-password')]
+    find, answer = Mock(return_value=password), Mock()
+    assert not confirmation_probe.answer_successor_password(
+        responses, confirmation_gone=confirmation.pending_dialog_is_gone(
+            99, 'Synthetic confirmation', accept=True), find_dialog=find, answer=answer)
+    find.assert_not_called()
+    confirmation.api.IsWindow.return_value = False
+    assert confirmation_probe.answer_successor_password(
+        responses, confirmation_gone=confirmation.pending_dialog_is_gone(
+            99, 'Synthetic confirmation', accept=True), find_dialog=find, answer=answer)
+    assert confirmation.pending is pending
+    assert responses == [('Synthetic confirmation', None)]
+    answer.assert_called_once_with(password, 'synthetic-password')
+    assert confirmation.reply(99, 'Synthetic confirmation', accept=True) is True
+    assert confirmation.pending is None
+    confirmation.api.PostMessageW.assert_called_once_with(101, 0x0466, 6, 0)
     constructor.assert_not_called()

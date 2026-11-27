@@ -246,3 +246,99 @@ def test_empty_playlist_replacement_releases_device_without_closing_controller(t
     player.play(path)
     assert player.state == 'playing'
     player.close()
+
+
+@pytest.fixture
+def external_media(monkeypatch):
+    """Exercise actual owned child lifetime without starting an audio device."""
+    import subprocess
+    import sys
+    from carr_library.progress import ProgressHub
+    children, players = [], []
+    def create(code='import time; time.sleep(30)', *, fail_launch=False):
+        hub = ProgressHub()
+        monkeypatch.setattr(player_module, 'os', SimpleNamespace(name='posix'))
+        monkeypatch.setattr(player_module.shutil, 'which', lambda name: 'synthetic-ffplay')
+        def spawn(args, **kwargs):
+            assert hub.media_active
+            assert kwargs['shell'] is False and kwargs['start_new_session'] is True
+            assert args[args.index('-protocol_whitelist') + 1] == 'file,pipe'
+            if fail_launch:
+                raise OSError('Synthetic player launch failure')
+            process = subprocess.Popen([sys.executable, '-I', '-B', '-c', code],
+                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+            children.append(process)
+            return process
+        monkeypatch.setattr(player_module, 'subprocess', SimpleNamespace(
+            Popen=spawn, DEVNULL=subprocess.DEVNULL, TimeoutExpired=subprocess.TimeoutExpired))
+        player = WavePlayer(progress_hub=hub)
+        players.append(player)
+        return player, hub, children
+    yield create
+    # Stop only children created by this fixture, including assertion failures.
+    for child in children:
+        if child.poll() is None:
+            child.kill()
+        child.wait(timeout=3)
+    for player in players:
+        player.close()
+
+
+@pytest.mark.parametrize('operation', ['stop', 'close'])
+def test_external_media_context_tracks_actual_owned_process_cleanup(tmp_path, external_media, operation):
+    player, hub, children = external_media()
+    player.play(recording(tmp_path / 'external-media.wav'))
+    child, = children
+    assert child.poll() is None and hub.media_active
+    getattr(player, operation)()
+    assert child.poll() is not None and not hub.media_active
+    player.close()
+    assert not hub.media_active
+
+
+@pytest.mark.parametrize('code', [0, 7], ids=['completed', 'failed'])
+def test_external_media_context_releases_on_observed_child_exit(tmp_path, external_media, code):
+    player, hub, children = external_media('raise SystemExit(' + str(code) + ')')
+    player.play(recording(tmp_path / 'external-ending.wav'))
+    children[0].wait(timeout=3)
+    assert player.status().state == ('completed' if code == 0 else 'error')
+    assert not hub.media_active
+    assert player.status().state == ('completed' if code == 0 else 'error')
+
+
+def test_external_launch_failure_does_not_leave_media_suppressed(tmp_path, external_media):
+    player, hub, children = external_media(fail_launch=True)
+    with pytest.raises(OSError, match='player launch failure'):
+        player.play(recording(tmp_path / 'external-launch-error.wav'))
+    assert not children and not hub.media_active
+
+
+def test_failed_cleanup_keeps_media_suppressed_until_owned_child_is_observed_dead(tmp_path, external_media, monkeypatch):
+    player, hub, children = external_media()
+    player.play(recording(tmp_path / 'external-cleanup-error.wav'))
+    child, = children
+    terminate = child.terminate
+    def failed():
+        raise OSError('Synthetic termination failure')
+    monkeypatch.setattr(child, 'terminate', failed)
+    with pytest.raises(OSError, match='termination failure'):
+        player.stop()
+    assert child.poll() is None and hub.media_active
+    terminate()
+    child.wait(timeout=3)
+    player.status()
+    assert not hub.media_active
+
+
+def test_invalid_replacement_keeps_existing_external_media_context(tmp_path, external_media):
+    player, hub, children = external_media()
+    player.play(recording(tmp_path / 'existing-external.wav'))
+    damaged = recording(tmp_path / 'invalid-external.wav')
+    damaged.write_bytes(damaged.read_bytes()[:-1])
+    with pytest.raises(ValueError):
+        player.play(damaged)
+    assert len(children) == 1 and children[0].poll() is None
+    assert hub.media_active
+    player.stop()
+    assert not hub.media_active

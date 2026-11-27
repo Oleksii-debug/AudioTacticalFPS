@@ -16,8 +16,19 @@ ROOT = Path(__file__).resolve().parents[1]
 # JUnit alone cannot distinguish a non-strict XPASS from a genuine pass.
 # Use pytest's own report classification in the isolated subprocess.
 PYTEST_CHILD = """
+import importlib.util
 import sys
 import socket
+
+# The child may run under -I from an installed-test staging directory.
+# Load only this runner's exact helper; never add a checkout to import paths.
+_watchdog_spec = importlib.util.spec_from_file_location(
+    '_carr_ci_watchdog', __CARR_CI_WATCHDOG_PATH__)
+_watchdog = importlib.util.module_from_spec(_watchdog_spec)
+sys.modules[_watchdog_spec.name] = _watchdog
+_watchdog_spec.loader.exec_module(_watchdog)
+CaseWatchdog = _watchdog.CaseWatchdog
+without_scheduled_faulthandler = _watchdog.without_scheduled_faulthandler
 
 def offline_network(*args, **kwargs):
     raise OSError('Network access is disabled during offline verification')
@@ -39,18 +50,41 @@ import pytest
 class RejectExpectedFailures:
     seen = False
 
+    def __init__(self):
+        self.watchdog = CaseWatchdog()
+        self.case_token = None
+
+    def pytest_sessionstart(self, session):
+        self.reporter = session.config.pluginmanager.get_plugin('terminalreporter')
+
+    def pytest_runtest_logstart(self, nodeid, location):
+        # Windows can reject huge parameter IDs in environment variables;
+        # diagnostics also need a bounded label when a native call stalls.
+        self.reporter.write_line('CASE_START ' + nodeid.partition('[')[0][:240])
+        self.case_token = self.watchdog.start(nodeid)
+
+    def pytest_runtest_logfinish(self, nodeid, location):
+        self.watchdog.finish(self.case_token)
+        self.case_token = None
+
+    def pytest_sessionfinish(self, session, exitstatus):
+        self.watchdog.close()
+
     def pytest_runtest_logreport(self, report):
         if hasattr(report, 'wasxfail'):
             self.seen = True
 
 policy = RejectExpectedFailures()
-status = pytest.main(sys.argv[1:], plugins=[policy])
+try:
+    status = pytest.main(without_scheduled_faulthandler(sys.argv[1:]), plugins=[policy])
+finally:
+    policy.watchdog.close()
 if policy.seen:
     print('FAIL: pytest reported XFAIL or XPASS', flush=True)
     if status == pytest.ExitCode.OK:
         status = pytest.ExitCode.TESTS_FAILED
 raise SystemExit(status)
-"""
+""".replace("__CARR_CI_WATCHDOG_PATH__", repr(str(Path(__file__).resolve().with_name("ci_watchdog.py"))))
 
 
 def run_suite(suite: str) -> bool:
@@ -75,13 +109,14 @@ def run_suite(suite: str) -> bool:
         try:
             proc = subprocess.run([
                 sys.executable, '-c', PYTEST_CHILD, '-o', 'addopts=',
-                '-o', 'xfail_strict=true', '--junitxml', str(report),
+                '-o', 'xfail_strict=true',
+                '--durations=15', '--junitxml', str(report),
                 '--basetemp', str(Path(tmp) / 'pytest'),
                 '--', str(path),
             ], cwd=ROOT, env=env, timeout=600, check=False)
             cases = list(ET.parse(report).iter('testcase'))
         except (OSError, subprocess.TimeoutExpired, ET.ParseError) as exc:
-            print(f'FAIL: required suite did not produce a valid report: {suite}: '
+            print(f'FAIL: {suite}: required suite did not produce a valid report: '
                   f'{type(exc).__name__}: {exc}', flush=True)
             return False
         failed = sum(any(c.find(tag) is not None for tag in ('failure', 'error')) for c in cases)

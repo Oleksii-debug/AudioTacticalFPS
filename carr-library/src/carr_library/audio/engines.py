@@ -174,34 +174,46 @@ def _publish(source, target, *, cancelled=lambda: False):
     publish_noreplace(source, target)
 
 
+def _start_process(command, **options):
+    if os.name == 'nt':
+        from .windows_process import WindowsJobProcess
+        return WindowsJobProcess(command, **options)
+    return subprocess.Popen(command, start_new_session=True, **options)
+
+
 def _stop(process):
     if os.name == 'nt':
-        if process.poll() is not None:
-            return
-        taskkill = Path(os.environ.get('SystemRoot', r'C:\Windows')) / 'System32/taskkill.exe'
+        job = getattr(process, '_carr_job', None)
         try:
-            subprocess.run([str(taskkill), '/PID', str(process.pid), '/T', '/F'],
-                           stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                           stderr=subprocess.DEVNULL, timeout=5, check=False,
-                           creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
-        except (OSError, subprocess.TimeoutExpired):
-            pass
-    else:
-        # Every worker is started in its own session. The group can still own
-        # live descendants after its leader has exited; poll() alone is not a
-        # cleanup boundary for that group.
-        try:
-            os.killpg(process.pid, signal.SIGTERM)
-        except (OSError, ProcessLookupError):
-            pass
-        try:
-            process.wait(timeout=.1)
-        except subprocess.TimeoutExpired:
-            pass
-        try:
-            os.killpg(process.pid, signal.SIGKILL)
-        except (OSError, ProcessLookupError):
-            pass
+            if job is not None:
+                # An owned job still contains descendants after its helper
+                # exits; no PID scan or taskkill fallback can replace it.
+                job.close()
+        finally:
+            if process.poll() is None:
+                process.kill()
+            try:
+                process.wait(timeout=5)
+            finally:
+                handle = getattr(process, '_handle', None)
+                if job is not None and process.poll() is not None and handle is not None:
+                    handle.Close()
+        return
+    # Every worker is started in its own session. The group can still own
+    # live descendants after its leader has exited; poll() alone is not a
+    # cleanup boundary for that group.
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+    except (OSError, ProcessLookupError):
+        pass
+    try:
+        process.wait(timeout=.1)
+    except subprocess.TimeoutExpired:
+        pass
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except (OSError, ProcessLookupError):
+        pass
     if process.poll() is None:
         process.kill()
     try:
@@ -222,7 +234,6 @@ def _run(command, *, data=b'', cancelled=lambda: False, timeout=300, env=None, c
         if time.monotonic() - started >= timeout:
             raise TimeoutError('The local engine exceeded its selected per-segment time budget.')
 
-    options = {'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)} if os.name == 'nt' else {'start_new_session': True}
     # Local workers must not create report or TLS-key files through inherited
     # diagnostic settings. Copy explicit mappings as well; never change callers.
     environment = {key: value for key, value in (os.environ if env is None else env).items()
@@ -230,8 +241,8 @@ def _run(command, *, data=b'', cancelled=lambda: False, timeout=300, env=None, c
     with tempfile.TemporaryFile() as incoming, tempfile.TemporaryFile() as outgoing, tempfile.TemporaryFile() as errors:
         incoming.write(data)
         incoming.seek(0)
-        process = subprocess.Popen([str(item) for item in command], stdin=incoming, stdout=outgoing,
-                                   stderr=errors, shell=False, env=environment, cwd=cwd, **options)
+        process = _start_process([str(item) for item in command], stdin=incoming, stdout=outgoing,
+                                 stderr=errors, shell=False, env=environment, cwd=cwd)
         try:
             while True:
                 check()
@@ -707,11 +718,7 @@ class DordiaiVoicesEngine:
         outgoing = queue.Queue(maxsize=2)
         write_errors = queue.Queue(maxsize=1)
         finished = threading.Event()
-        options = {'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)} if os.name == 'nt' else {'start_new_session': True}
         with tempfile.TemporaryFile() as errors:
-            process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=errors,
-                                       cwd=getattr(self, 'runtime_root', self.manifest.root),
-                                       env=offline_environment(), shell=False, **options)
             def read_replies():
                 try:
                     while not finished.is_set():
@@ -740,7 +747,6 @@ class DordiaiVoicesEngine:
                         except queue.Full:
                             pass
             reader = threading.Thread(target=read_replies, daemon=True, name='dordiai-voices PCM reader')
-            reader.start()
             def write_requests():
                 while not finished.is_set():
                     try:
@@ -757,7 +763,6 @@ class DordiaiVoicesEngine:
                             pass
                         return
             writer = threading.Thread(target=write_requests, daemon=True, name='dordiai-voices request writer')
-            writer.start()
             def send(value):
                 data = (json.dumps(value, ensure_ascii=True) + '\n').encode('ascii')
                 if len(data) > 128 * 1024:
@@ -766,9 +771,14 @@ class DordiaiVoicesEngine:
                     outgoing.put_nowait(data)
                 except queue.Full as exc:
                     raise EngineUnavailable('dordiai-voices is not consuming bounded requests.') from exc
+            process = _start_process(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=errors,
+                                     cwd=getattr(self, 'runtime_root', self.manifest.root),
+                                     env=offline_environment(), shell=False)
             started = time.monotonic()
             total = 0
             try:
+                reader.start()
+                writer.start()
                 send(request)
                 with wave.open(str(target), 'wb') as audio:
                     audio.setnchannels(1)
@@ -833,10 +843,12 @@ class DordiaiVoicesEngine:
             finally:
                 finished.set()
                 _stop(process)
-                writer.join(timeout=1)
+                if writer.ident is not None:
+                    writer.join(timeout=1)
                 if process.stdin and not writer.is_alive():
                     process.stdin.close()
-                reader.join(timeout=1)
+                if reader.ident is not None:
+                    reader.join(timeout=1)
                 if process.stdout and not reader.is_alive():
                     process.stdout.close()
 

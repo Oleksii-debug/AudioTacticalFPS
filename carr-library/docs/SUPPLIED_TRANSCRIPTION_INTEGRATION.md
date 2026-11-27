@@ -2,9 +2,12 @@
 
 ## Implemented boundary
 
-The existing desktop now exposes **Tools → Local speech transcription** through command
-`transcription.local`. This is a neutral supervisor for the owner's supplied
-worker protocol, `supplied-whisper-v43-hardened-1`. It is not another ASR engine.
+The existing desktop exposes **File → Transcription: local audio and video...**
+through its original command and saved keyboard binding. One explicit profile
+selector routes the two existing workspace profiles or the library-wide
+`supplied-whisper-v43-hardened-1` protocol to their matching services. Existing
+job identities and scopes are preserved. This profile supervises the reviewed
+supplied worker; it contains no recognition implementation.
 The public repository contains no supplied private worker, private recording,
 transcript, model weights, virtual environment or executable runtime.
 
@@ -18,8 +21,10 @@ appearing in a selected folder are not silently adopted.
 
 Admission verifies the entire runtime inventory, required model files, accepted
 rights/trust flags and declared language/device/task capabilities. Execution uses
-the reviewed interpreter with `-B -I` and explicit job arguments. The existing
-process termination and project lock contracts are reused. Pause, resume and stop
+the reviewed interpreter with `-B -I` and explicit job arguments. A shared,
+job-local Windows status replacement startup permits an already open reader to
+retain its old snapshot while the actual child publishes the next status. The
+existing process termination and project lock contracts are reused. Pause, resume and stop
 write only typed protocol controls. Closing the dialog requests cancellation and
 waits for the operation to settle before releasing its controls.
 
@@ -55,15 +60,16 @@ On 2026-11-27 the portable source checks executed:
 | Gate | Actual result | Scope |
 |---|---:|---|
 | Receipt and strict settings | 112 passed, zero skipped | Hashes, paths, settings and output coverage |
-| Supervisor with real child processes | 37 passed, zero skipped | Owned capture, failure, stop, restart and relocated reading |
-| Typed transcription backup | 27 passed, zero skipped | Real backup/restore, lock contention and recovery records |
-| Dialog/session contracts | 22 passed, zero skipped | Typed controls, callbacks, close and reading-copy dispatch |
+| Supervisor with real child processes | 42 passed, zero skipped | Owned capture, failure, stop, restart, relocated reading and held status snapshots |
+| Typed transcription backup | 28 passed, zero skipped | Real backup/restore, lock contention, recovery and coexistence with both workspace profiles |
+| Dialog/session contracts | 36 passed, zero skipped | Typed controls, explicit profile/scope, callbacks, close, reading-copy and shared progress |
+| Shared command-line entrypoint | 13 passed, zero skipped | Explicit protocol/scope, all settings, control requests and verified reading copies |
 
 The process fixture is explicitly synthetic and does not decode audio. The
 native Windows probe drives actual installed wx controls with a synthetic
 presentation service; its purpose is control naming, types, dispatch and
 completion-aware cancellation. Its Windows execution is a separate CI gate.
-The source and installed-package workflow gates require all four suites and do
+The source and installed-package workflow gates require all five suites and do
 not accept skips or expected failures.
 
 Private worker review and execution evidence are retained separately from this

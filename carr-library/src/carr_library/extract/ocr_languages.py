@@ -165,9 +165,9 @@ def parse_language_report(report, *, expected_directory=None):
 
 
 def _capture(runtime, option, remaining):
-    from .ocr_process import prepare_ocr_query, normalize_ocr_query_output
     # A file-backed capture prevents a malformed native inventory from filling
     # Python's memory. The runtime remains bounded by the shared deadline.
+    from .ocr_process import prepare_ocr_query, normalize_ocr_query_output
     remaining()
     argv, cwd, report_directory = prepare_ocr_query(runtime, [runtime.executable, option])
     with tempfile.TemporaryFile() as output, tempfile.TemporaryFile() as errors:

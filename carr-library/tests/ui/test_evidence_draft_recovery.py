@@ -46,6 +46,7 @@ def recovery(tmp_path):
     chooser.ShowModal.return_value = 1
     chooser.GetSelection.return_value = 0
     wx = SimpleNamespace(Panel=object, YES=1, ID_OK=1, YES_NO=2, NO_DEFAULT=4, ICON_QUESTION=8,
+                         EVT_TIMER=object(),
                          MessageBox=Mock(return_value=1), SingleChoiceDialog=Mock(return_value=chooser),
                          CallAfter=queued.append)
     env = dict(wx=wx, replace=replace, format_citation=format_citation)
@@ -77,6 +78,7 @@ def recovery(tmp_path):
     panel._recovery_loading = panel._recovery_disposed = panel._recovery_discarded = False
     panel._recovery_error = ''
     panel._recovery_timer = SimpleNamespace(IsRunning=lambda: False, StartOnce=Mock(), Stop=Mock())
+    panel.Unbind = Mock(return_value=True)
     panel._review_recovery_copy = Mock()
     return panel, app, chooser, wx, queued
 
@@ -220,6 +222,48 @@ def test_explicit_discard_does_not_recreate_draft_during_destruction(recovery):
     assert panel.discard_recovery()
     panel._recovery_destroy(SimpleNamespace(GetEventObject=lambda: panel, Skip=Mock()))
     assert panel._recovery_store.get(*draft.key) is None
+
+
+def test_destroy_unbinds_exact_timer_and_queued_callback_cannot_retry_failed_checkpoint(recovery):
+    from carr_library.ingest.writer_guard import exclusive_writer
+    panel, app, _, wx, _ = recovery
+    first = checkpoint(panel, 'Existing durable recovery copy')
+    before = panel._recovery_store.path.read_bytes()
+    panel.note.SetValue('Pending edit before actual writer contention')
+    panel._recovery_edited(SimpleNamespace(Skip=Mock()))
+    queued = panel._flush_recovery
+    panel._recovery_timer.StartOnce.reset_mock()
+    panel.note.GetValue = Mock(side_effect=RuntimeError('Native editor already destroyed'))
+    panel.status.SetValue = Mock(side_effect=RuntimeError('Native status already destroyed'))
+    event = SimpleNamespace(GetEventObject=lambda: panel, Skip=Mock())
+    with exclusive_writer(app.root):
+        panel._recovery_destroy(event)
+    assert panel._recovery_disposed and 'could not be saved' in panel._recovery_error
+    panel.Unbind.assert_called_once_with(wx.EVT_TIMER, handler=queued, source=panel._recovery_timer)
+    panel._recovery_timer.Stop.assert_called_once_with()
+    assert queued() is True
+    panel._recovery_destroy(event)  # Duplicate native disposal cannot retry.
+    assert panel._recovery_store.path.read_bytes() == before
+    assert panel._recovery_store.get(*first.key) == first
+    panel._recovery_timer.StartOnce.assert_not_called()
+    panel.note.GetValue.assert_not_called()
+    panel.status.SetValue.assert_not_called()
+    panel._recovery_timer.Stop.assert_called_once_with()
+
+
+def test_child_destruction_preserves_live_recovery_timer_and_real_checkpoint(recovery):
+    panel, _, _, _, _ = recovery
+    first = checkpoint(panel, 'First durable edit')
+    panel.note.SetValue('Later edit on a still-live panel')
+    panel._recovery_edited(SimpleNamespace(Skip=Mock()))
+    event = SimpleNamespace(GetEventObject=lambda: object(), Skip=Mock())
+    panel._recovery_destroy(event)
+    assert not panel._recovery_disposed
+    panel.Unbind.assert_not_called()
+    panel._recovery_timer.Stop.assert_not_called()
+    assert panel._flush_recovery()
+    assert panel._recovery_store.get(*first.key).text == 'Later edit on a still-live panel'
+    event.Skip.assert_called_once_with()
 
 
 def test_corrupt_recovery_storage_reports_error_and_keeps_editor(recovery):

@@ -46,6 +46,8 @@ class DesktopEvidencePanel(EvidencePanel):
             self._recovery_timer.StartOnce(1000)
 
     def _flush_recovery(self, event=None, *, final=False):
+        if getattr(self, '_recovery_disposed', False) and not final:
+            return True
         store = getattr(self, '_recovery_store', None)
         pending = getattr(self, '_recovery_pending', None)
         if store is None or pending is None:
@@ -118,13 +120,16 @@ class DesktopEvidencePanel(EvidencePanel):
         return True
 
     def _recovery_destroy(self, event):
-        if event.GetEventObject() is self:
+        if event.GetEventObject() is self and not self._recovery_disposed:
+            # A posted timer callback can outlive its native owner. Latch first
+            # so it cannot touch children or restart a failed-checkpoint timer.
+            self._recovery_disposed = True
             self._recovery_timer.Stop()
+            self.Unbind(wx.EVT_TIMER, handler=self._flush_recovery, source=self._recovery_timer)
             # No access to already destroyed child controls: EVT_TEXT captured
             # the exact pending note. Preserve it even after scope revocation;
             # recovery still needs fresh authorization before it is displayed.
             self._flush_recovery(final=True)
-            self._recovery_disposed = True
         event.Skip()
 
     def _show(self, row, editable):

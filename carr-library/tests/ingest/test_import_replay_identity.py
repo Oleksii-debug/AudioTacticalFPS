@@ -156,7 +156,7 @@ def test_replay_rechecks_active_revision_before_registering(imported, monkeypatc
         # Simulate a separate SQLite writer immediately after the ingestion
         # snapshot has been checked. The exact active revision must be checked
         # again inside the membership transaction, even with unchanged bytes.
-        with closing(Storage(item.app.database, schema_version=4)) as storage:
+        with closing(Storage(item.app.database)) as storage:
             with storage.transaction():
                 prior = storage.db.execute('SELECT asset,config FROM revision WHERE id=?',
                                            (item.initial['id'],)).fetchone()

@@ -4,8 +4,22 @@ These helpers do not acquire a second state lock. The enclosing backup owns the
 application writer; each producer validates its own typed records and inventory.
 """
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 import stat
+
+
+def portable_relative(value):
+    """One portable relative-name boundary for typed state and its sidecars."""
+    if not isinstance(value, str) or not value or len(value) > 4096 or '\\' in value:
+        raise ValueError('Invalid portable relative file path.')
+    path = PurePosixPath(value)
+    if (path.is_absolute() or len(path.parts) > 16
+            or any(part in ('', '.', '..') for part in value.split('/'))
+            or any(part.rstrip(' .') != part or PureWindowsPath(part).is_reserved()
+                   or any(c in '<>:"|?*' or ord(c) < 32 or 127 <= ord(c) < 160 for c in part)
+                   for part in path.parts)):
+        raise ValueError('Invalid portable relative file path.')
+    return path
 
 
 def regular(path, *, directory=False):

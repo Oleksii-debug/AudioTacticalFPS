@@ -153,6 +153,33 @@ def test_runtime_inventory_does_not_normalize_an_invalid_model_identifier(langua
         models.parse_language_report(report(language))
 
 
+def test_native_windows_inventory_canonicalizes_script_separator_without_relaxing_selection(monkeypatch):
+    _use_windows_report_paths(monkeypatch)
+    listing = report('eng', 'osd', r'script\EnglishFixture')
+    assert models.parse_language_report(listing) == ('eng', 'osd', 'script/EnglishFixture')
+    assert not models.valid_model_code(r'script\EnglishFixture')
+    with pytest.raises(ValueError):
+        Config(languages=r'script\EnglishFixture')
+
+
+@pytest.mark.parametrize('codes', [
+    (r'..\eng',), (r'script\..\eng',), (r'script\\Latin',),
+    (r'nested\Latin',), (r'C:\eng',), (r'\\server\eng',),
+    ('script/Latin', r'script\Latin'),
+], ids=('parent', 'script-parent', 'empty-part', 'other-directory',
+        'drive', 'unc', 'canonical-duplicate'))
+def test_native_windows_inventory_rejects_unsafe_paths_and_separator_aliases(monkeypatch, codes):
+    _use_windows_report_paths(monkeypatch)
+    with pytest.raises(ValueError, match='invalid model inventory'):
+        models.parse_language_report(report(*codes))
+
+
+def test_nonwindows_inventory_does_not_reinterpret_a_backslash_filename(monkeypatch):
+    monkeypatch.setattr(models, 'os', SimpleNamespace(name='posix', path=models.os.path))
+    with pytest.raises(ValueError, match='invalid model inventory'):
+        models.parse_language_report(report(r'script\EnglishFixture'))
+
+
 def test_runtime_inventory_is_bound_to_the_requested_model_directory(tmp_path):
     listing = f'List of available languages in "{tmp_path / "other"}" (1):\neng\n'
     with pytest.raises(ValueError, match='different model directory'):
@@ -198,6 +225,41 @@ def test_capture_uses_bound_native_arguments_and_file_backed_output(monkeypatch)
     native = SimpleNamespace(executable='selected local engine', root='/bound/runtime',
         command=lambda args: [args[0], '--tessdata-dir', '/bound/models', *args[1:]])
     assert models._capture(native, '--list-langs', lambda: 3) == report('eng')
+
+
+@pytest.mark.parametrize('reported_directory', ['.', '../different-models'])
+def test_capture_preserves_unicode_model_binding_in_the_single_inventory(
+        monkeypatch, tmp_path, reported_directory):
+    from carr_library.extract import ocr_process
+    directory = tmp_path / 'Моделі OCR'
+    directory.mkdir()
+    (tmp_path / 'different-models').mkdir()
+    monkeypatch.setattr(ocr_process, 'sys', SimpleNamespace(platform='win32'))
+
+    class Process:
+        def __init__(self, argv, **kwargs):
+            assert argv == ['selected local engine', '--tessdata-dir', '.', '--list-langs']
+            assert kwargs['cwd'] == directory
+            assert kwargs.get('shell', False) is False
+            assert kwargs['stdout'].fileno() >= 0 and kwargs['stderr'].fileno() >= 0
+            kwargs['stdout'].write(
+                f'List of available languages in "{reported_directory}" (1):\neng\n'.encode())
+            kwargs['stdout'].flush()
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+        def wait(self, timeout=None):
+            assert timeout is None or timeout <= .05
+            return 0
+        def poll(self): return 0
+
+    monkeypatch.setattr(subprocess, 'Popen', Process)
+    native = ocr_runtime.OcrRuntime('selected local engine', root=tmp_path, tessdata=directory)
+    if reported_directory == '.':
+        assert models._capture(native, '--list-langs', lambda: 3) == (
+            f'List of available languages in "{directory}" (1):\neng\n')
+    else:
+        with pytest.raises(ocr_runtime.OcrRuntimeError, match='different model directory'):
+            models._capture(native, '--list-langs', lambda: 3)
 
 
 @pytest.mark.parametrize('stream', ['stdout', 'stderr'])
@@ -360,7 +422,6 @@ def test_invalid_profile_bindings_do_not_change_a_valid_preset_file(tmp_path, da
 def test_config_cannot_mix_a_managed_profile_and_an_existing_reviewed_pack(tmp_path):
     with pytest.raises(ValueError, match='cannot be combined'):
         Config(model_profile='fast', model_pack_path=str(tmp_path / 'pack'), model_pack_sha256='a' * 64)
-
 
 def test_native_windows_script_separators_are_normalized_only_in_inventory(monkeypatch):
     _use_windows_report_paths(monkeypatch)

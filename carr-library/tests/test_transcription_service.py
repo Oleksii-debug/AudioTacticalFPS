@@ -7,6 +7,7 @@ and actual ASR inference remain separate acceptance gates.
 from dataclasses import replace
 import hashlib
 import json
+import os
 from pathlib import Path
 import shutil
 import sys
@@ -56,6 +57,13 @@ if mode == 'wait':
     raise SystemExit(130)
 if mode == 'status_race':
     time.sleep(.25)
+if mode == 'held_status':
+    deadline = time.monotonic() + 10
+    while not (job / 'reader-held.flag').is_file():
+        if time.monotonic() >= deadline:
+            raise RuntimeError('Synthetic live-status reader was not opened.')
+        time.sleep(.01)
+    (job / 'reader-held.flag').unlink()
 if mode == 'zero_only':
     status.update(state='завершено', done=len(config['inputs']))
     write(job / 'job_status.json', status)
@@ -187,7 +195,7 @@ def test_runtime_admission_fails_before_any_engine_launch(prepared_environment, 
     elif change == 'protocol':
         raw['settings']['protocol'] = 'legacy-worker'
     path.write_text(json.dumps(raw), encoding='utf-8')
-    monkeypatch.setattr(service.subprocess, 'Popen', lambda *a, **k: pytest.fail('Runtime admission must precede execution.'))
+    monkeypatch.setattr(service, '_start_process', lambda *a, **k: pytest.fail('Runtime admission must precede execution.'))
     with pytest.raises(ValueError):
         service.review_runtime(path, settings)
 
@@ -333,16 +341,16 @@ def test_observational_status_replacement_does_not_kill_healthy_worker(
         prepared_environment, real_protocol_child, monkeypatch):
     app, manifest, source, settings = prepared_environment('status_race')
     identity = app.prepare([source], manifest, settings)
-    snapshot, races = service._read_json_snapshot, []
+    snapshot, races = service.read_worker_status, []
 
     def replaced(path, **kwargs):
-        value, checksum = snapshot(path, **kwargs)
+        value = snapshot(path, **kwargs)
         if Path(path).name == 'job_status.json' and value.get('state') == 'processing':
             races.append(True)
             raise ValueError('Synthetic atomic status replacement during observation.')
-        return value, checksum
+        return value
 
-    monkeypatch.setattr(service, '_read_json_snapshot', replaced)
+    monkeypatch.setattr(service, 'read_worker_status', replaced)
     assert app.run(identity, manifest, timeout=10)['output_count'] == 1
     assert races
 
@@ -371,7 +379,7 @@ def test_changed_input_fails_before_restart(prepared_environment, real_protocol_
     job = app._job(identity)
     definition = read_definition(job)
     (job / definition['inputs'][0]['path']).write_bytes(b'changed retained input')
-    monkeypatch.setattr(service.subprocess, 'Popen', lambda *a, **k: pytest.fail('Changed inputs must not launch.'))
+    monkeypatch.setattr(service, '_start_process', lambda *a, **k: pytest.fail('Changed inputs must not launch.'))
     with pytest.raises(ValueError):
         app.run(identity, manifest, timeout=10)
 
@@ -467,3 +475,124 @@ def test_restored_completed_transcript_is_readable_without_old_runtime(
     copied = restored.reading_copy(identity, result['outputs'][0]['path'])
     assert copied.original_path.startswith(str(destination))
     assert copied.current_text.startswith('Synthetic protocol text;')
+
+
+
+@pytest.mark.parametrize('error_type', [RuntimeError, InterruptedError])
+def test_progress_observer_cannot_fail_a_verified_actual_supplied_run(
+        prepared_environment, real_protocol_child, error_type):
+    app, manifest, source, settings = prepared_environment('status_race')
+    identity = app.prepare([source], manifest, settings)
+    observed = []
+    def detached(done, total, phase):
+        observed.append((done, total, phase))
+        raise error_type('Synthetic detached progress observer.')
+    result = app.run(identity, manifest, progress=detached, timeout=10)
+    assert len(observed) == 1
+    assert result['input_count'] == result['output_count'] == 1
+    assert read_json(app._job(identity) / 'execution.json')['state'] == 'complete'
+    assert app.completed(identity)['outputs'] == result['outputs']
+    assert source.read_bytes().startswith(b'Synthetic retained input')
+
+
+def test_current_owned_launcher_supervises_actual_supplied_worker(
+        prepared_environment, real_protocol_child, monkeypatch):
+    app, manifest, source, settings = prepared_environment()
+    identity = app.prepare([source], manifest, settings)
+    launch, processes = service._start_process, []
+    def observed(command, **options):
+        assert options['shell'] is False
+        process = launch(command, **options)
+        if sys.platform == 'win32':
+            assert process._carr_job is not None
+        processes.append(process)
+        return process
+    monkeypatch.setattr(service, '_start_process', observed)
+    result = app.run(identity, manifest, timeout=10)
+    assert len(processes) == 1 and processes[0].poll() == 0
+    assert result['output_count'] == 1
+    assert app.completed(identity)['outputs'] == result['outputs']
+
+
+def test_status_observation_keeps_its_original_one_mebibyte_budget(tmp_path):
+    path = tmp_path / 'job_status.json'
+    path.write_text(json.dumps({'state': 'x' * (1024 * 1024)}), encoding='utf-8')
+    with pytest.raises(ValueError, match='JSON budget'):
+        service.read_worker_status(path, max_bytes=1024 * 1024)
+    assert path.stat().st_size > 1024 * 1024
+
+
+def test_actual_supplied_worker_replaces_status_while_original_host_snapshot_is_open(
+        prepared_environment, real_protocol_child, monkeypatch):
+    from carr_library import transcription_host
+    original_app, manifest, source, settings = prepared_environment(
+        'held_status', settings=dict(output_srt=True, output_vtt=True, output_json=True))
+    # Exercise the native rename's UTF-16 byte count as well as actual sharing.
+    library = original_app.library_root / 'Бібліотека-🎧'
+    library.mkdir()
+    app = service.TranscriptionService(library)
+    identity = app.prepare([source], manifest, settings)
+    original = source.read_bytes()
+    job = app._job(identity)
+    status_path = job / 'job_status.json'
+    release = job / 'reader-held.flag'
+    opened = transcription_host._open_worker_status
+    observed = {'claimed': False, 'replacement_while_open': False}
+
+    class HeldSnapshot:
+        def __init__(self, stream):
+            self.stream = stream
+
+        def __enter__(self):
+            self.stream.__enter__()
+            return self
+
+        def __exit__(self, *arguments):
+            return self.stream.__exit__(*arguments)
+
+        def fileno(self):
+            return self.stream.fileno()
+
+        def read(self, *arguments):
+            held = os.fstat(self.stream.fileno())
+            release.write_bytes(b'Release the actual synthetic child with its prior status still open.')
+            deadline = time.monotonic() + 10
+            while time.monotonic() < deadline:
+                current = status_path.stat()
+                if (current.st_dev, current.st_ino) != (held.st_dev, held.st_ino):
+                    assert not self.stream.closed
+                    observed['replacement_while_open'] = True
+                    with opened(status_path) as fresh:
+                        observed['fresh_snapshot'] = json.loads(fresh.read())
+                    break
+                time.sleep(.02)
+            assert observed['replacement_while_open'], 'The real child did not replace its held status snapshot.'
+            raw = self.stream.read(*arguments)
+            observed['old_snapshot'] = json.loads(raw)
+            return raw
+
+    def hold_first_snapshot(path):
+        stream = opened(path)
+        if not observed['claimed'] and Path(path).absolute() == status_path:
+            observed['claimed'] = True
+            observed['stream'] = stream
+            return HeldSnapshot(stream)
+        return stream
+
+    # Keep the real host HANDLE and the real child/os.replace. Only delay the
+    # first reader until the worker has published its complete replacement.
+    monkeypatch.setattr(transcription_host, '_open_worker_status', hold_first_snapshot)
+    result = app.run(identity, manifest, timeout=20)
+    assert observed['claimed'] and observed['replacement_while_open']
+    assert observed['stream'].closed and not release.exists()
+    assert observed['old_snapshot']['state'] == 'processing'
+    assert observed['old_snapshot']['done'] == 0
+    assert observed['fresh_snapshot']['state'] == 'завершено'
+    assert observed['fresh_snapshot']['done'] == 1
+    assert observed['fresh_snapshot']['run_id'] == result['run_id']
+    assert observed['fresh_snapshot']['completion_sha256'] == result['completion_sha256']
+    assert result['input_count'] == 1 and result['output_count'] == 4
+    assert {row['format'] for row in result['outputs']} == {'txt', 'srt', 'vtt', 'json'}
+    assert read_json(job / 'execution.json')['state'] == 'complete'
+    assert app.completed(identity)['outputs'] == result['outputs']
+    assert source.read_bytes() == original

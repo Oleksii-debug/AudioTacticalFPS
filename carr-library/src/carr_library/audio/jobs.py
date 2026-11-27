@@ -70,12 +70,48 @@ def file_identity(info):
     return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
 
 
+def _open_verified_input(path):
+    """Keep Windows input bytes stable, independently of timestamp precision.
+
+    Unlike replaceable worker status, a verified audio input must not accept a
+    concurrent writer. Other readers remain allowed. The native handle becomes
+    the Python stream's sole owned descriptor and is closed on every failure.
+    """
+    if os.name != 'nt':
+        return Path(path).open('rb')
+    from ctypes import wintypes
+    import msvcrt
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    create = kernel.CreateFileW
+    create.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                       wintypes.LPVOID, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+    create.restype = wintypes.HANDLE
+    close = kernel.CloseHandle
+    close.argtypes = [wintypes.HANDLE]
+    close.restype = wintypes.BOOL
+    # GENERIC_READ, FILE_SHARE_READ, OPEN_EXISTING, normal/no-reparse-follow.
+    # Omit write/delete sharing rather than assuming an mtime tick occurred.
+    handle = create(str(path), 0x80000000, 0x1, None, 3, 0x80 | 0x00200000, None)
+    if handle == ctypes.c_void_p(-1).value:
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        descriptor = msvcrt.open_osfhandle(handle, os.O_RDONLY | os.O_BINARY)
+    except BaseException:
+        close(handle)
+        raise
+    try:
+        return os.fdopen(descriptor, 'rb')
+    except BaseException:
+        os.close(descriptor)
+        raise
+
+
 @contextmanager
 def verified_reader(path, *, expected_identity=None):
     before = file_identity(regular_file(path))
     if expected_identity is not None and before != expected_identity:
         raise RuntimeError('An audio input changed after it was validated. Restart the production.')
-    with Path(path).open('rb') as stream:
+    with _open_verified_input(path) as stream:
         if file_identity(os.fstat(stream.fileno())) != before:
             raise RuntimeError('An audio input changed while it was being opened.')
         yield stream

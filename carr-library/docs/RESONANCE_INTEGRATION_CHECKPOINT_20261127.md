@@ -1,51 +1,170 @@
-# Verified integration checkpoint — 27 November 2026
+# Resonance integration checkpoint — 27 November 2026
 
-The newest source composition extends
-`2f011f8999eed0ecb2fdbfe987b3364c832b4f85`. Earlier checkpoints below are
-historical evidence for their exact sources. This is not a final installer or
-a declaration that every V3 platform acceptance gate has passed.
+## Current composition and evidence boundaries
 
-## Supplied transcription and exact-source Windows continuation
+This continuation reconciles the owner branch through
+`8a8249342e5b48f67d83cd957b3c33bf752a7ce3` with the supplied-worker profiles,
+passive backup validation, request-bound import publication recovery and the
+single shared native progress controller. Component source review is complete;
+the composed Windows and installed-bundle gates must run against the published
+head. Historical results below are not transferred to that new head.
 
-The supplied-worker adapter now joins the existing desktop, reading-copy editor,
-process supervisor, project locks and typed backup producers. Files/folders,
-seventeen frozen settings, local runtime admission, real child supervision,
-pause/resume/stop, exact TXT/SRT/VTT/JSON receipts and relocated saved-text reading
-are implemented. See [the integration contract](SUPPLIED_TRANSCRIPTION_INTEGRATION.md)
-for user actions, portability and the distinction between synthetic protocol
-execution and actual model inference.
+The selected implementation includes:
 
-The composed portable gates passed without skips: receipt/settings 112,
-supervisor 37, transcription backup 27, dialog/session 22 and complete desktop
-handler/menu composition 64. Existing model admission and command registry
-checks also ran. The independent backup selection passed 466 cases across its
-new and existing recovery/audio suites; counts overlap and are not additive.
-The corrected native snapshot automation passed 95 portable source cases. Its
-new Windows execution remains a separate required gate.
+- Explicit `receipts-v1` and `whisper-v5-manifest-v1` profiles through the current
+  transcription service, isolated process host, immutable receipts, edit
+  revisions and bounded file/folder intake.
+- Typed passive backup validation for both profiles, including saved partial
+  edits after resume/Stop, without reading or executing external models.
+- The same native entrypoint and CLI now explicitly select the library-wide
+  supplied V43 protocol, preserving its seventeen settings, immutable definitions,
+  pause/resume/stop, verified reading copies and separate typed backup namespace.
+  Existing workspace jobs keep their original identities and scope.
+- New receipt-profile runs hash the complete selected model before launch, pass
+  the exact frozen identity to the supplied adapter and require that identity in
+  every accepted receipt. Historical saved results remain passively readable.
+- One native `OperationProgress` controller and notification worker. The
+  `progress_view` compatibility name aliases that same object and the shared
+  hub remains stable when the library root changes.
+- Actual worker/Future results determine completion. Late Stop and presentation
+  failures cannot undo or hide a committed result in Desktop or Audio Studio.
+- Existing completion-aware Save All, extended Studio effects and captured
+  export approvals. Transcript edits use that same coordinator: only a durable
+  revision matching the current draft completes saving or a pending close.
+- Import recovery requires an immutable database publication receipt bound to
+  the exact request and attempt. A newer watermark from another import is not
+  sufficient. Database schema V5 is distinct from retained backup formats 1–5.
+- Native snapshot confirmation retains real owned-window/UIA/receipt checks
+  through the successor password dialog; OCR keeps strict model identifiers
+  while accepting the native Windows report's script separators.
+- A bounded native TaskDialog answer handles the verified production confirmation
+  when Windows exposes no UIA button. It still requires exact ownership and
+  observes actual closure before allowing the successor dialog.
+- Portable OCR inventory enumeration now fails on unreadable directories and
+  bounds both files and empty directories, with a cancellation/deadline check
+  before every entry. Verified model packs and native OCR behavior are retained.
+- Windows audio input hashing/copying holds a read-only sharing handle so an
+  in-place writer cannot evade detection through timestamp coincidence. All
+  existing regular-file/reparse/identity/resource guards remain.
+- Oversized malformed discovery input keeps its original payload and uses short
+  semantic test IDs, avoiding the Windows environment-value limit.
+- Transcription preserves the selected virtual environment, rechecks edit
+  publication authorization under the existing writer lock, and uses a bounded
+  live-status rename fallback only inside the authorized worker job.
+- Evidence recovery stops/unbinds its exact native timer before owner disposal.
+  Queued callbacks do not touch destroyed controls or restart recovery work.
+- Isolated test replays load the exact trusted sibling watchdog. The separate
+  bibliography workflow uses its existing two-worker runner within unchanged
+  deadlines.
 
-On exact source `b74d9e26ea8c0a2f8dbed1c858deca48534366a4`, Windows actually
-passed native Save All/close, shared progress and keyboard/recovery controls,
-the native effect dialogs, all 41 portable OCR runtime cases and four PDF
-cancellation cases. The main workflow stopped on two incomplete OCR diagnostic
-fixtures; `2f011f` supplied their missing tessdata field. The snapshot native
-probe failed because UI Automation exposed no TaskDialog button descendants.
-The continuation invokes the actual owned native Yes/No TaskDialog through its
-documented button message, rechecks ownership and observes real closure. It
-does not manufacture a dialog return value or suppress publication assertions.
+The final workflow preserves the preceding selectors and currently requires
+232 unique source suites, 84 installed contents selectors plus the original
+14 positional installed suites, the original native gates, the 13-check
+workspace transcription probe, the 39-check supplied-profile probe and the
+44-check shared-progress probe. These
+are required gates, not counts of completed acceptance tests.
 
-An unchanged acceptance branch at `ec4067bdbe44992f3b961a60732fcaca62ad5191`
-permits the existing long Windows suites to finish independently of concurrent
-development pushes. It changes only four workflow push filters, and contains no
-new transcription adapter. Results from that snapshot never certify later
-source. The transcription source, installed-package and native controls have
-their own added gates in the composed workflow.
+Recovered local execution completed 173 focused cases plus 25 subtests for
+the progress/Studio/CI-helper/OCR-identity composition. The subsequent
+protocol/recovery/OCR selection completed 471 passing cases and exposed 25
+failures/errors with one cause: the ported V5 word-subtitle formatter referenced
+an absent alternative Studio package. Rebinding it to the selected host's
+existing audio formatter, with exact actual-child SRT/VTT byte assertions,
+passed all 79 V5-profile and typed-backup cases. The completed transcript
+Save All/current-draft selection passed 55 cases, including all 35 current-host
+cases. These selections overlap and are not the composed Windows or installed
+acceptance verdict. The exact audio-boundary component also passed 68 focused
+Linux cases. The final PR159 current-host port was independently reviewed;
+its new virtual-environment, publication-race and held-status-reader cases
+require the new composed Windows run.
 
-Private worker evidence is retained outside public Git. Actual ASR weights and
-quality, NVDA, the native corrected snapshot probe and final installed source
-qualification are not implied by these portable tests. Canonical V5 schema and
-behavior convergence is being handled separately. The audio-runtime transfer
-rights gate remains in force; local execution evidence does not authorize
-redistribution of its binaries.
+## Current composed portable verification
+
+The new supplied-profile backend passed 223 cases across receipt validation,
+supervision and both backup namespaces. After the shared Windows status startup
+and explicit UI/CLI routing were composed, all 91 supervisor/UI/CLI cases passed.
+The current native snapshot confirmation policy suite passed 102 cases.
+
+The receipt-model binding passed its 83-case bridge suite, all 35 current-host
+cases and all 42 workspace backup cases. Two cross-profile fixtures initially
+lacked the newly required vocabulary file; adding that nonempty inert fixture
+left every assertion intact, and the complete 39-case V5 suite then passed.
+The actual supplied private receipt adapter passed all 22 of its own checks
+against this host, using its controlled decoder and synthetic model bytes.
+The original private source was preserved and was not included in this repository.
+
+The observed backup/audio/database fixture corrections passed all 46 cases.
+Portable OCR, including the new enumeration checks and real local Tesseract
+fixtures, passed all 45 cases. These component selections overlap and must not
+be summed into a unique acceptance count. Model accuracy, real weights, Windows
+execution of the private worker and NVDA listening remain separate evidence.
+
+## Exact 2274270 Windows checkpoint
+
+The immutable acceptance source was
+`2274270c790b2e9574026be5115b282babe51d51`, tree
+`8bca8a7dd1ef562aca639eb739f78b9d180fe224`. Its four push workflows ran on
+`carr/v3-acceptance-d3a-r2-20261127`; their findings prompted the corrections in
+the current composition.
+
+| Workflow | Observed result | Current correction or limit |
+| --- | --- | --- |
+| Main integration, run 45938490473, job 140307099075 | All 227 suites completed: 224 suites passed, three failed; 5,724 passing cases and six failures, zero skips | Four failures were the already corrected backup-phase and bounded diagnostic fixtures; two more preference fixtures now require the exact typed-field rejection |
+| Keyboard/recovery, run 45938490473, job 140307099400 | 270 strict source cases; installed Main 35, Reader 23, evidence draft 15 and Save All 27 checks passed; native measured progress passed | Exact checkpoint PASS; includes the disposed-owner timer regression |
+| Audio, run 45938490502 | 687 passing cases, four failures, seven explicit platform/runtime skips and 22 subtests; native 16 checks and 1/3/10-hour synthetic PCM processing passed | Two backup guard fixtures now cover both copy and final verification; two mutation fixtures read WAV metadata before opening the writer |
+| Bibliography, run 45938490505 | All 28 suites completed within the deadline; 1,016 passing and two failing cases, zero skips; native citation 108 checks passed | The two real replay-race fixtures now open the current database schema instead of requesting historical schema 4 |
+| Snapshot, run 45938490533 | 301 source and 154 isolated installed cases passed; native confirmation exposed no UIA buttons and failed | The bounded production TaskDialog fallback requires a new Windows result |
+
+The main job also passed the 42-case native OCR runtime suite, all 108 language
+cases, all 39 V5-profile and 35 current-host cases, and all 42 workspace backup
+cases. The held-status tests exercised actual child publication on Windows.
+The six strict-source failures prevented its downstream installed acceptance.
+The new composition requires its own exact-head runs; preceding results are
+retained as defect evidence, not transferred acceptance.
+
+## Exact preceding CBA Windows result
+
+Source head `cba0b1404a817c05a59f7b5eef8deb000491a87f`, tree
+`1dd59df44c4c3c915e0b2003e43a3d030e34dd47`. The main run's generated merge
+commit `f65fec60812fc21e57fdcc46c393f5a60676c593` has the same exact tree.
+
+| Workflow | Observed result | Consequence |
+| --- | --- | --- |
+| Main, run 45931122504 | 214 of 217 strict source suites passed; 5,341 passing and four failing cases, no skips in that selection | Copied watchdog fixture, explicit PATH OCR fixture isolation and portable orientation fixture require the corrected run; downstream installed gates did not run |
+| Keyboard/recovery, same run | 231 source cases passed; installed native Main 35, Reader 23 and draft 14 checks passed | Evidence applies to the CBA tree |
+| Audio, run 45931122529 | 609 passing cases, one failed case, two fixture errors and seven explicitly skipped cases; job later cancelled at its deadline | Oversized parametrized test IDs and the same-size mutation check require correction; installed replay did not run |
+| Bibliography, run 45931122516 | 23 completed suites / 959 passing cases and 108 native citation checks, then the unchanged aggregate step deadline | Entire job did not pass; the bounded two-worker continuation requires its own result |
+| Snapshot, run 45931122513 | 284 source cases passed; isolated installed replay failed to load its sibling watchdog | Native confirmation acceptance did not run |
+
+The CBA audio job also completed the real native Studio/SAPI/FFmpeg/vault
+16-check probe, all 15 process-ownership cases, and 1/3/10-hour synthetic PCM
+processing. The physical player reported UNAVAILABLE because the runner had no
+output device; this is not listening or audible playback acceptance.
+
+## Remaining implementation and qualification
+
+The current source does not implement microphone capture/retakes/live
+monitoring, live Word field insertion/editing, or the complete signed
+end-user installer, repair, uninstall, update and entitlement lifecycle.
+Those are implementation gaps and must not be relabeled as completed or merely
+manual tests. Signing certificates, authorized distribution/service inputs
+and owner runtime/model rights are separate required inputs.
+
+Actual private ASR and local model inference, owner-engine compatibility,
+language and long-form quality, physical listening, and manual Windows/NVDA
+acceptance remain separate qualification work. Public synthetic workers prove
+protocol/recovery behavior and do not qualify neural recognition or voices.
+No final installer or complete V3 release is claimed.
+
+## Historical owner checkpoint
+
+The following record was retained from the owner composition. Its earlier
+component counts overlap; they must not be added to the current counts or used
+as acceptance of a different source tree.
+
+This checkpoint composes the already reviewed source changes on top of
+`587559f403b0c7a164b7e496bcd6975506bbe881`. It is not a final installer
+or a declaration that every V3 platform acceptance gate has passed.
 
 ## Continuation after the 6c7afd Windows checkpoint
 

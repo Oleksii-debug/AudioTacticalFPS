@@ -12,13 +12,13 @@ Production render messages are phases with an unknown total. This UI does not de
 
 ## Native controls and callback lifetime
 
-The main window includes a named Gauge, a named readable status, “Read current progress” and “Quiet now (this session)”. Automatic updates never move focus. The explicit query uses the existing status text so the user can read it with a screen reader.
+The main window includes one named Gauge, readable progress text, an operations/subtasks selector, query/settings/mute buttons and “Quiet now (this session)”. Automatic updates never move focus. The explicit query focuses the progress text so the user can read it with a screen reader. The controller is `OperationProgress`; the compatibility `frame.progress_view` name points to that same object.
 
-Help contains Current operation progress (default Ctrl+Alt+P) and Progress feedback settings. They register stable IDs `progress.current` and `progress.settings` with the existing keyboard manager. Help remains available during a main-window worker; write commands and scoped navigation keep their existing busy restrictions.
+Options contains Query current progress, Progress feedback settings and Mute or unmute extra progress feedback. The existing keyboard manager retains stable IDs `progress.query`, `options.progress` and `progress.mute`, with unassigned defaults to avoid conflicting with saved user shortcuts. These three actions remain available during a main-window worker; unrelated menu commands and scoped navigation keep their busy restrictions and previous enabled states.
 
 A cancellation request is reported separately from the worker's acknowledgement. Closing an assistant dialog signals its worker without taking a competing journal lock. The shared view can receive the eventual durable paused checkpoint while the closed dialog ignores late widget updates.
 
-Every queued view update checks the operation and library identity. A new operation, another library or a closed frame invalidates older callbacks and notices. A completed previous operation is not replayed as a cue for new work. Concurrent jobs keep distinct identities; the main Gauge presents the current operation rather than combining unrelated denominators.
+The same hub is retained for the window lifetime so an active player or quarantined native handle keeps its media guard across a library change. Old-library events, voice selection and notices are cleared from the view without replacing that authority. Every queued view update checks the operation and library identity. A new operation, another library or a closed frame invalidates older callbacks and notices. A completed previous operation is not replayed as a cue for new work. Concurrent jobs keep distinct identities; the main Gauge presents the current operation rather than combining unrelated denominators.
 
 ## Explicit local audio selection
 
@@ -44,6 +44,7 @@ Required source and installed suites:
 
 - `tests/ui/test_shared_progress.py`
 - `tests/ui/test_operation_progress.py`
+- `tests/ui/test_progress_view.py`
 - `tests/e2e/test_import_progress.py`
 - `tests/ui/test_desktop_handlers.py`
 - `tests/ui/test_audio_studio.py`
@@ -52,4 +53,4 @@ Required source and installed suites:
 - `tests/assistant/test_dialog_lifecycle.py`
 - `tests/ui/test_translation_dialog.py`
 
-Run `scripts/windows_progress_smoke.py --native` with the installed Windows Python. The probe drives actual wx focus, the current-progress shortcut, native cancel-button dispatch, a worker's fsynced synthetic output, measured 0/25/50/75/99/100 states, unknown totals and late cancellation. Installed module bytes are compared with the exact source under test. Linux returns 77 / NOT_RUN. Native Windows execution, NVDA speech and voice/device listening require their actual environment and remain NOT_RUN until performed.
+Run `scripts/windows_progress_smoke.py --native` and `scripts/windows_shared_progress_smoke.py` with the installed Windows Python. The probe drives actual wx focus, an explicitly configured current-progress shortcut, native cancel-button dispatch, a worker's fsynced synthetic output, measured 0/25/50/75/99/100 states, unknown totals and late cancellation. Installed module bytes are compared with the exact source under test. The shared-progress probe also queries actual Windows UIA read-only Gauge values at 50 and verified 100 percent, checks named settings controls and persists their chosen values. Both probes operate on the same controller. Linux returns 77 / NOT_RUN. Native Windows execution, NVDA speech and voice/device listening require their actual environment and remain NOT_RUN until performed.

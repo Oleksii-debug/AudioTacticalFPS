@@ -1,596 +1,469 @@
-"""Native local transcription workflow over the existing supervised service.
-
-Preparing a job retains owned inputs and freezes its settings. Running it is a
-separate action. A completed status is never accepted without the service's
-byte-bound receipt validation; no engine or private model ships in this module.
-"""
+"""Keyboard-accessible native workspace for the supplied local Whisper worker."""
 from pathlib import Path
 import threading
 
-from ..transcription_receipt import DEFAULT_SETTINGS, _LANGUAGES, validate_settings
-from ..transcription_service import TranscriptionService
 
-_CHOICES = {
-    'output_mode': (('separate', 'Separate text for each input'),
-                    ('one_per_folder', 'One text for each selected folder'),
-                    ('one_whole_job', 'One text for the whole job')),
-    'task': (('transcribe', 'Transcribe in the original language'),
-             ('translate', 'Translate speech to English')),
-    'translation_target': (('en', 'English'),),
-    'language': (('auto', 'Detect language'), ('uk', 'Українська (uk)'),
-                 ('en', 'English (en)'), ('sk', 'Slovenčina (sk)')) +
-                tuple((code, code) for code in sorted(_LANGUAGES - {'uk', 'en', 'sk'})),
-    'device': (('cpu', 'CPU'), ('cuda', 'CUDA'), ('auto', 'Automatic local device')),
-    'compute_type': (('int8', 'INT8'), ('auto', 'Automatic local compute'),
-                     ('float16', 'Float16'), ('float32', 'Float32')),
-}
-_LABELS = {
-    'output_mode': 'Text output grouping', 'task': 'Speech task',
-    'translation_target': 'Speech translation target', 'language': 'Input language',
-    'model': 'Local model directory name', 'device': 'Local processing device',
-    'compute_type': 'Local compute type', 'beam_size': 'Beam size, 1 to 10',
-    'parallel_files': 'Parallel input files, 1 to 20',
-    'vad_filter': 'Filter non-speech with VAD', 'include_headers': 'Include source headers',
-    'output_txt': 'Write TXT', 'output_srt': 'Write SRT', 'output_vtt': 'Write VTT',
-    'output_json': 'Write JSON transcript', 'multilingual': 'Multilingual inference',
-    'condition_on_previous_text': 'Condition on previous text',
-}
+PROFILE_CHOICES = (
+    ('receipts-v1', 'Workspace jobs — receipt worker'),
+    ('whisper-v5-manifest-v1', 'Workspace jobs — supplied Whisper V5'),
+    ('supplied-whisper-v43-hardened-1', 'Library-wide jobs — reviewed runtime, 17 settings'),
+)
 
 
-def settings_from_controls(controls):
-    """Read native typed controls and apply the same 17-field service contract."""
-    values = {}
-    for name in DEFAULT_SETTINGS:
-        control = controls[name]
-        if name in _CHOICES:
-            selection = control.GetSelection()
-            if type(selection) is not int or not 0 <= selection < len(_CHOICES[name]):
-                raise ValueError('Choose a value for ' + _LABELS[name] + '.')
-            values[name] = _CHOICES[name][selection][0]
-        else:
-            values[name] = control.GetValue()
-    return validate_settings(values)
+def choose_profile(frame):
+    """Select an existing contract and its explicit scope without migrating jobs."""
+    import wx
+    with wx.SingleChoiceDialog(frame,
+            'Choose the installed worker profile. Workspace jobs and library-wide jobs keep their '
+            'own saved settings, originals and result histories.',
+            'Local transcription profile and scope', [label for _, label in PROFILE_CHOICES]) as picker:
+        picker.SetName('Local transcription profile and scope')
+        previous = getattr(frame, '_transcription_profile', PROFILE_CHOICES[0][0])
+        ids = tuple(identity for identity, _ in PROFILE_CHOICES)
+        picker.SetSelection(ids.index(previous) if previous in ids else 0)
+        if picker.ShowModal() != wx.ID_OK:
+            return None
+        selected = picker.GetSelection()
+        if type(selected) is not int or not 0 <= selected < len(ids):
+            raise ValueError('Choose a transcription profile and scope.')
+        frame._transcription_profile = ids[selected]
+        return ids[selected]
 
 
-def apply_settings(controls, settings):
-    values = validate_settings(settings)
-    for name, value in values.items():
-        if name in _CHOICES:
-            controls[name].SetSelection(tuple(code for code, _ in _CHOICES[name]).index(value))
-        else:
-            controls[name].SetValue(value)
-
-
-def _error_text(error):
-    if isinstance(error, InterruptedError):
-        return 'Stopped. Prepared inputs and completed files remain available for review.'
-    if isinstance(error, OSError):
-        return 'A local file could not be accessed: ' + (error.strerror or 'check the selected files and available space.')
-    return ' '.join(str(error).split())[:500] or 'The local transcription operation could not complete.'
-
-
-class TranscriptionSession:
-    """Keep a modal alive until its owned operation has actually settled."""
-    def __init__(self, frame, *, dispatch, changed, report, close, request_stop=lambda: None):
-        self.frame, self.library = frame, frame.library
-        self.root = Path(self.library.root).absolute()
-        self.dispatch, self.changed, self.report = dispatch, changed, report
-        self.close_dialog, self.request_stop = close, request_stop
-        self.cancel = threading.Event()
-        self.busy = self.closed = self.close_requested = self.operation_finished = False
-        self.generation, self.kind = 0, None
-
-    def current(self):
-        try:
-            return (not self.closed and getattr(self.frame, 'library', None) is self.library
-                    and Path(self.library.root).absolute() == self.root
-                    and not getattr(self.frame, '_closing', False))
-        except (TypeError, ValueError, OSError):
-            return False
-
-    def guard(self):
-        if not self.current():
-            raise InterruptedError('The selected library or transcription window changed.')
-
-    def stopped(self):
-        return (self.cancel.is_set() or not self.current()
-                or self.frame.cancel_event.is_set())
-
-    def _close(self):
-        if not self.closed:
-            self.closed = True
-            self.cancel.set()
-            self.close_dialog()
-
-    def _settled(self, generation):
-        if self.closed or generation != self.generation:
+def show_transcription(frame, *, protocol=None, service=None, on_ready=None):
+    import wx
+    from .save_all import SaveCoordinator, SaveResult, coordinator_for, defer_close
+    if getattr(frame, 'working', False) or getattr(frame, '_closing', False):
+        frame.report('Finish or cancel the current operation before opening transcription.')
+        return
+    protocol = choose_profile(frame) if protocol is None else protocol
+    if protocol is None:
+        return
+    if protocol not in tuple(identity for identity, _ in PROFILE_CHOICES):
+        raise ValueError('Choose an explicitly supported transcription profile.')
+    if protocol == 'supplied-whisper-v43-hardened-1':
+        from .transcription_v43_dialog import show_transcription as show_supplied
+        return show_supplied(frame, service=service, on_ready=on_ready)
+    if service is not None or on_ready is not None:
+        raise ValueError('The workspace editor uses its selected library service.')
+    active = getattr(frame, 'active', None)
+    if active is None:
+        frame.report('Select an active library before opening transcription.')
+        return
+    service = frame.library.transcription(active[0])
+    dialog = wx.Dialog(frame, title='Транскрипція — локальний Whisper', size=(900, 850),
+                       style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+    coordinator = coordinator_for(frame) or SaveCoordinator()
+    dialog._save_coordinator = coordinator
+    layout = wx.BoxSizer(wx.VERTICAL)
+    current, selected_source, alive, busy, dirty = None, None, True, False, False
+    selected_ready = False
+    rows, source_rows = [], []
+    cancel = threading.Event()
+    def field(label, factory=wx.TextCtrl, proportion=0, **kwargs):
+        layout.Add(wx.StaticText(dialog, label=label), 0, wx.ALL, 4)
+        control = factory(dialog, **kwargs)
+        control.SetName(label.replace('&', ''))
+        layout.Add(control, proportion, wx.EXPAND | wx.ALL, 4)
+        return control
+    jobs = field('Збережені &завдання', wx.Choice, choices=[])
+    title = field('&Назва нового завдання', value='Транскрипція')
+    model = field('Локальна &модель', value='small')
+    language = field('&Мова: auto, uk, ru, sk, en або код Whisper', value='auto')
+    device = field('Пристрій &обчислення', wx.Choice, choices=['CPU — int8', 'CUDA — float16'])
+    device.SetSelection(0)
+    words = wx.CheckBox(dialog, label='Часові мітки кожного &слова')
+    words.SetName('Часові мітки кожного слова')
+    words.SetValue(True)
+    layout.Add(words, 0, wx.ALL, 4)
+    mixed = wx.CheckBox(dialog, label='Кілька мов у записі; потрібна сумісна &багатомовна модель')
+    mixed.SetName('Кілька мов у записі')
+    layout.Add(mixed, 0, wx.ALL, 4)
+    sources = field('Запис для &редагування', wx.Choice, choices=[])
+    text = field('&Текст: редагування зберігається окремою версією', proportion=2,
+                 style=wx.TE_MULTILINE)
+    status = field('Стан транскрипції', proportion=1, style=wx.TE_MULTILINE | wx.TE_READONLY,
+        value='Оригінальне аудіо зберігається окремо. Результати: TXT, SRT, VTT, JSON; '
+              'часові мітки слів — за вибором. Моделі не завантажуються автоматично. '
+              'Після зупинки завершені файли повторно використовуються, незавершений файл обробляється спочатку.')
+    buttons = {}
+    row = wx.GridSizer(rows=3, cols=3, vgap=3, hgap=3)
+    for name, label in [('configure', 'Підключити &Whisper'), ('create', '&Додати записи'),
+                        ('folder', 'Додати папку з п&ідпапками'),
+                        ('run', 'Запустити / &продовжити'), ('stop', 'З&упинити'),
+                        ('save', 'Зберегти &правки'), ('export', '&Експорт'),
+                        ('refresh', '&Оновити'), ('close', '&Закрити')]:
+        button = wx.Button(dialog, label=label)
+        button.SetName(label.replace('&', ''))
+        buttons[name] = button
+        row.Add(button, 0, wx.EXPAND | wx.ALL, 3)
+    layout.Add(row, 0, wx.EXPAND)
+    save_all_button = wx.Button(dialog, label='Зберегти всі відкриті чернетки')
+    save_all_button.SetName('Зберегти всі відкриті чернетки')
+    layout.Add(save_all_button, 0, wx.EXPAND | wx.ALL, 3)
+    dialog.SetSizer(layout)
+    def report(value):
+        if alive:
+            status.ChangeValue(str(value))
+    def controls():
+        if not alive:
             return
-        self.operation_finished = True
-        if self.close_requested or not self.current():
-            self.busy = False
-            self._close()
-
-    def submit(self, title, operation, complete, *, kind, total=None):
-        if not self.current():
-            self._close()
-            return False
-        if self.busy or getattr(self.frame, 'working', False):
-            self.report('Finish or stop the current operation before starting another.')
-            return False
-        self.busy, self.operation_finished, self.kind = True, False, kind
-        self.generation += 1
-        generation = self.generation
-        self.cancel.clear()
-        self.changed()
-
-        def arrived(result=None, error=None):
-            if self.closed or generation != self.generation:
-                return
-            self.busy, self.operation_finished, self.kind = False, True, None
-            if self.close_requested or not self.current():
-                self._close()
-                return
-            self.changed()
-            if error is not None:
-                self.report(_error_text(error))
-                return
-            try:
-                complete(result)
-            except Exception as exc:
-                self.report('The operation returned; its result needs review. ' + _error_text(exc))
-
-        def perform():
-            try:
-                self.guard()
-                return operation()
-            finally:
-                # This callback also settles a close if the main frame suppresses
-                # its ordinary completion callback after a root/window change.
-                try:
-                    self.dispatch(self._settled, generation)
-                except RuntimeError:
-                    pass
-
-        try:
-            started = self.frame.run_job(title, perform,
-                done=lambda value: arrived(value), failed=lambda error: arrived(error=error),
-                progress_total=total, progress_unit='files')
-        except Exception as exc:
-            arrived(error=exc)
-            return False
-        if started is False or (self.busy and not getattr(self.frame, 'working', False)
-                                and not self.operation_finished):
-            self.busy, self.kind = False, None
-            self.cancel.set()
-            self.changed()
-            self.report('The local operation did not start.')
-            return False
-        return True
-
-    def stop(self):
-        if not self.busy or self.closed:
-            return
-        self.cancel.set()
-        try:
-            self.request_stop()
-        except Exception as exc:
-            self.report(_error_text(exc))
-        progress = getattr(self.frame, 'operation_progress', None)
-        if progress is not None:
-            progress.request_cancel()
-        self.report('Stopping; waiting for the current worker and file checks to finish.')
-
-    def request_close(self):
-        if self.closed:
+        for control in (jobs, title, model, language, device, words, mixed, sources, text):
+            control.Enable(not busy)
+        for name, button in buttons.items():
+            button.Enable(not busy and (name not in ('run', 'export', 'save') or current is not None))
+        buttons['stop'].Enable(busy)
+        text.Enable(not busy and selected_ready)
+        buttons['save'].Enable(not busy and selected_ready and dirty)
+    def can_replace():
+        nonlocal dirty
+        if not dirty:
             return True
-        self.close_requested = True
-        if self.busy:
-            self.stop()
-            if not self.operation_finished:
-                return False
-        self._close()
-        return True
-
-
-class TranscriptionDialog:
-    def __init__(self, frame, *, service=None):
-        import wx
-        self.wx, self.frame = wx, frame
-        self.root = Path(frame.library.root).absolute()
-        self.service = service or TranscriptionService(self.root)
-        if Path(self.service.library_root).absolute() != self.root:
-            raise ValueError('Transcription must belong to the selected library.')
-        self.sources, self.manifest_path, self.current_job = (), '', None
-        self.definition, self.summary, self.rows = None, None, ()
-        self.pause_requested = False
-        self.dialog = wx.Dialog(frame, title='Local speech transcription', size=(960, 870),
-                                style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
-        self.dialog.SetName('Local speech transcription workspace')
-        self.fields, self.buttons = {}, {}
-        try:
-            self._build()
-            self.session = TranscriptionSession(frame, dispatch=wx.CallAfter, changed=self.controls,
-                report=self.report, close=self._finish_close, request_stop=self._request_stop)
-            self._bind()
-            self.controls()
-        except BaseException:
-            self.dialog.Destroy()
-            raise
-
-    def _build(self):
-        wx, dialog = self.wx, self.dialog
-        layout = wx.BoxSizer(wx.VERTICAL)
-        body = wx.ScrolledWindow(dialog, style=wx.VSCROLL)
-        body.SetScrollRate(0, 12)
-        content = wx.BoxSizer(wx.VERTICAL)
-
-        def text(label, *, value='', readonly=False):
-            content.Add(wx.StaticText(body, label=label), 0, wx.ALL, 4)
-            control = wx.TextCtrl(body, value=value, style=wx.TE_READONLY if readonly else 0)
-            control.SetName(label.replace('&', ''))
-            content.Add(control, 0, wx.EXPAND | wx.ALL, 4)
-            return control
-
-        self.title = text('Job t&itle', value='Local transcription')
-        self.title.SetMaxLength(200)
-        self.manifest = text('Explicitly selected local runtime manifest', readonly=True)
-        self.runtime_identity = text('Prepared runtime identity; exact match required at Start', readonly=True)
-        row = wx.WrapSizer(wx.HORIZONTAL)
-        for name, label in (('files', 'Add audio/video &files...'), ('folder', 'Add fol&der...'),
-                            ('remove', '&Remove selected input'), ('manifest', 'Choose runtime &manifest...')):
-            button = wx.Button(body, label=label)
-            button.SetName(label.replace('&', '').replace('...', ''))
-            self.buttons[name] = button
-            row.Add(button, 0, wx.ALL, 3)
-        content.Add(row, 0, wx.EXPAND)
-        self.source_list = wx.ListBox(body, style=wx.LB_SINGLE, size=(-1, 90))
-        self.source_list.SetName('Selected sources; prepared jobs show retained relative input names')
-        content.Add(self.source_list, 0, wx.EXPAND | wx.ALL, 4)
-        content.Add(wx.StaticText(body, label='Settings are frozen when Prepare succeeds. '
-                    'Translate speech supports English as its explicit target.'), 0, wx.ALL, 4)
-        grid = wx.FlexGridSizer(cols=2, vgap=5, hgap=10)
-        grid.AddGrowableCol(1, 1)
-        for name in DEFAULT_SETTINGS:
-            if type(DEFAULT_SETTINGS[name]) is bool:
-                continue
-            grid.Add(wx.StaticText(body, label=_LABELS[name]), 0, wx.ALIGN_CENTER_VERTICAL)
-            if name in _CHOICES:
-                field = wx.Choice(body, choices=[label for _, label in _CHOICES[name]])
-            elif name in ('beam_size', 'parallel_files'):
-                field = wx.SpinCtrl(body, min=1, max=10 if name == 'beam_size' else 20, initial=1)
-            else:
-                field = wx.TextCtrl(body, value=str(DEFAULT_SETTINGS[name]))
-                field.SetMaxLength(64)
-            field.SetName(_LABELS[name])
-            self.fields[name] = field
-            grid.Add(field, 1, wx.EXPAND)
-        content.Add(grid, 0, wx.EXPAND | wx.ALL, 6)
-        boolean_grid = wx.FlexGridSizer(cols=2, vgap=4, hgap=10)
-        for name in DEFAULT_SETTINGS:
-            if type(DEFAULT_SETTINGS[name]) is not bool:
-                continue
-            field = wx.CheckBox(body, label=_LABELS[name])
-            field.SetName(_LABELS[name])
-            self.fields[name] = field
-            boolean_grid.Add(field, 0, wx.ALL, 2)
-        content.Add(boolean_grid, 0, wx.EXPAND | wx.ALL, 4)
-        body.SetSizer(content)
-        layout.Add(body, 1, wx.EXPAND | wx.ALL, 4)
-        self.jobs_list = wx.ListBox(dialog, style=wx.LB_SINGLE, size=(-1, 70))
-        self.jobs_list.SetName('Saved local transcription jobs')
-        layout.Add(wx.StaticText(dialog, label='Saved jobs; review their frozen settings before starting'), 0, wx.ALL, 3)
-        layout.Add(self.jobs_list, 0, wx.EXPAND | wx.ALL, 3)
-        self.outputs = wx.ListBox(dialog, style=wx.LB_SINGLE, size=(-1, 75))
-        self.outputs.SetName('Outputs accepted after receipt and byte verification')
-        layout.Add(wx.StaticText(dialog, label='Verified outputs'), 0, wx.ALL, 3)
-        layout.Add(self.outputs, 0, wx.EXPAND | wx.ALL, 3)
-        self.status = wx.TextCtrl(dialog, style=wx.TE_MULTILINE | wx.TE_READONLY, size=(-1, 65))
-        self.status.SetName('Transcription operation status and measured progress')
-        layout.Add(self.status, 0, wx.EXPAND | wx.ALL, 4)
-        buttons = wx.WrapSizer(wx.HORIZONTAL)
-        for name, label in (
-                ('new', '&New job'), ('refresh', 'Refresh saved &jobs'), ('load', 'Re&view selected job'),
-                ('prepare', '&Prepare retained inputs'), ('start', '&Start prepared job'),
-                ('pause', 'Pa&use'), ('resume', 'R&esume'), ('stop', 'S&top'),
-                ('verify', 'Verify &outputs'), ('reading', 'Edit reading &copy'), ('close', 'C&lose')):
-            button = wx.Button(dialog, id=wx.ID_CLOSE if name == 'close' else wx.ID_ANY, label=label)
-            button.SetName(label.replace('&', ''))
-            self.buttons[name] = button
-            buttons.Add(button, 0, wx.ALL, 3)
-        layout.Add(buttons, 0, wx.EXPAND | wx.ALL, 3)
-        dialog.SetSizer(layout)
-        dialog.SetEscapeId(wx.ID_CLOSE)
-        apply_settings(self.fields, dict(DEFAULT_SETTINGS))
-
-    def _bind(self):
-        handlers = dict(files=self.add_files, folder=self.add_folder, remove=self.remove_source,
-            manifest=self.choose_manifest, new=self.new, refresh=self.refresh, load=self.load,
-            prepare=self.prepare, start=self.start, pause=self.pause, resume=self.resume,
-            stop=lambda event: self.session.stop(), verify=self.verify, reading=self.reading, close=self.close)
-        for name, handler in handlers.items():
-            self.buttons[name].Bind(self.wx.EVT_BUTTON, handler)
-        self.jobs_list.Bind(self.wx.EVT_LISTBOX, lambda event: self.controls())
-        self.outputs.Bind(self.wx.EVT_LISTBOX, lambda event: self.controls())
-        self.source_list.Bind(self.wx.EVT_LISTBOX, lambda event: self.controls())
-        self.dialog.Bind(self.wx.EVT_CLOSE, self.close)
-        def destroyed(event):
-            if event.GetEventObject() is self.dialog:
-                self.session.closed = True
-                self.session.cancel.set()
-            event.Skip()
-        self.dialog.Bind(self.wx.EVT_WINDOW_DESTROY, destroyed)
-
-    def report(self, message):
-        if not self.session.closed:
-            self.status.ChangeValue(str(message))
-            self.status.SetInsertionPoint(0)
-
-    def controls(self):
-        if self.session.closed:
+        discard = wx.MessageBox('Відкинути незбережені правки поточного тексту? '
+                                'Щоб зберегти їх, оберіть «Ні», потім «Зберегти правки».',
+                                'Незбережені правки', wx.YES_NO | wx.NO_DEFAULT, dialog)
+        if discard == wx.YES:
+            dirty = False
+            return True
+        text.SetFocus()
+        return False
+    def load_source():
+        nonlocal selected_source, selected_ready, dirty
+        index = sources.GetSelection()
+        selected_source = source_rows[index]['filename'] if 0 <= index < len(source_rows) else None
+        selected_ready = False
+        text.ChangeValue('')
+        dirty = False
+        controls()
+        if current and selected_source:
+            job = service.get(current)
+            if any(item['source'] == selected_source and item['format'] == 'txt' for item in job['artifacts']):
+                job_id, source_id = current, selected_source
+                def read_text():
+                    value = service.text(job_id, source_id, cancelled=cancelled)
+                    edits = [item for item in service.edits(job_id) if item['source'] == source_id]
+                    return edits[-1]['text'] if edits else value
+                def loaded(value):
+                    nonlocal selected_ready
+                    if current == job_id and selected_source == source_id:
+                        text.ChangeValue(value)
+                        selected_ready = True
+                        controls()
+                        text.SetFocus()
+                begin('Перевірка й читання транскрипції', read_text, loaded)
+    def load_job():
+        nonlocal current, source_rows
+        index = jobs.GetSelection()
+        current = rows[index]['id'] if 0 <= index < len(rows) else None
+        source_rows = service.get(current)['sources'] if current else []
+        sources.SetItems([item['original_name'] for item in source_rows])
+        if source_rows:
+            sources.SetSelection(0)
+        load_source()
+        if current:
+            job = service.get(current)
+            originals = {item['filename']: item['original_name'] for item in job['sources']}
+            actual = '\n'.join(
+                f"{originals.get(item['source'], item['source'])}: {item['attempt']}; "
+                f"beam={item['settings']['beam_size']}, VAD={item['settings']['vad_filter']}, "
+                f"previous_text={item['settings']['condition_on_previous_text']}"
+                for item in job.get('effective_runs', ()))
+            report(f"{job['title']}: {job['status']}; {job['done']}/{len(job['sources'])}.\n" +
+                   f"Профіль: {job['protocol']}; межа спроб: {job['settings']['max_attempts']}.\n" +
+                   job.get('last_error', '') + ('\nФактичні параметри:\n' + actual if actual else '') +
+                   '\nПравки тексту не змінюють аудіо та початкові часові мітки.')
+    def refresh(select=None):
+        nonlocal rows
+        rows = list(service.list())
+        jobs.SetItems([f"{item['title']} — {item['status']} ({item['done']}/{len(item['sources'])})" for item in rows])
+        if rows:
+            ids = [item['id'] for item in rows]
+            jobs.SetSelection(ids.index(select) if select in ids else 0)
+        load_job()
+    def begin(label, operation, complete, *, allow_dirty=False, on_failed=None):
+        nonlocal busy
+        if busy or (not allow_dirty and not can_replace()):
             return
-        idle = not self.session.busy and self.session.current()
-        editable = idle and self.current_job is None
-        self.title.Enable(editable)
-        for field in self.fields.values():
-            field.Enable(editable)
-        for name in ('files', 'folder'):
-            self.buttons[name].Enable(editable)
-        self.buttons['remove'].Enable(editable and self.source_list.GetSelection() >= 0)
-        self.buttons['manifest'].Enable(idle)
-        for name in ('new', 'refresh'):
-            self.buttons[name].Enable(idle)
-        self.jobs_list.Enable(idle)
-        self.buttons['load'].Enable(idle and self.jobs_list.GetSelection() >= 0)
-        self.buttons['prepare'].Enable(editable and bool(self.sources) and bool(self.manifest_path))
-        self.buttons['start'].Enable(idle and self.current_job is not None and bool(self.manifest_path))
-        self.buttons['verify'].Enable(idle and self.current_job is not None)
-        self.buttons['reading'].Enable(idle and self.summary is not None and self.outputs.GetSelection() >= 0)
-        running = self.session.busy and self.session.kind == 'run' and not self.session.cancel.is_set()
-        self.buttons['pause'].Enable(running and not self.pause_requested)
-        self.buttons['resume'].Enable(running and self.pause_requested)
-        self.buttons['stop'].Enable(self.session.busy and not self.session.cancel.is_set())
-
-    def add_paths(self, paths):
-        self.session.guard()
-        if self.session.busy or self.current_job is not None:
-            raise ValueError('Choose New job before changing prepared inputs.')
-        chosen = tuple(str(Path(path).absolute()) for path in paths)
-        if len(self.sources) + len(chosen) > 1000:
-            raise ValueError('Choose no more than 1,000 file or folder selections.')
-        self.sources += tuple(path for path in chosen if path not in self.sources)
-        self.source_list.SetItems(list(self.sources))
-        self.controls()
-
-    def add_files(self, event=None):
-        picker = self.wx.FileDialog(self.dialog, 'Choose local audio or video inputs',
-            wildcard='Audio/video files|*.wav;*.mp3;*.m4a;*.mp4;*.flac;*.ogg;*.opus;*.aac;*.wma;*.webm;*.mkv;*.3gp;*.amr;*.m4b|All files (*.*)|*.*',
-            style=self.wx.FD_OPEN | self.wx.FD_FILE_MUST_EXIST | self.wx.FD_MULTIPLE)
-        try:
-            if picker.ShowModal() == self.wx.ID_OK:
-                self.add_paths(picker.GetPaths())
-        except Exception as exc:
-            self.report(_error_text(exc))
-        finally:
-            picker.Destroy()
-
-    def add_folder(self, event=None):
-        picker = self.wx.DirDialog(self.dialog, 'Choose an explicit folder of local audio or video',
-                                   style=self.wx.DD_DEFAULT_STYLE | self.wx.DD_DIR_MUST_EXIST)
-        try:
-            if picker.ShowModal() == self.wx.ID_OK:
-                self.add_paths((picker.GetPath(),))
-        except Exception as exc:
-            self.report(_error_text(exc))
-        finally:
-            picker.Destroy()
-
-    def remove_source(self, event=None):
-        if self.session.busy or self.current_job is not None:
+        if getattr(frame, 'working', False) or getattr(frame, '_closing', False):
+            report('Спочатку завершіть поточну операцію програми.')
             return
-        index = self.source_list.GetSelection()
-        if 0 <= index < len(self.sources):
-            self.sources = self.sources[:index] + self.sources[index + 1:]
-            self.source_list.SetItems(list(self.sources))
-            self.controls()
-
-    def choose_manifest(self, event=None):
-        if self.session.busy:
-            return
-        picker = self.wx.FileDialog(self.dialog, 'Choose the reviewed local transcription runtime manifest',
-            wildcard='Runtime manifest (*.json)|*.json', style=self.wx.FD_OPEN | self.wx.FD_FILE_MUST_EXIST)
-        try:
-            if picker.ShowModal() == self.wx.ID_OK:
-                self.session.guard()
-                self.manifest_path = picker.GetPath()
-                self.manifest.ChangeValue(self.manifest_path)
-                self.controls()
-                self.report('Selected a local manifest. Its entire inventory and exact job identity are checked before execution.')
-        except Exception as exc:
-            self.report(_error_text(exc))
-        finally:
-            picker.Destroy()
-
-    def _selected_definition(self, identity, definition):
-        self.session.guard()
-        self.current_job, self.definition, self.summary = identity, definition, None
-        self.outputs.SetItems([])
-        self.title.ChangeValue(definition['title'])
-        apply_settings(self.fields, definition['settings'])
-        self.runtime_identity.ChangeValue(definition['runtime_manifest_sha256'])
-        self.source_list.SetItems([row.get('path', row['relative']) + ' — ' + str(row['bytes']) + ' bytes'
-                                   for row in definition['inputs']])
-        self.controls()
-        self.report('Prepared job: ' + str(len(definition['inputs'])) +
-                    ' retained inputs. Settings are read-only. Start verifies the explicitly selected runtime.')
-
-    def new(self, event=None):
-        if self.session.busy:
-            return
-        self.session.guard()
-        self.current_job = self.definition = self.summary = None
-        self.sources, self.manifest_path, self.pause_requested = (), '', False
-        self.title.ChangeValue('Local transcription')
-        self.manifest.ChangeValue('')
-        self.runtime_identity.ChangeValue('')
-        self.source_list.SetItems([])
-        self.outputs.SetItems([])
-        apply_settings(self.fields, dict(DEFAULT_SETTINGS))
-        self.controls()
-        self.report('Choose inputs, a reviewed local runtime and settings, then Prepare. No worker has started.')
-
-    def refresh(self, event=None):
-        def loaded(rows):
-            self.rows = tuple(rows)
-            self.jobs_list.SetItems([row['title'] + ' — ' + str(row['inputs']) + ' retained inputs — ' + row['id'][:8]
-                                     for row in self.rows])
-            self.controls()
-            self.report(str(len(rows)) + ' saved local jobs. Select a job and review its frozen settings.')
-        self.session.submit('Reading saved transcription jobs',
-            lambda: self.service.jobs(cancelled=self.session.stopped), loaded, kind='list')
-
-    def load(self, event=None):
-        index = self.jobs_list.GetSelection()
-        if not 0 <= index < len(self.rows):
-            self.report('Select a saved job first.')
-            return
-        identity = self.rows[index]['id']
-        self.session.submit('Reviewing prepared transcription',
-            lambda: self.service.definition(identity, verify_inputs=False, cancelled=self.session.stopped),
-            lambda definition: self._selected_definition(identity, definition), kind='review')
-
-    def prepare(self, event=None):
-        try:
-            if self.current_job is not None:
-                raise ValueError('Choose New job before changing a prepared request.')
-            settings = settings_from_controls(self.fields)
-            sources, manifest, title = tuple(self.sources), self.manifest_path, self.title.GetValue()
-            if not title.strip() or len(title) > 200 or any(ord(char) < 32 for char in title):
-                raise ValueError('Enter a nonempty job title of at most 200 characters.')
-            if not sources or not manifest:
-                raise ValueError('Choose explicit inputs and a reviewed local runtime first.')
-            def work():
-                identity = self.service.prepare(sources, manifest, settings, title=title,
-                                                cancelled=self.session.stopped)
-                return identity, self.service.definition(identity, verify_inputs=False,
-                                                          cancelled=self.session.stopped)
-            self.session.submit('Retaining selected transcription inputs', work,
-                lambda result: self._selected_definition(*result), kind='prepare')
-        except Exception as exc:
-            self.report(_error_text(exc))
-
-    def _verified(self, summary):
-        self.summary = summary
-        self.outputs.SetItems([row['path'] + ' — ' + row['format'].upper() + ' — ' +
-                              str(row['bytes']) + ' bytes' for row in summary['outputs']])
-        if summary['outputs']:
-            self.outputs.SetSelection(0)
-        self.controls()
-        notice = (' Historical results remain available; Start requires a newly checked local runtime.'
-                  if summary.get('historical') else '')
-        self.report('Verified ' + str(summary['output_count']) + ' outputs for ' +
-                    str(summary['input_count']) + ' retained inputs. Reading copies preserve these originals.' + notice)
-
-    def start(self, event=None):
-        try:
-            if self.current_job is None or not self.manifest_path:
-                raise ValueError('Review a prepared job and explicitly choose its runtime manifest.')
-            identity, manifest = self.current_job, self.manifest_path
-            self.summary, self.pause_requested = None, False
-            self.outputs.SetItems([])
-            def run():
-                progress = getattr(self.frame, 'operation_progress', None)
-                event = getattr(progress, 'event', None)
-                token = getattr(event, 'token', None)
-                generation = self.session.generation
-                def advanced(done, total, phase):
-                    if progress is not None:
-                        progress.update(done, total, phase, token=token)
-                    self.wx.CallAfter(self._progress, generation, done, total, phase)
-                return self.service.run(identity, manifest, cancelled=self.session.stopped, progress=advanced)
-            self.session.submit('Running reviewed local transcription', run, self._verified,
-                kind='run', total=len(self.definition['inputs']))
-        except Exception as exc:
-            self.report(_error_text(exc))
-
-    def _progress(self, generation, done, total, phase):
-        if (not self.session.closed and self.session.current()
-                and self.session.busy and generation == self.session.generation):
-            self.report(str(done) + '/' + str(total) + ' files: ' + str(phase))
-
-    def _request_stop(self):
-        if self.session.kind == 'run' and self.current_job is not None:
-            self.service.control(self.current_job, 'stop')
-        self.controls()
-
-    def pause(self, event=None):
-        if self.session.busy and self.session.kind == 'run' and not self.session.cancel.is_set():
+        busy = True
+        cancel.clear()
+        controls()
+        def done(result):
+            nonlocal busy
+            busy = False
             try:
-                self.service.control(self.current_job, 'pause')
-                self.pause_requested = True
-                self.controls()
-                self.report('Pause requested. Progress will report when the worker reaches its checkpoint.')
-            except Exception as exc:
-                self.report(_error_text(exc))
-
-    def resume(self, event=None):
-        if self.session.busy and self.session.kind == 'run' and not self.session.cancel.is_set():
+                controls()
+                if alive:
+                    complete(result)
+                elif on_failed is not None:
+                    on_failed(RuntimeError('The transcription editor closed before save completion.'))
+            except (ValueError, OSError, RuntimeError) as exc:
+                try:
+                    report(exc)
+                finally:
+                    if on_failed is not None:
+                        on_failed(exc)
+        def failed(error):
+            nonlocal busy
+            busy = False
             try:
-                self.service.control(self.current_job, 'resume')
-                self.pause_requested = False
-                self.controls()
-                self.report('Resume requested for this running job.')
-            except Exception as exc:
-                self.report(_error_text(exc))
-
-    def verify(self, event=None):
-        if self.current_job is None:
-            return
-        identity = self.current_job
-        self.summary = None
-        self.outputs.SetItems([])
-        self.session.submit('Verifying completed transcription outputs',
-            lambda: self.service.completed(identity, cancelled=self.session.stopped), self._verified, kind='verify')
-
-    def reading(self, event=None):
-        index = self.outputs.GetSelection()
-        if self.current_job is None or self.summary is None or not 0 <= index < len(self.summary['outputs']):
-            self.report('Verify and select one output first.')
-            return
-        identity, relative = self.current_job, self.summary['outputs'][index]['path']
-        def open_copy(project):
-            from ..reader.narration import NarrationStore
-            from .narration_editor import open_narration_editor
-            self.session.guard()
-            open_narration_editor(self.dialog, NarrationStore(self.root), project, guard=self.session.guard)
-        self.session.submit('Opening a verified transcript as a reading copy',
-            lambda: self.service.reading_copy(identity, relative, cancelled=self.session.stopped),
-            open_copy, kind='reading')
-
-    def close(self, event=None):
-        finished = self.session.request_close()
-        if not finished and event is not None and callable(getattr(event, 'CanVeto', None)) and event.CanVeto():
-            event.Veto()
-
-    def _finish_close(self):
-        if self.dialog.IsModal():
-            self.dialog.EndModal(self.wx.ID_CLOSE)
-
-    def show(self, *, on_ready=None):
-        self.report('Local processing only. Prepare retains selected inputs; Start is a separate reviewed action. '
-                    'No runtime, model, provider or language is downloaded automatically.')
-        self.wx.CallAfter(self.refresh)
-        if on_ready is not None:
-            self.wx.CallAfter(on_ready, self)
+                controls()
+                report(error)
+            finally:
+                if on_failed is not None:
+                    on_failed(error)
+        # The desktop runner binds one shared reporter. The service's existing
+        # current_progress callback updates it; this dialog creates no second task.
         try:
-            return self.dialog.ShowModal()
-        finally:
-            self.session.closed = True
-            self.session.cancel.set()
-            self.dialog.Destroy()
-
-
-def show_transcription(frame, *, service=None, on_ready=None):
-    return TranscriptionDialog(frame, service=service).show(on_ready=on_ready)
+            accepted = frame.run_job(label, operation, done=done, failed=failed,
+                                     progress_unit='files')
+        except Exception as error:
+            failed(error)
+            return False
+        if accepted is False:
+            if busy:
+                failed(RuntimeError('The transcription operation did not start.'))
+            return False
+        # This host returns None on both accepted work and a synchronous submit
+        # failure. The actual callback owns busy/terminal state.
+        return busy
+    def cancelled():
+        return cancel.is_set() or frame.cancel_event.is_set()
+    def configure(event):
+        try:
+            from ..transcription import PROTOCOLS
+            with wx.SingleChoiceDialog(dialog,
+                    'Оберіть контракт саме встановленого worker.py. V5 потребує також local_models.py і transcript_features.py; '
+                    'виконує до трьох спроб зі збереженням мови. Старі завдання зберігають свій профіль.',
+                    'Профіль локального Whisper',
+                    ['receipts-v1 — worker із квитанціями результатів',
+                     'whisper-v5-manifest-v1 — виправлений приватний V5']) as chooser:
+                chooser.SetSelection(PROTOCOLS.index(protocol))
+                if chooser.ShowModal() != wx.ID_OK:
+                    return
+                chosen_protocol = PROTOCOLS[chooser.GetSelection()]
+            with wx.FileDialog(dialog, 'Оберіть Python локального Whisper', style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as chooser:
+                if chooser.ShowModal() != wx.ID_OK:
+                    return
+                python = chooser.GetPath()
+            with wx.FileDialog(dialog, 'Оберіть перевірений worker.py', wildcard='Python (*.py)|*.py',
+                               style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as chooser:
+                if chooser.ShowModal() != wx.ID_OK:
+                    return
+                worker = chooser.GetPath()
+            with wx.DirDialog(dialog, 'Оберіть папку вже встановлених моделей', style=wx.DD_DIR_MUST_EXIST) as chooser:
+                if chooser.ShowModal() != wx.ID_OK:
+                    return
+                models_dir = chooser.GetPath()
+            def configured(value):
+                nonlocal protocol
+                protocol = value['protocol']
+                report('Профіль підключено: ' + value['protocol'] + '. ' + value.get('retry_policy', '') +
+                       ' Якість моделі ще не підтверджена фактичним розпізнаванням.')
+            begin('Підключення локального Whisper',
+                  lambda: service.configure(python, worker, models_dir, protocol=chosen_protocol), configured)
+        except (ValueError, OSError, RuntimeError) as exc:
+            report(exc)
+    def create_selected(selected, *, folder=False):
+        options = {'model': model.GetValue().strip(), 'language': language.GetValue().strip(),
+                   'word_timestamps': words.GetValue(), 'multilingual': mixed.GetValue(),
+                   'device': 'cuda' if device.GetSelection() == 1 else 'cpu',
+                   'compute_type': 'float16' if device.GetSelection() == 1 else 'int8'}
+        job_title = title.GetValue()
+        if folder:
+            def created(result):
+                refresh(result['id'])
+                report(f"Збережено записів: {result['files']}. Непідтримуваних файлів пропущено: "
+                       f"{result['excluded_files']}. Підпапки включено. Завдання готове до запуску.")
+            begin('Перевірка папки й збереження оригінальних записів',
+                  lambda: service.submit_folder(selected, title=job_title, options=options,
+                      protocol=protocol, cancelled=cancelled),
+                  created)
+        else:
+            begin('Збереження оригінальних записів',
+                  lambda: service.submit(selected, title=job_title, options=options,
+                      protocol=protocol, cancelled=cancelled),
+                  lambda identity: refresh(identity))
+    def create(event):
+        if not can_replace():
+            return
+        try:
+            with wx.FileDialog(dialog, 'Оберіть аудіо або відео', style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST | wx.FD_MULTIPLE) as chooser:
+                if chooser.ShowModal() != wx.ID_OK:
+                    return
+                selected = chooser.GetPaths()
+            create_selected(selected)
+        except (ValueError, OSError, RuntimeError) as exc:
+            report(exc)
+    def create_folder(event):
+        if not can_replace():
+            return
+        try:
+            with wx.DirDialog(dialog, 'Оберіть папку аудіо або відео; підпапки буде включено',
+                              style=wx.DD_DIR_MUST_EXIST) as chooser:
+                if chooser.ShowModal() != wx.ID_OK:
+                    return
+                selected = chooser.GetPath()
+            create_selected(selected, folder=True)
+        except (ValueError, OSError, RuntimeError) as exc:
+            report(exc)
+    def run(event):
+        identity = current
+        if identity is None:
+            report('Спочатку додайте записи або оберіть збережене завдання.')
+            return
+        def operation():
+            from ..progress import current_progress
+            progress = current_progress()
+            def advanced(done, total, phase):
+                if progress is not None:
+                    from ..transcription_host import report_progress
+                    report_progress(progress, done, total, phase)
+                wx.CallAfter(report, f'{done}/{total}: {phase}. Кількість файлів повідомляє рушій; '
+                            'підтверджені результати показані у стані завдання.')
+            from ..transcription_host import require_completed
+            return require_completed(service.run(identity, cancelled=cancelled, progress=advanced))
+        begin('Локальна транскрипція Whisper', operation, lambda result: refresh(identity))
+    def save(event=None, *, completed=None):
+        replied = False
+        def finish(saved, message=''):
+            nonlocal replied
+            if replied:
+                return
+            replied = True
+            if completed is not None:
+                completed(SaveResult(saved, message))
+        if not alive or current is None or selected_source is None or not selected_ready:
+            finish(False, 'The transcript is not ready for saving; the draft is retained.')
+            return
+        if busy or getattr(frame, 'working', False) or getattr(frame, '_closing', False):
+            message = 'Finish the current operation before saving transcript edits; the draft is retained.'
+            report(message)
+            finish(False, message)
+            return
+        if not dirty:
+            finish(True)
+            return
+        identity, source_id, value = current, selected_source, text.GetValue()
+        def saved(revision):
+            nonlocal dirty
+            same_draft = (alive and current == identity and selected_source == source_id
+                          and text.GetValue() == value)
+            if same_draft:
+                dirty = False
+            # A real service revision is durable before this callback. A newer
+            # editor value remains dirty and cannot complete Save All or close.
+            try:
+                controls()
+                report('Правки збережено окремою версією: ' + revision +
+                       '. Початкове розпізнавання та аудіо залишилися незмінними.' +
+                       ('' if same_draft else ' Новіші правки залишаються незбереженими.'))
+            finally:
+                finish(same_draft, '' if same_draft else 'Newer transcript edits are retained.')
+        accepted = begin('Збереження правок транскрипції',
+              lambda: service.save_edit(identity, source_id, value, cancelled=cancelled),
+              saved, allow_dirty=True, on_failed=lambda error: finish(False, str(error)))
+        if not accepted:
+            finish(False, 'The transcript save did not start; the draft is retained.')
+    def save_all(event=None):
+        if not coordinator.save_all(lambda summary: report(summary.message())):
+            report('Save All is already waiting for the current saves.')
+    def export(event):
+        if current is None or not can_replace():
+            return
+        identity = current
+        try:
+            with wx.DirDialog(dialog, 'Оберіть батьківську папку експорту', style=wx.DD_DIR_MUST_EXIST) as chooser:
+                if chooser.ShowModal() != wx.ID_OK:
+                    return
+                parent = Path(chooser.GetPath())
+            with wx.TextEntryDialog(dialog, 'Назва нової папки', 'Експорт транскрипції',
+                                    'transcription-' + identity[:8]) as chooser:
+                if chooser.ShowModal() != wx.ID_OK:
+                    return
+                name = chooser.GetValue().strip()
+            from ..backup_files import portable_relative as relative_name
+            if len(relative_name(name).parts) != 1:
+                raise ValueError('Вкажіть лише назву нової папки.')
+            begin('Експорт транскрипції', lambda: service.export(identity, parent / name, cancelled=cancelled),
+                  lambda path: report('Експорт завершено: ' + str(path)))
+        except (ValueError, OSError, RuntimeError) as exc:
+            report(exc)
+    def changed(event):
+        nonlocal dirty
+        dirty = True
+        controls()
+        event.Skip()
+    def select_job(event):
+        if not can_replace():
+            ids = [item['id'] for item in rows]
+            if current in ids:
+                jobs.SetSelection(ids.index(current))
+            return
+        try:
+            load_job()
+        except (ValueError, OSError, RuntimeError) as exc:
+            report(exc)
+    def select_source(event):
+        if not can_replace():
+            ids = [item['filename'] for item in source_rows]
+            if selected_source in ids:
+                sources.SetSelection(ids.index(selected_source))
+            return
+        try:
+            load_source()
+        except (ValueError, OSError, RuntimeError) as exc:
+            report(exc)
+    def update_jobs(event):
+        if can_replace():
+            try:
+                refresh(current)
+            except (ValueError, OSError, RuntimeError) as exc:
+                report(exc)
+    def close(event=None):
+        nonlocal alive
+        if defer_close(dialog, coordinator, close=close, report=report,
+                       alive=lambda: alive, post=wx.CallAfter, event=event):
+            return
+        if busy:
+            cancel.set()
+            report('Зупиняю поточне завдання. Після зупинки вікно можна закрити.')
+            if hasattr(event, 'CanVeto') and event.CanVeto():
+                event.Veto()
+            return
+        if not can_replace():
+            if hasattr(event, 'CanVeto') and event.CanVeto():
+                event.Veto()
+            return
+        alive = False
+        unregister_save()
+        dialog.EndModal(wx.ID_CLOSE)
+    for name, handler in [('configure', configure), ('create', create), ('folder', create_folder),
+                          ('run', run), ('save', save),
+                          ('export', export), ('refresh', update_jobs), ('close', close)]:
+        buttons[name].Bind(wx.EVT_BUTTON, handler)
+    buttons['stop'].Bind(wx.EVT_BUTTON, lambda event: cancel.set())
+    save_all_button.Bind(wx.EVT_BUTTON, save_all)
+    jobs.Bind(wx.EVT_CHOICE, select_job)
+    sources.Bind(wx.EVT_CHOICE, select_source)
+    text.Bind(wx.EVT_TEXT, changed)
+    dialog.Bind(wx.EVT_CLOSE, close)
+    unregister_save = coordinator.register(
+        'transcription.' + str(id(dialog)), 'Transcript edits',
+        dirty=lambda: alive and dirty, save=lambda completed: save(completed=completed),
+        focus=text.SetFocus)
+    try:
+        refresh()
+        controls()
+        jobs.SetFocus()
+        dialog.ShowModal()
+    finally:
+        alive = False
+        unregister_save()
+        cancel.set()
+        dialog.Destroy()
 
 
 class TranscriptionActions:
@@ -598,11 +471,14 @@ class TranscriptionActions:
         self.frame = frame
 
     def open(self, event=None):
-        return show_transcription(self.frame)
+        try:
+            show_transcription(self.frame)
+        except (ValueError, OSError, RuntimeError) as exc:
+            self.frame.report(str(exc))
 
 
 def install_transcription_actions(frame):
-    """Use the shared keyboard registry; installation is idempotent."""
+    """Register the same semantic command before or after keyboard setup."""
     import wx
     from .command_registry import CommandSpec
     from .keyboard_settings import register_menu_command
@@ -610,12 +486,13 @@ def install_transcription_actions(frame):
     if existing is not None:
         return existing
     menu = next((frame.menu_bar.GetMenu(index) for index in range(frame.menu_bar.GetMenuCount())
-                 if frame.menu_bar.GetMenuLabel(index).replace('&', '').casefold() == 'tools'), None)
+                 if frame.menu_bar.GetMenuLabel(index).replace('&', '').casefold() == 'file'), None)
     if menu is None:
-        raise ValueError('Install the shared Tools menu before local transcription.')
+        raise ValueError('Install the shared File menu before transcription actions.')
     actions = TranscriptionActions(frame)
-    item = menu.Append(wx.ID_ANY, 'Local speech &transcription...')
+    item = menu.Append(wx.ID_ANY, 'Transcription: local audio and video...')
     frame.Bind(wx.EVT_MENU, actions.open, item)
-    register_menu_command(frame, CommandSpec('transcription.local', 'Local speech transcription', 'main'), item)
+    register_menu_command(frame,
+        CommandSpec('transcription.local', 'Transcription: local audio and video', 'main'), item)
     frame.transcription_actions = actions
     return actions

@@ -431,17 +431,21 @@ def test_final_new_destination_publication_never_overwrites_a_late_writer(
 
 
 @pytest.mark.parametrize('name', ['CON.json', 'project.json:stream', 'project.json.'])
-def test_new_studio_file_keeps_export_filename_guards(controller, tmp_path, name):
+@pytest.mark.parametrize('operation', ['save', 'export_reading_copy'])
+def test_new_studio_file_keeps_export_filename_guards(controller, tmp_path, monkeypatch, name, operation):
     controller.new('Source')
-    # Windows device aliases exist without a directory entry or created file.
+    selected = tmp_path / name
     before = set(tmp_path.iterdir())
-    existed = (tmp_path / name).exists()
+    original_exists = Path.exists
+    def no_destination_probe(path):
+        assert path != selected, 'Reject device aliases before probing or reading the destination.'
+        return original_exists(path)
+    monkeypatch.setattr(Path, 'exists', no_destination_probe)
     with pytest.raises(ValueError, match='filename'):
-        controller.save(tmp_path / name)
+        getattr(controller, operation)(selected)
     assert controller.project_path is None
+    # CON exists as a device alias on Windows even when no file was created.
     assert set(tmp_path.iterdir()) == before
-    assert (tmp_path / name).exists() == existed
-
 
 def _destination_dialog(controller, destination):
     """Exercise the real handlers with only native picker/message adapters."""
@@ -606,3 +610,132 @@ def test_studio_picker_only_selects_path_before_separate_replacement_question(
     dialog = SimpleNamespace(wx=wx, dialog=object())
     assert AudioStudioDialog._file(dialog, 'Choose destination', save=save, text=text) == selected
     assert seen[0]['style'] == expected_style and destroyed == [True]
+
+
+def _studio_executor_probe():
+    """Use the real Studio job method and executor with explicit window boundaries."""
+    from concurrent.futures import ThreadPoolExecutor
+    from contextlib import nullcontext
+    from queue import Queue
+    import threading
+    from unittest.mock import Mock
+    from carr_library.ui.audio_studio import AudioStudioDialog
+
+    class Control:
+        def __init__(self, enabled=True):
+            self.enabled = enabled
+        def Disable(self):
+            self.enabled = False
+        def Enable(self, enabled=True):
+            self.enabled = enabled
+
+    dialog = object.__new__(AudioStudioDialog)
+    dialog.busy = dialog.closed = dialog.close_pending = False
+    dialog.cancelled = threading.Event()
+    dialog.controls = [Control(), Control(False)]
+    dialog.windows_playback_controls = [dialog.controls[1]]
+    dialog.cancel_button = Control(False)
+    dialog.playback = SimpleNamespace(native=None, stop=lambda: None)
+    dialog.executor = ThreadPoolExecutor(max_workers=1)
+    callbacks, errors, messages = Queue(), [], []
+    dialog.wx = SimpleNamespace(CallAfter=callbacks.put)
+    dialog._error, dialog._message = errors.append, messages.append
+    dialog.operation_progress = SimpleNamespace(
+        start=Mock(return_value=SimpleNamespace(token='synthetic-operation')),
+        bind=Mock(side_effect=lambda token: nullcontext()),
+        finish_result=Mock(), tick=Mock(), fail=Mock(), cancel=Mock())
+    return dialog, callbacks, errors
+
+
+def _assert_studio_controls_released(dialog):
+    assert not dialog.busy
+    assert dialog.controls[0].enabled
+    assert not dialog.controls[1].enabled  # Windows-only controls remain unavailable here.
+    assert not dialog.cancel_button.enabled
+
+
+@pytest.mark.parametrize('boundary', ['start', 'finish_result', 'tick'])
+def test_studio_observer_failure_does_not_lose_or_retry_a_real_committed_result(tmp_path, boundary):
+    import os
+    import threading
+    from unittest.mock import Mock
+
+    dialog, callbacks, errors = _studio_executor_probe()
+    observer = dialog.operation_progress
+    getattr(observer, boundary).side_effect = RuntimeError('Synthetic detached progress observer')
+    target = tmp_path / 'committed-result.txt'
+    result = {'state': 'complete', 'output': str(target)}
+    calls, main_thread = [], threading.get_ident()
+
+    def publish():
+        calls.append(threading.get_ident())
+        with target.open('x', encoding='utf-8') as stream:
+            stream.write('Durable synthetic Studio result\n')
+            stream.flush()
+            os.fsync(stream.fileno())
+        return result
+
+    done = Mock()
+    try:
+        dialog._run('Save actual result', publish, done)
+        assert dialog.busy
+        callback = callbacks.get(timeout=10)
+        assert target.read_text(encoding='utf-8') == 'Durable synthetic Studio result\n'
+        callback()
+        assert len(calls) == 1 and calls[0] != main_thread
+        done.assert_called_once_with(result)
+        assert errors == [] and callbacks.empty()
+        observer.fail.assert_not_called()
+        observer.cancel.assert_not_called()
+        _assert_studio_controls_released(dialog)
+    finally:
+        dialog.executor.shutdown(wait=True, cancel_futures=True)
+
+
+def test_studio_real_executor_rejection_restores_controls_and_preserves_admission_error(tmp_path):
+    from unittest.mock import Mock
+
+    dialog, callbacks, errors = _studio_executor_probe()
+    dialog.executor.shutdown(wait=True)
+    dialog.operation_progress.fail.side_effect = ValueError('Secondary observer failure')
+    operation, done = Mock(), Mock()
+    dialog._run('Rejected submission', operation, done)
+    assert len(errors) == 1 and isinstance(errors[0], RuntimeError)
+    assert 'cannot schedule new futures' in str(errors[0])
+    assert not callbacks.qsize()
+    operation.assert_not_called()
+    done.assert_not_called()
+    _assert_studio_controls_released(dialog)
+    assert not list(tmp_path.iterdir())
+
+
+@pytest.mark.parametrize('failure', [RuntimeError, InterruptedError], ids=['service-failure', 'cancelled'])
+def test_studio_failure_observer_cannot_replace_the_real_worker_error(tmp_path, failure):
+    import os
+    from unittest.mock import Mock
+
+    dialog, callbacks, errors = _studio_executor_probe()
+    original = failure('Original synthetic worker outcome')
+    observer = dialog.operation_progress
+    observer.fail.side_effect = ValueError('Secondary failure observer')
+    observer.cancel.side_effect = ValueError('Secondary cancellation observer')
+    target = tmp_path / 'retained-checkpoint.txt'
+    calls = []
+    def stopped():
+        calls.append(True)
+        with target.open('x', encoding='utf-8') as stream:
+            stream.write('Retained synthetic checkpoint\n')
+            stream.flush()
+            os.fsync(stream.fileno())
+        raise original
+
+    done = Mock()
+    try:
+        dialog._run('Checkpoint before stopping', stopped, done)
+        callbacks.get(timeout=10)()
+        assert calls == [True] and errors == [original]
+        assert target.read_text(encoding='utf-8') == 'Retained synthetic checkpoint\n'
+        done.assert_not_called()
+        _assert_studio_controls_released(dialog)
+    finally:
+        dialog.executor.shutdown(wait=True, cancel_futures=True)

@@ -60,7 +60,7 @@ def _manifest(path, digest):
     if (not isinstance(value, dict) or set(value) != fields
             or type(value['version']) is not int or value['version'] not in (3, 4)
             or value['kind'] != 'carr-library'
-            or type(value['schema_version']) is not int or value['schema_version'] not in (3, 4)
+            or type(value['schema_version']) is not int or value['schema_version'] not in (3, 4, 5)
             or type(value['generated_audio_included']) is not bool):
         raise ValueError('Unsupported historical state manifest.')
     validate_state(value['state'])

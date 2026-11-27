@@ -489,6 +489,7 @@ class StudioController:
 
     def export_reading_copy(self, path, *, overwrite=False, approval=None):
         selected = _local_path(path, 'reading-copy filename')
+        _filename(selected.name)
         self._protect_original(selected)
         if approval is None:
             approval = capture_export_destination(selected, private_root=self.private_root)
@@ -541,7 +542,7 @@ class AudioStudioDialog:
         self.busy = self.closed = self.close_pending = False
         self.editing_dirty = False
         self._script_dirty = False
-        self.playback = LocalPlayback()
+        self.playback = LocalPlayback(progress_hub=getattr(parent, 'progress_hub', None))
         from .operation_progress import operation_progress_for
         self.operation_progress = operation_progress_for(parent)
         self._content_request = None
@@ -849,7 +850,24 @@ class AudioStudioDialog:
         self.cancel_button.Enable()
         self._message(label)
         progress = getattr(self, 'operation_progress', None)
-        token = progress.start(label, unit='steps').token if progress is not None else None
+        token = None
+        try:
+            if progress is not None:
+                token = progress.start(label, unit='steps').token
+        except Exception:
+            # Progress observes the operation; a detached observer cannot reject it.
+            progress = None
+
+        def report_failure(error):
+            if progress is not None:
+                try:
+                    if isinstance(error, InterruptedError):
+                        progress.cancel(str(error), token=token)
+                    else:
+                        progress.fail(error, token=token)
+                except Exception:
+                    pass  # Keep the original admission, service or callback error.
+
         def observed_action():
             if progress is None:
                 return action()
@@ -862,8 +880,7 @@ class AudioStudioDialog:
             for control in self.controls:
                 control.Enable(self.playback.native is not None or control not in self.windows_playback_controls)
             self.cancel_button.Disable()
-            if progress is not None:
-                progress.fail(exc, token=token)
+            report_failure(exc)
             self._error(exc)
             return
 
@@ -878,15 +895,14 @@ class AudioStudioDialog:
                 try:
                     result = completed.result()
                     if progress is not None:
-                        progress.finish_result(result, cancelled=self.cancelled.is_set(), token=token)
-                        progress.tick()
+                        try:
+                            progress.finish_result(result, cancelled=self.cancelled.is_set(), token=token)
+                            progress.tick()
+                        except Exception:
+                            pass  # A returned durable result still reaches its owner once.
                     done(result)
                 except Exception as exc:
-                    if progress is not None:
-                        if isinstance(exc, InterruptedError):
-                            progress.cancel(str(exc), token=token)
-                        else:
-                            progress.fail(exc, token=token)
+                    report_failure(exc)
                     self._error(exc)
                 if self.close_pending:
                     self.close_pending = False

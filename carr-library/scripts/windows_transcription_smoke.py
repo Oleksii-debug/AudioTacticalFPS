@@ -1,246 +1,211 @@
-"""Actual installed Windows transcription controls; no inference qualification.
-
-The native UI is driven with a synthetic in-memory service so this probe never
-loads the supplied private worker, private recordings, or model assets. Real
-receipt bytes and supervised child processes have separate contract tests.
-"""
-from argparse import ArgumentParser
-from concurrent.futures import ThreadPoolExecutor
+"""Real wx controls and shared child-process flow; synthetic ASR protocol only."""
+import importlib.util
 import json
-import os
 from pathlib import Path
+import sys
 from tempfile import TemporaryDirectory
-from threading import Event, Thread
-from time import monotonic
+import time
 import traceback
+import wave
+from unittest.mock import patch
 
+import wx
 
-def run_native():
-    from carr_library.native_runtime import activate_bundled_runtime
-    native_handle = activate_bundled_runtime()
-    import wx
-    from carr_library.ui import transcription_dialog as ui
-    from carr_library.transcription_receipt import validate_settings
+from carr_library.application import LibraryApp
+from carr_library.ui.desktop_app import DesktopFrame
+from carr_library.ui.transcription_dialog import show_transcription
 
-    checks, errors, timers = [], [], []
-    settled = Event()
-    def watchdog():
-        if not settled.wait(45):
-            print('FAIL: native transcription controls exceeded the watchdog', flush=True)
-            os._exit(124)
-    Thread(target=watchdog, daemon=True).start()
-
-    def check(label, condition):
-        if not condition:
-            raise AssertionError(label)
-        checks.append(label)
-        print('PASS:', label, flush=True)
-
-    class App(wx.App):
-        def OnExceptionInMainLoop(self):
-            errors.append(traceback.format_exc())
-            for window in wx.GetTopLevelWindows():
-                if isinstance(window, wx.Dialog) and window.IsModal():
-                    window.EndModal(wx.ID_CANCEL)
-            return False
-
-    app = App(False)
-    event_loop = wx.GUIEventLoop()
-    activation = wx.EventLoopActivator(event_loop)
-    check('actual Windows wx controls', wx.Platform == '__WXMSW__')
-    check('transcription UI loaded from installed package',
-          'site-packages' in [part.casefold() for part in Path(ui.__file__).parts])
-
-    class FixtureService:
-        """Only the presentation of already captured public fixture values."""
-        def __init__(self, root):
-            self.library_root = root
-            self.calls = 0
-            self.stopped = Event()
-            self.release = Event()
-            self.value = dict(id='a' * 32, title='Транскрипція — Україна',
-                settings=validate_settings({'language': 'uk', 'beam_size': 3}),
-                runtime_manifest_sha256='b' * 64,
-                inputs=[dict(relative='Україна.wav', bytes=32)])
-        def jobs(self, *, cancelled):
-            self.calls += 1
-            if self.calls > 1:
-                while not self.release.wait(.01):
-                    if cancelled():
-                        self.stopped.set()
-                        raise InterruptedError('Synthetic UI operation acknowledged stop.')
-                if cancelled():
-                    self.stopped.set()
-                    raise InterruptedError('Synthetic UI operation acknowledged stop.')
-            return ({'id': self.value['id'], 'title': self.value['title'], 'inputs': 1},)
-        def definition(self, identity, *, verify_inputs, cancelled):
-            check('fixture review uses immutable definition without running an engine',
-                  identity == self.value['id'] and verify_inputs is False and not cancelled())
-            return self.value
-
-    with TemporaryDirectory(prefix='carr-native-transcription-') as directory:
-        root = Path(directory)
-        frame = wx.Frame(None, title='Synthetic native transcription controls')
-        frame.library = type('Library', (), {'root': root})()
-        frame.cancel_event = Event()
-        frame.working = frame._closing = False
-        service = FixtureService(root)
-        executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='transcription-ui-fixture')
-        futures = []
-
-        def run_job(title, operation, done=None, failed=None, **options):
-            if frame.working:
-                return False
-            frame.working = True
-            frame.cancel_event.clear()
-            future = executor.submit(operation)
-            futures.append(future)
-            def finished(future):
-                def apply():
-                    frame.working = False
-                    try:
-                        result = future.result()
-                    except Exception as exc:
-                        if failed is not None:
-                            failed(exc)
-                    else:
-                        if done is not None:
-                            done(result)
-                wx.CallAfter(apply)
-            future.add_done_callback(finished)
-        frame.run_job = run_job
-        app.SetTopWindow(frame)
-        frame.Show()
-        state = {'phase': 0, 'active': True, 'view': None, 'complete': False}
-        deadline = monotonic() + 20
-
-        def press(view, name):
-            button = view.buttons[name]
-            check('enabled named native transcription button: ' + name,
-                  isinstance(button, wx.Button) and button.IsEnabled() and bool(button.GetName()))
-            event = wx.CommandEvent(wx.EVT_BUTTON.typeId, button.GetId())
-            event.SetEventObject(button)
-            check('native transcription button dispatch: ' + name,
-                  button.GetEventHandler().ProcessEvent(event))
-
-        def schedule():
-            timers.append(wx.CallLater(25, poll))
-
-        def poll():
-            if not state['active']:
-                return
-            view = state['view']
-            try:
-                if monotonic() >= deadline:
-                    raise TimeoutError('Native transcription flow did not finish within its bound.')
-                if view.session.busy:
-                    schedule()
-                    return
-                if state['phase'] == 0:
-                    check('owned native transcription modal',
-                          view.dialog.GetParent() is frame and view.dialog.IsModal()
-                          and view.dialog.GetName() == 'Local speech transcription workspace')
-                    accelerators = [button.GetLabel().split('&', 1)[1][0].casefold()
-                                    for button in view.buttons.values() if '&' in button.GetLabel()]
-                    check('native transcription action mnemonics are distinct',
-                          len(accelerators) == len(set(accelerators)))
-                    check('all seventeen native settings have unique accessible names',
-                          len(view.fields) == 17 and
-                          {field.GetName() for field in view.fields.values()} == set(ui._LABELS.values()))
-                    check('native choices, numeric spins and booleans remain typed',
-                          all(isinstance(view.fields[name], wx.Choice) for name in ui._CHOICES)
-                          and all(isinstance(view.fields[name], wx.SpinCtrl)
-                                  for name in ('beam_size', 'parallel_files'))
-                          and all(isinstance(view.fields[name], wx.CheckBox)
-                                  for name, value in ui.DEFAULT_SETTINGS.items() if type(value) is bool))
-                    check('saved synthetic job retains its exact Unicode title',
-                          len(view.rows) == 1 and service.value['title'] in view.jobs_list.GetString(0))
-                    view.jobs_list.SetSelection(0)
-                    view.controls()
-                    state['phase'] = 1
-                    press(view, 'load')
-                    schedule()
-                    return
-                if state['phase'] == 1:
-                    check('reviewed synthetic job settings are frozen',
-                          view.current_job == service.value['id']
-                          and all(not field.IsEnabled() for field in view.fields.values())
-                          and ui.settings_from_controls(view.fields) == service.value['settings'])
-                    check('review preserves Ukrainian title and retained source name',
-                          view.title.GetValue() == service.value['title']
-                          and 'Україна.wav' in view.source_list.GetString(0))
-                    press(view, 'new')
-                    check('New job re-enables typed settings without starting a worker',
-                          view.current_job is None and all(field.IsEnabled() for field in view.fields.values())
-                          and not view.manifest_path)
-                    view.fields['task'].SetSelection(1)
-                    view.fields['language'].SetSelection(
-                        tuple(code for code, _ in ui._CHOICES['language']).index('uk'))
-                    view.fields['parallel_files'].SetValue(2)
-                    chosen = ui.settings_from_controls(view.fields)
-                    check('native request values preserve explicit English translation and Ukrainian source',
-                          chosen['task'] == 'translate' and chosen['language'] == 'uk'
-                          and chosen['translation_target'] == 'en' and chosen['parallel_files'] == 2)
-                    press(view, 'refresh')
-                    check('the public UI fixture operation is active before closing', view.session.busy)
-                    press(view, 'close')
-                    check('close requests stop and keeps native controls alive until settlement',
-                          view.session.close_requested and not view.session.closed and view.dialog.IsModal())
-                    service.release.set()
-                    state['complete'] = True
-                    return
-            except Exception:
-                errors.append(traceback.format_exc())
-                service.release.set()
-                state['active'] = False
-                view.session.cancel.set()
-                if view.dialog.IsModal():
-                    view.dialog.EndModal(wx.ID_CANCEL)
-
-        def ready(view):
-            state['view'] = view
-            schedule()
-
+source_root = Path(__file__).resolve().parents[1]
+spec = importlib.util.spec_from_file_location('transcription_protocol_fixture',
+    source_root / 'tests' / 'transcription' / 'test_supplied_worker_bridge.py')
+fixture = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(fixture)
+v5_spec = importlib.util.spec_from_file_location('transcription_v5_protocol_fixture',
+    source_root / 'tests' / 'transcription' / 'test_v5_worker_profile.py')
+v5_fixture = importlib.util.module_from_spec(v5_spec)
+v5_spec.loader.exec_module(v5_fixture)
+desktop = wx.App(False)
+with TemporaryDirectory(prefix='transcription-native-') as temporary:
+    root = Path(temporary).resolve()
+    library = LibraryApp(root / 'library')
+    workspace = library.create_workspace('Native transcription controls')
+    service = library.transcription(workspace)
+    models = fixture.synthetic_models(root / 'models')
+    worker = root / 'synthetic-worker.py'
+    worker.write_text(fixture.SYNTHETIC_WORKER.replace('__MODE__', repr('complete')), encoding='utf-8')
+    service.configure(Path(sys.executable).resolve(), worker, models)
+    v5_runtime = root / 'synthetic-v5-runtime'
+    v5_runtime.mkdir()
+    v5_worker = v5_runtime / 'worker.py'
+    v5_worker.write_text(v5_fixture.SYNTHETIC_V5_WORKER, encoding='utf-8')
+    for name in ('local_models.py', 'transcript_features.py'):
+        (v5_runtime / name).write_text('# Synthetic V5 protocol fixture only.\n', encoding='utf-8')
+    recordings = root / 'recordings'
+    (recordings / 'nested').mkdir(parents=True)
+    original = recordings / 'nested' / 'Запис.wav'
+    with wave.open(str(original), 'wb') as audio:
+        audio.setnchannels(1)
+        audio.setsampwidth(2)
+        audio.setframerate(16000)
+        audio.writeframes(b'\0\0' * 160)
+    original_bytes = original.read_bytes()
+    sidecar = recordings / 'notes.txt'
+    sidecar.write_text('Excluded synthetic nonmedia sidecar.', encoding='utf-8')
+    class FolderAnswer:
+        """Control the picker answer; the actual folder button/service still run."""
+        def __init__(self, *args, **kwargs): pass
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def ShowModal(self): return wx.ID_OK
+        def GetPath(self): return str(recordings)
+    frame = DesktopFrame(library)
+    frame.Show()
+    failures, state = [], {'phase': 0, 'finished': False, 'job': None}
+    started = time.monotonic()
+    def click(control):
+        event = wx.CommandEvent(wx.EVT_BUTTON.typeId, control.GetId())
+        event.SetEventObject(control)
+        control.GetEventHandler().ProcessEvent(event)
+    def drive():
+        dialog = next((window for window in wx.GetTopLevelWindows()
+            if isinstance(window, wx.Dialog) and window.GetTitle() == 'Транскрипція — локальний Whisper'), None)
         try:
-            ui.show_transcription(frame, service=service, on_ready=ready)
-            check('native close completed after the synthetic operation acknowledged cancellation',
-                  state['complete'] and service.stopped.is_set())
-            if errors:
-                raise AssertionError('\n'.join(errors))
-        finally:
-            state['active'] = False
-            service.release.set()
+            assert time.monotonic() - started < 45, 'Native transcription workflow timed out.'
+            if dialog is None:
+                wx.CallLater(50, drive)
+                return
+            def find(name):
+                control = wx.FindWindowByName(name, dialog)
+                assert control is not None, 'Missing named control: ' + name
+                return control
+            def configure_profile(index, chosen_worker):
+                # Construct the actual native choice dialog, controlling only
+                # its answer. Runtime/model pickers also use synthetic answers.
+                class ProfileAnswer(wx.SingleChoiceDialog):
+                    def ShowModal(self):
+                        self.SetSelection(index)
+                        expected = ('receipts-v1', 'whisper-v5-manifest-v1')[index]
+                        assert self.GetStringSelection().startswith(expected)
+                        return wx.ID_OK
+                answers = iter((str(Path(sys.executable).resolve()), str(chosen_worker)))
+                class RuntimeAnswer(FolderAnswer):
+                    def __init__(self, *args, **kwargs):
+                        self.path = next(answers)
+                    def GetPath(self): return self.path
+                class ModelsAnswer(FolderAnswer):
+                    def GetPath(self): return str(models)
+                with patch.object(wx, 'SingleChoiceDialog', ProfileAnswer), \
+                        patch.object(wx, 'FileDialog', RuntimeAnswer), \
+                        patch.object(wx, 'DirDialog', ModelsAnswer):
+                    click(find('Підключити Whisper'))
+                assert frame.working
+            if state['phase'] == 0:
+                assert frame.active[0] == workspace
+                assert service.list() == ()
+                assert find('Збережені завдання').GetCount() == 0
+                assert find('Запис для редагування').GetCount() == 0
+                assert find('Часові мітки кожного слова').GetValue()
+                assert not find('Зупинити').IsEnabled()
+                assert not find('Текст: редагування зберігається окремою версією').IsEnabled()
+                configure_profile(1, v5_worker)
+                state['phase'] = 'configured-v5'
+            elif state['phase'] == 'configured-v5' and not frame.working:
+                configured = service.configuration(verify=True)
+                assert configured['protocol'] == 'whisper-v5-manifest-v1'
+                assert set(configured['wrapper_sources_sha256']) == {
+                    'worker.py', 'local_models.py', 'transcript_features.py'}
+                assert 'whisper-v5-manifest-v1' in find('Стан транскрипції').GetValue()
+                configure_profile(0, worker)
+                state['phase'] = 'configured-legacy'
+            elif state['phase'] == 'configured-legacy' and not frame.working:
+                assert service.configuration(verify=True)['protocol'] == 'receipts-v1'
+                folder_button = find('Додати папку з підпапками')
+                assert folder_button.IsEnabled()
+                find('Назва нового завдання').SetValue('Native transcript workflow')
+                with patch.object(wx, 'DirDialog', FolderAnswer):
+                    click(folder_button)
+                assert frame.working
+                state['phase'] = 'retaining'
+            elif state['phase'] == 'retaining' and not frame.working:
+                job, = service.list()
+                assert job['status'] == 'ready' and len(job['sources']) == 1
+                assert job['sources'][0]['original_name'] == 'nested/Запис.wav'
+                state['job'] = job['id']
+                assert find('Збережені завдання').GetCount() == 1
+                assert find('Запис для редагування').GetCount() == 1
+                notice = find('Стан транскрипції').GetValue()
+                assert 'Збережено записів: 1.' in notice
+                assert 'Непідтримуваних файлів пропущено: 1.' in notice
+                click(find('Запустити / продовжити'))
+                assert frame.working
+                state['phase'] = 1
+            elif state['phase'] == 1 and not frame.working:
+                job = service.verify(state['job'])
+                assert job['status'] == 'completed' and len(job['artifacts']) == 6
+                editor = find('Текст: редагування зберігається окремою версією')
+                assert editor.IsEnabled() and 'Український' in editor.GetValue()
+                editor.SetFocus()
+                editor.SetValue('Виправлена окрема версія.')
+                state['phase'] = 2
+            elif state['phase'] == 2:
+                save = find('Зберегти правки')
+                assert save.IsEnabled()
+                click(save)
+                state['phase'] = 3
+            elif state['phase'] == 3 and not frame.working:
+                job_id = state['job']
+                edit, = service.edits(job_id)
+                assert edit['text'] == 'Виправлена окрема версія.'
+                original_text = service.text(job_id, service.get(job_id)['sources'][0]['filename'])
+                assert original_text.startswith('Synthetic transcript.')
+                assert original.read_bytes() == original_bytes
+                assert sidecar.read_text(encoding='utf-8') == 'Excluded synthetic nonmedia sidecar.'
+                assert not find('Зберегти правки').IsEnabled()
+                find('Текст: редагування зберігається окремою версією').SetValue(
+                    'Окрема версія через Зберегти все.')
+                state['phase'] = 4
+            elif state['phase'] == 4:
+                assert find('Зберегти правки').IsEnabled()
+                save_all = find('Зберегти всі відкриті чернетки')
+                assert save_all.IsEnabled()
+                click(save_all)
+                assert frame.working and frame._save_coordinator.busy
+                state['phase'] = 5
+            elif state['phase'] == 5 and not frame.working and not frame._save_coordinator.busy:
+                edits = service.edits(state['job'])
+                assert len(edits) == 2
+                assert edits[0]['text'] == 'Виправлена окрема версія.'
+                assert edits[1]['text'] == 'Окрема версія через Зберегти все.'
+                assert not frame._save_coordinator.has_unsaved()
+                assert not find('Зберегти правки').IsEnabled()
+                assert service.text(state['job'], service.get(state['job'])['sources'][0]['filename']).startswith(
+                    'Synthetic transcript.')
+                assert original.read_bytes() == original_bytes
+                state['finished'] = True
+                click(find('Закрити'))
+                return
+            wx.CallLater(50, drive)
+        except BaseException:
+            failures.append(traceback.format_exc())
             frame.cancel_event.set()
-            if state['view'] is not None:
-                state['view'].session.cancel.set()
-            for timer in timers:
-                timer.Stop()
-            executor.shutdown(wait=True, cancel_futures=True)
-            frame.Destroy()
-            app.ProcessPendingEvents()
-            settled.set()
-    return dict(status='PASS', checks=checks, inference='NOT_RUN', nvda='NOT_RUN',
-                scope='Actual Windows controls and lifecycle with a public synthetic presentation fixture.')
-
-
-def main():
-    parser = ArgumentParser()
-    parser.add_argument('--native', action='store_true')
-    parser.add_argument('--output', type=Path)
-    options = parser.parse_args()
-    if not options.native or os.name != 'nt':
-        print(json.dumps({'status': 'NOT_RUN', 'reason': 'Actual Windows native mode is required.'}))
-        return 77
+            if dialog is not None:
+                dialog.EndModal(wx.ID_CANCEL)
+    wx.CallLater(50, drive)
     try:
-        result = run_native()
-    except Exception:
-        result = {'status': 'FAIL', 'error': traceback.format_exc(), 'inference': 'NOT_RUN', 'nvda': 'NOT_RUN'}
-    if options.output is not None:
-        options.output.parent.mkdir(parents=True, exist_ok=True)
-        options.output.write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-    print(json.dumps(result, ensure_ascii=False), flush=True)
-    return 0 if result['status'] == 'PASS' else 1
-
-
-if __name__ == '__main__':
-    raise SystemExit(main())
+        show_transcription(frame, protocol='receipts-v1')
+        if failures:
+            raise AssertionError('\n'.join(failures))
+        assert state['finished'], 'Native dialog exited before acceptance.'
+    finally:
+        frame.cancel_event.set()
+        frame.executor.shutdown(wait=True, cancel_futures=True)
+        frame.Destroy()
+        desktop.Yield()
+print(json.dumps({'status':'PASS', 'checks':['actual named wx controls','shared background operation',
+    'actual native profile choice and configure action','V5 three-source binding','explicit legacy reconfiguration',
+    'actual named folder action','background folder intake','relative source and exclusion count',
+    'actual isolated child protocol','six verified formats','separate edit revision','original unchanged',
+    'coordinated durable transcript save'],
+    'folder_picker_interaction':'NOT_RUN', 'folder_picker_answer':'controlled synthetic directory',
+    'profile_picker_interaction':'NOT_RUN', 'profile_picker_answer':'controlled selections on an actual wx choice dialog',
+    'whisper_acoustic_inference':'NOT_RUN', 'manual_NVDA':'NOT_RUN'}, ensure_ascii=False))

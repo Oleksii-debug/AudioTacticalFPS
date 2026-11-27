@@ -12,10 +12,32 @@ import threading
 import time
 import weakref
 
-from ..progress import (ProgressHub, ProgressPreferences, display_message,
+from ..progress import (ProgressPreferences, display_message,
                         finish_result, load_preferences, save_preferences)
 from ..progress_audio import (NotificationWorker, configured_registry,
                               voice_fingerprint)
+
+from .command_registry import CommandSpec
+from .keyboard_settings import register_menu_command
+from .progress_view import shared_hub
+
+COMMANDS = (
+    CommandSpec('progress.query', 'Query current progress'),
+    CommandSpec('options.progress', 'Progress feedback settings'),
+    CommandSpec('progress.mute', 'Mute or unmute extra progress feedback'),
+)
+
+
+def _items(menu):
+    for item in menu.GetMenuItems():
+        if item.IsSeparator():
+            continue
+        child = item.GetSubMenu()
+        if child is None:
+            yield item
+        else:
+            yield from _items(child)
+
 
 _UNSET = object()
 _IDLE = 'No operation is running.'
@@ -98,17 +120,34 @@ class _MediaRequest:
 
 class OperationProgress:
     """One native view, current-result token and bounded shared progress history."""
-    def __init__(self, frame, gauge, label, *, wx_module, notifications=None,
+    def __init__(self, frame, gauge=None, label=None, *, wx_module=None, notifications=None,
                  clock=time.monotonic, start_timer=True):
-        self.frame, self.gauge, self.label, self.wx = frame, gauge, label, wx_module
-        self.clock, self.hub = clock, ProgressHub(clock=clock)
+        if wx_module is None:
+            import wx as wx_module
+        self.frame, self.wx = frame, wx_module
+        self.clock, self.hub = clock, shared_hub(frame, clock=clock)
         self.library, self.reporter = frame.library, None
+        self.root = Path(self.library.root)
         self.closed, self.session_quiet = False, False
         self._started, self._last_sequence, self._notice_error = None, None, ''
         self._players, self._holds, self._requests = {}, set(), set()
         self._voice_cancel = threading.Event()
         self._voice_executor = None
+        self._ids, self._labels, self._prior_scope_ids = [], [], set()
+        self._selected, self._explicit_selection = None, False
+        self._gauge_value, self._indeterminate = 0, False
+        self._busy_menus = self._busy_items = None
+        self.command_items = []
+        self.panel = self.operations = None
+        if (gauge is None) != (label is None):
+            raise ValueError('Supply both native progress controls or let the presenter create them.')
+        if gauge is None:
+            self._build_native()
+        else:
+            self.gauge, self.label = gauge, label
+            self.text = label
         self.preferences, self.load_notice = self._load()
+        self.notice = self.load_notice
         self.notifications = notifications or NotificationWorker(self.preferences)
         self.notifications.configure(self.preferences)
         self._applied_preferences = self.preferences
@@ -116,18 +155,69 @@ class OperationProgress:
         self.label.SetName('Current operation status and measured work')
         self.gauge.SetRange(100)
         self.gauge.SetValue(0)
-        self.label.SetLabel(_IDLE)
+        self._set_text(_IDLE)
         self.timer = None
         if start_timer:
-            self.timer = self.wx.Timer(frame)
-            frame.Bind(self.wx.EVT_TIMER, self.tick, self.timer)
-            self.timer.Start(250)
+            owner = self.panel if self.panel is not None else frame
+            self.timer = self.wx.Timer(owner)
+            owner.Bind(self.wx.EVT_TIMER, self.tick, self.timer)
+            self.timer.Start(200)
+        if self.panel is not None:
+            self.panel.Bind(self.wx.EVT_WINDOW_DESTROY, self._destroyed)
+            frame.host.Layout()
+
+    def _build_native(self):
+        wx, frame = self.wx, self.frame
+        self.panel = wx.Panel(frame.host)
+        self.panel.SetName('Operation progress')
+        layout = wx.BoxSizer(wx.VERTICAL)
+        self.operations = wx.Choice(self.panel)
+        self.operations.SetName('Operations and subtasks')
+        self.operations.Bind(wx.EVT_CHOICE, self.select)
+        layout.Add(self.operations, 0, wx.EXPAND | wx.ALL, 3)
+        self.gauge = wx.Gauge(self.panel, range=100, style=wx.GA_HORIZONTAL)
+        layout.Add(self.gauge, 0, wx.EXPAND | wx.ALL, 3)
+        self.label = self.text = wx.TextCtrl(self.panel, style=wx.TE_READONLY | wx.TE_MULTILINE)
+        self.text.SetMinSize((-1, 58))
+        layout.Add(self.text, 0, wx.EXPAND | wx.ALL, 3)
+        buttons = wx.WrapSizer(wx.HORIZONTAL)
+        for title, action in (('Query current progress', self.query),
+                              ('Progress feedback settings...', self.settings),
+                              ('Mute or unmute progress feedback', self.toggle_mute)):
+            control = wx.Button(self.panel, label=title)
+            control.SetName(title)
+            control.Bind(wx.EVT_BUTTON, action)
+            buttons.Add(control, 0, wx.ALL, 3)
+        quiet = wx.CheckBox(self.panel, label='Quiet now (this session)')
+        quiet.SetName('Quiet progress feedback for this session')
+        quiet.Bind(wx.EVT_CHECKBOX, lambda event: self.set_session_quiet(quiet.GetValue()))
+        buttons.Add(quiet, 0, wx.ALL, 3)
+        layout.Add(buttons, 0, wx.EXPAND)
+        self.panel.SetSizer(layout)
+        frame.layout.Insert(1, self.panel, 0, wx.EXPAND | wx.ALL, 3)
+
+    def _set_text(self, value):
+        if self.panel is not None:
+            if self.text.GetValue() != value:
+                self.text.ChangeValue(value)
+        else:
+            self.label.SetLabel(value)
+
+    def _read_preferences(self):
+        value, self.load_notice = self._load()
+        self.notice = self.load_notice
+        return value
+
+    def _reload_root(self):
+        if not self.scope_current:
+            self.change_root()
+
 
     def _load(self):
         try:
             return load_preferences(self.library.root), ''
         except (OSError, ValueError, RuntimeError) as exc:
-            return ProgressPreferences(), 'Progress audio is Off: saved settings need review. ' + display_message(exc)
+            return ProgressPreferences(), 'Progress audio is Off: saved settings were kept and need review. ' + display_message(exc)
 
     @property
     def event(self):
@@ -151,24 +241,33 @@ class OperationProgress:
         self.notifications.clear()
         self.notifications.set_registry(None)
         self.library = self.frame.library
-        self.hub, self.reporter = ProgressHub(clock=self.clock), None
+        self.root = Path(self.library.root)
+        # A player or quarantined native handle may still own this hub's media
+        # guard. Keep the authority and hide only the previous library's events.
+        self._prior_scope_ids = {row.operation_id for row in self.hub.snapshot()}
+        self.reporter = None
+        self._selected, self._explicit_selection = None, False
         self._started, self._last_sequence, self._notice_error = None, None, ''
         self.preferences, self.load_notice = self._load()
+        self.notice = self.load_notice
         self._applied_preferences = None
         self.gauge.SetValue(0)
-        self.label.SetLabel(_IDLE)
+        self._set_text(_IDLE)
         self._environment()
+
 
     def start(self, title, *, total=None, unit='items', phase=''):
         if self.closed:
             return None
         if not self.scope_current:
-            self.change_root()  # Called from the native start action, never a worker.
+            self.change_root()
         self.notifications.clear()
         self.reporter = self.hub.start(display_message(title), total=total, unit=unit,
                                        phase=display_message(phase))
+        self._selected, self._explicit_selection = self.reporter.operation_id, False
         self._started, self._last_sequence = self.clock(), None
         return self.reporter.event
+
 
     @contextmanager
     def bind(self, token):
@@ -237,7 +336,9 @@ class OperationProgress:
                 seen.add(id(active))
                 active = active.GetParent()
             return False
-        except (AttributeError, RuntimeError):
+        except AttributeError:
+            return bool(getattr(self.frame, 'IsActive', lambda: False)())
+        except RuntimeError:
             return False
 
     def register_player(self, player):
@@ -293,22 +394,23 @@ class OperationProgress:
         self.session_quiet = bool(quiet)
         self._environment()
 
-    def configure(self, preferences, *, registry=None):
+    def configure(self, preferences, *, registry=None, expected_root=None):
         if not isinstance(preferences, ProgressPreferences):
             raise ValueError('Use validated progress preferences.')
         if preferences.mode in ('speech', 'beep_speech') and not preferences.voice_id:
             raise ValueError('Choose an explicit local voice before enabling progress speech.')
-        if not self.scope_current:
-            raise ValueError('The library changed while progress settings were open.')
+        if not self.scope_current or (expected_root is not None and Path(expected_root) != self.root):
+            raise ValueError('The library folder changed while progress settings were open.')
         save_preferences(self.library.root, preferences)
         self.preferences = preferences
         if registry is not None:
             self.notifications.set_registry(registry)
         self.notifications.clear()
         self._applied_preferences = None
-        self._notice_error = ''
+        self._notice_error = self.notice = self.load_notice = ''
         self._environment()
         return preferences
+
 
     def voice_task(self, action, done, failed, *, alive):
         """Discovery/hash work is local, bounded and never runs in the wx loop."""
@@ -335,35 +437,92 @@ class OperationProgress:
         future.add_done_callback(finished)
         return future
 
+    def _events(self):
+        return tuple(row for row in self.hub.snapshot()
+                     if row.operation_id not in self._prior_scope_ids)
+
+    def selected_event(self, events=None):
+        events = self._events() if events is None else events
+        selected = next((row for row in events if row.operation_id == self._selected), None)
+        if self._explicit_selection and selected is not None:
+            return selected
+        if self.reporter is not None:
+            current = next((row for row in events if row.operation_id == self.reporter.operation_id), None)
+            if current is not None:
+                return current
+        active = [row for row in events if not row.terminal and row.parent_id is None]
+        return max(active or list(events), key=lambda row: row.sequence, default=None)
+
+    def select(self, event=None):
+        if self.operations is not None:
+            index = self.operations.GetSelection()
+            if 0 <= index < len(self._ids):
+                self._selected, self._explicit_selection = self._ids[index], True
+                self.tick()
+
     def tick(self, event=None):
         if self.closed:
             return
         if not self.scope_current:
             self.change_root()
         self._environment()
-        value = self.event
-        if value is not None:
-            if value.percent is None and value.state == 'running':
-                self.gauge.Pulse()
-            elif value.percent is not None:
-                self.gauge.SetValue(value.percent)
+        events = self._events()
+        value = self.selected_event(events)
+        if self.operations is not None:
+            ids = [row.operation_id for row in events]
+            labels = [('Subtask: ' if row.parent_id else '') + row.title + ' — ' + row.state for row in events]
+            if ids != self._ids or labels != self._labels:
+                self.operations.Set(labels)
+                self._ids, self._labels = ids, labels
+            if value is not None:
+                self._selected = value.operation_id
+                index = ids.index(self._selected)
+                if self.operations.GetSelection() != index:
+                    self.operations.SetSelection(index)
+            self.operations.Enable(bool(events))
+        indeterminate = value is not None and value.percent is None and value.state == 'running'
+        measured = value.percent if value is not None and value.percent is not None else 0
+        if indeterminate:
+            self.gauge.Pulse()
+        elif self._indeterminate or self._gauge_value != measured:
+            self.gauge.SetValue(measured)
+        self._indeterminate, self._gauge_value = indeterminate, measured
+        self.gauge.SetName('Current operation progress; measured work: '
+            + ('indeterminate; ' if indeterminate else '')
+            + (value.state if value is not None else 'idle'))
+        messages = [value.text if value is not None else _IDLE]
+        if self.notice:
+            messages.append(self.notice)
+        if self.notifications.error:
+            messages.append(self.notifications.error)
+        if self.preferences.muted:
+            messages.append('Extra progress feedback is muted.')
+        self._set_text('\n'.join(messages))
+        # A selected historical row never replays a terminal sound. Notices
+        # follow only the current operation and its existing subtasks.
+        current = self.reporter.operation_id if self.reporter is not None else (
+            value.operation_id if value is not None else None)
+        selected = {current} if current is not None else set()
+        for _ in range(len(events)):
+            children = {row.operation_id for row in events if row.parent_id in selected}
+            if children <= selected:
+                break
+            selected.update(children)
+        self.notifications.offer(tuple(row for row in events if row.operation_id in selected))
+        # Automatic updates never focus, raise or announce a window themselves.
+
+    def refresh(self, event=None):
+        self.tick(event)
+
+    def query(self, event=None):
+        if not self.closed:
+            self.tick()
+            if self.panel is not None:
+                self.text.SetInsertionPoint(0)
+                self.text.SetFocus()
             else:
-                self.gauge.SetValue(0)
-            if value.sequence != self._last_sequence:
-                self.label.SetLabel(value.text)
-                self._last_sequence = value.sequence
-            selected = {value.operation_id}
-            snapshot = self.hub.snapshot()
-            for _ in range(len(snapshot)):
-                children = {row.operation_id for row in snapshot if row.parent_id in selected}
-                if children <= selected:
-                    break
-                selected.update(children)
-            self.notifications.offer(tuple(row for row in snapshot if row.operation_id in selected))
-        error = self.notifications.error
-        if error and error != self._notice_error:
-            self._notice_error = error
-            self.label.SetLabel((value.text + ' ' if value is not None else '') + error)
+                self.read_status(event)
+
 
     def read_status(self, event=None):
         self.tick()
@@ -374,6 +533,71 @@ class OperationProgress:
         if self.notifications.error:
             text += ' ' + self.notifications.error
         self.frame.report(text)  # Explicit user query may move focus to the status text.
+
+    def toggle_mute(self, event=None):
+        self._reload_root()
+        requested = replace(self.preferences, muted=not self.preferences.muted)
+        if requested.muted:
+            # A full disk must not prevent the requested immediate silence.
+            self.notifications.configure(requested)
+            self.preferences = requested
+            try:
+                save_preferences(self.root, requested)
+                self.notice = ''
+            except (OSError, ValueError) as error:
+                self.notice = 'Muted for this session; settings were not saved. ' + str(error)
+        else:
+            try:
+                self.configure(requested)
+            except (OSError, ValueError) as error:
+                self.notice = 'Extra feedback remains muted; settings were not saved. ' + str(error)
+        self.refresh()
+
+    def set_busy(self, busy):
+        """Keep query/settings/mute available, preserving every other menu state."""
+        bar = self.frame.GetMenuBar()
+        if busy:
+            if self._busy_menus is not None:
+                return
+            allowed = {item.GetId() for item in self.command_items}
+            self._busy_menus = [(bar.GetMenu(index), bar.IsEnabledTop(index)) for index in range(bar.GetMenuCount())]
+            self._busy_items = []
+            for index in range(bar.GetMenuCount()):
+                leaves = tuple(_items(bar.GetMenu(index)))
+                available = any(item.GetId() in allowed for item in leaves)
+                bar.EnableTop(index, available)
+                if available:
+                    for item in leaves:
+                        self._busy_items.append((item, item.IsEnabled()))
+                        item.Enable(item.GetId() in allowed)
+        elif self._busy_menus is not None:
+            for item, enabled in self._busy_items:
+                try:
+                    item.Enable(enabled)
+                except RuntimeError:
+                    pass
+            for index in range(bar.GetMenuCount()):
+                menu = bar.GetMenu(index)
+                enabled = next((value for old, value in self._busy_menus if old == menu), True)
+                bar.EnableTop(index, enabled)
+            self._busy_menus = self._busy_items = None
+
+    def _destroyed(self, event):
+        if event.GetEventObject() is self.panel:
+            self.close()
+        event.Skip()
+
+    def settings(self, event=None):
+        self._reload_root()
+        focus = self.wx.Window.FindFocus()
+        try:
+            return show_progress_settings(self)
+        finally:
+            if focus:
+                try:
+                    focus.SetFocus()
+                except RuntimeError:
+                    pass
 
     def close(self):
         if self.closed:
@@ -512,40 +736,25 @@ def show_progress_settings(presenter):
 
 
 def install_operation_progress(frame):
+    existing = getattr(frame, 'operation_progress', None)
+    if existing is not None and not existing.closed:
+        return existing
     import wx
-    panel = wx.Panel(frame.host)
-    layout = wx.BoxSizer(wx.VERTICAL)
-    label = wx.StaticText(panel, label=_IDLE)
-    gauge = wx.Gauge(panel, range=100)
-    layout.Add(label, 0, wx.EXPAND | wx.ALL, 3)
-    layout.Add(gauge, 0, wx.EXPAND | wx.ALL, 3)
-    actions = wx.BoxSizer(wx.HORIZONTAL)
-    query = wx.Button(panel, label='Read current progress')
-    query.SetName('Read current operation progress')
-    quiet = wx.CheckBox(panel, label='Quiet now (this session)')
-    quiet.SetName('Quiet progress feedback for this session')
-    actions.Add(query, 0, wx.ALL, 3)
-    actions.Add(quiet, 0, wx.ALL, 3)
-    layout.Add(actions, 0, wx.ALL, 1)
-    panel.SetSizer(layout)
-    frame.layout.Insert(1, panel, 0, wx.EXPAND | wx.ALL, 3)
-    presenter = OperationProgress(frame, gauge, label, wx_module=wx)
+    bar = frame.GetMenuBar()
+    options = next((bar.GetMenu(index) for index in range(bar.GetMenuCount())
+                    if bar.GetMenuLabel(index).replace('&', '').strip().casefold() == 'options'), None)
+    if options is None:
+        raise ValueError('Install keyboard Options before operation progress.')
+    presenter = OperationProgress(frame, wx_module=wx)
+    for spec, handler in zip(COMMANDS, (presenter.query, presenter.settings, presenter.toggle_mute)):
+        caption = spec.label + ('\t' + spec.default_shortcut if spec.default_shortcut else '')
+        item = options.Append(wx.ID_ANY, caption)
+        frame.Bind(wx.EVT_MENU, handler, item)
+        register_menu_command(frame, spec, item)
+        presenter.command_items.append(item)
     frame.operation_progress = presenter
-    query.Bind(wx.EVT_BUTTON, presenter.read_status)
-    quiet.Bind(wx.EVT_CHECKBOX, lambda event: presenter.set_session_quiet(quiet.GetValue()))
-    help_index = frame.menu_bar.FindMenu('Help')
-    if help_index < 0:
-        help_index = frame.menu_bar.GetMenuCount() - 1
-    menu = frame.menu_bar.GetMenu(help_index)
-    item = menu.Append(wx.ID_ANY, 'Current operation progress\tCtrl+Alt+P')
-    frame.Bind(wx.EVT_MENU, presenter.read_status, item)
-    from .command_registry import CommandSpec
-    from .keyboard_settings import register_menu_command
-    register_menu_command(frame, CommandSpec('progress.current', 'Current operation progress',
-                                             'main', 'Ctrl+Alt+P'), item)
-    settings = menu.Append(wx.ID_ANY, 'Progress feedback settings...')
-    frame.Bind(wx.EVT_MENU, lambda event: show_progress_settings(presenter), settings)
-    register_menu_command(frame, CommandSpec('progress.settings', 'Progress feedback settings', 'main'), settings)
+    # Compatibility name points to the same controller, never another view.
+    frame.progress_view = presenter
     frame.Layout()
     if presenter.load_notice:
         frame.report(presenter.load_notice)

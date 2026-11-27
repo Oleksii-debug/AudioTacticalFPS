@@ -169,6 +169,25 @@ class PresenterTests(unittest.TestCase):
         self.assertEqual(self.audio.events, ())
         self.assertEqual(self.gauge.value, 0)
 
+    def test_library_switch_preserves_active_native_media_guard_on_the_same_hub(self):
+        original = self.presenter.hub
+        old = self.presenter.start('Old library')
+        with original.media_activity():
+            self.frame.library = SimpleNamespace(root=self.root / 'other')
+            self.frame.library.root.mkdir()
+            self.presenter.tick()
+            self.assertIs(self.presenter.hub, original)
+            self.assertIs(self.frame.progress_hub, original)
+            self.assertTrue(self.audio.environment_values['media_active'])
+            self.assertIsNone(self.presenter.event)
+            self.assertEqual(self.audio.events, ())
+            current = self.presenter.start('New library')
+            self.presenter.tick()
+            self.assertNotEqual(old.token, current.token)
+            self.assertEqual([row.token for row in self.audio.events], [current.token])
+        self.presenter.tick()
+        self.assertFalse(self.audio.environment_values['media_active'])
+
     def test_legacy_preferences_decode_and_selected_voice_roundtrip(self):
         raw = json.loads(encode_preferences(ProgressPreferences()))
         raw['version'] = 1

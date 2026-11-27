@@ -80,6 +80,7 @@ def run_native():
             frame.Raise()
             check('canonical desktop opens', pump(lambda: frame.active == (workspace, None) and not frame.working))
             progress = frame.operation_progress
+            frame.keyboard_commands.apply_overrides({'progress.query': 'Ctrl+Alt+P'})
             check('named native gauge with bounded range', isinstance(progress.gauge, wx.Gauge)
                   and progress.gauge.GetRange() == 100 and bool(progress.gauge.GetName()))
             check('progress label has an accessible name', bool(progress.label.GetName()))
@@ -125,8 +126,8 @@ def run_native():
                 check(f'automatic update {count} preserves focus', wx.Window.FindFocus() == frame.cancel_button)
                 if count == 2:
                     check('OS injects current-progress shortcut', simulator.Char(ord('P'), wx.MOD_CONTROL | wx.MOD_ALT))
-                    check('real busy-time query dispatch', pump(lambda: wx.Window.FindFocus() == frame.status
-                          and '50%' in frame.status.GetValue()) and frame.working)
+                    check('real busy-time query dispatch', pump(lambda: wx.Window.FindFocus() == progress.text
+                          and '50%' in progress.text.GetValue()) and frame.working)
             commands.put('finish')
             check('verified operation reaches 100 after callback', pump(lambda: not frame.working)
                   and progress.event.state == 'complete' and progress.event.percent == 100

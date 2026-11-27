@@ -107,6 +107,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     env, _ = classes
     value = frame(classes)
     value.host, value.layout, value.Bind, value.SetMenuBar = Mock(), Mock(), Mock(), Mock()
+    value.GetMenuBar = lambda: value.menu_bar
     menus = {}
 
     class Menu:
@@ -118,43 +119,75 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
             self.items.append(item)
             return item
 
+        def AppendSeparator(self):
+            self.items.append(SimpleNamespace(title=None))
+
+        def GetMenuItems(self):
+            return tuple(self.items)
+
     env['wx'].Menu = Menu
-    env['wx'].MenuBar = lambda: SimpleNamespace(Append=lambda menu, label: menus.update({label: menu}))
+    env['wx'].MenuBar = lambda: SimpleNamespace(
+        Append=lambda menu, label: menus.update({label: menu}),
+        GetMenuCount=lambda: len(menus),
+        GetMenu=lambda index: tuple(menus.values())[index],
+        GetMenuLabel=lambda index: tuple(menus)[index],
+        FindMenu=lambda title: next((index for index, label in enumerate(menus)
+                                    if label.replace('&', '') == title), -1))
     env['wx'].Button = Mock(return_value=Mock())
-    env['wx'].ID_ANY, env['wx'].ALL = -1, 1
+    env['wx'].ID_ANY, env['wx'].ALL, env['wx'].NOT_FOUND = -1, 1, -1
     env['wx'].EVT_MENU, env['wx'].EVT_BUTTON = 'menu', 'button'
     installers = {name: Mock() for name in (
         'install_research_actions', 'install_source_review_actions', 'install_academic_actions',
         'install_reading_desk_actions', 'install_ebook_actions', 'install_catalog_insights_actions',
         'install_federated_search_actions', 'install_query_manager_actions',
-        'install_academic_comparison_actions', 'install_assistant_actions',
-        'install_portable_sync_actions', 'install_language_actions', 'install_translation_actions',
-        'install_conversion_actions', 'install_transcription_actions')}
+        'install_academic_comparison_actions',
+        'install_portable_sync_actions', 'install_language_actions')}
     env.update(installers)
     from carr_library.ui.audio_studio import install_audio_studio_actions
     from carr_library.ui.api_connections import install_api_connection_actions
-    env.update(install_audio_studio_actions=install_audio_studio_actions,
-               install_api_connection_actions=install_api_connection_actions)
+    from carr_library.ui.assistant_dialog import install_assistant_actions
+    from carr_library.ui.translation_dialog import install_translation_actions
+    from carr_library.ui.document_conversion import install_conversion_actions
+    real_installers = {
+        'install_audio_studio_actions': Mock(wraps=install_audio_studio_actions),
+        'install_api_connection_actions': Mock(wraps=install_api_connection_actions),
+        'install_assistant_actions': Mock(wraps=install_assistant_actions),
+        'install_translation_actions': Mock(wraps=install_translation_actions),
+        'install_conversion_actions': Mock(wraps=install_conversion_actions),
+    }
+    env.update(real_installers)
     monkeypatch.setitem(sys.modules, 'wx', env['wx'])
     ebook = Mock()
     monkeypatch.setitem(sys.modules, 'carr_library.ui.ebook_reader',
                         SimpleNamespace(install_ebook_reader=ebook))
     value._menus()
 
-    labels = [item.title for menu in menus.values() for item in menu.items]
+    labels = [item.title for menu in menus.values() for item in menu.items
+              if item.title is not None]
     shortcuts = [label.split('\t', 1)[1].casefold() for label in labels if '\t' in label]
     assert len(shortcuts) == len(set(shortcuts))
     mnemonics = [name[name.index('&')+1].casefold() for name in menus if '&' in name]
     assert len(mnemonics) == len(set(mnemonics))
     assert 'Open Audio Studio...\tCtrl+Alt+A' in labels
     assert 'AI and API &connections...' in labels
+    assert labels.count('Local assistant...\tCtrl+Alt+J') == 1
+    assert labels.count('Translate selected te&xt...') == 1
+    assert labels.count('Convert documents to reading text...') == 1
+    assert labels.count('Reading conversion formats and limits...') == 1
+    assert {spec.command_id for spec, _ in value._pending_keyboard_commands} >= {
+        'translation.text', 'conversion.documents', 'conversion.formats'}
+    assert 'Documents' not in menus
+    tools_labels = {item.title for item in menus['&Tools'].items if item.title is not None}
+    assert tools_labels == {'Local assistant...\tCtrl+Alt+J', 'Translate selected te&xt...',
+                            'Convert documents to reading text...',
+                            'Reading conversion formats and limits...'}
     assert 'Academic library...\tCtrl+Shift+B' in labels
     assert 'DOI lookup and open-access sources...' in labels
     assert 'Document formats' in labels
     assert 'Import Center: files, folders and queues' in labels
     for handler in (value.import_center, value.open_academic_library, value.export_topic):
         assert any(call.args[1] == handler for call in value.Bind.call_args_list)
-    for installer in (*installers.values(), ebook):
+    for installer in (*installers.values(), *real_installers.values(), ebook):
         installer.assert_called_once_with(value)
     env['show_acquisition_dialog'].assert_not_called()
     handlers = {call.args[2].title: call.args[1] for call in value.Bind.call_args_list
@@ -271,8 +304,7 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
                 ('portable_sync', 'install_portable_sync_actions'),
                 ('language_matrix', 'install_language_actions'),
                 ('translation_dialog', 'install_translation_actions'),
-                ('document_conversion', 'install_conversion_actions'),
-                ('transcription_dialog', 'install_transcription_actions')):
+                ('document_conversion', 'install_conversion_actions')):
             if action_name in menu_globals:
                 module = importlib.import_module('carr_library.ui.' + module_name)
                 if hasattr(module, 'wx'):
@@ -304,7 +336,9 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
         assert 'File/Open saved reading copy' in bindings
         assert 'library.portable_snapshots' in keyboard.bindings
         assert 'audio.language_evidence' in keyboard.bindings
-        assert 'transcription.local' in keyboard.bindings
+        for command in ('translation.text', 'conversion.documents', 'conversion.formats'):
+            assert command in keyboard.bindings
+        assert bindings.get('Tools/Local assistant') == 'Ctrl+Alt+J'
         assert 'Options/Keyboard shortcuts' in bindings
         assert value.menu_bar.GetMenuLabel(0) == '&File'
         shortcuts = [shortcut.casefold() for shortcut in bindings.values() if shortcut]
@@ -312,6 +346,17 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
         assert keyboard.load_notice == ''
         assert sum(value.menu_bar.GetMenuLabel(i) == '&Options'
                    for i in range(value.menu_bar.GetMenuCount())) == 1
+        menu_labels = [value.menu_bar.GetMenuLabel(i)
+                       for i in range(value.menu_bar.GetMenuCount())]
+        assert sum(label.replace('&', '') == 'Tools' for label in menu_labels) == 1
+        assert 'Documents' not in [label.replace('&', '') for label in menu_labels]
+        mnemonics = [label[label.index('&') + 1].casefold()
+                     for label in menu_labels if '&' in label]
+        assert len(mnemonics) == len(set(mnemonics))
+        tools = value.menu_bar.GetMenu(value.menu_bar.FindMenu('Tools'))
+        tool_items = {item.GetId() for item in tools.GetMenuItems() if not item.IsSeparator()}
+        for command in ('translation.text', 'conversion.documents', 'conversion.formats'):
+            assert keyboard.bindings[command].item.GetId() in tool_items
         assert not hasattr(value, 'keyboard_actions')
     finally:
         # Native modules imported under this temporary headless wx adapter must
@@ -945,8 +990,6 @@ def test_real_topic_save_labels_are_distinct_without_changing_names_or_routing(c
     assert tuple(app.topics(workspace)) == topics
     chooser.return_value.Destroy.assert_called_once()
 
-
-
 def test_main_close_waits_for_save_all_and_only_retries_after_durable_success(classes):
     from carr_library.ui.save_all import SaveCoordinator, SaveResult
     value = frame(classes)
@@ -993,6 +1036,8 @@ def observed_frame(classes, tmp_path):
     value = frame(classes)
     value.library = SimpleNamespace(root=tmp_path)
     value.menu_bar.FindMenu.return_value = 1
+    value.menu_bar.GetMenuCount.return_value = 0  # This observer fixture creates no native menus.
+    value.GetMenuBar = lambda: value.menu_bar
     boundary = SimpleNamespace(GetActiveWindow=lambda: value)
     notifications = SimpleNamespace(configure=Mock(), clear=Mock(), set_registry=Mock(),
         environment=Mock(), offer=Mock(), error='', close=Mock(), quiescent=True)

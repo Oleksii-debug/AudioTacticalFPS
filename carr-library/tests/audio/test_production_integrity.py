@@ -68,8 +68,9 @@ def test_changed_source_after_preflight_does_not_seal_wrong_cache_key(tmp_path, 
     original = audio.process_voice
 
     def change_before_decode(source, output, **kwargs):
+        data_offset = audio.wav_info(source).data_offset
         with Path(source).open('r+b') as stream:
-            stream.seek(audio.wav_info(source).data_offset)
+            stream.seek(data_offset)
             stream.write(b'\x01\x00' * 1600)
         return original(source, output, **kwargs)
 
@@ -87,8 +88,9 @@ def test_mutation_during_real_ffmpeg_processing_is_not_published(tmp_path, monke
 
     def change_after_read(*args, **kwargs):
         result = original(*args, **kwargs)
+        data_offset = audio.wav_info(source).data_offset
         with source.open('r+b') as stream:
-            stream.seek(audio.wav_info(source).data_offset)
+            stream.seek(data_offset)
             stream.write(b'\x01\x00' * 1600)
         return result
 

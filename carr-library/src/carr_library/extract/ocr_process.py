@@ -190,6 +190,8 @@ def _model_expectations(runtime, directory):
     if not (pack or managed or runtime.portable):
         return {}
     if not directory.samefile(runtime.tessdata):
+        if pack:
+            raise OcrRuntimeError('OCR staging requested a different selected verified model pack.')
         return {}
     if pack:
         # External packs retain their distinct reviewed content authority.

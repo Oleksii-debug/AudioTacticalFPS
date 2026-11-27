@@ -9,7 +9,7 @@ import sys
 import pytest
 
 from carr_library.transcription_receipt import DEFAULT_SETTINGS
-from carr_library.ui import transcription_dialog as ui
+from carr_library.ui import transcription_v43_dialog as ui
 
 
 class Control:
@@ -298,6 +298,7 @@ def test_native_error_summary_does_not_include_oserror_source_filename():
 
 @pytest.mark.parametrize('manager_installed', [False, True], ids=['before-keyboard', 'after-keyboard'])
 def test_installation_registers_one_shared_command_without_starting_work(monkeypatch, manager_installed):
+    from carr_library.ui import transcription_dialog as entry
     from carr_library.ui.command_registry import CommandRegistry, CommandSpec
     registry = CommandRegistry((CommandSpec('library.existing', 'Existing', 'main', 'Ctrl+J'),))
     overrides = {'library.existing': 'Ctrl+Shift+J'}
@@ -308,7 +309,7 @@ def test_installation_registers_one_shared_command_without_starting_work(monkeyp
         return item
     menu.Append = append
     frame = SimpleNamespace(menu_bar=SimpleNamespace(GetMenuCount=lambda: 1,
-        GetMenuLabel=lambda index: '&Tools', GetMenu=lambda index: menu), Bind=Mock())
+        GetMenuLabel=lambda index: '&File', GetMenu=lambda index: menu), Bind=Mock())
     registered = []
     if manager_installed:
         def register(spec, item):
@@ -318,9 +319,9 @@ def test_installation_registers_one_shared_command_without_starting_work(monkeyp
         frame.keyboard_commands = SimpleNamespace(register_menu_command=register)
     monkeypatch.setitem(sys.modules, 'wx', SimpleNamespace(ID_ANY=-1, EVT_MENU=object()))
     open_dialog = Mock()
-    monkeypatch.setattr(ui, 'show_transcription', open_dialog)
-    actions = ui.install_transcription_actions(frame)
-    assert ui.install_transcription_actions(frame) is actions
+    monkeypatch.setattr(entry, 'show_transcription', open_dialog)
+    actions = entry.install_transcription_actions(frame)
+    assert entry.install_transcription_actions(frame) is actions
     rows = registered if manager_installed else frame._pending_keyboard_commands
     assert len(menu.items) == len(rows) == 1
     assert rows[0][0].command_id == 'transcription.local' and rows[0][0].default_shortcut == ''
@@ -356,3 +357,192 @@ def test_reading_action_reuses_existing_editor_only_after_service_reverification
     else:
         factory.assert_called_once_with(tmp_path)
         editor.assert_called_once_with(view.dialog, store, original, guard=view.session.guard)
+
+
+@pytest.mark.parametrize('index', range(3), ids=['workspace-receipts', 'workspace-v5', 'library-supplied'])
+def test_shared_profile_selector_preserves_explicit_scope_and_contract(monkeypatch, index):
+    from carr_library.ui import transcription_dialog as entry
+    seen = {}
+    class Picker:
+        def __init__(self, parent, message, title, choices):
+            seen.update(parent=parent, message=message, choices=tuple(choices))
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def SetName(self, name): seen['name'] = name
+        def SetSelection(self, value): seen['previous'] = value
+        def ShowModal(self): return 1
+        def GetSelection(self): return index
+    frame = SimpleNamespace(_transcription_profile=entry.PROFILE_CHOICES[1][0])
+    monkeypatch.setitem(sys.modules, 'wx', SimpleNamespace(SingleChoiceDialog=Picker, ID_OK=1))
+    assert entry.choose_profile(frame) == entry.PROFILE_CHOICES[index][0]
+    assert frame._transcription_profile == entry.PROFILE_CHOICES[index][0]
+    assert seen['parent'] is frame and seen['previous'] == 1
+    assert len(seen['choices']) == 3 and all('Workspace' in label for label in seen['choices'][:2])
+    assert 'Library-wide' in seen['choices'][2] and 'histories' in seen['message']
+    assert seen['name'] == 'Local transcription profile and scope'
+
+
+@pytest.mark.parametrize('result,selected', [(0, 2), (1, -1)], ids=['cancelled', 'unselected'])
+def test_profile_cancel_or_invalid_choice_does_not_change_saved_selection(monkeypatch, result, selected):
+    from carr_library.ui import transcription_dialog as entry
+    class Picker:
+        def __init__(self, *args): pass
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def SetName(self, value): pass
+        def SetSelection(self, value): pass
+        def ShowModal(self): return result
+        def GetSelection(self): return selected
+    frame = SimpleNamespace(_transcription_profile=entry.PROFILE_CHOICES[1][0])
+    monkeypatch.setitem(sys.modules, 'wx', SimpleNamespace(SingleChoiceDialog=Picker, ID_OK=1))
+    if result:
+        with pytest.raises(ValueError, match='profile and scope'):
+            entry.choose_profile(frame)
+    else:
+        assert entry.choose_profile(frame) is None
+    assert frame._transcription_profile == entry.PROFILE_CHOICES[1][0]
+
+
+def test_library_wide_profile_uses_one_entrypoint_without_adopting_active_workspace(monkeypatch, tmp_path):
+    from carr_library.ui import transcription_dialog as entry
+    library = SimpleNamespace(root=tmp_path, transcription=Mock())
+    frame = SimpleNamespace(library=library, active=None, working=False, _closing=False, report=Mock())
+    supplied, ready = object(), Mock()
+    opened = Mock(return_value='closed')
+    monkeypatch.setitem(sys.modules, 'wx', SimpleNamespace())
+    monkeypatch.setattr(ui, 'show_transcription', opened)
+    assert entry.show_transcription(frame, protocol=entry.PROFILE_CHOICES[2][0],
+                                   service=supplied, on_ready=ready) == 'closed'
+    opened.assert_called_once_with(frame, service=supplied, on_ready=ready)
+    library.transcription.assert_not_called()
+    frame.report.assert_not_called()
+
+
+@pytest.mark.parametrize('profile', ['receipts-v1', 'whisper-v5-manifest-v1'])
+def test_workspace_profiles_keep_their_existing_active_scope_requirement(monkeypatch, profile):
+    from carr_library.ui import transcription_dialog as entry
+    frame = SimpleNamespace(active=None, working=False, _closing=False, report=Mock())
+    monkeypatch.setitem(sys.modules, 'wx', SimpleNamespace())
+    assert entry.show_transcription(frame, protocol=profile) is None
+    frame.report.assert_called_once_with('Select an active library before opening transcription.')
+
+
+def _actual_host():
+    import importlib.util
+    path = Path(__file__).with_name('test_progress_view.py')
+    spec = importlib.util.spec_from_file_location('supplied_transcription_actual_host', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_verified_supplied_result_uses_one_actual_future_and_survives_late_cancel(tmp_path):
+    from hashlib import sha256
+    import os
+    from carr_library.progress import current_progress
+    helper = _actual_host()
+    frame, callbacks = helper._host_frame()
+    returned, release = Event(), Event()
+    output = tmp_path / 'verified-synthetic-result.txt'
+    expected = b'Only synthetic protocol output, not recognition.\n'
+    summary = dict(input_count=1, output_count=1,
+                   outputs=[dict(path=output.name, bytes=len(expected), sha256=sha256(expected).hexdigest())])
+    observed, delivered, errors = [], [], []
+    class Service:
+        def run(self, identity, manifest, *, cancelled, progress):
+            observed.append(current_progress())
+            with output.open('xb') as stream:
+                stream.write(expected)
+                stream.flush()
+                os.fsync(stream.fileno())
+            assert sha256(output.read_bytes()).hexdigest() == summary['outputs'][0]['sha256']
+            progress(1, 1, 'completed')
+            return summary
+    def operation():
+        result = ui._run_verified(Service(), 'a' * 32, 'explicit-manifest',
+                                  cancelled=frame.cancel_event.is_set, advanced=lambda *args: None)
+        returned.set()
+        assert release.wait(10), 'Synthetic Future gate did not release.'
+        return result
+    try:
+        frame.run_job('Supplied transcription', operation, done=delivered.append, failed=errors.append,
+                      progress_total=1, progress_unit='files')
+        assert returned.wait(10)
+        event, = frame.progress_hub.snapshot()
+        assert observed[0].operation_id == event.operation_id
+        assert event.completed == 1 and event.percent == 99 and not event.verified
+        assert not delivered and current_progress() is None
+        frame.cancel_event.set()
+        release.set()
+        helper._drain(frame, callbacks)
+        assert len(delivered) == 1 and delivered[0].summary is summary
+        assert 'status' not in summary and not errors
+        event, = frame.progress_hub.snapshot()
+        assert event.state == 'complete' and event.verified and event.percent == 100
+        assert output.read_bytes() == expected
+    finally:
+        release.set()
+        frame.executor.shutdown(wait=True, cancel_futures=True)
+
+
+@pytest.mark.parametrize('failure', ['progress-reporter', 'native-callback'])
+def test_observer_failure_cannot_suppress_verified_supplied_result(tmp_path, monkeypatch, failure):
+    from carr_library import transcription_host
+    helper = _actual_host()
+    frame, callbacks = helper._host_frame()
+    summary = {'input_count': 1, 'outputs': [], 'output_count': 0}
+    output = tmp_path / 'committed.txt'
+    delivered, errors = [], []
+    def failed_observer(*args, **kwargs):
+        raise RuntimeError('Synthetic detached observer.')
+    if failure == 'progress-reporter':
+        monkeypatch.setattr(transcription_host, 'report_progress', failed_observer)
+    class Service:
+        def run(self, *args, progress, **kwargs):
+            output.write_text('Committed before the result callback.', encoding='utf-8')
+            progress(1, 1, 'complete')
+            return summary
+    try:
+        frame.run_job('Supplied result', lambda: ui._run_verified(Service(), 'a' * 32, 'manifest',
+            cancelled=lambda: False, advanced=failed_observer if failure == 'native-callback' else lambda *args: None),
+            done=delivered.append, failed=errors.append, progress_total=1)
+        helper._drain(frame, callbacks)
+        assert len(delivered) == 1 and delivered[0].summary is summary and not errors
+        assert output.read_text(encoding='utf-8') == 'Committed before the result callback.'
+        event, = frame.progress_hub.snapshot()
+        assert event.state == ('paused' if failure == 'progress-reporter' else 'complete')
+        assert event.verified is (failure == 'native-callback')
+    finally:
+        frame.executor.shutdown(wait=True, cancel_futures=True)
+
+
+@pytest.mark.parametrize('cancelled', [False, True], ids=['failed', 'stopped'])
+def test_failed_supplied_service_never_becomes_a_verified_host_result(cancelled):
+    helper = _actual_host()
+    frame, callbacks = helper._host_frame()
+    delivered, errors = [], []
+    error = InterruptedError('Synthetic stopped worker.') if cancelled else ValueError('Synthetic invalid receipt.')
+    class Service:
+        def run(self, *args, **kwargs): raise error
+    try:
+        frame.run_job('Supplied result', lambda: ui._run_verified(Service(), 'a' * 32, 'manifest',
+            cancelled=lambda: False, advanced=lambda *args: None),
+            done=delivered.append, failed=errors.append, progress_total=1)
+        helper._drain(frame, callbacks)
+        assert not delivered and errors == [error]
+        event, = frame.progress_hub.snapshot()
+        assert event.state == ('cancelled' if cancelled else 'failed') and not event.verified
+    finally:
+        frame.executor.shutdown(wait=True, cancel_futures=True)
+
+
+def test_stop_keeps_owned_cancellation_when_progress_observer_has_closed(tmp_path):
+    session, frame, pump, reports, closed = session_fixture(tmp_path)
+    frame.operation_progress.request_cancel.side_effect = RuntimeError('Observer closed.')
+    assert session.submit('Running', lambda: (), Mock(), kind='run')
+    assert session.request_close() is False
+    assert session.cancel.is_set() and session.busy and not closed
+    session.request_stop.assert_called_once()
+    frame.finish()
+    pump()
+    assert closed == [True]

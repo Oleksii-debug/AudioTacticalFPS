@@ -211,7 +211,7 @@ class LocalNotificationOutput:
             player.play(path)
             while not cancelled() and player.state in ('starting', 'playing'):
                 time.sleep(.02)
-            if player.state == 'error' and not cancelled():
+            if player.state in ('error', 'unavailable') and not cancelled():
                 raise RuntimeError('The local audio device could not play a progress notification.')
         finally:
             try:

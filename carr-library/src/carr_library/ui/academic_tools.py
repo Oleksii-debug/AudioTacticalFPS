@@ -5,9 +5,11 @@ another library or topic, and exports never trust the displayed matrix cache.
 """
 from dataclasses import dataclass
 from pathlib import Path
+import sqlite3
 
 from ..research.export_file import write_export
 from .export_destination import approve_export_destination
+from ..research.topic_tree import TopicTree
 from ..research.topic_literature_matrix import build_literature_matrix, export_matrix
 from ..research.outline_export import export_topic_outline as export_outline
 from .literature_matrix import make_matrix_dialog
@@ -106,8 +108,18 @@ class AcademicActions:
         return AcademicScope(frame.library, *frame.active)
 
     def _current(self, scope):
-        return (not getattr(self.frame, '_closing', False)
-                and self.frame.library is scope.library and self.frame.active == scope.ids)
+        if (getattr(self.frame, '_closing', False)
+                or self.frame.library is not scope.library or self.frame.active != scope.ids):
+            return False
+        # A background result can outlive its authorized read snapshot even when
+        # this frame's selection is unchanged. Recheck external archival too.
+        try:
+            with scope.library.read(scope.workspace) as db:
+                if scope.topic is not None:
+                    TopicTree(db, scope.workspace)._visible(scope.topic)
+            return True
+        except (OSError, ValueError, sqlite3.Error):
+            return False
 
     def _require_current(self, scope):
         if not self._current(scope):
@@ -122,7 +134,7 @@ class AcademicActions:
                     include_descendants=True, cancelled=self.frame.cancel_event.is_set)
 
             def done(snapshot):
-                if not self._current(scope):
+                if self.frame.cancel_event.is_set() or not self._current(scope):
                     return
                 try:
                     command = self.dialogs.matrix(self.frame, snapshot,

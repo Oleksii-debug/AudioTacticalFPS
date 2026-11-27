@@ -2,6 +2,11 @@
 
 The complete library backup includes the registered `transcription-jobs/<job-id>` namespace through one typed producer. It preserves the managed definition, immutable owned input copies, execution history, retained inference records, output receipts, verified text outputs, and the existing stages named by valid publication intents. It uses the existing library backup schema and streaming publication path.
 
+The same backup dispatcher also retains the existing workspace profiles under
+`state/transcription/`. Their protocol-specific producer stays separate from
+`supplied_transcription_backup`; neither namespace is migrated or reinterpreted.
+A current regression creates and restores all three profiles in one library.
+
 ## What is retained
 
 | Data | Treatment |
@@ -49,6 +54,13 @@ The producer allows at most 1,000 jobs, 100,000 included files and 128 GiB of in
 Input and output hashing and streaming copies observe cancellation. No existing backup is overwritten. The complete-backup verifier preserves the independently supplied manifest digest and final source-byte recheck. Historical library schemas keep their existing explicit dispatch; this producer adds a registered namespace without introducing a second backup format.
 
 ## Validation status
+
+The reconciled producer passed all 28 current cases, alongside the unchanged
+112-case receipt validator, 41 supervisor cases and all 42 existing workspace
+backup cases (223 passing cases, zero failures or skips). The subsequently shared
+status startup adds one actual child-process case, and its full 42-case supervisor
+suite passed in the composed application. These are Linux component results;
+the exact installed Windows candidate remains a separate gate.
 
 The regression source covers prepared-before-launch jobs after loss of the original, relocation and rebackup, completed and empty transcripts without a runtime, historical configuration preservation, valid staged and linked publication windows, foreign aliases and traversal, changed raw receipts/settings/input/output bytes, cancellation and byte budgets. An independent subprocess holds the actual native worker lock to test cross-process refusal.
 
