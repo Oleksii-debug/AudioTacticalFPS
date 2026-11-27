@@ -7,7 +7,7 @@ on:
       - carr-library/**
       - .github/workflows/carr-bibliography.yml
   push:
-    branches: [carr-library, 'carr/v3-academic-interchange-*', carr/v3-local-studio-20261126-a4f9, 'carr/v3-acceptance-*', 'carr/v3-repair-r8-*']
+    branches: [carr-library, 'carr/v3-academic-interchange-*', carr/v3-local-studio-20261126-a4f9, 'carr/v3-acceptance-*', 'carr/v3-repair-r8-*', 'carr/v3-bib-r8-*']
     paths:
       - carr-library/**
       - .github/workflows/carr-bibliography.yml

@@ -295,7 +295,9 @@ def main():
     executor = ObservedExecutor()
     release = threading.Event()
     with TemporaryDirectory(prefix='research-bibliography-native-') as temporary:
-        root = Path(temporary)
+        # Windows TEMP may use RUNNER~1; export receipts contain the resolved
+        # long path. Keep every probe destination in that same canonical form.
+        root = Path(temporary).resolve(strict=True)
         try:
             frame = wx.Frame(None, title='Synthetic bibliography acceptance', size=(900, 850))
             gui.SetTopWindow(frame)
@@ -655,6 +657,13 @@ def main():
                     handle = yield from real_overwrite_prompt()
                     yield from answer_yes(handle)
                     job = yield from export_finished(count)
+                    print(json.dumps({'native_export_receipt': 'approved',
+                        'path_matches': job['future'].result().path == approved,
+                        'canonical_path_matches': job['future'].result().path == approved.resolve(strict=True),
+                        'cleanup_warning': job['future'].result().cleanup_warning,
+                        'payload_matches': approved.read_bytes() == text.encode('utf-8'),
+                        'status_matches': dialog.status.GetValue() == f'Bibliography saved to {approved}.',
+                        'status_focused': focused(dialog.status)}, sort_keys=True), flush=True)
                     check('real Yes replaces only the unchanged approved destination',
                           job['future'].result().path == approved
                           and job['future'].result().cleanup_warning is None
@@ -667,6 +676,13 @@ def main():
                     check('the native new-export scenario starts with an absent destination', not fresh.exists())
                     count = yield from begin_native_export(fresh, 'html')
                     job = yield from export_finished(count)
+                    print(json.dumps({'native_export_receipt': 'fresh',
+                        'path_matches': job['future'].result().path == fresh,
+                        'canonical_path_matches': job['future'].result().path == fresh.resolve(strict=True),
+                        'cleanup_warning': job['future'].result().cleanup_warning,
+                        'payload_matches': fresh.read_bytes() == html.encode('utf-8'),
+                        'status_matches': dialog.status.GetValue() == f'Bibliography saved to {fresh}.',
+                        'status_focused': focused(dialog.status)}, sort_keys=True), flush=True)
                     check('real format selection and native export publish a fresh HTML file through the worker',
                           overwrite_prompt() is None
                           and job['future'].result().path == fresh

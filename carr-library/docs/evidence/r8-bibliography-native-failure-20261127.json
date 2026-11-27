@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "status": "FAIL",
+  "source_commit": "f4d2bbbf71da11369833ae3825f7841fed6ad0b8",
+  "source_tree": "a399b5d3fcf543dd530e8af26d37807558b6e1bf",
+  "run_id": 45994739616,
+  "job_id": 140491202280,
+  "failed_check": "real Yes replaces only the unchanged approved destination",
+  "artifact": {
+    "id": 15196425205,
+    "size_in_bytes": 4968,
+    "sha256": "e9de26268f60e19aba9dcdc9eea302aac35868bbaa5fdef55ed56378514f6823"
+  },
+  "downstream_strict_source_and_installed": "NOT_RUN",
+  "interpretation": "The actual export future completed; one or more combined receipt/file/status checks failed. Existing output did not print per-predicate diagnostics. Canonical Windows TEMP path mismatch is investigated by the successor; it is not asserted as observed root cause."
+}
