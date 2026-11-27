@@ -253,10 +253,28 @@ def _validate_transcriptions(db, root, *, cancelled=lambda: False):
         _transcription_adapter().validate_state_tree(db, root, cancelled=cancelled)
 
 
+
+def _recording_adapter():
+    from . import recording_backup
+    return recording_backup
+
+
+def _recording_path(value):
+    return _recording_adapter().state_path(value)
+
+
+def _recording_files(root, *, cancelled=lambda: False):
+    return _recording_adapter().state_paths(root, cancelled=cancelled)
+
+
+def _validate_recordings(root, *, cancelled=lambda: False):
+    return _recording_adapter().validate_state_tree(root, cancelled=cancelled)
+
+
 def _sidecar_allowed(value):
     parts = _portable_relative(value)
     if (_reader_path(value) or _assistant_path(value) or _historical_path(value)
-            or _translation_path(value) or _transcription_path(value)):
+            or _translation_path(value) or _transcription_path(value) or _recording_path(value)):
         return True
     if (len(parts) < 3 or parts[0] != 'audio-projects'
             or not _PROJECT_ID.fullmatch(parts[1])):
@@ -329,8 +347,9 @@ def _sidecar_info(root, relative):
              _assistant_limit(relative) if _assistant_path(relative) else
              _translation_adapter().state_limit(relative) if _translation_path(relative) else
              _transcription_adapter().state_limit(relative) if _transcription_path(relative) else
+             _recording_adapter().state_limit(relative) if _recording_path(relative) else
              MAX_SIDECAR_JSON_BYTES if relative.lower().endswith('.json') else MAX_SIDECAR_FILE_BYTES)
-    minimum = 0 if (_historical_path(relative) or _transcription_path(relative)
+    minimum = 0 if (_historical_path(relative) or _transcription_path(relative) or _recording_path(relative)
                     or relative.lower().endswith(('.srt', '.vtt', '.ffmeta'))) else 1
     if not minimum <= info.st_size <= limit:
         raise RestoreError('sidecar file exceeds its size limit')
@@ -391,6 +410,12 @@ def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES):
     translation = _translation_files(root)
     transcription = _transcription_files(root)
     with ExitStack() as stack:
+        if os.path.lexists(root / _recording_adapter().DIRECTORY):
+            try:
+                stack.enter_context(_recording_adapter().snapshot_guard(root))
+            except RuntimeError as exc:
+                raise RestoreError('A microphone recording or cleanup is active; retry the backup after it stops.') from exc
+        recordings = _recording_files(root)
         directory = root / 'state' / 'assistant'
         if os.path.lexists(directory):
             _plain(directory, directory=True)
@@ -441,7 +466,8 @@ def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES):
         def verify():
             if (_projects(root) != projects or _assistant_documents(root, max_files) != assistant
                     or _translation_files(root) != translation
-                    or _transcription_files(root) != transcription):
+                    or _transcription_files(root) != transcription
+                    or _recording_files(root) != recordings):
                 raise RestoreError('Saved projects or assistant checkpoints changed during backup. Retry when they are idle.')
         yield verify
 
@@ -573,6 +599,8 @@ def _sidecar_inventory(root, max_files, max_bytes, cancelled):
         add(path)
     for path in _transcription_files(root, cancelled=cancelled):
         add(path)
+    for path in _recording_files(root, cancelled=cancelled):
+        add(path)
     for project in _projects(root):
         for path in _studio_files(project, max_files):
             add(path)
@@ -594,7 +622,7 @@ def _copy_sidecar(root, relative, target, identity, cancelled):
     with os.fdopen(os.open(root / relative, flags), 'rb') as incoming, (target.open('xb') if target is not None else nullcontext()) as output:
         if _identity(os.fstat(incoming.fileno())) != identity:
             raise RestoreError('sidecar changed before copying')
-        if relative.lower().endswith('.wav'):
+        if relative.lower().endswith('.wav') and not _recording_path(relative):
             header = incoming.read(12)
             if len(header) != 12 or header[:4] not in (b'RIFF', b'RF64') or header[8:] != b'WAVE':
                 raise RestoreError('project audio artifact is not a WAV or RF64 file')
@@ -746,6 +774,7 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
                 _validate_historical(app.root, cancelled=cancelled)
                 _validate_translations(snapshot_storage.db, app.root, cancelled=cancelled)
                 _validate_transcriptions(snapshot_storage.db, app.root, cancelled=cancelled)
+                _validate_recordings(app.root, cancelled=cancelled)
             sidecars = [_copy_sidecar(app.root, name, stage / SIDECARS / name, identity, cancelled)
                         for name, identity in inventory.items()]
             # Bind the copied ASR state to this exact catalog before publishing
@@ -753,6 +782,8 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
             if any(_transcription_path(entry['path']) for entry in sidecars):
                 with closing(Storage(snapshot, schema_version=CURRENT_SCHEMA_VERSION)) as snapshot_storage:
                     _validate_transcriptions(snapshot_storage.db, stage / SIDECARS, cancelled=cancelled)
+            if any(_recording_path(entry['path']) for entry in sidecars):
+                _validate_recordings(stage / SIDECARS, cancelled=cancelled)
             # Refuse a newly introduced project before interpreting its files.
             # The final check also covers inventory changes during the rescan.
             check_projects()
@@ -1075,6 +1106,7 @@ def _verify_contents(source, stage, manifest, *, copy_files=False,
             _validate_historical(checked_root, cancelled=cancelled)
             _validate_translations(storage.db, checked_root, cancelled=cancelled)
             _validate_transcriptions(storage.db, checked_root, cancelled=cancelled)
+            _validate_recordings(checked_root, cancelled=cancelled)
         original_store = RetainedAssets(source / ORIGINALS)
         entries = verify_catalog_assets(storage.db, original_store,
             include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
