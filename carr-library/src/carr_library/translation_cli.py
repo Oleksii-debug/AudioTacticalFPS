@@ -1,4 +1,4 @@
-"""Explicit document/batch translation CLI on the current provider and job owners."""
+"""Explicit document/batch translation CLI on the current remote and local job owners."""
 from argparse import ArgumentParser
 from hashlib import sha256
 import json
@@ -92,7 +92,7 @@ def parser():
         command.add_argument('--source', default='auto')
         command.add_argument('--target', required=True)
         command.add_argument('--budget-micros', type=int, required=True,
-                             help='Total approved integer USD micro-units; no provider spending-cap claim.')
+                             help='Total approved integer USD micro-units; use0 for local translation. No provider spending-cap claim.')
         command.add_argument('--title', default='Translation')
         command.add_argument('--rate', default='')
         command.add_argument('--glossary', default='')
@@ -100,7 +100,7 @@ def parser():
             command.add_argument('--approve-profile', required=True)
             command.add_argument('--approve-preview', required=True)
             command.add_argument('--approve-transfer', action='store_true',
-                                 help='Approve these exact source bytes and requests for a later explicit run.')
+                                 help='Approve these exact source bytes and local/remote requests for a later explicit run.')
     commands.add_parser('list')
     for name in ('inspect', 'run', 'read', 'export'):
         command = commands.add_parser(name)
@@ -132,7 +132,7 @@ def main(argv=None, *, service_factory=TranslationService):
         if command == 'profiles':
             _json([{'id': p.id, 'name': p.name, 'provider': p.provider, 'endpoint': p.endpoint,
                     'model': p.model, 'fingerprint': p.fingerprint,
-                    'credential_configured': bool(p.credential_ref)} for p in service.available_profiles()])
+                    'credential_configured': bool(p.credential_ref), 'local': p.local} for p in service.available_profiles()])
         elif command == 'languages':
             profile = _profile(service, arguments.profile)
             if arguments.refresh:
@@ -180,7 +180,7 @@ def main(argv=None, *, service_factory=TranslationService):
                 'budget_micros': job['approval']['budget_micros']})
         elif command == 'run':
             if not arguments.allow_network:
-                raise PermissionError('Explicitly allow the reviewed remote translation run.')
+                raise PermissionError('Explicitly allow the reviewed translation endpoint, including loopback connections.')
             result = service.resume(arguments.job, cancelled=cancelled.is_set,
                 expected_job_sha256=arguments.approve_job_sha256)
             _json(result)

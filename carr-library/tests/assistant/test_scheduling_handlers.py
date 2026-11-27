@@ -184,3 +184,40 @@ def test_root_switch_discards_schedule_review_before_any_publication(scheduling_
 def test_native_review_size_has_an_explicit_bound():
     with pytest.raises(ValueError, match='review allowance'):
         assistant_schedule.plan_text({'summary': 'x' * (assistant_schedule.MAX_REVIEW_CHARACTERS + 1)})
+
+
+@pytest.mark.parametrize('action', ['schedule-save', 'run'], ids=['schedule-save', 'ordinary-run'])
+def test_failed_thread_start_cannot_replay_a_retained_mutation_on_a_later_submission(
+        scheduling_handlers, monkeypatch, action):
+    env = scheduling_handlers
+    original_submit = env.executor.submit
+    reject = [False]
+    def queued_then_rejected(callback, *args, **kwargs):
+        future = original_submit(callback, *args, **kwargs)
+        if reject[0]:
+            reject[0] = False
+            raise RuntimeError('Synthetic native thread-start failure after enqueue.')
+        return future
+    monkeypatch.setattr(env.executor, 'submit', queued_then_rejected)
+    def scenario(e):
+        e.controls['instruction'].ChangeValue('Create library "Must not replay"')
+        e.press('preview'); e.finish()
+        if action == 'schedule-save':
+            e.press('schedule')
+            # The review succeeds; its callback tries to enqueue the mutation.
+            e.executor.complete()
+            reject[0] = True
+            e.drain()
+        else:
+            reject[0] = True
+            e.press('run')
+        assert 'thread-start failure' in e.controls['review'].GetValue()
+        assert len(e.executor.pending) == 1 and e.controls['preview'].enabled
+        e.controls['instruction'].ChangeValue('List libraries')
+        e.press('preview')
+        assert len(e.executor.pending) == 2
+        e.finish()  # A later worker reaches the old retained work item first.
+        assert AssistantService(e.app).jobs() == () and e.app.workspaces() == ()
+        e.finish()  # The newly accepted read-only preview still works.
+        assert e.controls['run'].enabled and AssistantService(e.app).jobs() == ()
+    env.show(scenario)

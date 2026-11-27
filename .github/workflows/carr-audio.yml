@@ -126,7 +126,16 @@ jobs:
           if ($LASTEXITCODE -ne 0) { $probeFailures += 1 }
           python -I -B scripts/windows_translation_smoke.py --output audio-ci-results/native-translation.json 2>&1 | Tee-Object audio-ci-results/native-translation.txt
           if ($LASTEXITCODE -ne 0) { $probeFailures += 1 }
+          python -I -B scripts/windows_translation_smoke.py --local --output audio-ci-results/native-local-translation.json 2>&1 | Tee-Object audio-ci-results/native-local-translation.txt
+          if ($LASTEXITCODE -ne 0) { $probeFailures += 1 }
           if ($probeFailures -ne 0) { throw "$probeFailures required installed native probes failed." }
+
+      - name: Require actual numeric-loopback translation transport
+        if: ${{ !cancelled() && steps.runtime.outcome == 'success' }}
+        timeout-minutes: 4
+        run: |
+          python -I -B scripts/ci_check.py --allow-loopback tests/loopback/test_translation_local_adapter.py 2>&1 | Tee-Object audio-ci-results/local-translation-http.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Run provider safety, source integrity and audio recovery regressions
         run: |

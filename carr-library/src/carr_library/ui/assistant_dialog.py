@@ -150,6 +150,24 @@ def show_assistant(frame, *, production=None, on_ready=None):
             # The retained job/ledger owns durable completion, not a destroyed UI.
             pass
 
+    def submit_checked(action):
+        # ThreadPoolExecutor may enqueue before a native thread-start failure.
+        # That retained item must never execute a mutation after the caller has
+        # reported failed admission and a later submission starts a worker.
+        admission = threading.Event()
+        accepted = [False]
+        def admitted_action():
+            admission.wait()
+            if not accepted[0]:
+                raise InterruptedError('Assistant worker admission failed; no operation was dispatched.')
+            return action()
+        try:
+            future = executor.submit(admitted_action)
+            accepted[0] = True
+            return future
+        finally:
+            admission.set()
+
     def selected_scope():
         if not library_current():
             raise ValueError('The library location changed. Reopen the assistant before planning.')
@@ -191,7 +209,7 @@ def show_assistant(frame, *, production=None, on_ready=None):
                 if stopped():
                     raise InterruptedError('Plan preview cancelled.')
                 return candidate, voices
-            future = executor.submit(work)
+            future = submit_checked(work)
         except Exception as exc:
             change_busy(None)
             invalidate()
@@ -242,7 +260,7 @@ def show_assistant(frame, *, production=None, on_ready=None):
                             if stopped():
                                 raise InterruptedError('Selected-voice preview cancelled.')
                             return candidate, None
-                        future = executor.submit(validate_selected)
+                        future = submit_checked(validate_selected)
                         future.add_done_callback(finish)
                         return
                     if (stopped() or selected_revision != revision
@@ -320,7 +338,7 @@ def show_assistant(frame, *, production=None, on_ready=None):
                 gateway = ProviderGateway(BudgetLedger(bound_root / 'api-operations.sqlite'))
                 return propose_local_plan(service, gateway, profile, goal, scope,
                     approval=approval, operation_id=operation_id, cancelled=stopped, profile_store=store)
-            future = executor.submit(work)
+            future = submit_checked(work)
         except Exception as exc:
             change_busy(None)
             invalidate()
@@ -394,7 +412,7 @@ def show_assistant(frame, *, production=None, on_ready=None):
                     identity = service.submit(selected_plan)
                     job_id = identity
                 return service.resume(identity, cancelled=stopped, progress=advanced)
-            future = executor.submit(work)
+            future = submit_checked(work)
         except Exception as exc:
             change_busy(None)
             if progress is not None and progress_token is not None:
@@ -445,7 +463,7 @@ def show_assistant(frame, *, production=None, on_ready=None):
                 raise InterruptedError('Schedule action cancelled before publication.')
             return action()
         try:
-            future = executor.submit(work)
+            future = submit_checked(work)
         except Exception as error:
             change_busy(None)
             report(error)

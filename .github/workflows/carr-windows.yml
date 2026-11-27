@@ -221,7 +221,7 @@ jobs:
       - name: Require the actual local HTTP planning fixture within numeric loopback
         timeout-minutes: 3
         run: |
-          & $env:CARR_PYTHON scripts/ci_check.py --allow-loopback tests/loopback/test_local_planning.py 2>&1 | Tee-Object 'ci-results/local-planning-loopback.txt'
+          & $env:CARR_PYTHON scripts/ci_check.py --allow-loopback tests/loopback/test_local_planning.py tests/loopback/test_translation_local_adapter.py 2>&1 | Tee-Object 'ci-results/local-planning-loopback.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Check the installed offline OCR catalogue and console entrypoint
@@ -631,6 +631,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON -I -B scripts/windows_translation_smoke.py --output ci-results/translation-native.json 2>&1 | Tee-Object 'ci-results/translation-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -I -B scripts/windows_translation_smoke.py --local --output ci-results/translation-native-local.json 2>&1 | Tee-Object 'ci-results/translation-native-local.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise installed language evidence and explicit native voice refresh
         timeout-minutes: 3
@@ -885,6 +887,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_translation_smoke.py --output ci-results/full-bundle-translation-native.json 2>&1 | Tee-Object 'ci-results/full-bundle-translation-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/windows_translation_smoke.py --local --output ci-results/full-bundle-translation-native-local.json 2>&1 | Tee-Object 'ci-results/full-bundle-translation-native-local.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/ci_check.py --allow-loopback tests/loopback/test_translation_local_adapter.py 2>&1 | Tee-Object 'ci-results/full-bundle-local-translation-http.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_language_matrix_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-language-matrix.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B tests/audio/native_playback_probe.py 2>&1 | Tee-Object 'ci-results/full-bundle-native-playback.txt'
@@ -978,6 +984,7 @@ jobs:
                               'carr_library.reader.pacing', 'carr_library.ui.paced_reading',
                               'carr_library.reader.book_source',
                               'carr_library.assistant.translation_structure', 'carr_library.translation_cli',
+                              'carr_library.assistant.translation_local',
                               'carr_library.ui.translation_sources',
                               'carr_library.audio.book_audio', 'carr_library.audio.book_batch',
                               'carr_library.audio.book_plan', 'carr_library.audio.book_store',
@@ -1590,7 +1597,7 @@ jobs:
         timeout-minutes: 3
         run: |
           set -euo pipefail
-          python scripts/ci_check.py --allow-loopback tests/loopback/test_local_planning.py 2>&1 | tee portable-shared-results/local-planning-loopback.txt
+          python scripts/ci_check.py --allow-loopback tests/loopback/test_local_planning.py tests/loopback/test_translation_local_adapter.py 2>&1 | tee portable-shared-results/local-planning-loopback.txt
       - name: Preserve portable source evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9

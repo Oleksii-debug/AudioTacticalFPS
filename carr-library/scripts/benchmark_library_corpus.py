@@ -460,7 +460,7 @@ def run(args):
         source_modules=sources, harness_sha256=sha256(Path(__file__).read_bytes()).hexdigest(),
         environment=dict(platform=platform.platform(), python=sys.version, sqlite=sqlite3.sqlite_version,
             logical_cpus=os.cpu_count(), process_peak_rss_method='OS process high-water working set/RSS',
-            network='DENIED', model_inference='NOT_RUN', vram='NOT_MEASURED; no model loaded'),
+            network='Parent and startup Python sockets denied; worker/native egress not established', model_inference='NOT_RUN', vram='NOT_MEASURED; no model loaded'),
         profile=dict(books=args.books, segments_per_book=args.segments_per_book,
             sampled_imports=args.samples, source_samples=args.samples, result_page_size=args.page_size,
             total_timeout_seconds=args.timeout),
@@ -546,7 +546,7 @@ def main(arguments=None):
             or len(args.source_commit) != 40 or any(char not in '0123456789abcdef' for char in args.source_commit)):
         parser.error('Choose the declared bounded corpus, samples, pages and exact source commit.')
     if not args.installed:
-        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
+        parser.error('Install the exact selected source and pass --installed; owned isolated workers require it.')
     return run(args)
 
 

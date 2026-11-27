@@ -19,6 +19,7 @@ def main():
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--local', action='store_true', help='Exercise the local adapter using synthetic injected responses.')
     args = parser.parse_args()
     if sys.platform != 'win32':
         raise SystemExit('Native Windows execution is required; no simulated native PASS is produced.')
@@ -50,6 +51,11 @@ def main():
     class Transport:
         def get(self, profile, route, headers, **kwargs):
             requests.append(('languages', route))
+            if args.local:
+                assert profile.local and not headers and route == '/languages'
+                return json.dumps([
+                    {'code': 'en', 'name': 'English', 'targets': ['uk']},
+                    {'code': 'uk', 'name': 'Ukrainian', 'targets': []}]).encode()
             return json.dumps({'data': {'languages': [
                 {'language': 'en', 'name': 'English'}, {'language': 'uk', 'name': 'Ukrainian'}]}}).encode()
         def post(self, profile, route, body, headers, **kwargs):
@@ -57,6 +63,10 @@ def main():
             if selected['q'] != original or selected.get('source') != 'en' or selected['target'] != 'uk':
                 raise AssertionError('Native review did not bind the exact synthetic text and pair.')
             requests.append(('text', route))
+            if args.local:
+                assert profile.local and not headers and route == '/translate'
+                assert set(selected) == {'q', 'source', 'target', 'format'} and selected['format'] == 'text'
+                return json.dumps({'translatedText': 'Синтетичний переклад для перевірки інтерфейсу.'}).encode()
             return json.dumps({'data': {'translations': [{
                 'translatedText': 'Синтетичний переклад для перевірки інтерфейсу.',
                 'model': 'nmt'}]}}).encode()
@@ -73,9 +83,14 @@ def main():
         source_digest = sha256(source_file.read_bytes()).hexdigest()
         vault = Vault()
         profiles = ProfileStore(root / 'api-connections.json', vault)
-        profiles.save(ProviderProfile('native-google', 'Synthetic NMT account',
-            'google-translation-v2', GOOGLE_TRANSLATION_ENDPOINT, 'nmt', ('translation',)),
-            secret='synthetic-native-key-not-a-real-credential')
+        if args.local:
+            profiles.save(ProviderProfile('native-local', 'Synthetic local translator',
+                'libretranslate-local', 'http://127.0.0.1:55123', 'synthetic-native-models',
+                ('translation',), local=True))
+        else:
+            profiles.save(ProviderProfile('native-google', 'Synthetic NMT account',
+                'google-translation-v2', GOOGLE_TRANSLATION_ENDPOINT, 'nmt', ('translation',)),
+                secret='synthetic-native-key-not-a-real-credential')
         service = TranslationService(root, profiles=profiles,
             gateway=ProviderGateway(BudgetLedger(root / 'api-operations.sqlite'), vault=vault, transport=Transport()))
 
@@ -221,7 +236,7 @@ def main():
                     source.SetSelection(next(i for i, label in enumerate(source.GetItems()) if label.startswith('en —')))
                     target = child(dialog, 'Target language')
                     target.SetSelection(next(i for i, label in enumerate(target.GetItems()) if label.startswith('uk —')))
-                    child(dialog, 'Maximum approved reservation in USD; no default price').ChangeValue('1')
+                    child(dialog, 'Maximum approved reservation in USD; no default price').ChangeValue('0' if args.local else '1')
                     button(dialog, 'Preview')
                     assert [row[0] for row in requests] == ['languages']
                     phase[0] = 2
@@ -241,7 +256,10 @@ def main():
                     output = outputs[0]
                     report = json.loads((output / 'translation-provenance.json').read_text(encoding='utf-8'))
                     assert report['quotation_authority'] is False
-                    assert report['schema'] == 'carr-translation-export/3'
+                    assert report['schema'] == ('carr-translation-export/4' if args.local else 'carr-translation-export/3')
+                    if args.local:
+                        assert report['local_runtime_identity'] == 'not attested by the local API'
+                        assert not vault.values
                     assert (output / 'structured-bilingual.html').is_file()
                     assert (output / 'structured-translation.json').is_file()
                     assert sha256(source_file.read_bytes()).hexdigest() == source_digest
@@ -311,6 +329,9 @@ def main():
             frame.Destroy()
         if failures or phase[0] != 5:
             raise RuntimeError('Native translation probe failed: ' + '; '.join(failures or ['incomplete flow']))
+    final.update(adapter='libretranslate-local' if args.local else 'google-translation-v2',
+                 local_runtime_inference='NOT_RUN', local_model_identity='NOT_ATTESTED',
+                 transport='Injected synthetic responses; actual loopback transport has a separate strict suite')
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(final, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     print(json.dumps(final, ensure_ascii=False))

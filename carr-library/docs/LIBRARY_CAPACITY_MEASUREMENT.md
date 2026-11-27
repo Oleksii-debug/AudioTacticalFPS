@@ -48,3 +48,6 @@ The destination must be new. The bounded report is library-corpus.json; no corpu
 or private input is uploaded by CI. A failed phase retains a FAIL report and cannot
 be relabelled as a successful measurement. Current source-only additions are
 NOT_RUN until an exact-source Actions receipt proves execution.
+
+The CLI requires --installed. Socket refusal covers the parent and startup Python
+probe; it does not establish OS-level or native-child egress isolation.
