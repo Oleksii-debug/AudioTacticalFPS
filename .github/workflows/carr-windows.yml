@@ -137,6 +137,22 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "CARR_CI_OCR_DIR=$ocr" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
+      - name: Exercise actual managed OCR with Unicode Windows paths
+        if: ${{ !cancelled() && steps.desktop_dependencies.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' }}
+        timeout-minutes: 5
+        run: |
+          $previousPath = $env:PATH
+          $previousOcr = $env:CARR_OCR_DIR
+          try {
+            $env:PATH = "$env:CARR_CI_OCR_DIR;$previousPath"
+            $env:CARR_OCR_DIR = $env:CARR_CI_OCR_DIR
+            & $env:CARR_PYTHON scripts/ci_check.py tests/extract/test_managed_ocr.py tests/e2e/test_managed_ocr_import.py tests/ui/test_ocr_selection.py 2>&1 | Tee-Object 'ci-results/managed-ocr-unicode.txt'
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } finally {
+            $env:PATH = $previousPath
+            $env:CARR_OCR_DIR = $previousOcr
+          }
+
       - name: Exercise native Import Center and durable batch workflow
         if: ${{ !cancelled() && steps.desktop_dependencies.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' }}
         timeout-minutes: 3
