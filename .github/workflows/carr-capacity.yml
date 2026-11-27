@@ -13,8 +13,10 @@ on:
       - carr-library/src/carr_library/search/pagination.py
       - carr-library/src/carr_library/ingest/source_profiles.py
       - carr-library/src/carr_library/library_backup.py
+      - carr-library/src/carr_library/pending_backup.py
       - carr-library/src/carr_library/backup_capacity.py
       - carr-library/tests/storage/test_scoped_locator_capacity.py
+      - carr-library/tests/storage/test_pending_backup.py
       - carr-library/tests/packaging/test_library_corpus_benchmark.py
       - .github/workflows/carr-capacity.yml
   workflow_dispatch:

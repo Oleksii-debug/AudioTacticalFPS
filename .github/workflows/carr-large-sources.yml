@@ -80,7 +80,7 @@ jobs:
       - name: Require profile, backup, parser and real fixture contracts
         run: |
           set -euo pipefail
-          python -I -B scripts/ci_check.py --installed --jobs 3 tests/ingest/test_large_source_profiles.py tests/storage/test_large_source_backup.py tests/e2e/test_large_source_fixture.py 2>&1 | tee large-source-results/contracts.txt
+          python -I -B scripts/ci_check.py --installed --jobs 3 tests/ingest/test_large_source_profiles.py tests/storage/test_large_source_backup.py tests/storage/test_pending_backup.py tests/e2e/test_large_source_fixture.py 2>&1 | tee large-source-results/contracts.txt
       - name: Execute actual retained bytes and current owned import recovery
         run: |
           set -euo pipefail
