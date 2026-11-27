@@ -198,7 +198,18 @@ def test_old_or_incomplete_cache_backup_stays_passive_until_explicit_reuse(tmp_p
     elif state == 'old-marker':
         marker.write_text('{"source":"retained old inert cache"}', encoding='utf-8')
     elif state == 'bad-pcm':
-        cached.write_bytes(b'NOPE' + cached.read_bytes()[4:])
+        from carr_library.ingest.restore import RestoreError
+        original = cached.read_bytes()
+        # The existing backup envelope guard must still reject wrong magic.
+        cached.write_bytes(b'NOPE' + original[4:])
+        with pytest.raises(RestoreError, match='not a WAV or RF64'):
+            create_backup(app, tmp_path / 'wrong-envelope-backup')
+        # A valid RIFF/RF64 + WAVE envelope is not a valid PCM size table.
+        # Preserve byte length and reseal its hash so explicit reuse must
+        # actually inspect the deeper container instead of a hash mismatch.
+        cached.write_bytes(original[:4] + b'\0' * 4 + original[8:])
+        with pytest.raises(ValueError, match='size declaration'):
+            audio.wav_info(cached)
         metadata['sha256'] = sha256(cached.read_bytes()).hexdigest()
         marker.write_text(json.dumps(metadata), encoding='utf-8')
     else:
@@ -258,7 +269,10 @@ def test_restored_resealed_bad_completion_refuses_before_any_fresh_work(tmp_path
     assert engine.calls == 1
     directory = Path(before['output']).parent
     master = directory / 'master.wav'
-    master.write_bytes(b'NOPE' + master.read_bytes()[4:])
+    original = master.read_bytes()
+    master.write_bytes(original[:4] + b'\0' * 4 + original[8:])
+    with pytest.raises(ValueError, match='size declaration'):
+        audio.wav_info(master)
     receipt = json.loads((directory / 'complete.json').read_text(encoding='utf-8'))
     _write_receipt(directory, receipt)
     backup = tmp_path / 'backup'

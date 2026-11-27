@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "status": "SOURCE_REPAIR_NATIVE_RERUN_PENDING",
+  "failed_head": "4e733a4f081c7f7bf0464983e94711604fc93fa1",
+  "failed_tree": "e1ec6da12495beea19aa3dfcce38340342130c8b",
+  "run": 46057772296,
+  "job": 140704332804,
+  "actual_result": {
+    "source": {
+      "passed": 803,
+      "failed": 2
+    },
+    "installed": {
+      "passed": 803,
+      "failed": 2
+    },
+    "native_provider_recovery": 22
+  },
+  "artifact": {
+    "id": 15226924101,
+    "bytes": 495240,
+    "sha256": "13095d580538f7577917424589ee8692d86b2e8a9f9e3a14d4e2380b4ac19798"
+  },
+  "failing_cases": [
+    "tests.audio.test_generated_backup_authority::test_old_or_incomplete_cache_backup_stays_passive_until_explicit_reuse[bad-pcm]",
+    "tests.audio.test_generated_backup_authority::test_restored_resealed_bad_completion_refuses_before_any_fresh_work"
+  ],
+  "observed_error": "carr_library.ingest.restore.RestoreError: project audio artifact is not a WAV or RF64 file",
+  "cause": "The two new adversarial fixtures changed RIFF magic to NOPE; existing unified backup correctly refuses that12-byte envelope before passive capture. They did not reach the intended deeper PCM-consumer boundary.",
+  "repair": "Keep the existing product guard and assert its wrong-magic refusal. For passive roundtrip cases retain RIFF/RF64+WAVE magic and exact byte length, corrupt only the declared RIFF/RF64 size field, assert actual wav_info rejects it, then reseal exact hashes. Backup/restore/rebackup remain passive; explicit cache reuse must quarantine and completed-output reuse must hard-refuse before any admission/native regeneration.",
+  "product_files_changed": [],
+  "required_counts": {
+    "generated_module": 36,
+    "focused_source": 805,
+    "focused_installed": 805,
+    "native_provider": 22
+  },
+  "preserved_assertions": [
+    "All10 actual encoder formats and all existing wrong-container cases remain.",
+    "All source/retained-byte equality, no-activation, quarantine exact-copy and no-new-work canaries remain.",
+    "Existing backup WAV/RF64 envelope validation is unchanged and now explicitly asserted."
+  ],
+  "other_actual_observations": {
+    "preserved714": "PASS_IN_BOTH_MODES",
+    "ordered_odf55": "PASS_IN_BOTH_MODES",
+    "new_generated34": "PASS_IN_BOTH_MODES",
+    "new_generated2": "FAILED_BEFORE_CONSUMER"
+  },
+  "qualification": "No passing result is transferred to the repaired candidate; a new exact805/805/22 run is required."
+}
