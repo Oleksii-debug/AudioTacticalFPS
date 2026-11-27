@@ -5,6 +5,7 @@ the existing metadata projection reproduces coarse Windows file timestamps;
 identity, mode, link count and size remain real. No digest or writer is mocked.
 """
 from hashlib import sha256
+import os
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -206,3 +207,101 @@ def test_cancelled_capture_preserves_absent_or_existing_destination(tmp_path, ex
                                                 cancelled=lambda: True)
     assert (target.read_bytes() if target.exists() else None) == (ORIGINAL if existing else None)
     assert not list(tmp_path.glob('.research-export-*'))
+
+
+@pytest.fixture(params=('text', 'binary'))
+def budget_export_case(request, tmp_path):
+    private = tmp_path / 'private'
+    private.mkdir()
+    target = tmp_path / 'selected-export'
+    binary = request.param == 'binary'
+    writer = export_file.write_binary_export if binary else export_file.write_export
+    payload = b'New binary export\x00' if binary else 'Новий експорт'
+
+    def publish(**options):
+        return writer(target, payload, private_root=private, **options)
+
+    return target, private, publish
+
+
+@pytest.mark.parametrize('phase', ('approval', 'initial', 'final'))
+def test_slow_destination_inspection_stops_after_real_read(budget_export_case, monkeypatch, phase):
+    target, private, publish = budget_export_case
+    previous = b'A' * (2 * 1024 * 1024 + 37)
+    target.write_bytes(previous)
+    approval = export_file.capture_export_destination(target, private_root=private)
+    clock, delayed, descriptors = [0.0], [], []
+    monkeypatch.setattr(export_file, 'monotonic', lambda: clock[0], raising=False)
+    original = os.fdopen
+
+    class Observed:
+        def __init__(self, source):
+            self.source = source
+
+        def __enter__(self):
+            self.source.__enter__()
+            return self
+
+        def __exit__(self, *args):
+            return self.source.__exit__(*args)
+
+        def read(self, count):
+            block = self.source.read(count)
+            if phase != 'final' or list(target.parent.glob('.research-export-*')):
+                clock[0] += 2.0
+                delayed.append(len(block))
+            return block
+
+    def observe(descriptor, *args, **kwargs):
+        source = original(descriptor, *args, **kwargs)
+        descriptors.append((descriptor, source))
+        return Observed(source)
+
+    monkeypatch.setattr(os, 'fdopen', observe)
+    with pytest.raises(TimeoutError, match='could not be verified in time'):
+        if phase == 'approval':
+            export_file.capture_export_destination(target, private_root=private)
+        else:
+            publish(approval=approval)
+    assert delayed == [1024 * 1024]
+    for descriptor, source in descriptors:
+        assert source.closed
+        with pytest.raises(OSError):
+            os.fstat(descriptor)
+    assert target.read_bytes() == previous
+    assert not list(target.parent.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize('phase', ('explicit', 'approved-absence', 'after-staging'))
+def test_create_only_does_not_read_unapproved_competing_file(budget_export_case, monkeypatch, phase):
+    target, private, publish = budget_export_case
+    previous = b'Other writer owns this output'
+    approval = export_file.capture_export_destination(target, private_root=private)
+    if phase != 'after-staging':
+        target.write_bytes(previous)
+    else:
+        fsync = os.fsync
+
+        def create_after_staging(descriptor):
+            fsync(descriptor)
+            target.write_bytes(previous)
+
+        monkeypatch.setattr(os, 'fsync', create_after_staging)
+    opened = os.open
+    reads = []
+
+    def watch_open(path, *args, **kwargs):
+        if Path(path) == target:
+            reads.append(path)
+        return opened(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, 'open', watch_open)
+    if phase == 'explicit':
+        with pytest.raises(FileExistsError):
+            publish(require_absent=True)
+    else:
+        with pytest.raises(ValueError, match='destination changed'):
+            publish(approval=approval)
+    assert not reads
+    assert target.read_bytes() == previous
+    assert not list(target.parent.glob('.research-export-*'))
