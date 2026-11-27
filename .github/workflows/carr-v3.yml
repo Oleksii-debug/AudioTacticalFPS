@@ -5,7 +5,7 @@ on:
     branches: [carr-library, carr/v3-integrated-studio-20261126]
     paths: ['carr-library/**', '.github/workflows/carr-v3.yml']
   push:
-    branches: [carr/v3-primary103-recovered-composition-20261126, carr/v3-primary103-final-411a-20261127]
+    branches: [carr/v3-primary103-recovered-composition-20261126, carr/v3-primary103-final-411a-20261127, carr/v3-primary103-pdf-timeout-411a-20261127]
     paths: ['carr-library/**', '.github/workflows/carr-v3.yml']
   workflow_dispatch:
 
