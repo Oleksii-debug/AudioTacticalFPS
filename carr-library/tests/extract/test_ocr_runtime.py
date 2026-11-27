@@ -277,6 +277,40 @@ def test_real_portable_scan_preserves_candidate_boundary(native_bundle, tmp_path
     assert not rejected['raw_text'] and not rejected['blocks']
 
 
+def test_real_self_check_retains_native_windows_script_inventory(native_bundle, monkeypatch):
+    from types import SimpleNamespace
+    from carr_library.extract import ocr_languages, ocr_process
+
+    script = native_bundle / 'tessdata/script/EnglishFixture.traineddata'
+    script.parent.mkdir()
+    shutil.copyfile(native_bundle / 'tessdata/eng.traineddata', script)
+    executable = json.loads((native_bundle / runtime.MANIFEST).read_text())['executable']
+    write_manifest(native_bundle, target=runtime._native_target(), executable=executable)
+    actual_run = ocr_process.run_ocr
+    listings = []
+
+    def native_windows_report(selected, argv, *, remaining):
+        result = actual_run(selected, argv, remaining=remaining)
+        if '--list-langs' in argv:
+            # Execute the real selected engine and change only its path separator,
+            # matching Tesseract's native Windows std::filesystem::path::string.
+            lines = result.stdout.splitlines()
+            assert (b'script/EnglishFixture' in lines or
+                    b'script\\EnglishFixture' in lines)
+            stdout = result.stdout.replace(b'script/EnglishFixture', b'script\\EnglishFixture')
+            listings.append(stdout)
+            return subprocess.CompletedProcess(result.args, result.returncode, stdout, result.stderr)
+        return result
+
+    monkeypatch.setattr(ocr_languages, 'sys', SimpleNamespace(platform='win32'), raising=False)
+    monkeypatch.setattr(ocr_process, 'run_ocr', native_windows_report)
+    result = runtime.check_runtime()
+    assert listings and b'script\\EnglishFixture' in listings[0].splitlines()
+    assert result['status'] == 'PASS' and result['synthetic_recognition'] == 'RESEARCH'
+    assert result['languages'] == ['eng', 'osd', 'script/EnglishFixture']
+    assert result['manifest_sha256'] == sha256((native_bundle / runtime.MANIFEST).read_bytes()).hexdigest()
+
+
 @pytest.mark.parametrize('selection', ['script/EnglishFixture', 'eng+script/EnglishFixture'])
 def test_real_script_path_loading_fingerprint_and_review_boundary(native_bundle, tmp_path, selection):
     # This exercises Tesseract's actual subdirectory loading using renamed

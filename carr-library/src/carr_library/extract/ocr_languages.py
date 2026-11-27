@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import sys
 import tempfile
 import time
 import unicodedata
@@ -150,7 +151,10 @@ def parse_language_report(report, *, expected_directory=None):
     if expected_directory is not None and (
             os.path.normcase(os.path.abspath(header[1])) != os.path.normcase(os.path.abspath(expected_directory))):
         raise OcrLanguageError('The OCR runtime reported a different model directory.')
-    codes = lines[1:]
+    # Tesseract reports std::filesystem paths with native Windows separators.
+    # Canonicalize only the engine's inventory; caller-supplied IDs stay strict.
+    codes = (tuple(code.replace('\\', '/') for code in lines[1:])
+             if sys.platform == 'win32' else lines[1:])
     if (int(header[2]) != len(codes) or len(codes) > MAX_MODELS
             or any(not valid_model_code(code) for code in codes)
             or len({code.casefold() for code in codes}) != len(codes)):

@@ -153,6 +153,33 @@ def test_runtime_inventory_does_not_normalize_an_invalid_model_identifier(langua
         models.parse_language_report(report(language))
 
 
+def test_native_windows_inventory_canonicalizes_script_separator_without_relaxing_selection(monkeypatch):
+    monkeypatch.setattr(models, 'sys', SimpleNamespace(platform='win32'), raising=False)
+    listing = report('eng', 'osd', r'script\EnglishFixture')
+    assert models.parse_language_report(listing) == ('eng', 'osd', 'script/EnglishFixture')
+    assert not models.valid_model_code(r'script\EnglishFixture')
+    with pytest.raises(ValueError):
+        Config(languages=r'script\EnglishFixture')
+
+
+@pytest.mark.parametrize('codes', [
+    (r'..\eng',), (r'script\..\eng',), (r'script\\Latin',),
+    (r'nested\Latin',), (r'C:\eng',), (r'\\server\eng',),
+    ('script/Latin', r'script\Latin'),
+], ids=('parent', 'script-parent', 'empty-part', 'other-directory',
+        'drive', 'unc', 'canonical-duplicate'))
+def test_native_windows_inventory_rejects_unsafe_paths_and_separator_aliases(monkeypatch, codes):
+    monkeypatch.setattr(models, 'sys', SimpleNamespace(platform='win32'), raising=False)
+    with pytest.raises(ValueError, match='invalid model inventory'):
+        models.parse_language_report(report(*codes))
+
+
+def test_nonwindows_inventory_does_not_reinterpret_a_backslash_filename(monkeypatch):
+    monkeypatch.setattr(models, 'sys', SimpleNamespace(platform='linux'), raising=False)
+    with pytest.raises(ValueError, match='invalid model inventory'):
+        models.parse_language_report(report(r'script\EnglishFixture'))
+
+
 def test_runtime_inventory_is_bound_to_the_requested_model_directory(tmp_path):
     listing = f'List of available languages in "{tmp_path / "other"}" (1):\neng\n'
     with pytest.raises(ValueError, match='different model directory'):
