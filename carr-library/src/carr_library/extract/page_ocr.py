@@ -66,6 +66,18 @@ def _ocr_blocks(tsv, render_size):
     return blocks
 
 
+def _matching_ocr_blocks(tsv, render_size, raw):
+    """Admit layout only when its text agrees with the raw OCR candidate.
+
+    Ignore layout whitespace, not punctuation, Unicode code points or order.
+    This is a consistency check, not proof that OCR recognized the source.
+    """
+    blocks = _ocr_blocks(tsv, render_size)
+    if ''.join(raw.split()) != ''.join(part for block in blocks for part in block['text'].split()):
+        raise ValueError('OCR layout and raw text disagree')
+    return blocks
+
+
 @dataclass(frozen=True)
 class Config:
     languages: str = 'eng'
@@ -228,7 +240,7 @@ def extract_page(asset, physical_index, config=Config()):
                     return result
     provenance.update(method='ocr_candidate', ocr_text=raw, ocr_tsv=tsv, psm=3)
     try:
-        result['blocks'] = _ocr_blocks(tsv, provenance['render_size'])
+        result['blocks'] = _matching_ocr_blocks(tsv, provenance['render_size'], raw)
     except (csv.Error, ValueError, OverflowError):
         # Preserve both raw outputs for review, but never expose a partial or
         # malformed layout as usable word-coordinate evidence.
