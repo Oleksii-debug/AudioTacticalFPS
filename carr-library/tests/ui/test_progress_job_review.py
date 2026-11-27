@@ -532,7 +532,8 @@ def studio_output_fixture():
         return {'destination': 'synthetic'}
 
     service = N(submit=submit, run=run_job, get=lambda i: rows[int(i)],
-                jobs=lambda: rows, projects=N(load=lambda i: project))
+                jobs=lambda: rows, projects=N(load=lambda i: project),
+                restored_inputs_to_review=Mock(return_value=()))
 
     def save():
         saves.append(project)
@@ -563,6 +564,7 @@ def test_studio_unchanged_output_reuses_job():
     f.render()
     f.render()
     assert f.calls == ['0', '0'] and len(f.rows) == 1
+    assert [call.args for call in f.service.restored_inputs_to_review.call_args_list] == [('0',), ('0',)]
 
 
 @pytest.mark.parametrize('option', ['format', 'stems'])
@@ -632,3 +634,14 @@ def test_studio_distinct_job_labels_include_durable_options_and_identity():
     assert len(f.entries) == 2 and len(set(f.entries)) == 2
     assert 'wav; separate stems: Yes; job 0' in f.entries[0]
     assert 'flac; separate stems: No; job 1' in f.entries[1]
+
+
+def test_studio_input_review_error_prevents_render():
+    f = studio_output_fixture()
+    f.service.restored_inputs_to_review.side_effect = ValueError('Input review unavailable')
+    f.render()
+    assert len(f.rows) == 1 and not f.calls
+    assert f.reports[-1] == ('Input review unavailable', True)
+    f.service.restored_inputs_to_review.side_effect = None
+    f.render()
+    assert f.calls == ['0'] and len(f.rows) == 1
