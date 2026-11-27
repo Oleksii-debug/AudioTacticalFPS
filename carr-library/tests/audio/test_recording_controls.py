@@ -705,3 +705,76 @@ def test_retake_api_rejects_nonlocal_identity_before_any_capture(capture, identi
     with pytest.raises(ValueError, match='recording identity'):
         capture.service.capture(capture.device.id, retake_of=identity)
     assert capture.runs == [] and capture.service.list() == ()
+
+
+def test_capture_reservation_releases_real_locks_before_owner_completion(tmp_path, monkeypatch):
+    from filelock import FileLock, Timeout
+    from carr_library.audio.cleanup import CleanupOwner
+
+    root = tmp_path / 'library' / 'voice-state' / 'recordings'
+    root.mkdir(parents=True)
+    capture_lock, native_done = threading.Lock(), threading.Event()
+    monkeypatch.setattr(recording, '_CAPTURE', capture_lock)
+    reservation = recording._CaptureReservation(root, {})
+    owner = CleanupOwner(native_done.is_set)
+    snapshots = []
+    try:
+        stage = reservation.staging('b' * 32)
+        (stage / 'capture.wav').write_bytes(b'owned pending capture')
+        reservation.retain(owner)
+
+        def inspect_before_public_completion():
+            available = []
+            for path in (root / '.recording.lock', root.parent.parent / '.studio-recording.lock'):
+                contender = FileLock(path, timeout=0, thread_local=False)
+                try:
+                    with contender:
+                        available.append(True)
+                except Timeout:
+                    available.append(False)
+            snapshots.append((owner.quiescent, reservation.closed, capture_lock.locked(),
+                              stage.exists(), tuple(available)))
+
+        owner.add_quiescent_callback(inspect_before_public_completion)
+        assert reservation.close() is False
+        assert owner.close() is False
+        assert capture_lock.locked() and stage.exists() and not snapshots
+        native_done.set()
+        assert owner.close() is True
+        assert snapshots == [(False, True, False, False, (True, True))]
+        assert owner.quiescent and reservation.close() is True
+    finally:
+        native_done.set()
+        owner.close()
+        reservation.close()
+
+
+def test_superseded_native_callback_preserves_current_capture_owner(tmp_path, monkeypatch):
+    from carr_library.audio.cleanup import CleanupOwner
+
+    root = tmp_path / 'library' / 'voice-state' / 'recordings'
+    root.mkdir(parents=True)
+    capture_lock = threading.Lock()
+    monkeypatch.setattr(recording, '_CAPTURE', capture_lock)
+    reservation = recording._CaptureReservation(root, {})
+    first_done, current_done = threading.Event(), threading.Event()
+    first, current = CleanupOwner(first_done.is_set), CleanupOwner(current_done.is_set)
+    try:
+        stage = reservation.staging('c' * 32)
+        (stage / 'capture.wav').write_bytes(b'owned current capture')
+        reservation.retain(first)
+        reservation.retain(current)
+        first_done.set()
+        assert first.close() is True and first.quiescent
+        assert not current.quiescent and not reservation.closed
+        assert capture_lock.locked() and stage.exists()
+        assert reservation.close() is False
+        current_done.set()
+        assert current.close() is True
+        assert reservation.closed and not capture_lock.locked() and not stage.exists()
+    finally:
+        first_done.set()
+        current_done.set()
+        first.close()
+        current.close()
+        reservation.close()

@@ -146,7 +146,37 @@ regressions.
 | `4b951b59299bcec893ed39d559bf150e609c9349` | Independent listening controls, current source/installed modules, real FFmpeg and native Windows control/PCM/lifetime checks | Linux passed 451 source and 451 installed cases; Windows passed 449 source and 449 installed cases plus 101 native checks, all with zero failures/skips. [run46050382435](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46050382435). Native transport is explicitly controlled; actual inventory still reported no output device, so physical output and human NVDA remain NOT_RUN. |
 | `47b5f544ad3e53d7cea29ef99e47d0a6a39e3c16` | Verified signed-download Pause/Resume/Cancel, actual TLS and native Windows lifetime controls | Each OS passed 119 source and 119 installed cases; Windows also passed 39 native checks, with zero failures/skips. [run46052086116](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46052086116). Signing authority is synthetic; actual installation remains its own gate and physical keyboard/NVDA remain NOT_RUN. |
 | `50951f2bc416d4856942529587cddf2ddb29667f` | Retained process ownership, ASR admission, exports and exact-suite CI deadlines | Each OS passed 479 source and 479 installed cases plus 34 separate CI-runner tests, with zero failures/errors/skips; Windows also passed the actual profiled ASR case. [run46054991722](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46054991722). The source callback-lock regression and all 41 admission cases passed. Hosted timings do not establish recognition throughput, and the final composition requires its own gates. |
+| `0070a28ccf68250633dca30d226bdef2476af3a9` | Full portable source selection | 9410 passed, 24 failed and 42 subtests; [run46057432268](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46057432268). The failures comprise 18 recording cascade cases, one POSIX playback case, two dictionary import cases and three Calibre child-owner cases. This full run remains failed. |
+| `409cc2af6f03e6f8b64ffec315c719b6e70da535` | Focused recording ownership and ordinary child-import corrections | Linux passed 162 source and 162 isolated installed cases; Windows passed 159 source and 159 installed cases, with zero failures/skips/expected failures; [run46061911299](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46061911299). All four runs verified the same complete 382-file Python inventory and 13 selected module origins before and after execution. |
 | Current committed composition | All new seams together, source and installed origins, fresh native bundle | Require the gate inventory above for this exact commit. Predecessor counts cannot be reassigned. |
+
+The recording cascade began when a reservation callback waited for public
+completion from inside the callback drain itself. Its release now binds the exact
+native-confirmed current owner; public `close()` still requires owner quiescence,
+and a superseded callback cannot release a newer capture. The playback fixture
+now checks silent paused seeking and starts a replacement child only on explicit
+Resume. Dictionary and Calibre fixtures preserve ordinary child imports while
+requiring the selected parent package or the current interpreter's byte-identical
+installation, including the complete relative Python-file inventory. The focused
+run qualifies these corrections in both import contexts; the next coherent PR
+head still requires the complete source, installed and native gate matrix.
+
+Office execution at `0070a28ccf68250633dca30d226bdef2476af3a9`
+([run46057429553](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46057429553))
+passed all nine source and installed native cases on Windows. After an initial
+TLS provisioning failure, Linux's second attempt passed all 25 installed cases,
+including all nine native cases, but its source-native selection retained one
+DOC failure: the isolated worker reported a regular-local-file rejection
+without identifying the rejected object or its type. This result remains failed.
+
+The separate diagnostic revision `4311014d949be4f832c5d62e247a9a0c7c3c5925`
+([run46059804621](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46059804621))
+passed the same source/installed native selections and 12 independent real DOC
+conversions plus two original-stat controls. The refusal did not reproduce.
+No native rejected type or causal fix is claimed, no file/link guard was relaxed,
+and the diagnostic instrumentation is not part of the product composition.
+The next coherent PR commit still requires all nine source and installed native
+cases on both operating systems; these diagnostic passes cannot replace that gate.
 
 The earlier export attempt `c27b8b8` passed Linux 138 but failed 38 Windows
 cases because its real-descriptor observer used the unavailable

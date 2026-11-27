@@ -330,7 +330,7 @@ def inspect(args):
                 manifest_sha256=args.manifest_sha256, setup_sha256=report['installer']['sha256'],
                 version=args.application_version),
             anchor=dict(profile_id=profile, reference=reference, binding=anchor.binding),
-            verifier=dict(path=str(verifier), sha256(verifier.read_bytes()).hexdigest()), helper_python=None)
+            verifier=dict(path=str(verifier), sha256=sha256(verifier.read_bytes()).hexdigest()), helper_python=None)
         config_path = work / 'owner-configuration.json'
         raw = json_bytes(configuration); config_path.write_bytes(raw)
         selected = maintenance.UpdateConfiguration.read(config_path, sha256(raw).hexdigest())

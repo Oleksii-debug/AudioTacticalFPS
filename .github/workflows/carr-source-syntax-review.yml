@@ -1,0 +1,54 @@
+name: Resonance Python source syntax
+on:
+  push:
+    branches: [carr/source-syntax-review-20261127-r7]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  syntax:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: carr-library
+        shell: bash
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Compile the exact application and delivery Python bytes without execution
+        run: |
+          python -I -B - <<'PY'
+          from hashlib import sha1, sha256
+          import json, os, platform
+          from pathlib import Path
+          paths = sorted(path for root in ('src', 'scripts', 'packaging') for path in Path(root).rglob('*.py'))
+          assert paths and Path('packaging/probe_standard_update_windows.py') in paths
+          records, failures = [], []
+          for path in paths:
+              assert path.is_file() and not path.is_symlink(), str(path)
+              raw = path.read_bytes()
+              records.append({'path': str(path), 'git_blob': sha1(b'blob ' + str(len(raw)).encode() + b'\0' + raw).hexdigest(), 'sha256': sha256(raw).hexdigest()})
+              try:
+                  compile(raw, str(path), 'exec')
+              except (SyntaxError, ValueError, OverflowError) as error:
+                  failures.append({'path': str(path), 'error': str(error)[:2000]})
+          result = {'status': 'FAIL' if failures else 'PASS', 'head': os.environ['GITHUB_SHA'], 'python': platform.python_version(), 'files': records, 'failures': failures}
+          destination = Path('ci-syntax'); destination.mkdir()
+          (destination / 'compiled-source.json').write_text(json.dumps(result, sort_keys=True, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps({'status': result['status'], 'head': result['head'], 'python': result['python'], 'files': len(records), 'failures': failures}, sort_keys=True))
+          assert not failures, 'Every selected application and delivery source must compile.'
+          PY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: source-syntax-${{ github.sha }}
+          path: carr-library/ci-syntax
+          if-no-files-found: error
+          retention-days: 7

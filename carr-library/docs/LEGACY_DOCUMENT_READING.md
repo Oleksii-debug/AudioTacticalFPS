@@ -140,3 +140,26 @@ their causes; they do not replace the final acceptance gate. The final PR commit
 must execute all nine native cases from source and the installed package on both
 operating systems, alongside the complete structured-parser, workspace,
 source-preservation, cancellation and publication regressions.
+
+At `0070a28ccf68250633dca30d226bdef2476af3a9`,
+[run46057429553](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46057429553)
+passed all nine source and all nine installed native cases on Windows. Linux's
+first attempt failed TLS provisioning. Its second attempt provisioned the same
+pinned runtime and passed 393 common cases, four POSIX checks and all 25 installed
+cases (including all nine native cases), but the source-native selection passed
+eight and failed DOC. That isolated worker reported
+`ValueError: State must use regular local files, without links.`
+The original log did not identify the rejected object or its type; the refusal
+remains a failed source-native result.
+
+The diagnostic-only revision `4311014d949be4f832c5d62e247a9a0c7c3c5925`,
+[run46059804621](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46059804621),
+preserved the same rejection predicates and added bounded metadata from the
+original stat sample. Its 393 common cases, four POSIX checks, nine source-native
+cases, 25 installed cases and 14 diagnostic cases all passed without skips.
+Those 14 cases comprise 12 independent real DOC conversions and two controls
+that verify the original rejected stat survives a later alias removal.
+The DOC refusal did not reproduce; no native rejected type or causal fix was
+established. The diagnostic instrumentation is outside the product composition.
+Strict file/link checks remain unchanged, and the next coherent PR commit must
+still pass all nine source and installed native cases on each operating system.

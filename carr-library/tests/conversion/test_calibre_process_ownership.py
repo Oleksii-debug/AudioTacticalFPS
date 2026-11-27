@@ -4,6 +4,8 @@ The executables here are Python fixtures. This does not qualify any Calibre
 installation or document format; that is the separate acceptance script.
 """
 import ctypes
+from hashlib import sha256
+import json
 import os
 from pathlib import Path
 import sys
@@ -55,6 +57,13 @@ def _alive(pid):
 def test_inner_converter_keeps_descendant_in_existing_outer_owner(tmp_path, mode):
     import carr_library
     package_file = str(Path(carr_library.__file__).resolve())
+    selected_root = Path(package_file).parent
+    selected_proof = tmp_path / 'selected-package-proof.json'
+    selected_proof.write_text(json.dumps({
+        'source_selection': selected_root == (Path(__file__).parents[2] / 'src' / 'carr_library').resolve(),
+        'files': {path.relative_to(selected_root).as_posix(): sha256(path.read_bytes()).hexdigest()
+                  for path in selected_root.rglob('*.py')},
+    }, sort_keys=True), encoding='utf-8')
     ready = tmp_path / 'descendant.pid'
     child = (
         "import os,pathlib,subprocess,sys,time\n"
@@ -67,9 +76,21 @@ def test_inner_converter_keeps_descendant_in_existing_outer_owner(tmp_path, mode
         "elif mode=='adapter-timeout': time.sleep(8)\n"
     )
     outer = (
-        "import pathlib,sys,time,carr_library\n"
-        "assert pathlib.Path(carr_library.__file__).resolve()==pathlib.Path(sys.argv[1])\n"
-        "from carr_library.conversion.calibre import _run,_environment\n"
+        "import json,pathlib,sys,sysconfig,time,carr_library\n"
+        "from hashlib import sha256\n"
+        "expected=pathlib.Path(sys.argv[1]).resolve().parent\n"
+        "actual=pathlib.Path(carr_library.__file__).resolve().parent\n"
+        "proof=json.loads(pathlib.Path(sys.argv[5]).read_text(encoding='utf-8'))\n"
+        "allowed={expected}\n"
+        "if proof['source_selection'] is True:\n"
+        " allowed.add((pathlib.Path(sysconfig.get_path('purelib'))/'carr_library').resolve())\n"
+        "assert actual in allowed,(actual,expected)\n"
+        "files={path.relative_to(actual).as_posix():sha256(path.read_bytes()).hexdigest() "
+        "for path in actual.rglob('*.py')}\n"
+        "assert files==proof['files'],'Selected child package differs from the parent file/hash inventory.'\n"
+        "from carr_library.conversion import calibre\n"
+        "assert pathlib.Path(calibre.__file__).resolve()==actual/'conversion'/'calibre.py'\n"
+        "_run,_environment=calibre._run,calibre._environment\n"
         "stage=pathlib.Path(sys.argv[2]);mode=sys.argv[3]\n"
         "real=time.monotonic;deadline=real()+5\n"
         "if mode=='adapter-timeout':\n"
@@ -84,10 +105,11 @@ def test_inner_converter_keeps_descendant_in_existing_outer_owner(tmp_path, mode
         "assert (stage/'descendant.pid').is_file()\n"
         "print('adapter settled')\n"
     )
-    # Ordinary imports inherit the selected source/installed environment;
-    # no insertion, interpreter resolution or intercepted child launch.
+    # Ordinary child imports may select this interpreter's exact installed copy
+    # when pytest selected checkout src. Bind its complete bytes before native
+    # work; installed-parent mode stays on the exact configured root.
     args = [str(Path(sys.executable).absolute()), '-B', '-c', outer,
-            package_file, str(tmp_path), mode, child]
+            package_file, str(tmp_path), mode, child, str(selected_proof)]
     try:
         result = run_process(args, owned_tree=True, cwd=tmp_path, watch=(tmp_path,),
             budget=AudioBudget(timeout=15, max_log_bytes=1024 * 1024,
