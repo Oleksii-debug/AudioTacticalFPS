@@ -655,26 +655,32 @@ def show_studio(frame):
                     finally:
                         dialog.EndModal(wx.ID_CLOSE)
 
+    def detach():
+        """Release plain owners without reading a pending or deleted window."""
+        nonlocal alive
+        if not alive:
+            return
+        alive = False
+        cancel.set()
+        try:
+            timer.Stop()
+        except RuntimeError:
+            pass  # A destroyed native timer cannot block owned cleanup.
+        try:
+            retire_playback(notify=False)
+        finally:
+            try:
+                progress.close()
+            finally:
+                retire_worker()
+
     def on_destroy(event):
-        nonlocal alive, destroyed, parent_destroyed
+        nonlocal destroyed, parent_destroyed
         identity = event.GetId()
         if identity in (owner_id, parent_id):
             destroyed = destroyed or identity == owner_id
             parent_destroyed = parent_destroyed or identity == parent_id
-            if alive:
-                alive = False
-                cancel.set()
-                try:
-                    timer.Stop()
-                except RuntimeError:
-                    pass  # A destroyed native timer cannot block owned cleanup.
-                try:
-                    retire_playback(notify=False)
-                finally:
-                    try:
-                        progress.close()
-                    finally:
-                        retire_worker()
+            detach()
         event.Skip()
 
     for name, callback in {'save': save, 'open': open_project, 'saveas': save_as, 'roles': edit_roles,
@@ -754,14 +760,18 @@ def show_studio(frame):
         finally:
             try:
                 if alive:
-                    close()
+                    if not parent_destroyed and dialog and not dialog.IsBeingDeleted():
+                        close()
+                    else:
+                        detach()
             finally:
-                if not parent_destroyed:
+                if not parent_destroyed and frame and not frame.IsBeingDeleted():
                     try:
                         frame.Unbind(wx.EVT_WINDOW_DESTROY, handler=on_destroy)
                     except RuntimeError:
                         pass  # The parent may have completed native destruction.
-                if not destroyed and not parent_destroyed:
+                if (not destroyed and not parent_destroyed and dialog
+                        and not dialog.IsBeingDeleted()):
                     dialog.Destroy()
 
 

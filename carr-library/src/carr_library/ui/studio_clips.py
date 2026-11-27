@@ -396,36 +396,43 @@ class ClipDialog(wx.Dialog):
         else:
             self.Hide()
 
+    def detach(self):
+        """Detach callbacks and retain native cleanup before deferred deletion."""
+        if not self.closed:
+            self.closed = self.closing = True
+            self.playback_generation += 1
+            if self.pending:
+                self.cancel_event.set()
+            try:
+                if self.player is not None and self.player.close() is False:
+                    raise RuntimeError('The audio device has not confirmed Stop.')
+                for path in self.previews:
+                    path.unlink(missing_ok=True)
+            except (OSError, RuntimeError) as exc:
+                self.cleanup_error = str(exc)
+                # The native dialog can now be collected. Retain the exact
+                # player and its files in the existing background owner;
+                # neither callback captures the dying wx wrapper.
+                from ..audio.cleanup import pending_cleanup
+                player, previews = self.player, tuple(self.previews)
+                def close_player():
+                    return player is None or player.close() is not False
+                def remove_previews():
+                    for path in previews:
+                        path.unlink(missing_ok=True)
+                self.cleanup_owner = pending_cleanup(close_player,
+                    message='Clip playback is awaiting native cleanup.',
+                    callbacks=(remove_previews,)).cleanup_owner
+
     def on_destroy(self, event):
         if event.GetId() == self.owner_id:
-            # Compare the captured native ID; never query the dying wrapper.
             self.destroyed = True
-            if not self.closed:
-                self.closed = self.closing = True
-                self.playback_generation += 1
-                if self.pending:
-                    self.cancel_event.set()
-                try:
-                    if self.player is not None and self.player.close() is False:
-                        raise RuntimeError('The audio device has not confirmed Stop.')
-                    for path in self.previews:
-                        path.unlink(missing_ok=True)
-                except (OSError, RuntimeError) as exc:
-                    self.cleanup_error = str(exc)
-                    # The native dialog can now be collected. Retain the exact
-                    # player and its files in the existing background owner;
-                    # neither callback captures the dying wx wrapper.
-                    from ..audio.cleanup import pending_cleanup
-                    player, previews = self.player, tuple(self.previews)
-                    def close_player():
-                        return player is None or player.close() is not False
-                    def remove_previews():
-                        for path in previews:
-                            path.unlink(missing_ok=True)
-                    self.cleanup_owner = pending_cleanup(close_player,
-                        message='Clip playback is awaiting native cleanup.',
-                        callbacks=(remove_previews,)).cleanup_owner
+            self.detach()
         event.Skip()
+
+    def Destroy(self):
+        self.detach()
+        return super().Destroy()
 
     def key(self, event):
         if event.GetKeyCode() == wx.WXK_ESCAPE:
@@ -443,5 +450,6 @@ def show_clip_editor(frame):
         wx.CallAfter(dialog.reload)
         dialog.ShowModal()
     finally:
-        if not dialog.destroyed:
+        dialog.detach()
+        if not dialog.destroyed and dialog and not dialog.IsBeingDeleted():
             dialog.Destroy()
