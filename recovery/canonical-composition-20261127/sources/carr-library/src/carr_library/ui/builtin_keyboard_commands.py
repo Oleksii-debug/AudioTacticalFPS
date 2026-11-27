@@ -52,6 +52,8 @@ MAIN_COMMANDS = (
     ('help.installation', 'Help', 'Check this installation', ''),
     ('commands.find', 'Options', 'Find a command', 'Ctrl+Shift+P'),
     ('options.keyboard', 'Options', 'Keyboard shortcuts', 'Ctrl+Alt+K'),
+    ('focus.library', 'Options', 'Focus library and research topic', 'Ctrl+Alt+L'),
+    ('focus.status', 'Options', 'Focus operation status', 'Ctrl+Alt+S'),
 )
 
 READER_COMMANDS = (

@@ -255,9 +255,15 @@ def _validate_engine_settings(value):
         text(font['license_notice'], 4000)
 
 
+def _empty_subtitle(name):
+    # A clip-only project has no inferred transcript. Its empty SRT/LRC files
+    # are valid inert exports; VTT still requires its explicit header.
+    return backup_producers.SUBTITLE.fullmatch(name) is not None and not name.endswith('.vtt')
+
+
 def validate_sidecar(db, name, raw):
     maximum = sidecar_limit(name)
-    if type(raw) is not bytes or not 0 < len(raw) <= maximum:
+    if type(raw) is not bytes or not (0 if _empty_subtitle(name) else 1) <= len(raw) <= maximum:
         raise RestoreError('sidecar is empty or exceeds its data-format budget')
     try:
         if name == 'reading-state.json':
@@ -398,7 +404,8 @@ def normalize_manifest(manifest):
         if entry['filename'].startswith(backup_generated.PREFIX) and not generated:
             raise RestoreError('Generated audio requires explicit manifest inclusion.')
         maximum = sidecar_limit(entry['filename'])
-        if not 0 < entry['size_bytes'] <= maximum or entry['filename'].casefold() in names:
+        if (not (0 if _empty_subtitle(entry['filename']) else 1) <= entry['size_bytes'] <= maximum
+                or entry['filename'].casefold() in names):
             raise RestoreError('invalid sidecar size or duplicate filename')
         names.add(entry['filename'].casefold())
         path = PurePosixPath(entry['filename'])
@@ -435,9 +442,9 @@ def _regular(path):
     return info
 
 
-def read_regular(path, maximum):
+def read_regular(path, maximum, *, allow_empty=False):
     before = _regular(path)
-    if not 0 < before.st_size <= maximum:
+    if not (0 if allow_empty else 1) <= before.st_size <= maximum:
         raise RestoreError('sidecar is empty or exceeds its data-format budget')
     flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
     with os.fdopen(os.open(path, flags), 'rb') as stream:
@@ -524,11 +531,12 @@ def _write(stage, name, raw):
         os.fsync(stream.fileno())
 
 
-def _stream_file(source, *, destination=None, expected=None, maximum, cancelled):
+def _stream_file(source, *, destination=None, expected=None, maximum, cancelled,
+                 allow_empty=False):
     """Copy or recheck actual bytes without allocating a complete media file."""
     _check_cancelled(cancelled)
     before = _regular(source)
-    if not 0 < before.st_size <= maximum:
+    if not (0 if allow_empty else 1) <= before.st_size <= maximum:
         raise RestoreError('sidecar is empty or exceeds its data-format budget')
     flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
     digest, size, header = sha256(), 0, b''
@@ -589,7 +597,7 @@ def snapshot(db, root, stage, *, max_bytes=MAX_BYTES, include_generated=False,
                 maximum=sidecar_limit(name), cancelled=cancelled)
             backup_generated.validate_container(name, header, size)
         else:
-            raw = read_regular(root / name, sidecar_limit(name))
+            raw = read_regular(root / name, sidecar_limit(name), allow_empty=_empty_subtitle(name))
             validate_sidecar(db, name, raw)
             _write(stage, name, raw)
             size, checksum = len(raw), sha256(raw).hexdigest()
@@ -603,7 +611,8 @@ def snapshot(db, root, stage, *, max_bytes=MAX_BYTES, include_generated=False,
     # Recheck bytes after all producers have been copied, then their inventory.
     for entry in entries:
         name = entry['filename']
-        _stream_file(root / name, expected=entry, maximum=sidecar_limit(name), cancelled=cancelled)
+        _stream_file(root / name, expected=entry, maximum=sidecar_limit(name), cancelled=cancelled,
+                     allow_empty=_empty_subtitle(name))
     if capture() != before:
         raise RestoreError('application state changed during backup; pause its producer and retry')
     _check_cancelled(cancelled)
@@ -635,12 +644,15 @@ def check_namespace(directory, inventory, *, cancelled=lambda: False):
         if missing:
             raise RestoreError('incomplete backup or missing files: ' + ', '.join(sorted(missing)[:10]))
 
+    children_by_parent = {}
+    for name in names | expected_dirs:
+        parent = str(PurePosixPath(name).parent)
+        children_by_parent.setdefault(parent, set()).add(name)
     exact_children(directory, expected_roots, '')
     for name in sorted(expected_dirs):
         _check_cancelled(cancelled)
         _plain(directory / name, directory=True)
-        expected = {path for path in names | expected_dirs if str(PurePosixPath(path).parent) == name}
-        exact_children(directory / name, expected, name)
+        exact_children(directory / name, children_by_parent.get(name, ()), name)
     for name in names:
         _check_cancelled(cancelled)
         _regular(directory / name)
@@ -656,7 +668,7 @@ def restore(db, source, stage, inventory, *, cancelled=lambda: False):
                 expected=entry, maximum=sidecar_limit(name), cancelled=cancelled)
             backup_generated.validate_container(name, header, size)
         else:
-            raw = read_regular(source / name, sidecar_limit(name))
+            raw = read_regular(source / name, sidecar_limit(name), allow_empty=_empty_subtitle(name))
             if len(raw) != entry['size_bytes'] or sha256(raw).hexdigest() != entry['sha256']:
                 raise RestoreError('sidecar digest or size disagrees with the backup manifest: ' + name)
             validate_sidecar(db, name, raw)

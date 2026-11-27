@@ -1,0 +1,136 @@
+{
+  "schema": "carr-source-recovery-proposal/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "scope": "canonical966 total Studio disk budget composed with current admission/cleanup/M4B boundaries",
+  "status": "SOURCE_ONLY_NOT_COMPILED_OR_TESTED",
+  "notes": [
+    "IMPORTANT: local c04 render has additional role-effects/CAS changes absent from public bca. Apply exact compatible hunks or three-way merge; never replace that local file wholesale with this candidate.",
+    "Existing resource/source/M4B/5f behavior is retained in public-base proposal. AudioCleanupPending preserves the cleanup owner before general AudioError cleanup.",
+    "Canonical real filesystem/FFmpeg assertions remain byte-identical; the fixture explicitly configures cooperative admission for its tiny private volume and one worker thread.",
+    "New regression checks real broker/render lock/staged path ownership with an injected native failure; it is not native engine proof.",
+    "No ref or index mutated. No compile or runtime proof during outage."
+  ],
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/studio/render.py",
+      "base_commit": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
+      "base_blob": "99efeeb2534488c2facf5761090665ecefa9e3c9",
+      "new_blob": "bf7fd44fdb222fdf1ba3946939fc34ed5419ad97",
+      "readback": true,
+      "status": "SOURCE_ONLY_NOT_COMPILED_OR_TESTED",
+      "note": "Exact bca-based budget proposal only. Local c04 render includes additional role-effects/CAS union; apply the hunks there, never overwrite the whole local file. Preserves cleanup ownership/resource admission/source fingerprint/M4B/5f guards in bca. Not compiled/tested.",
+      "scope": "replay_render_disk_union"
+    },
+    {
+      "path": "carr-library/tests/audio_acceptance/test_primary_publication_budget.py",
+      "base_commit": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "4820cc4af03b81ce2e8fdaac3237b14bae7ad62d",
+      "new_blob": "f101b2031245c7e9810a38d8db30d1a173ac74c1",
+      "readback": true,
+      "status": "SOURCE_ONLY_NOT_COMPILED_OR_TESTED",
+      "note": "Canonical actual-FFmpeg/real-capacity assertions unchanged; only explicit fixture broker policy and one worker thread match composed admission. Not executed.",
+      "scope": "replay_production_budget_acceptance_tests"
+    },
+    {
+      "path": "carr-library/tests/studio/test_production_total_budget_ownership.py",
+      "base_commit": null,
+      "base_blob": null,
+      "new_blob": "f126492cc14aaacef7e925c6167e38b0827c6ead",
+      "readback": true,
+      "status": "SOURCE_ONLY_NOT_COMPILED_OR_TESTED",
+      "note": "New real local ownership regression with injected native result; not executed and not native engine qualification.",
+      "scope": "replay_production_budget_ownership_tests"
+    }
+  ],
+  "canonical_acceptance_assertions_unchanged": true,
+  "patches": [
+    {
+      "path": "carr-library/src/carr_library/studio/render.py",
+      "base_blob": "99efeeb2534488c2facf5761090665ecefa9e3c9",
+      "hunks": [
+        {
+          "before": "import shutil\nimport threading\n",
+          "after": "import shutil\nimport stat\nimport threading\n"
+        },
+        {
+          "before": "    def __init__(self, directory, *, voices=None, runtime_factory=None, input_roots=(), broker=None):\n        self.root = local_path(directory)\n",
+          "after": "    def __init__(self, directory, *, voices=None, runtime_factory=None, input_roots=(),\n                 broker=None, total_disk_bytes=32 * 1024**3):\n        \"\"\"Bound retained private/output bytes independently of broker estimates.\"\"\"\n        if type(total_disk_bytes) is not int or not 1024**2 <= total_disk_bytes <= 2**63 - 1:\n            raise ValueError('Total production disk budget must be an integer of at least one MiB.')\n        self.total_disk_bytes = total_disk_bytes\n        self.root = local_path(directory)\n"
+        },
+        {
+          "before": "        from ..audio import AudioCancelled, AudioCleanupPending, Track, MusicSpec\n",
+          "after": "        from ..audio import AudioError, AudioCancelled, AudioCleanupPending, Track, MusicSpec\n"
+        },
+        {
+          "before": "            if state['status'] == 'complete':\n                self._verify_artifacts(state)\n                return state\n",
+          "after": "            if state['status'] == 'complete':\n                self._verify_artifacts(state, cancelled=cancelled)\n                return state\n"
+        },
+        {
+          "before": "            state['status'], state['error'] = 'running', ''\n            self._save(state)\n\n            def stopping():\n                return self._closed.is_set() or lease.cancelled()\n",
+          "after": "            state['status'], state['error'] = 'running', ''\n            state['total_disk_bytes'] = self.total_disk_bytes\n            self._save(state)\n\n            def requested_stop():\n                return self._closed.is_set() or lease.cancelled()\n\n            last_disk_check, retained = 0.0, 0\n\n            def capacity(additional=0, *, force=False, honor_cancel=True):\n                nonlocal last_disk_check, retained\n                now = time.monotonic()\n                if force or now - last_disk_check >= .2:\n                    retained = _retained_bytes((self.root, Path(state['destination'])),\n                                               requested_stop if honor_cancel else lambda: False)\n                    last_disk_check = now\n                if retained + additional > self.total_disk_bytes:\n                    raise AudioError('The total production disk budget would be exceeded. '\n                                     'Increase total_disk_bytes to resume; completed files are retained.')\n                return self.total_disk_bytes - retained - additional\n\n            def stopping():\n                if requested_stop():\n                    return True\n                capacity()\n                return False\n"
+        },
+        {
+          "before": "            def node(kind, identity, operation, *, cached_check=None):\n",
+          "after": "            def generate(path, operation):\n                remaining = capacity(65536, force=True)\n                if remaining < 4096:\n                    raise AudioError('The total production disk budget has no room for another audio step.')\n                previous_budget = runtime.budget\n                runtime.budget = replace(previous_budget,\n                    max_output_bytes=min(previous_budget.max_output_bytes, remaining))\n                try:\n                    operation(path)\n                    capacity(force=True, honor_cancel=False)\n                except AudioCleanupPending:\n                    # The existing cleanup owner still holds child handles,\n                    # staging and reservations. Leave its output path intact.\n                    raise\n                except AudioError:\n                    # Only this unaccepted fresh attempt belongs to cleanup.\n                    path.unlink(missing_ok=True)\n                    raise\n                finally:\n                    runtime.budget = previous_budget\n\n            def node(kind, identity, operation, *, cached_check=None):\n"
+        },
+        {
+          "before": "                path = self.cache / (key + '-' + uuid4().hex[:10] + '.wav')\n                operation(path)\n",
+          "after": "                path = self.cache / (key + '-' + uuid4().hex[:10] + '.wav')\n                generate(path, operation)\n"
+        },
+        {
+          "before": "                    else:\n                        temporary = target.parent / ('.pending-' + uuid4().hex)\n                        try:\n                            with Path(source).open('rb') as read, temporary.open('xb') as write:\n                                while block := read.read(1024 * 1024):\n                                    check()\n                                    write.write(block)\n",
+          "after": "                    else:\n                        def reserve_copy(size):\n                            # Output may live on another volume than the cache.\n                            required = size + runtime.budget.reserve_disk_bytes + 65536\n                            if shutil.disk_usage(target.parent).free < required:\n                                raise AudioError('Not enough output disk space to publish while preserving the configured reserve.')\n                            capacity(size + 65536, force=True)\n\n                        reserve_copy(artifact['size'])\n                        temporary = target.parent / ('.pending-' + uuid4().hex)\n                        try:\n                            with Path(source).open('rb') as read, temporary.open('xb') as write:\n                                while block := read.read(1024 * 1024):\n                                    check()\n                                    reserve_copy(len(block))\n                                    write.write(block)\n"
+        },
+        {
+          "before": "                            runtime.audiobook(master, encoded, chapters=chapter_data, title=project.title,\n                                              sample_rate=project.sample_rate, cancelled=stopping,\n                                              warning=audiobook_warning)\n                        else:\n                            runtime.convert(master, encoded, sample_rate=project.sample_rate, cancelled=stopping)\n",
+          "after": "                            generate(encoded, lambda target: runtime.audiobook(master, target,\n                                chapters=chapter_data, title=project.title,\n                                sample_rate=project.sample_rate, cancelled=stopping,\n                                warning=audiobook_warning))\n                        else:\n                            generate(encoded, lambda target: runtime.convert(master, target,\n                                sample_rate=project.sample_rate, cancelled=stopping))\n"
+        },
+        {
+          "before": "    def _verify_artifacts(self, state):\n        root = local_path(state['destination'], exists=True)\n        for artifact in state['artifacts']:\n            path = local_path(artifact['path'], root=root, exists=True)\n            if path.stat().st_size != artifact['size'] or digest_file(path) != artifact['sha256']:\n                raise ValueError('A rendered output is missing or its checksum changed.')\n\n",
+          "after": "    def _verify_artifacts(self, state, *, cancelled=lambda: False):\n        if cancelled():\n            raise InterruptedError('Production output verification cancelled.')\n        root = local_path(state['destination'], exists=True)\n        for artifact in state['artifacts']:\n            path = local_path(artifact['path'], root=root, exists=True)\n            if path.stat().st_size != artifact['size'] or digest_file(path, cancelled=cancelled) != artifact['sha256']:\n                raise ValueError('A rendered output is missing or its checksum changed.')\n\n"
+        },
+        {
+          "before": "def json_safe(value):\n",
+          "after": "def _retained_bytes(roots, cancelled):\n    \"\"\"Count disjoint private/output trees without reading waveforms or links.\"\"\"\n    pending, total = list(roots), 0\n    while pending:\n        if cancelled():\n            raise InterruptedError('Production disk accounting cancelled.')\n        path = pending.pop()\n        try:\n            info = path.lstat()\n        except FileNotFoundError:\n            continue\n        if stat.S_ISLNK(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400:\n            raise ValueError('Production disk accounting cannot follow links or reparse points.')\n        if stat.S_ISDIR(info.st_mode):\n            with os.scandir(path) as entries:\n                pending.extend(Path(entry.path) for entry in entries)\n        elif stat.S_ISREG(info.st_mode):\n            total += info.st_size\n        else:\n            raise ValueError('Production state contains an unsupported special file.')\n    return total\n\n\ndef json_safe(value):\n"
+        },
+        {
+          "before": "    @property\n    def voices(self):\n        return self.discover_voices()\n",
+          "after": "    def _check_open(self):\n        if self._closed.is_set():\n            raise RuntimeError('Production service is closed.')\n\n    @property\n    def voices(self):\n        self._check_open()\n        return self.discover_voices()\n"
+        },
+        {
+          "before": "    def create(self, text, *, title='Audio production', voice_ids=(), mode='faithful'):\n        project = parse_script",
+          "after": "    def create(self, text, *, title='Audio production', voice_ids=(), mode='faithful'):\n        self._check_open()\n        project = parse_script"
+        },
+        {
+          "before": "    def submit(self, project, destination, *, format='wav', stems=True, operation_id=None):\n",
+          "after": "    def submit(self, project, destination, *, format='wav', stems=True, operation_id=None):\n        self._check_open()\n"
+        },
+        {
+          "before": "    def run(self, job_id, *, cancelled=lambda: False, progress=None):\n        from ..audio import",
+          "after": "    def run(self, job_id, *, cancelled=lambda: False, progress=None):\n        self._check_open()\n        from ..audio import"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/tests/audio_acceptance/test_primary_publication_budget.py",
+      "base_blob": "4820cc4af03b81ce2e8fdaac3237b14bae7ad62d",
+      "hunks": [
+        {
+          "before": "            budget = audio.AudioBudget(max_output_bytes=4 * MIB, reserve_disk_bytes=4 * MIB, timeout=30)\n",
+          "after": "            budget = audio.AudioBudget(max_output_bytes=4 * MIB, reserve_disk_bytes=4 * MIB,\n                                       timeout=30, threads=1)\n            from carr_library.operations import ResourceBroker, ResourceLimits\n            # The private tiny-volume fixture intentionally selects zero extra\n            # cooperative reserve. The actual AudioBudget reserve remains 4 MiB.\n            broker = ResourceBroker.for_app(root, limits=ResourceLimits(\n                cpu_slots=1, min_free_disk_bytes=0))\n"
+        },
+        {
+          "before": "                return production.ProductionService(root / \"state\", voices=speech.VoiceRegistry([]), runtime_factory=factory)\n",
+          "after": "                return production.ProductionService(root / \"state\", voices=speech.VoiceRegistry([]),\n                                                    runtime_factory=factory, broker=broker)\n"
+        },
+        {
+          "before": "        budget = audio.AudioBudget(max_output_bytes=4 * MIB, reserve_disk_bytes=0, timeout=30)\n",
+          "after": "        budget = audio.AudioBudget(max_output_bytes=4 * MIB, reserve_disk_bytes=0, timeout=30, threads=1)\n        from carr_library.operations import ResourceBroker, ResourceLimits\n        broker = ResourceBroker.for_app(root, limits=ResourceLimits(cpu_slots=1, min_free_disk_bytes=0))\n"
+        },
+        {
+          "before": "                                                runtime_factory=factory, total_disk_bytes=limit)\n",
+          "after": "                                                runtime_factory=factory, broker=broker, total_disk_bytes=limit)\n"
+        }
+      ]
+    }
+  ]
+}

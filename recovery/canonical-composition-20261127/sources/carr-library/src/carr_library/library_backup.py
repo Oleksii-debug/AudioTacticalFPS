@@ -207,6 +207,7 @@ def create_backup(app, destination, *, include_generated=False, max_bytes=None,
                 raise RestoreError('manifest size limit')
             _check_budget(total + len(raw), max_bytes)
             _sync_file(stage / MANIFEST, raw)
+            _attest_backup(stage, manifest, sha256(raw).hexdigest(), cancelled=cancelled)
             if cancelled():
                 raise InterruptedError('Backup cancelled.')
             # mkdir provides exclusive no-replace ownership of the destination.
@@ -236,10 +237,25 @@ def create_backup(app, destination, *, include_generated=False, max_bytes=None,
 def _uses_legacy_archive(manifest):
     # These exact historical envelopes used an earlier producer family. Keep
     # their bytes under the existing inert archive adapter, never relabel them.
-    return (manifest['version'] in (3, 4)
-            and manifest.get('schema_version') in (3, 4)
-            and 'generated_audio_included' not in manifest
-            and ('sidecars' in manifest or 'recovery' in manifest))
+    legacy = (manifest['version'] in (3, 4)
+              and manifest.get('schema_version') in (3, 4)
+              and 'generated_audio_included' not in manifest
+              and ('sidecars' in manifest or 'recovery' in manifest))
+    if not legacy or manifest['version'] != 3:
+        return legacy
+    # V3 also named the later explicit sidecar inventory. A filename outside
+    # the old finite adapter selects that reader; its own allowlist still must
+    # validate every entry. Common old shapes keep their inert archive path.
+    rows = manifest.get('sidecars')
+    if type(rows) is list:
+        from .backup_compat.library import _sidecar_limit
+        for row in rows:
+            if type(row) is dict and type(row.get('filename')) is str:
+                try:
+                    _sidecar_limit(row['filename'])
+                except RestoreError:
+                    return False
+    return True
 
 
 def _uses_canonical_sidecars(manifest):
@@ -284,10 +300,9 @@ def _read_manifest(directory, expected_manifest_sha256, *, cancelled=lambda: Fal
         if size > MAX_MANIFEST:
             raise RestoreError('manifest size limit')
         inventory = backup_sidecars.normalize_manifest(manifest)
-        backup_sidecars.check_namespace(directory, inventory)
+        backup_sidecars.check_namespace(directory, inventory, cancelled=cancelled)
         fields = set(manifest)  # normalize_manifest already enforced exact fields.
     else:
-        actual_files = set(p.name for p in directory.iterdir())
         expected_files = {DATABASE, ORIGINALS, MANIFEST}
         if manifest['version'] >= 3:
             expected_files.add('state')
@@ -295,6 +310,13 @@ def _read_manifest(directory, expected_manifest_sha256, *, cancelled=lambda: Fal
             expected_files.add('pending')
         if manifest['version'] == 5:
             expected_files.add('extensions')
+        actual_files = set()
+        with os.scandir(directory) as children:
+            for child in children:
+                _check_cancelled(cancelled)
+                if child.name not in expected_files:
+                    raise RestoreError('incomplete backup or unexpected files')
+                actual_files.add(child.name)
         if actual_files != expected_files:
             raise RestoreError('incomplete backup or unexpected files')
         fields = {'version','kind','schema_version','database','assets'}
@@ -386,6 +408,59 @@ def _copy_database(source, target, library_manifest, *, cancelled=lambda: False)
             raise RestoreError('backup schema fingerprint mismatch')
 
 
+def _complete_inventory(directory, manifest, digest):
+    """Reuse the finite sidecar walker for all authenticated backup components."""
+    from .backup_sidecars import Inventory, normalize_manifest
+    files = [dict(manifest['database']),
+             dict(filename=MANIFEST, size_bytes=_plain(directory / MANIFEST).st_size,
+                  sha256=digest)]
+    roots = {ORIGINALS}
+    files.extend(dict(filename=ORIGINALS + '/' + row['filename'],
+                      size_bytes=row['size_bytes'], sha256=row['sha256'])
+                 for row in manifest['assets'])
+    if _uses_legacy_archive(manifest):
+        files.extend(manifest['sidecars'])
+        files.extend(dict(filename='recovery/' + row['path'],
+                          size_bytes=row['size_bytes'], sha256=row['sha256'])
+                     for row in manifest.get('recovery', {}).get('files', []))
+    elif _uses_canonical_sidecars(manifest):
+        compatible = normalize_manifest(manifest)
+        files.extend(compatible.entries)
+        roots.update(compatible.empty_roots)
+        if compatible.pending is not None:
+            roots.add('pending')
+            files.extend({**row, 'filename': 'pending/' + row['filename']}
+                         for row in compatible.pending['files'])
+    else:
+        for component, rows in (
+                ('state', manifest.get('state')),
+                ('pending', manifest.get('pending', {}).get('files')),
+                ('extensions', manifest.get('extensions', {}).get('files'))):
+            if rows is not None:
+                roots.add(component)
+                files.extend({**row, 'filename': component + '/' + row['filename']}
+                             for row in rows)
+        if 'extensions' in manifest:
+            from .backup_extensions import _legacy_original_directories
+            roots.update('extensions/' + name for name in _legacy_original_directories(
+                row['filename'] for row in manifest['extensions']['files']))
+    return Inventory(tuple(sorted(files, key=lambda row: row['filename'])), frozenset(roots))
+
+
+def _attest_backup(directory, manifest, digest, *, cancelled=lambda: False):
+    """Check every listed byte twice and reject unlisted or missing children."""
+    from .backup_sidecars import check_namespace, _stream_file
+    inventory = _complete_inventory(directory, manifest, digest)
+    check_namespace(directory, inventory, cancelled=cancelled)
+    for _ in range(2):
+        for entry in inventory.entries:
+            _check_cancelled(cancelled)
+            _stream_file(directory / entry['filename'], expected=entry,
+                         maximum=entry['size_bytes'], cancelled=cancelled,
+                         allow_empty=entry['size_bytes'] == 0)
+        check_namespace(directory, inventory, cancelled=cancelled)
+
+
 def _prepare_restore(source, stage, new_root, manifest, *, copy_originals=True, cancelled=lambda: False):
     """Run the same checked component readers for restore and verification."""
     _plain(source / ORIGINALS, directory=True)
@@ -423,6 +498,9 @@ def _prepare_restore(source, stage, new_root, manifest, *, copy_originals=True, 
         if manifest['version'] >= 3:
             from .state_backup import restore_state
             restore_state(source / 'state', stage / 'state', manifest['state'], cancelled=cancelled)
+            from .backup_extensions import validate_primary_state
+            validate_primary_state(stage / 'state', manifest['state'], snapshot,
+                legacy_opaque=manifest.get('extensions', {}).get('version', 0) < 4, cancelled=cancelled)
             paths.add('state')
     pending = {'assets': [], 'paths': []}
     if pending_manifest is not None:
@@ -461,6 +539,7 @@ def verify_backup(source, expected_manifest_sha256, *, cancelled=lambda: False):
         except sqlite3.Error:
             _check_cancelled(cancelled)
             raise
+    _attest_backup(source, manifest, expected_manifest_sha256, cancelled=cancelled)
     _check_cancelled(cancelled)
     return manifest
 
@@ -484,11 +563,13 @@ def _restore_backup(source, destination, expected_manifest_sha256, *, cancelled=
     manifest = _read_manifest(source, expected_manifest_sha256, cancelled=cancelled)
     if _uses_legacy_archive(manifest):
         from .backup_compat.archive import restore_archive
+        _attest_backup(source, manifest, expected_manifest_sha256, cancelled=cancelled)
         return restore_archive(source, destination, expected_manifest_sha256, cancelled=cancelled)
     with TemporaryDirectory(prefix='.carr-library-restore-', dir=destination.parent) as tmp:
         stage = Path(tmp)
         entries, pending_assets, paths = _prepare_restore(
             source, stage, destination, manifest, cancelled=cancelled)
+        _attest_backup(source, manifest, expected_manifest_sha256, cancelled=cancelled)
         _check_cancelled(cancelled)
         destination.mkdir(mode=0o700)
         _sync_file(destination / INCOMPLETE, b'Restore has not completed. Do not open this data directory.\n')

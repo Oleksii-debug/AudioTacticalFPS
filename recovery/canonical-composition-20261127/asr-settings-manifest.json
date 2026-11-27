@@ -1,0 +1,194 @@
+{
+  "schema": "carr-source-recovery-proposal/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "purpose": "Canonical966 reconciliation: one retained Dordiai engine, explicit settings transition and shared progress ownership",
+  "status": "DRAFT_SOURCE_ONLY_NOT_EXECUTED",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/runtime_settings.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "a83e4b5020aa3779b93e6169928607194677769c",
+      "new_blob": "1f5687e3f65a804634772d93f10f7cfbdc0a957a",
+      "sha256": "0811f94c2c28ac45819fd1107216c2f1432051d5d93f8a9f58058d2bc103f0fe",
+      "status": "DRAFT_SOURCE_ONLY_NOT_EXECUTED",
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/runtime.py",
+      "base_ref": "c227a54761a58985e3bd0c6c6a3b4dbafd03a873",
+      "base_blob": "a633755f5f21ef7619cce4627703f65566f56e28",
+      "new_blob": "2a486028c14010a8ae28cbd4fa0171d1b0b054ff",
+      "sha256": "7f7b39799715ace199a48c41dce19881797ccc4142d163db2496e1e575559515",
+      "status": "DRAFT_SOURCE_ONLY_NOT_EXECUTED",
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/dordiai.py",
+      "base_ref": "c227a54761a58985e3bd0c6c6a3b4dbafd03a873",
+      "base_blob": "999692ba7c1109f8567de46847c30d7c08d21b80",
+      "new_blob": "3d151356b58c0a7f3b3cfc711f427afdc6638a68",
+      "sha256": "9eb2aedcdbdf7d36a2dbab2f92645e3c064b9928d632aa03640b43c79f2c6c5d",
+      "status": "DRAFT_SOURCE_ONLY_NOT_EXECUTED",
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/dordiai_speech.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "99d0afb0d117cb2acc1f9df6da9a1db4e756d847",
+      "new_blob": "ece549fa8ff660fa2285eb8a8ea6c3a5151bdb7f",
+      "sha256": "647a0051572a3d7d1049b3bb72d22f6a21d58ed07f3c367d813e5a1ede8c13b9",
+      "status": "DRAFT_SOURCE_ONLY_NOT_EXECUTED",
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/dordiai_settings.py",
+      "base_ref": "c227a54761a58985e3bd0c6c6a3b4dbafd03a873",
+      "base_blob": "436f0276e4609792dcb788776bced476fceb9657",
+      "new_blob": "1f693c056177b66ab83093d71e0f0dec0d8626a4",
+      "sha256": "84699dc304368c5e98b98f2e0e2664bc1f5ca4bbdf6658acebcfed97f30f1803",
+      "status": "DRAFT_SOURCE_ONLY_NOT_EXECUTED",
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/engine_settings.py",
+      "base_ref": "c227a54761a58985e3bd0c6c6a3b4dbafd03a873",
+      "base_blob": "8527be885a6b45bd10839182c767c375d25ab1a4",
+      "new_blob": "0640f830e11b942a3f278556653148aada6e3739",
+      "sha256": "1996326ff15a9a1d079eb81ef6eaf17ec6d21b3e5a1e0d6f0a22b30ae222fcfc",
+      "status": "DRAFT_SOURCE_ONLY_NOT_EXECUTED",
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/progress_speech.py",
+      "base_ref": "c227a54761a58985e3bd0c6c6a3b4dbafd03a873",
+      "base_blob": "ac453123656de606dc4110b8ea35bfb3579be82f",
+      "new_blob": "816e81926a0289fea00aabea81cde7e5870d2a8a",
+      "sha256": "55d5473204be826658c21a1dd3bec6af8f51c753d92c7e497b81790a5b0250e1",
+      "status": "DRAFT_SOURCE_ONLY_NOT_EXECUTED",
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/transcription_dialog.py",
+      "base_ref": "c227a54761a58985e3bd0c6c6a3b4dbafd03a873",
+      "base_blob": "6221a4fab616693e277b2ff5340f314c7efc0303",
+      "new_blob": "33585c7d04fb6eec3fbf43a1c7f692400a8cbc95",
+      "sha256": "ef99f4a47891f76d832eaf1b1d6fde32f2b2f7426a317bae279ea5fdad991561",
+      "status": "DRAFT_SOURCE_ONLY_NOT_EXECUTED",
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/tests/ui/test_transcription_dialog.py",
+      "base_ref": "c227a54761a58985e3bd0c6c6a3b4dbafd03a873",
+      "base_blob": "fd03c5133483436b734b8891334b085ed9d64b3c",
+      "new_blob": "4fb9aa4b6d584512389207733901d2fe626f624f",
+      "sha256": "2c87c732155c865adfcaaaadfcd4667d1322f6aa24102e9b5572e8eb7bf287d6",
+      "status": "DRAFT_SOURCE_ONLY_NOT_EXECUTED",
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/tests/integrations/test_dordiai_registry.py",
+      "base_ref": "c227a54761a58985e3bd0c6c6a3b4dbafd03a873",
+      "base_blob": "76a6a219da02c2468599e0783bafdd48ff693cdf",
+      "new_blob": "336a8ee1f941cc07257fe9b9fd844c99a72554d3",
+      "sha256": "ed978de33613ccedcbd0b864e6ddf6bb2f03d4c2a23fa02a3883cbfaa977062b",
+      "status": "DRAFT_SOURCE_ONLY_NOT_EXECUTED",
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/tests/integrations/test_dordiai_convergence.py",
+      "base_ref": "c227a54761a58985e3bd0c6c6a3b4dbafd03a873",
+      "base_blob": "1ab254684f4884a8d9b3646de03098f33a298396",
+      "new_blob": "d38d621ebebb09b073c7ea7cf8c5e061322eae40",
+      "sha256": "94f9a0d440bcdf96a2640671cc5eeddc7b7f62f49b6e46e9346966a4a6b28a79",
+      "status": "DRAFT_SOURCE_ONLY_NOT_EXECUTED",
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/tests/integrations/test_dordiai_speech.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "1b8191f2a59c9eea4da662423c1b8bd4cd03fb19",
+      "new_blob": "a428c53632dd9246553cb9412938fb5cb7f10165",
+      "sha256": "e057a9fcb638ea82a7c7f5c2742889fe2c4296ebd5746a5cd430a07053df857b",
+      "status": "DRAFT_SOURCE_ONLY_NOT_EXECUTED",
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/tests/integrations/test_dordiai_settings.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "31f573c60337fb68f13ab1c19bb1b336442ef465",
+      "new_blob": "16a759ff26fd3f8fd73211d56b27d904303da16c",
+      "sha256": "a0af575ed812cd0262118ae3744020ff7949392b823d71e330bf3fa21728a77f",
+      "status": "DRAFT_SOURCE_ONLY_NOT_EXECUTED",
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/tests/integrations/test_dordiai_canonical_convergence.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "e18e02267f7a3d3a7fdaed909abff8b1c8e78e92",
+      "new_path": true,
+      "base_path": "carr-library/tests/integrations/test_dordiai_convergence.py",
+      "new_blob": "55c732d757b60518e29f235b2509e1d18d8b4acf",
+      "sha256": "ba9f59efd846b56ac982a9e7fdbb8daf6220306b5bef87764877fcc4ab577858",
+      "status": "DRAFT_SOURCE_ONLY_NOT_EXECUTED",
+      "readback": "EXACT"
+    }
+  ],
+  "patches": [
+    {
+      "path": "carr-library/src/carr_library/ui/studio_clips.py",
+      "base_ref": "c227a54761a58985e3bd0c6c6a3b4dbafd03a873",
+      "base_blob": "0087d383dd66de7ce05dd223aa0305be4d5dacdf",
+      "hunks": [
+        {
+          "before": "\n                progress = getattr(self.frame, 'operation_progress', None)\n",
+          "after": "\n                progress = getattr(self.frame, 'progress_panel', None)\n                if progress is None:\n                    progress = getattr(self.frame, 'operation_progress', None)\n"
+        },
+        {
+          "before": "\n            progress = getattr(self.frame, 'operation_progress', None)\n",
+          "after": "\n            progress = getattr(self.frame, 'progress_panel', None)\n            if progress is None:\n                progress = getattr(self.frame, 'operation_progress', None)\n"
+        }
+      ],
+      "executed": false,
+      "warning": "Apply these two exact full-line hunks in listed order (16 spaces before 12), preserving local playback/CleanupOwner changes."
+    },
+    {
+      "path": "carr-library/tests/speech/test_progress_speech.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "hunks": [
+        {
+          "before": "    def configured(state_root):\n        calls.append(state_root)\n        return registry\n",
+          "after": "    def configured(state_root, *, cancelled=lambda: False):\n        assert cancelled() is False\n        calls.append(state_root)\n        return registry\n"
+        }
+      ],
+      "executed": false
+    }
+  ],
+  "supersedes": [
+    {
+      "path": "carr-library/src/carr_library/runtime_settings.py",
+      "old_blob": "9649641d47af60294c83933cec056649bdfae19b",
+      "new_blob": "1f5687e3f65a804634772d93f10f7cfbdc0a957a",
+      "reason": "Provider guard must outlive discovery deadline/cancellation; new synthetic actual-worker regression"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/dordiai_settings.py",
+      "old_blob": "74ac25d09182bcf06560ea14202d3139924d76c4",
+      "new_blob": "1f693c056177b66ab83093d71e0f0dec0d8626a4",
+      "reason": "Restore wording now matches canonical passive engine-settings byte preservation; no code change"
+    }
+  ],
+  "review": {
+    "self_source_review": true,
+    "independent_review": "PENDING",
+    "execution": "NOT_RUN: no usable execution environment",
+    "real_private_models": "NOT_RUN",
+    "native_windows": "NOT_RUN",
+    "human_nvda": "NOT_RUN"
+  },
+  "remaining": [
+    "Replay against preserved local canonical merge without overwriting other owners; both current and canonical tests remain.",
+    "Apply only narrow studio_clips hunks; local audio_playback exact source was unavailable and is not replaced.",
+    "Canonical progress test private factory accepts activation cancellation; no production weakening.",
+    "Run full syntax/import and focused actual child tests once the executor is restored; prior e02/security tests are not evidence for this union."
+  ]
+}

@@ -494,3 +494,42 @@ def test_progress_destroy_uses_captured_native_id_after_wrapper_replacement(pane
     assert panel.closed and panel.feedback._closed
     child.GetEventObject.assert_not_called()
     actual.GetEventObject.assert_not_called()
+
+
+def test_background_cleanup_after_panel_destroy_retains_uncertain_player_until_real_ack(panel):
+    from unittest.mock import Mock
+    player = Player('playing')
+    panel.register_player(player)
+    hold = panel.hold_audio()
+    panel.close()
+    panel.wx.CallAfter = Mock(side_effect=AssertionError('A destroyed owner cannot queue native callbacks.'))
+    errors = []
+
+    def unconfirmed_cleanup():
+        try:
+            panel.unregister_player(player, silence_confirmed=False)
+            hold.close()
+        except BaseException as exc:
+            errors.append(exc)
+
+    worker = Thread(target=unconfirmed_cleanup)
+    worker.start()
+    worker.join(2)
+    assert not worker.is_alive() and errors == []
+    assert player in panel.media.uncertain and player not in panel.media.players
+    assert not panel.media.holds and player.close_count == 0
+    panel.wx.CallAfter.assert_not_called()
+
+    def confirmed_cleanup():
+        try:
+            player.close()  # A real owner acknowledgement precedes unregistration.
+            panel.unregister_player(player, silence_confirmed=True)
+        except BaseException as exc:
+            errors.append(exc)
+
+    worker = Thread(target=confirmed_cleanup)
+    worker.start()
+    worker.join(2)
+    assert not worker.is_alive() and errors == []
+    assert player.close_count == 1 and player not in panel.media.uncertain
+    panel.wx.CallAfter.assert_not_called()

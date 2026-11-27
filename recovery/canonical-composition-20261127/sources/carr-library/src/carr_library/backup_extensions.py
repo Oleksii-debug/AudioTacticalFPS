@@ -220,6 +220,80 @@ def _has_media(media):
     return any(media.values())
 
 
+def validate_primary_state(root, entries, database, *, legacy_opaque=False,
+                           cancelled=lambda: False):
+    """Check current primary producers without activating historical opaque data.
+
+    Typed V3/V4 and earlier extension versions also admitted opaque private
+    state. Their original bytes remain recoverable; absent old producer schemas
+    grant no authority to run a job, provider or media operation. New snapshots
+    use only the current finite adapters within these producer namespaces.
+    """
+    from . import backup_generated, backup_producers, backup_sidecars
+
+    root = Path(root)
+    generated, receipts, handled = [], {}, False
+    protected = ('speech/', 'studio/', 'providers/', 'assistant/', 'translation/')
+    with closing(sqlite3.connect(Path(database).as_uri() + '?mode=ro&immutable=1', uri=True)) as db:
+        db.execute('PRAGMA trusted_schema=OFF')
+        for entry in entries:
+            _check(cancelled)
+            relative = entry['filename']
+            name = 'state/' + relative
+            maximum = backup_producers.limit(name)
+            generated_limit = backup_generated.limit(name)
+            if generated_limit is not None:
+                if legacy_opaque:
+                    # Older generated state was an opaque optional byte copy.
+                    # Its consumer still inspects the media and exact receipt
+                    # before reuse; restore does not grant completion authority.
+                    continue
+                handled = True
+                generated.append({**entry, 'filename': name})
+                if backup_generated.is_media(name):
+                    size, _checksum, header = backup_sidecars._stream_file(
+                        root / relative, expected=entry, maximum=generated_limit, cancelled=cancelled)
+                    backup_generated.validate_container(name, header, size)
+                else:
+                    raw = backup_sidecars.read_regular(root / relative, generated_limit)
+                    backup_sidecars.validate_sidecar(db, name, raw)
+                    receipts[name] = _json(raw)
+            elif maximum is not None or name == 'state/audio/engines.json':
+                if legacy_opaque and backup_producers.SUBTITLE.fullmatch(name):
+                    continue
+                maximum = maximum or backup_sidecars.sidecar_limit(name)
+                if legacy_opaque and entry['size_bytes'] > maximum:
+                    continue
+                raw = backup_sidecars.read_regular(root / relative, maximum,
+                    allow_empty=legacy_opaque or backup_sidecars._empty_subtitle(name))
+                # The previous complete-state format did not interpret opaque
+                # JSON at these paths. Preserve it only on that reader path.
+                if legacy_opaque and not backup_producers.SUBTITLE.fullmatch(name):
+                    try:
+                        value = _json(raw)
+                    except RestoreError:
+                        continue
+                    match = backup_producers.STUDIO.fullmatch(name)
+                    control = (match is not None and match[2] == 'control'
+                        or backup_producers.ASSISTANT.fullmatch(name) is not None and name.endswith('.control.json')
+                        or backup_producers.TRANSLATION.fullmatch(name) is not None and name.endswith('.control.json'))
+                    if type(value) is not dict or 'schema' not in value and not control:
+                        continue
+                backup_sidecars.validate_sidecar(db, name, raw)
+                handled = True
+            elif (_PROJECT.fullmatch(relative) or _PUBLICATION.fullmatch(relative)
+                    or _RECORDING.fullmatch(relative) or _RECORDING_WAV.fullmatch(relative)
+                    or relative in ('studio/backup-inputs.json', 'studio/legacy-input-review.json')
+                    or re.fullmatch(r'studio/inputs/[0-9a-f]{64}\.audio', relative)):
+                # The existing typed media/input/session inspectors below own
+                # these formats and bind their complete component inventory.
+                handled = True
+            elif relative.startswith(protected) and not legacy_opaque:
+                raise RestoreError('No validated backup adapter is installed for ' + name + '.')
+    backup_generated.validate_collection(generated, receipts)
+    return handled
+
+
 def inspect_state(root, entries, database, allowed, *, independent, cancelled=lambda: False,
                   retained_inputs=frozenset()):
     """Authenticate typed producers without interpreting unrelated V3 state."""
@@ -333,6 +407,7 @@ def snapshot(root, target, database, state_entries, *, independent=True,
             db.execute('PRAGMA trusted_schema=OFF')
             canonical_entries = backup_sidecars.snapshot(db, root, target, max_bytes=available,
                 root_names=canonical_roots, cancelled=cancelled)
+    primary = validate_primary_state(target.parent / 'state', state_entries, database, cancelled=cancelled)
     media, media_inputs, retained = inspect_media_state(target.parent / 'state', state_entries,
         independent=independent, cancelled=cancelled)
     sessions, projects, transcriptions, required = inspect_state(target.parent / 'state', state_entries,
@@ -345,7 +420,15 @@ def snapshot(root, target, database, state_entries, *, independent=True,
                      + sum(entry['size_bytes'] for entry in canonical_entries))
     if planned_bytes > max_bytes:
         raise RestoreError('Typed backup exceeds its complete byte budget.')
-    if independent and os.path.lexists(root / LEGACY):
+    legacy_present = False
+    if independent:
+        try:
+            (root / LEGACY).lstat()
+        except FileNotFoundError:
+            pass
+        else:
+            legacy_present = True
+    if legacy_present:
         legacy_files, _ = _tree(root / LEGACY, cancelled=cancelled)
         planned_bytes += sum(info.st_size for info in legacy_files.values())
         if planned_bytes > max_bytes:
@@ -353,7 +436,7 @@ def snapshot(root, target, database, state_entries, *, independent=True,
         from .backup_compat.archive import snapshot_archives
         archives, archive_inputs = snapshot_archives(root / LEGACY, target / LEGACY, cancelled=cancelled)
         required.extend(archive_inputs)
-    if (not sidecars and not canonical_entries and not archives and not sessions and not projects and not transcriptions
+    if (not primary and not sidecars and not canonical_entries and not archives and not sessions and not projects and not transcriptions
             and not _has_media(media) and independent):
         return None
     target.mkdir(exist_ok=True, mode=0o700)
@@ -390,7 +473,7 @@ def snapshot(root, target, database, state_entries, *, independent=True,
         manifest.update(version=2, transcription_jobs=transcriptions)
     if _has_media(media):
         manifest.update(version=3, transcription_jobs=transcriptions, **media)
-    if canonical_entries:
+    if primary or canonical_entries:
         manifest.update(version=4, transcription_jobs=transcriptions, **media,
             canonical_sidecars=sorted(entry['filename'] for entry in canonical_entries))
     validate_manifest(manifest)

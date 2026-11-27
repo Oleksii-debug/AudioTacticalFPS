@@ -40,11 +40,11 @@ class ProgressMedia:
         self.ui_thread = threading.get_ident()
         self.players = weakref.WeakSet()
         self.uncertain, self.holds = set(), set()
-        self._activity_lock = threading.Lock()
+        self._state_lock = threading.RLock()
         self._activities = {}
 
     def _activity_flags(self):
-        with self._activity_lock:
+        with self._state_lock:
             activities = tuple(self._activities.values())
         busy = uncertain = False
         for activity in activities:
@@ -94,25 +94,30 @@ class ProgressMedia:
         if self.panel.closed:
             raise RuntimeError('The progress view is closed.')
         token = object()
-        with self._activity_lock:
+        with self._state_lock:
             self._activities[token] = activity
         self.suspend()
 
         def release():
-            with self._activity_lock:
+            with self._state_lock:
                 self._activities.pop(token, None)
         return release
 
     def _observed_flags(self):
-        for player in tuple(self.uncertain):
+        with self._state_lock:
+            retained = tuple(self.uncertain)
+            players = tuple(self.players)
+        for player in retained:
             try:
                 if player.state in ('stopped', 'paused', 'error'):
-                    self.uncertain.discard(player)
+                    with self._state_lock:
+                        self.uncertain.discard(player)
             except Exception:
                 pass
-        playing = uncertain = bool(self.uncertain)
+        with self._state_lock:
+            playing = uncertain = bool(self.uncertain)
         recording = False
-        for player in tuple(self.players):
+        for player in players:
             try:
                 state = player.state
                 recording = recording or state in ('recording', 'monitoring')
@@ -127,17 +132,19 @@ class ProgressMedia:
     def flags(self):
         panel = self.panel
         recording, playing, uncertain = self._observed_flags()
-        recording = recording or any(hold.recording for hold in self.holds)
-        waiting = any(not hold.recording for hold in self.holds)
+        with self._state_lock:
+            holds = tuple(self.holds)
+        recording = recording or any(hold.recording for hold in holds)
+        waiting = any(not hold.recording for hold in holds)
         return (recording or uncertain or panel._flag('progress_recording_active'),
                 playing or waiting or panel._flag('progress_media_busy'))
 
     def refresh(self):
         panel = self.panel
+        if panel.closed:
+            return
         if threading.get_ident() != self.ui_thread:
             panel.wx.CallAfter(self.refresh)
-            return
-        if panel.closed:
             return
         force_quiet, playing = self.flags()
         if force_quiet or playing and panel.preferences.quiet_during_media:
@@ -152,44 +159,42 @@ class ProgressMedia:
         if self.panel.closed:
             raise RuntimeError('The progress view is closed.')
         hold = _AudioQuietHold(self, recording)
-        self.holds.add(hold)
+        with self._state_lock:
+            self.holds.add(hold)
         self.refresh()
         return hold
 
     def release(self, hold):
-        if threading.get_ident() != self.ui_thread:
-            self.panel.wx.CallAfter(lambda: self.release(hold))
-            return
-        self.holds.discard(hold)
+        # Cleanup acknowledgements can arrive from the owning worker after the
+        # native event loop has ended. Update plain ownership before any view.
+        with self._state_lock:
+            self.holds.discard(hold)
         self.refresh()
 
     def register_player(self, player):
-        if threading.get_ident() != self.ui_thread:
-            self.panel.wx.CallAfter(lambda: self.register_player(player))
+        if self.panel.closed:
             return player
-        if not self.panel.closed:
+        with self._state_lock:
             try:
                 self.players.add(player)
             except TypeError as exc:
                 raise ValueError('A weak-referenceable playback object is required.') from exc
-            self.refresh()
+        self.refresh()
         return player
 
     def unregister_player(self, player, *, silence_confirmed=True):
         if type(silence_confirmed) is not bool:
             raise ValueError('Playback silence confirmation must be boolean.')
-        if threading.get_ident() != self.ui_thread:
-            self.panel.wx.CallAfter(lambda: self.unregister_player(
-                player, silence_confirmed=silence_confirmed))
-            return
-        if not silence_confirmed:
-            self.uncertain.add(player)
-        else:
-            self.uncertain.discard(player)
-        self.players.discard(player)
+        with self._state_lock:
+            if not silence_confirmed:
+                self.uncertain.add(player)
+            else:
+                self.uncertain.discard(player)
+            self.players.discard(player)
         self.refresh()
 
     def close(self):
-        self.holds.clear()
+        with self._state_lock:
+            self.holds.clear()
         # Uncertain transports and plain reader leases stay referenced until
         # their owning worker confirms cleanup. No native callback is required.
