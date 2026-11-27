@@ -97,6 +97,23 @@ def decode_preferences(raw):
         raise ValueError('Progress preferences must be nonempty and at most 16 KiB.')
     try:
         data = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique)
+        if type(data) is dict and set(data) == {'version', 'preferences'}:
+            # Canonical pre-convergence settings use a disjoint envelope and
+            # integer percentages. Reading is passive; only an explicit save
+            # rewrites them into the current schema. No voice is inferred.
+            expected = {'mode', 'interval_seconds', 'volume', 'muted',
+                        'allow_background', 'quiet_during_media'}
+            values = data['preferences']
+            if (len(raw) > 8192 or type(data['version']) is not int or data['version'] != 1
+                    or type(values) is not dict or set(values) != expected):
+                raise ValueError('Unsupported canonical progress preferences format.')
+            interval = _number(values['interval_seconds'], 1, 60, 'Canonical notification interval')
+            if type(values['volume']) is not int or not 0 <= values['volume'] <= 100:
+                raise ValueError('Canonical notification volume must be an integer from 0 to 100.')
+            return ProgressPreferences(mode=values['mode'], interval_seconds=interval,
+                volume=values['volume'] / 100, muted=values['muted'],
+                background=values['allow_background'],
+                suppress_during_media=values['quiet_during_media'])
         if (type(data) is not dict or set(data) != {'version', 'kind', 'preferences'}
                 or type(data['version']) is not int or data['version'] not in (1, 2)
                 or data['kind'] != 'carr-progress'

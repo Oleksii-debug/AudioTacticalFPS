@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "status": "SOURCE_RECONCILIATION_NOT_RUN",
+  "canonical": {
+    "commit": "e3cf74c243d4ef930b526b5648ca9003c0900057",
+    "source": "src/carr_library/progress_preferences.py",
+    "source_blob": "011930e83ce70c861d6bf59e97fe47e8c09cd551"
+  },
+  "current": {
+    "base": "bf85c5ecbfee9e45068192d40e8cc8584f95986b",
+    "source": "src/carr_library/progress.py",
+    "source_blob": "410fd9581774df330a879994d33da474fe406eab"
+  },
+  "finding": "The current owner implemented notification controls but refused the canonical saved settings envelope. Preserve those existing user choices through a disjoint-schema decoder rather than a second preference store.",
+  "mapping": {
+    "mode": "mode",
+    "interval_seconds": "interval_seconds; retain canonical valid range 1..60",
+    "volume": "integer percentage 0..100 converted to current scalar 0..1",
+    "muted": "muted",
+    "allow_background": "background",
+    "quiet_during_media": "suppress_during_media"
+  },
+  "rules": [
+    "Only exact {version:1,preferences:<six canonical fields>} within the original 8 KiB bound is accepted.",
+    "Current kind=carr-progress version1 and version2 schemas keep their exact current contracts and ranges.",
+    "Reading and complete backup/restore retain the original bytes. Only an explicit current save writes the current version2 envelope.",
+    "No voice identity, default voice, model, process, device or notification is selected by decoding preferences.",
+    "Duplicate/unknown/hybrid fields, malformed types, nonfinite values and invalid legacy bounds are refused without rewriting the original file."
+  ],
+  "test": {
+    "selector": "tests.ui.test_progress_compatibility",
+    "cases": 32,
+    "functions": {
+      "test_canonical_progress_choices_load_without_rewriting_or_voice_authority": 4,
+      "test_canonical_boundary_values_survive_lossless_current_save": 4,
+      "test_unrecognized_hybrid_and_invalid_canonical_preferences_are_preserved": 19,
+      "test_complete_backup_preserves_exact_canonical_settings_then_explicit_save_uses_current_schema": 2,
+      "test_failed_explicit_migration_preserves_original_canonical_bytes": 1,
+      "test_current_schema_one_and_two_remain_unambiguous": 2
+    },
+    "status": "NOT_RUN"
+  },
+  "limits": {
+    "manual_nvda": "NOT_RUN",
+    "actual_audio_device": "NOT_RUN",
+    "whole_final_candidate": "NOT_RUN"
+  }
+}

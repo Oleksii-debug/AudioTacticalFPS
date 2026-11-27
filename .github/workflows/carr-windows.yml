@@ -622,7 +622,8 @@ jobs:
             'tests/e2e/test_provider_credential_echo.py',
             'tests/e2e/test_provider_profile_import.py',
             'tests/storage/test_provider_recovery.py',
-            'tests/e2e/test_audio_cli_resources.py'
+            'tests/e2e/test_audio_cli_resources.py',
+            'tests/ui/test_progress_compatibility.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -1609,7 +1610,8 @@ jobs:
               'tests/e2e/test_provider_credential_echo.py',
               'tests/e2e/test_provider_profile_import.py',
               'tests/storage/test_provider_recovery.py',
-              'tests/e2e/test_audio_cli_resources.py'
+              'tests/e2e/test_audio_cli_resources.py',
+              'tests/ui/test_progress_compatibility.py'
           ]
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:

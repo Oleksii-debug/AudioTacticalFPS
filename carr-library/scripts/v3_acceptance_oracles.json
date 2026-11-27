@@ -2265,6 +2265,14 @@
       "test_cli_preview_and_voice_inventory_do_not_create_resource_policy_or_music_profiles": 2,
       "test_cli_music_uses_only_selected_library_profile_and_rechecks_its_manifest_after_wait": 2,
       "test_cli_project_manifest_path_cannot_replace_registered_music_authority": 1
+    },
+    "tests.ui.test_progress_compatibility": {
+      "test_canonical_progress_choices_load_without_rewriting_or_voice_authority": 4,
+      "test_canonical_boundary_values_survive_lossless_current_save": 4,
+      "test_unrecognized_hybrid_and_invalid_canonical_preferences_are_preserved": 19,
+      "test_complete_backup_preserves_exact_canonical_settings_then_explicit_save_uses_current_schema": 2,
+      "test_failed_explicit_migration_preserves_original_canonical_bytes": 1,
+      "test_current_schema_one_and_two_remain_unambiguous": 2
     }
   },
   "installed": {
@@ -4462,6 +4470,14 @@
       "test_cli_preview_and_voice_inventory_do_not_create_resource_policy_or_music_profiles": 2,
       "test_cli_music_uses_only_selected_library_profile_and_rechecks_its_manifest_after_wait": 2,
       "test_cli_project_manifest_path_cannot_replace_registered_music_authority": 1
+    },
+    "tests.ui.test_progress_compatibility": {
+      "test_canonical_progress_choices_load_without_rewriting_or_voice_authority": 4,
+      "test_canonical_boundary_values_survive_lossless_current_save": 4,
+      "test_unrecognized_hybrid_and_invalid_canonical_preferences_are_preserved": 19,
+      "test_complete_backup_preserves_exact_canonical_settings_then_explicit_save_uses_current_schema": 2,
+      "test_failed_explicit_migration_preserves_original_canonical_bytes": 1,
+      "test_current_schema_one_and_two_remain_unambiguous": 2
     }
   },
   "native_trust": [
