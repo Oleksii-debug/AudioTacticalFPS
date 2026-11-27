@@ -148,6 +148,32 @@ def _published_identity(path):
     return {'sha256': digest.hexdigest(), 'size': size}
 
 
+def _export_payload(path, record, *, cancel=None):
+    """Bind the actual bytes to the receipt before publishing outside the library."""
+    stopped(cancel)
+    size = record['size']
+    if type(size) is not int or not 0 <= size <= MAX_RESULT_BYTES:
+        raise ValueError('The transcript export exceeds its byte budget.')
+    if regular(path).st_size != size:
+        raise ValueError('A saved transcript changed before export; no changed bytes were published.')
+    payload = bytearray()
+    with path.open('rb') as stream:
+        while True:
+            stopped(cancel)
+            # Read at most one byte beyond the declared length, even if a
+            # concurrent writer grows the file after the initial stat.
+            block = stream.read(min(1024 * 1024, size - len(payload) + 1))
+            if not block:
+                break
+            payload.extend(block)
+            if len(payload) > size:
+                raise ValueError('A saved transcript changed before export; no changed bytes were published.')
+    stopped(cancel)
+    if len(payload) != size or sha256(payload).hexdigest() != record['sha256']:
+        raise ValueError('A saved transcript changed before export; no changed bytes were published.')
+    return bytes(payload)
+
+
 class TranscriptionService:
     def __init__(self, root, *, broker=None, budget=None, stop_grace=2.0):
         self.root = local_path(root)
@@ -806,16 +832,18 @@ class TranscriptionService:
         files, warnings = [], []
         for result in state['results']:
             stopped(cancel)
-            receipt = self._receipt(state, result)
+            receipt = self._receipt(state, result, cancel=cancel)
             source = next(source for source in state['sources'] if source['id'] == result['source_id'])
             self._verify_source(state, source, cancel=cancel)
             for name in selected:
                 if name not in receipt['files']:
                     raise ValueError('This format was not requested for the job; create a reviewed export plan first.')
                 record = receipt['files'][name]
-                path = self._job_root(identity) / record['path']
+                root = self._job_root(identity)
+                path = local_path(root / record['path'], root=root, exists=True)
+                payload = _export_payload(path, record, cancel=cancel)
                 target = destination / f"transcript-{identity[:8]}-{result['source_id'][:12]}.{name}"
-                published = write_binary_export(target, path.read_bytes(), private_root=self.library_root,
+                published = write_binary_export(target, payload, private_root=self.library_root,
                                                 cancelled=cancel or (lambda: False), require_absent=True)
                 if _published_identity(published.path) != {'sha256': record['sha256'], 'size': record['size']}:
                     raise OSError('An exported transcript failed byte verification.')

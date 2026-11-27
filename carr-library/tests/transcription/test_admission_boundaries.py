@@ -48,6 +48,77 @@ def historical_job(setup):
     return partial
 
 
+
+@pytest.mark.parametrize('mutation', ['same_size', 'grow', 'truncate'])
+def test_export_rejects_changed_payload_before_external_publication(setup, monkeypatch, mutation):
+    service, runtime, profile, sources = setup
+    state = service.run(service.create_job(profile['id'], sources[:1])['id'])
+    assert state['status'] == 'complete', state['error']
+    record = service._receipt(state, state['results'][0])['files']['txt']
+    path = service._job_root(state['id']) / record['path']
+    before = path.read_bytes()
+    assert before
+    changed = {'same_size': bytes([before[0] ^ 1]) + before[1:],
+               'grow': before + b'x', 'truncate': before[:-1]}[mutation]
+    verify = service._verify_source
+
+    def mutate_after_receipt(*args, **kwargs):
+        verify(*args, **kwargs)
+        path.write_bytes(changed)
+
+    destination = runtime.root / 'export-mutation'
+    destination.mkdir()
+    monkeypatch.setattr(service, '_verify_source', mutate_after_receipt)
+    with pytest.raises(ValueError, match='changed before export'):
+        service.export(state['id'], destination, formats=['txt'])
+    assert not list(destination.iterdir())
+    assert path.read_bytes() == changed
+    assert service._load(state['id'])['results'] == state['results']
+
+
+def test_export_receipt_verification_observes_cancellation(setup, monkeypatch):
+    service, runtime, profile, sources = setup
+    state = service.run(service.create_job(profile['id'], sources[:1])['id'])
+    assert state['status'] == 'complete', state['error']
+    destination = runtime.root / 'export-cancel'
+    destination.mkdir()
+    receipt = service._receipt
+    entered = []
+
+    def cancel():
+        return bool(entered)
+
+    def verify(*args, **kwargs):
+        entered.append(True)
+        assert kwargs.get('cancel') is cancel
+        return receipt(*args, **kwargs)
+
+    monkeypatch.setattr(service, '_receipt', verify)
+    with pytest.raises(InterruptedError):
+        service.export(state['id'], destination, formats=['txt'], cancel=cancel)
+    assert not list(destination.iterdir())
+    assert service._load(state['id'])['results'] == state['results']
+
+
+def test_export_payload_is_bounded_and_interruptible(tmp_path):
+    from hashlib import sha256
+    path = tmp_path / 'synthetic.txt'
+    payload = b'x' * (2 * 1024 * 1024 + 17)
+    path.write_bytes(payload)
+    record = {'size': len(payload), 'sha256': sha256(payload).hexdigest()}
+    assert module._export_payload(path, record) == payload
+    polls = []
+
+    def cancel():
+        polls.append(True)
+        return len(polls) >= 3
+
+    with pytest.raises(InterruptedError):
+        module._export_payload(path, record, cancel=cancel)
+    assert len(polls) == 3
+    assert path.read_bytes() == payload
+
+
 @pytest.mark.parametrize('intent', ['pause', 'cancel'])
 def test_stop_interrupts_admission_hash_and_reaches_child_cleanup(setup, monkeypatch, intent):
     service, runtime, profile, sources = setup
