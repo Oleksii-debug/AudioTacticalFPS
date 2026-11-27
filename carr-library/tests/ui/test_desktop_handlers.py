@@ -133,6 +133,8 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
                         SimpleNamespace(install_ebook_reader=ebook))
     new_installers = []
     for module, installer in [('speech_dialog', 'install_speech_actions'),
+                              ('transcription_dialog', 'install_transcription_actions'),
+                              ('operations_dialog', 'install_operations_actions'),
                               ('studio_dialog', 'install_studio_actions'),
                               ('assistant_dialog', 'install_assistant_actions'),
                               ('save_actions', 'install_save_actions'),

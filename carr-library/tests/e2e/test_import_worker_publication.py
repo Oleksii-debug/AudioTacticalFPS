@@ -10,6 +10,8 @@ import shutil
 import sqlite3
 import subprocess
 import sys
+import time
+from types import SimpleNamespace
 
 import pytest
 
@@ -41,11 +43,12 @@ def _metadata(collections=()):
                 work_id='source-work', edition_id='source-edition')
 
 
-def _barrier(monkeypatch, marker, *, boundary, exit_after=False):
+def _barrier(monkeypatch, marker, *, boundary, exit_after=False, startup_delay=0):
     """Pause the real child before/after commit, without replacing its result."""
     popen = subprocess.Popen
     code = f'''
 import os, time
+time.sleep({startup_delay!r})
 from pathlib import Path
 from carr_library.application import LibraryApp, _CatalogPublisher
 from carr_library.ingest import worker as _worker
@@ -53,7 +56,7 @@ def _pause():
     Path({str(marker)!r}).write_text('observed', encoding='utf-8')
     if {exit_after!r}:
         os._exit(7)
-    time.sleep(20)
+    time.sleep(60)
 '''
     if boundary == 'before':
         code += '''
@@ -83,8 +86,8 @@ LibraryApp._import_file = _replay
 
     def launch(command, **options):
         command = list(command)
-        # Only instrument the real import bootstrap. Other subprocess helpers
-        # retain the original implementation, including Windows taskkill.
+        # Popen is shared with subprocess.run: Windows cancellation invokes
+        # taskkill here as well. Only instrument the real import bootstrap.
         if '-c' not in command:
             return popen(command, **options)
         index = command.index('-c') + 1
@@ -95,64 +98,26 @@ LibraryApp._import_file = _replay
                           + "\nrunpy.run_module('carr_library.ingest.worker',run_name='__main__')")
         return popen(command, **options)
 
-    class WorkerSubprocess:
-        Popen = staticmethod(launch)
-
-        def __getattr__(self, name):
-            return getattr(subprocess, name)
-
-    # Keep the instrumentation local to the supervisor: replacing the shared
-    # stdlib Popen class also changes unrelated parsers and Windows helpers.
-    monkeypatch.setattr(worker, 'subprocess', WorkerSubprocess())
+    monkeypatch.setattr(worker.subprocess, 'Popen', launch)
 
 
-def _expire_at_barrier(monkeypatch, marker, *, timeout):
-    """Advance only the supervisor's clock after the real child reaches its barrier.
+def _observe_termination(monkeypatch, marker, termination):
+    """Reach the real commit barrier before expiring only the parent deadline."""
+    outcomes = []
+    invoke = worker._invoke
 
-    Cold native PDF imports can need more than three seconds on Windows. The
-    unchanged real deadline still bounds startup; the injected clock advances
-    only once the exact before/after-commit boundary has actually been reached.
-    Child parsing, process termination and publication recovery remain real.
-    """
-    clock = worker.time
+    def observe(*args, **kwargs):
+        result = invoke(*args, **kwargs)
+        outcomes.append(result['state'])
+        return result
 
-    class BarrierClock:
-        armed = False
-        expired = False
-
-        def monotonic(self):
-            now = clock.monotonic()
-            if self.armed and marker.exists():
-                self.expired = True
-            self.armed = True
-            return now + (timeout + 1 if self.expired else 0)
-
-        def __getattr__(self, name):
-            return getattr(clock, name)
-
-    monkeypatch.setattr(worker, 'time', BarrierClock())
-
-
-@pytest.mark.parametrize('marker_preexists', (False, True))
-def test_timeout_fixture_arms_deadline_before_expiring_at_barrier(tmp_path, monkeypatch,
-                                                               marker_preexists):
-    from types import SimpleNamespace
-
-    marker = tmp_path / 'observed-boundary'
-    if marker_preexists:
-        marker.write_text('observed', encoding='utf-8')
-    original_sleep = worker.time.sleep
-    clock = SimpleNamespace(monotonic=lambda: 100.0, sleep=original_sleep)
-    monkeypatch.setattr(worker, 'time', clock)
-    _expire_at_barrier(monkeypatch, marker, timeout=15.0)
-    assert worker.time.monotonic() == 100.0
-    assert worker.time.sleep is original_sleep
-    if not marker_preexists:
-        assert worker.time.monotonic() == 100.0
-        marker.write_text('observed', encoding='utf-8')
-    assert worker.time.monotonic() == 116.0
-    marker.unlink()
-    assert worker.time.monotonic() == 116.0
+    monkeypatch.setattr(worker, '_invoke', observe)
+    if termination == 'timeout':
+        monotonic = time.monotonic
+        monkeypatch.setattr(worker, 'time', SimpleNamespace(
+            monotonic=lambda: monotonic() + (100 if marker.is_file() else 0),
+            sleep=time.sleep))
+    return outcomes
 
 
 @pytest.mark.parametrize('arguments, expected', [
@@ -162,7 +127,6 @@ def test_timeout_fixture_arms_deadline_before_expiring_at_barrier(tmp_path, monk
 def test_barrier_leaves_other_processes_unchanged(tmp_path, monkeypatch, arguments, expected):
     marker = tmp_path / 'worker-only'
     _barrier(monkeypatch, marker, boundary='after')
-    assert worker.subprocess.Popen is not subprocess.Popen
     result = subprocess.run([sys.executable, *arguments], capture_output=True,
                             text=True, timeout=5, check=True)
     assert expected in result.stdout + result.stderr
@@ -178,13 +142,18 @@ def test_stopped_child_reports_verified_fresh_commit(tmp_path, monkeypatch, kind
     source = _source(tmp_path, kind)
     original = source.read_bytes()
     marker = tmp_path / 'after-commit'
-    _barrier(monkeypatch, marker, boundary='after', exit_after=termination == 'crash')
-    if termination == 'timeout':
-        _expire_at_barrier(monkeypatch, marker, timeout=15.0)
+    startup_delay = 3.5 if (termination, kind) == ('timeout', 'pdf') else 0
+    _barrier(monkeypatch, marker, boundary='after', exit_after=termination == 'crash',
+             startup_delay=startup_delay)
+    outcomes = _observe_termination(monkeypatch, marker, termination)
+    started = time.monotonic()
     result = worker.run_request(app.root, workspace, source, _metadata((collection,)), Config(),
         cancelled=lambda: termination == 'cancel' and marker.exists(),
-        timeout=15.0)
+        timeout=30.0)
+    if startup_delay:
+        assert time.monotonic() - started > 3.0  # Actual startup exceeds the old deadline.
     assert marker.exists(), result
+    assert outcomes == [{'cancel': 'cancelled', 'crash': 'failed', 'timeout': 'timed_out'}[termination]]
     assert result['state'] == 'complete', result
     assert result['publication_recovered'] is True
     assert result['verified'] is (kind == 'txt')
@@ -215,13 +184,18 @@ def test_stopped_child_before_commit_never_reports_completion(tmp_path, monkeypa
     workspace = app.create_workspace('Rollback')
     source = _source(tmp_path, kind)
     marker = tmp_path / 'before-commit'
-    _barrier(monkeypatch, marker, boundary='before', exit_after=termination == 'crash')
-    if termination == 'timeout':
-        _expire_at_barrier(monkeypatch, marker, timeout=15.0)
+    startup_delay = 3.5 if (termination, kind) == ('timeout', 'pdf') else 0
+    _barrier(monkeypatch, marker, boundary='before', exit_after=termination == 'crash',
+             startup_delay=startup_delay)
+    outcomes = _observe_termination(monkeypatch, marker, termination)
+    started = time.monotonic()
     result = worker.run_request(app.root, workspace, source, _metadata(), Config(),
         cancelled=lambda: termination == 'cancel' and marker.exists(),
-        timeout=15.0)
+        timeout=30.0)
+    if startup_delay:
+        assert time.monotonic() - started > 3.0
     assert marker.exists(), result
+    assert outcomes == [{'cancel': 'cancelled', 'crash': 'failed', 'timeout': 'timed_out'}[termination]]
     assert result['state'] == {'cancel': 'cancelled', 'crash': 'failed', 'timeout': 'timed_out'}[termination]
     assert app.browse(workspace) == ()
     with app.read(workspace) as db:

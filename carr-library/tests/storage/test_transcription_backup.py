@@ -1,0 +1,265 @@
+"""Full library backup retains ASR sources/results but revokes external execution."""
+import importlib.util
+from hashlib import sha256
+import json
+from pathlib import Path
+import shutil
+
+import pytest
+
+from carr_library.application import LibraryApp
+from carr_library.durable_state import atomic_json, read_json
+from carr_library.library_backup import create_backup, restore_backup
+from carr_library.operations import ResourceBroker, ResourceLimits
+from carr_library.transcription import TranscriptionService
+from carr_library import backup_sidecars, backup_transcription
+from carr_library.transcription.models import fingerprint
+
+
+@pytest.fixture
+def prepared(tmp_path):
+    path = Path(__file__).parents[1] / 'transcription' / 'fixture_runtime.py'
+    spec = importlib.util.spec_from_file_location('backup_synthetic_runtime', path)
+    fixture = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(fixture)
+    engine = fixture.make_runtime(tmp_path / 'external-engine')
+    app = LibraryApp(tmp_path / 'private-library')
+    workspace = app.create_workspace('Existing research')
+    app.add_text(workspace, 'Source book', 'Збережений точний оригінал.')
+    broker = ResourceBroker.for_app(app.root)
+    broker.configure(ResourceLimits(min_free_disk_bytes=0))
+    service = TranscriptionService(app.root / 'state' / 'transcription', broker=broker)
+    profile = fixture.register(service, engine)
+    return app, workspace, service, profile, engine, fixture
+
+
+def test_complete_backup_preserves_pending_sources_after_original_is_lost_and_requires_review(prepared, tmp_path):
+    app, workspace, service, profile, engine, fixture = prepared
+    audio = tmp_path / 'Оригінальний запис.wav'
+    raw = b'Private synthetic audio transport bytes'
+    audio.write_bytes(raw)
+    job = service.create_job(profile['id'], [audio])
+    backup = tmp_path / 'backup'
+    digest = create_backup(app, backup)
+    audio.unlink()
+    destination = restore_backup(backup, tmp_path / 'restored-library', digest)
+    restored_app = LibraryApp(destination)
+    assert restored_app.search(workspace, 'точний')[0].quote == 'точний'
+    restored = TranscriptionService(destination / 'state' / 'transcription',
+        broker=ResourceBroker.for_app(destination))
+    reviewed = restored.get_job(job['id'])
+    assert reviewed['status'] == 'interrupted' and reviewed['restored']
+    assert restored.list_runtimes()[0]['trusted'] is False
+    retained = restored.jobs_root / job['id'] / reviewed['sources'][0]['retained_path']
+    assert retained.read_bytes() == raw
+    rejected = restored.run(job['id'])
+    assert rejected['status'] == 'failed' and rejected['done'] == 0
+    assert not list((restored.jobs_root / job['id']).rglob('job_status.json'))
+    trusted = fixture.register(restored, engine)
+    restored.rebind_runtime(job['id'], trusted['id'])
+    complete = restored.resume(job['id'])
+    assert complete['status'] == 'complete', complete['error']
+    assert restored.read_transcript(job['id'])['text'] == 'Синтетичний протокольний результат.'
+    assert service.get_job(job['id'])['status'] == 'pending'
+
+
+def test_completed_transcript_and_edits_restore_without_external_runtime_or_cache(prepared, tmp_path):
+    app, _, service, profile, engine, _ = prepared
+    audio = tmp_path / 'source.wav'
+    audio.write_bytes(b'Synthetic audio transport fixture')
+    job = service.create_job(profile['id'], [audio],
+        settings={'output_txt':True,'output_json':True,'output_srt':True,'output_vtt':True})
+    complete = service.run(job['id'])
+    assert complete['status'] == 'complete', complete['error']
+    recognized = service.read_transcript(job['id'])
+    service.save_edit(job['id'], job['sources'][0]['id'], 'Окрема правка; оригінал збережено.')
+    backup = tmp_path / 'complete-backup'
+    digest = create_backup(app, backup)
+    manifest = read_json(backup / 'manifest.json')
+    assert not any('/cache/' in row['filename'] for row in manifest['sidecars'])
+    assert any('/inputs/' in row['filename'] for row in manifest['sidecars'])
+    assert not any(row['filename'].endswith(('model.bin','protocol_worker.py','python.exe')) for row in manifest['sidecars'])
+    audio.unlink()
+    shutil.rmtree(engine.root)
+    destination = restore_backup(backup, tmp_path / 'complete-restored', digest)
+    restored = TranscriptionService(destination / 'state' / 'transcription')
+    assert restored.read_transcript(job['id']) == recognized
+    assert restored.read_transcript(job['id'], edited=True)['text'] == 'Окрема правка; оригінал збережено.'
+    assert restored.run(job['id'])['status'] == 'complete'
+    export = tmp_path / 'restored-exports'
+    export.mkdir()
+    assert restored.export(job['id'], export)['status'] == 'complete'
+
+
+def test_tampered_retained_input_cannot_publish_restore(prepared, tmp_path):
+    app, _, service, profile, _, _ = prepared
+    audio = tmp_path / 'source.wav'
+    audio.write_bytes(b'Original synthetic input')
+    service.create_job(profile['id'], [audio])
+    backup = tmp_path / 'backup'
+    digest = create_backup(app, backup)
+    retained, = backup.glob('state/transcription/jobs/*/inputs/*/*')
+    retained.write_bytes(b'Altered input')
+    with pytest.raises((ValueError, OSError)):
+        restore_backup(backup, tmp_path / 'must-not-exist', digest)
+    assert not (tmp_path / 'must-not-exist').exists()
+
+
+@pytest.mark.parametrize('include_generated', [False, True])
+def test_typed_cache_inclusion_keeps_source_and_result_authority(prepared, tmp_path, include_generated):
+    app, _, service, profile, _, _ = prepared
+    audio = tmp_path / 'input.wav'
+    audio.write_bytes(b'Synthetic retained input')
+    job = service.create_job(profile['id'], [audio])
+    assert service.run(job['id'])['status'] == 'complete'
+    backup = tmp_path / 'backup'
+    checksum = create_backup(app, backup, include_generated=include_generated)
+    manifest = read_json(backup / 'manifest.json')
+    assert any('/cache/' in row['filename'] for row in manifest['sidecars']) is include_generated
+    destination = restore_backup(backup, tmp_path / 'restored', checksum)
+    restored = TranscriptionService(destination / 'state/transcription')
+    assert restored.read_transcript(job['id']) == service.read_transcript(job['id'])
+    assert restored.list_runtimes()[0]['trusted'] is False
+    assert not list((destination / 'state/transcription').rglob('job_config.json'))
+
+
+def test_consistent_manifest_cannot_hide_mismatched_source_binding(prepared, tmp_path):
+    app, _, service, profile, _, _ = prepared
+    audio = tmp_path / 'input.wav'
+    audio.write_bytes(b'Synthetic retained input')
+    job = service.create_job(profile['id'], [audio])
+    job['sources'][0]['sha256'] = '0' * 64
+    job['plan_fingerprint'] = fingerprint({name: job[name] for name in
+        ('id', 'profile_id', 'profile_fingerprint', 'sources', 'settings')})
+    atomic_json(service.jobs_root / job['id'] / 'job.json', job, replace=True)
+    with pytest.raises(ValueError, match='Missing or changed transcription source'):
+        create_backup(app, tmp_path / 'must-not-publish')
+    assert not (tmp_path / 'must-not-publish').exists()
+
+
+@pytest.mark.parametrize('mutation', ['receipt', 'unknown_file', 'unknown_profile_field'])
+def test_untyped_or_forged_asr_data_refuses_backup(prepared, tmp_path, mutation):
+    app, _, service, profile, _, _ = prepared
+    audio = tmp_path / 'input.wav'
+    audio.write_bytes(b'Synthetic retained input')
+    job = service.create_job(profile['id'], [audio])
+    assert service.run(job['id'])['status'] == 'complete'
+    if mutation == 'receipt':
+        job = service.get_job(job['id'])
+        receipt = service.jobs_root / job['id'] / job['results'][0]['receipt']
+        value = read_json(receipt)
+        value['provenance']['citation_authority'] = True
+        atomic_json(receipt, value, replace=True)
+    elif mutation == 'unknown_profile_field':
+        target = service.profiles_root / (profile['id'] + '.json')
+        value = read_json(target)
+        value['execute_after_restore'] = 'not a supported field'
+        atomic_json(target, value, replace=True)
+    else:
+        (service.jobs_root / job['id'] / 'worker' / 'unknown.py').write_text('# inert unknown file\n')
+    with pytest.raises(ValueError):
+        create_backup(app, tmp_path / 'must-not-publish')
+    assert not (tmp_path / 'must-not-publish').exists()
+
+
+def test_silent_empty_exports_and_historical_edits_survive_typed_backup(prepared, tmp_path):
+    app, _, service, profile, _, _ = prepared
+    audio = tmp_path / 'input.wav'
+    audio.write_bytes(b'Synthetic retained input')
+    job = service.create_job(profile['id'], [audio], settings={'output_srt': True})
+    assert service.run(job['id'])['status'] == 'complete'
+    state = service._load(job['id'])
+    old_receipt = service._receipt(state, state['results'][0])
+    state['results'] = []
+    silent = {'language': 'uk', 'duration': 61.0, 'segments': [], 'text': ''}
+    service._publish_result(state, state['sources'][0], silent, old_receipt['provenance'])
+    state.update(status='complete', done=1)
+    service._save(state)
+    first = service.save_edit(job['id'], job['sources'][0]['id'], 'Перша окрема правка.')
+    second = service.save_edit(job['id'], job['sources'][0]['id'], 'Друга окрема правка.')
+    backup = tmp_path / 'backup'
+    checksum = create_backup(app, backup)
+    manifest = read_json(backup / 'manifest.json')
+    empty = [row for row in manifest['sidecars'] if row['size_bytes'] == 0]
+    assert {Path(row['filename']).suffix for row in empty} == {'.txt', '.srt'}
+    destination = restore_backup(backup, tmp_path / 'restored', checksum)
+    restored = TranscriptionService(destination / 'state/transcription')
+    assert restored.read_transcript(job['id'])['text'] == ''
+    assert restored.read_transcript(job['id'], edited=True)['text'] == second['text']
+    assert read_json(restored.jobs_root / job['id'] / first['path'])['text'] == first['text']
+
+
+def test_input_streaming_has_separate_budget_and_honors_whole_backup_limit(prepared, tmp_path, monkeypatch):
+    app, _, service, profile, _, _ = prepared
+    audio = tmp_path / 'larger-than-metadata.wav'
+    audio.write_bytes(b'S' * (1024 * 1024))
+    service.create_job(profile['id'], [audio])
+    monkeypatch.setattr(backup_sidecars, 'MAX_BYTES', 512 * 1024)
+    # A source larger than the entire metadata allowance remains streamable.
+    create_backup(app, tmp_path / 'successful')
+    with pytest.raises(ValueError):
+        create_backup(app, tmp_path / 'bounded', max_bytes=512 * 1024)
+    monkeypatch.setattr(backup_transcription, 'MAX_INPUT_BYTES', audio.stat().st_size - 1)
+    with pytest.raises(ValueError):
+        create_backup(app, tmp_path / 'excessive-input')
+    assert not (tmp_path / 'bounded').exists()
+    assert not (tmp_path / 'excessive-input').exists()
+
+
+def test_legacy_state_manifest_keeps_typed_asr_and_revokes_execution(prepared, tmp_path):
+    app, _, service, profile, _, _ = prepared
+    audio = tmp_path / 'input.wav'
+    audio.write_bytes(b'Synthetic retained input')
+    job = service.create_job(profile['id'], [audio])
+    assert service.run(job['id'])['status'] == 'complete'
+    service._archive_worker(service._load(job['id']), profile['id'])
+    backup = tmp_path / 'legacy-backup'
+    create_backup(app, backup, include_generated=True)
+    manifest = read_json(backup / 'manifest.json')
+    entries = manifest.pop('sidecars')
+    assert all(entry['filename'].startswith('state/') for entry in entries)
+    # Historical v4 state manifests include pending imports; current v4 uses
+    # the explicitly typed sidecars field. Both retain exact source hashes.
+    manifest['version'] = 4
+    manifest['state'] = [{**entry, 'filename': entry['filename'][len('state/'):]} for entry in entries]
+    raw = (json.dumps(manifest, ensure_ascii=False, sort_keys=True) + '\n').encode('utf-8')
+    (backup / 'manifest.json').write_bytes(raw)
+    destination = restore_backup(backup, tmp_path / 'restored-legacy', sha256(raw).hexdigest())
+    restored = TranscriptionService(destination / 'state/transcription')
+    assert restored.get_job(job['id'])['restored']
+    assert restored.list_runtimes()[0]['trusted'] is False
+    assert list((destination / 'state/transcription').rglob('*.cache.json'))
+    assert not list((destination / 'state/transcription').rglob('job_config.json'))
+
+
+def test_cancellation_during_final_asr_restore_review_prevents_publication(prepared, tmp_path, monkeypatch):
+    app, _, service, profile, _, _ = prepared
+    audio = tmp_path / 'input.wav'
+    audio.write_bytes(b'Synthetic retained input')
+    service.create_job(profile['id'], [audio])
+    backup = tmp_path / 'backup'
+    checksum = create_backup(app, backup)
+    original = backup_transcription.validate_collection
+    cancelled = False
+    def finish_review(entries, records):
+        nonlocal cancelled
+        original(entries, records)
+        if any(record.get('schema') == 'resonance-transcription-job/1' and record.get('restored')
+               for record in records.values()):
+            cancelled = True
+    monkeypatch.setattr(backup_transcription, 'validate_collection', finish_review)
+    with pytest.raises(InterruptedError):
+        restore_backup(backup, tmp_path / 'never-published', checksum, cancelled=lambda: cancelled)
+    assert cancelled and not (tmp_path / 'never-published').exists()
+
+
+def test_asr_paths_and_sizes_are_narrowly_bounded():
+    job, source, key = '1' * 32, '2' * 32, '3' * 64
+    retained = f'state/transcription/jobs/{job}/inputs/{source}/source.wav'
+    assert backup_sidecars.sidecar_limit(retained) == 32 * 1024**3
+    cache = f'state/transcription/jobs/{job}/worker-history/{job}-{source}/logs/cache/verified-v1/33/{key}.cache.json'
+    assert backup_sidecars.sidecar_limit(cache) == 32 * 1024**2
+    for invalid in (retained.replace('.wav', '.exe'), retained.replace('/inputs/', '/../'),
+                    cache.replace('/33/', '/33/deeper/'), 'state/operations/leases.json'):
+        with pytest.raises(ValueError):
+            backup_sidecars.sidecar_limit(invalid)

@@ -3,13 +3,14 @@
 Jobs retain accepted chunks. Uncertain billable calls are never retried.
 """
 from dataclasses import asdict
-from decimal import Decimal, ROUND_UP
+from decimal import Decimal, ROUND_DOWN, ROUND_UP
 from hashlib import sha256
 from pathlib import Path
+from time import time
 from uuid import uuid4
 
 from .models import canonical, local_path, text
-from .profiles import ProviderProfile
+from .profiles import ProviderProfile, google_v3_parent
 from .providers import Authorization, Gateway, money, _request
 from .state import JobStore, atomic_json, read_json, now
 from ..speech.reading import ReadingDocument
@@ -40,6 +41,30 @@ def _hash(value):
     return sha256(value.encode('utf-8')).hexdigest()
 
 
+def translation_payload(value, source, target, glossary=None):
+    payload = {'q': value, 'target': target}
+    if source != 'auto':
+        payload['source'] = source
+    if glossary is not None:
+        payload['glossary'] = glossary
+    return payload
+
+
+def translation_approval(profile, value, source, target, budget, *, glossary=None):
+    """Called only after explicit review; bind every text/model/glossary request."""
+    hashes = []
+    for chunk in split_text(value):
+        if chunk.strip():
+            _, body, _ = _request(profile, 'translation.text', translation_payload(chunk, source, target, glossary))
+            hashes.append(_hash(canonical(body)))
+    identity = uuid4().hex
+    approval = Authorization(identity, identity, ((profile.id, profile.endpoint),),
+        ('translation.text',), ('selected-excerpt',), str(money(budget)), len(hashes),
+        time() + 24 * 3600, tuple(hashes))
+    per_call = (money(budget) / Decimal(len(hashes))).quantize(Decimal('0.000000000001'), rounding=ROUND_DOWN)
+    return approval, str(per_call)
+
+
 class TranslationService:
     def __init__(self, directory, *, gateway=None):
         self.directory = local_path(directory, must_exist=False)
@@ -55,12 +80,16 @@ class TranslationService:
         if not path.exists():
             return ()
         data = read_json(path, maximum=1024 * 1024)
-        if (data.get('schema') != 'carr-translation-languages/1' or data.get('profile') != profile.id
+        if (type(data) is not dict or data.get('schema') != 'carr-translation-languages/1' or data.get('profile') != profile.id
                 or data.get('endpoint') != profile.endpoint or data.get('model') != profile.model):
             raise ValueError('Refresh languages for this exact provider and model.')
         rows = data.get('languages')
+        advanced = profile.adapter == 'google-translation-v3'
+        keys = {'language', 'name', 'source', 'target'} if advanced else {'language', 'name'}
         if (not isinstance(rows, list) or not 1 <= len(rows) <= 1000
-                or any(not isinstance(row, dict) or set(row) != {'language', 'name'} for row in rows)
+                or any(type(row) is not dict or set(row) != keys
+                       or type(row.get('language')) is not str or type(row.get('name')) is not str
+                       or (advanced and (type(row['source']) is not bool or type(row['target']) is not bool)) for row in rows)
                 or _hash(canonical(rows)) != data.get('languages_sha256')):
             raise ValueError('The cached language list is damaged; explicitly refresh it.')
         return tuple(rows)
@@ -76,19 +105,19 @@ class TranslationService:
             'qualification': 'provider-declared; not acoustic or translation-quality verification'})
         return rows
 
-    def preview(self, profile, value, source, target, *, rate_per_million=None):
-        if profile.adapter != 'google-translation-v2' or not profile.enabled:
-            raise ValueError('Choose an enabled Google Basic v2 NMT profile.')
+    def preview(self, profile, value, source, target, *, rate_per_million=None, glossary=None):
+        if profile.adapter not in ('google-translation-v2', 'google-translation-v3') or not profile.enabled:
+            raise ValueError('Choose an enabled Google Basic v2 or Advanced v3 NMT profile.')
         parts = split_text(value)
         first = next(part for part in parts if part.strip())
-        selected = {'q': first, 'target': target}
-        if source != 'auto':
-            selected['source'] = source
+        selected = translation_payload(first, source, target, glossary)
         _request(profile, 'translation.text', selected)
-        codes = {row['language'] for row in self.languages(profile)}
-        if not codes:
+        languages = self.languages(profile)
+        if not languages:
             raise ValueError('Explicitly fetch the supported language list before translating.')
-        if target not in codes or (source != 'auto' and source not in codes):
+        sources = {row['language'] for row in languages if row.get('source', True)}
+        targets = {row['language'] for row in languages if row.get('target', True)}
+        if target not in targets or (source != 'auto' and source not in sources):
             raise ValueError('The chosen source or target is not declared supported by this provider model.')
         if source == target:
             raise ValueError('Choose a target language different from the source.')
@@ -97,11 +126,13 @@ class TranslationService:
             estimate = str((money(rate_per_million) * len(value) / Decimal(1_000_000)).quantize(Decimal('0.000001'), rounding=ROUND_UP))
         return {'source_sha256': _hash(value), 'characters': len(value),
             'calls': sum(bool(part.strip()) for part in parts), 'source': source, 'target': target,
+            'provider_adapter': profile.adapter, 'endpoint': profile.endpoint, 'model': profile.model,
+            'glossary': glossary, 'glossary_matching': 'case sensitive' if glossary else None,
             'estimated_cost': estimate, 'estimate_basis': 'owner-entered rate per million characters; not a provider quote',
-            'preservation': 'plain text derivative; document formatting and glossary not supported by this adapter'}
+            'preservation': 'plain text derivative; document formatting is not retained'}
 
-    def submit(self, profile, value, source, target, *, title='Translation', authorization, per_call_cost):
-        preview = self.preview(profile, value, source, target)
+    def submit(self, profile, value, source, target, *, title='Translation', authorization, per_call_cost, glossary=None):
+        preview = self.preview(profile, value, source, target, glossary=glossary)
         if (not isinstance(authorization, Authorization) or authorization.task_id != authorization.id
                 or tuple(authorization.operations) != ('translation.text',)
                 or tuple(authorization.data_classes) != ('selected-excerpt',)
@@ -113,9 +144,7 @@ class TranslationService:
         for part in parts:
             if not part.strip():
                 continue
-            payload = {'q': part, 'target': target}
-            if source != 'auto':
-                payload['source'] = source
+            payload = translation_payload(part, source, target, glossary)
             _, body, _ = _request(profile, 'translation.text', payload)
             hashes.append(_hash(canonical(body)))
         if tuple(hashes) != tuple(authorization.request_hashes):
@@ -129,22 +158,45 @@ class TranslationService:
             'created': now(), 'status': 'queued', 'profile': profile.to_dict(), 'title': title,
             'source_text': value, 'source_sha256': preview['source_sha256'], 'source_language': source,
             'target_language': target, 'chunks': list(parts), 'receipts': [],
+            'glossary': glossary,
             'authorization': asdict(authorization), 'per_call_cost': str(cost)}
         self.jobs.save(job)
         return identity
 
     def _load(self, identity):
         job = self.jobs.load(identity)
+        profile = ProviderProfile(**job['profile'])
+        advanced = profile.adapter == 'google-translation-v3'
         if (job.get('kind') != 'translation/1' or job.get('source_sha256') != _hash(job.get('source_text', ''))
                 or job.get('chunks') != list(split_text(job['source_text'])) or not isinstance(job.get('receipts'), list)
                 or len(job['receipts']) > len(job['chunks'])):
             raise ValueError('The translation checkpoint is invalid.')
+        bodies = []
+        requests = []
+        for chunk in job['chunks']:
+            if chunk.strip():
+                _, body, _ = _request(profile, 'translation.text', translation_payload(
+                    chunk, job['source_language'], job['target_language'], job.get('glossary')))
+                bodies.append(_hash(canonical(body)))
+                requests.append(bodies[-1])
+            else:
+                requests.append(None)
+        authorization = Authorization(**job['authorization'])
+        if (tuple(bodies) != tuple(authorization.request_hashes)
+                or tuple(tuple(p) for p in authorization.profiles) != ((profile.id, profile.endpoint),)):
+            raise ValueError('The translation checkpoint differs from its approved request.')
         for index, row in enumerate(job['receipts']):
             if (type(row) is not dict or row.get('index') != index
                     or row.get('source_sha256') != _hash(job['chunks'][index])
                     or type(row.get('text')) is not str or len(row['text']) > 200000
-                    or row.get('translation_sha256') != _hash(row['text'])):
+                    or row.get('translation_sha256') != _hash(row['text'])
+                    or row.get('request_sha256') != requests[index]):
                 raise ValueError('A completed translation chunk is damaged.')
+            if advanced and job['chunks'][index].strip():
+                expected_glossary = {'glossary': job['glossary'], 'ignoreCase': False} if job.get('glossary') else None
+                if (row.get('reported_model') != google_v3_parent(profile.endpoint) + '/models/' + profile.model
+                        or row.get('glossary_config') != expected_glossary):
+                    raise ValueError('The Advanced v3 receipt has no verified model/glossary provenance.')
         return job
 
     def resume(self, identity, *, cancelled=lambda: False, progress=lambda *args: None):
@@ -161,9 +213,7 @@ class TranslationService:
                         raise InterruptedError('Translation paused before the next request.')
                     chunk = job['chunks'][index]
                     if chunk.strip():
-                        payload = {'q': chunk, 'target': job['target_language']}
-                        if job['source_language'] != 'auto':
-                            payload['source'] = job['source_language']
+                        payload = translation_payload(chunk, job['source_language'], job['target_language'], job.get('glossary'))
                         result = self.gateway.request(profile, 'translation.text', payload,
                             task_id=authorization.task_id, data_class='selected-excerpt', authorization=authorization,
                             max_cost=job['per_call_cost'], operation_id=identity + '_' + str(index),
@@ -173,6 +223,8 @@ class TranslationService:
                     receipt = {'index': index, 'source_sha256': _hash(chunk), 'text': result['text'],
                         'translation_sha256': _hash(result['text']), 'detected_source': result.get('detected_source'),
                         'request_sha256': result.get('request_sha256'), 'response_sha256': result.get('output_sha256')}
+                    if profile.adapter == 'google-translation-v3' and chunk.strip():
+                        receipt.update(reported_model=result['reported_model'], glossary_config=result['glossary_config'])
                     job['receipts'].append(receipt)
                     # Save accepted output before cancellation: never bill twice.
                     self.jobs.save(job)
@@ -209,6 +261,7 @@ class TranslationService:
         report = {'schema': 'carr-translation-export/1', 'job_id': identity,
             'source_sha256': job['source_sha256'], 'source_language': job['source_language'],
             'target_language': job['target_language'], 'provider_adapter': job['profile']['adapter'],
+            'provider_endpoint': job['profile']['endpoint'], 'glossary': job.get('glossary'),
             'model': job['profile']['model'], 'source_is_immutable': True, 'quotation_authority': False,
             'automated_translation_quality': 'not independently qualified',
             'chunks': [{key: value for key, value in row.items() if key != 'text'} for row in job['receipts']],
