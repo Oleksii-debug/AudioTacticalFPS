@@ -31,7 +31,8 @@ def run_native(output):
 
     final = dict(schema='carr-native-progress-voice/1', status='NOT_RUN',
                  physical_listening='NOT_RUN', nvda='NOT_RUN', neural_engines='NOT_RUN')
-    checks, errors, players = [], [], []
+    checks, errors, players, attempts = [], [], [], []
+    final['notification_attempts'] = attempts
 
     def check(label, condition):
         if not condition:
@@ -167,6 +168,28 @@ def run_native(output):
                   and frame.progress_view.speech_provider.voice == provider.voice)
             # Observation delegates every actual player operation unchanged.
             provider._player_factory = ObservingPlayer
+            native_speak = provider.speak_progress
+
+            def observed_speak(text, **kwargs):
+                # Only this public synthetic probe records an unchanged call.
+                attempt = dict(text=text, volume=kwargs['volume'], started=monotonic())
+                attempts.append(attempt)
+                try:
+                    result = native_speak(text, **kwargs)
+                    attempt['returned'] = result
+                    return result
+                except BaseException as exc:
+                    attempt['exception'] = type(exc).__name__ + ': ' + str(exc)[:1500]
+                    attempt['traceback'] = traceback.format_exc()[-4000:]
+                    raise
+                finally:
+                    attempt['elapsed_seconds'] = round(monotonic() - attempt.pop('started'), 3)
+                    attempt['provider_notice'] = provider.last_notice
+                    attempt['selection_closed'] = provider._closed.is_set()
+                    attempt['cancelled_at_return'] = bool(kwargs['cancelled']())
+                    attempt['media_suppressed'] = progress.progress_audio_suppressed()
+
+            provider.speak_progress = observed_speak
             tracker = progress.ProgressTracker('Public synthetic work', total=4, completed=1)
             tracker.update(phase='Verifying a public synthetic result')
             studio.progress_view.track(tracker)
