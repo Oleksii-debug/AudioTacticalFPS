@@ -1323,6 +1323,9 @@ class DesktopFrame(WorkspaceFrame):
         super().on_close(event)
         if not event.GetVeto():
             self._closing = True
+            stop_draft = getattr(self, '_stop_draft_autosave', None)
+            if stop_draft is not None:
+                stop_draft()
             self.cancel_event.set()
             self.executor.shutdown(wait=False, cancel_futures=True)
 

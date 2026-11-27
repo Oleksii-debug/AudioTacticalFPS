@@ -286,7 +286,9 @@ def main():
                 startup_interval = startup_timer.GetInterval()
                 check('startup draft autosave uses a running native three-second timer',
                       startup_timer.IsRunning() and startup_interval == 3000)
-                startup.Close()
+                check('startup host accepts the idle close request', startup.Close())
+                check('accepted startup close stops the draft timer before deferred destruction',
+                      not startup_timer.IsRunning())
                 yield from until(lambda: not startup, 'The startup host did not close normally.')
                 check('startup host closes its executor without ending the interchange event loop',
                       startup_executor._shutdown and startup_cancel.is_set()
