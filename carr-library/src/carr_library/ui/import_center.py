@@ -145,7 +145,8 @@ class ImportCenterActions:
         rows = (self.batch or {}).get('rows', ())
         self.details.SetValue(row_details(rows[index]) if 0 <= index < len(rows) else '')
 
-    def _job(self, title, operation, done, *, token=None, planning=False):
+    def _job(self, title, operation, done, *, token=None, planning=False,
+             progress_total=None, progress_result=None):
         if self.busy or self.frame.working:
             self.report('An operation is already running. Wait or choose Cancel operation.')
             return
@@ -175,8 +176,11 @@ class ImportCenterActions:
                     self.report(str(exc))
 
         try:
+            progress_options = (dict(progress_total=progress_total, progress_unit='files',
+                                     progress_result=progress_result)
+                                if progress_result is not None else {})
             self.frame.run_job(title, operation, lambda value: finish(value),
-                               failed=lambda exc: finish(error=exc))
+                               failed=lambda exc: finish(error=exc), **progress_options)
         except Exception as exc:
             finish(error=exc)
 
@@ -283,6 +287,8 @@ class ImportCenterActions:
             token = object()
 
             def progress(batch):
+                from ..import_progress import report_batch
+                report_batch(batch)
                 import wx
                 def apply():
                     if (not self.closed and self.busy and self.frame.library is self.library
@@ -299,9 +305,11 @@ class ImportCenterActions:
                             (' Continue with Start queued files when ready.'
                              if (self.batch or batch).get('counts', {}).get('queued') else ''))
 
+            from ..import_progress import batch_outcome
             self._job('Importing saved batch', lambda: self.library.run_import_batch(
                 self.workspace, batch_id, cancelled=self.frame.cancel_event.is_set,
-                retry_failed=retry, progress=progress), done, token=token)
+                retry_failed=retry, progress=progress), done, token=token,
+                progress_total=self.batch['total'], progress_result=batch_outcome)
         except Exception as exc:
             self.report(str(exc))
 

@@ -12,7 +12,8 @@ from .store import ProjectStore
 def main(argv=None):
     parser = argparse.ArgumentParser(prog='research-library studio', description='Local speech, durable audio projects and resumable rendering')
     commands = parser.add_subparsers(dest='command', required=True)
-    commands.add_parser('voices', help='List actually installed local voices as JSON')
+    voices = commands.add_parser('voices', help='List actually installed local voices as JSON')
+    voices.add_argument('--configuration-root', type=Path, help='Library whose explicitly saved local voice settings apply')
     commands.add_parser('engines', help='Inspect optional local music runtime availability')
     new = commands.add_parser('new', help='Save a faithful narration project from a UTF-8 text file')
     new.add_argument('--text-file', required=True, type=Path)
@@ -25,6 +26,7 @@ def main(argv=None):
     render.add_argument('--plan', type=Path)
     render.add_argument('--asset-root', type=Path)
     render.add_argument('--allow-audio-root', action='append', type=Path, default=[])
+    render.add_argument('--configuration-root', type=Path, help='Library whose explicitly saved local voice settings apply')
     status = commands.add_parser('status', help='Read durable render job states')
     status.add_argument('--project-dir', required=True, type=Path)
     show = commands.add_parser('plan', help='Print the current saved project and exact revision')
@@ -46,7 +48,7 @@ def main(argv=None):
     try:
         if args.command == 'voices':
             from ..speech import discover_voices
-            result = [asdict(v) for v in discover_voices()]
+            result = [asdict(v) for v in discover_voices(configuration_root=args.configuration_root)]
         elif args.command == 'engines':
             from ..audio.music import available_music_engines
             result = available_music_engines()
@@ -82,7 +84,7 @@ def main(argv=None):
             else:
                 from .director import Director
                 project = load_project(args.plan) if args.plan else store.load()
-                result = Director(store).render(project,
+                result = Director(store, configuration_root=args.configuration_root).render(project,
                     asset_root=args.asset_root or (args.plan.parent if args.plan else store.root),
                     allowed_audio_roots=args.allow_audio_root,
                     progress=lambda value: print(value['message'], file=sys.stderr, flush=True))

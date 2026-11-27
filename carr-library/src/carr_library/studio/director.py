@@ -4,6 +4,7 @@ Successful stages are checksum verified before reuse. A changed line only
 invalidates its synthesis and dependent mixes. No waveform is loaded in memory.
 """
 from dataclasses import asdict, replace
+from functools import partial
 from hashlib import sha256
 import json
 import math
@@ -13,7 +14,7 @@ import shutil
 import time
 import uuid
 
-from .models import PlanError, Project, split_text
+from .models import PlanError, Project, split_text, render_identity
 from .store import ProjectStore, atomic_text, digest_file
 from ..audio.ffmpeg import _local_path
 
@@ -72,17 +73,19 @@ def _write_once(path, text):
 
 class Director:
     """One renderer per project; independent projects can run concurrently."""
-    def __init__(self, store: ProjectStore, *, audio=None, speech_renderer=None, engine_identity=None):
+    def __init__(self, store: ProjectStore, *, audio=None, speech_renderer=None, engine_identity=None,
+                 configuration_root=None):
         self.store = store
         if audio is None:
             from ..audio import FFmpegAudio
             audio = FFmpegAudio(allowed_roots=(store.root,))
         self.audio = audio
         self._native_speech = speech_renderer is None
+        self._native_identity = engine_identity is None
         if speech_renderer is None or engine_identity is None:
             from ..speech import engine_fingerprint, render_speech
-            speech_renderer = speech_renderer or render_speech
-            engine_identity = engine_identity or engine_fingerprint
+            speech_renderer = speech_renderer or partial(render_speech, configuration_root=configuration_root)
+            engine_identity = engine_identity or partial(engine_fingerprint, configuration_root=configuration_root)
         self.speech_renderer, self.engine_identity = speech_renderer, engine_identity
 
     def _snapshot_clip(self, supplied, asset_root, allowed_roots, check):
@@ -142,7 +145,8 @@ class Director:
             started = time.monotonic()
             used_bytes = sum(p.stat().st_size for p in self.store.root.rglob('*') if p.is_file() and not p.is_symlink())
             state = {'job_id': job, 'revision': revision, 'scene': 0, 'scene_count': len(project.scenes),
-                     'completed_chunks': 0, 'reused_chunks': 0, 'message': 'Validating local render'}
+                     'completed_chunks': 0, 'reused_chunks': 0, 'message': 'Validating local render',
+                     'speech_chunks_done': 0, 'speech_chunks_total': 0, 'phase': 'Validating project'}
 
             def check(estimate=0, *, allow_stop=True):
                 if allow_stop and cancelled():
@@ -188,8 +192,10 @@ class Director:
                 finally:
                     self.audio.max_output_bytes = previous
 
-            def announce(message):
+            def announce(message, *, phase=None):
                 state['message'] = message
+                if phase is not None:
+                    state['phase'] = phase
                 state['elapsed_seconds'] = round(time.monotonic() - started, 3)
                 self.store.checkpoint(job, progress=state)
                 notify(dict(state))
@@ -200,12 +206,19 @@ class Director:
             global_time = 0.0
             try:
                 check()
+                for scene in project.scenes:
+                    for line in scene.lines:
+                        for _, _, text in split_text(line.text, project.budget.chunk_characters):
+                            check()
+                            state['speech_chunks_total'] += bool(text.strip())
+                announce('Validating local voices and audio runtime', phase='Validating local runtime')
                 audio_identity = self.audio.engine_fingerprint(cancelled=stop)
                 for role in project.roles:
-                    voices[role.id] = self.engine_identity(role.voice_id)
+                    voices[role.id] = (self.engine_identity(role.voice_id, cancelled=stop)
+                                      if self._native_identity else self.engine_identity(role.voice_id))
                 for scene_number, scene in enumerate(project.scenes, 1):
                     state['scene'] = scene_number
-                    announce(f'Scene {scene_number} of {len(project.scenes)}: {scene.title}')
+                    announce(f'Scene {scene_number} of {len(project.scenes)}: {scene.title}', phase='Preparing scene')
                     check()
                     cursor = 0.0
                     tracks, track_keys, track_durations, local_captions = [], [], [], []
@@ -220,7 +233,8 @@ class Director:
                             cache_key = _key((PIPELINE_VERSION, 'speech', asdict(request), voices[role.id], line.take))
                             cached = self.store.cached(cache_key)
                             if cached is None:
-                                announce(f'Rendering {scene.title}, {line.role}, characters {start + 1} to {end}')
+                                announce(f'Rendering {scene.title}, {line.role}, characters {start + 1} to {end}',
+                                         phase='Synthesizing speech')
                                 path = self.store.new_chunk_path(cache_key)
                                 speech_options = {'cancelled': stop}
                                 if self._native_speech:
@@ -237,6 +251,10 @@ class Director:
                                 state['completed_chunks'] += 1
                             else:
                                 state['reused_chunks'] += 1
+                            state['speech_chunks_done'] += 1
+                            announce(f'Accepted speech chunk {state["speech_chunks_done"]} of '
+                                     f'{state["speech_chunks_total"]}; completed audio is retained.',
+                                     phase='Synthesizing speech')
                             duration = cached['frames'] / cached['sample_rate']
                             # Align every event to the final sample grid, never approximate with text length.
                             duration = round(duration * project.sample_rate) / project.sample_rate
@@ -250,6 +268,7 @@ class Director:
                             cursor += duration
                         cursor += round(line.pause_after * project.sample_rate) / project.sample_rate
                     for clip in scene.clips:
+                        announce('Verifying and preparing selected local audio', phase='Preparing audio')
                         snapshot, added_bytes = self._snapshot_clip(clip.path, asset_root, roots, check)
                         used_bytes += added_bytes
                         # Normalize through the actual decoder, then reuse the immutable normalized artifact.
@@ -302,7 +321,8 @@ class Director:
                             generated = self.store.cached(music_key)
                             if generated is None:
                                 check(int(piece * project.sample_rate * 4) + 8192)
-                                announce(f'Generating local {cue.engine} music, scene {scene_number}, window {window + 1}')
+                                announce(f'Generating local {cue.engine} music, scene {scene_number}, window {window + 1}',
+                                         phase='Generating music')
                                 target = self.store.new_chunk_path(music_key)
                                 generated = _report(render_music(request, target, **assets, cancelled=stop,
                                     allowed_roots=roots + (self.store.root,)))
@@ -337,6 +357,7 @@ class Director:
                     # arbitrarily many narration/music chunks. A music stem is
                     # kept separate until the final speech-driven ducking pass.
                     grouped = {kind: [] for kind in ('speech', 'music', 'effect')}
+                    announce(f'Preparing the scene mix: {scene.title}', phase='Mixing scene')
                     for track, signature, length in zip(tracks, track_keys, track_durations):
                         grouped[track.role].append((track, signature, length))
                     assembled = []
@@ -372,7 +393,7 @@ class Director:
                     mixed = self.store.cached(mix_key)
                     if mixed is None:
                         check(estimate)
-                        announce(f'Mixing {scene.title}; {duration:.1f} seconds')
+                        announce(f'Mixing {scene.title}; {duration:.1f} seconds', phase='Mixing scene')
                         target = self.store.new_chunk_path(mix_key)
                         mixed = _report(audio_stage(self.audio.render_timeline, tracks, target, duration=duration,
                             sample_rate=project.sample_rate, channels=project.channels, cancelled=stop))
@@ -386,6 +407,7 @@ class Director:
                     global_time += mixed['frames'] / mixed['sample_rate']
                     scene_reports.append(mixed)
                     announce(f'Completed scene {scene_number} of {len(project.scenes)}')
+                announce('Finalizing the master, production manifest and captions', phase='Finalizing audio')
                 final_key = _key((PIPELINE_VERSION, audio_identity, 'master', [r['sha256'] for r in scene_reports], project.sample_rate, project.channels))
                 master = self.store.cached(final_key)
                 if master is None:
@@ -397,7 +419,10 @@ class Director:
                     accept(final_key, target, master)
                 else:
                     state['reused_chunks'] += 1
-                output_dir = self.store.renders / revision
+                # Runtime/model changes create another immutable production of
+                # the same authored revision, retaining earlier completed work.
+                pipeline = f'{PIPELINE_VERSION}:{audio_identity}'
+                output_dir = self.store.renders / render_identity(revision, pipeline, voices, master['sha256'])
                 if output_dir.is_symlink():
                     raise PlanError('Render folder must not be a symbolic link.')
                 output_dir.mkdir(exist_ok=True)
@@ -407,7 +432,7 @@ class Director:
                         raise PlanError('Existing master differs; original output was retained.')
                 else:
                     os.link(master['path'], final_path)
-                manifest = dict(schema_version=1, pipeline=f'{PIPELINE_VERSION}:{audio_identity}', project_revision=revision,
+                manifest = dict(schema_version=1, pipeline=pipeline, project_revision=revision,
                     title=project.title, mode='LOCAL_ONLY', path_base='project_root',
                     master={**master, 'path': str(final_path.relative_to(self.store.root))},
                     chapters=[{**chapter, 'path': str(Path(chapter['path']).relative_to(self.store.root))} for chapter in chapters],
@@ -422,6 +447,7 @@ class Director:
                           'captions_path': str(output_dir / 'captions.srt'), 'job_id': job,
                           'completed_chunks': state['completed_chunks'], 'reused_chunks': state['reused_chunks']}
                 state['message'] = 'Render complete; master and production manifest verified.'
+                state['phase'] = 'Complete'
                 self.store.checkpoint(job, state='complete', progress=state, result=result)
                 notify(dict(state))
                 return result

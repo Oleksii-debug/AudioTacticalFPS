@@ -272,7 +272,10 @@ def _espeak_runtime() -> tuple[Path, Path | None] | None:
     else:
         # Executables in CWD are not discovery candidates, including Windows PATH '.'.
         found = None
-        for name in ("espeak-ng", "espeak"):
+        # Python 3.11 does not expand PATHEXT for a path containing a directory.
+        # Probe installed absolute candidates with their native suffix.
+        names = ("espeak-ng.exe", "espeak.exe") if os.name == "nt" else ("espeak-ng", "espeak")
+        for name in names:
             for directory in _runtime_directories():
                 found = shutil.which(str(directory / name))
                 if found:
@@ -296,7 +299,7 @@ def _espeak_args(executable, data_path):
     return args
 
 
-def _entries(*, cancelled=None) -> tuple[_Entry, ...]:
+def _entries(*, cancelled=None, configuration_root=None, include_dordiai=True) -> tuple[_Entry, ...]:
     entries = []
     for bits, executable in _powershell_candidates():
         _check_cancel(cancelled)
@@ -349,22 +352,30 @@ def _entries(*, cancelled=None) -> tuple[_Entry, ...]:
         except SpeechError:
             if os.environ.get("CARR_ESPEAK_EXECUTABLE"):
                 raise
+    if include_dordiai:
+        from . import dordiai
+        entries.extend(dordiai.entries(configuration_root=configuration_root, cancelled=cancelled))
     return tuple(entries)
 
 
-def discover_voices(*, cancelled=None) -> tuple[Voice, ...]:
+def discover_voices(*, cancelled=None, configuration_root=None) -> tuple[Voice, ...]:
     """Discover installed voices only; absence returns an empty tuple, never a fake voice."""
-    return tuple(entry.voice for entry in _entries(cancelled=cancelled))
+    return tuple(entry.voice for entry in _entries(cancelled=cancelled, configuration_root=configuration_root))
 
 
-def _entry(voice_id: str, cancelled=None) -> _Entry:
+def _entry(voice_id: str, cancelled=None, configuration_root=None) -> _Entry:
     if not isinstance(voice_id, str) or not voice_id or len(voice_id) > 8192:
         raise ValueError("A discovered local voice ID is required.")
-    if voice_id.startswith("dordiai-voices"):
-        raise SpeechUnavailable("dordiai-voices requires its actual versioned local integration contract; none is configured.")
     if voice_id.startswith("sapi4"):
         raise SpeechUnavailable("SAPI4 requires a separately verified 32-bit local adapter.")
-    for entry in _entries(cancelled=cancelled):
+    if voice_id.startswith("dordiai-voices"):
+        from . import dordiai
+        candidates = dordiai.entries(configuration_root=configuration_root, cancelled=cancelled)
+        if not candidates:
+            raise SpeechUnavailable("Dordiai-voices has no enabled, compatible installed voice. Use Voice > Connect or disable dordiai-voices.")
+    else:
+        candidates = _entries(cancelled=cancelled, configuration_root=configuration_root, include_dordiai=False)
+    for entry in candidates:
         if entry.voice.id == voice_id:
             return entry
     raise SpeechUnavailable("The selected local voice is unavailable. Discover installed voices and select one explicitly.")
@@ -378,7 +389,11 @@ def _file_digest(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _fingerprint(entry: _Entry) -> str:
+def _fingerprint(entry: _Entry, *, cancelled=None) -> str:
+    _check_cancel(cancelled)
+    if entry.voice.engine == "dordiai-voices":
+        from . import dordiai
+        return dordiai.fingerprint(entry, cancelled=cancelled)
     before = entry.executable.stat()
     content_hash = _file_digest(entry.executable)
     after = entry.executable.stat()
@@ -476,9 +491,9 @@ def _espeak_library_identity(executable: Path) -> dict:
     return result
 
 
-def engine_fingerprint(voice_id: str) -> str:
+def engine_fingerprint(voice_id: str, *, cancelled=None, configuration_root=None) -> str:
     """Fingerprint current native voice identity and executable; never a placeholder."""
-    return _fingerprint(_entry(voice_id))
+    return _fingerprint(_entry(voice_id, cancelled, configuration_root), cancelled=cancelled)
 
 
 def _validate_request(request: SpeechRequest):
@@ -568,10 +583,11 @@ def _publish(stage: Path, target: Path, parent_identity):
 
 
 def render_speech(request: SpeechRequest, target: Path, *, cancelled=None,
-                  timeout_seconds: float = 600.0, max_output_bytes=None) -> SpeechResult:
+                  timeout_seconds: float = 600.0, max_output_bytes=None,
+                  configuration_root=None) -> SpeechResult:
     """Synthesize one bounded local chunk, verify it, and atomically publish once.
 
-    rate is relative (0.5–2); volume is 0–1. pitch is an eSpeak-relative
+    rate is relative (0.5–2); volume is 0–1. pitch is an engine-relative
     control (-1–1), not measured semitones. SAPI5 exposes no pitch capability.
     Engines render to disk, never the sound device. The caller owns playback,
     chunk scheduling, project duration, and the chosen output-directory scope.
@@ -579,15 +595,26 @@ def render_speech(request: SpeechRequest, target: Path, *, cancelled=None,
     _validate_request(request)
     if max_output_bytes is not None and (type(max_output_bytes) is not int or max_output_bytes < 1):
         raise ValueError("Speech output byte budget must be a positive integer.")
+    if type(timeout_seconds) not in (int, float) or not math.isfinite(timeout_seconds) or timeout_seconds <= 0:
+        raise ValueError("Speech timeout must be a positive finite number.")
+    if isinstance(request.voice_id, str) and request.voice_id.startswith('dordiai-voices'):
+        deadline = time.monotonic() + timeout_seconds
+        original_cancelled = cancelled
+        def within_budget():
+            _check_cancel(original_cancelled)
+            if time.monotonic() >= deadline:
+                raise SpeechError('Dordiai-voices exceeded the speech execution time budget.')
+            return False
+        cancelled = within_budget
     _check_cancel(cancelled)
     target, parent_identity = _output_target(target)
-    entry = _entry(request.voice_id, cancelled)
+    entry = _entry(request.voice_id, cancelled, configuration_root)
     if request.language and (not entry.voice.language or
             request.language.casefold().split("-")[0] != entry.voice.language.casefold().split("-")[0]):
         raise SpeechUnavailable("The chosen voice does not advertise the requested language; select a matching voice.")
     if request.pitch and "pitch-relative" not in entry.voice.capabilities:
         raise SpeechUnavailable("The chosen voice does not support the requested pitch control.")
-    fingerprint = _fingerprint(entry)
+    fingerprint = _fingerprint(entry, cancelled=cancelled)
     with tempfile.TemporaryDirectory(prefix=".speech-", dir=target.parent) as directory:
         stage = Path(directory) / "speech.wav"
         if entry.voice.engine == "sapi5":
@@ -598,6 +625,11 @@ def render_speech(request: SpeechRequest, target: Path, *, cancelled=None,
                  json.dumps(payload, ensure_ascii=False).encode("utf-8"),
                  cancelled=cancelled, timeout=timeout_seconds, output_path=stage,
                  max_output_bytes=max_output_bytes)
+        elif entry.voice.engine == 'dordiai-voices':
+            from . import dordiai
+            _check_cancel(cancelled)
+            dordiai.write_pcm(entry, request, stage, cancelled=cancelled,
+                timeout_seconds=max(0.001, deadline - time.monotonic()), max_output_bytes=max_output_bytes)
         else:
             args = _espeak_args(entry.executable, entry.data_path) + [
                 "-v", entry.native_id, "-b", "1", "-s", str(round(175 * request.rate)),
@@ -610,7 +642,7 @@ def render_speech(request: SpeechRequest, target: Path, *, cancelled=None,
             raise SpeechBudgetExceeded("The speech chunk exceeded its output byte budget.")
         rate, channels, frames = _inspect_wav(stage)
         digest = _file_digest(stage)
-        if _fingerprint(entry) != fingerprint:
+        if _fingerprint(entry, cancelled=cancelled) != fingerprint:
             raise SpeechError("The speech executable changed during rendering; output was not published.")
         _check_cancel(cancelled)
         _publish(stage, target, parent_identity)

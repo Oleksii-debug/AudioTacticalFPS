@@ -38,6 +38,10 @@ from .reader.reading_state import (
     FILENAME as READING_STATE, MAX_BYTES as MAX_READING_STATE, ReadingState,
     _decode as _decode_reading_state, _file_identity,
 )
+from .reader.live_state import (
+    FILENAME as LIVE_READING_STATE, MAX_BYTES as MAX_LIVE_READING_STATE,
+    LiveState, validate_live_state,
+)
 from .reader.narration import (
     DIRECTORY as NARRATION_DIRECTORY, MAX_PROJECT_BYTES, MAX_PROJECTS,
     MAX_SNAPSHOT_BYTES as MAX_NARRATION_BYTES,
@@ -51,6 +55,15 @@ from .extract.ocr_languages import (
 )
 from .keyboard_preferences import MAX_BYTES as MAX_SHORTCUTS, validate_keymap
 from .evidence_drafts import FILENAME as EVIDENCE_DRAFTS, MAX_BYTES as MAX_DRAFT_BYTES, validate_evidence_drafts
+from .progress_preferences import (
+    FILENAME as PROGRESS_PREFERENCES, MAX_BYTES as MAX_PROGRESS_PREFERENCES,
+    validate_progress_preferences,
+)
+from .speech.dordiai_settings import (
+    FILENAME as DORDIAI_SETTINGS, MAX_BYTES as MAX_DORDIAI_SETTINGS,
+    validate_settings_bytes as validate_dordiai_settings,
+    restored_settings_bytes as restored_dordiai_settings,
+)
 
 DATABASE = 'library.sqlite'
 ORIGINALS = 'originals'
@@ -60,13 +73,17 @@ MAX_MANIFEST = 64 * 1024 * 1024
 MAX_DATABASE = 512 * 1024 * 1024
 MAX_ASSETS = 10000
 MAX_ASSET_BYTES = 8 * 1024**3
-MAX_SIDECARS = 5 + MAX_PROJECTS * 2
-MAX_SIDECAR_BYTES = MAX_READING_STATE + MAX_NARRATION_BYTES + MAX_KEYBINDINGS + MAX_PRESET_BYTES + MAX_SHORTCUTS + MAX_DRAFT_BYTES
+MAX_SIDECARS = 8 + MAX_PROJECTS * 2
+MAX_SIDECAR_BYTES = (MAX_READING_STATE + MAX_NARRATION_BYTES + MAX_KEYBINDINGS
+                     + MAX_PRESET_BYTES + MAX_SHORTCUTS + MAX_DRAFT_BYTES + MAX_PROGRESS_PREFERENCES
+                     + MAX_LIVE_READING_STATE + MAX_DORDIAI_SETTINGS)
 _SIMPLE_SIDECARS = {
     KEYBINDINGS: (MAX_KEYBINDINGS, decode_preferences),
     OCR_PRESETS: (MAX_PRESET_BYTES, validate_presets_bytes),
     'keyboard-shortcuts.json': (MAX_SHORTCUTS, validate_keymap),
     EVIDENCE_DRAFTS: (MAX_DRAFT_BYTES, validate_evidence_drafts),
+    PROGRESS_PREFERENCES: (MAX_PROGRESS_PREFERENCES, validate_progress_preferences),
+    DORDIAI_SETTINGS: (MAX_DORDIAI_SETTINGS, validate_dordiai_settings),
 }
 
 
@@ -98,6 +115,8 @@ def _sidecar_limit(name):
     # a backup merely by appearing beside the research database.
     if name == READING_STATE:
         return MAX_READING_STATE
+    if name == LIVE_READING_STATE:
+        return MAX_LIVE_READING_STATE
     if name in _SIMPLE_SIDECARS:
         return _SIMPLE_SIDECARS[name][0]
     if re.fullmatch(re.escape(NARRATION_DIRECTORY) + r'/[0-9a-f]{32}(?:\.draft)?\.json', name):
@@ -129,6 +148,9 @@ def _optional_sidecar(path, maximum):
 def _snapshot_sidecars(root):
     raw = ReadingState(root).snapshot()
     sidecars = {} if raw is None else {READING_STATE: raw}
+    live = LiveState(root).snapshot()
+    if live is not None:
+        sidecars[LIVE_READING_STATE] = live
     sidecars.update(snapshot_narration_files(root))
     for name, (maximum, validate) in _SIMPLE_SIDECARS.items():
         raw = _optional_sidecar(Path(root) / name, maximum)
@@ -138,13 +160,13 @@ def _snapshot_sidecars(root):
     return sidecars
 
 
-def _validate_reading_locations(db, locations):
+def _validate_reading_locations(db, locations, *, text_lengths=None):
     # Historical revisions and archived libraries remain valid backup contents.
     # Do not consult the active revision or retarget an older reading position.
     # Storage.check authenticates the page digests and the separately verified
     # original inventory covers each immutable edition/asset binding.
     for location in locations:
-        row = db.execute('''SELECT 1 FROM revision r
+        row = db.execute('''SELECT p.raw FROM revision r
             JOIN sealed s ON s.revision=r.id
             JOIN page p ON p.revision=r.id
             JOIN catalog_edition e ON e.workspace=r.workspace AND e.id=r.edition
@@ -158,16 +180,23 @@ def _validate_reading_locations(db, locations):
              location.index, location.kind, location.index)).fetchone()
         if row is None:
             raise RestoreError('reading state or narration copy does not match its exact saved source')
+        if text_lengths is not None and text_lengths[location] != len(row[0]):
+            raise RestoreError('live-reading text length does not match its exact saved source')
 
 
 def _validate_sidecars(db, sidecars):
     for name, raw in sidecars.items():
         _sidecar_limit(name)
+        text_lengths = None
         try:
             if name == READING_STATE:
                 positions, bookmarks, _ = _decode_reading_state(raw.decode('utf-8'))
                 locations = {row[0] for row in positions.values()} | {
                     bookmark.location for bookmark in bookmarks.values()}
+            elif name == LIVE_READING_STATE:
+                positions = validate_live_state(raw)
+                locations = {position.location for position in positions}
+                text_lengths = {position.location: position.text_length for position in positions}
             elif name in _SIMPLE_SIDECARS:
                 _SIMPLE_SIDECARS[name][1](raw)
                 locations = set()
@@ -176,7 +205,7 @@ def _validate_sidecars(db, sidecars):
                 locations = {project.source_location} if project.source_location is not None else set()
         except (UnicodeError, ValueError) as exc:
             raise RestoreError('invalid reading state, narration copy or preferences in backup') from exc
-        _validate_reading_locations(db, locations)
+        _validate_reading_locations(db, locations, text_lengths=text_lengths)
 
 
 def _stage_sidecars(stage, sidecars):
@@ -260,7 +289,7 @@ def create_backup(app, destination, *, authorized_workspaces=None):
                     # A typed agent's library selection does not authorize
                     # unrelated drafts, manual scripts or global preferences.
                     sidecars = {name: raw for name, raw in sidecars.items()
-                        if name == READING_STATE or (name.startswith(NARRATION_DIRECTORY + '/')
+                        if name in (READING_STATE, LIVE_READING_STATE) or (name.startswith(NARRATION_DIRECTORY + '/')
                             and validate_narration_payload(name, raw).source_location is not None)}
             _stage_sidecars(stage, sidecars)
             recovery = recovery_backup.snapshot(app, stage, included, {entry.digest for entry in entries},
@@ -436,6 +465,11 @@ def restore_backup(source, destination, expected_manifest_sha256):
             if _sidecar_manifest(sidecars) != manifest.get('sidecars', []):
                 raise RestoreError('backup sidecar size or digest mismatch')
             _validate_sidecars(storage.db, sidecars)
+            # A restored declaration is data, never permission to execute a
+            # private runtime. Validation and integrity use the original bytes;
+            # only the new destination receives the disabled declaration.
+            if DORDIAI_SETTINGS in sidecars:
+                sidecars[DORDIAI_SETTINGS] = restored_dordiai_settings(sidecars[DORDIAI_SETTINGS])
             _stage_sidecars(stage, sidecars)
             original_store = RetainedAssets(source / ORIGINALS)
             entries = verify_catalog_assets(storage.db, original_store,

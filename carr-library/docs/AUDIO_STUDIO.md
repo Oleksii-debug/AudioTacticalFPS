@@ -16,6 +16,7 @@ requirements include additional features; this guide describes this implementati
 | Save the current studio form | Ctrl+S inside the studio |
 | Save and export project JSON | Ctrl+Shift+S inside the studio |
 | Render/resume, pause or cancel | Named native studio buttons |
+| Query measured render progress | Studio Query current progress; Ctrl+Shift+Q |
 | Play, pause or stop completed PCM output | Named native studio buttons |
 | Back up or restore a project | Audio Studio menu |
 | Convert a selected local audio file | Audio Studio → Convert local audio |
@@ -27,7 +28,16 @@ The editor, selectors and status are native labelled controls. Status receives
 focus after save/error. Invalid drafts remain in the editor. Closing a changed
 form prompts to save; a failed save does not discard it. Editing is frozen while
 a render uses its saved revision; Pause waits for a recoverable checkpoint.
+The form scrolls while progress, action buttons and Close remain in the fixed
+footer. The dialog is bounded to the monitor's usable area.
 Automated native-control tests do not establish actual NVDA spoken behavior.
+
+Studio uses the shared operation-progress system. It reports actual accepted
+speech chunks, separately names music, mixing and finalization phases, and shows
+100% only after its durable production result is saved. Pause and cancellation
+requests do not claim that work has already stopped. Extra feedback is off by
+default; the quiet-during-playback setting also waits for an active progress cue
+to end before playback starts. See [PROGRESS.md](PROGRESS.md).
 
 The reading-copy handoff discovers local voices outside the UI thread, requires
 an explicit voice choice, and creates a separate project with the exact saved
@@ -63,9 +73,11 @@ duplicate JSON keys, non-finite numbers and unsupported controls are rejected.
 
 SAPI5 enumeration inspects actually installed 32-bit and 64-bit Windows COM voices.
 eSpeak NG/eSpeak is supported when installed locally. The application does not
-download voice DLLs or model weights on startup. Unsupported SAPI4 and dordiai-voices
-integrations report unavailable capabilities. `dordiai-voices` needs its actual
-versioned engine interface before an adapter can be accepted.
+download voice DLLs or model weights on startup. SAPI4 remains unavailable.
+The optional [dordiai-voices public bridge](DORDIAI_LOCAL_SPEECH.md) is disabled
+by default. Connect an explicitly selected reviewed local runtime through the
+Voice menu; resource discovery and synthetic protocol tests do not establish
+private neural inference or pronunciation quality.
 
 The optional private Windows audio supplement contains pinned FFmpeg 9.1
 executables and original publisher notices. `packaging/windows-audio.lock.json`

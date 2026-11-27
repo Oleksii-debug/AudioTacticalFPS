@@ -217,17 +217,17 @@ def test_empty_voice_result_reports_absence_without_fake_fallback():
         job.close()
 
 
-def test_public_voice_discovery_forwards_cancellation_to_existing_adapter(monkeypatch):
+def test_public_voice_discovery_forwards_cancellation_to_existing_adapter(monkeypatch, tmp_path):
     import carr_library.speech.local as speech
     callback = lambda: True
     observed = []
-    def entries(*, cancelled):
-        observed.append(cancelled)
+    def entries(*, cancelled, configuration_root):
+        observed.append((cancelled, configuration_root))
         raise speech.RenderCancelled('Synthetic cancellation')
     monkeypatch.setattr(speech, '_entries', entries)
     with pytest.raises(speech.RenderCancelled):
-        speech.discover_voices(cancelled=callback)
-    assert observed == [callback]
+        speech.discover_voices(cancelled=callback, configuration_root=tmp_path)
+    assert observed == [(callback, tmp_path)]
 
 
 def test_unchanged_native_line_ending_display_preserves_exact_saved_copy(bound):

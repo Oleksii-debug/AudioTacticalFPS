@@ -69,10 +69,11 @@ def center(monkeypatch, tmp_path):
     jobs = []
     frame = SimpleNamespace(library=library, working=False, cancel_event=Event(), book=None)
 
-    def run_job(title, operation, done, *, failed):
+    def run_job(title, operation, done, *, failed, **progress_options):
         frame.working = True
         frame.cancel_event.clear()
-        jobs.append(SimpleNamespace(operation=operation, done=done, failed=failed))
+        jobs.append(SimpleNamespace(operation=operation, done=done, failed=failed,
+                                    progress_options=progress_options))
 
     frame.run_job = Mock(side_effect=run_job)
     view = ImportCenterActions()
@@ -114,6 +115,18 @@ def test_plan_captures_choices_and_passes_live_cancellation_to_background_work(c
     assert kwargs['collections'] == ('selected-collection',)
     assert kwargs['config'].languages == 'eng+ukr+slk'
     assert kwargs['recursive'] is True and kwargs['cancelled']()
+
+
+def test_execution_binds_measured_file_units_and_the_saved_batch_outcome(center):
+    from carr_library.import_progress import batch_outcome
+    center.run()
+    assert len(center.jobs) == 1
+    assert center.jobs[0].progress_options == {
+        'progress_total': center.batch['total'], 'progress_unit': 'files',
+        'progress_result': batch_outcome,
+    }
+    assert batch_outcome(dict(center.batch, state='paused')).state == 'cancelled'
+    assert batch_outcome(dict(center.batch, state='attention')).state == 'failed'
 
 
 @pytest.mark.parametrize('control,selection', [('collection', -1), ('collection', 2),

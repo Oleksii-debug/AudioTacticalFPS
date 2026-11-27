@@ -52,7 +52,7 @@ def _manifest(root):
     value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique_object)
     required = {'schema', 'target', 'bundled_python', 'bundled_model', 'bundled_ocr', 'files'}
     if (type(value) is not dict or not required <= value.keys()
-            or value.keys() - required - {'source_commit', 'bundled_native_runtime', 'bundled_audio_runtime'}
+            or value.keys() - required - {'source_commit', 'bundled_native_runtime', 'bundled_audio_runtime', 'native_launcher'}
             or type(value['schema']) is not int or value['schema'] != 1
             or value['target'] != TARGET
             or any(type(value[name]) is not bool
@@ -79,6 +79,8 @@ def _manifest(root):
                 or not isinstance(digest, str) or not re.fullmatch('[0-9a-f]{64}', digest)):
             raise ValueError('Invalid or duplicate installation inventory entry.')
         folded.add(name.casefold())
+    from .native_launcher import validate_manifest_entry
+    validate_manifest_entry(value)
     return value
 
 
@@ -88,13 +90,21 @@ def check_native_dependencies(bundle_root):
               'python': platform.python_version(), 'windows_execution': 'NOT_RUN',
               'native_gui': 'NOT_RUN', 'windows_nvda': 'NOT_RUN', 'checks': [],
               'semantic': {'status': 'NOT_INCLUDED'}, 'ocr': {'status': 'NOT_INCLUDED'},
-              'audio': {'status': 'NOT_INCLUDED'}}
+              'audio': {'status': 'NOT_INCLUDED'}, 'native_launcher': {'status': 'NOT_INCLUDED'}}
     component = 'installation manifest'
     _runtime_handle = None
     try:
         root = Path(bundle_root).absolute()
         manifest = _manifest(root)
         report['bundle_target'] = manifest['target']
+        if 'source_commit' in manifest:
+            report['source_commit'] = manifest['source_commit']
+        if 'native_launcher' in manifest:
+            component = 'native launch entry identity'
+            report['native_launcher']['status'] = 'FAIL'
+            from .native_launcher import verify_payload
+            report['native_launcher'] = verify_payload(root)
+            report['checks'].append(component)
         for name, flag in (('semantic', 'bundled_model'), ('ocr', 'bundled_ocr')):
             if manifest[flag]:
                 report[name]['status'] = 'NOT_RUN'

@@ -8,6 +8,7 @@ from dataclasses import asdict
 import json
 from pathlib import Path
 import threading
+import time
 from uuid import uuid4
 
 from ..studio import Project, ProjectStore, Role, load_project, narration_project
@@ -15,28 +16,46 @@ from ..studio.script import dialogue_project
 
 
 class StudioDialog:
-    def __init__(self, parent, voices, *, initial_text='', store=None):
+    def __init__(self, parent, voices, *, initial_text='', store=None, configuration_root=None):
         import wx
         self.wx, self.parent, self.voices = wx, parent, tuple(voices)
         self.store = store or ProjectStore(parent.library.root / 'audio-projects' / uuid4().hex)
-        self.dialog = wx.Dialog(parent, title='Audio Studio — local narration and dialogue', size=(850, 780))
+        self.configuration_root = configuration_root
+        if self.configuration_root is None and getattr(parent, 'library', None) is not None:
+            self.configuration_root = parent.library.root
+        self.dialog = wx.Dialog(parent, title='Audio Studio — local narration and dialogue',
+                                size=(850, 740), style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+        display = wx.Display.GetFromWindow(parent)
+        work_area = (wx.Display(display).GetClientArea() if display != wx.NOT_FOUND
+                     else wx.GetClientDisplayRect())
+        size = min(850, work_area.width), min(740, work_area.height)
+        self.dialog.SetSize(size)
+        self.dialog.SetMinSize((min(620, size[0]), min(460, size[1])))
+        self.dialog.SetPosition((work_area.x + (work_area.width - size[0]) // 2,
+                                 work_area.y + (work_area.height - size[1]) // 2))
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='audio-studio')
         self.cancel = threading.Event()
         self.pause = threading.Event()
         self.busy = self.closed = False
         self.saved_revision = None
         self.player = None
+        self.playback_timer = None
+        self._playback_pending = False
+        self._playback_generation = 0
         self.result = None
+        outer = wx.BoxSizer(wx.VERTICAL)
+        self.form = wx.ScrolledWindow(self.dialog, style=wx.VSCROLL | wx.TAB_TRAVERSAL)
+        self.form.SetScrollRate(0, 16)
         layout = wx.BoxSizer(wx.VERTICAL)
-        intro = wx.StaticText(self.dialog, label=(
+        intro = wx.StaticText(self.form, label=(
             'Local voices and a separately installed FFmpeg runtime produce audio in this project folder. '
             'The original library text remains unchanged. Ctrl+S saves; Render resumes verified completed chunks.'))
         intro.Wrap(790)
         layout.Add(intro, 0, wx.EXPAND | wx.ALL, 8)
         self.title = self._text(layout, 'Project title', 'Narration')
         self.folder = self._text(layout, 'Project folder', str(self.store.root), readonly=True)
-        layout.Add(wx.StaticText(self.dialog, label='Editor mode'), 0, wx.LEFT, 8)
-        self.mode = wx.Choice(self.dialog, choices=['Faithful narration text', 'Speaker-labelled dialogue', 'Versioned JSON scenario'])
+        layout.Add(wx.StaticText(self.form, label='Editor mode'), 0, wx.LEFT, 8)
+        self.mode = wx.Choice(self.form, choices=['Faithful narration text', 'Speaker-labelled dialogue', 'Versioned JSON scenario'])
         self.mode.SetName('Narration editor mode')
         self.mode.SetSelection(0)
         layout.Add(self.mode, 0, wx.EXPAND | wx.ALL, 8)
@@ -45,41 +64,53 @@ class StudioDialog:
         grid.AddGrowableCol(1)
         choices = [f'{v.name}; {v.language or "language not declared"}; {v.engine}; {v.id}' for v in voices]
         for index, name in enumerate(('Narrator', 'Speaker 1', 'Speaker 2')):
-            role = wx.TextCtrl(self.dialog, value=name)
+            role = wx.TextCtrl(self.form, value=name)
             role.SetName(f'Role {index + 1} name')
-            voice = wx.Choice(self.dialog, choices=choices)
+            voice = wx.Choice(self.form, choices=choices)
             voice.SetName(f'Voice for role {index + 1}')
             if choices:
                 voice.SetSelection(min(index, len(choices) - 1))
-            pan = wx.Choice(self.dialog, choices=['Center', 'Left', 'Right'])
+            pan = wx.Choice(self.form, choices=['Center', 'Left', 'Right'])
             pan.SetName(f'Audio position for role {index + 1}')
             pan.SetSelection(index if index < 3 else 0)
             self.cast.append((role, voice, pan))
             for control in (role, voice, pan):
                 grid.Add(control, 0, wx.EXPAND)
         layout.Add(grid, 0, wx.EXPAND | wx.ALL, 8)
-        help_text = wx.StaticText(self.dialog, label=(
+        help_text = wx.StaticText(self.form, label=(
             'Narration uses the first voice. Dialogue uses role labels, for example Narrator: Hello. '
             'Start a chapter with ## Chapter title. JSON supports additional roles, prepared music and exact pauses.'))
         help_text.Wrap(790)
         layout.Add(help_text, 0, wx.EXPAND | wx.ALL, 8)
         self.editor = self._text(layout, 'Narration derivative or authored script', initial_text, multiline=True, proportion=1)
-        self.status = self._text(layout, 'Audio Studio status', 'Ready. Choose a voice, enter text and save the project.', readonly=True, multiline=True)
+        self.editor.SetMinSize((-1, 140))
+        self.form.SetSizer(layout)
+        self.form.FitInside()
+        outer.Add(self.form, 1, wx.EXPAND)
+        from .progress_panel import NativeProgressPanel
+        self.dialog.working = False
+        self.dialog.progress_media_busy = self._media_busy
+        self.progress_panel = NativeProgressPanel(self.dialog, host=self.dialog, layout=outer,
+            root=self.configuration_root if self.configuration_root is not None else self.store.root,
+            insert_at=None)
+        self.status = self.progress_panel.text
+        self.status.SetName('Audio Studio status')
         self.status.SetMinSize((-1, 75))
+        self.say('Ready. Choose a voice, enter text and save the project. Ctrl+Shift+Q queries render progress.')
         buttons = wx.GridSizer(cols=4, hgap=4, vgap=4)
         self.actions = []
         for label, handler in (('&Save project', self.save), ('Save &JSON as', self.save_as), ('&Render or resume', self.render),
-                               ('&Pause', lambda e: self.pause.set()), ('&Cancel render', lambda e: self.cancel.set()),
+                               ('&Pause', self.pause_render), ('&Cancel render', self.cancel_render),
                                ('&Play output', self.play), ('Pause p&layback', self.pause_playback), ('&Stop playback', self.stop_playback)):
             button = wx.Button(self.dialog, label=label)
             button.Bind(wx.EVT_BUTTON, handler)
             buttons.Add(button, 0, wx.EXPAND | wx.ALL, 3)
             self.actions.append(button)
-        layout.Add(buttons, 0, wx.EXPAND | wx.ALL, 4)
+        outer.Add(buttons, 0, wx.EXPAND | wx.ALL, 4)
         close = wx.Button(self.dialog, wx.ID_CANCEL, '&Close')
         close.Bind(wx.EVT_BUTTON, self.close)
-        layout.Add(close, 0, wx.ALL, 8)
-        self.dialog.SetSizer(layout)
+        outer.Add(close, 0, wx.ALL, 8)
+        self.dialog.SetSizer(outer)
         self.dialog.Bind(wx.EVT_CLOSE, self.close)
         self.dialog.Bind(wx.EVT_CHAR_HOOK, self.key)
         self.dialog.SetEscapeId(wx.ID_CANCEL)
@@ -89,15 +120,15 @@ class StudioDialog:
             self.editor.ChangeValue(json.dumps(project.to_dict(), ensure_ascii=False, indent=2))
             self.mode.SetSelection(2)
             self.saved_revision = project.revision
-            self.status.ChangeValue('Saved project loaded. Render resumes its verified chunks.')
+            self.say('Saved project loaded. Render resumes its verified chunks.')
         self.saved_form = None if store is None and initial_text else self._form_state()
         self.editor.SetFocus()
 
     def _text(self, layout, label, value='', *, readonly=False, multiline=False, proportion=0):
         wx = self.wx
-        layout.Add(wx.StaticText(self.dialog, label=label), 0, wx.LEFT | wx.TOP, 8)
+        layout.Add(wx.StaticText(self.form, label=label), 0, wx.LEFT | wx.TOP, 8)
         style = (wx.TE_READONLY if readonly else 0) | (wx.TE_MULTILINE if multiline else 0)
-        control = wx.TextCtrl(self.dialog, value=value, style=style)
+        control = wx.TextCtrl(self.form, value=value, style=style)
         control.SetName(label)
         layout.Add(control, proportion, wx.EXPAND | wx.ALL, 8)
         return control
@@ -105,12 +136,18 @@ class StudioDialog:
     def say(self, text, focus=False):
         if self.closed:
             return
-        self.status.ChangeValue(text)
+        try:
+            self.progress_panel.set_message(text)
+        except Exception:
+            self.status.ChangeValue(text)
         if focus:
             self.status.SetInsertionPoint(0)
             self.status.SetFocus()
 
     def key(self, event):
+        if event.ControlDown() and event.ShiftDown() and event.GetKeyCode() in (ord('Q'), ord('q')):
+            self.progress_panel.query()
+            return
         if event.ControlDown() and event.GetKeyCode() in (ord('S'), ord('s')):
             self.save_as() if event.ShiftDown() else self.save()
             return
@@ -128,6 +165,8 @@ class StudioDialog:
             control.Enable(enabled)
 
     def _cleanup(self):
+        self._stop_pending_playback()
+        self.progress_panel.close()
         player, self.player = self.player, None
         try:
             if player is not None:
@@ -208,34 +247,132 @@ class StudioDialog:
             return
         self.cancel.clear()
         self.pause.clear()
-        self.busy = True
+        panel = self.progress_panel
+        try:
+            if panel.active_task is not None and panel.active_task.snapshot().state == 'paused':
+                # The same script can now select different engine/model bytes.
+                # Count the new validation pass from zero; keep the earlier
+                # paused job intact in its durable Studio history.
+                from ..progress import ProgressHub
+                panel.hub = ProgressHub()
+            task = panel.begin('Rendering Audio Studio project', unit='speech chunks')
+        except Exception as exc:
+            self.say(f'Could not start render progress: {exc}. Your saved project remains available.', True)
+            return
+        self.busy = self.dialog.working = True
         self._editing(False)
+        panel.set_busy(True)
         self.say('Rendering locally. Pause or cancel is available; accepted chunks remain recoverable.')
         def operation():
             from ..studio.director import Director
-            return Director(self.store).render(project, cancelled=self.cancel.is_set, paused=self.pause.is_set,
-                progress=lambda value: self.wx.CallAfter(self.say, value['message']))
+            from ..studio.progress import report_render_progress
+            from ..progress import bind_progress
+            with bind_progress(task):
+                return Director(self.store, configuration_root=self.configuration_root).render(
+                    project, cancelled=self.cancel.is_set, paused=self.pause.is_set,
+                    progress=report_render_progress)
         try:
             future = self.executor.submit(operation)
         except Exception as exc:
-            self.busy = False
+            self.busy = self.dialog.working = False
             self._editing(True)
+            panel.set_busy(False)
+            self._finish_render_progress(task, 'failed', str(exc))
             self.say(f'Could not start rendering: {exc}. Your saved project is available to resume.', True)
             return
         def finished(done):
             def apply():
                 if self.closed:
                     return
-                self.busy = False
+                self.busy = self.dialog.working = False
                 self._editing(True)
+                panel.set_busy(False)
                 try:
-                    self.result = done.result()
+                    result = done.result()
+                except Exception as exc:
+                    from ..studio.director import RenderCancelled, RenderPaused
+                    state = 'paused' if isinstance(exc, RenderPaused) else (
+                        'cancelled' if isinstance(exc, (RenderCancelled, InterruptedError)) else 'failed')
+                    self._finish_render_progress(task, state, str(exc))
+                    self.say(str(exc) + ' Choose Render or resume to continue the saved project.', True)
+                else:
+                    self.result = result
+                    self._finish_render_progress(task, 'succeeded',
+                        'Master audio, production manifest and captions are saved.'
+                        + (' Completion occurred before cancellation could stop it.' if self.cancel.is_set() else ''))
                     self.say(f'Render complete. {self.result["master"]["duration_seconds"]:.2f} seconds. '
                              f'Output: {self.result["master"]["path"]}. Play output is available.', True)
-                except Exception as exc:
-                    self.say(str(exc) + ' Reopen this project and choose Render or resume to continue.', True)
             self.wx.CallAfter(apply)
         future.add_done_callback(finished)
+
+    def _finish_render_progress(self, task, state, message):
+        try:
+            if task.snapshot().state == 'unavailable':
+                self.progress_panel.reporting_unavailable(task, state, task.snapshot().message)
+            else:
+                self.progress_panel.finish(task, state, message)
+        except Exception as exc:
+            try:
+                self.progress_panel.reporting_unavailable(task, state,
+                    f'Render result: {state}. Progress reporting is unavailable: {exc}')
+            except Exception:
+                pass
+
+    def pause_render(self, event=None):
+        if self.busy:
+            self.pause.set()
+            self.say('Pause requested. Waiting for the render to retain its current checkpoint.', True)
+
+    def cancel_render(self, event=None):
+        if self.busy:
+            self.cancel.set()
+            try:
+                self.progress_panel.request_cancel()
+            except Exception:
+                pass  # A lost observer must not prevent actual cancellation.
+            self.say('Cancellation requested. Waiting for the render to stop; accepted chunks remain saved.', True)
+
+    def _media_busy(self):
+        if self._playback_pending:
+            return True
+        return self.player is not None and self.player.status().get('state') in ('playing', 'paused', 'recording')
+
+    def _stop_pending_playback(self):
+        self._playback_generation += 1
+        self._playback_pending = False
+        if self.playback_timer is not None:
+            self.playback_timer.Stop()
+            self.playback_timer = None
+
+    def _start_playback(self, action):
+        """Yield to the native loop until a cancelled progress cue has ended."""
+        self._stop_pending_playback()
+        self._playback_pending = True
+        generation = self._playback_generation
+        started = time.monotonic()
+        quiet = self.progress_panel.preferences.quiet_during_media
+        if quiet:
+            self.progress_panel.feedback.suspend()
+
+        def ready():
+            if self.closed or generation != self._playback_generation:
+                return
+            if quiet and not self.progress_panel.feedback.quiescent:
+                if time.monotonic() - started >= 5:
+                    self._playback_pending = False
+                    self.say('Playback did not start because a progress notification has not stopped. Try again.', True)
+                    return
+                self.playback_timer = self.wx.CallLater(20, ready)
+                return
+            try:
+                action()
+                self.say('Playing the rendered local output. Pause playback and Stop playback are available.', True)
+            except Exception as exc:
+                self.say(f'Playback unavailable: {exc}', True)
+            finally:
+                self._playback_pending = False
+                self.playback_timer = None
+        ready()
 
     def play(self, event=None):
         try:
@@ -248,9 +385,11 @@ class StudioDialog:
             from ..speech.player import LocalPlayer
             if self.player is None:
                 self.player = LocalPlayer()
-            self.player.open(Path(self.result['master']['path']))
-            self.player.play()
-            self.say('Playing the rendered local output. Pause playback and Stop playback are available.', True)
+            path = Path(self.result['master']['path'])
+            def begin():
+                self.player.open(path)
+                self.player.play()
+            self._start_playback(begin)
         except Exception as exc:
             self.say(f'Playback unavailable: {exc}', True)
 
@@ -259,12 +398,16 @@ class StudioDialog:
             if self.player is None:
                 raise ValueError('Start playback first.')
             state = self.player.status()
-            self.player.play() if state.get('state') == 'paused' else self.player.pause()
-            self.say('Playback ' + str(self.player.status().get('state', 'updated')), True)
+            if state.get('state') == 'paused':
+                self._start_playback(self.player.play)
+            else:
+                self.player.pause()
+                self.say('Playback ' + str(self.player.status().get('state', 'updated')), True)
         except Exception as exc:
             self.say(str(exc), True)
 
     def stop_playback(self, event=None):
+        self._stop_pending_playback()
         if self.player is not None:
             try:
                 self.player.stop()
@@ -276,8 +419,7 @@ class StudioDialog:
         if self.closed:
             return
         if self.busy:
-            self.pause.set()
-            self.say('Pausing the render. Wait for its checkpoint, then close.', True)
+            self.pause_render()
             if event is not None and hasattr(event, 'CanVeto') and event.CanVeto():
                 event.Veto()
             return
@@ -293,6 +435,13 @@ class StudioDialog:
             self.dialog.EndModal(self.wx.ID_CANCEL)
 
     def show(self):
+        holds, ancestor = [], self.parent
+        while ancestor is not None:
+            panel = getattr(ancestor, 'progress_panel', None)
+            if panel is not None and hasattr(panel, 'suspend_feedback'):
+                holds.append((panel, panel.suspend_feedback()))
+            parent = getattr(ancestor, 'GetParent', None)
+            ancestor = parent() if callable(parent) else None
         try:
             self.dialog.ShowModal()
         finally:
@@ -302,6 +451,8 @@ class StudioDialog:
                 self._cleanup()
             finally:
                 self.dialog.Destroy()
+                for panel, token in holds:
+                    panel.release_feedback(token)
 
 
 def install_studio_actions(frame):
@@ -310,8 +461,20 @@ def install_studio_actions(frame):
     from ..speech import discover_voices
 
     def open_studio(event=None, *, store=None, initial_text=''):
-        frame.run_job('Discovering installed local voices', discover_voices,
-            lambda voices: StudioDialog(frame, voices, initial_text=initial_text, store=store).show())
+        library = frame.library
+        def show(voices):
+            if getattr(frame, '_closing', False):
+                return
+            if frame.library is not library:
+                frame.report('The library folder changed. Reopen Audio Studio to review its local voices.')
+                return
+            StudioDialog(frame, voices, initial_text=initial_text, store=store,
+                         configuration_root=library.root).show()
+        # Let the host finish the discovery task before entering a nested modal
+        # event loop. Studio owns its separate measured render task.
+        frame.run_job('Discovering installed local voices',
+            lambda: discover_voices(configuration_root=library.root, cancelled=frame.cancel_event.is_set),
+            lambda voices: wx.CallAfter(show, voices))
 
     def open_existing(event=None):
         dialog = wx.DirDialog(frame, 'Open a saved Audio Studio project folder')
@@ -326,10 +489,15 @@ def install_studio_actions(frame):
             dialog.Destroy()
 
     def list_voices(event=None):
-        frame.run_job('Inspecting local voices', discover_voices,
-            lambda voices: show_text(frame, 'Installed local voices', '\n\n'.join(
+        frame.run_job('Inspecting local voices',
+            lambda: discover_voices(configuration_root=frame.library.root, cancelled=frame.cancel_event.is_set),
+            lambda voices: wx.CallAfter(show_text, frame, 'Installed local voices', '\n\n'.join(
                 f'{v.name}\nID: {v.id}\nLanguage: {v.language or "not declared"}\nEngine: {v.engine}\nControls: {", ".join(v.capabilities)}'
                 for v in voices) or 'No supported local voices were found. Install a local SAPI5 or eSpeak NG engine, then scan again.'))
+
+    def dordiai_settings(event=None):
+        from .dordiai_settings import show_dordiai_settings
+        show_dordiai_settings(frame)
 
     def current_text(event=None):
         selected = wx.Window.FindFocus()
@@ -469,7 +637,8 @@ def install_studio_actions(frame):
         frame.Bind(wx.EVT_MENU, save_all, item)
         frame.menu_bar.Insert(0, menu, '&File')
     for label, commands in (
-        ('&Voice', [('Installed local voices', list_voices), ('Narrate selected text\tCtrl+Alt+V', current_text)]),
+        ('&Voice', [('Installed local voices', list_voices), ('Narrate selected text\tCtrl+Alt+V', current_text),
+                    ('Connect or disable dordiai-voices', dordiai_settings)]),
         ('Audio St&udio', [('New narration or dialogue\tCtrl+Alt+U', open_studio), ('Open saved audio project', open_existing),
                          ('Back up audio project', backup_project), ('Restore audio project', restore_project), ('Convert local audio', convert)]),
         ('&Tools', [('Local assistant: create and import\tCtrl+Alt+J', assistant)])):
@@ -480,4 +649,5 @@ def install_studio_actions(frame):
         frame.menu_bar.Append(menu, label)
     frame.studio_actions = {'new': open_studio, 'open': open_existing, 'voices': list_voices,
                             'convert': convert, 'assistant': assistant, 'save': save_all,
-                            'backup': backup_project, 'restore': restore_project}
+                            'backup': backup_project, 'restore': restore_project,
+                            'dordiai_settings': dordiai_settings}

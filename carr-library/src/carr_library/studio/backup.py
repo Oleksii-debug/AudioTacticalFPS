@@ -25,7 +25,7 @@ import time
 
 from ..audio.ffmpeg import _local_path
 from ..data_paths import guard_data_directory
-from .models import PlanError, Project, unique_object
+from .models import PlanError, Project, unique_object, render_identity
 from .store import ProjectStore, _verify_report
 
 
@@ -295,7 +295,13 @@ def _production(job, original_root, chunks):
                 or result['job_id'] != job['id'] or type(result['master']) is not dict
                 or not _digest(result['master'].get('sha256')) or type(result['chapters']) is not list):
             return None
-        directory = f'renders/{revision}/'
+        manifest_path = _owned_path(result['manifest_path'], original_root)
+        render_key = PurePosixPath(manifest_path).parent.name
+        if render_key not in {revision, render_identity(revision, result['pipeline'],
+                result['voice_fingerprints'], result['master']['sha256'])}:
+            return None
+        # Revision-only directories remain a supported legacy publication.
+        directory = f'renders/{render_key}/'
         if (_owned_path(result['manifest_path'], original_root) != directory + 'production.json'
                 or _owned_path(result['captions_path'], original_root) != directory + 'captions.srt'
                 or _owned_path(result['master']['path'], original_root) != directory + 'master.wav'):
@@ -328,14 +334,14 @@ def _expected(projects, chunks, jobs, original_root, include_audio):
         production = _production(job, original_root, chunks)
         if production is None:
             continue
-        revision = job['revision']
-        if revision in productions and productions[revision] != production:
+        render_key = PurePosixPath(production['master']['path']).parent.name
+        if render_key in productions and productions[render_key] != production:
             raise BackupError('Completed jobs disagree about one production record.')
-        productions[revision] = production
+        productions[render_key] = production
         for name in ('production.json', 'captions.srt'):
-            files[f'renders/{revision}/{name}'] = dict(kind='render-metadata')
+            files[f'renders/{render_key}/{name}'] = dict(kind='render-metadata')
         if include_audio:
-            files[f'renders/{revision}/master.wav'] = dict(kind='render-audio', sha256=production['master']['sha256'])
+            files[f'renders/{render_key}/master.wav'] = dict(kind='render-audio', sha256=production['master']['sha256'])
     if len(files) > MAX_FILES:
         raise BackupError('Studio backup file count exceeds its budget.')
     return files, productions
@@ -574,7 +580,7 @@ def _prepare_restore(snapshot, destination, records, manifest, cancelled):
                 elif state == 'complete':
                     production = _production(job, manifest['original_root'], chunks)
                     if manifest['include_audio'] and production is not None:
-                        directory = destination / 'renders' / job['revision']
+                        directory = destination / PurePosixPath(production['master']['path']).parent
                         result = {**result, 'master': {**result['master'], 'path': str(directory / 'master.wav')},
                             'chapters': production['chapters'], 'manifest_path': str(directory / 'production.json'),
                             'captions_path': str(directory / 'captions.srt')}

@@ -288,3 +288,10 @@ def narration_project(text, voice_id, *, title='Narration', language=None, pan=0
     """Create a guided faithful narration; no LLM or quotation rewrite is involved."""
     return Project(title, (Role('narrator', voice_id, language, pan=pan),),
                    (Scene('chapter-1', title, (Line('line-1', 'narrator', text),)),))
+
+
+def render_identity(project_revision, pipeline, voice_fingerprints, master_sha256):
+    """A completed production includes exact runtimes as well as authored text."""
+    value = ('production-1', project_revision, pipeline, voice_fingerprints, master_sha256)
+    return sha256(json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(',', ':'),
+                             allow_nan=False).encode('utf-8')).hexdigest()

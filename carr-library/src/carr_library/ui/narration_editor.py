@@ -20,11 +20,12 @@ from .research_actions import NativeDialogs
 
 class LocalVoiceDiscovery:
     """Cancellable local discovery with all UI callbacks dispatched by the host."""
-    def __init__(self, dispatch, *, discover=None):
+    def __init__(self, dispatch, *, discover=None, configuration_root=None):
         self.dispatch = dispatch
         if discover is None:
+            from functools import partial
             from ..speech import discover_voices
-            discover = discover_voices
+            discover = partial(discover_voices, configuration_root=configuration_root)
         self.discover = discover
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='reading-voices')
         self.cancelled = threading.Event()
@@ -272,7 +273,7 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
              'studio_setup': False, 'close_after_setup': False,
              'displayed_text': editor.GetValue(), 'displayed_raw_text': project.current_text}
     timer = wx.Timer(dialog)
-    discovery = LocalVoiceDiscovery(wx.CallAfter, discover=voice_discovery)
+    discovery = LocalVoiceDiscovery(wx.CallAfter, discover=voice_discovery, configuration_root=store.root)
 
     def say(message, *, focus=True):
         status.ChangeValue(message)
@@ -446,7 +447,7 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
             refresh()
             controller.guard()
             from .studio_actions import StudioDialog
-            studio = StudioDialog(dialog, voices, store=audio_store)
+            studio = StudioDialog(dialog, voices, store=audio_store, configuration_root=store.root)
             studio.show()
             if not state['closed']:
                 say('The reading copy is saved. Its separate audio project is available at '
@@ -534,6 +535,19 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
         except Exception as exc:
             say('Recovery draft could not be saved. Your editor remains open: ' + str(exc), focus=False)
 
+    def read_live(event=None):
+        if state['closed'] or state['studio_setup']:
+            return
+        try:
+            capture()
+            candidate = controller.candidate()
+            from .live_reading import open_live_copy
+            open_live_copy(dialog, store.root, candidate, guard=controller.guard,
+                           validate_source=lambda: _validate_studio_source(store.root, candidate))
+            controller.guard()
+        except Exception as exc:
+            say(str(exc), focus=False)
+
     actions = (
         ('&Save project (Ctrl+S)', save), ('Save &as (Ctrl+Shift+S)', save_new),
         ('&Undo revision (Ctrl+Z)', lambda event: run(lambda: controller.undo() or 'Earlier revision restored.')),
@@ -541,7 +555,8 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
         ('Normalize s&pacing', normalize), ('&Add pronunciation', add_rule),
         ('Pronunciation &dictionary', dictionary), ('Preview pro&nunciation', pronunciation),
         ('&Find and replace', replace_text), ('Compare &original', compare),
-        ('&Export UTF-8 text', export), ('Save and open Audio &Studio...', open_studio),
+        ('&Export UTF-8 text', export), ('Read a&loud (Ctrl+Alt+V)...', read_live),
+        ('Save and open Audio &Studio...', open_studio),
         ('Cancel studio set&up', cancel_studio), ('C&lose', close),
     )
     ids, native_buttons = [], []
@@ -556,6 +571,7 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
         (wx.ACCEL_CTRL, ord('S'), ids[0]), (wx.ACCEL_CTRL | wx.ACCEL_SHIFT, ord('S'), ids[1]),
         (wx.ACCEL_CTRL, ord('Z'), ids[2]), (wx.ACCEL_CTRL, ord('Y'), ids[3]),
         (wx.ACCEL_CTRL, ord('H'), ids[8]),
+        (wx.ACCEL_CTRL | wx.ACCEL_ALT, ord('V'), ids[11]),
     ]))
     dialog.Bind(wx.EVT_TIMER, auto, timer)
     dialog.Bind(wx.EVT_CLOSE, close)
@@ -571,7 +587,7 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
             controls = dict(editor=editor, original=original, origin=origin, status=status,
                             save=native_buttons[0], save_as=native_buttons[1],
                             normalize=native_buttons[4], pronunciation=native_buttons[7],
-                            compare=native_buttons[9], studio=native_buttons[-3],
+                            compare=native_buttons[9], live=native_buttons[11], studio=native_buttons[-3],
                             cancel_studio=native_buttons[-2], close=native_buttons[-1])
             wx.CallAfter(on_ready, dialog, controller, controls)
         dialog.ShowModal()

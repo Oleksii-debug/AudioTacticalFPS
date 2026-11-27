@@ -14,15 +14,21 @@ requires the applicable Microsoft redistribution grant.
 ## Windows offline package
 
 The Windows x64 package targets CPython 3.11. The complete package includes its
-own Python runtime. Extract the complete package into a new folder, then open
-`Install.cmd`. Installation creates a local
+own Python runtime. Extract both Application and Sources archives into the same
+new folder when the delivery is split. If the sealed package includes
+`ResearchLibrary.exe`, open it to perform local installation and start the app;
+use that same entry for later launches. This private development EXE is unsigned.
+Packages without the native entry retain `Install.cmd` followed by
+`ResearchLibrary.cmd`. Installation creates a local
 environment inside that folder and uses only included, hash-checked wheels.
 It does not contact a package index and does not require administrator access.
 The smaller wheel-only variant requires CPython 3.11 through the Windows `py`
 launcher. Its manifest identifies whether Python is included.
 
-After installation, open `ResearchLibrary.cmd`. The terminal stays visible if
-startup fails, so a screen reader can read the error. Installation and
+The native entry reports launch failures through a readable Windows dialog.
+The legacy `ResearchLibrary.cmd` keeps its terminal visible if startup fails, so
+a screen reader can read the error. `CheckInstallation.cmd` remains available
+for detailed diagnostics in either package. Installation and
 `CheckInstallation.cmd` verify that native desktop and document components can
 load before reporting success, then run the synthetic application self-test.
 When OCR is included, the checks also recognize a generated test image.
@@ -175,10 +181,12 @@ never automatically merged or deleted. Archive and restore retain their IDs.
 
 Export the selected reference or all active references as RIS, BibTeX, CSL JSON,
 CSV or text. Bibliographic exports omit personal notes by default. Include notes
-only when you deliberately choose that option. The plain bibliography is a
-readable reference list, not a certified APA, MLA or Chicago citation style.
-BibTeX import and online DOI lookup are not part of this version. Entering a DOI
-or URL does not send a network request or download an attachment.
+only when you deliberately choose that option. The plain bibliography remains a readable reference list. The separate
+**Citation styles and bibliography** workbench uses the bundled CSL processor
+and reviewed local styles. BibTeX import is previewed before selected metadata
+is saved. **Academic → DOI lookup and open-access sources** requires explicit
+network permission and a review before any metadata or source is retained.
+Entering a DOI or URL by itself never sends a request or downloads an attachment.
 
 Version 0.2 opens the exact supported version-three library layout through a
 transactional upgrade. Existing source documents and citations are preserved.
@@ -337,7 +345,7 @@ x64 and CPython 3.11. A native Windows test is still required before release.
 ```console
 python -m build
 python -m pip download --only-binary=:all: --platform win_amd64 --python-version 3.11 --implementation cp --abi cp311 --require-hashes -r packaging/windows-cp311.lock -d wheelhouse
-python packaging/build_windows_bundle.py --wheel dist/universal_research_library-0.2.0.dev1-py3-none-any.whl --wheelhouse wheelhouse --lock packaging/windows-cp311.lock --output dist/windows-offline
+python packaging/build_windows_bundle.py --wheel dist/universal_research_library-0.3.0.dev1-py3-none-any.whl --wheelhouse wheelhouse --lock packaging/windows-cp311.lock --output dist/windows-offline
 ```
 
 For the complete package add `--python-archive path-to-pinned-python.tar.gz`.

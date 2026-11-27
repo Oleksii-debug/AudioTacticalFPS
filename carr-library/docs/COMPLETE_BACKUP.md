@@ -14,10 +14,17 @@ when they exist:
 
 - Reader resume positions and named bookmarks, with their exact source, revision
   and page-text identities.
+- Live-reading positions at an exact synthesized chunk boundary, with the source
+  text length and selected voice controls. Restoring never starts playback;
+  explicit resume rechecks the source and starts the saved chunk again.
 - Saved reading/narration copies, edit histories, literal pronunciation rules
   and separate recoverable drafts. Independent scripts remain independent scripts.
 - Customized main-window and reader keyboard shortcuts and recoverable evidence-note drafts.
+- Explicit progress-feedback settings, including Off/Beep/Speech preference,
+  volume, mute and quiet/background behavior; restoration itself plays no sound.
 - Named OCR-language selections and their orientation/model-policy settings.
+- Explicit dordiai-voices runtime declarations, restored disabled. Neither backup
+  validation nor restoration opens or executes the declared private runtime.
 - Saved audio projects, immutable script revisions, accepted speech/music chunks,
   chapters and master audio through the existing checked studio backup format.
 - Nonsecret provider settings and usage receipts, plus the local assistant's
@@ -53,7 +60,8 @@ authorizing another paid call. Reconnect and review a provider explicitly before
 using it. Restored assistant write receipts require review and a new approved
 plan; restoration itself never runs a tool. Existing result text is preserved as
 history. Library-scoped assistant backups omit independent studio, provider and
-agent state because selecting a library does not authorize those other projects.
+agent state and global preferences because selecting a library does not authorize
+those other projects and settings.
 
 ## Restoration and source integrity
 
@@ -63,6 +71,8 @@ reading-copy source reference. A reference must match the stored workspace,
 edition, sealed revision, page/segment kind and index, original hash, and page
 text hash. An edited reading copy is never substituted for the original text or
 approved as a quotation by restoration.
+Live-reading offsets also require the exact authenticated source's Unicode text
+length. A forged length or a position outside that text stops restoration.
 
 Archived libraries and older revisions are preserved. The restore process does
 not redirect an old bookmark to whichever revision happens to be active now.
@@ -104,7 +114,9 @@ Scheduled, synchronized and encrypted backups are separate capabilities.
 Existing bounded backup budgets still apply: 512 MiB database, 10,000 registered
 originals, 8 GiB original bytes; reader state up to 8 MiB; narration copies/drafts
 up to 32 MiB per file and 64 MiB combined; keyboard preferences up to 128 KiB; OCR
-presets up to 64 KiB. Recovery components add at most 100,000 files, 64 GiB total,
+presets up to 64 KiB.
+Live-reading positions are bounded to 1 MiB and 1,000 sources; dordiai runtime
+declarations to 64 KiB. Recovery components add at most 100,000 files, 64 GiB total,
 32 GiB per file, 512 MiB per auxiliary SQLite database and 1,000 audio projects;
 the manifest is bounded to 64 MiB. The existing studio limits also apply.
 These are checked resource budgets, not measurements of

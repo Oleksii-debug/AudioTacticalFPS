@@ -8,6 +8,7 @@ from pathlib import Path
 import sys
 import tempfile
 import time
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 import wave
@@ -146,6 +147,23 @@ class AdapterSafetyTests(unittest.TestCase):
                     patch("carr_library.audio.ffmpeg.os.path.abspath",
                           side_effect=lambda value: directory if value == os.curdir else os.fspath(value)):
                 self.assertIsNone(local._espeak_runtime())
+
+    def test_windows_installed_espeak_candidates_include_exe_without_pathext_expansion(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            def exact_file(candidate):
+                # Match Python 3.11 which() for an absolute directory candidate:
+                # it checks this exact file instead of appending PATHEXT.
+                return candidate if Path(candidate).is_file() else None
+            with patch.object(local, 'os', SimpleNamespace(name='nt', environ={})), \
+                    patch.object(local, '_runtime_directories', return_value=(root,)), \
+                    patch.object(local.shutil, 'which', side_effect=exact_file):
+                for name in ('espeak-ng.exe', 'espeak.exe'):
+                    with self.subTest(installed=name):
+                        executable = root / name
+                        executable.write_bytes(b'Lookup fixture, never executed')
+                        self.assertEqual(local._espeak_runtime(), (executable.resolve(), None))
+                        executable.unlink()
 
     def test_wav_validator_rejects_empty_truncated_and_wrong_format(self):
         with tempfile.TemporaryDirectory() as directory:

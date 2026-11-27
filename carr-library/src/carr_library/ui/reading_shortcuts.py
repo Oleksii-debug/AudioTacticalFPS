@@ -10,7 +10,8 @@ class ReaderKeyboardAdapter:
         self.reader = reader
         self.manager = manager or KeyboardManager()
         if self.manager.store is None:
-            self.manager.private_root = reader.controller.desk.library.root
+            self.manager.private_root = (reader.private_root if hasattr(reader, 'private_root')
+                                         else reader.controller.desk.library.root)
         self._ids = {}
         self._disposed = False
         for command in self.manager.registry.commands('reader'):

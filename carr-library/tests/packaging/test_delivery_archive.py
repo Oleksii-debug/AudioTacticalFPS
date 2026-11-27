@@ -112,7 +112,40 @@ def test_real_two_archive_roundtrip_preserves_exact_manifest_and_trusted_install
     instructions = (Path(report["output"]) / "START_HERE_UK.txt").read_text(encoding="utf-8")
     assert "ОБИДВА" in instructions and "ОДНУ Й ТУ САМУ НОВУ" in instructions
     assert app.name in instructions and source.name in instructions
+    assert "Запускайте програму через ResearchLibrary.cmd" in instructions
+    assert "ResearchLibrary.exe" not in instructions
     no_staging(tmp_path)
+
+
+def test_sealed_native_entry_is_delivered_and_named_in_start_instructions(bundle, tmp_path):
+    # Explicit synthetic bytes test archive/instruction selection, never native execution.
+    payload = b"Synthetic sealed native entry, never executed."
+    (bundle / "ResearchLibrary.exe").write_bytes(payload)
+    path = bundle / delivery.MANIFEST
+    manifest = json.loads(path.read_text())
+    manifest["files"]["ResearchLibrary.exe"] = sha(payload)
+    path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    report = create(bundle, tmp_path)
+    app, _source = paths(report)
+    with zipfile.ZipFile(app) as archive:
+        assert archive.read(delivery.PREFIX + "ResearchLibrary.exe") == payload
+    instructions = (Path(report["output"]) / "START_HERE_UK.txt").read_text(encoding="utf-8")
+    assert "Запускайте програму через ResearchLibrary.exe" in instructions
+    assert "виконає локальне встановлення" in instructions
+    assert "не має цифрового підпису" in instructions
+    assert "run ResearchLibrary.exe" in report["instructions"]
+    assert report["boundaries"]["native_execution"] == "NOT_RUN"
+
+
+def test_unlisted_executable_does_not_change_the_reviewed_delivery_entry(bundle, tmp_path):
+    (bundle / "ResearchLibrary.exe").write_bytes(b"unlisted neighboring file")
+    report = create(bundle, tmp_path)
+    app, _source = paths(report)
+    with zipfile.ZipFile(app) as archive:
+        assert delivery.PREFIX + "ResearchLibrary.exe" not in archive.namelist()
+    instructions = (Path(report["output"]) / "START_HERE_UK.txt").read_text(encoding="utf-8")
+    assert "Запускайте програму через ResearchLibrary.cmd" in instructions
+    assert "ResearchLibrary.exe" not in instructions
 
 
 def test_unlisted_private_environments_and_tests_never_enter_archives(bundle, tmp_path):

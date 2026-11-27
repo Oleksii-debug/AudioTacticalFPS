@@ -164,11 +164,12 @@ def location_text(page):
 class ReadingDialog:
     """Modal native reader with a cancellable worker and no late UI callbacks."""
 
-    def __init__(self, parent, desk, state, guard):
+    def __init__(self, parent, desk, state, guard, *, live_factory=None):
         import wx
 
         self.wx, self.parent = wx, parent
-        self.dialog = wx.Dialog(parent, title='Read book — ' + desk.title, size=(880, 700))
+        self.dialog = wx.Dialog(parent, title='Read book — ' + desk.title, size=(1020, 900),
+                                style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
         self.dialogs = NativeDialogs()
         self.cancelled = threading.Event()
         # Native source validation must observe this dialog's cancel action,
@@ -189,6 +190,9 @@ class ReadingDialog:
         self.text = wx.TextCtrl(self.dialog, style=wx.TE_READONLY | wx.TE_MULTILINE)
         self.text.SetName('Full source page or text segment')
         layout.Add(self.text, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
+        from .live_reading import attach_source_controls
+        self.live = (attach_source_controls(self, layout, core_factory=live_factory)
+                     if live_factory is not None else attach_source_controls(self, layout))
         navigation = wx.WrapSizer(wx.HORIZONTAL)
         self._button(navigation, 'Previous source location', lambda _: self.navigate(-1),
                      command_id='reader.previous')
@@ -259,6 +263,7 @@ class ReadingDialog:
         self.status.SetFocus()
 
     def edit_reading_copy(self, event=None):
+        self._stop_live()
         def opened(page):
             from ..reader.narration import NarrationStore, new_project
             from .narration_editor import open_narration_editor
@@ -312,7 +317,15 @@ class ReadingDialog:
             self.cancel.Disable()
             self._error(exc)
 
-    def _page(self, navigation):
+    def _stop_live(self):
+        # Page acceptance and voice discovery can finish independently. Moving
+        # the source must stop speech without cancelling the voice inventory.
+        if hasattr(self, 'live') and self.live.core.status().state != 'discovering':
+            self.live.stop()
+
+    def _page(self, navigation, *, focus=True, from_live=False):
+        if not from_live:
+            self._stop_live()
         self.controller.check()
         page = navigation.page
         self.text.ChangeValue(page.raw_text)
@@ -325,15 +338,19 @@ class ReadingDialog:
         self.status.ChangeValue(self.controller.save_warning or
             ('Source location loaded. Page-level resume saved. '
              + (f'Use {help_shortcut} for reader shortcuts.' if help_shortcut else 'Choose Reader keyboard guide for shortcuts.')))
-        self.text.SetFocus()
+        if focus:
+            self.text.SetFocus()
 
     def navigate(self, direction):
+        self._stop_live()
         self._run('Opening source location', lambda: self.controller.move(direction), self._page)
 
     def go_first(self):
+        self._stop_live()
         self._run('Opening first source location', lambda: self.controller.go(1), self._page)
 
     def history(self, direction):
+        self._stop_live()
         self._run('Returning to reading location', lambda: self.controller.history_move(direction), self._page)
 
     def go_to(self, event=None):
@@ -350,6 +367,7 @@ class ReadingDialog:
             if not value.strip().isascii() or not value.strip().isdecimal():
                 raise ValueError('Enter a whole-number reading position.')
             position = int(value.strip())
+            self._stop_live()
             self._run('Opening reading position', lambda: self.controller.go(position), self._page)
         except Exception as exc:
             self._error(exc)
@@ -433,6 +451,11 @@ class ReadingDialog:
             'Resume and bookmarks save the current source page or text segment, not the NVDA cursor. '
             'Unknown printed pagination remains unknown. Unverified extracted text remains unverified. '
             'Reading and bookmarks do not approve quotations.\n\n'
+            'Voice reading uses an explicitly chosen installed local voice. Read current text, '
+            'Read from cursor and Read selection preserve the exact source text. Pause retains '
+            'the measured audio position; Stop cancels rendering or playback. Continue to the '
+            'next location is off by default and never extends a selected range. Saved voice '
+            'positions restart the current verified text chunk; no word alignment is claimed.\n\n'
             'Reading, Export reading positions and bookmarks saves a separate JSON backup. '
             'Back up all libraries also preserves reading positions, bookmarks and saved reading copies.')
         self.text.SetFocus()
@@ -442,6 +465,8 @@ class ReadingDialog:
             return
         self.closed = True
         self.cancelled.set()
+        if hasattr(self, 'live'):
+            self.live.close()
         if hasattr(self, 'keyboard'):
             self.keyboard.close()
         self.executor.shutdown(wait=False, cancel_futures=True)
@@ -451,6 +476,7 @@ class ReadingDialog:
     def show(self):
         try:
             self._run('Resuming source reading', self.controller.start, self._page)
+            self.live.discover()
             self.dialog.ShowModal()
         finally:
             self.close()

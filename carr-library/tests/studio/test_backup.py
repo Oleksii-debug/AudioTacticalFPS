@@ -130,9 +130,10 @@ def test_audio_free_restore_keeps_history_and_renders_again_without_publication_
     assert restored.jobs()[0]['state'] == 'interrupted' and restored.jobs()[0]['result'] is None
     with restored.connect() as db:
         assert db.execute('SELECT count(*) FROM chunks').fetchone()[0] == 0
-    archived = restored.root / 'restore-history' / digest / 'renders' / project.revision / 'production.json'
-    assert archived.read_bytes() == (source.renders / project.revision / 'production.json').read_bytes()
-    assert not (restored.renders / project.revision / 'production.json').exists()
+    production_path = Path(result['manifest_path']).relative_to(source.root)
+    archived = restored.root / 'restore-history' / digest / production_path
+    assert archived.read_bytes() == Path(result['manifest_path']).read_bytes()
+    assert not (restored.root / production_path).exists()
     calls = []
     resumed = director(restored, calls).render(restored.load())
     assert len(calls) == 2 and resumed['master']['sha256'] == result['master']['sha256']
@@ -140,6 +141,30 @@ def test_audio_free_restore_keeps_history_and_renders_again_without_publication_
     next_digest = backup_project(restored, second)
     again = restore_project(second, tmp_path / 'restored-again', expected_manifest_sha256=next_digest)
     assert (again.root / archived.relative_to(restored.root)).read_bytes() == archived.read_bytes()
+
+
+def test_legacy_revision_only_production_restores_and_new_identity_retains_it(rendered, tmp_path):
+    source, project, _, _, result, _ = rendered
+    current = Path(result['manifest_path']).parent
+    legacy = source.renders / project.revision
+    current.rename(legacy)
+    manifest_path = legacy / 'production.json'
+    production = json.loads(manifest_path.read_bytes())
+    production['master']['path'] = str((legacy / 'master.wav').relative_to(source.root))
+    manifest_path.write_bytes((json.dumps(production, ensure_ascii=False, indent=2, sort_keys=True) + '\n').encode('utf-8'))
+    result = {**result, 'master': {**result['master'], 'path': str(legacy / 'master.wav')},
+              'manifest_path': str(manifest_path), 'captions_path': str(legacy / 'captions.srt')}
+    source.checkpoint(result['job_id'], state='complete', result=result)
+    snapshot = tmp_path / 'legacy-backup'
+    digest = backup_project(source, snapshot)
+    restored = restore_project(snapshot, tmp_path / 'legacy-restored', expected_manifest_sha256=digest)
+    retained = restored.renders / project.revision / 'production.json'
+    before = retained.read_bytes()
+    calls = []
+    fresh = director(restored, calls).render(restored.load())
+    assert calls == [] and fresh['completed_chunks'] == 0
+    assert Path(fresh['manifest_path']) != retained and retained.read_bytes() == before
+    assert fresh['master']['sha256'] == result['master']['sha256']
 
 
 def test_active_render_snapshot_excludes_uncommitted_partials_and_resumes_only_remaining_speech(tmp_path):
