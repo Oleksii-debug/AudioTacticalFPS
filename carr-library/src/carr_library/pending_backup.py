@@ -396,6 +396,42 @@ def _journal_schema(db):
         raise ValueError('Pending import journal integrity failed.')
 
 
+def _recover_live_journal(path, cancelled, *, limits):
+    """Let SQLite recover only the live journal under all snapshot guards.
+
+    A forcibly stopped worker can leave a hot rollback journal, or a WAL that
+    needs recovery before even SELECT can run.  mode=rw opens only the
+    existing application-owned database; query_only still refuses SQL writes.
+    The enclosing snapshot owns the application writer and every existing
+    request/batch guard.  Archive verification never calls this helper and
+    remains strictly read-only in _journal.
+    """
+    _check(cancelled)
+    path = local_path(path, exists=True)
+    if not 0 < regular(path).st_size <= limits['journal']:
+        raise ValueError('Pending import journal exceeds its byte budget.')
+    for suffix in ('-wal', '-shm', '-journal'):
+        sidecar = Path(str(path) + suffix)
+        if optional_present(sidecar):
+            local_path(sidecar, exists=True)
+    deadline = time.monotonic() + (3600 if limits['journal'] > MAX_JOURNAL else 60)
+    try:
+        with closing(sqlite3.connect(path.as_uri() + '?mode=rw', uri=True,
+                                     isolation_level=None, timeout=0)) as db:
+            db.set_progress_handler(
+                lambda: int(cancelled() or time.monotonic() >= deadline), 10_000)
+            db.execute('PRAGMA trusted_schema=OFF')
+            db.execute('PRAGMA query_only=ON')
+            _check(cancelled)
+            # SQLite itself rolls back only the interrupted transaction, or
+            # reads the last committed WAL frame. Never discard its sidecars.
+            db.execute('SELECT name FROM sqlite_master LIMIT 1').fetchone()
+    except sqlite3.Error:
+        _check(cancelled)
+        raise
+    _check(cancelled)
+
+
 def _journal(path, catalog, cancelled, *, limits=None):
     """Read-only validation; never CREATE tables in an imported database."""
     limits = limits or capacity()
@@ -732,9 +768,7 @@ def _snapshot_pending(app, target, *, capacity_profile=None, cancelled=lambda: F
             jobs = {}
             journal_path = root / 'imports.sqlite'
             if optional_present(journal_path):
-                for suffix in ('-wal', '-shm', '-journal'):
-                    if optional_present(Path(str(journal_path) + suffix)):
-                        local_path(Path(str(journal_path) + suffix), exists=True)
+                _recover_live_journal(journal_path, cancelled, limits=limits)
                 source_db, _ = _journal(journal_path, catalog, cancelled, limits=limits)
                 page_size = source_db.execute('PRAGMA page_size').fetchone()[0]
                 with closing(source_db), closing(sqlite3.connect(target / 'imports.sqlite')) as backup:

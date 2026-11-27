@@ -442,3 +442,211 @@ def test_pending_sidecar_rewrite_with_unchanged_timestamps_invalidates_snapshot(
         create_backup(app, destination)
     assert changed and len(original.read_bytes()) == len(before)
     assert original.read_bytes() != before and not destination.exists()
+
+
+def _crash_import_journal(journal, mode):
+    """A real child commits one marker, spills another transaction, then dies."""
+    import sys
+    from tempfile import TemporaryFile
+    from carr_library.audio.capture_process import start_owned_process, stop_owned_process
+
+    child = r'''
+import os
+from pathlib import Path
+import sqlite3
+import sys
+
+path, mode = Path(sys.argv[1]), sys.argv[2]
+db = sqlite3.connect(path, isolation_level=None, timeout=5)
+assert db.execute("PRAGMA journal_mode=" + mode).fetchone()[0] == mode.lower()
+db.execute("PRAGMA synchronous=FULL")
+db.execute("PRAGMA wal_autocheckpoint=0")
+db.execute("PRAGMA cache_size=5")
+db.execute("PRAGMA cache_spill=ON")
+db.execute("UPDATE job SET error='committed_before_crash'")
+db.execute("BEGIN IMMEDIATE")
+db.execute("UPDATE job SET error='uncommitted_crash_marker'")
+db.execute("UPDATE checkpoint SET payload=?", ("uncommitted-" * (256 * 1024),))
+sidecar = Path(str(path) + ("-journal" if mode == "DELETE" else "-wal"))
+assert sidecar.is_file() and sidecar.stat().st_size > 512
+# Do not call Connection.close(), rollback(), or Python context-manager exit.
+os._exit(73)
+'''
+    with TemporaryFile() as output, TemporaryFile() as errors:
+        process = start_owned_process(
+            [sys.executable, '-I', '-B', '-c', child, str(journal), mode],
+            stdout=output, stderr=errors)
+        try:
+            result = process.wait(timeout=30)
+        finally:
+            stop_owned_process(process)
+        errors.seek(0)
+        assert result == 73, errors.read(8192).decode('utf-8', errors='replace')
+    if mode == 'DELETE':
+        # This is the observed failure, not a fabricated "-journal" filename.
+        with closing(sqlite3.connect(journal.as_uri() + '?mode=ro', uri=True)) as readonly:
+            with pytest.raises(sqlite3.OperationalError) as failure:
+                readonly.execute('SELECT name FROM sqlite_master').fetchall()
+        assert failure.value.sqlite_errorcode == sqlite3.SQLITE_READONLY_ROLLBACK
+    else:
+        assert Path(str(journal) + '-wal').stat().st_size > 512
+
+
+def _journal_family_bytes(journal):
+    return {path.name: path.read_bytes()
+            for path in (journal, *(Path(str(journal) + suffix)
+                         for suffix in ('-wal', '-shm', '-journal')))
+            if path.exists()}
+
+
+@pytest.mark.parametrize('mode', ['DELETE', 'WAL'], ids=['hot-rollback', 'dirty-wal'])
+def test_complete_backup_recovers_only_committed_crashed_import_state(app, tmp_path, mode):
+    from carr_library.library_backup import create_backup, restore_backup, verify_backup
+
+    workspace, source, request, initial = _partial(app, tmp_path)
+    journal = app.root / 'imports.sqlite'
+    with closing(sqlite3.connect(journal)) as before:
+        checkpoints = before.execute('SELECT * FROM checkpoint ORDER BY ordinal').fetchall()
+    _crash_import_journal(journal, mode)
+
+    destination = tmp_path / 'complete-crash-backup'
+    checksum = create_backup(app, destination)
+    manifest = verify_backup(destination, checksum)
+    assert not any(item['filename'].endswith(('-wal', '-shm', '-journal'))
+                   for item in manifest['pending']['files'])
+    for path in (journal, destination / 'pending/imports.sqlite'):
+        with closing(sqlite3.connect(path.as_uri() + '?mode=ro', uri=True)) as checked:
+            assert checked.execute('SELECT error FROM job').fetchall() == [('committed_before_crash',)]
+            assert checked.execute('SELECT * FROM checkpoint ORDER BY ordinal').fetchall() == checkpoints
+    source.unlink()
+    restored = LibraryApp(restore_backup(destination, tmp_path / 'crash-restored', checksum))
+    with closing(sqlite3.connect(restored.root / 'imports.sqlite')) as checked:
+        assert checked.execute('SELECT error FROM job').fetchall() == [('committed_before_crash',)]
+        assert checked.execute('SELECT * FROM checkpoint ORDER BY ordinal').fetchall() == checkpoints
+    completed = restored.resume_import(workspace, request['request_id'])
+    assert completed['state'] == 'complete' and completed['id'] == initial['id']
+    assert restored.search(workspace, 'second')[0].quote == 'second'
+
+
+def test_archive_journal_verifier_does_not_recover_or_modify_hot_database(app, tmp_path):
+    from carr_library import pending_backup
+
+    _partial(app, tmp_path)
+    journal = app.root / 'imports.sqlite'
+    _crash_import_journal(journal, 'DELETE')
+    archived = tmp_path / 'untrusted-archive'
+    archived.mkdir()
+    for name, raw in _journal_family_bytes(journal).items():
+        (archived / name).write_bytes(raw)
+    copy = archived / journal.name
+    before = _journal_family_bytes(copy)
+    with closing(pending_backup._catalog(app.database)) as catalog:
+        with pytest.raises(sqlite3.OperationalError) as failure:
+            pending_backup._journal(copy, catalog, lambda: False)
+    assert failure.value.sqlite_errorcode == sqlite3.SQLITE_READONLY_ROLLBACK
+    assert _journal_family_bytes(copy) == before
+
+
+def test_live_journal_recovery_holds_actual_root_request_and_batch_guards(app, tmp_path, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+    from filelock import FileLock, Timeout
+    from carr_library import pending_backup
+    from carr_library.ingest.worker import request_lock
+    from carr_library.ingest.writer_guard import WriterBusy
+    from carr_library.library_backup import create_backup
+
+    workspace, source, request, _ = _partial(app, tmp_path)
+    batch = app.plan_import_batch(workspace, [source])
+    _crash_import_journal(app.root / 'imports.sqlite', 'DELETE')
+    recover, observed = pending_backup._recover_live_journal, []
+
+    def contend():
+        with pytest.raises(WriterBusy):
+            with exclusive_writer(app.root):
+                pytest.fail('Recovery released the application writer.')
+        with pytest.raises(ValueError, match='already running'):
+            with request_lock(app.root, request['request_id']):
+                pytest.fail('Recovery released the pending request guard.')
+        lock = app.root / 'import-batches' / (batch['batch_id'] + '.lock')
+        with pytest.raises(Timeout):
+            with FileLock(lock).acquire(timeout=0):
+                pytest.fail('Recovery released the pending batch guard.')
+
+    def guarded(path, cancelled, *, limits):
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            executor.submit(contend).result(timeout=5)
+        observed.append(path)
+        return recover(path, cancelled, limits=limits)
+
+    monkeypatch.setattr(pending_backup, '_recover_live_journal', guarded)
+    create_backup(app, tmp_path / 'guarded-crash-backup')
+    assert observed == [app.root / 'imports.sqlite']
+
+
+@pytest.mark.parametrize('phase', ['before', 'after'])
+def test_live_recovery_cancellation_never_publishes_a_partial_backup(app, tmp_path, monkeypatch, phase):
+    from threading import Event
+    from carr_library import pending_backup
+    from carr_library.library_backup import create_backup
+
+    _partial(app, tmp_path)
+    journal = app.root / 'imports.sqlite'
+    _crash_import_journal(journal, 'DELETE')
+    before = _journal_family_bytes(journal)
+    stopped = Event()
+    recover = pending_backup._recover_live_journal
+
+    def cancel_at_recovery(path, cancelled, *, limits):
+        if phase == 'before':
+            stopped.set()
+        result = recover(path, cancelled, limits=limits)
+        stopped.set()
+        return result
+
+    monkeypatch.setattr(pending_backup, '_recover_live_journal', cancel_at_recovery)
+    destination = tmp_path / 'cancelled-crash-backup'
+    with pytest.raises(InterruptedError):
+        create_backup(app, destination, cancelled=stopped.is_set)
+    assert not destination.exists()
+    if phase == 'before':
+        assert _journal_family_bytes(journal) == before
+    else:
+        with closing(sqlite3.connect(journal.as_uri() + '?mode=ro', uri=True)) as checked:
+            assert checked.execute('SELECT error FROM job').fetchall() == [('committed_before_crash',)]
+            assert checked.execute('SELECT count(*) FROM checkpoint').fetchone()[0] == 1
+
+
+def test_live_recovery_admits_selected_journal_byte_limit_before_writable_open(app, tmp_path, monkeypatch):
+    from carr_library import pending_backup
+    from carr_library.library_backup import create_backup
+
+    _partial(app, tmp_path)
+    journal = app.root / 'imports.sqlite'
+    _crash_import_journal(journal, 'DELETE')
+    before = _journal_family_bytes(journal)
+    limits = pending_backup.capacity()
+    limits['journal'] = journal.stat().st_size - 1
+    monkeypatch.setattr(pending_backup, 'capacity', lambda value=None: dict(limits))
+    destination = tmp_path / 'oversized-crash-backup'
+    with pytest.raises(ValueError, match='byte budget'):
+        create_backup(app, destination)
+    assert not destination.exists()
+    assert _journal_family_bytes(journal) == before
+
+
+def test_live_recovery_does_not_admit_an_unknown_committed_schema(app, tmp_path):
+    from carr_library.library_backup import create_backup
+
+    _partial(app, tmp_path)
+    journal = app.root / 'imports.sqlite'
+    with closing(sqlite3.connect(journal)) as altered:
+        altered.execute('CREATE TABLE foreign_state(value TEXT)')
+        altered.commit()
+    _crash_import_journal(journal, 'DELETE')
+    destination = tmp_path / 'foreign-schema-backup'
+    with pytest.raises(ValueError, match='unsupported schema'):
+        create_backup(app, destination)
+    assert not destination.exists()
+    with closing(sqlite3.connect(journal.as_uri() + '?mode=ro', uri=True)) as checked:
+        assert checked.execute("SELECT name FROM sqlite_master WHERE name='foreign_state'").fetchone()
+        assert checked.execute('SELECT error FROM job').fetchall() == [('committed_before_crash',)]
