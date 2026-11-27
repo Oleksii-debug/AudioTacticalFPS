@@ -3,6 +3,7 @@ from copy import deepcopy
 from hashlib import sha256
 import json
 from pathlib import Path
+import sys
 import time
 from types import SimpleNamespace
 from uuid import uuid4
@@ -80,6 +81,51 @@ def publication_barrier(monkeypatch, marker, *, before=False, crash=False):
     return processes
 
 
+def publication_diagnostics(monkeypatch):
+    """Observe the actual verification branch without changing its verdict.
+
+    Only these two current-thread frames are recorded, after child cleanup.
+    Keep bounded exception metadata and return locations, never frame locals,
+    source bytes, request contents or database rows.
+    """
+    events = []
+
+    def observer(name, function):
+        def observed(*args, **kwargs):
+            previous = sys.gettrace()
+
+            def trace(frame, event, value):
+                if frame.f_code is not function.__code__:
+                    return previous(frame, event, value) if previous is not None else None
+                if event in ('exception', 'return') and len(events) < 32:
+                    entry = dict(function=name, event=event, line=frame.f_lineno)
+                    if event == 'exception':
+                        error = value[1]
+                        entry.update(error=type(error).__name__, message=str(error)[:240])
+                        for attribute in ('errno', 'winerror', 'sqlite_errorcode', 'sqlite_errorname'):
+                            detail = getattr(error, attribute, None)
+                            if type(detail) in (int, str):
+                                entry[attribute] = detail[:120] if isinstance(detail, str) else detail
+                    else:
+                        entry['returned'] = 'None' if value is None else type(value).__name__
+                        if type(value) is dict and type(value.get('state')) is str:
+                            entry['state'] = value['state'][:40]
+                    events.append(entry)
+                return trace
+
+            try:
+                sys.settrace(trace)
+                return function(*args, **kwargs)
+            finally:
+                sys.settrace(previous)
+
+        return observed
+
+    for name in ('_reconcile_publication', '_published_after_stop'):
+        monkeypatch.setattr(worker, name, observer(name, getattr(worker, name)))
+    return events
+
+
 @pytest.mark.parametrize('kind', ('docx', 'md', 'txt', 'pdf', 'epub'))
 @pytest.mark.parametrize('stop', ('cancel', 'timeout', 'crash'))
 def test_durable_publication_survives_stopped_worker(tmp_path, monkeypatch, kind, stop):
@@ -89,6 +135,8 @@ def test_durable_publication_survives_stopped_worker(tmp_path, monkeypatch, kind
     original = source.read_bytes()
     marker = tmp_path / 'committed'
     processes = publication_barrier(monkeypatch, marker, crash=stop == 'crash')
+    diagnostics = publication_diagnostics(monkeypatch)
+    original_trace = sys.gettrace()
     outcomes = []
     invoke = worker._invoke
 
@@ -114,7 +162,9 @@ def test_durable_publication_survives_stopped_worker(tmp_path, monkeypatch, kind
     else:
         result = app.import_file(workspace, source, cancelled=cancelled, timeout=30)
     assert marker.is_file(), result
-    assert result['state'] == 'complete', result
+    assert result['state'] == 'complete', dict(result=result, publication_verification=diagnostics)
+    assert sys.gettrace() is original_trace
+    assert {entry['function'] for entry in diagnostics} == {'_reconcile_publication', '_published_after_stop'}
     assert result['recovered_publication'] is True
     assert outcomes == [{'cancel': 'cancelled', 'timeout': 'timed_out', 'crash': 'failed'}[stop]]
     assert result['worker_state'] == {'cancel': 'cancelled', 'timeout': 'timed_out', 'crash': 'failed'}[stop]

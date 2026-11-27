@@ -343,7 +343,7 @@ jobs:
       - name: Build, install and exercise the complete bundle with runtime egress blocked
         id: complete_bundle
         if: ${{ !cancelled() && steps.local_model.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' }}
-        # The f35bbe installed gate passed in 23m29s under its 25-minute ceiling.
+        # The previous successful installed gate approached its 25-minute ceiling.
         # Keep every case and allow normal runner variance through the final seal check.
         timeout-minutes: 35
         run: |
@@ -576,6 +576,7 @@ jobs:
               'tests/storage/test_v3_state_backup.py',
               'tests/library_assistant/test_library_workflow.py',
               'tests/reader/test_export_no_clobber.py',
+              'tests/reader/test_export_reconciliation.py',
               'tests/citations/test_bibliography_workbench.py',
               'tests/ui/test_citation_styles_jobs.py',
               'tests/speech/test_source.py',
@@ -819,6 +820,7 @@ jobs:
             'tests/reader/test_evidence_export.py',
             'tests/reader/test_file_export.py',
             'tests/reader/test_export_no_clobber.py',
+            'tests/reader/test_export_reconciliation.py',
             'tests/reader/test_academic_documents.py',
             'tests/reader/test_bibliographic_locators.py',
             'tests/reader/test_binary_file_export.py',
