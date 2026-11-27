@@ -204,3 +204,72 @@ def test_settings_collection_and_json_boundaries(change):
         raw = raw.replace(b'"schema": 1', b'"schema": 1, "schema": 1', 1)
     with pytest.raises(ValueError):
         backup_sidecars.validate_sidecar(None, NAME, raw)
+
+
+@pytest.mark.parametrize('script', [r'C:\Synthetic voice bridge\міст.py', '/synthetic-uninstalled-engines/міст.py'])
+@pytest.mark.parametrize('enabled', [True, False])
+def test_pinned_python_helper_roundtrips_passively(tmp_path, monkeypatch, script, enabled):
+    app = LibraryApp(tmp_path / 'library')
+    app.create_workspace('Pinned helper backup')
+    value = configuration()
+    value['voice_helpers'][0].update(script=script, script_sha256='1' * 64, enabled=enabled)
+    raw = write_settings(app.root, value)
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('Backup must not import or execute the externally installed bridge.')
+
+    monkeypatch.setattr(backup_sidecars, 'import_module', forbidden)
+    monkeypatch.setattr(subprocess, 'Popen', forbidden)
+    folder = tmp_path / 'backup'
+    checksum = create_backup(app, folder)
+    before = snapshot_files(folder)
+    restored = restore_backup(folder, tmp_path / 'restored', checksum)
+    assert (restored / NAME).read_bytes() == raw
+    assert (app.root / NAME).read_bytes() == raw
+    assert snapshot_files(folder) == before
+
+
+@pytest.mark.parametrize('fields', [
+    {'script': '/synthetic-uninstalled-engines/bridge.py'},
+    {'script_sha256': '1' * 64},
+    {'script': 'https://example.invalid/bridge.py', 'script_sha256': '1' * 64},
+    {'script': r'\\server\share\bridge.py', 'script_sha256': '1' * 64},
+    {'script': r'C:\Synthetic\bridge.py:stream', 'script_sha256': '1' * 64},
+    {'script': '/synthetic-uninstalled-engines/bridge.py', 'script_sha256': 'A' * 64},
+    {'script': '/synthetic-uninstalled-engines/bridge.py', 'script_sha256': True},
+    {'script': '', 'script_sha256': '1' * 64},
+])
+def test_invalid_pinned_python_helper_fails_closed(tmp_path, fields):
+    app = LibraryApp(tmp_path / 'library')
+    app.create_workspace('Invalid pinned helper')
+    value = configuration()
+    value['voice_helpers'][0].update(fields)
+    raw = write_settings(app.root, value)
+    target = tmp_path / 'must-not-publish'
+    with pytest.raises(ValueError):
+        create_backup(app, target)
+    assert not target.exists()
+    assert (app.root / NAME).read_bytes() == raw
+
+
+def test_resigned_pinned_helper_restore_rejects_missing_script_identity(tmp_path):
+    app = LibraryApp(tmp_path / 'library')
+    app.create_workspace('Pinned helper restore validation')
+    value = configuration()
+    value['voice_helpers'][0].update(script='/synthetic-uninstalled-engines/bridge.py', script_sha256='1' * 64)
+    original = write_settings(app.root, value)
+    folder = tmp_path / 'backup'
+    create_backup(app, folder)
+    value['voice_helpers'][0].pop('script_sha256')
+    raw = write_settings(folder, value)
+    manifest = json.loads((folder / 'manifest.json').read_bytes())
+    manifest['sidecars'][0].update(size_bytes=len(raw), sha256=sha256(raw).hexdigest())
+    checksum = resign(folder, manifest)
+    before = snapshot_files(folder)
+    target = tmp_path / 'must-not-publish'
+    with pytest.raises(ValueError):
+        restore_backup(folder, target, checksum)
+    assert not target.exists()
+    assert snapshot_files(folder) == before
+    assert (app.root / NAME).read_bytes() == original
+    assert not list(tmp_path.glob('.carr-library-restore-*'))

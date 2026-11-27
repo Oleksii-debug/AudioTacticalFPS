@@ -228,9 +228,11 @@ def _validate_engine_settings(value):
             if 'expected_worker_sha256' in helper:
                 checksum(helper['expected_worker_sha256'])
         else:
-            fields(helper, {'executable', 'sha256', 'engine_name'}, {'enabled', 'max_voices'})
+            fields(helper, {'executable', 'sha256', 'engine_name'}, {'enabled', 'max_voices', 'script', 'script_sha256'})
             path(helper['executable'])
             checksum(helper['sha256'])
+            from .runtime_settings import validate_helper_script_configuration
+            validate_helper_script_configuration(helper)
             text(helper['engine_name'], 128)
             if 'enabled' in helper:
                 boolean(helper['enabled'])
