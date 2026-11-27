@@ -41,13 +41,14 @@ def _plain(value):
 
 
 class AssistantService:
-    def __init__(self, app, *, state_dir=None, production=None):
+    def __init__(self, app, *, state_dir=None, production=None, interactive=None):
         self.app = app
         managed = app.root / 'state' / 'assistant'
         if state_dir is not None and local_path(state_dir, must_exist=False) != managed:
             raise ValueError('Assistant state must use this library\'s managed state/assistant directory.')
         self.store = JobStore(managed, writer_root=app.root)
         self.production = production
+        self.interactive = interactive
 
     def preview(self, instruction, scope):
         plan = preview(instruction, scope)
@@ -69,7 +70,8 @@ class AssistantService:
                 if i != 0:
                     raise ValueError('Create a new library as the first step.')
                 workspace = '<new>'
-            if step.tool not in ('library.create', 'library.list', 'library.backup', 'audio.produce') and not workspace:
+            if step.tool not in ('library.create', 'library.list', 'library.backup', 'audio.produce',
+                                 'document.convert', 'audio.effects') and not workspace:
                 raise PermissionError('Choose a library before this operation.')
             if step.tool.startswith('library.import'):
                 path = plan.scope.input(step.arguments['path'])
@@ -81,6 +83,15 @@ class AssistantService:
                     raise FileExistsError('The selected output already exists; choose another name.')
             if step.tool == 'library.backup' and not plan.scope.allow_full_backup:
                 raise PermissionError('Complete backup includes all libraries; enable that explicit permission first.')
+            if step.tool in ('document.convert', 'audio.effects'):
+                from .derived_tools import validate_live
+                validate_live(step, plan.scope, self.app.root)
+            if step.tool in ('reader.control', 'player.control'):
+                from .interactive_tools import validate_saved_scope
+                validate_saved_scope(step, plan.scope.to_dict(), str(self.app.root))
+                if self.interactive is None:
+                    raise PermissionError('Open the assistant from the selected native reader to approve this command.')
+                self.interactive.validate_step(step, plan.scope)
             if step.tool == 'audio.produce':
                 if plan.scope.output_root is None:
                     raise PermissionError('Choose the audio output directory.')
@@ -251,12 +262,22 @@ class AssistantService:
                     result = _plain(result)
                     if not isinstance(result, dict):
                         raise RuntimeError('Tool returned an invalid result.')
-                    result['artifacts'] = self._artifacts(result, plan.scope, stopped)
+                    if step.tool in ('document.convert', 'audio.effects'):
+                        from .derived_tools import validate_result
+                        validate_result(step, result, plan.scope.to_dict(), checkpoint['intent'])
+                        # Publication is complete. Preserve that outcome if Stop
+                        # arrives while the final artifact hashes are checked.
+                        result['artifacts'] = self._artifacts(result, plan.scope, lambda: False)
+                    else:
+                        result['artifacts'] = self._artifacts(result, plan.scope, stopped)
                     checkpoint['result'] = result
                     checkpoint['status'] = 'complete'
                     persist()
                 record['status'] = 'complete'
-                record['message'] = 'All selected operations completed and returned artifacts were verified.'
+                record['message'] = (
+                    'All reviewed commands completed. A playback-start receipt confirms initiation, not completion of a book.'
+                    if any(step.tool in ('reader.control', 'player.control') for step in plan.steps)
+                    else 'All selected operations completed and returned artifacts were verified.')
             except InterruptedError as exc:
                 command = self.store.control(identity)
                 record['status'] = 'cancelled' if command == 'cancel' else 'paused'
@@ -319,6 +340,32 @@ class AssistantService:
         args = step.arguments
         workspace = record['workspace']
         intent = checkpoint['intent']
+        if step.tool in ('document.convert', 'audio.effects'):
+            from .derived_tools import execute
+            operation_id = uuid5(NAMESPACE_URL, 'carr-assistant:' + record['id'] + ':' + str(index)).hex
+            def derivative_progress(message):
+                if progress:
+                    progress(index, len(record['steps']), message)
+            return execute(step, scope, self.app.root, intent, persist, operation_id=operation_id,
+                           cancelled=cancelled, progress=derivative_progress)
+        if step.tool in ('reader.control', 'player.control'):
+            from .interactive_tools import validate_result
+            if intent:
+                raise PermissionError('This native command may already have been dispatched. Review the current reader and submit a new plan; it will not be replayed.')
+            if self.interactive is None:
+                raise PermissionError('The selected native reader is unavailable. Open its assistant and review a new plan.')
+            self.interactive.validate_step(step, scope)
+            if cancelled():
+                raise InterruptedError('The native command stopped before dispatch.')
+            operation_id = uuid5(NAMESPACE_URL, 'carr-assistant:' + record['id'] + ':' + str(index)).hex
+            intent['interactive_dispatch'] = operation_id
+            persist()  # A crash after this point never silently replays a command.
+            def interactive_progress(message):
+                if progress:
+                    progress(index, len(record['steps']), message)
+            result = self.interactive.execute_step(step, scope, operation_id=operation_id,
+                                                   cancelled=cancelled, progress=interactive_progress)
+            return validate_result(step, result, scope.to_dict(), intent)
         if step.tool == 'library.create':
             from ..application import _name
             from ..catalog.membership import _metadata

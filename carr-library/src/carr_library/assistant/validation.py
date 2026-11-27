@@ -25,6 +25,12 @@ _KEYS = {
 
 
 def validate_arguments(step):
+    if step.tool in ('document.convert', 'audio.effects'):
+        from .derived_tools import validate_arguments as validate_derived
+        return validate_derived(step)
+    if step.tool in ('reader.control', 'player.control'):
+        from .interactive_tools import validate_arguments as validate_interactive
+        return validate_interactive(step)
     required, optional = _KEYS[step.tool]
     if set(step.arguments) - required - optional or not required <= set(step.arguments):
         raise ValueError(f'Invalid arguments for {step.tool}.')
@@ -192,6 +198,12 @@ def validate_job(value, *, identity=None):
                 raise ValueError('Invalid saved create-library permission.')
         if validated.tool == 'library.backup' and not scope['allow_full_backup']:
             raise ValueError('A saved backup plan lacks its explicit permission.')
+        if validated.tool in ('document.convert', 'audio.effects'):
+            from .derived_tools import validate_saved_scope
+            validate_saved_scope(validated, scope, value['data_dir'])
+        if validated.tool in ('reader.control', 'player.control'):
+            from .interactive_tools import validate_saved_scope
+            validate_saved_scope(validated, scope, value['data_dir'])
         if validated.tool.startswith('library.import'):
             target = _path(validated.arguments['path'])
             if not any(type(target) is type(_path(root)) and target.is_relative_to(_path(root))
@@ -202,7 +214,8 @@ def validate_job(value, *, identity=None):
                 raise ValueError('Checkpoint operation has no approved output scope.')
         if validated.tool in ('library.extract', 'library.backup'):
             _output_name(validated.arguments['name'])
-        if (validated.tool not in ('library.create', 'library.list', 'library.backup', 'audio.produce')
+        if (validated.tool not in ('library.create', 'library.list', 'library.backup', 'audio.produce',
+                                   'document.convert', 'audio.effects')
                 and workspace is None and creates == 0):
             raise ValueError('Checkpoint operation has no approved library scope.')
         if (type(checkpoint) is not dict or set(checkpoint) != {'status', 'intent', 'result', 'message'}
@@ -212,9 +225,19 @@ def validate_job(value, *, identity=None):
         text(checkpoint['message'], 'step message', maximum=2000, empty=True)
         intent = checkpoint['intent']
         permitted = {'batch'} if validated.tool.startswith('library.import') else (
-            {'sha256'} if validated.tool == 'library.extract' else set())
+            {'sha256'} if validated.tool == 'library.extract' else
+            {'derived_publication'} if validated.tool in ('document.convert', 'audio.effects') else
+            {'interactive_dispatch'} if validated.tool in ('reader.control', 'player.control') else set())
         if set(intent) - permitted:
             raise ValueError('Invalid assistant step intent.')
+        expected_operation = uuid5(NAMESPACE_URL, 'carr-assistant:' + job_id + ':' + str(index)).hex
+        if 'derived_publication' in intent:
+            from .derived_tools import validate_intent
+            prepared = validate_intent(validated, intent, scope)
+            if prepared['operation_id'] != expected_operation:
+                raise ValueError('Prepared derivative belongs to a different approved step.')
+        if 'interactive_dispatch' in intent and intent['interactive_dispatch'] != expected_operation:
+            raise ValueError('Native dispatch belongs to a different approved step.')
         if 'batch' in intent and (not isinstance(intent['batch'], str)
                 or re.fullmatch('[0-9a-f]{32}', intent['batch']) is None):
             raise ValueError('Invalid saved import batch identity.')
@@ -227,6 +250,16 @@ def validate_job(value, *, identity=None):
             continue
         if type(result) is not dict or type(result.get('artifacts')) is not list:
             raise ValueError('Invalid completed assistant result.')
+        if validated.tool in ('document.convert', 'audio.effects'):
+            from .derived_tools import validate_result
+            validate_result(validated, result, scope, intent)
+        elif 'derived_receipt' in result:
+            raise ValueError('Only a derivative tool may have a derivative receipt.')
+        if validated.tool in ('reader.control', 'player.control'):
+            from .interactive_tools import validate_result
+            validate_result(validated, result, scope, intent)
+        elif 'interactive_receipt' in result:
+            raise ValueError('Only a native interactive tool may have an interactive receipt.')
         if len(result['artifacts']) > scope['max_files']:
             raise ValueError('Too many assistant artifacts in checkpoint.')
         artifact_bytes, artifact_paths = 0, set()

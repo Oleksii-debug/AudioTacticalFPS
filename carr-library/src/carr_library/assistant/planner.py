@@ -13,6 +13,13 @@ List books / Покажи книги
 List libraries / Покажи бібліотеки
 Extract "EDITION_ID" as "reading.txt" / Експортуй текст "EDITION_ID" як "reading.txt"
 Backup "backup-name" / Резервна копія "backup-name"
+Convert "C:/Books/source.docx" as "reading.txt" / Конвертуй "C:/Books/source.docx" як "reading.txt"
+Effects "C:/Scripts/source.txt" as "edited.txt" for "Narrator": [{"op":"add","effect":{"kind":"gain","parameters":[["gain_db",-3]],"enabled":true}}]
+Use "master" as the effects target for an explicit master chain or dry/wet mix.
+File derivatives need selected input/output folders, a source checksum and two new output files.
+Conversion uses the existing local readers. Optional converter/OCR selections remain in Document conversion.
+Native reader.control/player.control plans are prepared from the assistant action inside the selected reader.
+Their receipts describe observed commands; playback start does not claim that the whole book was read.
 Produce audio: [script text] / Озвуч: [текст сценарію]
 Audio prose is literal narration. Only an explicit JSON audio.produce step with input_kind="script"
 or a typed script object interprets role/music/pause directions.
@@ -53,6 +60,21 @@ def preview(value, scope):
             continue
         if re.fullmatch(r'(?:list\s+books|покажи\s+книги)\.?', line, re.IGNORECASE):
             steps.append(Step('library.catalog'))
+            continue
+        match = re.fullmatch(r'(?:convert|конвертуй)\s+"([^"]+)"\s+(?:as|як)\s+"([^"]+)"\.?', line, re.IGNORECASE)
+        if match:
+            from .derived_tools import capture_source
+            source, record = capture_source(match.group(1), scope)
+            steps.append(Step('document.convert', {'path': str(source),
+                'source_sha256': record['sha256'], 'name': match.group(2)}))
+            continue
+        match = re.fullmatch(r'(?:effects|ефекти)\s+"([^"]+)"\s+(?:as|як)\s+"([^"]+)"\s+(?:for|для)\s+"([^"]+)"\s*:\s*(.+)', line, re.IGNORECASE)
+        if match:
+            from .derived_tools import capture_source, MAX_SCRIPT
+            source, record = capture_source(match.group(1), scope, maximum=MAX_SCRIPT)
+            target = None if match.group(3).casefold() in ('master', 'майстер') else match.group(3)
+            steps.append(Step('audio.effects', {'path': str(source), 'source_sha256': record['sha256'],
+                'name': match.group(2), 'target': target, 'changes': json.loads(match.group(4))}))
             continue
         match = re.fullmatch(r'(?:extract|експортуй\s+текст)\s+"([^"]+)"\s+(?:as|як)\s+"([^"]+)"\.?', line, re.IGNORECASE)
         if match:
