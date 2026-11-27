@@ -30,7 +30,7 @@ jobs:
       - name: Check out the exact application candidate
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: c61efffc3281144eb5f85fe67c2ffb9238556f62
+          ref: 572f2c4133ad038f54a665b165fd7ae6e6413d06
           persist-credentials: false
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
@@ -40,7 +40,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force 'ci-node-results' | Out-Null
           $head = (git rev-parse HEAD).Trim()
-          if ($head -ne 'c61efffc3281144eb5f85fe67c2ffb9238556f62') { throw 'Wrong application source checkout.' }
+          if ($head -ne '572f2c4133ad038f54a665b165fd7ae6e6413d06') { throw 'Wrong application source checkout.' }
           $head | Set-Content 'ci-node-results/tested-commit.txt'
           python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -77,7 +77,7 @@ jobs:
               stream.write(str(target) + '\n')
           with pathlib.Path(os.environ['GITHUB_ENV']).open('a', encoding='utf-8') as stream:
               stream.write('CARR_PINNED_NODE=' + str(executable) + '\n')
-          evidence = dict(status='PASS', tested_commit='c61efffc3281144eb5f85fe67c2ffb9238556f62',
+          evidence = dict(status='PASS', tested_commit='572f2c4133ad038f54a665b165fd7ae6e6413d06',
               validation_commit=os.environ['CARR_VALIDATION_COMMIT'], archive_sha256=lock['archive_sha256'],
               archive_size=len(raw), files_sha256=lock['files'], runtime=details)
           pathlib.Path('ci-node-results/node-runtime.json').write_text(json.dumps(evidence, indent=2) + '\n')
@@ -239,7 +239,7 @@ jobs:
               watchdog.cancel()
           assert not errors
           assert sha256(expected.read_bytes()).hexdigest() == lock['files']['node.exe']
-          result = dict(status='PASS', tested_commit='c61efffc3281144eb5f85fe67c2ffb9238556f62',
+          result = dict(status='PASS', tested_commit='572f2c4133ad038f54a665b165fd7ae6e6413d06',
               validation_commit=os.environ['CARR_VALIDATION_COMMIT'], node_version=lock['version'],
               node_sha256=lock['files']['node.exe'], installed_package=True, suites=len(suites),
               passed=len(cases), failed=0, skipped=0, real_csl_worker_launches=len(launches),
