@@ -50,13 +50,38 @@ def test_actual_export_verifies_container_codec_and_all_decoded_frames(tmp_path,
     checked = audio.verify_encoded(destination, audio.wav_info(source), ffmpeg=ffmpeg,
                                    ffprobe=ffprobe, format=format)
     assert checked['codec'] == codec and checked['channels'] == 2
-    expected = 12963 if format == 'opus' else 4321
-    assert checked['sample_rate'] == (48000 if format == 'opus' else 16000)
+    expected = 12963 if format == 'opus' else 8642 if format == 'mp3' else 4321
+    assert checked['sample_rate'] == (48000 if format == 'opus' else 32000 if format == 'mp3' else 16000)
     assert expected <= checked['decoded_frames'] <= expected + (1023 if codec == 'aac' else 0)
     # Independently observe the real inspector's identified codec, not a test stub.
     report = json.loads(subprocess.check_output([ffprobe, '-v', 'error', '-select_streams', 'a',
         '-show_entries', 'stream=codec_name', '-of', 'json', str(destination)]))
     assert [stream['codec_name'] for stream in report['streams']] == [codec]
+
+
+@pytest.mark.parametrize('rate', [8000, 11025, 12000, 16000, 22050, 24000])
+def test_low_rate_mp3_delivery_profile_has_independent_complete_decode(tmp_path, binaries, rate):
+    ffmpeg, ffprobe = binaries
+    source = tone(tmp_path / 'source.wav', rate=rate)
+    original = source.read_bytes()
+    encoded = audio.transcode(source, tmp_path / 'result.mp3', ffmpeg=ffmpeg,
+                              ffprobe=ffprobe, format='mp3')
+    inspected = json.loads(subprocess.check_output(
+        [ffprobe, '-v', 'error', '-select_streams', 'a', '-show_entries',
+         'stream=codec_name,sample_rate,channels', '-of', 'json', str(encoded)],
+        timeout=20))
+    stream, = inspected['streams']
+    assert (stream['codec_name'], int(stream['sample_rate']), stream['channels']) == ('mp3', 32000, 2)
+    # Count the actual decoded PCM independently of verify_encoded. A relaxed
+    # duration tolerance in the production verifier cannot make this test pass.
+    decoded = subprocess.check_output(
+        [ffmpeg, '-nostdin', '-v', 'error', '-i', str(encoded), '-map', '0:a:0',
+         '-c:a', 'pcm_s16le', '-f', 's16le', 'pipe:1'], timeout=20)
+    assert len(decoded) % 4 == 0
+    expected = (4321 * 32000 + rate // 2) // rate
+    assert abs(len(decoded) // 4 - expected) <= 1
+    assert source.read_bytes() == original
+    assert audio.wav_info(source).rate == rate
 
 
 def test_high_rate_mp3_explicitly_resamples_with_bounded_rounding(tmp_path, binaries):

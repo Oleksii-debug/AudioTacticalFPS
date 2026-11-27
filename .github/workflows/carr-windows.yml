@@ -149,6 +149,27 @@ jobs:
           "CARR_FFMPEG=$(Join-Path $audioRuntime 'bin/ffmpeg.exe')" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           (Join-Path $audioRuntime 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
+      - name: Exercise actual managed OCR with Unicode Windows paths
+        timeout-minutes: 5
+        run: |
+          $previousPath = $env:PATH
+          $previousOcr = $env:CARR_OCR_DIR
+          try {
+            $env:PATH = "$env:CARR_CI_OCR_DIR;$previousPath"
+            $env:CARR_OCR_DIR = $env:CARR_CI_OCR_DIR
+            & $env:CARR_PYTHON scripts/ci_check.py tests/extract/test_managed_ocr.py tests/e2e/test_managed_ocr_import.py tests/ui/test_ocr_selection.py 2>&1 | Tee-Object 'ci-results/managed-ocr-unicode.txt'
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            # Fingerprint tests intentionally exercise PATH discovery and a
+            # changed TESSDATA_PREFIX; keep the same real engine on PATH while
+            # removing the explicit portable override for this separate gate.
+            $env:CARR_OCR_DIR = $null
+            & $env:CARR_PYTHON scripts/ci_check.py tests/extract/test_runtime_identity.py 2>&1 | Tee-Object 'ci-results/ocr-runtime-identity.txt'
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } finally {
+            $env:PATH = $previousPath
+            $env:CARR_OCR_DIR = $previousOcr
+          }
+
       - name: Run required integrated source workflows
         timeout-minutes: 20
         run: |
@@ -318,7 +339,7 @@ jobs:
             'tests/extract/test_ocr_identifiers.py',
             'tests/ui/test_ocr_profile_options.py'
           )
-          & $env:CARR_PYTHON scripts/ci_check.py @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
+          & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 

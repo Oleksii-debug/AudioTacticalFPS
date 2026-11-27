@@ -223,6 +223,16 @@ def _decoded_frames(path, *, ffmpeg, channels, maximum_frames, cancelled):
             process.stdout.close()
 
 
+def _mp3_sample_rate(rate):
+    """Use the MPEG-1 rates qualified for exact decoded delivery duration.
+
+    Some supported FFmpeg builds expose encoder delay as extra PCM samples for
+    MPEG-2/2.5 MP3. Keep the full decode check strict and choose the verified
+    delivery profile; the source PCM and its project rate remain unchanged.
+    """
+    return 32000 if rate <= 32000 else 44100 if rate <= 44100 else 48000
+
+
 def verify_encoded(path, source, *, format, ffmpeg, ffprobe=None, cancelled=lambda: False):
     """Verify the actual container, codec, channels, rate and complete duration.
 
@@ -247,7 +257,7 @@ def verify_encoded(path, source, *, format, ffmpeg, ffprobe=None, cancelled=lamb
         stream = audio_streams[0]
         codec, containers = codecs[format]
         actual_containers = set(metadata['format']['format_name'].split(','))
-        rate = 48000 if format == 'opus' else min(source.rate, 48000) if format == 'mp3' else source.rate
+        rate = 48000 if format == 'opus' else _mp3_sample_rate(source.rate) if format == 'mp3' else source.rate
         if (stream['codec_name'] != codec or actual_containers != containers
                 or int(stream['sample_rate']) != rate or stream['channels'] != source.channels):
             raise ValueError('The encoded audio format does not match the requested export.')
@@ -533,7 +543,7 @@ def transcode(source, output, *, ffmpeg, format, metadata=None, ffprobe=None, ca
     if format == 'opus':
         args += ['-ar', '48000', '-b:a', '128k']
     elif format == 'mp3':
-        args += ['-ar', str(min(info.rate, 48000))]
+        args += ['-ar', str(_mp3_sample_rate(info.rate)), '-write_xing', '1']
     with tempfile.TemporaryDirectory(prefix='.encode-', dir=output.parent) as temp:
         target = Path(temp) / ('master.' + format)
         run_ffmpeg(ffmpeg, [*args, '-f', container, '-n', str(target)], cancelled=cancelled)

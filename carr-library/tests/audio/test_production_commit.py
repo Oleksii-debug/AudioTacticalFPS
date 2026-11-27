@@ -195,17 +195,18 @@ def test_directory_sync_failure_after_native_commit_is_reported_as_complete(rend
     assert json.loads((root / 'render-journal.json').read_text())['state'] == 'complete'
 
 
-def test_legacy_v2_completion_cannot_bypass_encoded_verification(renderer, monkeypatch):
+@pytest.mark.parametrize('legacy_version,format', [(2, 'flac'), (3, 'mp3')])
+def test_legacy_completion_cannot_bypass_current_encoded_policy(renderer, monkeypatch, legacy_version, format):
     render, voice, _ = renderer
     probe = os.environ.get('CARR_FFPROBE') or shutil.which('ffprobe')
     binary = os.environ.get('CARR_FFMPEG') or shutil.which('ffmpeg')
     assert probe and Path(probe).is_file(), 'Actual ffprobe is required for this gate.'
-    plan = production.parse_script('[output format=flac sample_rate=8000 stems=false]\nNarrator: Legacy cache fixture.')
+    plan = production.parse_script(f'[output format={format} sample_rate=8000 stems=false]\nNarrator: Legacy cache fixture.')
     actual_digest = production.digest
 
     def legacy_completion_key(value):
-        if 'plan' in value and value.get('pipeline_version') == 3:
-            value = {**value, 'pipeline_version': 2}
+        if 'plan' in value:
+            value = {**value, 'pipeline_version': legacy_version}
         return actual_digest(value)
 
     with monkeypatch.context() as patch:
@@ -223,6 +224,7 @@ def test_legacy_v2_completion_cannot_bypass_encoded_verification(renderer, monke
     current = render(plan, ffprobe=Path(probe).absolute())
     assert current['run_key'] != legacy['run_key'] and current['output'] != legacy['output']
     verify_encoded(current['output'], wav_info(Path(current['output']).parent / 'master.wav'),
-                   format='flac', ffmpeg=Path(binary).absolute(), ffprobe=Path(probe).absolute())
+                   format=format, ffmpeg=Path(binary).absolute(), ffprobe=Path(probe).absolute())
+    assert old_output.read_bytes() == b'not a valid encoded audio file'
     assert voice.calls == 1
 

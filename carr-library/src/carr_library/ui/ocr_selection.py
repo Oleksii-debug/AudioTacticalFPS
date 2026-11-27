@@ -15,6 +15,7 @@ from threading import Event
 import time
 
 from ..extract.ocr_languages import (model_ids, load_presets, store_preset, delete_preset)
+from ..extract.ocr_process import prepare_ocr_query, normalize_ocr_query_output
 from ..extract.page_ocr import Config
 from ..extract.pinned_tessdata import MODELS, POLICY
 
@@ -80,8 +81,9 @@ def discover_installed_models(*, cancelled=lambda: False, timeout=10.0):
         raise OcrEngineMissingError('No local OCR runtime was found. Install or select the OCR runtime first.')
     with TemporaryFile() as output, TemporaryFile() as errors:
         remaining()
-        process = subprocess.Popen(runtime.command([runtime.executable, '--list-langs']),
-            stdin=subprocess.DEVNULL, stdout=output, stderr=errors, cwd=runtime.root,
+        command, cwd, report_directory = prepare_ocr_query(runtime, [runtime.executable, '--list-langs'])
+        process = subprocess.Popen(command,
+            stdin=subprocess.DEVNULL, stdout=output, stderr=errors, cwd=cwd,
             creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
         try:
             while process.poll() is None:
@@ -100,8 +102,8 @@ def discover_installed_models(*, cancelled=lambda: False, timeout=10.0):
             if process.returncode:
                 raise ValueError('The OCR runtime could not list its installed models.')
             output.seek(0)
-            identifiers = parse_installed_models(output.read(MAX_INVENTORY_BYTES + 1),
-                                                expected_directory=runtime.tessdata)
+            data = normalize_ocr_query_output(output.read(MAX_INVENTORY_BYTES + 1), report_directory)
+            identifiers = parse_installed_models(data, expected_directory=runtime.tessdata)
             runtime.assert_unchanged(remaining)
             remaining()
             return identifiers

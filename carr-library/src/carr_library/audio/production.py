@@ -387,9 +387,12 @@ def _render_locked(plan, root, *, engine, ffmpeg, ffprobe, cancelled, on_status)
                 asset = checked_directory(root / 'assets') / event.asset
                 audio.wav_info(asset)
                 assets[event.asset] = sha256_file(asset, cancelled=cancelled)
-    # Versions 1/2 predate full encoded-artifact verification; v2 introduced
-    # literal narration. PCM step caches retain their version and remain reusable.
-    run_key = digest({'pipeline_version': 3, 'plan': plan.to_dict(), 'engines': identities,
+    # Versions 1/2 predate full encoded-artifact verification. MP3 v4 adds
+    # the qualified MPEG-1 delivery profile; other encoders retain v3 identity.
+    # Accepted PCM chunks remain reusable, but an older completed MP3 cannot
+    # stand in for a render qualified under the current export policy.
+    pipeline_version = 4 if plan.output_format == 'mp3' else 3
+    run_key = digest({'pipeline_version': pipeline_version, 'plan': plan.to_dict(), 'engines': identities,
                       'processor': processor, 'assets': assets, 'music_models': music_identities,
                       'composer': composer_identity})
     cache = ChunkCache(root / 'cache', cancelled=cancelled, disk_budget_bytes=plan.disk_budget_bytes)

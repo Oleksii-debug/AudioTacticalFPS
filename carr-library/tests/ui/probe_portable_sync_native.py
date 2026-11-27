@@ -33,6 +33,8 @@ class WindowsConfirmations:
         self.ctypes, self.types = ctypes, wintypes
         self.api = ctypes.WinDLL('user32', use_last_error=True)
         self.callback = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+        self._pending, self._last = {}, {}
+        self._diagnostics_left = 8
         declarations = {
             'EnumWindows': ([self.callback, wintypes.LPARAM], wintypes.BOOL),
             'EnumChildWindows': ([wintypes.HWND, self.callback, wintypes.LPARAM], wintypes.BOOL),
@@ -55,8 +57,19 @@ class WindowsConfirmations:
         function(window, value, len(value))
         return value.value
 
-    def reply(self, owner, title, *, accept):
+    def diagnose(self, owner, title):
+        # Only fixed confirmation titles and bounded control metadata are logged;
+        # never read child text, including operation password fields.
+        if not self._diagnostics_left:
+            return
+        self._diagnostics_left -= 1
+        detail = self._last.get((owner, title), dict(
+            pid=os.getpid(), owner=owner, title=title, candidate_count=0))
+        print(json.dumps(dict(status='NATIVE_DIALOG_DIAGNOSTIC', **detail)), flush=True)
+
+    def reply(self, owner, title, *, accept, wait_for_close=True):
         candidates = []
+        key = (owner, title)
 
         @self.callback
         def visit(window, unused):
@@ -76,33 +89,70 @@ class WindowsConfirmations:
             return True
 
         self.api.EnumWindows(visit, 0)
+        pending = self._pending.get(key)
         if not candidates:
-            return False
+            # A queued message is not confirmation. Advance only after the
+            # exact owned native dialog is no longer visible.
+            return self._pending.pop(key, None) is not None
+        self._last[key] = dict(pid=os.getpid(), owner=owner, title=title,
+                               candidate_count=len(candidates),
+                               windows=[item[0] for item in candidates[:4]])
         if len(candidates) != 1:
+            self.diagnose(owner, title)
             raise AssertionError('Ambiguous owned Windows confirmation dialog')
         window, chain = candidates[0]
+        if pending is not None and pending[0] != window:
+            self.diagnose(owner, title)
+            raise AssertionError('The owned Windows confirmation changed before acknowledgement')
         identifier = 6 if accept else 7  # Native IDYES/IDNO, not wx.ID_YES.
-        buttons = []
+        buttons, controls = [], []
+        control_count = 0
 
         @self.callback
         def child(control, unused):
-            if (self.api.GetDlgCtrlID(control) == identifier
-                    and self._string(self.api.GetClassNameW, control).casefold() == 'button'
-                    and self.api.IsWindowEnabled(control) and self.api.IsWindowVisible(control)):
+            nonlocal control_count
+            control_count += 1
+            name = self._string(self.api.GetClassNameW, control)
+            control_id = self.api.GetDlgCtrlID(control)
+            enabled = bool(self.api.IsWindowEnabled(control))
+            visible = bool(self.api.IsWindowVisible(control))
+            if len(controls) < 24:
+                controls.append(dict(hwnd=control, class_name=name[:80], control_id=control_id,
+                                     enabled=enabled, visible=visible))
+            if control_id == identifier and name.casefold() == 'button' and enabled and visible:
                 buttons.append(control)
             return True
 
         self.api.EnumChildWindows(window, child, 0)
-        if len(buttons) != 1:
-            raise AssertionError('The owned confirmation has no unique native answer button')
-        print(json.dumps(dict(status='NATIVE_DIALOG', pid=os.getpid(), hwnd=window,
-                              owner_chain=chain, title=title, button=buttons[0], button_id=identifier)), flush=True)
+        self._last[key].update(hwnd=window, owner_chain=chain, button_id=identifier,
+                               control_count=control_count, controls=controls)
+        if len(buttons) > 1:
+            self.diagnose(owner, title)
+            raise AssertionError('The owned confirmation has ambiguous native answer buttons')
+        if not self.api.IsWindowEnabled(window):
+            return not wait_for_close
+        now = monotonic()
+        if pending is not None and pending[1] == identifier and now - pending[3] < 0.2:
+            return not wait_for_close
+        if buttons:
+            target, message, parameter, method = buttons[0], 0x00F5, 0, 'BM_CLICK'
+        else:
+            # TaskDialogIndirect may expose DirectUI controls instead of Button
+            # HWNDs. TDM_CLICK_BUTTON = WM_USER + 102 invokes its real native
+            # button callback using IDYES/IDNO; it does not replace ShowModal.
+            target, message, parameter, method = window, 0x0466, identifier, 'TDM_CLICK_BUTTON'
+        if pending is None or pending[1:3] != (identifier, method):
+            print(json.dumps(dict(status='NATIVE_DIALOG', pid=os.getpid(), hwnd=window,
+                                  owner_chain=chain, title=title, target=target,
+                                  button_id=identifier, method=method)), flush=True)
         self.api.SetActiveWindow(window)
-        # BM_CLICK sends actual native button notifications. It neither replaces
-        # ShowModal nor changes its result artificially.
-        if not self.api.PostMessageW(buttons[0], 0x00F5, 0, 0):
+        if not self.api.PostMessageW(target, message, parameter, 0):
+            self.diagnose(owner, title)
             raise AssertionError('Could not dispatch the owned native answer button')
-        return True
+        self._pending[key] = (window, identifier, method, now)
+        # Retry within the caller's fixed deadline if early construction ignored
+        # the message. Cleanup can queue No without waiting inside a callback.
+        return not wait_for_close
 
 
 def run_native(source=None, *, encrypted=False):
@@ -181,12 +231,13 @@ def run_native(source=None, *, encrypted=False):
         def dismiss_one_modal():
             if windows is not None and native is not None and native._window_alive:
                 for title in confirmation_titles:
-                    if windows.reply(native.window.GetHandle(), title, accept=False):
+                    if windows.reply(native.window.GetHandle(), title, accept=False, wait_for_close=False):
                         return True
             modals = []
             for window in wx.GetTopLevelWindows():
                 try:
-                    if isinstance(window, wx.Dialog) and window.IsModal() and descendant(window, frame):
+                    if (isinstance(window, wx.Dialog) and window.IsModal() and window.IsShown()
+                            and descendant(window, frame)):
                         depth, current = 0, window
                         while current is not frame:
                             depth += 1
@@ -198,6 +249,28 @@ def run_native(source=None, *, encrypted=False):
                 max(modals, key=lambda item: item[0])[1].EndModal(wx.ID_CANCEL)
                 return True
             return False
+
+        def modal_cleanup_timeout():
+            if windows is not None and native is not None and native._window_alive:
+                for title in confirmation_titles:
+                    windows.diagnose(native.window.GetHandle(), title)
+            print(json.dumps(dict(status='FAIL', error='Owned native modal cleanup timed out',
+                                  nvda='NOT_RUN')), flush=True)
+            os._exit(1)  # Standalone probe only; never leave a failed native modal hung.
+
+        def clean_failed_modals(deadline):
+            if state['finished']:
+                return
+            try:
+                pending = dismiss_one_modal()
+            except BaseException:
+                # A cleanup error must not escape a wx timer and strand the
+                # original ShowModal. Retry only within this independent bound.
+                pending = True
+            if pending:
+                if monotonic() >= deadline:
+                    modal_cleanup_timeout()
+                timers.append(wx.CallLater(20, lambda: clean_failed_modals(deadline)))
 
         def answer_modals(responses):
             responses = list(responses)
@@ -214,7 +287,8 @@ def run_native(source=None, *, encrypted=False):
                             if responses:
                                 timers.append(wx.CallLater(20, answer))
                         elif monotonic() >= deadline:
-                            raise AssertionError('Expected owned Windows confirmation was not shown')
+                            windows.diagnose(native.window.GetHandle(), title)
+                            raise AssertionError('Expected owned Windows confirmation did not close')
                         else:
                             timers.append(wx.CallLater(20, answer))
                         return
@@ -240,7 +314,7 @@ def run_native(source=None, *, encrypted=False):
                         timers.append(wx.CallLater(20, answer))
                 except BaseException as error:
                     errors.append(type(error).__name__ + ': native modal interaction failed')
-                    dismiss_one_modal()
+                    clean_failed_modals(monotonic() + 5)
 
             timers.append(wx.CallLater(20, answer))
 
@@ -342,9 +416,13 @@ def run_native(source=None, *, encrypted=False):
             state['finished'] = True
             for timer in timers:
                 timer.Stop()
-            while dismiss_one_modal():
-                application.Yield()
             release.set()
+            cleanup_deadline = monotonic() + 5
+            while dismiss_one_modal():
+                if monotonic() >= cleanup_deadline:
+                    modal_cleanup_timeout()
+                application.Yield()
+                wx.MilliSleep(10)
             if native is not None:
                 native.controller.cancel_event.set()
                 deadline = monotonic() + 10
