@@ -18,6 +18,7 @@ def run(arguments, report):
     import wx
     from carr_library.application import LibraryApp
     from carr_library.speech.presentation import ReadingAppearance, ReadingAppearanceStore, ReadingFont
+    from carr_library.speech.session import ReaderDraftStore
     from carr_library.ui.desktop_app import DesktopFrame
     import carr_library.speech.presentation as state_module
     import carr_library.ui.reader_presentation as appearance_module
@@ -41,10 +42,17 @@ def run(arguments, report):
               (not actual.is_relative_to(checkout) if arguments.expect_installed else actual == expected)
               and sha256(actual.read_bytes()).digest() == sha256(expected.read_bytes()).digest())
 
+    def failure():
+        detail = traceback.format_exc()
+        errors.append(detail)
+        report.update(failed_stage=stage, error=detail)
+        print(f'FAILED: appearance stage {stage}\n{detail}', flush=True)
+        arguments.report.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
+        abort()
+
     class ProbeApp(wx.App):
         def OnExceptionInMainLoop(self):
-            errors.append(traceback.format_exc())
-            abort()
+            failure()
             return True
 
     app = ProbeApp(False)
@@ -67,21 +75,20 @@ def run(arguments, report):
                 raise ValueError('Original source changed')
 
         def abort():
-            if reader is not None and bool(reader):
-                control = getattr(reader, 'reader_presentation', None)
-                if control is not None and control.view is not None and bool(control.view):
-                    control.view.EndModal(wx.ID_CANCEL)
-                reader.Close()
-            else:
-                app.ExitMainLoop()
+            # This app owns only synthetic probe windows. End modal loops
+            # directly on failure: Close would open an unsaved-copy question
+            # and conceal the original exception behind the watchdog.
+            for window in reversed(wx.GetTopLevelWindows()):
+                if isinstance(window, wx.Dialog) and bool(window) and window.IsModal():
+                    window.EndModal(wx.ID_CANCEL)
+            app.ExitMainLoop()
 
         def guarded(callback):
             def invoke():
                 try:
                     callback()
                 except Exception:
-                    errors.append(traceback.format_exc())
-                    abort()
+                    failure()
             return invoke
 
         def focused(target):
@@ -92,11 +99,11 @@ def run(arguments, report):
                 window = window.GetParent()
             return False
 
-        def press(target, key=wx.WXK_SPACE):
+        def press(target, key=wx.WXK_SPACE, modifiers=wx.MOD_NONE):
             target.SetFocus()
             def dispatch():
                 check('native focus reaches ' + target.GetName(), focused(target))
-                check('native key dispatch: ' + target.GetName(), simulator.Char(key))
+                check('native key dispatch: ' + target.GetName(), simulator.Char(key, modifiers))
             wx.CallLater(25, guarded(dispatch))
 
         def type_text(target, value):
@@ -104,9 +111,26 @@ def run(arguments, report):
             def dispatch():
                 check('native focus reaches ' + target.GetName(), focused(target))
                 check('native select text: ' + target.GetName(), simulator.Char(ord('A'), wx.MOD_CONTROL))
-                check('native text entry: ' + target.GetName(), simulator.Text(value))
+                check('native text entry: ' + target.GetName(), simulator.Text(value.encode('ascii')))
                 check('native text commit: ' + target.GetName(), simulator.Char(wx.WXK_TAB))
             wx.CallLater(25, guarded(dispatch))
+
+        def descendants(window):
+            for child in window.GetChildren():
+                yield child
+                yield from descendants(child)
+
+        def saved_copy():
+            status = next((child for child in descendants(reader)
+                           if child.GetName() == 'Speech and save status'), None)
+            if status is None or 'saved for recovery' not in status.GetValue():
+                return False
+            saved = ReaderDraftStore(library.root, slot='native-appearance').load()
+            check('native Ctrl+S retains the exact reading copy and source',
+                  saved is not None and saved.document.text == original
+                  and saved.document.source_text == original
+                  and saved.document.source_sha256 == source_digest.hex())
+            return True
 
         def drive():
             nonlocal stage, reader, baseline, snapshot, selection
@@ -173,6 +197,9 @@ def run(arguments, report):
                       and editor.GetForegroundColour() == wx.Colour('#FFFFFF')
                       and editor.GetBackgroundColour() == wx.Colour('#001122')
                       and host.capture() == snapshot and editor.GetSelection() == selection)
+                stage = 101
+                press(editor, ord('S'), wx.MOD_CONTROL)
+            elif stage == 101 and saved_copy():
                 stage = 11
                 press(editor, wx.WXK_ESCAPE)
             elif stage == 12 and not host.busy():
@@ -201,6 +228,9 @@ def run(arguments, report):
                       and abs(editor.GetFont().GetFractionalPointSize() - baseline) < .2)
                 check('all original source bytes and text remain unchanged',
                       source.read_bytes() == original.encode('utf-8') and host.capture().text == original)
+                stage = 151
+                press(editor, ord('S'), wx.MOD_CONTROL)
+            elif stage == 151 and saved_copy():
                 stage = 16
                 press(editor, wx.WXK_ESCAPE)
             wx.CallLater(30, guarded(drive))

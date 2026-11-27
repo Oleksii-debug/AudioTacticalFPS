@@ -169,7 +169,7 @@ def test_only_bounded_integer_indices_can_enter_an_mci_command(index):
 @pytest.mark.parametrize(('name', 'identity'), [
     ('', 'valid'), ('bad\nname', 'valid'), ('valid', ''),
     ('valid', 'bad\0identity'), ('valid', 'x' * 32768),
-])
+], ids=('empty-name', 'linebreak-name', 'empty-identity', 'nul-identity', 'oversized-identity'))
 def test_native_selection_requires_bounded_nonempty_identity(name, identity):
     with pytest.raises(ValueError):
         item(name=name, identity=identity)

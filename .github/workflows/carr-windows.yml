@@ -1099,7 +1099,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -X utf8 scripts/windows_reading_tools_smoke.py --expect-installed --output ci-results/bundle-reading-tools.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B -X utf8 scripts/windows_spelling_smoke.py --installed-root $bundle --report ci-results/bundle-spelling.json
+          & $installedPython -I -B -X utf8 scripts/windows_spelling_smoke.py --installed-root (Join-Path $bundle '.venv/Lib/site-packages') --report ci-results/bundle-spelling.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -X utf8 scripts/windows_reader_presentation_smoke.py --expect-installed --report ci-results/bundle-reader-appearance.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -1110,7 +1110,7 @@ jobs:
           if ($selectedOutput.Count -ne 1) { throw 'The reviewed secondary WinMM output is missing or ambiguous in the complete bundle.' }
           & $installedPython -I -B -X utf8 scripts/windows_reader_output_smoke.py --expect-installed --device-index ([int]$selectedOutput[0].index) --report ci-results/bundle-reader-output.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B -X utf8 scripts/windows_platform_tools_smoke.py --installed-root (Join-Path $bundle '.venv/Lib/site-packages/carr_library') 2>&1 | Tee-Object 'ci-results/bundle-platform-tools.txt'
+          $catalogNative | & $installedPython -I -B -X utf8 - $bundle (Resolve-Path scripts/windows_platform_tools_smoke.py).Path --installed-root (Join-Path $bundle '.venv/Lib/site-packages/carr_library') 2>&1 | Tee-Object 'ci-results/bundle-platform-tools.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -X utf8 scripts/windows_translation_v3_smoke.py --expect-installed --output ci-results/bundle-translation-v3.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
