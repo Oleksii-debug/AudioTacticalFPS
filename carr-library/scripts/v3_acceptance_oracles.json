@@ -3119,6 +3119,49 @@
       "test_permission_failure_during_missing_entry_confirmation_remains_a_failure": 1,
       "test_missing_native_entry_cannot_hide_lost_or_replaced_private_stage_root": 2,
       "test_disappearance_after_observed_policy_violation_cannot_make_stage_valid": 3
+    },
+    "tests.storage.test_backup_recovery_and_verify": {
+      "test_recovery_notes_and_keymap_keep_exact_bindings": 3,
+      "test_busy_keymap_uses_its_own_nonblocking_writer_lock": 1,
+      "test_verify_hashes_sidecars_without_creating_duplicate_copies": 1,
+      "test_resigned_or_corrupt_registered_state_cannot_be_verified": 3,
+      "test_verify_preserves_supported_old_formats": 3,
+      "test_saved_reading_handoff_keeps_original_and_historical_revision_after_restore": 1,
+      "test_resigned_saved_reading_reference_requires_exact_historical_source": 1,
+      "test_public_verification_rejects_corruption_and_unexpected_files_without_mutation": 7
+    },
+    "tests.audio.test_music": {
+      "test_actual_procedural_score_is_exact_reproducible_audio_with_midi": 1,
+      "test_actual_changed_seed_changes_composition": 1,
+      "test_actual_cancel_resume_reuses_verified_chunk_and_recovers_corruption": 1,
+      "test_actual_more_than_ten_minutes_has_no_total_duration_ceiling": 1,
+      "test_actual_output_and_companions_cannot_be_overwritten": 1,
+      "test_actual_resume_recovers_already_published_identical_companions": 1,
+      "test_changed_checkpoint_settings_need_new_destination": 1,
+      "test_untrusted_scene_settings_cannot_become_filters": 7,
+      "test_models_and_disk_budgets_fail_before_generation": 1,
+      "test_rf64_parser_validates_large_frame_count_without_reading_audio": 1,
+      "test_actual_graph_file_handles_unicode_and_spaces_without_leaving_temporary_input": 1,
+      "test_music_stage_budget_refuses_hidden_unreadable_generated_files": 1,
+      "test_music_cache_refuses_unreadable_code_before_starting_worker": 1,
+      "test_music_stage_cancellation_remains_boolean_during_inventory": 1
+    },
+    "tests.ingest.test_canonical_worker_backup": {
+      "test_another_requests_fresh_publication_cannot_hide_metadata_or_membership_failure": 7,
+      "test_legacy_watermark_survives_backup_validation_but_is_not_restored": 2,
+      "test_malformed_legacy_watermark_cannot_enter_backup": 4
+    },
+    "tests.conversion.test_email_metadata": {
+      "test_actual_email_subject_is_passive_source_bound_report_data": 3,
+      "test_actual_email_subject_uses_existing_reader_bound_and_omission_policy": 3,
+      "test_actual_email_batch_keeps_each_subject_bound_to_its_original": 1,
+      "test_parent_refuses_forged_email_metadata_before_any_publication": 8,
+      "test_parent_rejects_email_metadata_added_to_non_email_worker_output": 1
+    },
+    "tests.ui.test_canonical_export_import_choices": {
+      "test_declined_keymap_replacement_never_validates_or_writes": 1,
+      "test_approved_keymap_export_preserves_live_bindings": 2,
+      "test_ocr_model_choice_is_not_applied_after_library_changes": 1
     }
   },
   "installed": {
@@ -6015,6 +6058,49 @@
       "test_permission_failure_during_missing_entry_confirmation_remains_a_failure": 1,
       "test_missing_native_entry_cannot_hide_lost_or_replaced_private_stage_root": 2,
       "test_disappearance_after_observed_policy_violation_cannot_make_stage_valid": 3
+    },
+    "tests.storage.test_backup_recovery_and_verify": {
+      "test_recovery_notes_and_keymap_keep_exact_bindings": 3,
+      "test_busy_keymap_uses_its_own_nonblocking_writer_lock": 1,
+      "test_verify_hashes_sidecars_without_creating_duplicate_copies": 1,
+      "test_resigned_or_corrupt_registered_state_cannot_be_verified": 3,
+      "test_verify_preserves_supported_old_formats": 3,
+      "test_saved_reading_handoff_keeps_original_and_historical_revision_after_restore": 1,
+      "test_resigned_saved_reading_reference_requires_exact_historical_source": 1,
+      "test_public_verification_rejects_corruption_and_unexpected_files_without_mutation": 7
+    },
+    "tests.audio.test_music": {
+      "test_actual_procedural_score_is_exact_reproducible_audio_with_midi": 1,
+      "test_actual_changed_seed_changes_composition": 1,
+      "test_actual_cancel_resume_reuses_verified_chunk_and_recovers_corruption": 1,
+      "test_actual_more_than_ten_minutes_has_no_total_duration_ceiling": 1,
+      "test_actual_output_and_companions_cannot_be_overwritten": 1,
+      "test_actual_resume_recovers_already_published_identical_companions": 1,
+      "test_changed_checkpoint_settings_need_new_destination": 1,
+      "test_untrusted_scene_settings_cannot_become_filters": 7,
+      "test_models_and_disk_budgets_fail_before_generation": 1,
+      "test_rf64_parser_validates_large_frame_count_without_reading_audio": 1,
+      "test_actual_graph_file_handles_unicode_and_spaces_without_leaving_temporary_input": 1,
+      "test_music_stage_budget_refuses_hidden_unreadable_generated_files": 1,
+      "test_music_cache_refuses_unreadable_code_before_starting_worker": 1,
+      "test_music_stage_cancellation_remains_boolean_during_inventory": 1
+    },
+    "tests.ingest.test_canonical_worker_backup": {
+      "test_another_requests_fresh_publication_cannot_hide_metadata_or_membership_failure": 7,
+      "test_legacy_watermark_survives_backup_validation_but_is_not_restored": 2,
+      "test_malformed_legacy_watermark_cannot_enter_backup": 4
+    },
+    "tests.conversion.test_email_metadata": {
+      "test_actual_email_subject_is_passive_source_bound_report_data": 3,
+      "test_actual_email_subject_uses_existing_reader_bound_and_omission_policy": 3,
+      "test_actual_email_batch_keeps_each_subject_bound_to_its_original": 1,
+      "test_parent_refuses_forged_email_metadata_before_any_publication": 8,
+      "test_parent_rejects_email_metadata_added_to_non_email_worker_output": 1
+    },
+    "tests.ui.test_canonical_export_import_choices": {
+      "test_declined_keymap_replacement_never_validates_or_writes": 1,
+      "test_approved_keymap_export_preserves_live_bindings": 2,
+      "test_ocr_model_choice_is_not_applied_after_library_changes": 1
     }
   },
   "native_trust": [

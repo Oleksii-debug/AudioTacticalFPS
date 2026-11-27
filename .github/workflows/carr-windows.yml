@@ -658,7 +658,10 @@ jobs:
             'tests/audio/test_sapi_host_admission.py',
             'tests/ui/test_keyboard_registration_compatibility.py',
             'tests/audio/test_music_controls.py',
-            'tests/conversion/test_office_stage_races.py'
+            'tests/conversion/test_office_stage_races.py',
+            'tests/ingest/test_canonical_worker_backup.py',
+            'tests/conversion/test_email_metadata.py',
+            'tests/ui/test_canonical_export_import_choices.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -1516,9 +1519,6 @@ jobs:
               'tests/audio/test_model_manifest.py::test_complete_inventory_refuses_unreadable_subtree_without_hashing_assets',
               'tests/audio/test_model_manifest.py::test_complete_inventory_rejects_nonregular_entry_from_filesystem_metadata',
               'tests/audio/test_model_manifest.py::test_inventory_cancellation_remains_interrupted_and_closes_the_iterator',
-              'tests/audio/test_music.py::test_music_stage_budget_refuses_hidden_unreadable_generated_files',
-              'tests/audio/test_music.py::test_music_cache_refuses_unreadable_code_before_starting_worker',
-              'tests/audio/test_music.py::test_music_stage_cancellation_remains_boolean_during_inventory',
               'tests/security/test_anchor_locking.py',
               'tests/security/test_canonical_boundary.py',
               'tests/security/test_controller.py',
@@ -1702,6 +1702,11 @@ jobs:
               'tests/ui/test_keyboard_registration_compatibility.py',
               'tests/audio/test_music_controls.py',
               'tests/conversion/test_office_stage_races.py',
+              'tests/storage/test_backup_recovery_and_verify.py',
+              'tests/audio/test_music.py',
+              'tests/ingest/test_canonical_worker_backup.py',
+              'tests/conversion/test_email_metadata.py',
+              'tests/ui/test_canonical_export_import_choices.py',
           ]
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:
@@ -1760,7 +1765,8 @@ jobs:
           proof = module.verify_application_wheel(sys.argv[1], project.parent, sys.argv[2])
           tree = subprocess.run(['git', 'rev-parse', sys.argv[2] + '^{tree}'], cwd=project.parent,
                                 check=True, capture_output=True, text=True).stdout.strip()
-          print(json.dumps(dict(status='PASS', source_tree=tree, **proof)))
+          assert proof['source_tree'] == tree, 'Verified wheel receipt source tree differs from Git.'
+          print(json.dumps(dict(proof, status='PASS')))
           '@
           $verifyWheel | & $env:CARR_PYTHON -I -B - $sealedWheel $sourceCommit | Tee-Object 'ci-results/source-wheel-proof.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

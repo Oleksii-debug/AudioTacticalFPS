@@ -5,7 +5,7 @@ import json
 import pytest
 
 from carr_library.application import LibraryApp
-from carr_library.library_backup import restore_backup
+from carr_library.library_backup import restore_backup, verify_backup
 from .backup_compat_fixture import create_historical_backup as create_backup, historical_backup
 from carr_library.reader.reading_desk import ReadingDesk
 from carr_library.reader.reading_state import FILENAME, ReadingState, snapshot_locations
@@ -42,13 +42,23 @@ def test_v3_shapes_restore_exact_same_saved_source(saved_place, tmp_path, shape)
     assert value['version'] == 3 and set(value['sidecars'][0]) == {'filename', 'size_bytes', 'sha256'}
     if shape == 'reading_state':
         value['reading_state'], = value.pop('sidecars')
-    restored = LibraryApp(restore_backup(folder, tmp_path / 'restored', seal(folder, value)))
+    checksum = seal(folder, value)
+    before = {p.relative_to(folder): (p.read_bytes(), p.stat().st_mtime_ns)
+              for p in folder.rglob('*') if p.is_file()}
+    before_parent = {p.name for p in tmp_path.iterdir()}
+    assert verify_backup(folder, checksum) == value
+    assert {p.relative_to(folder): (p.read_bytes(), p.stat().st_mtime_ns)
+            for p in folder.rglob('*') if p.is_file()} == before
+    assert {p.name for p in tmp_path.iterdir()} == before_parent
+    restored = LibraryApp(restore_backup(folder, tmp_path / 'restored', checksum))
     state = ReadingState(restored.root)
     where = page.location
     assert state.path.read_bytes() == (app.root / FILENAME).read_bytes()
     assert state.resume(where.workspace, where.edition) == where
     assert state.bookmarks(where.workspace, where.edition) == (bookmark,)
     assert ReadingDesk(restored, where.workspace, where.edition).validate(where) == page
+    assert {p.relative_to(folder): (p.read_bytes(), p.stat().st_mtime_ns)
+            for p in folder.rglob('*') if p.is_file()} == before
 
 
 def test_earlier_v3_explicit_absence_does_not_create_reading_state(tmp_path):

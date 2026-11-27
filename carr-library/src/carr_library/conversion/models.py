@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 import math
 from pathlib import Path
+import re
 
 MAX_SOURCE_BYTES = 64 * 1024 * 1024
 MAX_TEXT_BYTES = 32 * 1024 * 1024
@@ -35,6 +36,22 @@ def selected_text_encoding(value):
     if selected is None:
         raise ConversionError('Choose an explicitly supported plain-text encoding.')
     return selected
+
+
+def email_subject_metadata(value):
+    """One passive, bounded email field; never a filename or catalog authority."""
+    if type(value) is not dict or set(value) - {'subject'}:
+        raise ConversionError('The conversion worker returned invalid email metadata.')
+    if 'subject' in value:
+        subject = value['subject']
+        if (type(subject) is not str or len(subject) > 512
+                or re.search(r'[\x00-\x08\x0b\x0e-\x1f\x7f]', subject)):
+            raise ConversionError('The conversion worker returned invalid email metadata.')
+        try:
+            subject.encode('utf-8', errors='strict')
+        except UnicodeError as exc:
+            raise ConversionError('The conversion worker returned invalid email metadata.') from exc
+    return dict(value)
 
 
 @dataclass(frozen=True)

@@ -37,6 +37,9 @@ def test_actual_procedural_score_is_exact_reproducible_audio_with_midi(tmp_path,
     assert midi[:14] == b'MThd' + struct.pack('>IHHH', 6, 0, 1, 480)
     assert struct.unpack('>I', midi[18:22])[0] == len(midi)-22
     assert midi.endswith(b'\xff\x2f\x00')
+    assert b'\xff\x51\x03' + round(60_000_000 / 91).to_bytes(3, 'big') in midi
+    assert b'\xc0\x04' in midi and b'\xc1\x58' in midi  # current two-channel instrument choices
+    assert b'\x90' in midi and b'\x80' in midi
     with wave.open(str(first['path']), 'rb') as audio:
         assert audio.getnchannels() == 1 and audio.getsampwidth() == 2
         assert audio.getframerate() == 48000 and audio.getnframes() == 156000

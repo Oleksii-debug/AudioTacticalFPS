@@ -1,0 +1,1346 @@
+{
+  "schema": 1,
+  "status": "SOURCE_ASSERTION_AUDIT_WITH_EXPLICIT_DIFFERENCES_RUNTIME_NOT_TRANSFERRED",
+  "canonical_commit": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+  "canonical_tree": "344567db5c0d99f5d6d7ad24c105645ea75b65e8",
+  "current_base_commit": "f1ee73aa62a28aa26c5ceff81d12611fa70a0ef1",
+  "current_base_tree": "e40c07df8c8ca83fffd12a695d00aeb82d38de4b",
+  "baseline_shared_test_blobs": {
+    "tests/audio/test_music.py": {
+      "canonical_blob": "60220157ca2894589479d9818c97943ababc487e",
+      "current_5070_blob": "603a477ecd261fbf3db49becabf25a09034dcd47",
+      "canonical_function_counter": {
+        "test_real_local_instrumental_is_non_silent_reproducible_and_seeded": 1,
+        "test_all_documented_local_music_moods_render_actual_pcm": 5,
+        "test_procedural_sound_cues_produce_real_pcm_and_exact_duration": 4,
+        "test_midi_export_contains_tempo_instruments_notes_and_exact_end": 1,
+        "test_music_cancel_never_publishes_and_unknown_sounds_never_execute": 1,
+        "test_optional_music_engines_never_download_or_silently_fall_back": 3,
+        "test_model_manifest_uses_exact_complete_file_hashes": 1,
+        "test_model_inventory_rejects_additional_unreviewed_assets": 1,
+        "test_musicgen_noncommercial_profile_is_enforced": 1,
+        "test_model_revision_and_output_rights_are_required": 1,
+        "test_neural_chunk_budget_is_distinct_from_project_duration": 1,
+        "test_model_verification_is_cancellable": 1,
+        "test_configured_model_assets_are_not_claimed_as_verified_inference": 1,
+        "test_changed_reviewed_manifest_requires_explicit_reconfiguration": 1,
+        "test_failed_reprobe_invalidates_previous_music_inference_evidence": 1,
+        "test_music_inventory_rejects_unreadable_subtree": 2,
+        "test_music_inventory_bounds_all_entries_and_checks_cancellation": 2,
+        "test_unreadable_model_subtree_invalidates_configured_music_evidence": 1,
+        "test_unreadable_runtime_subtree_invalidates_music_inference": 1,
+        "test_runtime_inventory_counts_non_python_and_detects_case_variant": 1
+      },
+      "current_5070_function_counter": {
+        "test_actual_procedural_score_is_exact_reproducible_audio_with_midi": 1,
+        "test_actual_changed_seed_changes_composition": 1,
+        "test_actual_cancel_resume_reuses_verified_chunk_and_recovers_corruption": 1,
+        "test_actual_more_than_ten_minutes_has_no_total_duration_ceiling": 1,
+        "test_actual_output_and_companions_cannot_be_overwritten": 1,
+        "test_actual_resume_recovers_already_published_identical_companions": 1,
+        "test_changed_checkpoint_settings_need_new_destination": 1,
+        "test_untrusted_scene_settings_cannot_become_filters": 7,
+        "test_models_and_disk_budgets_fail_before_generation": 1,
+        "test_rf64_parser_validates_large_frame_count_without_reading_audio": 1,
+        "test_actual_graph_file_handles_unicode_and_spaces_without_leaving_temporary_input": 1,
+        "test_music_stage_budget_refuses_hidden_unreadable_generated_files": 1,
+        "test_music_cache_refuses_unreadable_code_before_starting_worker": 1,
+        "test_music_stage_cancellation_remains_boolean_during_inventory": 1
+      }
+    },
+    "tests/audio/test_publication_fsync.py": {
+      "canonical_blob": "f366b7d06e248db4b0d12da0b499803da224caa2",
+      "current_5070_blob": "28703b8bf31ddc787f5d754ff14a57740e8d095b",
+      "canonical_function_counter": {
+        "test_publication_flushes_writable_file_before_link": 1,
+        "test_flush_failure_preserves_staging_and_prevents_publication": 1,
+        "test_cancellation_during_flush_does_not_publish": 1,
+        "test_cancellation_after_link_does_not_reclassify_committed_output": 1
+      },
+      "current_5070_function_counter": {
+        "test_cancellation_during_final_flush_does_not_publish": 4,
+        "test_late_cancellation_cannot_reverse_actual_move": 4,
+        "test_directory_flush_cancellation_preserves_unpublished_complete_stage": 1,
+        "test_real_pcm_silence_cannot_publish_after_final_flush_cancellation": 1,
+        "test_flush_failure_still_preserves_stage_and_prevents_publication": 1
+      }
+    },
+    "tests/conversion/test_conversion.py": {
+      "canonical_blob": "e8cae855b1d64bc85fe06b945f840976f07c67a3",
+      "current_5070_blob": "24d6d8e1009d2fcd3eff729c36d721ef88ba783c",
+      "canonical_function_counter": {
+        "test_exact_unicode_txt_and_source_hash": 1,
+        "test_decode_requires_explicit_legacy_encoding": 1,
+        "test_html_scripts_frames_styles_entities_and_alt_are_safe": 1,
+        "test_eml_chooses_body_and_never_reads_attachment": 1,
+        "test_real_docx_reuses_reviewed_parser": 1,
+        "test_pdf_physical_page_positions_are_real_and_unverified": 1,
+        "test_safe_opendocument_text_spreadsheet_and_slides": 3,
+        "test_actual_xlsx_cached_cells_do_not_evaluate_formulas": 1,
+        "test_presentation_order_uses_relationship_order": 1,
+        "test_fictionbook_text_retains_unicode": 2,
+        "test_existing_epub_spine_reader_is_reused": 1,
+        "test_archives_reject_traversal_entities_and_active_code": 1,
+        "test_cancellation_budget_and_no_overwrite_keep_sources": 1,
+        "test_unverified_legacy_formats_are_not_falsely_supported": 9,
+        "test_read_and_write_scope_cannot_escape_or_follow_links": 1,
+        "test_actual_installed_pandoc_rtf_or_explicit_unavailable": 1,
+        "test_actual_pandoc_does_not_fetch_iframe_or_execute_filters": 1,
+        "test_actual_local_image_ocr_requires_selected_languages": 1,
+        "test_image_worker_bounds_all_tiff_frames_before_ocr": 3,
+        "test_provenance_publication_failure_rolls_back_new_derivative": 1,
+        "test_source_change_between_snapshot_and_publication_is_rejected": 1
+      },
+      "current_5070_function_counter": {
+        "test_actual_worker_keeps_utf8_crlf_formfeed_and_original": 1,
+        "test_current_text_adapters_execute_in_supervised_worker": 3,
+        "test_actual_fb2_reuses_existing_bounded_xml_reader": 1,
+        "test_actual_docx_uses_ordered_body_and_simple_tables": 1,
+        "test_actual_epub_uses_spine_instead_of_zip_order": 1,
+        "test_actual_pdf_keeps_physical_page_order_without_claiming_printed_labels": 1,
+        "test_real_resource_rejections_publish_nothing": 3,
+        "test_actual_pdf_page_budget_is_checked_before_publication": 1,
+        "test_cancel_during_real_private_source_copy_keeps_original": 1,
+        "test_source_change_after_actual_worker_rejects_publication": 1,
+        "test_only_explicit_inputs_and_output_root_are_authorized": 1,
+        "test_portable_filename_rejection_precedes_worker": 3,
+        "test_existing_output_or_report_never_changes": 2,
+        "test_receipt_collision_rolls_back_only_new_own_text": 1,
+        "test_post_move_sync_failure_preserves_matching_pair_but_is_not_success": 1,
+        "test_first_post_move_sync_failure_removes_only_unchanged_own_text": 3,
+        "test_actual_batch_preserves_completed_first_file_when_later_reader_rejects": 1,
+        "test_worker_rejects_wrong_action_and_extra_request_keys": 1,
+        "test_capability_inventory_matches_current_registry_and_never_enables_legacy": 1,
+        "test_capability_rejects_reader_version_the_existing_docx_parser_rejects": 1,
+        "test_unicode_batch_name_fits_portable_component_budget": 1
+      }
+    },
+    "tests/storage/test_library_backup_reading_state.py": {
+      "canonical_blob": "b225c9f1fc96cf112d93bc728a50699ee64c3585",
+      "current_5070_blob": "02dfead09e4331e9cd68309afc0c0179ca808f92",
+      "canonical_function_counter": {
+        "test_application_backup_restores_exact_bookmarks_and_resume_for_both_libraries": 1,
+        "test_unverified_physical_pdf_bookmark_keeps_location_and_review_status": 1,
+        "test_historical_and_archived_bindings_are_preserved_without_retargeting": 1,
+        "test_absent_state_is_explicit_and_unrelated_sidecars_are_not_copied": 1,
+        "test_saved_location_must_match_the_exact_copied_database": 21,
+        "test_public_verification_checks_real_backup_without_changing_original_files": 1,
+        "test_public_verification_rejects_corruption_and_unexpected_files_without_mutation": 7,
+        "test_invalid_live_reading_state_cannot_be_silently_omitted_from_backup": 4,
+        "test_incomplete_tampered_or_unexpected_state_never_publishes_restore": 9,
+        "test_reading_manifest_is_an_exact_allowlist": 14,
+        "test_v3_reading_presence_must_be_explicit": 3,
+        "test_linked_reading_file_is_rejected_without_touching_external_target": 4,
+        "test_reading_snapshot_and_database_share_the_existing_writer_guard": 1,
+        "test_publication_uses_captured_bytes_after_source_path_changes": 1,
+        "test_staging_disk_failure_does_not_publish_a_partial_destination": 2,
+        "test_interruption_while_publishing_reading_state_keeps_restore_unopenable": 1,
+        "test_legacy_backup_restores_without_fabricating_reading_state": 2,
+        "test_legacy_manifest_cannot_smuggle_an_unbound_reading_file": 2,
+        "test_exact_v3_reading_shape_remains_read_only_compatible": 1
+      },
+      "current_5070_function_counter": {
+        "test_application_backup_restores_exact_bookmarks_and_resume_for_both_libraries": 1,
+        "test_unverified_physical_pdf_bookmark_keeps_location_and_review_status": 2,
+        "test_historical_and_archived_bindings_are_preserved_without_retargeting": 1,
+        "test_absent_state_is_explicit_and_unrelated_sidecars_are_not_copied": 1,
+        "test_saved_location_must_match_the_exact_copied_database": 14,
+        "test_invalid_live_reading_state_cannot_be_silently_omitted_from_backup": 4,
+        "test_incomplete_tampered_or_unexpected_state_never_publishes_restore": 9,
+        "test_reading_manifest_is_an_exact_allowlist": 7,
+        "test_v3_reading_presence_must_be_explicit": 3,
+        "test_linked_reading_file_is_rejected_without_touching_external_target": 4,
+        "test_reading_snapshot_and_database_share_the_existing_writer_guard": 1,
+        "test_publication_uses_captured_bytes_after_source_path_changes": 1,
+        "test_staging_disk_failure_does_not_publish_a_partial_destination": 2,
+        "test_interruption_while_publishing_reading_state_keeps_restore_unopenable": 1,
+        "test_legacy_backup_restores_without_fabricating_reading_state": 2,
+        "test_legacy_manifest_cannot_smuggle_an_unbound_reading_file": 2
+      }
+    }
+  },
+  "scope": {
+    "shared_paths": 4,
+    "canonical_named_assertion_groups": 48,
+    "canonical_cases_within_selected_groups": 78,
+    "reading_state_scope": "The3 removed public-verification functions requested by root, not all19 historical reading-state functions.",
+    "meaning": "A current owner/test mapping is source evidence; old runtime PASS is not transferred and old API/output bytes are not declared identical."
+  },
+  "technical_authority": [
+    {
+      "path": "docs/UNIVERSAL_SCOPE_V3_FINALIZATION.md",
+      "blob": "db8adbdc483a03c262885928c7ed214ca70bbaa7"
+    },
+    {
+      "path": "docs/UNIVERSAL_SCOPE_V3_AUDIO_AGENT.md",
+      "blob": "d0b2761dd22b33233b311d4800230fb47f5d3d8b"
+    }
+  ],
+  "entries": [
+    {
+      "canonical_path": "tests/audio/test_music.py",
+      "canonical_function": "test_real_local_instrumental_is_non_silent_reproducible_and_seeded",
+      "canonical_cases": 1,
+      "disposition": "CURRENT_SCORE_CONTRACT_WITH_EXPLICIT_RENDERER_DIFFERENCE",
+      "current_tests": [
+        {
+          "path": "tests/audio/test_music.py",
+          "function": "test_actual_procedural_score_is_exact_reproducible_audio_with_midi",
+          "baseline_blob": "603a477ecd261fbf3db49becabf25a09034dcd47"
+        },
+        {
+          "path": "tests/audio/test_music.py",
+          "function": "test_actual_changed_seed_changes_composition",
+          "baseline_blob": "603a477ecd261fbf3db49becabf25a09034dcd47"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/audio/music.py",
+        "src/carr_library/audio/models.py",
+        "src/carr_library/audio/production.py"
+      ],
+      "reason": "Current actual PCM/seed/frame/hash checks preserve deterministic non-silent generation. The current default is mono48kHz and different note/instrument/gain choices; old24kHz stereo waveform, fade samples and measured loudness are not claimed byte-equivalent."
+    },
+    {
+      "canonical_path": "tests/audio/test_music.py",
+      "canonical_function": "test_all_documented_local_music_moods_render_actual_pcm",
+      "canonical_cases": 5,
+      "disposition": "RESTORED_CURRENT_CONTRACT_RUNTIME_PENDING",
+      "current_tests": [
+        {
+          "path": "tests/audio/test_music_controls.py",
+          "function": "test_every_current_mood_renders_actual_bounded_pcm_and_midi",
+          "baseline_blob": "a1bbcde3907b402893cc86ac4179b62002bb8afc"
+        },
+        {
+          "path": "tests/audio/test_music_controls.py",
+          "function": "test_explicit_tonic_changes_actual_pitch_and_midi_without_retiming_notes",
+          "baseline_blob": "a1bbcde3907b402893cc86ac4179b62002bb8afc"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/audio/music.py",
+        "src/carr_library/audio/models.py",
+        "src/carr_library/audio/production.py"
+      ],
+      "reason": "55b3 adds finite explicit key and hopeful. All eight current moods include canonical calm/suspense/hopeful/sad/energetic; actual PCM/MIDI fixtures protect requested frames, nonzero headroom and six-semitone transpose. No neural compliance claim."
+    },
+    {
+      "canonical_path": "tests/audio/test_music.py",
+      "canonical_function": "test_procedural_sound_cues_produce_real_pcm_and_exact_duration",
+      "canonical_cases": 4,
+      "disposition": "RETIRED_OPTIONAL_API_NOT_EQUIVALENT",
+      "current_tests": [],
+      "current_source_owners": [
+        "src/carr_library/audio/models.py::Sound",
+        "src/carr_library/audio/models.py::Clip",
+        "src/carr_library/audio/production.py"
+      ],
+      "reason": "The old named door/click/chime/noise synthesizer is absent. Current Sound/Clip uses reviewed local PCM on sfx/ambience/music tracks; it is not the same API or generated assets. V3-12 explicitly makes a local sound generator optional, so no duplicate generator is introduced."
+    },
+    {
+      "canonical_path": "tests/audio/test_music.py",
+      "canonical_function": "test_midi_export_contains_tempo_instruments_notes_and_exact_end",
+      "canonical_cases": 1,
+      "disposition": "PRESERVED_CURRENT_MIDI_FORMAT_ASSERTIONS_STRENGTHENED",
+      "current_tests": [
+        {
+          "path": "tests/audio/test_music.py",
+          "function": "test_actual_procedural_score_is_exact_reproducible_audio_with_midi",
+          "baseline_blob": "603a477ecd261fbf3db49becabf25a09034dcd47"
+        },
+        {
+          "path": "tests/audio/test_music.py",
+          "function": "test_actual_output_and_companions_cannot_be_overwritten",
+          "baseline_blob": "603a477ecd261fbf3db49becabf25a09034dcd47"
+        },
+        {
+          "path": "tests/audio/test_music_controls.py",
+          "function": "test_explicit_tonic_changes_actual_pitch_and_midi_without_retiming_notes",
+          "baseline_blob": "a1bbcde3907b402893cc86ac4179b62002bb8afc"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/audio/music.py::_write_midi"
+      ],
+      "reason": "The existing actual-score case now explicitly checks requested tempo and current two-channel program bytes plus note on/off, retaining header/track-length/end marker. Current program4/88 replaces old11/32 intentionally; no old score equivalence. Independent event decoding in55b3 binds note timing/transpose."
+    },
+    {
+      "canonical_path": "tests/audio/test_music.py",
+      "canonical_function": "test_music_cancel_never_publishes_and_unknown_sounds_never_execute",
+      "canonical_cases": 1,
+      "disposition": "PRESERVED_CANCELLATION_WITH_RETIRED_OPTIONAL_SOUND_API",
+      "current_tests": [
+        {
+          "path": "tests/audio/test_music.py",
+          "function": "test_actual_cancel_resume_reuses_verified_chunk_and_recovers_corruption",
+          "baseline_blob": "603a477ecd261fbf3db49becabf25a09034dcd47"
+        },
+        {
+          "path": "tests/audio/test_music.py",
+          "function": "test_untrusted_scene_settings_cannot_become_filters",
+          "baseline_blob": "603a477ecd261fbf3db49becabf25a09034dcd47"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/audio/music.py",
+        "src/carr_library/audio/models.py",
+        "src/carr_library/audio/production.py"
+      ],
+      "reason": "Current cancellation withholds final publication and retains only verified resumable parts; typed commands cannot become FFmpeg filters. The old standalone named-sound/export_midi methods are not reintroduced; MIDI is a no-clobber score companion."
+    },
+    {
+      "canonical_path": "tests/audio/test_music.py",
+      "canonical_function": "test_optional_music_engines_never_download_or_silently_fall_back",
+      "canonical_cases": 3,
+      "disposition": "PRESERVED_EXPLICIT_ENGINE_ADMISSION_WITH_RENAMED_MIDI_RENDERER",
+      "current_tests": [
+        {
+          "path": "tests/audio/test_music.py",
+          "function": "test_models_and_disk_budgets_fail_before_generation",
+          "baseline_blob": "603a477ecd261fbf3db49becabf25a09034dcd47"
+        },
+        {
+          "path": "tests/audio/test_music_adapters.py",
+          "function": "test_soundfont_profile_requires_review_before_starting_worker",
+          "baseline_blob": "1ee2d065d9b861cba1ab45eaf45e30c99761556b"
+        },
+        {
+          "path": "tests/audio/test_music_adapters.py",
+          "function": "test_ace_step_requires_trusted_code_and_exact_reviewed_entrypoints",
+          "baseline_blob": "1ee2d065d9b861cba1ab45eaf45e30c99761556b"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/audio/music.py",
+        "src/carr_library/audio/models.py",
+        "src/carr_library/audio/production.py"
+      ],
+      "reason": "Current optional musicgen/ace-step/fluidsynth require reviewed explicit manifests. Old engine='midi' is represented by explicitly selected FluidSynth rendering of MIDI, not silently mapped or PATH-activated."
+    },
+    {
+      "canonical_path": "tests/audio/test_music.py",
+      "canonical_function": "test_model_manifest_uses_exact_complete_file_hashes",
+      "canonical_cases": 1,
+      "disposition": "PRESERVED_CURRENT_TYPED_MANIFEST",
+      "current_tests": [
+        {
+          "path": "tests/audio/test_model_manifest.py",
+          "function": "test_exact_manifest_hashes_and_mutated_asset",
+          "baseline_blob": "3e1490c4206ccbb253e2aa943b3f31bd2336201c"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/audio/model_manifest.py"
+      ],
+      "reason": "Current typed manifest binds every selected asset checksum and rejects mutation before execution."
+    },
+    {
+      "canonical_path": "tests/audio/test_music.py",
+      "canonical_function": "test_model_inventory_rejects_additional_unreviewed_assets",
+      "canonical_cases": 1,
+      "disposition": "PRESERVED_CURRENT_TYPED_MANIFEST",
+      "current_tests": [
+        {
+          "path": "tests/audio/test_model_manifest.py",
+          "function": "test_complete_runtime_inventory_rejects_unlisted_python_file",
+          "baseline_blob": "3e1490c4206ccbb253e2aa943b3f31bd2336201c"
+        },
+        {
+          "path": "tests/audio/test_model_manifest.py",
+          "function": "test_complete_torch_sized_runtime_inventory_and_mutation",
+          "baseline_blob": "3e1490c4206ccbb253e2aa943b3f31bd2336201c"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/audio/model_manifest.py"
+      ],
+      "reason": "Generation requires the complete current inventory; additional runtime code is not admitted by a previously recorded manifest."
+    },
+    {
+      "canonical_path": "tests/audio/test_music.py",
+      "canonical_function": "test_musicgen_noncommercial_profile_is_enforced",
+      "canonical_cases": 1,
+      "disposition": "PRESERVED_CURRENT_TYPED_MANIFEST",
+      "current_tests": [
+        {
+          "path": "tests/audio/test_model_manifest.py",
+          "function": "test_musicgen_requires_both_pinned_checkpoints_and_noncommercial_profile",
+          "baseline_blob": "3e1490c4206ccbb253e2aa943b3f31bd2336201c"
+        },
+        {
+          "path": "tests/audio/test_model_manifest.py",
+          "function": "test_license_and_execution_consent_not_inferred",
+          "baseline_blob": "3e1490c4206ccbb253e2aa943b3f31bd2336201c"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/audio/model_manifest.py"
+      ],
+      "reason": "MusicGen's selected checkpoint/license/trusted-weights/personal-noncommercial checks are explicit, with no inferred consent."
+    },
+    {
+      "canonical_path": "tests/audio/test_music.py",
+      "canonical_function": "test_model_revision_and_output_rights_are_required",
+      "canonical_cases": 1,
+      "disposition": "PRESERVED_REVIEW_WITH_EXPLICIT_SCHEMA_DIFFERENCE",
+      "current_tests": [
+        {
+          "path": "tests/audio/test_model_manifest.py",
+          "function": "test_moving_revision_and_wrong_engine_fail_closed",
+          "baseline_blob": "3e1490c4206ccbb253e2aa943b3f31bd2336201c"
+        },
+        {
+          "path": "tests/audio/test_model_manifest.py",
+          "function": "test_license_and_execution_consent_not_inferred",
+          "baseline_blob": "3e1490c4206ccbb253e2aa943b3f31bd2336201c"
+        },
+        {
+          "path": "tests/audio/test_model_manifest.py",
+          "function": "test_musicgen_requires_both_pinned_checkpoints_and_noncommercial_profile",
+          "baseline_blob": "3e1490c4206ccbb253e2aa943b3f31bd2336201c"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/audio/model_manifest.py",
+        "src/carr_library/audio/music.py::_music_profile"
+      ],
+      "reason": "Current immutable revision, license acceptance and model-specific rights/usage controls replace old code_revision/weights_license names. MusicGen's old free-text output_rights_notice field is not the same current schema; current manifest requires the explicit noncommercial profile. FluidSynth/ACE retain model-specific rights notices."
+    },
+    {
+      "canonical_path": "tests/audio/test_music.py",
+      "canonical_function": "test_neural_chunk_budget_is_distinct_from_project_duration",
+      "canonical_cases": 1,
+      "disposition": "PRESERVED_BOUNDED_CHUNKS_WITHOUT_TOTAL_DURATION_CAP",
+      "current_tests": [
+        {
+          "path": "tests/audio/test_music.py",
+          "function": "test_actual_more_than_ten_minutes_has_no_total_duration_ceiling",
+          "baseline_blob": "603a477ecd261fbf3db49becabf25a09034dcd47"
+        },
+        {
+          "path": "tests/audio/test_music.py",
+          "function": "test_untrusted_scene_settings_cannot_become_filters",
+          "baseline_blob": "603a477ecd261fbf3db49becabf25a09034dcd47"
+        },
+        {
+          "path": "tests/audio/test_music.py",
+          "function": "test_models_and_disk_budgets_fail_before_generation",
+          "baseline_blob": "603a477ecd261fbf3db49becabf25a09034dcd47"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/audio/music.py",
+        "src/carr_library/audio/models.py",
+        "src/carr_library/audio/production.py"
+      ],
+      "reason": "Current requested duration remains separate from worker chunk/byte/disk bounds; actual601.125second procedural output and sparse RF64 parsing are not neural long-duration evidence."
+    },
+    {
+      "canonical_path": "tests/audio/test_music.py",
+      "canonical_function": "test_model_verification_is_cancellable",
+      "canonical_cases": 1,
+      "disposition": "PRESERVED_CURRENT_TYPED_MANIFEST",
+      "current_tests": [
+        {
+          "path": "tests/audio/test_model_manifest.py",
+          "function": "test_manifest_byte_budget_and_cancellation",
+          "baseline_blob": "3e1490c4206ccbb253e2aa943b3f31bd2336201c"
+        },
+        {
+          "path": "tests/audio/test_model_manifest.py",
+          "function": "test_complete_inventory_can_be_cancelled_before_hashing_assets",
+          "baseline_blob": "3e1490c4206ccbb253e2aa943b3f31bd2336201c"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/audio/model_manifest.py"
+      ],
+      "reason": "Current bounded inventory/hash verification observes cancellation before starting model execution."
+    },
+    {
+      "canonical_path": "tests/audio/test_music.py",
+      "canonical_function": "test_configured_model_assets_are_not_claimed_as_verified_inference",
+      "canonical_cases": 1,
+      "disposition": "RETIRED_MUTABLE_STATUS_API_CURRENT_CAPABILITY_IS_EXPLICIT",
+      "current_tests": [
+        {
+          "path": "tests/audio/test_music.py",
+          "function": "test_models_and_disk_budgets_fail_before_generation",
+          "baseline_blob": "603a477ecd261fbf3db49becabf25a09034dcd47"
+        },
+        {
+          "path": "tests/audio/test_music_adapters.py",
+          "function": "test_isolated_ace_step_contract_and_pcm_receipt_without_weights",
+          "baseline_blob": "1ee2d065d9b861cba1ab45eaf45e30c99761556b"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/audio/music.py::music_capabilities",
+        "src/carr_library/audio/model_manifest.py"
+      ],
+      "reason": "No old AudioRuntime mutable assets_verified/runtime_probed/inference_tested flags are copied. Current capability reports implementation and required local acceptance, never successful model inference merely from files. Synthetic protocol tests remain explicitly non-inference."
+    },
+    {
+      "canonical_path": "tests/audio/test_music.py",
+      "canonical_function": "test_changed_reviewed_manifest_requires_explicit_reconfiguration",
+      "canonical_cases": 1,
+      "disposition": "PRESERVED_CURRENT_IMMUTABLE_CONFIGURATION",
+      "current_tests": [
+        {
+          "path": "tests/audio/test_model_manifest.py",
+          "function": "test_manifest_changed_between_validation_and_use",
+          "baseline_blob": "3e1490c4206ccbb253e2aa943b3f31bd2336201c"
+        },
+        {
+          "path": "tests/audio/test_music_adapters.py",
+          "function": "test_actual_production_scene_selects_fluidsynth_and_rechecks_cached_assets",
+          "baseline_blob": "1ee2d065d9b861cba1ab45eaf45e30c99761556b"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/audio/model_manifest.py",
+        "src/carr_library/audio/production.py"
+      ],
+      "reason": "A selected current manifest object remains bound to its bytes and is revalidated; changed input cannot authorize an earlier receipt. No alternate configure_model state store is introduced."
+    },
+    {
+      "canonical_path": "tests/audio/test_music.py",
+      "canonical_function": "test_failed_reprobe_invalidates_previous_music_inference_evidence",
+      "canonical_cases": 1,
+      "disposition": "RETIRED_MUTABLE_PROBE_FLAGS_FAIL_CLOSED_PER_USE",
+      "current_tests": [
+        {
+          "path": "tests/audio/test_model_manifest.py",
+          "function": "test_exact_manifest_hashes_and_mutated_asset",
+          "baseline_blob": "3e1490c4206ccbb253e2aa943b3f31bd2336201c"
+        },
+        {
+          "path": "tests/audio/test_music.py",
+          "function": "test_music_cache_refuses_unreadable_code_before_starting_worker",
+          "baseline_blob": "603a477ecd261fbf3db49becabf25a09034dcd47"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/audio/model_manifest.py",
+        "src/carr_library/audio/music.py"
+      ],
+      "reason": "The current implementation has no reusable positive old inference flag to invalidate. Every generation/cache read uses current inventory/identity admission; failed verification stops before the selected worker."
+    },
+    {
+      "canonical_path": "tests/audio/test_music.py",
+      "canonical_function": "test_music_inventory_rejects_unreadable_subtree",
+      "canonical_cases": 2,
+      "disposition": "PRESERVED_CURRENT_INVENTORY",
+      "current_tests": [
+        {
+          "path": "tests/audio/test_model_manifest.py",
+          "function": "test_complete_inventory_refuses_unreadable_subtree_without_hashing_assets",
+          "baseline_blob": "3e1490c4206ccbb253e2aa943b3f31bd2336201c"
+        },
+        {
+          "path": "tests/audio/test_music.py",
+          "function": "test_music_stage_budget_refuses_hidden_unreadable_generated_files",
+          "baseline_blob": "603a477ecd261fbf3db49becabf25a09034dcd47"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/audio/model_manifest.py",
+        "src/carr_library/audio/music.py"
+      ],
+      "reason": "Actual directory-enumeration open and iteration failures remain errors; generated staging has its own bounded traversal."
+    },
+    {
+      "canonical_path": "tests/audio/test_music.py",
+      "canonical_function": "test_music_inventory_bounds_all_entries_and_checks_cancellation",
+      "canonical_cases": 2,
+      "disposition": "PRESERVED_CURRENT_INVENTORY",
+      "current_tests": [
+        {
+          "path": "tests/audio/test_model_manifest.py",
+          "function": "test_complete_inventory_directory_budget_remains_enforced",
+          "baseline_blob": "3e1490c4206ccbb253e2aa943b3f31bd2336201c"
+        },
+        {
+          "path": "tests/audio/test_model_manifest.py",
+          "function": "test_complete_inventory_can_be_cancelled_before_hashing_assets",
+          "baseline_blob": "3e1490c4206ccbb253e2aa943b3f31bd2336201c"
+        },
+        {
+          "path": "tests/audio/test_model_manifest.py",
+          "function": "test_inventory_cancellation_remains_interrupted_and_closes_the_iterator",
+          "baseline_blob": "3e1490c4206ccbb253e2aa943b3f31bd2336201c"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/audio/model_manifest.py"
+      ],
+      "reason": "Current traversal counts directories and all files, closes iterators and preserves cancellation instead of reclassifying incomplete inventory as success."
+    },
+    {
+      "canonical_path": "tests/audio/test_music.py",
+      "canonical_function": "test_unreadable_model_subtree_invalidates_configured_music_evidence",
+      "canonical_cases": 1,
+      "disposition": "PRESERVED_CURRENT_PER_USE_ADMISSION",
+      "current_tests": [
+        {
+          "path": "tests/audio/test_model_manifest.py",
+          "function": "test_complete_inventory_refuses_unreadable_subtree_without_hashing_assets",
+          "baseline_blob": "3e1490c4206ccbb253e2aa943b3f31bd2336201c"
+        },
+        {
+          "path": "tests/audio/test_music.py",
+          "function": "test_music_cache_refuses_unreadable_code_before_starting_worker",
+          "baseline_blob": "603a477ecd261fbf3db49becabf25a09034dcd47"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/audio/model_manifest.py",
+        "src/carr_library/audio/music.py"
+      ],
+      "reason": "The current selected model/cache cannot proceed after an unreadable subtree; old mutable capability flags are absent rather than retained as authority."
+    },
+    {
+      "canonical_path": "tests/audio/test_music.py",
+      "canonical_function": "test_unreadable_runtime_subtree_invalidates_music_inference",
+      "canonical_cases": 1,
+      "disposition": "PRESERVED_CURRENT_PER_USE_ADMISSION",
+      "current_tests": [
+        {
+          "path": "tests/audio/test_music.py",
+          "function": "test_music_cache_refuses_unreadable_code_before_starting_worker",
+          "baseline_blob": "603a477ecd261fbf3db49becabf25a09034dcd47"
+        },
+        {
+          "path": "tests/audio/test_model_manifest.py",
+          "function": "test_complete_inventory_refuses_unreadable_subtree_without_hashing_assets",
+          "baseline_blob": "3e1490c4206ccbb253e2aa943b3f31bd2336201c"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/audio/music.py",
+        "src/carr_library/audio/model_manifest.py"
+      ],
+      "reason": "Current isolated model/runtime path remains fully inventoried before work; no historical positive inference status is consumed."
+    },
+    {
+      "canonical_path": "tests/audio/test_music.py",
+      "canonical_function": "test_runtime_inventory_counts_non_python_and_detects_case_variant",
+      "canonical_cases": 1,
+      "disposition": "PRESERVED_COMPLETE_CURRENT_INVENTORY",
+      "current_tests": [
+        {
+          "path": "tests/audio/test_model_manifest.py",
+          "function": "test_complete_runtime_inventory_rejects_unlisted_python_file",
+          "baseline_blob": "3e1490c4206ccbb253e2aa943b3f31bd2336201c"
+        },
+        {
+          "path": "tests/audio/test_model_manifest.py",
+          "function": "test_model_inventory_file_count_remains_bounded",
+          "baseline_blob": "3e1490c4206ccbb253e2aa943b3f31bd2336201c"
+        },
+        {
+          "path": "tests/audio/test_model_manifest.py",
+          "function": "test_complete_inventory_refuses_unreadable_subtree_without_hashing_assets",
+          "baseline_blob": "3e1490c4206ccbb253e2aa943b3f31bd2336201c"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/audio/model_manifest.py::_local_inventory"
+      ],
+      "reason": "Current complete inventory includes all files/directories instead of filtering Python-only entries. Uppercase unlisted.PY occurs in the unreadable-subtree fixture; no case-based permission to omit extra files."
+    },
+    {
+      "canonical_path": "tests/audio/test_publication_fsync.py",
+      "canonical_function": "test_publication_flushes_writable_file_before_link",
+      "canonical_cases": 1,
+      "disposition": "PRESERVED_AT_CURRENT_NO_REPLACE_PUBLISHER",
+      "current_tests": [
+        {
+          "path": "tests/audio/test_audio_publication.py",
+          "function": "test_publication_flushes_with_a_writable_handle",
+          "baseline_blob": "dcc0e6e97463d53e711787add095dc752bedf4af"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/audio/jobs.py::publish_new",
+        "src/carr_library/audio/ffmpeg.py"
+      ],
+      "reason": "A writable staged file is flushed before atomic no-replace visibility. Current move/copy publication is not the old hardlink implementation."
+    },
+    {
+      "canonical_path": "tests/audio/test_publication_fsync.py",
+      "canonical_function": "test_flush_failure_preserves_staging_and_prevents_publication",
+      "canonical_cases": 1,
+      "disposition": "PRESERVED_AT_CURRENT_NO_REPLACE_PUBLISHER",
+      "current_tests": [
+        {
+          "path": "tests/audio/test_audio_publication.py",
+          "function": "test_publication_does_not_suppress_a_real_flush_failure",
+          "baseline_blob": "dcc0e6e97463d53e711787add095dc752bedf4af"
+        },
+        {
+          "path": "tests/audio/test_publication_fsync.py",
+          "function": "test_flush_failure_still_preserves_stage_and_prevents_publication",
+          "baseline_blob": "28703b8bf31ddc787f5d754ff14a57740e8d095b"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/audio/jobs.py",
+        "src/carr_library/audio/ffmpeg.py"
+      ],
+      "reason": "A real flush error cannot yield success or visible partial final output; the complete unpublished stage remains owned."
+    },
+    {
+      "canonical_path": "tests/audio/test_publication_fsync.py",
+      "canonical_function": "test_cancellation_during_flush_does_not_publish",
+      "canonical_cases": 1,
+      "disposition": "PRESERVED_AND_EXPANDED_CURRENT_PUBLICATION",
+      "current_tests": [
+        {
+          "path": "tests/audio/test_publication_fsync.py",
+          "function": "test_cancellation_during_final_flush_does_not_publish",
+          "baseline_blob": "28703b8bf31ddc787f5d754ff14a57740e8d095b"
+        },
+        {
+          "path": "tests/audio/test_publication_fsync.py",
+          "function": "test_directory_flush_cancellation_preserves_unpublished_complete_stage",
+          "baseline_blob": "28703b8bf31ddc787f5d754ff14a57740e8d095b"
+        },
+        {
+          "path": "tests/audio/test_publication_fsync.py",
+          "function": "test_real_pcm_silence_cannot_publish_after_final_flush_cancellation",
+          "baseline_blob": "28703b8bf31ddc787f5d754ff14a57740e8d095b"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/audio/jobs.py",
+        "src/carr_library/audio/ffmpeg.py"
+      ],
+      "reason": "Four publication kinds plus directory/silence boundaries exercise cancellation before commit."
+    },
+    {
+      "canonical_path": "tests/audio/test_publication_fsync.py",
+      "canonical_function": "test_cancellation_after_link_does_not_reclassify_committed_output",
+      "canonical_cases": 1,
+      "disposition": "PRESERVED_AT_CURRENT_NO_REPLACE_PUBLISHER",
+      "current_tests": [
+        {
+          "path": "tests/audio/test_publication_fsync.py",
+          "function": "test_late_cancellation_cannot_reverse_actual_move",
+          "baseline_blob": "28703b8bf31ddc787f5d754ff14a57740e8d095b"
+        },
+        {
+          "path": "tests/audio/test_audio_publication.py",
+          "function": "test_cancellation_after_atomic_move_keeps_committed_publication",
+          "baseline_blob": "dcc0e6e97463d53e711787add095dc752bedf4af"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/audio/jobs.py",
+        "src/carr_library/audio/ffmpeg.py"
+      ],
+      "reason": "Late cancellation does not delete/reclassify a completed atomic publication; current commit uses no-replace move rather than the historical link operation."
+    },
+    {
+      "canonical_path": "tests/conversion/test_conversion.py",
+      "canonical_function": "test_exact_unicode_txt_and_source_hash",
+      "canonical_cases": 1,
+      "disposition": "PRESERVED_CURRENT_SUPERVISED_WORKER",
+      "current_tests": [
+        {
+          "path": "tests/conversion/test_conversion.py",
+          "function": "test_actual_worker_keeps_utf8_crlf_formfeed_and_original",
+          "baseline_blob": "24d6d8e1009d2fcd3eff729c36d721ef88ba783c"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/conversion/service.py",
+        "src/carr_library/conversion/worker.py"
+      ],
+      "reason": "Exact Unicode/line endings/formfeeds and original source SHA remain bound through actual isolated worker and derivative receipt."
+    },
+    {
+      "canonical_path": "tests/conversion/test_conversion.py",
+      "canonical_function": "test_decode_requires_explicit_legacy_encoding",
+      "canonical_cases": 1,
+      "disposition": "RESTORED_CURRENT_EXPLICIT_CODEC_PROTOCOL",
+      "current_tests": [
+        {
+          "path": "tests/conversion/test_explicit_text_encoding.py",
+          "function": "test_explicit_selected_codec_round_trips_exact_source_and_receipt",
+          "baseline_blob": "2114a377ce926df9cfdaf1e3e9c79f81c11574dc"
+        },
+        {
+          "path": "tests/conversion/test_explicit_text_encoding.py",
+          "function": "test_absent_selection_keeps_strict_utf8_default_without_guessing",
+          "baseline_blob": "2114a377ce926df9cfdaf1e3e9c79f81c11574dc"
+        },
+        {
+          "path": "tests/conversion/test_explicit_text_encoding.py",
+          "function": "test_parent_rejects_a_worker_receipt_with_different_codec_authority",
+          "baseline_blob": "2114a377ce926df9cfdaf1e3e9c79f81c11574dc"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/conversion/service.py",
+        "src/carr_library/conversion/worker.py"
+      ],
+      "reason": "104bf restored finite explicit service/batch/worker codec selection with strictUTF8 default; no guessing or streamed-UTF8 widening. Existing41-case population protects this exact authority."
+    },
+    {
+      "canonical_path": "tests/conversion/test_conversion.py",
+      "canonical_function": "test_html_scripts_frames_styles_entities_and_alt_are_safe",
+      "canonical_cases": 1,
+      "disposition": "PRESERVED_SAFETY_WITH_EXPLICIT_READING_POLICY_DIFFERENCE",
+      "current_tests": [
+        {
+          "path": "tests/extract/test_document_formats_text.py",
+          "function": "test_html_order_unicode_inline_entities_title_and_source_identity",
+          "baseline_blob": "9996293df2432b1cc81eb3bc29de668e5830caa4"
+        },
+        {
+          "path": "tests/extract/test_document_formats_text.py",
+          "function": "test_html_omissions_are_disclosed_and_do_not_join_source_words",
+          "baseline_blob": "9996293df2432b1cc81eb3bc29de668e5830caa4"
+        },
+        {
+          "path": "tests/extract/test_document_formats_text.py",
+          "function": "test_html_external_resources_never_open_network",
+          "baseline_blob": "9996293df2432b1cc81eb3bc29de668e5830caa4"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/extract/document_formats_text.py"
+      ],
+      "reason": "Visible body/entities/order remain; scripts/styles/frames/network are suppressed. Current reader deliberately omits images/media with warnings rather than inserting the old 'Image description' text into source reading content. No synthetic alt-to-quotation equivalence claimed."
+    },
+    {
+      "canonical_path": "tests/conversion/test_conversion.py",
+      "canonical_function": "test_eml_chooses_body_and_never_reads_attachment",
+      "canonical_cases": 1,
+      "disposition": "OPEN_BOUNDED_RECEIPT_METADATA_RECONCILIATION",
+      "current_tests": [
+        {
+          "path": "tests/extract/test_document_formats_text.py",
+          "function": "test_eml_plain_body_and_subject_metadata_separate",
+          "baseline_blob": "9996293df2432b1cc81eb3bc29de668e5830caa4"
+        },
+        {
+          "path": "tests/extract/test_document_formats_text.py",
+          "function": "test_eml_alternatives_choose_plain_once_and_skip_attachment",
+          "baseline_blob": "9996293df2432b1cc81eb3bc29de668e5830caa4"
+        },
+        {
+          "path": "tests/conversion/test_conversion.py",
+          "function": "test_current_text_adapters_execute_in_supervised_worker",
+          "baseline_blob": "24d6d8e1009d2fcd3eff729c36d721ef88ba783c"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/extract/document_formats_text.py::_eml",
+        "src/carr_library/conversion/service.py",
+        "src/carr_library/conversion/worker.py"
+      ],
+      "reason": "Plain body selection/attachment suppression remain. Reader still exposes Subject as inert metadata.title; current fixed worker details omit it from derivative receipts, unlike canonical report.metadata.subject. Root requested inspection of ingest/title consumers and a bounded typed restoration if user-visible; this ledger does not claim that report field is preserved."
+    },
+    {
+      "canonical_path": "tests/conversion/test_conversion.py",
+      "canonical_function": "test_real_docx_reuses_reviewed_parser",
+      "canonical_cases": 1,
+      "disposition": "PRESERVED_CURRENT_SUPERVISED_WORKER",
+      "current_tests": [
+        {
+          "path": "tests/conversion/test_conversion.py",
+          "function": "test_actual_docx_uses_ordered_body_and_simple_tables",
+          "baseline_blob": "24d6d8e1009d2fcd3eff729c36d721ef88ba783c"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/conversion/service.py",
+        "src/carr_library/conversion/worker.py"
+      ],
+      "reason": "Current selected DOCX reader preserves ordered visible body/simple tables with source-bound unverified locators; unsupported version remains explicitly refused."
+    },
+    {
+      "canonical_path": "tests/conversion/test_conversion.py",
+      "canonical_function": "test_pdf_physical_page_positions_are_real_and_unverified",
+      "canonical_cases": 1,
+      "disposition": "PRESERVED_BOUNDED_CURRENT_PDF",
+      "current_tests": [
+        {
+          "path": "tests/conversion/test_conversion.py",
+          "function": "test_actual_pdf_keeps_physical_page_order_without_claiming_printed_labels",
+          "baseline_blob": "24d6d8e1009d2fcd3eff729c36d721ef88ba783c"
+        },
+        {
+          "path": "tests/conversion/test_conversion.py",
+          "function": "test_actual_pdf_page_budget_is_checked_before_publication",
+          "baseline_blob": "24d6d8e1009d2fcd3eff729c36d721ef88ba783c"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/conversion/service.py",
+        "src/carr_library/conversion/worker.py"
+      ],
+      "reason": "Current bounded PDF worker preserves physical page order and unverified status. Existing b12 FileAsset/cancellation/large-PDF paths are not replaced by the old byte-only reader."
+    },
+    {
+      "canonical_path": "tests/conversion/test_conversion.py",
+      "canonical_function": "test_safe_opendocument_text_spreadsheet_and_slides",
+      "canonical_cases": 3,
+      "disposition": "PRESERVED_CURRENT_BOUNDED_XML_READERS",
+      "current_tests": [
+        {
+          "path": "tests/extract/test_document_formats_xml.py",
+          "function": "test_real_supported_document_order_source_hash_and_unverified_locators",
+          "baseline_blob": "c7328eb9c810e179bd6b9fa9759d1a48fd2767ae"
+        },
+        {
+          "path": "tests/extract/test_document_formats_xml.py",
+          "function": "test_odf_preserves_cell_repeats_and_logical_coordinates",
+          "baseline_blob": "c7328eb9c810e179bd6b9fa9759d1a48fd2767ae"
+        },
+        {
+          "path": "tests/extract/test_document_formats_xml.py",
+          "function": "test_inert_office_converter_containers_preserve_all_surrounding_reading_text",
+          "baseline_blob": "c7328eb9c810e179bd6b9fa9759d1a48fd2767ae"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/extract/document_formats.py"
+      ],
+      "reason": "Current ODT/ODS/ODP coverage uses the existing bounded inert parser, exact source hash and logical coordinates; active content/encryption/refusal cases stay explicit."
+    },
+    {
+      "canonical_path": "tests/conversion/test_conversion.py",
+      "canonical_function": "test_actual_xlsx_cached_cells_do_not_evaluate_formulas",
+      "canonical_cases": 1,
+      "disposition": "PRESERVED_SAFETY_WITH_EXPLICIT_READING_POLICY_DIFFERENCE",
+      "current_tests": [
+        {
+          "path": "tests/extract/test_document_formats_xml.py",
+          "function": "test_xlsx_real_openpyxl_document_and_literal_unicode",
+          "baseline_blob": "c7328eb9c810e179bd6b9fa9759d1a48fd2767ae"
+        },
+        {
+          "path": "tests/extract/test_document_formats_xml.py",
+          "function": "test_xlsx_shared_strings_rich_text_and_formula_cache_omissions",
+          "baseline_blob": "c7328eb9c810e179bd6b9fa9759d1a48fd2767ae"
+        },
+        {
+          "path": "tests/extract/test_document_formats_xml.py",
+          "function": "test_xlsx_hidden_rows_columns_omitted_without_large_range_expansion",
+          "baseline_blob": "c7328eb9c810e179bd6b9fa9759d1a48fd2767ae"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/extract/document_formats.py"
+      ],
+      "reason": "Current reader retains literal cells/logical coordinates and omits formulas/cached formula dependents/hidden content with warnings. It does not insert the historical textual formula placeholder or evaluate formulas."
+    },
+    {
+      "canonical_path": "tests/conversion/test_conversion.py",
+      "canonical_function": "test_presentation_order_uses_relationship_order",
+      "canonical_cases": 1,
+      "disposition": "RESTORED_EXACT_PUBLIC_SYNTHETIC_FIXTURE",
+      "current_tests": [
+        {
+          "path": "tests/conversion/test_canonical_presentation.py",
+          "function": "test_complete_canonical_presentation_uses_relationship_order_in_actual_worker",
+          "baseline_blob": "43c7deca244c7b484c2ef8b060139140b272314a"
+        },
+        {
+          "path": "tests/extract/test_document_formats_xml.py",
+          "function": "test_pptx_hidden_slides_are_omitted_and_stored_slide_order_retained",
+          "baseline_blob": "c7328eb9c810e179bd6b9fa9759d1a48fd2767ae"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/extract/document_formats.py",
+        "src/carr_library/conversion/service.py",
+        "src/carr_library/conversion/worker.py"
+      ],
+      "reason": "Exact canonical29150-byte ordered_slides.pptx blob58b0d7cce78a50883ed4bcf1e73cbbcc40675d44 is staged and exercised through current actual worker; source hash/order/source immutability are asserted."
+    },
+    {
+      "canonical_path": "tests/conversion/test_conversion.py",
+      "canonical_function": "test_fictionbook_text_retains_unicode",
+      "canonical_cases": 2,
+      "disposition": "PRESERVED_CURRENT_BOUNDED_XML_READERS",
+      "current_tests": [
+        {
+          "path": "tests/conversion/test_conversion.py",
+          "function": "test_actual_fb2_reuses_existing_bounded_xml_reader",
+          "baseline_blob": "24d6d8e1009d2fcd3eff729c36d721ef88ba783c"
+        },
+        {
+          "path": "tests/extract/test_document_formats_xml.py",
+          "function": "test_fb2_preserves_decomposed_unicode_and_includes_authored_note_body",
+          "baseline_blob": "c7328eb9c810e179bd6b9fa9759d1a48fd2767ae"
+        },
+        {
+          "path": "tests/extract/test_document_formats_xml.py",
+          "function": "test_fb3_declared_primary_body_cannot_be_missing_ambiguous_external_or_different",
+          "baseline_blob": "c7328eb9c810e179bd6b9fa9759d1a48fd2767ae"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/extract/document_formats.py"
+      ],
+      "reason": "Current FB2/FB3 preserve exact authored visible text/declared primary body and reject ambiguous/external source relationships; image alt is not promoted to quotation text."
+    },
+    {
+      "canonical_path": "tests/conversion/test_conversion.py",
+      "canonical_function": "test_existing_epub_spine_reader_is_reused",
+      "canonical_cases": 1,
+      "disposition": "PRESERVED_CURRENT_SUPERVISED_WORKER",
+      "current_tests": [
+        {
+          "path": "tests/conversion/test_conversion.py",
+          "function": "test_actual_epub_uses_spine_instead_of_zip_order",
+          "baseline_blob": "24d6d8e1009d2fcd3eff729c36d721ef88ba783c"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/conversion/service.py",
+        "src/carr_library/conversion/worker.py"
+      ],
+      "reason": "Current actual worker uses selected spine order with bounded archive parsing and original bytes retained."
+    },
+    {
+      "canonical_path": "tests/conversion/test_conversion.py",
+      "canonical_function": "test_archives_reject_traversal_entities_and_active_code",
+      "canonical_cases": 1,
+      "disposition": "PRESERVED_CURRENT_BOUNDED_PARSERS",
+      "current_tests": [
+        {
+          "path": "tests/extract/test_document_formats_xml.py",
+          "function": "test_unsafe_zip_member_is_rejected_for_every_container",
+          "baseline_blob": "c7328eb9c810e179bd6b9fa9759d1a48fd2767ae"
+        },
+        {
+          "path": "tests/extract/test_document_formats_xml.py",
+          "function": "test_dtd_entity_is_rejected_without_private_payload_in_error",
+          "baseline_blob": "c7328eb9c810e179bd6b9fa9759d1a48fd2767ae"
+        },
+        {
+          "path": "tests/extract/test_document_formats_xml.py",
+          "function": "test_odf_encryption_and_active_scripts_are_rejected",
+          "baseline_blob": "c7328eb9c810e179bd6b9fa9759d1a48fd2767ae"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/extract/document_formats.py"
+      ],
+      "reason": "Archive path/DTD/entity/active content failures remain closed, with no source text in diagnostics."
+    },
+    {
+      "canonical_path": "tests/conversion/test_conversion.py",
+      "canonical_function": "test_cancellation_budget_and_no_overwrite_keep_sources",
+      "canonical_cases": 1,
+      "disposition": "PRESERVED_CURRENT_ADMISSION_AND_PUBLICATION",
+      "current_tests": [
+        {
+          "path": "tests/conversion/test_conversion.py",
+          "function": "test_real_resource_rejections_publish_nothing",
+          "baseline_blob": "24d6d8e1009d2fcd3eff729c36d721ef88ba783c"
+        },
+        {
+          "path": "tests/conversion/test_conversion.py",
+          "function": "test_cancel_during_real_private_source_copy_keeps_original",
+          "baseline_blob": "24d6d8e1009d2fcd3eff729c36d721ef88ba783c"
+        },
+        {
+          "path": "tests/conversion/test_conversion.py",
+          "function": "test_existing_output_or_report_never_changes",
+          "baseline_blob": "24d6d8e1009d2fcd3eff729c36d721ef88ba783c"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/conversion/service.py",
+        "src/carr_library/conversion/worker.py"
+      ],
+      "reason": "Current resource and cancellation budgets precede final publication; existing output/report are preserved and original bytes remain unchanged."
+    },
+    {
+      "canonical_path": "tests/conversion/test_conversion.py",
+      "canonical_function": "test_unverified_legacy_formats_are_not_falsely_supported",
+      "canonical_cases": 9,
+      "disposition": "PRESERVED_EXPLICIT_SELECTION_WITH_NARROW_QUALIFICATION",
+      "current_tests": [
+        {
+          "path": "tests/conversion/test_selected_adapters.py",
+          "function": "test_document_extension_never_activates_an_implicit_converter",
+          "baseline_blob": "e37fe9806c9b179a4332c845be01b36c397768e4"
+        },
+        {
+          "path": "tests/conversion/test_selected_adapters.py",
+          "function": "test_unselected_converter_path_cannot_come_from_source_metadata",
+          "baseline_blob": "e37fe9806c9b179a4332c845be01b36c397768e4"
+        },
+        {
+          "path": "tests/conversion/test_conversion.py",
+          "function": "test_capability_inventory_matches_current_registry_and_never_enables_legacy",
+          "baseline_blob": "24d6d8e1009d2fcd3eff729c36d721ef88ba783c"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/conversion/service.py",
+        "src/carr_library/conversion/worker.py"
+      ],
+      "reason": "An extension alone still cannot choose native code. Later explicit pinned Calibre six-suffix and DjVu qualifications are separately evidenced; CHM stays unqualified and Office7-case gate remains pending/failed until repaired-head execution. No blanket legacy-format claim."
+    },
+    {
+      "canonical_path": "tests/conversion/test_conversion.py",
+      "canonical_function": "test_read_and_write_scope_cannot_escape_or_follow_links",
+      "canonical_cases": 1,
+      "disposition": "PRESERVED_CURRENT_SCOPE_ADMISSION",
+      "current_tests": [
+        {
+          "path": "tests/conversion/test_conversion.py",
+          "function": "test_only_explicit_inputs_and_output_root_are_authorized",
+          "baseline_blob": "24d6d8e1009d2fcd3eff729c36d721ef88ba783c"
+        },
+        {
+          "path": "tests/conversion/test_conversion.py",
+          "function": "test_portable_filename_rejection_precedes_worker",
+          "baseline_blob": "24d6d8e1009d2fcd3eff729c36d721ef88ba783c"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/conversion/service.py",
+        "src/carr_library/conversion/worker.py"
+      ],
+      "reason": "Only explicit source/output roots and portable local filenames are admitted; no document-controlled path authority."
+    },
+    {
+      "canonical_path": "tests/conversion/test_conversion.py",
+      "canonical_function": "test_actual_installed_pandoc_rtf_or_explicit_unavailable",
+      "canonical_cases": 1,
+      "disposition": "CURRENT_EXPLICIT_SELECTED_NATIVE_GATE",
+      "current_tests": [
+        {
+          "path": "tests/conversion/test_selected_adapters_native.py",
+          "function": "test_real_selected_pandoc_rtf_keeps_original_and_bound_receipt",
+          "baseline_blob": "7a36325add9bcf8c5bd29258846b83f33037ce4b"
+        },
+        {
+          "path": "tests/conversion/test_selected_adapters.py",
+          "function": "test_rtf_selected_executable_hash_is_rechecked_before_start",
+          "baseline_blob": "e37fe9806c9b179a4332c845be01b36c397768e4"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/conversion/adapters.py",
+        "src/carr_library/conversion/service.py",
+        "src/carr_library/conversion/worker.py"
+      ],
+      "reason": "Current explicit selected/hash-bound Pandoc replaces old PATH-discovered convenience. Existing source/installed6 native selected-converter population has its own frozen evidence; no success transferred to arbitrary host installations."
+    },
+    {
+      "canonical_path": "tests/conversion/test_conversion.py",
+      "canonical_function": "test_actual_pandoc_does_not_fetch_iframe_or_execute_filters",
+      "canonical_cases": 1,
+      "disposition": "PRESERVED_INERT_HTML_AND_FIXED_PANDOC_BOUNDARIES",
+      "current_tests": [
+        {
+          "path": "tests/extract/test_document_formats_text.py",
+          "function": "test_html_external_resources_never_open_network",
+          "baseline_blob": "9996293df2432b1cc81eb3bc29de668e5830caa4"
+        },
+        {
+          "path": "tests/conversion/test_selected_adapters_native.py",
+          "function": "test_real_rtf_external_field_cannot_supply_unselected_local_content",
+          "baseline_blob": "7a36325add9bcf8c5bd29258846b83f33037ce4b"
+        },
+        {
+          "path": "tests/conversion/test_selected_adapters.py",
+          "function": "test_unselected_converter_path_cannot_come_from_source_metadata",
+          "baseline_blob": "e37fe9806c9b179a4332c845be01b36c397768e4"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/extract/document_formats_text.py",
+        "src/carr_library/conversion/adapters.py"
+      ],
+      "reason": "General HTML uses the strict inert internal reader. Explicit fixed Pandoc supports its reviewed RTF path, not old arbitrary adapter='pandoc' HTML transport/filter authority; unsafe external fields cannot disclose local/network content."
+    },
+    {
+      "canonical_path": "tests/conversion/test_conversion.py",
+      "canonical_function": "test_actual_local_image_ocr_requires_selected_languages",
+      "canonical_cases": 1,
+      "disposition": "PRESERVED_EXISTING_SELECTED_OCR_WORKER",
+      "current_tests": [
+        {
+          "path": "tests/conversion/test_selected_adapters_native.py",
+          "function": "test_real_existing_ocr_bridge_reads_every_selected_image_frame",
+          "baseline_blob": "7a36325add9bcf8c5bd29258846b83f33037ce4b"
+        },
+        {
+          "path": "tests/conversion/test_selected_adapters.py",
+          "function": "test_ocr_flag_requires_an_explicit_typed_model_choice",
+          "baseline_blob": "e37fe9806c9b179a4332c845be01b36c397768e4"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/conversion/adapters.py",
+        "src/carr_library/extract/ocr_runtime.py"
+      ],
+      "reason": "Current explicit typed OCR profile/language selection and exact existing worker are retained; no automatic model download or unselected language inference."
+    },
+    {
+      "canonical_path": "tests/conversion/test_conversion.py",
+      "canonical_function": "test_image_worker_bounds_all_tiff_frames_before_ocr",
+      "canonical_cases": 3,
+      "disposition": "PRESERVED_PRE_NATIVE_IMAGE_BUDGETS",
+      "current_tests": [
+        {
+          "path": "tests/conversion/test_selected_adapters.py",
+          "function": "test_all_headers_are_bounded_before_ocr_runtime_discovery",
+          "baseline_blob": "e37fe9806c9b179a4332c845be01b36c397768e4"
+        },
+        {
+          "path": "tests/conversion/test_selected_adapters.py",
+          "function": "test_raster_header_must_match_extension_before_engine_execution",
+          "baseline_blob": "e37fe9806c9b179a4332c845be01b36c397768e4"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/conversion/adapters.py"
+      ],
+      "reason": "All selected TIFF frames/source pixels/frames are checked before OCR runtime discovery, not only the first image."
+    },
+    {
+      "canonical_path": "tests/conversion/test_conversion.py",
+      "canonical_function": "test_provenance_publication_failure_rolls_back_new_derivative",
+      "canonical_cases": 1,
+      "disposition": "PRESERVED_AND_EXPANDED_CURRENT_PUBLICATION",
+      "current_tests": [
+        {
+          "path": "tests/conversion/test_conversion.py",
+          "function": "test_receipt_collision_rolls_back_only_new_own_text",
+          "baseline_blob": "24d6d8e1009d2fcd3eff729c36d721ef88ba783c"
+        },
+        {
+          "path": "tests/conversion/test_conversion.py",
+          "function": "test_first_post_move_sync_failure_removes_only_unchanged_own_text",
+          "baseline_blob": "24d6d8e1009d2fcd3eff729c36d721ef88ba783c"
+        },
+        {
+          "path": "tests/conversion/test_conversion.py",
+          "function": "test_post_move_sync_failure_preserves_matching_pair_but_is_not_success",
+          "baseline_blob": "24d6d8e1009d2fcd3eff729c36d721ef88ba783c"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/conversion/service.py",
+        "src/carr_library/conversion/worker.py"
+      ],
+      "reason": "Current report-last/no-replace protocol removes only its own unchanged incomplete derivative; never removes a foreign race winner or falsely reports a postcommit durability failure as success."
+    },
+    {
+      "canonical_path": "tests/conversion/test_conversion.py",
+      "canonical_function": "test_source_change_between_snapshot_and_publication_is_rejected",
+      "canonical_cases": 1,
+      "disposition": "PRESERVED_CURRENT_SOURCE_BINDING",
+      "current_tests": [
+        {
+          "path": "tests/conversion/test_conversion.py",
+          "function": "test_source_change_after_actual_worker_rejects_publication",
+          "baseline_blob": "24d6d8e1009d2fcd3eff729c36d721ef88ba783c"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/conversion/service.py",
+        "src/carr_library/conversion/worker.py"
+      ],
+      "reason": "Current parent rechecks exact selected source identity after actual child and refuses changed source before final publication."
+    },
+    {
+      "canonical_path": "tests/storage/test_library_backup_reading_state.py",
+      "canonical_function": "test_public_verification_checks_real_backup_without_changing_original_files",
+      "canonical_cases": 1,
+      "disposition": "RESTORED_EXPLICIT_READ_ONLY_ASSERTIONS",
+      "current_tests": [
+        {
+          "path": "tests/storage/test_backup_recovery_and_verify.py",
+          "function": "test_verify_hashes_sidecars_without_creating_duplicate_copies",
+          "baseline_blob": "57b2305d3868acebfb9671dc73f90e4af6c65b5a"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/library_backup.py::verify_backup"
+      ],
+      "reason": "Existing successful current V5 public verify case now checks exact manifest, all bytes+mtime and unchanged parent inventory while retaining its no-duplicate-copy target=None assertion."
+    },
+    {
+      "canonical_path": "tests/storage/test_library_backup_reading_state.py",
+      "canonical_function": "test_public_verification_rejects_corruption_and_unexpected_files_without_mutation",
+      "canonical_cases": 7,
+      "disposition": "RESTORED_SEVEN_CURRENT_FORMAT_API_CASES",
+      "current_tests": [
+        {
+          "path": "tests/storage/test_backup_recovery_and_verify.py",
+          "function": "test_public_verification_rejects_corruption_and_unexpected_files_without_mutation",
+          "baseline_blob": "57b2305d3868acebfb9671dc73f90e4af6c65b5a"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/library_backup.py::verify_backup"
+      ],
+      "reason": "Restore-only corruption checks were not counted as direct public verification equivalence. New7 current-format API cases reject database/asset/extra-asset/missing-asset/extra-file/reading-bytes/missing-reading while preserving all remaining bytes/mtime/names and parent inventory."
+    },
+    {
+      "canonical_path": "tests/storage/test_library_backup_reading_state.py",
+      "canonical_function": "test_exact_v3_reading_shape_remains_read_only_compatible",
+      "canonical_cases": 1,
+      "disposition": "RESTORED_IN_BOTH_EXISTING_V3_SHAPES",
+      "current_tests": [
+        {
+          "path": "tests/storage/test_backup_v3_compatibility.py",
+          "function": "test_v3_shapes_restore_exact_same_saved_source",
+          "baseline_blob": "4069f29a4e66911ffc28b0642037cea81b22d832"
+        }
+      ],
+      "current_source_owners": [
+        "src/carr_library/library_backup.py::verify_backup",
+        "src/carr_library/library_backup.py::restore_backup"
+      ],
+      "reason": "Existing2 V3 shape cases now verify read-only before restore and recheck original backup bytes/mtime afterward, retaining exact original reading source/bookmark/resume checks."
+    }
+  ],
+  "restored_components": {
+    "explicit_text_encoding": "104bf86e1ea5900c316758ae19c60b9d15d64905",
+    "canonical_presentation": "e0ba9cfe516eaa2533db752e7db28b94bff7d5b8",
+    "music_key_and_hopeful": "55b3a646ed2df646bdd63d5141143000d9536ea5",
+    "public_backup_verification": "this component;7 new cases; existing successful and twoV3 cases strengthened without count change",
+    "midi_tempo_program_note_assertions": "this component; existing actual-score case strengthened without count change"
+  },
+  "new_case_counter": {
+    "tests.storage.test_backup_recovery_and_verify": {
+      "test_public_verification_rejects_corruption_and_unexpected_files_without_mutation": 7
+    }
+  },
+  "current_modified_module_totals": {
+    "tests.audio.test_music": 20,
+    "tests.storage.test_backup_recovery_and_verify": 20,
+    "tests.storage.test_backup_v3_compatibility": 9
+  },
+  "new_source_cases": 7,
+  "new_installed_cases": 7,
+  "open_followup": [
+    {
+      "topic": "EML Subject in conversion receipt",
+      "status": "ROOT_REQUESTED_BOUNDED_CURRENT_PROTOCOL_RECONCILIATION",
+      "reason": "Reader metadata survives but current derivative receipt omits it. Inspect actual ingest/title consumer and restore bounded typed Subject if user-visible; do not label this an intentional loss."
+    }
+  ],
+  "runtime": "NOT_RUN",
+  "limits": [
+    "No Python compilation or local runtime available during this audit; source/test name checks are not collection or execution.",
+    "Current Calibre six exact suffixes, DjVu, optional native converters and model workers retain their separate exact frozen qualification scope.",
+    "HTML image-alt and formula placeholder policy differs explicitly; original bytes and omission warnings remain, with no active content or invented quote source.",
+    "The optional historical named SFX generator and mutable AudioRuntime inference flags are retired APIs, not falsely mapped to identical current features."
+  ]
+}

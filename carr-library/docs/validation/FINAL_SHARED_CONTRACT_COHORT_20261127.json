@@ -1,0 +1,77 @@
+{
+  "schema": 1,
+  "component": "final-shared-contract-and-observed-menu-cohort",
+  "source_parent": "8e63256d4da4a6e12a66714b83a89d6643bb5abf",
+  "canonical_source": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+  "source_components": {
+    "public_backup_and_music_assertions": "4970b8f7be3f4c9b5bf4b4f1993a0719fb9785bc",
+    "canonical_worker_metadata_backup": "fbccad5304c925397bdf0e8d0ba749f80eb3984a",
+    "ocr_keyboard_consent_choices": "4a028ec4a5c8af80a73fbb8570b7c216ed4b3c0a",
+    "email_subject_receipt": "9cd60ad11dc1301a8b307db9e362dd9f1452806e",
+    "observed_native_menu": "8f036c08cb45597812a006fab57d09fbb9736920",
+    "ci_observed_fixture": "8feb19893acc97a94a6bdeafa4c15459117239a4",
+    "source_wheel_receipt_consumer": "480f8ecee5e7eee108245391fb617cf8eaa7bfa5"
+  },
+  "actual_prior_receipts": {
+    "assistant_transcription": {
+      "source": "4b5e06ae2386b74bbee45d2d8b750831a248a065",
+      "run": 46045959807,
+      "source_cases": 684,
+      "installed_cases": 684,
+      "native_checks": 30,
+      "status": "PASS",
+      "current_691": "NOT_QUALIFIED_BY_THIS_PRIOR_RUN"
+    },
+    "sapi": {
+      "source": "c71587eefc0df0ad69dd9d719c90c646b2a7a426",
+      "run": 46050975677,
+      "source_cases": 114,
+      "installed_cases": 114,
+      "native_checks": 38,
+      "status": "PASS",
+      "owned_descendant_shutdown": "ACTUAL_FILE_RELEASE_OBSERVED"
+    },
+    "prior_focus": {
+      "source": {
+        "passed": 650,
+        "failed": 2
+      },
+      "run": 46051953851,
+      "status": "FAIL",
+      "installed": {
+        "passed": 650,
+        "failed": 2
+      },
+      "repair": "Exact two observed desktop menu failures repaired by the listed source component; full66 action/shortcut/mnemonic tests retained."
+    }
+  },
+  "protected_current": {
+    "source_cases": 5521,
+    "installed_cases": 5193,
+    "focused_cases_each": 714,
+    "selection_policy": "Complete exact module counters; no partial three-case installed music selector remains beside the complete20-case module.",
+    "public_backup_new_cases": 7,
+    "public_backup_complete_module": 20,
+    "music_complete_module": 20,
+    "canonical_worker_new_cases": 13,
+    "canonical_choice_new_cases": 4,
+    "email_new_cases": 16
+  },
+  "canonical_only_preservation": {
+    "native_attribution_probe": "Exact canonical windows_academic_smoke.py appended visible/named processor-attribution check; current WorkspaceFrame already exposes that control.",
+    "ci_entrypoint": "Exact canonical additional source/citation/translation guidance retained.",
+    "reuse_ledger": "Canonical adoption history retained with a current-owner and historical-result note.",
+    "obsolete_dialog_delegate": "Do not reintroduce NativeDialogs.approve_export importing removed confirm_export_destination; reviewed current callers use approve_export_destination directly, with four restored current handler cases."
+  },
+  "remaining_native_repairs": {
+    "office": "Actual6/7; XLS produced hidden-layout declaration requiring bounded native XML census. No reader exception change in this cohort.",
+    "chm": "Actual native3/4; exact two public-member forensic diagnostics retained. Strict token and reader guards remain unchanged pending narrow parser repair."
+  },
+  "qualification": {
+    "current_composed_head": "NOT_RUN",
+    "historical_results_transferred": false,
+    "actual_models": "NOT_RUN",
+    "manual_nvda": "NOT_RUN",
+    "public_distribution": "NOT_AUTHORIZED_OR_CLAIMED"
+  }
+}

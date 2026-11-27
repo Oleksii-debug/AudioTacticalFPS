@@ -320,7 +320,10 @@ def test_local_only(request):
             (root / 'descendant.py').write_text(
                 "from pathlib import Path\nimport os,sys,time\n"
                 "held = open(sys.argv[1], 'wb')\n"
-                "Path(sys.argv[2]).write_text(str(os.getpid()), encoding='ascii')\n"
+                "marker = Path(sys.argv[2])\n"
+                "pending = marker.with_suffix('.ready')\n"
+                "pending.write_text(str(os.getpid()), encoding='ascii')\n"
+                "os.replace(pending, marker)\n"
                 "while True: time.sleep(1)\n", encoding='utf-8')
             (root / 'test_timeout.py').write_text(
                 "from pathlib import Path\nimport subprocess,sys,time\n"
@@ -334,24 +337,31 @@ def test_local_only(request):
             def observe_started_descendant(*args, **kwargs):
                 process = original_start(*args, **kwargs)
                 processes.append(process)
-                if Path(args[0][-1]).name != 'test_timeout.py':
+                try:
+                    if Path(args[0][-1]).name != 'test_timeout.py':
+                        return process
+                    deadline = time.monotonic() + 30
+                    while not marker.exists():
+                        self.assertIsNone(process.poll(), 'Synthetic pytest exited before starting its child')
+                        self.assertLess(time.monotonic(), deadline, 'Synthetic child did not start')
+                        time.sleep(.02)
+                    pid = int(marker.read_text(encoding='ascii'))
+                    observed['pid'] = pid
+                    if kernel is not None:
+                        handle = kernel.OpenProcess(0x100001, False, pid)  # SYNCHRONIZE | TERMINATE
+                        self.assertTrue(handle, ctypes.get_last_error())
+                        observed['handle'] = handle
+                        self.assertEqual(kernel.WaitForSingleObject(handle, 0), 258)  # alive
+                    else:
+                        self.assertEqual(os.getpgid(process.pid), process.pid)
+                        self.assertEqual(os.getpgid(pid), process.pid)
                     return process
-                deadline = time.monotonic() + 30
-                while not marker.exists():
-                    self.assertIsNone(process.poll(), 'Synthetic pytest exited before starting its child')
-                    self.assertLess(time.monotonic(), deadline, 'Synthetic child did not start')
-                    time.sleep(.02)
-                pid = int(marker.read_text(encoding='ascii'))
-                observed['pid'] = pid
-                if kernel is not None:
-                    handle = kernel.OpenProcess(0x100001, False, pid)  # SYNCHRONIZE | TERMINATE
-                    self.assertTrue(handle, ctypes.get_last_error())
-                    observed['handle'] = handle
-                    self.assertEqual(kernel.WaitForSingleObject(handle, 0), 258)  # alive
-                else:
-                    self.assertEqual(os.getpgid(process.pid), process.pid)
-                    self.assertEqual(os.getpgid(pid), process.pid)
-                return process
+                except BaseException:
+                    # Until this wrapper returns, it owns the real process.
+                    # Settle the same complete family before private cleanup.
+                    runner._settle_test_process(process)
+                    raise
+
 
             def tracked_temporary(*args, **kwargs):
                 directory = original_temp(*args, dir=root, **kwargs)
@@ -360,13 +370,14 @@ def test_local_only(request):
 
             real_run_suite = runner.run_suite
 
-            def with_test_deadline(suite):
+            def with_test_deadline(suite, *, allow_loopback=False):
+                self.assertFalse(allow_loopback)
                 if suite == 'test_timeout.py':
                     # Startup is acknowledged by the real descendant first;
                     # only the wait budget is shortened, never termination.
                     with mock.patch.object(runner, 'SUITE_TIMEOUT_SECONDS', .15):
-                        return real_run_suite(suite)
-                return real_run_suite(suite)
+                        return real_run_suite(suite, allow_loopback=allow_loopback)
+                return real_run_suite(suite, allow_loopback=allow_loopback)
 
             output = io.StringIO()
             try:

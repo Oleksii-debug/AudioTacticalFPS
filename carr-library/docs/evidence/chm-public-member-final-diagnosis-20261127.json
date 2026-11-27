@@ -1,0 +1,188 @@
+{
+  "schema": 1,
+  "kind": "exact-public-chm-read-only-forensics",
+  "status": "DIAGNOSTIC_COMPLETE",
+  "source_commit": "6b3125c33efe03566419055e31d39a90d9359929",
+  "source_tree": "6c38c3ca86620eed59e0a461e2405d774fa9d313",
+  "run": 46053526155,
+  "job": 140690435657,
+  "artifact": {
+    "id": 15224489353,
+    "bytes": 6598,
+    "sha256": "9be94ddcacea231351d79487c5d42f021ccf8199faef17d89de6bd77215c7d71"
+  },
+  "publisher": {
+    "bytes": 2003456,
+    "sha256": "6dc822569e777d9a3ecd5ffcbc22b55600af87e6c5d9810a64e8566cf5a4af9f",
+    "url": "https://github.com/ip7z/7zip/releases/download/26.06/7z2606-x64.msi",
+    "version": "26.06"
+  },
+  "lxml": {
+    "libxml": [
+      2,
+      14,
+      6
+    ],
+    "version": [
+      6,
+      1,
+      3,
+      0
+    ],
+    "wheel_sha256": "527195c188d7d0af748cd48d220ab8cdc5cb99be3d49ac4d9be7324d8abf9bc0"
+  },
+  "host_parser": {
+    "path": "/usr/bin/7z",
+    "scope": "Host diagnostic archive parser only; no extracted program is executed.",
+    "sha256": "60fc00b4e1ed37668972c51f03426973d8006db3c7224075878f6d66196d7c27",
+    "version_excerpt": "\n7-Zip 23.01 (x64) : Copyright (c) 1999-2023 Igor Pavlov : 2023-06-20\n 64-bit locale=C.UTF-8 Threads:4 OPEN_MAX:65536\n\n\nLibs:\n 0 : 23.01 : /usr/lib/7zip/7z.so\n 1 : 23.01 : /usr/lib/7zip/Codecs/Rar.so\n\nFormats:\n 0 C...F..........c.a.m+.. w...0  7z       7z            7 z BC AF ' 1C\n 0  ......................  APFS     apfs img      offset=32 N X S B 00\n 0  ......................  APM      apm           E R\n 0  ......................  Ar       ar a deb udeb lib ! < a r c h > 0A\n 0  ......................  Arj      arj           ` EA\n 0  K.....O.....X.........  Base64   b64           \n 0  ......O...............  COFF     obj           \n 0  ...F..................  Cab      cab           M S C F 00 00 00 00\n 0  ......................  Chm      chm chi chq chw I T S F 03 00 00 00 ` 00 00 00\n 0  ",
+    "version_output_sha256": "75e5fe45b7f7aae67d558377af999ceb25a12af6834a43ed468430f089c20c32"
+  },
+  "unchanged_product_source_sha256": {
+    "src/carr_library/conversion/legacy.py": "f2bbe7058f6c267d00930d3910b01067a4e7ae12454f72313b6d1b59384ff826",
+    "src/carr_library/conversion/models.py": "731955037700041573bea0b428dffee6ff02c6587389c6a184828a914a0959ca",
+    "src/carr_library/extract/document_formats_text.py": "0e81fa6b2c22e8ff1745fc474484cf879fdf6b1c3fcd69d804f1bf78d1e78d7f"
+  },
+  "temporary_payload_removed": true,
+  "findings": [
+    {
+      "member": "cmdline/switches/index.htm",
+      "bytes": 7746,
+      "sha256": "38308f9d9bbdf73d55b19facdd13f4fe97e30a89141aa08aabe9c7ae0de064e8",
+      "status": "REFUSED",
+      "reason": "CHM HTML recovery changed the ordered visible text.",
+      "ordered_tokens": {
+        "after_count": 555,
+        "after_window": [
+          "Command",
+          "Line",
+          "Switches",
+          "Syntax",
+          "<switch>::=",
+          "-<switch_characters>[<option>]",
+          "On",
+          "the",
+          "command",
+          "line,",
+          "a",
+          "switch",
+          "consists"
+        ],
+        "before_count": 555,
+        "before_window": [
+          "Command",
+          "Line",
+          "Switches",
+          "Syntax",
+          "<switch;>::=",
+          "-<switch_characters>[<option>]",
+          "On",
+          "the",
+          "command",
+          "line,",
+          "a",
+          "switch",
+          "consists"
+        ],
+        "first_difference": 4
+      },
+      "raw_syntax": "&ltswitch>::= -&lt;switch_characters>[&lt;option>]",
+      "serialized_syntax": "&lt;switch&gt;::= -&lt;switch_characters&gt;[&lt;option&gt;]",
+      "interpretation": "The current stdlib-based inert reader appends a semicolon to the entity callback name ltswitch before unescape, introducing a literal semicolon. libxml serialization preserves the HTML entity prefix interpretation. The current ordered-word guard correctly refuses their disagreement."
+    },
+    {
+      "member": "fm/plugins/7-zip/add.htm",
+      "bytes": 16035,
+      "sha256": "b6bff175f02f13a83cd585b3b959afa634b85bec8a082d6331ac3663cce41fb0",
+      "status": "REFUSED",
+      "reason": "HTML element nesting is malformed.",
+      "ordered_tokens": {
+        "after_count": 1076,
+        "after_window": [
+          "will",
+          "be",
+          "used",
+          "for",
+          "decompression."
+        ],
+        "before_count": 1827,
+        "before_window": [
+          "will",
+          "be",
+          "used",
+          "for",
+          "decompression.",
+          "Split",
+          "to",
+          "volumes",
+          "{Size}[b",
+          "|",
+          "k",
+          "|",
+          "m",
+          "|"
+        ],
+        "first_difference": 1076
+      },
+      "strict_failure_position": [
+        178,
+        2
+      ],
+      "strict_open_elements": [
+        "html",
+        "body",
+        "dl"
+      ],
+      "definition_tag_trace": [
+        {
+          "line": 162,
+          "tags": [
+            "</dd>"
+          ]
+        },
+        {
+          "line": 164,
+          "tags": [
+            "<dt>",
+            "</dt>"
+          ]
+        },
+        {
+          "line": 165,
+          "tags": [
+            "<dd>"
+          ]
+        },
+        {
+          "line": 166,
+          "tags": [
+            "<dd>"
+          ]
+        },
+        {
+          "line": 176,
+          "tags": [
+            "</dd>"
+          ]
+        },
+        {
+          "line": 178,
+          "tags": [
+            "</dd>",
+            "<dt>",
+            "</dt>"
+          ]
+        },
+        {
+          "line": 179,
+          "tags": [
+            "<dd>"
+          ]
+        }
+      ],
+      "interpretation": "Recovered serialization has consecutive dd openings at lines165/166 and closures176/178. The existing inert reader applies optional same-tag closure, so the second serialized close at178 is unmatched. The failure is the final strict parse, not a prepass orphan-dd refusal."
+    }
+  ],
+  "qualification": "Read-only Ubuntu diagnostic of two hash-bound public help members. No Windows/native/product/release PASS, no product parser modifications and no weakened strict parsing or ordered-word comparison.",
+  "next_step": "Product owner to implement and test a narrow CHM reading-copy normalization, then rerun the complete exact Windows publisher corpus. Candidate semantics have not been executed by this diagnostic."
+}

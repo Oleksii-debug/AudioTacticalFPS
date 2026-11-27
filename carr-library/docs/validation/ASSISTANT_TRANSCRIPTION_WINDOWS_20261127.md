@@ -1,0 +1,13 @@
+# Assistant supplied transcription: measured Windows protocol acceptance
+
+The frozen candidate `4b5e06ae2386b74bbee45d2d8b750831a248a065` (tree `3f710bf3bea9b8c153cecc24240729edf05d39f8`) passed **684 source cases, 684 isolated installed cases and all 30 native checks** in [run 46045959807](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46045959807), job `140665188402`.
+
+The full function counters match the committed oracle exactly: 612 retained cases and 72 bridge-specific cases in each population. Native labels, all seven metrics and every required field match. All twelve installed module digests were independently compared with this exact source, and the synthetic protocol fixture digest was independently recomputed as `8fb51637e1d6aba3c2a54374f95bf5ace5844d4dbe2da0fdcf00fa02eface2ac`. Actual outbound blocking, owned rule removal and firewall profile restoration passed before the aggregate receipt.
+
+Artifact `15223524794` is 494814 bytes with `sha256:f15405dc498b4a455df1a9b913e7231ef395220a83149c954b3bd8f05f0563ad`. The native flow began with no selected profile and refused Preview without creating a job. An explicitly selected current profile enabled passive Preview; changing that profile revoked Run. Explicit Run then used the existing transcription service and an actual isolated synthetic child, retained its accepted completion, and published all four transcript formats plus provenance without changing the original input.
+
+A second actual protocol child exercised Pause and owned cleanup. An uncertain dispatched operation required new review instead of automatic replay. Complete backup, restore and rebackup retained the assistant-to-transcription binding after external sources, runtime and output paths were removed; restored data did not recover scope approval or permission to launch the old runtime. Every assistant worker settled before the final receipt.
+
+The earlier `628165d` run remains a failure with 684/684 passing regression cases and 7/30 native checks. Its Choice helper incorrectly treated event propagation return as handling success. The successor retained actual selection and profile-revocation assertions while correcting that observation.
+
+This is measured native UI, process protocol, identity and recovery evidence using a public synthetic fixture. **Actual ASR model inference and language quality were not run or qualified.** NVDA and physical audio were not run. The later 691-case shared regression population and subsequent root changes require their own execution. The JSON companion preserves complete phase receipts and artifact metadata.

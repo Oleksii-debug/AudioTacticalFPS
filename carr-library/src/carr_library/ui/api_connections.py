@@ -537,4 +537,4 @@ def install_api_connection_actions(frame):
     menu = wx.Menu()
     item = menu.Append(wx.ID_ANY, 'AI and API &connections...')
     frame.Bind(wx.EVT_MENU, lambda event: show_api_connections(frame), item)
-    frame.menu_bar.Append(menu, 'S&ettings')
+    frame.menu_bar.Append(menu, 'Sett&ings')

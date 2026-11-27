@@ -83,7 +83,10 @@ def test_verify_hashes_sidecars_without_creating_duplicate_copies(recovery_libra
     app, *_ = recovery_library
     backup = tmp_path / 'backup'
     digest = create_backup(app, backup)
-    before = {p.relative_to(backup): p.read_bytes() for p in backup.rglob('*') if p.is_file()}
+    before = {p.relative_to(backup): (p.read_bytes(), p.stat().st_mtime_ns)
+              for p in backup.rglob('*') if p.is_file()}
+    before_parent = {p.name for p in tmp_path.iterdir()}
+    expected_manifest = json.loads((backup / 'manifest.json').read_bytes())
     copied = library_backup._copy_sidecar
     targets = []
     def inspect(root, relative, target, identity, cancelled):
@@ -93,7 +96,10 @@ def test_verify_hashes_sidecars_without_creating_duplicate_copies(recovery_libra
     monkeypatch.setattr(library_backup, '_copy_sidecar', inspect)
     manifest = verify_backup(backup, digest)
     assert len(targets) == len(manifest['sidecars']) == 3
-    assert {p.relative_to(backup): p.read_bytes() for p in backup.rglob('*') if p.is_file()} == before
+    assert manifest == expected_manifest
+    assert {p.relative_to(backup): (p.read_bytes(), p.stat().st_mtime_ns)
+            for p in backup.rglob('*') if p.is_file()} == before
+    assert {p.name for p in tmp_path.iterdir()} == before_parent
 
 
 @pytest.mark.parametrize('name', ['evidence-drafts.json', 'keyboard-shortcuts.json', 'reading-state.json'])
@@ -199,3 +205,47 @@ def test_resigned_saved_reading_reference_requires_exact_historical_source(tmp_p
     with pytest.raises(ValueError, match='exact saved source'):
         restore_backup(backup, tmp_path / 'restored', digest)
     assert not (tmp_path / 'restored').exists()
+
+
+@pytest.mark.parametrize('damage', [
+    'database', 'asset', 'extra_asset', 'missing_asset', 'extra_file',
+    'reading_bytes', 'missing_reading',
+])
+def test_public_verification_rejects_corruption_and_unexpected_files_without_mutation(
+        recovery_library, tmp_path, damage):
+    app, *_ = recovery_library
+    folder = tmp_path / 'backup'
+    digest = create_backup(app, folder)
+    if damage == 'database':
+        path = folder / 'library.sqlite'
+        raw = bytearray(path.read_bytes())
+        raw[-1] ^= 1
+        path.write_bytes(raw)
+    elif damage in ('asset', 'missing_asset'):
+        path = next((folder / 'originals').iterdir())
+        if damage == 'asset':
+            path.write_bytes(b'x' * path.stat().st_size)
+        else:
+            path.unlink()
+    elif damage == 'extra_asset':
+        (folder / 'originals' / 'unregistered.txt').write_bytes(b'Unexpected original')
+    elif damage == 'extra_file':
+        (folder / 'unregistered.txt').write_bytes(b'Unexpected sidecar')
+    else:
+        path = folder / 'sidecars' / 'reading-state.json'
+        if damage == 'reading_bytes':
+            raw = bytearray(path.read_bytes())
+            raw[-1] ^= 1
+            path.write_bytes(raw)
+        else:
+            path.unlink()
+    before = {p.relative_to(folder): (p.read_bytes(), p.stat().st_mtime_ns)
+              for p in folder.rglob('*') if p.is_file()}
+    before_names = {p.relative_to(folder) for p in folder.rglob('*')}
+    before_parent = {p.name for p in tmp_path.iterdir()}
+    with pytest.raises(ValueError):
+        verify_backup(folder, digest)
+    assert {p.relative_to(folder): (p.read_bytes(), p.stat().st_mtime_ns)
+            for p in folder.rglob('*') if p.is_file()} == before
+    assert {p.relative_to(folder) for p in folder.rglob('*')} == before_names
+    assert {p.name for p in tmp_path.iterdir()} == before_parent

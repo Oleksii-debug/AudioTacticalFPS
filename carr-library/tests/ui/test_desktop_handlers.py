@@ -201,7 +201,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     assert labels.count('Reading conversion formats and limits...') == 1
     assert labels.count('Local engine &profiles...') == 1
     assert labels.count('Tasks and &resources...') == 1
-    assert labels.count('Import earlier reading-copy history...') == 1
+    assert labels.count('Import earlier reading history or reader session...') == 1
     assert labels.count('Open retained reading-copy history...') == 1
     assert {spec.command_id for spec, _ in value._pending_keyboard_commands} >= {
         'audio.recording', 'translation.text', 'conversion.documents', 'conversion.formats',
@@ -215,7 +215,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
                             'Convert documents to reading text...',
                             'Reading conversion formats and limits...',
                             'Local engine &profiles...', 'Tasks and &resources...',
-                            'Import earlier reading-copy history...',
+                            'Import earlier reading history or reader session...',
                             'Open retained reading-copy history...'}
     assert 'Academic library...\tCtrl+Shift+B' in labels
     assert 'DOI lookup and open-access sources...' in labels
@@ -406,6 +406,8 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
         menu_labels = [value.menu_bar.GetMenuLabel(i)
                        for i in range(value.menu_bar.GetMenuCount())]
         assert sum(label.replace('&', '') == 'Tools' for label in menu_labels) == 1
+        assert menu_labels.count('&Edit') == 1
+        assert menu_labels.count('Sett&ings') == 1
         assert 'Documents' not in [label.replace('&', '') for label in menu_labels]
         mnemonics = [label[label.index('&') + 1].casefold()
                      for label in menu_labels if '&' in label]
