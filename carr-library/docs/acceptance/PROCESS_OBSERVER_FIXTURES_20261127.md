@@ -112,3 +112,36 @@ They change test fixtures only, received independent source review and were
 **NOT_RUN at composition time**. Product process ownership and deadlines are
 unchanged. The independently merged canonical Save All changes are recorded
 separately in the incremental canonical resolution.
+
+## Native spelling probe after strict Windows source success
+
+The exact `18a61e7ec6601119f9a4ffa7228274e836856ca4`
+[Windows job 140647931643](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46040854213/job/140647931643)
+passed all 123 early required source suites: 2,854 passed, zero failures and
+zero skips. Its subsequent installed native spelling probe handled the reading
+editor's Review spelling button, then reached the existing 45-second deadline
+without any successful review-dialog checks. The final generic assertion hid
+the stored error and the editor's status. This is a failed native gate; those
+early suites do not include the separate Save All suite.
+
+Source review found that the probe assigned a raw temporary-directory path to
+its frame's selected library, while NarrationStore resolves that root. The
+actual LibraryApp also resolves its selected root. Windows can expose short
+temporary path spellings, so the probe's inconsistent identities can fail the
+existing strict nested-editor guard before the factory opens. The old log does
+not print the compared paths or status: it does **not** prove that an 8.3 alias
+caused that particular run.
+
+Candidate `9a636480cab914ad9dc7e70a58cdff1c60c35644` resolves only the probe's
+owned root after creating it, matching the actual application's contract.
+It also reports bounded ASCII phase, stored error, editor status and factory
+entry/failure evidence, fails immediately if the action returns without
+opening the required dialog, and re-raises the original stored exception.
+The real editor, spelling backend, selected emoji/CRLF source, shared operation
+session, original-byte checks, apply/Undo/cancel assertions and 45/60-second
+deadlines remain intact. No application source, library identity guard,
+dependency, runtime payload or product timeout changes.
+
+The native probe must pass on the composed source. This correction is
+**NOT_RUN at preparation time** and does not establish successful Windows
+spelling, language quality or NVDA acceptance.
