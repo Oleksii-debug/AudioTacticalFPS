@@ -7,7 +7,8 @@ from ..audio.models import AudioCancelled
 from ..audio.recording import RecordingOptions, RecordingService
 from ..speech.player import WavePlayer
 from ..speech.progress_speech import play_when_quiet
-from .operation_progress import OperationProgress
+from ..progress import ProgressState, bind_progress
+from .progress_panel import NativeProgressPanel
 
 
 def show_recording(frame, *, on_selected=None):
@@ -42,11 +43,6 @@ def show_recording(frame, *, on_selected=None):
     details = field('Recording result and retained input path', wx.TextCtrl,
                     value='', style=wx.TE_MULTILINE | wx.TE_READONLY)
     status = field('Recording status', wx.TextCtrl, value='No microphone selected.', style=wx.TE_READONLY)
-    gauge = wx.Gauge(dialog, range=100)
-    gauge.SetName('Recording operation progress')
-    progress_label = wx.StaticText(dialog, label='Ready')
-    layout.Add(gauge, 0, wx.EXPAND | wx.ALL, 6)
-    layout.Add(progress_label, 0, wx.EXPAND | wx.ALL, 6)
     buttons = {}
     for row in ((('refresh', 'Refresh microphones'), ('start', 'Start recording'),
                  ('stop', 'Stop and save recording'), ('cancel', 'Cancel unfinished recording')),
@@ -63,8 +59,24 @@ def show_recording(frame, *, on_selected=None):
     dialog.SetEscapeId(buttons['close'].GetId())
     dialog.status = status
     dialog.report = lambda message: status.SetValue(message)
-    progress = OperationProgress(dialog, gauge, progress_label, wx_module=wx)
-    parent_progress = getattr(frame, 'operation_progress', None)
+    dialog.host, dialog.layout, dialog.working = dialog, layout, False
+    parent_progress = getattr(frame, 'progress_panel', None)
+    dialog.progress_speech_provider = None
+    selected_provider = getattr(parent_progress, 'speech_provider', None)
+    if callable(getattr(selected_provider, 'copy_selection', None)):
+        try:
+            dialog.progress_speech_provider = selected_provider.copy_selection()
+        except (ValueError, OSError, RuntimeError) as exc:
+            status.SetValue('Select a progress voice again: ' + str(exc))
+    progress = NativeProgressPanel(dialog)
+    dialog.progress_panel = dialog.operation_progress = progress
+    if parent_progress is not None:
+        progress.hub = parent_progress.hub
+    layout.Detach(progress.panel)
+    layout.Insert(layout.GetItemCount() - 2, progress.panel, 0, wx.EXPAND | wx.ALL, 6)
+    progress.gauge.SetName('Recording operation progress')
+    progress.text.SetName('Recording current progress and phase')
+    progress.query_button.SetName('Query recording progress')
     controllers = tuple(item for item in (progress, parent_progress) if item is not None)
     service = RecordingService(library.root)
     player = WavePlayer()
@@ -77,6 +89,7 @@ def show_recording(frame, *, on_selected=None):
     active_future = None
 
     def controls():
+        dialog.working = busy
         for control in (microphone, title, minutes, sample_rate, channels, saved):
             control.Enable(not busy)
         buttons['refresh'].Enable(not busy)
@@ -95,6 +108,7 @@ def show_recording(frame, *, on_selected=None):
                 hold.close()
             except Exception as exc:
                 progress.reporting_error = 'Progress audio release needs attention: ' + str(exc)
+                progress.notice = progress.reporting_error
 
     def release_when_stopped():
         # An exceptional modal exit still cancels the worker. Keep the parent
@@ -125,22 +139,46 @@ def show_recording(frame, *, on_selected=None):
 
     def run(operation, complete, phase, *, prepared=False, measured=False):
         nonlocal busy, active_future
-        if busy and not prepared:
+        if not alive or busy and not prepared:
             return
         busy = True
         controls()
-        def observe(method, *args, **kwargs):
+        observer_error = None
+
+        def observe(callback):
+            nonlocal observer_error
             try:
-                return getattr(progress, method)(*args, **kwargs)
+                return callback()
             except Exception as exc:
+                observer_error = exc
                 progress.reporting_error = 'Recording progress feedback is unavailable: ' + str(exc)
-        token = observe('start', phase)
+                progress.notice = progress.reporting_error
+
+        task = observe(lambda: progress.begin(phase, unit='milliseconds' if measured else 'units'))
+
         def measured_progress(seconds):
-            if token is not None:
-                observe('update', seconds, None, f'Recorded {seconds:.1f} seconds', token=token)
+            if (task is not None and not cancelled.is_set()
+                    and task.snapshot().state == ProgressState.RUNNING):
+                # The producer reports actual captured frames as seconds. The
+                # common contract uses integral units and keeps unknown totals.
+                observe(lambda: task.update(completed=int(seconds * 1000),
+                    phase=f'Recorded {seconds:.1f} seconds'))
+
+        def execute():
+            if task is None:
+                return operation(measured_progress) if measured else operation()
+            with bind_progress(task):
+                return operation(measured_progress) if measured else operation()
+
+        def finish_progress(outcome, message):
+            if observer_error is None:
+                observe(lambda: progress.finish(task, outcome, message))
+            if observer_error is not None and task is not None:
+                observe(lambda: progress.reporting_unavailable(task, outcome, progress.reporting_error))
+
         status.SetValue(phase)
         try:
-            future = executor.submit(lambda: operation(measured_progress)) if measured else executor.submit(operation)
+            future = executor.submit(execute)
             active_future = future
         except Exception:
             busy = False
@@ -158,15 +196,12 @@ def show_recording(frame, *, on_selected=None):
                 try:
                     result = future.result()
                     complete(result)
-                    if token is not None:
-                        observe('succeed', phase + ': verified complete', token=token)
+                    finish_progress('succeeded', phase + ': verified complete')
                 except (AudioCancelled, InterruptedError):
-                    if token is not None:
-                        observe('cancel', 'Recording operation cancelled; unfinished audio discarded.', token=token)
+                    finish_progress('cancelled', 'Recording operation cancelled; unfinished audio discarded.')
                     status.SetValue('Cancelled. Previous saved recordings are preserved.')
                 except Exception as exc:
-                    if token is not None:
-                        observe('fail', 'Recording operation failed', token=token)
+                    finish_progress('failed', 'Recording operation failed')
                     status.SetValue(str(exc))
                 controls()
                 if closing:
@@ -343,9 +378,12 @@ def show_recording(frame, *, on_selected=None):
 
 def install_recording_actions(frame):
     import wx
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
     menu = next((frame.menu_bar.GetMenu(index) for index in range(frame.menu_bar.GetMenuCount())
                  if frame.menu_bar.GetMenuLabel(index).replace('&', '').casefold() == 'audio studio'), None)
     if menu is None:
         raise RuntimeError('Install the shared Audio Studio menu before recording actions.')
     item = menu.Append(wx.ID_ANY, 'Record microphone and manage saved inputs...')
     frame.Bind(wx.EVT_MENU, lambda event: show_recording(frame), item)
+    register_menu_command(frame, CommandSpec('audio.record_microphone', 'Record microphone and manage saved inputs'), item)
