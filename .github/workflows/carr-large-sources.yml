@@ -9,6 +9,7 @@ on:
       - carr-library/src/carr_library/backup_capacity.py
       - carr-library/src/carr_library/library_backup.py
       - carr-library/src/carr_library/pending_backup.py
+      - carr-library/tests/storage/test_pending_backup.py
       - carr-library/src/carr_library/storage/revisions.py
       - carr-library/scripts/large_source_acceptance.py
       - carr-library/src/carr_library/audio/legacy_playlist.py

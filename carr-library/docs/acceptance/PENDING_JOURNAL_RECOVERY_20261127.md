@@ -32,3 +32,13 @@ These are appended to the existing mandatory `tests/storage/test_pending_backup.
 ## Separately observed c55 baseline
 
 The exactc55 Linux fast replay passed [job140610685440](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46029878242/job/140610685440):18source suites/368cases,17installed suites/328cases, and2loopback suites/45cases, all without failures/skips. Typed transcription passed40cases in each source/installed mode; the owned CI runner passed40cases. These results do not qualify this later pending-journal correction or Windows execution.
+
+## First Windows execution and fixture handle closure
+
+The exact `5f18481654277425ab8af170575de978e7a2a69c` installed preflight in [run 46032433858 / job 140619330636](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46032433858/job/140619330636) executed all 45 pending-backup cases. All eight newly added crash-recovery cases passed. The suite reported 38 passed, 7 failed and 0 skipped; the subsequent actual 257 MiB TXT / 129 MiB PDF cycle was skipped because this mandatory gate failed.
+
+All seven failures were existing journal-tampering variants. Their fixture used a SQLite connection context to commit the altered journal but retained the writable connection while invoking the strict restore-copy reader. Windows correctly refused that simultaneous open with `WinError 32`. A Python SQLite connection context manages the transaction and does not close the connection; see [the Python 3.11 context-manager documentation](https://docs.python.org/3.11/library/sqlite3.html#how-to-use-the-connection-context-manager).
+
+The narrow correction wraps the three ordinary SQLite contexts in this test file with `contextlib.closing` while preserving their transaction context. The tamper mutation is committed, then the handle is closed before checksumming and restore. The committed-WAL writer remains open throughout the snapshot, then closes; the restored-row reader also closes. The deliberate abrupt child exit, all expected exceptions, semantic tamper assertions, immutable production reader and all eight crash-recovery cases remain unchanged.
+
+The large-source workflow now watches this exact preflight test path, so the corrected fixture triggers the existing mandatory installed gate and full size matrix. This follow-up changes only test ownership, workflow triggering and this evidence note; application source, package version, dependency pins and build inputs remain byte-identical to `18a61e7ec6601119f9a4ffa7228274e836856ca4`. Execution of the corrected fixture and the previously skipped large-file cycle is still required; no successful cycle is inferred from this source correction.
