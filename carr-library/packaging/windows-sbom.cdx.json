@@ -14,9 +14,9 @@
     ],
     "component": {
       "type": "library",
-      "bom-ref": "universal-research-library-runtime-1@0.2.0.dev1",
+      "bom-ref": "universal-research-library-runtime-1@0.2.0.dev2",
       "name": "universal-research-library-runtime",
-      "version": "0.2.0.dev1",
+      "version": "0.2.0.dev2",
       "properties": [
         {
           "name": "uv:package:is_project_root",
@@ -245,7 +245,7 @@
       "ref": "typing-extensions-10@4.16.0"
     },
     {
-      "ref": "universal-research-library-runtime-1@0.2.0.dev1",
+      "ref": "universal-research-library-runtime-1@0.2.0.dev2",
       "dependsOn": [
         "defusedxml-12@0.7.1",
         "filelock-2@3.29.0",

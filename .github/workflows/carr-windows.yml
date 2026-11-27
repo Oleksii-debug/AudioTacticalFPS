@@ -387,7 +387,10 @@ jobs:
                             'tests/extract/test_ocr_model_store.py',
                             'tests/extract/test_managed_ocr.py',
                             'tests/e2e/test_managed_ocr_import.py',
-                            'tests/extract/test_ocr_languages.py']
+                            'tests/extract/test_ocr_languages.py',
+                            'tests/e2e/test_operations_cli.py',
+                            'tests/e2e/test_transcription_cli.py',
+                            'tests/storage/test_transcription_backup.py']
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:
               raise SystemExit(status)
@@ -480,6 +483,7 @@ jobs:
             'tests/reader/test_saved_topic_query.py',
             'tests/reader/test_evidence_export.py',
             'tests/reader/test_file_export.py',
+            'tests/reader/test_export_no_clobber.py',
             'tests/reader/test_academic_documents.py',
             'tests/reader/test_bibliographic_locators.py',
             'tests/reader/test_binary_file_export.py',

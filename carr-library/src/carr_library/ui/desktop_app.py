@@ -517,11 +517,15 @@ class DesktopFrame(WorkspaceFrame):
         from .operation_progress import install_operation_progress
         from .language_matrix import install_language_actions
         from .translation_dialog import install_translation_actions
+        from .transcription_dialog import install_transcription_actions
+        from .operations_dialog import install_operations_actions
         install_speech_actions(self)
         install_language_actions(self)
         install_studio_actions(self)
         install_assistant_actions(self)
         install_translation_actions(self)
+        install_transcription_actions(self)
+        install_operations_actions(self)
         install_conversion_actions(self)
         install_save_actions(self)
         install_citation_actions(self)
@@ -1079,7 +1083,7 @@ class DesktopFrame(WorkspaceFrame):
             self.report(str(exc))
 
     def backup(self, event):
-        dialog = wx.DirDialog(self, 'Choose a parent folder for a backup of completed libraries; unfinished imports are excluded')
+        dialog = wx.DirDialog(self, 'Choose a parent folder for a complete backup, including unfinished imports')
         try:
             if dialog.ShowModal() != wx.ID_OK:
                 return
@@ -1090,8 +1094,10 @@ class DesktopFrame(WorkspaceFrame):
         destination = parent / ('ResearchLibrary-backup-' + datetime.now().strftime('%Y%m%d-%H%M%S'))
         def done(checksum):
             show_text(self, 'Backup complete', f'Backup folder: {destination}\n\n'
-                'All completed libraries, original files, saved evidence, notes, tags, and searches are included. '
-                'Unfinished imports and their pending reviews are excluded.\n\n'
+                'All libraries, retained original files, saved evidence, notes, tags, searches, reading state, '
+                'and durable application projects are included. Unfinished imports and their retained inputs '
+                'are included so they can be resumed after restoration. External engines, model weights, '
+                'credentials and regenerable audio caches are not copied.\n\n'
                 f'Keep this checksum separately; it is needed to verify a restore:\n{checksum}')
         self.run_job('Backing up all libraries', lambda: self.library.backup(destination), done)
 
@@ -1181,8 +1187,8 @@ class DesktopFrame(WorkspaceFrame):
             'DOCX and EPUB extraction remains unverified. Reading or bookmarking does not approve quotations.\n'
             'The Source menu records or withdraws an independent review of the selected PDF page.\n'
             'For quarantined OCR imports, use Library, Review pending imported page; each page needs explicit independent comparison.\n'
-            'Backups include completed libraries. Unfinished imports and pending reviews are excluded.\n'
-            'Reading positions and bookmarks use their own export and import actions in the Reading menu; keep that export with your library backup.\n'
+            'Backups include all libraries, reading positions, bookmarks, saved projects, unfinished imports and their retained inputs. '
+            'Restoration creates a new folder; external engines and models require a fresh review before transcription resumes.\n'
             'Printed pages are shown only when verified; otherwise physical PDF pages or unpaginated segments are identified.')
 
     def on_close(self, event):

@@ -15,11 +15,13 @@ unchanged until a verified migration; visible application titles use Resonance.
 | Reading and voices | Source-preserving reading derivatives, pronunciation edits, local voice discovery, playback and SAPI5 native COM worker | Real Windows SAPI PCM with outbound network blocked; local Flite rendering; other engine assets require separate qualification |
 | Audio studio | Roles, scenes, explicit voice/position, pauses, procedural score, DSP, chapters, stems, subtitles, verified resume/cache and formats | Real FFmpeg production and Windows restart; 1/3/10-hour streaming fixtures are not equivalent to full-length neural inference |
 | Documents and citations | Isolated bounded conversion, local citeproc-js styles/locales, editable DOCX with citation provenance, opt-in DOI previews | Actual local processor, generated documents and integrity tests; no live Word add-in |
-| Recovery | Manifest-bound backup v4 includes pending import bytes, identities, settings and project state | Real backup/restore and resumed import tests; externally exported audio and OS credential secrets are separate |
-| Keyboard and progress | Configurable menu keys, named native controls, measured or indeterminate progress, optional tones and playback suppression | Automated native/contract tests; human NVDA listening remains required; speech-mode progress is not implemented |
+| Recovery | Manifest-bound backup v4 includes pending import and transcription inputs, transcript revisions, settings and project state; restore revokes external ASR execution trust | Real backup/restore and resumed-job tests; externally exported audio, external engines/weights and OS credential secrets are separate |
+| Keyboard and progress | Configurable menu keys, named native controls, measured or indeterminate progress, Off/Beep/Speech/Beep+Speech, throttling and playback/recording suppression | Canonical local SAPI adapter, bounded background speech and native-control tests; human NVDA listening remains required |
 | Language inventory | Exact canonical 135 entries, source audit and searchable capability matrix | Resource inventory is separate from acoustic qualification; no claim of 135 working voices |
 | Assistant and providers | Typed scoped tools, durable jobs, local-only default, protected credential references and per-request consent/budget | Local and synthetic provider tests; no paid provider call was made during implementation |
 | Translation | Optional Google Basic v2 selected-text derivatives, explicit supported-language query, consent, chunk receipts/resume and new exports | Synthetic transport with real gateway/ledger/reading objects; live API, translation quality, Advanced v3 and local model inference are not qualified |
+| Transcription | Existing local Python/worker/model inspection and explicit trust, isolated supplied-worker protocol, retained audio, durable jobs, pause/cancel/resume, transcript edits and TXT/SRT/VTT/JSON | Actual subprocess/file-protocol tests use a synthetic peer; supplied private worker review is separate. No model download, real acoustic accuracy or language qualification is inferred |
+| Shared operations | Recovery view over canonical import/assistant/translation/studio/ASR checkpoints, explicit resource policy and native crash-released admission | Actual multiprocess contention/crash checks; cooperative declarations are not an OS sandbox or measured CPU/GPU/RAM usage |
 | Delivery preparation | Exact-source wheel checks, pinned dependency/SBOM closure, parent-manifest binding, strict paths and sealed runtime files | Source/packaging tests; checksum integrity is not a publisher signature |
 | Private integration boundary | Separate versioned entitlement/update protocols and preservation of user-data operations | 45 synthetic boundary tests; no verifier, authority, automatic renewal, production trust or updater is enabled |
 
@@ -47,12 +49,15 @@ The following cannot be labelled DONE by passing the current core tests:
 - Human Windows 11/NVDA and listening review. Automated Windows Server native
   execution is useful evidence, but does not substitute for that review.
 
-The supplied Whisper Transcribe V4.3 implementation has been received and
-statically reviewed; transcription is part of the approved platform scope.
-The current library/audio preview leaves its integration, real execution and
-qualification pending. The existing worker must be corrected and adapted through
-shared jobs and an isolated reviewed engine pack; no competing ASR stack or
-unverified runtime is bundled. See [the source review](TRANSCRIPTION_INTEGRATION_REVIEW.md).
+The supplied Whisper Transcribe V4.3 implementation has been received, reviewed
+and privately corrected. The platform now invokes its versioned file protocol
+through the shared durable-state, bounded-process and resource services. The
+native workstation and CLI select the owner's existing local installation; no
+worker source, weights or virtual environment is copied into the public package.
+Real acoustic inference with the owner's model, Windows 11/NVDA listening and
+an exact redistributable ASR runtime/rights profile remain unqualified. See
+[the source review](TRANSCRIPTION_INTEGRATION_REVIEW.md) and
+[the integration contract](transcription_runtime.md).
 
 The private build retains local operation and access to user-owned data. Private delivery does not waive dependency rights, notices or source obligations.
 This work does not authorize external distribution, pricing, billing, a public site,

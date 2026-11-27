@@ -6,6 +6,25 @@ Current review: 2026-11-27. This ledger supports the [technical specification](U
 
 Reuse canonical implementation → reconcile an existing reviewed PR → adopt a pinned upstream engine/library → implement only missing glue. The existing native UI, catalog, immutable citations, extraction, semantic search, voice/model manifests, FFmpeg production, provider gateway, assistant executor and backup producers remain the integration boundaries.
 
+### Reconciliation on 2026-11-27
+
+- [PR136](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/136), head
+  `9523886`: reuse the create-only export receipt/cleanup handling and reviewed
+  transcript timestamp validation/formatting. Its in-process faster-whisper
+  session and alternate audio job/model stack are not adopted: the current
+  architecture requires the supplied external worker and canonical durable jobs.
+- [PR137](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/137), commit
+  `cb966fc`: adopt its source authorization checks before and after the native
+  Save As chooser, with the real library authorization regression.
+- [PR135](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/135) is an earlier
+  ASR-03-only preparation. The privately corrected supplied worker addresses
+  all four reviewed integrity findings; do not replace it with the narrower fix.
+- Shared runtime admission reuses `filelock`/native OS lock release and
+  `durable_state`, while the operation view reads existing typed checkpoints.
+  No alternate database, queue, inference engine or model downloader is added.
+- Progress speech reuses the canonical isolated SAPI adapter and WAV player;
+  it does not implement another synthesizer or write into rendered audio.
+
 Record exact source commit/release, binary/model hashes, license texts/notices, dependencies/assets, supported hardware/OS, chosen distribution profile and real acceptance results. A code license does not automatically license weights, voices, training/reference recordings, SoundFonts, citation styles or generated content. GPL/AGPL allow commercial use but may impose incompatible source/combination duties for a particular closed application; IPC and a “private” ZIP are not automatic exemptions. Resolve the affected package rather than blocking unrelated platform work.
 
 ## Current reuse map

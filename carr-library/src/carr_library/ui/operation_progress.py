@@ -243,8 +243,8 @@ class ProgressPreferences:
     mute_during_audio: bool = True
 
     def __post_init__(self):
-        if self.mode not in ('off', 'beep'):
-            raise ValueError('Choose Off or Beep for standalone progress sound.')
+        if self.mode not in ('off', 'beep', 'speech', 'beep-speech'):
+            raise ValueError('Choose Off, Beep, Speech or Beep + Speech for progress sound.')
         if type(self.interval_seconds) not in (int, float) or not math.isfinite(self.interval_seconds) or not 1 <= self.interval_seconds <= 120:
             raise ValueError('Progress sound interval must be between 1 and 120 seconds.')
         if type(self.volume) not in (int, float) or not math.isfinite(self.volume) or not 0 <= self.volume <= 1:
@@ -364,12 +364,15 @@ class WindowsProgressSound:
 
 class OperationProgress:
     """Bind measured events to native controls without changing keyboard focus."""
-    def __init__(self, frame, gauge, label, *, wx_module=None, clock=time.monotonic, sound=None):
+    def __init__(self, frame, gauge, label, *, wx_module=None, clock=time.monotonic, sound=None, speech=None):
         if wx_module is None:
             import wx as wx_module
         self.frame, self.gauge, self.label, self.wx = frame, gauge, label, wx_module
         self.clock, self.tracker = clock, ProgressTracker(clock=clock)
         self.sound = sound or WindowsProgressSound()
+        from .progress_speech import LocalProgressSpeech
+        self.speech = speech or LocalProgressSpeech()
+        self._speech_notice = None
         self._ui_thread, self._pending_lock = threading.get_ident(), threading.Lock()
         self._pending, self._scheduled = None, False
         self._displayed_sequence, self._last_display, self._last_sound = -1, -math.inf, -math.inf
@@ -415,8 +418,11 @@ class OperationProgress:
             except (OSError, RuntimeError):
                 # An uncertain device state stays quiet until stop or close.
                 playing = True
-        self.sound.muted = (self.preferences.mode == 'off' or self.preferences.quiet
-                            or self.preferences.mute_during_audio and (self.audio_active or playing))
+        quiet = (self.preferences.quiet or self.preferences.volume == 0
+                 or self.preferences.mute_during_audio and (self.audio_active or playing)
+                 or not self.preferences.background and not self.frame.IsActive())
+        self.sound.muted = quiet or self.preferences.mode not in ('beep', 'beep-speech')
+        self.speech.muted = quiet or self.preferences.mode not in ('speech', 'beep-speech')
 
     def register_player(self, player):
         """Observe actual playback state, including natural EOF/error/pause.
@@ -560,20 +566,30 @@ class OperationProgress:
 
     def _sound(self, event, *, state_changed=False):
         preference = self.preferences
-        if (self.sound.muted or not self.sound.available or preference.volume == 0 or event.state == 'idle'
+        if (preference.mode == 'off' or preference.volume == 0 or event.state == 'idle'
                 or not preference.background and not self.frame.IsActive()):
             return
         now = self.clock()
         if not state_changed and (event.state != 'running' or now - self._last_sound < preference.interval_seconds):
             return
         state = 'resumed' if state_changed and event.state == 'running' and self._last_state == 'paused' else event.state
-        if self.sound.play(event.percent, volume=preference.volume, state=state):
+        played = False
+        if not self.sound.muted and self.sound.available:
+            played = self.sound.play(event.percent, volume=preference.volume, state=state)
+        if not self.speech.muted and self.speech.available:
+            from .progress_speech import spoken_progress
+            played = self.speech.speak(spoken_progress(event, resumed=state == 'resumed'),
+                                       volume=preference.volume) or played
+        if played:
             self._last_sound = now
 
     def _tick(self, event=None):
         if self.closed:
             return
         self.refresh_audio_state()
+        if self.speech.last_error and self.speech.last_error != self._speech_notice:
+            self._speech_notice = self.speech.last_error
+            self.frame.status.SetValue(self._speech_notice + ' Visual and screen-reader progress remain available.')
         current = self.event
         # Flush a throttled latest value even if no further worker event arrives.
         if current.sequence > self._displayed_sequence:
@@ -589,6 +605,7 @@ class OperationProgress:
         self.closed = True
         self.timer.Stop()
         self.sound.close()
+        self.speech.close()
         self._players.clear()
 
     def settings_dialog(self, event=None):
@@ -599,10 +616,12 @@ class OperationProgress:
         try:
             layout = wx.BoxSizer(wx.VERTICAL)
             layout.Add(wx.StaticText(dialog, label='Leave Off when your screen reader already announces progress.\n'
-                'Beep uses rising pitch for known progress and two alternating tones for unknown work.'), 0, wx.EXPAND | wx.ALL, 8)
-            mode = wx.Choice(dialog, choices=['Off', 'Beep'])
+                'Beep uses rising pitch. Speech uses an installed local Windows voice. '
+                'Both follow the same interval and mute settings.'), 0, wx.EXPAND | wx.ALL, 8)
+            modes = ('off', 'beep', 'speech', 'beep-speech')
+            mode = wx.Choice(dialog, choices=['Off', 'Beep', 'Speech', 'Beep + Speech'])
             mode.SetName('Standalone progress sound')
-            mode.SetSelection(1 if self.preferences.mode == 'beep' else 0)
+            mode.SetSelection(modes.index(self.preferences.mode))
             layout.Add(mode, 0, wx.EXPAND | wx.ALL, 8)
             layout.Add(wx.StaticText(dialog, label='Interval in seconds'), 0, wx.LEFT | wx.TOP, 8)
             interval = wx.SpinCtrl(dialog, min=1, max=120, initial=round(self.preferences.interval_seconds))
@@ -628,9 +647,9 @@ class OperationProgress:
             mode.SetFocus()
             if dialog.ShowModal() == wx.ID_OK:
                 selected = mode.GetSelection()
-                if selected not in (0, 1):
-                    raise ValueError('Choose Off or Beep.')
-                self.configure(ProgressPreferences(mode=('off', 'beep')[selected], interval_seconds=interval.GetValue(),
+                if selected not in range(len(modes)):
+                    raise ValueError('Choose a progress feedback mode.')
+                self.configure(ProgressPreferences(mode=modes[selected], interval_seconds=interval.GetValue(),
                     volume=volume.GetValue() / 100, **{name: control.GetValue() for name, control in checks.items()}))
                 self.frame.report('Progress sound preferences saved.')
         except (ValueError, OSError, RuntimeError) as exc:

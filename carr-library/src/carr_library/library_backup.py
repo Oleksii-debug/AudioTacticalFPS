@@ -285,6 +285,12 @@ def restore_backup(source, destination, expected_manifest_sha256):
         if manifest['version'] >= 3:
             from .state_backup import restore_state
             restore_state(source / 'state', stage / 'state', manifest['state'])
+            if (stage / 'state' / 'transcription').exists():
+                # Restore the owner's retained audio and transcripts, but never
+                # carry execution trust to a different installation. This hook
+                # only rewrites local state; it cannot start an external engine.
+                from .transcription import prepare_restored_state
+                prepare_restored_state(stage / 'state', destination)
         if manifest['version'] == 4:
             from .pending_backup import restore_pending
             pending = restore_pending(source / 'pending', stage, destination, manifest['pending'])
