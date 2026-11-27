@@ -6,11 +6,13 @@ on:
     paths:
       - carr-library/**
       - .github/workflows/carr-windows.yml
+      - .github/workflows/carr-flite.yml
   push:
     branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/academic-research-workbench, carr/academic-search-20261126, carr/notebook-release-ascii-e021-20261126, carr/v3-primary103-recovered-composition-20261126, carr/unified-publication-24-20261127]
     paths:
       - carr-library/**
       - .github/workflows/carr-windows.yml
+      - .github/workflows/carr-flite.yml
   workflow_dispatch:
 
 permissions:
@@ -21,6 +23,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Mandatory Linux capability coverage complements the selected Windows build.
+  flite-runtime:
+    name: Required Linux Flite speech
+    uses: ./.github/workflows/carr-flite.yml
+
   integrated-desktop:
     name: Windows x64 / CPython 3.11 / integrated desktop
     runs-on: windows-2022
@@ -728,8 +735,9 @@ jobs:
           assert clip_required <= {case.get('name') for case in publication_cases}, clip_counts
           recording_expected_modules = ["test_recording","test_recording_cleanup","test_recording_compatibility","test_recording_export","test_recording_dialog","test_audio_process","test_publication_fsync","test_dsp","test_production_cancellation_outcomes","test_runtime","test_python_helper","test_windows_audio_ownership"]
           recording_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in publication_cases) for name in recording_expected_modules}
-          recording_required = {'test_actual_graceful_stop_finalizes_short_pcm', 'test_actual_cancel_discards_incomplete_capture', 'test_actual_capture_backup_delete_original_root_restore_and_verify', 'test_pending_cleanup_returns_worker_and_keeps_staging_and_both_admission_locks', 'test_streamed_export_verifies_original_and_needs_no_microphone_or_engine', 'test_competing_destination_create_at_publication_is_never_overwritten', 'test_queued_capture_loses_admission_when_its_exact_library_scope_changes[same-path-new-library]', 'test_queued_capture_loses_admission_when_its_exact_library_scope_changes[root-changed]', 'test_queued_capture_loses_admission_when_its_exact_library_scope_changes[frame-closing]', 'test_owned_descendant_cannot_outlive_parent_or_failure[cancel]', 'test_owned_descendant_cannot_outlive_parent_or_failure[timeout]', 'test_owned_descendant_cannot_outlive_parent_or_failure[overflow]', 'test_owned_descendant_cannot_outlive_parent_or_failure[orphan]', 'test_owned_process_preserves_exact_diagnostic_bytes_and_environment', 'test_late_scope_change_keeps_uncertain_native_cleanup_visible_and_owned', 'test_cancellation_during_flush_does_not_publish'}
+          recording_required = {'test_native_windows_sapi_voice_and_pcm_output', 'test_actual_graceful_stop_finalizes_short_pcm', 'test_actual_cancel_discards_incomplete_capture', 'test_actual_capture_backup_delete_original_root_restore_and_verify', 'test_pending_cleanup_returns_worker_and_keeps_staging_and_both_admission_locks', 'test_streamed_export_verifies_original_and_needs_no_microphone_or_engine', 'test_competing_destination_create_at_publication_is_never_overwritten', 'test_queued_capture_loses_admission_when_its_exact_library_scope_changes[same-path-new-library]', 'test_queued_capture_loses_admission_when_its_exact_library_scope_changes[root-changed]', 'test_queued_capture_loses_admission_when_its_exact_library_scope_changes[frame-closing]', 'test_owned_descendant_cannot_outlive_parent_or_failure[cancel]', 'test_owned_descendant_cannot_outlive_parent_or_failure[timeout]', 'test_owned_descendant_cannot_outlive_parent_or_failure[overflow]', 'test_owned_descendant_cannot_outlive_parent_or_failure[orphan]', 'test_owned_process_preserves_exact_diagnostic_bytes_and_environment', 'test_late_scope_change_keeps_uncertain_native_cleanup_visible_and_owned', 'test_cancellation_during_flush_does_not_publish'}
           assert all(recording_counts.values()) and recording_counts['test_windows_audio_ownership'] == 5, recording_counts
+          assert recording_counts['test_runtime'] == 13, recording_counts
           assert recording_required <= {case.get('name') for case in publication_cases}, recording_counts
           installed_assistant_origins()
           kernel = ctypes.WinDLL('kernel32', use_last_error=True)
@@ -850,7 +858,9 @@ jobs:
       # are uploaded. NVDA and final-download identity remain separate acceptance.
       - name: Run required integrated source workflows
         if: ${{ !cancelled() && steps.desktop_dependencies.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' }}
-        timeout-minutes: 25
+        # Run 45965036727/job140391587252 needed 24m35s for 257 suites.
+        # Add room for the new suites; each suite keeps its existing 600s limit.
+        timeout-minutes: 35
         run: |
           $suites = @(
             'tests/e2e/test_import_progress.py',
@@ -1135,6 +1145,8 @@ jobs:
             & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @parallelSuites 2>&1 | Tee-Object -Append 'ci-results/integrated-tests.txt'
             $parallelExit = $LASTEXITCODE
             if ($academicExit -ne 0 -or $parallelExit -ne 0) { exit 1 }
+            $speechVerdict = @(Select-String -LiteralPath 'ci-results/integrated-tests.txt' -Pattern '^PASS: tests/speech/test_runtime\.py: junit_passed=13, failed=0, skipped=0, pytest_exit=0$')
+            if ($speechVerdict.Count -ne 1) { throw 'All 12 shared speech cases and the actual Windows SAPI case are required.' }
           } finally {
             $env:PATH = $previousPath
             $env:CARR_OCR_DIR = $previousOcr

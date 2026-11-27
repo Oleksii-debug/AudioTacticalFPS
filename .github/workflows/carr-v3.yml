@@ -3,10 +3,10 @@ name: CARR V3 local studio and assistant
 on:
   pull_request:
     branches: [carr-library, carr/v3-integrated-studio-20261126]
-    paths: ['carr-library/**', '.github/workflows/carr-v3.yml']
+    paths: ['carr-library/**', '.github/workflows/carr-v3.yml', '.github/workflows/carr-flite.yml']
   push:
     branches: [carr/v3-primary103-recovered-composition-20261126, carr/unified-publication-24-20261127]
-    paths: ['carr-library/**', '.github/workflows/carr-v3.yml']
+    paths: ['carr-library/**', '.github/workflows/carr-v3.yml', '.github/workflows/carr-flite.yml']
   workflow_dispatch:
 
 permissions:
@@ -17,6 +17,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # This required job preserves all six real Flite cases outside the Windows build.
+  flite-runtime:
+    name: Required Linux Flite speech
+    uses: ./.github/workflows/carr-flite.yml
+
   native-studio:
     runs-on: windows-2022
     timeout-minutes: 50
@@ -286,6 +291,8 @@ jobs:
         run: |
           python scripts/ci_check.py tests/studio/test_publishing.py tests/studio/test_publishing_cli.py tests/studio/test_publishing_handlers.py tests/packaging/test_prepare_windows_audio.py tests/audio/test_recording.py tests/audio/test_recording_cleanup.py tests/audio/test_recording_compatibility.py tests/audio/test_recording_export.py tests/ui/test_recording_dialog.py tests/audio/test_audio_process.py tests/audio/test_publication_fsync.py tests/audio/test_dsp.py tests/studio/test_production_cancellation_outcomes.py tests/speech/test_runtime.py tests/speech/test_python_helper.py tests/audio/test_windows_audio_ownership.py tests/studio/test_clip_editing.py tests/studio/test_clip_restoration.py tests/studio/test_clip_dialog.py tests/studio/test_clip_cli.py tests/storage/test_state_clip_inputs.py tests/studio/test_studio_controller.py 2>&1 | Tee-Object 'ci-v3-results/strict-publication.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $speechVerdict = @(Select-String -LiteralPath 'ci-v3-results/strict-publication.txt' -Pattern '^PASS: tests/speech/test_runtime\.py: junit_passed=13, failed=0, skipped=0, pytest_exit=0$')
+          if ($speechVerdict.Count -ne 1) { throw 'All 12 shared speech cases and the actual Windows SAPI case are required.' }
       - name: Verify installed publication, recording, clips and EPUB3.3 without egress
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.audio-runtime.outcome == 'success' && steps.publication-audio-runtime.outcome == 'success' && steps.epubcheck-runtime.outcome == 'success' }}
         timeout-minutes: 10
@@ -368,13 +375,14 @@ jobs:
                       'test_prepared_receipt_recovers_completed_bytes_after_finalization_failure'}
           recording_modules = ["test_recording","test_recording_cleanup","test_recording_compatibility","test_recording_export","test_recording_dialog","test_audio_process","test_publication_fsync","test_dsp","test_production_cancellation_outcomes","test_runtime","test_python_helper","test_windows_audio_ownership"]
           recording_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in cases) for name in recording_modules}
-          recording_required = {'test_actual_graceful_stop_finalizes_short_pcm', 'test_actual_cancel_discards_incomplete_capture', 'test_actual_capture_backup_delete_original_root_restore_and_verify', 'test_pending_cleanup_returns_worker_and_keeps_staging_and_both_admission_locks', 'test_streamed_export_verifies_original_and_needs_no_microphone_or_engine', 'test_competing_destination_create_at_publication_is_never_overwritten', 'test_queued_capture_loses_admission_when_its_exact_library_scope_changes[same-path-new-library]', 'test_queued_capture_loses_admission_when_its_exact_library_scope_changes[root-changed]', 'test_queued_capture_loses_admission_when_its_exact_library_scope_changes[frame-closing]', 'test_owned_descendant_cannot_outlive_parent_or_failure[cancel]', 'test_owned_descendant_cannot_outlive_parent_or_failure[timeout]', 'test_owned_descendant_cannot_outlive_parent_or_failure[overflow]', 'test_owned_descendant_cannot_outlive_parent_or_failure[orphan]', 'test_owned_process_preserves_exact_diagnostic_bytes_and_environment', 'test_late_scope_change_keeps_uncertain_native_cleanup_visible_and_owned', 'test_cancellation_during_flush_does_not_publish'}
+          recording_required = {'test_native_windows_sapi_voice_and_pcm_output', 'test_actual_graceful_stop_finalizes_short_pcm', 'test_actual_cancel_discards_incomplete_capture', 'test_actual_capture_backup_delete_original_root_restore_and_verify', 'test_pending_cleanup_returns_worker_and_keeps_staging_and_both_admission_locks', 'test_streamed_export_verifies_original_and_needs_no_microphone_or_engine', 'test_competing_destination_create_at_publication_is_never_overwritten', 'test_queued_capture_loses_admission_when_its_exact_library_scope_changes[same-path-new-library]', 'test_queued_capture_loses_admission_when_its_exact_library_scope_changes[root-changed]', 'test_queued_capture_loses_admission_when_its_exact_library_scope_changes[frame-closing]', 'test_owned_descendant_cannot_outlive_parent_or_failure[cancel]', 'test_owned_descendant_cannot_outlive_parent_or_failure[timeout]', 'test_owned_descendant_cannot_outlive_parent_or_failure[overflow]', 'test_owned_descendant_cannot_outlive_parent_or_failure[orphan]', 'test_owned_process_preserves_exact_diagnostic_bytes_and_environment', 'test_late_scope_change_keeps_uncertain_native_cleanup_visible_and_owned', 'test_cancellation_during_flush_does_not_publish'}
           clip_expected = {"test_clip_editing":20,"test_clip_restoration":16,"test_clip_dialog":35,"test_clip_cli":8,"test_state_clip_inputs":17,"test_studio_controller":8}
           clip_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in cases) for name in clip_expected}
           clip_required = {'test_actual_completed_clip_restore_requires_fresh_output_before_any_old_path_io[False]', 'test_actual_completed_clip_restore_requires_fresh_output_before_any_old_path_io[True]', 'test_pending_job_and_stale_service_recheck_live_origin_before_output_admission', 'test_actual_trim_position_pan_fades_and_complete_clip_stems', 'test_destroy_discards_preview_when_parent_never_delivers_completion', 'test_destroy_retains_uncertain_native_playback_owner_and_preview', 'test_deferred_clip_playback_rechecks_exact_library', 'test_studio_late_result_cannot_update_replacement_library', 'test_waiting_input_preview_never_constructs_or_stats_old_destination[True-complete]', 'test_waiting_input_preview_never_constructs_or_stats_old_destination[False-waiting-input]', 'test_studio_controller_cannot_replace_a_newer_clip_revision', 'test_render_saved_project_queues_exact_reviewed_revision_and_does_not_play', 'test_render_saved_project_rejects_stale_revision_before_job_creation', 'test_render_saved_project_cancelled_parent_picker_starts_no_work', 'test_owned_service_release_waits_for_its_future_without_stopping_host_executor[completed]', 'test_owned_service_release_waits_for_its_future_without_stopping_host_executor[cancelled-before-start]', 'test_borrowed_clip_editor_service_is_not_closed_by_dialog'}
           ok = (status == 0 and failed == skipped == 0 and not policy.seen
                 and counts == expected and all(recording_counts.values())
                 and recording_counts['test_windows_audio_ownership'] == 5
+                and recording_counts['test_runtime'] == 13
                 and clip_counts == clip_expected
                 and clip_required <= {case.get('name') for case in cases}
                 and len(cases) == sum(expected.values()) + sum(recording_counts.values()) + sum(clip_expected.values())
@@ -477,7 +485,8 @@ jobs:
           }
       - name: Validate local services, DSP, integrity and provider permission boundaries
         run: |
-          python -m pytest -q --import-mode=importlib tests/audio tests/speech tests/assistant tests/studio tests/storage/test_v3_state_backup.py tests/storage/test_state_snapshot_identity.py tests/language_qualification tests/conversion tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py tests/academic_integration tests/ui/test_operation_progress.py tests/ui/test_progress_job_review.py tests/ui/test_command_registry.py tests/ui/test_keyboard_manager.py tests/storage/test_keyboard_preferences.py tests/ui/test_reader_keymap_context.py tests/test_delivery_contract.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_backup_v4_review.py tests/e2e/test_import_worker_publication.py tests/ingest/test_import_replay_identity.py tests/packaging/test_worker_bytecode.py tests/packaging/test_refresh_private_bundle_review.py tests/ui/test_profile_project_exports.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
+          # Only Flite is platform-partitioned; the mandatory Linux job executes all six cases.
+          python -m pytest -q --import-mode=importlib --ignore=tests/speech/test_flite_runtime.py tests/audio tests/speech tests/assistant tests/studio tests/storage/test_v3_state_backup.py tests/storage/test_state_snapshot_identity.py tests/language_qualification tests/conversion tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py tests/academic_integration tests/ui/test_operation_progress.py tests/ui/test_progress_job_review.py tests/ui/test_command_registry.py tests/ui/test_keyboard_manager.py tests/storage/test_keyboard_preferences.py tests/ui/test_reader_keymap_context.py tests/test_delivery_contract.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_backup_v4_review.py tests/e2e/test_import_worker_publication.py tests/ingest/test_import_replay_identity.py tests/packaging/test_worker_bytecode.py tests/packaging/test_refresh_private_bundle_review.py tests/ui/test_profile_project_exports.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Keep source and test evidence only
         if: always()
