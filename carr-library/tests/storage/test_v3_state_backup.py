@@ -96,13 +96,16 @@ def test_backup_restores_exact_state_sources_and_evidence_without_cache(populate
     digest = create_backup(app, folder)
     manifest = json.loads((folder / 'manifest.json').read_text())
     assert manifest['version'] == 4 and manifest['generated_audio_included'] is False
-    assert {entry['filename'] for entry in manifest['sidecars']} == {'state/' + name for name in values}
+    assert {entry['filename'] for entry in manifest['sidecars']} == (
+        {'state/' + name for name in values} | {'state/studio/backup-inputs.json'})
+    assert manifest['studio_media']['studio_input_receipt'] is True
     for entry in manifest['sidecars']:
         raw = (folder / entry['filename']).read_bytes()
         assert len(raw) == entry['size_bytes'] and sha256(raw).hexdigest() == entry['sha256']
     if version == 3:
         if manifest.pop('pending', None) is not None:
             shutil.rmtree(folder / 'pending')
+        manifest.pop('studio_media')
         manifest['version'] = 3
         manifest['state'] = [{**entry, 'filename': entry['filename'].removeprefix('state/')}
                              for entry in manifest.pop('sidecars')]
@@ -113,7 +116,19 @@ def test_backup_restores_exact_state_sources_and_evidence_without_cache(populate
     assert recovered.evidence(first, topic)[0] == before
     assert {p.name: p.read_bytes() for p in recovered.assets_dir.iterdir()} == original_files
     for name, value in values.items():
-        assert read_json(destination / 'state' / name) == value
+        restored_value = read_json(destination / 'state' / name)
+        assert read_json(folder / 'state' / name) == value
+        if name.startswith('studio/jobs/') and name.endswith('/job.json'):
+            assert restored_value['project'] == value['project']
+            assert restored_value['status'] == 'waiting-input' and restored_value['destination'] == ''
+            assert restored_value['artifacts'] == [] and restored_value['nodes'] == {}
+            assert restored_value['recovery'] == {
+                'requires_output_directory': True, 'inputs_retained': True,
+                'previous': {'project_fingerprint': value['fingerprint'], 'status': value['status'],
+                             'destination': value['destination'], 'artifacts': value['artifacts']}}
+        else:
+            assert restored_value == value
+    assert not (destination / 'state/studio/backup-inputs.json').exists()
     assert not (destination / 'state/studio/cache').exists()
     assert not list((destination / 'state').rglob('*.lock'))
     assert not list((destination / 'state').rglob('*.tmp'))
@@ -342,6 +357,65 @@ def test_snapshot_revalidation_can_be_cancelled_before_publication(populated, tm
     assert not destination.exists()
 
 
+def test_same_size_changed_bytes_are_rechecked_when_metadata_is_unchanged(tmp_path, monkeypatch):
+    from carr_library import state_backup
+    root, target = tmp_path / 'source', tmp_path / 'snapshot'
+    root.mkdir()
+    target.mkdir()
+    source = root / 'a.json'
+    source.write_bytes(b'old')
+    (root / 'b.json').write_bytes(b'other file')
+    # Windows can keep creation-time and last-write metadata stable until an
+    # open writer closes. Model that stat behavior while changing real bytes.
+    monkeypatch.setattr(state_backup, '_stamp', lambda st: (st.st_dev, st.st_ino, st.st_size))
+    changed = False
+    def mutate_after_copy():
+        nonlocal changed
+        if not changed and (target / 'b.json').exists():
+            source.write_bytes(b'new')
+            changed = True
+        return False
+    with pytest.raises(ValueError, match='changed during backup'):
+        snapshot_state(root, target, cancelled=mutate_after_copy)
+    assert changed and (target / 'a.json').read_bytes() == b'old'
+
+
+@pytest.mark.parametrize('failure', (PermissionError, FileNotFoundError))
+def test_backup_state_lookup_failure_never_publishes(populated, tmp_path, monkeypatch, failure):
+    app, *_ = populated
+    root = app.root / 'state'
+    destination = tmp_path / 'backup'
+    original = Path.lstat
+    probes = 0
+
+    def denied(path, *args, **kwargs):
+        nonlocal probes
+        if path == root:
+            probes += 1
+            # Permission failure at the caller, or disappearance after its
+            # successful initial presence probe (before the snapshot).
+            if failure is PermissionError or probes >= 2:
+                raise failure('state lookup failed')
+        return original(path, *args, **kwargs)
+
+    lexists = os.path.lexists
+    legacy_probes = 0
+
+    def suppressed(path):
+        nonlocal legacy_probes
+        if Path(path) == root:
+            legacy_probes += 1
+            return failure is FileNotFoundError and legacy_probes == 1
+        return lexists(path)
+
+    monkeypatch.setattr(os.path, 'lexists', suppressed)
+    monkeypatch.setattr(Path, 'lstat', denied)
+    with pytest.raises(failure, match='state lookup failed'):
+        create_backup(app, destination)
+    assert not destination.exists()
+    assert probes >= (1 if failure is PermissionError else 2)
+
+
 @pytest.mark.parametrize('name', ['reading-state.json', 'state'])
 @pytest.mark.parametrize('failure', [PermissionError, NotADirectoryError])
 def test_typed_backup_refuses_inaccessible_optional_root(tmp_path, monkeypatch, name, failure):
@@ -379,6 +453,7 @@ def test_typed_backup_refuses_inaccessible_optional_root(tmp_path, monkeypatch, 
     assert retained.read_bytes() == original
 
 
+
 def test_typed_capture_distinguishes_optional_absence_from_disappearance(tmp_path, monkeypatch):
     from carr_library import backup_sidecars
 
@@ -403,3 +478,19 @@ def test_typed_capture_distinguishes_optional_absence_from_disappearance(tmp_pat
     with pytest.raises(FileNotFoundError, match='disappeared'):
         backup_sidecars._capture(root)
     assert probes == 2
+
+
+def test_legacy_state_restore_observes_cancellation_between_real_file_blocks(tmp_path):
+    from carr_library.state_backup import restore_state
+    source, target = tmp_path / 'legacy-state', tmp_path / 'stage'
+    source.mkdir()
+    raw = b'x' * (2 * 1024 * 1024 + 1)
+    (source / 'retained.bin').write_bytes(raw)
+    entry = {'filename': 'retained.bin', 'size_bytes': len(raw), 'sha256': sha256(raw).hexdigest()}
+    def stopped():
+        output = target / 'retained.bin'
+        return output.exists() and output.stat().st_size >= 1024 * 1024
+    with pytest.raises(InterruptedError, match='cancelled'):
+        restore_state(source, target, [entry], cancelled=stopped)
+    assert (source / 'retained.bin').read_bytes() == raw
+    assert 0 < (target / 'retained.bin').stat().st_size < len(raw)

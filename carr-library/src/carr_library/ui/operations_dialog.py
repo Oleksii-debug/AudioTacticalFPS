@@ -1,8 +1,8 @@
-"""Accessible shared job view and explicit local resource policy."""
+"""Native shared operation views through the desktop's existing job executor."""
 from dataclasses import asdict
-from concurrent.futures import ThreadPoolExecutor
 import json
 from pathlib import Path
+import threading
 
 from ..operations import ResourceBroker, ResourceLimits
 
@@ -27,193 +27,386 @@ def policy_from_fields(*, cpu, memory_mib, disk_gib, free_mib, gpu, max_leases):
         gpu_devices=tuple(devices), max_leases=max_leases)
 
 
-def show_operations(frame):
-    import wx
+def _services(library, cancelled):
+    # Directory creation, lock admission and policy reads happen only on the
+    # host executor. No model, inference runtime or provider is started here.
     from ..operations import OperationFacade
     from ..studio.render import ProductionService
-    from ..transcription import TranscriptionService
-    broker = ResourceBroker.for_app(frame.library.root)
-    facade = OperationFacade(frame.library, broker=broker,
-        studio=ProductionService(frame.library.root / 'state' / 'studio', broker=broker),
-        transcription=TranscriptionService(frame.library.root / 'state' / 'transcription', broker=broker))
-    dialog = wx.Dialog(frame, title='Tasks and resources', size=(850, 780),
-                       style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
-    layout = wx.BoxSizer(wx.VERTICAL)
-    alive, busy, jobs, close_when_idle = True, False, (), False
-    opened_root = Path(frame.library.root).absolute()
-    executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='operation-dashboard')
+    from ..assistant import AssistantService
+    from ..assistant.translation import TranslationService
+    broker = ResourceBroker.for_app(library.root, cancelled=cancelled)
+    facade = OperationFacade(library, broker=broker,
+        studio=ProductionService(library.root / 'state' / 'studio', broker=broker),
+        assistant=AssistantService(library),
+        translation=TranslationService(library.root / 'state' / 'translation', library=library))
+    return broker, facade
 
-    def field(label, factory=wx.TextCtrl, proportion=0, **kwargs):
-        layout.Add(wx.StaticText(dialog, label=label), 0, wx.ALL, 4)
-        control = factory(dialog, **kwargs)
-        control.SetName(label.replace('&', ''))
-        layout.Add(control, proportion, wx.ALL | wx.EXPAND, 4)
-        return control
 
-    listing = field('Saved platform &operations', wx.ListBox, proportion=1)
-    detail = field('Operation details and resource status', proportion=1,
-                   style=wx.TE_MULTILINE | wx.TE_READONLY)
-    limits = broker.limits
-    cpu = field('Allowed CPU &slots', wx.SpinCtrl, min=1, max=65536, initial=limits.cpu_slots)
-    memory = field('Declared &memory allowance in MiB', wx.SpinCtrl, min=0, max=2147483647,
-                   initial=min(2147483647, limits.memory_bytes // MIB))
-    disk = field('Declared temporary &disk allowance in GiB', wx.SpinCtrl, min=0, max=2147483647,
-                 initial=min(2147483647, limits.disk_bytes // GIB))
-    free = field('Keep free disk space in MiB', wx.SpinCtrl, min=0, max=2147483647,
-                 initial=min(2147483647, limits.min_free_disk_bytes // MIB))
-    gpu = field('GPU devices and MiB allowances; one per line, for example cuda:0=4096',
-                value='\n'.join(f'{name}={capacity // MIB}' for name, capacity in limits.gpu_devices),
-                style=wx.TE_MULTILINE)
-    layout.Add(wx.StaticText(dialog, label='These are cooperative allowances for local jobs. '
-        'Set them for your computer; no hardware capacity is inferred. Empty GPU settings disable GPU admission. '
-        'Reading and saved results remain available while heavy work waits.'), 0, wx.EXPAND | wx.ALL, 4)
-    buttons = {}
-    row = wx.BoxSizer(wx.HORIZONTAL)
-    for key, label in (('refresh', '&Refresh'), ('pause', '&Pause selected'), ('cancel', '&Cancel selected'),
-                       ('save', '&Save allowances'), ('close', 'Cl&ose')):
-        button = wx.Button(dialog, wx.ID_CLOSE if key == 'close' else wx.ID_ANY, label)
-        button.SetName(label.replace('&', ''))
-        buttons[key] = button
-        row.Add(button, 0, wx.ALL, 4)
-    layout.Add(row, 0, wx.EXPAND)
-    dialog.SetSizer(layout)
-    dialog.SetEscapeId(wx.ID_CLOSE)
+class OperationsController:
+    """Short policy/journal operations use frame.run_job; no second executor."""
+    def __init__(self, frame, *, changed=lambda focus=False: None, service_factory=_services):
+        self.frame, self.library = frame, frame.library
+        self.active = getattr(frame, 'active', None)
+        self.workspace = self.active[0] if self.active is not None else None
+        self.changed, self.service_factory = changed, service_factory
+        self.closed = self.busy = self.close_pending = False
+        self.status = 'Loading saved operations and local resource allowances.'
+        self.jobs, self.snapshot, self.policy = (), None, None
+        self._services_pair = self._token = None
+        self._stop = threading.Event()
 
-    def controls():
-        if not alive:
-            return
-        for control in (cpu, memory, disk, free, gpu, listing, *buttons.values()):
-            control.Enable(not busy)
-        buttons['close'].Enable()
-        index = listing.GetSelection()
-        current = jobs[index] if 0 <= index < len(jobs) else None
-        for action in ('pause', 'cancel'):
-            buttons[action].Enable(not busy and current is not None and action in current.controls)
+    def guard(self):
+        if (self.closed or getattr(self.frame, '_closing', False) or self.frame.library is not self.library
+                or getattr(self.frame, 'active', None) != self.active):
+            raise ValueError('The data folder changed, selected library changed or this window closed. Reopen Tasks and resources.')
 
-    def selected(event=None):
-        if not alive:
-            return
-        index = listing.GetSelection()
-        if 0 <= index < len(jobs):
-            detail.ChangeValue(json.dumps(asdict(jobs[index]), ensure_ascii=False, indent=2))
-        controls()
+    def cancelled(self):
+        return (self.closed or self._stop.is_set() or getattr(self.frame, '_closing', False)
+                or self.frame.library is not self.library or getattr(self.frame, 'active', None) != self.active
+                or self.frame.cancel_event.is_set())
 
-    def begin(title, operation, done):
-        nonlocal busy
-        if not alive:
-            return
-        if busy or getattr(frame, '_closing', False):
-            detail.ChangeValue('The task view is updating. Please wait for its current request.')
-            return
-        def check_root():
-            if Path(frame.library.root).absolute() != opened_root:
-                raise ValueError('The library folder changed. Close and reopen Tasks and resources.')
+    def report(self, message, *, focus=False):
+        if not self.closed:
+            self.status = str(message)
+            self.changed(focus)
+
+    def _pair(self):
+        self.guard()
+        if self.cancelled():
+            raise InterruptedError('Loading saved operations was cancelled.')
+        if self._services_pair is None:
+            self._services_pair = self.service_factory(self.library, self.cancelled)
+        if self.cancelled():
+            raise InterruptedError('Loading saved operations was cancelled.')
+        return self._services_pair
+
+    def _load(self):
+        broker, facade = self._pair()
+        return {'jobs': facade.list(workspace=self.workspace, cancelled=self.cancelled),
+                'resources': broker.snapshot(cancelled=self.cancelled)}
+
+    def _display(self, result):
+        self.jobs = tuple(result['jobs'])
+        self.snapshot = result['resources']
+        self.policy = ResourceLimits.from_dict(self.snapshot['limits'])
+        self.status = (f'{len(self.jobs)} saved operations; {len(self.snapshot["leases"])} active resource reservations. '
+                       'Saved completion is a journal observation. Open the original workflow to verify results.')
+
+    def _job(self, title, operation, done):
         try:
-            check_root()
+            self.guard()
         except ValueError as exc:
-            detail.ChangeValue(str(exc))
-            return
-        busy = True
-        controls()
-        detail.ChangeValue(title + '…')
-        def complete(result):
-            nonlocal busy
-            busy = False
-            if alive:
-                try:
-                    check_root()
-                    done(result)
-                except Exception as exc:
-                    detail.ChangeValue(str(exc))
-                finally:
-                    controls()
-                if close_when_idle:
-                    close()
-        def failed(error):
-            nonlocal busy
-            busy = False
-            if alive:
-                detail.ChangeValue(str(error))
-                controls()
-                if close_when_idle:
-                    close()
-        def finished(future):
+            self.report(exc, focus=True)
+            return False
+        if self.busy or getattr(self.frame, 'working', False):
+            self.report('Another operation is running. Use its current pause or cancel controls first.', focus=True)
+            return False
+        self.busy = True
+        self._stop.clear()
+        token = self._token = object()
+        self.report(title + '…')
+
+        def work():
+            from ..operations import ResourceCancelled
+            self.guard()
+            if self.cancelled():
+                raise InterruptedError('The task-view request was cancelled.')
             try:
-                result = future.result()
+                return operation()
+            except ResourceCancelled as exc:
+                raise InterruptedError('The task-view request was cancelled.') from exc
+
+        def completed(result):
+            if self.closed or self._token is not token:
+                return
+            self.busy = False
+            try:
+                self.guard()
+                done(result)
             except Exception as exc:
-                wx.CallAfter(failed, str(exc))
+                self.report(exc, focus=True)
             else:
-                wx.CallAfter(complete, result)
-        def checked():
-            check_root()
-            return operation()
+                self.changed(False)
+
+        def failed(error):
+            if self.closed or self._token is not token:
+                return
+            self.busy = False
+            self.report(error, focus=True)
+
         try:
-            executor.submit(checked).add_done_callback(finished)
+            self.frame.run_job(title, work, completed, failed)
         except Exception as exc:
             failed(exc)
+        return True
 
-    def populated(result):
-        nonlocal jobs
-        jobs = result[0]
-        listing.Set([f'{j.kind}: {j.phase or j.id}; {j.status}' for j in jobs])
-        detail.ChangeValue(json.dumps(result[1], ensure_ascii=False, indent=2))
-        if jobs:
-            listing.SetSelection(0)
+    def refresh(self):
+        return self._job('Loading saved operations and allowances', self._load, self._display)
 
-    def refresh(event=None):
-        begin('Loading saved operations', lambda: (facade.list(), broker.snapshot()), populated)
+    def save(self, policy):
+        if not isinstance(policy, ResourceLimits):
+            raise TypeError('Use the validated local resource policy.')
+        def work():
+            broker, _ = self._pair()
+            broker.configure(policy)
+            try:
+                return self._load()
+            except Exception as exc:
+                # The policy is already durably saved. A cancelled or failed
+                # optional refresh cannot turn that commit into a failed save.
+                return {'saved_policy': policy.to_dict(), 'refresh_warning': str(exc)}
+        def done(result):
+            if 'saved_policy' in result:
+                self.policy = ResourceLimits.from_dict(result['saved_policy'])
+                self.status = ('Resource allowances saved. Refresh was not completed: '
+                               + result['refresh_warning'])
+                return
+            self._display(result)
+            self.status = 'Resource allowances saved. ' + self.status
+        return self._job('Saving local resource allowances', work, done)
 
-    def control(action):
-        index = listing.GetSelection()
-        if not 0 <= index < len(jobs):
-            return
-        job = jobs[index]
-        def invoke():
-            facade.control(job.kind, job.id, action, workspace=job.workspace)
-            return facade.list(), broker.snapshot()
-        begin('Requesting ' + action, invoke, populated)
+    def control(self, key, action):
+        selected = next((row for row in self.jobs if row.key == key), None)
+        if selected is None or action not in selected.controls:
+            self.report('Select an operation that supports this pause or cancel request.', focus=True)
+            return False
+        def work():
+            _, facade = self._pair()
+            facade.control(selected.kind, selected.id, action, workspace=selected.workspace)
+            return self._load()
+        def done(result):
+            self._display(result)
+            self.status = (action.capitalize() + ' requested. The owning workflow records when it has stopped. '
+                           + self.status)
+        return self._job('Requesting ' + action, work, done)
 
-    def save(event=None):
-        try:
-            policy = policy_from_fields(cpu=cpu.GetValue(), memory_mib=memory.GetValue(),
-                disk_gib=disk.GetValue(), free_mib=free.GetValue(), gpu=gpu.GetValue(),
-                max_leases=limits.max_leases)
-            def configured():
-                broker.configure(policy)
-                return broker.snapshot()
-            begin('Saving resource allowances', configured,
-                  lambda value: detail.ChangeValue('Resource allowances saved.\n' +
-                      json.dumps(value, ensure_ascii=False, indent=2)))
-        except (ValueError, OSError, RuntimeError) as exc:
-            detail.ChangeValue(str(exc))
+    def open_transcription(self, key, opener):
+        self.guard()
+        if self.busy:
+            return False
+        selected = next((row for row in self.jobs if row.key == key and row.kind == 'asr'), None)
+        if selected is None:
+            self.report('Select a transcription job to open its existing workstation.', focus=True)
+            return False
+        if self.workspace is None or selected.workspace != self.workspace:
+            self.report('Open this job from its selected active library before entering transcription.', focus=True)
+            return False
+        def work():
+            _, facade = self._pair()
+            return facade.get('asr', selected.id, workspace=self.workspace)
+        return self._job('Opening the saved transcription job', work, lambda value: opener(value.id))
 
-    def close(event=None):
-        nonlocal alive, close_when_idle
-        if busy:
-            close_when_idle = True
-            detail.ChangeValue('Waiting for the current task-view request before closing.')
-            if event is not None and hasattr(event, 'CanVeto') and event.CanVeto():
-                event.Veto()
-            return
-        alive = False
-        dialog.EndModal(wx.ID_CLOSE)
+    def close(self):
+        if self.busy:
+            self.close_pending = True
+            self._stop.set()
+            self.report('Stopping this task-view request before closing.')
+            return False
+        return True
 
-    listing.Bind(wx.EVT_LISTBOX, selected)
-    for key, callback in (('refresh', refresh), ('save', save), ('close', close),
-                          ('pause', lambda event: control('pause')),
-                          ('cancel', lambda event: control('cancel'))):
-        buttons[key].Bind(wx.EVT_BUTTON, callback)
-    dialog.Bind(wx.EVT_CLOSE, close)
-    controls()
-    detail.ChangeValue('Refresh lists saved jobs across this data folder. Choose a job to inspect its '
-        'actual checkpoint. Resume transcription or production from its own workstation.')
-    buttons['refresh'].SetFocus()
+    def dispose(self):
+        self.closed = True
+        self._token = None
+        self._stop.set()
+
+
+def create_operations_dialog(frame, *, controller_factory=OperationsController):
+    import wx
+
+    class OperationsDialog(wx.Dialog):
+        def __init__(self):
+            super().__init__(frame, title='Tasks and resources', size=(900, 740),
+                             style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+            self._native_id = self.GetId()
+            self.controller = controller_factory(frame, changed=self.render)
+            self.handoff = None
+            self._shown_policy = None
+            outer = wx.BoxSizer(wx.VERTICAL)
+            self.pages = wx.Notebook(self)
+            jobs_page, policy_page = wx.Panel(self.pages), wx.Panel(self.pages)
+            jobs_layout, policy_layout = wx.BoxSizer(wx.VERTICAL), wx.BoxSizer(wx.VERTICAL)
+            jobs_page.SetSizer(jobs_layout)
+            policy_page.SetSizer(policy_layout)
+
+            def field(parent, layout, label, factory=wx.TextCtrl, proportion=0, **kwargs):
+                layout.Add(wx.StaticText(parent, label=label), 0, wx.ALL, 4)
+                control = factory(parent, **kwargs)
+                control.SetName(label.replace('&', ''))
+                layout.Add(control, proportion, wx.ALL | wx.EXPAND, 4)
+                return control
+
+            self.listing = field(jobs_page, jobs_layout, 'Saved &jobs', wx.ListBox, proportion=1)
+            self.detail = field(jobs_page, jobs_layout, 'Selected operation details',
+                                proportion=1, style=wx.TE_MULTILINE | wx.TE_READONLY)
+            self.cpu = field(policy_page, policy_layout, 'Allowed &CPU slots', wx.SpinCtrl,
+                             min=1, max=65536, initial=1)
+            self.memory = field(policy_page, policy_layout, 'Declared &memory allowance in MiB', wx.SpinCtrl,
+                                min=0, max=2147483647, initial=0)
+            self.disk = field(policy_page, policy_layout, 'Declared &temporary disk allowance in GiB', wx.SpinCtrl,
+                              min=0, max=2147483647, initial=0)
+            self.free = field(policy_page, policy_layout, 'Keep &free disk space in MiB', wx.SpinCtrl,
+                              min=0, max=2147483647, initial=0)
+            self.gpu = field(policy_page, policy_layout,
+                '&GPU devices and MiB allowances; one per line, for example cuda:0=4096',
+                style=wx.TE_MULTILINE, size=(-1, 95))
+            notice = wx.StaticText(policy_page, label=
+                'Allowances apply to cooperating local operations; they do not measure hardware. '
+                'Empty GPU settings disable GPU admission. Use cuda=4096 for a 4096 MiB '
+                'transcription CUDA pool; Studio uses cuda:0. These are reservations, not measured VRAM. '
+                'Existing results remain available.')
+            notice.Wrap(780)
+            policy_layout.Add(notice, 0, wx.ALL | wx.EXPAND, 4)
+            self.pages.AddPage(jobs_page, 'Saved operations')
+            self.pages.AddPage(policy_page, 'Resource allowances')
+            outer.Add(self.pages, 1, wx.ALL | wx.EXPAND, 5)
+            self.status = field(self, outer, 'Tasks and resources status',
+                                style=wx.TE_MULTILINE | wx.TE_READONLY, size=(-1, 90))
+            row = wx.BoxSizer(wx.HORIZONTAL)
+            self.buttons = {}
+            for key, label in (('refresh', '&Refresh'), ('pause', '&Pause selected'),
+                               ('cancel', 'Cance&l selected'), ('open', 'Open &workstation'),
+                               ('save', '&Save allowances'), ('close', 'Cl&ose')):
+                button = wx.Button(self, wx.ID_CLOSE if key == 'close' else wx.ID_ANY, label)
+                button.SetName(label.replace('&', ''))
+                self.buttons[key] = button
+                row.Add(button, 0, wx.ALL, 3)
+            outer.Add(row, 0, wx.ALL | wx.EXPAND, 3)
+            self.SetSizer(outer)
+            self.SetEscapeId(wx.ID_CLOSE)
+            self.listing.Bind(wx.EVT_LISTBOX, self.selected)
+            self.buttons['refresh'].Bind(wx.EVT_BUTTON, lambda event: self.controller.refresh())
+            self.buttons['pause'].Bind(wx.EVT_BUTTON, lambda event: self.control('pause'))
+            self.buttons['cancel'].Bind(wx.EVT_BUTTON, lambda event: self.control('cancel'))
+            self.buttons['save'].Bind(wx.EVT_BUTTON, self.save)
+            self.buttons['open'].Bind(wx.EVT_BUTTON, self.open_workstation)
+            self.buttons['close'].Bind(wx.EVT_BUTTON, self.close)
+            self.Bind(wx.EVT_CLOSE, self.close)
+            self.Bind(wx.EVT_WINDOW_DESTROY, self.destroyed)
+            self.render()
+
+        def selection(self):
+            index = self.listing.GetSelection()
+            rows = self.controller.jobs
+            return rows[index] if 0 <= index < len(rows) else None
+
+        def selected(self, event=None):
+            current = self.selection()
+            self.detail.ChangeValue(json.dumps(asdict(current), ensure_ascii=False, indent=2) if current else '')
+            self.render_controls()
+
+        def render_controls(self):
+            ready = self.controller.policy is not None and not self.controller.busy
+            for control in (self.listing, self.cpu, self.memory, self.disk, self.free, self.gpu):
+                control.Enable(ready)
+            self.buttons['refresh'].Enable(not self.controller.busy)
+            self.buttons['save'].Enable(ready)
+            current = self.selection()
+            for action in ('pause', 'cancel'):
+                self.buttons[action].Enable(ready and current is not None and action in current.controls)
+            self.buttons['open'].Enable(ready and current is not None and current.kind == 'asr'
+                                        and current.workspace == self.controller.workspace
+                                        and self.controller.workspace is not None)
+
+        def render(self, focus=False):
+            if self.controller.closed:
+                return
+            current = self.selection()
+            selected = current.key if current else None
+            rows = self.controller.jobs
+            self.listing.Set([f'{row.kind}: {row.id[:16]}; {row.status}; '
+                              f'{row.completed if row.completed is not None else "?"}/'
+                              f'{row.total if row.total is not None else "?"}' for row in rows])
+            if rows:
+                self.listing.SetSelection(next((i for i, row in enumerate(rows) if row.key == selected), 0))
+            policy = self.controller.policy
+            if policy is not None and policy.to_dict() != self._shown_policy:
+                self._shown_policy = policy.to_dict()
+                self.cpu.SetValue(policy.cpu_slots)
+                self.memory.SetValue(min(2147483647, (policy.memory_bytes + MIB - 1) // MIB))
+                self.disk.SetValue(min(2147483647, (policy.disk_bytes + GIB - 1) // GIB))
+                self.free.SetValue(min(2147483647, (policy.min_free_disk_bytes + MIB - 1) // MIB))
+                self.gpu.ChangeValue('\n'.join(f'{name}={(capacity + MIB - 1) // MIB}'
+                                               for name, capacity in policy.gpu_devices))
+            self.status.ChangeValue(self.controller.status)
+            self.selected()
+            if focus:
+                self.status.SetFocus()
+            if self.controller.close_pending and not self.controller.busy:
+                wx.CallAfter(self.close)
+
+        def control(self, action):
+            current = self.selection()
+            if current:
+                self.controller.control(current.key, action)
+
+        def save(self, event=None):
+            policy = self.controller.policy
+            if policy is None:
+                return
+            try:
+                value = policy_from_fields(cpu=self.cpu.GetValue(), memory_mib=self.memory.GetValue(),
+                    disk_gib=self.disk.GetValue(), free_mib=self.free.GetValue(),
+                    gpu=self.gpu.GetValue(), max_leases=policy.max_leases)
+                self.controller.save(value)
+            except (ValueError, TypeError) as exc:
+                self.controller.report(exc, focus=True)
+
+        def open_workstation(self, event=None):
+            current = self.selection()
+            if current:
+                def handoff(identity):
+                    self.handoff = identity
+                    self.EndModal(wx.ID_OK)
+                self.controller.open_transcription(current.key, handoff)
+
+        def close(self, event=None):
+            if self.controller.closed:
+                return
+            if not self.controller.close():
+                if event is not None and hasattr(event, 'CanVeto') and event.CanVeto():
+                    event.Veto()
+                return
+            self.EndModal(wx.ID_CLOSE)
+
+        def destroyed(self, event):
+            # SIP can replace the Python wrapper during native destruction.
+            # Read only the ID captured while this window was still alive.
+            if event.GetId() == self._native_id:
+                self.controller.dispose()
+            event.Skip()
+
+        def Destroy(self):
+            """Detach before wx schedules deferred native destruction."""
+            controller = getattr(self, 'controller', None)
+            if controller is not None:
+                controller.dispose()
+            return super().Destroy()
+
+    return OperationsDialog()
+
+
+def show_operations(frame):
+    import wx
+    dialog = create_operations_dialog(frame)
+    controller = dialog.controller
+    handoff = None
     try:
-        return dialog.ShowModal()
+        dialog.CentreOnParent()
+        wx.CallAfter(controller.refresh)
+        dialog.ShowModal()
+        if not controller.closed and dialog and not dialog.IsBeingDeleted():
+            handoff = dialog.handoff
     finally:
-        alive = False
-        executor.shutdown(wait=False, cancel_futures=True)
-        dialog.Destroy()
+        controller.dispose()
+        # ShowModal can return before the deferred native destroy event.
+        if dialog and not dialog.IsBeingDeleted():
+            dialog.Destroy()
+    if (handoff is not None and not getattr(frame, '_closing', False)
+            and frame and not frame.IsBeingDeleted()
+            and frame.library is controller.library
+            and getattr(frame, 'active', None) == controller.active):
+        from .transcription_dialog import show_transcription
+        show_transcription(frame, job_id=handoff)
 
 
 def install_operations_actions(frame):
@@ -227,4 +420,5 @@ def install_operations_actions(frame):
         frame.menu_bar.Append(menu, '&Tools')
     item = menu.Append(wx.ID_ANY, 'Tasks and resources...')
     frame.Bind(wx.EVT_MENU, lambda event: show_operations(frame), item)
-    register_menu_command(frame, CommandSpec('operations.tasks', 'Tasks and resources...', 'main'), item)
+    register_menu_command(frame, CommandSpec('operations.tasks',
+        'Tasks and resources...', 'main', ''), item)

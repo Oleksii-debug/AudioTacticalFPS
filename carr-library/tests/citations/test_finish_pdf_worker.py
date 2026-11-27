@@ -8,7 +8,7 @@ from io import BytesIO
 import json
 import subprocess
 import sys
-from time import monotonic
+from time import monotonic, sleep
 
 import pytest
 from reportlab.pdfgen.canvas import Canvas
@@ -30,18 +30,21 @@ def pdf_bytes():
 
 def controlled_child(monkeypatch, code, *, completed=False):
     """Keep the real supervisor and process lifecycle, inject a known child."""
-    original = subprocess.Popen
+    original = worker._spawn
     processes = []
 
     def launch(command, *args, **kwargs):
         assert '-I' in command  # Real worker must ignore user-site and PYTHONPATH.
-        child = original([sys.executable, '-I', '-c', code], *args, **kwargs)
+        child = original([command[0], '-I', '-B', '-c', code], *args, **kwargs)
         processes.append(child)
         if completed:
-            child.wait(timeout=10)
+            deadline = monotonic() + 10
+            while worker._poll(child) is None:
+                assert monotonic() < deadline, 'The actual fast child did not finish.'
+                sleep(.01)
         return child
 
-    monkeypatch.setattr(worker.subprocess, 'Popen', launch)
+    monkeypatch.setattr(worker, '_spawn', launch)
     return processes
 
 

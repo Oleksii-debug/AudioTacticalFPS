@@ -3,6 +3,7 @@ from dataclasses import asdict
 from pathlib import Path
 import json
 import os
+import runpy
 import sys
 import struct
 import wave
@@ -20,6 +21,7 @@ def main():
     from carr_library.ui.studio_dialog import show_studio
     from carr_library.ui.assistant_dialog import show_assistant, show_provider_settings
     from carr_library.ui.engine_settings import show_engine_settings
+    from carr_library.ui.translation_dialog import show_translation
     app = wx.App(False)
     result = {'status': 'RUNNING', 'platform': sys.platform, 'manual_nvda': 'NOT_RUN', 'checks': []}
     with TemporaryDirectory(prefix='carr-native-v3-') as temporary:
@@ -103,7 +105,115 @@ def main():
         inspect_dialog(show_assistant, ('Library scope', 'Goal', 'Plan preview'))
         inspect_dialog(show_provider_settings, ('Provider accounts', 'Connection configuration status'), wx.ID_CLOSE)
         inspect_dialog(show_engine_settings, ('Local engine configuration',), wx.ID_CLOSE)
+        inspect_dialog(show_translation, ('Google API account and edition', 'Selected text', 'Preview, supported languages'), wx.ID_CLOSE)
         result['checks'].append('native studio/assistant/provider/engine dialogs with named keyboard controls')
+
+        def studio_modal_destruction(parent):
+            from threading import Event
+            from time import monotonic, sleep
+            import traceback
+            from carr_library.ui import studio_dialog as studio_ui
+
+            owner = DesktopFrame(LibraryApp(root / ('studio-modal-parent' if parent else 'studio-modal-owner')))
+            owner.Show()
+            original_dialog, original_service = wx.Dialog, studio_ui.ProductionService
+            observed = {'destroy_calls': 0, 'destroy_events': [], 'returned': False}
+            state, errors, timers = {}, [], []
+            closed = Event()
+            deadline = monotonic() + 30
+            stopped = False
+
+            class ObservedDialog(original_dialog):
+                def __init__(self, *args, **kwargs):
+                    super().__init__(*args, **kwargs)
+                    state['dialog'] = self
+                    identity = self.GetId()
+                    def destroyed(event):
+                        if event.GetId() == identity:
+                            observed['destroy_events'].append(True)
+                        event.Skip()
+                    self.Bind(wx.EVT_WINDOW_DESTROY, destroyed)
+
+                def Destroy(self):
+                    observed['destroy_calls'] += 1
+                    return super().Destroy()
+
+            def observed_service(*args, **kwargs):
+                actual = original_service(*args, **kwargs)
+                actual_close = actual.close
+                def close():
+                    actual_close()
+                    closed.set()
+                actual.close = close
+                return actual
+
+            def fail(message):
+                errors.append(message)
+                probe = state.get('dialog')
+                if probe and not probe.IsBeingDeleted() and probe.IsModal():
+                    probe.EndModal(wx.ID_CANCEL)
+
+            def request_destroy():
+                if stopped:
+                    return
+                try:
+                    probe = state.get('dialog')
+                    assert monotonic() < deadline, 'Studio modal did not open.'
+                    if probe is None or not probe.IsModal():
+                        timers.append(wx.CallLater(25, request_destroy))
+                        return
+                    (owner if parent else probe).Destroy()
+                except BaseException:
+                    fail(traceback.format_exc())
+
+            try:
+                while owner.working and monotonic() < deadline:
+                    app.Yield()
+                    sleep(.01)
+                assert not owner.working, 'Studio modal owner did not finish initialization.'
+                wx.Dialog, studio_ui.ProductionService = ObservedDialog, observed_service
+                timers.append(wx.CallLater(25, request_destroy))
+                timers.append(wx.CallLater(30000, fail, 'Native Studio modal destruction timed out.'))
+                studio_ui.show_studio(owner)
+                observed['returned'] = True
+                assert observed['destroy_calls'] == (0 if parent else 1), dict(observed)
+                deletion_loop = wx.GUIEventLoop()
+                def settled():
+                    if observed['destroy_events'] and closed.is_set():
+                        deletion_loop.Exit()
+                    elif monotonic() >= deadline:
+                        errors.append('Studio native destruction or owned service cleanup did not finish.')
+                        deletion_loop.Exit()
+                    else:
+                        timers.append(wx.CallLater(25, settled))
+                wx.CallAfter(settled)
+                deletion_loop.Run()
+                assert not errors, '\n'.join(errors)
+                assert observed['destroy_events'] == [True] and not state['dialog'], dict(observed)
+                assert closed.is_set(), 'The actual Studio service did not close before fixture cleanup.'
+                observed['owned_service_closed_before_fixture_cleanup'] = True
+                return dict(observed)
+            finally:
+                stopped = True
+                wx.Dialog, studio_ui.ProductionService = original_dialog, original_service
+                for timer in timers:
+                    timer.Stop()
+                owner.cancel_event.set()
+                owner.executor.shutdown(wait=True, cancel_futures=True)
+                probe = state.get('dialog')
+                if probe and not probe.IsBeingDeleted():
+                    probe.Destroy()
+                if owner and not owner.IsBeingDeleted():
+                    owner.Destroy()
+                app.Yield()
+                print('MODAL-STUDIO-LIFETIME:', json.dumps(observed), flush=True)
+
+        result['studio_modal_owner'] = studio_modal_destruction(False)
+        result['studio_modal_parent'] = studio_modal_destruction(True)
+        result['checks'].append('native Studio modal destruction and owned cleanup before fixture release')
+        operations_probe = runpy.run_path(str(Path(__file__).resolve().parents[1] / 'tests' / 'ui' / 'native_operations_smoke.py'))
+        result['operations'] = operations_probe['run_native_operations'](frame, root / 'native-operations')
+        result['checks'].append('native Tasks policy save, responsive close and safe destruction')
         frame.Close()
         app.Yield()
     result['status'] = 'PASS'

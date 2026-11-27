@@ -59,9 +59,9 @@ def _check_arguments(step):
     if 'mode' in step.arguments and step.arguments['mode'] not in ('word', 'phrase', 'terms', 'thematic', 'semantic'):
         raise ValueError('Unsupported search mode.')
     if step.tool == 'audio.transcribe':
-        from ..integrations.supplied_transcription import recognition_settings
-        recognition_settings({key: value for key, value in step.arguments.items()
-                              if key not in ('path', 'name')}, '<configured-local-model>')
+        from ..transcription import settings
+        settings({key: value for key, value in step.arguments.items()
+                  if key not in ('path', 'name')})
 
 
 def _hash_file(path, cancelled=lambda: False):
@@ -95,11 +95,6 @@ class AssistantService:
         self.production = production
         self.transcription = transcription
 
-    def preview(self, instruction, scope):
-        plan = preview(instruction, scope)
-        self.validate(plan)
-        return plan
-
     def local_planner_profiles(self):
         """List eligible choices without selecting or contacting a provider."""
         from .llm import is_local_planner
@@ -128,6 +123,11 @@ class AssistantService:
         self.validate(plan)
         if cancelled():
             raise InterruptedError('Local plan proposal cancelled; nothing was submitted.')
+        return plan
+
+    def preview(self, instruction, scope):
+        plan = preview(instruction, scope)
+        self.validate(plan)
         return plan
 
     def validate(self, plan):
@@ -162,16 +162,31 @@ class AssistantService:
                     raise RuntimeError('The audio production runtime is not configured.')
             if step.tool == 'audio.transcribe':
                 from ..integrations.supplied_transcription import AUDIO_EXTENSIONS, SuppliedTranscriptionAdapter
+                from ..transcription import MEDIA_SUFFIXES
                 source = plan.scope.input(step.arguments['path'])
-                if not source.is_file() or source.suffix.lower() not in AUDIO_EXTENSIONS:
+                suffixes = AUDIO_EXTENSIONS if self.transcription is not None else MEDIA_SUFFIXES
+                if not source.is_file() or source.suffix.lower() not in suffixes:
                     raise ValueError('Choose a supported local audio file for transcription.')
                 target = plan.scope.output(step.arguments['name'])
                 if target.exists():
                     raise FileExistsError('The transcript output directory already exists.')
                 if not target.parent.is_dir():
                     raise ValueError('Choose an existing parent directory for transcript exports.')
-                if not isinstance(self.transcription, SuppliedTranscriptionAdapter):
-                    raise RuntimeError('Configure and verify the supplied transcription worker before submitting this plan.')
+                if regular(source).st_size > plan.scope.max_bytes:
+                    raise ValueError('The transcription source exceeds the approved byte budget.')
+                if target.is_relative_to(self.app.root):
+                    raise PermissionError('Choose a transcript export directory outside the private library.')
+                if self.transcription is not None:
+                    # Explicit compatibility injection for the independently
+                    # pinned V4.3 protocol; native product callers do not use it.
+                    if not isinstance(self.transcription, SuppliedTranscriptionAdapter):
+                        raise RuntimeError('Unsupported explicit transcription adapter.')
+                else:
+                    if not os.path.lexists(self.app.root / 'state' / 'transcription' / 'engine.json'):
+                        raise RuntimeError('Configure and verify the library transcription worker before submitting this plan.')
+                    if not workspace or workspace == '<new>':
+                        raise PermissionError('Choose an existing library before transcription.')
+                    self.app.transcription(workspace).configuration(verify=True)
         return plan
 
     def submit(self, plan):
@@ -182,6 +197,13 @@ class AssistantService:
                   'status': 'queued', 'message': '', 'workspace': plan.scope.workspace_id,
                   'steps': [{'status': 'pending', 'intent': {}, 'result': None, 'message': ''}
                             for _ in plan.steps]}
+        if self.transcription is None:
+            deadline = monotonic() + plan.scope.max_seconds
+            for step, checkpoint in zip(plan.steps, record['steps']):
+                if step.tool == 'audio.transcribe':
+                    checkpoint['intent']['library_transcription'] = self._transcription_binding(
+                        plan.scope, step.arguments, record['workspace'],
+                        cancelled=lambda: monotonic() >= deadline)
         self.store.save(record)
         return identity
 
@@ -321,6 +343,181 @@ class AssistantService:
             if progress:
                 progress(sum(s['status'] == 'complete' for s in record['steps']), len(plan.steps), record['status'])
             return self._report(record)
+
+
+    def _transcription_binding(self, scope, args, workspace, *, cancelled):
+        from ..transcription import settings
+        from ..audio.models import AudioCancelled
+        service = self.app.transcription(workspace)
+        engine = service.configuration(verify=True)
+        chosen = settings({key: value for key, value in args.items()
+                           if key not in ('path', 'name')}, protocol=engine['protocol'])
+        source, destination = scope.input(args['path']), scope.output(args['name'])
+        before = regular(source)
+        if before.st_size > scope.max_bytes:
+            raise ValueError('The transcription source exceeds the approved byte budget.')
+        checksum = _hash_file(source, cancelled)
+        after = regular(scope.input(args['path']))
+        fields = ('st_dev', 'st_ino', 'st_size', 'st_mtime_ns', 'st_ctime_ns')
+        if any(getattr(before, key) != getattr(after, key) for key in fields):
+            raise ValueError('The transcription source changed during approval.')
+        model = service._admission_model(engine,
+            {'protocol': engine['protocol'], 'settings': chosen}, cancelled)
+        if cancelled():
+            raise AudioCancelled('Transcription approval exceeded its time allowance.')
+        return {'authority': 'library-transcription/1', 'workspace': workspace,
+                'source': str(source), 'size_bytes': before.st_size, 'sha256': checksum,
+                'destination': str(destination), 'engine': engine,
+                'settings': chosen, 'model_identity': model}
+
+    @staticmethod
+    def _transcription_export_files(destination, expected, scope, cancelled):
+        """Read only the exact inventory saved before the existing exporter commits."""
+        from ..durable_state import local_path as checked_path, regular as checked_regular
+        from ..state_backup import relative_name
+        if not isinstance(expected, list) or not 1 <= len(expected) <= scope.max_files:
+            raise ValueError('The saved transcription export inventory is invalid.')
+        allowed, directories, total = {}, set(), 0
+        for row in expected:
+            if (not isinstance(row, dict) or set(row) != {'path', 'size_bytes', 'sha256'}
+                    or type(row['size_bytes']) is not int or row['size_bytes'] < 0
+                    or not isinstance(row['sha256'], str)
+                    or not re.fullmatch('[0-9a-f]{64}', row['sha256'])):
+                raise ValueError('The saved transcription export inventory is invalid.')
+            relative = relative_name(row['path'])
+            name = relative.as_posix()
+            if name != row['path'] or name in allowed:
+                raise ValueError('The saved transcription export inventory is ambiguous.')
+            allowed[name] = row
+            for parent in relative.parents:
+                if parent.as_posix() != '.':
+                    directories.add(parent.as_posix())
+            total += row['size_bytes']
+        if total > scope.max_bytes or 'transcription-manifest.json' not in allowed:
+            raise ValueError('The transcription export exceeds its approved budget or lacks its manifest.')
+        destination = checked_path(destination, exists=True)
+        checked_regular(destination, directory=True)
+        observed, pending = set(), [destination]
+        while pending:
+            directory = pending.pop()
+            with os.scandir(directory) as entries:
+                for entry in entries:
+                    if cancelled():
+                        raise InterruptedError('Transcription export verification stopped.')
+                    child = checked_path(entry.path, root=destination, exists=True)
+                    name = child.relative_to(destination).as_posix()
+                    if entry.is_dir(follow_symlinks=False):
+                        checked_regular(child, directory=True)
+                        if name not in directories:
+                            raise ValueError('The completed transcription export has an unrelated directory.')
+                        pending.append(child)
+                    else:
+                        if name not in allowed or name in observed:
+                            raise ValueError('The completed transcription export has an unrelated file.')
+                        if (checked_regular(child).st_size != allowed[name]['size_bytes']
+                                or _hash_file(child, cancelled) != allowed[name]['sha256']):
+                            raise ValueError('A completed transcription export changed.')
+                        observed.add(name)
+        if observed != set(allowed):
+            raise ValueError('The completed transcription export is incomplete.')
+        return [str(destination / name) for name in sorted(allowed)]
+
+    def _library_transcription(self, args, scope, record, intent, persist, cancelled, progress, step_index):
+        from ..transcription import settings, V5_PROTOCOL
+        from ..audio.models import AudioCancelled
+        binding = intent.get('library_transcription')
+        if not isinstance(binding, dict) or binding.get('authority') != 'library-transcription/1':
+            raise ValueError('This older transcription plan needs its explicit original adapter or a newly reviewed library plan.')
+        workspace = record['workspace']
+        destination = scope.output(args['name'])
+        if (binding.get('workspace') != workspace or not workspace
+                or binding.get('destination') != str(destination)
+                or destination.is_relative_to(self.app.root)):
+            raise PermissionError('The approved transcription scope changed.')
+        # Resolve current path permissions even on retained-input recovery.
+        source = local_path(args['path'], must_exist=False)
+        if binding.get('source') != str(source):
+            raise PermissionError('The approved transcription source path changed.')
+        if not any(source == local_path(root) or
+                   (local_path(root).is_dir() and source.is_relative_to(local_path(root)))
+                   for root in scope.input_roots):
+            raise PermissionError('The transcription source is outside the approved input roots.')
+        engine = binding.get('engine')
+        if not isinstance(engine, dict):
+            raise ValueError('The approved transcription engine identity is missing.')
+        chosen = settings({key: value for key, value in args.items()
+                           if key not in ('path', 'name')}, protocol=engine.get('protocol'))
+        if binding.get('settings') != chosen:
+            raise ValueError('The approved transcription settings changed.')
+        service = self.app.transcription(workspace)
+        child_id = intent.get('transcription_job')
+        title = 'Assistant ' + record['id'] + ' transcription ' + str(step_index + 1)
+        expected = intent.get('transcription_export')
+        if os.path.lexists(destination) and expected is None:
+            raise FileExistsError('The transcript output directory already exists and is not this job publication.')
+        if child_id is None:
+            if intent.get('transcription_preparing'):
+                raise RuntimeError('Input preparation stopped before its job identity was saved. Review retained Transcription jobs before submitting another plan.')
+            # Check the exact approved source/runtime/model before creating the
+            # existing service's retained-input job. No worker runs in submit.
+            if self._transcription_binding(scope, args, workspace, cancelled=cancelled) != binding:
+                raise ValueError('The approved transcription source, runtime or model changed.')
+            intent['transcription_preparing'] = True
+            persist()
+            child_id = service.submit([scope.input(args['path'])], title=title, options=chosen,
+                source_manifests=[{'size_bytes': binding['size_bytes'], 'sha256': binding['sha256']}],
+                protocol=engine['protocol'], cancelled=cancelled)
+            intent['transcription_job'] = child_id
+            intent.pop('transcription_preparing', None)
+            persist()
+        job = service.get(child_id)
+        if (job.get('title') != title or job.get('workspace') != workspace
+                or job.get('protocol') != engine.get('protocol') or job.get('settings') != chosen
+                or len(job.get('sources', [])) != 1
+                or {key: job['sources'][0].get(key) for key in ('size_bytes', 'sha256')} !=
+                   {key: binding.get(key) for key in ('size_bytes', 'sha256')}
+                or job['sources'][0].get('original_name') != source.name):
+            raise ValueError('The saved transcription job differs from this approved assistant step.')
+        try:
+            if job['status'] != 'completed':
+                if self._transcription_binding(scope, args, workspace, cancelled=cancelled) != binding:
+                    raise ValueError('The approved transcription source, runtime or model changed.')
+                job = service.run(child_id, cancelled=cancelled, progress=progress,
+                                  timeout=max(.05, scope.max_seconds),
+                                  expected_configuration=engine,
+                                  expected_model_identity=binding.get('model_identity'))
+                if job['status'] == 'stopped':
+                    raise InterruptedError('Transcription stopped; its retained job will resume.')
+                if job['status'] != 'completed':
+                    raise RuntimeError(job.get('last_error') or 'Transcription did not complete every verified output.')
+            job = service.verify(child_id, cancelled=cancelled)
+            context = job.get('run_context') or {}
+            if (context.get('worker_sha256') != engine.get('worker_sha256')
+                    or context.get('python_sha256') != engine.get('python_sha256')
+                    or (job['protocol'] == V5_PROTOCOL and
+                        (context.get('wrapper_sources_sha256') != engine.get('wrapper_sources_sha256')
+                         or context.get('model_identity') != binding.get('model_identity')))):
+                raise ValueError('The completed transcription used a different approved runtime or model.')
+            if not os.path.lexists(destination):
+                def prepared(rows):
+                    nonlocal expected
+                    if scope.output(args['name']) != destination:
+                        raise PermissionError('The transcript export scope changed.')
+                    rows = [dict(row) for row in rows]
+                    if expected is not None and rows != expected:
+                        raise ValueError('The saved transcription publication changed; choose a new reviewed plan.')
+                    expected = rows
+                    intent['transcription_export'] = rows
+                    persist()
+                service.export(child_id, destination, cancelled=cancelled,
+                    max_bytes=scope.max_bytes, max_files=scope.max_files, before_publish=prepared)
+            files = self._transcription_export_files(destination, expected, scope, cancelled)
+        except AudioCancelled as exc:
+            raise InterruptedError(str(exc)) from exc
+        return {'transcription_job': child_id, 'workspace': workspace,
+                'directory': str(destination), 'protocol': job['protocol'],
+                'artifacts': files,
+                'notice': 'Verified local machine transcription; source media and separately labelled edits remain in the library.'}
 
     def _input_files(self, path, scope, cancelled):
         accepted = []
@@ -478,7 +675,17 @@ class AssistantService:
             return result
         if step.tool == 'audio.transcribe':
             if self.transcription is None:
-                raise RuntimeError('The reviewed supplied transcription installation is unavailable.')
+                def library_progress(done, total, message):
+                    if progress:
+                        progress(index, len(record['steps']), message)
+                from ..audio.models import AudioCancelled
+                try:
+                    return self._library_transcription(args, scope, record, intent, persist,
+                                                       cancelled, library_progress, index)
+                except AudioCancelled as exc:
+                    raise InterruptedError(str(exc)) from exc
+            if 'library_transcription' in intent:
+                raise ValueError('This saved library transcription job must resume through its existing library service.')
             def transcription_progress(message):
                 if progress:
                     progress(index, len(record['steps']), message)

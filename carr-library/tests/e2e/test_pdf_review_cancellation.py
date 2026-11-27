@@ -98,21 +98,33 @@ def test_cancel_inside_revocation_transaction_preserves_prior_review(pdf_result,
 
 def test_cancel_stops_running_isolated_renderer(pdf_result, monkeypatch):
     app, workspace, hit = pdf_result
-    original = subprocess.Popen
+    original = worker._spawn
     children = []
 
     def delayed_renderer(command, *args, **kwargs):
-        child = original([sys.executable, '-I', '-c', 'import time; time.sleep(30)'],
+        # Replace only the isolated renderer, retaining its selected native
+        # interpreter, environment and actual process-family cleanup.
+        if not (isinstance(command, (list, tuple))
+                and '-c' in command
+                and "runpy.run_module('carr_library.ingest.worker'" in command[command.index('-c') + 1]):
+            return original(command, *args, **kwargs)
+        child = original([command[0], '-I', '-B', '-c', 'import time; time.sleep(30)'],
                          *args, **kwargs)
         children.append(child)
         return child
 
-    monkeypatch.setattr(worker.subprocess, 'Popen', delayed_renderer)
+    monkeypatch.setattr(worker, '_spawn', delayed_renderer)
     started = monotonic()
-    with pytest.raises(InterruptedError, match='cancelled'):
-        app.review_pdf_page(workspace, hit.ref, hit.revision, 'Synthetic reviewer',
-                            confirmed=True, cancelled=lambda: monotonic() - started > 0.2)
-    assert len(children) == 1 and children[0].poll() is not None
-    assert monotonic() - started < 5
-    assert _reviews(app, workspace) == ()
+    try:
+        with pytest.raises(InterruptedError, match='cancelled'):
+            app.review_pdf_page(workspace, hit.ref, hit.revision, 'Synthetic reviewer',
+                                confirmed=True, cancelled=lambda: monotonic() - started > 0.2)
+        assert len(children) == 1 and children[0].poll() is not None
+        assert monotonic() - started < 5
+        assert _reviews(app, workspace) == ()
+    finally:
+        for child in children:
+            if child.poll() is None:
+                child.kill()
+            child.wait(timeout=5)
 

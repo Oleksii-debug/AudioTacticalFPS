@@ -334,7 +334,8 @@ def test_native_probe_waits_for_resumed_job_result_callback(environment, worker_
         namespace = {
             'executor': SimpleNamespace(submit=submit), 'service': SimpleNamespace(resume=resume),
             'cancel': Event(), 'review': review, 'buttons': buttons, 'json': json,
-            'frame': SimpleNamespace(library=app), 'library_root': app.root, 'folder_buttons': [],
+            'frame': SimpleNamespace(library=app), 'library_root': app.root,
+            'folder_buttons': (), 'approved_inputs': None,
             'wx': SimpleNamespace(CallAfter=lambda function, *args: callbacks.put((function, args))),
             **{name: Control() for name in
                ('scope_choice', 'instruction', 'input_folder', 'output_folder', 'full_backup', 'planning_source')},

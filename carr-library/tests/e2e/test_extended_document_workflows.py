@@ -302,7 +302,7 @@ def test_mixed_document_batch_pause_reopen_and_backup_preserve_exact_sources(tmp
     folder = tmp_path / 'selected'
     folder.mkdir()
     originals = {}
-    for extension in ('.html', '.odt', '.pptx', '.xlsx'):
+    for extension in ('.html', '.md', '.odt', '.pptx', '.xlsx'):
         source = folder / ('source' + extension)
         source.write_bytes(source_bytes(extension))
         originals[sha256(source.read_bytes()).hexdigest()] = source.read_bytes()
@@ -310,7 +310,7 @@ def test_mixed_document_batch_pause_reopen_and_backup_preserve_exact_sources(tmp
     workspace = app.create_workspace('Batch formats')
     collection = app.create_collection(workspace, 'Collected sources')
     planned = app.plan_import_batch(workspace, [folder], collections=(collection,))
-    assert planned['counts']['queued'] == 4 and planned['counts'].get('rejected', 0) == 0
+    assert planned['counts']['queued'] == 5 and planned['counts'].get('rejected', 0) == 0
     pause = False
     def progressed(batch):
         nonlocal pause
@@ -323,19 +323,21 @@ def test_mixed_document_batch_pause_reopen_and_backup_preserve_exact_sources(tmp
     completed_identity = tuple(completed[k] for k in ('row_id', 'work_id', 'edition_id', 'request_id'))
     reopened = LibraryApp(app.root)
     result = reopened.run_import_batch(workspace, planned['batch_id'])
-    assert result['state'] == 'complete' and result['counts']['complete'] == 4
+    assert result['state'] == 'complete' and result['counts']['complete'] == 5
     same = next(row for row in result['rows'] if row['row_id'] == completed['row_id'])
     assert tuple(same[k] for k in ('row_id', 'work_id', 'edition_id', 'request_id')) == completed_identity
     assert all(row['result']['verified'] is False for row in result['rows'])
-    assert len(reopened.browse(workspace, collection=collection)) == 4
+    assert all(row['result']['isolated'] is True
+               and row['result']['request_id'] == row['request_id'] for row in result['rows'])
+    assert len(reopened.browse(workspace, collection=collection)) == 5
     backup = tmp_path / 'backup'
     checksum = create_backup(reopened, backup)
     for path in folder.iterdir():
         path.unlink()
     restored = LibraryApp(restore_backup(backup, tmp_path / 'restored', checksum))
-    assert len(restored.browse(workspace, collection=collection)) == 4
+    assert len(restored.browse(workspace, collection=collection)) == 5
     hits = restored.search(workspace, 'Librarymarker', collection=collection)
-    assert len(hits) == 4 and all(not hit.verified for hit in hits)
+    assert len(hits) == 5 and all(not hit.verified for hit in hits)
     for book in restored.browse(workspace):
         assert restored.assets.resolve(book.asset).read_bytes() == originals[book.asset]
         assert FIRST in '\n'.join(ReadingDesk(restored, workspace, book.edition_id).page(i).raw_text

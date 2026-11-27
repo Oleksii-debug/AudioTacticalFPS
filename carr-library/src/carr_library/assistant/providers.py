@@ -442,7 +442,8 @@ class Gateway:
                         if detected is not None and (not isinstance(detected, str) or not re.fullmatch('[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8}){0,3}', detected)):
                             raise ProviderError('The detected translation language is invalid.')
                         result.update(detected_source=detected, reported_model=row['model'], glossary_config=glossary)
-                        usage = {'submitted_characters': len(body['contents'][0])}
+                        usage = {'submitted_characters': len(body['contents'][0]),
+                                 'translation_sha256': sha256(result['text'].encode('utf-8')).hexdigest()}
                 elif profile.adapter == 'google-translation-v2':
                     data = parsed.get('data') if type(parsed) is dict else None
                     if type(data) is not dict:
@@ -462,12 +463,14 @@ class Gateway:
                         if (not isinstance(translations, list) or len(translations) != 1
                                 or type(translations[0]) is not dict or type(translations[0].get('translatedText')) is not str):
                             raise ProviderError('The text translation response is invalid.')
-                        result['text'] = html.unescape(text(translations[0]['translatedText'], 'translation output', maximum=max_response_bytes))
+                        decoded = html.unescape(text(translations[0]['translatedText'], 'translation output', maximum=max_response_bytes))
+                        result['text'] = text(decoded, 'translation output', maximum=max_response_bytes)
                         detected = translations[0].get('detectedSourceLanguage')
                         if detected is not None and (not isinstance(detected, str) or not re.fullmatch('[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8}){0,3}', detected)):
                             raise ProviderError('The detected translation language is invalid.')
                         result['detected_source'] = detected
-                        usage = {'submitted_characters': len(body['q'])}
+                        usage = {'submitted_characters': len(body['q']),
+                                 'translation_sha256': sha256(result['text'].encode('utf-8')).hexdigest()}
                 else:
                     choices = parsed.get('choices') if type(parsed) is dict else None
                     if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):

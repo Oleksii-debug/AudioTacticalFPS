@@ -1,0 +1,63 @@
+{
+  "schema": "resonance-local-evidence/1",
+  "subject": "Portable update pending native cleanup retains transaction ownership through catchable interruption",
+  "baseline": {
+    "commit": "7e39fdc01e3a04120c5287e78f9bef5a01840c21",
+    "tree": "dac7e8a1100f95d3c5beec5c29e76cb8111625cb",
+    "full_security": {
+      "passed": 177,
+      "failed": 0,
+      "skipped": 0,
+      "explicitly_deselected": "test_real_windows_vault_anchor_roundtrip (Linux host)"
+    }
+  },
+  "independent_negative": {
+    "status": "REPRODUCED",
+    "platform": "Linux",
+    "reviewer": "windows_acceptance",
+    "harness_commit": "3bf3ee9f67edfaf09c91d29712e9d6fdd69930e0",
+    "harness_blob": "1cc52c766afa504cc8488cb402588d3c620612e0",
+    "observed": [
+      "Actual SIGINT escaped the pending native-owner wait",
+      "Actual retained subprocess remained alive and owner was not quiescent",
+      "Update, caller-idle and library-writer locks were all reacquirable",
+      "Recovery rolled back new-active installation while the child was still alive"
+    ],
+    "boundary": "Controlled AudioCleanupPending result with an actual child and the existing cleanup owner; signed synthetic TUF package, real transaction, backup and native locks"
+  },
+  "production_checkpoint": {
+    "commit": "767454bcd4751fe089bec2f2dd7d0e917cdf78b3",
+    "tree": "5366ce09a3e7c14e9eab3ea40e314d71bff520e0",
+    "blob": "4609dad51f92aa2e6df3b04d187f993658eb8f59"
+  },
+  "required_regression": {
+    "path": "tests/security/test_installation.py",
+    "test": "test_interrupted_native_cleanup_retains_all_transaction_locks_until_quiescent",
+    "cases": [
+      "keyboard-interrupt",
+      "system-exit"
+    ],
+    "assertions": [
+      "Real retained child and the existing owner remain alive through two different catchable interruptions",
+      "Separate actual process observes all three locks busy",
+      "Explicit recover refuses and does not change the new-active journal while child lives",
+      "Only actual child exit and stream closure allow the first interruption to propagate",
+      "No protected build advancement; locks then release and explicit recovery restores verified A",
+      "Original reading, research, retained jobs and private bytes remain unchanged"
+    ],
+    "platform_contract": "POSIX keyboard interruption uses actual SIGINT. Windows uses explicit Python KeyboardInterrupt; no native Windows console-signal claim. The child readiness banner is bounded to 16 bytes and accepts the native CRLF line ending."
+  },
+  "final_runtime": {
+    "status": "NOT_RUN",
+    "reason": "Executor transport disconnected before regression materialization or execution; immutable source and test checkpoint prepared via GitHub API.",
+    "native_windows": "NOT_RUN"
+  },
+  "acceptance": {
+    "portable_activation_backend": "SYNTHETIC_TESTS_ONLY",
+    "activation_host": "NOT_IMPLEMENTED",
+    "managed_installation_activation": "REFUSED",
+    "installed_windows_upgrade": "NOT_RUN",
+    "abrupt_parent_loss_containment": "NOT_CLAIMED",
+    "python_exception_handler_atomicity": "NOT_CLAIMED"
+  }
+}

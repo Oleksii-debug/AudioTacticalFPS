@@ -44,18 +44,28 @@ def _include(path, generated):
             and (generated or 'cache' not in path.parts))
 
 
+def _walk_error(error):
+    # os.walk silently suppresses directory enumeration errors by default.
+    # An unreadable subtree is not evidence that it contains no user state.
+    raise error
+
+
 def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE_BYTES,
-                   cancelled=lambda: False):
+                   cancelled=lambda: False, missing_ok=True):
     root = Path(root)
     if cancelled():
         raise InterruptedError('Backup cancelled.')
-    if not os.path.lexists(root):
+    try:
+        root.lstat()
+    except FileNotFoundError:
+        if not missing_ok:
+            raise
         return []
     root = local_path(root, exists=True)
     regular(root, directory=True)
     def inventory():
         found = {}
-        for directory, dirs, files in os.walk(root, followlinks=False):
+        for directory, dirs, files in os.walk(root, followlinks=False, onerror=_walk_error):
             if cancelled():
                 raise InterruptedError('Backup cancelled.')
             for name in dirs:
@@ -105,32 +115,32 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
             entries.append({'filename': relative.as_posix(), 'size_bytes': count, 'sha256': digest.hexdigest()})
     if inventory() != before_inventory:
         raise ValueError('Application state changed during backup; retry after saving.')
-    # A Windows creation timestamp is not a write counter, and last-write
-    # timestamps may be coarse or restored. Check copied content again before
-    # accepting the complete snapshot, without buffering whole state files.
+    # File metadata is not a content identity: on Windows an equal-size write
+    # can retain the observed timestamps. Recheck every copied source against
+    # its manifest hash before the caller can publish this snapshot.
     for entry in entries:
         if cancelled():
             raise InterruptedError('Backup cancelled.')
         relative = Path(entry['filename'])
-        source = local_path(root / relative, root=root, exists=True)
-        expected = before_inventory[relative]
-        digest, count = sha256(), 0
-        if _stamp(regular(source)) != expected:
+        source = root / relative
+        expected_stamp = before_inventory[relative]
+        if _stamp(regular(source)) != expected_stamp:
             raise ValueError('Application state changed during backup; retry after saving.')
-        with source.open('rb') as stream:
-            if _stamp(os.fstat(stream.fileno())) != expected:
+        digest, count = sha256(), 0
+        with source.open('rb') as read:
+            if _stamp(os.fstat(read.fileno())) != expected_stamp:
                 raise ValueError('Application state changed during backup; retry after saving.')
-            while block := stream.read(min(1024 * 1024, entry['size_bytes'] + 1 - count)):
+            while block := read.read(min(1024 * 1024, entry['size_bytes'] + 1 - count)):
                 if cancelled():
                     raise InterruptedError('Backup cancelled.')
                 count += len(block)
                 if count > entry['size_bytes']:
-                    raise ValueError('Application state changed during backup; retry after saving.')
+                    raise ValueError('Application state grew during backup; retry after saving.')
                 digest.update(block)
-            if _stamp(os.fstat(stream.fileno())) != expected:
+            if _stamp(os.fstat(read.fileno())) != expected_stamp:
                 raise ValueError('Application state changed during backup; retry after saving.')
         if (count != entry['size_bytes'] or digest.hexdigest() != entry['sha256']
-                or _stamp(regular(source)) != expected):
+                or _stamp(regular(source)) != expected_stamp):
             raise ValueError('Application state changed during backup; retry after saving.')
     if inventory() != before_inventory:
         raise ValueError('Application state changed during backup; retry after saving.')
@@ -140,7 +150,12 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
     return sorted(entries, key=lambda entry: entry['filename'])
 
 
-def validate_state(entries):
+def validate_state(entries, *, max_bytes=None):
+    # Historical readers keep their original cap. Only the already typed
+    # restored projection supplies its separately checked aggregate budget.
+    maximum = MAX_STATE_BYTES if max_bytes is None else max_bytes
+    if type(maximum) is not int or maximum < 1:
+        raise ValueError('Application state validation needs a positive byte budget.')
     if not isinstance(entries, list) or len(entries) > MAX_STATE_FILES:
         raise ValueError('Invalid application state manifest.')
     names, directories, portable_paths, total = set(), set(), {}, 0
@@ -170,27 +185,40 @@ def validate_state(entries):
         total += item['size_bytes']
     if names & directories:
         raise ValueError('Application state file and directory paths collide.')
-    if total > MAX_STATE_BYTES:
+    if total > maximum:
         raise ValueError('Application state manifest exceeds its byte budget.')
 
 
-def restore_state(source, target, entries):
+def restore_state(source, target, entries, *, cancelled=lambda: False):
+    def check():
+        if not callable(cancelled):
+            raise ValueError('A cancellation callback is required.')
+        if cancelled():
+            raise InterruptedError('State restoration cancelled before publication.')
+    check()
     validate_state(entries)
     source = local_path(source, exists=True)
     regular(source, directory=True)
-    found = []
-    for directory, dirs, files in os.walk(source, followlinks=False):
+    missing = {item['filename'] for item in entries}
+    for directory, dirs, files in os.walk(source, followlinks=False, onerror=_walk_error):
+        check()
         for name in dirs:
             regular(Path(directory) / name, directory=True)
         for name in files:
             path = Path(directory) / name
             regular(path)
-            found.append(path.relative_to(source).as_posix())
-    if set(found) != {item['filename'] for item in entries}:
+            # Reject the first unexpected file rather than accumulating an
+            # attacker-controlled inventory beyond the manifest's file budget.
+            relative = path.relative_to(source).as_posix()
+            if relative not in missing:
+                raise ValueError('Backup has missing or unlisted application state.')
+            missing.remove(relative)
+    if missing:
         raise ValueError('Backup has missing or unlisted application state.')
     target = Path(target)
     target.mkdir(parents=True, exist_ok=True)
     for item in entries:
+        check()
         incoming = local_path(source / item['filename'], root=source, exists=True)
         if regular(incoming).st_size != item['size_bytes']:
             raise ValueError('Application state size mismatch.')
@@ -199,6 +227,7 @@ def restore_state(source, target, entries):
         digest, size = sha256(), 0
         with incoming.open('rb') as read, destination.open('xb') as write:
             while block := read.read(1024 * 1024):
+                check()
                 size += len(block)
                 if size > item['size_bytes']:
                     raise ValueError('Application state changed during restore.')
@@ -208,6 +237,7 @@ def restore_state(source, target, entries):
             os.fsync(write.fileno())
         if size != item['size_bytes'] or digest.hexdigest() != item['sha256']:
             raise ValueError('Application state checksum mismatch.')
+    check()
     sync_directory(target)
 
 

@@ -54,19 +54,12 @@ def worker(args):
                        capture_output=True, check=True)
         try:
             budget = audio.AudioBudget(max_output_bytes=4 * MIB, reserve_disk_bytes=4 * MIB, timeout=30)
-            resources = importlib.import_module("carr_library.operations")
-            # This deliberately tiny filesystem exercises the AudioBudget
-            # publication reserve. Give the independent shared coordinator
-            # an explicit compatible fixture policy, retaining real admission.
-            broker = resources.ResourceBroker.for_app(root, limits=resources.ResourceLimits(
-                cpu_slots=budget.threads, min_free_disk_bytes=0))
 
             def factory(path, **options):
                 return audio.AudioRuntime(path, ffmpeg=args.ffmpeg, ffprobe=args.ffprobe, budget=budget, **options)
 
             def service():
-                return production.ProductionService(root / "state", voices=speech.VoiceRegistry([]),
-                                                    runtime_factory=factory, broker=broker)
+                return production.ProductionService(root / "state", voices=speech.VoiceRegistry([]), runtime_factory=factory)
 
             engine = service()
             plan = engine.create("[Scene: Actual disk reserve]\n[Pause: 30]", mode="authored")

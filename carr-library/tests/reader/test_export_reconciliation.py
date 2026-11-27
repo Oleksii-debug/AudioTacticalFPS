@@ -1,5 +1,6 @@
 """Cross-candidate export guards on the canonical native metadata/receipt API."""
 import os
+from hashlib import sha256
 from pathlib import Path
 
 import pytest
@@ -108,9 +109,25 @@ def test_receipt_and_native_digest_shape_are_preserved(tmp_path):
     target.write_bytes(b'Original')
     private = tmp_path / 'private'
     approval = e.capture_export_destination(target, private_root=private)
-    assert isinstance(approval.state[-1], bytes) and len(approval.state[-1]) == 32
+    # The reconciled publisher keeps exact content identity separate from
+    # native metadata, and retains Windows ChangeTime in the state tuple.
+    assert approval.content_sha256 == sha256(b'Original').hexdigest()
     if os.name == 'nt':
-        assert len(approval.state) == 8 and approval.state[-2] > 0
+        assert len(approval.state) == 7 and approval.state[-1] > 0
     receipt = e.write_export(target, 'Цитата\r\nOriginal', private_root=private, approval=approval)
     assert receipt.path == target and receipt.cleanup_warning is None
     assert target.read_bytes() == 'Цитата\r\nOriginal'.encode()
+
+
+@pytest.mark.parametrize('warning', [None, 'The file is saved. Temporary-file cleanup is pending.'])
+def test_completion_message_preserves_actual_export_location_and_cleanup_notice(tmp_path, warning):
+    target = tmp_path / 'published.txt'
+    receipt = e.write_export(target, 'Exact retained output', private_root=tmp_path / 'private')
+    if warning is not None:
+        receipt = e.ExportReceipt(receipt.path, warning)
+    message = 'Saved bibliography: ' + str(receipt.path)
+    expected = message + (' ' + warning if warning else '')
+    assert e.export_completion(message, receipt) == expected
+    assert target.read_bytes() == b'Exact retained output'
+    assert receipt.path == target
+    assert e.export_completion(message, object()) == message

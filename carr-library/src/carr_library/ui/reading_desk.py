@@ -16,6 +16,7 @@ from ..research.export_file import write_export, export_completion
 from .export_destination import confirm_export_destination
 from ..research.topic_tree import TopicTree
 from .research_actions import NativeDialogs
+from .export_destination import confirm_export_destination
 
 
 def _chosen(index, values):
@@ -574,7 +575,8 @@ class ReadingActions:
             path = self.dialogs.path(self.frame, save=True)
             if path is None:
                 return
-            approval = confirm_export_destination(self.frame, path, private_root=scope.library.root)
+            approval = confirm_export_destination(self.frame, path, private_root=scope.library.root,
+                                                   title='Replace reading positions and bookmarks')
             if approval is None:
                 return
             self._guard(scope)

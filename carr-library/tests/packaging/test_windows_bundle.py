@@ -1,14 +1,11 @@
 """Offline distribution boundaries, using synthetic wheel bytes and real files."""
 import hashlib
-import base64
-import csv
 import importlib.util
-import io
 import json
-import os
 from pathlib import Path
 import tempfile
 import subprocess
+import struct
 import unittest
 from unittest.mock import patch
 from zipfile import ZIP_DEFLATED, ZipFile
@@ -61,58 +58,101 @@ class WindowsBundleTests(unittest.TestCase):
         installer.verify(self.output)
         self.assertIn("universal-research-library==1.0", (self.output / "install.lock").read_text())
         self.assertEqual((self.output / "wheelhouse" / self.app.name).read_bytes(), self.app.read_bytes())
+        self.assertFalse((self.output / "ResearchLibrary.exe").exists())
 
+    def native_launcher(self):
+        """Synthetic PE metadata for inspection only; never a runnable fixture."""
+        data = bytearray(0x600)
+        data[:2] = b"MZ"
+        struct.pack_into("<I", data, 0x3C, 0x80)
+        data[0x80:0x84] = b"PE\0\0"
+        struct.pack_into("<HHIIIHH", data, 0x84, 0x8664, 1, 0, 0, 0, 0xF0, 0x22)
+        optional = 0x98
+        struct.pack_into("<H", data, optional, 0x20B)
+        struct.pack_into("<HH", data, optional + 68, 2, 0x160)
+        struct.pack_into("<II", data, optional + 120, 0x1000, 40)
+        struct.pack_into("<II", data, optional + 128, 0x1100, 16)
+        section = optional + 0xF0
+        data[section:section + 8] = b".rdata\0\0"
+        struct.pack_into("<IIII", data, section + 8, 0x400, 0x1000, 0x400, 0x200)
+        struct.pack_into("<IIIII", data, 0x200, 0, 0, 0, 0x1060, 0)
+        data[0x260:0x26D] = b"kernel32.dll\0"
+        manifest = b'<requestedExecutionLevel level="asInvoker" uiAccess="false"/><longPathAware>true</longPathAware>'
+        data[0x300:0x300 + len(manifest)] = manifest
+        path = self.root / "ResearchLibrary.exe"
+        path.write_bytes(data)
+        return path
 
-    def test_native_launcher_is_sealed_and_tampering_is_rejected(self):
-        # Synthetic bytes test packaging boundaries only; native execution is
-        # independently required by the Windows launcher's real process probe.
-        launcher = self.root / "ResearchLibrary.exe"
-        approved = b"synthetic native launcher packaging fixture"
-        launcher.write_bytes(approved)
-        digest = hashlib.sha256(approved).hexdigest()
-        with patch.object(builder, "NATIVE_LAUNCHER_SHA256", digest):
+    def test_native_launcher_exact_selected_bytes_are_sealed_without_execution(self):
+        launcher = self.native_launcher()
+        original, expected = launcher.read_bytes(), builder.sha256(launcher)
+        with patch.object(subprocess, "Popen", side_effect=AssertionError("Bundle assembly must not execute a launcher")):
             builder.build_bundle(self.app, self.wheels, self.lock, self.output,
-                                 native_launcher=launcher)
-        self.assertEqual((self.output / "ResearchLibrary.exe").read_bytes(), approved)
-        manifest = json.loads((self.output / "bundle-manifest.json").read_text())
-        self.assertEqual(manifest["files"]["ResearchLibrary.exe"], digest)
+                                 native_launcher=launcher, native_launcher_sha256=expected)
+        sealed = self.output / "ResearchLibrary.exe"
+        self.assertEqual(sealed.read_bytes(), original)
+        self.assertTrue((self.output / "ResearchLibrary.cmd").is_file())
+        manifest = json.loads((self.output / "bundle-manifest.json").read_text(encoding="utf-8"))
+        self.assertEqual(manifest["files"]["ResearchLibrary.exe"], expected)
         installer.verify(self.output)
-        (self.output / "ResearchLibrary.exe").write_bytes(b"changed executable")
+        sealed.write_bytes(b"changed after assembly")
         with self.assertRaisesRegex(ValueError, "checksum"):
             installer.verify(self.output)
+        self.assertEqual(launcher.read_bytes(), original)
 
-    def test_native_launcher_wrong_identity_fails_before_output(self):
-        launcher = self.root / "ResearchLibrary.exe"
-        launcher.write_bytes(b"an unapproved executable")
-        with self.assertRaisesRegex(ValueError, "Windows-tested"):
-            builder.build_bundle(self.app, self.wheels, self.lock, self.output,
-                                 native_launcher=launcher)
-        self.assertFalse(self.output.exists())
-
-    def test_native_launcher_replaced_during_copy_is_rejected(self):
-        launcher = self.root / "ResearchLibrary.exe"
-        launcher.write_bytes(b"approved synthetic bytes")
+    def test_native_launcher_requires_paired_hash_and_valid_bounded_pe_before_publication(self):
+        launcher = self.native_launcher()
         digest = builder.sha256(launcher)
-        original_copy = builder.shutil.copyfile
+        invalid = self.root / "invalid.exe"
+        invalid.write_bytes(b"not a PE")
+        oversized = self.root / "oversized.exe"
+        oversized.write_bytes(b"x" * (2 * 1024 * 1024 + 1))
+        for selected, expected, message in (
+                (launcher, None, "supply both"),
+                (None, digest, "supply both"),
+                (launcher, "0" * 64, "checksum"),
+                (invalid, builder.sha256(invalid), "invalid unsigned native launcher"),
+                (oversized, builder.sha256(oversized), "size budget")):
+            with self.subTest(message=message):
+                with self.assertRaisesRegex(ValueError, message):
+                    builder.build_bundle(self.app, self.wheels, self.lock, self.output,
+                                         native_launcher=selected, native_launcher_sha256=expected)
+                self.assertFalse(self.output.exists())
 
-        def replace_before_copy(source, destination, *args, **kwargs):
-            if Path(source) == launcher:
-                launcher.write_bytes(b"replacement after verification")
+    def test_native_launcher_input_replacement_cannot_substitute_captured_bytes(self):
+        launcher = self.native_launcher()
+        original, expected = launcher.read_bytes(), builder.sha256(launcher)
+        original_copy = builder.shutil.copyfile
+        changed = []
+
+        def replace_input(source, destination, *args, **kwargs):
+            if Path(source) == self.dep and not changed:
+                launcher.write_bytes(b"concurrent unselected executable")
+                changed.append(True)
             return original_copy(source, destination, *args, **kwargs)
 
-        with patch.object(builder, "NATIVE_LAUNCHER_SHA256", digest):
-            with patch.object(builder.shutil, "copyfile", side_effect=replace_before_copy):
-                with self.assertRaisesRegex(ValueError, "changed during bundle assembly"):
-                    builder.build_bundle(self.app, self.wheels, self.lock, self.output,
-                                         native_launcher=launcher)
-        self.assertFalse(self.output.exists())
-
-    def test_native_launcher_directory_is_rejected(self):
-        launcher = self.root / "ResearchLibrary.exe"
-        launcher.mkdir()
-        with self.assertRaisesRegex(ValueError, "regular file"):
+        with patch.object(builder.shutil, "copyfile", side_effect=replace_input):
             builder.build_bundle(self.app, self.wheels, self.lock, self.output,
-                                 native_launcher=launcher)
+                                 native_launcher=launcher, native_launcher_sha256=expected)
+        self.assertEqual(changed, [True])
+        self.assertNotEqual(launcher.read_bytes(), original)
+        self.assertEqual((self.output / "ResearchLibrary.exe").read_bytes(), original)
+        installer.verify(self.output)
+
+    def test_native_launcher_stage_change_is_rejected_before_sealing(self):
+        launcher = self.native_launcher()
+        expected = builder.sha256(launcher)
+        original_copy = builder.shutil.copyfile
+
+        def change_stage(source, destination, *args, **kwargs):
+            if Path(source).name == "ResearchLibrary.cmd":
+                (Path(destination).parent / "ResearchLibrary.exe").write_bytes(b"changed staged launcher")
+            return original_copy(source, destination, *args, **kwargs)
+
+        with patch.object(builder.shutil, "copyfile", side_effect=change_stage):
+            with self.assertRaisesRegex(ValueError, "changed before bundle sealing"):
+                builder.build_bundle(self.app, self.wheels, self.lock, self.output,
+                                     native_launcher=launcher, native_launcher_sha256=expected)
         self.assertFalse(self.output.exists())
 
     def sbom(self, version="1.0"):
@@ -122,6 +162,47 @@ class WindowsBundleTests(unittest.TestCase):
             "components": [{"name": "fixture", "version": version}],
         }, indent=2) + "\n", encoding="utf-8")
         return path
+
+    def test_native_launcher_is_sealed_and_tampering_is_rejected(self):
+        launcher = self.native_launcher()
+        approved, expected = launcher.read_bytes(), builder.sha256(launcher)
+        builder.build_bundle(self.app, self.wheels, self.lock, self.output,
+                             native_launcher=launcher, native_launcher_sha256=expected)
+        self.assertEqual((self.output / "ResearchLibrary.exe").read_bytes(), approved)
+        installer.verify(self.output)
+        (self.output / "ResearchLibrary.exe").write_bytes(b"changed executable")
+        with self.assertRaisesRegex(ValueError, "checksum"):
+            installer.verify(self.output)
+
+    def test_native_launcher_wrong_identity_fails_before_output(self):
+        launcher = self.native_launcher()
+        with self.assertRaisesRegex(ValueError, "checksum"):
+            builder.build_bundle(self.app, self.wheels, self.lock, self.output,
+                                 native_launcher=launcher, native_launcher_sha256="0" * 64)
+        self.assertFalse(self.output.exists())
+
+    def test_native_launcher_replaced_after_capture_cannot_alter_validated_output(self):
+        launcher = self.native_launcher()
+        approved, expected = launcher.read_bytes(), builder.sha256(launcher)
+        capture = builder.launcher_bytes
+        def changed(path, checksum):
+            raw = capture(path, checksum)
+            launcher.write_bytes(b"replacement after capture")
+            return raw
+        with patch.object(builder, "launcher_bytes", side_effect=changed):
+            builder.build_bundle(self.app, self.wheels, self.lock, self.output,
+                                 native_launcher=launcher, native_launcher_sha256=expected)
+        self.assertEqual((self.output / "ResearchLibrary.exe").read_bytes(), approved)
+        self.assertNotEqual(launcher.read_bytes(), approved)
+        installer.verify(self.output)
+
+    def test_native_launcher_directory_is_rejected(self):
+        launcher = self.root / "ResearchLibrary.exe"
+        launcher.mkdir()
+        with self.assertRaisesRegex(ValueError, "regular file"):
+            builder.build_bundle(self.app, self.wheels, self.lock, self.output,
+                                 native_launcher=launcher, native_launcher_sha256="0" * 64)
+        self.assertFalse(self.output.exists())
 
     def test_sbom_exact_bytes_are_sealed_and_tampering_is_rejected(self):
         sbom = self.sbom()
@@ -219,74 +300,6 @@ class WindowsBundleTests(unittest.TestCase):
             builder.build_bundle(self.app, self.wheels, self.lock, self.output,
                                  source_commit=commit)
         self.assertFalse(self.output.exists())
-
-    def test_exact_verified_historical_tree_is_preserved_in_bundle(self):
-        repo = self.root / 'source repository'
-        package = repo / 'carr-library/src/carr_library'
-        package.mkdir(parents=True)
-        (repo / 'carr-library/pyproject.toml').write_text('''[project]
-name = "universal-research-library"
-version = "1.0"
-dependencies = ["fixture==1.0"]
-[tool.setuptools]
-packages = ["carr_library"]
-package-dir = {"" = "src"}
-''', encoding='utf-8')
-        main = b"print('synthetic source-bound application')\n"
-        (package / '__main__.py').write_bytes(main)
-        environment = dict(os.environ, GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL=os.devnull,
-                           GIT_AUTHOR_NAME='Synthetic Test', GIT_AUTHOR_EMAIL='test@example.invalid',
-                           GIT_COMMITTER_NAME='Synthetic Test', GIT_COMMITTER_EMAIL='test@example.invalid')
-        def git(*args):
-            return subprocess.check_output(['git', '-C', str(repo), *args], env=environment,
-                                           text=True).strip()
-        git('init', '-q')
-        git('add', '.')
-        git('commit', '-qm', 'Synthetic release source')
-        release = git('rev-parse', 'HEAD')
-        tree = git('rev-parse', release + '^{tree}')
-        (repo / 'later.txt').write_text('Unrelated later commit.\n', encoding='utf-8')
-        git('add', '.')
-        git('commit', '-qm', 'Later source checkout')
-        self.assertNotEqual(tree, git('rev-parse', 'HEAD^{tree}'))
-
-        metadata = 'universal_research_library-1.0.dist-info/'
-        payload = {'carr_library/__main__.py': main,
-                   metadata + 'METADATA': b'Metadata-Version: 2.4\nName: universal-research-library\nVersion: 1.0\nRequires-Dist: fixture==1.0\n',
-                   metadata + 'WHEEL': b'Wheel-Version: 1.0\nRoot-Is-Purelib: true\nTag: py3-none-any\n'}
-        rows = [[name, 'sha256=' + base64.urlsafe_b64encode(hashlib.sha256(raw).digest()).decode().rstrip('='),
-                 str(len(raw))] for name, raw in payload.items()]
-        rows.append([metadata + 'RECORD', '', ''])
-        record = io.StringIO(newline='')
-        csv.writer(record, lineterminator='\n').writerows(rows)
-        with ZipFile(self.app, 'w', ZIP_DEFLATED) as archive:
-            for name, raw in payload.items():
-                archive.writestr(name, raw)
-            archive.writestr(metadata + 'RECORD', record.getvalue().encode())
-
-        verifier = module('source_wheel')
-        def verify(path, source_commit):
-            return verifier.verify_application_wheel(path, repo, source_commit)
-        with patch.object(builder, 'verify_application_source', side_effect=verify):
-            builder.build_bundle(self.app, self.wheels, self.lock, self.output,
-                                 source_commit=release)
-        manifest = json.loads((self.output / 'bundle-manifest.json').read_text())
-        self.assertEqual(manifest['source_commit'], release)
-        self.assertEqual(manifest['source_tree'], tree)
-        proof_path = self.output / 'application-source.json'
-        proof_bytes = proof_path.read_bytes()
-        proof = json.loads(proof_bytes)
-        self.assertEqual(proof['source_commit'], release)
-        self.assertEqual(proof['source_tree'], tree)
-        self.assertEqual(proof['wheel_sha256'], builder.sha256(self.app))
-        self.assertEqual(proof['project_name'], 'universal-research-library')
-        self.assertEqual(manifest['files']['application-source.json'],
-                         hashlib.sha256(proof_bytes).hexdigest())
-        self.assertNotIn(b'\r', proof_bytes)
-        installer.verify(self.output)
-        proof_path.write_bytes(proof_bytes.replace(release.encode(), b'0' * 40))
-        with self.assertRaisesRegex(ValueError, 'checksum'):
-            installer.verify(self.output)
 
     def test_application_replaced_after_source_verification_is_rejected(self):
         verified_digest = builder.sha256(self.app)

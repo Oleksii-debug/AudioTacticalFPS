@@ -3,7 +3,7 @@
 This is process isolation with time/resource limits, not an OS security sandbox.
 The existing ingest journal remains the only extraction/checkpoint pipeline.
 """
-from contextlib import closing, contextmanager, redirect_stdout
+from contextlib import ExitStack, closing, contextmanager, redirect_stdout
 from dataclasses import asdict
 from hashlib import sha256
 import json
@@ -16,7 +16,7 @@ import sqlite3
 import stat
 import subprocess
 import sys
-from tempfile import TemporaryDirectory, TemporaryFile
+from tempfile import TemporaryFile
 import time
 from uuid import uuid4
 
@@ -100,7 +100,7 @@ def _request_identity(record):
         'metadata', 'config', 'expected_manifest')}
 
 
-def _publication_state(db, record, revision):
+def _publication_state(db, record, revision, *, check=lambda: None, max_payload=None):
     """Inspect this exact sealed revision and registration in the caller's snapshot.
 
     The digest includes original source identity, requested catalog metadata and
@@ -110,6 +110,7 @@ def _publication_state(db, record, revision):
     from ..application import LibraryApp
     from ..catalog.membership import Catalog
 
+    check()
     workspace, metadata = record['workspace'], record['metadata']
     LibraryApp._authorize(db, workspace)
     row = db.execute('SELECT workspace,edition,asset,config FROM revision WHERE id=?',
@@ -136,13 +137,18 @@ def _publication_state(db, record, revision):
             or (record.get('expected_manifest') is not None
                 and record['expected_manifest'] != manifest)):
         raise ValueError('Import publication metadata changed.')
-    authors = tuple(r[0] for r in db.execute(
-        'SELECT name FROM catalog_author WHERE workspace=? AND work=? ORDER BY position',
-        (workspace, metadata['work_id'])))
+    authors = []
+    for author in db.execute(
+            'SELECT name FROM catalog_author WHERE workspace=? AND work=? ORDER BY position',
+            (workspace, metadata['work_id'])):
+        check()
+        authors.append(author[0])
+    authors = tuple(authors)
     if authors != tuple(metadata['authors']):
         raise ValueError('Import publication authors changed.')
     scoped = Catalog(db, workspace)
     for collection in metadata['collections']:
+        check()
         scoped._active_collection(collection)
         if not db.execute('SELECT 1 FROM catalog_membership '
                           'WHERE workspace=? AND collection=? AND edition=?',
@@ -155,19 +161,30 @@ def _publication_state(db, record, revision):
             '; '.join(authors) or None, metadata['title'] or 'Unknown title',
             metadata['volume'], metadata['edition']):
         raise ValueError('Import publication source metadata changed.')
+    check()
     digest = sha256(canonical([_request_identity(record), list(row), list(catalog),
                                list(source), authors]).encode('utf-8'))
     completed = 0
-    for page in db.execute('SELECT ordinal,physical,printed,verified,raw,digest '
-                           'FROM page WHERE revision=? ORDER BY ordinal', (revision,)):
+    # The normal publishing path retains the canonical digest byte-for-byte.
+    # Recovery additionally caps each fetched payload and checks its deadline.
+    if max_payload is None:
+        pages = db.execute('SELECT ordinal,physical,printed,verified,raw,digest '
+                           'FROM page WHERE revision=? ORDER BY ordinal', (revision,))
+    else:
+        pages = db.execute('SELECT ordinal,physical,printed,verified,'
+                           'CASE WHEN length(CAST(raw AS BLOB))<=? THEN raw END,digest '
+                           'FROM page WHERE revision=? ORDER BY ordinal', (max_payload, revision))
+    for page in pages:
+        check()
         completed += 1
         # Extraction already enforces its format-specific capacity. This
         # streaming verifier must not impose the PDF page limit on DOCX records.
-        if (page[0] != completed
+        if (page[0] != completed or not isinstance(page[4], str)
                 or sha256(page[4].encode('utf-8')).hexdigest() != page[5]):
             raise ValueError('Import publication page integrity changed.')
         digest.update(b'\n')
         digest.update(canonical(list(page)).encode('utf-8'))
+    check()
     if completed == 0:
         raise ValueError('Import publication contains no source pages.')
     return dict(sha256=digest.hexdigest(), completed=completed, manifest=manifest)
@@ -198,49 +215,11 @@ def record_publication_candidate(root, request_id, db, workspace, revision):
         attempt=attempt, revision=revision, **state))
 
 
-def _reconcile_publication(root, request_id, attempt):
-    """Recover only a fresh publication from this stopped child, without replay."""
-    record = load_request(root, request_id)
-    candidate = record.get('publication_candidate')
-    if candidate is None:
-        return None
-    if (record.get('attempt') != attempt or not isinstance(candidate, dict)
-            or set(candidate) != {'attempt', 'revision', 'sha256', 'completed', 'manifest'}
-            or candidate.get('attempt') != attempt
-            or not isinstance(candidate.get('revision'), str)
-            or not re.fullmatch('[0-9a-f]{64}', candidate['revision'])
-            or not isinstance(candidate.get('sha256'), str)
-            or not re.fullmatch('[0-9a-f]{64}', candidate['sha256'])
-            or type(candidate.get('completed')) is not int or candidate['completed'] < 1
-            or not isinstance(candidate.get('manifest'), dict)):
-        raise ValueError('Import publication candidate changed.')
-    from ..application import LibraryApp
-    from ..citations.anchors import Identity
+def _reconcile_publication(root, request_id, attempt, *, workspace, timeout=1.0):
+    """Recover this child's transaction receipt without replay or writable open."""
+    from .publication import completed_request
 
-    app = LibraryApp(root)
-    with app.read(record['workspace']) as db:
-        receipt = db.execute('SELECT request_id,attempt,sha256 FROM import_publication '
-                             'WHERE revision=?', (candidate['revision'],)).fetchone()
-        if receipt is None or tuple(receipt[:2]) != (request_id, attempt):
-            # An intact equal revision may have been committed by a competitor
-            # after this child rolled back. Its receipt cannot complete us.
-            return None
-        if receipt['sha256'] != candidate['sha256']:
-            raise ValueError('Import publication receipt differs from its candidate.')
-        state = _publication_state(db, record, candidate['revision'])
-        if state is None:  # The child died before its SQLite transaction committed.
-            return None
-        if state != {key: candidate[key] for key in ('sha256', 'completed', 'manifest')}:
-            raise ValueError('Committed import differs from its publication candidate.')
-        identity = Identity(record['workspace'], record['metadata']['edition_id'],
-                            state['manifest']['sha256'], candidate['revision'])
-        app._retained_source(db, record['workspace'], identity)
-    return dict(state='complete', id=candidate['revision'], workspace=record['workspace'],
-                edition=record['metadata']['edition_id'], asset=state['manifest']['sha256'],
-                completed=state['completed'], total=state['completed'], error=None,
-                verified=state['manifest']['mime'] == 'text/plain',
-                publication_recovered=True,
-                message='Import completed before the worker stopped; the committed source was verified.')
+    return completed_request(root, workspace, request_id, attempt=attempt, timeout=timeout)
 
 
 class RuntimeBoundIngest(Ingest):
@@ -312,17 +291,28 @@ class RuntimeBoundIngest(Ingest):
 @contextmanager
 def request_lock(root, request_id):
     from filelock import FileLock, Timeout
+    from ..audio.models import AudioCleanupPending
     lock_path = _path(root, request_id).with_suffix('.lock')
     if os.path.lexists(lock_path):
         info = lock_path.lstat()
         if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1
                 or getattr(info, 'st_file_attributes', 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
             raise ValueError('Invalid import request lock.')
+    lock = FileLock(lock_path, mode=0o600, thread_local=False)
     try:
-        with FileLock(lock_path, mode=0o600).acquire(timeout=0):
-            yield
+        lock.acquire(timeout=0)
     except Timeout as exc:
         raise ValueError('This import request is already running.') from exc
+    transferred = False
+    try:
+        yield
+    except AudioCleanupPending as exc:
+        transferred = True
+        exc.cleanup_owner.add_quiescent_callback(lock.release)
+        raise
+    finally:
+        if not transferred:
+            lock.release()
 
 
 def _review_path(root, request_id):
@@ -431,32 +421,69 @@ def confirm_review(root, workspace, request_id, reviewer, *, confirmed, expected
                     checksum=current['checksum'])
 
 
-def _stop(process):
-    if process.poll() is not None:
-        return
+def _spawn(command, *, stdin, stdout, stderr, env):
+    """One native owner beneath the existing bounded import supervisor."""
     if os.name == 'nt':
+        from ..audio.windows_job import JobProcess
+        return JobProcess(command, env=env, stdio=(stdin, stdout, stderr))
+    if not all(hasattr(os, name) for name in ('waitid', 'P_PID', 'WEXITED', 'WNOHANG', 'WNOWAIT')):
+        raise RuntimeError('This platform cannot retain isolated import process-group ownership.')
+    return subprocess.Popen(command, stdin=stdin, stdout=stdout, stderr=stderr,
+                            env=env, start_new_session=True)
+
+
+def _poll(process):
+    if os.name == 'nt' or process.returncode is not None:
+        return process.poll()
+    # Keep the dead leader waitable until its owned group has been signalled.
+    # Reaping here would permit the numeric process-group identity to be reused.
+    info = os.waitid(os.P_PID, process.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT)
+    if info is None:
+        return None
+    return info.si_status if info.si_code == os.CLD_EXITED else -info.si_status
+
+
+def _stop(process):
+    """Confirm the complete owned job/group, including an exited leader's child.
+
+    POSIX ownership covers the session created here while this supervisor lives;
+    it is not an abrupt-parent-death or deliberately detached-process sandbox.
+    """
+    if os.name == 'nt':
+        return process.close()
+    if getattr(process, '_ingest_quiescent', False):
+        return True
+    from time import monotonic, sleep
+    deadline = monotonic() + 5
+    if not getattr(process, '_ingest_group_signalled', False):
+        # Prove this exact child is still waitable before signalling its group.
+        # Never signal a potentially reused numeric identity after a reap.
+        os.waitid(os.P_PID, process.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT)
         try:
-            subprocess.run(['taskkill', '/PID', str(process.pid), '/T', '/F'],
-                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                           timeout=5, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
-        except (OSError, subprocess.SubprocessError):
-            process.kill()
-    else:
-        try:
-            os.killpg(process.pid, signal.SIGTERM)
+            os.killpg(process.pid, signal.SIGKILL)
         except ProcessLookupError:
             pass
+        process._ingest_group_signalled = True
+    process.wait(timeout=max(0, deadline - monotonic()))
+    while True:
+        try:
+            os.killpg(process.pid, 0)
+        except ProcessLookupError:
+            process._ingest_quiescent = True
+            return True
+        if monotonic() >= deadline:
+            raise subprocess.TimeoutExpired(process.args, 5)
+        sleep(min(.02, max(0, deadline - monotonic())))
+
+
+def _close_worker(process):
     try:
-        process.wait(timeout=1)
-    except subprocess.TimeoutExpired:
-        if os.name == 'nt':
-            process.kill()
-        else:
-            try:
-                os.killpg(process.pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
-        process.wait(timeout=2)
+        if _stop(process) is False:
+            raise RuntimeError('The import process family has not confirmed shutdown.')
+    except BaseException as exc:
+        from ..audio.cleanup import pending_cleanup
+        raise pending_cleanup(lambda: _stop(process),
+            message='Import process cleanup is pending; its request and private streams remain owned.') from exc
 
 
 def _request_record(root, workspace, source, metadata, config, request_id, expected_manifest=None):
@@ -508,7 +535,7 @@ def prepare_request(root, workspace, source, metadata, config, *, request_id=Non
 
 def run_request(root, workspace, source, metadata, config, *, cancelled=lambda: False,
                 timeout=120.0, request_id=None):
-    """Execute a new or resumed document request without parsing in the caller."""
+    """Execute a new or resumed PDF/DOCX/EPUB request without parsing in the caller."""
     new = request_id is None
     request_id = request_id or uuid4().hex
     with request_lock(root, request_id):
@@ -517,145 +544,31 @@ def run_request(root, workspace, source, metadata, config, *, cancelled=lambda: 
                             request_id=request_id, new=new)
 
 
+def _publication_error_details(error):
+    """Keep useful recovery diagnostics without exposing exception payloads/paths."""
+    kind = type(error).__name__
+    details = [kind if re.fullmatch(r'[A-Za-z_][A-Za-z_0-9]{0,79}', kind) else 'Error']
+    location = None
+    trace = error.__traceback__
+    while trace is not None:
+        module = trace.tb_frame.f_globals.get('__name__', '')
+        if isinstance(module, str) and re.fullmatch(r'carr_library\.[A-Za-z_0-9.]{1,160}', module):
+            location = f'{module}:{trace.tb_lineno}'
+        trace = trace.tb_next
+    if location is not None:
+        details.append(location)
+    for name in ('errno', 'winerror', 'sqlite_errorcode'):
+        value = getattr(error, name, None)
+        if type(value) is int and 0 <= value <= 0xFFFFFFFF:
+            details.append(f'{name}={value}')
+    value = getattr(error, 'sqlite_errorname', None)
+    if isinstance(value, str) and re.fullmatch(r'SQLITE_[A-Z_0-9]{1,64}', value):
+        details.append(value)
+    return ', '.join(details)
 
-def _publication_watermark(app, workspace):
-    """Release the read snapshot before starting the native worker."""
-    with app.read(workspace) as db:
-        # Revision rows are append-only in the accepted schema. A scalar is
-        # bounded even after many metadata revisions of the same edition.
-        return db.execute('SELECT coalesce(max(rowid),0) FROM revision').fetchone()[0]
 
-
-def _published_after_stop(app, initial, watermark, *, revision=None):
-    """Independently verify the exact revision after its owned receipt is checked.
-
-    A stopped process may have committed before returning its stdout receipt.
-    Existing/replayed revisions are not proof that this invocation completed.
-    This read never resumes parsing, changes a journal, or approves quotations.
-    It supplements the transaction receipt; fresh row IDs alone do not prove
-    which process attempt committed an otherwise identical source.
-    """
-    from ..catalog.membership import _metadata
-    from ..extract.document_formats import FORMAT_BY_MIME
-
-    try:
-        request = load_request(app.root, initial['request_id'])
-        identity = ('version', 'request_id', 'data_dir', 'workspace', 'source',
-                    'metadata', 'config', 'expected_manifest')
-        if any(request.get(key) != initial.get(key) for key in identity):
-            return None
-        metadata = request['metadata']
-        digest = request.get('asset_sha256')
-        if (not isinstance(digest, str) or not re.fullmatch('[0-9a-f]{64}', digest)
-                or not isinstance(metadata, dict) or set(metadata) != FIELDS):
-            return None
-        workspace, edition = request['workspace'], metadata['edition_id']
-        with app.read(workspace) as db:
-            rows = db.execute(
-                'SELECT r.id,r.config,a.revision AS active,e.work,c.mime,c.size, '
-                'w.title,e.language,e.edition AS edition_label,e.volume '
-                'FROM revision r JOIN sealed s ON s.revision=r.id '
-                'JOIN catalog_edition e ON e.workspace=r.workspace AND e.id=r.edition AND e.asset=r.asset '
-                'JOIN catalog_work w ON w.workspace=e.workspace AND w.id=e.work '
-                'JOIN catalog_asset c ON c.digest=e.asset '
-                'LEFT JOIN active a ON a.workspace=r.workspace AND a.edition=r.edition '
-                'WHERE r.workspace=? AND r.edition=? AND r.asset=? AND r.rowid>? '
-                'AND (? IS NULL OR r.id=?) LIMIT 2',
-                (workspace, edition, digest, watermark, revision, revision)).fetchall()
-            if len(rows) != 1:
-                return None
-            row = rows[0]
-            if (row['work'] != metadata['work_id'] or row['active'] is None
-                    or row['mime'] not in MIME_SUFFIXES or type(row['size']) is not int
-                    or not 0 < row['size'] <= 64 * 1024 * 1024
-                    or not isinstance(row['config'], str)
-                    or len(row['config'].encode('utf-8')) > 4 * 1024 * 1024):
-                return None
-            settings = json.loads(row['config'])
-            if (not isinstance(settings, dict) or canonical(settings) != row['config']
-                    or sha256(canonical([workspace, edition, digest, row['config']])
-                              .encode('utf-8')).hexdigest() != row['id']):
-                return None
-            mime = row['mime']
-            if mime == 'application/pdf':
-                if (request.get('job') != row['id']
-                        or settings.get('adapter') != 'page_ocr-v1'
-                        or settings.get('kind') != 'physical_page'
-                        or settings.get('config') != request['config']):
-                    return None
-            else:
-                adapter = ('strict-utf8-v1' if mime == 'text/plain' else
-                           'python-docx-ordered-v1' if mime == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' else
-                           'epub-spine-v1' if mime == 'application/epub+zip' else
-                           'ordered-document-v1')
-                if settings.get('adapter') != adapter or settings.get('kind') != 'logical_segment':
-                    return None
-                if mime in FORMAT_BY_MIME and settings.get('format') != FORMAT_BY_MIME[mime].name:
-                    return None
-                if request.get('job') is not None and request['job'] != row['id']:
-                    return None
-            manifest = dict(sha256=digest, mime=mime, size=row['size'])
-            if request.get('expected_manifest') not in (None, manifest):
-                return None
-            original = app.assets.resolve(digest)
-            if original.suffix != MIME_SUFFIXES[mime] or original.stat().st_size != row['size']:
-                return None
-            title = _metadata(metadata['title']) or Path(request['source']).stem
-            authors = tuple(_metadata(value) for value in metadata['authors'])
-            # Citation display joins authors. Preserve their separate identities
-            # and all catalog fields before accepting a concurrent publication.
-            catalog_authors = tuple(author[0] for author in db.execute(
-                'SELECT name FROM catalog_author WHERE workspace=? AND work=? ORDER BY position',
-                (workspace, metadata['work_id'])))
-            if (row['title'] != title or catalog_authors != authors
-                    or (row['language'], row['edition_label'], row['volume']) != tuple(
-                        _metadata(metadata[field]) for field in ('language', 'edition', 'volume'))):
-                return None
-            source_metadata = db.execute(
-                'SELECT author,title,volume,edition_label FROM source_metadata '
-                'WHERE workspace=? AND edition=? AND revision=?',
-                (workspace, edition, row['id'])).fetchone()
-            expected = ('; '.join(authors) or None, title or 'Unknown title',
-                        _metadata(metadata['volume']), _metadata(metadata['edition']))
-            if source_metadata is None or tuple(source_metadata) != expected:
-                return None
-            for collection in metadata['collections']:
-                if not db.execute(
-                        'SELECT 1 FROM catalog_membership WHERE workspace=? AND edition=? AND collection=?',
-                        (workspace, edition, collection)).fetchone():
-                    return None
-            count, text_bytes, nonempty = 0, 0, False
-            expected_text = (original.read_bytes().decode('utf-8-sig').split('\f')
-                             if mime == 'text/plain' else None)
-            for page in db.execute(
-                    'SELECT p.ordinal,p.physical,p.printed,p.verified,p.raw,p.digest,i.raw AS indexed '
-                    'FROM page p LEFT JOIN indexed i ON i.id=p.id '
-                    'WHERE p.revision=? ORDER BY p.ordinal', (row['id'],)):
-                count += 1
-                raw = page['raw']
-                if not isinstance(raw, str) or '\x00' in raw:
-                    return None
-                encoded = raw.encode('utf-8')
-                text_bytes += len(encoded)
-                if (count > 10000 or text_bytes > 64 * 1024 * 1024
-                        or page['ordinal'] != count
-                        or page['digest'] != sha256(encoded).hexdigest()
-                        or page['printed'] is not None or page['verified'] != 0
-                        or page['physical'] != (count if mime == 'application/pdf' else None)
-                        or (row['active'] == row['id'] and page['indexed'] != raw)):
-                    return None
-                if expected_text is not None and (count > len(expected_text) or raw != expected_text[count - 1]):
-                    return None
-                nonempty = nonempty or bool(raw.strip())
-            if not count or not nonempty or (expected_text is not None and count != len(expected_text)):
-                return None
-            return dict(state='complete' if row['active'] == row['id'] else 'superseded',
-                        workspace=workspace, edition=edition, id=row['id'], asset=digest,
-                        completed=count, total=count, verified=mime == 'text/plain',
-                        recovered_publication=True)
-    except (OSError, ValueError, TypeError, KeyError, sqlite3.Error):
-        # An absent, ambiguous or damaged binding grants no completion authority.
-        return None
+class _UnreportedWorkerExit(dict):
+    """Host-only marker: the child supplied no explicit error reply."""
 
 
 def _run_request(root, workspace, source, metadata, config, *, cancelled,
@@ -672,78 +585,80 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
             raise ValueError('Import request belongs to another library.')
         if record.get('state') == 'complete' and isinstance(record.get('result'), dict):
             return dict(record['result'], request_id=request_id, isolated=True)
-    from ..application import LibraryApp
-    app = LibraryApp(root)
-    watermark = _publication_watermark(app, workspace)
-    started = False
-
-    def worker_started():
-        nonlocal started
-        started = True
-
     attempt = uuid4().hex
     record_progress(root, request_id, state='running', attempt=attempt, publication_candidate=None)
     result = _invoke({'data_dir': str(Path(root).resolve()), 'request_id': request_id,
-                      'timeout': timeout}, timeout=timeout, cancelled=cancelled,
-                     on_started=worker_started)
-    if started and result.get('state') in ('cancelled', 'timed_out', 'failed'):
+                      'timeout': timeout}, timeout=timeout, cancelled=cancelled)
+    # A real error reply remains an error, even if its source was published.
+    # Only an absent/invalid reply can represent a lost post-commit response.
+    unreported_exit = isinstance(result, _UnreportedWorkerExit)
+    result = dict(result)  # Never persist or expose the host-only marker.
+    if result.get('state') in ('cancelled', 'timed_out') or unreported_exit:
         try:
-            if _request_identity(load_request(root, request_id)) != _request_identity(record):
-                raise ValueError('Import request changed while its worker was running.')
-            committed = _reconcile_publication(root, request_id, attempt)
-            if committed is not None:
-                # The immutable receipt identifies the committing attempt; keep
-                # the existing format/config/catalog/index checks independently
-                # bound to that exact revision, never another matching row.
-                verified = _published_after_stop(app, record, watermark,
-                                                 revision=committed['id'])
-                if verified is None or verified['state'] != 'complete':
-                    raise ValueError('Import publication could not verify its source binding.')
-        except (KeyError, TypeError, ValueError, OSError, sqlite3.Error):
-            result = dict(state='failed', message=
-                          'The stopped import could not verify its publication. Review or resume this request.')
+            committed = _reconcile_publication(root, request_id, attempt,
+                                               workspace=workspace, timeout=min(timeout, 1.0))
+        except (KeyError, TypeError, ValueError, OSError, sqlite3.Error) as error:
+            from .writer_guard import WriterBusy
+            details = _publication_error_details(error)
+            if isinstance(error, (TimeoutError, InterruptedError, WriterBusy)):
+                result = dict(result, message=f"{result.get('message', 'Import worker stopped.')} "
+                              f'Publication verification is pending ({details}); resume to check it.')
+            else:
+                result = dict(state='failed', message=
+                              f'The stopped import could not verify its publication ({details}); '
+                              'review or resume to check it.')
         else:
             if committed is not None:
                 result = dict(committed, recovered_publication=True,
-                              worker_state=result['state'])
+                              worker_state=result.get('state', 'failed'))
     result = dict(result, request_id=request_id, isolated=True)
     record_progress(root, request_id, state=result.get('state', 'failed'), result=result)
     return result
 
 
-def _invoke(message, *, timeout, cancelled=lambda: False, on_started=None):
+def _invoke(message, *, timeout, cancelled=lambda: False):
     """One process supervisor for import and render operations."""
+    from ..audio.models import AudioCleanupPending
     payload = canonical(message).encode('utf-8')
     if len(payload) > MAX_REQUEST:
         raise ValueError('Import request is too large.')
     result = None
-    process = None
-    try:
-        if cancelled():
-            result = {'state': 'cancelled', 'message': 'Import cancelled before native parsing.'}
-        else:
-            with TemporaryFile() as input_stream, TemporaryFile() as output, TemporaryFile() as errors:
-                input_stream.write(payload)
-                input_stream.seek(0)
-                options = ({'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)
-                            | getattr(subprocess, 'CREATE_NEW_PROCESS_GROUP', 0)}
-                           if os.name == 'nt' else {'start_new_session': True})
-                # Isolated Python ignores CWD, user-site and inherited PYTHONPATH.
-                # Only paths derived from this trusted application file are added.
-                package_root = Path(__file__).resolve().parents[2]
-                roots = [str(package_root)]
-                if (package_root.parent / 'bootstrap/vendor/cairn_extractors/hasher.py').is_file():
-                    roots.append(str(package_root.parent))
-                bootstrap = ("import sys,runpy; sys.path[:0]=sys.argv[1:]; "
-                             "runpy.run_module('carr_library.ingest.worker',run_name='__main__')")
-                process = subprocess.Popen([sys.executable, '-I', '-B', '-X', 'utf8', '-c', bootstrap, *roots],
-                                           stdin=input_stream, stdout=output, stderr=errors,
-                                           env=dict(os.environ, PYTHONUTF8='1', PYTHONIOENCODING='utf-8'),
-                                           **options)
-                if on_started is not None:
-                    on_started()
+    if cancelled():
+        return {'state': 'cancelled', 'message': 'Import cancelled before native parsing.'}
+    with ExitStack() as streams:
+        try:
+            input_stream = streams.enter_context(TemporaryFile())
+            output = streams.enter_context(TemporaryFile())
+            errors = streams.enter_context(TemporaryFile())
+            input_stream.write(payload)
+            input_stream.seek(0)
+            # Isolated Python ignores CWD, user-site and inherited PYTHONPATH.
+            # Only paths derived from this trusted application file are added.
+            package_root = Path(__file__).resolve().parents[2]
+            roots = [str(package_root)]
+            if (package_root.parent / 'bootstrap/vendor/cairn_extractors/hasher.py').is_file():
+                roots.append(str(package_root.parent))
+            bootstrap = ("import sys,runpy; sys.path[:0]=sys.argv[1:]; "
+                         "runpy.run_module('carr_library.ingest.worker',run_name='__main__')")
+            executable = sys.executable
+            environment = dict(os.environ, PYTHONUTF8='1', PYTHONIOENCODING='utf-8')
+            if (os.name == 'nt' and sys.prefix != sys.base_prefix
+                    and getattr(sys, '_base_executable', None)
+                    and os.path.normcase(sys._base_executable) != os.path.normcase(executable)):
+                # CPython multiprocessing uses this pair on Windows: own
+                # the interpreter, not the venv redirector, while retaining
+                # the selected executable/prefix and its site-packages.
+                # Waiting for a killed redirector alone can race the real
+                # worker's release of its native writer-lock handle.
+                environment.pop('PYTHONEXECUTABLE', None)
+                environment['__PYVENV_LAUNCHER__'] = executable
+                executable = sys._base_executable
+            process = _spawn([executable, '-I', '-B', '-X', 'utf8', '-c', bootstrap, *roots],
+                             stdin=input_stream, stdout=output, stderr=errors,
+                             env=environment)
+            try:
                 deadline = time.monotonic() + timeout
-                while process.poll() is None:
+                while _poll(process) is None:
                     if cancelled():
                         result = {'state': 'cancelled', 'message':
                                   'Import worker stopped. Resume checks saved checkpoints and publication.'}
@@ -756,31 +671,38 @@ def _invoke(message, *, timeout, cancelled=lambda: False, on_started=None):
                         result = {'state': 'failed', 'message': 'Import worker output exceeded its limit.'}
                         break
                     time.sleep(0.05)
-                if result is None and (
-                        os.fstat(output.fileno()).st_size > MAX_REPLY
-                        or os.fstat(errors.fileno()).st_size > MAX_LOG):
-                    result = {'state': 'failed', 'message': 'Import worker output exceeded its limit.'}
-                if result is not None:
-                    _stop(process)
-                else:
-                    output.seek(0)
-                    raw = output.read(MAX_REPLY + 1)
-                    if len(raw) > MAX_REPLY:
-                        raise ValueError('Import worker reply exceeded its limit.')
-                    try:
-                        reply = json.loads(raw)
-                    except (UnicodeError, ValueError):
-                        reply = None
-                    if (process.returncode != 0 or not isinstance(reply, dict)
-                            or not isinstance(reply.get('result'), dict)):
-                        message = reply.get('error') if isinstance(reply, dict) else None
-                        result = {'state': 'failed', 'message': message or
-                                  f'Import worker exited unexpectedly ({process.returncode}).'}
+            finally:
+                # A leader exit is not proof that its OCR descendants are
+                # finished. Do not read final replies or permit durable
+                # publication reconciliation until the native owner closes.
+                _close_worker(process)
+            if result is None and (
+                    os.fstat(output.fileno()).st_size > MAX_REPLY
+                    or os.fstat(errors.fileno()).st_size > MAX_LOG):
+                result = {'state': 'failed', 'message': 'Import worker output exceeded its limit.'}
+            if result is None:
+                output.seek(0)
+                raw = output.read(MAX_REPLY + 1)
+                if len(raw) > MAX_REPLY:
+                    raise ValueError('Import worker reply exceeded its limit.')
+                try:
+                    reply = json.loads(raw)
+                except (UnicodeError, ValueError):
+                    reply = None
+                if (process.returncode != 0 or not isinstance(reply, dict)
+                        or not isinstance(reply.get('result'), dict)):
+                    message = reply.get('error') if isinstance(reply, dict) else None
+                    if isinstance(message, str) and message:
+                        result = {'state': 'failed', 'message': message}
                     else:
-                        result = reply['result']
-    finally:
-        if process is not None and process.poll() is None:
-            _stop(process)
+                        result = _UnreportedWorkerExit(state='failed', message=
+                            f'Import worker exited unexpectedly ({process.returncode}).')
+                else:
+                    result = reply['result']
+        except AudioCleanupPending as exc:
+            retained = streams.pop_all()
+            exc.cleanup_owner.add_quiescent_callback(retained.close)
+            raise
     return result
 
 
@@ -807,7 +729,8 @@ def isolated_render_fingerprint(data, physical, *, cancelled=lambda: False):
         raise ValueError('Invalid PDF review bytes.')
     if type(physical) is not int or not 1 <= physical <= 1000:
         raise ValueError('Invalid PDF review page.')
-    with TemporaryDirectory(prefix='carr-review-') as temporary:
+    from ..audio.cleanup import retained_temporary_directory
+    with retained_temporary_directory(prefix='carr-review-') as temporary:
         source = Path(temporary) / 'page-source.pdf'
         source.write_bytes(data)
         result = _invoke(dict(action='render', source=str(source), sha256=sha256(data).hexdigest(),

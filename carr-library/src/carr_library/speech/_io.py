@@ -96,11 +96,21 @@ def system_powershell(path, *, architecture=None):
     return local_file(candidate, _allow_hardlinks=True)
 
 
-def digest(path):
+def digest(path, *, cancelled=lambda: False):
+    check_cancelled(cancelled)
+    before = Path(path).stat()
+    def stamp(value):
+        return (value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns, value.st_ctime_ns)
     h = sha256()
     with open(path, 'rb') as source:
+        if stamp(os.fstat(source.fileno())) != stamp(before):
+            raise ValueError('A speech asset changed while opening it.')
         for block in iter(lambda: source.read(1024 * 1024), b''):
+            check_cancelled(cancelled)
             h.update(block)
+    if stamp(Path(path).stat()) != stamp(before):
+        raise ValueError('A speech asset changed while fingerprinting it.')
+    check_cancelled(cancelled)
     return h.hexdigest()
 
 

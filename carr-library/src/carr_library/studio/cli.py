@@ -18,6 +18,25 @@ def data_directory(selected):
     return selected_directory() or user_data_path('Universal Research Library', appauthor=False, roaming=False)
 
 
+def _close_production(service):
+    """Report lifecycle cleanup separately from the completed command outcome."""
+    if service is None:
+        return
+    try:
+        close = getattr(service, 'close', None)
+        if not callable(close) or close() is not False:
+            return
+        detail = 'the owned voice worker has not confirmed shutdown'
+    except (Exception, KeyboardInterrupt) as exc:
+        detail = type(exc).__name__ + ': ' + str(exc)[:1000]
+    try:
+        print('Local voice cleanup was not confirmed: ' + detail + '.',
+              file=sys.stderr, flush=True)
+    except (OSError, ValueError):
+        # A closed diagnostics stream must not replace the command's exit code.
+        pass
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Local reading and audio production; no remote fallback')
     parser.add_argument('--data-dir', type=Path)
@@ -26,6 +45,24 @@ def main(argv=None):
     operations.add_parser('voices', help='List actually installed local voices')
     operations.add_parser('jobs', help='List saved resumable production jobs')
     operations.add_parser('projects', help='List saved projects')
+    operations.add_parser('publications', help='List saved publication receipts; use verify-publication to check actual bytes')
+    for operation, extension, description in (
+            ('publish-epub', '.epub', 'Local EPUB3 with measured line overlays'),
+            ('publish-daisy', '.zip', 'DAISY 2.02 file-set ZIP with measured line synchronization')):
+        publish = operations.add_parser(operation, help=description + ' from a completed Studio job')
+        publish.add_argument('job_id')
+        publish.add_argument('--output', type=Path, required=True, help=f'New {extension} file in an existing directory; never overwritten')
+        publish.add_argument('--language', default='und', help='Publication language, such as uk, en or und')
+        publish.add_argument('--creator', default='')
+        publish.add_argument('--max-bytes', type=int, default=32 * 1024**3, help='Source graph and publication staging byte limit')
+        publish.add_argument('--timeout', type=float, default=3600, help='Total export time budget in seconds')
+        if operation == 'publish-daisy':
+            publish.add_argument('--publisher', required=True, help='Publisher metadata explicitly supplied for this publication')
+    verify = operations.add_parser('verify-publication', help='Verify a saved receipt or recover completed publication after interruption')
+    verify.add_argument('publication_id')
+    verify.add_argument('--file', type=Path, help='Explicit existing publication after relocation; must match the exact saved receipt')
+    verify.add_argument('--max-bytes', type=int, default=32 * 1024**3)
+    verify.add_argument('--timeout', type=float, default=3600)
     operations.add_parser('capabilities', help='Inspect the actual installed audio runtime')
     render = operations.add_parser('render', help='Produce actual WAV master, chapters, stems and subtitles')
     source = render.add_mutually_exclusive_group(required=True)
@@ -36,9 +73,15 @@ def main(argv=None):
     render.add_argument('--output', type=Path, required=True, help='Existing parent folder; a new project subfolder is created')
     render.add_argument('--format', default='wav', choices=('wav','flac','mp3','ogg','opus','m4a','m4b','aiff','wma'))
     render.add_argument('--no-stems', action='store_true')
+    render.add_argument('--approve-input', action='append', type=Path, default=[],
+                        help='Explicit exact local input to approve after reviewing an imported project; repeat as needed')
     resume = operations.add_parser('resume', help='Resume a saved interrupted job, retaining successful chunks')
     resume.add_argument('job_id')
+    resume.add_argument('--output', type=Path, help='Explicit new output parent for a restored job')
+    resume.add_argument('--approve-input', action='append', type=Path, default=[],
+                        help='Explicit exact local input to approve for this restored job; repeat as needed')
     args = parser.parse_args(argv)
+    service = None
     try:
         from ..application import LibraryApp
         app = LibraryApp(data_directory(args.data_dir))
@@ -50,6 +93,23 @@ def main(argv=None):
         elif args.operation == 'jobs':
             result = [{'id': job['id'], 'title': job['project']['title'], 'status': job['status'],
                        'progress': job['progress'], 'destination': job['destination']} for job in service.jobs()]
+        elif args.operation in ('publications', 'publish-epub', 'publish-daisy', 'verify-publication'):
+            from ..audio.models import AudioBudget
+            from .publishing import PublicationService
+            if args.operation == 'publications':
+                result = PublicationService(service).publications()
+            else:
+                publisher = PublicationService(service, budget=AudioBudget(
+                    max_output_bytes=args.max_bytes, timeout=args.timeout))
+                if args.operation == 'publish-daisy':
+                    result = publisher.export_daisy(args.job_id, args.output, publisher=args.publisher,
+                        language=args.language, creator=args.creator,
+                        progress=lambda text: print(text, file=sys.stderr, flush=True))
+                elif args.operation == 'publish-epub':
+                    result = publisher.export_epub(args.job_id, args.output, language=args.language,
+                        creator=args.creator, progress=lambda text: print(text, file=sys.stderr, flush=True))
+                else:
+                    result = publisher.verify(args.publication_id, output=args.file)
         elif args.operation == 'capabilities':
             runtime = service._runtime()
             result = {'audio': runtime.capabilities(), 'music': runtime.music_capabilities()}
@@ -57,6 +117,7 @@ def main(argv=None):
             if args.operation == 'render':
                 if args.project:
                     project = Project.from_dict(read_json(args.project))
+                    service.register_project_inputs(project, imported=True)
                 else:
                     if args.script.stat().st_size > 16 * 1024**2:
                         raise ValueError('Script exceeds the project text budget; split by chapters.')
@@ -65,6 +126,14 @@ def main(argv=None):
                 identity = service.submit(project, args.output, format=args.format, stems=not args.no_stems)
             else:
                 identity = args.job_id
+                if args.output is not None:
+                    service.relocate_restored_job(identity, args.output)
+            if args.approve_input:
+                pending = set(service.restored_inputs_to_review(identity))
+                selected = tuple(str(path) for path in args.approve_input)
+                if not set(selected) <= pending:
+                    raise ValueError('Approve only exact inputs listed for this selected production job.')
+                service.approve_restored_inputs(selected)
             print('Production job: ' + identity, file=sys.stderr, flush=True)
             job = service.run(identity, progress=lambda text: print(text, file=sys.stderr, flush=True))
             result = {'id': job['id'], 'status': job['status'], 'destination': job['destination'],
@@ -77,6 +146,8 @@ def main(argv=None):
     except (ValueError, OSError, RuntimeError) as exc:
         print('Audio Studio: ' + str(exc), file=sys.stderr)
         return 1
+    finally:
+        _close_production(service)
 
 
 def assistant_main(argv=None):
@@ -151,7 +222,6 @@ def assistant_main(argv=None):
     except (ValueError, OSError, RuntimeError) as exc:
         print('Local assistant: ' + str(exc), file=sys.stderr)
         return 1
-
 
 
 if __name__ == '__main__':

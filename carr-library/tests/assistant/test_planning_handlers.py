@@ -17,6 +17,8 @@ class Widget:
         self.value, self.label, self.choices = value, label, list(choices)
         self.enabled, self.selection, self.name = True, -1, ''
         self.bindings, self.focused = {}, False
+        self.identity = id(self)
+    def GetId(self): return self.identity
     def SetName(self, value): self.name = value
     def GetName(self): return self.name
     def GetValue(self): return self.value
@@ -76,7 +78,7 @@ def native_handlers(tmp_path, monkeypatch):
     monkeypatch.setattr(assistant_dialog, 'ThreadPoolExecutor', lambda **kwargs: executor)
     constants = ('DEFAULT_DIALOG_STYLE','RESIZE_BORDER','VERTICAL','HORIZONTAL','LEFT','TOP',
         'ALL','EXPAND','TE_MULTILINE','TE_READONLY','EVT_BUTTON','EVT_TEXT','EVT_CHOICE',
-        'EVT_CHECKBOX','EVT_CLOSE','ID_OK','ID_CLOSE')
+        'EVT_CHECKBOX','EVT_CLOSE','EVT_WINDOW_DESTROY','ID_OK','ID_CLOSE')
     wx = SimpleNamespace(**{name: index + 1 for index, name in enumerate(constants)})
     for name in ('Dialog','StaticText','TextCtrl','Button','Choice'):
         setattr(wx, name, Widget)
@@ -233,25 +235,106 @@ def test_narration_voice_discovery_is_background_and_cancelled_before_voice_choi
     assert e.dialog.assistant_service.jobs() == ()
 
 
-def test_assistant_close_cancels_then_closes_production_after_pending_work(native_handlers, monkeypatch):
+def test_assistant_close_cancels_work_then_releases_production_on_its_worker(native_handlers):
     from carr_library.studio.render import ProductionService
     e = native_handlers
-    closed = []
-    original_close = ProductionService.close
-    def close_production(production):
-        closed.append(production)
-        return original_close(production)
-    monkeypatch.setattr(ProductionService, 'close', close_production)
     select_model(e)
     e.handlers['preview']()
     e.handlers['close']()
     e.handlers['close']()  # Native close and wrapper cleanup remain idempotent.
-    assert len(e.executor.pending) == 2 and not closed
+    assert len(e.executor.pending) == 2
+    cleanup, closer, arguments, keywords = e.executor.pending[-1]
+    assert closer.__func__ is ProductionService.close
+    assert arguments == () and keywords == {} and not closer.__self__._closed
     assert e.executor.shutdowns == [{'wait': False, 'cancel_futures': False}]
     before = e.controls['review'].GetValue()
     e.executor.complete(); e.drain()
     assert not e.calls and e.controls['review'].GetValue() == before
-    assert e.app.workspaces() == () and e.dialog.assistant_service.jobs() == ()
-    assert not closed  # Cleanup waits behind the actual pending proposal.
+    assert not closer.__self__._closed and not cleanup.done()
     e.executor.complete(); e.drain()
-    assert len(closed) == 1 and not e.executor.pending
+    assert cleanup.done() and cleanup.exception() is None and closer.__self__._closed
+    assert not e.executor.pending and e.controls['review'].GetValue() == before
+    assert e.app.workspaces() == () and e.dialog.assistant_service.jobs() == ()
+
+@pytest.mark.parametrize('completed', [False, True])
+@pytest.mark.parametrize('operation', ['proposal', 'voices'])
+def test_direct_owner_destroy_detaches_pending_callbacks_before_controls_die(
+        native_handlers, tmp_path, monkeypatch, operation, completed):
+    from carr_library.studio.render import ProductionService
+    e = native_handlers
+    inventories, choices = [], []
+    if operation == 'proposal':
+        select_model(e)
+    else:
+        from carr_library.speech import Voice, VoiceRegistry
+        output = tmp_path / 'narration-output'
+        output.mkdir()
+        e.controls['output'].SetValue(str(output))
+        e.controls['instruction'].SetValue('Produce audio: Explicit synthetic narration.')
+        class Provider:
+            name = 'Synthetic inventory only'
+            def voices(self):
+                inventories.append(True)
+                return (Voice('explicit-fixture', 'Fixture', 'fixture', 'uk'),)
+        monkeypatch.setattr(ProductionService, 'voices',
+                            property(lambda owner: VoiceRegistry([Provider()])))
+        class ChoiceDialog(Widget):
+            def ShowModal(self):
+                choices.append(True)
+                raise AssertionError('A destroyed dialog opened a native voice choice.')
+        e.wx.SingleChoiceDialog = ChoiceDialog
+    e.handlers['preview']()
+    assert len(e.executor.pending) == 1
+    if completed:
+        e.executor.complete()  # Work finished; its GUI completion is still queued.
+    request_count, inventory_count = len(e.calls), len(inventories)
+    owner_id = e.dialog.GetId()
+
+    def dead_control(*arguments, **keywords):
+        raise AssertionError('A late callback touched a deleted native control.')
+
+    # A destruction event may expose another wrapper for the same native owner.
+    # Its previously captured ID must suffice, with no new owner queries.
+    e.dialog.GetId = dead_control
+    skipped = []
+    event = SimpleNamespace(GetId=lambda: owner_id, GetEventObject=dead_control,
+                            Skip=lambda: skipped.append(True))
+    e.dialog.bindings[e.wx.EVT_WINDOW_DESTROY](event)
+    assert skipped == [True]
+    assert e.executor.shutdowns == [{'wait': False, 'cancel_futures': False}]
+    assert len(e.executor.pending) == (1 if completed else 2)
+    cleanup, closer, arguments, keywords = e.executor.pending[-1]
+    assert closer.__func__ is ProductionService.close
+    assert arguments == () and keywords == {} and not closer.__self__._closed
+    controls = [e.dialog, *e.controls['buttons'].values(),
+                *(value for value in e.controls.values() if isinstance(value, Widget))]
+    for control in controls:
+        for method in ('GetValue', 'GetSelection', 'SetValue', 'ChangeValue',
+                       'Enable', 'Disable', 'SetFocus', 'IsModal', 'Hide', 'EndModal'):
+            setattr(control, method, dead_control)
+    if not completed:
+        e.executor.complete()
+    e.drain()
+    assert not closer.__self__._closed and not cleanup.done()
+    e.executor.complete(); e.drain()
+    assert cleanup.done() and cleanup.exception() is None and closer.__self__._closed
+    assert not e.executor.pending
+    e.handlers['close']()  # Modal wrapper cleanup after direct destruction is inert.
+    assert e.executor.shutdowns == [{'wait': False, 'cancel_futures': False}]
+    assert not e.executor.pending
+    assert len(e.calls) == request_count and len(inventories) == inventory_count
+    assert not choices and e.app.workspaces() == ()
+    assert e.dialog.assistant_service.jobs() == ()
+
+
+def test_child_destroy_event_does_not_detach_the_live_assistant(native_handlers):
+    e = native_handlers
+    skipped = []
+    event = SimpleNamespace(GetId=lambda: e.dialog.GetId() + 1,
+                            Skip=lambda: skipped.append(True))
+    e.dialog.bindings[e.wx.EVT_WINDOW_DESTROY](event)
+    assert skipped == [True] and e.executor.shutdowns == []
+    e.handlers['preview']()
+    assert e.controls['buttons']['run'].IsEnabled()
+    assert e.app.workspaces() == () and not e.calls
+

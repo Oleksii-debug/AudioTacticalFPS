@@ -33,8 +33,8 @@ def test_actual_same_length_edit_with_restored_mtime_is_not_overwritten(tmp_path
     target.write_bytes(b'Original independent work')
     approval = export_file.capture_export_destination(target, private_root=private)
     if os.name == 'nt':
-        assert len(approval.state) == 8 and approval.state[-2] > 0
-    assert isinstance(approval.state[-1], bytes) and len(approval.state[-1]) == 32
+        assert len(approval.state) == 7 and approval.state[-1] > 0
+    assert len(approval.content_sha256) == 64
     replacement = b'Modified independent work'
     rewrite_preserving_mtime(target, replacement)
     writer = export_file.write_binary_export if binary else export_file.write_export
@@ -75,7 +75,7 @@ def test_large_existing_file_requires_new_filename_without_reading_it(tmp_path, 
     target = tmp_path / 'selected'
     original = b'Independent existing work'
     target.write_bytes(original)
-    monkeypatch.setattr(export_file, '_MAX_OVERWRITE_BYTES', 8)
+    monkeypatch.setattr(export_file, 'MAX_EXISTING_EXPORT_BYTES', 8)
     file_os = SimpleNamespace(**vars(os))
     file_os.read = Mock(side_effect=AssertionError('No content read is allowed above the bound'))
     monkeypatch.setattr(export_file, 'os', file_os)
@@ -102,9 +102,9 @@ def test_unverifiable_content_closes_handle_and_keeps_existing_file(tmp_path, mo
 
     file_os.open = track_open
     if failure == 'deadline':
-        times = iter((0.0, 1.0))
+        times = iter((0.0, 0.0, 1.0))
         monkeypatch.setattr(export_file, 'monotonic', lambda: next(times))
-        expected, message = ValueError, 'quickly enough.*Choose a new filename'
+        expected, message = TimeoutError, 'could not be verified in time.*Choose a new filename'
     else:
         file_os.read = Mock(side_effect=OSError('Read unavailable'))
         expected, message = OSError, 'Read unavailable'
@@ -122,7 +122,7 @@ def test_unverifiable_content_closes_handle_and_keeps_existing_file(tmp_path, mo
 def test_size_bound_never_prevents_creation_at_a_new_filename(tmp_path, monkeypatch, binary):
     target = tmp_path / 'new-output'
     private = tmp_path / 'private'
-    monkeypatch.setattr(export_file, '_MAX_OVERWRITE_BYTES', 4)
+    monkeypatch.setattr(export_file, 'MAX_EXISTING_EXPORT_BYTES', 4)
     approval = export_file.capture_export_destination(target, private_root=private)
     writer = export_file.write_binary_export if binary else export_file.write_export
     writer(target, b'Complete larger export' if binary else 'Complete larger export',
@@ -296,9 +296,10 @@ def test_windows_creation_time_model_requires_native_change_time(tmp_path, monke
     windows_os = SimpleNamespace(**vars(os))
     windows_os.name = 'nt'
     monkeypatch.setattr(export_file, 'os', windows_os)
-    changes = iter((100, 200))
-    monkeypatch.setattr(export_file, '_windows_change_time', lambda _path: next(changes), raising=False)
+    changes = [100]
+    monkeypatch.setattr(export_file, '_windows_change_time', lambda _path: changes[0])
     approval = export_file.capture_export_destination(target, private_root=private)
+    changes[0] = 200
     replacement = b'Modified independent work'
     rewrite_preserving_mtime(target, replacement)
     writer = export_file.write_binary_export if binary else export_file.write_export

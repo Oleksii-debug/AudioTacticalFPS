@@ -35,6 +35,7 @@ def host():
     frame.executor = ThreadPoolExecutor(max_workers=1)
     panel = object.__new__(NativeProgressPanel)
     panel.hub = ProgressHub()
+    panel.closed = False
     panel.active_task = None
     panel._last_revision = None
     panel._reporting_failure = None
@@ -262,3 +263,17 @@ def test_completion_summary_preserves_the_callback_focus_target(host, target_nam
     if target_name is not None:
         assert target.GetValue() == 'Readable source result'
     assert frame.progress_panel.active_task.snapshot().percent == 100
+
+
+def test_refresh_failure_after_begin_retains_exact_task_until_business_result(host):
+    frame, callbacks = host
+    frame.progress_panel.refresh.side_effect = RuntimeError('Native refresh unavailable')
+    done, failed = Mock(), Mock()
+    frame.run_job('Committed work', lambda: {'status': 'complete'}, done, failed)
+    task = frame.progress_panel.active_task
+    assert task is not None
+    finish(callbacks)
+    done.assert_called_once_with({'status': 'complete'})
+    failed.assert_not_called()
+    assert task.snapshot().state == 'unavailable'
+    assert not frame.progress_panel.hub.snapshots(active_only=True)

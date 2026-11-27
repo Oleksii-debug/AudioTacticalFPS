@@ -81,8 +81,14 @@ class ResourceLease:
                         value = _read(path)
                         if value != self.record:
                             raise ResourceStateError('Reservation identity changed before release.')
-                        path.unlink()
-                        sync_directory(path.parent)
+                        try:
+                            path.unlink()
+                            sync_directory(path.parent)
+                        except OSError:
+                            # Only the disposable metadata cleanup is deferred.
+                            # Identity validation and native-lock release remain
+                            # strict, and the next admission can reap this record.
+                            self.cleanup_pending = True
                     # Other callers must not observe a live lock after its
                     # corresponding record has been removed.
                     self._lock.release()
@@ -96,7 +102,7 @@ class ResourceLease:
 
 
 class ResourceBroker:
-    def __init__(self, directory, *, limits=None, policy_path=None):
+    def __init__(self, directory, *, limits=None, policy_path=None, cancelled=lambda: False):
         if limits is not None and not isinstance(limits, ResourceLimits):
             raise TypeError('A typed resource policy is required.')
         self.root = local_path(directory)
@@ -110,7 +116,7 @@ class ResourceBroker:
         if self.policy_path in (binding, self.root / '.admission.lock') or self.policy_path.is_relative_to(self.leases_root):
             raise ValueError('Resource policy must not replace coordinator or live-lease files.')
         self.policy_path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-        with self._gate(time.monotonic() + 5, lambda: False):
+        with self._gate(time.monotonic() + 5, cancelled):
             location = {'schema': 'carr-resource-policy-location/1', 'path': str(self.policy_path)}
             if not os.path.lexists(binding):
                 atomic_json(binding, location)
@@ -124,11 +130,11 @@ class ResourceBroker:
             self.limits
 
     @classmethod
-    def for_app(cls, root, *, limits=None):
+    def for_app(cls, root, *, limits=None, cancelled=lambda: False):
         root = local_path(root, exists=True)
         regular(root, directory=True)
         return cls(root / 'runtime' / 'resources', limits=limits,
-                   policy_path=root / 'state' / 'operations' / 'resources.json')
+                   policy_path=root / 'state' / 'operations' / 'resources.json', cancelled=cancelled)
 
     @property
     def limits(self):
@@ -344,8 +350,8 @@ class ResourceBroker:
         finally:
             lease.release()
 
-    def snapshot(self, *, timeout=5):
-        with self._gate(time.monotonic() + _seconds(timeout, 'Snapshot timeout'), lambda: False):
+    def snapshot(self, *, timeout=5, cancelled=lambda: False):
+        with self._gate(time.monotonic() + _seconds(timeout, 'Snapshot timeout'), cancelled):
             active, limits = self._active(), self.limits
             return {'schema': 'carr-resource-snapshot/1', 'limits': limits.to_dict(),
                     'usage': self._usage(active), 'leases': active,

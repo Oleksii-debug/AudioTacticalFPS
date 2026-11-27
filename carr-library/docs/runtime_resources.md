@@ -83,7 +83,11 @@ logical CPU outside the heavy-work allowance when possible. The defaults of
 4 GiB declared RAM capacity, 16 GiB declared disk capacity and a 256 MiB free
 disk reserve are policy defaults, **not a hardware audit**. GPUs are disabled
 until explicitly configured. A worker's configured thread count must fit the
-selected policy; the broker does not silently rewrite engine settings. The
+selected policy; the broker does not silently rewrite engine settings. When
+Studio constructs a previously unconfigured default audio runtime, its default
+FFmpeg thread count is selected within the CPU allowance and recorded in the
+resource plan. Caller-supplied runtimes retain their exact requested count and
+are rejected if that count exceeds the selected allowance. The
 active reservation limit bounds runtime bookkeeping, not development workers,
 branches, PRs or repository coordination.
 
@@ -118,89 +122,188 @@ before claiming orphan-process containment. No OS CPU affinity, whole-process
 RAM cap, measured VRAM usage, thermal control or network sandbox is provided by
 this broker. `capabilities()` states these limits explicitly.
 
-## Canonical studio integration
+## Isolated import process ownership
 
-`ProductionService(..., broker=shared_broker)` uses this policy. Its default is
-the application's shared broker for the canonical `state/studio` directory.
-Already completed outputs are checksum-verified and returned before requesting
-heavy resources or constructing an audio runtime.
+Import and PDF review retain their existing bounded supervisor, private stdin/
+stdout/stderr files, request journal and immutable publication receipts. The
+supervisor closes its native process family before reading a final reply or
+reconciling a stopped child's committed transaction. A leader exit by itself is
+not completion of its OCR descendants.
 
-New/resumed work reserves the actual `AudioRuntime.budget.threads` value, a
-declared RAM estimate, and cache/export disk estimates. The job records both the
-request and its calculation basis in `resource_plan`. Disk estimates use source
-character count, explicit pause/minimum durations and PCM/intermediate/stem
-copies; they do not claim measured TTS duration or a whole-job hard output cap.
-The existing native runner's byte/time/free-space checks remain in force.
+On Windows the existing `JobProcess` creates the child inside its private job
+and inherits only private duplicates of the three selected standard streams.
+The original stream objects remain owned by the caller. Native job accounting
+must reach zero active processes before the result can be consumed.
 
-Neural music takes the configured RAM pool and configured whole GPU capacity
-exclusively because this adapter has no measured model peak. This is not an
-assertion that the model fits. A selected CUDA/MPS device without explicit policy
-capacity is rejected before rendering. Mixed GPU-device projects require one
-selected device per job in this implementation. Music model hashes, runtime
-identity, rights and actual-inference readiness remain the existing music
-adapter's separate checks.
+On POSIX, `waitid(WNOWAIT)` keeps the exact leader waitable until its newly
+created process group is signalled. Cleanup sends one signal while that identity
+is still owned, reaps the leader, and checks for group disappearance with a real
+five-second deadline. A retry only observes the already signalled group; it does
+not signal a possibly reused numeric identity. Unsupported waitid platforms
+refuse this isolated launch instead of claiming equivalent ownership.
 
-Pause/cancel while waiting is written to the same existing studio control file.
-The admitted context surrounds native worker execution and cleanup. Completed
-node receipts and output verification are unchanged, so resource admission does
-not create a second production job or duplicate accepted audio on resume.
+If native cleanup cannot confirm quiescence, the existing retained cleanup owner
+keeps the three stream objects, request lock and any PDF review staging directory
+alive. The caller receives a cleanup-pending error. No final reply is accepted,
+no publication recovery is attempted, and the same request cannot run again
+until that owner releases its lock. Cleanup does not rewrite publication receipts.
 
-## Shared operation view
+This is a prerequisite for shared ingest/OCR admission, not an admission adapter.
+In particular, POSIX process groups do not contain a deliberately detached child
+or survive abrupt loss of their application supervisor as a resource owner.
+The broker's existing application-owned lease contract above is unchanged;
+orphan containment and worker-held admission must be qualified separately.
 
-```python
-from carr_library.operations import OperationFacade
+## Participating services in this composition
 
-operations = OperationFacade(app, broker=broker,
-                            studio=studio_service,
-                            assistant=assistant_service,
-                            transcription=transcription_service)
-rows = operations.list(workspace=selected_workspace, limit=1000)
-row = operations.get('studio', job_id)
-operations.control('studio', job_id, 'pause')
-```
+This adapter keeps the accepted application services and saved formats:
 
-Kinds are `import`, `assistant`, `studio`, `translation` and `asr`. An
-`OperationView` contains `kind`, `id`, `workspace`, stored `status`, measured
-checkpoint `completed` / `total` when present, a fixed `phase`, `updated`,
-supported `controls`, relative `checkpoint` and `live`. The view neither loads
-models nor executes jobs or provider requests. It does not copy document text,
-credentials, raw error bodies or provider profiles into the dashboard.
+| Operation | Existing service and journal | Shared view and controls |
+| --- | --- | --- |
+| Transcription | `carr_library.transcription.TranscriptionService(app, workspace)`; `state/transcription/<workspace-sha256>/jobs/<32-hex-id>/job.json` | Stored host status and file counts; open the selected saved job in its original workstation. Stop uses the active run callback. No invented cross-process pause/cancel API. |
+| Studio | `studio.render.ProductionService`; `state/studio/jobs/<id>/job.json` | Stored accepted node count, existing pause/cancel requests, original run/resume workflow. |
+| Translation | Existing `TranslationService`, `JobStore`, Gateway and usage ledger; `translation/1` or source-bound `translation/2` | Validated receipt counts and authorized source workspace; view only. Remote resume and local export remain in the original translation dialog. |
+| Assistant | Existing assistant checkpoint and control files | Stored step counts and existing pause/cancel methods. |
+| Import | Existing import-batch journal | Stored input counts; view only. |
 
-`live=True` means a matching native broker reservation exists. `live=None`
-means unknown: a legacy or light operation may legitimately run outside this
-broker. Absence of a reservation never changes a saved job into failed or
-interrupted. Likewise, a saved `complete` status is a journal observation;
-opening/resuming/exporting through the owning service retains its original
-artifact verification requirements.
+Only **ASR and Studio** join heavy-work admission in this composition. The other
+rows are views over existing stores. This does not add an import/OCR adapter,
+recording-device enforcement, translation provider or alternate queue.
 
-Only explicitly supplied service instances expose their existing pause/cancel
-methods. A stop request is not reported as an acknowledged stopped state.
-Resume stays in the original workflow, where its exact saved plan and any
-external-provider approval can be checked. Imports/translation lacking durable
-cross-process stop controls remain view-only here. Corrupt checkpoints are
-represented as attention rows without leaking their contents.
+The broker and typed resource core are reused from PR147's implementation as
+preserved in PR143 `e07545a99db45bf46c7d985d33bd98e284d25833`. Its existing
+metadata-cleanup behavior and actual standalone process fixtures are retained.
+The `_locks.py`, `models.py` and `broker.py` blobs are respectively
+`fcf6872d1b5b8a131bf33edd2e42fd0163b9afd9`,
+`2cbf7ebddfa4492ca2b0774a1cf9e6be42f915af` and
+`7fdbc538ab892a11e18029cdade97b2420600c4f`.
+Neither donor ASR implementation is copied. The accepted workspace-scoped module
+continues to own recognition, retained inputs and both supplied-worker protocols.
 
-The view returns at most its explicit `limit` in stable kind/ID order and scans
-at most 10,000 checkpoints. It is a bounded dashboard, not a replacement large
-corpus job index. No capability is inferred from a format name or a stored
-completed status alone.
+## Accepted supplied-worker admission
 
-## Evidence and remaining native checks
+A completed ASR job verifies its existing artifacts and returns before constructing
+a broker, reserving capacity or starting a worker. A new or stopped job retains
+its original settings and protocol. Before a native launch it reserves the whole
+configured CPU/RAM pool, the existing bounded output/staging estimate plus its
+disk reserve, and the explicitly configured generic CUDA pool when selected.
+The worker's real thread count and model peak have not been measured here.
+Admission coordinates declared allowances; it does not impose a physical limit
+on the worker or silently change its settings.
 
-`tests/operations` runs real spawned-process contention and abrupt exit,
-PID-reuse metadata simulation, cancellation, live timeout behavior, failed state
-publication, corrupt live metadata, policy conflicts, filesystem/device/GPU
-admission contracts, POSIX fork inheritance, existing LibraryApp import and
-assistant journals, and actual FFmpeg studio output/reuse. GPU admission tests
-exercise declared capacity and exclusivity; they are not GPU inference tests.
+ASR has no reviewed physical GPU index capability. Its `cuda` pool and Studio's
+`cuda:0` pool therefore also reserve the same `accelerator:cuda` token.
+Participating CUDA work cannot overlap merely because those policy names differ.
+Missing configured capacity is a visible refusal before launch. This does not
+prove a model fits in the declared memory.
 
-The canonical existing studio suite still exercises real installed Flite speech,
-music, mix/stem export, pause/restart and corruption recovery. Linux evidence is
-not transferred to Windows: native Windows lock behavior and keyboard/NVDA
-acceptance need their own execution on the target build. No models, heavyweight
-dependencies or paid API calls are required by these resource tests.
+No database transaction remains open while waiting. After admission, ASR
+reauthorizes the current workspace, compares the current verified interpreter/
+worker configuration, and rechecks retained sources. The V5 profile also compares
+its existing complete local model identity before and after waiting.
+The older `receipts-v1` protocol delegates model resolution to its selected
+worker; its existing returned receipt establishes that identity. This adapter
+does not fabricate a host model identity for that older protocol.
 
-Primary implementation evidence is the installed pinned filelock source
-(`filelock/_unix.py`, `_windows.py`, `_api.py`), the existing
-`ingest/writer_guard.py`, `durable_state.py`, canonical job stores and
-`audio/process.py`. The broker does not introduce another lock library.
+The existing runner still sends the stop flag, allows its bounded grace period
+and reaps the actual child. The resource lease encloses that cleanup and output
+verification. A cancelled wait starts no child and preserves the previous
+checkpoint. Explicit resume uses the original service, with its original
+configuration and receipt checks. Stopped cached files are not accepted exports.
+
+The native progress callback has a separate prelaunch resource-wait phase.
+Existing Windows live-progress behavior is preserved: the host does not hold
+the producer's mutable status file open while it runs. The final child-reaped
+read may retain provisional counts without granting receipt authority.
+
+## Studio admission and retained results
+
+The existing production DAG keeps its node hashes, project/script identity,
+original sources, model validation and atomic output publication. Its resource
+request uses the runtime's actual configured FFmpeg thread count, a declared
+memory estimate and cache/export disk estimates. When no explicit runtime
+thread budget was supplied, the default is selected within the local CPU policy.
+Explicit caller budgets are retained and rejected if they exceed that policy.
+
+A neural score requests the declared RAM/GPU pool exclusively because there is
+no measured model peak. Current configured model manifests and existing
+runtime/model validation still determine acceptance. Admission never declares
+inference qualification, licensing clearance or acoustic quality.
+
+Pause/cancel while waiting uses the original Studio control file. Existing
+verified completed jobs return without heavy admission. After output validation,
+a disposable resource metadata cleanup failure is reported as a notice while
+the successful committed outcome remains successful. Native lock-release or
+changed reservation-identity failures remain errors.
+
+The process runner also retains the existing donor fix for a reader-thread
+startup failure after `Popen`: it owns and reaps the actual native child before
+the caller can leave its resource context.
+
+## Native Tasks and resources
+
+The existing desktop executor opens a native dialog from Tools → Tasks and
+resources. Named Jobs and Resource allowances tabs expose saved counts, supported
+controls and the cooperative policy. Initialization, refresh and policy writes
+run on that same executor. There is no new worker pool or scheduler.
+
+The controller captures the selected library and data folder. A changed selection
+or closing window detaches queued work. ASR jobs are discovered through active
+catalogue workspace identities and their existing hashed directories.
+A copied 32-character job ID in a different workspace has a different shared
+operation key. Directory names never grant source authority.
+
+Only the selected active library can hand an ASR job to its existing transcription
+workstation. The handoff rechecks the saved job in the background, selects it for
+inspection, and does not start recognition. ASR stop remains in its running
+workstation. The shared view does not manufacture a pause/cancel method or rewrite
+a journal to pretend a real child stopped.
+
+Translation views use the existing validated loader and 64 MiB checkpoint
+allowance. They preserve the canonical source binding, UUID version, approved
+data class and decoded-output usage evidence. They do not renew provider
+permission, access a credential, replay a paid request or grant export authority.
+The saved source/account/budget selection and fresh profile checks remain in
+the original translation UI. A restored pending approval cannot acquire remote
+authority merely by appearing in Tasks.
+
+`live=True` means the broker currently observes a corresponding held native
+reservation. `live=None` means unknown; legacy or lightweight work may run
+outside the broker. Stored completion is a journal observation, not a newly
+verified original, transcript or provider result. Actual opening, resume and
+export retain their owning service's checks.
+
+The view excludes other or archived workspaces from a selected-library list.
+A corrupt global journal without a validated workspace cannot be assigned to
+that selection. Other malformed checkpoints show a fixed attention message
+without original text, provider profiles, credentials or raw exception bodies.
+Incremental discovery counts every encountered directory entry, including invalid
+names and empty job directories, within a shared 10,000-entry limit. Cancellation
+is checked between entries; the returned row count has its own explicit limit.
+
+## Backup and execution evidence
+
+Only the non-secret policy under `state/operations/resources.json` is durable.
+The existing complete backup includes it. Live leases and coordinator files
+remain under `runtime/resources` and are not restored as active reservations.
+No new backup version or job migration is introduced.
+
+The focused regressions retain donor native lock contention, process death,
+policy/disk/device checks, Studio output and reuse, metadata cleanup and UI
+lifetime cases. Added fixtures run the **actual accepted ASR service** with its
+existing synthetic protocol worker while another process owns a real Studio
+reservation. They cover successful serial admission, cancellation before launch,
+and an owning Studio process dying at a controlled point before a render child
+exists. That last case verifies lock recovery, not orphan-child containment.
+
+Other cases change the workspace, retained source, reviewed worker or V5 model
+while admission is blocked; require actual child reaping before lease release;
+retain completed receipts after cleanup notices; and verify workspace mappings
+and source-bound translation views without provider calls. These are authored
+fixtures, not real recordings or model inference.
+
+Source and installed execution are reported against exact commits in the PR/CI
+record. A static review or prepared test is not a PASS result. The native wx helper
+separately executes named controls, policy save, foreground close while queued and
+actual parent-driven destruction. Human Windows 11/NVDA, acoustic quality,
+hardware capacity and long-model benchmarks remain distinct, unclaimed gates.

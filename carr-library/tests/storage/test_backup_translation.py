@@ -2,6 +2,9 @@
 from decimal import Decimal
 from hashlib import sha256
 import json
+from pathlib import Path
+import runpy
+from types import SimpleNamespace
 import subprocess
 import pytest
 from carr_library.application import LibraryApp
@@ -21,41 +24,30 @@ class SyntheticGateway:
         self.ledger.reserve(authorization, operation_id, checksum, Decimal(max_cost), profile, operation)
         if operation == 'translation.languages':
             result = {'languages': [{'language': 'en', 'name': 'English'}, {'language': 'uk', 'name': 'Ukrainian'}]}
-            if profile.adapter == 'google-translation-v3':
-                for row in result['languages']:
-                    row.update(source=True, target=True)
         else:
             result = {'text': 'Synthetic translation: ' + payload['q'], 'detected_source': 'en'}
-            if profile.adapter == 'google-translation-v3':
-                result.update(reported_model=body['model'], glossary_config=body.get('glossaryConfig'))
         output = sha256(canonical(result).encode()).hexdigest()
         self.ledger.finish(authorization.id, operation_id, status='complete', output_hash=output)
         return {**result, 'request_sha256': checksum, 'output_sha256': output}
 
 
-@pytest.fixture(params=['basic', 'advanced', 'advanced-glossary'])
-def produced(tmp_path, request):
+@pytest.fixture
+def produced(tmp_path):
     app = LibraryApp(tmp_path / 'library')
     app.create_workspace('Translation backup')
     root = app.root / 'state/translation'
     gateway = SyntheticGateway(root / 'provider')
     service = TranslationService(root, gateway=gateway)
-    advanced = request.param != 'basic'
-    parent = 'projects/123456789/locations/us-central1'
-    glossary = parent + '/glossaries/reviewed-terms' if request.param == 'advanced-glossary' else None
-    profile = ProviderProfile('google_fixture', 'Synthetic account',
-        'google-translation-v3' if advanced else 'google-translation-v2',
-        'https://translation.googleapis.com/v3/' + parent if advanced else ENDPOINT,
-        'general/nmt' if advanced else 'nmt', capabilities=('translation.text', 'translation.languages'),
+    profile = ProviderProfile('google_fixture', 'Synthetic account', 'google-translation-v2', ENDPOINT,
+        'nmt', capabilities=('translation.text', 'translation.languages'),
         credential_ref='carr/provider/google_fixture/' + 'a' * 32, enabled=True)
     ProfileStore(app.root / 'state/providers').save(profile)
     approval = Authorization('languages', 'languages', ((profile.id, profile.endpoint),),
         ('translation.languages',), ('user-instruction',), '0', 1, 2000000000)
     service.refresh_languages(profile, authorization=approval)
     source = 'Synthetic source for retained translation. ' * 150
-    authorization, cost = translation_approval(profile, source, 'en', 'uk', '1', glossary=glossary)
-    identity = service.submit(profile, source, 'en', 'uk', authorization=authorization,
-                              per_call_cost=cost, glossary=glossary)
+    authorization, cost = translation_approval(profile, source, 'en', 'uk', '1')
+    identity = service.submit(profile, source, 'en', 'uk', authorization=authorization, per_call_cost=cost)
     stop = []
     result = service.resume(identity, cancelled=lambda: bool(stop), progress=lambda *args: stop.append(True))
     assert result['status'] == 'paused' and result['completed'] == 1
@@ -82,7 +74,8 @@ def test_translation_state_roundtrips_without_credentials_or_gateway(produced, t
     assert len(manifest['sidecars']) == 6
     for row in manifest['sidecars']:
         assert (target / row['filename']).read_bytes() == (app.root / row['filename']).read_bytes()
-    restored = TranslationService(target / 'state/translation', gateway=object())
+    restored = TranslationService(target / 'state/translation', gateway=SimpleNamespace(
+        ledger=UsageLedger(target / 'state/translation/provider/usage')))
     job = restored._load(identity)
     assert job['status'] == 'paused' and len(job['receipts']) == 1
     assert restored.jobs.control(identity) == 'pause'
@@ -119,52 +112,185 @@ def test_resigned_translation_tampering_is_rejected(produced, tmp_path, damage):
     assert not destination.exists()
 
 
-@pytest.mark.parametrize('produced', ['basic'], indirect=True)
-def test_legacy_basic_checkpoint_without_glossary_field_still_roundtrips(produced, tmp_path):
-    app, service, identity = produced
-    job = service.jobs.load(identity)
-    assert job.pop('glossary') is None
-    service.jobs.save(job)
-    folder = tmp_path / 'legacy-backup'
-    checksum = create_backup(app, folder)
-    target = restore_backup(folder, tmp_path / 'legacy-restored', checksum)
-    restored = TranslationService(target / 'state/translation', gateway=object())._load(identity)
-    assert 'glossary' not in restored and len(restored['receipts']) == 1
+@pytest.fixture
+def advanced_source(tmp_path, monkeypatch):
+    # Reuse the real Advanced service/approval fixture. Only HTTPS is synthetic;
+    # there is no live provider, socket, vault or alternate receipt implementation.
+    helpers = runpy.run_path(str(Path(__file__).parents[1] / 'assistant' / 'test_translation_v3.py'))
+    transport = helpers['transport'].__wrapped__(monkeypatch)
+    case = helpers['source_case'](tmp_path, transport)
+    ProfileStore(case.app.root / 'state/providers').save(case.p)
+    identity, approval = helpers['submit_source'](case)
+    return case, identity, approval, transport
 
 
-@pytest.mark.parametrize('produced', ['advanced', 'advanced-glossary'], indirect=True)
-@pytest.mark.parametrize('damage', ['glossary-resource', 'receipt-model', 'receipt-glossary',
-                                   'language-direction', 'language-endpoint', 'language-model'])
-def test_resigned_advanced_translation_authority_changes_are_rejected(produced, tmp_path, damage):
-    app, service, identity = produced
-    folder = tmp_path / 'advanced-backup'
-    create_backup(app, folder)
-    relative = ('state/translation/languages-google_fixture.json' if damage.startswith('language-')
-                else 'state/translation/jobs/' + identity + '.json')
-    path = folder / relative
-    value = json.loads(path.read_bytes())
-    if damage == 'glossary-resource':
-        value['glossary'] = 'projects/999999999/locations/us-central1/glossaries/other-account'
-    elif damage == 'receipt-model':
-        value['receipts'][0]['reported_model'] = 'projects/999999999/locations/us-central1/models/general/nmt'
-    elif damage == 'receipt-glossary':
-        value['receipts'][0]['glossary_config'] = {
-            'glossary': value.get('glossary') or 'projects/123456789/locations/us-central1/glossaries/unrequested',
-            'ignoreCase': 0,  # Equality with False must not admit a mistyped provider declaration.
-        }
-    elif damage == 'language-direction':
-        value['languages'][0]['source'] = 'true'
-        value['languages_sha256'] = sha256(canonical(value['languages']).encode()).hexdigest()
-    elif damage == 'language-endpoint':
-        value['endpoint'] = 'https://example.invalid/v3/projects/123456789/locations/us-central1'
+@pytest.mark.parametrize('state', ['queued', 'accepted-prefix', 'complete'])
+@pytest.mark.parametrize('same_path', [False, True], ids=['relocated', 'same-path-new-root'])
+def test_source_bound_advanced_restore_keeps_receipts_without_remote_approval(
+        advanced_source, tmp_path, monkeypatch, state, same_path):
+    from carr_library.speech.reading import ReadingDocument
+    case, identity, approval, transport = advanced_source
+    if state == 'accepted-prefix':
+        stop = []
+        result = case.service.resume(identity, cancelled=lambda: bool(stop),
+                                     progress=lambda *args: stop.append(True))
+        assert result['status'] == 'paused' and result['completed'] == 1 < result['total']
+    elif state == 'complete':
+        assert case.service.resume(identity)['status'] == 'complete'
+    saved = case.service.get(identity)
+    original = case.app.assets.resolve(case.imported['asset']).read_bytes()
+    calls = len(transport['calls'])
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('Backup or restored evidence activated a provider or process.')
+
+    monkeypatch.setattr(Gateway, '__init__', forbidden)
+    monkeypatch.setattr(Gateway, 'request', forbidden)
+    monkeypatch.setattr(subprocess, 'Popen', forbidden)
+    folder = tmp_path / 'backup'
+    digest = create_backup(case.app, folder)
+    manifest = json.loads((folder / 'manifest.json').read_bytes())
+    assert manifest['version'] == 4 and 'state' not in manifest
+    if same_path:
+        destination = case.app.root
+        case.app.root.rename(tmp_path / 'retired-original-root')
     else:
-        value['model'] = 'general/translation-llm'
-    raw = json.dumps(value).encode()
+        destination = tmp_path / 'relocated'
+    restored = LibraryApp(restore_backup(folder, destination, digest))
+    gateway = SimpleNamespace(ledger=UsageLedger(restored.root / 'state/translation/provider/usage'),
+                              request=forbidden)
+    service = TranslationService(restored.root / 'state/translation', library=restored, gateway=gateway)
+    recovered = service.get(identity)
+    assert recovered == saved
+    assert recovered['kind'] == 'translation/2'
+    assert recovered['source_binding'] == saved['source_binding']
+    assert restored.assets.resolve(case.imported['asset']).read_bytes() == original
+    usage_before = {path.name: path.read_bytes() for path in
+                    (restored.root / 'state/translation/provider/usage').glob('*.usage.json')}
+    if state == 'complete':
+        output = tmp_path / 'offline-restored-export'
+        assert service.export(identity, output)['status'] == 'complete'
+        reading = ReadingDocument.load(output / 'translation.reading.json')
+        assert reading.source_text == case.source.text
+        assert reading.source_anchor == case.document.source_anchor
+        assert not reading.source_span(0, len(reading.text)).exact
+        assert reading.undo() and reading.text == case.source.text
+        report = json.loads((output / 'translation-provenance.json').read_bytes())
+        assert report['decoded_text_binding'] == 'usage-ledger-sha256'
+        assert report['quotation_authority'] is False
+    else:
+        with pytest.raises(PermissionError, match='moved or restored'):
+            service.resume(identity)
+        assert service.get(identity)['receipts'] == saved['receipts']
+        with pytest.raises(ValueError, match='Finish and verify'):
+            service.export(identity, tmp_path / 'unfinished-export')
+        assert not (tmp_path / 'unfinished-export').exists()
+    assert {path.name: path.read_bytes() for path in
+            (restored.root / 'state/translation/provider/usage').glob('*.usage.json')} == usage_before
+    assert len(transport['calls']) == calls
+
+
+def test_advanced_backup_rejects_text_and_self_hash_tamper_against_unchanged_usage(
+        advanced_source, tmp_path):
+    case, identity, approval, transport = advanced_source
+    assert case.service.resume(identity)['status'] == 'complete'
+    folder = tmp_path / 'backup'
+    create_backup(case.app, folder)
+    relative = 'state/translation/jobs/' + identity + '.json'
+    path = folder / relative
+    job = json.loads(path.read_bytes())
+    job['receipts'][0]['text'] = 'Forged decoded text with the original raw response receipt.'
+    job['receipts'][0]['translation_sha256'] = sha256(job['receipts'][0]['text'].encode()).hexdigest()
+    raw = json.dumps(job, ensure_ascii=False).encode('utf-8')
+    path.write_bytes(raw)
+    ledger = folder / 'state/translation/provider/usage' / (approval.id + '.usage.json')
+    original_usage = ledger.read_bytes()
+    manifest = json.loads((folder / 'manifest.json').read_bytes())
+    row = next(row for row in manifest['sidecars'] if row['filename'] == relative)
+    row.update(size_bytes=len(raw), sha256=sha256(raw).hexdigest())
+    destination = tmp_path / 'rejected-advanced'
+    with pytest.raises(ValueError, match='decoded-output'):
+        restore_backup(folder, destination, resign(folder, manifest))
+    assert not destination.exists() and ledger.read_bytes() == original_usage
+
+
+@pytest.mark.parametrize('non_boolean', [0, 0.0], ids=['integer-zero', 'float-zero'])
+def test_resigned_advanced_glossary_requires_literal_false_without_renewing_authority(
+        advanced_source, tmp_path, monkeypatch, non_boolean):
+    case, identity, approval, transport = advanced_source
+    assert case.service.resume(identity)['status'] == 'complete'
+    original_job = case.service.jobs.path(identity).read_bytes()
+    calls, credentials = len(transport['calls']), len(case.vault.calls)
+    folder = tmp_path / 'glossary-backup'
+    create_backup(case.app, folder)
+    relative = 'state/translation/jobs/' + identity + '.json'
+    path = folder / relative
+    saved = json.loads(path.read_bytes())
+    assert saved['receipts'][0]['glossary_config']['ignoreCase'] is False
+    saved['receipts'][0]['glossary_config']['ignoreCase'] = non_boolean
+    raw = json.dumps(saved, ensure_ascii=False).encode('utf-8')
     path.write_bytes(raw)
     manifest = json.loads((folder / 'manifest.json').read_bytes())
     row = next(row for row in manifest['sidecars'] if row['filename'] == relative)
-    row.update(sha256=sha256(raw).hexdigest(), size_bytes=len(raw))
-    destination = tmp_path / 'rejected-advanced'
-    with pytest.raises(ValueError):
+    row.update(size_bytes=len(raw), sha256=sha256(raw).hexdigest())
+    usage = folder / 'state/translation/provider/usage' / (approval.id + '.usage.json')
+    original_usage = usage.read_bytes()
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('Typed restoration cannot renew provider or executable authority.')
+
+    monkeypatch.setattr(Gateway, 'request', forbidden)
+    monkeypatch.setattr(subprocess, 'Popen', forbidden)
+    destination = tmp_path / 'rejected-glossary'
+    with pytest.raises(ValueError, match='Advanced translation provenance'):
         restore_backup(folder, destination, resign(folder, manifest))
     assert not destination.exists()
+    assert usage.read_bytes() == original_usage and path.read_bytes() == raw
+    assert case.service.jobs.path(identity).read_bytes() == original_job
+    assert len(transport['calls']) == calls and len(case.vault.calls) == credentials
+
+
+@pytest.mark.parametrize('name', ['', 'я' * 512], ids=['omitted-display-name', 'maximum-display-name'])
+def test_advanced_language_display_names_roundtrip_as_passive_bounded_declarations(
+        advanced_source, tmp_path, monkeypatch, name):
+    case, _, _, transport = advanced_source
+    language_path = case.service._languages_path(case.p)
+    value = json.loads(language_path.read_bytes())
+    value['languages'][0]['name'] = name
+    value['languages_sha256'] = sha256(canonical(value['languages']).encode()).hexdigest()
+    raw = (canonical(value) + '\n').encode()
+    language_path.write_bytes(raw)
+    calls, credentials = len(transport['calls']), len(case.vault.calls)
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('A passive language inventory must not call a provider or runtime.')
+
+    monkeypatch.setattr(Gateway, 'request', forbidden)
+    monkeypatch.setattr(subprocess, 'Popen', forbidden)
+    folder = tmp_path / 'language-backup'
+    checksum = create_backup(case.app, folder)
+    target = restore_backup(folder, tmp_path / 'restored-languages', checksum)
+    relative = language_path.relative_to(case.app.root)
+    assert (folder / relative).read_bytes() == raw
+    assert (target / relative).read_bytes() == raw
+    restored = TranslationService(target / 'state/translation', gateway=SimpleNamespace())
+    assert restored.languages(case.p) == tuple(value['languages'])
+    assert language_path.read_bytes() == raw
+    assert len(transport['calls']) == calls and len(case.vault.calls) == credentials
+
+
+def test_advanced_language_display_name_over_budget_fails_before_backup_publication(
+        advanced_source, tmp_path):
+    case, _, _, transport = advanced_source
+    path = case.service._languages_path(case.p)
+    value = json.loads(path.read_bytes())
+    value['languages'][0]['name'] = 'x' * 513
+    value['languages_sha256'] = sha256(canonical(value['languages']).encode()).hexdigest()
+    raw = (canonical(value) + '\n').encode()
+    path.write_bytes(raw)
+    calls = len(transport['calls'])
+    destination = tmp_path / 'oversized-language-backup'
+    with pytest.raises(ValueError):
+        create_backup(case.app, destination)
+    assert not destination.exists() and path.read_bytes() == raw
+    assert len(transport['calls']) == calls

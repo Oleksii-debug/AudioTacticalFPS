@@ -19,8 +19,7 @@ concurrency:
 jobs:
   native-studio:
     runs-on: windows-2022
-    # Preserve the primary gates and allow the added ASR/translation/planning probes.
-    timeout-minutes: 40
+    timeout-minutes: 45
     defaults:
       run:
         shell: pwsh
@@ -40,6 +39,12 @@ jobs:
         with:
           python-version: '3.11'
           architecture: x64
+      - name: Verify native Windows state replacement semantics
+        timeout-minutes: 3
+        run: |
+          New-Item -ItemType Directory -Force 'ci-v3-results' | Out-Null
+          python -I -B scripts/windows_json_replace_diagnostic.py 2>&1 | Tee-Object 'ci-v3-results/native-json-replacement.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Native state replacement diagnostic failed.' }
       - name: Install exact application and native desktop dependencies
         id: install-runtime
         run: |
@@ -53,6 +58,11 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pip check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify canonical citation and DOCX regeneration boundaries
+        timeout-minutes: 10
+        run: |
+          python scripts/ci_check.py tests/academic_integration/test_formatting.py tests/academic_integration/test_documents.py tests/academic_integration/test_regeneration.py tests/academic_integration/test_end_to_end.py tests/academic_integration/test_citation_ui.py tests/storage/test_durable_state_publication.py tests/ui/test_profile_project_exports.py 2>&1 | Tee-Object 'ci-v3-results/citation-regeneration.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Prepare the verified OCR engine before installed recovery acceptance
         timeout-minutes: 10
         run: |
@@ -65,21 +75,27 @@ jobs:
           python packaging/prepare_windows_ocr.py --cache (Join-Path $ocrWork 'ocr-cache') --output $ocr --source-archive $ocrSource --download | Tee-Object 'ci-v3-results/ocr-preparation.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "CARR_CI_OCR_DIR=$ocr" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-      - name: Verify installed backup and import publication integrity
-        timeout-minutes: 10
+      - name: Verify installed source translation, backup and import publication integrity
+        timeout-minutes: 20
         env:
           PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
           PYTEST_ADDOPTS: ''
         run: |
           $installedRecovery = @'
-          import json, pathlib, sys, xml.etree.ElementTree as ET
+          import hashlib, json, pathlib, sys, xml.etree.ElementTree as ET
           import carr_library, carr_library.state_backup, carr_library.ingest.worker
           import carr_library.application, carr_library.pending_backup, carr_library.library_backup
           import carr_library.speech.reading, carr_library.speech.source, carr_library.ui.speech_dialog
           import carr_library.speech.runtime, carr_library.acquisition.providers
           import carr_library.speech.session
           import carr_library.extract.ocr_runtime
+          import carr_library.durable_state, carr_library.ui.save_actions
           import carr_library.storage.revisions, carr_library.storage.schema_identity
+          import carr_library.assistant.translation, carr_library.assistant.providers
+          import carr_library.ui.translation_dialog
+          import carr_library.assistant.profiles, carr_library.ui.assistant_dialog
+          import carr_library.audio.windows_job, carr_library.audio.cleanup
+          import carr_library.studio.project
           import pytest
           checkout = pathlib.Path.cwd().resolve()
           names = ('carr_library', 'carr_library.state_backup', 'carr_library.ingest.worker',
@@ -88,10 +104,22 @@ jobs:
                    'carr_library.speech.runtime', 'carr_library.acquisition.providers',
                    'carr_library.speech.session',
                    'carr_library.extract.ocr_runtime',
-                   'carr_library.storage.revisions', 'carr_library.storage.schema_identity')
+                   'carr_library.durable_state', 'carr_library.ui.save_actions',
+                   'carr_library.storage.revisions', 'carr_library.storage.schema_identity',
+                   'carr_library.assistant.translation', 'carr_library.assistant.providers',
+                   'carr_library.ui.translation_dialog',
+                   'carr_library.assistant.profiles', 'carr_library.ui.assistant_dialog',
+                   'carr_library.audio.windows_job', 'carr_library.audio.cleanup',
+                   'carr_library.studio.project')
+          owner_modules = ('carr_library.ingest.worker', 'carr_library.audio.windows_job',
+                           'carr_library.audio.cleanup')
+          owner_source = {name: hashlib.sha256((checkout / 'src' / pathlib.Path(
+              *name.split('.'))).with_suffix('.py').read_bytes()).hexdigest() for name in owner_modules}
           def installed_origins():
               origins = {name: str(pathlib.Path(sys.modules[name].__file__).resolve()) for name in names}
               assert all(not pathlib.Path(path).is_relative_to(checkout) for path in origins.values()), origins
+              assert all(hashlib.sha256(pathlib.Path(origins[name]).read_bytes()).hexdigest()
+                         == owner_source[name] for name in owner_modules), 'Installed native owner differs from this source.'
               return origins
           installed_origins()
           class RejectExpectedFailures:
@@ -110,16 +138,30 @@ jobs:
                     'tests/extract/test_ocr_runtime.py::test_unreadable_directory_rejects_entire_inventory',
                     'tests/extract/test_ocr_runtime.py::test_empty_directory_inventory_has_a_bound',
                     'tests/extract/test_ocr_runtime.py::test_directory_inventory_checks_budget_between_entries',
+
+                    'tests/storage/test_state_backup_portability.py::test_state_inventory_rejects_unreadable_subtree',
+                    'tests/storage/test_state_backup_portability.py::test_state_restore_rejects_unlisted_file_before_scanning_later_subtree',
+                    'tests/storage/test_state_backup_portability.py::test_state_root_lookup_error_is_not_absence',
+                    'tests/storage/test_state_backup_portability.py::test_state_root_missing_is_optional_only_when_requested',
+                    'tests/storage/test_v3_state_backup.py::test_backup_state_lookup_failure_never_publishes',
                     'tests/storage/test_pending_backup.py',
                     'tests/storage/test_complete_pending_backup.py',
                     'tests/storage/test_academic_migration.py',
                     'tests/storage/test_backup_schema_identity.py',
                     'tests/e2e/test_import_worker_publication.py',
+                    'tests/ingest/test_worker_process_ownership.py',
                     'tests/ingest/test_import_replay_identity.py',
                     'tests/speech/test_reading.py',
                     'tests/speech/test_source.py',
                     'tests/speech/test_session.py',
-                    'tests/packaging/test_worker_bytecode.py']
+                    'tests/packaging/test_worker_bytecode.py',
+                    'tests/storage/test_state_json_reader.py',
+                    'tests/ui/test_save_actions.py',
+                    'tests/assistant/test_translation.py',
+                    'tests/assistant/test_providers.py',
+                    'tests/assistant/test_translation_v3.py',
+                    'tests/assistant/test_translation_narration.py',
+                    'tests/ui/test_profile_project_exports.py']
           status = pytest.main(['-q', '-o', 'addopts=', '-o', 'pythonpath=',
                                '-o', 'xfail_strict=true', '--import-mode=importlib',
                                '--junitxml=' + str(report), *suites], plugins=[policy])
@@ -128,15 +170,46 @@ jobs:
           skipped = sum(case.find('skipped') is not None for case in cases)
           passed = len(cases) - failed - skipped
           portable = [case for case in cases if 'test_state_backup_portability' in case.get('classname', '').split('.')]
-          portable_complete = len(portable) == 21 and len({case.get('name') for case in portable}) == 21
+          portable_base_names = {'test_portable_manifest_rejects_collisions',
+              'test_portable_manifest_allows_distinct_siblings',
+              'test_portable_manifest_rejects_non_windows_names',
+              'test_portable_manifest_keeps_ordinary_unicode_names',
+              'test_portable_snapshot_roundtrip_unicode'}
+          portable_cases = [case.get('name', '') for case in portable]
+          portable_base = [name for name in portable_cases if name.split('[', 1)[0] in portable_base_names]
+          portable_base_complete = len(portable_base) == 21 and len(set(portable_base)) == 21
+          required_inventory = {
+              'test_state_inventory_rejects_unreadable_subtree[snapshot]',
+              'test_state_inventory_rejects_unreadable_subtree[restore]',
+              'test_state_restore_rejects_unlisted_file_before_scanning_later_subtree',
+              'test_state_root_lookup_error_is_not_absence[PermissionError]',
+              'test_state_root_lookup_error_is_not_absence[NotADirectoryError]',
+              'test_state_root_missing_is_optional_only_when_requested'}
+          inventory_cases = [name for name in portable_cases if name.split('[', 1)[0] not in portable_base_names]
+          inventory_exact = len(inventory_cases) == len(required_inventory) and set(inventory_cases) == required_inventory
+          portable_complete = (portable_base_complete and inventory_exact
+              and len(portable_cases) == 27 and len(set(portable_cases)) == 27)
           required_ocr = {'test_unreadable_directory_rejects_entire_inventory', 'test_empty_directory_inventory_has_a_bound', 'test_directory_inventory_checks_budget_between_entries'}
           ocr_cases = [c.get('name') for c in cases if c.get('classname', '').rsplit('.', 1)[-1] == 'test_ocr_runtime']
           ocr_exact = len(ocr_cases) == len(required_ocr) and set(ocr_cases) == required_ocr
-          ok = status == 0 and passed > 0 and failed == skipped == 0 and not policy.seen and portable_complete and ocr_exact
+          required_owner = {
+              'test_return_or_stop_waits_for_actual_descendant_native_lock[' + value + ']'
+              for value in ('orphan-complete', 'cancel-cancelled', 'timeout-timed_out', 'overflow-failed')}
+          required_owner.update({'test_explicit_native_stdio_preserves_binary_bytes_and_parent_handles',
+              'test_failed_family_cleanup_retains_streams_request_and_review_source[request]',
+              'test_failed_family_cleanup_retains_streams_request_and_review_source[review]'})
+          owner_cases = [c.get('name') for c in cases if c.get('classname', '').rsplit('.', 1)[-1] == 'test_worker_process_ownership']
+          owner_exact = len(owner_cases) == len(required_owner) and set(owner_cases) == required_owner
+          ok = status == 0 and passed > 0 and failed == skipped == 0 and not policy.seen and portable_complete and ocr_exact and owner_exact
           result = dict(status='PASS' if ok else 'FAIL', passed=passed, failed=failed,
                         skipped=skipped, pytest_exit=int(status), expected_failures=policy.seen,
-                        origins=installed_origins(), ocr_inventory_cases=sorted(ocr_cases),
-                        ocr_inventory_exact=ocr_exact, manual_nvda='NOT_RUN')
+                        origins=installed_origins(), portable_cases=sorted(portable_cases),
+                        portable_base_complete=portable_base_complete,
+                        state_inventory_cases=sorted(inventory_cases), state_inventory_exact=inventory_exact,
+                        portable_complete=portable_complete, ocr_inventory_cases=sorted(ocr_cases),
+                        ocr_inventory_exact=ocr_exact, native_owner_cases=sorted(owner_cases),
+                        native_owner_exact=owner_exact, native_owner_source_sha256=owner_source,
+                        manual_nvda='NOT_RUN')
           pathlib.Path('ci-v3-results/installed-recovery.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
           print(json.dumps(result), flush=True)
           raise SystemExit(0 if ok else 1)
@@ -171,6 +244,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           "CARR_V3_AUDIO=$audio" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $mediaAudio = Join-Path $env:RUNNER_TEMP 'carr-v3-media-audio'
+          python -I -B packaging/prepare_windows_audio.py --cache (Join-Path $env:RUNNER_TEMP 'carr-v3-media-audio-cache') --output $mediaAudio --download | Tee-Object 'ci-v3-results/media-audio-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_MEDIA_AUDIO=$mediaAudio" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
       - name: Real native SAPI, scene production, keyboard controls and restart
         run: |
           $python = (Get-Command python.exe).Source
@@ -180,7 +257,10 @@ jobs:
             (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'),
             (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe'),
             (Join-Path $env:CARR_V3_AUDIO 'bin/ffmpeg.exe'),
-            (Join-Path $env:CARR_V3_AUDIO 'bin/ffprobe.exe')) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | ForEach-Object { [System.IO.Path]::GetFullPath($_) } | Sort-Object -Unique
+            (Join-Path $env:CARR_V3_AUDIO 'bin/ffprobe.exe'),
+            (Join-Path $env:CARR_V3_AUDIO 'bin/ffplay.exe'),
+            (Join-Path $env:CARR_MEDIA_AUDIO 'bin/ffmpeg.exe'),
+            (Join-Path $env:CARR_MEDIA_AUDIO 'bin/ffprobe.exe')) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | ForEach-Object { [System.IO.Path]::GetFullPath($_) } | Sort-Object -Unique
           $rulePrefix = 'CARR-v3-offline-' + [guid]::NewGuid().ToString('N')
           $ruleNames = @()
           $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
@@ -198,12 +278,30 @@ jobs:
             $filters = @($active | Get-NetFirewallApplicationFilter -ErrorAction Stop | Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })
             if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Offline rules do not cover the selected runtime programs.' }
             @{ status='PASS'; blocked_programs=$filters; scope='tested runtime executables, not a whole-machine network claim' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-v3-results/runtime-firewall.json'
+            $nativePath = $env:PATH
+            try {
+              $env:PATH = (Join-Path $env:CARR_MEDIA_AUDIO 'bin') + [IO.Path]::PathSeparator + $nativePath
+              & $python -I -B scripts/verify_operations_acceptance.py --audio-root $env:CARR_MEDIA_AUDIO --results 'ci-v3-results' 2>&1 | Tee-Object 'ci-v3-results/installed-operations.txt'
+              if ($LASTEXITCODE -ne 0) { throw 'Installed shared-resource and canonical operation acceptance failed.' }
+              & $python -I -B scripts/verify_media_acceptance.py --audio-root $env:CARR_MEDIA_AUDIO --results 'ci-v3-results' 2>&1 | Tee-Object 'ci-v3-results/installed-media.txt'
+              if ($LASTEXITCODE -ne 0) { throw 'Installed recording, clip, EPUB and media recovery acceptance failed.' }
+            } finally {
+              $env:PATH = $nativePath
+            }
+            & $python -I -B scripts/windows_recording_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-recording.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Native recording lifetime acceptance failed.' }
+            & $python -I -B scripts/windows_clip_editor_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-clip-editor.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Native clip editor lifetime acceptance failed.' }
+            & $python -I -B scripts/windows_publishing_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-publishing.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Native EPUB publishing lifetime acceptance failed.' }
             & $python -I -B scripts/windows_v3_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-v3.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Actual native speech and production acceptance failed.' }
-            & $python -I -B scripts/windows_platform_tools_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-platform-tools.txt'
-            if ($LASTEXITCODE -ne 0) { throw 'Native transcription, resource controls or progress speech acceptance failed.' }
+            & $python -I -B scripts/windows_speech_lifetime_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-reader-lifetime.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Native Reader owner and parent destruction acceptance failed.' }
             & $python -I -B scripts/windows_translation_v3_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-translation-v3.txt'
-            if ($LASTEXITCODE -ne 0) { throw 'Native Advanced translation controls, vault and derivative workflow failed.' }
+            if ($LASTEXITCODE -ne 0) { throw 'Native Advanced translation controls and synthetic protocol acceptance failed.' }
+            & $python -I -B scripts/windows_save_timer_smoke.py --output 'ci-v3-results/native-save-timer.json' 2>&1 | Tee-Object 'ci-v3-results/native-save-timer.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Native draft timer lifetime acceptance failed.' }
           } finally {
             foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
             foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
@@ -213,18 +311,9 @@ jobs:
         run: |
           python scripts/ci_check.py tests/progress/test_progress_contract.py tests/progress/test_progress_feedback.py tests/progress/test_progress_preferences.py tests/ui/test_progress_job_results.py tests/ui/test_progress_panel_state.py tests/e2e/test_import_progress.py tests/speech/test_progress_speech.py tests/studio/test_production_cancellation_outcomes.py tests/ui/test_progress_numeric_limits.py tests/ui/test_studio_progress_isolation.py tests/ui/test_progress_media_quiet.py tests/ui/test_progress_voice_actions.py tests/storage/test_progress_preferences_backup.py tests/progress/test_progress_media_integration.py 2>&1 | Tee-Object 'ci-v3-results/strict-operation-progress.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Require Advanced translation permission and checkpoint regressions
-        if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' }}
-        run: |
-          python scripts/ci_check.py tests/assistant/test_translation_v3.py 2>&1 | Tee-Object 'ci-v3-results/strict-translation-v3.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Require local proposal scope and review regressions
-        if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' }}
-        run: |
-          python scripts/ci_check.py tests/assistant/test_local_planning.py tests/assistant/test_planning_handlers.py 2>&1 | Tee-Object 'ci-v3-results/strict-local-planning.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Native local proposal and actual loopback HTTP with external egress blocked
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' }}
+        timeout-minutes: 8
         run: |
           $python = (Get-Command python.exe -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
           $basePython = (& $python -I -B -c "import sys; print(sys._base_executable)").Trim()
@@ -247,6 +336,66 @@ jobs:
           $rulePrefix = 'CARR-local-planning-' + [guid]::NewGuid().ToString('N')
           $ruleNames = @()
           $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
+          $planningBefore = @'
+          import json, pathlib, runpy
+          contract = runpy.run_path('scripts/verify_operations_acceptance.py')
+          result = {'source': contract['source_identity'](),
+                    'origins': contract['installed_origins'](),
+                    'actual_llm_model': 'NOT_RUN', 'manual_nvda': 'NOT_RUN'}
+          pathlib.Path('ci-v3-results/local-planning-source-before.json').write_text(
+              json.dumps(result, indent=2), encoding='utf-8')
+          print(json.dumps(result), flush=True)
+          '@
+          $planningLoopback = @'
+          import json, os, pathlib, runpy, xml.etree.ElementTree as ET
+          contract = runpy.run_path('scripts/verify_operations_acceptance.py')
+          before = json.loads(pathlib.Path('ci-v3-results/local-planning-source-before.json').read_text(encoding='utf-8'))
+          if contract['source_identity']() != before['source'] or contract['installed_origins']() != before['origins']:
+              raise RuntimeError('Native planning changed the exact source or installed module identity.')
+          for key in ('PYTEST_ADDOPTS', 'PYTEST_PLUGINS', 'PYTHONPATH'):
+              os.environ.pop(key, None)
+          os.environ['PYTEST_DISABLE_PLUGIN_AUTOLOAD'] = '1'
+          import pytest
+          class RejectExpectedFailures:
+              seen = False
+              def pytest_runtest_logreport(self, report):
+                  if hasattr(report, 'wasxfail'):
+                      self.seen = True
+          policy = RejectExpectedFailures()
+          report = pathlib.Path('ci-v3-results/local-planning-loopback.xml')
+          status = pytest.main(['-q', '-o', 'addopts=', '-o', 'pythonpath=',
+              '-o', 'xfail_strict=true', '-o', 'faulthandler_timeout=120',
+              '--import-mode=importlib', '--junitxml=' + str(report),
+              'tests/assistant/test_local_planning_loopback.py'], plugins=[policy])
+          cases = list(ET.parse(report).iter('testcase')) if report.exists() else []
+          required = {
+              'test_service_proposal_is_validated_scoped_and_never_submitted',
+              'test_tool_path_validation_runs_before_proposal_is_exposed',
+              'test_profile_change_during_response_discards_proposal',
+              'test_cancellation_never_creates_an_approved_job[before]',
+              'test_cancellation_never_creates_an_approved_job[during]',
+              'test_actual_cli_proposal_then_separate_reviewed_json_run',
+              'test_actual_cli_provider_failure_returns_no_executable_plan',
+              *('test_model_output_cannot_expand_exact_permissions[malicious' + str(i) + ']' for i in range(5))}
+          names = [case.get('name') for case in cases]
+          failed = sum(any(case.find(tag) is not None for tag in ('failure', 'error')) for case in cases)
+          skipped = sum(case.find('skipped') is not None for case in cases)
+          passed = len(cases) - failed - skipped
+          origins = contract['installed_origins']()
+          source = contract['source_identity']()
+          identity_ok = source == before['source'] and origins == before['origins']
+          cases_exact = len(names) == len(required) and set(names) == required
+          ok = status == 0 and passed > 0 and failed == skipped == 0 and not policy.seen and cases_exact and identity_ok
+          result = {'status': 'PASS' if ok else 'FAIL', 'passed': passed, 'failed': failed,
+                    'skipped': skipped, 'pytest_exit': int(status), 'expected_failures': policy.seen,
+                    'cases': sorted(names), 'cases_exact': cases_exact, 'source': source,
+                    'origins': origins, 'source_and_origins_unchanged': identity_ok,
+                    'actual_llm_model': 'NOT_RUN', 'manual_nvda': 'NOT_RUN'}
+          pathlib.Path('ci-v3-results/local-planning-loopback.json').write_text(
+              json.dumps(result, indent=2), encoding='utf-8')
+          print(json.dumps(result), flush=True)
+          raise SystemExit(0 if ok else 1)
+          '@
           try {
             Set-NetFirewallProfile -Profile Domain, Private, Public -Enabled True -ErrorAction Stop
             foreach ($program in $programs) {
@@ -266,19 +415,19 @@ jobs:
               if (@(Compare-Object $expectedRanges $actualRanges).Count -ne 0) { throw 'Local planning rule has unexpected remote-address coverage.' }
             }
             @{ status='PASS'; blocked_programs=$filters; blocked_remote_ranges=$expectedRanges; allowed_test_peer='127.0.0.1'; scope='selected executables with external egress blocked; loopback synthetic peer allowed' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-v3-results/local-planning-firewall.json'
+            $planningBefore | & $python -I -B - 2>&1 | Tee-Object 'ci-v3-results/local-planning-source-before.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Installed planning source identity is invalid.' }
             & $python -I -B scripts/windows_local_planning_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-local-planning.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Native local proposal review and execution acceptance failed.' }
-            & $python -I -B -m pytest -q -o addopts= -o pythonpath= --import-mode=importlib tests/assistant/test_local_planning_loopback.py --junitxml=ci-v3-results/local-planning-loopback.xml 2>&1 | Tee-Object 'ci-v3-results/local-planning-loopback.txt'
-            if ($LASTEXITCODE -ne 0) { throw 'Actual local planning HTTP/CLI regressions failed.' }
-            & $python -I -B -c "import xml.etree.ElementTree as E; cases=list(E.parse('ci-v3-results/local-planning-loopback.xml').iter('testcase')); assert cases and all(not any(c.find(t) is not None for t in ('failure','error','skipped')) for c in cases); print('PASS: actual loopback HTTP tests; no skipped or failed cases')"
-            if ($LASTEXITCODE -ne 0) { throw 'Loopback test evidence is incomplete.' }
+            $planningLoopback | & $python -I -B - 2>&1 | Tee-Object 'ci-v3-results/local-planning-loopback.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Actual local planning HTTP/CLI or source-identity acceptance failed.' }
           } finally {
             foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
             foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
           }
       - name: Validate local services, DSP, integrity and provider permission boundaries
         run: |
-          python -m pytest -q --import-mode=importlib tests/audio tests/speech tests/assistant tests/studio tests/storage/test_v3_state_backup.py tests/storage/test_state_snapshot_identity.py tests/language_qualification tests/conversion tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py tests/operations tests/transcription tests/ui/test_operations_policy.py tests/ui/test_transcription_dialog.py tests/ui/test_platform_modal_lifecycle.py tests/e2e/test_operations_cli.py tests/e2e/test_transcription_cli.py tests/e2e/test_import_progress.py tests/ingest/test_worker_publication_boundary.py tests/reader/test_export_no_clobber.py tests/reader/test_export_publication_boundary.py tests/test_delivery_contract.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_transcription_backup.py tests/storage/test_state_backup_portability.py tests/storage/test_atomic_state_publication.py tests/packaging/test_delivery_archive.py tests/e2e/test_import_worker_publication.py tests/ingest/test_import_replay_identity.py tests/packaging/test_worker_bytecode.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
+          python -m pytest -q --import-mode=importlib tests/audio tests/speech tests/assistant tests/studio tests/storage/test_v3_state_backup.py tests/storage/test_state_snapshot_identity.py tests/language_qualification tests/conversion tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py tests/academic_integration tests/ui/test_operation_progress.py tests/ui/test_save_actions.py tests/storage/test_state_json_reader.py tests/ui/test_progress_job_review.py tests/ui/test_keyboard_settings.py tests/test_delivery_contract.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_backup_v4_review.py tests/e2e/test_import_worker_publication.py tests/ingest/test_import_replay_identity.py tests/packaging/test_worker_bytecode.py tests/packaging/test_refresh_private_bundle_review.py tests/ui/test_profile_project_exports.py tests/ui/test_keyboard_manager.py tests/ui/test_command_registry.py tests/extract/test_special_ocr_models.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Keep source and test evidence only
         if: always()

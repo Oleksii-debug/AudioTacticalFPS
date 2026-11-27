@@ -20,6 +20,7 @@ import tempfile
 from .models import (AudioCancelled, AudioError, AudioUnavailable, LocalModelConfig,
                      MusicSpec, finite, integer)
 from .process import publish_file, run_process
+from .cleanup import retained_temporary_directory
 from ..durable_state import local_path, regular
 
 
@@ -231,7 +232,7 @@ def _fluidsynth(runtime, spec, output, *, sample_rate, channels, cancelled, prog
         raise AudioError('The configured SoundFont changed; review the installation again.')
     target = runtime._output(output)
     runtime._space(spec.duration, sample_rate, channels, 16, target.parent)
-    with tempfile.TemporaryDirectory(prefix='.midi-render-', dir=target.parent) as temporary:
+    with retained_temporary_directory(prefix='.midi-render-', dir=target.parent) as temporary:
         midi, pcm = Path(temporary) / 'score.mid', Path(temporary) / 'score.wav'
         _write_midi(midi, spec, cancelled=cancelled, max_bytes=runtime.budget.max_output_bytes)
         # -i/-n disable interactive commands and MIDI input; -F is fast file
@@ -239,7 +240,7 @@ def _fluidsynth(runtime, spec, output, *, sample_rate, channels, cancelled, prog
         run_process([runtime.fluidsynth, '-n', '-i', '-q', '-R', '0', '-C', '0',
                      '-r', str(sample_rate), '-F', str(pcm), '-T', 'wav',
                      str(runtime.soundfont), str(midi)], budget=runtime.budget,
-                    cancelled=cancelled, watch=(pcm, midi))
+                    cancelled=cancelled, watch=(pcm, midi), owned_tree=True)
         # FluidSynth includes a release tail. The selected score duration is
         # explicit; conversion cuts the tail and creates a fresh final file.
         return runtime.convert(pcm, target, sample_rate=sample_rate, channels=channels,
@@ -380,7 +381,7 @@ def probe_model(runtime, engine, *, cancelled=lambda: False):
         'print(json.dumps({"origin":spec.origin if spec else None}))\n')
     env = {key: os.environ[key] for key in ('PATH', 'SYSTEMROOT', 'WINDIR', 'LANG') if key in os.environ}
     result = run_process([str(config.python), '-I', '-S', '-B', '-c', code],
-                         budget=runtime.budget, env=env, cancelled=cancelled)
+                         budget=runtime.budget, env=env, cancelled=cancelled, owned_tree=True)
     origin = json.loads(result.stdout).get('origin')
     if not isinstance(origin, str):
         raise AudioUnavailable(f'The selected Python does not contain the {package} package.')
@@ -486,7 +487,7 @@ def _neural(runtime, spec, output, *, sample_rate, channels, cancelled, progress
     if spec.duration > config.max_chunk_seconds:
         raise ValueError('This request exceeds the configured neural chunk allowance. Schedule multiple resumable scenes; do not request an unlimited single inference.')
     target = runtime._output(output)
-    with tempfile.TemporaryDirectory(prefix='.music-worker-', dir=target.parent) as temporary:
+    with retained_temporary_directory(prefix='.music-worker-', dir=target.parent) as temporary:
         stage = Path(temporary)
         pcm = stage / 'generated.wav'
         job = {'engine': spec.engine, 'directory': str(config.directory.resolve()),
@@ -509,7 +510,7 @@ def _neural(runtime, spec, output, *, sample_rate, channels, cancelled, progress
                     'ACESTEP_CHECKPOINTS_DIR': str(config.directory / 'checkpoints'),
                     'ACESTEP_DISABLE_TQDM': '1'})
         run_process([str(config.python), '-I', '-S', '-B', '-c', _MODEL_WORKER, str(request)],
-                    budget=runtime.budget, cancelled=cancelled, watch=(stage,), env=env, cwd=stage)
+                    budget=runtime.budget, cancelled=cancelled, watch=(stage,), env=env, cwd=stage, owned_tree=True)
         result = runtime.convert(pcm, target, sample_rate=sample_rate, channels=channels,
                                  duration=spec.duration, cancelled=cancelled, progress=progress)
         # A real output proves this operation, not an audit of the complete

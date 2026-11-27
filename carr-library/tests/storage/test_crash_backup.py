@@ -17,7 +17,7 @@ def seed(path):
 
 
 def child(code, *paths):
-    p = subprocess.run([sys.executable, '-c', code, *map(str, paths)],
+    p = subprocess.run([sys.executable, '-B', '-c', code, *map(str, paths)],
                        capture_output=True, text=True, timeout=20)
     assert p.returncode == 73, (p.returncode, p.stdout, p.stderr)
 

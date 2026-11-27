@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "base_commit": "45ac76ead59df02f50671c34146889cb557963b9",
+  "standard_installer_commit": "e5da666c3794f34f4b6acdfeb41c917cf69ec349",
+  "standard_template_blob": "08ce600e18101f0d6bbd7cb0ddc052b09819554f",
+  "negative_checkpoint": "063f3c39e0ae4adce28888bbda720eb1a66e6e2a",
+  "negative_result": {
+    "passed": 1,
+    "failed": 9,
+    "skipped": 0,
+    "deselected": 16
+  },
+  "focused_corrected_result": {
+    "passed": 10,
+    "failed": 0,
+    "skipped": 0,
+    "deselected": 16
+  },
+  "tested_git_blobs": {
+    "src/carr_library/security/installation.py": "61342c2cb01c3cc4732899de45a249fa1e011036",
+    "tests/security/test_update_activation_boundaries.py": "639a46fc607eb652bf9a77762f7c1d32c279ec23",
+    "tests/security/test_installation.py": "d1228f436d08a6369955d6f33066c1ecbc69ec32"
+  },
+  "python": "3.12.14",
+  "platform": "Linux",
+  "dependencies": {
+    "pytest": "9.0.2",
+    "cryptography": "50.0.2",
+    "tuf": "7.0.1",
+    "securesystemslib": "1.6.0",
+    "urllib3": "2.8.0",
+    "cffi": "2.1.1",
+    "pycparser": "3.12"
+  },
+  "command": "PYTHONPATH=<checkout>/carr-library/src PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 <pinned-trust-python> -m pytest -q -o addopts= -o xfail_strict=true --junitxml=<results>.xml tests/security -k 'not test_real_windows_vault_anchor_roundtrip'",
+  "result": {
+    "status": "PASS",
+    "passed": 177,
+    "failed": 0,
+    "skipped": 0,
+    "expected_failures": 0,
+    "deselected": 1,
+    "deselected_test": "test_real_windows_vault_anchor_roundtrip",
+    "seconds": 3.52
+  },
+  "coverage": [
+    "verify/prepare/activate/health refuse before verification or execution",
+    "root, versions and actual generation ownership",
+    "incomplete generation and unknown marker fail closed",
+    "installer repair ownership survives a missing root marker",
+    "legacy app/managed-install.ini rejection retained",
+    "ordinary unmarked versions directory remains a portable input"
+  ],
+  "limits": [
+    "Native Windows execution NOT_RUN.",
+    "No managed installation is updated by this backend.",
+    "No desktop/CLI activation or concrete external idle/restart supervisor is added.",
+    "The fixture reproduces accepted installer ownership paths with inert bytes, not an actual installed Windows upgrade."
+  ]
+}

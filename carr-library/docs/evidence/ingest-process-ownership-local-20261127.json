@@ -1,0 +1,102 @@
+{
+  "schema": 1,
+  "base_commit": "5c1cce605e857537db91e0780976c5fda831b80a",
+  "reviewed_production_checkpoint": "0570584c33384286e8916420cdcb422ccbef7e52",
+  "python": "3.12.14",
+  "platform": "linux",
+  "filelock": "3.29.0",
+  "pytest": "9.0.2",
+  "command": "PYTHONPATH=<checkout>/carr-library/src PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python scripts/ci_check.py --jobs 2 tests/ingest/test_worker_process_ownership.py tests/e2e/test_import_worker_publication.py tests/ingest/test_worker_publication_boundary.py tests/citations/test_finish_pdf_worker.py tests/e2e/test_import_worker.py tests/audio/test_cleanup_ownership.py tests/e2e/test_pdf_review_cancellation.py tests/ingest/test_worker_isolated_launch.py tests/audio/test_owned_process_tree.py",
+  "source_git_blobs": {
+    "src/carr_library/ingest/worker.py": "c695db3918bb27255d4e5d08359fc135db225907",
+    "src/carr_library/audio/windows_job.py": "accd0473a67f8ab0dfcebaa21efdb8b7c4ec597e"
+  },
+  "test_git_blobs": {
+    "tests/ingest/test_worker_process_ownership.py": "7d3a1a4f9daa3da6affbbf229c703ffa8463693b",
+    "tests/e2e/test_import_worker_publication.py": "c168fc3a45d341e534dc764ca928feb05fb26d2b",
+    "tests/ingest/test_worker_publication_boundary.py": "9a9270ea01835e2abb7488cbc6c9fa939d4076d3",
+    "tests/citations/test_finish_pdf_worker.py": "78915b1b9c0fc6da3d60b844b35d3a07f0adfc0f",
+    "tests/e2e/test_import_worker.py": "9c422c3fa2b256787c336f8aea3b77b9c459a10b",
+    "tests/audio/test_cleanup_ownership.py": "1af89c2a2f789cc14d6238be5a991d362704abae",
+    "tests/e2e/test_pdf_review_cancellation.py": "dd166fa24b5830b1fbce4ef5ab454172aa0a819c",
+    "tests/ingest/test_worker_isolated_launch.py": "ccca34153d9acafcc12725be7ed9c7e57237cea0",
+    "tests/audio/test_owned_process_tree.py": "719e27407b623102c83e78d2ecce7d1a89376745"
+  },
+  "result": "PASS",
+  "passed": 169,
+  "failed": 0,
+  "skipped": 0,
+  "suites": [
+    {
+      "path": "tests/ingest/test_worker_process_ownership.py",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/e2e/test_import_worker_publication.py",
+      "passed": 36,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/ingest/test_worker_publication_boundary.py",
+      "passed": 32,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/citations/test_finish_pdf_worker.py",
+      "passed": 26,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/e2e/test_import_worker.py",
+      "passed": 38,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/audio/test_cleanup_ownership.py",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/e2e/test_pdf_review_cancellation.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/ingest/test_worker_isolated_launch.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/audio/test_owned_process_tree.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    }
+  ],
+  "baseline_negative": "The unchanged five-c-one production failed all four descendant native-lock cases; see ingest-process-ownership-baseline-20261127.json.",
+  "installed_gate_syntax": "PASS; existing V3 selection adds seven exact native-owner cases and source-byte checks for worker/windows_job/cleanup before and after tests.",
+  "windows_native": "NOT_RUN",
+  "limits": [
+    "No shared ingest/OCR broker adapter added.",
+    "No POSIX abrupt-parent-death or deliberately detached-process containment claimed.",
+    "Fixed native lifetime actors do not claim OCR or acoustic model quality."
+  ]
+}

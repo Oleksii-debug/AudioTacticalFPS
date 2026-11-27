@@ -448,3 +448,113 @@ def test_actual_reviewed_ocr_checkpoint_retains_attestation_and_resumes(app, tmp
     assert final['state'] == 'complete' and final['id'] == pending['id']
     hit, = restored.search(workspace, 'Railway')
     assert hit.verified
+
+
+@pytest.mark.parametrize('failure', (PermissionError, NotADirectoryError))
+def test_pending_inventory_lookup_errors_are_not_absence(tmp_path, monkeypatch, failure):
+    from carr_library.pending_backup import _inventory, pending_roots
+    root = tmp_path / 'library'
+    root.mkdir()
+    (root / 'imports.sqlite').touch()
+    denied = root / 'import-requests'
+    denied.mkdir()
+    original = Path.lstat
+
+    def probe(path, *args, **kwargs):
+        if path == denied:
+            raise failure('pending root lookup failed')
+        return original(path, *args, **kwargs)
+
+    lexists = os.path.lexists
+    monkeypatch.setattr(os.path, 'lexists', lambda path:
+                        False if Path(path) == denied else lexists(path))
+    monkeypatch.setattr(Path, 'lstat', probe)
+    with pytest.raises(failure, match='pending root lookup failed'):
+        _inventory(root)
+    with pytest.raises(failure, match='pending root lookup failed'):
+        pending_roots(root)
+
+
+
+def test_pending_restore_rejects_unreadable_unlisted_subtree(app, tmp_path, monkeypatch):
+    backup, metadata = _snapshot(app, tmp_path)
+    blocked = backup / 'pending' / 'import-requests'
+    blocked.mkdir()
+    (blocked / ('a' * 32 + '.json')).write_bytes(b'unlisted')
+    stage = tmp_path / 'stage'
+    stage.mkdir()
+    shutil.copyfile(backup / 'library.sqlite', stage / 'library.sqlite')
+    scandir = os.scandir
+
+    def denied(path):
+        if Path(path) == blocked:
+            raise PermissionError('pending subtree unreadable')
+        return scandir(path)
+
+    monkeypatch.setattr(os, 'scandir', denied)
+    with pytest.raises(PermissionError, match='pending subtree unreadable'):
+        restore_pending(backup / 'pending', stage, tmp_path / 'restored', metadata)
+    assert not (stage / '.pending-import-restore').exists()
+    assert not (tmp_path / 'restored').exists()
+
+
+
+def test_pending_restore_rejects_unlisted_file_before_descending(app, tmp_path, monkeypatch):
+    backup, metadata = _snapshot(app, tmp_path)
+    source = backup / 'pending'
+    (source / 'imports.sqlite').write_bytes(b'unlisted')
+    later = source / 'import-requests'
+    later.mkdir()
+    stage = tmp_path / 'stage'
+    stage.mkdir()
+    scandir = os.scandir
+
+    def observe(path):
+        if Path(path) == later:
+            raise AssertionError('unlisted file must reject before descending')
+        return scandir(path)
+
+    monkeypatch.setattr(os, 'scandir', observe)
+    with pytest.raises(ValueError, match='missing or unlisted'):
+        restore_pending(source, stage, tmp_path / 'restored', metadata)
+    assert not (stage / '.pending-import-restore').exists()
+
+
+@pytest.mark.parametrize('watermark', [None, 0, 2**63 - 1], ids=['null', 'zero', 'maximum'])
+def test_historical_watermark_is_inert_and_cleared_before_restored_resume(app, tmp_path, watermark):
+    from carr_library.ingest.worker import _store
+    workspace, source, request, result = _partial(app, tmp_path)
+    request['publication_watermark'] = watermark
+    _store(app.root, request['request_id'], request)
+    request_path = app.root / 'import-requests' / (request['request_id'] + '.json')
+    before = request_path.read_bytes()
+    backup, metadata = _snapshot(app, tmp_path)
+    assert request_path.read_bytes() == before
+    assert load_request(app.root, request['request_id'])['state'] == 'cancelled'
+    source.unlink()
+    restored, _ = _restore(backup, metadata, tmp_path)
+    rebound = load_request(restored.root, request['request_id'])
+    assert 'publication_watermark' not in rebound
+    assert 'attempt' not in rebound and 'publication_candidate' not in rebound
+    assert rebound['state'] == 'cancelled' and rebound['result']['completed'] == 1
+    resumed = restored.resume_import(workspace, request['request_id'])
+    assert resumed['state'] == 'complete' and resumed['id'] == result['id']
+    assert resumed['edition'] == result['edition'] and resumed['completed'] == 3
+    with restored.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+        assert db.execute('SELECT count(*) FROM page').fetchone()[0] == 3
+    assert len(restored.search(workspace, 'second')) == 1
+
+
+@pytest.mark.parametrize('watermark', [True, -1, 2**63, 1.0, '0', {}])
+def test_historical_watermark_requires_a_bounded_integer_without_completion_authority(
+        app, tmp_path, watermark):
+    from carr_library.ingest.worker import _store
+    _, source, request, _ = _partial(app, tmp_path)
+    request['publication_watermark'] = watermark
+    _store(app.root, request['request_id'], request)
+    request_path = app.root / 'import-requests' / (request['request_id'] + '.json')
+    before, original = request_path.read_bytes(), source.read_bytes()
+    with pytest.raises(ValueError, match='publication boundary'):
+        _snapshot(app, tmp_path)
+    assert request_path.read_bytes() == before and source.read_bytes() == original

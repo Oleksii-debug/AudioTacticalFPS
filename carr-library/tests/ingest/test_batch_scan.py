@@ -41,6 +41,31 @@ def test_sorted_folder_plan_uses_existing_intake_without_writing(tmp_path):
     assert before == {str(p): p.read_bytes() for p in tmp_path.rglob('*') if p.is_file()}
 
 
+@pytest.mark.parametrize('policy', [
+    {'supported': ()}, {'supported': frozenset()}, {'supported': frozenset({'.WAV'})},
+    {'supported': frozenset({'wav'})}, {'file_manifest': False},
+    {'max_files': True}, {'max_files': 0}, {'max_files': batch_scan.MAX_FILES + 1},
+    {'skip_unsupported': 'yes'}, {'cancelled': None},
+])
+def test_invalid_scan_policy_is_rejected_before_any_directory_or_file_read(tmp_path, monkeypatch, policy):
+    monkeypatch.setattr(batch_scan.os, 'scandir', lambda *a, **k: pytest.fail('Invalid scan opened a folder.'))
+    monkeypatch.setattr(batch_scan, 'snapshot', lambda *a, **k: pytest.fail('Invalid scan read a source.'))
+    with pytest.raises(ValueError):
+        batch_scan.scan_paths([tmp_path], **policy)
+
+
+@pytest.mark.parametrize('manifest', [None, {'sha256': 'x', 'mime': 'audio/wav', 'size': 3},
+    {'sha256': 'a' * 64, 'mime': 'audio/wav', 'size': True},
+    {'sha256': 'a' * 64, 'mime': 'audio/wav', 'size': 4}])
+def test_custom_policy_cannot_publish_an_invalid_manifest(tmp_path, manifest):
+    source = write(tmp_path / 'audio.wav', b'123')
+    row, = batch_scan.scan_paths([source], supported=frozenset({'.wav'}),
+                                 file_manifest=lambda path: manifest)
+    assert row['state'] == 'rejected' and row['manifest'] is None
+    assert 'invalid source manifest' in row['message']
+    assert source.read_bytes() == b'123'
+
+
 def test_exact_duplicates_are_scoped_and_keep_original_paths(tmp_path):
     first = write(tmp_path / 'a.txt', b'same source')
     second = write(tmp_path / 'b.txt', b'same source')

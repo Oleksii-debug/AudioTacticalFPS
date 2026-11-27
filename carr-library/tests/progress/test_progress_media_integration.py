@@ -32,6 +32,8 @@ class Control:
     """Only the native view surface is doubled; no wx event loop is claimed."""
     def __init__(self, *args, **kwargs):
         self.value, self.running = kwargs.get('value', ''), False
+        self.identity = id(self)
+    def GetId(self): return self.identity
     def SetName(self, value): self.name = value
     def SetValue(self, value): self.value = value
     def GetValue(self): return self.value

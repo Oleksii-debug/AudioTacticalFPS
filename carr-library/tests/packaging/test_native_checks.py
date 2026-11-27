@@ -150,7 +150,8 @@ def test_bundled_ocr_reuses_canonical_check_and_restores_environment(
 @pytest.mark.parametrize('change', [
     'duplicate_key', 'boolean_schema', 'string_model_flag', 'missing_ocr_flag',
     'unknown_field', 'bad_commit', 'bad_hash', 'traversal', 'case_collision', 'bad_json',
-    'string_native_flag',
+    'string_native_flag', 'string_audio_flag', 'string_citation_flag', 'bad_tree',
+    'bad_parent_commit', 'bad_parent_hash', 'bad_private_scope',
 ])
 def test_invalid_manifest_rejected_before_native_imports(tmp_path, monkeypatch, change):
     manifest = bundle(tmp_path)
@@ -172,6 +173,18 @@ def test_invalid_manifest_rejected_before_native_imports(tmp_path, monkeypatch, 
         manifest['files']['readme.TXT'] = 'b' * 64
     elif change == 'string_native_flag':
         manifest['bundled_native_runtime'] = 'false'
+    elif change == 'string_audio_flag':
+        manifest['bundled_audio'] = 'false'
+    elif change == 'string_citation_flag':
+        manifest['bundled_citation_runtime'] = 'false'
+    elif change == 'bad_tree':
+        manifest['source_tree'] = 'HEAD^{tree}'
+    elif change == 'bad_parent_commit':
+        manifest['parent_source_commit'] = 'HEAD'
+    elif change == 'bad_parent_hash':
+        manifest['parent_manifest_sha256'] = 'not-a-sha256'
+    elif change == 'bad_private_scope':
+        manifest['use_scope'] = 'public-release'
     raw = json.dumps(manifest)
     if change == 'duplicate_key':
         raw = '{"bundled_model":true,' + raw[1:]

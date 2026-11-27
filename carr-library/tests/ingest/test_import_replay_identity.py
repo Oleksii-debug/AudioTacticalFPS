@@ -245,3 +245,4 @@ def test_fresh_post_commit_cancellation_returns_committed_source(tmp_path, monke
     assert hit.revision == result['id'] and hit.verified is (kind == 'txt')
     assert source.read_bytes() == raw
     assert app.assets.resolve(digest).read_bytes() == raw
+

@@ -57,11 +57,8 @@ payload = sys.argv[4]
 writer(sys.argv[1], payload.encode() if sys.argv[3] == '1' else payload,
        private_root=sys.argv[2], require_absent=True)
 '''
-    # The child must execute the same source/installed publisher as this test.
-    environment = dict(os.environ, PYTHONPATH=str(Path(export_file.__file__).parents[2]))
     child = subprocess.run([sys.executable, '-B', '-c', code, str(target), str(private),
-                            str(int(binary)), payload], capture_output=True, timeout=30,
-                           env=environment)
+                            str(int(binary)), payload], capture_output=True, timeout=30)
     assert child.returncode == 74, child.stderr
     assert target.read_bytes() == payload.encode()
     residue = list(tmp_path.glob('.research-export-*'))

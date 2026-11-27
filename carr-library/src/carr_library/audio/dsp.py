@@ -17,11 +17,11 @@ from pathlib import Path
 import re
 import shutil
 import stat
-import tempfile
 
 from .models import (AudioBudget, AudioCancelled, AudioError, AudioInfo,
                      AudioUnavailable, Effect, LoudnessInfo, Track, finite, integer)
 from .process import publish_file, run_process
+from .cleanup import retained_temporary_directory
 from ..durable_state import local_path
 
 
@@ -289,10 +289,10 @@ class AudioRuntime:
     def capabilities(self):
         if self._capabilities is None:
             budget = replace(self.budget, timeout=min(20, self.budget.timeout))
-            version = run_process([self.ffmpeg, '-version'], budget=budget).stdout.decode('utf-8', 'replace')
-            filters = run_process([self.ffmpeg, '-hide_banner', '-filters'], budget=budget).stdout.decode('utf-8', 'replace')
-            encoders = run_process([self.ffmpeg, '-hide_banner', '-encoders'], budget=budget).stdout.decode('utf-8', 'replace')
-            muxers = run_process([self.ffmpeg, '-hide_banner', '-muxers'], budget=budget).stdout.decode('utf-8', 'replace')
+            version = run_process([self.ffmpeg, '-version'], budget=budget, owned_tree=True).stdout.decode('utf-8', 'replace')
+            filters = run_process([self.ffmpeg, '-hide_banner', '-filters'], budget=budget, owned_tree=True).stdout.decode('utf-8', 'replace')
+            encoders = run_process([self.ffmpeg, '-hide_banner', '-encoders'], budget=budget, owned_tree=True).stdout.decode('utf-8', 'replace')
+            muxers = run_process([self.ffmpeg, '-hide_banner', '-muxers'], budget=budget, owned_tree=True).stdout.decode('utf-8', 'replace')
             # FFmpeg 9 removed the command-support column (three flags -> two).
             filter_names = {match.group(1) for match in re.finditer(r'^\s*[TSC.]{2,3}\s+([a-zA-Z0-9_]+)\s', filters, re.M)}
             encoder_names = {match.group(1) for match in re.finditer(r'^\s*[A-Z.]{6}\s+(\S+)\s', encoders, re.M)}
@@ -335,7 +335,7 @@ class AudioRuntime:
                 '-select_streams', 'a:0',
                 '-show_entries', 'stream=codec_name,sample_rate,channels,duration,duration_ts,time_base:format=format_name,duration',
                 '-of', 'json', str(path)]
-        result = run_process(args, budget=replace(self.budget, timeout=min(30, self.budget.timeout)), cancelled=cancelled)
+        result = run_process(args, budget=replace(self.budget, timeout=min(30, self.budget.timeout)), cancelled=cancelled, owned_tree=True)
         try:
             data = json.loads(result.stdout)
             stream, = data['streams']
@@ -403,14 +403,14 @@ class AudioRuntime:
         self._space(expected_duration, rate, channels, bit_depth, target.parent)
         encoding = self._encoding(target, rate, channels, bit_depth, bitrate)
         snapshots = [(source, _identity(source)) for source in sources]
-        with tempfile.TemporaryDirectory(prefix='.audio-', dir=target.parent) as temporary:
+        with retained_temporary_directory(prefix='.audio-', dir=target.parent) as temporary:
             staged = Path(temporary) / ('render' + target.suffix)
             command = [*args, '-map_metadata', '-1', '-map_chapters', '-1', '-vn', '-sn', '-dn',
                        *encoding]
             if progress is not None:
                 command += ['-stats_period', '1', '-progress', 'pipe:1']
             command += [str(staged)]
-            run_process(command, budget=self.budget, cancelled=cancelled, watch=(staged,), progress=progress)
+            run_process(command, budget=self.budget, cancelled=cancelled, watch=(staged,), progress=progress, owned_tree=True)
             info = self.inspect(staged, cancelled=cancelled)
             if info.channels != channels or info.sample_rate != rate:
                 # Opus is intrinsically 48 kHz. Do not silently claim a 24 kHz
@@ -455,6 +455,13 @@ class AudioRuntime:
                              '-af', ','.join(filters)], target, expected_duration=output_duration,
                             rate=sample_rate, channels=channels, bit_depth=bit_depth, bitrate=bitrate,
                             sources=(source,), cancelled=cancelled, progress=progress)
+
+    def audiobook(self, source, output, *, chapters, title, sample_rate=24000,
+                  channels=2, bitrate=192, cancelled=lambda: False, progress=None, warning=None):
+        from .audiobook import publish_m4b
+        return publish_m4b(self, source, output, chapters=chapters, title=title,
+                           sample_rate=sample_rate, channels=channels, bitrate=bitrate,
+                           cancelled=cancelled, progress=progress, warning=warning)
 
     def mix(self, tracks, output, *, duration=None, sample_rate=24000, channels=2,
             duck_music=True, effects=(), bit_depth=16, bitrate=192,
@@ -582,7 +589,7 @@ class AudioRuntime:
         samples = round(duration * sample_rate)
         total = samples / sample_rate
         self._space(total, sample_rate, channels, bit_depth, target.parent)
-        with tempfile.TemporaryDirectory(prefix='.audio-join-', dir=target.parent) as folder:
+        with retained_temporary_directory(prefix='.audio-join-', dir=target.parent) as folder:
             manifest = Path(folder) / 'scenes.ffconcat'
             with manifest.open('x', encoding='utf-8', newline='\n') as stream:
                 stream.write('ffconcat version 1.0\n')
@@ -612,7 +619,7 @@ class AudioRuntime:
         # progress is disabled. It is still subject to the diagnostic cap.
         args[args.index('error')] = 'info'
         args.insert(1, '-nostats')
-        result = run_process(args, budget=self.budget, cancelled=cancelled)
+        result = run_process(args, budget=self.budget, cancelled=cancelled, owned_tree=True)
         match = re.search(rb'\{\s*"input_i".*?\}', result.stderr, flags=re.S)
         if not match:
             raise AudioError('The local loudness meter returned no measurement.')

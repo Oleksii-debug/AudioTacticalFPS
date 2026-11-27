@@ -93,6 +93,64 @@ Symbolic links, Windows reparse points, network paths and output traversal are
 rejected. A local trusted application data directory is still required; this
 is not a sandbox against another process running with the same user's rights.
 
+## Transcribe through the existing library service
+
+After configuring the local worker in the normal transcription interface, select
+an existing library and approved input/output folders in **Local assistant**.
+A typed plan can include:
+
+```json
+{
+  "steps": [
+    {"tool": "audio.transcribe",
+     "arguments": {"path": "C:/Recordings/chapter.wav", "name": "chapter-transcript",
+                   "language": "uk", "beam_size": 2, "vad_filter": true}}
+  ]
+}
+```
+
+The default assistant uses the same library-scoped transcription jobs, worker
+profiles, retained inputs, resource admission, receipt verification and export
+service as the native transcription interface and CLI. It does not configure or
+download a worker, runtime or model. This step needs an existing library; a
+create-library step does not silently select a transcription installation.
+
+Approval binds the input bytes, selected settings, engine configuration and,
+for the V5 profile, the exact local model inventory. Those identities are checked
+again inside the actual runner before resource admission or child execution.
+The receipt profile preserves its existing worker-established model identity
+rather than claiming an independently approved model inventory. Original media
+is retained unchanged. The four base formats and supported word-timing outputs
+are exported together with the existing transcription manifest.
+
+The selected export folder must be new and outside private application data.
+The assistant's byte and file budgets are checked inside the exporter before
+publication. A durable output inventory permits recovery after the export
+commits but its reply or assistant checkpoint is lost: recovery verifies the
+actual files and reuses the existing child job without running recognition
+again. Changed outputs or a replaced destination require review. The final
+directory checks do not claim a universal atomic exclusion against another
+process replacing an empty destination at the POSIX rename syscall.
+
+Pause/cancel preserves the existing retained job for explicit resume. If a
+process stops after input retention but before the child-job pointer is saved,
+the assistant stops for review of the Transcription jobs list; it does not
+silently submit another potentially duplicate job. Moving an assistant journal
+to another application directory does not approve its old input, runtime or
+output paths.
+
+The explicitly injected V4.3 adapter remains a separate compatibility protocol,
+described in [SUPPLIED_TRANSCRIPTION_ADAPTER.md](SUPPLIED_TRANSCRIPTION_ADAPTER.md).
+Old V4.3 intents are not reinterpreted as receipt/V5 jobs, and new library intents
+cannot be rerouted to that adapter. Product UI constructors use the existing
+library service by default.
+
+The exact new composition still requires its own strict execution evidence.
+`tests/assistant/test_library_transcription.py` uses real synthetic child processes
+for the accepted receipt and V5 file protocols. These tests do not qualify
+private model quality, acoustic accuracy, multilingual behavior, native Windows
+interaction or manual NVDA use.
+
 ## Optional profiles and OS credentials
 
 `ProfileStore(app.root / 'state' / 'providers')` stores non-secret
@@ -206,22 +264,14 @@ operation. No real paid or external provider call is part of the automated tests
 
 ## Verification scope
 
-The selectively adopted PR112 local-planning slice passed 41 integrated tests
-across `test_local_planning.py`, `test_local_planning_loopback.py` and
-`test_planning_handlers.py`. The loopback cases use actual HTTP and CLI subprocesses
-with a synthetic server bound to127.0.0.1; other cases use transport/widget
-stand-ins. They verify local-profile selection, typed permission/path validation,
-separate preview and execution, cancellation, changed-input/profile rejection,
-background voice inventory and the current production service's lifecycle.
-They neither execute an LLM nor load its weights.
-
-Donor head `8bf411718548809793748ed01f458c79f3692e98` passed the native planning
-step19 and explicit loopback step24 in Windows run45929429163, job140278375920.
-The donor workflow as a whole was not green. The installed integrated build must
-run `python -I -B scripts/windows_local_planning_smoke.py` and its required source
-suites again. This probe uses real wx widgets/focus and the shared gateway/service
-with synthetic loopback responses; button command events do not establish manual
-keyboard or NVDA acceptance.
+The reused local-planning checks cover offline permission guards, actual
+synthetic loopback HTTP and CLI calls, and native Windows proposal/review
+controls. The installed gate checks the exact application source and module
+bytes before and after those actions, rejects failed/skipped/expected-failure
+cases, and preserves the existing operation and source-integrity gates.
+This composition still requires its own exact-head execution evidence; donor
+runs do not qualify this assembled application. An actual local LLM, its model
+weights and planning quality, manual keyboard use and NVDA remain unqualified.
 
 The automated suite exercises real SQLite workspaces, nested UTF-8 imports,
 scoped retrieval, exact Unicode reading-copy export, restart, interrupted create

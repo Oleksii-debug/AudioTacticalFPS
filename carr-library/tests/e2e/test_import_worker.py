@@ -116,6 +116,450 @@ def test_lost_worker_reply_after_commit_recovers_idempotently(app, tmp_path, kin
         assert db.execute('SELECT count(*) FROM catalog_edition').fetchone()[0] == 1
 
 
+def _reply_test_source(tmp_path, kind):
+    source = tmp_path / ('Reply boundary.' + kind)
+    if kind == 'txt':
+        source.write_text('Synthetic railway publication\n', encoding='utf-8')
+    elif kind == 'pdf':
+        pdf(source)
+    elif kind == 'docx':
+        from docx import Document
+        document = Document()
+        document.add_paragraph('Synthetic railway publication')
+        document.save(source)
+    else:
+        # Reuse the real, lawful EPUB fixture; do not substitute the parser.
+        import runpy
+        fixture = runpy.run_path(str(Path(__file__).with_name('test_epub_import.py')))
+        fixture['write_epub'](source)
+    return source
+
+
+def _intercept_worker_reply(monkeypatch, *, fail=False, ready=None):
+    """Keep actual parsing/publication; stop only the post-commit reply."""
+    from carr_library.ingest import worker
+    actual_popen = worker._spawn
+    after = "raise RuntimeError('synthetic post-publication failure')" if fail else 'time.sleep(30)'
+    marker = (f"Path({str(ready)!r}).write_bytes(b'publication-returned')"
+              if ready is not None else 'pass')
+    inject = f'''
+import time
+from pathlib import Path
+from carr_library.application import LibraryApp
+original_import = LibraryApp._import_file
+def held_reply(self, *args, **kwargs):
+    result = original_import(self, *args, **kwargs)
+    if result.get('state') == 'complete':
+        {marker}
+        {after}
+    return result
+LibraryApp._import_file = held_reply
+'''
+
+    def child(command, *args, **kwargs):
+        if '-c' in command:
+            index = command.index('-c') + 1
+            if "run_module('carr_library.ingest.worker'" in command[index]:
+                command = list(command)
+                command[index] = command[index].replace('runpy.run_module(',
+                    'exec(' + repr(inject) + '); runpy.run_module(')
+        return actual_popen(command, *args, **kwargs)
+
+    monkeypatch.setattr(worker, '_spawn', child)
+
+
+def _expire_after_reply(monkeypatch, ready, timeout):
+    """Use the existing supervisor-clock barrier pattern with a real watchdog."""
+    from types import SimpleNamespace
+    from carr_library.ingest import worker
+    real_time = worker.time
+    first = True
+
+    def clock():
+        nonlocal first
+        now = real_time.monotonic()
+        if first:
+            first = False
+            return now
+        return now + timeout if ready() else now
+
+    # Only this parent's supervisor advances. Child, reap and receipt clocks
+    # remain real; a missing reply marker still expires after the real timeout.
+    monkeypatch.setattr(worker, 'time', SimpleNamespace(monotonic=clock, sleep=real_time.sleep))
+
+
+@pytest.mark.parametrize('kind', ['pdf', 'docx', 'epub', 'txt'])
+@pytest.mark.parametrize('stop', ['cancelled', 'timed_out'])
+def test_stop_after_actual_child_commit_reports_durable_completion(app, tmp_path, monkeypatch, kind, stop):
+    source = _reply_test_source(tmp_path, kind)
+    workspace = app.create_workspace('Actual committed reply boundary')
+    ready = tmp_path / 'publication-reply-ready'
+    _intercept_worker_reply(monkeypatch, ready=ready)
+
+    def committed():
+        # A visible DB commit can precede writer/session cleanup. Stop only at
+        # the actual post-return reply interception, after that cleanup finished.
+        try:
+            if ready.read_bytes() != b'publication-returned':
+                return False
+        except FileNotFoundError:
+            return False
+        with app.read(workspace) as db:
+            return bool(db.execute('SELECT count(*) FROM revision').fetchone()[0])
+
+    if stop == 'timed_out':
+        _expire_after_reply(monkeypatch, committed, 30.0)
+    arguments = dict(cancelled=committed if stop == 'cancelled' else lambda: False,
+                     timeout=30.0 if stop == 'timed_out' else 20)
+    if kind == 'txt':
+        # TXT in a batch goes through the same prepared worker request.
+        from carr_library.extract.page_ocr import Config
+        from carr_library.ingest.worker import prepare_request
+        request = prepare_request(app.root, workspace, source,
+            dict(title=None, authors=(), language=None, edition=None, volume=None,
+                 collections=(), work_id=None, edition_id=None), Config())
+        result = app.resume_import(workspace, request['request_id'], **arguments)
+    else:
+        result = app.import_file(workspace, source, **arguments)
+    assert result['state'] == 'complete', result
+    assert ready.read_bytes() == b'publication-returned'
+    assert result['verified'] is (kind == 'txt')
+    assert result['publication_recovered'] is True
+    assert type(result) is dict
+    request = load_request(app.root, result['request_id'])
+    assert request['state'] == 'complete' and request['result'] == result
+    source.unlink()
+    # A subsequent explicit resume reuses this checked result, with no new job.
+    assert app.resume_import(workspace, result['request_id']) == result
+    with app.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+        assert db.execute('SELECT count(*) FROM catalog_edition').fetchone()[0] == 1
+        assert db.execute('SELECT count(*) FROM page').fetchone()[0] == result['completed']
+        if kind == 'txt':
+            # Exact source-text verification does not invent printed-page labels.
+            assert tuple(tuple(page) for page in db.execute(
+                'SELECT physical,printed,verified FROM page')) == ((None, None, 0),)
+
+
+def test_true_child_error_after_publication_is_not_reclassified_as_success(app, tmp_path, monkeypatch):
+    source = _reply_test_source(tmp_path, 'docx')
+    workspace = app.create_workspace('Real error')
+    _intercept_worker_reply(monkeypatch, fail=True)
+    result = app.import_file(workspace, source)
+    assert result['state'] == 'failed'
+    assert 'synthetic post-publication failure' in result['message']
+    assert len(app.browse(workspace)) == 1
+    assert load_request(app.root, result['request_id'])['state'] == 'failed'
+
+
+def test_stopped_import_owns_interpreter_and_releases_writer_before_reconciliation(
+        app, tmp_path, monkeypatch):
+    """A real commit while the worker still owns its lock, including Windows venvs."""
+    import filelock
+    import json
+    import os
+    from carr_library.extract.page_ocr import Config
+    from carr_library.ingest import worker
+    from carr_library.ingest.writer_guard import exclusive_writer
+
+    source = _reply_test_source(tmp_path, 'txt')
+    workspace = app.create_workspace('Actual interpreter ownership')
+    marker = tmp_path / 'committed-interpreter.json'
+    popen = worker._spawn
+    processes = []
+    injection = f'''
+import json, os, sys, time
+from pathlib import Path
+import filelock
+from carr_library.application import _CatalogPublisher
+from carr_library.ingest import worker as imported_worker
+original_publish = _CatalogPublisher.publish_revision
+def committed_with_lock(self, *args, **kwargs):
+    result = original_publish(self, *args, **kwargs)
+    marker = Path({str(marker)!r})
+    temporary = marker.with_suffix('.pending')
+    with temporary.open('w', encoding='utf-8') as stream:
+        json.dump(dict(pid=os.getpid(), executable=sys.executable, prefix=sys.prefix,
+                       dependency=filelock.__file__, module=imported_worker.__file__,
+                       isolated=sys.flags.isolated, bytecode=sys.dont_write_bytecode), stream)
+        stream.flush()
+        os.fsync(stream.fileno())
+    os.replace(temporary, marker)
+    time.sleep(30)
+    return result
+_CatalogPublisher.publish_revision = committed_with_lock
+'''
+
+    def launch(command, *args, **kwargs):
+        command = list(command)
+        owned = ('-c' in command and "run_module('carr_library.ingest.worker'" in command[command.index('-c') + 1])
+        if owned:
+            index = command.index('-c') + 1
+            command[index] = command[index].replace('runpy.run_module(',
+                'exec(' + repr(injection) + '); runpy.run_module(')
+        process = popen(command, *args, **kwargs)
+        if owned:
+            processes.append(process)
+        return process
+
+    monkeypatch.setattr(worker, '_spawn', launch)
+    if os.name == 'nt' and sys.prefix != sys.base_prefix:
+        # CPython's internal executable override must not replace the selected
+        # venv when its redirector is bypassed. No arbitrary child environment.
+        monkeypatch.setenv('PYTHONEXECUTABLE', str(tmp_path / 'different-python.exe'))
+        monkeypatch.setenv('__PYVENV_LAUNCHER__', str(tmp_path / 'different-venv' / 'python.exe'))
+    request = worker.prepare_request(app.root, workspace, source,
+        dict(title=None, authors=(), language=None, edition=None, volume=None,
+             collections=(), work_id=None, edition_id=None), Config())
+    result = app.resume_import(workspace, request['request_id'], cancelled=marker.exists, timeout=20)
+    assert marker.exists(), result
+    runtime = json.loads(marker.read_text(encoding='utf-8'))
+    process, = processes
+    assert runtime['pid'] == process.pid, (runtime, process.pid)
+    assert process.poll() is not None
+    assert os.path.normcase(runtime['executable']) == os.path.normcase(sys.executable)
+    assert os.path.normcase(runtime['prefix']) == os.path.normcase(sys.prefix)
+    assert Path(runtime['dependency']).resolve() == Path(filelock.__file__).resolve()
+    assert Path(runtime['module']).resolve() == Path(worker.__file__).resolve()
+    assert runtime['isolated'] == 1 and runtime['bytecode'] is True
+    assert result['state'] == 'complete' and result['publication_recovered'] is True, result
+    with exclusive_writer(app.root, timeout=0):
+        pass
+    with app.read(workspace) as db:
+        receipt = db.execute('SELECT request_id,attempt FROM import_publication').fetchone()
+        assert receipt[0] == request['request_id']
+        saved = worker.load_request(app.root, request['request_id'])
+        assert receipt[1] == saved['attempt'] and saved['result'] == result
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+
+
+def test_cancellation_before_parsing_does_not_reconcile_unrelated_same_title(app, tmp_path):
+    source = _reply_test_source(tmp_path, 'pdf')
+    workspace = app.create_workspace('Separate requests')
+    first = app.import_file(workspace, source)
+    second = app.import_file(workspace, source, cancelled=lambda: True)
+    assert first['state'] == 'complete' and second['state'] == 'cancelled'
+    assert first['request_id'] != second['request_id']
+    assert len(app.browse(workspace)) == 1
+
+
+@pytest.mark.parametrize('change', ['asset', 'edition', 'work', 'title', 'config', 'collection', 'workspace'])
+def test_reconciliation_rejects_mismatched_request_identity(app, tmp_path, change):
+    from carr_library.ingest.publication import completed_request
+    source = _reply_test_source(tmp_path, 'pdf')
+    workspace = app.create_workspace('Exact identity')
+    result = app.import_file(workspace, source)
+    request = load_request(app.root, result['request_id'])
+    request['state'] = 'running'
+    request.pop('result')
+    if change == 'asset':
+        request['asset_sha256'] = '0' * 64
+    elif change == 'config':
+        request['config']['dpi'] = 200
+    elif change == 'collection':
+        collection = app.create_collection(workspace, 'Not requested by completed publication')
+        request['metadata']['collections'] = [collection]
+    elif change == 'workspace':
+        request['workspace'] = app.create_workspace('Other workspace')
+    else:
+        field = {'edition': 'edition_id', 'work': 'work_id', 'title': 'title'}[change]
+        request['metadata'][field] = 'different-identity'
+    _store(app.root, result['request_id'], request)
+    try:
+        recovered = completed_request(app.root, workspace, result['request_id'],
+                                  attempt=request['attempt'])
+    except ValueError:
+        recovered = None
+    assert recovered is None
+    assert load_request(app.root, result['request_id']) == request
+    assert len(app.browse(workspace)) == 1
+
+
+def test_reconciliation_rejects_changed_retained_bytes(app, tmp_path):
+    from carr_library.ingest.publication import completed_request
+    source = _reply_test_source(tmp_path, 'docx')
+    workspace = app.create_workspace('Retained source identity')
+    result = app.import_file(workspace, source)
+    request = load_request(app.root, result['request_id'])
+    retained = app.assets.resolve(request['asset_sha256'])
+    data = retained.read_bytes()
+    retained.write_bytes(data[:-1] + bytes([data[-1] ^ 1]))
+    with pytest.raises(ValueError, match='digest changed'):
+        completed_request(app.root, workspace, result['request_id'],
+                                  attempt=request['attempt'])
+
+
+def test_reconciliation_budget_leaves_interrupted_request_resumable(app, tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    from carr_library.ingest import publication
+    source = _reply_test_source(tmp_path, 'pdf')
+    workspace = app.create_workspace('Bounded reconciliation')
+
+    def committed():
+        with app.read(workspace) as db:
+            return bool(db.execute('SELECT count(*) FROM import_publication').fetchone()[0])
+
+    with monkeypatch.context() as patch:
+        _intercept_worker_reply(patch)
+        moments = iter([0.0, 2.0])
+        patch.setattr(publication, 'time', SimpleNamespace(monotonic=lambda: next(moments)))
+        result = app.import_file(workspace, source, cancelled=committed, timeout=20)
+    assert result['state'] == 'cancelled'
+    assert 'resume to check it' in result['message']
+    assert 'TimeoutError, carr_library.ingest.publication:' in result['message']
+    request = load_request(app.root, result['request_id'])
+    assert request['state'] == 'cancelled' and request['result'] == result
+    candidate = request['publication_candidate']
+    with app.read(workspace) as db:
+        assert tuple(db.execute('SELECT request_id,attempt FROM import_publication').fetchone()) == (
+            result['request_id'], candidate['attempt'])
+    source.unlink()
+    resumed = app.resume_import(workspace, result['request_id'])
+    assert resumed['state'] == 'complete' and resumed['id'] == candidate['revision']
+    assert len(app.browse(workspace)) == 1
+
+
+@pytest.mark.parametrize('failure', ['permission', 'sqlite', 'validation'])
+def test_reconciliation_failure_preserves_recovery_without_disclosing_exception_payload(
+        app, tmp_path, monkeypatch, failure):
+    from carr_library.ingest import publication, worker
+    source = _reply_test_source(tmp_path, 'pdf')
+    workspace = app.create_workspace('Private recovery diagnostics')
+    first = app.import_file(workspace, source)
+    request = load_request(app.root, first['request_id'])
+    request['state'] = 'running'
+    request.pop('result')
+    _store(app.root, first['request_id'], request)
+    private_detail = 'private-source-name-and-exception-payload'
+    if failure == 'permission':
+        error = PermissionError(13, private_detail, str(source))
+        error.winerror = 5
+        expected = ('PermissionError', 'errno=13', 'winerror=5')
+    elif failure == 'sqlite':
+        error = sqlite3.OperationalError(private_detail)
+        error.sqlite_errorcode = 776
+        error.sqlite_errorname = 'SQLITE_READONLY_ROLLBACK'
+        expected = ('OperationalError', 'sqlite_errorcode=776', 'SQLITE_READONLY_ROLLBACK')
+    else:
+        error = ValueError(private_detail)
+        expected = ('ValueError',)
+
+    def unavailable(*args, **kwargs):
+        raise error
+
+    with monkeypatch.context() as patch:
+        patch.setattr(publication, 'completed_request', unavailable)
+        patch.setattr(worker, '_invoke', lambda *args, **kwargs: {
+            'state': 'cancelled', 'message': 'Import worker stopped.'})
+        result = app.resume_import(workspace, first['request_id'])
+    assert result['state'] == 'failed'
+    assert all(part in result['message'] for part in expected)
+    assert private_detail not in result['message'] and str(source) not in result['message']
+    assert 'resume to check it' in result['message']
+    assert load_request(app.root, first['request_id'])['result'] == result
+    source.unlink()
+    resumed = app.resume_import(workspace, first['request_id'])
+    assert resumed['state'] == 'complete' and resumed['id'] == first['id']
+    with app.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+        assert db.execute('SELECT count(*) FROM catalog_edition').fetchone()[0] == 1
+
+
+def test_busy_writer_does_not_delay_stopped_request_reconciliation(app, tmp_path):
+    from carr_library.ingest.publication import completed_request
+    from carr_library.ingest.writer_guard import exclusive_writer
+    source = _reply_test_source(tmp_path, 'pdf')
+    workspace = app.create_workspace('Concurrent writer')
+    result = app.import_file(workspace, source)
+    request = load_request(app.root, result['request_id'])
+    with exclusive_writer(app.root):
+        start = monotonic()
+        with pytest.raises(ValueError, match='another library writer'):
+            completed_request(app.root, workspace, result['request_id'],
+                                  attempt=request['attempt'])
+        assert monotonic() - start < 1
+
+
+@pytest.mark.parametrize('change', ['job', 'checkpoint'])
+def test_text_worker_receipt_binds_request_without_requiring_journal_commit(app, tmp_path, change):
+    from hashlib import sha256
+    from carr_library.extract.page_ocr import Config
+    from carr_library.ingest.pipeline import canonical
+    from carr_library.ingest.publication import completed_request
+    from carr_library.ingest.worker import prepare_request
+    source = _reply_test_source(tmp_path, 'txt')
+    workspace = app.create_workspace('Exact text journal')
+    prepared = prepare_request(app.root, workspace, source,
+        dict(title=None, authors=(), language=None, edition=None, volume=None,
+             collections=(), work_id=None, edition_id=None), Config())
+    result = app.resume_import(workspace, prepared['request_id'])
+    assert result['state'] == 'complete' and result['verified'] is True
+    request = load_request(app.root, result['request_id'])
+    request['state'] = 'running'
+    request.pop('result')
+    if change == 'job':
+        request['job'] = '0' * 64
+    else:
+        with sqlite3.connect(app.root / 'imports.sqlite') as journal:
+            payload = json.loads(journal.execute(
+                'SELECT payload FROM checkpoint WHERE job=? AND ordinal=1',
+                (result['id'],)).fetchone()[0])
+            payload['raw_text'] = 'A different source despite a correctly hashed checkpoint'
+            raw = canonical(payload)
+            journal.execute('UPDATE checkpoint SET payload=?,digest=? WHERE job=? AND ordinal=1',
+                (raw, sha256(raw.encode('utf-8')).hexdigest(), result['id']))
+    _store(app.root, result['request_id'], request)
+    try:
+        recovered = completed_request(app.root, workspace, result['request_id'],
+                                  attempt=request['attempt'])
+    except ValueError:
+        recovered = None
+    if change == 'job':
+        assert recovered is None
+    else:
+        # The immutable catalog receipt already commits the exact source pages.
+        # Its validity does not depend on a later journal commit or checkpoint.
+        assert recovered['state'] == 'complete' and recovered['id'] == result['id']
+        assert recovered['publication_recovered'] is True and recovered['verified'] is True
+    assert load_request(app.root, result['request_id']) == request
+    assert len(app.browse(workspace)) == 1
+
+
+def test_receipt_recovery_opens_only_readonly_catalog_and_never_constructs_app(
+        app, tmp_path, monkeypatch):
+    from carr_library.ingest import publication
+    from carr_library.storage.revisions import Storage
+    source = _reply_test_source(tmp_path, 'pdf')
+    workspace = app.create_workspace('Read-only reconciliation')
+    result = app.import_file(workspace, source)
+    request = load_request(app.root, result['request_id'])
+    request_path = app.root / 'import-requests' / (result['request_id'] + '.json')
+    before = {path: path.read_bytes() for path in (
+        app.database, request_path, app.root / 'imports.sqlite')}
+    connect = sqlite3.connect
+    opened = []
+
+    def readonly(database, *args, **kwargs):
+        if str(database) != ':memory:':
+            opened.append(database)
+            assert database == app.database.as_uri() + '?mode=ro'
+            assert kwargs.get('uri') is True and kwargs.get('timeout') == 0
+        return connect(database, *args, **kwargs)
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('Receipt recovery must not initialize an application or writable storage.')
+
+    with monkeypatch.context() as patch:
+        patch.setattr(publication.sqlite3, 'connect', readonly)
+        patch.setattr(LibraryApp, '__init__', forbidden)
+        patch.setattr(Storage, '__init__', forbidden)
+        recovered = publication.completed_request(app.root, workspace, result['request_id'],
+                                                  attempt=request['attempt'])
+    assert recovered['state'] == 'complete' and recovered['publication_recovered'] is True
+    assert opened == [app.database.as_uri() + '?mode=ro']
+    assert all(path.read_bytes() == data for path, data in before.items())
+
+
 def test_resume_rejects_changed_runtime_configuration(app, tmp_path):
     source = tmp_path / 'source.pdf'
     pdf(source)

@@ -6,7 +6,8 @@ from pathlib import Path
 import threading
 from uuid import uuid4
 
-from ..durable_state import atomic_bytes
+from ..research.export_file import write_export
+from .export_destination import confirm_export_destination
 
 
 def create_assistant_dialog(frame, *, wx_module=None):
@@ -328,20 +329,38 @@ def create_assistant_dialog(frame, *, wx_module=None):
         finally:
             choice.Destroy()
 
-    def close(event=None):
+    def detach():
         nonlocal alive
+        if not alive:
+            return
+        # Direct parent destruction can bypass EVT_CLOSE. Detach plain worker
+        # state before any queued callback can reach a deleted native control.
+        cancel.set()
+
+        alive = False
+        from .worker_cleanup import close_after_worker
+        close_after_worker(executor, production)
+
+    def close(event=None):
         if not alive:
             return
         cancel.set()
         if busy == 'run' and job_id:
             service.pause(job_id)
-        alive = False
-        from .worker_cleanup import close_after_worker
-        close_after_worker(executor, production)
+        detach()
         if dialog.IsModal():
             dialog.EndModal(wx.ID_CLOSE)
         else:
             dialog.Hide()
+
+    owner_id = dialog.GetId()
+
+    def destroyed(event):
+        if event.GetId() == owner_id:
+            # wx may supply a different wrapper while destroying the owner.
+            # Do not query or close that dying dialog from this event.
+            detach()
+        event.Skip()
 
     def help_text(event):
         from .desktop_app import show_text
@@ -356,6 +375,7 @@ def create_assistant_dialog(frame, *, wx_module=None):
     planning_source.Bind(wx.EVT_CHOICE, invalidate)
     full_backup.Bind(wx.EVT_CHECKBOX, invalidate)
     dialog.Bind(wx.EVT_CLOSE, close)
+    dialog.Bind(wx.EVT_WINDOW_DESTROY, destroyed)
     dialog.assistant_controls = dict(scope=scope_choice, input=input_folder, output=output_folder,
         full_backup=full_backup, instruction=instruction, planning_source=planning_source,
         review=review, buttons=buttons)
@@ -454,7 +474,8 @@ def show_provider_settings(frame):
             identity = current.id if current else uuid4().hex
             profile = ProviderProfile(identity, name.GetValue(), adapter.GetStringSelection(), endpoint.GetValue(),
                 model.GetValue(), tuple(x.strip() for x in capability.GetValue().split(',') if x.strip()),
-                current.credential_ref if current else None, local.GetValue(), enabled.GetValue(), voice.GetValue() or None)
+                current.credential_ref if current else None, local.GetValue(), enabled.GetValue(), voice.GetValue() or None,
+                rights_note=current.rights_note if current else '')
             authority_changed = current and (current.endpoint, current.adapter, current.local) != (profile.endpoint, profile.adapter, profile.local)
             if authority_changed:
                 profile = replace(profile, credential_ref=None, enabled=False)
@@ -520,9 +541,10 @@ def show_provider_settings(frame):
         status.SetFocus()
 
     def exchange(event, *, importing=False):
+        library = frame.library
         picker = wx.FileDialog(dialog, 'Import non-secret profiles' if importing else 'Export non-secret profiles',
             defaultFile='provider-profiles.json', wildcard='JSON (*.json)|*.json',
-            style=(wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) if importing else (wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT))
+            style=(wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) if importing else wx.FD_SAVE)
         try:
             if picker.ShowModal() != wx.ID_OK:
                 return
@@ -534,7 +556,15 @@ def show_provider_settings(frame):
                 refresh()
                 status.ChangeValue('Profiles imported disabled. Reconnect each account to its credential.')
             else:
-                atomic_bytes(path, store.export_json().encode('utf-8'), replace=path.exists())
+                if store.directory != (library.root / 'state' / 'providers').resolve():
+                    raise ValueError('The library changed. Reopen provider settings before exporting.')
+                approval = confirm_export_destination(dialog, path, private_root=library.root,
+                                                       title='Replace provider profiles')
+                if approval is None:
+                    return
+                if frame.library is not library:
+                    raise ValueError('The library changed. Reopen provider settings before exporting.')
+                write_export(path, store.export_json(), private_root=library.root, approval=approval)
                 status.ChangeValue('Exported non-secret profiles. No API keys or vault references are included.')
         except Exception as exc:
             status.ChangeValue(str(exc))

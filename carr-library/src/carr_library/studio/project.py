@@ -8,6 +8,8 @@ from uuid import uuid4
 
 from ..durable_state import atomic_json, encode, local_path, read_json, state_lock
 
+MAX_PROJECT_IMPORT_BYTES = 16 * 1024**2
+
 
 def _text(value, label, maximum=1_000_000, empty=False):
     if not isinstance(value, str) or '\x00' in value or len(value) > maximum or (not empty and not value.strip()):
@@ -95,6 +97,11 @@ class Cue:
     gain_db: float = -6
     pan: float = 0
     role: str = 'sfx'
+    trim_start: float = 0
+    duration: float | None = None
+    fade_in: float = 0
+    fade_out: float = 0
+    title: str = ''
 
     def __post_init__(self):
         _id(self.id)
@@ -102,8 +109,16 @@ class Cue:
         _number(self.start, 'Cue start', 0, 31_536_000)
         _number(self.gain_db, 'Cue gain', -60, 12)
         _number(self.pan, 'Cue pan', -1, 1)
-        if self.role not in ('sfx', 'ambience', 'music'):
+        if self.role not in ('sfx', 'ambience', 'music', 'microphone'):
             raise ValueError('Invalid cue track role.')
+        _number(self.trim_start, 'Clip source start', 0, 31_536_000)
+        if self.duration is not None:
+            _number(self.duration, 'Clip duration', .000001, 31_536_000)
+        _number(self.fade_in, 'Clip fade in', 0, 31_536_000)
+        _number(self.fade_out, 'Clip fade out', 0, 31_536_000)
+        _text(self.title, 'clip title', 512, True)
+        if self.duration is not None and max(self.fade_in, self.fade_out) > self.duration:
+            raise ValueError('A clip fade exceeds its selected duration.')
 
 
 @dataclass(frozen=True)
@@ -126,6 +141,8 @@ class Scene:
             raise ValueError('Invalid music cue.')
         if not isinstance(self.cues, tuple) or not all(isinstance(x, Cue) for x in self.cues):
             raise ValueError('Scene cues must be typed.')
+        if len({cue.id for cue in self.cues}) != len(self.cues):
+            raise ValueError('Duplicate scene clip ID.')
         if not self.lines and not self.cues and not self.music and self.minimum_duration <= 0:
             raise ValueError('A scene needs text, a local cue, music, or an explicit silence duration.')
         _number(self.minimum_duration, 'Scene duration', 0, 31_536_000)
@@ -147,7 +164,7 @@ class Project:
         _id(self.id)
         _text(self.title, 'project title', 512)
         _text(self.original_script, 'original script', 16_000_000, True)
-        if self.schema != 1 or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+        if self.schema not in (1, 2) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
             raise ValueError('Unsupported project schema or revision.')
         if self.mode not in ('faithful', 'authored'):
             raise ValueError('Choose faithful narration or explicitly authored production.')
@@ -162,13 +179,25 @@ class Project:
             raise ValueError('Duplicate role or scene ID.')
         if any(line.role not in roles for scene in self.scenes for line in scene.lines):
             raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+            raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
 
     @property
     def fingerprint(self):
         return sha256(encode(self.to_dict())).hexdigest()
 
     def to_dict(self):
-        return asdict(self)
+        value = asdict(self)
+        if self.schema == 1:
+            # Keep every pre-editor project/job fingerprint stable. Schema 2
+            # explicitly carries the new optional clip selection and fade data.
+            for scene in value['scenes']:
+                for cue in scene['cues']:
+                    for name in ('trim_start', 'duration', 'fade_in', 'fade_out', 'title'):
+                        cue.pop(name)
+        return value
 
     @classmethod
     def from_dict(cls, value):
@@ -266,6 +295,55 @@ def parse_script(text, *, title='Audio production', voice_ids=(), mode='faithful
         lines.append(Line('line-' + str(len(lines) + 1), role, spoken))
     flush()
     return Project(project_id or uuid4().hex, title, tuple(roles), tuple(scenes), text, mode)
+
+
+def bilingual_project(pairs, *, title, roles, translation_id, source_sha256):
+    """Build literal paired narration with passive links to an accepted export.
+
+    This receives already reviewed text, never parses document text as Studio
+    directions and grants no source access or quotation authority. The existing
+    translation export manifest binds the project to its original and receipts.
+    """
+    from ..speech.runtime import split_utterances
+    if (type(pairs) is not tuple or not 1 <= len(pairs) <= 10000
+            or type(roles) is not tuple or len(roles) != 2
+            or any(not isinstance(role, Role) or not role.voice_id for role in roles)
+            or roles[0].id == roles[1].id
+            or type(translation_id) is not str or not re.fullmatch(r'[0-9a-f]{32}', translation_id)
+            or type(source_sha256) is not str or not re.fullmatch(r'[0-9a-f]{64}', source_sha256)):
+        raise ValueError('Choose a completed translation and two explicit narration voices.')
+    for pair in pairs:
+        if type(pair) is not tuple or len(pair) != 2:
+            raise ValueError('Each narration pair needs original and translated text.')
+        for value in pair:
+            _text(value, 'literal narration text', 2_000_000, True)
+    if sha256(''.join(pair[0] for pair in pairs).encode('utf-8')).hexdigest() != source_sha256:
+        raise ValueError('Bilingual narration no longer matches its original text.')
+    if any(sum(len(pair[index]) for pair in pairs) > 2_000_000 for index in (0, 1)):
+        raise ValueError('Choose a smaller source range for this bilingual narration project.')
+    scenes = []
+    for index, pair in enumerate(pairs):
+        lines = []
+        for role, text in zip(roles, pair):
+            parts = tuple(split_utterances(text)) if text.strip() else (text,)
+            offset = 0
+            for part_index, part in enumerate(parts):
+                reference = (f'Translation job {translation_id}; request chunk {index + 1}; '
+                             f'{role.id}; chunk text sha256 {sha256(text.encode()).hexdigest()}; '
+                             f'characters {offset}-{offset + len(part)}; '
+                             'derived narration; no quotation or live source authority')
+                lines.append(Line(f'{role.id}-{part_index + 1}', role.id, part,
+                                  .5 if part_index == len(parts) - 1 else 0, reference))
+                offset += len(part)
+        scenes.append(Scene(f'pair-{index + 1}', f'Original and translation — request chunk {index + 1}',
+                            tuple(lines)))
+    script = '\n\n'.join('ORIGINAL\n' + original + '\nTRANSLATION\n' + translated
+                         for original, translated in pairs)
+    project = Project(uuid4().hex, title, roles, tuple(scenes), original_script=script)
+    if len(encode(project.to_dict())) > MAX_PROJECT_IMPORT_BYTES:
+        raise ValueError('The bilingual project exceeds the 16 MiB Studio import budget. '
+                         'Export text only or choose fewer source positions for narration.')
+    return project
 
 
 class ProjectStore:
