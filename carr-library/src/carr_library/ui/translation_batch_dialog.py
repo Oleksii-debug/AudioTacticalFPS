@@ -97,7 +97,7 @@ def create_translation_batch_dialog(frame, *, items=(), wx_module=None):
     source = field('Source language code; auto detects', value='auto')
     target = field('Target language code', value='uk')
     glossary = field('Advanced glossary resource; blank for none', value='')
-    budget = field('Per-document USD reservation; enter 0 for local translation', value='')
+    budget = field('Per-document USD reservation; explicit, no default', value='')
     rate = field('Optional contract rate per million characters', value='')
     selected = field('Ordered translation &documents', wx.Choice, choices=[])
     status = field('Translation batch review and existing checkpoints', proportion=1,

@@ -394,7 +394,7 @@ def test_actual_tls_keeps_socket_owner_after_http_response_transfer(tmp_path, mo
         assert context.check_hostname and context.verify_mode == ssl.CERT_REQUIRED
         return context
     monkeypatch.setattr(ssl, 'create_default_context', trusted_fixture_context)
-    received, release, stop = Event(), Event(), Event()
+    received, response_owned, release, stop = Event(), Event(), Event(), Event()
     requests, owners = [], []
     class Handler(BaseHTTPRequestHandler):
         protocol_version = 'HTTP/1.0'
@@ -431,10 +431,13 @@ def test_actual_tls_keeps_socket_owner_after_http_response_transfer(tmp_path, mo
         owners.append(owner)
         assert owner.connection.sock is None
         assert isinstance(owner.active_socket, ssl.SSLSocket)
+        response_owned.set()
         return response
     monkeypatch.setattr(providers._Connection, 'getresponse', observed_response)
     def cancel_after_byte():
-        if received.wait(5):
+        # This case targets body cancellation after HTTPResponse takes ownership,
+        # so synchronize on both actual headers and the server's first body byte.
+        if received.wait(5) and response_owned.wait(5):
             stop.set()
     canceller = Thread(target=cancel_after_byte, daemon=True) if cancel_body else None
     if canceller is not None:

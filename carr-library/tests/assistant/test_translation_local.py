@@ -175,7 +175,7 @@ def test_pair_direction_and_zero_cost_are_checked_before_submission(ready):
     service, p, state = ready.service, ready.profile, ready.state
     with pytest.raises(ValueError, match='direction'):
         service.preview(p, 'Text', 'uk', 'en')
-    with pytest.raises(ValueError, match='price'):
+    with pytest.raises(ValueError, match='external per-character charge'):
         service.preview(p, 'Text', 'en', 'uk', rate_per_million='20')
     with pytest.raises(ValueError):
         translation_approval(p, 'Text', 'en', 'uk', '1')
@@ -219,7 +219,7 @@ def test_decoded_text_plus_local_receipt_forgery_still_fails_independent_ledger(
     job['receipts'][0]['text'] = 'Forged'
     job['receipts'][0]['translation_sha256'] = sha256(b'Forged').hexdigest()
     service.jobs.save(job)
-    with pytest.raises(ValueError, match='decoded-output'):
+    with pytest.raises(ValueError, match='decoded translation receipt'):
         service._load(identity)
 
 
@@ -445,7 +445,9 @@ def test_revocation_during_actual_gateway_response_has_no_accepted_receipt_or_re
     e.state['on_read'] = (lambda: store.save(replace(e.profile, enabled=False))) if change == 'profile' else (
         lambda: e.app.archive_workspace(e.workspace))
     before = len(e.state['calls'])
-    with pytest.raises(PermissionError):
+    expected = PermissionError if change == 'profile' else ValueError
+    message = 'profile changed' if change == 'profile' else 'missing or archived'
+    with pytest.raises(expected, match=message):
         e.service.resume(identity)
     assert len(e.state['calls']) == before + 1
     assert e.service.jobs.load(identity)['receipts'] == []
@@ -533,9 +535,9 @@ def test_coherent_local_job_and_manifest_tamper_cannot_remint_ledger_receipt(
     row['translation_sha256'] = sha256(row['text'].encode()).hexdigest()
     row['decoded_translation_sha256'] = translation_receipt_sha256(row['text'], row['detected_source'])
     service.jobs.save(job)
-    with pytest.raises(ValueError, match='decoded-output'):
+    with pytest.raises(ValueError, match='decoded translation receipt'):
         service._load(identity)
-    with pytest.raises(ValueError, match='decoded-output'):
+    with pytest.raises(ValueError, match='decoded translation receipt'):
         service.export(identity, tmp_path / 'refused')
     assert not (tmp_path / 'refused').exists()
 
@@ -609,9 +611,9 @@ def test_restored_local_text_cannot_override_preserved_independent_ledger(
     restored = TranslationService(destination / 'state/translation', library=LibraryApp(destination),
         gateway=Gateway(destination / 'state/translation/provider', vault=e.service.gateway.vault))
     before = len(e.state['calls'])
-    with pytest.raises(ValueError, match='decoded-output'):
+    with pytest.raises(ValueError, match='decoded translation receipt'):
         restored.get(identity)
-    with pytest.raises(ValueError, match='decoded-output'):
+    with pytest.raises(ValueError, match='decoded translation receipt'):
         restored.export(identity, tmp_path / 'must-not-export')
     assert not (tmp_path / 'must-not-export').exists()
     assert len(e.state['calls']) == before

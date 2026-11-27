@@ -148,9 +148,9 @@ def test_local_ui_profile_revocation_while_queued_refuses_transfer(local_handler
         ProfileStore(e.frame.library.root / 'state/providers').save(replace(e.p, enabled=False))
         e.complete()
         job, = e.service.list()
-        assert job['status'] == 'attention' and job['receipts'] == []
+        assert job['status'] == 'queued' and job['receipts'] == []
         assert len(e.local.state['calls']) == before and not e.vault.calls
-        assert 'profile changed' in e.find('Preview, supported languages and job status').GetValue()
+        assert 'account is unavailable, disabled or changed' in e.find('Preview, supported languages and job status').GetValue()
     e.scenario(scenario)
 
 

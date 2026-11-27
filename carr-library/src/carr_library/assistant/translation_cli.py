@@ -110,7 +110,7 @@ def main(argv=None):
                 local = p.adapter == 'libretranslate-local'
                 if (args.approve_local != local or args.approve_remote == local
                         or args.review_sha256 != result['review_sha256']):
-                    raise PermissionError('Approve the exact current preview hash with --approve-local for a local job or --approve-remote for a remote job.')
+                    raise PermissionError('Explicitly approve the exact current preview hash with --approve-local for a local job or --approve-remote for a remote job.')
                 approval, cost = translation_approval(p, value, args.source, args.target, args.budget, glossary=args.glossary)
                 identity = service.submit(p, value, args.source, args.target, title=args.title,
                     glossary=args.glossary, authorization=approval, per_call_cost=cost)

@@ -403,7 +403,7 @@ def _usage(value):
                 raise ValueError('Invalid provider usage.')
             for key, count in row['usage'].items():
                 text(key, 128)
-                if key == 'decoded_translation_sha256':
+                if key in ('translation_sha256', 'decoded_translation_sha256'):
                     digest(count)
                 else:
                     number(count, integer=True)
