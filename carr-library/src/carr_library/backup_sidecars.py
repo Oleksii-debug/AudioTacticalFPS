@@ -21,7 +21,7 @@ from .reader.reading_state import MAX_BYTES as READING_BYTES, _decode
 MAX_FILES = 100_000
 MAX_BYTES = 512 * 1024 * 1024
 _SIMPLE = ('reading-state.json', 'keybindings.json', 'keyboard-shortcuts.json',
-           'evidence-drafts.json', 'ocr-language-presets.json')
+           'evidence-drafts.json', 'progress-preferences.json', 'ocr-language-presets.json')
 _DIRECTORIES = ('narration-projects', 'reading-copies', 'state')
 _ID = r'[A-Za-z0-9_-]{1,80}'
 _STUDIO = re.compile(r'state/studio/projects/(' + _ID + r')/(?:project\.json|revisions/(\d{8})-([0-9a-f]{64})\.json)\Z')
@@ -66,6 +66,8 @@ def sidecar_limit(name):
         return _model('keybindings').MAX_BYTES
     if name == 'keyboard-shortcuts.json':
         return _model('keyboard_preferences').MAX_BYTES
+    if name == 'progress-preferences.json':
+        return _model('progress_preferences').MAX_BYTES
     if name == 'evidence-drafts.json':
         return _model('evidence_drafts').MAX_BYTES
     if name == 'ocr-language-presets.json':
@@ -130,6 +132,8 @@ def validate_sidecar(db, name, raw):
             _model('keybindings').decode_preferences(raw)
         elif name == 'keyboard-shortcuts.json':
             _model('keyboard_preferences').validate_keymap(raw)
+        elif name == 'progress-preferences.json':
+            _model('progress_preferences').validate_progress_preferences(raw)
         elif name == 'evidence-drafts.json':
             drafts = _model('evidence_drafts').validate_evidence_drafts(raw)
             for draft in drafts:
