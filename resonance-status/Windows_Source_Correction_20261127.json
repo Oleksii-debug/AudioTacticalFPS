@@ -1,0 +1,46 @@
+{
+  "schema": "resonance-source-correction/1",
+  "base_commit": "385377eee0c17139f46e79a7584e3369f88d91fc",
+  "status": "DRAFT_AWAITING_REAL_WINDOWS_EXECUTION",
+  "failure_job": 140563213431,
+  "parent_tested_tree": "d3bc50fa71c7a5b1b946205ecbaeadeb723f972a",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/audio/conversion_batch.py",
+      "sha": "459478ce10eabe93dbf23c05be5948b26d2f437e",
+      "previous_sha": "f8bf2d33b1ce4e0e0c1be71ebf5da5e00249c7bf"
+    },
+    {
+      "path": "carr-library/tests/audio/test_conversion_batch.py",
+      "sha": "0d5f4b12e82f888f28c7585f55dd51287c583798",
+      "previous_sha": "2de28e8c24b4552aa6b960a58ebe458dcb12d748"
+    },
+    {
+      "path": "carr-library/tests/reader/test_braille.py",
+      "sha": "ee09f17174c10436cea430fe88ff13f038805360",
+      "previous_sha": "79f92b14479d996601e34260a434d1564e7a7d3a"
+    }
+  ],
+  "suites": [
+    "tests/reader/test_braille.py",
+    "tests/audio/test_conversion_batch.py",
+    "tests/studio/test_conversion_batch_cli.py",
+    "tests/speech/test_publication_validation.py"
+  ],
+  "cases": {
+    "braille": 40,
+    "conversion_batch": 42,
+    "conversion_cli": 4,
+    "publication_validation": 7
+  },
+  "contracts": [
+    "Only Windows synthetic execute bits are normalized for the initial descriptor-to-path comparison.",
+    "Full descriptor stability, full named-path stability, link count, file identity and content checks remain required.",
+    "All BRF input values and assertions are preserved; only descriptive parametrization IDs change.",
+    "Incoming measured WAV assembly commit385377 is the parent and remains intact."
+  ],
+  "primary_context": [
+    "https://bugs.python.org/issue46506",
+    "https://bugs.python.org/msg369071"
+  ]
+}

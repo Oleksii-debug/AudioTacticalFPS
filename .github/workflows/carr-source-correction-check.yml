@@ -1,0 +1,101 @@
+name: CARR measured Windows source correction
+
+on:
+  push:
+    branches: ['carr/ci-completion-fix-*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: completion-fix-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  source-corrections:
+    name: Windows source corrections / actual retained codec
+    runs-on: windows-2022
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      ORT_DISABLE_TELEMETRY: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Prepare locked dependencies and the existing pinned codec
+        run: |
+          New-Item -ItemType Directory -Force 'ci-completion-results' | Out-Null
+          git rev-parse HEAD | Set-Content 'ci-completion-results/tested-commit.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m venv (Join-Path $env:RUNNER_TEMP 'carr-completion-python')
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $env:RUNNER_TEMP 'carr-completion-python/Scripts/python.exe'
+          "CARR_COMPLETION_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock -r packaging/trusted-client.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $audio = Join-Path $env:RUNNER_TEMP 'carr-completion-audio'
+          & $python packaging/prepare_windows_audio.py --cache (Join-Path $env:RUNNER_TEMP 'carr-completion-audio-cache') --output $audio --download
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Measure named and held executable metadata without executing probe bytes
+        run: |
+          @'
+          import json, os, shutil, sys
+          from pathlib import Path
+          sys.path.insert(0, str(Path('src').resolve()))
+          from carr_library.audio.conversion import _stamp
+          for name in ('ffmpeg', 'ffprobe'):
+              path = Path(shutil.which(name))
+              named = _stamp(path.stat())
+              with path.open('rb') as stream:
+                  held = _stamp(os.fstat(stream.fileno()))
+              print(json.dumps({'tool': name, 'named': named, 'held': held,
+                  'different_fields': [key for key, a, b in zip(
+                      ('dev','ino','mode','nlink','size','mtime_ns','ctime_ns'), named, held) if a != b]}))
+          '@ | & $env:CARR_COMPLETION_PYTHON -
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Run required source regressions before the full bundle finishes
+        run: |
+          $completionSuites = @(
+            'tests/reader/test_braille.py',
+            'tests/audio/test_conversion_batch.py',
+            'tests/studio/test_conversion_batch_cli.py',
+            'tests/speech/test_publication_validation.py'
+          )
+          & $env:CARR_COMPLETION_PYTHON scripts/ci_check.py --jobs 3 @completionSuites 2>&1 | Tee-Object 'ci-completion-results/source-regressions.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $summary = 'Required suites complete: ' + $completionSuites.Count + '; passed=' + $completionSuites.Count + '; failed=0'
+          if (@(Select-String -LiteralPath 'ci-completion-results/source-regressions.txt' -SimpleMatch $summary).Count -ne 1) { throw 'The current composition source inventory is incomplete.' }
+      - name: Retain source-only composition diagnostics
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-source-correction-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-completion-results/*.txt
+          if-no-files-found: error
+          retention-days: 3
+
