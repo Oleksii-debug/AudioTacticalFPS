@@ -7,8 +7,8 @@
   "files": [
     {
       "path": ".github/workflows/carr-hunspell-diagnostic.yml",
-      "sha": "28963eac813998d66fa4f0a8dcefd87f02340069",
-      "preimage": null,
+      "sha": "54a43a8cccf862ac64c7a518066e6a172e6547c3",
+      "preimage": "28963eac813998d66fa4f0a8dcefd87f02340069",
       "readback": "EXACT"
     }
   ],
@@ -117,12 +117,16 @@
     "source_and_native_failures_remain_required": true,
     "exact_program_outbound_block": true,
     "owned_firewall_readback_and_finally_cleanup": true,
-    "source_and_application_hashes_verified": true
+    "source_and_application_hashes_verified": true,
+    "active_profiles_required_before_execution": true,
+    "prior_profile_states_restored_with_readback": true
   },
   "evidence": {
     "artifacts": "Only selected public source/notices and .json/.txt/compiler log text; DLL/EXE/LIB/PDB/WHL/ZIP rejected.",
     "parser": "NOT_RUN_EXECUTOR_UNAVAILABLE",
     "execution": "NOT_RUN",
     "static_text_checks": "2/2 heredocs,6 unique named steps,required names/origins present,no unresolved placeholders,no shared main/V3 concurrency group"
-  }
+  },
+  "previous_manifest": "ada1d21e47f7f38cac6f2d5d3cecd85e610168e3",
+  "correction": "Rule Enabled alone does not establish an active Windows Firewall profile. The same explicit disposable-CI profile activation used by main/V3 now brackets both source native phases; all selected rules and previous profile states are restored in finally, with cleanup failures failing the step."
 }

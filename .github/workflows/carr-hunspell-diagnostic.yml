@@ -199,6 +199,8 @@ jobs:
           $programs = @($programs | ForEach-Object { (Resolve-Path -LiteralPath $_).Path } | Select-Object -Unique)
           $rules = [System.Collections.Generic.List[string]]::new()
           $failures = [System.Collections.Generic.List[object]]::new()
+          $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
+          if ($profilesBefore.Count -ne 3 -or @($profilesBefore.Name | Select-Object -Unique).Count -ne 3 -or @($profilesBefore | Where-Object { $_.Name -notin @('Domain', 'Private', 'Public') }).Count -ne 0) { throw 'The current firewall profile inventory is incomplete.' }
           $verifyHunspell = @'
           from hashlib import sha256
           import importlib, json, os
@@ -276,6 +278,9 @@ jobs:
           '@
           
           try {
+            Set-NetFirewallProfile -Profile Domain, Private, Public -Enabled True -ErrorAction Stop
+            $profilesActive = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
+            if ($profilesActive.Count -ne 3 -or @($profilesActive | Where-Object { $_.Enabled -ne 'True' }).Count -ne 0) { throw 'Every Windows firewall profile must be active before native source execution.' }
             foreach ($program in $programs) {
               $name = 'CARR-Hunspell-source-' + [Guid]::NewGuid().ToString('N')
               $rules.Add($name)
@@ -284,7 +289,7 @@ jobs:
               $filter = @($rule | Get-NetFirewallApplicationFilter -ErrorAction Stop)
               if ($rule.Enabled -ne 'True' -or $rule.Direction -ne 'Outbound' -or $rule.Action -ne 'Block' -or $filter.Count -ne 1 -or [IO.Path]::GetFullPath($filter[0].Program) -ne [IO.Path]::GetFullPath($program)) { throw 'The required exact-program offline rule was not admitted.' }
             }
-            @{ status='ACTIVE'; programs=$programs; rules=$rules.ToArray(); direction='Outbound'; action='Block'; qualification='Acquisition completed before these rules' } | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 'ci-hunspell-results/firewall.json'
+            @{ status='ACTIVE'; programs=$programs; rules=$rules.ToArray(); profiles=$profilesActive; direction='Outbound'; action='Block'; qualification='Acquisition completed before these rules' } | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 'ci-hunspell-results/firewall.json'
             try {
               & $python -B -X utf8 scripts/hunspell_acceptance.py --library $env:CARR_HUNSPELL_DLL --source-root $sourceRoot --output 'ci-hunspell-results/source-api.json' 2>&1 | Tee-Object 'ci-hunspell-results/source-api.txt'
               if ($LASTEXITCODE -ne 0) { throw 'Actual source-bound Hunspell C API acceptance failed.' }
@@ -309,6 +314,13 @@ jobs:
             $cleanupFailures = [System.Collections.Generic.List[string]]::new()
             foreach ($name in $rules) {
               try { Remove-NetFirewallRule -Name $name -ErrorAction Stop } catch { $cleanupFailures.Add($_.Exception.Message) }
+            }
+            foreach ($profile in $profilesBefore) {
+              try {
+                Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop
+                $restored = Get-NetFirewallProfile -Name $profile.Name -ErrorAction Stop
+                if ($restored.Enabled -ne $profile.Enabled) { throw ('Firewall profile state was not restored: ' + $profile.Name) }
+              } catch { $cleanupFailures.Add($_.Exception.Message) }
             }
             if ($cleanupFailures.Count -ne 0) { throw ('Owned Hunspell firewall cleanup failed: ' + ($cleanupFailures -join '; ')) }
           }
