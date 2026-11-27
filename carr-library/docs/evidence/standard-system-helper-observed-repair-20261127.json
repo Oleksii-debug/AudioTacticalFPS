@@ -39,7 +39,9 @@
     "private_payload_and_state_file_guard": "UNCHANGED: exactly one link",
     "existing_owned_launcher": "UNCHANGED",
     "native_probe": "Records actual fixed-helper device/inode/size/mtime/mode/attributes/link count before native snapshot; final receipt retains this observation.",
-    "qualification_child": "Uses the same authoritative helper instead of SystemRoot environment selection."
+    "qualification_child": "Uses the same authoritative helper instead of SystemRoot environment selection.",
+    "exact_native_receipt_validation": "The standard A-to-B aggregate accepts the additive system_helper field only with its exact shape, strict integer types, normal non-reparse mode and native identity matching a fresh GetSystemDirectoryW-based lookup. The original 15 checks and 50 installed cases remain mandatory.",
+    "independent_source_review": "GO for the separate fixed-system-helper contract and 13 regressions; an exact-schema omission in the initial gate was found and corrected before launching the repaired native run."
   },
   "declared_regressions": {
     "source": 13,

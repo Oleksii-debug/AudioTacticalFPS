@@ -267,7 +267,7 @@ print(json.dumps({'status': 'verified-build', 'source_commit': source, 'setup_sh
 
     $verify = @'
 from collections import Counter
-import hashlib, importlib.util, json, pathlib, re, sys
+import hashlib, importlib.util, json, pathlib, re, stat, sys
 project, evidence, handoff_path, previous_build, previous_bundle, previous_setup, previous_setup_hash, previous_manifest_hash = sys.argv[1:]
 project, evidence, handoff_path, previous_build, previous_bundle, previous_setup = map(pathlib.Path,
     (project, evidence, handoff_path, previous_build, previous_bundle, previous_setup))
@@ -291,9 +291,28 @@ true_flags = ['actual_two_compiled_generations', 'actual_native_activation', 'ac
 false_flags = ['production_authority_qualified', 'authenticode_verified', 'nvda_verified']
 fields = ['schema', 'status', 'checks', 'previous_source', 'candidate_source',
     'previous_setup_sha256', 'candidate_setup_sha256', 'previous_manifest_sha256',
-    'candidate_manifest_sha256', 'verified_target_sha256', 'backup_sha256', 'restart_recovery_proof_sha256']
+    'candidate_manifest_sha256', 'verified_target_sha256', 'backup_sha256', 'restart_recovery_proof_sha256',
+    'system_helper']
 assert set(report) == set(fields + true_flags + false_flags)
 assert type(report['schema']) is int and report['schema'] == 1 and report['status'] == 'passed'
+helper = report['system_helper']
+assert type(helper) is dict and set(helper) == {'selection', 'path', 'device', 'inode',
+    'bytes', 'mtime_ns', 'mode', 'attributes', 'links'}
+assert helper['selection'] == 'GetSystemDirectoryW/fixed-WindowsPowerShell-v1.0'
+assert type(helper['path']) is str and pathlib.Path(helper['path']).is_absolute()
+assert all(type(helper[name]) is int and helper[name] >= 0 for name in (
+    'device', 'inode', 'bytes', 'mtime_ns', 'mode', 'attributes', 'links'))
+assert helper['inode'] > 0 and helper['bytes'] > 0 and helper['mtime_ns'] > 0 and helper['links'] >= 1
+assert stat.S_ISREG(helper['mode']) and not stat.S_ISLNK(helper['mode'])
+assert helper['attributes'] & 0x400 == 0
+from carr_library.security.standard_windows import WindowsStandardHost
+actual_helper = WindowsStandardHost._powershell()
+actual_info = actual_helper.lstat()
+assert helper == {'selection': 'GetSystemDirectoryW/fixed-WindowsPowerShell-v1.0',
+    'path': str(actual_helper), 'device': actual_info.st_dev, 'inode': actual_info.st_ino,
+    'bytes': actual_info.st_size, 'mtime_ns': actual_info.st_mtime_ns,
+    'mode': actual_info.st_mode, 'attributes': getattr(actual_info, 'st_file_attributes', 0),
+    'links': actual_info.st_nlink}
 assert type(report['checks']) is list and all(type(item) is str for item in report['checks'])
 assert Counter(report['checks']) == Counter(checks) and len(report['checks']) == 15
 assert all(report[name] is True for name in true_flags) and all(report[name] is False for name in false_flags)
