@@ -287,8 +287,55 @@ def test_reconciliation_budget_leaves_interrupted_request_resumable(app, tmp_pat
     result = app.resume_import(workspace, first['request_id'])
     assert result['state'] == 'cancelled'
     assert 'resume to check it' in result['message']
+    assert 'TimeoutError, carr_library.ingest.publication:' in result['message']
     assert load_request(app.root, first['request_id'])['state'] == 'cancelled'
     assert len(app.browse(workspace)) == 1
+
+
+@pytest.mark.parametrize('failure', ['permission', 'sqlite', 'validation'])
+def test_reconciliation_failure_preserves_recovery_without_disclosing_exception_payload(
+        app, tmp_path, monkeypatch, failure):
+    from carr_library.ingest import publication, worker
+    source = _reply_test_source(tmp_path, 'pdf')
+    workspace = app.create_workspace('Private recovery diagnostics')
+    first = app.import_file(workspace, source)
+    request = load_request(app.root, first['request_id'])
+    request['state'] = 'running'
+    request.pop('result')
+    _store(app.root, first['request_id'], request)
+    private_detail = 'private-source-name-and-exception-payload'
+    if failure == 'permission':
+        error = PermissionError(13, private_detail, str(source))
+        error.winerror = 5
+        expected = ('PermissionError', 'errno=13', 'winerror=5')
+    elif failure == 'sqlite':
+        error = sqlite3.OperationalError(private_detail)
+        error.sqlite_errorcode = 776
+        error.sqlite_errorname = 'SQLITE_READONLY_ROLLBACK'
+        expected = ('OperationalError', 'sqlite_errorcode=776', 'SQLITE_READONLY_ROLLBACK')
+    else:
+        error = ValueError(private_detail)
+        expected = ('ValueError',)
+
+    def unavailable(*args, **kwargs):
+        raise error
+
+    with monkeypatch.context() as patch:
+        patch.setattr(publication, 'completed_request', unavailable)
+        patch.setattr(worker, '_invoke', lambda *args, **kwargs: {
+            'state': 'cancelled', 'message': 'Import worker stopped.'})
+        result = app.resume_import(workspace, first['request_id'])
+    assert result['state'] == 'cancelled'
+    assert all(part in result['message'] for part in expected)
+    assert private_detail not in result['message'] and str(source) not in result['message']
+    assert 'resume to check it' in result['message']
+    assert load_request(app.root, first['request_id'])['result'] == result
+    source.unlink()
+    resumed = app.resume_import(workspace, first['request_id'])
+    assert resumed['state'] == 'complete' and resumed['id'] == first['id']
+    with app.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+        assert db.execute('SELECT count(*) FROM catalog_edition').fetchone()[0] == 1
 
 
 def test_busy_writer_does_not_delay_stopped_request_reconciliation(app, tmp_path):

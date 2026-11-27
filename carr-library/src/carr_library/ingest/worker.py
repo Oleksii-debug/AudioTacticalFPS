@@ -368,6 +368,29 @@ def run_request(root, workspace, source, metadata, config, *, cancelled=lambda: 
                             request_id=request_id, new=new)
 
 
+def _publication_error_details(error):
+    """Keep useful recovery diagnostics without exposing exception payloads/paths."""
+    kind = type(error).__name__
+    details = [kind if re.fullmatch(r'[A-Za-z_][A-Za-z_0-9]{0,79}', kind) else 'Error']
+    location = None
+    trace = error.__traceback__
+    while trace is not None:
+        module = trace.tb_frame.f_globals.get('__name__', '')
+        if isinstance(module, str) and re.fullmatch(r'carr_library\.[A-Za-z_0-9.]{1,160}', module):
+            location = f'{module}:{trace.tb_lineno}'
+        trace = trace.tb_next
+    if location is not None:
+        details.append(location)
+    for name in ('errno', 'winerror', 'sqlite_errorcode'):
+        value = getattr(error, name, None)
+        if type(value) is int and 0 <= value <= 0xFFFFFFFF:
+            details.append(f'{name}={value}')
+    value = getattr(error, 'sqlite_errorname', None)
+    if isinstance(value, str) and re.fullmatch(r'SQLITE_[A-Z_0-9]{1,64}', value):
+        details.append(value)
+    return ', '.join(details)
+
+
 def _run_request(root, workspace, source, metadata, config, *, cancelled,
                  timeout, request_id, new):
     if (not callable(cancelled) or type(timeout) not in (int, float)
@@ -391,10 +414,11 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
         from .publication import completed_request
         try:
             completed = completed_request(root, workspace, request_id, timeout=min(timeout, 1.0))
-        except (OSError, ValueError, sqlite3.Error):
+        except (OSError, ValueError, sqlite3.Error) as error:
             completed = None
             result = dict(result, message=result.get('message', '') +
-                          ' Publication could not be verified within the recovery bound; resume to check it.')
+                          ' Publication could not be verified (' +
+                          _publication_error_details(error) + '); resume to check it.')
         if completed is not None:
             result = completed
     result = dict(result, request_id=request_id, isolated=True)

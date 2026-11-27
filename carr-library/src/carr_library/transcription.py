@@ -955,7 +955,7 @@ class TranscriptionService:
                 if observer_available and now - notice_at >= .5 and prior.exists():
                     notice_at = now
                     try:
-                        current = read_json(prior)
+                        current = read_json(prior, shared_replace=True)
                         notify(current.get('done', 0), len(job['sources']),
                                str(current.get('state', 'running'))[:200])
                     except (ValueError, OSError):

@@ -514,3 +514,50 @@ def test_unreadable_existing_content_never_authorizes_replacement(export, monkey
         publish()
     assert target.read_bytes() == previous
     assert not list(target.parent.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize('binary', (False, True))
+@pytest.mark.parametrize('phase', ('approval', 'initial', 'final'))
+def test_parent_redirect_into_private_library_is_rejected_before_digest_reads(
+        tmp_path, monkeypatch, binary, phase):
+    private, folder = tmp_path / 'private', tmp_path / 'exports'
+    private.mkdir()
+    folder.mkdir()
+    target = folder / 'selected-export'
+    previous = b'Synthetic approved bytes'
+    target.write_bytes(previous)
+    approval = (export_file.capture_export_destination(target, private_root=private)
+                if phase != 'approval' else None)
+    opened, read = os.open, os.read
+    redirected, private_reads = [], []
+
+    def redirect_inside_open(path, flags, *args, **kwargs):
+        if (Path(path) == target and not redirected
+                and (phase != 'final' or list(folder.glob('.research-export-*')))):
+            # Renaming the parent preserves the actual file's identity and
+            # timestamps on POSIX too. O_NOFOLLOW does not protect ancestors.
+            folder.rename(private / 'moved-exports')
+            folder.symlink_to(private / 'moved-exports', target_is_directory=True)
+            redirected.append(True)
+        return opened(path, flags, *args, **kwargs)
+
+    def inspect_read(descriptor, count):
+        if redirected:
+            private_reads.append(count)
+        return read(descriptor, count)
+
+    monkeypatch.setattr(os, 'open', redirect_inside_open)
+    monkeypatch.setattr(os, 'read', inspect_read)
+    with pytest.raises(ValueError, match='symbolic links|private library folder|reparse'):
+        if phase == 'approval':
+            export_file.capture_export_destination(target, private_root=private)
+        else:
+            writer = export_file.write_binary_export if binary else export_file.write_export
+            writer(target, b'New export' if binary else 'New export', private_root=private,
+                   approval=approval)
+
+    assert redirected == [True] and not private_reads
+    assert folder.is_symlink()
+    moved = private / 'moved-exports'
+    assert (moved / target.name).read_bytes() == previous
+    assert not list(moved.glob('.research-export-*'))
