@@ -201,7 +201,7 @@ def test_refreshed_source_tree_comes_from_exact_verified_commit(bundle, parent_t
 
 def test_actual_refresh_manifest_is_accepted_by_installation_diagnostic(bundle):
     _refresh(bundle)
-    diagnostic = _load('review_refresh_native_checks', ROOT / 'src/carr_library/native_checks.py')
+    from carr_library import native_checks as diagnostic
     expected = json.loads((bundle.output / 'bundle-manifest.json').read_bytes())
     assert diagnostic._manifest(bundle.output) == expected
 

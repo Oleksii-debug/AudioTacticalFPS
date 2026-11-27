@@ -1,6 +1,6 @@
 """Real local render receipts distinguish late stop requests from failures.
 
-Only the final verification boundary is wrapped to inject a publication error.
+Only the durable completion write is wrapped to inject a publication error.
 Speech, mixing, outputs, and their hashes use the actual installed engines.
 """
 from hashlib import sha256
@@ -45,12 +45,17 @@ def production(tmp_path, voices):
 @pytest.mark.parametrize('stop_kind', ['pause', 'cancel', 'predicate'])
 def test_late_stop_does_not_hide_error_after_verified_outputs(tmp_path, voices, monkeypatch, stop_kind):
     service, job = production(tmp_path, voices)
-    verify = service._verify_artifacts
-    stopping, accepted = [False], {}
+    verify, save = service._verify_artifacts, service._save
+    stopping, accepted, completion_attempts = [False], {}, []
 
-    def verify_then_fail(state):
+    def fail_completion_write(state):
+        if state['status'] != 'complete':
+            return save(state)
+        # The actual verifier runs before completion and lease release.
+        # Inject at the durable completion write after that verification.
         verify(state)
         assert state['status'] == 'complete' and state['artifacts']
+        completion_attempts.append(state['id'])
         for artifact in state['artifacts']:
             path = Path(artifact['path'])
             accepted[str(path)] = (path.stat().st_size, sha256(path.read_bytes()).hexdigest())
@@ -62,9 +67,10 @@ def test_late_stop_does_not_hide_error_after_verified_outputs(tmp_path, voices, 
             stopping[0] = True
         raise OSError('Synthetic final receipt publication failure')
 
-    monkeypatch.setattr(service, '_verify_artifacts', verify_then_fail)
+    monkeypatch.setattr(service, '_save', fail_completion_write)
     with pytest.raises(OSError, match='final receipt publication'):
         service.run(job, cancelled=lambda: stopping[0])
+    assert completion_attempts == [job]
     saved = service.get(job)
     assert saved['status'] == 'failed'
     assert saved['error'] == 'Synthetic final receipt publication failure'
