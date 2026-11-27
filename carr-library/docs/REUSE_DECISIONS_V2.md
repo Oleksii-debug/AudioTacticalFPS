@@ -45,6 +45,19 @@ Static inspection of [candidate12e6ce6](https://github.com/Oleksii-debug/AudioTa
 
 Evidence: [audio source-lock](https://github.com/Oleksii-debug/AudioTacticalFPS/blob/12e6ce6a9ac0b7d93952a8a990e22191fe5d54fe/carr-library/packaging/audio-runtime/source-lock.json), [CSL provenance](https://github.com/Oleksii-debug/AudioTacticalFPS/blob/12e6ce6a9ac0b7d93952a8a990e22191fe5d54fe/carr-library/docs/UPSTREAM_CSL.md). Read a newer candidate's own manifest before applying this snapshot to it.
 
+## Reused synchronized publication and conformance tool
+
+The bounded Studio publishing component is selected from [existing PR112](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/112), reviewed at donor commit [6da794a2ef83c77d160e7f89a1b457a5f375cf6a](https://github.com/Oleksii-debug/AudioTacticalFPS/tree/6da794a2ef83c77d160e7f89a1b457a5f375cf6a). Only its publisher, native dialog, CLI/menu additions and relevant schema-1 regressions are composed with the current canonical services. Its unrelated transcription, clip-editing and competing-stack changes are not adopted.
+
+The publisher reuses the current completed-production receipts, FFmpeg adapter, resource broker, destination approval and atomic writer. The adaptation verifies already committed output after late interruption, permits explicit read-only verification of the writer's residual hard link, and preserves publication metadata through the current full backup. No second render engine, catalog, job format or backup producer is introduced.
+
+| Item | Exact source / integration | Qualification boundary |
+| --- | --- | --- |
+| EPUBCheck | [Official v5.3.0 release](https://github.com/w3c/epubcheck/releases/tag/v5.3.0), source commit `029831b8f477e4519e9734c984ee24357547a698`; archive size 33071108 bytes; SHA256 `6c07e68584b2e2ce2f89fe06e1246dfead3eb36b46b340e7d93524f29dcff6c5`; complete machine pin in [packaging/epubcheck.json](../packaging/epubcheck.json) | CI-only validator, excluded from the application and evidence payloads. Upstream BSD-3-Clause license and supplied third-party notices remain recorded separately; this does not clear unrelated application/audio dependencies. |
+| Java | Existing CI runtime, executable path/hash and actual version recorded before the conformance process | Not an application dependency. The actual Java executable is included in the tested outbound-firewall scope. |
+| Native and audio execution | Current CPython 3.11 / wxPython Windows gates, installed source-origin checks and the existing external pinned FFmpeg/ffprobe runtime | Native SAPI production and synthetic production have distinct evidence. No owner recordings, model weights, new audio package or validator JAR is added to the application bundle. |
+| Required acceptance | Actual WAV-to-MP3 publication, byte-preserving existing-MP3 reuse, rejection of deliberately malformed EPUB, real process interruption, complete backup/restore and native controls | Evaluate the exact current commit's reports. Package conformance does not establish synchronized-reader interoperability, word alignment, listening quality, NVDA, DAISY or Braille support. |
+
 ## Historical prototype evidence — preserved, not current readiness
 
 

@@ -7,13 +7,14 @@ bundle and a signed distribution-cleared release have separate acceptance
 requirements. Existing package, launch filenames and data locations remain
 unchanged until a verified migration; visible application titles use Resonance.
 
-## Implemented and exercised
+## Implemented components and acceptance boundaries
 
 | Area | Implemented behavior | Evidence and limits |
 | --- | --- | --- |
 | Library and OCR | Scoped originals, exact quotations, academic references, managed Fast/Best OCR profiles and installed model selection | Actual SQLite and OCR tests; native installed OCR manager runs on Windows |
 | Reading and voices | Source-preserving reading derivatives, portable edition/revision/asset lineage, explicit detached-draft recovery, pronunciation edits, local voice discovery, playback and SAPI5 native COM worker | Real source/backup/restart tests preserve original bytes and never infer identity from equal text; earlier Windows SAPI PCM and local Flite evidence remains specific to its tested build; other engine assets require separate qualification |
 | Audio studio | Roles, scenes, explicit voice/position, pauses, procedural score, DSP, chapters, stems, subtitles, verified resume/cache and formats | Real FFmpeg production and Windows restart; 1/3/10-hour streaming fixtures are not equivalent to full-length neural inference |
+| Synchronized EPUB publication | Reused Studio publisher, native controls and CLI export completed schema-1 productions as EPUB 3 media overlays; verified existing MP3 is reused or the current FFmpeg adapter converts the WAV master | Required tests cover exact source/timeline provenance, no-clobber publication, actual child death before/after linking, shared resources, receipt recovery and full backup/restore. Installed native SAPI/EPUB and pinned EPUBCheck gates require fresh exact-head execution; line synchronization does not establish word alignment, reader interoperability, DAISY or Braille qualification |
 | Shared operations | Native Tasks and resources view and CLI over the existing import, Studio, ASR and assistant stores; cooperating CPU/RAM/disk/device reservations, shared CUDA exclusion and cancellable admission | Canonical ASR, actual isolated imports, process ownership and controller regressions are required by the exact portable/native/installed gates; disposable metadata cleanup cannot reverse a verified completed output; hardware capacity and hard-crash orphan management remain separate |
 | Documents and citations | Bounded BibTeX/RIS import, selected-field metadata review, isolated conversion, local citeproc-js styles/locales and editable DOCX regeneration with citation provenance | Actual parser, local processor, cancellation/rollback, generated-document and overwrite-confirmation regressions; no live Word add-in |
 | Recovery | Manifest-bound backup v4 includes pending import bytes, identities, settings, projects and discoverable reader drafts; catalog v5 records immutable request/attempt publication receipts in the import transaction | Real process interruption, competing imports, exact v3/v4/v5 schema validation, rollback, portable-name validation and restore tests; externally exported audio and OS credential secrets are separate |
@@ -22,7 +23,7 @@ unchanged until a verified migration; visible application titles use Resonance.
 | Keyboard and progress | Configurable menu keys, named native controls, measured or indeterminate progress, optional tones and explicitly selected local-voice notices in English/Ukrainian/Slovak; playback/recording quieting and settings backup | Actual Windows key injection and progress/result regressions; human NVDA and listening review remain required; the recording quiet contract does not implement microphone capture |
 | Language inventory | Exact canonical 135 entries, source audit and searchable capability matrix | Resource inventory is separate from acoustic qualification; no claim of 135 working voices |
 | Assistant and providers | Typed scoped tools, durable jobs, local-only default, protected credential references and per-request consent/budget | Local and synthetic provider tests; no paid provider call was made during implementation |
-| Translation | Optional Google Basic v2 selected-text derivatives, explicit supported-language query, consent, chunk receipts/resume and new exports | Synthetic transport with real gateway/ledger/reading objects; live API, translation quality, Advanced v3 and local model inference are not qualified |
+| Translation | Optional Google Basic v2 selected-text derivatives, explicit supported-language query, consent, decoded-text receipts, scope-bound resume and new exports | Synthetic transport with the real gateway/ledger, bound UI handlers and complete backup/restore tests; completed saved text remains exportable without another request. Live API, translation quality, Advanced v3 and local model inference are not qualified |
 | Delivery preparation | Reviewed native ResearchLibrary.exe in the existing sealed bundle, exact-source wheels, pinned dependency/SBOM closure and parent-manifest binding | Portable C and builder regressions; required Windows gates bind actual process and installed-executable checks to the sealed SHA256. Publisher signing and standard installer acceptance remain open |
 | Private integration boundary | Separate versioned entitlement/update protocols and preservation of user-data operations | 45 synthetic boundary tests; no verifier, authority, automatic renewal, production trust or updater is enabled |
 
@@ -43,8 +44,8 @@ The following cannot be labelled DONE by passing the current core tests:
 - Actual owner-supplied cloning runtime, authorized reference recordings,
   protected voice profiles and independent multilingual inference/listening.
 - Actual installed dordiai-voices / SAPI4 compatibility, MusicGen/ACE-Step model inference,
-  the remaining approved Balabolka-equivalent workflow checklist and synchronized
-  publishing/Braille workflows.
+  the remaining approved Balabolka-equivalent workflow checklist, synchronized
+  reader interoperability and Braille workflows.
 - Independent qualification of every required capability for the canonical 135
   entries; registry/resource counts never establish language quality.
 - Human Windows 11/NVDA and listening review. Automated Windows Server native
@@ -71,6 +72,40 @@ binaries are not added to the sealed application or evidence uploads.
 A final unchanged-bundle
 check remains mandatory after all installed tests, including real crash fixtures. Read the checks for
 the exact final head: a predecessor's passing run does not qualify a later tree.
+
+Windows state-file readers retain bounded descriptor checks while allowing an
+atomic replacement to proceed beside an active read. Draft autosave stops on the
+owner's captured native destruction identity, including a rewrapped event; queued
+callbacks cannot reach a deleted window. Required Windows probes wait for real
+timer delivery, then check Close and direct Destroy beyond the original period.
+The OCR runtime inventory also bounds directory traversal and checks cancellation
+between entries; an unreadable directory cannot silently hide runtime payloads.
+
+New translation chunks bind the decoded text and detected language to the gateway
+usage receipt. Resume and export check that independent receipt, including after
+a full backup/restore. A saved selection restores its account, text, language pair
+and budget before any queued request. Changed fields require a new selection;
+completed offline exports do not require a new credential lookup or paid call.
+Legacy wire-only receipts remain explicitly distinguishable from decoded-text
+proof and are never upgraded by inventing evidence.
+
+Synchronized publication uses the current Studio job, resource policy, export
+destination approval and create-only writer. A verified committed EPUB remains a
+success when only final receipt or temporary cleanup is interrupted, with a
+separate warning. A prepared receipt can verify exact saved bytes after a real
+process exit, including the writer's residual hard link, without deleting another
+name or relaxing generic source/state link guards. Complete backup retains the
+publication receipt metadata; the external EPUB/audio is not silently copied.
+After restore to another location, the user explicitly selects the existing EPUB
+for byte and provenance verification. This does not rerender the old production.
+
+EPUBCheck 5.3.0 is pinned by archive size and SHA256 in the CI-only tool manifest.
+Its Java process joins the existing outbound firewall scope during conformance
+acceptance; the native publication probe uses the actual installed package and a
+hash-bound external test audio runtime. The validator archive, Java installation,
+audio binaries and synthetic output are excluded from the evidence uploads and
+sealed application. Conformance, native SAPI, source/installed regressions and the
+final unchanged-bundle check must succeed for the exact source being assessed.
 
 The complete-backup format remains v4. Catalog schema v5 adds only import
 publication receipts; the exact earlier schema definitions remain unchanged.

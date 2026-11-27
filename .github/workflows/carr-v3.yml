@@ -64,6 +64,8 @@ jobs:
             tests/audio/test_process_start_cleanup.py \
             tests/ingest/test_import_metadata_shape.py tests/packaging/test_delivery_archive.py \
             tests/operations tests/ui/test_operations_policy.py tests/ui/test_operations_dialog.py \
+            tests/storage/test_state_json_reader.py tests/ui/test_save_actions.py tests/extract/test_ocr_inventory_boundary.py tests/assistant/test_translation.py tests/ui/test_translation_selection.py tests/studio/test_publishing.py tests/studio/test_publishing_cli.py tests/studio/test_publishing_handlers.py \
+            tests/assistant/test_providers.py tests/packaging/test_ci_check.py \
             tests/e2e/test_operations_cli.py \
             tests/ui/test_transcription_dialog.py tests/ui/test_progress_voice_actions.py \
             tests/ui/test_progress_media_quiet.py \
@@ -165,6 +167,8 @@ jobs:
           import carr_library.speech.reading, carr_library.speech.source, carr_library.ui.speech_dialog
           import carr_library.speech.runtime, carr_library.academic_integration.doi
           import carr_library.speech.session
+          import carr_library.durable_state, carr_library.ui.save_actions
+          import carr_library.assistant.providers, carr_library.assistant.translation
           import carr_library.storage.revisions, carr_library.storage.schema_identity
           import pytest
           checkout = pathlib.Path.cwd().resolve()
@@ -173,6 +177,8 @@ jobs:
                    'carr_library.speech.reading', 'carr_library.speech.source', 'carr_library.ui.speech_dialog',
                    'carr_library.speech.runtime', 'carr_library.academic_integration.doi',
                    'carr_library.speech.session',
+                   'carr_library.durable_state', 'carr_library.ui.save_actions',
+                   'carr_library.assistant.providers', 'carr_library.assistant.translation',
                    'carr_library.storage.revisions', 'carr_library.storage.schema_identity')
           def installed_origins():
               origins = {name: str(pathlib.Path(sys.modules[name].__file__).resolve()) for name in names}
@@ -208,7 +214,13 @@ jobs:
                     'tests/speech/test_reading.py',
                     'tests/speech/test_source.py',
                     'tests/speech/test_session.py',
-                    'tests/packaging/test_worker_bytecode.py']
+                    'tests/packaging/test_worker_bytecode.py',
+                    'tests/storage/test_state_json_reader.py',
+                    'tests/ui/test_save_actions.py',
+                    'tests/extract/test_ocr_inventory_boundary.py',
+                    'tests/assistant/test_translation.py',
+                    'tests/ui/test_translation_selection.py',
+                    'tests/assistant/test_providers.py']
           status = pytest.main(['-q', '-o', 'addopts=', '-o', 'pythonpath=',
                                '-o', 'xfail_strict=true', '--import-mode=importlib',
                                '--junitxml=' + str(report), *suites], plugins=[policy])
@@ -243,12 +255,37 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           "CARR_V3_AUDIO=$audio" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Prepare the pinned EPUB conformance validator outside the application
+        id: epubcheck_runtime
+        timeout-minutes: 5
+        run: |
+          $pin = Get-Content -LiteralPath 'packaging/epubcheck.json' -Raw | ConvertFrom-Json
+          if ($pin.schema -ne 1 -or $pin.version -ne '5.3.0') { throw 'Unexpected reviewed EPUBCheck protocol or version.' }
+          $archive = Join-Path $env:RUNNER_TEMP 'carr-epubcheck-5.3.0.zip'
+          Invoke-WebRequest -Uri $pin.url -OutFile $archive
+          $archiveHash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ((Get-Item -LiteralPath $archive).Length -ne $pin.size -or $archiveHash -ne $pin.sha256) { throw 'EPUBCheck archive differs from the reviewed size or SHA256.' }
+          $java = (Get-Command java.exe -ErrorAction Stop).Source
+          & $java -version 2>&1 | Tee-Object 'ci-v3-results/epubcheck-java-version.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'The actual Java conformance runtime is unavailable.' }
+          @{ schema=1; status='PASS'; bundled=$false; version=$pin.version; archive_sha256=$archiveHash;
+             java=$java; java_sha256=(Get-FileHash -LiteralPath $java -Algorithm SHA256).Hash.ToLowerInvariant()
+           } | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 'ci-v3-results/epubcheck-tool-binding.json'
+          "CARR_EPUBCHECK_ARCHIVE=$archive" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARR_EPUBCHECK_JAVA=$java" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       - name: Real native SAPI, scene production, keyboard controls and restart
         run: |
           $python = (Get-Command python.exe).Source
           $basePython = (& $python -I -c "import sys; print(sys._base_executable)").Trim()
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $programs = @($python, $basePython, (Get-Command node.exe).Source,
+          $testFfmpeg = Join-Path $env:CARR_V3_AUDIO 'bin/ffmpeg.exe'
+          $testFfprobe = Join-Path $env:CARR_V3_AUDIO 'bin/ffprobe.exe'
+          @{ schema=1; status='PASS'; bundled=$false; runtime_root=$env:CARR_V3_AUDIO;
+             ffmpeg=@{ path=$testFfmpeg; sha256=(Get-FileHash -LiteralPath $testFfmpeg -Algorithm SHA256).Hash.ToLowerInvariant() };
+             ffprobe=@{ path=$testFfprobe; sha256=(Get-FileHash -LiteralPath $testFfprobe -Algorithm SHA256).Hash.ToLowerInvariant() }
+           } | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 'ci-v3-results/external-test-audio-binding.json'
+          $programs = @($python, $basePython, (Get-Command node.exe).Source, $env:CARR_EPUBCHECK_JAVA,
             (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'),
             (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe'),
             (Join-Path $env:CARR_V3_AUDIO 'bin/ffmpeg.exe'),
@@ -272,6 +309,12 @@ jobs:
             @{ status='PASS'; blocked_programs=$filters; scope='tested runtime executables, not a whole-machine network claim' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-v3-results/runtime-firewall.json'
             & $python -I -B scripts/windows_v3_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-v3.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Actual native speech and production acceptance failed.' }
+            & $python -I -B -X utf8 scripts/windows_save_timer_smoke.py --output 'ci-v3-results/native-save-timer.json' 2>&1 | Tee-Object 'ci-v3-results/native-save-timer.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Native draft timer lifetime acceptance failed.' }
+            & $python -I -B -X utf8 scripts/windows_publishing_smoke.py --audio-evidence 'ci-v3-results/external-test-audio-binding.json' --require-sapi 2>&1 | Tee-Object 'ci-v3-results/native-publishing.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Actual native synchronized publication acceptance failed.' }
+            & $python -I -B -X utf8 scripts/epubcheck_acceptance.py --archive $env:CARR_EPUBCHECK_ARCHIVE --java $env:CARR_EPUBCHECK_JAVA --audio-evidence 'ci-v3-results/external-test-audio-binding.json' --require-installed --report 'ci-v3-results/epub-conformance.json' 2>&1 | Tee-Object 'ci-v3-results/epub-conformance.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Actual EPUBCheck conformance acceptance failed.' }
           } finally {
             foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
             foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
@@ -300,7 +343,7 @@ jobs:
         env:
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
-          python scripts/ci_check.py --jobs 3 tests/operations/test_resources.py tests/operations/test_worker_start_cleanup.py tests/operations/test_facade.py tests/operations/test_canonical_asr_admission.py tests/operations/test_ocr_admission.py tests/ui/test_operations_policy.py tests/ui/test_operations_dialog.py tests/e2e/test_operations_cli.py tests/operations/test_production_admission.py tests/operations/test_resource_backup.py tests/audio/test_music.py 2>&1 | Tee-Object 'ci-v3-results/strict-shared-resources.txt'
+          python scripts/ci_check.py --jobs 3 tests/operations/test_resources.py tests/operations/test_worker_start_cleanup.py tests/operations/test_facade.py tests/operations/test_canonical_asr_admission.py tests/operations/test_ocr_admission.py tests/ui/test_operations_policy.py tests/ui/test_operations_dialog.py tests/e2e/test_operations_cli.py tests/operations/test_production_admission.py tests/operations/test_resource_backup.py tests/audio/test_music.py tests/storage/test_state_json_reader.py tests/ui/test_save_actions.py tests/extract/test_ocr_inventory_boundary.py tests/assistant/test_translation.py tests/ui/test_translation_selection.py tests/studio/test_publishing.py tests/studio/test_publishing_cli.py tests/studio/test_publishing_handlers.py 2>&1 | Tee-Object 'ci-v3-results/strict-shared-resources.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Keep source and test evidence only
         if: always()

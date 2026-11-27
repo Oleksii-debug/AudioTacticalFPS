@@ -670,8 +670,10 @@ def install_studio_actions(frame):
     import wx
     from .engine_settings import show_engine_settings
     from .transcription_dialog import show_transcription
+    from .publishing_dialog import show_publishing
     menu = wx.Menu()
     for title, handler in [('Script and audio production...\tCtrl+Alt+A', lambda e: show_studio(frame)),
+                            ('Publish synchronized EPUB3...', lambda e: show_publishing(frame)),
                             ('Convert audio and apply effects...', lambda e: show_audio_conversion(frame)),
                             ('Local transcription...', lambda e: show_transcription(frame)),
                             ('Local voice and music engines...', lambda e: show_engine_settings(frame))]:

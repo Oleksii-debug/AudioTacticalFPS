@@ -33,6 +33,11 @@ class ProviderError(RuntimeError):
     """User-safe provider failure, without remote response bodies or credentials."""
 
 
+def translation_receipt_sha256(value, detected_source):
+    """Bind decoded translation and detected language, independently of wire JSON."""
+    return sha256(canonical({'text': value, 'detected_source': detected_source}).encode('utf-8')).hexdigest()
+
+
 def money(value):
     try:
         result = Decimal(str(value))
@@ -398,12 +403,14 @@ class Gateway:
                         if (not isinstance(translations, list) or len(translations) != 1
                                 or type(translations[0]) is not dict or type(translations[0].get('translatedText')) is not str):
                             raise ProviderError('The text translation response is invalid.')
-                        result['text'] = html.unescape(text(translations[0]['translatedText'], 'translation output', maximum=max_response_bytes))
+                        decoded = html.unescape(text(translations[0]['translatedText'], 'translation output', maximum=max_response_bytes))
+                        result['text'] = text(decoded, 'translation output', maximum=max_response_bytes)
                         detected = translations[0].get('detectedSourceLanguage')
                         if detected is not None and (not isinstance(detected, str) or not re.fullmatch('[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8}){0,3}', detected)):
                             raise ProviderError('The detected translation language is invalid.')
                         result['detected_source'] = detected
-                        usage = {'submitted_characters': len(body['q'])}
+                        usage = {'submitted_characters': len(body['q']),
+                                 'decoded_translation_sha256': translation_receipt_sha256(result['text'], detected)}
                 else:
                     choices = parsed.get('choices') if type(parsed) is dict else None
                     if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):

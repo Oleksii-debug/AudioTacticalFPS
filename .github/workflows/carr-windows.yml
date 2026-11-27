@@ -317,8 +317,28 @@ jobs:
           "CARR_NATIVE_LAUNCHER=$launcher" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "CARR_NATIVE_LAUNCHER_SHA256=$digest" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
 
-      - name: Build, install and exercise the complete bundle with runtime egress blocked
+      - name: Prepare the pinned EPUB conformance validator outside the application
+        id: epubcheck_runtime
         if: ${{ !cancelled() && steps.local_model.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' }}
+        timeout-minutes: 5
+        run: |
+          $pin = Get-Content -LiteralPath 'packaging/epubcheck.json' -Raw | ConvertFrom-Json
+          if ($pin.schema -ne 1 -or $pin.version -ne '5.3.0') { throw 'Unexpected reviewed EPUBCheck protocol or version.' }
+          $archive = Join-Path $env:RUNNER_TEMP 'carr-epubcheck-5.3.0.zip'
+          Invoke-WebRequest -Uri $pin.url -OutFile $archive
+          $archiveHash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ((Get-Item -LiteralPath $archive).Length -ne $pin.size -or $archiveHash -ne $pin.sha256) { throw 'EPUBCheck archive differs from the reviewed size or SHA256.' }
+          $java = (Get-Command java.exe -ErrorAction Stop).Source
+          & $java -version 2>&1 | Tee-Object 'ci-results/epubcheck-java-version.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'The actual Java conformance runtime is unavailable.' }
+          @{ schema=1; status='PASS'; bundled=$false; version=$pin.version; archive_sha256=$archiveHash;
+             java=$java; java_sha256=(Get-FileHash -LiteralPath $java -Algorithm SHA256).Hash.ToLowerInvariant()
+           } | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 'ci-results/epubcheck-tool-binding.json'
+          "CARR_EPUBCHECK_ARCHIVE=$archive" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARR_EPUBCHECK_JAVA=$java" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Build, install and exercise the complete bundle with runtime egress blocked
+        if: ${{ !cancelled() && steps.local_model.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' && steps.epubcheck_runtime.conclusion == 'success' }}
         timeout-minutes: 20
         run: |
           if (-not $env:CARR_NATIVE_LAUNCHER -or -not $env:CARR_NATIVE_LAUNCHER_SHA256) { throw 'The native launcher must pass its exact process acceptance before bundle assembly.' }
@@ -406,9 +426,15 @@ jobs:
           $testFfmpeg = Join-Path $testAudioBin 'ffmpeg.exe'
           $testFfprobe = Join-Path $testAudioBin 'ffprobe.exe'
           if (!(Test-Path -LiteralPath $testFfmpeg -PathType Leaf) -or !(Test-Path -LiteralPath $testFfprobe -PathType Leaf)) { throw 'The external private audio test runtime is incomplete.' }
+          $env:CARR_CI_AUDIO_DIR = $testAudio
+          "CARR_CI_AUDIO_DIR=$testAudio" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          @{ schema=1; status='PASS'; bundled=$false; runtime_root=$testAudio;
+             ffmpeg=@{ path=$testFfmpeg; sha256=(Get-FileHash -LiteralPath $testFfmpeg -Algorithm SHA256).Hash.ToLowerInvariant() };
+             ffprobe=@{ path=$testFfprobe; sha256=(Get-FileHash -LiteralPath $testFfprobe -Algorithm SHA256).Hash.ToLowerInvariant() }
+           } | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 'ci-results/external-test-audio-binding.json'
           $seedBasePython = (& $env:CARR_PYTHON -I -B -c "import sys; print(sys._base_executable)").Trim()
           if ($LASTEXITCODE -ne 0 -or -not $seedBasePython) { throw 'The existing test Python base executable is unavailable.' }
-          $programs = @($bundledPython, (Join-Path $bundle 'runtime/pythonw.exe'), $installedPython, (Join-Path $bundle '.venv/Scripts/pythonw.exe'), (Join-Path $bundle 'ocr/tesseract.exe'), $citationNode, $sealedLauncher, $env:CARR_PYTHON, $seedBasePython, $testFfmpeg, $testFfprobe) | ForEach-Object { [System.IO.Path]::GetFullPath($_) } | Sort-Object -Unique
+          $programs = @($bundledPython, (Join-Path $bundle 'runtime/pythonw.exe'), $installedPython, (Join-Path $bundle '.venv/Scripts/pythonw.exe'), (Join-Path $bundle 'ocr/tesseract.exe'), $citationNode, $sealedLauncher, $env:CARR_PYTHON, $seedBasePython, $testFfmpeg, $testFfprobe, $env:CARR_EPUBCHECK_JAVA) | ForEach-Object { [System.IO.Path]::GetFullPath($_) } | Sort-Object -Unique
           $rulePrefix = 'CARR-offline-' + [guid]::NewGuid().ToString('N')
           $ruleNames = @()
           $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
@@ -454,6 +480,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $nativeOperations = Get-Content -LiteralPath 'ci-results/installed-native-operations.json' -Raw | ConvertFrom-Json
           if ($nativeOperations.status -ne 'PASS' -or $nativeOperations.native_destruction -ne 'PASS' -or $nativeOperations.native_parent_destruction -ne 'PASS' -or $nativeOperations.named_controls_and_policy_save -ne 'PASS' -or $nativeOperations.native_close_during_initialization -ne 'PASS') { throw 'Installed native resource controls did not complete their actual acceptance.' }
+          & $installedPython -I -B -X utf8 scripts/windows_save_timer_smoke.py --output 'ci-results/installed-save-timer.json' 2>&1 | Tee-Object 'ci-results/installed-save-timer.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Installed native draft timer lifetime acceptance failed.' }
+          & $installedPython -I -B -X utf8 scripts/windows_publishing_smoke.py --audio-evidence 'ci-results/external-test-audio-binding.json' --require-sapi 2>&1 | Tee-Object 'ci-results/installed-native-publishing.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Installed native synchronized publication acceptance failed.' }
+          & $installedPython -I -B -X utf8 scripts/epubcheck_acceptance.py --archive $env:CARR_EPUBCHECK_ARCHIVE --java $env:CARR_EPUBCHECK_JAVA --audio-evidence 'ci-results/external-test-audio-binding.json' --require-installed --report 'ci-results/installed-epub-conformance.json' 2>&1 | Tee-Object 'ci-results/installed-epub-conformance.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Installed EPUBCheck conformance acceptance failed.' }
           if ((Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash -ne $manifestBefore) { throw 'Bundle manifest changed during installation or startup.' }
           & $bundledPython -I -B -c "import importlib.util,json,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); manifest=json.loads((root/'bundle-manifest.json').read_text()); assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime']; print(json.dumps(dict(status='PASS',python=sys.version,manifest_unchanged=True,sealed_files_verified=True,model='INCLUDED',ocr='INCLUDED',private_native_runtime='INCLUDED',nvda='NOT_RUN')))" $bundle | Tee-Object 'ci-results/full-bundle-verified.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -470,9 +502,16 @@ jobs:
           import ctypes, json, os, pathlib, sys
           from ctypes import wintypes
           import carr_library
+          import carr_library.durable_state, carr_library.ui.save_actions
+          import carr_library.assistant.providers, carr_library.assistant.translation
+          import carr_library.studio.publishing, carr_library.studio.cli
           from carr_library.native_runtime import activate_bundled_runtime
           root = pathlib.Path(sys.argv[1]).resolve()
-          assert pathlib.Path(carr_library.__file__).resolve().is_relative_to(root / '.venv')
+          installed_origins = {module.__name__: str(pathlib.Path(module.__file__).resolve())
+                               for module in (carr_library, carr_library.durable_state, carr_library.ui.save_actions,
+                                              carr_library.assistant.providers, carr_library.assistant.translation,
+                                              carr_library.studio.publishing, carr_library.studio.cli)}
+          assert all(pathlib.Path(path).is_relative_to(root / '.venv') for path in installed_origins.values()), installed_origins
           manifest = json.loads((root / 'bundle-manifest.json').read_text())
           assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime']
           # Test-only command discovery is scoped to this installed-package child.
@@ -481,7 +520,7 @@ jobs:
           os.environ['TESSDATA_PREFIX'] = str(root / 'ocr' / 'tessdata')
           runtime_handle = activate_bundled_runtime(bundle_root=root)
           assert runtime_handle is not None
-          print(json.dumps({'installed_package': True, 'source_commit': manifest['source_commit']}), flush=True)
+          print(json.dumps({'installed_package': True, 'source_commit': manifest['source_commit'], 'origins': installed_origins}), flush=True)
           import pytest
           # Keep the shared workflow list intact while exercising the additive
           # contents reader in this same installed-package/native-runtime process.
@@ -491,6 +530,14 @@ jobs:
                             'tests/ingest/test_import_metadata_shape.py',
                             'tests/operations/test_resources.py',
                             'tests/operations/test_resource_backup.py',
+                            'tests/storage/test_state_json_reader.py',
+                            'tests/ui/test_save_actions.py',
+                            'tests/extract/test_ocr_inventory_boundary.py',
+                            'tests/assistant/test_translation.py',
+                            'tests/ui/test_translation_selection.py',
+                            'tests/studio/test_publishing.py',
+                            'tests/studio/test_publishing_cli.py',
+                            'tests/studio/test_publishing_handlers.py',
                             'tests/operations/test_production_admission.py',
                             'tests/operations/test_worker_start_cleanup.py',
                             'tests/operations/test_facade.py',
@@ -620,6 +667,14 @@ jobs:
             'tests/ingest/test_import_metadata_shape.py',
             'tests/operations/test_resources.py',
             'tests/operations/test_resource_backup.py',
+            'tests/storage/test_state_json_reader.py',
+            'tests/ui/test_save_actions.py',
+            'tests/extract/test_ocr_inventory_boundary.py',
+            'tests/assistant/test_translation.py',
+            'tests/ui/test_translation_selection.py',
+            'tests/studio/test_publishing.py',
+            'tests/studio/test_publishing_cli.py',
+            'tests/studio/test_publishing_handlers.py',
             'tests/operations/test_production_admission.py',
             'tests/operations/test_worker_start_cleanup.py',
             'tests/operations/test_facade.py',

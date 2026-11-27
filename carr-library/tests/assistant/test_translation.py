@@ -8,6 +8,7 @@ from time import time
 import pytest
 from carr_library.assistant.profiles import ProviderProfile
 from carr_library.assistant.providers import Authorization, Gateway, ProviderError
+from carr_library.assistant import providers
 from carr_library.assistant.translation import TranslationService, split_text, ENDPOINT
 from carr_library.assistant.state import read_json
 from carr_library.speech.reading import ReadingDocument
@@ -197,6 +198,67 @@ def test_export_preserves_original_and_derivative_authority(tmp_path, connection
         service.export(identity, output)
 
 
+@pytest.mark.parametrize('source, expected', [
+    pytest.param('A' * 4498 + '\n\nB', 'Переклад\n\nПереклад', id='paragraphs'),
+    pytest.param('A' * 4499 + ' B', 'Переклад Переклад', id='word-space'),
+    pytest.param('A' * 4497 + '\r\n\tB', 'Переклад\r\n\tПереклад', id='split-whitespace'),
+    pytest.param('A' * 4499 + ' \u2003B', 'Переклад \u2003Переклад', id='unicode-space'),
+    pytest.param('A' * 4499 + ' ' * 4501 + '\tB',
+                 'Переклад' + ' ' * 4501 + '\tПереклад', id='whitespace-only-chunk'),
+    pytest.param('漢' * 4501, 'ПерекладПереклад', id='no-space-script'),
+])
+def test_export_preserves_source_separators_between_translation_chunks(tmp_path, connection, source, expected):
+    service, p, _ = ready(tmp_path, connection)
+    connection['custom'] = {'data': {'translations': [{'translatedText': 'Переклад'}]}}
+    approval, cost = translation_approval(p, source, 'en', 'uk', '1')
+    identity = service.submit(p, source, 'en', 'uk', authorization=approval, per_call_cost=cost)
+    assert service.resume(identity)['status'] == 'complete'
+    saved = service.jobs.load(identity)
+    request_count = len(connection['calls'])
+    output = tmp_path / 'export'
+    service.export(identity, output)
+    assert (output / 'translated.txt').read_bytes().decode('utf-8') == expected
+    assert (output / 'original.txt').read_bytes().decode('utf-8') == source
+    reading = ReadingDocument.load(output / 'translation.reading.json')
+    assert reading.text == expected and reading.source_text == source
+    assert service.jobs.load(identity) == saved
+    assert len(connection['calls']) == request_count
+
+
+def test_resumed_translation_keeps_exact_join_separator_without_changing_receipts(tmp_path, connection):
+    service, p, _ = ready(tmp_path, connection)
+    source = 'A' * 4498 + '\n\nB'
+    approval, cost = translation_approval(p, source, 'en', 'uk', '1')
+    identity = service.submit(p, source, 'en', 'uk', authorization=approval, per_call_cost=cost)
+    connection['custom'] = {'data': {'translations': [{'translatedText': 'First \n'}]}}
+    stop = []
+    assert service.resume(identity, cancelled=lambda: bool(stop),
+                          progress=lambda *args: stop.append(True))['status'] == 'paused'
+    connection['custom'] = {'data': {'translations': [{'translatedText': '\tSecond'}]}}
+    reopened = TranslationService(service.directory, gateway=service.gateway)
+    assert reopened.resume(identity)['status'] == 'complete'
+    saved = reopened.jobs.load(identity)
+    assert [row['text'] for row in saved['receipts']] == ['First \n', '\tSecond']
+    assert len(connection['calls']) == 3  # Discovery and exactly two approved chunk requests.
+    output = tmp_path / 'resumed-export'
+    reopened.export(identity, output)
+    assert (output / 'translated.txt').read_bytes().decode('utf-8') == 'First\n\nSecond'
+    assert reopened.jobs.load(identity) == saved
+    assert len(connection['calls']) == 3
+
+
+def test_single_chunk_export_preserves_the_exact_provider_text(tmp_path, connection):
+    service, p, _ = ready(tmp_path, connection)
+    source = '  Single source paragraph.\n'
+    translated = '  Exact provider text.\t\n'
+    connection['custom'] = {'data': {'translations': [{'translatedText': translated}]}}
+    approval, cost = translation_approval(p, source, 'en', 'uk', '1')
+    identity = service.submit(p, source, 'en', 'uk', authorization=approval, per_call_cost=cost)
+    assert service.resume(identity)['status'] == 'complete'
+    service.export(identity, tmp_path / 'single-export')
+    assert (tmp_path / 'single-export' / 'translated.txt').read_bytes().decode('utf-8') == translated
+
+
 def test_corrupt_completed_chunk_blocks_resume(tmp_path, connection):
     service, p, _ = ready(tmp_path, connection)
     approval, cost = translation_approval(p, 'Synthetic source', 'en', 'uk', '1')
@@ -320,3 +382,261 @@ def test_sent_or_unresolved_attempts_remain_nonretryable(tmp_path, status):
         ledger.finish(approval.id, 'same_op', status=status)
     with pytest.raises(ProviderError, match='already been attempted'):
         ledger.reserve(approval, 'same_op', request_hash, Decimal('1'), p, 'translation.text')
+
+
+@pytest.mark.parametrize('translated', ['', ' \t\r\n', '&#32;&#10;&#9;', '&nbsp;'])
+def test_empty_decoded_provider_output_keeps_uncertain_charge_and_no_receipt(tmp_path, connection, translated):
+    service, p, _ = ready(tmp_path, connection)
+    connection['custom'] = {'data': {'translations': [{'translatedText': translated}]}}
+    approval, cost = translation_approval(p, 'Selected source with content.', 'en', 'uk', '1')
+    identity = service.submit(p, 'Selected source with content.', 'en', 'uk',
+                              authorization=approval, per_call_cost=cost)
+    with pytest.raises(ProviderError):
+        service.resume(identity)
+    job = service.jobs.load(identity)
+    assert job['status'] == 'attention' and not job['receipts']
+    usage = service.gateway.ledger.get(approval.id)
+    attempted = usage['operations'][identity + '_0']
+    assert attempted['status'] == 'uncertain' and attempted['output_sha256'] is None
+    count = len(connection['calls'])
+    with pytest.raises(ProviderError, match='already been attempted'):
+        service.resume(identity)
+    with pytest.raises(ValueError):
+        service.export(identity, tmp_path / 'empty-export')
+    assert len(connection['calls']) == count
+    assert not (tmp_path / 'empty-export').exists()
+
+
+@pytest.mark.parametrize('action', ['export', 'resume'])
+@pytest.mark.parametrize('mutation', [
+    'source-language', 'target-language', 'model', 'profile-name', 'credential-ref',
+    'per-call-cost', 'authorization', 'request', 'response', 'empty-receipt',
+    'ledger-profile', 'ledger-response', 'ledger-status', 'missing-ledger',
+])
+def test_saved_translation_requires_its_original_authority_and_receipts(tmp_path, connection, action, mutation):
+    from carr_library.assistant.state import atomic_json
+    service, p, _ = ready(tmp_path, connection)
+    source = 'Selected immutable source.'
+    approval, cost = translation_approval(p, source, 'en', 'uk', '1')
+    identity = service.submit(p, source, 'en', 'uk', authorization=approval, per_call_cost=cost)
+    assert service.resume(identity)['status'] == 'complete'
+    job = service.jobs.load(identity)
+    usage_path = service.gateway.ledger._path(approval.id)
+    if mutation == 'source-language':
+        job['source_language'] = 'auto'
+    elif mutation == 'target-language':
+        job['target_language'] = 'pl'
+    elif mutation == 'model':
+        job['profile']['model'] = 'another-model'
+    elif mutation == 'profile-name':
+        job['profile']['name'] = 'A different account snapshot'
+    elif mutation == 'credential-ref':
+        job['profile']['credential_ref'] = 'carr/provider/google_test/' + 'b' * 32
+    elif mutation == 'per-call-cost':
+        job['per_call_cost'] = '0.25'
+    elif mutation == 'authorization':
+        job['authorization']['budget'] = '2'
+    elif mutation == 'request':
+        job['receipts'][0]['request_sha256'] = '0' * 64
+    elif mutation == 'response':
+        job['receipts'][0]['response_sha256'] = '0' * 64
+    elif mutation == 'empty-receipt':
+        job['receipts'][0]['text'] = ' \n'
+        job['receipts'][0]['translation_sha256'] = sha256(b' \n').hexdigest()
+    elif mutation == 'missing-ledger':
+        usage_path.unlink()
+    else:
+        usage = service.gateway.ledger.get(approval.id)
+        recorded = usage['operations'][identity + '_0']
+        if mutation == 'ledger-profile':
+            recorded['profile_sha256'] = '0' * 64
+        elif mutation == 'ledger-response':
+            recorded['output_sha256'] = '0' * 64
+        else:
+            recorded['status'] = 'uncertain'
+        atomic_json(usage_path, usage)
+    service.jobs.save(job)
+    before = service.jobs.path(identity).read_bytes()
+    count = len(connection['calls'])
+    output = tmp_path / 'invalid-export'
+    with pytest.raises((ValueError, PermissionError)):
+        if action == 'export':
+            service.export(identity, output)
+        else:
+            service.resume(identity)
+    assert not output.exists()
+    assert len(connection['calls']) == count
+    assert service.jobs.path(identity).read_bytes() == before
+
+
+def test_verified_completed_translation_exports_offline_after_approval_expiry(tmp_path, connection, monkeypatch):
+    from carr_library.assistant import providers
+    service, p, vault = ready(tmp_path, connection)
+    source = 'A completed translation stays available offline.'
+    approval, cost = translation_approval(p, source, 'en', 'uk', '1')
+    identity = service.submit(p, source, 'en', 'uk', authorization=approval, per_call_cost=cost)
+    assert service.resume(identity)['status'] == 'complete'
+    receipts = service.jobs.load(identity)['receipts']
+    calls, credentials = len(connection['calls']), len(vault.calls)
+    monkeypatch.setattr(providers, 'time', lambda: approval.expires_at + 60)
+    service.gateway.mode = 'LOCAL_ONLY'
+    reopened = TranslationService(service.directory, gateway=service.gateway)
+    assert reopened.resume(identity)['status'] == 'complete'
+    reopened.export(identity, tmp_path / 'offline-export')
+    assert (tmp_path / 'offline-export/original.txt').read_text(encoding='utf-8') == source
+    assert reopened.jobs.load(identity)['receipts'] == receipts
+    assert len(connection['calls']) == calls and len(vault.calls) == credentials
+
+
+def test_unstarted_translation_is_readable_without_a_usage_record(tmp_path, connection):
+    service, p, _ = ready(tmp_path, connection)
+    approval, cost = translation_approval(p, 'Selected source.', 'en', 'uk', '1')
+    identity = service.submit(p, 'Selected source.', 'en', 'uk', authorization=approval, per_call_cost=cost)
+    assert not service.gateway.ledger._path(approval.id).exists()
+    saved, = service.list()
+    assert saved['id'] == identity and saved['status'] == 'queued'
+    assert service.resume(identity)['status'] == 'complete'
+
+
+@pytest.mark.parametrize('action', ['export', 'resume'])
+@pytest.mark.parametrize('mutation', ['text-and-local-hash', 'detected-language', 'missing-job-digest', 'missing-ledger-digest'])
+def test_decoded_translation_receipt_is_independently_bound(tmp_path, connection, action, mutation):
+    from carr_library.assistant.state import atomic_json
+    service, p, _ = ready(tmp_path, connection)
+    source = 'Synthetic selected text.'
+    approval, cost = translation_approval(p, source, 'auto', 'uk', '1')
+    identity = service.submit(p, source, 'auto', 'uk', authorization=approval, per_call_cost=cost)
+    assert service.resume(identity)['status'] == 'complete'
+    job = service.jobs.load(identity)
+    receipt = job['receipts'][0]
+    usage = service.gateway.ledger.get(approval.id)
+    accepted = usage['operations'][identity + '_0']
+    key = 'decoded_translation_sha256'
+    assert receipt[key] == accepted['usage'][key]
+    if mutation == 'text-and-local-hash':
+        receipt['text'] = 'Changed local translation'
+        receipt['translation_sha256'] = sha256(receipt['text'].encode('utf-8')).hexdigest()
+        receipt[key] = providers.translation_receipt_sha256(receipt['text'], receipt['detected_source'])
+    elif mutation == 'detected-language':
+        receipt['detected_source'] = 'fr'
+        receipt[key] = providers.translation_receipt_sha256(receipt['text'], receipt['detected_source'])
+    elif mutation == 'missing-job-digest':
+        del receipt[key]
+    else:
+        del accepted['usage'][key]
+        atomic_json(service.gateway.ledger._path(approval.id), usage)
+    service.jobs.save(job)
+    before = service.jobs.path(identity).read_bytes()
+    count = len(connection['calls'])
+    output = tmp_path / 'invalid-decoded-export'
+    with pytest.raises(ValueError, match='decoded translation receipt'):
+        if action == 'export':
+            service.export(identity, output)
+        else:
+            service.resume(identity)
+    assert not output.exists()
+    assert service.jobs.path(identity).read_bytes() == before
+    assert len(connection['calls']) == count
+
+
+@pytest.mark.parametrize('legacy', [False, True])
+def test_export_labels_decoded_integrity_without_rebilling_or_inventing_legacy_evidence(tmp_path, connection, legacy):
+    from carr_library.assistant.state import atomic_json
+    service, p, vault = ready(tmp_path, connection)
+    source = 'Synthetic selected text.'
+    approval, cost = translation_approval(p, source, 'auto', 'uk', '1')
+    identity = service.submit(p, source, 'auto', 'uk', authorization=approval, per_call_cost=cost)
+    assert service.resume(identity)['status'] == 'complete'
+    job = service.jobs.load(identity)
+    receipt = job['receipts'][0]
+    usage = service.gateway.ledger.get(approval.id)
+    accepted = usage['operations'][identity + '_0']
+    key = 'decoded_translation_sha256'
+    if legacy:
+        del receipt[key]
+        del accepted['usage'][key]
+        service.jobs.save(job)
+        atomic_json(service.gateway.ledger._path(approval.id), usage)
+    calls, credentials = len(connection['calls']), len(vault.calls)
+    service.gateway.mode = 'LOCAL_ONLY'
+    output = tmp_path / 'decoded-export'
+    service.export(identity, output)
+    row = read_json(output / 'translation-provenance.json')['chunks'][0]
+    assert row['decoded_receipt_integrity'] == ('legacy-wire-only' if legacy else 'decoded-ledger-bound')
+    assert (key in row) == (not legacy)
+    assert service.jobs.load(identity) == job
+    assert (output / 'original.txt').read_text(encoding='utf-8') == source
+    assert (output / 'translated.txt').read_text(encoding='utf-8') == receipt['text']
+    assert len(connection['calls']) == calls and len(vault.calls) == credentials
+
+
+def test_full_backup_keeps_decoded_translation_evidence_and_offline_authority(tmp_path, connection, monkeypatch):
+    from carr_library.application import LibraryApp
+    from carr_library.library_backup import restore_backup
+
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Translation recovery')
+    source = 'An immutable selected source. Точний український фрагмент.'
+    retained = app.add_text(workspace, 'Translation source', source)
+    # Both independent stores must be inside the real backed-up application state.
+    service, p, vault = ready(app.root / 'state', connection)
+    approval, cost = translation_approval(p, source, 'auto', 'uk', '1')
+    identity = service.submit(p, source, 'auto', 'uk', authorization=approval, per_call_cost=cost)
+    assert service.resume(identity)['status'] == 'complete'
+    original_job = service.jobs.load(identity)
+    key = 'decoded_translation_sha256'
+    original_usage = service.gateway.ledger.get(approval.id)
+    assert original_job['receipts'][0][key] == original_usage['operations'][identity + '_0']['usage'][key]
+    original_files = {
+        path.relative_to(app.root / 'state'): path.read_bytes()
+        for path in (service.jobs.path(identity), service.gateway.ledger._path(approval.id))
+    }
+    backup = tmp_path / 'backup'
+    checksum = app.backup(backup)
+    manifest = read_json(backup / 'manifest.json')
+    inventory = {item['filename']: item for item in manifest['state']}
+    for relative, raw in original_files.items():
+        entry = inventory[relative.as_posix()]
+        assert entry['size_bytes'] == len(raw) and entry['sha256'] == sha256(raw).hexdigest()
+        assert (backup / 'state' / relative).read_bytes() == raw
+
+    restored = LibraryApp(restore_backup(backup, tmp_path / 'restored', checksum))
+    assert restored.assets.resolve(retained['asset']).read_bytes() == source.encode('utf-8')
+    for relative, raw in original_files.items():
+        recovered = restored.root / 'state' / relative
+        assert recovered.read_bytes() == raw and recovered.stat().st_nlink == 1
+    gateway = Gateway(restored.root / 'state' / 'gateway', vault=vault, mode='LOCAL_ONLY')
+    reopened = TranslationService(restored.root / 'state' / 'translation', gateway=gateway)
+    calls, credentials = len(connection['calls']), len(vault.calls)
+    monkeypatch.setattr(providers, 'time', lambda: approval.expires_at + 60)
+    assert reopened.resume(identity)['status'] == 'complete'
+    recovered_job = reopened.jobs.load(identity)
+    assert recovered_job['authorization'] == original_job['authorization']
+    assert recovered_job['per_call_cost'] == original_job['per_call_cost']
+    assert recovered_job['receipts'] == original_job['receipts']
+    assert gateway.ledger.get(approval.id) == original_usage
+    output = tmp_path / 'restored-export'
+    reopened.export(identity, output)
+    provenance = read_json(output / 'translation-provenance.json')
+    assert provenance['chunks'][0]['decoded_receipt_integrity'] == 'decoded-ledger-bound'
+    assert provenance['chunks'][0][key] == original_job['receipts'][0][key]
+    assert (output / 'original.txt').read_bytes() == source.encode('utf-8')
+    assert (output / 'translated.txt').read_text(encoding='utf-8') == original_job['receipts'][0]['text']
+    assert len(connection['calls']) == calls and len(vault.calls) == credentials
+
+    # Restoring preserves the independent ledger check, not just self-consistent JSON.
+    damaged = reopened.jobs.load(identity)
+    row = damaged['receipts'][0]
+    row['text'] = 'A substituted local translation after restore.'
+    row['translation_sha256'] = sha256(row['text'].encode('utf-8')).hexdigest()
+    row[key] = providers.translation_receipt_sha256(row['text'], row['detected_source'])
+    reopened.jobs.save(damaged)
+    with pytest.raises(ValueError, match='decoded translation receipt'):
+        reopened.export(identity, tmp_path / 'invalid-restored-export')
+    assert not (tmp_path / 'invalid-restored-export').exists()
+    assert gateway.ledger.get(approval.id) == original_usage
+    assert len(connection['calls']) == calls and len(vault.calls) == credentials
+    for relative, raw in original_files.items():
+        assert (app.root / 'state' / relative).read_bytes() == raw
+        assert (backup / 'state' / relative).read_bytes() == raw
+
