@@ -15,7 +15,7 @@ unchanged until a verified migration; visible application titles use Resonance.
 | Reading and voices | Source-preserving reading derivatives, pronunciation edits, local voice discovery, playback and SAPI5 native COM worker | Real Windows SAPI PCM with outbound network blocked; local Flite rendering; other engine assets require separate qualification |
 | Audio studio | Roles, scenes, explicit voice/position, pauses, procedural score, DSP, chapters, stems, subtitles, verified resume/cache and formats | Real FFmpeg production and Windows restart; 1/3/10-hour streaming fixtures are not equivalent to full-length neural inference |
 | Documents and citations | Isolated bounded conversion, local citeproc-js styles/locales, editable DOCX with citation provenance, opt-in DOI previews | Actual local processor, generated documents and integrity tests; no live Word add-in |
-| Recovery | Manifest-bound backup v4 includes pending import bytes, identities, settings and project state | Real backup/restore and resumed import tests; externally exported audio and OS credential secrets are separate |
+| Recovery | Manifest-bound backups include pending import bytes, settings, projects and personal reading positions/bookmarks; exact V3/V4 catalogs migrate transactionally to V5 | Real backup/restore and resumed import tests; transaction-bound request/attempt receipts identify the first publisher. A stopped replay without a new receipt requires explicit resume. External audio and OS credential secrets remain separate |
 | Keyboard and progress | Configurable menu keys, named native controls, measured or indeterminate progress, optional tones and explicitly selected local-voice notices in English/Ukrainian/Slovak; playback/recording quieting and settings backup | Actual Windows key injection and progress/result regressions; human NVDA and listening review remain required; the recording quiet contract does not implement microphone capture |
 | Language inventory | Exact canonical 135 entries, source audit and searchable capability matrix | Resource inventory is separate from acoustic qualification; no claim of 135 working voices |
 | Assistant and providers | Typed scoped tools, durable jobs, local-only default, protected credential references and per-request consent/budget | Local and synthetic provider tests; no paid provider call was made during implementation |
@@ -43,6 +43,12 @@ The following cannot be labelled DONE by passing the current core tests:
 - Actual installed dordiai/SAPI4 compatibility, MusicGen/ACE-Step model inference,
   the remaining approved Balabolka-equivalent workflow checklist and synchronized
   publishing/Braille workflows.
+- Professional Studio microphone capture, complete clip/track editing and
+  monitoring acceptance. Existing rendering, DSP and scene production do not
+  establish those recording and editing workflows.
+- The remaining document/local-translation workflows, Google Advanced v3 and
+  actual language-model assistant execution. Provider credentials alone do not
+  complete these implementations or qualify their output.
 - Independent qualification of every required capability for the canonical 135
   entries; registry/resource counts never establish language quality.
 - Human Windows 11/NVDA and listening review. Automated Windows Server native

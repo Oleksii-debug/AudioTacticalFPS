@@ -63,7 +63,7 @@ def _unique(pairs):
 
 
 def _open_json_file(path):
-    """Read one snapshot without blocking another process's atomic replacement."""
+    """Read one snapshot with delete sharing for the atomic state publisher."""
     if os.name != 'nt':
         return path.open('rb')
     import ctypes
@@ -135,6 +135,54 @@ def sync_directory(path):
             os.close(descriptor)
 
 
+def _replace_file(source, destination):
+    """Atomically publish a new file while existing readers retain their snapshot."""
+    try:
+        return os.replace(source, destination)
+    except PermissionError as error:
+        if os.name != 'nt' or getattr(error, 'winerror', None) not in (5, 32, 33):
+            raise
+    import ctypes
+    from ctypes import wintypes
+
+    class RenameInfo(ctypes.Structure):
+        _fields_ = [('Flags', wintypes.DWORD), ('RootDirectory', wintypes.HANDLE),
+                    ('FileNameLength', wintypes.DWORD), ('FileName', wintypes.WCHAR * 1)]
+
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    create = kernel.CreateFileW
+    create.argtypes = (wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                       ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE)
+    create.restype = wintypes.HANDLE
+    rename = kernel.SetFileInformationByHandle
+    rename.argtypes = (wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD)
+    rename.restype = wintypes.BOOL
+    close = kernel.CloseHandle
+    close.argtypes, close.restype = (wintypes.HANDLE,), wintypes.BOOL
+
+    # MoveFileEx (used by os.replace) cannot replace an open destination even
+    # when it shares delete access. FileRenameInfoEx with POSIX semantics keeps
+    # existing handles on the old file and atomically publishes the new name.
+    # Ordinary DELETE permission still applies; no access or readonly bypass.
+    filename = str(destination).encode('utf-16-le')
+    size = RenameInfo.FileName.offset + len(filename)
+    buffer = ctypes.create_string_buffer(size)
+    info = ctypes.cast(buffer, ctypes.POINTER(RenameInfo)).contents
+    info.Flags = 0x1 | 0x2  # REPLACE_IF_EXISTS | POSIX_SEMANTICS
+    info.RootDirectory = None
+    info.FileNameLength = len(filename)
+    ctypes.memmove(ctypes.addressof(buffer) + RenameInfo.FileName.offset, filename, len(filename))
+    # DELETE; FILE_SHARE_READ | WRITE | DELETE; OPEN_EXISTING; OPEN_REPARSE_POINT.
+    handle = create(str(source), 0x00010000, 0x7, None, 3, 0x00200000, None)
+    if handle == ctypes.c_void_p(-1).value:
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        if not rename(handle, 22, buffer, size):  # FileRenameInfoEx
+            raise ctypes.WinError(ctypes.get_last_error())
+    finally:
+        close(handle)
+
+
 def atomic_bytes(path, raw, *, replace=False):
     path = local_path(path)
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -151,7 +199,7 @@ def atomic_bytes(path, raw, *, replace=False):
             stream.flush()
             os.fsync(stream.fileno())
         if replace:
-            os.replace(temporary, path)
+            _replace_file(temporary, path)
         elif os.name == 'nt':
             # Windows rename refuses an existing destination and leaves no
             # second hard link if the process exits immediately after success.

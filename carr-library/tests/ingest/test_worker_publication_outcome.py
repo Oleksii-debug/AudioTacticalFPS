@@ -44,8 +44,14 @@ def child_barrier(monkeypatch, marker, *, point='after-publication', crash=False
 
     def launch(command, *args, **kwargs):
         command = list(command)
+        # Windows cancellation also starts taskkill through this shared module.
+        # Instrument only the actual import child, preserving native termination.
+        if '-c' not in command:
+            return original_popen(command, *args, **kwargs)
         index = command.index('-c') + 1
-        assert "runpy.run_module('carr_library.ingest.worker'" in command[index]
+        if (index >= len(command)
+                or "runpy.run_module('carr_library.ingest.worker'" not in command[index]):
+            return original_popen(command, *args, **kwargs)
         bootstrap = textwrap.dedent(f'''
             import sys, runpy, os, time
             from pathlib import Path
@@ -151,19 +157,41 @@ def test_cancelled_replay_does_not_claim_an_existing_publication_as_new_work(tmp
     assert hit.revision == initial['id']
 
 
-def test_stopped_replay_reports_new_membership_that_really_committed(tmp_path, monkeypatch):
+def test_stopped_replay_requires_explicit_resume_for_its_committed_membership(tmp_path, monkeypatch):
     app, workspace, _, source, metadata = source_case(tmp_path)
+    original = source.read_bytes()
     initial = app.import_file(workspace, source, **metadata)
+    with app.read(workspace) as db:
+        receipt = tuple(db.execute('SELECT * FROM import_publication').fetchone())
     requested = app.create_collection(workspace, 'New committed membership')
     marker = tmp_path / 'after-replay-commit'
-    child_barrier(monkeypatch, marker, point='after-import')
+    with monkeypatch.context() as patch:
+        launches = child_barrier(patch, marker, point='after-import')
+        result = app.import_file(workspace, source, cancelled=marker.exists,
+                                **dict(metadata, collections=(requested,)))
 
-    result = app.import_file(workspace, source, cancelled=marker.exists,
-                            **dict(metadata, collections=(requested,)))
-
-    assert marker.exists() and result['state'] == 'complete'
-    assert result['id'] == initial['id']
+    assert marker.exists() and result['state'] == 'cancelled'
+    assert not result.get('publication_recovered') and not result.get('recovered_publication')
+    assert all(process.poll() is not None for process in launches)
     assert len(app.browse(workspace, collection=requested)) == 1
+    assert source.read_bytes() == original
+    # V5 deliberately keeps the first publisher's immutable receipt. A later
+    # membership alone cannot prove which interrupted request committed it.
+    with app.read(workspace) as db:
+        assert tuple(db.execute('SELECT * FROM import_publication').fetchone()) == receipt
+        assert db.execute('SELECT count(*) FROM import_publication').fetchone()[0] == 1
+    stopped = worker.load_request(app.root, result['request_id'])
+    assert stopped['publication_candidate'] is None
+    resumed = app.resume_import(workspace, result['request_id'])
+    assert resumed['state'] == 'complete' and resumed['id'] == initial['id']
+    assert worker.load_request(app.root, result['request_id'])['attempt'] != stopped['attempt']
+    with app.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+        assert db.execute('SELECT count(*) FROM catalog_membership '
+                          'WHERE workspace=? AND collection=?', (workspace, requested)).fetchone()[0] == 1
+        assert tuple(db.execute('SELECT * FROM import_publication').fetchone()) == receipt
+    initial_request = worker.load_request(app.root, initial['request_id'])
+    assert app.assets.resolve(initial_request['asset_sha256']).read_bytes() == original
 
 
 def test_prior_retained_request_does_not_turn_prework_cancellation_into_success(tmp_path, monkeypatch):
@@ -238,8 +266,9 @@ def test_catalog_change_after_actual_child_stop_cannot_authorize_completion(tmp_
     monkeypatch.setattr(worker, '_stop', stop_then_change)
     result = app.import_file(workspace, source, cancelled=marker.exists, **metadata)
     assert changed == [damage]
-    assert result['state'] == 'cancelled' and 'recovered_publication' not in result
-    assert worker.load_request(app.root, result['request_id'])['state'] == 'cancelled'
+    assert result['state'] == 'failed' and 'recovered_publication' not in result
+    assert 'could not verify' in result['message']
+    assert worker.load_request(app.root, result['request_id'])['state'] == 'failed'
 
 
 @pytest.mark.parametrize('kind', ['txt', 'pdf'])

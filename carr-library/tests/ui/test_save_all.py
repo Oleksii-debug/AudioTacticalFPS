@@ -137,3 +137,103 @@ def test_truthy_return_is_not_a_completed_save():
     coordinator.save_all(summaries.append)
     assert coordinator.busy
     assert summaries == []
+
+
+def _installed_save_actions(tmp_path, monkeypatch):
+    """Run the actual installer and durable writer with explicit event/timer doubles."""
+    import sys
+    import threading
+    from collections import defaultdict
+    from types import SimpleNamespace
+    from carr_library.ui.save_actions import install_save_actions
+
+    class Timer:
+        def __init__(self, owner):
+            self.owner, self.running, self.interval = owner, False, None
+
+        def Start(self, interval):
+            self.running, self.interval = True, interval
+
+        def Stop(self):
+            self.running = False
+
+        def IsRunning(self):
+            return self.running
+
+    wx = SimpleNamespace(Timer=Timer, ID_ANY=-1, ID_EXIT=1,
+        EVT_MENU='menu', EVT_TIMER='timer', EVT_WINDOW_DESTROY='destroy',
+        Menu=lambda: SimpleNamespace(Append=lambda identity, title: title,
+                                     AppendSeparator=lambda: None))
+    monkeypatch.setitem(sys.modules, 'wx', wx)
+    bindings, reports = defaultdict(list), []
+    note = SimpleNamespace(value='Unsaved research note')
+    note.GetValue = lambda: note.value
+    panel = SimpleNamespace(note=note, displayed=SimpleNamespace(note='Saved note', evidence_id='evidence'))
+    frame = SimpleNamespace(_closing=False, working=False, evidence=panel,
+        active=('workspace', 'topic'), library=SimpleNamespace(root=tmp_path),
+        cancel_event=threading.Event(), report=reports.append,
+        menu_bar=SimpleNamespace(Insert=lambda *args: None),
+        status=SimpleNamespace(SetValue=reports.append), _restore_note_focus=lambda: None)
+    frame._dirty = lambda: note.value != panel.displayed.note
+    frame.Bind = lambda kind, handler, source=None: bindings[kind].append((source, handler))
+
+    def save_note(completed):
+        panel.displayed.note = note.value
+        completed(SaveResult(True))
+
+    panel.save_note = save_note
+    install_save_actions(frame)
+
+    def dispatch(kind, source):
+        event = SimpleNamespace(skipped=False, GetEventObject=lambda: source)
+        event.Skip = lambda: setattr(event, 'skipped', True)
+        for bound_source, handler in bindings[kind]:
+            if kind != 'timer' or bound_source is source:
+                handler(event)
+        return event
+
+    return SimpleNamespace(frame=frame, note=note, reports=reports, bindings=bindings,
+                           timer=frame._draft_save_timer, dispatch=dispatch)
+
+
+def test_autosave_timer_stops_only_when_its_frame_is_destroyed(tmp_path, monkeypatch):
+    state = _installed_save_actions(tmp_path, monkeypatch)
+    other = _installed_save_actions(tmp_path / 'other', monkeypatch)
+    assert state.timer.IsRunning() and other.timer.IsRunning()
+    assert state.timer.interval == 3000
+
+    event = state.dispatch('destroy', state.frame)
+    assert not state.timer.IsRunning()
+    assert event.skipped
+    assert other.timer.IsRunning()
+    assert state.dispatch('destroy', state.frame).skipped
+    assert not state.timer.IsRunning()
+
+
+def test_child_destruction_keeps_actual_draft_autosave_working(tmp_path, monkeypatch):
+    from carr_library.durable_state import read_json
+
+    state = _installed_save_actions(tmp_path, monkeypatch)
+    path = tmp_path / 'state/recovery/research-note.json'
+    state.dispatch('timer', state.timer)
+    assert read_json(path) == {'schema': 1, 'workspace': 'workspace', 'topic': 'topic',
+                               'evidence': 'evidence', 'note': 'Unsaved research note'}
+
+    event = state.dispatch('destroy', state.frame.evidence)
+    assert event.skipped
+    assert state.timer.IsRunning()
+    state.note.value = 'Newer retained draft — нова нотатка'
+    state.dispatch('timer', state.timer)
+    assert read_json(path)['note'] == state.note.value
+
+
+def test_save_all_still_saves_the_registered_note_after_child_destruction(tmp_path, monkeypatch):
+    state = _installed_save_actions(tmp_path, monkeypatch)
+    state.dispatch('destroy', state.frame.evidence)
+    handler = next(handler for label, handler in state.bindings['menu'] if label == 'Save &all')
+    assert handler()
+    assert not state.frame._dirty()
+    assert state.frame.evidence.displayed.note == state.note.value
+    assert not state.frame._save_coordinator.busy
+    assert state.timer.IsRunning()
+    assert state.reports and 'saved' in state.reports[-1].lower()

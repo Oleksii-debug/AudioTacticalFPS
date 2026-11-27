@@ -561,6 +561,12 @@ jobs:
           # contents reader in this same installed-package/native-runtime process.
           contents_suites = [
               'tests/speech/test_source.py',
+              'tests/speech/test_reading.py',
+              'tests/speech/test_session.py',
+              'tests/packaging/test_worker_bytecode.py',
+              'tests/e2e/test_import_worker_publication.py',
+              'tests/storage/test_academic_migration.py',
+              'tests/storage/test_backup_schema_identity.py',
               'tests/reader/test_ebook_contents.py',
               'tests/e2e/test_epub_library.py',
               'tests/e2e/test_epub_reading_desk.py',
@@ -801,6 +807,10 @@ jobs:
             'tests/speech/test_discovery_cancellation.py',
             'tests/storage/test_state_snapshot_identity.py',
             'tests/speech/test_source.py',
+            'tests/speech/test_reading.py',
+            'tests/speech/test_session.py',
+            'tests/packaging/test_worker_bytecode.py',
+            'tests/e2e/test_import_worker_publication.py',
             'tests/e2e/test_pdf_review_cancellation.py',
             'tests/storage/test_crash_backup.py',
             'tests/ui/probe_advanced_query_builder.py',

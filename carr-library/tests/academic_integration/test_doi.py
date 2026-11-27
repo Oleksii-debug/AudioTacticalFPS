@@ -535,7 +535,7 @@ def test_default_https_worker_keeps_exact_host_tls_and_never_follows_redirect(mo
 
 
 def test_actual_isolated_worker_rejects_invalid_envelope_without_echoing_email():
-    completed = subprocess.run([sys.executable, "-I", str(Path(module.__file__)), "--metadata-worker"],
+    completed = subprocess.run(module._worker_argv(),
         input=raw_json({"provider": "https://unexpected.example.org", "email": EMAIL}),
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=3, check=True)
     assert json.loads(completed.stdout) == {"error": "connection"}
@@ -544,7 +544,7 @@ def test_actual_isolated_worker_rejects_invalid_envelope_without_echoing_email()
 
 def test_worker_command_distinguishes_source_python_and_frozen_launcher(monkeypatch, tmp_path):
     monkeypatch.setattr(sys, "frozen", False, raising=False)
-    assert module._worker_argv() == [sys.executable, "-I", str(Path(module.__file__).resolve()), "--metadata-worker"]
+    assert module._worker_argv() == [sys.executable, "-I", "-B", str(Path(module.__file__).resolve()), "--metadata-worker"]
     monkeypatch.setattr(sys, "frozen", True)
     incoming, reply = tmp_path / "request.json", tmp_path / "reply.json"
     assert module._worker_argv(incoming, reply) == [sys.executable, "--carr-doi-metadata-worker", str(incoming), str(reply)]

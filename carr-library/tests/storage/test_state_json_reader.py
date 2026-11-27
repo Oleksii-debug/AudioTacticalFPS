@@ -1,6 +1,8 @@
 """Actual file-handle and child-process checks for concurrently published state."""
+from hashlib import sha256
 import json
 import os
+from pathlib import Path
 import subprocess
 import sys
 
@@ -10,35 +12,34 @@ from carr_library import durable_state as state
 
 
 REPLACE_ONCE = r'''
-import json, os, pathlib, sys
+import hashlib, importlib.util, json, os, pathlib, sys
 target = pathlib.Path(sys.argv[1])
-staged = target.with_suffix('.next')
+module_path = pathlib.Path(sys.argv[2])
+assert hashlib.sha256(module_path.read_bytes()).hexdigest() == sys.argv[3]
+spec = importlib.util.spec_from_file_location('exact_durable_state', module_path)
+state = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(state)
 try:
-    with staged.open('xb') as stream:
-        stream.write(b'{"done":1}')
-        stream.flush()
-        os.fsync(stream.fileno())
-    os.replace(staged, target)
+    state.atomic_json(target, {'done': 1}, replace=True)
 except OSError as error:
     print(json.dumps({'published': False, 'winerror': getattr(error, 'winerror', None)}))
     raise SystemExit(2)
 else:
     print(json.dumps({'published': True}))
-finally:
-    staged.unlink(missing_ok=True)
 '''
 
 
 def replace_in_child(path):
     process = subprocess.run([sys.executable, '-I', '-B', '-X', 'utf8', '-c',
-                              REPLACE_ONCE, str(path)], capture_output=True,
+                              REPLACE_ONCE, str(path), str(Path(state.__file__).resolve()),
+                              sha256(Path(state.__file__).read_bytes()).hexdigest()], capture_output=True,
                              text=True, encoding='utf-8', timeout=15)
     assert process.returncode in (0, 2), process.stderr
     return json.loads(process.stdout)
 
 
 def test_production_json_reader_allows_actual_atomic_child_replacement(tmp_path, monkeypatch):
-    target = tmp_path / 'стан.json'
+    target = tmp_path / 'стан 🌿.json'
     target.write_bytes(b'{"done":0}')
     # This negative control demonstrates the real Windows sharing collision.
     # POSIX permits replacement with either kind of reader, without a skip.
@@ -47,6 +48,8 @@ def test_production_json_reader_allows_actual_atomic_child_replacement(tmp_path,
     if os.name == 'nt':
         assert ordinary['published'] is False
         assert ordinary['winerror'] in (5, 32, 33)
+        assert target.read_bytes() == b'{"done":0}'
+        assert not list(tmp_path.glob('.pending-*'))
     else:
         assert ordinary == {'published': True}
     target.write_bytes(b'{"done":0}')
@@ -70,6 +73,7 @@ def test_production_json_reader_allows_actual_atomic_child_replacement(tmp_path,
     # The already-open snapshot remains coherent after the new state is published.
     assert state.read_json(target) == {'done': 0}
     assert observed == [{'published': True}]
+    assert not list(tmp_path.glob('.pending-*'))
     assert all(stream.closed for stream in streams)
     monkeypatch.setattr(state, '_open_json_file', original)
     assert state.read_json(target) == {'done': 1}
