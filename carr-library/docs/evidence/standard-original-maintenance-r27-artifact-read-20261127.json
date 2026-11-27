@@ -1,0 +1,38 @@
+{
+  "schema": "carr.standard-observed-artifact-read.v1",
+  "status": "DIAGNOSTIC_AUTHORED_NOT_RUN",
+  "source": {
+    "run": 46061428962,
+    "commit": "2d1a4bd89b3c8d63d55848f129e38489e2ea4157",
+    "id": 15229972246,
+    "bytes": 1697192,
+    "sha256": "3e2f5f9ab7011612950c0196849edcd6ae89f8d78616c86c389fd897eeb78af9",
+    "kind": "standard-original-maintenance-and-managed-health-failure"
+  },
+  "purpose": "Independently read the actual original-maintenance receipt and retained native setup/probe/rollback records after the managed-health failure; do not infer rollback or later completion from reaching a call stack.",
+  "implementation": {
+    "reader_source_blob": "de479e6fdc3a08f91713e6cc32d2703593bdc27f",
+    "workflow_blob": "8eea8c1f56144c0f00a0591410970528a2c90b44",
+    "execution": "Existing Ubuntu 24.04 isolated stdlib-only inert artifact reader; no extraction, archive imports, application imports, payload execution or result relabelling.",
+    "bounds": {
+      "archive_bytes": 8388608,
+      "members": 10000,
+      "unpacked_total_bytes": 536870912,
+      "selected_member_bytes": 4194304,
+      "log_tail_characters": 48000,
+      "json_tail_characters": 80000
+    },
+    "scope": "Only the standard-update evidence directory, fixed requested basenames and native-managed-*.log. Missing requested records are printed explicitly.",
+    "changes": [
+      "Bind exact run, source, artifact, size and SHA256 before reading.",
+      "Retain existing bounded ZIP inventory/member guard.",
+      "Print exact member byte counts and SHA256; decode UTF-16 BOM native logs without interpreting them."
+    ]
+  },
+  "qualification": {
+    "original_maintenance": "NOT_YET_READ",
+    "managed_update": "FAILED_IN_SOURCE_RUN",
+    "rollback": "NOT_YET_OBSERVED",
+    "no_new_product_qualification": true
+  }
+}

@@ -12,11 +12,12 @@ import xml.etree.ElementTree as ET
 REPOSITORY = 'Oleksii-debug/AudioTacticalFPS'
 ARTIFACTS = [
   {
-    "run": 46009379630,
-    "commit": "f0cbcca8200fcb0a3ab438e00337ee1583c6d48f",
-    "id": 15205168290,
-    "sha256": "d97b44b8fbd128e4e530b598a637f30b15f41817e39be0bd1c97ab8d97a0ecb7",
-    "kind": "translation-qualified"
+    "run": 46061428962,
+    "commit": "2d1a4bd89b3c8d63d55848f129e38489e2ea4157",
+    "id": 15229972246,
+    "bytes": 1697192,
+    "sha256": "3e2f5f9ab7011612950c0196849edcd6ae89f8d78616c86c389fd897eeb78af9",
+    "kind": "standard-original-maintenance-and-managed-health-failure"
   }
 ]
 
@@ -50,23 +51,34 @@ def brief(value):
         return [brief(item) for item in value]
     return value
 
-wanted = {
-    'converter-gate.json', 'legacy-converter-gate.json', 'before-execution.json',
-    'publisher-identities.json', 'source-provenance.json',
-    'source-origins.json', 'installed-origins.json', 'translation-scope-gate.json',
-    'native-selected-advanced.txt', 'native-selected-advanced.json',
-    'native-document.txt', 'native-document.json', 'native-chapter.txt',
-    'native-chapter.json', 'native-batch.txt', 'native-batch.json',
-    'source-junit.xml', 'installed-junit.xml', 'source-pytest.txt', 'installed-pytest.txt'}
+wanted = {'inputs.json',
+    'disk-budget.json',
+    'original-build.json',
+    'previous-build.json',
+    'original-manifest.json',
+    'previous-manifest.json',
+    'candidate-application-wheel.json',
+    'original-candidate-application-wheel.json',
+    'original-maintenance.json',
+    'native.json',
+    'proof.json',
+    'library.json',
+    'native-restart-crash-after-activation.json',
+    'native-restart-recover.json',
+    'original-install.log',
+    'maintenance-install.log',
+    'native-probe.log',
+    'verdict.log'}
 for pin in ARTIFACTS:
     base = 'https://api.github.com/repos/' + REPOSITORY + '/actions/artifacts/' + str(pin['id'])
     metadata = json.loads(read(base, 65536))
     if (metadata['id'] != pin['id'] or metadata['workflow_run']['id'] != pin['run']
             or metadata['workflow_run']['head_sha'] != pin['commit']
-            or metadata['digest'] != 'sha256:' + pin['sha256'] or metadata['expired']):
+            or metadata['digest'] != 'sha256:' + pin['sha256']
+            or metadata['size_in_bytes'] != pin['bytes'] or metadata['expired']):
         raise ValueError('Existing artifact provenance differs.')
     raw = read(base + '/zip', 8 * 1024 * 1024)
-    if hashlib.sha256(raw).hexdigest() != pin['sha256']:
+    if len(raw) != pin['bytes'] or hashlib.sha256(raw).hexdigest() != pin['sha256']:
         raise ValueError('Existing artifact archive failed its recorded digest.')
     print('ARTIFACT', json.dumps({**pin, 'bytes': len(raw), 'name': metadata['name']}), flush=True)
     with zipfile.ZipFile(io.BytesIO(raw)) as archive:
@@ -75,8 +87,12 @@ for pin in ARTIFACTS:
         if (len(names) != len(set(names)) or len(names) > 10000
                 or sum(member.file_size for member in members) > 512 * 1024 * 1024):
             raise ValueError('Ambiguous or oversized artifact inventory.')
-        selected = [name for name in names if PurePosixPath(name).name in wanted]
-        print('INVENTORY', json.dumps({'total_members': len(names), 'selected': selected}), flush=True)
+        selected = [name for name in names if PurePosixPath(name).parent.name == 'standard-update'
+                    and (PurePosixPath(name).name in wanted
+                         or (PurePosixPath(name).name.startswith('native-managed-') and name.endswith('.log')))]
+        found = {PurePosixPath(name).name for name in selected}
+        print('INVENTORY', json.dumps({'total_members': len(names), 'selected': selected,
+            'absent_requested_records': sorted(wanted - found)}), flush=True)
         for name in selected:
             entry = archive.getinfo(name)
             if entry.file_size > 4 * 1024 * 1024:
@@ -112,4 +128,5 @@ for pin in ARTIFACTS:
                             separators=(',', ':')).encode()).hexdigest()}), flush=True)
                 print(name, json.dumps(brief(value), sort_keys=True, ensure_ascii=False)[-80000:], flush=True)
             else:
-                print(name, content.decode('utf-8', errors='replace')[-48000:], flush=True)
+                encoding = 'utf-16' if content.startswith((b'\xff\xfe', b'\xfe\xff')) else 'utf-8-sig'
+                print(name, content.decode(encoding, errors='replace')[-48000:], flush=True)
