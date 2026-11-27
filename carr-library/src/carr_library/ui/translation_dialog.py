@@ -6,8 +6,9 @@ from time import time
 from uuid import uuid4
 
 from ..assistant.profiles import ProfileStore
-from ..assistant.providers import Authorization, Gateway, money
+from ..assistant.providers import Authorization, Gateway, money, translation_authorization_type
 from ..assistant.translation import TranslationService, translation_approval
+from .translation_documents import library_identity
 
 
 def _matches_saved_scope(job, account, value, source, target, budget, glossary=None, *, offline=False):
@@ -41,17 +42,20 @@ def _origin(document):
             'not quotation evidence. Plain text only; up to 2,000,000 source and translated characters.')
 
 
-def show_translation(frame, *, source_loader=None, source_guard=lambda: None, source_topic=None):
+def show_translation(frame, *, source_loader=None, source_guard=lambda: None, source_topic=None,
+                     local=False, initial_text=''):
     import wx
     from ..speech.reading import ReadingDocument
 
     library = frame.library
+    library_root = Path(library.root)
+    root_identity = library_identity(library_root)
     active = getattr(frame, 'active', None)
     root = library.root / 'state' / 'translation'
     service = TranslationService(root, library=library)
     accounts = ProfileStore(library.root / 'state' / 'providers')
-    profiles = tuple(p for p in accounts.list()
-                     if p.adapter in ('google-translation-v2', 'google-translation-v3') and p.enabled)
+    adapters = ('libretranslate-local',) if local else ('google-translation-v2', 'google-translation-v3')
+    profiles = tuple(p for p in accounts.list() if p.adapter in adapters and p.enabled)
     dialog = wx.Dialog(frame, title='Translation — selected text derivatives', size=(850, 900),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
     dialog.SetName('Translation workspace')
@@ -68,7 +72,7 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
         layout.Add(control, proportion, wx.EXPAND | wx.ALL, 4)
         return control
 
-    provider = field('Google API &account and edition', wx.Choice,
+    provider = field('Local translator and declared models' if local else 'Google API &account and edition', wx.Choice,
                      choices=[f'{p.name} ({p.id}); {p.adapter}' for p in profiles])
     if profiles:
         provider.SetSelection(0)
@@ -77,22 +81,30 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
     glossary = field('Advanced v3 &glossary resource; blank for none', value='')
     origin = field('Source selection and limits', style=wx.TE_MULTILINE | wx.TE_READONLY,
                    value=_origin(None) if source_ready else 'Loading the selected authorized source. No text is sent.')
-    selected = field('Selected te&xt; originals remain unchanged', proportion=1, style=wx.TE_MULTILINE)
+    selected = field('Selected te&xt; originals remain unchanged', proportion=1,
+                     style=wx.TE_MULTILINE, value=initial_text if source_loader is None else '')
     selected.SetEditable(source_loader is None)
     rate = field('Optional price per million characters in USD; your current contract rate', value='')
-    budget = field('Maximum approved &budget in USD; no default price', value='')
+    budget = field('Maximum approved &budget in USD; no default price', value='0' if local else '')
     status = field('Preview, supported languages and job status', proportion=1,
         style=wx.TE_MULTILINE | wx.TE_READONLY,
         value='LOCAL ONLY until explicit approval. Configure a Basic v2 API-key account or Advanced v3 NMT OAuth account '
               'in AI and API connections. Advanced requires your numeric project and region, and an unexpired IAM/ADC '
               'access token in Windows Credential Manager; tokens are never automatically refreshed. '
               'A selected existing glossary must share the project and non-global region; choose an explicit source language. '
-              'Fetch languages for the exact account before preview. Document formatting and offline translation remain unavailable.')
+              'Fetch languages for the exact account before preview. Use Document batch for ordered paragraph derivatives; '
+              'source layout is not retained. Local translation uses a separately selected loopback service.')
+    if local:
+        status.ChangeValue('Select an already installed loopback LibreTranslate service in AI and API connections. '
+            'No server/model is installed or launched here. Approve fetching its declared language pairs, then preview '
+            'the exact selected text. No cloud fallback or credential forwarding. API declarations do not prove '
+            'model identity, offline server egress, quality or 135-language coverage.')
     buttons = {}
     row = wx.BoxSizer(wx.HORIZONTAL)
     for name, label in [('languages', 'Fetch &languages'), ('preview', '&Preview'), ('run', '&Translate / resume'),
                         ('pause', 'Pa&use'), ('jobs', 'Saved &jobs'), ('new', '&New translation'),
-                        ('export', '&Export'), ('close', '&Close')]:
+                        ('export', '&Export'), ('local', '&Local translation...'),
+                        ('documents', 'Document &batch...'), ('close', '&Close')]:
         button = wx.Button(dialog, label=label)
         button.SetName(label.replace('&', ''))
         buttons[name] = button
@@ -100,8 +112,18 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
     layout.Add(row, 0, wx.EXPAND)
     dialog.SetSizer(layout)
 
+    def scope_current():
+        if (not alive or frame.library is not library or Path(library.root) != library_root
+                or getattr(frame, '_closing', False)
+                or (active is not None and frame.active != active)):
+            return False
+        try:
+            return library_identity(library_root) == root_identity
+        except (OSError, ValueError):
+            return False
+
     def report(value, focus=False):
-        if alive:
+        if scope_current():
             status.ChangeValue(str(value))
             if focus:
                 status.SetFocus()
@@ -109,8 +131,7 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
     def guard():
         if not alive:
             raise InterruptedError('The translation window was closed.')
-        if (frame.library is not library or getattr(frame, '_closing', False)
-                or (active is not None and frame.active != active)):
+        if not scope_current():
             raise ValueError('The active library or research topic changed. Reopen translation.')
         source_guard()
 
@@ -120,7 +141,7 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
     def profile():
         index = provider.GetSelection()
         if not 0 <= index < len(profiles):
-            raise ValueError('Create and enable a Google Basic v2 or Advanced v3 account in AI and API connections, then reopen this window.')
+            raise ValueError('Create and enable the selected translation profile in AI and API connections, then reopen this window.')
         return profiles[index]
 
     def visible_scope():
@@ -156,7 +177,7 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
         return job
 
     def controls():
-        if not alive:
+        if not scope_current():
             return
         editing = not busy and source_ready and current_job is None
         for control in (provider, source, target, glossary, rate, budget):
@@ -170,6 +191,11 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
         buttons['new'].Enable(not busy and source_ready)
         buttons['export'].Enable(not busy and current_job is not None)
         buttons['pause'].Enable(busy)
+        buttons['local'].Enable(not busy and not local and current_job is None)
+        buttons['documents'].Enable(not busy)
+        if local:
+            for control in (glossary, rate, budget):
+                control.Enable(False)
 
     def begin(title, operation, complete):
         nonlocal busy
@@ -186,8 +212,12 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
             nonlocal busy
             busy = False
             controls()
-            if alive:
-                complete(result)
+            if scope_current():
+                try:
+                    guard()
+                    complete(result)
+                except Exception as error:
+                    report(str(error), True)
         def failed(error):
             nonlocal busy
             busy = False
@@ -206,18 +236,21 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
         try:
             guard()
             p = profile()
-            if wx.MessageBox('Contact the official Google Translation API to fetch its supported language list? '
-                'No selected text is sent. Your configured account will be used.\n' + p.endpoint + '\nModel: ' + p.model,
+            prompt = ('Contact the explicitly selected local service for its declared language pairs? '
+                      'No selected text or credential is sent.' if p.local else
+                      'Contact the official Google Translation API to fetch its supported language list? '
+                      'No selected text is sent. Your configured account will be used.')
+            if wx.MessageBox(prompt + '\n' + p.endpoint + '\nModel: ' + p.model,
                 'Approve language discovery',
                 wx.YES_NO | wx.NO_DEFAULT, dialog) != wx.YES:
                 return
             guard()
             identity = uuid4().hex
-            approval = Authorization(identity, identity, ((p.id, p.endpoint),), ('translation.languages',),
+            approval = translation_authorization_type(p)(identity, identity, ((p.id, p.endpoint),), ('translation.languages',),
                                       ('user-instruction',), '0', 1, time() + 600)
             def discover():
                 guard_account(p)
-                service.gateway = Gateway(root / 'provider', mode='APPROVED_REMOTE')
+                service.gateway = Gateway(root / 'provider', mode='LOCAL_ONLY' if p.local else 'APPROVED_REMOTE')
                 def remote_stopped():
                     if stopped():
                         return True
@@ -266,9 +299,11 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
                           glossary.GetValue().strip() or None, rate.GetValue().strip() or None)
                 if not source_ready or reviewed != values:
                     raise ValueError('Preview this exact text, languages, glossary, rate and budget before approving translation.')
-                if wx.MessageBox(f'Send exactly {len(values[1])} selected characters to Google Translation?\n'
+                destination_name = 'the explicitly selected local translator' if p.local else 'Google Translation'
+                if wx.MessageBox(f'Send exactly {len(values[1])} selected characters to {destination_name}?\n'
                     + _origin(document) + f'\nApproved total reservation: {values[4]} USD. '
-                    'The provider may charge your account under its terms.\n' + p.endpoint + '\nModel: ' + p.model +
+                    + ('No external charge is authorized; the local server must be installed and configured separately.\n' if p.local else
+                       'The provider may charge your account under its terms.\n') + p.endpoint + '\nModel: ' + p.model +
                     '\nGlossary: ' + (values[5] or 'none'),
                     'Approve selected text transfer', wx.YES_NO | wx.NO_DEFAULT, dialog) != wx.YES:
                     return
@@ -293,7 +328,7 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
                 def remote_guard():
                     guard_account(account)
                 remote_guard()
-                service.gateway = Gateway(root / 'provider', mode='APPROVED_REMOTE')
+                service.gateway = Gateway(root / 'provider', mode='LOCAL_ONLY' if account.local else 'APPROVED_REMOTE')
                 from ..progress import current_progress
                 progress = current_progress()
                 def advanced(done, total, phase):
@@ -366,7 +401,7 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
             target.ChangeValue('uk')
             glossary.ChangeValue('')
             rate.ChangeValue('')
-            budget.ChangeValue('')
+            budget.ChangeValue('0' if local else '')
             report('Choose languages and a budget, then preview and approve this new translation. No request sent.')
             controls()
             selected.SetFocus()
@@ -393,6 +428,32 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
             report(str(exc), True)
         finally:
             chooser.Destroy()
+
+    def local_translation(event):
+        try:
+            guard()
+            if busy or local:
+                return
+            if current_job is not None or (document is not None and source_loader is None):
+                raise ValueError('Open a new explicitly selected source before changing its translation provider.')
+            show_translation(frame, source_loader=source_loader, source_guard=source_guard,
+                             source_topic=source_topic, local=True, initial_text=selected.GetValue())
+            guard()
+            status.SetFocus()
+        except Exception as error:
+            report(str(error), True)
+
+    def documents(event):
+        try:
+            guard()
+            if busy:
+                return
+            from .translation_documents import show_translation_documents
+            show_translation_documents(frame)
+            guard()
+            status.SetFocus()
+        except Exception as error:
+            report(str(error), True)
 
     def loaded(retained):
         nonlocal document, original_document, source_ready
@@ -423,7 +484,8 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
         dialog.EndModal(wx.ID_CLOSE)
 
     for name, handler in {'languages': languages, 'preview': preview, 'run': run, 'pause': lambda e: cancel.set(),
-                           'jobs': jobs, 'new': new, 'export': export, 'close': close}.items():
+                           'jobs': jobs, 'new': new, 'export': export, 'local': local_translation,
+                           'documents': documents, 'close': close}.items():
         buttons[name].Bind(wx.EVT_BUTTON, handler)
     dialog.Bind(wx.EVT_CLOSE, close)
     controls()
@@ -480,3 +542,12 @@ def install_translation_actions(frame):
     register_menu_command(frame, CommandSpec('tools.translation_source', 'Translate selected book or source range'), item)
     frame.Bind(wx.EVT_MENU, actions.open_book, id=int(identity))
     frame.translation_reading_actions = actions
+
+
+    identity = wx.NewIdRef()
+    item = menu.Append(identity, 'Translate selected &documents...')
+    register_menu_command(frame, CommandSpec('tools.translation_documents', 'Translate selected documents'), item)
+    def document_workstation(event):
+        from .translation_documents import show_translation_documents
+        show_translation_documents(frame)
+    frame.Bind(wx.EVT_MENU, document_workstation, id=int(identity))

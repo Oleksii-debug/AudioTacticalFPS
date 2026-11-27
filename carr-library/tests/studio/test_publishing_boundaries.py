@@ -32,7 +32,8 @@ def test_export_cannot_write_anywhere_inside_private_library(source_job):
     service, state = source_job
     output = service.root.parent.parent / 'outside-studio-but-private.epub'
     with pytest.raises(ValueError, match='private library'):
-        PublicationService(service).export_epub(state['id'], output)
+        PublicationService(service, private_root=service.root.parent.parent).export_epub(
+            state['id'], output)
     assert not output.exists()
 
 

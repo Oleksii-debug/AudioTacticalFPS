@@ -10,7 +10,7 @@ from pathlib import PurePosixPath, PureWindowsPath
 import re
 from uuid import NAMESPACE_URL, uuid5
 
-from . import backup_book_audio
+from . import backup_book_audio, backup_effect_presets
 
 ID = r'[A-Za-z0-9_-]{1,80}'
 HEX = r'[0-9a-f]{64}'
@@ -33,6 +33,8 @@ TRUSTED_CLIENT = frozenset({'state/trusted-client/entitlement.json',
 
 def limit(name):
     if maximum := backup_book_audio.limit(name):
+        return maximum
+    if maximum := backup_effect_presets.limit(name):
         return maximum
     if name == 'state/studio/draft.json':
         return 32 * 1024 * 1024
@@ -96,6 +98,7 @@ def validate_primary_collection(root, entries, records, *, cancelled):
     state_entries = [{**entry, 'filename': entry['filename'][6:]}
                      for entry in entries if entry['filename'].startswith('state/')]
     _validate_managed_clip_inputs(root / 'state', state_entries, cancelled=cancelled)
+    backup_effect_presets.validate_collection(root / 'state', state_entries, cancelled=cancelled)
     draft_name = 'state/studio/draft.json'
     if draft_name in by_name:
         draft = records.get(draft_name)
@@ -506,35 +509,46 @@ def _usage(value):
 
 def _translation_languages(value, identity):
     from .assistant.models import canonical
-    from .assistant.profiles import google_v3_parent
+    from .assistant.profiles import endpoint, google_v3_parent
     from .assistant.translation import ENDPOINT
     fields(value, {'schema', 'profile', 'endpoint', 'model', 'fetched_at', 'languages',
-                   'languages_sha256', 'qualification'})
-    advanced = value['endpoint'] != ENDPOINT
+                   'languages_sha256', 'qualification'}, {'adapter'})
+    local = value.get('adapter') == 'libretranslate-local'
+    if 'adapter' in value and not local:
+        raise ValueError('Unknown translation language inventory adapter.')
+    advanced = not local and value['endpoint'] != ENDPOINT
     if (value['schema'] != 'carr-translation-languages/1' or value['profile'] != identity
-            or value['model'] != ('general/nmt' if advanced else 'nmt')
+            or (not local and value['model'] != ('general/nmt' if advanced else 'nmt'))
             or value['qualification'] != 'provider-declared; not acoustic or translation-quality verification'):
         raise ValueError('Invalid translation language inventory identity.')
-    if advanced:
+    if local:
+        target = endpoint(value['endpoint'], local=True)
+        if target.path not in ('', '/'):
+            raise ValueError('Local translation requires an explicit loopback base URL.')
+        text(value['model'], 256)
+    elif advanced:
         google_v3_parent(value['endpoint'])
     text(value['fetched_at'], 128)
     rows = value['languages']
-    if type(rows) is not list or not 1 <= len(rows) <= 1000:
-        raise ValueError('Invalid provider language inventory.')
-    seen = set()
-    for row in rows:
-        fields(row, {'language', 'name', 'source', 'target'} if advanced else {'language', 'name'})
-        _translation_language(row['language'])
-        text(row['name'], 1000)
-        if advanced and (type(row['source']) is not bool or type(row['target']) is not bool
-                         or not (row['source'] or row['target'])):
-            raise ValueError('Invalid provider language capability.')
-        if row['language'] in seen:
-            raise ValueError('Duplicate translation language.')
-        seen.add(row['language'])
+    if local:
+        from .assistant.translation_local import validate_languages
+        validate_languages(rows)
+    else:
+        if type(rows) is not list or not 1 <= len(rows) <= 1000:
+            raise ValueError('Invalid provider language inventory.')
+        seen = set()
+        for row in rows:
+            fields(row, {'language', 'name', 'source', 'target'} if advanced else {'language', 'name'})
+            _translation_language(row['language'])
+            text(row['name'], 1000)
+            if advanced and (type(row['source']) is not bool or type(row['target']) is not bool
+                             or not (row['source'] or row['target'])):
+                raise ValueError('Invalid provider language capability.')
+            if row['language'] in seen:
+                raise ValueError('Duplicate translation language.')
+            seen.add(row['language'])
     if sha256(canonical(rows).encode()).hexdigest() != value['languages_sha256']:
         raise ValueError('Translation language inventory checksum changed.')
-
 
 def _translation_language(value, *, auto=False):
     if type(value) is not str or not (auto and value == 'auto' or
@@ -545,11 +559,11 @@ def _translation_language(value, *, auto=False):
 def _translation_job(value, identity):
     """Passive v1/v2 translation validation; never open the original library."""
     from .assistant.profiles import ProviderProfile, google_v3_parent
-    from .assistant.providers import Authorization
-    from .assistant.translation import TranslationService, split_text, _approved_requests
+    from .assistant.providers import translation_authorization_type
+    from .assistant.translation import TranslationService, job_chunks, _approved_requests
     fields(value, {'schema', 'kind', 'id', 'created', 'updated', 'status', 'profile', 'title',
         'source_text', 'source_sha256', 'source_language', 'target_language', 'chunks', 'receipts',
-        'authorization', 'per_call_cost'}, {'source_binding', 'glossary'})
+        'authorization', 'per_call_cost'}, {'source_binding', 'glossary', 'preserve_paragraphs'})
     if (value['schema'] != 'carr-assistant-job/1'
             or value['kind'] not in ('translation/1', 'translation/2')
             or value['id'] != identity
@@ -561,7 +575,7 @@ def _translation_job(value, identity):
     text(value['source_text'], 2_000_000)
     if sha256(value['source_text'].encode()).hexdigest() != value['source_sha256']:
         raise ValueError('Translation original source changed.')
-    chunks = split_text(value['source_text'])
+    chunks = job_chunks(value)
     if type(value['chunks']) is not list or value['chunks'] != list(chunks):
         raise ValueError('Translation chunks no longer bind the original.')
     # These producer checks are pure: source lineage and UUID bind the saved
@@ -574,7 +588,7 @@ def _translation_job(value, identity):
     _translation_language(value['target_language'])
     if value['source_language'] == value['target_language']:
         raise ValueError('Translation needs different source and target languages.')
-    approval = Authorization(**value['authorization'])
+    approval = translation_authorization_type(profile)(**value['authorization'])
     try:
         by_chunk, _ = _approved_requests(profile, chunks, value['source_language'],
             value['target_language'], approval, value['per_call_cost'],
@@ -676,6 +690,8 @@ def _public_entitlement(value):
 def validate(db, name, value):
     if backup_book_audio.limit(name) is not None:
         backup_book_audio.validate_record(name, value)
+    elif backup_effect_presets.limit(name) is not None:
+        backup_effect_presets.validate_record(name, value)
     elif name == 'state/studio/draft.json':
         _studio_draft(value)
     elif name in TRUSTED_CLIENT:

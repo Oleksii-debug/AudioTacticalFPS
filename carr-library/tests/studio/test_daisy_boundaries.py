@@ -24,7 +24,7 @@ actual_job, source_job = _fixtures.actual_job, _fixtures.source_job
 
 def export(source_job, output, **kwargs):
     service, state = source_job
-    return PublicationService(service).export_daisy(state['id'], output,
+    return PublicationService(service, private_root=service.root.parent.parent).export_daisy(state['id'], output,
         language='uk', publisher='Explicit synthetic boundary fixture', **kwargs)
 
 

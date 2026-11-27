@@ -64,10 +64,16 @@ jobs:
                   if raw.startswith((b'\xff\xfe', b'\xfe\xff')):
                       text = raw.decode('utf-16', errors='replace')
                   lines = text.splitlines()
-                  interesting = {number for number, line in enumerate(lines)
-                      if any(word in line.casefold() for word in ('error', 'exception', 'failed', 'exit code', 'abort'))}
+                  # The failure tail is a separate bounded section. Extraction
+                  # of files such as errors.py must not consume its evidence budget.
                   if 'install-a' in item.filename.casefold():
-                      interesting.update(range(max(0, len(lines) - 100), len(lines)))
+                      print('INSTALL-A FINAL TAIL: ' + item.filename)
+                      for number in range(max(0, len(lines) - 120), len(lines)):
+                          print(str(number + 1) + ': ' + lines[number][:2000])
+                  interesting = {number for number, line in enumerate(lines)
+                      if not line.lstrip().casefold().startswith(('extracting ', 'extracting:', 'inflating:'))
+                      and any(word in line.casefold() for word in ('traceback (most recent call last)',
+                          'error:', 'exception:', 'failed:', 'exit code', 'aborted'))}
                   selected = sorted({nearby for number in interesting
                       for nearby in range(max(0, number - 3), min(len(lines), number + 4))})
                   if selected:

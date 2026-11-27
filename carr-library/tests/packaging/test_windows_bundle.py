@@ -349,8 +349,19 @@ package-dir = {"" = "src"}
                          {"cryptography", "cffi", "pycparser", "tuf", "securesystemslib"})
         for name, pin in semantic.items():
             self.assertEqual(optional[name], pin)
-        for name, (version, _hashes) in core.items():
-            self.assertEqual(optional[name][0], version)
+        # Core and semantic are independently reviewed profiles. The optional
+        # profile extends semantic exactly; it cannot silently substitute the
+        # different core NumPy release or weaken either profile's pin.
+        core_differences = {name: (version, optional[name][0])
+                            for name, (version, _hashes) in core.items()
+                            if optional[name][0] != version}
+        self.assertEqual(core_differences, {"numpy": ("2.4.6", "2.3.5")})
+        for filename, pins in (("windows-sbom.cdx.json", core),
+                               ("windows-semantic-sbom.cdx.json", semantic),
+                               ("windows-semantic-trusted-sbom.cdx.json", optional)):
+            sbom = json.loads((ROOT / "packaging" / filename).read_bytes())
+            self.assertEqual({item["name"]: item["version"] for item in sbom["components"]},
+                             {name: pin[0] for name, pin in pins.items()})
         for name, (version, hashes) in trust.items():
             self.assertEqual(optional[name][0], version)
             self.assertTrue(hashes.issubset(optional[name][1]))

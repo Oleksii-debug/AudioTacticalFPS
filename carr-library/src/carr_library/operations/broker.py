@@ -145,7 +145,9 @@ class ResourceLease:
 
 class ResourceBroker:
     def __init__(self, directory, *, limits=None, policy_path=None, cancelled=lambda: False,
-                 _application_policy=False):
+                 _application_policy=False, require_existing_policy=False):
+        if type(require_existing_policy) is not bool:
+            raise TypeError('The existing resource policy requirement must be boolean.')
         if limits is not None and not isinstance(limits, ResourceLimits):
             raise TypeError('A typed resource policy is required.')
         self.root = local_path(directory)
@@ -190,6 +192,9 @@ class ResourceBroker:
                     raise ResourceConflict('This runtime coordinator is already bound to another policy path.')
                 atomic_json(binding, location, replace=True)
             if not os.path.lexists(self.policy_path):
+                if require_existing_policy:
+                    raise ResourceStateError('The retained resource policy is missing; '
+                                             'automatic defaults are not permitted for restored work.')
                 atomic_json(self.policy_path, {'schema': 'carr-resource-policy/1',
                             'limits': (limits or ResourceLimits()).to_dict()})
             elif limits is not None and self.limits != limits:
@@ -197,12 +202,12 @@ class ResourceBroker:
             self.limits
 
     @classmethod
-    def for_app(cls, root, *, limits=None, cancelled=lambda: False):
+    def for_app(cls, root, *, limits=None, cancelled=lambda: False, require_existing_policy=False):
         root = local_path(root, exists=True)
         regular(root, directory=True)
         return cls(root / 'runtime' / 'resources', limits=limits,
                    policy_path=root / 'state' / 'operations' / 'resources.json', cancelled=cancelled,
-                   _application_policy=True)
+                   _application_policy=True, require_existing_policy=require_existing_policy)
 
     @property
     def limits(self):

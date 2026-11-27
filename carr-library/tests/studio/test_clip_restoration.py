@@ -13,6 +13,8 @@ from carr_library.application import LibraryApp
 from carr_library.audio import AudioRuntime
 from carr_library.durable_state import atomic_json, encode, read_json
 from carr_library.library_backup import create_backup, restore_backup
+from carr_library.operations import (ResourceBroker, ResourceLimits, ResourceRequest,
+                                     ResourceStateError, ResourceTimeout)
 from carr_library.speech import VoiceRegistry
 from carr_library.studio.clips import ClipEditor
 from carr_library.studio.project import Cue, Project, Scene
@@ -60,6 +62,10 @@ def test_actual_completed_clip_restore_requires_fresh_output_before_any_old_path
     library = tmp_path / 'original-library'
     app = LibraryApp(library)
     service = service_at(library)
+    policy = ResourceLimits(cpu_slots=2, memory_bytes=2 * 1024**3,
+                            disk_bytes=4 * 1024**3, min_free_disk_bytes=0)
+    original_broker = service.broker
+    original_broker.configure(policy)
     selected = audio(tmp_path / 'selected-original.wav')
     original = selected.read_bytes()
     project = retained_project(service, selected)
@@ -71,6 +77,7 @@ def test_actual_completed_clip_restore_requires_fresh_output_before_any_old_path
     old_origin = dict(complete['origin'])
     original_job = (service.jobs_root / job / 'job.json').read_bytes()
     backup = tmp_path / 'backup'
+    policy_bytes = original_broker.policy_path.read_bytes()
     digest = create_backup(app, backup)
 
     selected.unlink()
@@ -82,6 +89,8 @@ def test_actual_completed_clip_restore_requires_fresh_output_before_any_old_path
     restored = service if same_path else service_at(root)
     assert (restored.jobs_root / job / 'job.json').read_bytes() == original_job
     assert not (restored.root / '.local-origin.json').exists()
+    assert (root / 'state/operations/resources.json').read_bytes() == policy_bytes
+    assert not (root / 'runtime/resources/leases').exists()
     current = restored.projects.load(project.id)
     assert current.to_dict() == project.to_dict() and current.fingerprint == project.fingerprint
     retained = restored.root / current.scenes[0].cues[0].path
@@ -126,11 +135,18 @@ def test_actual_completed_clip_restore_requires_fresh_output_before_any_old_path
         assert Path(approved['destination']).parent == new_outputs
         assert not Path(approved['destination']).exists()
         assert not runtime_calls  # Selecting a destination alone never renders.
+        if same_path:
+            assert restored.broker is not original_broker
+            assert restored.broker.limits == policy
+            assert restored.broker.policy_path.read_bytes() == policy_bytes
+            assert restored.broker.snapshot()['leases'] == []
 
     with monkeypatch.context() as guarded:
         deny_old_paths(guarded, prohibited)
         final = restored.run(job)
         assert final['status'] == 'complete'
+        assert restored.broker.limits == policy
+        assert restored.broker.policy_path.read_bytes() == policy_bytes
         assert Path(final['destination'], 'master.wav').read_bytes() == master
         assert restored.run(job)['status'] == 'complete'
         assert final['result']['lines'] == []
@@ -250,3 +266,135 @@ def test_empty_schema_one_project_promotes_only_after_explicit_managed_selection
 def test_schema_two_only_accepts_exact_portable_content_names(path):
     with pytest.raises(ValueError, match='Portable Studio clips'):
         Project('invalid', 'Invalid', (), (Scene('scene', 'Scene', (), cues=(Cue('clip', path),)),), schema=2)
+
+
+def _relocation_with_cached_admission(tmp_path):
+    service = service_at(tmp_path / 'library')
+    project = retained_project(service, audio(tmp_path / 'selected.wav'))
+    output = tmp_path / 'output'
+    output.mkdir()
+    job = service.submit(project, output, operation_id='admission-recovery')
+    broker = service.broker
+    policy = ResourceLimits(cpu_slots=2, memory_bytes=2 * 1024**3,
+                            disk_bytes=4 * 1024**3, min_free_disk_bytes=0)
+    broker.configure(policy)
+    fresh = tmp_path / 'fresh-output'
+    fresh.mkdir()
+    return service, job, broker, policy, fresh
+
+
+def _change_local_origin(service):
+    atomic_json(service.root / '.local-origin.json',
+                {'schema': 'carr-studio-origin/1', 'nonce': 'f' * 64}, replace=True)
+
+
+def test_explicit_relocation_keeps_current_policy_and_other_native_admission(tmp_path):
+    service, job, previous, policy, fresh = _relocation_with_cached_admission(tmp_path)
+    before = previous.policy_path.read_bytes()
+    with previous.reserve(ResourceRequest(cpu_slots=2), operation_id='other-held-job',
+                          timeout=0) as held:
+        _change_local_origin(service)
+        state = service.relocate_restored_job(job, fresh)
+        current = service.broker
+        assert current is not previous and current.limits == policy
+        assert current.policy_path.read_bytes() == before
+        assert [row['id'] for row in current.snapshot()['leases']] == [held.id]
+        held.checkpoint()
+        with pytest.raises(ResourceTimeout):
+            with current.reserve(ResourceRequest(cpu_slots=1),
+                                 operation_id='cannot-bypass-held-job', timeout=0):
+                pytest.fail('Reopening the coordinator must not discard an active native lease.')
+        assert state['status'] == 'pending'
+        assert not Path(state['destination']).exists()
+    assert current.snapshot()['leases'] == []
+
+
+def test_unchanged_origin_never_recreates_a_missing_admission_inventory(tmp_path):
+    service, job, previous, policy, fresh = _relocation_with_cached_admission(tmp_path)
+    original = (service.jobs_root / job / 'job.json').read_bytes()
+    previous.leases_root.rmdir()
+    with pytest.raises(ValueError, match='Only a restored portable production'):
+        service.relocate_restored_job(job, fresh)
+    assert service.broker is previous
+    with pytest.raises(FileNotFoundError):
+        service.broker.snapshot(timeout=0)
+    assert not previous.leases_root.exists()
+    assert (service.jobs_root / job / 'job.json').read_bytes() == original
+    assert service.broker.limits == policy
+
+
+@pytest.mark.parametrize('damage', ['missing', 'invalid'])
+def test_relocation_never_replaces_missing_or_invalid_retained_policy(tmp_path, damage):
+    service, job, previous, policy, fresh = _relocation_with_cached_admission(tmp_path)
+    _change_local_origin(service)
+    original = (service.jobs_root / job / 'job.json').read_bytes()
+    if damage == 'missing':
+        previous.policy_path.unlink()
+    else:
+        previous.policy_path.write_bytes(b'{"schema":"invalid-current-policy"}')
+    damaged = None if damage == 'missing' else previous.policy_path.read_bytes()
+    with pytest.raises((FileNotFoundError, ValueError, RuntimeError)):
+        service.relocate_restored_job(job, fresh)
+    assert service.broker is previous
+    assert (service.jobs_root / job / 'job.json').read_bytes() == original
+    if damage == 'missing':
+        assert not previous.policy_path.exists()
+    else:
+        assert previous.policy_path.read_bytes() == damaged
+    assert list(fresh.iterdir()) == []
+
+
+@pytest.mark.parametrize('damage', ['denied', 'not-directory', 'reparse'])
+def test_relocation_rejects_invalid_runtime_namespace_without_resetting_authority(
+        tmp_path, monkeypatch, damage):
+    from types import SimpleNamespace
+    service, job, previous, policy, fresh = _relocation_with_cached_admission(tmp_path)
+    _change_local_origin(service)
+    original = (service.jobs_root / job / 'job.json').read_bytes()
+    original_policy = previous.policy_path.read_bytes()
+    if damage == 'not-directory':
+        previous.leases_root.rmdir()
+        previous.leases_root.write_bytes(b'not a directory')
+    else:
+        actual = Path.lstat
+        def inspect(path, *args, **kwargs):
+            info = actual(path, *args, **kwargs)
+            if Path(path) == previous.leases_root:
+                if damage == 'denied':
+                    raise PermissionError('Actual admission inventory is unreadable.')
+                # Exercise the same cross-platform Win32 metadata rejection;
+                # this is not a claim to create a real junction on POSIX.
+                return SimpleNamespace(st_mode=info.st_mode, st_nlink=info.st_nlink,
+                                       st_file_attributes=0x400)
+            return info
+        monkeypatch.setattr(Path, 'lstat', inspect)
+    with pytest.raises((OSError, ValueError)):
+        service.relocate_restored_job(job, fresh)
+    assert service.broker is previous
+    assert (service.jobs_root / job / 'job.json').read_bytes() == original
+    assert previous.policy_path.read_bytes() == original_policy
+    assert list(fresh.iterdir()) == []
+
+
+def test_policy_removed_between_review_and_reopen_never_becomes_defaults(tmp_path, monkeypatch):
+    service, job, previous, policy, fresh = _relocation_with_cached_admission(tmp_path)
+    _change_local_origin(service)
+    original = (service.jobs_root / job / 'job.json').read_bytes()
+    actual = ResourceBroker.for_app
+    entered = []
+
+    def remove_reviewed_policy(cls, root, **kwargs):
+        # The early current-policy read has succeeded. Remove the real file
+        # before the constructor reaches its authoritative locked decision.
+        entered.append(True)
+        previous.policy_path.unlink()
+        return actual(root, **kwargs)
+
+    monkeypatch.setattr(ResourceBroker, 'for_app', classmethod(remove_reviewed_policy))
+    with pytest.raises(ResourceStateError, match='retained resource policy is missing'):
+        service.relocate_restored_job(job, fresh)
+    assert entered == [True]
+    assert service.broker is previous
+    assert not previous.policy_path.exists()
+    assert (service.jobs_root / job / 'job.json').read_bytes() == original
+    assert list(fresh.iterdir()) == []

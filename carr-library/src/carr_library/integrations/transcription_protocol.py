@@ -881,7 +881,7 @@ class LocalFileJobProtocol:
                         run_process([profile['python_executable'], '-I', '-B', '-X', 'utf8', profile['worker_path'],
                                      '--job-dir', str(worker_root)], budget=process_budget,
                                     cancelled=checked_poll, watch=(worker_root / 'logs', worker_root / 'results'),
-                                    env=environment, cwd=worker_root, owned_windows_job=True)
+                                    env=environment, cwd=worker_root, owned_windows_job=os.name == 'nt')
                     except AudioCleanupPending as pending:
                         # No cache reads, archive, durable closure or resource
                         # release before the retained native owner is quiet.

@@ -13,6 +13,7 @@ from pathlib import Path
 import sysconfig
 from tempfile import TemporaryDirectory
 from time import monotonic
+import threading
 import traceback
 
 
@@ -61,6 +62,15 @@ def main():
     phase = ['start', monotonic()]
     deadline = monotonic() + 120
     detached_state = {}
+
+    def expired():
+        print(json.dumps({'status': 'FAIL', 'reason': 'Native Tasks cleanup watchdog expired',
+                          'stage': phase[0], 'checks': checks}), flush=True)
+        os._exit(1)
+
+    watchdog = threading.Timer(150, expired)
+    watchdog.daemon = True
+    watchdog.start()
 
     def advance(name):
         phase[:] = [name, monotonic()]
@@ -214,11 +224,15 @@ def main():
                       dialog.cpu.GetName() == 'Allowed CPU slots'
                       and dialog.max_leases.GetName() == 'Maximum active reservations'
                       and bool(dialog.usage.GetWindowStyleFlag() & wx.TE_READONLY))
+                # Advance before editing the form. Acquiring native focus for
+                # the later Space action may require another timer tick.
+                advance('save_stale_policy')
                 # Synthetic concurrent owner edit: the reviewed form still
                 # contains policy 1, while the canonical policy now has 3 slots.
                 broker.configure(ResourceLimits(cpu_slots=3, memory_bytes=1024**3,
                                                 disk_bytes=2*1024**3, min_free_disk_bytes=0))
                 dialog.cpu.SetValue(2)
+            elif name == 'save_stale_policy' and dialog is not None:
                 key(dialog.buttons['save'], wx.WXK_SPACE, 'stale_policy')
             elif name == 'stale_policy' and dialog is not None and not dialog.controller.busy:
                 if 'changed' not in dialog.controller.status:
@@ -229,7 +243,9 @@ def main():
                 if dialog.controller.policy.cpu_slots != 3:
                     return
                 check('native Refresh shows the actual current policy', dialog.cpu.GetValue() == 3)
+                advance('save_refreshed_policy')
                 dialog.cpu.SetValue(2)
+            elif name == 'save_refreshed_policy' and dialog is not None:
                 key(dialog.buttons['save'], wx.WXK_SPACE, 'saved_policy')
             elif name == 'saved_policy' and dialog is not None and not dialog.controller.busy:
                 if not dialog.controller.status.startswith('Resource allowances saved.'):
@@ -348,8 +364,11 @@ def main():
     except Exception:
         errors.append(traceback.format_exc())
     finally:
-        if native_handle is not None:
-            native_handle.close()
+        try:
+            if native_handle is not None:
+                native_handle.close()
+        finally:
+            watchdog.cancel()
     result = {'status': 'FAIL' if errors else 'PASS', 'checks': checks, 'errors': errors,
               'native_keyboard': 'INCOMPLETE' if errors else 'PASS', 'nvda': 'NOT_RUN',
               'manual_keyboard': 'NOT_RUN', 'measured_hardware_capacity': 'NOT_RUN',

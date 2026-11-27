@@ -77,13 +77,30 @@ class Authorization:
             raise ValueError('Approve exact provider profiles and endpoints.')
         for identity, address in self.profiles:
             validate_profile_id(identity)
-            endpoint(address, local=False)
+            endpoint(address, local=type(self) is LocalTranslationAuthorization)
         if not self.operations or any(o not in CAPABILITIES for o in self.operations):
             raise ValueError('Invalid authorized operation.')
         if not self.data_classes or any(x not in ('user-instruction', 'selected-script', 'selected-excerpt', 'synthetic-test') for x in self.data_classes):
             raise ValueError('Approve a bounded selected data class; whole-library uploads are unavailable.')
         if any(not re.fullmatch('[0-9a-f]{64}', h) for h in self.request_hashes):
             raise ValueError('Invalid authorized request checksum.')
+
+
+class LocalTranslationAuthorization(Authorization):
+    """Explicit zero-cost selected-data approval for one loopback translator.
+
+    Uses the unchanged authorization fields/digest and existing usage ledger.
+    It cannot authorize a remote endpoint, chat operation or paid request.
+    """
+    def __post_init__(self):
+        super().__post_init__()
+        if (money(self.budget) != 0 or tuple(self.operations) not in (
+                ('translation.text',), ('translation.languages',))):
+            raise ValueError('Local translation approval permits one translation purpose and a zero external cost bound.')
+
+
+def translation_authorization_type(profile):
+    return LocalTranslationAuthorization if profile.adapter == 'libretranslate-local' else Authorization
 
 
 class UsageLedger:
@@ -153,6 +170,9 @@ def _request(profile, operation, payload):
         raise ValueError('Provider request must be a typed JSON object.')
     if operation not in profile.capabilities:
         raise PermissionError('The provider profile does not support this operation.')
+    if profile.adapter == 'libretranslate-local':
+        from .translation_local import request
+        return request(operation, payload)
     if profile.adapter in ('google-translation-v2', 'google-translation-v3'):
         def language(value):
             if not isinstance(value, str) or not re.fullmatch('[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8}){0,3}', value):
@@ -287,11 +307,13 @@ class Gateway:
         target = endpoint(profile.endpoint, local=profile.local)
         reserved = False
         sent = False
-        if not profile.local:
-            if self.mode == 'LOCAL_ONLY':
+        local_translation = profile.adapter == 'libretranslate-local'
+        if not profile.local or local_translation:
+            if not profile.local and self.mode == 'LOCAL_ONLY':
                 raise PermissionError('LOCAL ONLY blocks external providers before credentials or connections are opened.')
-            if not isinstance(authorization, Authorization) or authorization.expires_at <= time():
-                raise PermissionError('An active, explicit remote production authorization is required.')
+            if not isinstance(authorization, translation_authorization_type(profile)) or authorization.expires_at <= time():
+                raise PermissionError('An active, explicit local selected-data approval is required.' if local_translation
+                                      else 'An active, explicit remote production authorization is required.')
             if (authorization.task_id != task_id or (profile.id, profile.endpoint) not in tuple(tuple(x) for x in authorization.profiles)
                     or operation not in authorization.operations or data_class not in authorization.data_classes
                     or (authorization.request_hashes and request_hash not in authorization.request_hashes)):
@@ -299,6 +321,8 @@ class Gateway:
             if max_cost is None:
                 raise PermissionError('The cost is unknown; approve an explicit maximum before calling this provider.')
             bound = money(max_cost)
+            if local_translation and bound != 0:
+                raise ValueError('Local translation cannot reserve external charges.')
             self.ledger.reserve(authorization, operation_id, request_hash, bound, profile, operation)
             reserved = True
         elif max_cost not in (None, 0, '0'):
@@ -407,7 +431,16 @@ class Gateway:
                       'local': profile.local, 'actual_cost': None, 'artifacts': []}
             if expected_type == 'application/json':
                 parsed = json.loads(b''.join(chunks))
-                if profile.adapter == 'google-translation-v3':
+                if local_translation:
+                    from .translation_local import response as local_response
+                    decoded = local_response(b''.join(chunks), operation, body, maximum=max_response_bytes)
+                    result.update(decoded)
+                    if operation == 'translation.text':
+                        usage = {'submitted_characters': len(body['q']),
+                                 'translation_sha256': sha256(result['text'].encode('utf-8')).hexdigest(),
+                                 'decoded_translation_sha256': translation_receipt_sha256(
+                                     result['text'], result['detected_source'])}
+                elif profile.adapter == 'google-translation-v3':
                     if type(parsed) is not dict:
                         raise ProviderError('The Advanced v3 response schema is invalid.')
                     if operation == 'translation.languages':

@@ -8,6 +8,7 @@ from copy import deepcopy
 from hashlib import sha256
 import importlib.util
 import json
+import os
 from pathlib import Path
 import shutil
 from threading import Event
@@ -69,7 +70,7 @@ def test_collision_between_schemas_is_refused_without_selecting_a_protocol(prepa
     app, workspace, service, profile, runtime, source = prepared
     canonical = service.create_job(profile['id'], [source])
     legacy_path = service._path(canonical['id'])
-    legacy_path.mkdir()
+    legacy_path.mkdir(parents=True)
     (legacy_path / 'job.json').write_text('{}', encoding='utf-8')
     with pytest.raises(ValueError, match='Ambiguous'):
         service.get(canonical['id'])
@@ -308,7 +309,7 @@ def test_pending_native_cleanup_retains_resource_lease_and_blocks_cache_reads(pr
         assert not pending.is_set() or owner.quiescent_event.is_set()
         return archive(*args, **kwargs)
     def retained_process(*args, **kwargs):
-        assert kwargs['owned_windows_job'] is True
+        assert kwargs['owned_windows_job'] is (os.name == 'nt')
         pending.set()
         raise AudioCleanupPending('Synthetic retained owner, not a process failure report.',
                                   cleanup_owner=owner)

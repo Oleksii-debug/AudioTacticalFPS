@@ -7,6 +7,7 @@ from dataclasses import asdict
 from decimal import Decimal, ROUND_DOWN, ROUND_UP
 from hashlib import sha256
 import json
+import logging
 import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -15,7 +16,8 @@ from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 from .models import canonical, local_path, text
 from .profiles import ProviderProfile, google_v3_parent
-from .providers import Authorization, Gateway, money, _request, translation_receipt_sha256
+from .providers import (Authorization, Gateway, money, _request, translation_receipt_sha256,
+                        translation_authorization_type)
 from .state import JobStore, atomic_json, read_json, now, MAX_CHECKPOINT_BYTES
 from ..speech.reading import ReadingDocument, MAX_PROJECT_BYTES
 from ..speech._io import new_output, digest, check_cancelled
@@ -58,6 +60,20 @@ def split_text(value, limit=4500):
     return tuple(parts)
 
 
+def translation_chunks(value, *, preserve_paragraphs=False):
+    if type(preserve_paragraphs) is not bool:
+        raise ValueError('Choose an explicit paragraph-preservation policy.')
+    if not preserve_paragraphs:
+        return split_text(value)
+    from .translation_documents import paragraph_ranges
+    return tuple(chunk for first, last in paragraph_ranges(value)
+                 for chunk in split_text(value[first:last]))
+
+
+def job_chunks(job):
+    return translation_chunks(job['source_text'],
+                              preserve_paragraphs=job.get('preserve_paragraphs', False))
+
 def _hash(value):
     return sha256(value.encode('utf-8')).hexdigest()
 
@@ -72,17 +88,18 @@ def translation_payload(value, source, target, glossary=None):
 
 
 
-def translation_approval(profile, value, source, target, budget, *, glossary=None, source_bound=False):
+def translation_approval(profile, value, source, target, budget, *, glossary=None, source_bound=False,
+                         preserve_paragraphs=False):
     """Called only after explicit review; bind every text/model/glossary request."""
     if type(source_bound) is not bool:
         raise ValueError('Choose an explicit source-bound or pasted-text approval.')
     hashes = []
-    for chunk in split_text(value):
+    for chunk in translation_chunks(value, preserve_paragraphs=preserve_paragraphs):
         if chunk.strip():
             _, body, _ = _request(profile, 'translation.text', translation_payload(chunk, source, target, glossary))
             hashes.append(_hash(canonical(body)))
     identity = uuid4().hex
-    approval = Authorization(identity, identity, ((profile.id, profile.endpoint),),
+    approval = translation_authorization_type(profile)(identity, identity, ((profile.id, profile.endpoint),),
         ('translation.text',), ('selected-script',) if source_bound else ('selected-excerpt',),
         str(money(budget)), len(hashes),
         time() + 24 * 3600, tuple(hashes))
@@ -95,16 +112,18 @@ def _source_job_id(job):
     # Canonical pasted-text jobs use UUIDv4. A deterministic UUIDv5 preserves
     # the existing 32-hex JobStore contract and distinguishes source jobs even
     # before their first provider usage record exists.
-    payload = canonical({key: job[key] for key in (
-        'source_binding', 'source_sha256', 'authorization', 'profile')})
+    keys = ('source_binding', 'source_sha256', 'authorization', 'profile')
+    if job.get('preserve_paragraphs') is True:
+        keys += ('preserve_paragraphs',)
+    payload = canonical({key: job[key] for key in keys})
     return uuid5(NAMESPACE_URL, 'urn:carr-library:translation/2:' + payload).hex
 
 
 def _approved_requests(profile, chunks, source, target, authorization, per_call_cost,
                        *, data_class='selected-excerpt', glossary=None):
     """Reconstruct the same approved requests for submission and later reads."""
-    if profile.adapter not in ('google-translation-v2', 'google-translation-v3') or not profile.enabled:
-        raise ValueError('Choose an enabled Google Basic v2 or Advanced v3 NMT profile.')
+    if profile.adapter not in ('google-translation-v2', 'google-translation-v3', 'libretranslate-local') or not profile.enabled:
+        raise ValueError('Choose an enabled Google Basic v2, Advanced v3 or explicit local translation profile.')
     hashes = []
     for chunk in chunks:
         if not chunk.strip():
@@ -114,7 +133,7 @@ def _approved_requests(profile, chunks, source, target, authorization, per_call_
         _, body, _ = _request(profile, 'translation.text', payload)
         hashes.append(_hash(canonical(body)))
     remote_hashes = tuple(value for value in hashes if value is not None)
-    if (not isinstance(authorization, Authorization) or authorization.task_id != authorization.id
+    if (not isinstance(authorization, translation_authorization_type(profile)) or authorization.task_id != authorization.id
             or tuple(authorization.operations) != ('translation.text',)
             or tuple(authorization.data_classes) != (data_class,)
             or tuple(tuple(p) for p in authorization.profiles) != ((profile.id, profile.endpoint),)
@@ -123,6 +142,8 @@ def _approved_requests(profile, chunks, source, target, authorization, per_call_
     if remote_hashes != tuple(authorization.request_hashes):
         raise PermissionError('Approval does not match this exact selected text and languages.')
     cost = money(per_call_cost)
+    if profile.local and (cost != 0 or money(authorization.budget) != 0):
+        raise PermissionError('Local translation requires a zero external cost bound.')
     if cost * len(remote_hashes) > money(authorization.budget):
         raise PermissionError('The per-call reservation exceeds the approved total budget.')
     return hashes, cost
@@ -299,6 +320,11 @@ class TranslationService:
                 or data.get('endpoint') != profile.endpoint or data.get('model') != profile.model):
             raise ValueError('Refresh languages for this exact provider and model.')
         rows = data.get('languages')
+        if profile.adapter == 'libretranslate-local':
+            from .translation_local import validate_languages
+            if data.get('adapter') != profile.adapter or _hash(canonical(rows)) != data.get('languages_sha256'):
+                raise ValueError('Refresh the local language declarations for this exact profile.')
+            return tuple(validate_languages(rows))
         advanced = profile.adapter == 'google-translation-v3'
         keys = {'language', 'name', 'source', 'target'} if advanced else {'language', 'name'}
         if (not isinstance(rows, list) or not 1 <= len(rows) <= 1000
@@ -317,13 +343,15 @@ class TranslationService:
         atomic_json(self._languages_path(profile), {'schema': 'carr-translation-languages/1',
             'profile': profile.id, 'endpoint': profile.endpoint, 'model': profile.model,
             'fetched_at': now(), 'languages': rows, 'languages_sha256': _hash(canonical(rows)),
-            'qualification': 'provider-declared; not acoustic or translation-quality verification'})
+            'qualification': 'provider-declared; not acoustic or translation-quality verification',
+            **({'adapter': profile.adapter} if profile.adapter == 'libretranslate-local' else {})})
         return rows
 
-    def preview(self, profile, value, source, target, *, rate_per_million=None, glossary=None):
-        if profile.adapter not in ('google-translation-v2', 'google-translation-v3') or not profile.enabled:
-            raise ValueError('Choose an enabled Google Basic v2 or Advanced v3 NMT profile.')
-        parts = split_text(value)
+    def preview(self, profile, value, source, target, *, rate_per_million=None, glossary=None,
+                preserve_paragraphs=False):
+        if profile.adapter not in ('google-translation-v2', 'google-translation-v3', 'libretranslate-local') or not profile.enabled:
+            raise ValueError('Choose an enabled Google Basic v2, Advanced v3 or explicit local translation profile.')
+        parts = translation_chunks(value, preserve_paragraphs=preserve_paragraphs)
         first = next(part for part in parts if part.strip())
         selected = translation_payload(first, source, target, glossary)
         _request(profile, 'translation.text', selected)
@@ -334,6 +362,13 @@ class TranslationService:
         targets = {row['language'] for row in languages if row.get('target', True)}
         if target not in targets or (source != 'auto' and source not in sources):
             raise ValueError('The chosen source or target is not declared supported by this provider model.')
+        if profile.adapter == 'libretranslate-local':
+            declared = {row['language']: set(row['targets']) for row in languages}
+            if ((source != 'auto' and target not in declared.get(source, set()))
+                    or source == 'auto' and not any(target in pairs for pairs in declared.values())):
+                raise ValueError('The installed local service does not declare this translation direction.')
+            if rate_per_million not in (None, '', '0', 0):
+                raise ValueError('Local translation has no external price estimate; use a zero cost bound.')
         if source == target:
             raise ValueError('Choose a target language different from the source.')
         estimate = None
@@ -344,13 +379,18 @@ class TranslationService:
             'provider_adapter': profile.adapter, 'endpoint': profile.endpoint, 'model': profile.model,
             'glossary': glossary, 'glossary_matching': 'case sensitive' if glossary else None,
             'estimated_cost': estimate, 'estimate_basis': 'owner-entered rate per million characters; not a provider quote',
-            'preservation': 'plain text derivative; document formatting is not retained'}
+            'preservation': ('ordered paragraph boundaries; original document layout is not retained'
+                             if preserve_paragraphs else 'plain text derivative; document formatting is not retained'),
+            **({'preserve_paragraphs': True} if preserve_paragraphs else {}),
+            **({'runtime_qualification': 'local API declarations only; model identity, offline egress and quality require independent evidence'}
+               if profile.local else {})}
 
     def submit(self, profile, value, source, target, *, title='Translation', authorization,
                per_call_cost, source_document=None, topic=None, glossary=None,
-               cancelled=lambda: False, guard=lambda: None):
-        preview = self.preview(profile, value, source, target, glossary=glossary)
-        parts = split_text(value)
+               cancelled=lambda: False, guard=lambda: None, preserve_paragraphs=False):
+        preview = self.preview(profile, value, source, target, glossary=glossary,
+                               preserve_paragraphs=preserve_paragraphs)
+        parts = translation_chunks(value, preserve_paragraphs=preserve_paragraphs)
         _, cost = _approved_requests(profile, parts, source, target, authorization, per_call_cost,
             data_class='selected-script' if source_document is not None else 'selected-excerpt', glossary=glossary)
         text(title, 'translation title', maximum=512)
@@ -360,6 +400,8 @@ class TranslationService:
             'source_text': value, 'source_sha256': preview['source_sha256'], 'source_language': source,
             'target_language': target, 'chunks': list(parts), 'receipts': [], 'glossary': glossary,
             'authorization': asdict(authorization), 'per_call_cost': str(cost)}
+        if preserve_paragraphs:
+            job['preserve_paragraphs'] = True
         if source_document is not None:
             if (not isinstance(source_document, ReadingDocument) or self.library is None
                     or source_document.source_anchor is None
@@ -388,12 +430,12 @@ class TranslationService:
         job = self.jobs.load(identity)
         self._binding(job)
         if (job.get('source_sha256') != _hash(job.get('source_text', ''))
-                or job.get('chunks') != list(split_text(job['source_text'])) or not isinstance(job.get('receipts'), list)
+                or job.get('chunks') != list(job_chunks(job)) or not isinstance(job.get('receipts'), list)
                 or len(job['receipts']) > len(job['chunks'])):
             raise ValueError('The translation checkpoint is invalid.')
         try:
             profile = ProviderProfile(**job['profile'])
-            authorization = Authorization(**job['authorization'])
+            authorization = translation_authorization_type(profile)(**job['authorization'])
             requests, cost = _approved_requests(profile, job['chunks'], job['source_language'],
                 job['target_language'], authorization, job['per_call_cost'],
                 data_class='selected-script' if job.get('kind') == 'translation/2' else 'selected-excerpt',
@@ -480,7 +522,7 @@ class TranslationService:
         with self.jobs.lock(identity):
             job = self._load(identity)
             profile = ProviderProfile(**job['profile'])
-            authorization = Authorization(**job['authorization'])
+            authorization = translation_authorization_type(profile)(**job['authorization'])
             total = len(job['chunks'])
             self._output_budget(job)
             if len(job['receipts']) == total:
@@ -489,6 +531,19 @@ class TranslationService:
                     job['status'] = 'complete'
                     self.jobs.save(job)
                 return {'id': identity, 'status': 'complete', 'completed': total, 'total': total}
+            def local_profile_current():
+                if profile.adapter != 'libretranslate-local' or self.library is None:
+                    return
+                from .profiles import ProfileStore
+                current_root = local_path(self.library.root)
+                if self.directory != current_root / 'state' / 'translation':
+                    raise PermissionError('Reopen local translation in its original library.')
+                directory = current_root / 'state' / 'providers'
+                if not directory.is_dir():
+                    raise PermissionError('Review the local translation profile before resuming.')
+                current = ProfileStore(directory).get(profile.id)
+                if not current.enabled or current.to_dict() != profile.to_dict():
+                    raise PermissionError('The selected local translation profile changed; review it before resuming.')
             job['status'] = 'running'
             self.jobs.save(job)
             try:
@@ -498,15 +553,27 @@ class TranslationService:
                 for index in range(len(job['receipts']), total):
                     if cancelled():
                         raise InterruptedError('Translation paused before the next request.')
+                    local_profile_current()
                     chunk = job['chunks'][index]
                     desk = self._source_context(job, index=index, remote=bool(chunk.strip()),
                                                 cancelled=cancelled, guard=guard)
                     def stopped():
                         if cancelled():
                             return True
+                        local_profile_current()
                         self._source_current(desk, guard=guard)
                         return False
                     if chunk.strip():
+                        pairs = None
+                        if profile.adapter == 'libretranslate-local':
+                            # Validate before sending; accepted output is checked
+                            # against this snapshot, never a later mutable cache.
+                            pairs = {row['language']: frozenset(row['targets'])
+                                     for row in self.languages(profile)}
+                            source, target = job['source_language'], job['target_language']
+                            if (not pairs or (source != 'auto' and target not in pairs.get(source, ()))
+                                    or (source == 'auto' and not any(target in rows for rows in pairs.values()))):
+                                raise ValueError('Refresh the local language declarations for this translation direction.')
                         payload = translation_payload(chunk, job['source_language'],
                                                       job['target_language'], job.get('glossary'))
                         result = self.gateway.request(profile, 'translation.text', payload,
@@ -517,6 +584,12 @@ class TranslationService:
                             cancelled=stopped, max_response_bytes=200000 if desk is not None else 1024 * 1024)
                     else:
                         result = {'text': chunk, 'detected_source': None, 'request_sha256': None, 'output_sha256': None}
+                    if profile.adapter == 'libretranslate-local' and chunk.strip():
+                        from .translation_local import language
+                        actual_source = (language(result.get('detected_source'))
+                            if job['source_language'] == 'auto' else job['source_language'])
+                        if job['target_language'] not in pairs.get(actual_source, ()):
+                            raise ValueError('The local response detected a source outside its declared translation direction.')
                     receipt = {'index': index, 'source_sha256': _hash(chunk), 'text': result['text'],
                         'translation_sha256': _hash(result['text']), 'detected_source': result.get('detected_source'),
                         'request_sha256': result.get('request_sha256'), 'response_sha256': result.get('output_sha256')}
@@ -529,7 +602,8 @@ class TranslationService:
                     # Accepted output precedes later scope/cancel checks: never bill twice.
                     self.jobs.save(job)
                     self._output_budget(job)
-                    progress(index + 1, total, 'Verified translation chunks')
+                    if index + 1 < total:
+                        progress(index + 1, total, 'Verified translation chunks')
                 job['status'] = 'complete'
                 self.jobs.save(job)
             except InterruptedError:
@@ -544,6 +618,13 @@ class TranslationService:
                 job['status'] = 'attention'
                 self.jobs.save(job)
                 raise
+            if job['status'] == 'complete':
+                # The final receipt and status are already durable. An observer
+                # cannot undo completion or authorize another provider call.
+                try:
+                    progress(total, total, 'Verified translation chunks')
+                except Exception:
+                    logging.getLogger(__name__).warning('Translation completed; final progress notification failed.')
             return {'id': identity, 'status': job['status'], 'completed': len(job['receipts']), 'total': total}
 
     def export(self, identity, output, *, cancelled=lambda: False, guard=lambda: None):
@@ -605,12 +686,22 @@ class TranslationService:
                         with new_output(payload / 'bilingual.txt', cancelled=cancelled) as staged:
                             staged.write_bytes(bilingual.encode('utf-8'))
                         paths = ('translation.reading.json', 'translated.txt', 'original.txt', 'bilingual.txt')
+                        if job.get('preserve_paragraphs'):
+                            from .translation_documents import structured_payload
+                            structured, html = structured_payload(job)
+                            atomic_json(payload / 'translation-structure.json', structured)
+                            with new_output(payload / 'bilingual.html', cancelled=cancelled) as staged:
+                                staged.write_bytes(html.encode('utf-8'))
+                            paths += ('translation-structure.json', 'bilingual.html')
+
                         report = {'schema': 'carr-translation-export/1', 'job_id': identity,
                             'source_sha256': job['source_sha256'], 'source_language': job['source_language'],
                             'target_language': job['target_language'], 'provider_adapter': job['profile']['adapter'],
                             'provider_endpoint': job['profile']['endpoint'], 'glossary': job.get('glossary'),
                             'model': job['profile']['model'], 'source_is_immutable': True, 'quotation_authority': False,
                             'automated_translation_quality': 'not independently qualified',
+                            **({'structure_preservation': 'ordered paragraph boundaries only'} if job.get('preserve_paragraphs') else {}),
+                            **({'local_runtime_identity': 'not attested by the local API'} if job['profile']['local'] else {}),
                             'decoded_text_binding': text_binding,
                             'decoded_language_binding': ('usage-ledger-sha256' if all(
                                 not chunk.strip() or 'decoded_translation_sha256' in row

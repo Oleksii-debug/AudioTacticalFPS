@@ -110,7 +110,10 @@ def test_inventory_uses_existing_worker_and_load_never_submits_a_job(ui):
     e.handlers['load']()
     assert e.dialog.template_result is None and e.service.jobs() == ()
     e.finish()
-    assert json.loads(e.dialog.template_result) == saved.draft
+    # The selected batch uses template names as its human-readable summary.
+    # Its exact saved operations remain unchanged and loading creates no job.
+    assert json.loads(e.dialog.template_result) == {**saved.draft, 'summary': saved.name}
+    assert e.store.get(saved.id).draft == saved.draft
     assert e.service.jobs() == () and not e.executor.shutdowns
 
 

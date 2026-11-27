@@ -483,10 +483,19 @@ def show_provider_settings(frame):
                 capability.ChangeValue('translation.text,translation.languages')
                 voice.ChangeValue('')
                 local.SetValue(False)
+            elif adapter.GetStringSelection() == 'libretranslate-local':
+                endpoint.ChangeValue('http://127.0.0.1:5000')
+                model.ChangeValue('operator-declared-local-models')
+                capability.ChangeValue('translation.text,translation.languages')
+                voice.ChangeValue('')
+                local.SetValue(True)
+                secret.ChangeValue('')
             token_expiry.Enable(adapter.GetStringSelection() == 'google-translation-v3')
+            secret.Enable(adapter.GetStringSelection() != 'libretranslate-local')
             event.Skip()
         adapter.Bind(wx.EVT_CHOICE, adapter_defaults)
         token_expiry.Enable(adapter.GetStringSelection() == 'google-translation-v3')
+        secret.Enable(adapter.GetStringSelection() != 'libretranslate-local')
         box.Add(local, 0, wx.ALL, 4)
         box.Add(enabled, 0, wx.ALL, 4)
         box.Add(form.CreateButtonSizer(wx.OK | wx.CANCEL), 0, wx.ALL, 5)
@@ -495,9 +504,13 @@ def show_provider_settings(frame):
             if form.ShowModal() != wx.ID_OK:
                 return
             identity = current.id if current else uuid4().hex
+            selected_adapter = adapter.GetStringSelection()
+            if selected_adapter == 'libretranslate-local' and secret.GetValue():
+                raise ValueError('The selected local translator cannot receive or save a credential.')
+            retained_credential = (current.credential_ref if current and selected_adapter != 'libretranslate-local' else None)
             profile = ProviderProfile(identity, name.GetValue(), adapter.GetStringSelection(), endpoint.GetValue(),
                 model.GetValue(), tuple(x.strip() for x in capability.GetValue().split(',') if x.strip()),
-                current.credential_ref if current else None, local.GetValue(), enabled.GetValue(), voice.GetValue() or None)
+                retained_credential, local.GetValue(), enabled.GetValue(), voice.GetValue() or None)
             authority_changed = current and (current.endpoint, current.adapter, current.local) != (profile.endpoint, profile.adapter, profile.local)
             if authority_changed:
                 profile = replace(profile, credential_ref=None, enabled=False)

@@ -729,70 +729,8 @@ def show_studio(frame):
 
 
 def show_audio_conversion(frame):
-    """Numeric, keyboard-driven offline DSP and conversion of a selected local file."""
-    import wx
-    from ..audio import AudioRuntime, Effect
-    chooser = wx.FileDialog(frame, 'Choose a local audio or video source', style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
-    try:
-        if chooser.ShowModal() != wx.ID_OK:
-            return
-        source = Path(chooser.GetPath())
-    finally:
-        chooser.Destroy()
-    dialog = wx.Dialog(frame, title='Convert audio and apply effects', size=(700, 550),
-                       style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
-    layout = wx.BoxSizer(wx.VERTICAL)
-    def entry(label, value):
-        layout.Add(wx.StaticText(dialog, label=label), 0, wx.ALL, 5)
-        control = wx.TextCtrl(dialog, value=value)
-        control.SetName(label)
-        layout.Add(control, 0, wx.EXPAND | wx.ALL, 5)
-        return control
-    start = entry('Start in seconds', '0')
-    duration = entry('Duration in seconds; empty means remainder', '')
-    gain = entry('Gain in decibels, -60 to 12', '0')
-    tempo = entry('Playback speed without pitch change, 0.5 to 2', '1')
-    loudness = entry('Target loudness in LUFS; empty leaves levels unchanged', '-18')
-    effects = wx.CheckBox(dialog, label='Apply speech noise reduction and gentle compression')
-    layout.Add(effects, 0, wx.ALL, 6)
-    layout.Add(dialog.CreateButtonSizer(wx.OK | wx.CANCEL), 0, wx.ALL, 6)
-    dialog.SetSizer(layout)
-    try:
-        if dialog.ShowModal() != wx.ID_OK:
-            return
-        start_value, duration_value = float(start.GetValue()), float(duration.GetValue()) if duration.GetValue().strip() else None
-        gain_value, tempo_value = float(gain.GetValue()), float(tempo.GetValue())
-        if not -60 <= gain_value <= 12 or not .5 <= tempo_value <= 2:
-            raise ValueError('Gain or speed is outside the displayed range.')
-        chain = [Effect('gain', gain_db=gain_value), Effect('tempo', factor=tempo_value)]
-        if effects.GetValue():
-            chain += [Effect('denoise'), Effect('compressor')]
-        if loudness.GetValue().strip():
-            chain.append(Effect('loudness', target_lufs=float(loudness.GetValue()), peak_db=-1))
-    except Exception as exc:
-        frame.report(str(exc))
-        return
-    finally:
-        dialog.Destroy()
-    chooser = wx.FileDialog(frame, 'Save converted audio to a new file', defaultFile=source.stem + '-converted.wav',
-                            wildcard='Audio (*.wav;*.flac;*.mp3;*.m4a;*.ogg;*.opus)|*.wav;*.flac;*.mp3;*.m4a;*.ogg;*.opus',
-                            style=wx.FD_SAVE)
-    try:
-        if chooser.ShowModal() != wx.ID_OK:
-            return
-        output = Path(chooser.GetPath())
-    finally:
-        chooser.Destroy()
-    def operation():
-        from ..runtime_settings import audio_runtime
-        runtime = audio_runtime(output.parent, state_root=frame.library.root / 'state', input_roots=(source.parent,))
-        result = runtime.convert(source, output, start=start_value, duration=duration_value,
-                                  effects=chain, cancelled=frame.cancel_event.is_set)
-        measurement = runtime.measure(output, cancelled=frame.cancel_event.is_set)
-        return result, measurement
-    frame.run_job('Converting local audio', operation,
-        lambda result: frame.report(f'Saved {output}. Duration {result[0].duration:.2f} seconds. '
-                                    f'Measured loudness {result[1].integrated_lufs} LUFS.'))
+    from .audio_conversion import show_audio_conversion as show
+    return show(frame)
 
 
 def install_studio_actions(frame):

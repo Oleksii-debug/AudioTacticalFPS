@@ -52,7 +52,9 @@ jobs:
       - name: Verify retained inputs, actual child protocol, recovery and CLI
         shell: pwsh
         run: |
-          python scripts/ci_check.py --jobs 2 tests/transcription/test_supplied_worker_bridge.py tests/transcription/test_v5_worker_profile.py tests/transcription/test_runtime_interpreter.py tests/operations/test_transcription_admission.py tests/assistant/test_supplied_transcription.py tests/ui/test_progress_job_review.py tests/transcription/test_protocol_fixture.py tests/transcription/test_service.py tests/transcription/test_admission_boundaries.py tests/transcription/test_runtime_admission.py tests/transcription/test_restore.py tests/storage/test_transcription_backup.py tests/ui/test_transcription_dialog.py tests/e2e/test_transcription_cli.py tests/transcription/test_unified_authority.py tests/transcription/test_export_publication.py 2>&1 | Tee-Object 'ci-asr-results/source.txt'
+          $suites = @('tests/transcription/test_supplied_worker_bridge.py', 'tests/transcription/test_v5_worker_profile.py', 'tests/transcription/test_runtime_interpreter.py', 'tests/operations/test_transcription_admission.py', 'tests/assistant/test_supplied_transcription.py', 'tests/ui/test_progress_job_review.py', 'tests/transcription/test_protocol_fixture.py', 'tests/transcription/test_service.py', 'tests/transcription/test_admission_boundaries.py', 'tests/transcription/test_runtime_admission.py', 'tests/transcription/test_restore.py', 'tests/storage/test_transcription_backup.py', 'tests/ui/test_transcription_dialog.py', 'tests/e2e/test_transcription_cli.py', 'tests/transcription/test_unified_authority.py', 'tests/transcription/test_export_publication.py')
+          if ($env:RUNNER_OS -eq 'Windows') { $suites += 'tests/transcription/test_protocol_fixture_windows.py' }
+          python scripts/ci_check.py --jobs 2 @suites 2>&1 | Tee-Object 'ci-asr-results/source.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify the same whole suites against the installed package
         timeout-minutes: 12
@@ -63,7 +65,7 @@ jobs:
         run: |
           $installedAsr = @'
           from hashlib import sha256
-          import importlib, json, pathlib, socket, sys, xml.etree.ElementTree as ET
+          import importlib, json, os, pathlib, socket, sys, xml.etree.ElementTree as ET
           import pytest
           checkout = pathlib.Path.cwd().resolve()
           modules = ["carr_library.integrations.transcription_values","carr_library.integrations.transcription_runtime","carr_library.integrations.transcription_scope","carr_library.integrations.transcription_backup","carr_library.integrations.transcription_protocol","carr_library.transcription","carr_library.backup_transcription","carr_library.state_backup","carr_library.backup_sidecars","carr_library.library_backup","carr_library.ui.transcription_runtime_dialog","carr_library.ui.transcription_dialog","carr_library.transcription_cli","carr_library.integrations.transcription_exports"]
@@ -89,6 +91,8 @@ jobs:
                       self.seen = True
           policy = RejectExpectedFailures()
           suites = ["tests/transcription/test_supplied_worker_bridge.py","tests/transcription/test_v5_worker_profile.py","tests/transcription/test_runtime_interpreter.py","tests/operations/test_transcription_admission.py","tests/assistant/test_supplied_transcription.py","tests/ui/test_progress_job_review.py","tests/transcription/test_protocol_fixture.py","tests/transcription/test_service.py","tests/transcription/test_admission_boundaries.py","tests/transcription/test_runtime_admission.py","tests/transcription/test_restore.py","tests/storage/test_transcription_backup.py","tests/ui/test_transcription_dialog.py","tests/e2e/test_transcription_cli.py","tests/transcription/test_unified_authority.py","tests/transcription/test_export_publication.py"]
+          if os.name == 'nt':
+              suites.append('tests/transcription/test_protocol_fixture_windows.py')
           report = pathlib.Path('ci-asr-results/installed.xml')
           status = pytest.main(['-v', '-o', 'addopts=', '-o', 'pythonpath=', '-o', 'xfail_strict=true',
               '-o', 'faulthandler_timeout=120', '--import-mode=importlib', '--junitxml=' + str(report), *suites],

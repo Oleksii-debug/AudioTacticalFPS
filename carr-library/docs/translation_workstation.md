@@ -1,4 +1,4 @@
-# Optional selected-text and library-source translation: Google Basic v2 and Advanced v3
+# Optional selected-text, retained-document and batch translation
 
 Tools → Translate selected text and Tools → Translate selected book or source range
 use the existing provider profiles, Windows Credential Manager, permission
@@ -200,9 +200,13 @@ Export rechecks the source after the folder picker and holds the existing
 application writer guard while publishing the derived files. It rehashes the
 retained original after acquiring that guard and before the completion manifest.
 Archival uses the same guard. No database write transaction spans source hashing or network work.
-A failed or cancelled export may leave a partial newly created directory.
-Export success requires the final provenance manifest and matching output hashes;
-the saved completed translation remains available for another explicit export.
+Each translation export is staged and published as a new directory through the shared atomic no-replace publisher.
+A pre-publication failure leaves no final directory. If the complete directory was already
+published but final directory durability or staging cleanup fails, the typed receipt identifies
+the published destination; inspect it before exporting again. Export success requires the
+final provenance manifest and matching output hashes. A document batch may publish earlier
+individual jobs before a later job stops; its partial-publication receipt lists those actual
+directories and does not delete them or report that nothing was written.
 
 ## Supported limits and remaining qualification
 
@@ -225,11 +229,12 @@ plain-text joins; it is not a claim of page layout, table, footnote or formatted
 document fidelity.
 
 Automatic ADC discovery/token refresh, glossary creation, automatic chapter-title
-interpretation, batch document selection, formatted-document preservation, local M2M100 inference,
+interpretation, original rich-document layout preservation, local M2M100 inference,
 canonical-135 translation mapping and independent linguistic quality review
 remain separate work. No offline failure causes a silent remote fallback or
 model download. Source text and receipts use the existing private local state
-store; this feature does not supply encrypted text-at-rest containers. API
+store; this translator does not itself encrypt the active library. The separately selected
+sync/archive encryption workflow retains its own scope and acceptance requirements. API
 secrets use the OS vault.
 
 ## Reuse and verification
@@ -269,6 +274,143 @@ counts to a later source tree. No live Google request, user-document upload or
 charge was made by this implementation work. Real provider billing and
 translation quality require separate explicit execution.
 
+
+## Explicit local translator
+
+The optional `libretranslate-local` profile uses the existing Gateway,
+authorization envelope, usage ledger and translation jobs. In **AI and API
+connections**, select that adapter, enter an already installed service's literal
+loopback URL (for example `http://127.0.0.1:5000`), an operator-declared model label
+and the two translation capabilities, then explicitly enable it. The application
+does not launch a server, install or download a model, probe a private pack,
+forward a credential or fall back to Google.
+
+From the selected-text window choose **Local translation...**. Approve fetching
+the selected server's language declarations before previewing text. The adapter
+requires the server's directed source/target pairs; a language appearing in the
+list does not imply every direction is available. Automatic detection must
+return a valid detected source that belongs to a declared direction.
+
+Local jobs use an explicit **zero external cost** envelope and the same
+at-most-one-attempt receipt rules. A local failed/uncertain attempt is not silently
+replayed. HTTP redirects and proxy environment variables are not followed. The
+client accepts only the reviewed JSON text protocol, not server commands or
+formatted-file conversion. Existing completed work remains readable/exportable
+without a server. An unfinished job rechecks its current selected profile and,
+for retained documents, the original source authority.
+
+The API has no attested model-file or runtime fingerprint. The profile's model
+field is an operator label, not proof that a particular model produced a result.
+The fetched pairs are provider declarations. Actual engine identity, model
+licenses, language-pair quality, native offline egress and Windows performance
+require separate evidence. No 135-language coverage is inferred.
+
+Protocol source review used LibreTranslate **v1.10.0**, commit
+`29aea44cc80100401497fb62db813a3f3a504e84`, specifically `GET /languages` and
+`POST /translate` with `q/source/target/format=text`.
+The implementation here contains client mapping only; it does not copy, bundle
+or redistribute LibreTranslate/Argos engine code or model weights. The separately
+installed server and its models retain their own licenses and obligations.
+No actual translator/model inference was executed during this source-only draft.
+
+## Explicit retained-document and paragraph batches
+
+Use **Tools → Translate selected documents...**, or **Document batch...** in the
+existing translation window. Add each selected book or range explicitly from the
+currently visible Books and Collections page. `*` chooses that one entire
+document; `2-5` chooses explicit source reading positions. All visible rows are
+never interpreted as consent. The batch supports at most 64 selections and
+2,000,000 total source characters. Duplicate selections and edited reading
+copies are rejected; the existing ReadingDesk rechecks retained originals and
+source authorization.
+
+Choose the existing Google Basic/Advanced or explicit local profile, source/auto,
+target, total budget and optional owner-entered current price. Advanced batches
+may select an existing compatible glossary with an explicit source language.
+Preview shows each exact source identity, reading-position count, character/call
+count and its share of the total reservation. Provider billing and quota are
+not enforced or guessed by this local reservation.
+
+**Approve and save jobs** binds the current library path/directory identity,
+source snapshots, profile, languages, glossary and total review hash. It saves
+ordinary `translation/2` jobs; it starts no provider call. **Run / resume saved
+jobs** executes only those saved IDs on the existing host background worker.
+There is no second queue or batch database. Pause or a failed later job retains
+earlier accepted jobs. **Choose saved document jobs** explicitly selects durable
+jobs after reopening the window. Closing or changing the library/topic cancels
+pending work and suppresses callbacks into an obsolete window.
+
+Paragraph-preserving jobs split only explicit blank-line boundaries; they do not
+guess language-specific sentences or document layout. Export includes the
+existing original/translated/bilingual text and reversible reading-copy project,
+plus `translation-structure.json` and escaped `bilingual.html`. The structure
+file maps each ordered paragraph back to exact source character ranges, retained
+reading positions and accepted receipt indexes. Original layout, tables, images,
+footnotes and printed page fidelity are not reconstructed. All output is a
+non-authoritative derivative; original citation/quotation offsets are not granted
+to translated text. The reading project can be opened in the existing reader for
+separately selected narration, retaining its original/translation lineage.
+
+A partial preparation receipt lists already saved IDs without implying a provider
+call occurred. A partial run or export receipt retains completed work and real
+published directories. Inspect these IDs/destinations before preparing another
+batch; the application never automatically reapproves or deletes them.
+A moved/restored unfinished source job needs fresh source approval; completed
+derivatives still export after current source verification.
+
+### CLI additions
+
+The same `translation` command accepts `--approve-local` for local language
+discovery/submission. It is distinct from `--approve-remote`; the wrong approval
+type fails before connection. Text `preview` and `submit` accept
+`--preserve-paragraphs`.
+
+For retained documents, supply an explicit UTF-8 JSON list such as:
+
+```json
+[
+  {"workspace": "WORKSPACE_ID", "edition": "EDITION_ID", "first": 1, "last": 3},
+  {"workspace": "WORKSPACE_ID", "edition": "ANOTHER_EDITION_ID"}
+]
+```
+
+Omitting `last` selects the whole retained document from `first`; no path,
+wildcard, script, hidden library scan or arbitrary operation is accepted.
+Use `documents-preview --profile PROFILE --selections chosen.json --source en
+--target uk --budget 0`, then repeat with `documents-submit --review-sha256 HASH`
+and the matching explicit local/remote approval. Google selections use the
+owner's actual chosen reservation, not the illustrative local zero.
+`documents-run JOB_ID [JOB_ID ...]` runs those saved jobs;
+`documents-export JOB_ID [JOB_ID ...] --parent EXISTING_DIRECTORY` creates new
+child exports. Ctrl+C pauses the bounded worker. Structured/partial receipts are
+printed as JSON with exit code 2; ordinary pre-publication errors remain code 1.
+
+### Required evidence for this extension
+
+All new composition is **NOT_RUN** until the exact source/installed candidate
+gates execute. Required offline modules are
+`tests/assistant/test_translation_local.py`,
+`tests/assistant/test_translation_documents.py` and
+`tests/ui/test_translation_documents.py`, alongside all prior Google/provider,
+source/reader and backup suites. The document test reuses the adjacent local
+transport test fixture; both files must be copied into an installed test run.
+
+`tests/assistant/test_translation_local_loopback.py` uses real loopback HTTP and
+real CLI children. It belongs only in the explicit loopback network gate, never
+the common all-socket-denied runner. Its server is synthetic; it does not qualify
+LibreTranslate model inference. The installed native probe
+`scripts/windows_translation_documents_smoke.py` checks actual wx keyboard,
+host background jobs, retained-source capture and structured output hashes.
+It supplies synthetic transport and controlled consent/picker answers. Native
+picker interaction, actual model inference/quality, native server egress and
+NVDA remain separate NOT_RUN dimensions. Existing Google native probes remain
+required without removal.
+
+The final-observer correction reuses PR189 at
+`7651df63e54f895e6fa3c279d423f1c112655fff`: save the complete job before notifying
+the final UI observer, and never let an observer failure erase accepted output
+or authorize a duplicate request.
+
 ## Official API references
 
 - https://docs.cloud.google.com/translate/docs/reference/rest/v2/translate
@@ -284,3 +426,8 @@ translation quality require separate explicit execution.
 
 The Advanced REST/authentication references above were reviewed on 2026-11-27.
 No live provider pricing or account capability was inferred from them.
+
+Local protocol references:
+- https://github.com/LibreTranslate/LibreTranslate/tree/29aea44cc80100401497fb62db813a3f3a504e84
+- https://docs.libretranslate.com/api/
+- https://github.com/LibreTranslate/LibreTranslate/blob/29aea44cc80100401497fb62db813a3f3a504e84/LICENSE

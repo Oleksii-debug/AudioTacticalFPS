@@ -19,7 +19,7 @@ import stat
 from .ingest.bundle import _plain, _unique_object
 from .ingest.restore import RestoreError
 from .reader.reading_state import MAX_BYTES as READING_BYTES, _decode
-from . import backup_producers, backup_generated, backup_transcription, backup_book_audio
+from . import backup_producers, backup_generated, backup_transcription, backup_book_audio, backup_effect_presets
 from .state_backup import _local_studio_origin, _local_transcription_origin
 
 MAX_FILES = 100_000
@@ -349,6 +349,8 @@ def _collection_budgets(entries):
                                      for name, size in entries)
         backup_book_audio.collection_budgets({'filename': name, 'size_bytes': size}
                                              for name, size in entries)
+        backup_effect_presets.collection_budgets({'filename': name, 'size_bytes': size}
+                                                 for name, size in entries)
     except ValueError as exc:
         raise RestoreError(str(exc)) from exc
     narration = [(name, size) for name, size in entries if name.startswith('narration-projects/')]
@@ -488,6 +490,8 @@ def _ignored(name):
         return True
     if path.parent.as_posix() in ('narration-projects', 'reading-copies'):
         return path.name.startswith('.reading-copy-') and path.name.endswith('.tmp')
+    if backup_effect_presets.reserved(name):
+        return backup_effect_presets.ignored(name)
     if name.startswith('state/studio/'):
         return (path.name in ('.state.lock', '.render.lock', '.origin.lock', '.recording.lock', '.selected-clip.lock')
                 or name.startswith('state/studio/publications/') and bool(re.fullmatch(r'\.[0-9a-f]{32}\.lock', path.name))
@@ -535,6 +539,7 @@ def _capture(root, *, include_generated=False, cancelled=lambda: False):
         name = pending.pop()
         portable_name(name)
         directory = root / name
+        backup_effect_presets.validate_directory(name)
         directories[name] = _identity(_plain(directory, directory=True))
         for path in directory.iterdir():
             _check_cancelled(cancelled)
@@ -542,6 +547,7 @@ def _capture(root, *, include_generated=False, cancelled=lambda: False):
             info = path.lstat()
             if stat.S_ISDIR(info.st_mode):
                 _plain(path, directory=True)
+                backup_effect_presets.validate_directory(relative)
                 if (not _ignored(relative) and (relative != 'state/studio/cache' or include_generated)
                         and (not backup_transcription.is_cache_directory(relative) or include_generated)):
                     pending.append(relative)

@@ -130,7 +130,7 @@ jobs:
                    'carr_library.studio.cli', 'carr_library.ui.assistant_dialog',
                    'carr_library.studio.project', 'carr_library.studio.managed_inputs')
           import importlib
-          completion_names = ["carr_library.assistant.templates","carr_library.ui.assistant_templates","carr_library.backup_book_audio"]
+          completion_names = ["carr_library.assistant.templates","carr_library.ui.assistant_templates","carr_library.backup_book_audio","carr_library.backup_effect_presets","carr_library.backup_producers","carr_library.backup_sidecars","carr_library.state_backup","carr_library.audio.effect_presets","carr_library.assistant.profiles","carr_library.assistant.providers","carr_library.assistant.translation","carr_library.assistant.translation_local","carr_library.assistant.translation_documents","carr_library.ui.translation_dialog","carr_library.ui.translation_documents","carr_library.assistant.translation_cli","carr_library.ui.assistant_dialog"]
           for name in completion_names:
               importlib.import_module(name)
           names += tuple(completion_names)
@@ -180,6 +180,9 @@ jobs:
                     'tests/speech/test_session.py',
                     'tests/packaging/test_worker_bytecode.py',
                     'tests/assistant/test_translation.py',
+                    'tests/assistant/test_translation_local.py',
+                    'tests/assistant/test_translation_documents.py',
+                    'tests/ui/test_translation_documents.py',
                     'tests/assistant/test_providers.py',
                     'tests/assistant/test_translation_v3.py',
                     'tests/assistant/test_translation_advanced_source.py',
@@ -238,7 +241,7 @@ jobs:
           integrity_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in cases) for name in integrity_modules}
           incremental_expected = ('test_incremental_backup', 'test_incremental_backup_cli', 'test_vault', 'test_incremental_backup_dialog')
           incremental_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in cases) for name in incremental_expected}
-          completion_suites = ["tests/assistant/test_workflow_templates.py","tests/assistant/test_workflow_template_handlers.py","tests/storage/test_backup_studio_draft.py"]
+          completion_suites = ["tests/assistant/test_workflow_templates.py","tests/assistant/test_workflow_template_handlers.py","tests/storage/test_backup_studio_draft.py","tests/assistant/test_translation_local.py","tests/assistant/test_translation_documents.py","tests/ui/test_translation_documents.py"]
           completion_counts = {}
           for suite in completion_suites:
               module = suite[:-3].replace('/', '.')
@@ -354,6 +357,7 @@ jobs:
             (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe'),
             (Join-Path $env:CARR_V3_AUDIO 'bin/ffmpeg.exe'),
             (Join-Path $env:CARR_V3_AUDIO 'bin/ffprobe.exe')) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | ForEach-Object { [System.IO.Path]::GetFullPath($_) } | Sort-Object -Unique
+          $requiredSpeechNativeFailures = [System.Collections.Generic.List[object]]::new()
           $rulePrefix = 'CARR-v3-offline-' + [guid]::NewGuid().ToString('N')
           $ruleNames = @()
           $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
@@ -371,10 +375,73 @@ jobs:
             $filters = @($active | Get-NetFirewallApplicationFilter -ErrorAction Stop | Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })
             if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Offline rules do not cover the selected runtime programs.' }
             @{ status='PASS'; blocked_programs=$filters; scope='tested runtime executables, not a whole-machine network claim' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-v3-results/runtime-firewall.json'
+            try {
             & $python -I -B scripts/windows_v3_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-v3.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Actual native speech and production acceptance failed.' }
+            } catch {
+              $requiredSpeechNativeFailures.Add([pscustomobject]@{ block='speech-production'; error=$_.Exception.Message; error_type=$_.Exception.GetType().FullName })
+              Write-Host ('REQUIRED NATIVE BLOCK FAILED [speech-production]: ' + $_.Exception.Message)
+              @{ status=$(if ($requiredSpeechNativeFailures.Count -eq 0) { 'PASS' } else { 'FAIL' }); failures=$requiredSpeechNativeFailures.ToArray(); qualification='Every native block remains required' } | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 'ci-v3-results/required-speech-native-failures.json'
+            }
+            try {
             & $python -I -B scripts/windows_translation_v3_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-translation-v3.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Native Advanced translation controls, vault and derivative workflow failed.' }
+            } catch {
+              $requiredSpeechNativeFailures.Add([pscustomobject]@{ block='advanced-translation'; error=$_.Exception.Message; error_type=$_.Exception.GetType().FullName })
+              Write-Host ('REQUIRED NATIVE BLOCK FAILED [advanced-translation]: ' + $_.Exception.Message)
+              @{ status=$(if ($requiredSpeechNativeFailures.Count -eq 0) { 'PASS' } else { 'FAIL' }); failures=$requiredSpeechNativeFailures.ToArray(); qualification='Every native block remains required' } | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 'ci-v3-results/required-speech-native-failures.json'
+            }
+          try {
+          & $python -I -B scripts/windows_translation_documents_smoke.py --source-root (Resolve-Path 'src').Path 2>&1 | Tee-Object 'ci-v3-results/native-translation-documents.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Actual installed native document translation failed.' }
+          $verifyDocumentTranslation = @'
+          from hashlib import sha256
+          import json, pathlib, re, sys
+          raw = pathlib.Path("ci-v3-results/native-translation-documents.txt").read_text(encoding='utf-8-sig')
+          reports = []
+          for match in re.finditer(r'(?m)^\{', raw):
+              try:
+                  item, _ = json.JSONDecoder().raw_decode(raw[match.start():])
+              except ValueError:
+                  continue
+              if isinstance(item, dict) and 'local_and_document_controls' in item:
+                  reports.append(item)
+          assert len(reports) == 1, 'Native document translation report is missing or ambiguous.'
+          report = reports[0]
+          assert report['status'] == report['native_keyboard'] == report['local_and_document_controls'] == 'PASS'
+          assert report['check_count'] == len(report['checks']) == 58
+          assert report['synthetic_protocol_calls'] == 6
+          assert report['host_jobs'] == 'actual DesktopFrame.run_job / DesktopExecutor / ProgressHub'
+          assert all(report[name] == 'NOT_RUN' for name in ('controlled_consent_and_pickers',
+              'actual_local_model_inference', 'offline_server_egress', 'translation_quality', 'nvda'))
+          required = set(["native Windows wx","local translation native modal","local external budget is zero and readonly","local preview includes unqualified runtime distinction","local completion retains native status focus","document workstation native modal","source capture makes no provider calls","batch preview has exact four paragraph requests","preparation has no provider calls","exact approved paragraph calls","batch completion retains native status focus","two actual published source derivatives","selected original bytes remain unchanged","batch export retains native status focus","actual shared desktop executor","actual unmodified host run_job","actual shared ProgressHub","actual retained catalog and workspace","document translation uses the shared keyboard registry","actual host worker and progress bind every protocol call","actual host shutdown has no retained cleanup failure","installed exact source: carr_library.assistant.profiles","installed exact source: carr_library.assistant.providers","installed exact source: carr_library.assistant.translation","installed exact source: carr_library.assistant.translation_local","installed exact source: carr_library.assistant.translation_documents","installed exact source: carr_library.ui.translation_dialog","installed exact source: carr_library.ui.translation_documents","installed exact source: carr_library.ui.desktop_app","installed exact source: carr_library.ui.worker_lifetime","installed exact source: carr_library.progress","installed exact source: carr_library.ui.progress_panel"])
+          assert required <= set(report['checks']), sorted(required - set(report['checks']))
+          names = set(["carr_library.assistant.profiles","carr_library.assistant.providers","carr_library.assistant.translation","carr_library.assistant.translation_local","carr_library.assistant.translation_documents","carr_library.ui.translation_dialog","carr_library.ui.translation_documents","carr_library.ui.desktop_app","carr_library.ui.worker_lifetime","carr_library.progress","carr_library.ui.progress_panel"])
+          assert set(report['source_origins']) == names
+          source_root = pathlib.Path('src').resolve(strict=True)
+          for name in names:
+              item = report['source_origins'][name]
+              actual = pathlib.Path(item['path']).resolve(strict=True)
+              selected = source_root / pathlib.Path(*name.split('.')).with_suffix('.py')
+              assert actual.is_relative_to(pathlib.Path(sys.prefix).resolve())
+              assert 'site-packages' in actual.parts and not actual.is_relative_to(source_root)
+              assert item['sha256'] == sha256(actual.read_bytes()).hexdigest() == sha256(selected.read_bytes()).hexdigest()
+          pathlib.Path("ci-v3-results/native-translation-documents.json").write_text(json.dumps(report, indent=2), encoding='utf-8')
+          print(json.dumps(dict(status='PASS', required_checks=sorted(required), actual_shared_host='PASS',
+              synthetic_protocol_calls=6, actual_local_model_inference='NOT_RUN',
+              translation_quality='NOT_RUN', offline_server_egress='NOT_RUN', manual_nvda='NOT_RUN')), flush=True)
+          '@
+          $verifyDocumentTranslation | & $python -I -B -
+          if ($LASTEXITCODE -ne 0) { throw 'Native document translation, shared host or source identity evidence is incomplete.' }
+          } catch {
+            $requiredSpeechNativeFailures.Add([pscustomobject]@{ block='document-translation'; error=$_.Exception.Message; error_type=$_.Exception.GetType().FullName })
+            Write-Host ('REQUIRED NATIVE BLOCK FAILED [document-translation]: ' + $_.Exception.Message)
+            @{ status='FAIL'; failures=$requiredSpeechNativeFailures.ToArray(); qualification='Every native block remains required' } | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 'ci-v3-results/required-speech-native-failures.json'
+          }
+            @{ status=$(if ($requiredSpeechNativeFailures.Count -eq 0) { 'PASS' } else { 'FAIL' }); failures=$requiredSpeechNativeFailures.ToArray(); qualification='Every native block remains required' } | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 'ci-v3-results/required-speech-native-failures.json'
+            if ($requiredSpeechNativeFailures.Count -ne 0) {
+              throw ('Required native acceptance failed after independent checks: ' + (($requiredSpeechNativeFailures.ToArray() | ForEach-Object { $_.block }) -join ', '))
+            }
           } finally {
             foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
             foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
@@ -382,7 +449,7 @@ jobs:
       - name: Require publication, recording, portable clip and reader source contracts
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
         run: |
-          python scripts/ci_check.py tests/studio/test_publishing.py tests/studio/test_publishing_cli.py tests/studio/test_publishing_handlers.py tests/packaging/test_prepare_windows_audio.py tests/audio/test_recording.py tests/audio/test_recording_cleanup.py tests/audio/test_recording_compatibility.py tests/audio/test_recording_export.py tests/ui/test_recording_dialog.py tests/audio/test_audio_process.py tests/audio/test_publication_fsync.py tests/audio/test_dsp.py tests/studio/test_production_cancellation_outcomes.py tests/speech/test_runtime.py tests/speech/test_python_helper.py tests/audio/test_windows_audio_ownership.py tests/studio/test_clip_editing.py tests/studio/test_clip_restoration.py tests/studio/test_clip_dialog.py tests/studio/test_clip_cli.py tests/storage/test_state_clip_inputs.py tests/studio/test_studio_controller.py tests/speech/test_reader_usability.py tests/speech/test_navigation.py tests/speech/test_player_controls.py tests/speech/test_player_transport.py tests/ui/test_reader_playback.py tests/ui/test_reader_playback_actions.py tests/packaging/test_audio_runtime.py tests/packaging/test_audio_bundle.py tests/reader/test_export_reconciliation.py tests/speech/test_reading.py tests/speech/test_source.py tests/speech/test_session.py tests/ui/test_keyboard_manager.py tests/ui/test_progress_voice_actions.py tests/storage/test_incremental_backup.py tests/storage/test_incremental_backup_cli.py tests/sync/test_vault.py tests/ui/test_incremental_backup_dialog.py tests/audio/test_audiobook.py tests/studio/test_audiobook_publication.py tests/studio/test_daisy_publishing.py tests/studio/test_daisy_boundaries.py tests/studio/test_publishing_boundaries.py tests/storage/test_backup_publication_formats.py tests/reader/test_ebook_audio.py tests/ui/test_ebook_audio_lifetime.py tests/studio/test_book_audio.py tests/ui/test_book_audio_dialog.py tests/ui/test_worker_lifetime.py tests/storage/test_backup_book_audio.py 2>&1 | Tee-Object 'ci-v3-results/strict-publication.txt'
+          python scripts/ci_check.py tests/studio/test_publishing.py tests/studio/test_publishing_cli.py tests/studio/test_publishing_handlers.py tests/packaging/test_prepare_windows_audio.py tests/audio/test_recording.py tests/audio/test_recording_cleanup.py tests/audio/test_recording_compatibility.py tests/audio/test_recording_export.py tests/ui/test_recording_dialog.py tests/audio/test_audio_process.py tests/audio/test_publication_fsync.py tests/audio/test_dsp.py tests/audio/test_effect_presets.py tests/audio/test_audio_conversion.py tests/ui/test_audio_conversion.py tests/studio/test_production_cancellation_outcomes.py tests/speech/test_runtime.py tests/speech/test_python_helper.py tests/audio/test_windows_audio_ownership.py tests/studio/test_clip_editing.py tests/studio/test_clip_restoration.py tests/studio/test_clip_dialog.py tests/studio/test_clip_cli.py tests/storage/test_state_clip_inputs.py tests/studio/test_studio_controller.py tests/speech/test_reader_usability.py tests/speech/test_navigation.py tests/speech/test_player_controls.py tests/speech/test_player_transport.py tests/ui/test_reader_playback.py tests/ui/test_reader_playback_actions.py tests/packaging/test_audio_runtime.py tests/packaging/test_audio_bundle.py tests/reader/test_export_reconciliation.py tests/speech/test_reading.py tests/speech/test_source.py tests/speech/test_session.py tests/ui/test_keyboard_manager.py tests/ui/test_progress_voice_actions.py tests/storage/test_incremental_backup.py tests/storage/test_incremental_backup_cli.py tests/sync/test_vault.py tests/ui/test_incremental_backup_dialog.py tests/audio/test_audiobook.py tests/studio/test_audiobook_publication.py tests/studio/test_daisy_publishing.py tests/studio/test_daisy_boundaries.py tests/studio/test_publishing_boundaries.py tests/storage/test_backup_publication_formats.py tests/reader/test_ebook_audio.py tests/ui/test_ebook_audio_lifetime.py tests/studio/test_book_audio.py tests/ui/test_book_audio_dialog.py tests/ui/test_worker_lifetime.py tests/storage/test_backup_book_audio.py tests/storage/test_backup_effect_presets.py 2>&1 | Tee-Object 'ci-v3-results/strict-publication.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $speechVerdict = @(Select-String -LiteralPath 'ci-v3-results/strict-publication.txt' -Pattern '^PASS: tests/speech/test_runtime\.py: junit_passed=13, failed=0, skipped=0, pytest_exit=0$')
           if ($speechVerdict.Count -ne 1) { throw 'All 12 shared speech cases and the actual Windows SAPI case are required.' }
@@ -416,7 +483,7 @@ jobs:
           }
       - name: Verify installed publication, recording, clips and EPUB3.3 without egress
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.audio-runtime.outcome == 'success' && steps.publication-audio-runtime.outcome == 'success' && steps.epubcheck-runtime.outcome == 'success' }}
-        timeout-minutes: 10
+        timeout-minutes: 15
         env:
           PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
           PYTEST_ADDOPTS: ''
@@ -433,6 +500,7 @@ jobs:
             if (!(Test-Path -LiteralPath $_ -PathType Leaf)) { throw 'A required publication runtime executable is missing.' }
             [System.IO.Path]::GetFullPath($_)
           } | Sort-Object -Unique
+          $requiredPublicationNativeFailures = [System.Collections.Generic.List[object]]::new()
           $publicationRulePrefix = 'CARR-publication-offline-' + [guid]::NewGuid().ToString('N')
           $publicationRules = @()
           $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
@@ -460,7 +528,7 @@ jobs:
                    'carr_library.studio.project', 'carr_library.studio.managed_inputs', 'carr_library.studio.clips', 'carr_library.studio.render', 'carr_library.ui.studio_clips', 'carr_library.state_backup',
                     'carr_library.audio.audiobook', 'carr_library.audio.dsp', 'carr_library.studio.daisy', 'carr_library.backup_producers', 'carr_library.backup_sidecars',
                    'carr_library.reader.ebook_audio', 'carr_library.ui.ebook_audio_dialog', 'carr_library.ui.reading_desk', 'carr_library.runtime_settings', 'carr_library.speech.player', 'carr_library.audio.process', 'carr_library.audio.cleanup')
-          completion_names = ["carr_library.studio.book_audio","carr_library.ui.book_audio_dialog","carr_library.ui.worker_lifetime","carr_library.backup_book_audio"]
+          completion_names = ["carr_library.studio.book_audio","carr_library.ui.book_audio_dialog","carr_library.ui.worker_lifetime","carr_library.backup_book_audio","carr_library.audio.effect_presets","carr_library.audio.conversion","carr_library.ui.effects_dialog","carr_library.ui.audio_conversion","carr_library.backup_effect_presets","carr_library.backup_producers","carr_library.backup_sidecars","carr_library.state_backup"]
           names += tuple(completion_names)
           for name in names:
               importlib.import_module(name)
@@ -484,7 +552,7 @@ jobs:
           report = pathlib.Path('ci-v3-results/installed-publication.xml')
           suites = ['tests/studio/test_publishing.py', 'tests/studio/test_publishing_cli.py',
                     'tests/studio/test_publishing_handlers.py',
-                    'tests/audio/test_recording.py', 'tests/audio/test_recording_cleanup.py', 'tests/audio/test_recording_compatibility.py', 'tests/audio/test_recording_export.py', 'tests/ui/test_recording_dialog.py', 'tests/audio/test_audio_process.py', 'tests/audio/test_publication_fsync.py', 'tests/audio/test_dsp.py', 'tests/studio/test_production_cancellation_outcomes.py', 'tests/speech/test_runtime.py', 'tests/speech/test_python_helper.py', 'tests/audio/test_windows_audio_ownership.py',
+                    'tests/audio/test_recording.py', 'tests/audio/test_recording_cleanup.py', 'tests/audio/test_recording_compatibility.py', 'tests/audio/test_recording_export.py', 'tests/ui/test_recording_dialog.py', 'tests/audio/test_audio_process.py', 'tests/audio/test_publication_fsync.py', 'tests/audio/test_dsp.py', 'tests/audio/test_effect_presets.py', 'tests/audio/test_audio_conversion.py', 'tests/ui/test_audio_conversion.py', 'tests/studio/test_production_cancellation_outcomes.py', 'tests/speech/test_runtime.py', 'tests/speech/test_python_helper.py', 'tests/audio/test_windows_audio_ownership.py',
                     'tests/studio/test_clip_editing.py', 'tests/studio/test_clip_restoration.py', 'tests/studio/test_clip_dialog.py', 'tests/studio/test_clip_cli.py', 'tests/storage/test_state_clip_inputs.py', 'tests/studio/test_studio_controller.py',
                     'tests/audio/test_audiobook.py',
                     'tests/studio/test_audiobook_publication.py',
@@ -498,6 +566,7 @@ jobs:
                     'tests/ui/test_book_audio_dialog.py',
                     'tests/ui/test_worker_lifetime.py',
                     'tests/storage/test_backup_book_audio.py',
+                    'tests/storage/test_backup_effect_presets.py',
                     ]
           status = pytest.main(['-q', '-o', 'addopts=', '-o', 'pythonpath=', '-o', 'xfail_strict=true',
                                '--import-mode=importlib', '--junitxml=' + str(report), *suites],
@@ -518,7 +587,7 @@ jobs:
           recording_modules = ["test_recording","test_recording_cleanup","test_recording_compatibility","test_recording_export","test_recording_dialog","test_audio_process","test_publication_fsync","test_dsp","test_production_cancellation_outcomes","test_runtime","test_python_helper","test_windows_audio_ownership"]
           recording_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in cases) for name in recording_modules}
           recording_required = {'test_native_windows_sapi_voice_and_pcm_output', 'test_actual_graceful_stop_finalizes_short_pcm', 'test_actual_cancel_discards_incomplete_capture', 'test_actual_capture_backup_delete_original_root_restore_and_verify', 'test_pending_cleanup_returns_worker_and_keeps_staging_and_both_admission_locks', 'test_streamed_export_verifies_original_and_needs_no_microphone_or_engine', 'test_competing_destination_create_at_publication_is_never_overwritten', 'test_queued_capture_loses_admission_when_its_exact_library_scope_changes[same-path-new-library]', 'test_queued_capture_loses_admission_when_its_exact_library_scope_changes[root-changed]', 'test_queued_capture_loses_admission_when_its_exact_library_scope_changes[frame-closing]', 'test_owned_descendant_cannot_outlive_parent_or_failure[cancel]', 'test_owned_descendant_cannot_outlive_parent_or_failure[timeout]', 'test_owned_descendant_cannot_outlive_parent_or_failure[overflow]', 'test_owned_descendant_cannot_outlive_parent_or_failure[orphan]', 'test_owned_process_preserves_exact_diagnostic_bytes_and_environment', 'test_late_scope_change_keeps_uncertain_native_cleanup_visible_and_owned', 'test_cancellation_during_flush_does_not_publish'}
-          clip_expected = {"test_clip_editing":20,"test_clip_restoration":16,"test_clip_dialog":35,"test_clip_cli":8,"test_state_clip_inputs":17,"test_studio_controller":8}
+          clip_expected = {"test_clip_editing":20,"test_clip_restoration":24,"test_clip_dialog":35,"test_clip_cli":8,"test_state_clip_inputs":17,"test_studio_controller":8}
           clip_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in cases) for name in clip_expected}
           clip_required = {'test_actual_completed_clip_restore_requires_fresh_output_before_any_old_path_io[False]', 'test_actual_completed_clip_restore_requires_fresh_output_before_any_old_path_io[True]', 'test_pending_job_and_stale_service_recheck_live_origin_before_output_admission', 'test_actual_trim_position_pan_fades_and_complete_clip_stems', 'test_destroy_discards_preview_when_parent_never_delivers_completion', 'test_destroy_retains_uncertain_native_playback_owner_and_preview', 'test_deferred_clip_playback_rechecks_exact_library', 'test_studio_late_result_cannot_update_replacement_library', 'test_waiting_input_preview_never_constructs_or_stats_old_destination[True-complete]', 'test_waiting_input_preview_never_constructs_or_stats_old_destination[False-waiting-input]', 'test_studio_controller_cannot_replace_a_newer_clip_revision', 'test_render_saved_project_queues_exact_reviewed_revision_and_does_not_play', 'test_render_saved_project_rejects_stale_revision_before_job_creation', 'test_render_saved_project_cancelled_parent_picker_starts_no_work', 'test_owned_service_release_waits_for_its_future_without_stopping_host_executor[completed]', 'test_owned_service_release_waits_for_its_future_without_stopping_host_executor[cancelled-before-start]', 'test_borrowed_clip_editor_service_is_not_closed_by_dialog'}
           ebook_expected_modules = ('test_ebook_audio', 'test_ebook_audio_lifetime')
@@ -527,7 +596,14 @@ jobs:
           ebook_seen = {case.get('name', '').split('[', 1)[0] for case in cases}
           assert all(ebook_counts.values()) and ebook_counts['test_ebook_audio_lifetime'] == 14, ebook_counts
           assert ebook_required <= ebook_seen, sorted(ebook_required - ebook_seen)
-          completion_suites = ["tests/studio/test_book_audio.py","tests/ui/test_book_audio_dialog.py","tests/ui/test_worker_lifetime.py","tests/storage/test_backup_book_audio.py"]
+          completion_suites = ["tests/studio/test_book_audio.py","tests/ui/test_book_audio_dialog.py","tests/ui/test_worker_lifetime.py","tests/storage/test_backup_book_audio.py","tests/audio/test_effect_presets.py","tests/audio/test_audio_conversion.py","tests/ui/test_audio_conversion.py","tests/storage/test_backup_effect_presets.py"]
+          effects_required = set(["test_actual_saved_order_changes_audio_and_bypassed_chain_preserves_source_pcm","test_complete_library_backup_preserves_user_presets_without_generated_audio","test_preset_growth_after_initial_stat_respects_the_actual_read_limit","test_old_preset_owner_cannot_write_into_same_path_replacement","test_processed_copy_tempo_and_pitch_have_separate_measured_meanings","test_source_byte_mutation_is_detected_even_when_observed_metadata_is_unchanged","test_same_byte_competing_create_is_never_reconciled_as_our_success","test_committed_copy_remains_completed_after_late_cancellation","test_postcommit_directory_flush_failure_reports_saved_but_unconfirmed_durability","test_postcommit_staging_cleanup_retains_owner_without_reclassifying_output","test_cancellation_during_real_shared_admission_starts_no_copy_or_decoder","test_actual_blocked_capability_probe_is_cancelled_and_never_cached","test_decoder_cleanup_holds_staging_and_native_admission_until_actual_child_death","test_close_while_capability_review_is_queued_cancels_its_own_work","test_named_preset_is_not_written_after_nested_name_dialog_loses_source_scope","test_refused_capability_submission_keeps_modal_cleanup_and_current_status","test_low_rate_high_bitrate_conversion_must_admit_its_real_encoded_output_cap","test_actual_preset_commit_with_directory_flush_failure_retains_its_identity[False]","test_actual_preset_commit_with_directory_flush_failure_retains_its_identity[True]","test_preset_precommit_flush_failure_never_claims_a_saved_record","test_preset_same_byte_competitor_remains_a_create_only_conflict","test_preset_editor_reports_visible_commit_identity_after_actual_flush_failure"])
+          effects_seen = {case.get('name', '').split('[', 1)[0] for case in cases}
+          effects_seen.update(case.get('name', '') for case in cases)
+          assert effects_required <= effects_seen, sorted(effects_required - effects_seen)
+          preset_backup_required = set(["test_effect_settings_roundtrip_after_original_deletion_without_runtime","test_rehashed_preset_cannot_bypass_pure_identity_or_numeric_validation","test_unknown_reserved_files_are_not_silently_omitted_or_restored","test_writer_temporary_cannot_be_forged_into_manifest_payload","test_real_collection_boundary_and_257th_record_refusal_before_reads","test_exact_64kib_is_preserved_but_growth_is_refused_before_any_record_read","test_hard_linked_preset_refusal_preserves_unrelated_original","test_copied_record_hash_is_rechecked_even_for_another_valid_preset","test_copied_validation_observes_stop_after_the_bounded_read"])
+          preset_backup_seen = {case.get('name', '').split('[', 1)[0] for case in cases}
+          assert preset_backup_required <= preset_backup_seen, sorted(preset_backup_required - preset_backup_seen)
           completion_counts = {}
           for suite in completion_suites:
               module = suite[:-3].replace('/', '.')
@@ -555,10 +631,23 @@ jobs:
           '@
             $installedPublication | & $python -I -B -X utf8 - 2>&1 | Tee-Object 'ci-v3-results/installed-publication.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Installed publication source, recovery or export guards failed.' }
+            try {
             & $python -I -B scripts/windows_recording_smoke.py --audio-directory $env:CARR_V3_PUBLICATION_AUDIO --audio-lock packaging/windows-audio.lock.json 2>&1 | Tee-Object 'ci-v3-results/native-recording.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Actual installed native synthetic recording failed.' }
+            } catch {
+              $requiredPublicationNativeFailures.Add([pscustomobject]@{ block='recording'; error=$_.Exception.Message; error_type=$_.Exception.GetType().FullName })
+              Write-Host ('REQUIRED NATIVE BLOCK FAILED [recording]: ' + $_.Exception.Message)
+              @{ status=$(if ($requiredPublicationNativeFailures.Count -eq 0) { 'PASS' } else { 'FAIL' }); failures=$requiredPublicationNativeFailures.ToArray(); qualification='Every native block remains required' } | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 'ci-v3-results/required-publication-native-failures.json'
+            }
+            try {
             & $python -I -B scripts/windows_clip_editor_smoke.py --audio-directory $env:CARR_V3_PUBLICATION_AUDIO --audio-lock packaging/windows-audio.lock.json 2>&1 | Tee-Object 'ci-v3-results/native-clips.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Actual installed native portable clip editing failed.' }
+            } catch {
+              $requiredPublicationNativeFailures.Add([pscustomobject]@{ block='clips'; error=$_.Exception.Message; error_type=$_.Exception.GetType().FullName })
+              Write-Host ('REQUIRED NATIVE BLOCK FAILED [clips]: ' + $_.Exception.Message)
+              @{ status=$(if ($requiredPublicationNativeFailures.Count -eq 0) { 'PASS' } else { 'FAIL' }); failures=$requiredPublicationNativeFailures.ToArray(); qualification='Every native block remains required' } | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 'ci-v3-results/required-publication-native-failures.json'
+            }
+            try {
             & $python -I -B scripts/windows_book_audio_smoke.py --audio-directory $env:CARR_V3_PUBLICATION_AUDIO --audio-lock packaging/windows-audio.lock.json 2>&1 | Tee-Object 'ci-v3-results/native-book-audio.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Actual installed native book narration failed.' }
             $verifyBookAudio = @'
@@ -589,6 +678,55 @@ jobs:
           '@
             $verifyBookAudio | & $python -I -B - $env:CARR_V3_PUBLICATION_AUDIO
             if ($LASTEXITCODE -ne 0) { throw 'Book narration native evidence is incomplete.' }
+            } catch {
+              $requiredPublicationNativeFailures.Add([pscustomobject]@{ block='book-audio'; error=$_.Exception.Message; error_type=$_.Exception.GetType().FullName })
+              Write-Host ('REQUIRED NATIVE BLOCK FAILED [book-audio]: ' + $_.Exception.Message)
+              @{ status=$(if ($requiredPublicationNativeFailures.Count -eq 0) { 'PASS' } else { 'FAIL' }); failures=$requiredPublicationNativeFailures.ToArray(); qualification='Every native block remains required' } | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 'ci-v3-results/required-publication-native-failures.json'
+            }
+          try {
+          & $python -I -B scripts/windows_effect_chain_smoke.py --audio-directory $env:CARR_V3_PUBLICATION_AUDIO --audio-lock packaging/windows-audio.lock.json 2>&1 | Tee-Object 'ci-v3-results/native-effects.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Actual installed native ordered effects failed.' }
+          $verifyEffects = @'
+          import json, os, pathlib, re
+          from hashlib import sha256
+          raw = pathlib.Path("ci-v3-results/native-effects.txt").read_text(encoding='utf-8-sig')
+          reports = []
+          for match in re.finditer(r'(?m)^\{', raw):
+              try:
+                  item, _ = json.JSONDecoder().raw_decode(raw[match.start():])
+              except ValueError:
+                  continue
+              if isinstance(item, dict) and 'live_playback_speed_pitch' in item and 'actual_ffmpeg' in item:
+                  reports.append(item)
+          assert len(reports) == 1, 'Native ordered-effects report is missing or ambiguous.'
+          report = reports[0]
+          assert report['result'] == report['native_keyboard'] == report['actual_ffmpeg'] == 'PASS'
+          assert all(report[name] == 'NOT_RUN' for name in ('native_file_pickers', 'nvda', 'audible_listening'))
+          assert report['live_playback_speed_pitch'] == 'NOT_IMPLEMENTED'
+          required = set(["actual wx Windows controls","existing Convert audio command is registered","actual main event loop","native numeric effect input","native edit applies numeric value","native reorder and bypass","native undo restores position","native redo restores position","native preset name dialog","saved preset is visible in native status","dry built-in empties only the editable chain","native saved preset reload keeps exact order and bypass","reviewed native result returns exact typed chain","native preset save is durable","basic controls are inactive when ordered chain applies","conversion reports the reviewed new output","actual conversion retains output format","actual typed chain changes rendered audio","conversion preserves original bytes","conversion releases shared runtime admission","conversion removes owned temporary staging","native conversion leaves no retained host cleanup failure","exact installed source: carr_library.ui.audio_conversion","exact installed source: carr_library.ui.effects_dialog","exact installed source: carr_library.ui.studio_dialog","exact installed source: carr_library.audio.conversion","exact installed source: carr_library.audio.effect_presets","exact installed source: carr_library.audio.dsp","exact installed source: carr_library.audio.process","exact installed source: carr_library.operations.broker","exact installed source: carr_library.research.export_file","exact installed source: carr_library.durable_state","exact installed source: carr_library.runtime_settings","explicit selected audio executable: ffmpeg","pinned audio executable bytes: ffmpeg","explicit selected audio executable: ffprobe","pinned audio executable bytes: ffprobe"])
+          assert required <= set(report['checks']), sorted(required - set(report['checks']))
+          pin = json.loads(pathlib.Path('packaging/windows-audio.lock.json').read_text(encoding='utf-8'))
+          selected = pathlib.Path(os.environ["CARR_V3_PUBLICATION_AUDIO"]).resolve(strict=True)
+          for name in ('ffmpeg', 'ffprobe'):
+              item = report['audio_runtime'][name]
+              binary = pathlib.Path(item['path']).resolve(strict=True)
+              expected = pin['output_files']['bin/' + name + '.exe']
+              assert binary.samefile(selected / 'bin' / (name + '.exe'))
+              assert binary.stat().st_size == expected['size']
+              assert item['sha256'] == expected['sha256'] == sha256(binary.read_bytes()).hexdigest()
+          pathlib.Path("ci-v3-results/native-effects.json").write_text(json.dumps(report, indent=2), encoding='utf-8')
+          print(json.dumps(dict(status='PASS', required_checks=sorted(required), actual_ffmpeg='PASS',
+              native_file_pickers='NOT_RUN', acoustic_quality='NOT_RUN', manual_nvda='NOT_RUN',
+              live_playback_speed_pitch='NOT_IMPLEMENTED')), flush=True)
+          '@
+          $verifyEffects | & $python -I -B -
+          if ($LASTEXITCODE -ne 0) { throw 'Native ordered-effects, exact-source or audio-runtime evidence is incomplete.' }
+          } catch {
+            $requiredPublicationNativeFailures.Add([pscustomobject]@{ block='ordered-effects'; error=$_.Exception.Message; error_type=$_.Exception.GetType().FullName })
+            Write-Host ('REQUIRED NATIVE BLOCK FAILED [ordered-effects]: ' + $_.Exception.Message)
+            @{ status='FAIL'; failures=$requiredPublicationNativeFailures.ToArray(); qualification='Every native block remains required' } | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 'ci-v3-results/required-publication-native-failures.json'
+          }
+            try {
             & $python -I -B scripts/windows_epub_reading_smoke.py --audio-directory $env:CARR_V3_PUBLICATION_AUDIO --audio-lock packaging/windows-audio.lock.json 2>&1 | Tee-Object 'ci-v3-results/native-recorded-epub.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Actual installed recorded EPUB playback failed.' }
             $verifyRecordedEpub = @'
@@ -620,6 +758,12 @@ jobs:
           '@
             $verifyRecordedEpub | & $python -I -B - $env:CARR_V3_PUBLICATION_AUDIO
             if ($LASTEXITCODE -ne 0) { throw 'Recorded EPUB native evidence is incomplete.' }
+            } catch {
+              $requiredPublicationNativeFailures.Add([pscustomobject]@{ block='recorded-epub'; error=$_.Exception.Message; error_type=$_.Exception.GetType().FullName })
+              Write-Host ('REQUIRED NATIVE BLOCK FAILED [recorded-epub]: ' + $_.Exception.Message)
+              @{ status=$(if ($requiredPublicationNativeFailures.Count -eq 0) { 'PASS' } else { 'FAIL' }); failures=$requiredPublicationNativeFailures.ToArray(); qualification='Every native block remains required' } | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 'ci-v3-results/required-publication-native-failures.json'
+            }
+            try {
             & $python -I -B scripts/windows_publishing_smoke.py --audio-directory $env:CARR_V3_PUBLICATION_AUDIO --audio-lock packaging/windows-audio.lock.json 2>&1 | Tee-Object 'ci-v3-results/native-publishing.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Actual installed native EPUB publication failed.' }
             $verifyPublicationNative = @'
@@ -654,6 +798,11 @@ jobs:
           '@
             $verifyPublicationNative | & $python -I -B -
             if ($LASTEXITCODE -ne 0) { throw 'Native DAISY, M4B and LRC evidence is incomplete.' }
+            } catch {
+              $requiredPublicationNativeFailures.Add([pscustomobject]@{ block='publishing'; error=$_.Exception.Message; error_type=$_.Exception.GetType().FullName })
+              Write-Host ('REQUIRED NATIVE BLOCK FAILED [publishing]: ' + $_.Exception.Message)
+              @{ status=$(if ($requiredPublicationNativeFailures.Count -eq 0) { 'PASS' } else { 'FAIL' }); failures=$requiredPublicationNativeFailures.ToArray(); qualification='Every native block remains required' } | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 'ci-v3-results/required-publication-native-failures.json'
+            }
             & $python -I -B scripts/epubcheck_acceptance.py --archive $env:CARR_EPUBCHECK_ARCHIVE --java $env:CARR_EPUBCHECK_JAVA --audio-directory $env:CARR_V3_PUBLICATION_AUDIO --audio-lock packaging/windows-audio.lock.json --report ci-v3-results/epubcheck-installed.json --require-installed 2>&1 | Tee-Object 'ci-v3-results/epubcheck-installed.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Installed EPUB3.3 conformance or invalid-mimetype control failed.' }
             & $python -I -B scripts/daisy_schema_acceptance.py --schemas $env:CARR_DAISY_SCHEMAS --report ci-v3-results/daisy-installed.json --require-installed --audio-directory $env:CARR_V3_PUBLICATION_AUDIO --audio-lock packaging/windows-audio.lock.json 2>&1 | Tee-Object 'ci-v3-results/daisy-installed.txt'
@@ -700,6 +849,10 @@ jobs:
           '@
             $verifyDaisy | & $python -I -B -
             if ($LASTEXITCODE -ne 0) { throw 'DAISY validator identity or exact three-case evidence is incomplete.' }
+            @{ status=$(if ($requiredPublicationNativeFailures.Count -eq 0) { 'PASS' } else { 'FAIL' }); failures=$requiredPublicationNativeFailures.ToArray(); qualification='Every native block remains required' } | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 'ci-v3-results/required-publication-native-failures.json'
+            if ($requiredPublicationNativeFailures.Count -ne 0) {
+              throw ('Required native acceptance failed after independent checks: ' + (($requiredPublicationNativeFailures.ToArray() | ForEach-Object { $_.block }) -join ', '))
+            }
           } finally {
             foreach ($ruleName in $publicationRules) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
             foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
@@ -712,7 +865,7 @@ jobs:
       - name: Require Advanced translation permission and checkpoint regressions
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' }}
         run: |
-          python scripts/ci_check.py tests/assistant/test_translation.py tests/assistant/test_translation_v3.py tests/assistant/test_translation_advanced_source.py tests/assistant/test_translation_advanced_union.py 2>&1 | Tee-Object 'ci-v3-results/strict-translation-v3.txt'
+          python scripts/ci_check.py tests/assistant/test_translation_local.py tests/assistant/test_translation_documents.py tests/ui/test_translation_documents.py tests/assistant/test_translation.py tests/assistant/test_translation_v3.py tests/assistant/test_translation_advanced_source.py tests/assistant/test_translation_advanced_union.py 2>&1 | Tee-Object 'ci-v3-results/strict-translation-v3.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Require local proposal scope and review regressions
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' }}
@@ -720,6 +873,7 @@ jobs:
           python scripts/ci_check.py tests/assistant/test_local_planning.py tests/assistant/test_planning_handlers.py tests/assistant/test_workflow_templates.py tests/assistant/test_workflow_template_handlers.py tests/storage/test_backup_studio_draft.py 2>&1 | Tee-Object 'ci-v3-results/strict-local-planning.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Native local proposal and actual loopback HTTP with external egress blocked
+        timeout-minutes: 12
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' }}
         env:
           PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
@@ -743,6 +897,7 @@ jobs:
             } | Sort-Object)
           }
           $expectedRanges = @(Normalize-RemoteRanges $remoteRanges)
+          $requiredLocalFailures = [System.Collections.Generic.List[object]]::new()
           $rulePrefix = 'CARR-local-planning-' + [guid]::NewGuid().ToString('N')
           $ruleNames = @()
           $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
@@ -765,12 +920,44 @@ jobs:
               if (@(Compare-Object $expectedRanges $actualRanges).Count -ne 0) { throw 'Local planning rule has unexpected remote-address coverage.' }
             }
             @{ status='PASS'; blocked_programs=$filters; blocked_remote_ranges=$expectedRanges; allowed_test_peer='127.0.0.1'; scope='selected executables with external egress blocked; loopback synthetic peer allowed' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-v3-results/local-planning-firewall.json'
+            try {
             & $python -I -B scripts/windows_local_planning_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-local-planning.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Native local proposal review and execution acceptance failed.' }
+            } catch {
+              $requiredLocalFailures.Add([pscustomobject]@{ block='local-planning-native'; error=$_.Exception.Message; error_type=$_.Exception.GetType().FullName })
+              Write-Host ('REQUIRED LOCAL BLOCK FAILED [local-planning-native]: ' + $_.Exception.Message)
+              @{ status='FAIL'; failures=$requiredLocalFailures.ToArray() } | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 'ci-v3-results/required-local-transport-failures.json'
+            }
+            try {
             & $python -I -B -m pytest -q -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib tests/assistant/test_local_planning_loopback.py --junitxml=ci-v3-results/local-planning-loopback.xml 2>&1 | Tee-Object 'ci-v3-results/local-planning-loopback.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Actual local planning HTTP/CLI regressions failed.' }
             & $python -I -B -c "import xml.etree.ElementTree as E; cases=list(E.parse('ci-v3-results/local-planning-loopback.xml').iter('testcase')); assert len(cases)==25 and all(c.get('classname','').rsplit('.',1)[-1]=='test_local_planning_loopback' and not any(c.find(t) is not None for t in ('failure','error','skipped')) for c in cases); print('PASS: actual loopback HTTP tests; no skipped or failed cases')"
             if ($LASTEXITCODE -ne 0) { throw 'Loopback test evidence is incomplete.' }
+            } catch {
+              $requiredLocalFailures.Add([pscustomobject]@{ block='local-planning-http'; error=$_.Exception.Message; error_type=$_.Exception.GetType().FullName })
+              Write-Host ('REQUIRED LOCAL BLOCK FAILED [local-planning-http]: ' + $_.Exception.Message)
+              @{ status='FAIL'; failures=$requiredLocalFailures.ToArray() } | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 'ci-v3-results/required-local-transport-failures.json'
+            }
+            try {
+            $translationSource = Join-Path (Get-Location) 'src'
+            & $python -I -B scripts/translation_loopback_check.py --mode source --source-root $translationSource --firewall-receipt 'ci-v3-results/local-planning-firewall.json' --output-dir 'ci-v3-results' 2>&1 | Tee-Object 'ci-v3-results/translation-loopback-source.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Strict source local translation HTTP/CLI acceptance failed.' }
+            } catch {
+              $requiredLocalFailures.Add([pscustomobject]@{ block='translation-source-http'; error=$_.Exception.Message; error_type=$_.Exception.GetType().FullName })
+              Write-Host ('REQUIRED LOCAL BLOCK FAILED [translation-source-http]: ' + $_.Exception.Message)
+              @{ status='FAIL'; failures=$requiredLocalFailures.ToArray() } | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 'ci-v3-results/required-local-transport-failures.json'
+            }
+            try {
+            $translationSource = Join-Path (Get-Location) 'src'
+            & $python -I -B scripts/translation_loopback_check.py --mode installed --source-root $translationSource --firewall-receipt 'ci-v3-results/local-planning-firewall.json' --output-dir 'ci-v3-results' 2>&1 | Tee-Object 'ci-v3-results/translation-loopback-installed.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Strict installed local translation HTTP/CLI acceptance failed.' }
+            } catch {
+              $requiredLocalFailures.Add([pscustomobject]@{ block='translation-installed-http'; error=$_.Exception.Message; error_type=$_.Exception.GetType().FullName })
+              Write-Host ('REQUIRED LOCAL BLOCK FAILED [translation-installed-http]: ' + $_.Exception.Message)
+              @{ status='FAIL'; failures=$requiredLocalFailures.ToArray() } | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 'ci-v3-results/required-local-transport-failures.json'
+            }
+            @{ status=$(if ($requiredLocalFailures.Count -eq 0) { 'PASS' } else { 'FAIL' }); failures=$requiredLocalFailures.ToArray() } | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 'ci-v3-results/required-local-transport-failures.json'
+            if ($requiredLocalFailures.Count -ne 0) { throw ('Required local transport acceptance failed: ' + (($requiredLocalFailures.ToArray() | ForEach-Object { $_.block }) -join ', ')) }
           } finally {
             foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
             foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
@@ -778,8 +965,9 @@ jobs:
       - name: Validate local services, DSP, integrity and provider permission boundaries
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
         run: |
-          # Only Flite is platform-partitioned; the mandatory Linux job executes all six cases.
-          python -m pytest -q --import-mode=importlib --ignore=tests/speech/test_flite_runtime.py tests/audio tests/speech tests/assistant tests/studio tests/storage/test_v3_state_backup.py tests/storage/test_state_snapshot_identity.py tests/language_qualification tests/conversion tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py tests/academic_integration tests/ui/test_operation_progress.py tests/ui/test_progress_job_review.py tests/ui/test_command_registry.py tests/ui/test_keyboard_manager.py tests/storage/test_keyboard_preferences.py tests/ui/test_reader_keymap_context.py tests/test_delivery_contract.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_backup_v4_review.py tests/e2e/test_import_worker_publication.py tests/ingest/test_import_replay_identity.py tests/packaging/test_worker_bytecode.py tests/packaging/test_refresh_private_bundle_review.py tests/ui/test_profile_project_exports.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
+          # Flite executes in its mandatory Linux job. The new real-socket
+          # translation suite executes in both explicit loopback firewall modes.
+          python -m pytest -q --import-mode=importlib --ignore=tests/speech/test_flite_runtime.py --ignore=tests/assistant/test_translation_local_loopback.py tests/audio tests/speech tests/assistant tests/studio tests/storage/test_v3_state_backup.py tests/storage/test_state_snapshot_identity.py tests/language_qualification tests/conversion tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py tests/academic_integration tests/ui/test_operation_progress.py tests/ui/test_progress_job_review.py tests/ui/test_command_registry.py tests/ui/test_keyboard_manager.py tests/storage/test_keyboard_preferences.py tests/ui/test_reader_keymap_context.py tests/test_delivery_contract.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_backup_v4_review.py tests/e2e/test_import_worker_publication.py tests/ingest/test_import_replay_identity.py tests/packaging/test_worker_bytecode.py tests/packaging/test_refresh_private_bundle_review.py tests/ui/test_profile_project_exports.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Keep source and test evidence only
         if: always()

@@ -578,15 +578,18 @@ def test_actual_destroy_event_cancels_queued_work_and_releases_owner_on_worker(h
         calls.append(threading.get_ident())
         assert calls[-1] != e.ui_thread
         original()
-    monkeypatch.setattr(e.service, 'close', released)
-    dialog, close = ui.create_book_audio_dialog(e.frame, wx_module=e.wx)
-    e.press('Load selected book')
-    skipped = []
-    event = SimpleNamespace(GetEventObject=lambda: dialog, Skip=lambda: skipped.append(True))
-    dialog.bindings[e.wx.EVT_WINDOW_DESTROY](event)
-    before = snapshot_widgets(e)
-    assert isinstance(e.complete(), InterruptedError)
-    assert calls and len(calls) == 1 and e.service._closed.is_set()
-    assert skipped == [True] and snapshot_widgets(e) == before
-    assert not e.state['owner_cleanups'] and not e.state['queue'] and not e.production.jobs()
-    close()
+    # Keep the worker-only assertion scoped to the product lifetime action.
+    # Fixture teardown must call the original idempotent close on its own thread.
+    with monkeypatch.context() as lifetime:
+        lifetime.setattr(e.service, 'close', released)
+        dialog, close = ui.create_book_audio_dialog(e.frame, wx_module=e.wx)
+        e.press('Load selected book')
+        skipped = []
+        event = SimpleNamespace(GetEventObject=lambda: dialog, Skip=lambda: skipped.append(True))
+        dialog.bindings[e.wx.EVT_WINDOW_DESTROY](event)
+        before = snapshot_widgets(e)
+        assert isinstance(e.complete(), InterruptedError)
+        assert calls and len(calls) == 1 and e.service._closed.is_set()
+        assert skipped == [True] and snapshot_widgets(e) == before
+        assert not e.state['owner_cleanups'] and not e.state['queue'] and not e.production.jobs()
+        close()

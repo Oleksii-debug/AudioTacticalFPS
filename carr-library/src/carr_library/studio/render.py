@@ -399,6 +399,18 @@ class ProductionService:
             state.pop('result', None)
             state['recovery'] = {'requires_output_directory': False, 'previous': previous,
                                  'output_approved': time.time()}
+            if self._broker is not None:
+                # Runtime coordination is deliberately absent from a backup.
+                # Only this explicit fresh-origin/output review may reopen a
+                # previously cached coordinator after a same-path restore.
+                # Require the retained current policy; never replace it with
+                # defaults. for_app validates paths and retains existing locks.
+                from ..operations import ResourceBroker
+                broker = self._admission_broker()
+                local_path(broker.policy_path, exists=True)
+                broker.limits
+                self._broker = ResourceBroker.for_app(
+                    broker.root.parent.parent, require_existing_policy=True)
             self._save(state)
             return state
 

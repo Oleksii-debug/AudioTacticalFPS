@@ -417,13 +417,15 @@ def test_reader_close_always_unregisters_playback_and_finishes_resource_cleanup(
     tree = ast.parse(path.read_text(encoding='utf-8'))
     reader = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'show_speech_reader')
     cleanup = next(node.finalbody for node in reversed(reader.body) if isinstance(node, ast.Try) and node.finalbody)
-    env = {name: Mock() for name in ('autosave_timer', 'cancel', 'player', 'progress', 'parent',
+    env = {name: Mock() for name in ('autosave_timer', 'playback_timer', 'cancel', 'player', 'progress', 'parent',
                                       'executor', 'audio_files', 'dialog', 'unregister')}
     env.update(__package__='carr_library.ui', owned_registries=[], owned_progress_voices=[],
                wx=SimpleNamespace(CallAfter=lambda callback: callback()))
     if device_failure:
         env['player'].close.side_effect = RuntimeError('Audio device disconnected')
     exec(compile(ast.Module(body=cleanup, type_ignores=[]), str(path), 'exec'), env)
+    env['playback_timer'].Stop.assert_called_once_with()
+    env['autosave_timer'].Stop.assert_called_once_with()
     env['player'].close.assert_called_once_with()
     env['progress'].unregister_player.assert_called_once_with(env['player'], silence_confirmed=not device_failure)
     env['unregister'].assert_called_once_with()

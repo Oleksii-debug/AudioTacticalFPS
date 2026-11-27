@@ -342,3 +342,27 @@ def test_cancelled_book_closure_keeps_prior_backup_and_publishes_nothing(book, t
     assert not destination.exists()
     assert (previous / 'manifest.json').read_bytes() == retained
     assert sha256(retained).hexdigest() == checksum
+
+
+def test_book_project_uses_exact_canonical_wire_not_python_container_equality(book):
+    e = book
+    save_zero(e)
+    project = e.plan.project(1)
+    e.production.projects.save(project)
+    path = e.app.root / 'state/studio/projects' / project.id / 'project.json'
+    decoded = json.loads(path.read_bytes())
+    assert type(project.to_dict()['roles']) is tuple
+    assert type(decoded['roles']) is list
+    assert decoded == json.loads(encode(project.to_dict()))
+    # The actual JSON representation is valid without starting a render.
+    backup_book_audio.validate_collection(
+        None, e.app.root / 'state', state_inventory(e.app.root / 'state'))
+    # bool == int in Python must not turn a malformed saved project into the
+    # exact reviewed plan, even after its outer inventory hash is recomputed.
+    changed = json.loads(path.read_bytes())
+    changed['revision'] = True
+    assert changed == decoded and encode(changed) != encode(decoded)
+    path.write_bytes(encode(changed))
+    with pytest.raises(ValueError, match='immutable saved plan'):
+        backup_book_audio.validate_collection(
+            None, e.app.root / 'state', state_inventory(e.app.root / 'state'))

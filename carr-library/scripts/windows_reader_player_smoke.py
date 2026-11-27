@@ -7,6 +7,7 @@ from hashlib import sha256
 import json
 import os
 from pathlib import Path
+import runpy
 from tempfile import TemporaryDirectory
 import sys
 import threading
@@ -170,6 +171,18 @@ def native_controls(player, check, commands):
         gui.Yield()
 
 
+
+def audio_diagnostics(stage):
+    """Preserve prerequisite evidence without replacing native MCI assertions."""
+    try:
+        path = Path(__file__).with_name('windows_audio_diagnostics.py').resolve(strict=True)
+        value = runpy.run_path(str(path))['snapshot']()
+    except Exception as error:
+        value = {'schema': 'carr-windows-audio-diagnostics/1',
+                 'diagnostic_error_type': type(error).__name__, 'playback_evidence': 'NOT_RUN'}
+    print(json.dumps(dict(value, stage=stage), ensure_ascii=True, sort_keys=True), flush=True)
+
+
 def main():
     if os.name != 'nt':
         print(json.dumps({'result': 'NOT_RUN', 'reason': 'Actual Windows MCI is required'}))
@@ -228,7 +241,12 @@ def main():
                 return actual_mci(command)
             player._mci = observed
             try:
-                player.play(path)
+                audio_diagnostics('before-canonical-mci-open')
+                try:
+                    player.play(path)
+                except Exception:
+                    audio_diagnostics('after-canonical-mci-open-failure')
+                    raise
                 check('canonical measured MCI backend', player.backend == 'Windows MCI'
                       and player.position_is_approximate is False)
                 wait_for(lambda: player.position_seconds >= .08)

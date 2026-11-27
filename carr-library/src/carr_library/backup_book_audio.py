@@ -173,7 +173,9 @@ def validate_collection(db, copied_state_root, entries, *, cancelled=lambda: Fal
             if job_id in checked:
                 raise ValueError('Two saved book plans claim the same Studio job.')
             expected_project = plan.project(index)
-            expected = expected_project.to_dict()
+            # Persisted projects are JSON arrays; the typed model uses tuples.
+            # Compare the complete canonical wire value, including scalar types.
+            expected_wire = encode(expected_project.to_dict())
             provenance = plan.provenance(index)
             receipt_digest = sha256(encode(provenance)).hexdigest()
             prefix = 'studio/jobs/' + job_id + '/'
@@ -195,7 +197,7 @@ def validate_collection(db, copied_state_root, entries, *, cancelled=lambda: Fal
                     if target != job_name:
                         raise ValueError('Book job path differs from its canonical identity.')
                     _studio_job(value, job_id)
-                    if (value['project'] != expected or value['fingerprint'] != expected_project.fingerprint
+                    if (encode(value['project']) != expected_wire or value['fingerprint'] != expected_project.fingerprint
                             or value['format'] != plan.format or value['stems'] is not False):
                         raise ValueError('Book job differs from its immutable saved plan.')
                     job = value
@@ -205,7 +207,7 @@ def validate_collection(db, copied_state_root, entries, *, cancelled=lambda: Fal
                         if previous['result'] is not None:
                             result(previous['result'])
                 elif kind in ('project', 'stored-project'):
-                    if value != expected:
+                    if encode(value) != expected_wire:
                         raise ValueError('Book project differs from its immutable saved plan.')
                     if kind == 'project' and target != prefix + 'project.json':
                         raise ValueError('Book project export path changed.')

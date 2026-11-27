@@ -79,7 +79,10 @@ def test_first_real_save_keeps_its_preparse_null_project_draft(tmp_path):
         digest = create_backup(app, folder)
         restore_backup(folder, target, digest)
         assert read_json(target / 'state/studio/draft.json')['project_id'] is None
-        assert read_json(target / 'state/studio/projects' / project.id / 'project.json') == project.to_dict()
+        restored_project = read_json(target / 'state/studio/projects' / project.id / 'project.json')
+        # Compare the complete canonical JSON wire value; dataclass tuples
+        # become JSON arrays without changing any retained field or value.
+        assert encode(restored_project) == encode(project.to_dict())
     finally:
         controller.service.close()
 
