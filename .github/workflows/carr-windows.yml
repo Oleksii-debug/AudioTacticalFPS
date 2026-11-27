@@ -680,7 +680,9 @@ jobs:
             'tests/conversion/test_email_metadata.py',
             'tests/ui/test_canonical_export_import_choices.py',
             'tests/audio/test_generated_backup_authority.py',
-            'tests/extract/test_odf_print_layout.py'
+            'tests/extract/test_odf_print_layout.py',
+            'tests/audio/test_dordiai_discovery.py',
+            'tests/audio/test_dordiai_preservation.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -1727,6 +1729,8 @@ jobs:
               'tests/ui/test_canonical_export_import_choices.py',
               'tests/audio/test_generated_backup_authority.py',
               'tests/extract/test_odf_print_layout.py',
+              'tests/audio/test_dordiai_discovery.py',
+              'tests/audio/test_dordiai_preservation.py'
           ]
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:

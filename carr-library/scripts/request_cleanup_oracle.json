@@ -443,9 +443,37 @@
       "test_new_legacy_repairs_do_not_admit_orphan_description_ends_or_ambiguous_attributes": 2,
       "test_legacy_named_reference_keeps_full_word_digest_not_only_token_count": 1,
       "test_unterminated_named_reference_expansion_keeps_existing_output_bound": 1
+    },
+    "tests/audio/test_dordiai_discovery.py": {
+      "test_constructor_and_real_discovery_accept_actual_flat_catalog_shape": 1,
+      "test_constructor_discovery_and_existing_pcm_transport_work_together": 1,
+      "test_missing_resources_do_not_advertise_catalog_targets": 1,
+      "test_managed_package_overlays_and_required_roles_are_respected": 1,
+      "test_unsupported_voice_language_fails_before_render": 1,
+      "test_wrong_model_catalog_path_is_rejected_before_any_process": 1,
+      "test_missing_required_installed_helper_fails_before_discovery": 1,
+      "test_malformed_discovery_response_never_publishes_voices": 8,
+      "test_discovery_cancels_a_real_hung_helper_process": 1,
+      "test_discovery_timeout_is_bounded": 1,
+      "test_discovery_does_not_allow_network_or_child_processes": 2,
+      "test_discovery_redacts_helper_errors": 1,
+      "test_oversized_real_process_output_is_stopped": 1,
+      "test_source_runtime_change_after_discovery_does_not_leave_usable_cached_voice": 1
+    },
+    "tests/audio/test_dordiai_preservation.py": {
+      "test_actual_render_runtime_mutation_never_publishes_pcm": 6,
+      "test_pending_owner_retains_actual_streams_stage_and_lease": 4,
+      "test_actual_installed_routes_control_the_exact_worker_request": 5,
+      "test_missing_partial_and_unknown_routes_remain_passive_metadata": 2,
+      "test_unadvertised_regional_variant_is_not_silently_reduced": 1,
+      "test_route_inventory_refuses_malformed_or_unbound_records": 10,
+      "test_missing_reviewed_bootstrap_or_route_helper_never_executes": 2,
+      "test_installed_metadata_cannot_change_the_pcm_sample_rate": 1,
+      "test_discovery_and_render_cannot_select_different_worker_files": 1,
+      "test_actual_io_thread_settlement_retains_the_same_cleanup_owner": 2
     }
   },
-  "total_cases": 853,
+  "total_cases": 909,
   "canonical_provider_cases": 96,
   "canonical_preserved_cases": 37,
   "canonical_progress_cases": 59,
@@ -477,5 +505,6 @@
   "canonical_export_import_choices_cases": 4,
   "completed_generated_media_cases": 36,
   "bounded_odf_print_layout_cases": 55,
-  "chm_publisher_recovery_cases": 48
+  "chm_publisher_recovery_cases": 48,
+  "canonical_dordiai_cases": 56
 }

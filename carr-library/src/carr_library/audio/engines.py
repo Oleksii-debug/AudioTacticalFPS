@@ -30,7 +30,7 @@ import wave
 
 from .model_manifest import (LocalModelManifest, ModelManifestError, digest_file,
                              local_path, offline_environment, read_json)
-from .dordiai_discovery import DISCOVERY_PROTOCOL, REQUIRED_HELPERS, parse_discovery
+from .dordiai_discovery import DISCOVERY_PROTOCOL, REQUIRED_HELPERS, ROUTES, parse_inventory
 
 
 ADAPTER_VERSION = 'local-speech-2'
@@ -816,6 +816,8 @@ class DordiaiVoicesEngine:
             raise ModelManifestError('Unsupported dordiai-voices worker protocol.')
         self.binary = _binary(self.manifest.asset(settings.get('python', 'python/python.exe')))
         self.worker = self.manifest.asset(settings.get('worker', 'nvda_worker.py'))
+        if self.worker.name != 'nvda_worker.py':
+            raise ModelManifestError('Dordiai discovery and rendering require the same fixed nvda_worker.py.')
         self.catalog_path = self.manifest.asset(settings.get('catalog', 'models/voices/catalog.json'))
         self.runtime_root = self.worker.parent
         self.models = local_path(self.runtime_root / 'models')
@@ -829,8 +831,9 @@ class DordiaiVoicesEngine:
         self._profiles = {}
         self._voice_languages = {}
         self._languages = ()
+        self._language_records = ()
 
-    def voices(self, *, cancelled=lambda: False):
+    def _discover(self, *, cancelled=lambda: False):
         _cancelled(cancelled)
         self.manifest.verify(cancelled=cancelled, require_complete=True)
         bridge = Path(__file__).with_name('dordiai_discovery.py')
@@ -839,12 +842,9 @@ class DordiaiVoicesEngine:
         raw = _run(command, cancelled=cancelled, timeout=min(self.timeout, 30),
                    env=offline_environment(), cwd=self.runtime_root)
         try:
-            discovered = parse_discovery(raw)
+            discovered, statuses = parse_inventory(raw)
         except (ValueError, UnicodeError) as exc:
             raise ModelManifestError('Invalid installed dordiai-voices discovery response.') from exc
-        if not discovered:
-            raise EngineUnavailable('No installed dordiai-voices profile has compatible language resources. '
-                                    'Install and verify the required engine and voice packs first.')
         rows = []
         records, voice_languages = {}, {}
         for key, name, language_codes in discovered:
@@ -856,8 +856,21 @@ class DordiaiVoicesEngine:
                               revision=self.manifest.revision))
         self.manifest.verify(cancelled=cancelled, require_complete=True)
         self._profiles, self._voice_languages = records, voice_languages
+        self._language_records = statuses
         self._languages = tuple(dict.fromkeys(code for row in rows for code in row.languages))
         return tuple(rows)
+
+    def voices(self, *, cancelled=lambda: False):
+        rows = self._discover(cancelled=cancelled)
+        if not rows:
+            raise EngineUnavailable('No installed dordiai-voices profile has compatible language resources. '
+                                    'Install and verify the required engine and voice packs first.')
+        return rows
+
+    def language_statuses(self, *, cancelled=lambda: False):
+        """Current structural resources and routes; never a speech-quality claim."""
+        self._discover(cancelled=cancelled)
+        return tuple(dict(row) for row in self._language_records)
 
     def cache_identity(self, voice, *, cancelled=lambda: False):
         _cancelled(cancelled)
@@ -866,17 +879,26 @@ class DordiaiVoicesEngine:
         if voice not in self._profiles:
             raise EngineUnavailable('Choose an enabled profile from the installed dordiai-voices catalogue.')
         self.manifest.verify(require_complete=True, cancelled=cancelled)
+        routes = {row['code']: row['route'] for row in self._language_records
+                  if row['resources_present'] and row['code'] in self._voice_languages[voice]}
+        if set(routes) != set(self._voice_languages[voice]) or any(route not in ROUTES for route in routes.values()):
+            raise EngineUnavailable('The selected voice has no current verified language routes.')
         return {**self.manifest.cache_identity(), 'adapter': ADAPTER_VERSION, 'voice': voice,
-                'protocol': 'nvda-worker-jsonl-pcm24k-v1', 'discovery': DISCOVERY_PROTOCOL}
+                'protocol': 'nvda-worker-jsonl-pcm24k-v1', 'discovery': DISCOVERY_PROTOCOL,
+                'language_routes': routes}
 
     def synthesize(self, text, output, *, voice, language='en', rate=0, pitch=0, volume=1,
                    cancelled=lambda: False):
         _request(text, language, rate, pitch, volume)
         self.cache_identity(voice, cancelled=cancelled)
-        code = language.lower().replace('_', '-').split('-')[0]
+        code = language.lower().replace('_', '-')
         if code not in self._voice_languages[voice]:
             raise EngineUnavailable('This dordiai-voices profile has no compatible installed resources '
                                     'for the selected language.')
+        selected = next((row for row in self._language_records if row['code'] == code), None)
+        if selected is None or not selected['resources_present'] or selected['route'] not in ROUTES:
+            raise EngineUnavailable('The selected language has no current verified installed route.')
+        route = selected['route']
         self.manifest.verify(cancelled=cancelled, require_complete=True)
         target = _output(output)
         # Arguments are the versioned installed worker's fixed interface, not a
@@ -889,16 +911,18 @@ class DordiaiVoicesEngine:
         request = {'mode': 'reference', 'profile': self._profiles[voice], 'language': code,
                    'text': text, 'speed': 2 ** (rate / 10), 'stream': True,
                    'controls': {'pitch': round(50 + pitch * 3), 'timbre': 50, 'volume': round(volume * 100)},
-                   'numberLanguage': 'auto', 'character': False, 'nativeProfile': code in {'en', 'ru'},
-                   'nativeEnglish': False}
-        if code in {'sk', 'pl', 'de', 'fr', 'da', 'it', 'es'}:
-            request['nativeLocale'] = True
-        elif code not in {'uk', 'en', 'ru'}:
-            request.update(wideLocale=True, reportLoading=True)
+                   'numberLanguage': 'auto', 'character': False,
+                   'nativeProfile': route == 'native_profile',
+                   'nativeLocale': route == 'native_locale', 'wideLocale': route == 'wide',
+                   'reportLoading': True, 'nativeEnglish': False}
         with tempfile.TemporaryDirectory(prefix='.speech-', dir=target.parent) as staging:
             temporary = Path(staging) / 'speech.wav'
             self._stream(command, request, temporary, cancelled)
             _wave_info(temporary, cancelled=cancelled)
+            # The real worker may have run while reviewed assets changed.
+            # Bind returned PCM to the exact admitted manifest before release
+            # to Studio's completed-speech cache or a reader's output path.
+            self.manifest.verify(cancelled=cancelled, require_complete=True)
             if cancelled():
                 raise InterruptedError('Speech operation cancelled.')
             _publish(temporary, target, cancelled=cancelled)
@@ -1035,15 +1059,32 @@ class DordiaiVoicesEngine:
                     raise ValueError('dordiai-voices produced no audio.')
             finally:
                 finished.set()
-                _stop(process)
-                if writer.ident is not None:
-                    writer.join(timeout=1)
-                if process.stdin and not writer.is_alive():
-                    process.stdin.close()
-                if reader.ident is not None:
-                    reader.join(timeout=1)
-                if process.stdout and not reader.is_alive():
-                    process.stdout.close()
+
+                def settle_stream():
+                    _stop(process)
+                    if writer.ident is not None:
+                        writer.join(timeout=1)
+                    if reader.ident is not None:
+                        reader.join(timeout=1)
+                    if writer.is_alive() or reader.is_alive():
+                        raise RuntimeError('Dordiai I/O threads have not confirmed shutdown.')
+                    if process.stdin:
+                        process.stdin.close()
+                    if process.stdout:
+                        process.stdout.close()
+
+                try:
+                    settle_stream()
+                except BaseException as error:
+                    # Retain native streams, staged PCM and the caller's
+                    # admission until both the process family and its I/O
+                    # threads settle through the same existing cleanup owner.
+                    from .cleanup import pending_cleanup, wait_for_cleanup
+                    pending = pending_cleanup(settle_stream,
+                        message='Dordiai cleanup is pending; its staging and admission remain held.')
+                    wait_for_cleanup(pending)
+                    if not isinstance(error, Exception):
+                        raise
 
 
 class _LazySAPI32Engine:

@@ -105,7 +105,8 @@ def finalize(results):
                     canonical_process_signal_cases=ORACLE.get('canonical_process_signal_cases', 0),
                     canonical_completed_import_binding_cases=ORACLE.get('canonical_completed_import_binding_cases', 0),
                     canonical_presentation_fixture_cases=ORACLE.get('canonical_presentation_fixture_cases', 0),
-                    chm_publisher_recovery_cases=ORACLE.get('chm_publisher_recovery_cases', 0))
+                    chm_publisher_recovery_cases=ORACLE.get('chm_publisher_recovery_cases', 0),
+                    canonical_dordiai_cases=ORACLE.get('canonical_dordiai_cases', 0))
     except Exception as error:
         print(''.join(traceback.format_exception(type(error), error, error.__traceback__)),
               file=sys.stderr, flush=True)

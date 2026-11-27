@@ -27,12 +27,22 @@ def filter_voice_catalog(voices):
 
 LANGUAGES = '''
 import json
+import windows_runtime
+assert windows_runtime.reset_done and windows_runtime.configured
 def canonical_code(code):
     return code.lower().replace('_', '-').split('-')[0]
 def data(models):
     return json.loads((models / 'availability.json').read_text(encoding='utf-8'))
 def installed_languages(models):
     return {code: code for code in data(models)['installed']}
+def coverage(models, selected_only=False):
+    assert selected_only is False
+    document = data(models)
+    return document.get('coverage', [
+        {'runtime_code': code, 'settings_label_uk': 'Synthetic ' + code,
+         'resources_present': True, 'status': 'present',
+         'partial_variant': False, 'interactive_reading_ready': None}
+        for code in document['installed']])
 def compatible_voice_ids(models, language, allowed_voice_ids):
     return tuple(identity for identity in data(models)['builtin'].get(language, [])
                  if identity in allowed_voice_ids)
@@ -45,14 +55,41 @@ def discover_voices(references, engine_id=None):
     return json.loads((references / 'packages.json').read_text(encoding='utf-8'))
 '''
 
+WINDOWS_RUNTIME = '''
+reset_done = False
+configured = False
+def reset_inherited_dll_directory():
+    global reset_done
+    reset_done = True
+def configure_worker_import_paths():
+    global configured
+    assert reset_done
+    configured = True
+'''
+
+WIDE = '''
+import json
+from pathlib import Path
+def registered(code):
+    document = json.loads((Path(__file__).parent / 'models/availability.json').read_text(encoding='utf-8'))
+    return code if code in document.get('wide', []) else None
+'''
+
 WORKER = '''
 import base64,json,sys
-request=json.loads(sys.stdin.readline())
-assert request['mode']=='reference' and request['profile']=='fixture-alpha'
-assert request['language']=='uk' and request['text']=='Original synthetic sentence.'
-print(json.dumps({'chunk':base64.b64encode(b'\\x01\\x00'*48).decode()}),flush=True)
-assert json.loads(sys.stdin.readline())=={'mode':'next'}
-print(json.dumps({'finished':True}),flush=True)
+from pathlib import Path
+OUTPUT_RATE = 24000
+CLASSMATE_LOCALES = tuple(json.loads(
+    (Path(__file__).parent / 'models/availability.json').read_text(encoding='utf-8')).get('native_locales', ['sk']))
+def main():
+    request=json.loads(sys.stdin.readline())
+    assert request['mode']=='reference' and request['profile']=='fixture-alpha'
+    assert request['language']=='uk' and request['text']=='Original synthetic sentence.'
+    print(json.dumps({'chunk':base64.b64encode(b'\\x01\\x00'*48).decode()}),flush=True)
+    assert json.loads(sys.stdin.readline())=={'mode':'next'}
+    print(json.dumps({'finished':True}),flush=True)
+if __name__ == '__main__':
+    main()
 '''
 
 
@@ -81,8 +118,9 @@ def installed(tmp_path, monkeypatch):
     (runtime / 'python').mkdir()
     interpreter = runtime / 'python/python.exe'
     interpreter.write_bytes(b'Synthetic marker; the fixture explicitly selects the test interpreter.')
-    for name, source in (('voice_policy.py', POLICY), ('language_catalog.py', LANGUAGES),
-                         ('voice_assets.py', PACKAGES), ('nvda_worker.py', WORKER)):
+    for name, source in (('windows_runtime.py', WINDOWS_RUNTIME), ('voice_policy.py', POLICY),
+                         ('language_catalog.py', LANGUAGES), ('voice_assets.py', PACKAGES),
+                         ('wide_languages.py', WIDE), ('nvda_worker.py', WORKER)):
         (runtime / name).write_text(source, encoding='utf-8')
     (refs / 'catalog.json').write_text(json.dumps({
         'fixture-alpha': 'Synthetic Alpha', 'fixture-beta': 'Synthetic Beta',
@@ -190,11 +228,20 @@ def test_missing_required_installed_helper_fails_before_discovery(installed):
 @pytest.mark.parametrize('payload', [
     b'not-json', b'[]', b'{"protocol":"other","voices":[]}',
     b'{"protocol":"carr.dordiai-installed-voices.v1","voices":[],"voices":[]}',
-    json.dumps({'protocol': DISCOVERY_PROTOCOL, 'voices': [
+    json.dumps({'protocol': DISCOVERY_PROTOCOL, 'languages': [{
+        'code': 'uk', 'name': 'Synthetic Ukrainian', 'resources_present': True,
+        'status': 'present', 'partial_variant': False, 'interactive_reading_ready': None,
+        'route': 'ukrainian'}], 'voices': [
         {'id': '../escape', 'name': 'Synthetic', 'languages': ['uk']}]}).encode(),
-    json.dumps({'protocol': DISCOVERY_PROTOCOL, 'voices': [
+    json.dumps({'protocol': DISCOVERY_PROTOCOL, 'languages': [{
+        'code': 'uk', 'name': 'Synthetic Ukrainian', 'resources_present': True,
+        'status': 'present', 'partial_variant': False, 'interactive_reading_ready': None,
+        'route': 'ukrainian'}], 'voices': [
         {'id': 'demo', 'name': 'Synthetic', 'languages': ['https://remote.invalid']}]}).encode(),
-    json.dumps({'protocol': DISCOVERY_PROTOCOL, 'voices': [
+    json.dumps({'protocol': DISCOVERY_PROTOCOL, 'languages': [{
+        'code': 'uk', 'name': 'Synthetic Ukrainian', 'resources_present': True,
+        'status': 'present', 'partial_variant': False, 'interactive_reading_ready': None,
+        'route': 'ukrainian'}], 'voices': [
         {'id': 'demo', 'name': 'Synthetic', 'languages': []}]}).encode(),
     b'x' * (MAX_RESPONSE_BYTES + 1),
 ], ids=['not-json', 'not-object', 'wrong-protocol', 'duplicate-field',

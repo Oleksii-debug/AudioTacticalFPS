@@ -1,0 +1,114 @@
+{
+  "schema": "carr.source-preservation-repair.v1",
+  "status": "SOURCE_REVIEW_CHECKPOINT_RUNTIME_NOT_RUN",
+  "canonical_commit": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+  "parent_commit": "1ea95e02acf514078142501040836b57f780a4da",
+  "parent_tree": "5d394c4e5fd17a4e7fb8b27a1d42e806fdcb0c75",
+  "canonical_sources": [
+    {
+      "path": "carr-library/src/carr_library/integrations/_dordiai_probe.py",
+      "blob": "a52f940d53905ebde76e6b163c900d1fcbb65268"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/dordiai_speech.py",
+      "blob": "99d0afb0d117cb2acc1f9df6da9a1db4e756d847"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/dordiai_voices.py",
+      "blob": "13787af35f5fb1363665f7b0986f24771780dd0b"
+    }
+  ],
+  "findings": [
+    {
+      "id": "post-render-runtime-binding",
+      "canonical": "DordiaiSpeechProvider.render fingerprints reviewed runtime assets before and after the actual stream.",
+      "baseline": "DordiaiVoicesEngine.synthesize verified the complete manifest before streaming but published afterward without rechecking it.",
+      "repair": "Reverify the exact loaded manifest and complete asset inventory after actual streaming and confirmed cleanup, before the existing no-replace PCM publication."
+    },
+    {
+      "id": "retained-process-settlement",
+      "canonical": "The owned adapter closes its selected worker before releasing render ownership.",
+      "baseline": "The current _stream finally called _stop directly after c715 made Windows family settlement strict; a transient failure could unwind native streams and staging.",
+      "repair": "Use the existing pending_cleanup/wait_for_cleanup owner while streams, stage and the caller lease remain held. Its settlement attempt covers the whole native family, both I/O thread joins and pipe closure; an unresolved thread remains held and is retried. Preserve KeyboardInterrupt/SystemExit after settlement."
+    },
+    {
+      "id": "installed-language-routes",
+      "canonical": "The selected runtime supplies coverage, wide registration, CLASSMATE_LOCALES, OUTPUT_RATE, and descriptive missing/partial language records.",
+      "baseline": "Current discovery exposed only language codes; render inferred seven native locales, all other wide routes, and reduced regional codes.",
+      "repair": "The same isolated discovery process uses exact selected windows_runtime/bootstrap, wide_languages and nvda_worker modules; v2 typed language rows bind explicit routes/status/resources, full runtime codes and fixed 24000 Hz PCM. All request flags derive from the selected verified row. No fallback to a guessed route."
+    }
+  ],
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/audio/engines.py",
+      "blob": "8d6de25b95df92be03b25955244aee6c16602963"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/dordiai_discovery.py",
+      "blob": "f6c8789823a857833631d81c37b7eb085bb161f7"
+    },
+    {
+      "path": "carr-library/tests/audio/test_dordiai_discovery.py",
+      "blob": "c3fcdf5cdf9e86f6e68cc1617168a7a3e1c6d95b"
+    },
+    {
+      "path": "carr-library/tests/audio/test_dordiai_preservation.py",
+      "blob": "ebc0f12269c5b8bf28d78646cb2a10058e729f2e"
+    }
+  ],
+  "changed_runtime_contract": {
+    "discovery_protocol": "carr.dordiai-installed-voices.v2",
+    "transport_protocol": "nvda-worker-jsonl-pcm24k-v1",
+    "voice_ids": "Existing dordiai-voices:<installed-profile-id> values unchanged; no generic local helper substitution.",
+    "cache": "Exact selected language routes and v2 discovery discriminator enter the current cache identity. Historical artifacts remain passive; no relabelling or cross-version completed-cache equivalence claim.",
+    "worker_layout": "Both metadata discovery and render require the same reviewed nvda_worker.py under the selected runtime root.",
+    "ownership": "Existing audio.engines process owner, Windows job settlement, audio.cleanup and ResourceBroker; no new runtime/store/process family.",
+    "limits": "Current per-request 8000 characters/256 MiB PCM and 30-second discovery cap remain. No warm persistent worker, model quality, private runtime, NVDA, physical audio, or throughput qualification.",
+    "installed_predicate": "Preserve canonical truth semantics of wide_languages.registered(code), including code-or-None responses. Serialized language rows/routes remain strictly typed."
+  },
+  "regression_inventory": {
+    "new_module": "tests/audio/test_dordiai_preservation.py",
+    "new_function_cases": {
+      "test_actual_render_runtime_mutation_never_publishes_pcm": 6,
+      "test_pending_owner_retains_actual_streams_stage_and_lease": 4,
+      "test_actual_installed_routes_control_the_exact_worker_request": 5,
+      "test_missing_partial_and_unknown_routes_remain_passive_metadata": 2,
+      "test_unadvertised_regional_variant_is_not_silently_reduced": 1,
+      "test_route_inventory_refuses_malformed_or_unbound_records": 10,
+      "test_missing_reviewed_bootstrap_or_route_helper_never_executes": 2,
+      "test_installed_metadata_cannot_change_the_pcm_sample_rate": 1,
+      "test_discovery_and_render_cannot_select_different_worker_files": 1,
+      "test_actual_io_thread_settlement_retains_the_same_cleanup_owner": 2
+    },
+    "new_total": 34,
+    "retained_module": "tests/audio/test_dordiai_discovery.py",
+    "retained_function_cases": {
+      "test_constructor_and_real_discovery_accept_actual_flat_catalog_shape": 1,
+      "test_constructor_discovery_and_existing_pcm_transport_work_together": 1,
+      "test_missing_resources_do_not_advertise_catalog_targets": 1,
+      "test_managed_package_overlays_and_required_roles_are_respected": 1,
+      "test_unsupported_voice_language_fails_before_render": 1,
+      "test_wrong_model_catalog_path_is_rejected_before_any_process": 1,
+      "test_missing_required_installed_helper_fails_before_discovery": 1,
+      "test_malformed_discovery_response_never_publishes_voices": 8,
+      "test_discovery_cancels_a_real_hung_helper_process": 1,
+      "test_discovery_timeout_is_bounded": 1,
+      "test_discovery_does_not_allow_network_or_child_processes": 2,
+      "test_discovery_redacts_helper_errors": 1,
+      "test_oversized_real_process_output_is_stopped": 1,
+      "test_source_runtime_change_after_discovery_does_not_leave_usable_cached_voice": 1
+    },
+    "retained_total": 22,
+    "installed_support": [
+      "tests/__init__.py",
+      "tests/audio/test_dordiai_discovery.py"
+    ],
+    "fixture_changes": "Same 22 retained cases. Synthetic metadata worker now imports inertly under __name__ guard; exact installed bootstrap/coverage/routes are supplied. Existing unsafe-voice/language/empty-language cases now have otherwise valid v2 envelopes, preserving their named assertions. The installed wide predicate returns code-or-None as the canonical synthetic owner contract does.",
+    "execution": "NOT_RUN. New32 cases plus two actual reader/writer exit-barrier cases are authored; no measured success is transferred.",
+    "native_probe_population": "No existing native labels or aggregate workflow changed. Windows and installed-source execution must be newly run."
+  },
+  "source_review": {
+    "mechanism": "Exact Git source inspection; no executor, compilation or runtime claim.",
+    "peer": "Independent final review found and closed code-or-None registered() compatibility and whole I/O-thread settlement. All earlier malformed-voice boundary fixtures remain otherwise valid v2 envelopes. Final successor review/execution pending."
+  }
+}
