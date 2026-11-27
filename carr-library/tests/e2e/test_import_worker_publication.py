@@ -9,6 +9,7 @@ from contextlib import closing
 import shutil
 import sqlite3
 import subprocess
+import sys
 
 import pytest
 
@@ -82,13 +83,32 @@ LibraryApp._import_file = _replay
 
     def launch(command, **options):
         command = list(command)
+        # Popen is shared with subprocess.run: Windows cancellation invokes
+        # taskkill here as well. Only instrument the real import bootstrap.
+        if '-c' not in command:
+            return popen(command, **options)
         index = command.index('-c') + 1
-        assert "runpy.run_module('carr_library.ingest.worker'" in command[index]
+        if (index >= len(command)
+                or "runpy.run_module('carr_library.ingest.worker'" not in command[index]):
+            return popen(command, **options)
         command[index] = ('import sys,runpy\nsys.path[:0]=sys.argv[1:]\n' + code
                           + "\nrunpy.run_module('carr_library.ingest.worker',run_name='__main__')")
         return popen(command, **options)
 
     monkeypatch.setattr(worker.subprocess, 'Popen', launch)
+
+
+@pytest.mark.parametrize('arguments, expected', [
+    (['-V'], 'Python '),
+    (['-c', "print('unrelated helper')"], 'unrelated helper'),
+])
+def test_barrier_leaves_other_processes_unchanged(tmp_path, monkeypatch, arguments, expected):
+    marker = tmp_path / 'worker-only'
+    _barrier(monkeypatch, marker, boundary='after')
+    result = subprocess.run([sys.executable, *arguments], capture_output=True,
+                            text=True, timeout=5, check=True)
+    assert expected in result.stdout + result.stderr
+    assert not marker.exists()
 
 
 @pytest.mark.parametrize('kind', ('txt', 'pdf', 'docx'))
