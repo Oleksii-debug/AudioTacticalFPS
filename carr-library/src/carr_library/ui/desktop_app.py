@@ -575,6 +575,8 @@ class DesktopFrame(WorkspaceFrame):
         install_translation_actions(self)
         install_assistant_actions(self)
         install_portable_sync_actions(self)
+        from .transcription_dialog import install_transcription_actions
+        install_transcription_actions(self)
 
     def build_advanced_query(self, event=None):
         if self.working:

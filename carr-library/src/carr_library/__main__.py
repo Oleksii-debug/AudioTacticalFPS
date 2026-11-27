@@ -64,6 +64,9 @@ def self_test():
 
 def main(argv=None):
     arguments = list(sys.argv[1:] if argv is None else argv)
+    if arguments and arguments[0] == 'transcribe':
+        from .transcription_cli import main as transcription_main
+        return transcription_main(arguments[1:])
     if arguments and arguments[0] == 'sync':
         from .sync.cli import main as sync_main
         return sync_main(arguments[1:])
