@@ -131,7 +131,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
         'install_portable_sync_actions', 'install_incremental_backup', 'install_language_actions', 'install_translation_actions',
         'install_conversion_actions', 'install_transcription_actions',
         'install_engine_settings_actions', 'install_operations_actions', 'install_reading_import_actions',
-        'install_trust_actions', 'install_recording_actions',
+        'install_trust_actions', 'install_recording_actions', 'install_book_batch_actions',
         'install_media_overlay_actions', 'install_media_actions')}
     env.update(installers)
     from carr_library.ui.audio_studio import install_audio_studio_actions
@@ -269,6 +269,7 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
         menu_globals = env['DesktopFrame']._menus.__code__.co_names
         for module_name, action_name in (
                 ('audio_studio', 'install_audio_studio_actions'),
+                ('book_batch_dialog', 'install_book_batch_actions'),
                 ('recording_dialog', 'install_recording_actions'),
                 ('media_overlay_dialog', 'install_media_overlay_actions'),
                 ('media_conversion', 'install_media_actions'),
@@ -321,6 +322,7 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
         assert 'reading.open_legacy_history' in keyboard.bindings
         assert 'transcription.local' in keyboard.bindings
         assert 'delivery.trust_status' in keyboard.bindings
+        assert 'audio.book-batch' in keyboard.bindings
         assert 'audio.recording' in keyboard.bindings
         assert 'reading.publication' in keyboard.bindings
         assert 'conversion.audio' in keyboard.bindings

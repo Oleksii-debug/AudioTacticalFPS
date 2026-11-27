@@ -33,6 +33,7 @@ MODULES = (
     'carr_library.ingest.pipeline', 'carr_library.ingest.retained_assets',
     'carr_library.search.pagination', 'carr_library.catalog.read_views',
     'carr_library.reader.reading_desk', 'carr_library.reader.source_file',
+    'carr_library.library_backup', 'carr_library.backup_capacity',
 )
 
 
@@ -430,6 +431,66 @@ def measure_startup(root, samples, deadline):
         native_window='NOT_RUN')
 
 
+
+def catalog_receipt(app, deadline):
+    """Bounded ordered identity receipt over every actual catalog, not a sample."""
+    digest, count, libraries = sha256(), 0, tuple(sorted(item.id for item in app.workspaces()))
+    for workspace in libraries:
+        deadline.check()
+        with app.read(workspace) as db:
+            cursor = db.execute('SELECT id,asset FROM catalog_edition WHERE workspace=? ORDER BY id',
+                                (workspace,))
+            while rows := cursor.fetchmany(500):
+                deadline.check()
+                for row in rows:
+                    digest.update(json.dumps([workspace, row['id'], row['asset']],
+                        ensure_ascii=False, separators=(',', ':')).encode('utf-8') + b'\n')
+                    count += 1
+    return dict(libraries=libraries, editions=count, ordered_identity_sha256=digest.hexdigest())
+
+
+def measure_complete_backup(app, workspace, books, segments, samples, output, deadline,
+                            progress=lambda row: None):
+    """Actual current complete snapshot, source retirement and independent restore."""
+    import shutil
+    from carr_library.application import open_existing_library
+    from carr_library.backup_capacity import LARGE_SOURCE_PROFILE
+    from carr_library.library_backup import verify_backup, restore_backup
+    expected = catalog_receipt(app, deadline)
+    backup, target = Path(output) / 'complete-library-backup', Path(output) / 'restored-library'
+    times = {}
+    def measured(name, action):
+        deadline.check()
+        progress(dict(phase='complete-library-' + name))
+        started = perf_counter()
+        value = action()
+        times[name + '_seconds'] = perf_counter() - started
+        deadline.check()
+        return value
+    identity = measured('backup', lambda: app.backup(backup,
+        capacity_profile=LARGE_SOURCE_PROFILE, cancelled=deadline.stopped))
+    measured('verify', lambda: verify_backup(backup, identity, cancelled=deadline.stopped))
+    inventory = disk_inventory(backup)
+    # Both directories are exclusively constructed by this finite measurement.
+    # Removing its source proves that no old absolute path supplies a restore.
+    deadline.check()
+    shutil.rmtree(app.root)
+    root = measured('restore', lambda: restore_backup(backup, target, identity,
+                                                      cancelled=deadline.stopped))
+    restored = open_existing_library(root)
+    actual = catalog_receipt(restored, deadline)
+    if actual != expected:
+        raise ValueError('Complete restore changed the actual ordered catalog or retained source identities.')
+    sources = measure_sources(restored, workspace, books, segments, samples, deadline)
+    startup = measure_startup(restored.root, min(3, samples), deadline)
+    return dict(status='PASS', capacity_profile=LARGE_SOURCE_PROFILE,
+        manifest_sha256=identity, catalog=actual, original_fixture_library_removed=True,
+        restored_root_differs=True, all_manifest_files_verified=True,
+        source_open=sources, fresh_restored_startup=startup,
+        snapshot_inventory=inventory, **times,
+        scope='Complete current library state; external models/credentials and whole-machine backup are not included.')
+
+
 def write_report(path, value):
     payload = json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False).encode('utf-8') + b'\n'
     temporary = path.with_suffix(path.suffix + '.partial')
@@ -507,6 +568,12 @@ def run(args):
         result['worker_recovery'] = measure_worker_recovery(app, workspace, inputs, deadline)
         disk('after-worker-recovery')
         result['startup'] = measure_startup(app.root, min(3, args.samples), deadline)
+        if args.complete_backup:
+            result['complete_library_backup'] = measure_complete_backup(app, workspace, args.books,
+                args.segments_per_book, args.samples, output, deadline, progress)
+            disk('complete-library-backup-and-restore')
+        else:
+            result['complete_library_backup'] = {'status': 'NOT_RUN', 'reason': 'Explicit --complete-backup not selected.'}
         final_sources = source_identity(installed=args.installed)
         if final_sources != sources:
             raise ValueError('The measured production modules changed during this run.')
@@ -539,6 +606,8 @@ def main(arguments=None):
     parser.add_argument('--timeout', type=float, default=5400)
     parser.add_argument('--source-commit', required=True)
     parser.add_argument('--installed', action='store_true')
+    parser.add_argument('--complete-backup', action='store_true',
+        help='Measure current large-profile complete backup and independent restore, then remove only the synthetic source library')
     args = parser.parse_args(arguments)
     if (not 1 <= args.books <= MAX_BOOKS or not 1 <= args.segments_per_book <= 1000
             or args.books * args.segments_per_book > MAX_SEGMENTS

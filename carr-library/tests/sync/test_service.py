@@ -187,11 +187,11 @@ def test_restore_destination_race_keeps_existing_directory(populated, tmp_path, 
     from carr_library.sync import vault
     original = vault._publish_directory
     destination = tmp_path / 'raced'
-    def race(stage, target):
+    def race(stage, target, *, _committed=None):
         if target == destination:
             destination.mkdir()
             (destination / 'keep').write_text('Unrelated original')
-        return original(stage, target)
+        return original(stage, target, _committed=_committed)
     monkeypatch.setattr(vault, '_publish_directory', race)
     with pytest.raises(FileExistsError):
         service.restore(folder, result['token'], destination)

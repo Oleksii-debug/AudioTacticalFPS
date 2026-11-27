@@ -29,9 +29,13 @@ class _QueueItem:
 
 def _queue_item(path):
     target = local_path(path)
-    duration = wav_info(target).seconds
-    info = target.stat()
-    return _QueueItem(target, duration, (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns))
+    from os import fstat
+    from .jobs import file_identity, verified_reader
+    from ..native_file_metadata import stream_change_time
+    with verified_reader(target) as stream:
+        duration = wav_info(target).seconds
+        identity = file_identity(fstat(stream.fileno())) + (stream_change_time(stream),)
+    return _QueueItem(target, duration, identity)
 
 
 @dataclass(frozen=True)
@@ -158,6 +162,15 @@ class WavePlayer:
             return PlaybackStatus()
         return snapshot
 
+    def _check_current_recording(self):
+        index = self.playlist_index
+        if (type(index) is not int or not 0 <= index < len(self._queue)
+                or self._queue[index].path != self.path):
+            raise ValueError('Review the current recording before changing playback.')
+        if _queue_item(self.path) != self._queue[index]:
+            raise ValueError('The queued recording changed. Restore and review it before playback.')
+        return self._queue[index]
+
     def _native_control(self, operation, *args):
         if self.native is None:
             raise ValueError('Pause, resume and timeline seeking use the native Windows player.')
@@ -172,6 +185,7 @@ class WavePlayer:
     def resume(self):
         if self.status().state != 'paused':
             return False
+        self._check_current_recording()
         self._native_control('resume')
         return True
 
@@ -182,6 +196,7 @@ class WavePlayer:
             raise ValueError('Choose a playback position within the recording.')
         if self.native is None:
             raise ValueError('Timeline seeking uses the native Windows player.')
+        self._check_current_recording()
         paused = self.state == 'paused'
         end = self._ab[1] if self._ab is not None and seconds < self._ab[1] else None
         self._start(self.path, start_seconds=seconds, end_seconds=end)
@@ -310,17 +325,18 @@ class WavePlayer:
     def enqueue(self, paths):
         self._queue = self._checked_queue(paths, self._queue)
 
-    def play_index(self, index, *, device_id=_DEVICE_UNSET):
+    def play_index(self, index, *, device_id=_DEVICE_UNSET, start_seconds=None):
         if type(index) is not int or not 0 <= index < len(self._queue):
             raise ValueError('Choose a recording in the current playlist.')
         item = self._queue[index]
         if _queue_item(item.path) != item:
             raise ValueError('The queued recording changed. Add its current version to the playlist again.')
         same_file = self.path == item.path
-        loop = self._ab if same_file else None
-        self._start(item.path, start_seconds=loop[0] if loop else 0,
+        loop = self._ab if same_file and start_seconds is None else None
+        start = (loop[0] if loop else 0) if start_seconds is None else start_seconds
+        self._start(item.path, start_seconds=start,
                     end_seconds=loop[1] if loop else None, device_id=device_id)
-        if not same_file:
+        if not same_file or start_seconds is not None:
             self._ab, self.segments = None, ()
         self.playlist_index, self._auto_advance = index, True
         return True
@@ -337,6 +353,7 @@ class WavePlayer:
         if (self.path is None or any(type(v) not in (int, float) or not math.isfinite(v) for v in (start, end))
                 or not 0 <= start < end <= self.duration_seconds or end - start < .05):
             raise ValueError('Choose A and B inside the opened recording, at least 0.05 seconds apart.')
+        self._check_current_recording()
         state, position = self.state, self.position_seconds
         self._ab = float(start), float(end)
         if state in ('starting', 'playing', 'paused'):
@@ -345,6 +362,8 @@ class WavePlayer:
                 self.pause()
 
     def clear_ab_loop(self):
+        if self.path is not None:
+            self._check_current_recording()
         state, position = self.state, self.position_seconds
         self._ab = None
         if state in ('starting', 'playing', 'paused'):
@@ -418,6 +437,7 @@ class WavePlayer:
             return 'sleep'
         state = self.state
         if self._ab is not None and (self._ended or state == 'playing' and self.position_seconds >= self._ab[1]):
+            self._check_current_recording()
             self._start(self.path, start_seconds=self._ab[0], end_seconds=self._ab[1])
             return 'repeat'
         if self._ended and self._auto_advance:

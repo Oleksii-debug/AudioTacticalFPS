@@ -54,12 +54,12 @@ jobs:
       - name: Require source contracts with all network access denied
         run: |
           set -euo pipefail
-          python scripts/ci_check.py --jobs 3 tests/assistant/test_workflow_templates.py tests/assistant/test_workflow_template_handlers.py tests/audio/test_book_cli.py tests/ui/test_measured_book_dialog.py tests/ingest/test_large_source_profiles.py tests/storage/test_large_source_backup.py tests/e2e/test_large_import_cli.py tests/e2e/test_large_source_fixture.py tests/ui/test_large_source_import.py tests/ui/test_backup_capacity.py tests/packaging/test_ci_check.py 2>&1 | tee v3-contract-results/source.txt
+          python scripts/ci_check.py --jobs 3 tests/assistant/test_workflow_templates.py tests/assistant/test_workflow_template_handlers.py tests/audio/test_book_cli.py tests/audio/test_managed_playback_queue.py tests/ui/test_managed_playback_queue.py tests/ui/test_measured_book_dialog.py tests/ingest/test_large_source_profiles.py tests/storage/test_large_source_backup.py tests/e2e/test_large_import_cli.py tests/e2e/test_large_source_fixture.py tests/ui/test_large_source_import.py tests/ui/test_backup_capacity.py tests/packaging/test_ci_check.py 2>&1 | tee v3-contract-results/source.txt
       - name: Require isolated installed contracts with exact Python byte identity
         if: ${{ !cancelled() && steps.runtime.outcome == 'success' }}
         run: |
           set -euo pipefail
-          python -I -B scripts/ci_check.py --installed --jobs 3 tests/assistant/test_workflow_templates.py tests/assistant/test_workflow_template_handlers.py tests/audio/test_book_cli.py tests/ui/test_measured_book_dialog.py tests/ingest/test_large_source_profiles.py tests/storage/test_large_source_backup.py tests/e2e/test_large_import_cli.py tests/e2e/test_large_source_fixture.py tests/ui/test_large_source_import.py tests/ui/test_backup_capacity.py 2>&1 | tee v3-contract-results/installed.txt
+          python -I -B scripts/ci_check.py --installed --jobs 3 tests/assistant/test_workflow_templates.py tests/assistant/test_workflow_template_handlers.py tests/audio/test_book_cli.py tests/audio/test_managed_playback_queue.py tests/ui/test_managed_playback_queue.py tests/ui/test_measured_book_dialog.py tests/ingest/test_large_source_profiles.py tests/storage/test_large_source_backup.py tests/e2e/test_large_import_cli.py tests/e2e/test_large_source_fixture.py tests/ui/test_large_source_import.py tests/ui/test_backup_capacity.py 2>&1 | tee v3-contract-results/installed.txt
       - name: Require explicit real numeric-loopback planning and translation
         if: ${{ !cancelled() && steps.runtime.outcome == 'success' }}
         run: |

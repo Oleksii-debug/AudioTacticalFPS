@@ -35,6 +35,7 @@ class PlaybackWorkspace:
         self.source_identity = file_identity(regular_file(self.source))
         self.current, self.ffmpeg, self.device_id = current, ffmpeg, device_id
         self.snapshot = self.selection = None
+        self.preferred_controls = PlaybackControls()
         self.closed = False
         self.budget = AudioBudget()
         self._deadline = None
@@ -85,6 +86,7 @@ class PlaybackWorkspace:
             self._check(cancelled)
             selection = _Selection(derivative, owner, stream, native)
             self.selection = selection
+            self.preferred_controls = controls
             return derivative
         except BaseException:
             try:
@@ -256,10 +258,10 @@ class PlaybackControlsDialog:
         content.Add(explanation, 0, wx.EXPAND | wx.ALL, 6)
         self.fields = {}
         for key, label, initial, minimum, maximum, increment, digits in (
-            ('speed', 'Playback speed multiplier', 1, .25, 4, .05, 2),
-            ('pitch', 'Playback pitch in semitones', 0, -12, 12, .5, 2),
-            ('volume', 'Playback volume; zero mutes', 1, 0, 1, .05, 2),
-            ('pan', 'Stereo balance; minus one left, plus one right', 0, -1, 1, .05, 2),
+            ('speed', 'Playback speed multiplier', self.workspace.preferred_controls.speed, .25, 4, .05, 2),
+            ('pitch', 'Playback pitch in semitones', self.workspace.preferred_controls.pitch_semitones, -12, 12, .5, 2),
+            ('volume', 'Playback volume; zero mutes', self.workspace.preferred_controls.volume, 0, 1, .05, 2),
+            ('pan', 'Stereo balance; minus one left, plus one right', self.workspace.preferred_controls.pan, -1, 1, .05, 2),
             ('bytes', 'Temporary PCM allowance in MiB', 1024, 1, 1048576, 128, 0),
             ('seconds', 'Preparation and restore allowance in seconds', 3600, .05, 31536000, 60, 2)):
             content.Add(wx.StaticText(body, label=label), 0, wx.LEFT | wx.RIGHT | wx.TOP, 6)

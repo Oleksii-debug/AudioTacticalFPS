@@ -56,7 +56,12 @@ jobs:
       - name: Require incremental and publication boundaries without skips
         timeout-minutes: 5
         run: |
-          python scripts/ci_check.py --jobs 3 tests/storage/test_incremental_backup.py tests/storage/test_incremental_backup_cli.py tests/ui/test_incremental_backup_dialog.py tests/sync/test_service_commit_boundaries.py 2>&1 | Tee-Object sync-ci-results/strict-incremental.txt
+          python scripts/ci_check.py --jobs 3 tests/storage/test_incremental_backup.py tests/storage/test_incremental_backup_cli.py tests/ui/test_incremental_backup_dialog.py tests/sync/test_service_commit_boundaries.py tests/sync/test_service.py tests/sync/test_vault.py tests/ui/test_desktop_handlers.py 2>&1 | Tee-Object sync-ci-results/strict-incremental.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require exact isolated installed recovery and composed menus
+        timeout-minutes: 8
+        run: |
+          python -I -B scripts/ci_check.py --installed --jobs 3 tests/storage/test_incremental_backup.py tests/storage/test_incremental_backup_cli.py tests/ui/test_incremental_backup_dialog.py tests/sync/test_service_commit_boundaries.py tests/sync/test_service.py tests/sync/test_vault.py tests/ui/test_desktop_handlers.py 2>&1 | Tee-Object sync-ci-results/strict-installed-recovery.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify installed snapshot transfer
         run: |

@@ -534,8 +534,11 @@ class BookBatchDialog:
         def accepted(value):
             if publish:
                 self.measured = None
-                self.report('Measured PCM publication ' + value['status'] + '. Receipt: ' + value['id']
+                message = ('Measured PCM publication ' + value['status'] + '. Receipt: ' + value['id']
                     + '\n' + value['output'] + '\n' + value['notice'])
+                if value.get('cleanup_warning'):
+                    message += '\n' + value['cleanup_warning']
+                self.report(message)
             else:
                 self._duration_guard(snapshot)
                 self.measured = (snapshot, approval, value)

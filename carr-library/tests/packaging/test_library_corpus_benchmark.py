@@ -60,7 +60,7 @@ def test_isolated_installed_small_corpus_executes_owned_worker_recovery_and_reco
     module = harness()
     output = tmp_path / 'measurement'
     command = [sys.executable, '-I', '-B', str(Path(module.__file__)),
-        '--installed', '--output-dir', str(output), '--books', '16',
+        '--installed', '--complete-backup', '--output-dir', str(output), '--books', '16',
         '--segments-per-book', '3', '--samples', '3', '--page-size', '5',
         '--timeout', '180', '--source-commit', '0' * 40]
     result = subprocess.run(command, cwd=tmp_path, capture_output=True, text=True, timeout=210)
@@ -71,6 +71,11 @@ def test_isolated_installed_small_corpus_executes_owned_worker_recovery_and_reco
     assert report['search']['exact_hits'] == 16 and report['worker_recovery']['same_job']
     assert report['worker_recovery']['external_original_removed']
     assert report['startup']['latency']['observations'] == 3
+    backup = report['complete_library_backup']
+    assert backup['status'] == 'PASS' and backup['original_fixture_library_removed']
+    assert backup['all_manifest_files_verified'] and backup['catalog']['editions'] > 16
+    assert backup['fresh_restored_startup']['latency']['observations'] == 3
+    assert not (output / 'library').exists() and (output / 'restored-library').is_dir()
     assert report['claims']['semantic_inference'] == 'NOT_RUN'
     assert report['parent_process_peak_rss_bytes'] > 0
     assert report['phase_sampled_peak_private_file_bytes'] > 0
@@ -86,3 +91,13 @@ def test_measurement_percentiles_keep_observation_count_and_actual_tail():
     for invalid in ([], [float('nan')], [-1], [True]):
         with pytest.raises(ValueError):
             harness().distribution(invalid)
+
+
+def test_complete_corpus_backup_reopens_every_catalog_and_exact_retained_tail(tmp_path):
+    module, app, workspace, collection, _ = corpus(tmp_path, books=31, segments=4)
+    other = app.create_workspace('Other restored library')
+    app.add_text(other, 'Other actual source', 'Independent retained text.')
+    result = module.measure_complete_backup(app, workspace, 31, 4, 3, tmp_path, module.Deadline(180))
+    assert result['status'] == 'PASS' and result['catalog']['editions'] == 32
+    assert result['all_manifest_files_verified'] and not app.root.exists()
+    assert result['source_open']['sampled_books'] == 3

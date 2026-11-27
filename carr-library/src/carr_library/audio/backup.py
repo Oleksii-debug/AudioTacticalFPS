@@ -73,7 +73,7 @@ def _identity(info):
 def _allowed(name):
     if name in ('studio/project.json', 'studio/project.json.recovery.json'):
         return True
-    if (name == 'audio/render-journal.json' or re.fullmatch('audio/plan-' + _HEX + r'\.json', name)
+    if (name in ('audio/render-journal.json', 'audio/playback-queue.json') or re.fullmatch('audio/plan-' + _HEX + r'\.json', name)
             or re.fullmatch(r'audio/publication-[0-9a-f]{32}\.json', name)
             or re.fullmatch('audio/clip-consolidation-' + _HEX + r'\.json', name)):
         return True
@@ -221,6 +221,12 @@ def input_assets(project_file, project_dir, *, strict=False,
         required.add(receipt['output']['asset'])
     if len(required) + len(consolidation) > file_budget:
         raise ValueError('Sound inputs and provenance exceed the snapshot file budget.')
+    from .playlist import inspect_queue
+    queue = inspect_queue(project_dir, project['project_id'], cancelled=cancelled)
+    if queue is not None:
+        required.update(item.asset for item in queue.items)
+    if len(required) + len(consolidation) > file_budget:
+        raise ValueError('Playlist and sound inputs exceed the snapshot file budget.')
     directory = Path(project_dir) / 'assets'
     if not directory.exists() and not directory.is_symlink():
         if required:

@@ -103,6 +103,9 @@ def test_process_exit_releases_lock_and_resumes_durable_verified_chunks(tmp_path
     script = r'''
 import os, sys
 from pathlib import Path
+# Pin the child to the same source or installed package that its parent tests.
+# Isolated startup rejects ambient PYTHONPATH before this explicit choice.
+sys.path.insert(0, str(Path(sys.argv[4]).resolve().parents[2]))
 import carr_library.sync.vault as module
 assert Path(module.__file__).resolve() == Path(sys.argv[4]).resolve(), 'Wrong installed/source Vault origin'
 vault = module.Vault(Path(sys.argv[1]), chunk_bytes=1024)
@@ -119,7 +122,7 @@ def progress(event):
 vault.publish(Path(sys.argv[2]), expected_head=None, on_progress=progress)
 raise AssertionError('crash boundary was not reached')
 '''
-    result = subprocess.run([sys.executable, '-B', '-c', script, str(vault.root), str(source), phase,
+    result = subprocess.run([sys.executable, '-I', '-B', '-c', script, str(vault.root), str(source), phase,
                              str(Path(module.__file__).resolve())],
                             capture_output=True, timeout=15, check=False)
     assert result.returncode == 73, result.stderr.decode('utf-8', errors='replace')

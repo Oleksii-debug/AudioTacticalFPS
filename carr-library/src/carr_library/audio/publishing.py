@@ -37,6 +37,58 @@ class PublicationCancelled(InterruptedError):
     """The publication stopped before confirming a complete derivative."""
 
 
+
+class _PublicationCompletion:
+    """Retain an accepted receipt across outer guard/temporary-tree cleanup.
+
+    The warning is an invocation result, never an extra saved receipt field.
+    An owned native family remains a pending error with the same cleanup owner.
+    """
+    def __init__(self):
+        self.receipt = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, kind, error, traceback):
+        if error is None:
+            return False
+        from .capture_types import AudioCleanupPending
+        pending, todo, seen = None, [error], set()
+        while todo:
+            current = todo.pop()
+            if id(current) in seen:
+                continue
+            seen.add(id(current))
+            if isinstance(current, AudioCleanupPending):
+                pending = current
+                break
+            todo.extend(item for item in (current.__cause__, current.__context__)
+                        if item is not None)
+        if pending is not None:
+            if self.receipt is not None:
+                pending.publication_receipt = dict(self.receipt)
+                pending.cleanup_warning = (
+                    'Publication is already complete; native cleanup still owns its resources. '
+                    'Do not repeat or overwrite the export. Saved receipt: ' + self.receipt['id'])
+                pending.args = (str(pending) + ' ' + pending.cleanup_warning,)
+            if pending is not error:
+                raise pending
+            return False
+        if self.receipt is None:
+            return False
+        if not isinstance(error, Exception):
+            # Explicit interpreter/control signals stay signals, even though
+            # the accepted publication itself cannot become an absent retry.
+            error.publication_receipt = dict(self.receipt)
+            return False
+        self.receipt = dict(self.receipt, cleanup_warning=(
+            'Publication is already complete and its exact receipt is saved; cleanup needs attention. '
+            'Do not repeat or overwrite the export. Saved receipt: ' + self.receipt['id']))
+        return True
+
+
+
 # Names retained inside the adapted canonical format validators.
 AudioCancelled = PublicationCancelled
 regular = regular_file
@@ -874,7 +926,7 @@ class PublicationService:
                 source_guard()
                 check()
 
-        with project_lock(self.root), ExitStack() as resources:
+        with _PublicationCompletion() as completion, project_lock(self.root), ExitStack() as resources:
             plan, timeline, paths, source_proof, info = self._source(run_key, check, progress)
             production_proof = source_proof
             if book_format == 'pcm-parts':
@@ -1033,6 +1085,7 @@ class PublicationService:
                         raise ValueError('The published book changed before final receipt verification.')
                     record['status'] = 'complete'
                     atomic_json(receipt_path, record)
+                    completion.receipt = dict(record)
                 except PublicationCancelled:
                     # The final publication callback runs only before the move.
                     # A prepared receipt is retained, but no new book exists.
@@ -1041,7 +1094,7 @@ class PublicationService:
                     raise RuntimeError('Publication needs explicit verification using saved receipt '
                                        + identity + '. Do not repeat the export over an existing book.') from exc
                 progress(label + ' saved and its exact bytes verified')
-                return record
+        return completion.receipt
 
     def verify(self, publication_id, *, output=None, cancelled=lambda: False):
         """Verify bytes offline; restored external paths require explicit selection."""

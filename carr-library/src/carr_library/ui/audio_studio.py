@@ -842,6 +842,8 @@ class AudioStudioDialog:
         playback_layout.Add(queue_buttons, 0, wx.ALL, 5)
         self._button(playback_page, playback_layout, 'Independent playback controls for selected recording...',
                      self.independent_playback)
+        from .playback_queue import install_queue_controls
+        self.queue_state = install_queue_controls(self, playback_page, playback_layout)
         self.loop_start = self._text(playback_page, playback_layout, 'A–B repeat start, seconds', '0')
         self.loop_end = self._text(playback_page, playback_layout, 'A–B repeat end, seconds', '1')
         loop_buttons = wx.WrapSizer(wx.HORIZONTAL)
@@ -893,7 +895,7 @@ class AudioStudioDialog:
         self.input_kind.Bind(wx.EVT_CHOICE, self._changed)
         self.timer = wx.Timer(self.dialog)
         self.dialog.Bind(wx.EVT_TIMER, self.autosave, self.timer)
-        self.timer.Start(30000)
+        self.timer.Start(5000)
         self.playback_timer = wx.Timer(self.dialog)
         self.dialog.Bind(wx.EVT_TIMER, self.refresh_playback, self.playback_timer)
         self.playback_timer.Start(500)
@@ -904,6 +906,7 @@ class AudioStudioDialog:
         self._loading = False
         self._refresh_text()
         self._register_save_participant()
+        self.queue_state.register(self._save_coordinator)
 
     def _text(self, parent, layout, label, value):
         wx = self.wx
@@ -997,32 +1000,49 @@ class AudioStudioDialog:
         self._script_dirty = False
         self.dialog.SetTitle('Audio Studio — Local only' + (' — unsaved changes' if self.editing_dirty else ''))
         self._loading = False
+        if getattr(self, 'queue_state', None) is not None:
+            self.queue_state.bind()
 
-    def _run(self, label, action, done):
+    def _run(self, label, action, done, *, failed=None, stop_playback=True, quiet=False):
         if self.busy or self.closed:
-            return
-        self._cancel_content_request()
+            if failed is not None:
+                failed(RuntimeError('Audio Studio is busy or closed.'))
+            return False
         try:
-            self.playback.stop()
+            if stop_playback:
+                if getattr(self, 'queue_state', None) is not None:
+                    self.queue_state.observe()
+                self._cancel_content_request()
+                self.playback.stop()
         except Exception as exc:
             self._error(exc)
-            return
+            if failed is not None:
+                failed(exc)
+            return False
         self.busy = True
         job_token = self._job_token = object()
         self.cancelled.clear()
         for control in self.controls:
             control.Disable()
         self.cancel_button.Enable()
-        self._message(label)
-        progress = getattr(self, 'operation_progress', None)
+        if not quiet:
+            self._message(label)
+        progress = None if quiet else getattr(self, 'operation_progress', None)
         token = progress.start(label, unit='steps').token if progress is not None else None
+        admission, accepted = threading.Event(), [False]
         def observed_action():
+            admission.wait()
+            if not accepted[0]:
+                raise InterruptedError('Audio Studio worker admission failed; no operation was dispatched.')
+            if self.cancelled.is_set():
+                raise InterruptedError('Audio Studio operation cancelled before worker dispatch.')
             if progress is None:
                 return action()
             with progress.bind(token):
                 return action()
         try:
             future = self.executor.submit(observed_action)
+            accepted[0] = True
         except Exception as exc:
             self.busy = False
             for control in self.controls:
@@ -1031,34 +1051,66 @@ class AudioStudioDialog:
             if progress is not None:
                 progress.fail(exc, token=token)
             self._error(exc)
-            return
+            if failed is not None:
+                failed(exc)
+            return False
+        finally:
+            admission.set()
 
+        settled = [False]
         def complete(completed):
             def apply():
-                if self.closed or getattr(self, '_job_token', None) is not job_token:
+                if settled[0]:
+                    return
+                settled[0] = True
+                current = getattr(self, '_job_token', None) is job_token
+                alive = not self.closed and current
+                if alive:
+                    window = getattr(self, 'dialog', None)
+                    try:
+                        deleted = getattr(window, 'IsBeingDeleted', None)
+                        alive = window is None or (bool(window) and
+                            (not callable(deleted) or not deleted()))
+                    except (RuntimeError, ReferenceError):
+                        alive = False
+                if not alive:
+                    # The accepted Future is now settled. A lost presentation
+                    # owner must still release Save All, without touching native
+                    # controls or clearing a newer operation's busy state.
+                    if current:
+                        self.busy = False
+                    if failed is not None:
+                        failed(InterruptedError('The Audio Studio window changed before the worker result '
+                                                'could be accepted. The worker has finished; reopen the '
+                                                'saved project to review any committed changes.'))
                     return
                 self.busy = False
-                for control in self.controls:
-                    control.Enable(self.playback.native is not None or control not in self.windows_playback_controls)
-                self.cancel_button.Disable()
                 try:
+                    for control in self.controls:
+                        control.Enable(self.playback.native is not None or control not in self.windows_playback_controls)
+                    self.cancel_button.Disable()
                     result = completed.result()
                     if progress is not None:
                         progress.finish_result(result, cancelled=self.cancelled.is_set(), token=token)
                         progress.tick()
                     done(result)
                 except Exception as exc:
-                    if progress is not None:
-                        if isinstance(exc, InterruptedError):
-                            progress.cancel(str(exc), token=token)
-                        else:
-                            progress.fail(exc, token=token)
-                    self._error(exc)
+                    try:
+                        if progress is not None:
+                            if isinstance(exc, InterruptedError):
+                                progress.cancel(str(exc), token=token)
+                            else:
+                                progress.fail(exc, token=token)
+                        self._error(exc)
+                    finally:
+                        if failed is not None:
+                            failed(exc)
                 if self.close_pending:
                     self.close_pending = False
                     self.close()
             self.wx.CallAfter(apply)
         future.add_done_callback(complete)
+        return True
 
     def reload_voices(self, event=None):
         def loaded(value):
@@ -1217,6 +1269,11 @@ class AudioStudioDialog:
             approval = approve_export_destination(self.dialog, path, private_root=self.controller.private_root)
             if approval is None:
                 return False
+            # The old managed queue belongs to the old project path. Flush its
+            # measured cursor before Save As can rebind the controller.
+            queue = getattr(self, 'queue_state', None)
+            if queue is not None and not queue.save_now():
+                return False
             self.controller.save(path, overwrite=True, approval=approval)
             self._refresh_text()
             self._message('Project saved to ' + str(path), focus=True)
@@ -1309,6 +1366,8 @@ class AudioStudioDialog:
                 on_status=lambda message: self.wx.CallAfter(self._message, message)), restored)
 
     def autosave(self, event=None):
+        if not self.closed and getattr(self, 'queue_state', None) is not None:
+            self.queue_state.autosave()
         if self.busy or self.closed or not self.editing_dirty:
             return
         try:
@@ -1542,10 +1601,12 @@ class AudioStudioDialog:
                 wx.CallAfter(apply)
 
             def finished(record):
-                self._message('Synchronized audiobook saved and verified.\n' + record['output']
+                message = ('Synchronized audiobook saved and verified.\n' + record['output']
                     + '\nRecovery receipt: ' + record['id']
-                    + '\nMeasured line boundaries; word alignment and reader qualification are not claimed.',
-                    focus=True)
+                    + '\nMeasured line boundaries; word alignment and reader qualification are not claimed.')
+                if record.get('cleanup_warning'):
+                    message += '\n' + record['cleanup_warning']
+                self._message(message, focus=True)
 
             self._run('Verifying and publishing the completed audiobook',
                 lambda: self.controller.publish_book(path, book_format=book_format, **options,
@@ -1762,8 +1823,12 @@ class AudioStudioDialog:
                         and (library is None or getattr(frame, 'library', None) is library)
                         and not self.cancelled.is_set()
                         and (not rendered or controller.result is result and not self.editing_dirty))
+            if getattr(self, 'queue_state', None) is not None:
+                self.queue_state.observe()
             workspace = PlaybackWorkspace(self.playback, source, library_root=controller.private_root,
                                           current=current, ffmpeg=controller.ffmpeg, device_id=device)
+            if getattr(self, 'queue_state', None) is not None:
+                workspace.preferred_controls = self.queue_state.controls
             self._cancel_content_request()
             for timer in (self.timer, self.playback_timer):
                 if timer.IsRunning():
@@ -1772,6 +1837,8 @@ class AudioStudioDialog:
             self.busy = True
             show_playback_controls(self.dialog, workspace, executor=self.executor,
                 progress=getattr(self, 'operation_progress', None), alive=current)
+            if getattr(self, 'queue_state', None) is not None:
+                self.queue_state.controls = workspace.preferred_controls
         except AudioCleanupPending as exc:
             pending_owner = self._playback_cleanup_owner = exc.cleanup_owner
             def ready():
@@ -1795,6 +1862,8 @@ class AudioStudioDialog:
                 settle()
 
     def stop_playback(self, event=None):
+        if getattr(self, 'queue_state', None) is not None:
+            self.queue_state.observe()
         self._cancel_content_request()
         try:
             self.playback.stop()
@@ -1818,6 +1887,8 @@ class AudioStudioDialog:
     def _stop_for_project_change(self):
         self._cancel_content_request()
         try:
+            if getattr(self, 'queue_state', None) is not None:
+                self.queue_state.save_now()
             self.playback.stop()
             self.refresh_playback()
             return True
@@ -1867,6 +1938,8 @@ class AudioStudioDialog:
         if self.closed:
             return
         try:
+            if getattr(self, 'queue_state', None) is not None:
+                self.queue_state.observe()
             action = self.playback.poll()
             if action == 'next':
                 self._refresh_playback_choices()
@@ -1923,9 +1996,7 @@ class AudioStudioDialog:
                                wildcard='PCM WAV (*.wav)|*.wav', style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST | wx.FD_MULTIPLE)
         try:
             if dialog.ShowModal() == wx.ID_OK:
-                self.playback.enqueue([Path(path) for path in dialog.GetPaths()])
-                self._refresh_playback_choices()
-                self._message(f'Playlist contains {len(self.playback.playlist)} recordings. Choose Play selected recording.', focus=True)
+                self.queue_state.append([Path(path) for path in dialog.GetPaths()])
         except Exception as exc:
             self._error(exc)
         finally:
@@ -1945,7 +2016,7 @@ class AudioStudioDialog:
             self._error(exc)
 
     def clear_playlist(self, event=None):
-        self._playback_action(lambda: self.playback.set_playlist([]))
+        self.queue_state.clear(event)
 
     def play_selected(self, event=None):
         selected = self.playback_device.GetSelection()
@@ -2001,6 +2072,8 @@ class AudioStudioDialog:
             return
         self._cancel_content_request()
         try:
+            if getattr(self, 'queue_state', None) is not None:
+                self.queue_state.save_now(closing=True)
             self.playback.close()
         except Exception as exc:
             self._error(exc)
@@ -2010,6 +2083,8 @@ class AudioStudioDialog:
         self.closed = True
         getattr(self, '_progress_unregister_player', lambda: None)()
         getattr(self, '_save_unregister', lambda: None)()
+        if getattr(self, 'queue_state', None) is not None:
+            self.queue_state.unregister()
         self.cancelled.set()
         self.timer.Stop()
         self.playback_timer.Stop()
@@ -2029,6 +2104,8 @@ class AudioStudioDialog:
             self._cancel_content_request()
             getattr(self, '_progress_unregister_player', lambda: None)()
             getattr(self, '_save_unregister', lambda: None)()
+            if getattr(self, 'queue_state', None) is not None:
+                self.queue_state.unregister()
             self.cancelled.set()
             self.timer.Stop()
             self.playback_timer.Stop()

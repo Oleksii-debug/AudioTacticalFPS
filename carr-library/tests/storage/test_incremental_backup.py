@@ -360,6 +360,8 @@ _CRASH_CHILD = r"""
 import os
 from pathlib import Path
 import sys
+# Preserve the exact tested adapter origin across an isolated crash process.
+sys.path.insert(0, str(Path(sys.argv[5]).resolve().parents[1]))
 from carr_library.application import LibraryApp
 from carr_library import incremental_backup as m
 from carr_library.sync import vault as transport
@@ -401,7 +403,7 @@ def test_actual_process_death_preserves_older_snapshot_and_commit_boundary(saved
     app, workspace, repository, first = saved
     app.add_text(workspace, 'Second', 'Railway changed child data.')
     environment = dict(os.environ, PYTHONDONTWRITEBYTECODE='1')
-    child = subprocess.run([sys.executable, '-B', '-c', _CRASH_CHILD, str(app.root),
+    child = subprocess.run([sys.executable, '-I', '-B', '-c', _CRASH_CHILD, str(app.root),
                             str(repository), first['snapshot_sha256'], phase,
                             str(Path(incremental.__file__).resolve()),
                             str(Path(transport.__file__).resolve())],
