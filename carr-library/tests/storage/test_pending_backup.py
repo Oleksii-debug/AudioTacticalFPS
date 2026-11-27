@@ -197,7 +197,7 @@ def test_journal_tampering_rejected_before_restore_publication(app, tmp_path, ki
     workspace, source, request, result = _partial(app, tmp_path)
     backup, metadata = _snapshot(app, tmp_path)
     journal = backup / 'pending' / 'imports.sqlite'
-    with sqlite3.connect(journal) as db:
+    with closing(sqlite3.connect(journal)) as db, db:
         if kind == 'schema':
             db.execute('CREATE TRIGGER altered AFTER INSERT ON job BEGIN DELETE FROM checkpoint; END')
         elif kind == 'checkpoint_hash':
@@ -304,7 +304,7 @@ def test_manifest_limits_and_exact_source_bindings(app, tmp_path):
 
 def test_journal_online_backup_includes_committed_wal(app, tmp_path):
     _partial(app, tmp_path)
-    with sqlite3.connect(app.root / 'imports.sqlite') as writer:
+    with closing(sqlite3.connect(app.root / 'imports.sqlite')) as writer, writer:
         assert writer.execute('PRAGMA journal_mode=WAL').fetchone()[0] == 'wal'
         writer.execute("UPDATE job SET error='committed_wal_evidence'")
         writer.commit()
@@ -312,7 +312,7 @@ def test_journal_online_backup_includes_committed_wal(app, tmp_path):
         backup, metadata = _snapshot(app, tmp_path)
     assert not any(item['filename'].endswith(('-wal', '-shm')) for item in metadata['files'])
     restored, _ = _restore(backup, metadata, tmp_path)
-    with sqlite3.connect(restored.root / 'imports.sqlite') as journal:
+    with closing(sqlite3.connect(restored.root / 'imports.sqlite')) as journal, journal:
         assert journal.execute('SELECT error FROM job').fetchone()[0] == 'committed_wal_evidence'
 
 
