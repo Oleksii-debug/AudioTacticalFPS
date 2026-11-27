@@ -11,7 +11,7 @@ permissions:
 jobs:
   diagnose:
     runs-on: windows-2022
-    timeout-minutes: 15
+    timeout-minutes: 25
     defaults:
       run:
         working-directory: carr-library
@@ -31,7 +31,7 @@ jobs:
           python-version: '3.11'
       - name: Install exact source
         run: |
-          python -m pip install .
+          python -m pip install ".[test]"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Prepare pinned audio runtime
         run: |
@@ -42,4 +42,11 @@ jobs:
       - name: Observe actual isolated stream hash bytes
         run: |
           python -I -B -X utf8 scripts/diagnose_stream_hash.py
+          exit $LASTEXITCODE
+
+      - name: Require actual metadata publication regressions without skips
+        if: "!cancelled()"
+        shell: pwsh
+        run: |
+          python scripts/ci_check.py --diagnostics --jobs 3 tests/audio/test_metadata_stream_hash.py tests/audio/test_metadata.py tests/audio/test_metadata_publication.py tests/ui/test_audio_metadata_dialog.py tests/ui/test_audio_metadata_lifetime.py
           exit $LASTEXITCODE

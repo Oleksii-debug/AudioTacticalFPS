@@ -183,6 +183,10 @@ def _restore_backup(source, destination, expected_manifest_sha256, *, cancelled=
         if manifest['version'] >= 3:
             from ..studio.backup_inputs import restore_inputs
             restore_inputs(stage / 'state', destination / 'state', manifest['state'], cancelled=cancelled)
+            from ..backup_transcription import limit as transcription_limit, prepare_restored_inventory
+            common = tuple(dict(entry, filename='state/' + entry['filename']) for entry in manifest['state'])
+            if any(transcription_limit(entry['filename']) is not None for entry in common):
+                prepare_restored_inventory(stage, destination, common, cancelled=cancelled)
         _check_cancelled(cancelled)
         destination.mkdir(mode=0o700)
         _sync_file(destination / INCOMPLETE, b'Restore has not completed. Do not open this data directory.\n')

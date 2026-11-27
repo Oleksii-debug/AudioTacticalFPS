@@ -67,7 +67,8 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
     regular(root, directory=True)
     # The same cross-thread lock remains held by a capture, including pending
     # native cleanup. Do not publish a complete backup while its PCM is staged.
-    with state_lock(root, 'studio-recording'):
+    from .backup_document_batches import capture_lock
+    with state_lock(root, 'studio-recording'), capture_lock(root):
         return _snapshot_locked_state(root, target, include_generated=include_generated,
             max_bytes=max_bytes, cancelled=cancelled, include_paths=include_paths)
 

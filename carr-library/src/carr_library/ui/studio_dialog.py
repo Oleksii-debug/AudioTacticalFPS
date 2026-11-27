@@ -390,7 +390,16 @@ def show_studio(frame):
                     outcome = operation_outcome(result)
                 except Exception as exc:
                     unavailable(exc)
-                    return
+                    # Optional feedback failure cannot discard a returned
+                    # business result. Reuse the canonical bounded receipt
+                    # validator; do not infer completion from a failed observer.
+                    try:
+                        from carr_library.progress import operation_outcome as receipt_outcome
+                        outcome = receipt_outcome(result)
+                    except Exception as receipt_error:
+                        report('The operation returned a result, but its completion state '
+                               'could not be verified. ' + str(receipt_error), True)
+                        return
                 try:
                     # Completion may verify or publish a final artifact. It is
                     # business work and must finish before any success signal.

@@ -569,50 +569,76 @@ def test_uncertain_native_silence_blocks_new_content_even_when_cue_overlap_is_al
 
 
 def test_installer_adds_native_gauge_query_and_settings_to_configurable_shortcuts(tmp_path, monkeypatch):
-    from carr_library.ui.keyboard_settings import KeyboardSettings
-    items = []
-    class Item:
-        def __init__(self, label): self.label, self.identity = label, len(items) + 100
-        def GetId(self): return self.identity
-        def GetItemLabel(self): return self.label
-        def SetItemLabel(self, label): self.label = label
-        def IsSeparator(self): return False
-        def GetSubMenu(self): return None
-    class Menu:
-        def Append(self, identity, label):
-            value = Item(label)
-            items.append(value)
-            return value
-        def GetMenuItems(self): return items
-    menu = Menu()
-    frame = Frame(tmp_path)
-    frame.host = object()
-    insertions = []
-    frame.layout = SimpleNamespace(Insert=lambda *args: insertions.append(args))
-    frame.menu_bar = SimpleNamespace(GetMenuCount=lambda: 1, GetMenuLabel=lambda index: '&Help', GetMenu=lambda index: menu)
-    frame.SetAcceleratorTable = lambda table: setattr(frame, 'table', table)
-    wx = SimpleNamespace(Timer=Timer, EVT_TIMER='timer', EVT_MENU='menu', EVT_WINDOW_DESTROY='destroy',
-                         CallAfter=lambda call: call(), StaticText=lambda *args, **kwargs: Label(),
-                         Gauge=lambda *args, **kwargs: Gauge(), GA_HORIZONTAL=1, EXPAND=2, ALL=4, ID_ANY=-1,
-                         ACCEL_CTRL=1, ACCEL_ALT=2, ACCEL_SHIFT=4, AcceleratorTable=lambda entries: tuple(entries))
-    monkeypatch.setitem(__import__('sys').modules, 'wx', wx)
-    controller = install_operation_progress(frame)
-    assert frame.operation_progress is controller and len(insertions) == 2
-    assert len(items) == 2
-    shortcuts = KeyboardSettings(frame, wx_module=wx)
-    query = next(command for command in shortcuts.commands if command.action == 'help/current operation progress')
-    assert query.default == 'Ctrl+Alt+P'
-    assert (3, ord('P'), query.menu_id) in frame.table
-    controller.start('Exporting', 4)
-    controller.update(1, 4)
-    callback = next(binding[1] for binding in frame.bindings if len(binding) == 3 and binding[0] == 'menu' and binding[2].GetId() == query.menu_id)
-    callback(None)
-    assert '25 percent' in frame.reports[-1]
-    assert install_operation_progress(frame) is controller and len(items) == 2
-    destroy = next(binding[1] for binding in frame.bindings if binding[0] == 'destroy')
-    skipped = []
-    destroy(SimpleNamespace(GetEventObject=lambda: frame, Skip=lambda: skipped.append(True)))
-    assert controller.closed and skipped == [True]
+    import importlib.util
+    from pathlib import Path
+    from carr_library.ui.keyboard_settings import install_keyboard_settings
+
+    # Reuse the complete native-menu double used by the current desktop.
+    # Only widgets/key parsing are doubles; both installers, the shared
+    # manager, task hub and compatibility controller are production objects.
+    path = Path(__file__).with_name('test_native_menu_contract.py')
+    spec = importlib.util.spec_from_file_location('carr_progress_menu_fixture', path)
+    fixture = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(fixture)
+    context = fixture.native_menus.__wrapped__(tmp_path, monkeypatch,
+                                               SimpleNamespace(param='current-import'))
+    native = next(context)
+    try:
+        class BoundPanel(fixture.Control):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                self.bindings = []
+            def Bind(self, *args, **kwargs):
+                self.bindings.append(args)
+
+        native.wx.Panel = BoundPanel
+        frame = native.frame
+        frame.menu_bar = fixture.MenuBar()
+        options = fixture.Menu()
+        frame.menu_bar.Append(options, '&Options')
+        insertions = []
+        frame.layout.Insert = lambda *args: insertions.append(args)
+        manager = install_keyboard_settings(frame)
+        before = {item.GetId() for item in options.GetMenuItems()}
+
+        controller = install_operation_progress(frame)
+        panel = frame.progress_panel
+        assert frame.operation_progress is controller is panel.legacy
+        assert len(insertions) == 1 and insertions[0][1] is panel.panel
+        query = manager.bindings['progress.query'].item
+        settings = manager.bindings['options.progress'].item
+        after = {item.GetId() for item in options.GetMenuItems()}
+        assert after == before | {query.GetId(), settings.GetId()}
+        assert query.GetId() != settings.GetId()
+        assert manager.shortcut('progress.query') == 'Ctrl+Shift+Q'
+        assert query.GetItemLabel().endswith('\tCtrl+Shift+Q')
+        manager.guard_native()
+        frame.keyboard_settings._guard()
+
+        focused, positions = [], []
+        panel.text.SetInsertionPoint = positions.append
+        panel.text.SetFocus = lambda: focused.append(panel.text)
+        controller.start('Exporting', 4)
+        controller.update(1, 4)
+        callback = native.bindings[query.GetId()]
+        assert callback.__self__ is panel
+        callback(None)
+        assert '25 percent' in panel.text.GetValue()
+        assert panel.gauge.GetValue() == 25
+        assert positions == [0] and focused == [panel.text]
+
+        assert install_operation_progress(frame) is controller
+        assert len(insertions) == 1
+        assert {item.GetId() for item in options.GetMenuItems()} == after
+        destroy = next(binding[1] for binding in panel.panel.bindings
+                       if binding[0] == native.wx.EVT_WINDOW_DESTROY)
+        skipped = []
+        destroy(SimpleNamespace(GetId=lambda: panel._native_id,
+                                Skip=lambda: skipped.append(True)))
+        assert controller.closed and skipped == [True]
+    finally:
+        with pytest.raises(StopIteration):
+            next(context)
 
 
 def test_recording_progress_custom_name_remains_stable_through_real_controller_states(native):

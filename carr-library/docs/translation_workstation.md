@@ -97,7 +97,8 @@ operations; this feature does not do them implicitly.
 ## Command-line workflow
 
 The same service is available without wx through
-`python -m carr_library.assistant.translation_cli --data-dir LIBRARY COMMAND`.
+`python -m carr_library translation --data-dir LIBRARY COMMAND`.
+The historical `translate` alias and direct module entrypoint remain supported.
 The library must already exist. No command accepts a secret on argv.
 
 1. `profiles` lists non-secret configured accounts.

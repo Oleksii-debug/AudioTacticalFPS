@@ -267,7 +267,7 @@ def _report_directory(suite):
                   f'directory={directory.name}', flush=True)
 
 
-def run_suite(suite: str) -> bool:
+def run_suite(suite: str, *, diagnostics: bool = False) -> bool:
     relative, separator, node_id = suite.partition('::')
     path = (ROOT / relative).resolve()
     if (not relative or not path.is_relative_to(ROOT) or not path.exists()
@@ -291,6 +291,7 @@ def run_suite(suite: str) -> bool:
             report = Path(tmp) / 'junit.xml'
             returncode = _run_test_process([
                 sys.executable, '-B', '-c', PYTEST_CHILD, '-o', 'addopts=',
+                *(['-vv', '-o', 'faulthandler_timeout=60'] if diagnostics else []),
                 '-o', 'xfail_strict=true', '--junitxml', str(report),
                 '--basetemp', str(Path(tmp) / 'pytest'),
                 '--', str(path) + (separator + node_id if separator else ''),
@@ -316,16 +317,20 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--jobs', type=int, choices=range(1, 5), default=1,
                         help='Run up to four isolated required suites concurrently; default: one')
+    parser.add_argument('--diagnostics', action='store_true',
+                        help='Print each case and thread stacks after 60 seconds; the same suite deadline and verdict apply')
     parser.add_argument('suites', nargs='+', help='Explicit required test paths or pytest node IDs relative to carr-library')
     args = parser.parse_args()
+    from functools import partial
+    runner = partial(run_suite, diagnostics=True) if args.diagnostics else run_suite
     if args.jobs == 1:
-        results = [run_suite(suite) for suite in args.suites]
+        results = [runner(suite) for suite in args.suites]
     else:
         # Every suite retains its own interpreter, offline policy, deadline and
         # JUnit verdict. Consume every future: one failing suite cannot hide
         # another missing, skipped or unfinished required suite.
         with ThreadPoolExecutor(max_workers=args.jobs, thread_name_prefix='required-suite') as executor:
-            results = list(executor.map(run_suite, args.suites))
+            results = list(executor.map(runner, args.suites))
     print(f'Required suites complete: {len(results)}; passed={sum(results)}; '
           f'failed={len(results) - sum(results)}', flush=True)
     return 0 if all(results) else 1

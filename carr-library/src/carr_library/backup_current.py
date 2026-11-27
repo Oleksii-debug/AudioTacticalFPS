@@ -11,7 +11,7 @@ import os
 from pathlib import Path, PurePosixPath
 import re
 
-from . import backup_extensions
+from . import backup_extensions, backup_document_batches, backup_transcription
 from .durable_state import atomic_json, encode, regular
 from .ingest.restore import RestoreError
 from .state_backup import relative_name
@@ -41,6 +41,8 @@ def limit(name):
     if name.startswith('state/'):
         from .studio.backup_inputs import _reserved_names
         _reserved_names((name.removeprefix('state/'),))
+    if maximum := backup_document_batches.limit(name):
+        return maximum
     if name in ROOT_LIMITS:
         return ROOT_LIMITS[name]
     if name in _TRUSTED_RECOVERY:
@@ -90,13 +92,14 @@ def limit(name):
 
 
 def is_media(name):
-    return bool(_INPUT.fullmatch(name) or _LEGACY.fullmatch(name)
+    return bool(backup_document_batches.is_media(name) or _INPUT.fullmatch(name) or _LEGACY.fullmatch(name)
                 or (match := _RECORDING.fullmatch(name)) and match[2] == 'wav'
                 or (match := _TRANSCRIPTION.fullmatch(name)) and match[2].startswith('inputs/'))
 
 
 def empty_allowed(name):
-    return bool(name in _TRUSTED_RECOVERY or _TEXT.fullmatch(name) or _TRANSCRIPTION.fullmatch(name)
+    return bool(backup_document_batches.empty_allowed(name) or name in _TRUSTED_RECOVERY
+                or _TEXT.fullmatch(name) or _TRANSCRIPTION.fullmatch(name)
                 and name.endswith(('.txt', '.srt')))
 
 
@@ -104,6 +107,9 @@ def validate(db, name, raw):
     """Validate passive bytes; cross-file identities are checked as a collection."""
     from .backup_producers import fields, text
     from .backup_sidecars import _json
+    if backup_document_batches.limit(name) is not None:
+        backup_document_batches.validate_file(name, raw)
+        return
     if name in _TRUSTED_RECOVERY:
         if type(raw) is not bytes or len(raw) > _TRUSTED_RECOVERY_BYTES:
             raise ValueError('Trusted-client recovery bytes exceed their bounded allowance.')
@@ -233,7 +239,28 @@ def legacy_empty_directories(entries):
 def validate_collection(db, stage, entries, *, independent=True, cancelled=lambda: False):
     if sum(bool(_EFFECT_PRESET.fullmatch(entry['filename'])) for entry in entries) > 256:
         raise RestoreError('The effect preset inventory exceeds its 256-record allowance.')
-    state = state_entries(entries)
+    backup_document_batches.validate_collection(stage, entries, cancelled=cancelled)
+    canonical = tuple(entry for entry in entries
+                      if backup_transcription.limit(entry['filename']) is not None)
+    if canonical and not independent:
+        raise RestoreError('Independent transcription jobs cannot enter a workspace-scoped backup.')
+    if canonical:
+        from .backup_sidecars import _check_cancelled, read_regular
+        records = {}
+        for entry in canonical:
+            _check_cancelled(cancelled)
+            name = entry['filename']
+            if not backup_transcription.is_input(name):
+                raw = read_regular(Path(stage) / name, backup_transcription.limit(name),
+                                   empty=backup_transcription.allows_empty(name))
+                value = backup_transcription.validate(name, raw)
+                if value is not None:
+                    records[name] = value
+        backup_transcription.validate_collection(canonical, records)
+    # The existing hash64 producer is authoritative for its own path grammar.
+    # A shared schema label cannot make it decode canonical profile/UUID jobs.
+    state = state_entries(entry for entry in entries
+                          if backup_transcription.limit(entry['filename']) is None)
     database = db.execute('PRAGMA database_list').fetchone()[2]
     allowed = [row[0] for row in db.execute('SELECT id FROM workspace')]
     _media, _required, retained = backup_extensions.inspect_media_state(Path(stage) / 'state', state,
@@ -260,12 +287,13 @@ def validate_historical_state(db, stage, entries, *, cancelled):
     for entry in common:
         _check_cancelled(cancelled)
         name = entry['filename']
-        maximum = limit(name) or backup_producers.limit(name)
+        maximum = limit(name) or backup_transcription.limit(name) or backup_producers.limit(name)
         if name == 'state/audio/engines.json' or _STUDIO.fullmatch(name):
             from .backup_sidecars import sidecar_limit
             maximum = sidecar_limit(name)
-        if maximum is not None and not is_media(name):
-            raw = read_regular(Path(stage) / name, maximum, empty=empty_allowed(name))
+        if maximum is not None and not is_media(name) and not backup_transcription.is_input(name):
+            raw = read_regular(Path(stage) / name, maximum,
+                               empty=empty_allowed(name) or backup_transcription.allows_empty(name))
             validate_sidecar(db, name, raw)
     validate_collection(db, stage, common, cancelled=cancelled)
 

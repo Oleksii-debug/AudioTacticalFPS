@@ -77,6 +77,11 @@ class OperationFacade:
         if kind not in _LOCATIONS or not isinstance(identity, str) or not _JOB_ID.fullmatch(identity):
             raise ValueError('Choose a known operation and its existing job identity.')
         directory, pattern = _LOCATIONS[kind]
+        if kind == 'asr':
+            if re.fullmatch('[0-9a-f]{32}', identity):
+                directory = 'state/transcription/jobs'
+            elif not re.fullmatch('[0-9a-f]{64}', identity):
+                raise ValueError('Choose an exact saved transcription job identity.')
         path = self.root / directory / (identity + '.json' if pattern == '*.json' else identity + '/job.json')
         return local_path(path, root=self.root)
 
@@ -105,8 +110,10 @@ class OperationFacade:
             # upgrades recorded completion into newly verified recognition.
             service = self.services.get('asr')
             if service is None:
-                from ..audio.transcription import TranscriptionService
-                service = TranscriptionService(self.root / 'state')
+                from ..transcription import TranscriptionService
+                service = TranscriptionService(self.root / 'state' / 'transcription')
+            elif len(identity) == 32 and hasattr(service, '_coordinator'):
+                service = service._coordinator()
             summary = service.recorded_status(identity)
             return OperationView(kind, identity, None, summary['status'],
                 summary['completed'], summary['total'],
@@ -198,7 +205,9 @@ class OperationFacade:
         if type(limit) is not int or not 1 <= limit <= _MAX_DISCOVERY:
             raise ValueError('Choose an operation-view limit between 1 and 10000.')
         values, inspected = [], 0
-        for kind, (directory, pattern) in _LOCATIONS.items():
+        locations = [(kind, *value) for kind, value in _LOCATIONS.items()]
+        locations.append(('asr', 'state/transcription/jobs', '*/job.json'))
+        for kind, directory, pattern in locations:
             base = self.root / directory
             if not os.path.lexists(base):
                 continue
@@ -211,8 +220,10 @@ class OperationFacade:
                 # Control files and unrelated service settings are not jobs.
                 if pattern == '*.json' and not re.fullmatch(r'[0-9a-f]{32}', identity):
                     continue
-                if kind == 'asr' and not re.fullmatch(r'[0-9a-f]{64}', identity):
-                    continue
+                if kind == 'asr':
+                    expected = r'[0-9a-f]{32}' if directory.endswith('/jobs') else r'[0-9a-f]{64}'
+                    if not re.fullmatch(expected, identity):
+                        continue
                 inspected += 1
                 if inspected > _MAX_DISCOVERY:
                     raise ResourceStateError('Operation inventory exceeds its bounded discovery limit.')

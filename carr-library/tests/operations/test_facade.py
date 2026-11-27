@@ -137,3 +137,74 @@ def test_facade_rejects_traversal_and_unknown_workspace(tmp_path):
     with pytest.raises((ValueError, PermissionError)):
         facade.list(workspace='not-an-existing-library')
     assert not (app.root / 'runtime').exists()  # read-only views create no broker or job store
+
+
+def test_translation_and_asr_checkpoint_contracts_have_no_provider_side_effects(tmp_path, monkeypatch):
+    """Preserve the canonical mixed-view contract using an actual ASR journal."""
+    import runpy
+    import subprocess
+    from carr_library.audio.models import AudioBudget
+    from carr_library.transcription import TranscriptionService
+    from carr_library.transcription import service as asr_module
+
+    app = LibraryApp(tmp_path / 'data')
+    fixture = runpy.run_path(str(Path(__file__).parents[1] / 'transcription' / 'fixture_runtime.py'))
+    runtime = fixture['make_runtime'](tmp_path / 'authored-runtime', options={'fail_after': 1})
+    asr = TranscriptionService(app.root / 'state' / 'transcription',
+        budget=AudioBudget(timeout=10, reserve_disk_bytes=0))
+    profile = fixture['register'](asr, runtime)
+    sources = [tmp_path / name for name in ('first.wav', 'second.wav')]
+    for index, path in enumerate(sources):
+        path.write_bytes(b'Private authored protocol transport ' + str(index).encode())
+    job = asr.create_job(profile['id'], sources)
+    actual = asr.run(job['id'])
+    assert actual['status'] == 'partial' and actual['done'] == 1 and actual['total'] == 2
+    # Model an interrupted prior runner on this otherwise exact producer
+    # journal; the public recovery path records interrupted without a new child.
+    path = asr.jobs_root / job['id'] / 'job.json'
+    actual['status'] = 'running'
+    atomic_json(path, actual, replace=True)
+    with pytest.raises(RuntimeError, match='prior runner'):
+        asr.run(job['id'])
+    assert asr.get_job(job['id'])['status'] == 'interrupted'
+    asr_before = path.read_bytes()
+
+    translation_id = uuid4().hex
+    translation = app.root / 'state' / 'translation' / 'jobs' / (translation_id + '.json')
+    atomic_json(translation, {'schema': 'carr-assistant-job/1', 'kind': 'translation/1',
+        'id': translation_id, 'status': 'paused', 'receipts': [{'text': 'private translation'}],
+        'chunks': ['private original', 'unfinished'], 'updated': '2026-11-27T00:00:00Z',
+        'profile': {'credential_ref': 'opaque-private-ref'}})
+    translation_before = translation.read_bytes()
+    def forbidden(*args, **kwargs):
+        pytest.fail('The mixed dashboard must not execute or requalify a provider/receipt.')
+    monkeypatch.setattr(subprocess, 'Popen', forbidden)
+    monkeypatch.setattr(asr_module, 'inspect_runtime', forbidden)
+    monkeypatch.setattr(TranscriptionService, '_receipt', forbidden)
+    values = OperationFacade(app).list()
+    assert {(value.kind, value.completed, value.total) for value in values} == {
+        ('translation', 1, 2), ('asr', 1, 2)}
+    assert next(value for value in values if value.kind == 'asr').status == 'interrupted'
+    assert all(value.live is None and value.controls == () for value in values)
+    assert all('private' not in repr(value) for value in values)
+    assert path.read_bytes() == asr_before and translation.read_bytes() == translation_before
+
+
+def test_minimal_uuid_asr_schema_label_cannot_replace_the_actual_job_codec(tmp_path):
+    app = LibraryApp(tmp_path / 'data')
+    identity = uuid4().hex
+    path = app.root / 'state' / 'transcription' / 'jobs' / identity / 'job.json'
+    # The canonical summary-only mock omitted the immutable plan and had one
+    # source but total=2. Such bytes must remain an attention item, not a
+    # successfully validated current producer journal.
+    atomic_json(path, {'schema': 'resonance-transcription-job/1', 'id': identity,
+        'status': 'interrupted', 'done': 1, 'total': 2, 'updated': 1000,
+        'results': [{'text': 'private transcript'}], 'sources': ['private source']})
+    original = path.read_bytes()
+    facade = OperationFacade(app)
+    row, = facade.list()
+    assert row.status == 'attention' and row.controls == ()
+    assert row.completed is None and row.total is None and 'private' not in repr(row)
+    with pytest.raises((ValueError, OSError)):
+        facade.get('asr', identity)
+    assert path.read_bytes() == original

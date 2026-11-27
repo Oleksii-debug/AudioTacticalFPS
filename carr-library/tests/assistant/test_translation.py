@@ -995,35 +995,74 @@ def translation_window(monkeypatch, tmp_path):
             self.items = kwargs.get('choices', [])
             self.selection = -1
             self.enabled, self.editable, self.destroyed = True, True, False
-            self.handlers = {}
+            self.handlers, self.modal = {}, False
+            self.native_id = len(controls) + 1000
             controls.append(self)
+        def __bool__(self): return not self.destroyed
+        def native(self, method):
+            if self.destroyed:
+                state.setdefault('forbidden', []).append(method)
+                raise AssertionError('Native method on a deleted translation peer: ' + method)
+        def GetId(self):
+            self.native('GetId')
+            return self.native_id
         def SetName(self, value): self.name = value
         def SetSizer(self, value): pass
         def Add(self, *args, **kwargs): pass
-        def SetSelection(self, value): self.selection = value
-        def GetSelection(self): return self.selection
-        def SetEditable(self, value): self.editable = value
-        def Enable(self, value=True): self.enabled = value
-        def Disable(self): self.enabled = False
-        def GetValue(self): return self.value
+        def SetSelection(self, value):
+            self.native('SetSelection')
+            self.selection = value
+        def GetSelection(self):
+            self.native('GetSelection')
+            return self.selection
+        def SetEditable(self, value):
+            self.native('SetEditable')
+            self.editable = value
+        def Enable(self, value=True):
+            self.native('Enable')
+            self.enabled = value
+        def Disable(self): self.Enable(False)
+        def GetValue(self):
+            self.native('GetValue')
+            return self.value
         def ChangeValue(self, value):
-            assert not self.destroyed, 'Late callback touched a destroyed control'
+            self.native('ChangeValue')
             self.value = value
         def SetFocus(self):
-            assert not self.destroyed, 'Late callback focused a destroyed control'
+            self.native('SetFocus')
             state['focused'] = self.name
         def Bind(self, event, callback, **kwargs): self.handlers[event] = callback
-        def EndModal(self, value): self.result = value
+        def EndModal(self, value):
+            self.native('EndModal')
+            self.result, self.modal = value, False
+        def IsModal(self):
+            self.native('IsModal')
+            return self.modal
         def ShowModal(self):
+            self.native('ShowModal')
+            self.modal = True
             if self.title == 'Translation — selected text derivatives':
                 state['scenario']()
+            self.modal = False
             return 10
-        def Destroy(self):
-            self.destroyed = True
-            for control in controls:
+        def _native_destroy(self):
+            if self.destroyed:
+                return False
+            for control in tuple(controls):
                 if control.parent is self:
-                    control.destroyed = True
-
+                    control._native_destroy()
+            self.destroyed = True
+            event = SimpleNamespace(GetId=lambda: self.native_id, Skip=lambda: None,
+                GetEventObject=lambda: SimpleNamespace(GetId=lambda: self.native_id))
+            peer = self
+            while isinstance(peer, Control):
+                if 'destroy' in peer.handlers:
+                    peer.handlers['destroy'](event)
+                peer = peer.parent
+            return True
+        def Destroy(self):
+            self.native('Destroy')
+            return self._native_destroy()
     class ChoiceDialog(Control):
         def __init__(self, parent, message, title, rows):
             super().__init__(parent, title=title, choices=rows)
@@ -1054,7 +1093,7 @@ def translation_window(monkeypatch, tmp_path):
         TextEntryDialog=RangeDialog, DEFAULT_DIALOG_STYLE=1, RESIZE_BORDER=2, VERTICAL=3,
         HORIZONTAL=4, TE_MULTILINE=8, TE_READONLY=16, EXPAND=32, ALL=64,
         YES_NO=128, NO_DEFAULT=256, YES=1, NO=0, ID_OK=10, ID_CLOSE=11,
-        EVT_BUTTON='button', EVT_CLOSE='close', EVT_MENU='menu',
+        EVT_BUTTON='button', EVT_CLOSE='close', EVT_MENU='menu', EVT_WINDOW_DESTROY='destroy',
         MessageBox=message_box, CallAfter=lambda function, *args: function(*args),
         NewIdRef=lambda: next(identities))
     monkeypatch.setitem(sys.modules, 'wx', wx)

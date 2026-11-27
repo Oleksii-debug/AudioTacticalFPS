@@ -16,6 +16,9 @@ _fixtures = runpy.run_path(str(Path(__file__).resolve().parents[1] /
 
 class Widget(_fixtures['Widget']):
     forbidden = []
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.hidden = False
     def native(self):
         if self.destroyed:
             self.forbidden.append(self.name)

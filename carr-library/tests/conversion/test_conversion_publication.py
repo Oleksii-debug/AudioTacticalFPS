@@ -199,6 +199,9 @@ def test_actual_child_exit_never_overwrites_a_residual_publication(conversion, a
     code = r"""
 from hashlib import sha256
 import os, pathlib, sys
+sys.path.insert(0, str(pathlib.Path(sys.argv[1]).resolve().parents[2]))
+from carr_library.native_runtime import activate_bundled_runtime
+native_runtime_handle = activate_bundled_runtime()
 import carr_library.conversion.service as module
 assert pathlib.Path(module.__file__).resolve() == pathlib.Path(sys.argv[1]).resolve()
 assert sha256(pathlib.Path(module.__file__).read_bytes()).hexdigest() == sys.argv[2]
@@ -214,11 +217,8 @@ os.link = link
 module.ConversionService(output, input_roots=(source.parent,)).extract(source, 'crashed.txt')
 raise AssertionError('The child did not exit at its actual link boundary')
 """
-    import resonance_bootstrap
-    product_roots = (imported.parents[2], Path(resonance_bootstrap.__file__).resolve().parent.parent)
-    env = dict(os.environ, PYTHONPATH=os.pathsep.join(str(root) for root in product_roots),
-               PYTHONDONTWRITEBYTECODE='1')
-    child = subprocess.run([sys.executable, '-B', '-c', code, str(imported),
+    env = dict(os.environ, PYTHONDONTWRITEBYTECODE='1')
+    child = subprocess.run([sys.executable, '-I', '-B', '-X', 'utf8', '-c', code, str(imported),
         sha256(imported.read_bytes()).hexdigest(), str(source), str(outputs), str(after_marker)],
         env=env, capture_output=True, text=True, encoding='utf-8', timeout=45)
     assert child.returncode == 87, child.stdout + child.stderr

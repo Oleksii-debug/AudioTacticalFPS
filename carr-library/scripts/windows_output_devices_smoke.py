@@ -40,6 +40,7 @@ def run_native():
         if not condition:
             raise AssertionError(label)
         checks.append(label)
+        print('PASS: ' + label, flush=True)
     from importlib import import_module
     checkout = Path(__file__).resolve().parents[1]
     purelib = Path(sysconfig.get_path('purelib')).resolve()
@@ -288,11 +289,17 @@ def run_native():
         gui.ExitMainLoop()
 
     def begin():
-        create_owner()
+        check('native output sequence started inside MainLoop', gui.IsMainLoopRunning())
         open_choice(first_choice)
 
     timeout = wx.CallLater(90000, lambda: (errors.append('Native output review exceeded 90 seconds.'), fail()))
     try:
+        # wxPython MainLoop returns immediately when no top-level window exists.
+        # Construct the actual tested owner first; its keyboard sequence remains
+        # queued until the real native event loop is running.
+        create_owner()
+        check('actual output owner exists before MainLoop',
+              bool(state['outer']) and bool(state['dialog']))
         later(begin)
         gui.MainLoop()
     finally:

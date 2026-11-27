@@ -4,12 +4,14 @@ The source audio is an explicit synthetic tone, not a qualified voice/model.
 This exercises owned native keys and WavePlayer, not NVDA or listening quality.
 """
 import argparse
+import faulthandler
 from hashlib import sha256
 import json
 import math
 import os
 from pathlib import Path
 import struct
+import sys
 from tempfile import TemporaryDirectory
 from time import monotonic
 from types import SimpleNamespace
@@ -27,20 +29,175 @@ def _acceptance_bindings():
     return module
 
 
+class _OwnedModalAbort:
+    """Unwind one owned modal loop per GUI turn, never its suspended parent."""
+
+    def __init__(self, wx, app, owners, report):
+        self.wx, self.app, self.owners, self.report = wx, app, owners, report
+        self.active = False
+        self.timer = None
+        self.reported = set()
+
+    def request(self):
+        if not self.active:
+            self.active = True
+            self.wx.CallAfter(self._advance)
+
+    def stop(self):
+        self.active = False
+        if self.timer is not None:
+            self.timer.Stop()
+            self.timer = None
+
+    def _advance(self):
+        self.timer = None
+        if not self.active:
+            return
+        try:
+            # Owners are innermost first. EndModal() requests a return; its
+            # IsModal() remains true until that ShowModal() actually unwinds.
+            for owner in self.owners():
+                if owner is None:
+                    continue
+                dialog = owner.dialog
+                if dialog and dialog.IsModal():
+                    if dialog.IsShown():
+                        owner.close()
+                    self.timer = self.wx.CallLater(10, self._advance)
+                    return
+            self.active = False
+            self.app.ExitMainLoop()
+        except (Exception, KeyboardInterrupt):
+            detail = traceback.format_exc()
+            if detail not in self.reported:
+                self.reported.add(detail)
+                self.report(detail)
+            # Cleanup refusal remains a failure. Do not force-delete a native
+            # owner or report silence; the outer owned process bound applies.
+            self.timer = self.wx.CallLater(25, self._advance)
+
+
+def _nested_modal_failure_acceptance(wx, app, check, select_failure_handler):
+    """Real Windows negative control for the probe's former nested-loop hang."""
+    events, returned, failures = [], [], []
+    owners = []
+    abort = _OwnedModalAbort(wx, app, lambda: tuple(reversed(owners)), failures.append)
+
+    def fail(detail):
+        failures.append(detail)
+        abort.request()
+
+    def owner(label, parent):
+        dialog = wx.Dialog(parent, title='Owned EPUB failure control — ' + label)
+        native_id = dialog.GetId()
+        record = SimpleNamespace(dialog=dialog, loop=None, native_id=native_id)
+
+        def destroyed(event):
+            if event.GetId() == native_id:
+                events.append(label)
+            event.Skip()
+
+        def close():
+            if wx.EventLoopBase.GetActive() != record.loop:
+                raise AssertionError('Attempted to close a suspended ' + label + ' loop.')
+            dialog.EndModal(wx.ID_CANCEL)
+
+        record.close = close
+        dialog.Bind(wx.EVT_WINDOW_DESTROY, destroyed)
+        owners.append(record)
+        return record
+
+    def provoke(inner):
+        inner.loop = wx.EventLoopBase.GetActive()
+        try:
+            raise AssertionError('deliberate owned nested-modal failure')
+        except AssertionError:
+            fail(traceback.format_exc())
+
+    def open_inner(outer):
+        outer.loop = wx.EventLoopBase.GetActive()
+        inner = owner('inner', outer.dialog)
+        wx.CallAfter(provoke, inner)
+        try:
+            inner.dialog.ShowModal()
+            returned.append('inner')
+        finally:
+            if inner.dialog:
+                inner.dialog.Destroy()
+
+    # wxPython MainLoop returns immediately with no top-level windows. Own the
+    # actual outer dialog before starting the loop, then show it on that loop.
+    outer = owner('outer', None)
+
+    def open_outer():
+        wx.CallAfter(open_inner, outer)
+        try:
+            outer.dialog.ShowModal()
+            returned.append('outer')
+        finally:
+            if outer.dialog:
+                outer.dialog.Destroy()
+        app.ExitMainLoop()
+
+    select_failure_handler(fail)
+    try:
+        wx.CallAfter(open_outer)
+        app.MainLoop()
+    finally:
+        abort.stop()
+        select_failure_handler(None)
+    check('actual nested-modal failure returns child before parent',
+          returned == ['inner', 'outer']
+          and len(failures) == 1
+          and 'deliberate owned nested-modal failure' in failures[0])
+    check('actual failed modal owners receive one native destruction each',
+          events.count('inner') == 1 and events.count('outer') == 1
+          and all(not item.dialog for item in owners))
+
+
+def _run_owned_native(options):
+    """Reuse the application's real Windows Job owner for this bounded probe."""
+    from carr_library.audio.models import AudioBudget
+    from carr_library.audio.process import run_process
+
+    result = run_process(
+        [sys.executable, '-I', '-B', '-X', 'utf8', str(Path(__file__).resolve()),
+         '--audio-evidence', str(options.audio_evidence.resolve()), '--native-child'],
+        budget=AudioBudget(timeout=210, max_log_bytes=1024 * 1024),
+        owned_tree=True, allow_failure=True)
+    # The child must execute every assertion. A zero process status alone does
+    # not substitute for its source, keyboard, playback or cleanup checks.
+    sys.stdout.write(result.stdout.decode('utf-8', errors='replace'))
+    sys.stdout.flush()
+    sys.stderr.write(result.stderr.decode('utf-8', errors='replace'))
+    sys.stderr.flush()
+    return result.returncode
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--audio-evidence', type=Path, required=True)
+    parser.add_argument('--native-child', action='store_true', help=argparse.SUPPRESS)
     options = parser.parse_args()
     if os.name != 'nt':
         print(json.dumps({'result': 'NOT_RUN', 'reason': 'Actual Windows is required.', 'nvda': 'NOT_RUN'}))
         return 77
+    if not options.native_child:
+        return _run_owned_native(options)
+    # This C-level watchdog remains effective if a native modal assertion or
+    # cleanup blocks the GUI thread. It emits stacks and fails this child; the
+    # parent still owns and confirms termination of its entire native job.
+    faulthandler.dump_traceback_later(180, exit=True)
     from carr_library.native_runtime import activate_bundled_runtime
     native_handle = activate_bundled_runtime()
     try:
         return _run_native(options)
     finally:
-        if native_handle is not None:
-            native_handle.close()
+        try:
+            if native_handle is not None:
+                native_handle.close()
+        finally:
+            faulthandler.cancel_dump_traceback_later()
 
 
 def _run_native(options):
@@ -60,6 +217,7 @@ def _run_native(options):
     deadline = monotonic() + 120
     stage, key_pending, finished = 0, False, False
     frame = reader = overlay = service = None
+    failure_handler = None
 
     def check(name, condition):
         if not condition:
@@ -69,8 +227,11 @@ def _run_native(options):
 
     class ProbeApp(wx.App):
         def OnExceptionInMainLoop(self):
-            errors.append(traceback.format_exc())
-            abort()
+            detail = traceback.format_exc()
+            if failure_handler is not None:
+                failure_handler(detail)
+            else:
+                failed(detail)
             return True
 
     gui = ProbeApp(False)
@@ -81,16 +242,26 @@ def _run_native(options):
     user32.GetForegroundWindow.argtypes = []
     user32.GetForegroundWindow.restype = wintypes.HWND
 
-    def abort():
-        for owner in (overlay, reader):
-            if owner is not None:
-                try:
-                    owner.close()
-                    if owner.dialog.IsModal():
-                        owner.dialog.EndModal(wx.ID_CANCEL)
-                except Exception:
-                    errors.append(traceback.format_exc())
-        gui.ExitMainLoop()
+    def report_failure(detail):
+        errors.append(detail)
+        print('FAIL: native recorded EPUB at stage ' + str(stage) + '\n' + detail,
+              file=sys.stderr, flush=True)
+
+    def current_owners():
+        child = getattr(reader, '_audio_dialog', None) if reader is not None else None
+        return child or overlay, reader
+
+    abort = _OwnedModalAbort(wx, gui, current_owners, report_failure)
+
+    def failed(detail):
+        report_failure(detail)
+        abort.request()
+
+    def select_failure_handler(value):
+        nonlocal failure_handler
+        failure_handler = value
+
+    _nested_modal_failure_acceptance(wx, gui, check, select_failure_handler)
 
     def guarded(callback):
         def invoke():
@@ -98,9 +269,8 @@ def _run_native(options):
                 return
             try:
                 callback()
-            except Exception:
-                errors.append(traceback.format_exc())
-                abort()
+            except (Exception, KeyboardInterrupt):
+                failed(traceback.format_exc())
         return invoke
 
     def press(control, key=wx.WXK_SPACE):
@@ -217,8 +387,16 @@ def _run_native(options):
                             return
                         check('opening recorded audio does not start playback', overlay.player.state == 'stopped'
                               and not overlay.transport.active)
-                        check('native source highlight is an exact Unicode fragment', overlay.text.GetStringSelection()
-                              == expected_page.raw_text[overlay.session.chapter.cues[0].start:overlay.session.chapter.cues[0].end])
+                        expected_highlight = expected_page.raw_text[
+                            overlay.session.chapter.cues[0].start:overlay.session.chapter.cues[0].end]
+                        print('CHECK: exact native Unicode selection; status='
+                              + repr(overlay.status.GetValue())
+                              + '; expected=' + repr(expected_highlight), flush=True)
+                        actual_highlight = overlay.text.GetStringSelection()
+                        print('OBSERVED: native selection=' + repr(actual_highlight)
+                              + '; positions=' + repr(overlay.text.GetSelection()), flush=True)
+                        check('native source highlight is an exact Unicode fragment',
+                              actual_highlight == expected_highlight)
                         check('existing progress observes the owned transport', overlay.transport.observed
                               in frame.operation_progress._players)
                         stage = 2
@@ -293,6 +471,7 @@ def _run_native(options):
             wx.CallAfter(guarded(open_reader))
             gui.MainLoop()
         finally:
+            abort.stop()
             for key in tuple(pressed):
                 simulator.KeyUp(key)
                 pressed.discard(key)

@@ -105,6 +105,7 @@ packages = [
   "carr_library.security",
   "carr_library.sync",
   "carr_library.conversion",
+  "carr_library.transcription",
   "carr_library.academic_integration",
   "carr_library.language_qualification",
   "bootstrap",

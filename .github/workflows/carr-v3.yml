@@ -20,7 +20,7 @@ jobs:
   portable-source:
     name: Portable source integrity (synthetic engines)
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 35
     defaults:
       run:
         working-directory: carr-library
@@ -367,6 +367,38 @@ jobs:
             tests/ui/test_native_acquisition.py::test_wrapper_refreshes_only_original_scope_after_mutation \
             tests/ui/test_native_acquisition.py::test_real_application_lookup_save_apply_from_dialog_preserves_source \
             tests/ui/test_native_acquisition.py::test_real_metadata_apply_cancelled_after_writer_acquisition_does_not_commit \
+            tests/conversion/test_conversion_publication.py \
+            tests/conversion/test_document_batches.py \
+            tests/conversion/test_document_splitting.py \
+            tests/conversion/test_document_batches_ownership.py \
+            tests/conversion/test_document_cli.py \
+            tests/ui/test_document_batch_handlers.py \
+            tests/conversion/test_document_batch_native_probe.py \
+            tests/conversion/test_conversion.py \
+            tests/storage/test_document_batches_backup.py \
+            tests/storage/test_transcription_backup.py \
+            tests/storage/test_transcription_backup_convergence.py \
+            tests/academic_integration/test_runtime_adapter.py \
+            tests/academic_integration/test_formatting.py \
+            tests/audio/test_effect_presets.py \
+            tests/ui/test_effects_dialog.py \
+            tests/storage/test_effect_presets_backup.py \
+            tests/ui/test_reader_background.py \
+            tests/reader/test_export_reconciliation.py \
+            tests/ui/test_platform_modal_lifecycle.py \
+            tests/transcription/test_admission_boundaries.py \
+            tests/transcription/test_protocol_fixture.py \
+            tests/transcription/test_restore.py \
+            tests/transcription/test_runtime_admission.py \
+            tests/transcription/test_service.py \
+            tests/transcription/test_runtime_inventory.py \
+            tests/e2e/test_transcription_cli.py \
+            tests/transcription/test_convergence.py \
+            tests/ui/test_transcription_workstation.py \
+            tests/ui/test_translation_lifetime.py \
+            tests/storage/test_json_snapshot_posix.py \
+            tests/conversion/test_document_batches_posix.py \
+            tests/transcription/test_runtime_inventory_posix.py \
             --junitxml=ci-source-results/source-tests.xml
           python -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-source-results/source-tests.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); assert cases and failed==skipped==0; print(json.dumps(dict(status='PASS',passed=len(cases),failed=failed,skipped=skipped,native_windows='NOT_RUN',real_asr='NOT_RUN',nvda='NOT_RUN')))"
       - name: Preserve source evidence and dependency identity
@@ -429,7 +461,7 @@ jobs:
         run: |
           python -I -B -c "import importlib.metadata,json,pathlib,quickjs; version=importlib.metadata.version('quickjs-ng'); assert version=='0.18.0.2'; context=quickjs.Context(); context.set_memory_limit(8*1024*1024); context.set_time_limit(1.0); assert context.eval('6*7')==42; print(json.dumps(dict(runtime='quickjs-ng',version=version,module=str(pathlib.Path(quickjs.__file__).resolve()),evaluation='PASS')))" | Tee-Object 'ci-v3-results/citation-runtime.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python scripts/ci_check.py --jobs 3 tests/academic_integration/test_formatting.py tests/academic_integration/test_documents.py tests/academic_integration/test_regeneration.py tests/academic_integration/test_end_to_end.py tests/academic_integration/test_citation_ui.py tests/storage/test_durable_state_publication.py tests/ui/test_profile_project_exports.py 2>&1 | Tee-Object 'ci-v3-results/citation-regeneration.txt'
+          python scripts/ci_check.py --jobs 3 tests/academic_integration/test_runtime_adapter.py tests/academic_integration/test_formatting.py tests/academic_integration/test_documents.py tests/academic_integration/test_regeneration.py tests/academic_integration/test_end_to_end.py tests/academic_integration/test_citation_ui.py tests/storage/test_durable_state_publication.py tests/ui/test_profile_project_exports.py 2>&1 | Tee-Object 'ci-v3-results/citation-regeneration.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Prepare the verified OCR engine before installed recovery acceptance
         timeout-minutes: 10
@@ -493,6 +525,7 @@ jobs:
               importlib.import_module(name)
           from hashlib import sha256
           installed_source_digests = {}
+          names = tuple(dict.fromkeys((*names, 'carr_library.transcription', 'carr_library.transcription.models', 'carr_library.transcription.runtime', 'carr_library.transcription.service', 'carr_library.backup_transcription', 'carr_library.backup_document_batches', 'carr_library.backup_compat.state', 'carr_library.conversion.service', 'carr_library.conversion.models', 'carr_library.conversion.formats', 'carr_library.conversion.planning', 'carr_library.conversion.batches', 'carr_library.conversion.cli', 'carr_library.ui.document_batch', 'carr_library.ui.document_conversion', 'carr_library.audio.effect_presets', 'carr_library.ui.effects_dialog', 'carr_library.ui.reader_background', 'carr_library.academic_integration.runtime_adapter', 'carr_library.transcription.reading', 'carr_library.ui.transcription_workstation')))
           def installed_origins():
               origins = {name: str(pathlib.Path(sys.modules[name].__file__).resolve()) for name in names}
               assert all(not pathlib.Path(path).is_relative_to(checkout) for path in origins.values()), origins
@@ -745,6 +778,37 @@ jobs:
               'tests/ui/test_playback_navigation.py',
               'tests/ui/test_studio_playback_actions.py',
               'tests/security/test_windows_vault.py',
+              'tests/conversion/test_conversion_publication.py',
+              'tests/conversion/test_document_batches.py',
+              'tests/conversion/test_document_splitting.py',
+              'tests/conversion/test_document_batches_ownership.py',
+              'tests/conversion/test_document_cli.py',
+              'tests/ui/test_document_batch_handlers.py',
+              'tests/conversion/test_document_batch_native_probe.py',
+              'tests/conversion/test_conversion.py',
+              'tests/storage/test_document_batches_backup.py',
+              'tests/storage/test_transcription_backup.py',
+              'tests/storage/test_transcription_backup_convergence.py',
+              'tests/academic_integration/test_runtime_adapter.py',
+              'tests/academic_integration/test_formatting.py',
+              'tests/audio/test_effect_presets.py',
+              'tests/ui/test_effects_dialog.py',
+              'tests/storage/test_effect_presets_backup.py',
+              'tests/ui/test_reader_background.py',
+              'tests/reader/test_export_reconciliation.py',
+              'tests/ui/test_platform_modal_lifecycle.py',
+              'tests/transcription/test_admission_boundaries.py',
+              'tests/transcription/test_protocol_fixture.py',
+              'tests/transcription/test_restore.py',
+              'tests/transcription/test_runtime_admission.py',
+              'tests/transcription/test_service.py',
+              'tests/transcription/test_runtime_inventory.py',
+              'tests/e2e/test_transcription_cli.py',
+              'tests/transcription/test_convergence.py',
+              'tests/ui/test_transcription_workstation.py',
+              'tests/ui/test_translation_lifetime.py',
+              'tests/transcription/test_protocol_fixture_windows.py',
+              'tests/e2e/test_export_destination.py',
           ]
           status = pytest.main(['-v', '-o', 'addopts=', '-o', 'pythonpath=',
                                '-o', 'xfail_strict=true', '--import-mode=importlib',
@@ -877,6 +941,16 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw 'Installed native voice preference review failed.' }
             & $python -I -B -X utf8 scripts/windows_output_devices_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-output-devices.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Installed native output selection failed.' }
+            & $python -I -B -X utf8 scripts/windows_effect_chain_smoke.py --audio-evidence 'ci-v3-results/external-test-audio-binding.json' 2>&1 | Tee-Object 'ci-v3-results/native-effect-chain.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Installed ordered effect-chain acceptance failed.' }
+            & $python -I -B -X utf8 scripts/windows_reader_session_smoke.py --output 'ci-v3-results/native-reader-session.json' 2>&1 | Tee-Object 'ci-v3-results/native-reader-session.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Installed tray and session-key acceptance failed.' }
+            & $python -I -B -X utf8 scripts/windows_document_batch_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-document-batch.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Installed retained document batch acceptance failed.' }
+            & $python -I -B -X utf8 scripts/windows_platform_tools_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-platform-tools.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Installed platform profile and progress controls failed.' }
+            & $python -I -B -X utf8 scripts/windows_translation_v3_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-translation-v3.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Installed Advanced translation acceptance failed.' }
             & $python -I -B -X utf8 scripts/windows_audio_conversion_smoke.py --audio-evidence 'ci-v3-results/external-test-audio-binding.json' 2>&1 | Tee-Object 'ci-v3-results/native-audio-conversion.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Installed native audio conversion failed.' }
             & $python -I -B -X utf8 scripts/windows_playback_navigation_smoke.py --audio-evidence 'ci-v3-results/external-test-audio-binding.json' 2>&1 | Tee-Object 'ci-v3-results/native-playback-navigation.txt'

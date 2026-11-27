@@ -163,7 +163,8 @@ def create_backup(app, destination, *, include_generated=False, max_bytes=None, 
                         max_bytes=pending_backup.MAX_TOTAL if max_bytes is None else max_bytes - total,
                         cancelled=cancelled, expected_roots=roots)
                     total += sum(entry['size_bytes'] for entry in pending['files'])
-                state_budget = (backup_sidecars.MAX_BYTES + backup_sidecars.backup_current.MAX_BYTES + (backup_sidecars.backup_generated.MAX_BYTES
+                state_budget = (backup_sidecars.MAX_BYTES + backup_sidecars.backup_current.MAX_BYTES
+                    + backup_sidecars.backup_transcription.MAX_INPUT_BYTES + (backup_sidecars.backup_generated.MAX_BYTES
                     if include_generated else 0)) if max_bytes is None else max_bytes - total
                 sidecars = backup_sidecars.snapshot(snapshot_storage.db, app.root, stage,
                     max_bytes=state_budget, include_generated=include_generated, cancelled=cancelled,
