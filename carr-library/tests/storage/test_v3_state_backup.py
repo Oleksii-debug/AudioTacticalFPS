@@ -340,3 +340,66 @@ def test_snapshot_revalidation_can_be_cancelled_before_publication(populated, tm
         create_backup(app, destination, cancelled=lambda: bool(revalidating))
     assert revalidating
     assert not destination.exists()
+
+
+@pytest.mark.parametrize('name', ['reading-state.json', 'state'])
+@pytest.mark.parametrize('failure', [PermissionError, NotADirectoryError])
+def test_typed_backup_refuses_inaccessible_optional_root(tmp_path, monkeypatch, name, failure):
+    """Format-4 producers must not mistake an indeterminate lookup for absence."""
+    app = LibraryApp(tmp_path / 'data')
+    target = app.root / name
+    if name == 'state':
+        target.mkdir(exist_ok=True)
+        save_settings(target, load_settings(target))
+        retained = target / 'audio/engines.json'
+    else:
+        target.write_bytes(b'fixture must never be silently omitted')
+        retained = target
+    original = retained.read_bytes()
+    lstat = Path.lstat
+    lexists = os.path.lexists
+
+    def denied(path, *args, **kwargs):
+        if path == target:
+            raise failure('typed sidecar lookup unavailable')
+        return lstat(path, *args, **kwargs)
+
+    # Explicitly model the legacy lexists error suppression on every OS,
+    # including Python versions where pathlib implements lstat differently.
+    def suppressed(path):
+        return False if Path(path) == target else lexists(path)
+
+    destination = tmp_path / 'backup'
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, 'lstat', denied)
+        patch.setattr(os.path, 'lexists', suppressed)
+        with pytest.raises(failure, match='typed sidecar lookup unavailable'):
+            create_backup(app, destination)
+    assert not destination.exists()
+    assert retained.read_bytes() == original
+
+
+def test_typed_capture_distinguishes_optional_absence_from_disappearance(tmp_path, monkeypatch):
+    from carr_library import backup_sidecars
+
+    root = tmp_path / 'data'
+    root.mkdir()
+    assert backup_sidecars._capture(root) == ({}, {})
+    target = root / 'state'
+    target.mkdir()
+    lstat = Path.lstat
+    probes = 0
+
+    def disappears(path, *args, **kwargs):
+        nonlocal probes
+        if path == target:
+            probes += 1
+            if probes > 1:
+                raise FileNotFoundError('optional root disappeared after presence probe')
+        return lstat(path, *args, **kwargs)
+
+    # Both presence and directory validation must succeed in one capture.
+    monkeypatch.setattr(Path, 'lstat', disappears)
+    with pytest.raises(FileNotFoundError, match='disappeared'):
+        backup_sidecars._capture(root)
+    assert probes == 2
