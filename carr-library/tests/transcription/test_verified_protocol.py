@@ -303,3 +303,20 @@ def test_incomplete_model_pack_is_rejected_before_a_receipt_can_be_read(sample):
 def test_result_namespace_must_stay_inside_configured_output_root(sample):
     with pytest.raises(ValueError):
         result_directory(sample['worker'], {'results_dir': str(sample['source'].parent)})
+
+
+def test_checkpoint_scan_uses_actual_link_count_not_cached_windows_direntry_fields(sample, monkeypatch):
+    from types import SimpleNamespace
+    from carr_library.transcription import verified_protocol as module
+    sealed = seal(sample)
+    folder = sample['worker'] / 'logs/export-receipts'
+    with os.scandir(folder) as entries:
+        cached = [SimpleNamespace(name=entry.name, path=entry.path,
+            stat=lambda **kwargs: SimpleNamespace(st_mode=0o100600, st_nlink=0, st_file_attributes=0))
+            for entry in entries]
+    class Scan:
+        def __enter__(self): return iter(cached)
+        def __exit__(self, *args): return False
+    monkeypatch.setattr(module.os, 'scandir', lambda path: Scan())
+    checkpoints = tuple(sample['reader']().checkpoints())
+    assert len(checkpoints) == 1 and checkpoints[0].source_id == 'source-one'
