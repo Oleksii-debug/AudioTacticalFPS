@@ -66,7 +66,7 @@ preparation and independent review are not executable PASS evidence.
 
 Required headless source and installed suites include:
 
-- tests/ui/test_progress_view.py: 23 cases, including real background workers,
+- tests/ui/test_progress_view.py: 25 cases, including real background workers,
   actual file publication, late cancellation, observer failure, persisted
   settings, busy command availability, separate task selection and focus.
 - tests/ui/test_shared_progress.py: retain the existing complete suite.

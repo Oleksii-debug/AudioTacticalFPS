@@ -472,3 +472,34 @@ def test_operation_terminal_receipt_is_not_completed_twice(monkeypatch, tmp_path
     assert progress_view.run_observed(reporter, operation) == {'status': 'completed'}
     assert reporter.event.verified and path.read_text() == 'Committed result'
     finish.assert_not_called()
+
+
+@pytest.mark.parametrize('observer_error', [KeyError('Evicted terminal event'), RuntimeError('Detached observer')])
+def test_actual_worker_result_callback_survives_an_unavailable_progress_observer(tmp_path, monkeypatch, observer_error):
+    frame, callbacks = _host_frame()
+    path = tmp_path / 'durable-observer-result'
+    result = {'status': 'completed', 'artifact': str(path)}
+    done, failed = Mock(), Mock()
+    def operation():
+        with path.open('x', encoding='utf-8') as stream:
+            stream.write('Committed before UI observation\n')
+            stream.flush()
+            os.fsync(stream.fileno())
+        return result
+    def unavailable(identity):
+        raise observer_error
+    try:
+        frame.run_job('Durable result', operation, done=done, failed=failed)
+        # A real queued barrier establishes that the preceding actual worker
+        # finished and its UI callback is waiting, without invoking that callback.
+        frame.executor.submit(lambda: None).result(timeout=5)
+        assert callbacks and path.exists()
+        monkeypatch.setattr(frame.progress_hub, 'get', unavailable)
+        _drain(frame, callbacks)
+        done.assert_called_once_with(result)
+        failed.assert_not_called()
+        assert path.read_text() == 'Committed before UI observation\n'
+        assert frame.status.GetValue() == 'Durable result: operation returned; progress status is unavailable.'
+        assert not frame.working
+    finally:
+        frame.executor.shutdown(wait=True, cancel_futures=True)

@@ -730,9 +730,14 @@ class DesktopFrame(WorkspaceFrame):
                 self._finish_job_controls()
                 try:
                     result = future.result()
-                    outcome = task.event
-                    message = (title + ': complete.' if outcome.state == 'complete' and outcome.verified
-                               else outcome.text)
+                    try:
+                        outcome = task.event
+                        message = (title + ': complete.' if outcome.state == 'complete' and outcome.verified
+                                   else outcome.text)
+                    except Exception:
+                        # A detached/evicted observer cannot suppress the real
+                        # result callback or retry an already committed operation.
+                        message = title + ': operation returned; progress status is unavailable.'
                     if done is not None and getattr(self, 'status', None) is not None:
                         # The result callback owns its panel/reader focus.
                         self.status.SetValue(message)
