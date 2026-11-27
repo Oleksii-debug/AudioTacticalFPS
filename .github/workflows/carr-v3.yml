@@ -434,7 +434,7 @@ jobs:
           retention-days: 7
 
   service-boundaries:
-    name: V3 broad local service boundaries
+    name: V3 broad local service shard ${{ matrix.shard }}/2
     runs-on: windows-2022
     timeout-minutes: 45
     defaults:
@@ -447,6 +447,10 @@ jobs:
       HF_HUB_OFFLINE: '1'
       TRANSFORMERS_OFFLINE: '1'
       DO_NOT_TRACK: '1'
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -496,14 +500,27 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           "CARR_V3_AUDIO=$audio" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Require the exact broad-service selector coverage guard
+        run: |
+          python scripts/ci_check.py tests/packaging/test_v3_service_shards.py 2>&1 | Tee-Object 'ci-v3-results/service-coverage-guard.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Validate local services, DSP, integrity and provider permission boundaries
         run: |
-          python -m pytest -q --import-mode=importlib tests/audio tests/speech tests/assistant tests/studio tests/transcription tests/academic_integration tests/test_delivery_contract.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_backup_v4_review.py tests/e2e/test_import_worker_publication.py tests/e2e/test_import_publication_receipt_integrity.py tests/ingest/test_import_replay_identity.py tests/packaging/test_worker_bytecode.py tests/storage/test_v3_state_backup.py tests/storage/test_state_snapshot_identity.py tests/language_qualification tests/conversion tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
+          python -I -B -S scripts/v3_service_shards.py --shard ${{ matrix.shard }} --output 'ci-v3-results/service-coverage.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $selection = Get-Content 'ci-v3-results/service-coverage.json' -Raw | ConvertFrom-Json
+          $selectors = @($selection.selectors)
+          if ($selection.status -ne 'COVERAGE_VALID' -or $selection.required_count -ne 20 -or $selection.shard_count -ne 2 -or $selection.shard -ne ${{ matrix.shard }}) { throw 'V3 broad-service coverage identity differs.' }
+          # Match the already verified OCR profile used by installed recovery.
+          $env:CARR_OCR_DIR = $env:CARR_CI_OCR_DIR
+          $env:TESSDATA_PREFIX = Join-Path $env:CARR_CI_OCR_DIR 'tessdata'
+          $env:PATH = "$env:CARR_CI_OCR_DIR;$env:PATH"
+          python -m pytest -q --import-mode=importlib @selectors --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Keep broad local service test evidence only
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
-          name: carr-v3-services-${{ github.run_id }}-${{ github.run_attempt }}
+          name: carr-v3-services-${{ matrix.shard }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: carr-library/ci-v3-results/
           retention-days: 7
