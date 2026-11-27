@@ -233,17 +233,12 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
         # Seal the very bytes whose dependency inventory was validated.
         # Do not re-open a mutable input later in the build.
         sbom_bytes = sbom.read_bytes()
-        bom = json.loads(sbom_bytes.decode("utf-8"))
-        expected = {(name, version) for name, (version, _hashes) in pins.items()}
-        actual = {(canonicalize_name(item["name"]), item["version"])
-                  for item in bom.get("components", [])}
-        if (bom.get("bomFormat") != "CycloneDX" or bom.get("specVersion") != "1.5"
-                or actual != expected):
-            raise ValueError("runtime SBOM does not match the dependency lock")
-        components = bom["components"]
-        refs = [item["bom-ref"] for item in components if "bom-ref" in item]
-        if len(components) != len(expected) or len(refs) != len(set(refs)):
-            raise ValueError("duplicate runtime SBOM component or reference")
+        spec = importlib.util.spec_from_file_location(
+            "carr_runtime_sbom", HERE / "sbom_inventory.py")
+        sbom_verifier = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(sbom_verifier)
+        sbom_inventory = sbom_verifier.validate(
+            sbom_bytes, {name: version for name, (version, _hashes) in pins.items()})
     selected = {}
     inventory = {}
     for path in sorted(wheelhouse.iterdir()):
@@ -260,6 +255,8 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
         inventory[path.name] = digest
     if set(selected) != set(pins):
         raise ValueError("incomplete wheelhouse")
+    if sbom is not None and sbom_inventory["model"] is not None:
+        sbom_verifier.verify_wheel(sbom_inventory, selected["py3langid"][0])
     regular(wheel)
     name, version, metadata = wheel_metadata(wheel)
     if name != "universal-research-library" or name in selected:

@@ -423,3 +423,70 @@ not become passing acceptance. The final head still requires the full unchanged
 source, installed, native and recovery gates. Independent review confirmed that
 this correction changes orchestration only and does not alter the fifteen worker
 automations, their cadence or enabled state, or repository protections.
+
+
+## Exact 8b6 execution and typed Windows SBOM correction
+
+The exact `8b6a9ac5dc1cb1fe53f433f6326cb4702b759fee` source composition
+passed all three large gates: 2420 cases in 102 quick suites, 2092 in 109
+production suites and 3207 in 95 reconciled suites, each with zero failures or
+skips. These sets overlap. The full Book naming review, publication ownership,
+Studio output and backup-plan corrections therefore have actual passing source
+evidence. Separate publication validators and the completed installed Windows
+reading, template, bibliography, keyboard, lifetime and launcher checks are
+bound to their exact jobs in the [8b6 checkpoint](acceptance/20261127-8b6a9a-completed-gates-and-diagnostics.json).
+
+The full integrated Windows job stopped before broad source gates at its runtime
+inventory assertion. All dependency installation and pip check succeeded. The
+semantic lock has 57 Python libraries; its CycloneDX document correctly has those
+57 libraries plus the reviewed py3langid model file. The base profile similarly
+has 22 libraries plus that file. Treating every component as a Python dependency
+caused the assertion failure; there was no lock version mismatch.
+
+Reviewed component `b314f8118e7e146d393a107edc7669426ed1fd7f` introduces one
+stdlib typed-inventory helper used by the bundle builder and both existing
+workflow consumers. Library equality remains exact. Only the existing declared
+model record is admitted, including its version, hash, size, license and
+provenance. Unknown, missing, duplicate or changed components refuse. Installed
+model bytes and the selected wheel plus its internal model bytes are bounded
+and hashed without importing model code. Copy-time wheel checks and sealing of
+the original validated SBOM bytes remain. All 20 former tests and 49 assertion
+lines are preserved, with 15 added real-file/profile/negative test methods.
+Locks, SBOM source files, the reviewed model manifest, production application,
+test selectors and time budgets are unchanged. Root and independent source
+review approved exact read-back blobs; execution is required on the successor.
+
+The separate 8b6 Windows ASR gate reached its unchanged 12-minute job deadline
+after six complete reports: 331 passed, zero failures and zero skips. This
+includes all 195 new runtime RECORD cases. UI and CLI suites were active at
+cancellation, eight further selected suites and downstream native checks were
+not run. No partial or missing report is promoted to PASS. The reviewed follow-through is recorded below; its runtime cost must be measured
+by the next assembled run.
+
+
+### ASR fixture ownership follow-through
+
+The complete 8b6 Linux ASR gate passed all 721 cases in 16 suites with no
+failures or skips. It also measured 217.12 seconds for the UI suite and 204.08
+seconds for CLI. Windows completed the same changed runtime RECORD cases but
+reached its job deadline. These are suite timings, not per-test attribution.
+
+Component `79712e1e8665a2f4034bc44f6ab40e49b204e61c` selects actual private
+no-pip/no-system-site Python environments for the standard-library synthetic
+UI, CLI and native peers. The real installed application, CLI entrypoint and
+wx host remain unchanged. Every original assertion line (156 UI, 49 CLI and
+66 native) and each existing timeout is retained; new assertions require the
+selected lexical executable, actual pyvenv configuration and absent core-engine
+packages. The native driver still uses real inspection and trust controls for
+both protocols. Production runtime review and worker code are unchanged.
+
+Component `8c6c859f7b7f413500f2fa0051bcc6089408188f` changes only the legacy
+resolved-interpreter test setup. Its copied executable remains a real resolved
+selection, and its small genuine installed distribution has METADATA, hashed
+RECORD and a marker module imported by the actual child. Exact path and nonempty
+three-file inventory assertions are added. All 148 former assertion lines and
+the stripped-record refusal, explicit rereview and successful-child sequence
+remain. The application-host CLI launches are unchanged. Both components have
+exact full readback and independent source review. They make no performance or
+execution claim before the successor runs. The 600-second suite, 12-minute ASR
+job and 120-second native probe budgets are unchanged.

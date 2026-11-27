@@ -593,12 +593,63 @@ def test_selected_runtime_changes_are_refused_before_child_launch(
     assert not (service._path(identity) / 'job_status.json').exists()
 
 
-def test_legacy_resolved_interpreter_configuration_still_runs(prepared):
+def test_legacy_resolved_interpreter_configuration_still_runs(prepared, tmp_path):
+    import base64
+
     _, _, service, original, _ = prepared
-    # This control deliberately retains the original resolved host-runtime
-    # selection, including its actual installed distribution inventory.
+    # Use a real copied interpreter so resolving the historical path retains
+    # this isolated environment on both Windows and POSIX. Its installed-file
+    # review still binds a genuine small RECORD-backed distribution, without
+    # repeatedly hashing unrelated packages in the application's host runtime.
+    environment = tmp_path / 'legacy-resolved-python'
+    venv.EnvBuilder(with_pip=False, system_site_packages=False, symlinks=False).create(environment)
+    executable = environment / ('Scripts/python.exe' if os.name == 'nt' else 'bin/python')
+    resolved = executable.resolve(strict=True)
+    assert not executable.is_symlink()
+    assert resolved == executable.absolute()
+    assert resolved != Path(sys.executable).resolve()
+    probe = subprocess.run([str(resolved), '-I', '-B', '-c',
+        'import sysconfig; print(sysconfig.get_path("purelib"))'],
+        check=True, capture_output=True, text=True, timeout=20)
+    packages = Path(probe.stdout.strip())
+    assert packages.is_relative_to(environment.resolve())
+    package_name = 'legacy-fixture-dependency'
+    metadata_dir = 'legacy_fixture_dependency-1.0.dist-info'
+    payloads = {
+        'legacy_fixture_dependency.py': b'MARKER = "legacy resolved runtime"\n',
+        metadata_dir + '/METADATA': (
+            b'Metadata-Version: 2.3\nName: legacy-fixture-dependency\nVersion: 1.0\n'),
+    }
+    rows = []
+    for relative, payload in payloads.items():
+        target = packages / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(payload)
+        digest = base64.urlsafe_b64encode(sha256(payload).digest()).decode('ascii').rstrip('=')
+        rows.append(f'{relative},sha256={digest},{len(payload)}')
+    rows.append(metadata_dir + '/RECORD,,')
+    (packages / metadata_dir / 'RECORD').write_text('\n'.join(rows) + '\n', encoding='utf-8')
+
     selected = service.configuration()
-    service.configure(Path(sys.executable).resolve(), selected['worker'], selected['models_dir'])
+    worker = Path(selected['worker'])
+    worker.write_text(
+        'from legacy_fixture_dependency import MARKER\n'
+        'assert MARKER == "legacy resolved runtime"\n' + worker.read_text(encoding='utf-8'),
+        encoding='utf-8')
+    configured = service.configure(resolved, worker, selected['models_dir'])
+    inventory = configured['runtime_inventory']
+    assert configured['python'] == str(resolved)
+    assert inventory['python_executable'] == str(resolved)
+    assert inventory['python_resolved'] == str(resolved)
+    assert inventory['python_configuration']
+    assert all(row == {'present': False}
+               for row in inventory['runtime_distributions'].values())
+    additional = inventory['runtime_additional_distributions']
+    assert set(additional) == {package_name}
+    assert additional[package_name]['present'] is True
+    assert additional[package_name]['version'] == '1.0'
+    assert additional[package_name]['file_count'] == 3
+    assert len(additional[package_name]['installed_files_sha256']) == 64
     config = read_json(service.root / 'engine.json')
     for key in ('python_binding', 'runtime_inventory', 'models_inventory',
                 'fingerprint', 'profile_id', 'execution_review_required'):

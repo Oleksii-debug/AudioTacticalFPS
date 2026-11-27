@@ -5,11 +5,13 @@ They do not claim native screen-reader or recognition-quality acceptance.
 """
 from copy import deepcopy
 from contextlib import nullcontext
+import os
 from pathlib import Path
 import sys
 from threading import Event
 from types import SimpleNamespace
 from unittest.mock import Mock
+import venv
 
 import pytest
 
@@ -538,9 +540,20 @@ def test_ui_actions_integrate_real_service_subprocess_and_durable_derivatives(vi
     models.mkdir()
     worker = tmp_path / 'synthetic-worker.py'
     worker.write_text(fixture['SYNTHETIC_WORKER'].replace('__MODE__', repr('complete')), encoding='utf-8')
-    inspection = service.inspect_runtime(Path(sys.executable), worker, models)
-    profile = service.register_runtime('Synthetic protocol only', Path(sys.executable), worker, models,
+    # This existing protocol peer is standard-library-only. Review an owned
+    # interpreter instead of the application's unrelated installed packages.
+    environment = tmp_path / 'selected-python'
+    venv.EnvBuilder(with_pip=False, system_site_packages=False,
+                    symlinks=os.name != 'nt').create(environment)
+    python = environment / ('Scripts/python.exe' if os.name == 'nt' else 'bin/python')
+    inspection = service.inspect_runtime(python, worker, models)
+    profile = service.register_runtime('Synthetic protocol only', python, worker, models,
         protocol='receipts-v1', owner_trusted=True, expected_fingerprint=inspection['fingerprint'])
+    inventory = profile['configuration']['runtime_inventory']
+    assert inventory['python_executable'] == str(python.absolute())
+    assert inventory['python_configuration']
+    assert all(row == {'present': False}
+               for row in inventory['runtime_distributions'].values())
     source = tmp_path / 'synthetic-input.wav'
     original = b'Synthetic protocol bytes; this fixture performs no audio recognition.'
     source.write_bytes(original)
