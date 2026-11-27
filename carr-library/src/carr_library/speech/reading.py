@@ -187,6 +187,8 @@ class ReadingDocument:
         self._states = [_original_runs(self._source, self._source_anchor)]
         self._edits = []
         self._bookmarks = ()
+        self._narration_policy = None
+        self._narration_policy_sha256 = None
         self._position = 0
         self._saved_path = None
         self._saved_digest = None
@@ -233,12 +235,69 @@ class ReadingDocument:
         return self._signature() != self._saved_signature
 
     def _text_signature(self):
-        return (self.title, self._source_hash, self._anchor_signature, self._position,
+        base = (self.title, self._source_hash, self._anchor_signature, self._position,
                 tuple((e['start'], e['end'], e['replacement'], e['label']) for e in self._edits))
+        return base + (('narration', self._narration_policy_sha256),) if self._narration_policy else base
 
     def _signature(self):
         base = self._text_signature()
         return base + (self._bookmarks,) if self._bookmarks else base
+
+    @property
+    def narration_policy(self):
+        """Passive reviewed categories; absence preserves the legacy wire."""
+        return deepcopy(self._narration_policy)
+
+    @property
+    def narration_policy_sha256(self):
+        return self._narration_policy_sha256
+
+    def set_narration_policy(self, value, *, expected_signature=None):
+        from .narration import check_current_regions, policy_digest, validate_policy
+        if expected_signature is not None and self._signature() != expected_signature:
+            raise ValueError('The reading text or Read/Skip policy changed. Review it again.')
+        checked = validate_policy(value) if value is not None else None
+        check_current_regions(checked, self.text)
+        self._narration_policy = checked
+        self._narration_policy_sha256 = policy_digest(checked)
+
+    def mark_narration_region(self, start, end, category, label, *, cancelled=lambda: False):
+        from .narration import MAX_REGIONS, SCHEMA, NarrationRegion
+        value = self.narration_policy or {'schema': SCHEMA, 'regions': [], 'skip': []}
+        if len(value['regions']) >= MAX_REGIONS:
+            raise ValueError('Keep at most 256 reviewed reading-content ranges.')
+        region = NarrationRegion.create(self.text, start, end, category, label, cancelled=cancelled)
+        value['regions'].append(region.to_dict())
+        check_cancelled(cancelled)
+        self.set_narration_policy(value)
+        return region
+
+    def remove_narration_region(self, identity):
+        value = self.narration_policy
+        if value is None or not any(row['id'] == identity for row in value['regions']):
+            raise ValueError('Choose an existing reviewed reading-content range.')
+        value['regions'] = [row for row in value['regions'] if row['id'] != identity]
+        available = {row['category'] for row in value['regions']}
+        value['skip'] = [category for category in value['skip'] if category in available]
+        self.set_narration_policy(value if value['regions'] else None)
+
+    def set_narration_read(self, category, read):
+        from .narration import CATEGORIES
+        value = self.narration_policy
+        if (type(read) is not bool or type(category) is not str or category not in CATEGORIES
+                or value is None or not any(row['category'] == category for row in value['regions'])):
+            raise ValueError('Choose Read or Skip for an available reviewed category.')
+        skipped = set(value['skip'])
+        if read:
+            skipped.discard(category)
+        else:
+            skipped.add(category)
+        value['skip'] = [item for item in CATEGORIES if item in skipped]
+        self.set_narration_policy(value)
+
+    def narration_selection(self, first=0, last=None, *, cancelled=lambda: False):
+        from .narration import select_narration
+        return select_narration(self, first, last, cancelled=cancelled)
 
     @property
     def bookmarks(self):
@@ -390,6 +449,9 @@ class ReadingDocument:
         if self._bookmarks:
             data['schema'] = 'carr.reading-copy.v3'
             data['bookmarks'] = [bookmark.to_dict() for bookmark in self._bookmarks]
+        if self._narration_policy:
+            data['schema'] = 'carr.reading-copy.v4'
+            data['narration'] = self.narration_policy
         return data
 
     def save(self, path, *, cancelled=lambda: False):
@@ -453,7 +515,23 @@ class ReadingDocument:
         version = data.get('schema')
         pre_release = False
         bookmarks = ()
-        if (version == 'carr.reading-copy.v3'
+        narration = None
+        if (version == 'carr.reading-copy.v4' and 'narration' in data
+                and set(data) in (fields | {'narration'}, fields | {'narration', 'bookmarks'},
+                                  fields | {'narration', 'source_anchor'},
+                                  fields | {'narration', 'bookmarks', 'source_anchor'})):
+            from .narration import validate_policy
+            narration = validate_policy(data['narration'])
+            if 'bookmarks' in data:
+                from .marks import validate_bookmarks
+                bookmarks = validate_bookmarks(data['bookmarks'])
+            anchor = data.get('source_anchor')
+            if 'source_anchor' in data and type(anchor) is not dict:
+                raise ValueError('Invalid reading-project source anchor.')
+            if isinstance(anchor, dict) and 'schema' in anchor:
+                anchor = _import_pre_release_anchor(anchor, data['source_text'])
+                pre_release = True
+        elif (version == 'carr.reading-copy.v3'
                 and set(data) in (fields | {'bookmarks'}, fields | {'bookmarks', 'source_anchor'})):
             from .marks import validate_bookmarks
             bookmarks = validate_bookmarks(data['bookmarks'])
@@ -488,6 +566,7 @@ class ReadingDocument:
             raise ValueError('Invalid reading-project revision.')
         document._position = data['revision']
         document._bookmarks = bookmarks
+        document.set_narration_policy(narration)
         document._pre_release_format = pre_release
         return document
 
