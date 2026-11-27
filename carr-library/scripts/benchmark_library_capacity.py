@@ -10,6 +10,9 @@ after their JSON evidence is durable, unless --keep-fixtures is selected. This
 uses the existing test corpus publisher and production services; it does not
 measure a real book corpus or turn direct catalogue publication into import
 throughput. A separate small TXT series exercises the actual import boundary.
+Use --reuse-fixture with one declared size to verify and measure an existing
+committed corpus without rebuilding it. Reused fixtures are never removed by
+this script. Phase checkpoints retain measured progress if a case times out.
 """
 import argparse
 from datetime import datetime, timezone
@@ -26,6 +29,7 @@ import subprocess
 import sys
 from threading import Event, Thread, Timer
 from time import perf_counter
+from uuid import uuid4
 
 from benchmark_semantic_cache import peak_rss_bytes, rss_method
 
@@ -182,28 +186,55 @@ def restart_probe(config):
             'process_peak_rss_bytes': peak_rss_bytes()}
 
 
-def run_case(root, requested, samples, max_search_pages, expected_source):
+def run_case(root, requested, samples, max_search_pages, expected_source, *,
+             reuse=False, progress=None):
     require(source_identity()['sha256'] == expected_source, 'Child source identity mismatch.')
     LibraryApp, publish = production()
     baseline = peak_rss_bytes()
     started = perf_counter()
-    root.mkdir(exist_ok=False)
+    if reuse:
+        require(root.is_dir() and (root / 'library/library.sqlite').is_file(),
+                'Reuse requires an existing synthetic benchmark fixture.')
+        scratch = root / ('read-profile-' + uuid4().hex)
+        scratch.mkdir(exist_ok=False)
+    else:
+        root.mkdir(exist_ok=False)
+        scratch = root
+    def checkpoint(phase, **values):
+        if progress is not None:
+            write_json(progress, {'status': 'RUNNING', 'phase': phase,
+                'source_sha256': expected_source, 'requested_synthetic_editions': requested,
+                'reused_fixture': reuse, 'elapsed_seconds': perf_counter() - started,
+                'process_peak_rss_bytes': peak_rss_bytes(), **values})
     with DiskSampler(root) as disk:
         startup = []
         app = timed(startup, lambda: LibraryApp(root / 'library'))
-        workspace = app.create_workspace('Synthetic capacity measurement')
-        other = app.create_workspace('Isolation control')
         construction, identities = [], []
-        build_started = perf_counter()
-        for number, offset in enumerate(range(0, requested, BATCH)):
-            values, digest = timed(construction, lambda number=number, offset=offset: publish(
-                app, workspace, count=min(BATCH, requested - offset), text=TEXT,
-                prefix=f'capacity-{number:05d}'))
-            identities.extend(values)
-        build_elapsed = perf_counter() - build_started
+        if reuse:
+            scopes = {row.name: row.id for row in app.workspaces()}
+            require(set(scopes) == {'Synthetic capacity measurement', 'Isolation control'},
+                    'Existing fixture workspace identities do not match this benchmark.')
+            workspace, other = scopes['Synthetic capacity measurement'], scopes['Isolation control']
+            identities = [f'capacity-{batch:05d}-{number:05d}'
+                          for batch, offset in enumerate(range(0, requested, BATCH))
+                          for number in range(min(BATCH, requested - offset))]
+            digest = sha256(TEXT.encode('utf-8')).hexdigest()
+            build_elapsed = None
+        else:
+            workspace = app.create_workspace('Synthetic capacity measurement')
+            other = app.create_workspace('Isolation control')
+            build_started = perf_counter()
+            for number, offset in enumerate(range(0, requested, BATCH)):
+                values, digest = timed(construction, lambda number=number, offset=offset: publish(
+                    app, workspace, count=min(BATCH, requested - offset), text=TEXT,
+                    prefix=f'capacity-{number:05d}'))
+                identities.extend(values)
+                checkpoint('construction', committed_synthetic_editions=len(identities),
+                           batch_latency=statistics(construction))
+            build_elapsed = perf_counter() - build_started
+            publish(app, other, count=1, text='Isolation-only source.', prefix='foreign')
         require(len(identities) == requested and len(set(identities)) == requested,
                 'Synthetic identities were omitted or duplicated.')
-        publish(app, other, count=1, text='Isolation-only source.', prefix='foreign')
         require(sha256(app.assets.resolve(digest).read_bytes()).hexdigest() == digest,
                 'Retained original digest mismatch.')
         with app.read(workspace) as db:
@@ -212,6 +243,7 @@ def run_case(root, requested, samples, max_search_pages, expected_source):
                       for name in ('catalog_edition', 'active_page')}
             require(all(value == requested for value in counts.values()), 'Stored scope count mismatch.')
             require(db.execute('PRAGMA quick_check').fetchone()[0] == 'ok', 'SQLite quick_check failed.')
+        checkpoint('fixture_verified', stored_counts=counts, reused_construction_unmeasured=reuse)
         post_build_disk = fixture_size(root)
         browse_times, browsed, after = [], [], None
         while True:
@@ -221,6 +253,8 @@ def run_case(root, requested, samples, max_search_pages, expected_source):
             browsed.extend(row.edition_id for row in page)
             after = page[-1].edition_id
         require(browsed == identities, 'Full catalogue traversal lost order or identities.')
+        checkpoint('catalogue_complete', catalogue_pages=statistics(browse_times),
+                   editions_verified=len(browsed))
         search_times, open_times, copy_times, first_times = [], [], [], []
         first = None
         for _ in range(samples):
@@ -228,6 +262,7 @@ def run_case(root, requested, samples, max_search_pages, expected_source):
             require([row.edition_id for row in first.results] == identities[:100],
                     'Repeated first page changed exact identities.')
         first_cursor = first.next_cursor
+        checkpoint('first_page_samples_complete', first_page_latency=statistics(first_times))
         seen, cursor, pages, opened = 0, None, 0, 0
         search_started = perf_counter()
         while max_search_pages == 0 or pages < max_search_pages:
@@ -249,6 +284,11 @@ def run_case(root, requested, samples, max_search_pages, expected_source):
             seen += len(page.results)
             pages += 1
             cursor = page.next_cursor
+            if pages % 25 == 0 or cursor is None:
+                checkpoint('search_traversal', pages_completed=pages, exact_results_verified=seen,
+                           all_search_pages_completed=cursor is None,
+                           search_latency=statistics(search_times),
+                           search_elapsed_seconds=perf_counter() - search_started)
             if cursor is None:
                 require(seen == requested, 'Completed search omitted source editions.')
                 break
@@ -300,7 +340,8 @@ def run_case(root, requested, samples, max_search_pages, expected_source):
             raise ValueError('Cross-workspace source selection was accepted.')
         require(not app.search_page(other, QUERY).results, 'Foreign workspace leaked a result.')
         restarts = []
-        restart_config = root / 'restart-config.json'
+        checkpoint('cancellation_and_isolation_complete', cancellation=cancellation)
+        restart_config = scratch / 'restart-config.json'
         write_json(restart_config, {'root': str(app.root), 'workspace': workspace,
             'cursor': first_cursor, 'expected': identities[100:200] if first_cursor else identities[:100],
             'old_ref': recovery.results[0].ref, 'old_revision': recovery.results[0].revision})
@@ -314,10 +355,12 @@ def run_case(root, requested, samples, max_search_pages, expected_source):
             require(result['status'] == 'PASS', 'Restart probe did not pass.')
             restarts.append(result)
         restart_config.unlink()
+        checkpoint('restarts_complete', fresh_process_probes=len(restarts),
+                   restart_startup_latency=statistics([row['application_startup_seconds'] for row in restarts]))
         # Small actual TXT imports are deliberately separate from direct setup.
-        importer = LibraryApp(root / 'import-library')
+        importer = LibraryApp(scratch / 'import-library')
         import_workspace = importer.create_workspace('Actual synthetic TXT import sample')
-        inputs = root / 'inputs'
+        inputs = scratch / 'inputs'
         inputs.mkdir()
         import_times, imported_bytes = [], 0
         for number in range(samples):
@@ -334,16 +377,22 @@ def run_case(root, requested, samples, max_search_pages, expected_source):
         require(len(importer.browse(import_workspace, limit=500)) == samples,
                 'Actual import sample count mismatch.')
         require(source_identity()['sha256'] == expected_source, 'Source changed during measurement.')
+    checkpoint('complete', status='PASS', exact_results_verified=seen,
+               all_search_pages_completed=cursor is None, search_latency=statistics(search_times),
+               cancellation=cancellation, restart_probes=len(restarts))
     return {'status': 'PASS', 'requested_synthetic_editions': requested,
+            'reused_fixture': reuse,
             'source_sha256': expected_source, 'elapsed_seconds': perf_counter() - started,
             'baseline_peak_rss_bytes': baseline, 'process_peak_rss_bytes': peak_rss_bytes(),
             'fixture': {'unique_originals_in_measured_workspace': 1, 'original_bytes': len(TEXT.encode('utf-8')),
                         'source_sha256': digest, 'segments_per_edition': 1, 'stored_counts': counts,
-                        'isolation_control_editions': 1, 'post_construction_disk': post_build_disk},
-            'direct_catalogue_construction': {'elapsed_seconds': build_elapsed,
+                        'isolation_control_editions': 1, 'disk_after_fixture_verification': post_build_disk},
+            'direct_catalogue_construction': ({'status': 'NOT_MEASURED_REUSED_FIXTURE',
+                'is_actual_import_throughput': False} if reuse else {'elapsed_seconds': build_elapsed,
                 'editions_per_second': requested / build_elapsed, 'batch_size': BATCH,
-                'batch_latency': statistics(construction), 'is_actual_import_throughput': False},
-            'fresh_empty_application': statistics(startup),
+                'batch_latency': statistics(construction), 'is_actual_import_throughput': False}),
+            'application_initialization': {'initial_state': 'existing_committed_fixture' if reuse else 'empty',
+                                           'latency': statistics(startup)},
             'catalogue_pages': {'latency': statistics(browse_times), 'page_limit': 500,
                                 'editions_checked': len(browsed), 'all_ids_exact': True},
             'search_first_page': statistics(first_times),
@@ -402,8 +451,10 @@ def main():
         print(json.dumps(restart_probe(json.loads(Path(sys.argv[2]).read_text()))))
         return 0
     if len(sys.argv) > 1 and sys.argv[1] == '--case':
-        directory, requested, samples, cap, expected = sys.argv[2:]
-        print(json.dumps(run_case(Path(directory), int(requested), int(samples), int(cap), expected)))
+        directory, requested, samples, cap, expected, mode, progress = sys.argv[2:]
+        require(mode in ('fresh', 'reuse'), 'Unknown fixture mode.')
+        print(json.dumps(run_case(Path(directory), int(requested), int(samples), int(cap), expected,
+                                  reuse=mode == 'reuse', progress=Path(progress))))
         return 0
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--output-dir', type=Path, required=True)
@@ -413,29 +464,37 @@ def main():
                         help='Zero traverses all result pages; positive caps are disclosed as partial search evidence.')
     parser.add_argument('--case-timeout', type=int, default=1800)
     parser.add_argument('--keep-fixtures', action='store_true')
+    parser.add_argument('--reuse-fixture', type=Path,
+                        help='Reuse one verified committed synthetic fixture; never remove it or claim construction timing.')
     args = parser.parse_args()
     require(1 <= len(args.sizes) <= 10 and len(args.sizes) == len(set(args.sizes))
             and all(1 <= value <= 50000 for value in args.sizes), 'Choose distinct sizes in 1..50000.')
     require(1 <= args.samples <= 100, 'Samples must be in 1..100.')
     require(0 <= args.max_search_pages <= 10000, 'Search page cap must be in 0..10000.')
     require(1 <= args.case_timeout <= 14400, 'Case timeout must be in 1..14400 seconds.')
+    require(args.reuse_fixture is None or len(args.sizes) == 1,
+            'Reuse mode requires exactly one declared size.')
     output = args.output_dir.resolve()
     output.mkdir(parents=True, exist_ok=False, mode=0o700)
     identity = source_identity()
     write_json(output / 'source-manifest.json', identity)
     source_commit = subprocess.run(['git', '-C', str(PROJECT), 'rev-parse', 'HEAD'],
                                    check=True, capture_output=True, text=True).stdout.strip()
-    result = {'schema': 1, 'status': 'RUNNING', 'recorded_at_utc': datetime.now(timezone.utc).isoformat(),
+    result = {'schema': 2, 'status': 'RUNNING', 'recorded_at_utc': datetime.now(timezone.utc).isoformat(),
               'checkout_commit': source_commit, 'source_manifest_sha256': identity['sha256'],
               'harness_sha256': sha256(Path(__file__).read_bytes()).hexdigest(),
               'environment': environment(output), 'configuration': {
                   'sizes': args.sizes, 'samples': args.samples, 'max_search_pages': args.max_search_pages,
-                  'case_timeout_seconds': args.case_timeout, 'keep_fixtures': args.keep_fixtures},
+                  'case_timeout_seconds': args.case_timeout,
+                  'keep_fixtures': args.keep_fixtures or args.reuse_fixture is not None,
+                  'reused_fixture': args.reuse_fixture is not None},
               'method': {
                   'reuse': ['scripts/benchmark_semantic_cache.py: RSS measurement',
                            'tests/search/test_search_pagination.py: publish_text_corpus',
                            'LibraryApp.browse/search_page/context/copy/import_file; current production implementations'],
-                  'construction': 'Existing registration/revision fixture, 1000 editions per transaction; not actual file intake/import',
+                  'construction': ('Not measured: an existing committed synthetic fixture is verified and reused'
+                                   if args.reuse_fixture is not None else
+                                   'Existing registration/revision fixture, 1000 editions per transaction; not actual file intake/import'),
                   'corpus': f'Distinct synthetic edition/work/revision identities; one shared {len(TEXT.encode("utf-8"))}-byte UTF-8 original and one segment per edition',
                   'temperature': 'Warm OS page cache; fresh SQLite connections/processes do not make a cold storage benchmark',
                   'memory': 'Whole child-process peak RSS including corpus setup and checks; fresh-process restart peaks are separate',
@@ -448,11 +507,20 @@ def main():
               'cases': []}
     began = perf_counter()
     for size in args.sizes:
-        fixture = output / f'fixture-{size}'
-        child = subprocess.run([sys.executable, '-B', str(Path(__file__).resolve()), '--case',
-                                str(fixture), str(size), str(args.samples), str(args.max_search_pages), identity['sha256']],
-                               capture_output=True, text=True, timeout=args.case_timeout,
-                               env=dict(os.environ, PYTHONDONTWRITEBYTECODE='1'))
+        fixture = args.reuse_fixture.resolve() if args.reuse_fixture is not None else output / f'fixture-{size}'
+        try:
+            child = subprocess.run([sys.executable, '-B', str(Path(__file__).resolve()), '--case',
+                                    str(fixture), str(size), str(args.samples), str(args.max_search_pages),
+                                    identity['sha256'], 'reuse' if args.reuse_fixture is not None else 'fresh',
+                                    str(output / f'progress-{size}.json')],
+                                   capture_output=True, text=True, timeout=args.case_timeout,
+                                   env=dict(os.environ, PYTHONDONTWRITEBYTECODE='1'))
+        except subprocess.TimeoutExpired:
+            result.update(status='CASE_TIMEOUT', failed_synthetic_editions=size,
+                          elapsed_seconds=perf_counter() - began,
+                          source_matches_worktree_after_run=source_identity() == identity)
+            write_json(output / 'library-capacity.json', result)
+            raise
         if child.returncode:
             (output / f'failure-{size}.txt').write_text(child.stderr, encoding='utf-8')
             raise ValueError(f'Case {size} failed; inspect its failure log. Completed case JSON remains available.')
@@ -461,12 +529,13 @@ def main():
                 'Child did not return a matching successful measurement.')
         write_json(output / f'case-{size}.json', case)
         result['cases'].append(case)
-        if not args.keep_fixtures:
+        removed = not args.keep_fixtures and args.reuse_fixture is None
+        if removed:
             shutil.rmtree(fixture)
         print(json.dumps({'completed_synthetic_editions': size, 'elapsed_seconds': case['elapsed_seconds'],
                           'search_pages': case['search_traversal']['pages'],
                           'all_search_pages_completed': case['search_traversal']['all_pages_completed'],
-                          'fixture_removed': not args.keep_fixtures}), flush=True)
+                          'fixture_removed': removed}), flush=True)
     require(source_identity() == identity, 'Source changed during the complete benchmark.')
     result.update(status='PASS', elapsed_seconds=perf_counter() - began,
                   source_matches_worktree_after_run=True)
