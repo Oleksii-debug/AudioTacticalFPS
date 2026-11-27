@@ -168,3 +168,46 @@ def test_rf64_parser_validates_large_frame_count_without_reading_audio(tmp_path)
         stream.truncate(100)
     with pytest.raises(ValueError, match='truncated'):
         _wave_frames(path)
+
+
+@pytest.mark.parametrize('sample_rate', [8000, 96000])
+def test_actual_dense_score_uses_bounded_portable_filter_command(tmp_path, ffmpeg, monkeypatch, sample_rate):
+    from subprocess import list2cmdline
+    from carr_library.audio import music
+
+    folder = tmp_path / 'Українська музика with spaces'
+    folder.mkdir()
+    actual_run, graphs = music._run, []
+
+    def record_actual_command(arguments, **kwargs):
+        values = [str(value) for value in arguments]
+        if '-filter_complex' in values:
+            graph = values[values.index('-filter_complex') + 1]
+            graphs.append(graph)
+            # The densest four-bar chunk and both supported rate extremes fit
+            # a real Windows command line, including Unicode output filenames.
+            assert len(list2cmdline(values).encode('utf-16-le')) // 2 < 32767
+        return actual_run(arguments, **kwargs)
+
+    monkeypatch.setattr(music, '_run', record_actual_command)
+    result = render_music(folder / 'dense.wav', duration=4, mood='energetic',
+                          tempo=240, seed=91, sample_rate=sample_rate, ffmpeg=ffmpeg)
+    assert len(graphs) == 1 and graphs[0].isascii()
+    assert len(graphs[0]) <= 16 * 1024
+    assert 'amix=inputs=44:' in graphs[0]
+    assert result['frames'] == sample_rate * 4
+    assert result['provenance']['sha256'] == digest(result['path'])
+    assert result['midi'].read_bytes().startswith(b'MThd')
+    info = _wave_frames(result['path'])
+    assert info == {'frames': sample_rate * 4, 'sample_rate': sample_rate, 'channels': 1}
+    # FFmpeg may use WAVE_FORMAT_EXTENSIBLE at 96 kHz, which Python 3.11's
+    # wave reader does not accept. Decode the real result independently.
+    pcm = folder / 'decoded.pcm'
+    actual_run([ffmpeg, '-hide_banner', '-loglevel', 'error', '-nostdin',
+                '-protocol_whitelist', 'file', '-i', result['path'], '-map', '0:a:0',
+                '-c:a', 'pcm_s16le', '-f', 's16le', '-n', pcm], timeout=30)
+    samples = array('h', pcm.read_bytes())
+    if sys.byteorder != 'little':
+        samples.byteswap()
+    assert len(samples) == sample_rate * 4
+    assert 50 < max(abs(sample) for sample in samples) < 16000
