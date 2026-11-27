@@ -54,3 +54,22 @@ def create_legacy_state_backup(app, destination, *, version=5, include_generated
                       separators=(',', ':')) + '\n').encode('utf-8')
     (destination / 'manifest.json').write_bytes(raw)
     return sha256(raw).hexdigest()
+
+
+def as_legacy_media_v6(destination):
+    """Reseal the exact historical media envelope without touching member bytes."""
+    destination = Path(destination)
+    manifest = json.loads((destination / 'manifest.json').read_bytes())
+    assert manifest['version'] == 4 and 'studio_media' in manifest
+    entries = manifest.pop('sidecars')
+    assert all(row['filename'].startswith('state/')
+               or row['filename'] == 'reading-state.json' for row in entries)
+    manifest['state'] = [dict(row, filename=row['filename'][len('state/'):])
+                         for row in entries if row['filename'].startswith('state/')]
+    reading = [row for row in entries if row['filename'] == 'reading-state.json']
+    manifest.update(version=6, reading_state=reading[0] if reading else None)
+    manifest.setdefault('pending', None)
+    raw = (json.dumps(manifest, ensure_ascii=False, sort_keys=True,
+                      separators=(',', ':')) + '\n').encode('utf-8')
+    (destination / 'manifest.json').write_bytes(raw)
+    return sha256(raw).hexdigest()

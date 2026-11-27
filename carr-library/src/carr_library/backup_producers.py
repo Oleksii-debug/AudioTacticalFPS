@@ -55,7 +55,7 @@ def allow_empty(name):
 def limit(name):
     if is_media(name):
         return 8 * 1024**3
-    if name in ('state/studio/backup-inputs.json', 'state/studio/legacy-input-review.json'):
+    if name in ('state/studio/backup-inputs.json', 'state/studio/legacy-input-review.json', 'state/studio/draft.json'):
         return 32 * 1024**2
     if RECORDING.fullmatch(name) or PUBLICATION.fullmatch(name):
         return 32 * 1024**2
@@ -670,7 +670,21 @@ def _studio_media_record(name, value):
 
 
 def validate(db, name, value):
-    if name == 'state/operations/resources.json':
+    if name == 'state/studio/draft.json':
+        # Autosave intentionally retains an invalid/unfinished script or title.
+        # Check its bounded storage shape, not production readiness.
+        fields(value, {'schema', 'text', 'title', 'voice_ids', 'project_id'})
+        if type(value['schema']) is not int or value['schema'] != 1:
+            raise ValueError('Invalid Studio recovery draft schema.')
+        text(value['text'], 32 * 1024**2, empty=True)
+        text(value['title'], 32768, empty=True)
+        if type(value['voice_ids']) is not list or len(value['voice_ids']) > 10000:
+            raise ValueError('Invalid Studio draft voice declarations.')
+        for voice in value['voice_ids']:
+            text(voice, 4096)
+        if value['project_id'] is not None:
+            text(value['project_id'], 80)
+    elif name == 'state/operations/resources.json':
         from .operations.models import ResourceLimits
         fields(value, {'schema', 'limits'})
         if value['schema'] != 'carr-resource-policy/1':
