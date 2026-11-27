@@ -90,7 +90,12 @@
       "test_excessive_code_handle_inventory_is_refused_before_any_native_lease": 1,
       "test_djvu_final_odd_chunk_ends_exactly_at_its_containing_form": 4,
       "test_djvu_final_padding_exception_never_relaxes_chunk_bounds_or_sibling_alignment": 2,
-      "test_qualified_djvu_requires_explicit_selection_and_does_not_enable_other_families": 1
+      "test_qualified_djvu_requires_explicit_selection_and_does_not_enable_other_families": 1,
+      "test_chm_legacy_orphan_paragraph_end_preserves_decoding_and_text_order": 3,
+      "test_chm_paragraph_normalization_keeps_active_hidden_and_literal_tokens_inert": 1,
+      "test_chm_paragraph_normalization_does_not_relax_other_malformed_structure": 3,
+      "test_chm_undeclared_html_and_general_html_reader_keep_their_strict_endtag_contract": 1,
+      "test_chm_paragraph_normalization_uses_current_text_and_absolute_time_budgets": 2
     }
   },
   "native_cases": 17,
