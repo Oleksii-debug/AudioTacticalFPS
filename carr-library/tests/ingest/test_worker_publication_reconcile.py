@@ -3,6 +3,7 @@ from contextlib import contextmanager
 from hashlib import sha256
 import json
 from pathlib import Path
+from types import SimpleNamespace
 import time
 
 import pytest
@@ -50,6 +51,12 @@ def publication_barrier(monkeypatch, tmp_path, phase, *, action='wait'):
         + 'raise SystemExit(worker.main())\n')
 
     def launch(command, **kwargs):
+        # _stop uses the same subprocess module for native Windows cleanup.
+        # Pass only that exact command for a child this helper launched.
+        if (len(command) == 5 and command[:2] == ['taskkill', '/PID']
+                and command[3:] == ['/T', '/F']):
+            assert command[2] in {str(child.pid) for child in children}
+            return popen(command, **kwargs)
         assert command[1:6] == ['-I', '-B', '-X', 'utf8', '-c']
         child = popen([*command[:6], hook, *command[7:]], **kwargs)
         children.append(child)
@@ -223,3 +230,30 @@ def test_padded_edition_metadata_matches_catalog_after_real_commit(tmp_path, mon
         row = db.execute('SELECT language,edition,volume FROM catalog_edition WHERE workspace=?',
                          (workspace,)).fetchone()
         assert tuple(row) == (' uk ', ' Edition one ', ' Volume 2 ')
+
+
+def test_publication_barrier_passes_owned_windows_taskkill_to_original_popen(tmp_path, monkeypatch):
+    calls = []
+    child = SimpleNamespace(pid=24680)
+
+    def original_popen(command, **kwargs):
+        calls.append((command, kwargs))
+        return child
+
+    monkeypatch.setattr(worker.subprocess, 'Popen', original_popen)
+    _, children = publication_barrier(monkeypatch, tmp_path, 'after')
+    # This routing-only spy does not replace cleanup in the real-child cases.
+    worker.subprocess.Popen(['python', '-I', '-B', '-X', 'utf8', '-c', 'pass'])
+    assert children == [child]
+    command = ['taskkill', '/PID', str(child.pid), '/T', '/F']
+    options = dict(stdout=worker.subprocess.DEVNULL, stderr=worker.subprocess.DEVNULL,
+                   creationflags=getattr(worker.subprocess, 'CREATE_NO_WINDOW', 0))
+
+    assert worker.subprocess.Popen(command, **options) is child
+    assert calls[-1][0] is command and calls[-1][1] == options
+    assert children == [child]
+    with pytest.raises(AssertionError):
+        worker.subprocess.Popen(['taskkill', '/PID', '99999', '/T', '/F'])
+    with pytest.raises(AssertionError):
+        worker.subprocess.Popen(['unrelated-command'])
+    assert len(calls) == 2
