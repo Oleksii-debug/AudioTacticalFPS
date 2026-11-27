@@ -1,4 +1,4 @@
-name: CARR QuickJS XML profile review
+name: CARR QuickJS pinned sort-cache profile review
 
 on:
   push:
@@ -46,11 +46,11 @@ jobs:
           $check = @'
           import hashlib, importlib.metadata, json, pathlib, sys
           import quickjs
-          from carr_library.academic_integration import formatting
+          from carr_library.academic_integration import formatting, regeneration, runtime_adapter
           from carr_library.citations import csl
           root = pathlib.Path.cwd().resolve()
           sources = {}
-          for module, relative in ((formatting, 'academic_integration/formatting.py'), (csl, 'citations/csl.py')):
+          for module, relative in ((formatting, 'academic_integration/formatting.py'), (regeneration, 'academic_integration/regeneration.py'), (runtime_adapter, 'academic_integration/runtime_adapter.py'), (csl, 'citations/csl.py')):
               path = pathlib.Path(module.__file__).resolve()
               assert path == root / 'src/carr_library' / relative, (path, relative)
               sources[relative] = hashlib.sha256(path.read_bytes()).hexdigest()
@@ -62,7 +62,8 @@ jobs:
           assert context.eval('6 * 7') == 42
           print(json.dumps({'python': sys.executable, 'quickjs': str(pathlib.Path(quickjs.__file__).resolve()),
                             'quickjs_ng': importlib.metadata.version('quickjs-ng'), 'sources': sources,
-                            'historical_cpu_budget_seconds': 30, 'historical_memory_bytes': 256 * 1024 * 1024},
+                            'historical_cpu_budget_seconds': 30, 'historical_memory_bytes': 256 * 1024 * 1024,
+                            'runtime_adapter': runtime_adapter.adapter_identity()},
                            sort_keys=True))
           '@
           $check | python -B - | Tee-Object ci-quickjs/origins.json
@@ -72,10 +73,10 @@ jobs:
         run: |
           python -B scripts/quickjs_profile_diagnostic.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Run every unchanged historical style oracle and all runtime boundaries
+      - name: Run unchanged historical oracles, exact sort equivalence and receipt regeneration
         timeout-minutes: 8
         run: |
-          python -B -m pytest --import-mode=importlib -p no:cacheprovider -o xfail_strict=true -vv --durations=30 --junitxml=ci-quickjs/results.xml tests/academic_integration/test_formatting.py 2>&1 | Tee-Object ci-quickjs/formatting.txt
+          python -B -m pytest --import-mode=importlib -p no:cacheprovider -o xfail_strict=true -vv --durations=30 --junitxml=ci-quickjs/results.xml tests/academic_integration/test_formatting.py tests/academic_integration/test_runtime_adapter.py tests/academic_integration/test_regeneration.py 2>&1 | Tee-Object ci-quickjs/formatting.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $check = @'
           import json, xml.etree.ElementTree as ET
@@ -83,7 +84,13 @@ jobs:
           cases = root.findall('.//testcase')
           bad = [case.attrib.get('name') for case in cases if any(case.find(kind) is not None for kind in ('failure', 'error', 'skipped'))]
           styles = [case.attrib['name'] for case in cases if case.attrib['name'].startswith('test_real_styles_preserve_page_extent_and_apply_the_actual_rules[')]
-          assert len(cases) == 27 and len(styles) == 7 and not bad, (len(cases), styles, bad)
+          formatting = [case for case in cases if case.attrib.get('classname', '').endswith('.test_formatting')]
+          adapters = [case for case in cases if case.attrib.get('classname', '').endswith('.test_runtime_adapter')]
+          regeneration = [case for case in cases if case.attrib.get('classname', '').endswith('.test_regeneration')]
+          equivalence = [case for case in adapters if case.attrib['name'].startswith('test_actual_macro_cache_matches_original_multikey_sort_and_disambiguation[')]
+          historical = [case for case in adapters if case.attrib['name'] == 'test_historical_docx_regenerates_to_explicit_adapter_without_mutating_original']
+          assert len(formatting) == 27 and len(adapters) == 15 and len(regeneration) >= 10, (len(formatting), len(adapters), len(regeneration))
+          assert len(styles) == 7 and len(equivalence) == 4 and len(historical) == 1 and not bad, (styles, len(equivalence), len(historical), bad)
           print(json.dumps({'status': 'PASS', 'passed': len(cases), 'failed': 0, 'skipped': 0, 'historical_styles': styles}, sort_keys=True))
           '@
           $check | python -B - | Tee-Object ci-quickjs/summary.json

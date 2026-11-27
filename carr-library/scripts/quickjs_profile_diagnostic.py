@@ -6,7 +6,7 @@ from pathlib import Path
 from time import monotonic
 
 import quickjs
-from carr_library.academic_integration import CitationRequest, formatting
+from carr_library.academic_integration import CitationRequest, formatting, runtime_adapter
 
 rows = []
 original_context, original_bridge = quickjs.Context, formatting._DOCUMENT_BRIDGE
@@ -102,5 +102,6 @@ destination = Path('ci-quickjs/runtime-diagnostics.json')
 destination.write_text(json.dumps({
     'processor_sha256': sha256((formatting._ROOT/'vendor/citeproc.js').read_bytes()).hexdigest(),
     'representation': 'same verified style and locale JSON XML; diagnostic bridge phase markers only',
+    'runtime_adapter': runtime_adapter.adapter_identity(),
     'cases': rows,
 }, ensure_ascii=True, indent=2), encoding='utf-8')

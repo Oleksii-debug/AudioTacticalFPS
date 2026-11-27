@@ -1,8 +1,8 @@
-"""Offline CSL formatting with the pinned, unmodified citeproc-js processor.
+"""Offline CSL formatting with an explicitly identified compatibility adapter.
 
 The canonical bounded QuickJS runtime executes the reviewed document resource
-profile. Existing processor/style identities remain exact for regeneration.
-No engine, style, locale or reference is downloaded.
+profile. Original processor/style assets stay exact; new results separately name
+the pinned sort-macro cache adaptation. No resource is downloaded.
 """
 from __future__ import annotations
 
@@ -484,6 +484,11 @@ def _run(payload: dict, *, node_path: Path | str | None, cancelled: Callable[[],
         if len(processor) > 2 * 1024 * 1024 or sha256(processor).hexdigest() != manifest['processor']['sha256']:
             raise CitationError('The installed citation processor failed its integrity check.')
         from ..citations.csl import RenderBudget, _execute, _xml_json
+        from .runtime_adapter import prepare_processor
+        try:
+            processor, runtime_adapter = prepare_processor(processor)
+        except ValueError as exc:
+            raise CitationError(str(exc)) from exc
         # Feed the same verified XML bytes through citeproc-js's documented
         # JSON XML interface, as the canonical citation profile already does.
         # Its JavaScript string parser repeatedly reparses styles/locales and
@@ -494,7 +499,7 @@ def _run(payload: dict, *, node_path: Path | str | None, cancelled: Callable[[],
         if len(json.dumps(runtime_payload, ensure_ascii=False, allow_nan=False,
                           separators=(',', ':')).encode('utf-8')) > _MAX_BYTES:
             raise CitationError('The combined CSL input exceeds its processing budget.')
-        result = _execute(runtime_payload, processor=processor.decode('utf-8'), bridge=_DOCUMENT_BRIDGE,
+        result = _execute(runtime_payload, processor=processor, bridge=_DOCUMENT_BRIDGE,
             budget=RenderBudget(max_records=_MAX_REFERENCES, max_citations=_MAX_CLUSTERS,
                 max_input_bytes=_MAX_BYTES, max_output_bytes=_MAX_BYTES,
                 memory_bytes=256 * 1024 * 1024, cpu_seconds=timeout), cancelled=cancelled)
@@ -512,6 +517,8 @@ def _run(payload: dict, *, node_path: Path | str | None, cancelled: Callable[[],
         raise CitationError('The citation processor returned invalid output.') from exc
     if type(value) is not dict:
         raise CitationError('The citation processor returned invalid output.')
+    # This proof comes from the verified Python handoff, never from JS input.
+    value['runtime_adapter'] = runtime_adapter
     return value
 
 
@@ -560,14 +567,22 @@ def render_citations(csl_items: Sequence[Mapping], *, style: str = 'apa', locale
             warnings += ('The CSL processor reported an incomplete bibliography entry; review source metadata.',)
     except (KeyError, TypeError, AttributeError) as exc:
         raise CitationError('The citation processor returned an invalid result shape.') from exc
+    processor_identity = dict(manifest['processor'])
+    attribution = manifest['attribution']
+    if 'runtime_adapter' in result:
+        from .runtime_adapter import adapter_identity
+        if result['runtime_adapter'] != adapter_identity():
+            raise CitationError('The citation runtime adaptation identity changed.')
+        processor_identity['runtime_adapter'] = result['runtime_adapter']
+        attribution += ' ' + result['runtime_adapter']['attribution']
     interchange = {'schema': 1, 'references': references, 'clusters': clusters, 'locale': locale,
         'style': {k: getattr(info, k) for k in StyleInfo.__dataclass_fields__},
-        'processor': manifest['processor'], 'attribution': manifest['attribution'],
+        'processor': processor_identity, 'attribution': attribution,
         'bibliography_parameters': {k: result['parameters'].get(k) for k in (
             'hangingindent', 'linespacing', 'entryspacing', 'second-field-align')},
         'bibliography': [{'reference_ids': list(x.reference_ids), 'text': x.text, 'html': x.html} for x in bibliography],
         'citations': [{'cluster_id': x.cluster_id, 'reference_ids': list(x.reference_ids), 'text': x.text,
                        'html': x.html, 'note_index': x.note_index} for x in rendered], 'warnings': list(warnings)}
     return FormattedCitations(info, locale, tuple(bibliography), tuple(rendered), warnings,
-                              manifest['attribution'], json.dumps(interchange, ensure_ascii=False,
+                              attribution, json.dumps(interchange, ensure_ascii=False,
                                                                   sort_keys=True, allow_nan=False))

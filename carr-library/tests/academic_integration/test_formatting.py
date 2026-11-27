@@ -249,7 +249,10 @@ def test_real_document_profile_uses_structured_xml_without_the_string_parser(
         assert payload['style_xml']['name'] == 'style'
         assert all(value['name'] == 'locale' for value in payload['locales'].values())
         assert budget.cpu_seconds == 30 and budget.memory_bytes == 256 * 1024 * 1024
-        assert sha256(processor.encode('utf-8')).hexdigest() == formatting._manifest()['processor']['sha256']
+        from carr_library.academic_integration.runtime_adapter import adapter_identity
+        identity = adapter_identity()
+        assert sha256(processor.encode('utf-8')).hexdigest() == identity['adapted_processor_sha256']
+        assert sha256((formatting._ROOT / 'vendor/citeproc.js').read_bytes()).hexdigest() == identity['base_processor_sha256']
         observed.append(True)
         # The actual pinned processor still formats the reference. Poison only
         # its fallback XML-string parser so the old runtime handoff fails.

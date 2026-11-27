@@ -1,0 +1,35 @@
+Sort-mode macro cache compatibility adaptation — 2026-11-27
+
+The three JavaScript edits in citeproc-sort-macro-cache.json are derived from
+citeproc-js by Frank Bennett (Copyright (c) 2009-2019 Frank Bennett). The
+sort-mode cache change is contributed by Dan Stillman in upstream PR276:
+https://github.com/Juris-M/citeproc-js/pull/276
+Pinned source revision: adffcfa3189ed21cbdb5272a74a8edbf817ac326
+Pinned source file: src/util_nodes.js
+SHA-256 of the upstream GitHub unified patch text (without a trailing newline):
+d811d34432150559e80bd338650456b3d592cca03474b77bbc09e818b8cc2703
+
+This is an unmerged upstream compatibility patch, not an official citeproc-js
+release. It is applied by carr-academic-runtime/1 only in memory after checking
+the exact original processor and the complete local patch asset. The three
+edits emit a sort-macro call, cache that macro separately from display macros,
+and configure its token list. No style, locale or original processor file is
+rewritten. The original CPAL and AGPL license copies and NOTICE remain here.
+This adaptation selects CPAL-1.0, as the original distribution does.
+
+The contents of the covered JavaScript edits are subject to the Common Public
+Attribution License Version 1.0 (the "License"); you may not use them except
+in compliance with the License. A copy accompanies them in
+LICENSE-CPAL-1.0.txt and is available at https://opensource.org/license/cpal_1-0.
+The License is based on the Mozilla Public License Version 1.1, with Sections
+14 and 15 for network use and attribution. The Original Code is citeproc-js.
+The Initial Developer of the Original Code is Frank Bennett. Portions written
+by Frank Bennett are Copyright (c) 2009-2019 Frank Bennett. All Rights Reserved.
+The software is supplied without warranty; see the accompanying full License.
+
+The human-readable exact before/after edits, original source, adapter source,
+and licenses are shipped together. Every new citation document names the
+original processor plus this separate adapter's resource profile, patch hash,
+source revision, original/derived processor hashes and attribution. Original
+receipts continue to be recognized exactly; explicit regeneration produces a
+new document naming the adapter and leaves the old file unchanged.
