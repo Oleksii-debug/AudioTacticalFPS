@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import sys
+import threading
 from tempfile import TemporaryDirectory
 import traceback
 from types import SimpleNamespace
@@ -32,6 +33,7 @@ def main():
     gui = ProbeApp(False)
     def abort(message):
         failures.append(message)
+        print(json.dumps({'status': 'FAIL', 'failure': message, 'checks': checks}), flush=True)
         if active[0] is not None:
             active[0].cancelled.set()
             active[0].closed = True
@@ -114,6 +116,36 @@ def main():
                 click(settings.remove_button)
                 later(lambda: after_idle(finish))
             def confirm_delete():
+                if sys.platform == 'win32':
+                    # wxMSW 3.2 uses TaskDialogIndirect for MessageDialog. Its
+                    # HWND is owned by Windows, so wx.IsModal()/EndModal() do
+                    # not control this native confirmation. Click its real Yes
+                    # button, scoped to this process and this settings dialog.
+                    import ctypes
+                    from ctypes import wintypes
+                    user = ctypes.WinDLL('user32', use_last_error=True)
+                    user.FindWindowW.argtypes = (wintypes.LPCWSTR, wintypes.LPCWSTR)
+                    user.FindWindowW.restype = wintypes.HWND
+                    user.GetWindowThreadProcessId.argtypes = (wintypes.HWND, ctypes.POINTER(wintypes.DWORD))
+                    user.GetWindowThreadProcessId.restype = wintypes.DWORD
+                    user.GetWindow.argtypes = (wintypes.HWND, wintypes.UINT)
+                    user.GetWindow.restype = wintypes.HWND
+                    user.GetDlgItem.argtypes = (wintypes.HWND, ctypes.c_int)
+                    user.GetDlgItem.restype = wintypes.HWND
+                    user.IsWindowEnabled.argtypes = (wintypes.HWND,)
+                    user.IsWindowEnabled.restype = wintypes.BOOL
+                    user.SendMessageW.argtypes = (wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM)
+                    user.SendMessageW.restype = ctypes.c_ssize_t
+                    native = user.FindWindowW(None, 'Remove selected connection?')
+                    assert native, 'The native Windows confirmation was not shown.'
+                    owner_pid = wintypes.DWORD()
+                    user.GetWindowThreadProcessId(native, ctypes.byref(owner_pid))
+                    assert owner_pid.value == os.getpid()
+                    assert user.GetWindow(native, 4) == settings.dialog.GetHandle()  # GW_OWNER
+                    button = user.GetDlgItem(native, 6)  # Win32 IDYES
+                    assert button and user.IsWindowEnabled(button)
+                    user.SendMessageW(button, 0x00F5, 0, 0)  # BM_CLICK
+                    return
                 dialogs = [window for window in wx.GetTopLevelWindows()
                            if isinstance(window, wx.MessageDialog) and window.GetTitle() == 'Remove selected connection?']
                 assert len(dialogs) == 1 and dialogs[0].IsModal()
@@ -131,10 +163,18 @@ def main():
             active[0] = None
             frame.Destroy()
             gui.ExitMainLoop()
+        def hard_timeout():
+            print(json.dumps({'status': 'FAIL', 'failure': 'Native provider modal did not close within 35 seconds.',
+                              'checks': checks}), flush=True)
+            os._exit(1)
+        hard_watchdog = threading.Timer(35, hard_timeout)
+        hard_watchdog.daemon = True
+        hard_watchdog.start()
         watchdog = wx.CallLater(20000, lambda: abort('Native provider settings exceeded its 20 second watchdog.'))
         wx.CallAfter(lambda: guarded(run))
         gui.MainLoop()
         watchdog.Stop()
+        hard_watchdog.cancel()
     if failures:
         print(json.dumps({'status': 'FAIL', 'failures': failures, 'checks': checks}, ensure_ascii=False))
         return 1

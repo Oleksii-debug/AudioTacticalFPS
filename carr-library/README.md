@@ -8,7 +8,9 @@ unrelated repository's `main` branch is unchanged.
 
 The standalone Windows x64 candidate includes Python, dependencies and the
 verified local multilingual MiniLM model. Extract its complete folder, run
-`Install.cmd`, then `ResearchLibrary.cmd`. No Python installation or internet
+`Install.cmd`, then `ResearchLibrary.exe`. The CMD launcher remains available.
+The native entry is an unsigned private candidate; no signed-release claim is
+made. No Python installation or internet
 connection is needed for that bundle. `CheckInstallation.cmd` exercises a
 temporary synthetic library without touching personal research.
 

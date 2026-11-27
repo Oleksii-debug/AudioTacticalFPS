@@ -137,6 +137,44 @@ def test_capture_uses_bound_native_arguments_and_file_backed_output(monkeypatch)
     assert models._capture(native, '--list-langs', lambda: 3) == report('eng')
 
 
+@pytest.mark.parametrize('matching_directory', [True, False])
+def test_ordered_chooser_uses_unicode_safe_cwd_and_validates_report_binding(tmp_path, monkeypatch, matching_directory):
+    from carr_library.extract import ocr_process
+    directory = tmp_path / 'Моделі користувача'
+    directory.mkdir()
+    other = tmp_path / 'other'
+    other.mkdir()
+    before_cwd = Path.cwd()
+    before_environment = dict(os.environ)
+    monkeypatch.setattr(ocr_process, 'sys', SimpleNamespace(platform='win32'))
+    native = ocr_runtime.OcrRuntime('selected local engine', tessdata=directory)
+
+    class Process:
+        def __init__(self, argv, **kwargs):
+            assert argv == ['selected local engine', '--tessdata-dir', '.', '--list-langs']
+            assert kwargs['cwd'] == directory
+            assert kwargs.get('shell', False) is False
+            assert kwargs['stdout'].fileno() >= 0 and kwargs['stderr'].fileno() >= 0
+            selected = './' if matching_directory else str(other)
+            kwargs['stdout'].write(f'List of available languages in "{selected}" (1):\neng\n'.encode('utf-8'))
+            kwargs['stdout'].flush()
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+        def wait(self, timeout=None):
+            assert timeout is None or timeout <= .05
+            return 0
+        def poll(self): return 0
+
+    monkeypatch.setattr(subprocess, 'Popen', Process)
+    if matching_directory:
+        actual = models._capture(native, '--list-langs', lambda: 3)
+        assert actual == f'List of available languages in "{directory}" (1):\neng\n'
+    else:
+        with pytest.raises(ocr_runtime.OcrRuntimeError, match='different model directory'):
+            models._capture(native, '--list-langs', lambda: 3)
+    assert Path.cwd() == before_cwd and dict(os.environ) == before_environment
+
+
 @pytest.mark.parametrize('stream', ['stdout', 'stderr'])
 def test_actual_child_oversized_output_is_stopped_and_rejected(stream):
     # Actual bounded process handling, using a synthetic Python emitter instead

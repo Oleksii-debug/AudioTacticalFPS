@@ -21,8 +21,11 @@ It does not contact a package index and does not require administrator access.
 The smaller wheel-only variant requires CPython 3.11 through the Windows `py`
 launcher. Its manifest identifies whether Python is included.
 
-After installation, open `ResearchLibrary.cmd`. The terminal stays visible if
-startup fails, so a screen reader can read the error. Installation and
+After installation, open `ResearchLibrary.exe` when the private package includes
+the native entry. This unsigned launcher uses the included Python and the same
+installation marker. Its source and build checks do not constitute code signing
+or NVDA acceptance. `ResearchLibrary.cmd` remains available; its terminal stays
+visible if startup fails, so a screen reader can read the error. Installation and
 `CheckInstallation.cmd` verify that native desktop and document components can
 load before reporting success, then run the synthetic application self-test.
 When OCR is included, the checks also recognize a generated test image.
