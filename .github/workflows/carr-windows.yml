@@ -367,6 +367,7 @@ jobs:
             'tests/extract/test_docx_hidden_styles.py',
             'tests/packaging/test_windows_bundle.py',
             'tests/packaging/test_native_launcher.py',
+            'tests/packaging/test_native_checks.py',
             'tests/ingest/test_txt_replay_registration.py',
             'tests/ui/test_federated_labels.py',
             'tests/search/test_literal_unicode_memory.py',
@@ -879,6 +880,7 @@ jobs:
               'tests/ui/test_operation_progress.py',
               'tests/e2e/test_import_progress.py',
               'tests/storage/test_backup_content_revalidation.py',
+              'tests/packaging/test_native_checks.py',
               'tests/e2e/test_import_worker_publication.py']
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:

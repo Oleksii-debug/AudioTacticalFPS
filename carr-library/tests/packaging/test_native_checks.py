@@ -184,3 +184,31 @@ def test_invalid_manifest_rejected_before_native_imports(tmp_path, monkeypatch, 
     assert report['status'] == 'FAIL'
     assert report['failed_component'] == 'installation manifest'
     assert not events
+
+
+@pytest.mark.parametrize('name', ['bundled_audio_runtime', 'bundled_native_launcher'])
+@pytest.mark.parametrize('value', [False, True])
+def test_current_bundle_flags_preserve_native_dependency_checks(tmp_path, monkeypatch, name, value):
+    manifest = bundle(tmp_path)
+    manifest[name] = value
+    (tmp_path / 'bundle-manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+    events = []
+    controlled_imports(monkeypatch, events)
+    report = native_checks.check_native_dependencies(tmp_path)
+    assert report['status'] == 'PASS'
+    assert events == ['carr_library.native_runtime', ('activate_bundled_runtime', str(tmp_path)),
+                      *[module for _, module in native_checks.NATIVE_MODULES]]
+    assert report['windows_nvda'] == report['native_gui'] == 'NOT_RUN'
+
+
+@pytest.mark.parametrize('name', ['bundled_audio_runtime', 'bundled_native_launcher'])
+@pytest.mark.parametrize('value', ['false', 1, None])
+def test_current_bundle_flags_reject_nonboolean_values_before_imports(tmp_path, monkeypatch, name, value):
+    manifest = bundle(tmp_path)
+    manifest[name] = value
+    (tmp_path / 'bundle-manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+    events = []
+    controlled_imports(monkeypatch, events)
+    report = native_checks.check_native_dependencies(tmp_path)
+    assert report['status'] == 'FAIL' and report['failed_component'] == 'installation manifest'
+    assert not events

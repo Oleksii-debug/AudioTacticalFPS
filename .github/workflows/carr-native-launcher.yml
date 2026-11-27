@@ -10,6 +10,8 @@ on:
       - carr-library/packaging/native_launcher.py
       - carr-library/packaging/build_windows_bundle.py
       - carr-library/packaging/install_windows.py
+      - carr-library/src/carr_library/native_checks.py
+      - carr-library/tests/packaging/test_native_checks.py
       - carr-library/tests/packaging/test_native_launcher.py
       - carr-library/tests/packaging/test_windows_bundle.py
       - .github/workflows/carr-native-launcher.yml

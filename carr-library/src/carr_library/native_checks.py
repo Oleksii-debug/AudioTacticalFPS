@@ -50,16 +50,18 @@ def _manifest(root):
         raise ValueError('The installation manifest changed while being read.')
     value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique_object)
     required = {'schema', 'target', 'bundled_python', 'bundled_model', 'bundled_ocr', 'files'}
+    optional_flags = {'bundled_native_runtime', 'bundled_audio_runtime', 'bundled_native_launcher'}
     if (type(value) is not dict or not required <= value.keys()
-            or value.keys() - required - {'source_commit', 'bundled_native_runtime'}
+            or value.keys() - required - {'source_commit'} - optional_flags
             or type(value['schema']) is not int or value['schema'] != 1
             or value['target'] != TARGET
             or any(type(value[name]) is not bool
                    for name in ('bundled_python', 'bundled_model', 'bundled_ocr'))
             or type(value['files']) is not dict or not 1 <= len(value['files']) <= MAX_FILES):
         raise ValueError('Unsupported installation manifest or optional-component flags.')
-    if ('bundled_native_runtime' in value and type(value['bundled_native_runtime']) is not bool):
-        raise ValueError('The bundled_native_runtime installation flag must be a boolean.')
+    for flag in optional_flags:
+        if flag in value and type(value[flag]) is not bool:
+            raise ValueError('The ' + flag + ' installation flag must be a boolean.')
     if ('source_commit' in value and (not isinstance(value['source_commit'], str)
             or not re.fullmatch('[0-9a-f]{40}', value['source_commit']))):
         raise ValueError('Invalid installation source commit.')

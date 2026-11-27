@@ -32,6 +32,7 @@ capture = load_module("native_launcher_admission_test", ROOT / "packaging/native
 builder = load_module("native_launcher_bundle_test", ROOT / "packaging/build_windows_bundle.py")
 installer = load_module("native_launcher_installer_test", ROOT / "packaging/install_windows.py")
 probe = load_module("native_launcher_pe_test", ROOT / "packaging/native-launcher/probe_pe.py")
+native_checks = load_module("native_launcher_app_check_test", ROOT / "src/carr_library/native_checks.py")
 
 
 def pe_fixture():
@@ -274,6 +275,9 @@ class NativeLauncherBundleTests(unittest.TestCase):
         self.assertEqual((self.output / "native-launcher-build.json").read_bytes(), report)
         self.assertEqual(manifest["files"]["ResearchLibrary.exe"], hashlib.sha256(image).hexdigest())
         self.assertEqual(manifest["files"]["native-launcher-build.json"], hashlib.sha256(report).hexdigest())
+        # Exercise both production readers on the assembler's real manifest;
+        # hand-written permissive flag fixtures cannot prove this interoperability.
+        self.assertEqual(native_checks._manifest(self.output), manifest)
         installer.verify(self.output)
         (self.output / "ResearchLibrary.exe").write_bytes(image + b"changed")
         with self.assertRaisesRegex(ValueError, "checksum"):
