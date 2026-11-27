@@ -52,10 +52,11 @@ def test_ui_selects_exact_files_and_uses_existing_job_cancel_event(tmp_path, mon
             return super().extract_many(sources, cancelled=cancelled, progress=progress)
 
     monkeypatch.setattr(ui, 'ConversionService', InspectService)
-    def run_job(title, operation, done, failed, *, progress_tracker, progress_outcome):
+    def run_job(title, operation, done, failed, *, progress_tracker, progress_outcome, done_is_observer):
         captured['title'] = title
         assert progress_tracker.snapshot().total == 1
         assert progress_outcome(()) == 'completed'
+        assert done_is_observer is True
         frame.cancel_event.set()
         try:
             operation()

@@ -800,7 +800,7 @@ def test_translation_progress_reports_actual_result_before_announcing_completion
     result = {'status': status}
     accepted = Mock()
     value.run_job('Translation', lambda: result, accepted, progress_tracker=tracker,
-                  progress_outcome=translation_outcome)
+                  progress_outcome=translation_outcome, done_is_observer=True)
     if cancelled:
         value.cancel_event.set()
     future.set_result(result)
@@ -823,3 +823,156 @@ def test_untyped_cancelled_job_still_cannot_announce_completion(classes):
     future.set_result(None)
     classes[1].pop()()
     assert value.report.call_args.args == ('Unverified operation: cancelled.',)
+
+
+
+@pytest.mark.parametrize('observer', ['report', 'done', 'view'])
+@pytest.mark.parametrize('late_cancel', [False, True])
+def test_committed_result_survives_display_observer_failure(classes, tmp_path, observer, late_cancel):
+    from carr_library.progress import ProgressTracker
+    value = frame(classes)
+    value.progress_view = Mock()
+    future = Future()
+    value.executor.submit.return_value = future
+    tracker = ProgressTracker('Reading export', total=1)
+    path = tmp_path / 'accepted-reading.txt'
+    raw = 'Public synthetic accepted reading text.\r\n'.encode('utf-8')
+
+    def produce():
+        with path.open('xb') as stream:
+            stream.write(raw)
+        tracker.update(completed=1, total=1)
+        return {'status': 'complete', 'path': path}
+
+    def display(result):
+        assert path.read_bytes() == raw
+        assert tracker.snapshot().percent == 99
+        if observer == 'done':
+            raise RuntimeError('Synthetic display failure.')
+
+    done, failed = Mock(side_effect=display), Mock()
+    value.run_job('Reading export', produce, done, failed=failed,
+                  progress_tracker=tracker, progress_outcome=lambda result: 'completed',
+                  done_is_observer=True)
+    result = value.executor.submit.call_args.args[0]()
+    if observer == 'report':
+        def report(message):
+            if message == 'Reading export: complete.':
+                raise RuntimeError('Synthetic status display failure.')
+        value.report.side_effect = report
+    elif observer == 'view':
+        value.progress_view.refresh.side_effect = RuntimeError('Synthetic progress display failure.')
+    if late_cancel:
+        value.cancel_event.set()
+    future.set_result(result)
+    classes[1].pop()()
+
+    assert path.read_bytes() == raw
+    assert tracker.snapshot().state == 'completed'
+    assert tracker.snapshot().percent == 100
+    done.assert_called_once_with(result)
+    failed.assert_not_called()
+    assert not value.working and not value.busy
+    assert 'operation result is unchanged' in value.report.call_args.args[0]
+
+
+@pytest.mark.parametrize('state', ['paused', 'cancelled', 'failed'])
+def test_incomplete_typed_outcome_survives_observer_failure_without_100_percent(classes, state):
+    from carr_library.progress import ProgressTracker
+    value = frame(classes)
+    future = Future()
+    value.executor.submit.return_value = future
+    tracker = ProgressTracker('Translation', total=2)
+    tracker.update(completed=1, total=2)
+    failed = Mock()
+    value.run_job('Translation', lambda: state, Mock(side_effect=ValueError('Display unavailable')),
+                  failed=failed, progress_tracker=tracker, progress_outcome=lambda result: result,
+                  done_is_observer=True)
+    value.cancel_event.set()
+    future.set_result(state)
+    classes[1].pop()()
+    assert tracker.snapshot().state == state
+    assert tracker.snapshot().percent != 100
+    failed.assert_not_called()
+    assert value.report.call_args.args[0].startswith('Translation: ' + state + '.')
+
+
+@pytest.mark.parametrize('failure', ['worker', 'classifier', 'invalid-outcome'])
+def test_typed_acceptance_error_is_not_hidden_by_late_cancel(classes, failure):
+    from carr_library.progress import ProgressTracker
+    value = frame(classes)
+    future = Future()
+    value.executor.submit.return_value = future
+    tracker = ProgressTracker('Translation', total=1)
+    done, failed = Mock(), Mock()
+
+    def classify(result):
+        if failure == 'classifier':
+            raise ValueError('The typed result could not be validated.')
+        return 'unrecognized' if failure == 'invalid-outcome' else 'completed'
+
+    value.run_job('Translation', lambda: None, done, failed=failed,
+                  progress_tracker=tracker, progress_outcome=classify, done_is_observer=True)
+    value.cancel_event.set()
+    if failure == 'worker':
+        future.set_exception(ValueError('Actual worker failed before a result.'))
+    else:
+        future.set_result({'status': 'unknown'})
+    classes[1].pop()()
+    assert tracker.snapshot().state == 'failed'
+    assert tracker.snapshot().percent != 100
+    done.assert_not_called()
+    failed.assert_called_once()
+
+
+def test_typed_cooperative_stop_remains_cancelled(classes):
+    from carr_library.progress import ProgressTracker
+    value = frame(classes)
+    future = Future()
+    value.executor.submit.return_value = future
+    tracker = ProgressTracker('Conversion', total=1)
+    done, failed = Mock(), Mock()
+    value.run_job('Conversion', lambda: None, done, failed=failed,
+                  progress_tracker=tracker, progress_outcome=lambda result: 'completed',
+                  done_is_observer=True)
+    future.set_exception(InterruptedError('Conversion stopped before publication.'))
+    classes[1].pop()()
+    assert tracker.snapshot().state == 'cancelled'
+    assert tracker.snapshot().percent != 100
+    done.assert_not_called()
+    failed.assert_called_once()
+
+
+def test_progress_finalization_failure_does_not_invoke_operation_failure_handler(classes, monkeypatch):
+    from carr_library.progress import ProgressTracker
+    value = frame(classes)
+    future = Future()
+    value.executor.submit.return_value = future
+    tracker = ProgressTracker('Accepted result', total=1)
+    failed = Mock()
+    calls = []
+
+    def broken_finish(state='completed', **kwargs):
+        calls.append((state, kwargs))
+        raise RuntimeError('Synthetic progress finalizer failure.')
+
+    monkeypatch.setattr(tracker, 'finish', broken_finish)
+    value.run_job('Accepted result', lambda: 'saved', failed=failed,
+                  progress_tracker=tracker, progress_outcome=lambda result: 'completed',
+                  done_is_observer=True)
+    future.set_result('saved')
+    classes[1].pop()()
+    assert calls == [('completed', {'verified': True})]
+    assert tracker.snapshot().state == 'running'
+    failed.assert_not_called()
+    assert 'operation result is unchanged' in value.report.call_args.args[0]
+
+
+@pytest.mark.parametrize('outcome', [None, 'completed', True])
+def test_display_only_callback_requires_callable_outcome_before_submission(classes, outcome):
+    value = frame(classes)
+    with pytest.raises(ValueError, match='callable progress outcome'):
+        value.run_job('Invalid observer contract', lambda: None,
+                      progress_outcome=outcome, done_is_observer=True)
+    value.executor.submit.assert_not_called()
+    assert not value.working and not value.busy

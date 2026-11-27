@@ -4,15 +4,16 @@ Handler tests exercise the production dialog and its exact service contract.
 Only the final Windows-only test creates native widgets; neither mocks nor a
 headless Linux run are evidence of Windows/NVDA or real provider acceptance.
 """
-from concurrent.futures import ThreadPoolExecutor
+import ast
+from concurrent.futures import Future, ThreadPoolExecutor
 from hashlib import sha256
 import importlib.util
 from pathlib import Path
 import sys
 import threading
 import time
-from types import ModuleType, SimpleNamespace
-from unittest.mock import patch
+from types import MethodType, ModuleType, SimpleNamespace
+from unittest.mock import Mock, patch
 
 import pytest
 import carr_library
@@ -937,3 +938,70 @@ def test_windows_native_dialog_async_lookup_focus_and_close(tmp_path):
         form.Destroy()
         host.Destroy()
         app.ProcessPendingEvents()
+
+
+
+@pytest.mark.parametrize('state,late_cancel,display_error,expected', [
+    ('complete', False, False, 'completed'),
+    ('complete', True, False, 'completed'),
+    ('duplicate', False, False, 'completed'),
+    ('quarantined', False, False, 'failed'),
+    ('complete', False, True, 'failed'),
+])
+def test_real_desktop_host_classifies_doi_only_after_existing_acceptance(
+        setup, state, late_cancel, display_error, expected):
+    """Join the real DOI closure to the real desktop job host, with no network."""
+    form, frame, library = looked_up(setup)
+    library.result_state = state
+    form.rights.SetValue(True)
+    source = Path(carr_library.__file__).resolve().parent / 'ui/desktop_app.py'
+    tree = ast.parse(source.read_text(encoding='utf-8'))
+    desktop = next(node for node in tree.body if isinstance(node, ast.ClassDef)
+                   and node.name == 'DesktopFrame')
+    methods = [node for node in desktop.body if isinstance(node, ast.FunctionDef)
+               and node.name in {'run_job', '_finish_job_controls'}]
+    assert len(methods) == 2
+    namespace = {'wx': frame.wx, '__package__': 'carr_library.ui'}
+    exec(compile(ast.Module(body=methods, type_ignores=[]), str(source), 'exec'), namespace)
+    frame.run_job = MethodType(namespace['run_job'], frame)
+    frame._finish_job_controls = MethodType(namespace['_finish_job_controls'], frame)
+    frame.cancel_button, frame.choice = Mock(), Mock()
+    frame.book.Disable, frame.book.Enable = Mock(), Mock()
+    frame.menu_bar = Mock()
+    frame.menu_bar.GetMenuCount.return_value = 3
+    frame.menu_bar.FindMenu.return_value = 2
+    frame.progress_view, frame.executor = Mock(), Mock()
+    future = Future()
+    frame.executor.submit.return_value = future
+
+    if display_error:
+        set_value = form.status.SetValue
+        def reject_import_display(value):
+            if value.startswith('Import state:'):
+                raise ValueError('Synthetic complete-result display rejection.')
+            set_value(value)
+        form.status.SetValue = reject_import_display
+
+    assert form.download_source()
+    tracker = frame.progress_view.track.call_args.args[0]
+    operation = frame.executor.submit.call_args.args[0]
+    result = operation()
+    assert form.pending and frame.working
+    assert tracker.snapshot().state == 'running'
+    if late_cancel:
+        form.cancel_operation()
+    future.set_result(result)
+    assert form.pending  # Acceptance happens on the desktop's queued UI callback.
+    while frame.wx.callbacks:
+        frame.wx.callbacks.pop(0)()
+
+    assert not form.pending and not frame.working
+    assert form.changed
+    assert tracker.snapshot().state == expected
+    assert (tracker.snapshot().percent == 100) is (expected == 'completed')
+    assert frame.messages[-1] == ('Downloading and importing selected PDF: ' +
+                                  ('complete' if expected == 'completed' else expected) + '.')
+    if display_error:
+        assert 'could not be displayed' in form.status.GetValue()
+    else:
+        assert 'Import state: ' + state in form.status.GetValue()

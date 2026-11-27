@@ -231,6 +231,7 @@ def test_native_begin_passes_shared_tracker_and_typed_outcome():
     begin, _, _ = native_callbacks()(
         frame, Mock(), Mock(), Mock(), Event(), SimpleNamespace(ID_CLOSE=42))
     assert begin('Translation', lambda: None, Mock(), progress_tracker=tracker,
-                 progress_outcome=translation_outcome)
+                 progress_outcome=translation_outcome, done_is_observer=True)
     assert frame.run_job.call_args.kwargs['progress_tracker'] is tracker
     assert frame.run_job.call_args.kwargs['progress_outcome'] is translation_outcome
+    assert frame.run_job.call_args.kwargs['done_is_observer'] is True
