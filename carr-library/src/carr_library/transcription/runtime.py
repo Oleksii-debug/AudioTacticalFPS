@@ -341,7 +341,9 @@ def _inspect_inventory(roots, *, cancel=None, progress=None):
             if progress:
                 progress({'phase': 'Verifying installed ASR runtime files', 'status': 'running',
                           'current': name + ': ' + label, 'done': None, 'total': None, 'indeterminate': True})
-            selected_path = local_path(path.parent / relative, exists=True)
+            # PackagePath uses POSIX parts even on Windows. Parse its exact
+            # spelling through the host Path so an absolute drive keeps its root.
+            selected_path = local_path(path.parent / label, exists=True)
             if not any(selected_path.is_relative_to(root.resolve()) for root in roots):
                 raise ValueError('An installed-file record escapes the explicitly selected Python environment.')
             if selected_path in recorded_paths:

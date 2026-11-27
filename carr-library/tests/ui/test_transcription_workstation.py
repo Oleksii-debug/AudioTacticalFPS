@@ -537,3 +537,178 @@ def test_ui_actions_integrate_real_service_subprocess_and_durable_derivatives(vi
     assert {row['format'] for row in receipt['files']} == {'txt', 'srt', 'json'}
     assert any(row['edited'] for row in receipt['files'])
     assert all(Path(row['path']).is_file() for row in receipt['files'])
+
+
+
+def _native_profile_lifetime(view):
+    """Run selected real Panel methods with a separately retained native timer."""
+    import ast
+    from carr_library.ui import transcription_workstation as ui
+
+    source = Path(ui.__file__)
+    tree = ast.parse(source.read_text(encoding='utf-8'))
+    factory = next(node for node in tree.body
+                   if isinstance(node, ast.FunctionDef) and node.name == 'build_profile_page')
+    definition = deepcopy(next(node for node in factory.body if isinstance(node, ast.ClassDef)))
+    definition.name = 'OwnedProfile'
+    definition.bases = [ast.Name(id='NativePanel', ctx=ast.Load()),
+                        ast.Name(id='TranscriptionActions', ctx=ast.Load())]
+    names = {'_stop_timer', 'dispose', 'Destroy', 'on_destroy', 'finish_close'}
+    definition.body = [node for node in definition.body
+                       if isinstance(node, ast.FunctionDef) and node.name in names]
+
+    class NativePanel:
+        def __bool__(self):
+            return self.native_alive
+
+        def GetId(self):
+            raise AssertionError('Disposal queried the native Panel instead of its captured ID.')
+
+        def Destroy(self):
+            # Check ordering while the native Panel is still valid.
+            assert self.native_alive
+            assert not self.timer.running and self.timer.owner is None
+            self.destroy_requests += 1
+            self.native_alive = False
+            return True
+
+    class NativeTimer:
+        """wx.Timer owns its handler pointer independently of the Panel."""
+        def __init__(self, owner):
+            self.owner, self.running = owner, True
+            self.calls, self.deliveries = [], []
+
+        def Stop(self):
+            self.calls.append('stop')
+            self.running = False
+
+        def SetOwner(self, owner):
+            assert not self.running, 'Detach only after stopping native notifications.'
+            self.calls.append('detach')
+            self.owner = owner
+
+        def tick(self):
+            if self.running:
+                self.deliveries.append(self.owner)
+                assert self.owner.native_alive, 'A live timer retained a deleted native owner.'
+                self.owner.flush_progress()
+
+    closed_windows = []
+    namespace = {'NativePanel': NativePanel, 'TranscriptionActions': ui.TranscriptionActions,
+                 'close_window': lambda: closed_windows.append(True)}
+    exec(compile(ast.fix_missing_locations(ast.Module(body=[definition], type_ignores=[])),
+                 str(source), 'exec'), namespace)
+    page = namespace['OwnedProfile']()
+    page.__dict__.update(view.__dict__)
+    page.__dict__.pop('finish_close', None)
+    page.native_alive, page.destroy_requests = True, 0
+    page._native_id, page._destroy_requested = 4517, False
+    page.timer = NativeTimer(page)
+    return page, closed_windows
+
+
+@pytest.mark.parametrize('termination', ['direct', 'native-parent', 'rewrapped-parent'])
+def test_profile_native_disposal_stops_retained_timer_before_worker_completion(view, monkeypatch,
+                                                                              termination):
+    from threading import Thread
+
+    page, _ = _native_profile_lifetime(view)
+    entered, release, finished = Event(), Event(), Event()
+    outcome, forbidden, skipped = {}, [], []
+    for name in ('GetValue', 'SetValue', 'ChangeValue', 'GetSelection', 'SetSelection',
+                 'SetItems', 'Enable', 'SetFocus'):
+        original = getattr(Control, name)
+        def checked(control, *args, _name=name, _original=original, **kwargs):
+            if not page.native_alive:
+                forbidden.append(_name)
+                raise AssertionError('Late work touched a deleted profile control: ' + _name)
+            return _original(control, *args, **kwargs)
+        monkeypatch.setattr(Control, name, checked)
+
+    def held_run(options):
+        entered.set()
+        if not release.wait(3):
+            raise TimeoutError('The real profile worker was not released.')
+        options['progress']({'phase': 'Late retained result', 'done': 1, 'total': 2})
+
+    page.fake_service.on_run = held_run
+    page.start()
+    operation = page.operations[-1]
+
+    def worker():
+        try:
+            outcome['value'] = operation.operation()
+        except BaseException as error:
+            outcome['error'] = error
+        finally:
+            finished.set()
+
+    thread = Thread(target=worker)
+    thread.start()
+    timer = page.timer  # Keep the actual ownership shape alive after the Panel dies.
+    def event(identity, peer):
+        return SimpleNamespace(GetId=lambda: identity, GetEventObject=lambda: peer,
+                               Skip=lambda: skipped.append(identity))
+
+    try:
+        assert entered.wait(2), outcome
+        assert page.pending and timer.running and timer.owner is page
+        page.on_destroy(event(page._native_id + 1, object()))
+        assert not page.closed and timer.running and not timer.calls
+        if termination == 'direct':
+            assert page.Destroy() is True
+            assert page.destroy_requests == 1
+        else:
+            # EVT_WINDOW_DESTROY may see a wrapper already invalidated by SIP.
+            page.native_alive = False
+            peer = page if termination == 'native-parent' else object()
+            page.on_destroy(event(page._native_id, peer))
+        assert page.closed and page.cancel_event.is_set()
+        assert page.pending and not finished.is_set()
+        assert not page.frame.cancel_event.is_set()
+        assert timer.owner is None and not timer.running
+        assert timer.calls[:2] == ['stop', 'detach']
+        timer.tick()
+        assert not timer.deliveries
+
+        release.set()
+        thread.join(3)
+        assert not thread.is_alive() and finished.is_set(), outcome
+        assert 'error' not in outcome, outcome
+        assert outcome['value']['status'] == 'cancelled'
+        assert ('cancel', 'job-one') in page.fake_service.calls
+        page.frame.working = False
+        # Exercise the real saved completion and progress handlers after deletion.
+        operation.done(outcome['value'])
+        operation.failed(RuntimeError('A duplicate late failure must also be detached.'))
+        page._latest_progress = (page._epoch, 'Late timer update')
+        page.flush_progress()
+        page.report('Late direct report')
+        page.on_destroy(event(page._native_id, object()))
+        page.dispose()
+        assert page.Destroy() is False
+        timer.tick()
+        assert not forbidden and not timer.deliveries
+        assert page.current_job is None and not page.frame.cancel_event.is_set()
+        assert skipped[0] == page._native_id + 1 and skipped[-1] == page._native_id
+    finally:
+        release.set()
+        thread.join(3)
+        assert not thread.is_alive(), 'The owned profile worker did not settle.'
+
+
+def test_profile_normal_close_detaches_timer_before_closing_outer_window(view):
+    page, closed_windows = _native_profile_lifetime(view)
+    page.close()
+    assert page.closed and closed_windows == [True]
+    assert not page.timer.running and page.timer.owner is None
+    assert page.timer.calls == ['stop', 'detach']
+    assert page.native_alive and page.destroy_requests == 0
+
+
+def test_profile_partial_construction_can_dispose_before_timer_exists(view):
+    page, _ = _native_profile_lifetime(view)
+    del page.timer
+    page.dispose()
+    assert page.closed and page.cancel_event.is_set()
+    assert not page.frame.cancel_event.is_set()

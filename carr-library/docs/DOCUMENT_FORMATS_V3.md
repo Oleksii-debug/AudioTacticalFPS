@@ -61,19 +61,33 @@ Aliases use one canonical retention suffix: for example, an `.htm` or `.xhtml` s
 retained as a byte-identical `.html` file, and `.markdown` as `.md`. This changes
 the filename extension in the private original store, not the source bytes.
 
-### Formats outside this component
+### Additional explicit reading conversions
 
-V3 also requests AZW/AZW3, CHM, DjVu, legacy DOC/PPT/XLS, LIT, MOBI, PDB/PRC,
-RTF, TCR, WPD, additional raster-image workflows and more complex conversion
-features. A suffix in that requirements list is not evidence of implemented
-support. These formats must not be accepted by renaming them to TXT or by
-claiming their output came from a supported parser.
+The native **Convert → Convert documents for reading** workflow keeps additional
+formats in the existing conversion service. It writes a new UTF-8 reading copy
+and its source/text-hash provenance receipt; the retained original and catalog
+quotation authority remain unchanged.
 
-This component does not bundle or automatically invoke calibre, LibreOffice,
-Pandoc, a browser or a mail application. Optional external conversion needs a
-separately verified executable/version contract, constrained local execution,
-original and derivative provenance, explicit fidelity reporting, and tests of
-the actual output. Password or DRM bypass is not provided.
+| Source family | Explicit reader | Finite boundary |
+| --- | --- | --- |
+| DOC / PPT / XLS, WPD, PalmDoc PDB, WRI | Selected installed LibreOffice | Fixed declared import/export filters and an inactive private profile; guarded ODF reading afterward. Supported binary/header families only. Visual layout, printed pagination and spreadsheet formula fidelity are not promised. |
+| AZW / AZW3 / MOBI / PRC / LIT / TCR / CHM / DjVu | Selected installed Calibre | Unprotected supported book containers; DjVu must already contain text. Image-only DjVu is refused rather than silently routed through OCR. |
+| MHT / MHTML | Built-in isolated MIME reader | The declared textual root only; no attachment execution or remote-resource retrieval. |
+| TXTZ / ZIP | Existing guarded archive reader | One TXT for TXTZ, or supported readable text members for ZIP; bounded names/entries/expanded bytes, no filesystem extraction, nested archives or executable content. |
+| RTF | Existing selected Pandoc route | Explicit local conversion and derivative review; no automatic download or PATH-based fallback is implied. |
+
+Native tools are selected for the current operation and checked again before
+execution. Selection alone does not qualify a tool's dependencies, every file
+variant, visual fidelity or distribution rights. The dedicated finite native
+gates must pass for their reported operating system and exact selected build.
+The original direct-import table above remains the contract for raw catalog
+imports; legacy suffixes are not promoted by renaming them to TXT.
+
+See [selected legacy document boundaries](LEGACY_DOCUMENT_READING.md) and
+[Calibre reading and actual eight-format acceptance](CALIBRE_READING.md).
+No converter, browser, mail application, private model or DRM-removal tool is
+bundled or automatically acquired by these reading adapters. Password and DRM
+bypass are not provided.
 
 ## Resource and security boundaries
 
@@ -121,3 +135,12 @@ then reads an actually imported HTML source through the native Reading Desk.
 Input paths are supplied by the synthetic test; operating the operating-system
 file picker and manual NVDA are explicitly not claimed. A missing display or
 wx runtime returns `NOT_RUN` (exit 77), never a passing acceptance result.
+
+
+The current Office text boundary also accepts the observed empty static PPT
+geometry leaf and empty disabled header/footer slots. Exact attribute, text,
+child and finite-number checks remain in force; a sequential path lexer avoids
+exponential regular-expression backtracking. Authored hidden text, formula
+geometry, external links and unrecognized active structures are still refused.
+See [the selected Office workflow](LEGACY_DOCUMENT_READING.md) for the actual
+runtime identity, native fixtures and source/installed result references.

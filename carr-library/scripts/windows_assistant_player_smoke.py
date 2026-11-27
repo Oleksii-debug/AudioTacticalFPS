@@ -235,7 +235,7 @@ def native():
             check('actual durable ' + action + ' receipt binds the exact source revision',
                   result['schema'] == 'carr-current-player-receipt/1'
                   and result['action'] == action and result['workspace'] == workspace
-                  and result['edition'] == desk.identity.edition
+                  and result['edition'] == desk.identity.edition_id
                   and result['revision'] == desk.identity.revision
                   and result['asset_sha256'] == desk.identity.asset_sha256
                   and result['source_text_sha256'] == sha256(source_text.encode('utf-8')).hexdigest()

@@ -68,16 +68,18 @@ def studio(tmp_path):
     scheduler = _shared['Scheduler']()
     local, parent = _shared['Progress']('studio'), _shared['Progress']('main')
     dialog, reports = Owner(), []
-    frame = SimpleNamespace(report=reports.append)
+    work = _shared['WorkQueue']()
+    frame = SimpleNamespace(report=reports.append, library=SimpleNamespace(root=tmp_path))
     values = dict(current_job='complete-fixture', service=SimpleNamespace(
         get=lambda identity: {'destination': str(tmp_path)}, close=Mock(return_value=True)),
         dialog=dialog, progress=local, parent_progress=parent, report=lambda value, focus=False: reports.append(value),
         wx=SimpleNamespace(CallLater=scheduler, CallAfter=lambda action: action(), Timer=Timer,
                            EVT_TIMER='timer', EVT_WINDOW_DESTROY='destroy', ID_CLOSE=3),
         controls=Mock(), alive=True, busy=False, autosave=lambda: None,
+        run=work, library_root=tmp_path,
         cancel=threading.Event(), timer=Mock(), executor=Mock(), cleanup_started=False, frame=frame)
     handlers = _shared['callbacks']('studio_dialog.py', 'show_studio',
-        ['preview', 'pause_preview', 'stop_preview', 'playback_navigation', 'choose_playback_output',
+        ['prepare_playback', 'preview', 'pause_preview', 'stop_preview', 'playback_navigation', 'choose_playback_output',
          'cleanup', 'release_service', 'dispose', 'close'], values)
     fixture = SimpleNamespace(handlers=handlers, player=dialog._audio_player, dialog=dialog,
         local=local, parent=parent, scheduler=scheduler, reports=reports, path=path, values=values)
@@ -100,6 +102,7 @@ def test_preview_waits_for_both_real_quiet_holds_then_binds_exact_master(studio)
     studio.parent.ready = True; studio.scheduler.tick()
     assert studio.player.calls == [('play', studio.path)]
     host = studio.dialog._playback_navigation
+    assert host.prepare is studio.handlers.prepare_playback
     assert host.controller.audio.path == studio.path
     assert host.controller.audio.generation == studio.dialog._playback_generation
     assert all(hold.closed for owner in (studio.local, studio.parent) for hold in owner.holds)

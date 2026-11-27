@@ -9,6 +9,7 @@ import re
 import shutil
 import stat
 import sys
+from tempfile import gettempdir
 from time import monotonic
 
 from ..durable_state import _open_json_file, local_path, regular, sync_directory
@@ -107,6 +108,50 @@ def _parent_identity(path):
     info = regular(path, directory=True)
     return info.st_dev, info.st_ino
 
+
+
+def _copy_private_file(source, target, maximum, cancelled, deadline):
+    """Copy one captured ordinary file between this operation's private roots."""
+    from .office import _bounded_digest, _remaining, file_identity, regular_file, verified_reader
+    source, target = Path(source), Path(target)
+    source_info = regular_file(source)
+    identity = file_identity(source_info)
+    if source_info.st_size > maximum:
+        raise ConversionError('The private conversion file exceeds its byte budget.')
+    parent = local_path(target.parent, exists=True)
+    parent_identity = _parent_identity(parent)
+    def check():
+        if cancelled():
+            raise InterruptedError('Document conversion cancelled while copying private files.')
+        _remaining(deadline)
+    check()
+    digest, count = sha256(), 0
+    with verified_reader(source, expected_identity=identity) as incoming:
+        with target.open('xb') as outgoing:
+            while True:
+                check()
+                block = incoming.read(min(1024 * 1024, source_info.st_size - count + 1))
+                if not block:
+                    break
+                count += len(block)
+                if count > source_info.st_size:
+                    raise ConversionError('The private conversion file grew during its copy.')
+                digest.update(block)
+                outgoing.write(block)
+            if count != source_info.st_size:
+                raise ConversionError('The private conversion file changed during its copy.')
+            outgoing.flush()
+            check()
+            os.fsync(outgoing.fileno())
+        incoming.seek(0)
+        if _bounded_digest(incoming, count, check) != digest.hexdigest():
+            raise ConversionError('The private conversion source bytes changed during its copy.')
+    if (local_path(target.parent, exists=True) != parent
+            or _parent_identity(parent) != parent_identity
+            or _digest(target, cancelled, maximum=count, deadline=deadline) != digest.hexdigest()):
+        raise ConversionError('The private conversion copy or its destination changed.')
+    check()
+    return digest.hexdigest(), identity
 
 def _verify_published_pair(root, parent, parent_identity, files, *, timeout):
     """Prove this invocation's exact two outputs, without late cancellation."""
@@ -275,16 +320,67 @@ class ConversionService:
                             + (['Pandoc reported conversion warnings; review source fidelity.'] if result.stderr else [])}
 
     def _office(self, source, output, report, stage, cancelled):
+        if os.name == 'nt':
+            return self._office_workspace(source, output, report, stage, cancelled)
+        return self._office_worker(source, output, report, stage, cancelled)
+
+    def _office_workspace(self, source, output, report, stage, cancelled):
+        """Keep native Office paths short; final publication stays in its original root.
+
+        The same retained owner holds both private directories if native shutdown
+        is uncertain. The worker still receives one private root and the existing
+        fixed executable, audit, profile and component admission contracts.
+        """
+        from .office import (OfficeSelection, OFFICE_SUFFIXES, PROFILE_BYTES,
+                             _remaining, checked_directory, file_identity, regular_file)
+        if not isinstance(self.office, OfficeSelection) or source.suffix.casefold() not in OFFICE_SUFFIXES:
+            raise ConversionUnavailable('Select a compatible installed LibreOffice explicitly for this legacy document.')
+        if cancelled():
+            raise InterruptedError('Document conversion cancelled.')
+        deadline = monotonic() + self.budget.timeout
+        temporary_parent = checked_directory(gettempdir())
+        required = (2 * self.budget.max_source_bytes + self.budget.max_text_bytes
+                    + PROFILE_BYTES + 16 * 1024 * 1024)
+        if shutil.disk_usage(temporary_parent).free < required:
+            raise ConversionError('Not enough free disk in the local Office temporary volume.')
+        with retained_temporary_directory(prefix='.carr-lo-', dir=temporary_parent) as folder:
+            native_stage = checked_directory(folder)
+            # The observed Windows build creates configuration descendants up
+            # to 152 characters below its root. Refuse an unsuitable temporary
+            # root before spawning; do not change the one-root worker audit.
+            if len(str(native_stage).encode('utf-16-le')) // 2 > 96:
+                raise ConversionUnavailable('Selected Office requires a shorter local temporary directory.')
+            native_source = native_stage / ('source' + source.suffix.casefold())
+            native_output, native_report = native_stage / 'reading.txt', native_stage / 'details.json'
+            source_digest, source_identity = _copy_private_file(source, native_source,
+                self.budget.max_source_bytes, cancelled, deadline)
+            native_identity = file_identity(regular_file(native_source))
+            details = self._office_worker(native_source, native_output, native_report,
+                native_stage, cancelled, budget=replace(self.budget, timeout=_remaining(deadline)))
+            if (file_identity(regular_file(source)) != source_identity
+                    or file_identity(regular_file(native_source)) != native_identity
+                    or _digest(source, cancelled, maximum=source_identity[2], deadline=deadline) != source_digest
+                    or _digest(native_source, cancelled, maximum=native_identity[2], deadline=deadline) != source_digest):
+                raise ConversionError('The captured Office source changed during native conversion.')
+            _copy_private_file(native_output, output, self.budget.max_text_bytes, cancelled, deadline)
+            _copy_private_file(native_report, report, 16 * 1024 * 1024, cancelled, deadline)
+            if json.loads(_read_bytes(report, 16 * 1024 * 1024, cancelled).decode('utf-8')) != details:
+                raise ConversionError('The private Office report changed during its checked copy.')
+            _remaining(deadline)
+        return details
+
+    def _office_worker(self, source, output, report, stage, cancelled, *, budget=None):
         from .office import OfficeSelection, OFFICE_SUFFIXES, PROFILE_BYTES, MAX_STAGE_ENTRIES
         if not isinstance(self.office, OfficeSelection) or source.suffix.casefold() not in OFFICE_SUFFIXES:
             raise ConversionUnavailable('Select a compatible installed LibreOffice explicitly for this legacy document.')
+        budget = budget or self.budget
         selection = self.office.snapshot(cancelled=cancelled)
         request = stage / 'request.json'
         request.write_text(json.dumps({'source': str(source), 'output': str(output),
-            'report': str(report), 'budget': asdict(self.budget), 'operation': 'office',
+            'report': str(report), 'budget': asdict(budget), 'operation': 'office',
             'office': selection}, ensure_ascii=False, allow_nan=False), encoding='utf-8')
-        process_budget = replace(self._process_budget(),
-            max_output_bytes=2 * self.budget.max_source_bytes + self.budget.max_text_bytes + PROFILE_BYTES,
+        process_budget = replace(self._process_budget(timeout=budget.timeout),
+            max_output_bytes=2 * budget.max_source_bytes + budget.max_text_bytes + PROFILE_BYTES,
             max_staging_files=MAX_STAGE_ENTRIES)
         run_process([str(Path(sys.executable).absolute()), '-I', '-B', '-m',
             'carr_library.conversion.worker', str(request)], budget=process_budget,

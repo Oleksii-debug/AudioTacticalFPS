@@ -21,6 +21,7 @@ from .anchors import WindowsVaultAnchor
 from .handoff import PortableUpdateHandoff, _digest
 from .standard_handoff import StandardUpdateHandoff
 from .updates import LocalRepositoryClient, UpdatePolicy, Release, relative_path
+from .download_state import PausedDownload
 from .https import HTTPSRepository, HTTPSRepositoryClient
 from ..portable_entry import _read
 
@@ -145,6 +146,8 @@ class MaintenanceSession:
         self.app, self.configuration = app, configuration
         self._anchor, self._verifier = anchor, verifier
         self.release = self.package = None
+        self.download_state = None
+        self.download_notice = ''
         self.last_result = None
         value = configuration.checked()
         self.library_root = directory(app.root)
@@ -182,24 +185,44 @@ class MaintenanceSession:
         return value, policy, client, source
 
     def check(self, *, cancelled=lambda: False):
-        self.release = self.package = None
+        self.release = self.package = self.download_state = None
+        self.download_notice = ''
         value, _policy, client, source = self._context()
         release = client.check(source, value['target'], cancelled=cancelled)
         self.configuration.unchanged()
-        self.release, self.package = release, None
+        retained = client.paused_download(source, release, cancelled=cancelled)
+        self.configuration.unchanged()
+        self.release, self.package, self.download_state = release, None, retained
         return release
 
-    def download(self, release, *, cancelled=lambda: False):
+    def download(self, release, *, cancelled=lambda: False, paused=None, resume=False, progress=None):
         if type(release) is not Release or release != self.release:
             raise TrustError('Choose the exact signed release reviewed in this session.')
         self.package = None
+        self.download_notice = ''
         value, _policy, client, source = self._context()
-        package = client.download(source, value['target'], reviewed_sha256=release.sha256, cancelled=cancelled)
+        package = client.download(source, value['target'], reviewed_sha256=release.sha256,
+                                  cancelled=cancelled, paused=paused, resume=resume, progress=progress)
+        self.download_notice = client.download_notice
         self.configuration.unchanged()
         if package.release != release:
             raise TrustError('Signed release metadata changed after review; review it again.')
-        self.package = package
+        if isinstance(package, PausedDownload):
+            self.download_state, self.package = package, None
+        else:
+            self.package, self.download_state = package, None
         return package
+
+    def resume_download(self, release, *, cancelled=lambda: False, paused=lambda: False, progress=None):
+        return self.download(release, cancelled=cancelled, paused=paused, resume=True, progress=progress)
+
+    def cancel_download(self, release):
+        if type(release) is not Release or release != self.release:
+            raise TrustError('Choose the signed release whose retained download is being cancelled.')
+        _value, _policy, client, source = self._context()
+        discarded = client.cancel_download(source, release)
+        self.package = self.download_state = None
+        return {'status': 'cancelled', 'discarded_partial': discarded, 'activated': False}
 
     def _trusted_verifier(self, value):
         raw = _read(Path(value['verifier']['path']), 4 * 1024**2)

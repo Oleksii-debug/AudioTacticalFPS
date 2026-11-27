@@ -25,12 +25,15 @@ def local_path(value, *, root=None, exists=False):
     path = Path(value).absolute()
     if str(value).startswith(('//', '\\\\')) or '\x00' in str(value):
         raise ValueError('Choose a local path.')
-    for parent in reversed((path, *path.parents)):
-        if os.path.lexists(parent):
-            if parent != path or parent.is_dir():
-                regular(parent, directory=True)
-            else:
-                regular(parent)
+    for parent in reversed(path.parents):
+        try:
+            regular(parent, directory=True)
+        except FileNotFoundError:
+            # Preserve the existing missing-ancestor policy; strict resolution
+            # below still rejects an absent requested path when exists=True.
+            continue
+    if os.path.lexists(path):
+        regular(path, directory=path.is_dir())
     path = path.resolve(strict=exists)
     if root is not None and not path.is_relative_to(Path(root).resolve(strict=True)):
         raise ValueError('The path is outside the selected directory.')
