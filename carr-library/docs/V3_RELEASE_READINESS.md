@@ -130,6 +130,14 @@ still rejects skips, expected failures, empty results and incomplete process
 cleanup. Its explicit-selector routing and real child deadlines have their own
 regressions.
 
+The outer Windows source step now allows 60 minutes instead of 40; the V3
+installed step allows 75 instead of 50. Their measured incomplete runs below
+projected approximately 45.7 and 62.1 minutes respectively at the observed
+completion rates. These are bounded aggregate allowances, not changes to the
+default 600-second suite guard, the explicit 900-second admission guard, or any
+individual operation, cancellation or native cleanup deadline. Required
+selectors and the existing job and bundle limits remain in place.
+
 ## Executed predecessor evidence
 
 | Exact revision | Scope | Result |
@@ -148,6 +156,9 @@ regressions.
 | `50951f2bc416d4856942529587cddf2ddb29667f` | Retained process ownership, ASR admission, exports and exact-suite CI deadlines | Each OS passed 479 source and 479 installed cases plus 34 separate CI-runner tests, with zero failures/errors/skips; Windows also passed the actual profiled ASR case. [run46054991722](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46054991722). The source callback-lock regression and all 41 admission cases passed. Hosted timings do not establish recognition throughput, and the final composition requires its own gates. |
 | `0070a28ccf68250633dca30d226bdef2476af3a9` | Full portable source selection | 9410 passed, 24 failed and 42 subtests; [run46057432268](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46057432268). The failures comprise 18 recording cascade cases, one POSIX playback case, two dictionary import cases and three Calibre child-owner cases. This full run remains failed. |
 | `409cc2af6f03e6f8b64ffec315c719b6e70da535` | Focused recording ownership and ordinary child-import corrections | Linux passed 162 source and 162 isolated installed cases; Windows passed 159 source and 159 installed cases, with zero failures/skips/expected failures; [run46061911299](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46061911299). All four runs verified the same complete 382-file Python inventory and 13 selected module origins before and after execution. |
+| `0070a28ccf68250633dca30d226bdef2476af3a9` | Main Windows bundle and full source selection | Real standard install, repair, uninstall and failed-bootstrap preservation passed. The signed-update probe then failed Python parsing at line333 with `SyntaxError: positional argument follows keyword argument`; it and the downstream bundle gates did not execute. The source step completed 394 of 450 suites, reporting 10,144 JUnit passes with zero failed/skipped cases, before its 40-minute limit; 56 suites lacked completed verdicts. Admission only collected at 38m54s. This run is failed and incomplete; [run46057432160](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46057432160). |
+| Same0070 revision | Windows V3 installed, broad and later strict selections | The installed step collected 8414 cases and recorded 6779 PASS outcomes, zero observed failures/errors/skips, before its 50-minute timeout; all 41 admission cases passed, but the gate is incomplete. The broad step recorded 4734 passed, 27 failed and 13 skipped. Progress step12 passed 278 cases in 10 suites; publication step14 passed 404 in 13. Shared step15 was cancelled on normal corrected-head supersession after 595 passes in 30 completed suites and remains incomplete. Native steps9–11 were NOT_RUN. These overlapping selections do not establish a full V3 PASS; [run46057432268](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46057432268). |
+| `4c25f0be2adf093a5f2ceaaa800cdb19707d9bd0` | Syntax-only qualification of the corrected update probe and selected Python sources | Python3.11.18 compiled all 469 files under application source, scripts and packaging with zero syntax failures; [run46065991216](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46065991216). No probe import, application/native execution or bytecode write occurred. The temporary syntax workflow is not included in the product composition. |
 | Current committed composition | All new seams together, source and installed origins, fresh native bundle | Require the gate inventory above for this exact commit. Predecessor counts cannot be reassigned. |
 
 The recording cascade began when a reservation callback waited for public
@@ -160,6 +171,18 @@ requiring the selected parent package or the current interpreter's byte-identica
 installation, including the complete relative Python-file inventory. The focused
 run qualifies these corrections in both import contexts; the next coherent PR
 head still requires the complete source, installed and native gate matrix.
+
+The signed-update probe correction (`6db4ab25`) restores the missing
+`sha256=` configuration field without changing its installer/update assertions.
+The main workflow correction (`05141c6e`) compiles the exact probe bytes before
+bundle assembly. Syntax qualification does not replace actual signed-update
+execution. The Windows V3 broad failures comprise 18 recording cases plus one
+Clip case blocked by the same retained capture, five POSIX-only cases collected
+on Windows, and three child-import identity cases. POSIX routing now excludes
+the five POSIX files from that Windows command while retaining every one in the
+unchanged explicit Linux selection; no required Linux test is removed. The
+13 reported broad-stage skips remain recorded, with individual attribution still
+pending. The corrected coherent head requires its own complete runtime verdict.
 
 Office execution at `0070a28ccf68250633dca30d226bdef2476af3a9`
 ([run46057429553](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46057429553))

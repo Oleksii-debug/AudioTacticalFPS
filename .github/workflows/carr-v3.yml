@@ -538,7 +538,8 @@ jobs:
           (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           "CARR_V3_AUDIO=$audio" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
       - name: Verify installed backup and import publication integrity
-        timeout-minutes: 50
+        # Final 0070 completed 6,779 of 8,414 cases without failure at 50 minutes; normal progress continued.
+        timeout-minutes: 75
         env:
           PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
           PYTEST_ADDOPTS: ''
