@@ -93,3 +93,37 @@ def test_actual_worker_status_bootstrap_refuses_outside_job_replacement(tmp_path
     assert b'Transcription writes must remain inside its private job.' in result.stderr
     assert source.read_bytes() == b'new' and target.read_bytes() == b'old'
     assert worker.read_bytes() == original
+
+
+def test_replacement_keeps_native_name_inside_its_allocated_buffer(tmp_path, monkeypatch):
+    """Exercise the real rename with nonzero memory immediately after its buffer."""
+    import ctypes
+    from carr_library import durable_state
+
+    allocations = []
+
+    def guarded_buffer(size):
+        # The extra bytes stay readable but are outside the caller's declared
+        # buffer. A missing in-buffer UTF-16 terminator would include this suffix
+        # in the actual Windows destination, or make its name invalid.
+        tail = ('unexpected-native-suffix' + chr(0)).encode('utf-16-le')
+        allocation = (ctypes.c_char * (size + len(tail)))()
+        ctypes.memmove(ctypes.addressof(allocation) + size, tail, len(tail))
+        allocations.append(allocation)
+        return (ctypes.c_char * size).from_buffer(allocation)
+
+    for index, name in enumerate(('state.json', 'Стан-🌍.json', 'long-' + 'x' * 100 + '.json')):
+        target, source = tmp_path / name, tmp_path / ('stage-' + str(index))
+        target.write_bytes(b'old snapshot')
+        source.write_bytes(b'new snapshot')
+        with durable_state._open_json_read(target) as stream:
+            with monkeypatch.context() as patch:
+                patch.setattr(ctypes, 'create_string_buffer', guarded_buffer)
+                replace_file(source, target)
+            assert stream.read() == b'old snapshot'
+            assert target.read_bytes() == b'new snapshot'
+        assert not source.exists()
+        assert sorted(path.name for path in tmp_path.iterdir()) == sorted(
+            ('state.json', 'Стан-🌍.json', 'long-' + 'x' * 100 + '.json')[:index + 1])
+    if os.name == 'nt':
+        assert len(allocations) == 3

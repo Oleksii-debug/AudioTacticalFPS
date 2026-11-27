@@ -76,7 +76,11 @@ def replace_file(source, destination):
         if info.attributes & (0x10 | 0x400) or info.links != 1:
             raise ValueError('State replacement source changed to a linked or non-regular file.')
         name = ('\\\\?\\' + str(destination)).encode('utf-16-le')
-        size = max(ctypes.sizeof(RenameInformation), RenameInformation.name.offset + len(name))
+        # The Win32 wrapper consumes a NUL-terminated wide path while converting
+        # it to its native form. Keep the terminator inside the allocated buffer;
+        # FileNameLength still excludes it. Without this padding the wrapper can
+        # append unrelated heap bytes, even when the native call reports success.
+        size = ctypes.sizeof(RenameInformation) + len(name)
         buffer = ctypes.create_string_buffer(size)
         value = RenameInformation.from_buffer(buffer)
         value.flags, value.root, value.length = 0x3, None, len(name)
