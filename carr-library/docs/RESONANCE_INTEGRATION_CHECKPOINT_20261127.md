@@ -3,7 +3,7 @@
 ## Composed acceptance candidate r4 — source review, execution pending
 
 The technical entry point is `UNIVERSAL_SCOPE_V3_FINALIZATION.md`, rechecked
-against canonical commit `1eff701fe848a3bd9eb088c85e5372a7c0a73861`.
+against canonical commit `4b6f8169986c4a58b43e4a23bc081fbefadbbdcb` (unchanged specification bytes).
 This candidate preserves the reviewed f4 composition and integrates the exact
 backend, UI, backup and standard-installer sources below. These additions are
 **SOURCE_REVIEWED / INTEGRATED / NOT_RUN** until their own current-commit gates
@@ -15,7 +15,7 @@ finish. Earlier successful jobs are evidence only for the exact source they ran.
 | `d16e4023fcee86855e7d70b6b6fa6757826fd61e` | Advanced v3 translation, bounded local LLM proposals and CLI, decoded receipt/ledger proof, canonical library paths, shared coherent state, portable policy migration and exact loopback test harness | Independent source reviews; execution pending |
 | `835a7d6892e256e8ef5db705e851fbd696503f9e` | Recording/retake controls, reusable playback, Advanced approval and settings, asynchronous assistant preview/run, committed results preserved through advisory progress failure | Independent source reviews; execution pending |
 | `5afb615cdb9e3efb57b81c6e02a8471a32a1eb7c` | Passive zero-byte inert recording preservation, bounded recording manifests and the existing native legacy-reading numeric/list report contract | Independent source review; execution pending |
-| `c32992318882faebf27d0b80d0dedfe8be7a4acd` | Reviewed standard per-user Inno preparation/probe, side-by-side repair and preservation of failed environments and unknown files | 37 source-derived expected cases; native acceptance pending |
+| `c32992318882faebf27d0b80d0dedfe8be7a4acd` + `9a709f3fc83f271c6f4efe888198884b166c764f` | Reviewed standard per-user Inno preparation/probe, side-by-side repair and preservation of failed environments and unknown files | 37 source-derived expected cases; independent driver source review; native acceptance pending |
 | `7e4ce3d7f3da56fe8cc5bee7c2b0f187c1a5d047` | Native launcher, bounded source/PE admission, typed bundle manifest and exact actual process probe | Its dedicated Windows run passed; current installed-package gate remains separate |
 
 The backend uses current provider profiles, vault, budgets, immutable source and
@@ -45,10 +45,20 @@ ASR profiles, policy, reading history and recording namespaces, existing budgets
 source/staged revalidation and final source hashes. An unreceipted final recording
 is an inert retained original, never a completed verified recording.
 
+The latest canonical bounded-inventory changes were compared with this
+owner implementation. Its OCR scanner already preserves those exact guards;
+all three canonical inventory regressions are now mandatory in installed replay.
+The current music API differs from that older canonical module, so its renderer
+is preserved. Commit `6704be362336c4750daa9d504b886ca6078d0c81` instead applies
+the same fail-closed scandir rule through the existing local model manifest,
+music cache and generated-stage checks. Existing file/entry/byte bounds and
+hashes remain. Seven new source cases and all ten selected installed inventory
+cases must pass; the canonical module's31 historical tests are not transferred.
+
 ### Exact gates prepared for this composition
 
 The workflow selects 260 strict source suites and separately the exact
-14-case local HTTP fixture. Installed execution selects 115 content suites plus
+14-case local HTTP fixture. Installed execution selects 124 content selectors plus
 14 explicit workflows, retaining all prior 232 source selectors. Named installed
 oracles require 466 ASR/profile cases, 128 recording/process/monitor/playback/UI
 cases and 135 Advanced/local-planning/UI cases. These are source-derived expected
@@ -229,7 +239,7 @@ Linux cases. The final PR159 current-host port was independently reviewed;
 its new virtual-environment, publication-race and held-status-reader cases
 require the new composed Windows run.
 
-## Current composed portable verification
+## Historical ecf portable verification
 
 The new supplied-profile backend passed 223 cases across receipt validation,
 supervision and both backup namespaces. After the shared Windows status startup
@@ -292,9 +302,9 @@ The CBA audio job also completed the real native Studio/SAPI/FFmpeg/vault
 processing. The physical player reported UNAVAILABLE because the runner had no
 output device; this is not listening or audible playback acceptance.
 
-## Remaining implementation and qualification
+## Historical remaining gaps at the CBA/ecf checkpoints
 
-The current source does not implement microphone capture/retakes/live
+At that historical checkpoint, the source did not implement microphone capture/retakes/live
 monitoring, live Word field insertion/editing, or the complete signed
 end-user installer, repair, uninstall, update and entitlement lifecycle.
 Those are implementation gaps and must not be relabeled as completed or merely
@@ -414,7 +424,7 @@ Windows native and installed-artifact results are still required. No final
 verdict is recorded for the root combined publication/conversion command that
 was interrupted by the executor outage.
 
-## Remaining acceptance gates
+## Historical remaining acceptance gates
 
 The complete V3 platform still requires the canonical branch reconciliation,
 global completion-aware saving, remaining supplied ASR corrections and actual
