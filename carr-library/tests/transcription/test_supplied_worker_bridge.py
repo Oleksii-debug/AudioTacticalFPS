@@ -24,6 +24,20 @@ SYNTHETIC_WORKER = r'''
 import hashlib, json, os, pathlib, socket, subprocess, sys, time, uuid
 MODE = __MODE__
 job = pathlib.Path(sys.argv[sys.argv.index('--job-dir') + 1])
+def record_unhandled(error_type, error, traceback):
+    # Test-only diagnostics: the production runner intentionally hides stderr.
+    current = globals().get('status', {})
+    diagnostic = {'exception_type': error_type.__name__,
+        'errno': getattr(error, 'errno', None), 'winerror': getattr(error, 'winerror', None),
+        'message': str(error)[:2000],
+        'worker_status': {key: current.get(key) for key in
+            ('state', 'result_state', 'run_id', 'total', 'done', 'failed')}}
+    try:
+        (job / 'synthetic-worker-failure.json').write_text(json.dumps(diagnostic), encoding='utf-8')
+    except OSError:
+        pass
+    sys.__excepthook__(error_type, error, traceback)
+sys.excepthook = record_unhandled
 cfg = json.loads((job / 'job_config.json').read_text(encoding='utf-8'))
 options = cfg['settings']
 sources = sorted(pathlib.Path(cfg['folders'][0]).iterdir())
@@ -452,6 +466,15 @@ def test_stopped_progress_observer_failure_preserves_actual_child_resume_inputs(
             raise RuntimeError('Synthetic detached stop observer')
 
     result = service.run(identity, timeout=10, cancelled=cancelled, progress=broken)
+    if not notices:
+        print('ASR_STOP_RESULT ' + json.dumps({key: result.get(key) for key in
+            ('status', 'done', 'failed', 'last_error', 'worker_run_id')}, ensure_ascii=True), flush=True)
+        for name in ('job_status.json', 'synthetic-worker-failure.json'):
+            try:
+                diagnostic = (path / name).read_text(encoding='utf-8')
+            except OSError as exc:
+                diagnostic = type(exc).__name__ + ': ' + str(exc)
+            print('ASR_STOP_FILE ' + name + ' ' + diagnostic[:5000], flush=True)
     assert notices, result
     assert result == service.get(identity) and result['status'] == 'stopped'
     assert result['done'] == 0 and result['artifacts'] == []

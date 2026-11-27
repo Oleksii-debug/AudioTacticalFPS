@@ -1,4 +1,4 @@
-name: CARR Native failure diagnostics
+name: CARR Supplied worker stop diagnostics
 
 on:
   push:
@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   native-diagnostics:
-    name: Windows x64 / native regressions and supplied transcription
+    name: Windows x64 / observed stopped-worker reproduction
     runs-on: windows-2022
     timeout-minutes: 15
     defaults:
@@ -89,63 +89,15 @@ jobs:
           & $env:CARR_PYTHON -I -B -c "import importlib.metadata as m,json,pathlib,re; pins=dict(re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)',pathlib.Path('packaging/windows-semantic-cp311.lock').read_text(),re.M)); actual={n:m.version(n) for n in pins}; assert len(pins)==50 and actual==pins; print(json.dumps(actual,sort_keys=True))" | Tee-Object 'ci-results/full-lock-source-inventory.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Exercise native reviewed library workflows and checkpoint recovery
-        if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' }}
-        timeout-minutes: 3
-        run: |
-          & $env:CARR_PYTHON -I -B -X utf8 tests/ui/native_library_workflow_smoke.py 2>&1 | Tee-Object 'ci-results/native-library-workflow.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Exercise actual native Main keyboard settings and command dispatch
-        if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' }}
-        timeout-minutes: 3
-        run: |
-          & $env:CARR_PYTHON -I -B tests/ui/native_keyboard_settings_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-keyboard-settings.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Exercise candidate keyboard remapping with non-editing native function keys
-        if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' }}
-        timeout-minutes: 3
-        run: |
-          & $env:CARR_PYTHON -I -B tests/ui/native_keyboard_settings_nontext_probe.py --native 2>&1 | Tee-Object 'ci-results/native-keyboard-nontext-candidate.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Exercise actual contextual Reader key remapping
-        if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' }}
-        timeout-minutes: 3
-        run: |
-          & $env:CARR_PYTHON -I -B tests/ui/native_reader_keymap_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-reader-keymap.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Exercise native research-note draft recovery and explicit save
-        if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' }}
-        timeout-minutes: 3
-        run: |
-          & $env:CARR_PYTHON -I -B tests/ui/native_evidence_drafts_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-evidence-drafts.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Exercise native Save All after durable note and studio commits
-        if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' }}
-        timeout-minutes: 3
-        run: |
-          & $env:CARR_PYTHON -I -B -X utf8 tests/ui/native_save_all_smoke.py 2>&1 | Tee-Object 'ci-results/native-save-all.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Exercise actual native supplied transcription controls and isolated child protocol
-        if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' }}
-        timeout-minutes: 3
-        run: |
-          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_transcription_smoke.py 2>&1 | Tee-Object 'ci-results/native-transcription.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Verify supplied transcription source workflows on Windows
+      - name: Reproduce the observed stopped-worker failure with bounded synthetic diagnostics
         if: ${{ !cancelled() && steps.production_dependencies.outcome == 'success' }}
-        timeout-minutes: 3
+        timeout-minutes: 4
         run: |
-          & $env:CARR_PYTHON -I -B -m pytest -q -o addopts= -o xfail_strict=true --junitxml=ci-results/transcription-source.xml tests/transcription/test_supplied_worker_bridge.py tests/transcription/test_pr99_host.py 2>&1 | Tee-Object 'ci-results/transcription-source.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $env:CARR_PYTHON -I -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-results/transcription-source.xml').iter('testcase')); assert len(cases)==55; assert all(all(c.find(t) is None for t in ('failure','error','skipped')) for c in cases); print(json.dumps(dict(status='PASS',passed=len(cases),failed=0,skipped=0,acoustic_inference='NOT_RUN')))"
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          for ($attempt = 1; $attempt -le 12; $attempt++) {
+            Write-Output "Observed stop-workflow reproduction attempt $attempt of 12"
+            & $env:CARR_PYTHON -I -B -m pytest -q -s -o addopts= -o xfail_strict=true "--junitxml=ci-results/stopped-worker-$attempt.xml" tests/transcription/test_supplied_worker_bridge.py::test_stopped_progress_observer_failure_preserves_actual_child_resume_inputs 2>&1 | Tee-Object "ci-results/stopped-worker-$attempt.txt"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
 
       - name: Preserve exact-commit runtime and test evidence
         if: always()
