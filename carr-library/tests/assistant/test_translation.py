@@ -782,8 +782,8 @@ def test_source_export_original_mutation_during_staging_never_publishes_completi
     target = tmp_path / 'changed-during-export'
     with pytest.raises(ValueError):
         case.service.export(identity, target)
-    assert (target / 'translation.reading.json').exists()
-    assert not (target / 'translation-provenance.json').exists()
+    assert not target.exists()
+    assert not list(tmp_path.glob('.pending-translation-export-*'))
     assert case.service.jobs.load(identity)['status'] == 'complete'
     assert len(connection['calls']) == 2
 
@@ -814,8 +814,14 @@ def test_source_export_serializes_archival_and_cancellation_never_claims_complet
     monkeypatch.setattr(ReadingDocument, 'save', cancelling_save)
     with pytest.raises(InterruptedError):
         case.service.export(identity, tmp_path / 'cancelled', cancelled=lambda: bool(stop))
-    assert not (tmp_path / 'cancelled' / 'translation-provenance.json').exists()
+    assert not (tmp_path / 'cancelled').exists()
+    assert not list(tmp_path.glob('.pending-translation-export-*'))
     assert case.service.jobs.load(identity)['status'] == 'complete'
+    monkeypatch.setattr(ReadingDocument, 'save', original_save)
+    # Re-export the completed paid job at the same destination without a call.
+    result = case.service.export(identity, tmp_path / 'cancelled')
+    assert result['status'] == 'complete'
+    assert (tmp_path / 'cancelled' / 'translation-provenance.json').is_file()
     assert len(connection['calls']) == 2
 
 
@@ -1587,3 +1593,37 @@ def test_detected_language_is_bound_to_independent_basic_receipt(tmp_path, conne
     with pytest.raises(ValueError, match='decoded translation receipt'):
         service.export(identity, tmp_path / 'unpublished')
     assert not (tmp_path / 'unpublished').exists() and len(connection['calls']) == calls
+
+
+@pytest.mark.parametrize('failure', ['write', 'racing-directory'])
+def test_translation_export_staging_does_not_clobber_or_repeat_calls(tmp_path, connection, monkeypatch, failure):
+    service, p, vault = ready(tmp_path, connection)
+    value = 'Synthetic private source.'
+    approval, cost = translation_approval(p, value, 'en', 'uk', '1')
+    identity = service.submit(p, value, 'en', 'uk', authorization=approval, per_call_cost=cost)
+    service.resume(identity)
+    calls, vault_calls = len(connection['calls']), len(vault.calls)
+    target = tmp_path / 'staged-export'
+    save = ReadingDocument.save
+
+    def interrupted(document, path):
+        result = save(document, path)
+        if failure == 'write':
+            raise OSError('synthetic staging write failure')
+        target.mkdir()
+        (target / 'owner.txt').write_bytes(b'prior owner data')
+        return result
+
+    with monkeypatch.context() as patch:
+        patch.setattr(ReadingDocument, 'save', interrupted)
+        with pytest.raises(OSError if failure == 'write' else FileExistsError):
+            service.export(identity, target)
+    assert not list(tmp_path.glob('.pending-translation-export-*'))
+    if failure == 'write':
+        assert not target.exists()
+        assert service.export(identity, target)['status'] == 'complete'
+    else:
+        assert list(target.iterdir()) == [target / 'owner.txt']
+        assert (target / 'owner.txt').read_bytes() == b'prior owner data'
+    assert len(connection['calls']) == calls and len(vault.calls) == vault_calls
+    assert service.jobs.load(identity)['status'] == 'complete'

@@ -7,7 +7,9 @@ from dataclasses import asdict
 from decimal import Decimal, ROUND_DOWN, ROUND_UP
 from hashlib import sha256
 import json
+import os
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from time import time
 from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
@@ -20,6 +22,7 @@ from ..speech._io import new_output, digest, check_cancelled
 from ..ingest.writer_guard import exclusive_writer
 from ..reader.reading_desk import ReadingDesk
 from ..research.export_file import _destination, _filename
+from ..state_backup import publish_state
 
 ENDPOINT = 'https://translation.googleapis.com/language/translate/v2'
 
@@ -546,9 +549,25 @@ class TranslationService:
                             label='Machine translation derivative; not a source quotation')
             target = local_path(output, must_exist=False)
             local_path(target.parent)
+            if os.path.lexists(target):
+                raise FileExistsError('Translation export already exists; choose a new directory.')
             if self.library is not None:
                 _filename(target.name)
                 target, _, _ = _destination(target, self.library.root)
+            parent_info = target.parent.stat()
+            parent_identity = (parent_info.st_dev, parent_info.st_ino)
+
+            def recheck_destination():
+                if local_path(output, must_exist=False) != target:
+                    raise ValueError('The translation export destination changed.')
+                if os.path.lexists(target):
+                    raise FileExistsError('Translation export already exists; choose a new directory.')
+                if self.library is not None:
+                    _destination(target, self.library.root)
+                info = target.parent.stat()
+                if (info.st_dev, info.st_ino) != parent_identity:
+                    raise ValueError('The translation export parent changed.')
+
             # This existing writer guard also protects archival. No writable
             # database transaction spans source hashing or output publication.
             with exclusive_writer(self.library.root) if desk is not None else nullcontext():
@@ -557,35 +576,52 @@ class TranslationService:
                 if desk is not None:
                     desk = self._source_context(job, index=0, cancelled=cancelled, guard=guard)
                 self._source_current(desk, cancelled=cancelled, guard=guard)
-                target.mkdir(mode=0o700)  # Exclusive; never overwrite a prior export.
-                reading.save(target / 'translation.reading.json')
-                self._source_current(desk, cancelled=cancelled, guard=guard)
-                reading.export(target / 'translated.txt', cancelled=cancelled)
-                reading.export(target / 'original.txt', original=True, cancelled=cancelled)
-                bilingual = '\n\n'.join('ORIGINAL\n' + chunk + '\nTRANSLATION\n' + row['text']
-                                        for chunk, row in zip(job['chunks'], job['receipts']))
-                with new_output(target / 'bilingual.txt', cancelled=cancelled) as staged:
-                    staged.write_bytes(bilingual.encode('utf-8'))
-                paths = ('translation.reading.json', 'translated.txt', 'original.txt', 'bilingual.txt')
-                report = {'schema': 'carr-translation-export/1', 'job_id': identity,
-                    'source_sha256': job['source_sha256'], 'source_language': job['source_language'],
-                    'target_language': job['target_language'], 'provider_adapter': job['profile']['adapter'],
-                    'provider_endpoint': job['profile']['endpoint'], 'glossary': job.get('glossary'),
-                    'model': job['profile']['model'], 'source_is_immutable': True, 'quotation_authority': False,
-                    'automated_translation_quality': 'not independently qualified',
-                    'decoded_text_binding': text_binding,
-                    'decoded_language_binding': ('usage-ledger-sha256' if all(
-                        not chunk.strip() or 'decoded_translation_sha256' in row
-                        for chunk, row in zip(job['chunks'], job['receipts'])) else 'unrecorded-legacy'),
-                    'chunks': [{key: value for key, value in row.items() if key != 'text'} for row in job['receipts']],
-                    'files': {name: digest(target / name) for name in paths}}
-                if binding:
-                    report['source_anchor'] = binding['anchor']
-                    self._source_context(job, index=len(job['chunks']) - 1,
-                                         cancelled=cancelled, guard=guard)
-                self._source_current(desk, cancelled=cancelled, guard=guard)
-                atomic_json(target / 'translation-provenance.json', report)
-                return {'status': 'complete', 'path': str(target), 'files': report['files']}
+                recheck_destination()
+                with TemporaryDirectory(prefix='.pending-translation-export-', dir=target.parent) as temporary:
+                    payload = Path(temporary) / 'payload'
+                    payload.mkdir(mode=0o700)
+                    reading.save(payload / 'translation.reading.json')
+                    self._source_current(desk, cancelled=cancelled, guard=guard)
+                    reading.export(payload / 'translated.txt', cancelled=cancelled)
+                    reading.export(payload / 'original.txt', original=True, cancelled=cancelled)
+                    bilingual = '\n\n'.join('ORIGINAL\n' + chunk + '\nTRANSLATION\n' + row['text']
+                                            for chunk, row in zip(job['chunks'], job['receipts']))
+                    with new_output(payload / 'bilingual.txt', cancelled=cancelled) as staged:
+                        staged.write_bytes(bilingual.encode('utf-8'))
+                    paths = ('translation.reading.json', 'translated.txt', 'original.txt', 'bilingual.txt')
+                    report = {'schema': 'carr-translation-export/1', 'job_id': identity,
+                        'source_sha256': job['source_sha256'], 'source_language': job['source_language'],
+                        'target_language': job['target_language'], 'provider_adapter': job['profile']['adapter'],
+                        'provider_endpoint': job['profile']['endpoint'], 'glossary': job.get('glossary'),
+                        'model': job['profile']['model'], 'source_is_immutable': True, 'quotation_authority': False,
+                        'automated_translation_quality': 'not independently qualified',
+                        'decoded_text_binding': text_binding,
+                        'decoded_language_binding': ('usage-ledger-sha256' if all(
+                            not chunk.strip() or 'decoded_translation_sha256' in row
+                            for chunk, row in zip(job['chunks'], job['receipts'])) else 'unrecorded-legacy'),
+                        'chunks': [{key: value for key, value in row.items() if key != 'text'} for row in job['receipts']],
+                        'files': {name: digest(payload / name) for name in paths}}
+                    if binding:
+                        report['source_anchor'] = binding['anchor']
+                        self._source_context(job, index=len(job['chunks']) - 1,
+                                             cancelled=cancelled, guard=guard)
+                    self._source_current(desk, cancelled=cancelled, guard=guard)
+                    atomic_json(payload / 'translation-provenance.json', report)
+                    self._source_current(desk, cancelled=cancelled, guard=guard)
+                    recheck_destination()
+                    check_cancelled(cancelled)
+                    if os.name == 'nt':
+                        # Windows rename is create-only; publish the entire verified
+                        # directory in one step. Never check cancellation after commit.
+                        os.rename(payload, target)
+                    else:
+                        # Reuse the existing exclusive directory publisher. POSIX
+                        # rename could replace an existing empty directory. Publish
+                        # the completion marker last; a mid-link failure is incomplete.
+                        (payload / 'translation-provenance.json').unlink()
+                        publish_state(payload, target)
+                        atomic_json(target / 'translation-provenance.json', report)
+                    return {'status': 'complete', 'path': str(target), 'files': report['files']}
 
     def list(self):
         return tuple(self._load(identity) for identity in self.jobs.identities())
