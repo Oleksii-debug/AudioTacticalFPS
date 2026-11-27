@@ -302,3 +302,130 @@ def test_selected_book_import_uses_exact_pages_and_retains_revision(tmp_path):
     controller.draft.replace_literal('Перший', 'Змінений')
     assert controller.draft.source_text == raw
     assert app._selections == {}
+
+
+@pytest.mark.parametrize('operation', ['save', 'save_as', 'recovery', 'reading_copy'])
+def test_late_writer_before_export_preflight_is_preserved(controller, tmp_path, monkeypatch, operation):
+    import carr_library.ui.audio_studio as module
+    controller.new('Original source')
+    project = tmp_path / 'project.json'
+    controller.save(project)
+    controller.edit_script('My pending edits')
+    if operation == 'save':
+        destination = project
+        action = controller.save
+    elif operation == 'save_as':
+        destination = tmp_path / 'new-project.json'
+        action = lambda: controller.save(destination)
+    elif operation == 'recovery':
+        destination = controller.save_recovery()
+        controller.edit_script('More pending edits')
+        action = controller.save_recovery
+    else:
+        destination = tmp_path / 'reading.txt'
+        destination.write_text('Previous reading copy', encoding='utf-8')
+        action = lambda: controller.export_reading_copy(destination, overwrite=True)
+    previous_hash, previous_path = controller._file_hash, controller.project_path
+    original = module.write_export
+    def interleaved(path, text, **kwargs):
+        destination.write_text('Another session saved these bytes', encoding='utf-8')
+        return original(path, text, **kwargs)
+    monkeypatch.setattr(module, 'write_export', interleaved)
+    with pytest.raises((ValueError, FileExistsError)):
+        action()
+    assert destination.read_text(encoding='utf-8') == 'Another session saved these bytes'
+    assert controller._file_hash == previous_hash and controller.project_path == previous_path
+    assert controller.dirty
+
+
+def test_invalid_new_project_does_not_replace_current_draft(controller):
+    controller.new('Keep this original', title='Existing')
+    controller.edit_script('Keep this reading copy')
+    before = controller.to_dict()
+    with pytest.raises(ValueError):
+        controller.new('Replacement', title='\x00invalid')
+    assert controller.to_dict() == before
+
+
+def test_selecting_ffmpeg_refreshes_only_owned_runtime_registry(tmp_path, monkeypatch):
+    import carr_library.audio.engines as engines
+    binaries = [tmp_path / 'ffmpeg-a', tmp_path / 'ffmpeg-b']
+    for binary in binaries:
+        binary.write_bytes(b'Explicit fixture runtime; no subprocess requested')
+    selected = []
+    def registry(**settings):
+        selected.append(settings['ffmpeg'])
+        return Registry()
+    monkeypatch.setattr(engines, 'default_registry', registry)
+    studio = StudioController(private_root=tmp_path / 'private')
+    studio.configure(ffmpeg=binaries[0])
+    studio.voices()
+    studio.configure(ffmpeg=binaries[1])
+    studio.voices()
+    assert selected == binaries
+    injected = Registry()
+    studio = StudioController(private_root=tmp_path / 'private', registry=injected)
+    studio.configure(ffmpeg=binaries[0])
+    assert studio._registry() is injected
+
+
+def test_controller_voice_discovery_forwards_cancel_to_local_registry(tmp_path):
+    class CancellableRegistry(Registry):
+        def voices(self, *, cancelled=lambda: False):
+            if cancelled():
+                raise InterruptedError('Local voice discovery cancelled')
+            return super().voices()
+    studio = StudioController(private_root=tmp_path / 'private', registry=CancellableRegistry())
+    with pytest.raises(InterruptedError, match='discovery cancelled'):
+        studio.voices(cancelled=lambda: True)
+    assert studio.voices(cancelled=lambda: False)[0]['id'] == 'test:local'
+
+
+def test_output_folder_uses_shared_local_drive_guard_before_accepting(controller, tmp_path, monkeypatch):
+    calls = []
+    def remote_drive(path):
+        calls.append(path)
+        raise ValueError('Mapped network drives are not local audio destinations')
+    monkeypatch.setattr('carr_library.ui.audio_studio.checked_directory', remote_drive)
+    with pytest.raises(ValueError, match='Mapped network'):
+        controller.configure(output_dir=tmp_path)
+    assert calls == [tmp_path] and controller.output_dir is None
+
+
+@pytest.mark.parametrize('operation', ['save_as', 'recovery', 'reading_copy'])
+def test_final_new_destination_publication_never_overwrites_a_late_writer(
+        controller, tmp_path, monkeypatch, operation):
+    import carr_library.ui.audio_studio as module
+    controller.new('Immutable original')
+    controller.save(tmp_path / 'project.json')
+    controller.edit_script('Pending reading edit')
+    if operation == 'save_as':
+        destination = tmp_path / 'new.json'
+        action = lambda: controller.save(destination)
+    elif operation == 'recovery':
+        destination = controller.project_path.with_name(controller.project_path.name + '.recovery.json')
+        action = controller.save_recovery
+    else:
+        destination = tmp_path / 'reading.txt'
+        action = lambda: controller.export_reading_copy(destination)
+    before = controller._file_hash, controller.project_path, controller._recovery_hash
+    original = module.publish_noreplace
+    def writer_at_publication(stage, target):
+        assert target == destination and not target.exists()
+        target.write_bytes(b'Another writer owns this destination')
+        return original(stage, target)
+    monkeypatch.setattr(module, 'publish_noreplace', writer_at_publication)
+    with pytest.raises(FileExistsError):
+        action()
+    assert destination.read_bytes() == b'Another writer owns this destination'
+    assert (controller._file_hash, controller.project_path, controller._recovery_hash) == before
+    assert controller.dirty and not list(tmp_path.glob('.audio-save-*'))
+
+
+@pytest.mark.parametrize('name', ['CON.json', 'project.json:stream', 'project.json.'])
+def test_new_studio_file_keeps_export_filename_guards(controller, tmp_path, name):
+    controller.new('Source')
+    with pytest.raises(ValueError, match='filename'):
+        controller.save(tmp_path / name)
+    assert controller.project_path is None
+    assert not (tmp_path / name).exists()

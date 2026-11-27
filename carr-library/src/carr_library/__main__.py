@@ -63,6 +63,10 @@ def self_test():
 
 
 def main(argv=None):
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if arguments and arguments[0] == 'sync':
+        from .sync.cli import main as sync_main
+        return sync_main(arguments[1:])
     from . import __version__
     parser = argparse.ArgumentParser(description='Offline Universal Research Library')
     parser.add_argument('--version', action='version', version=__version__)
@@ -73,6 +77,23 @@ def main(argv=None):
     parser.add_argument('--backup', type=Path, help='Back up all local libraries to a new directory')
     parser.add_argument('--restore', type=Path, help='Restore a backup to a new --data-dir')
     parser.add_argument('--manifest-sha256', help='Previously recorded backup manifest checksum')
+    ocr = parser.add_mutually_exclusive_group()
+    ocr.add_argument('--list-ocr-models', action='store_true',
+                     help='List the pinned official OCR catalogue; never downloads models')
+    ocr.add_argument('--install-ocr-models', type=Path, metavar='FOLDER',
+                     help='Verify and install selected OCR models from a local offline folder')
+    ocr.add_argument('--verify-ocr-models', metavar='LANGUAGES',
+                     help='Verify installed selected models, for example eng+ukr+script/Latin')
+    parser.add_argument('--ocr-profile', choices=('fast', 'best'),
+                        help='Pinned Fast or Best model family for OCR model operations')
+    parser.add_argument('--ocr-model-store', type=Path,
+                        help='Absolute local OCR model-store folder')
+    parser.add_argument('--ocr-model', action='append', default=[],
+                        help='Model identifier for offline installation; repeat for mixed languages')
+    parser.add_argument('--ocr-all-models', action='store_true',
+                        help='Explicitly install the complete selected profile from the local folder')
+    parser.add_argument('--ocr-model-search', default='',
+                        help='Filter --list-ocr-models by language, script or model identifier')
     research = parser.add_mutually_exclusive_group()
     research.add_argument('--document-formats', action='store_true',
                           help='Print supported import formats and fidelity limits without opening a library')
@@ -96,14 +117,27 @@ def main(argv=None):
                         help='Maximum results from each selected library, 1 to 100')
     from .audio_cli import add_audio_arguments, audio_requested, validate_audio_arguments, run_audio
     add_audio_arguments(parser)
-    args = parser.parse_args(argv)
+    args = parser.parse_args(arguments)
+    ocr_operation = (args.list_ocr_models or args.install_ocr_models is not None
+                     or args.verify_ocr_models is not None)
     operations = (args.self_test, bool(args.backup), bool(args.restore), args.document_formats,
                   args.list_libraries, args.search is not None, args.lookup_doi is not None,
-                  audio_requested(args))
+                  audio_requested(args), ocr_operation)
     if sum(bool(operation) for operation in operations) > 1:
-        parser.error('Choose one operation: desktop, self-test, backup, restore, document formats, list libraries, search, DOI lookup, or audio.')
+        parser.error('Choose one operation: desktop, self-test, backup, restore, document formats, list libraries, search, DOI lookup, audio, or OCR models.')
     validate_audio_arguments(args, parser)
     validate_arguments(parser, args)
+    if (args.ocr_model or args.ocr_all_models) and not args.install_ocr_models:
+        parser.error('--ocr-model and --ocr-all-models require --install-ocr-models.')
+    if args.ocr_all_models and args.ocr_model:
+        parser.error('Choose explicit --ocr-model entries or --ocr-all-models, not both.')
+    if args.ocr_model_search and not args.list_ocr_models:
+        parser.error('--ocr-model-search requires --list-ocr-models.')
+    if args.ocr_model_store and not ocr_operation:
+        parser.error('--ocr-model-store requires an OCR model operation.')
+    if args.ocr_profile and not ocr_operation:
+        parser.error('--ocr-profile requires an OCR model operation.')
+    args.ocr_profile = args.ocr_profile or 'fast'
     if args.search is not None and not args.workspaces:
         parser.error('--search requires at least one --workspace; use --list-libraries to find its ID.')
     if args.workspaces and args.search is None and args.lookup_doi is None:
@@ -118,6 +152,28 @@ def main(argv=None):
         native_handle = activate_bundled_runtime()
         if audio_requested(args):
             return run_audio(args)
+        if ocr_operation:
+            from .extract.model_catalog import models, profile_provenance
+            from .extract.ocr_model_store import OcrModelStore
+            store = OcrModelStore(args.ocr_model_store)
+            if args.list_ocr_models:
+                installed = set(store.available(args.ocr_profile))
+                entries = models(args.ocr_profile, args.ocr_model_search)
+                result = {**profile_provenance(args.ocr_profile),
+                          'network_access': False,
+                          'models': [{**asdict(model), 'installed': model.identifier in installed,
+                                      'source_url': model.download_url} for model in entries],
+                          'total_bytes': sum(model.size for model in entries)}
+            elif args.install_ocr_models:
+                selected = ([m.identifier for m in models(args.ocr_profile)]
+                            if args.ocr_all_models else args.ocr_model)
+                if not selected:
+                    parser.error('Choose one or more --ocr-model entries, or --ocr-all-models.')
+                result = asdict(store.install(args.ocr_profile, args.install_ocr_models, selected))
+            else:
+                result = store.select(args.ocr_profile, args.verify_ocr_models).fingerprint()
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0
         if args.self_test:
             print(json.dumps(self_test(), ensure_ascii=False))
             return 0

@@ -30,10 +30,13 @@ license-files = [
   "src/carr_library/citations/_vendor_citeproc/LICENSE",
   "src/carr_library/citations/_vendor_citeproc/CPAL",
   "src/carr_library/citations/_vendor_citeproc/AGPLv3",
+  "src/carr_library/extract/TESSDATA_FAST_LICENSE",
+  "src/carr_library/extract/TESSDATA_BEST_LICENSE",
 ]
 
 [project.optional-dependencies]
 desktop = ["wxPython==4.2.4"]
+sync = ["cryptography==50.0.2"]
 semantic = [
   "fastembed==0.9.1",
   "onnxruntime==1.32.0",
@@ -85,6 +88,7 @@ packages = [
   "carr_library.search._vendor",
   "carr_library.search._vendor.rifflux",
   "carr_library.storage",
+  "carr_library.sync",
   "carr_library.ui",
   "carr_library.ui._vendor",
   "carr_library.ui._vendor.wx_grid",
@@ -100,7 +104,7 @@ bootstrap = "bootstrap"
 [tool.setuptools.package-data]
 "*" = ["*.sql", "*.md", "LICENSE", "UPSTREAM.json", "_rispy_LICENSE"]
 "carr_library.citations" = ["_vendor_citeproc/*", "styles/*"]
-"carr_library.extract" = ["ocr-model-catalog.json"]
+"carr_library.extract" = ["ocr-model-catalog.json", "TESSDATA_FAST_LICENSE", "TESSDATA_BEST_LICENSE"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "bootstrap", "docs/contracts/probes"]

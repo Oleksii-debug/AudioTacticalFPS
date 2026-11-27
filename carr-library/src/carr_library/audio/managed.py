@@ -15,7 +15,7 @@ from filelock import FileLock, Timeout
 
 from ..ingest.writer_guard import exclusive_writer
 from ..reader.narration_text import read_document, decode_json
-from .jobs import checked_directory, regular_file, _sync_directory
+from .jobs import checked_directory, regular_file, _sync_directory, publish_noreplace
 
 
 MAX_DOCUMENT_BYTES = 64 * 1024 ** 2
@@ -105,7 +105,7 @@ class ManagedProjects:
                 if self._state(selected) != previous:
                     raise ValueError('The saved project changed during Audio Studio save.')
                 if previous is None:
-                    os.link(temporary, selected)
+                    publish_noreplace(temporary, selected)
                 else:
                     os.replace(temporary, selected)
                 _sync_directory(selected.parent)

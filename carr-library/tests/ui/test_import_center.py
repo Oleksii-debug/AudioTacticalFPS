@@ -131,9 +131,10 @@ def test_missing_ocr_configuration_never_starts_a_plan(center):
     center.frame.run_job.assert_not_called()
 
 
-def test_model_choice_updates_new_plans_only_and_cancel_preserves_previous(center, monkeypatch):
+@pytest.mark.parametrize('profile', ['installed', 'fast', 'best'])
+def test_model_choice_updates_new_plans_only_and_cancel_preserves_previous(center, monkeypatch, profile):
     from carr_library.ui import ocr_options
-    selected = Config(languages='script/Latin+fra', dpi=200, orientation=True)
+    selected = Config(languages='script/Latin+fra', dpi=200, orientation=True, model_profile=profile)
     chooser = Mock(return_value=selected)
     monkeypatch.setattr(ocr_options, 'choose_model_config', chooser)
     original = deepcopy(center.batch)

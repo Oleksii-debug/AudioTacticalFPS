@@ -73,10 +73,28 @@ The complete-library backup integration uses the pure
 `assistant.validation.validate_state_document(basename, raw)` interface for
 job and control JSON. It validates schemas, identities, approved plan hashes,
 scope, statuses and artifact records without opening saved paths. Locks and
-temporary files are excluded. Restoring to a different data directory may set
-`requires_reapproval: true`; original paths and the approved plan are preserved.
-Such jobs remain visible with an attention status and cannot resume until a new
-plan has been explicitly reviewed and submitted.
+recognized atomic temporary files are excluded. Unknown files inside the managed
+assistant namespace, orphan controls, malformed records and forged committed
+workspace/edition/revision bindings reject the complete snapshot. Each job and
+control publication uses the same library writer guard as the database snapshot;
+the snapshot never takes the assistant's execution lock. It can therefore include
+the running checkpoint of the assistant's own complete-backup operation.
+
+Restoration preserves the exact bytes, original data directory, paths and approved
+plan hash. The existing optional `requires_reapproval` marker is supported; a
+different data directory itself also requires reapproval without changing the
+record. Such jobs stay visible with attention status and cannot resume. Selecting
+one in **Saved jobs** puts an unapproved copy of its steps in the goal field. The
+user selects current permissions, edits literal path arguments if necessary, and
+uses Preview/Run to create a newly approved job. This leaves the original record
+unchanged. A corrupt or disconnected job does not hide other jobs in the list.
+
+Assistant state has separate bounds of 1,000 jobs, 64 MiB combined JSON, 64 MiB per
+job and 1 KiB per control, in addition to complete-backup sidecar budgets. Only the
+managed `state/assistant` directory is supported. External input/output files and
+unfinished import queues are not copied by this checkpoint integration. Archived
+libraries and exact historical source results are preserved as history, without
+promoting them to newly authenticated quotations or completed external outputs.
 
 Audio receives the approved working-disk budget before rendering. Complete
 library backups are created in a temporary sibling by the existing backup
@@ -110,6 +128,38 @@ acceptance. No device recording or background playback starts on application
 launch, import or project open.
 
 ## Reuse and verification
+
+The existing Studio now has a **Playback** page with one shared player and a
+queue of up to 256 local PCM WAV recordings. Adding or replacing the queue
+validates every header before changing state and never starts playback. The
+selected file is checked again before use; a replaced or modified queue entry
+must be added again. Natural completion advances to the next item. Stop and
+Close cancel advancement and the sleep timer. Play rendered master starts a
+single-file queue; Add WAV recordings appends to it. Queues are session-local.
+
+**Repeat A–B range** applies explicit start/end times to Windows MCI or ffplay.
+The backend stops at B and the Studio's next 500 ms timer tick restarts at A.
+This avoids playing beyond B but is not gapless looping. **Clear A–B repeat**
+restores ordinary playback and preserves a paused state. The sleep timer uses
+elapsed wall time, including time spent paused, and takes priority over repeat
+or queue advancement. Its action follows the next Studio timer tick; an
+unresponsive GUI can delay it. Zero minutes turns the timer off.
+
+The rendered master's checked chapter start frames populate a named segment
+selector. Go to selected segment, Previous segment and Next segment reuse the
+same seek operation and preserve pause. The player accepts at most 10,000
+strictly ordered, in-range segment markers. Standalone recordings have no
+invented chapter metadata. Automatic status updates do not move keyboard focus;
+Read playback controls makes the current position, loop and timer state readable.
+
+The focused player/controller regression passed **35 tests** on Linux. It
+includes real RIFF/RF64 validation, invalid queue rollback, modified-file
+rejection, deterministic timer/loop/segment tests with explicitly mocked MCI,
+and actual two-file ffplay decoding through SDL's dummy audio device. The dummy
+device establishes process/decoding/queue completion, not audible playback or
+physical-device quality. The Windows smoke adds actual native control names,
+queue setup without playback, timer setup/cancellation and queue clearing;
+execution of that expanded native smoke remains a separate CI gate.
 
 The local assistant models, guided parser, job store and executor, the native
 assistant dialog and WAV player were adapted from repository PR103 commit

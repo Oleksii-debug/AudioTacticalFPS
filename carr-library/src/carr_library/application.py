@@ -116,6 +116,7 @@ class _CatalogPublisher:
         self.storage, self.record = storage, registration
         self.db = storage.db
         self.review_records = lambda: ()
+        self.published_here = False
 
     def publish_revision(self, workspace, edition, revision, asset, config, pages):
         if edition != self.record.edition_id or asset != self.record.manifest['sha256']:
@@ -142,6 +143,7 @@ class _CatalogPublisher:
             # Reject inconsistent candidates while this publication can still
             # roll back every catalog, source, review and search-index write.
             self.storage._check()
+        self.published_here = True
 
     def check(self):
         return self.storage.check()
@@ -209,7 +211,6 @@ class LibraryApp:
                     budget.check()
                 yield db
             finally:
-                # Remove the callback before rolling back the read snapshot.
                 if budget is not None:
                     # Cleanup must work even when cancellation remains latched.
                     db.set_progress_handler(None, 0)
@@ -535,6 +536,10 @@ class LibraryApp:
                     edition_id=None, cancelled=lambda: False, config=None, timeout=120.0):
         """Isolate document parsing; retain the exact strict UTF-8 TXT path inline."""
         from .extract.page_ocr import Config
+        if not isinstance(authors, (tuple, list)) or len(authors) > 100:
+            raise ValueError('invalid authors')
+        if not isinstance(collections, (tuple, list)) or len(collections) > 100:
+            raise ValueError('invalid collections')
         path = Path(path).absolute()
         metadata = dict(title=title, authors=tuple(authors), language=language,
                         edition=edition, volume=volume, collections=tuple(collections),
@@ -717,8 +722,6 @@ class LibraryApp:
                             ingest.retry(workspace, job)
                     else:
                         job = ingest.start(workspace, record.edition_id, self.assets_dir, retained.name, settings)
-                    published = storage.db.execute('SELECT 1 FROM revision WHERE id=?',
-                                                   (job,)).fetchone() is not None
                     record_progress(self.root, _request_id, job=job)
                     result = ingest.run(workspace, job, self.assets_dir, retained.name, settings, cancelled=cancelled)
                     if result['state'] in ('complete', 'superseded'):
@@ -738,7 +741,7 @@ class LibraryApp:
                                 raise ValueError('Completed import is missing its sealed source revision.')
                             if (current[3] == job) != (result['state'] == 'complete'):
                                 raise ValueError('Completed import active revision changed.')
-                            if published:
+                            if not publisher.published_here:
                                 if cancelled():
                                     raise InterruptedError('Import cancelled before catalog registration.')
                                 # A replay may add membership with exact current

@@ -64,6 +64,23 @@ def valid_model_code(value):
                         *(f'lpt{i}' for i in range(1, 10))}
 
 
+is_model_id = valid_model_code
+
+
+def model_ids(languages):
+    """Shared bounded IDs for inventory/store use, including auxiliary models.
+
+    Recognition choices additionally pass split_languages, which excludes
+    auxiliary models and limits the number of simultaneous recognition models.
+    """
+    if not isinstance(languages, str) or not 0 < len(languages) <= MAX_MODELS * 72:
+        raise OcrLanguageError('invalid language selection: choose at least one text recognition language or script.')
+    selected = tuple(languages.split('+'))
+    if len(selected) > MAX_MODELS or not all(valid_model_code(name) for name in selected):
+        raise OcrLanguageError('invalid language selection')
+    return selected
+
+
 def split_languages(value):
     """Accept only bounded CLI data, including official script/Name selectors."""
     if not isinstance(value, str) or not 0 < len(value) <= MAX_SELECTED_MODELS * 72:
@@ -117,18 +134,23 @@ class LanguageCatalog:
         return selected
 
 
-def parse_language_report(report):
+def parse_language_report(report, *, expected_directory=None):
     """Read the documented --list-langs response, retaining recognition order."""
     if not isinstance(report, str) or len(report.encode('utf-8')) > MAX_REPORT_BYTES:
         raise OcrLanguageError('The OCR engine returned an oversized model inventory.')
-    lines = tuple(line.strip() for line in report.splitlines() if line.strip())
+    lines = tuple(line for line in report.lstrip('\ufeff').splitlines() if line)
+    if any(line != line.strip() for line in lines):
+        raise OcrLanguageError('The OCR engine returned whitespace in a model identifier.')
     if not lines:
         raise OcrLanguageError('The OCR engine returned no model inventory.')
-    header = re.fullmatch(r'List of available languages in "[^"\r\n]+" \(([0-9]{1,5})\):', lines[0])
+    header = re.fullmatch(r'List of available languages in "([^"\r\n]+)" \(([0-9]{1,5})\):', lines[0])
     if header is None:
         raise OcrLanguageError('The OCR engine returned an unsupported model inventory.')
+    if expected_directory is not None and (
+            os.path.normcase(os.path.abspath(header[1])) != os.path.normcase(os.path.abspath(expected_directory))):
+        raise OcrLanguageError('The OCR runtime reported a different model directory.')
     codes = lines[1:]
-    if (int(header[1]) != len(codes) or len(codes) > MAX_MODELS
+    if (int(header[2]) != len(codes) or len(codes) > MAX_MODELS
             or any(not valid_model_code(code) for code in codes)
             or len({code.casefold() for code in codes}) != len(codes)):
         raise OcrLanguageError('The OCR engine returned an invalid model inventory.')
@@ -147,7 +169,7 @@ def _capture(runtime, option, remaining):
                 while True:
                     seconds = remaining()
                     if any(os.fstat(stream.fileno()).st_size > MAX_REPORT_BYTES for stream in (output, errors)):
-                        raise OcrLanguageError('The OCR engine returned oversized output while checking installed models.')
+                        raise OcrLanguageError('The OCR engine returned oversized output (output limit) while checking installed models.')
                     try:
                         result = process.wait(timeout=min(seconds, 0.05))
                     except subprocess.TimeoutExpired:
@@ -155,7 +177,7 @@ def _capture(runtime, option, remaining):
                     break
                 remaining()
                 if any(os.fstat(stream.fileno()).st_size > MAX_REPORT_BYTES for stream in (output, errors)):
-                    raise OcrLanguageError('The OCR engine returned oversized output while checking installed models.')
+                    raise OcrLanguageError('The OCR engine returned oversized output (output limit) while checking installed models.')
                 if result:
                     raise subprocess.CalledProcessError(result, argv)
                 output.seek(0)
@@ -169,7 +191,7 @@ def _capture(runtime, option, remaining):
 
 
 def discover_languages(*, timeout=10, cancelled=lambda: False,
-                       model_pack_path=None, model_pack_sha256=None):
+                       model_pack_path=None, model_pack_sha256=None, model_profile='installed'):
     """Inspect only the existing selected runtime; never download or fall back.
 
     Returned names mean installed inventory, not that every model has passed
@@ -177,37 +199,57 @@ def discover_languages(*, timeout=10, cancelled=lambda: False,
     their existing hard error and cannot become a system-runtime fallback.
     """
     from .ocr_runtime import bind_model_pack, discover_ocr_runtime
+    if model_profile not in ('installed', 'fast', 'best'):
+        raise OcrLanguageError('Choose installed, Fast or Best OCR models.')
+    if model_pack_path is not None and model_profile != 'installed':
+        raise OcrLanguageError('Choose one verified external pack or managed profile.')
     if type(timeout) not in (int, float) or not math.isfinite(timeout) or not 0 < timeout <= 30:
         raise OcrLanguageError('Model discovery timeout must be between 0 and 30 seconds.')
     deadline = time.monotonic() + timeout
 
     def remaining():
         if cancelled():
-            raise OcrLanguageError('Checking installed OCR models was cancelled.')
+            raise InterruptedError('Checking installed OCR models was cancelled.')
         seconds = deadline - time.monotonic()
         if seconds <= 0:
-            raise OcrLanguageError('Discovering installed OCR models timed out.')
+            raise TimeoutError('Discovering installed OCR models timed out.')
         return seconds
 
     remaining()
     runtime = discover_ocr_runtime(remaining=remaining)
     runtime = bind_model_pack(runtime, model_pack_path, model_pack_sha256, remaining=remaining)
     if runtime is None:
+        if model_profile != 'installed':
+            raise OcrLanguageError('A managed model profile needs an installed local OCR engine.')
         return LanguageCatalog(())
+    if model_profile != 'installed':
+        from .managed_ocr import ManagedOcrRuntime
+        from .ocr_model_store import OcrModelStore
+        store = OcrModelStore()
+        codes = store.available(model_profile)
+        if not codes:
+            runtime.assert_unchanged(remaining)
+            return LanguageCatalog((), integrity='verified_managed_profile')
+        selection = store.select(model_profile, '+'.join(codes), remaining=remaining)
+        runtime = ManagedOcrRuntime(runtime, selection)
     try:
         version_lines = _capture(runtime, '--version', remaining).splitlines()
         version = version_lines[0] if version_lines else ''
         if not re.fullmatch(r'tesseract [0-9][A-Za-z0-9.\-+~]*', version):
             raise OcrLanguageError('The OCR engine returned an unsupported version.')
-        codes = parse_language_report(_capture(runtime, '--list-langs', remaining))
-        if (runtime.portable or model_pack_path) and set(codes) != set(runtime.languages):
+        codes = parse_language_report(_capture(runtime, '--list-langs', remaining),
+                                      expected_directory=getattr(runtime, 'tessdata', None))
+        if (runtime.portable or model_pack_path or model_profile != 'installed') and set(codes) != set(runtime.languages):
             raise OcrLanguageError('Installed OCR models do not match the verified portable inventory.')
         runtime.assert_unchanged(remaining)
         remaining()
+    except (InterruptedError, TimeoutError):
+        raise
     except (OSError, subprocess.SubprocessError, UnicodeError) as exc:
         raise OcrLanguageError('Installed OCR models could not be read. Check the local engine and retry.') from exc
     return LanguageCatalog(codes, version,
                            'verified_model_pack' if model_pack_path else
+                           'verified_managed_profile' if model_profile != 'installed' else
                            ('portable_sha256' if runtime.portable else 'system_installation'),
                            model_pack_sha256 if model_pack_path else runtime.manifest_sha256)
 
@@ -238,15 +280,17 @@ def validate_presets_bytes(raw):
     except (UnicodeError, json.JSONDecodeError, RecursionError) as exc:
         raise OcrLanguageError('The saved OCR presets are invalid.') from exc
     if (type(data) is not dict or set(data) != {'version', 'presets'}
-            or type(data['version']) is not int or data['version'] not in (1, 2)
+            or type(data['version']) is not int or data['version'] not in (1, 2, 3)
             or type(data['presets']) is not list or len(data['presets']) > MAX_PRESETS):
         raise OcrLanguageError('The saved OCR preset format is unsupported.')
     names = set()
     for item in data['presets']:
         fields = {'name', 'languages', 'model_policy', 'orientation'}
         pack_fields = {'model_pack_path', 'model_pack_sha256'}
-        if (type(item) is not dict or set(item) not in
-                (fields, fields | pack_fields) or data['version'] == 1 and set(item) != fields):
+        allowed = (fields, fields | pack_fields, fields | {'model_profile'})
+        if (type(item) is not dict or set(item) not in allowed
+                or data['version'] == 1 and set(item) != fields
+                or data['version'] < 3 and 'model_profile' in item):
             raise OcrLanguageError('The saved OCR preset fields are invalid.')
         name = _name(item['name']).casefold()
         if name in names:
@@ -261,6 +305,9 @@ def validate_presets_bytes(raw):
             validate_pack_selection(item['model_pack_path'], item['model_pack_sha256'])
             if item['model_pack_path'] is None or item['model_policy'] != 'default':
                 raise OcrLanguageError('A saved verified OCR pack needs a path, checksum and installed-model profile.')
+        if 'model_profile' in item and (item['model_profile'] not in ('fast', 'best')
+                or item['model_profile'] == 'best' and item['model_policy'] == POLICY):
+            raise OcrLanguageError('The saved managed OCR profile is invalid.')
     return data
 
 
@@ -292,6 +339,8 @@ def store_preset(root, name, config, *, replace=False):
             'orientation': config.orientation, 'model_policy': config.model_policy}
     if getattr(config, 'model_pack_path', None) is not None:
         item.update(model_pack_path=config.model_pack_path, model_pack_sha256=config.model_pack_sha256)
+    if getattr(config, 'model_profile', 'installed') != 'installed':
+        item['model_profile'] = config.model_profile
     with exclusive_writer(root) as base:
         presets = list(load_presets(base))
         existing = next((i for i, old in enumerate(presets)
@@ -317,7 +366,7 @@ def delete_preset(root, name):
 
 
 def _write_presets(root, presets):
-    version = 2 if any('model_pack_path' in row for row in presets) else 1
+    version = 3 if any('model_profile' in row for row in presets) else 2 if any('model_pack_path' in row for row in presets) else 1
     raw = (json.dumps({'version': version, 'presets': presets}, ensure_ascii=False,
                       sort_keys=True, separators=(',', ':')) + '\n').encode('utf-8')
     validate_presets_bytes(raw)

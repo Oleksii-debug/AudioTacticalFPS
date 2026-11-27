@@ -4,6 +4,9 @@ import json
 import os
 from pathlib import Path
 import shutil
+import subprocess
+import sys
+import textwrap
 
 import pytest
 
@@ -148,3 +151,60 @@ def test_project_id_must_match_saved_directory_before_state_changes(tmp_path):
     with pytest.raises(ValueError, match='different managed project'):
         opened.open(path)
     assert opened.to_dict() == old
+
+
+def test_first_managed_save_survives_process_exit_without_link_alias(tmp_path):
+    import carr_library.audio.managed as module
+
+    root = tmp_path / 'library'
+    script = textwrap.dedent('''
+        import os
+        import sys
+        from pathlib import Path
+        import carr_library.audio.managed as managed
+        from carr_library.ui.audio_studio import StudioController
+
+        root = Path(sys.argv[1])
+        root.mkdir()
+        value = StudioController(private_root=root)
+        value.new('Original text remains readable after interruption.')
+        value.project_id = 'a' * 32
+        managed._sync_directory = lambda _path: os._exit(73)
+        value.save_in_library()
+        raise SystemExit('The interruption hook was not reached.')
+    ''')
+    environment = os.environ.copy()
+    environment['PYTHONPATH'] = str(Path(module.__file__).resolve().parents[2])
+    child = subprocess.run([sys.executable, '-c', script, str(root)], env=environment,
+                           capture_output=True, text=True, timeout=20)
+    assert child.returncode == 73, child.stderr
+    saved = root / 'audio-projects' / ('a' * 32) / 'studio' / 'project.json'
+    assert saved.is_file() and saved.stat().st_nlink == 1
+    assert not list(saved.parent.glob('.studio-save-*'))
+    reopened = StudioController(private_root=root).open(saved)
+    assert reopened.script == 'Original text remains readable after interruption.'
+    assert reopened.output_dir == saved.parent.parent / 'audio'
+    assert not reopened.dirty
+
+
+def test_first_managed_save_never_overwrites_a_final_publication_collision(tmp_path, monkeypatch):
+    value = controller(tmp_path / 'library')
+    _, destination, _ = ManagedProjects(value.private_root).paths(value.project_id)
+    original_state = ManagedProjects._state
+    foreign = b'Concurrent writer owns this file.'
+    observations = []
+
+    def create_after_final_check(path):
+        previous = original_state(path)
+        observations.append(previous)
+        if len(observations) == 2:
+            path.write_bytes(foreign)
+        return previous
+
+    monkeypatch.setattr(ManagedProjects, '_state', staticmethod(create_after_final_check))
+    with pytest.raises(FileExistsError):
+        value.save_in_library()
+    assert destination.read_bytes() == foreign
+    assert destination.stat().st_nlink == 1
+    assert value.project_path is None and value.output_dir is None and value.dirty
+    assert not list(destination.parent.glob('.studio-save-*'))

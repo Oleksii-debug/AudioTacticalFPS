@@ -1,13 +1,14 @@
 """Complete local research-library backups using the canonical SQLite snapshot.
 
 Backups include all workspaces, saved research and registered original files,
-reader/editor/preferences state and explicitly managed Audio Studio projects.
+reader/editor/preferences state, assistant jobs and managed Audio Studio projects.
 Retained files from failed/unpublished imports are deliberately not included.
 The independently retained manifest digest binds the database and every asset.
 Version 2 also identifies the exact schema, not just its numeric user_version.
 Version 3 preserves the reader foundation's filename/root sidecar schema.
-Version 4 adds managed audio using path/sidecars and streamed file checksums.
-Live jobs must release their project locks before a snapshot can be taken.
+Version 4 adds managed audio/assistant state using path/sidecars and streamed
+file checksums. Live audio jobs must release their project locks; assistant
+checkpoint publications use the shared library writer lock.
 Legacy version 1 backups and newer backups are accepted only for an exact
 supported V3 or V4 schema. V3 snapshots are restored unchanged; opening the
 restored library performs the normal checked upgrade to V4.
@@ -43,7 +44,20 @@ from .reader.narration import (
     snapshot_narration_files, validate_narration_payload,
 )
 from .keybindings import FILENAME as KEYBINDINGS, MAX_BYTES as MAX_KEYBINDINGS, decode_preferences
+from .keyboard_preferences import MAX_BYTES as MAX_KEYMAP_BYTES, validate_keymap
+from .evidence_drafts import (
+    FILENAME as EVIDENCE_DRAFTS, MAX_BYTES as MAX_EVIDENCE_DRAFTS, validate_evidence_drafts,
+)
 from .extract.ocr_languages import FILENAME as OCR_PRESETS, MAX_PRESET_BYTES, validate_presets_bytes
+from .progress import (
+    FILENAME as PROGRESS_PREFERENCES, MAX_BYTES as MAX_PROGRESS_PREFERENCES,
+    decode_preferences as decode_progress_preferences,
+)
+from .assistant.snapshots import (
+    MAX_JOBS as MAX_ASSISTANT_JOBS, MAX_SNAPSHOT_BYTES as MAX_ASSISTANT_BYTES,
+    is_state_path as _assistant_path, state_limit as _assistant_limit,
+    state_paths as _assistant_files, validate_state_tree as _validate_assistants,
+)
 
 DATABASE = 'library.sqlite'
 ORIGINALS = 'originals'
@@ -62,9 +76,12 @@ MAX_AUDIO_PROJECTS = 1000
 _PROJECT_ID = re.compile(r'[0-9a-f]{32}')
 _SIMPLE_SIDECARS = {
     KEYBINDINGS: (MAX_KEYBINDINGS, decode_preferences),
+    'keyboard-shortcuts.json': (MAX_KEYMAP_BYTES, validate_keymap),
+    EVIDENCE_DRAFTS: (MAX_EVIDENCE_DRAFTS, validate_evidence_drafts),
+    PROGRESS_PREFERENCES: (MAX_PROGRESS_PREFERENCES, decode_progress_preferences),
     OCR_PRESETS: (MAX_PRESET_BYTES, validate_presets_bytes),
 }
-MAX_READER_BYTES = MAX_READING_STATE + MAX_NARRATION_BYTES + MAX_KEYBINDINGS + MAX_PRESET_BYTES
+MAX_READER_BYTES = MAX_READING_STATE + MAX_NARRATION_BYTES + sum(row[0] for row in _SIMPLE_SIDECARS.values())
 
 
 def _reader_limit(name):
@@ -180,7 +197,7 @@ def _portable_relative(value):
 
 def _sidecar_allowed(value):
     parts = _portable_relative(value)
-    if _reader_path(value):
+    if _reader_path(value) or _assistant_path(value):
         return True
     if (len(parts) < 3 or parts[0] != 'audio-projects'
             or not _PROJECT_ID.fullmatch(parts[1])):
@@ -250,6 +267,7 @@ def _sidecar_info(root, relative):
     if info.st_nlink < 1 or (info.st_nlink != 1 and not _production_link_path(relative)):
         raise RestoreError('sidecar files cannot be hard links')
     limit = (_reader_limit(relative) if _reader_path(relative) else
+             _assistant_limit(relative) if _assistant_path(relative) else
              MAX_SIDECAR_JSON_BYTES if relative.lower().endswith('.json') else MAX_SIDECAR_FILE_BYTES)
     minimum = 0 if relative.lower().endswith(('.srt', '.vtt', '.ffmeta')) else 1
     if not minimum <= info.st_size <= limit:
@@ -321,7 +339,7 @@ def _locked_sidecars(root):
 
 def _studio_files(project, max_files):
     """Reuse the production backup member allowlist with a bounded traversal."""
-    from .audio.backup import _allowed
+    from .audio.backup import _allowed, input_assets
     saved = project / 'studio' / 'project.json'
     if not os.path.lexists(saved):
         return
@@ -330,12 +348,13 @@ def _studio_files(project, max_files):
     if os.path.lexists(recovery):
         yield recovery
     audio = project / 'audio'
+    yield from input_assets(saved, audio, file_budget=max_files).values()
     if not os.path.lexists(audio):
         return
     for child in _children(audio, max_files):
         if _allowed('audio/' + child.name):
             yield child
-        elif child.name in ('assets', 'cache'):
+        elif child.name == 'cache':
             for item in _children(child, max_files):
                 if _allowed('audio/' + child.name + '/' + item.name):
                     yield item
@@ -353,6 +372,15 @@ def _validate_studio_source(db, payload):
     from .reader.narration_text import NarrationDraft
     _studio(payload)
     reference = payload['source_reference']
+    if reference is not None and reference['kind'] == 'saved-reading-copy':
+        where = reference['source_location']
+        if where is not None:
+            try:
+                location = ReadingLocation(**where)
+            except (TypeError, ValueError) as exc:
+                raise RestoreError('invalid saved reading-copy audio source location') from exc
+            _validate_reading_locations(db, (location,))
+        return
     if reference is None or reference['kind'] != 'library-source-reading-copy':
         return
     original = NarrationDraft.from_dict(payload['draft']).source_text
@@ -385,10 +413,13 @@ def _validate_studio_source(db, payload):
     _validate_reading_locations(db, locations)
 
 
-def _validate_studios(db, root):
+def _validate_studios(db, root, *, strict_assets=False):
+    from .audio.backup import input_assets
     for project in _projects(root):
         saved = project / 'studio' / 'project.json'
         if not os.path.lexists(saved):
+            if strict_assets and os.path.lexists(project / 'audio' / 'assets'):
+                raise RestoreError('archived sound inputs require their saved Studio project')
             continue
         payload = _audio_document(saved)
         _validate_studio_source(db, payload)
@@ -406,6 +437,7 @@ def _validate_studios(db, root):
             _validate_studio_source(db, value['project'])
             if value['project']['project_id'] != payload['project_id']:
                 raise RestoreError('audio recovery draft belongs to another project')
+        input_assets(saved, project / 'audio', strict=strict_assets)
 
 
 def _sidecar_inventory(root, max_files, max_bytes, cancelled):
@@ -424,6 +456,8 @@ def _sidecar_inventory(root, max_files, max_bytes, cancelled):
         files[relative] = _identity(info)
     for name in _snapshot_readers(root):
         add(root / name)
+    for path in _assistant_files(root, cancelled=cancelled):
+        add(path)
     for project in _projects(root):
         for path in _studio_files(project, max_files):
             add(path)
@@ -563,8 +597,9 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
     The host's explicit Backup action authorizes all-workspace inclusion. The
     private source/destination parents must be stable local directories. A
     publication interrupted before manifest.json is incomplete and not restorable.
-    Reader-only sidecars retain version 3; managed audio uses version 4.
-    Active draft/render jobs are refused, not copied mid-publication.
+    Reader-only sidecars retain version 3; managed audio/assistant uses version 4.
+    Active audio jobs are refused. Assistant atomic checkpoints share the root
+    writer guard and can be captured without taking their execution locks.
     File and total-byte budgets are caller-controlled; audio is copied in chunks.
     """
     _sidecar_budget(max_sidecar_files, max_sidecar_bytes, cancelled)
@@ -588,18 +623,19 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
                 fingerprint = schema_fingerprint(snapshot_storage.db)
                 _validate_readers(snapshot_storage.db, _snapshot_readers(app.root))
                 _validate_studios(snapshot_storage.db, app.root)
+                _validate_assistants(snapshot_storage.db, app.root, cancelled=cancelled)
             sidecars = [_copy_sidecar(app.root, name, stage / SIDECARS / name, identity, cancelled)
                         for name, identity in inventory.items()]
             if inventory != _sidecar_inventory(app.root, max_sidecar_files, max_sidecar_bytes, cancelled):
                 raise RestoreError('Reading/audio state changed during backup. Retry with the projects idle.')
             check_projects()
-            has_audio = any(entry['path'].startswith('audio-projects/') for entry in sidecars)
-            manifest = dict(version=4 if has_audio else 3 if sidecars else 2, kind='carr-library', schema_version=4,
+            managed = any(not _reader_path(entry['path']) for entry in sidecars)
+            manifest = dict(version=4 if managed else 3 if sidecars else 2, kind='carr-library', schema_version=4,
                 schema_fingerprint=fingerprint,
                 database=dict(filename=DATABASE, size_bytes=size, sha256=hash_file(snapshot)),
                 assets=_asset_manifest(entries))
             if sidecars:
-                manifest['sidecars'] = sidecars if has_audio else [
+                manifest['sidecars'] = sidecars if managed else [
                     dict(filename=entry['path'], size_bytes=entry['size_bytes'], sha256=entry['sha256'])
                     for entry in sidecars]
             raw = (json.dumps(manifest, ensure_ascii=False, sort_keys=True,
@@ -617,8 +653,8 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
                 os.link(stage / ORIGINALS / entry.filename, destination / ORIGINALS / entry.filename)
             _sync_directory(destination / ORIGINALS)
             if sidecars:
-                sidecar_destination = destination / SIDECARS if has_audio else destination
-                if has_audio:
+                sidecar_destination = destination / SIDECARS if managed else destination
+                if managed:
                     sidecar_destination.mkdir(mode=0o700)
                 _publish_sidecars(stage / SIDECARS, sidecar_destination, sidecars)
                 _sync_directory(sidecar_destination)
@@ -728,6 +764,7 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
         if type(entries) is not list or not minimum <= len(entries) <= max_sidecar_files:
             raise RestoreError('invalid sidecar manifest count')
         names, total, reader_total, narration_total, reader_count = {}, 0, 0, 0, 0
+        assistant_total, assistant_jobs, assistant_controls = 0, 0, 0
         for entry in entries:
             if (type(entry) is not dict or set(entry) != {field, 'size_bytes', 'sha256'}
                     or not _backup_sidecar_allowed(entry[field])
@@ -748,8 +785,16 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
                 if entry[field].startswith(NARRATION_DIRECTORY + '/'):
                     narration_total += entry['size_bytes']
             if (reader_total > MAX_READER_BYTES or narration_total > MAX_NARRATION_BYTES
-                    or reader_count > 3 + MAX_PROJECTS * 2):
+                    or reader_count > 1 + len(_SIMPLE_SIDECARS) + MAX_PROJECTS * 2):
                 raise RestoreError('reader sidecar count or byte limit')
+            if _assistant_path(entry[field]):
+                assistant_total += entry['size_bytes']
+                assistant_controls += int(entry[field].endswith('.control.json'))
+                assistant_jobs += int(not entry[field].endswith('.control.json'))
+                if (entry['size_bytes'] > _assistant_limit(entry[field])
+                        or assistant_total > MAX_ASSISTANT_BYTES
+                        or max(assistant_jobs, assistant_controls) > MAX_ASSISTANT_JOBS):
+                    raise RestoreError('assistant sidecar count or byte limit')
     normalized = _manifest_sidecars(manifest)
     expected_names = {DATABASE, ORIGINALS, MANIFEST}
     expected_names.update({SIDECARS} if subdirectory else {entry['path'].split('/')[0] for entry in normalized})
@@ -823,7 +868,8 @@ def restore_backup(source, destination, expected_manifest_sha256, *,
             storage.check()
             if sidecars:
                 _validate_readers(storage.db, _snapshot_readers(stage / SIDECARS))
-                _validate_studios(storage.db, stage / SIDECARS)
+                _validate_studios(storage.db, stage / SIDECARS, strict_assets=True)
+                _validate_assistants(storage.db, stage / SIDECARS, cancelled=cancelled)
             original_store = RetainedAssets(source / ORIGINALS)
             entries = verify_catalog_assets(storage.db, original_store,
                 include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)

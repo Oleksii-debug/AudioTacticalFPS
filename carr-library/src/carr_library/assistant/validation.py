@@ -60,6 +60,54 @@ def _path(value):
         raise ValueError('Checkpoint paths must remain absolute local paths.')
     if '..' in PurePosixPath(value).parts or '..' in PureWindowsPath(value).parts:
         raise ValueError('Checkpoint paths cannot contain parent traversal.')
+    path = PureWindowsPath(value) if PureWindowsPath(value).drive else PurePosixPath(value)
+    if isinstance(path, PureWindowsPath) and any(':' in part for part in path.parts[1:]):
+        raise ValueError('Checkpoint paths cannot name Windows alternate data streams.')
+    return path
+
+
+def _within(value, root, *, allow_root=False):
+    path, base = _path(value), _path(root)
+    if (type(path) is not type(base) or not path.is_relative_to(base)
+            or (not allow_root and path == base)):
+        raise ValueError('Checkpoint path is outside its approved scope.')
+
+
+def _output_name(value):
+    text(value, 'output name', maximum=1024)
+    path = PurePosixPath(value)
+    if path.is_absolute() or path == PurePosixPath('.') or '..' in path.parts or ':' in value or '\\' in value:
+        raise ValueError('Checkpoint output name is outside its approved scope.')
+
+
+def decode_state_json(raw):
+    """Reject ambiguous or non-finite JSON before interpreting checkpoint fields."""
+    if not isinstance(raw, (str, bytes)) or len(raw) > 64 * 1024 * 1024:
+        raise ValueError('Assistant backup sidecar exceeds its byte budget.')
+
+    def unique(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError('Duplicate assistant checkpoint field.')
+            result[key] = value
+        return result
+
+    def finite(value):
+        raise ValueError('Non-finite number in assistant checkpoint.')
+
+    def number(value):
+        parsed = float(value)
+        if not math.isfinite(parsed):
+            finite(value)
+        return parsed
+
+    try:
+        if isinstance(raw, bytes):
+            raw = raw.decode('utf-8')
+        return json.loads(raw, object_pairs_hook=unique, parse_constant=finite, parse_float=number)
+    except (RecursionError, UnicodeError) as exc:
+        raise ValueError('Invalid assistant checkpoint JSON.') from exc
 
 
 def _sha(value):
@@ -75,8 +123,8 @@ def _integer(value, name, minimum=1, maximum=None):
 def validate_job(value, *, identity=None):
     """Validate a job without resolving paths, importing models or executing tools.
 
-    Restore may set requires_reapproval=True when the original data_dir differs
-    from its target. The original plan, scope and path bindings stay unchanged.
+    An explicit requires_reapproval marker is supported. A restored job is also
+    recognized by its unchanged data_dir; restoring never needs to rewrite it.
     """
     required = {'schema', 'id', 'data_dir', 'plan', 'plan_sha256', 'created', 'updated',
                 'status', 'message', 'workspace', 'steps'}
@@ -122,7 +170,9 @@ def validate_job(value, *, identity=None):
     for path in scope['input_roots']:
         _path(path)
     if scope['output_root'] is not None:
-        _path(scope['output_root'])
+        output, data = _path(scope['output_root']), _path(value['data_dir'])
+        if type(output) is type(data) and output.is_relative_to(data):
+            raise ValueError('Checkpoint output cannot be inside its private library.')
     steps, saved = plan['steps'], value['steps']
     if (type(steps) is not list or not 1 <= len(steps) <= scope['max_steps']
             or type(saved) is not list or len(saved) != len(steps)):
@@ -139,11 +189,34 @@ def validate_job(value, *, identity=None):
                 raise ValueError('Invalid saved create-library permission.')
         if validated.tool == 'library.backup' and not scope['allow_full_backup']:
             raise ValueError('A saved backup plan lacks its explicit permission.')
+        if validated.tool.startswith('library.import'):
+            target = _path(validated.arguments['path'])
+            if not any(type(target) is type(_path(root)) and target.is_relative_to(_path(root))
+                       for root in scope['input_roots']):
+                raise ValueError('Checkpoint import is outside its approved input scope.')
+        if validated.tool in ('library.extract', 'library.backup', 'audio.produce'):
+            if scope['output_root'] is None:
+                raise ValueError('Checkpoint operation has no approved output scope.')
+        if validated.tool in ('library.extract', 'library.backup'):
+            _output_name(validated.arguments['name'])
+        if (validated.tool not in ('library.create', 'library.list', 'library.backup', 'audio.produce')
+                and workspace is None and creates == 0):
+            raise ValueError('Checkpoint operation has no approved library scope.')
         if (type(checkpoint) is not dict or set(checkpoint) != {'status', 'intent', 'result', 'message'}
                 or checkpoint['status'] not in ('pending', 'running', 'complete', 'failed')
                 or type(checkpoint['intent']) is not dict):
             raise ValueError('Invalid assistant step checkpoint.')
         text(checkpoint['message'], 'step message', maximum=2000, empty=True)
+        intent = checkpoint['intent']
+        permitted = {'batch'} if validated.tool.startswith('library.import') else (
+            {'sha256'} if validated.tool == 'library.extract' else set())
+        if set(intent) - permitted:
+            raise ValueError('Invalid assistant step intent.')
+        if 'batch' in intent and (not isinstance(intent['batch'], str)
+                or re.fullmatch('[0-9a-f]{32}', intent['batch']) is None):
+            raise ValueError('Invalid saved import batch identity.')
+        if 'sha256' in intent:
+            _sha(intent['sha256'])
         result = checkpoint['result']
         if result is None:
             if checkpoint['status'] == 'complete':
@@ -153,15 +226,29 @@ def validate_job(value, *, identity=None):
             raise ValueError('Invalid completed assistant result.')
         if len(result['artifacts']) > scope['max_files']:
             raise ValueError('Too many assistant artifacts in checkpoint.')
+        artifact_bytes, artifact_paths = 0, set()
         for artifact in result['artifacts']:
             if type(artifact) is not dict or set(artifact) != {'path', 'size', 'sha256'}:
                 raise ValueError('Invalid assistant artifact record.')
             _path(artifact['path'])
+            if scope['output_root'] is None:
+                raise ValueError('A checkpoint artifact has no approved output scope.')
+            _within(artifact['path'], scope['output_root'])
             _integer(artifact['size'], 'artifact size', minimum=0)
             _sha(artifact['sha256'])
+            artifact_bytes += artifact['size']
+            normalized = _path(artifact['path'])
+            if normalized in artifact_paths or artifact_bytes > scope['max_bytes']:
+                raise ValueError('Assistant artifacts exceed their approved budget or repeat a path.')
+            artifact_paths.add(normalized)
         if 'backup_receipt' in result:
+            if validated.tool != 'library.backup':
+                raise ValueError('Only a backup step can have a backup receipt.')
             BackupReceipt.from_dict(result['backup_receipt'])
-            _path(result.get('directory'))
+            _within(result.get('directory'), scope['output_root'])
+            expected = _path(scope['output_root']) / validated.arguments['name']
+            if _path(result['directory']) != expected:
+                raise ValueError('Backup result differs from its approved destination.')
     if creates > 1:
         raise ValueError('Multiple created libraries in one checkpoint are not permitted.')
     actual_workspace = value['workspace']
@@ -171,6 +258,12 @@ def validate_job(value, *, identity=None):
         expected = uuid5(NAMESPACE_URL, 'carr-assistant:' + job_id + ':library').hex
         if not creates or actual_workspace != expected:
             raise ValueError('Checkpoint selected an unapproved workspace.')
+    try:
+        encoded_size = len(canonical(value).encode('utf-8'))
+    except (ValueError, TypeError, UnicodeError, RecursionError) as exc:
+        raise ValueError('Invalid assistant checkpoint JSON content.') from exc
+    if encoded_size > 64 * 1024 * 1024:
+        raise ValueError('Assistant checkpoint exceeds its storage budget.')
     return value
 
 
@@ -185,16 +278,9 @@ def validate_state_document(name, raw):
     matched = re.fullmatch(r'([0-9a-f]{32})(\.control)?\.json', name)
     if matched is None:
         raise ValueError('Invalid assistant backup sidecar filename.')
-    if not isinstance(raw, (str, bytes)) or len(raw) > 64 * 1024 * 1024:
-        raise ValueError('Assistant backup sidecar exceeds its byte budget.')
-    def unique(pairs):
-        result = {}
-        for key, value in pairs:
-            if key in result:
-                raise ValueError('Duplicate assistant checkpoint field.')
-            result[key] = value
-        return result
-    def finite(value):
-        raise ValueError('Non-finite number in assistant checkpoint.')
-    value = json.loads(raw, object_pairs_hook=unique, parse_constant=finite)
+    if not isinstance(raw, (str, bytes)):
+        raise ValueError('Assistant checkpoint must be JSON bytes or text.')
+    if matched[2] and len(raw) > 1024:
+        raise ValueError('Assistant control exceeds its byte budget.')
+    value = decode_state_json(raw)
     return validate_control(value) if matched[2] else validate_job(value, identity=matched[1])

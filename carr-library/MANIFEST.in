@@ -1,5 +1,7 @@
 recursive-include packaging *.py *.cmd *.lock *.in *.md *.json *.txt
 recursive-include docs *.md *.json *.py *.txt
 recursive-include tests *.py *.sql
+recursive-include scripts *.py
+recursive-include bootstrap/semantic_compat *.py *.md *.txt
 recursive-exclude * __pycache__ *~ *.py[cod]
 exclude .gitignore

@@ -43,9 +43,10 @@ def _plain(value):
 class AssistantService:
     def __init__(self, app, *, state_dir=None, production=None):
         self.app = app
-        self.store = JobStore(state_dir or (app.root / 'state' / 'assistant'))
-        if not self.store.directory.is_relative_to(app.root):
-            raise ValueError('Assistant state must remain inside this application data directory.')
+        managed = app.root / 'state' / 'assistant'
+        if state_dir is not None and local_path(state_dir, must_exist=False) != managed:
+            raise ValueError('Assistant state must use this library\'s managed state/assistant directory.')
+        self.store = JobStore(managed, writer_root=app.root)
         self.production = production
 
     def preview(self, instruction, scope):
@@ -134,11 +135,35 @@ class AssistantService:
         if record.get('requires_reapproval') or record.get('data_dir') != str(self.app.root):
             return JobReport(identity, 'attention', 0, len(record['steps']), (),
                 'Restored plan requires review and a new approval; its original paths were preserved.')
-        record, _ = self._load(identity)
+        try:
+            record, _ = self._load(identity)
+        except (ValueError, OSError) as exc:
+            return JobReport(identity, 'attention', 0, len(record['steps']), (),
+                'Saved plan needs review before execution; its original input/output scope is unavailable. '
+                + str(exc)[:1000])
         return self._report(record)
 
     def jobs(self):
-        return tuple(self.get(identity) for identity in self.store.identities())
+        reports = []
+        for identity in self.store.identities():
+            try:
+                reports.append(self.get(identity))
+            except (ValueError, OSError) as exc:
+                # One damaged checkpoint must not hide the other saved jobs.
+                reports.append(JobReport(identity, 'attention', 0, 0, (),
+                    'Saved job is damaged or unavailable; it was not run. ' + str(exc)[:1000]))
+        return tuple(reports)
+
+    def review_instruction(self, identity):
+        """Copy saved steps into an unapproved draft, without transferring scope.
+
+        The caller must select current input/output/library permissions and run
+        the normal preview/submit flow. Original path arguments remain literal;
+        this does not edit a checkpoint or authorize resuming it elsewhere.
+        """
+        saved = self.store.load(identity)['plan']
+        return json.dumps({key: saved[key] for key in ('schema', 'steps', 'summary')},
+                          ensure_ascii=False, indent=2)
 
     def pause(self, identity):
         self._load(identity)

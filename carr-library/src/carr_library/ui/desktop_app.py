@@ -41,6 +41,7 @@ from .audio_studio import install_audio_studio_actions
 from .api_connections import install_api_connection_actions
 from .acquisition_dialog import show_acquisition_dialog
 from .assistant_dialog import install_assistant_actions
+from .portable_sync import install_portable_sync_actions
 
 
 def text_dialog(parent, title, label, value='', *, multiline=False):
@@ -508,6 +509,13 @@ class DesktopFrame(WorkspaceFrame):
         if keyboard.load_notice:
             self.report(keyboard.load_notice)
 
+    def ocr_language_models(self, event):
+        if self.working:
+            self.report('Wait for the current operation or cancel it before changing OCR models.')
+            return
+        from .ocr_model_manager import show_ocr_model_manager
+        show_ocr_model_manager(self)
+
     def _menus(self):
         self.menu_bar = wx.MenuBar()
         menus = [('&Library', [('New library\tCtrl+N', self.new_library),
@@ -516,6 +524,7 @@ class DesktopFrame(WorkspaceFrame):
             ('Restore archived library', self.unarchive_library),
             ('Import books\tCtrl+I', self.import_books),
             ('Import Center: files, folders and queues', self.import_center),
+            ('OCR language models: Fast and Best...', self.ocr_language_models),
             ('Resume interrupted import',self.resume_import),
             ('Review pending imported page',self.review_pending_import),
             ('Add original text\tCtrl+Shift+N', self.add_text),
@@ -561,6 +570,7 @@ class DesktopFrame(WorkspaceFrame):
         install_audio_studio_actions(self)
         install_api_connection_actions(self)
         install_assistant_actions(self)
+        install_portable_sync_actions(self)
 
     def build_advanced_query(self, event=None):
         if self.working:

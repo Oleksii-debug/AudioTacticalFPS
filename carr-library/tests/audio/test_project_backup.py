@@ -6,6 +6,8 @@ from pathlib import Path
 import shutil
 import stat
 import struct
+import subprocess
+import sys
 import wave
 import zipfile
 
@@ -318,3 +320,104 @@ def test_snapshot_after_real_render_restores_checked_outputs_without_new_synthes
     assert hashlib.sha256(Path(after['output']).read_bytes()).hexdigest() == digest
     assert after['frames'] == before['frames']
     assert Path(after['output']).is_relative_to(Path(restored['project_dir']))
+
+
+@pytest.mark.parametrize('operation', ['backup', 'restore'])
+def test_real_process_crash_after_publication_leaves_one_complete_independent_snapshot(
+        project, tmp_path, operation):
+    import carr_library.audio.backup as module
+    controller, file, root = project
+    snapshot = tmp_path / 'source.zip'
+    backup_project(file, snapshot, project_dir=root)
+    destination = tmp_path / ('published.zip' if operation == 'backup' else 'restored')
+    environment = os.environ.copy()
+    environment['PYTHONPATH'] = str(Path(module.__file__).resolve().parents[2])
+    child = '''
+import os, sys
+import carr_library.audio.backup as module
+publish = module.publish_noreplace
+def crash_after_move(source, destination):
+    publish(source, destination)
+    os._exit(43)
+module.publish_noreplace = crash_after_move
+if sys.argv[1] == 'backup':
+    module.backup_project(sys.argv[2], sys.argv[3], project_dir=sys.argv[4])
+else:
+    module.restore_project(sys.argv[2], sys.argv[3])
+'''
+    completed = subprocess.run([sys.executable, '-c', child, operation,
+        str(file if operation == 'backup' else snapshot), str(destination), str(root)],
+        env=environment, capture_output=True, timeout=20)
+    assert completed.returncode == 43, completed.stderr.decode('utf-8', 'replace')
+    if operation == 'backup':
+        assert destination.stat().st_nlink == 1
+        recovered = restore_project(destination, tmp_path / 'checked')
+    else:
+        recovered = {'project_file': destination / 'project' / 'studio' / 'project.json'}
+    reopened = StudioController(private_root=tmp_path / 'private-reopened')
+    reopened.open(recovered['project_file'])
+    assert reopened.draft.source_text == controller.draft.source_text
+    assert reopened.project_id == controller.project_id
+    assert Path(recovered['project_file']).stat().st_nlink == 1
+
+
+@pytest.mark.parametrize('operation', ['backup', 'restore'])
+def test_destination_appearing_during_copy_is_never_replaced(project, tmp_path, operation):
+    _, file, root = project
+    snapshot = tmp_path / 'source.zip'
+    backup_project(file, snapshot, project_dir=root)
+    destination = tmp_path / ('existing.zip' if operation == 'backup' else 'existing-directory')
+    def concurrent_writer(_):
+        if destination.exists():
+            return
+        if operation == 'backup':
+            destination.write_bytes(b'Another operation owns this file')
+        else:
+            destination.mkdir()
+            (destination / 'keep.txt').write_text('Other work', encoding='utf-8')
+    with pytest.raises(FileExistsError):
+        if operation == 'backup':
+            backup_project(file, destination, project_dir=root, on_status=concurrent_writer)
+        else:
+            restore_project(snapshot, destination, on_status=concurrent_writer)
+    if operation == 'backup':
+        assert destination.read_bytes() == b'Another operation owns this file'
+    else:
+        assert list(destination.iterdir()) == [destination / 'keep.txt']
+        assert (destination / 'keep.txt').read_text(encoding='utf-8') == 'Other work'
+
+
+@pytest.mark.parametrize('kind', ['project', 'asset', 'snapshot'])
+def test_hardlinked_snapshot_inputs_are_rejected(project, tmp_path, kind):
+    _, file, root = project
+    if kind == 'snapshot':
+        source = tmp_path / 'snapshot.zip'
+        backup_project(file, source, project_dir=root)
+    elif kind == 'asset':
+        assets = root / 'assets'
+        assets.mkdir()
+        source = assets / 'linked.wav'
+        source.write_bytes(b'Outside-owned bytes must not enter a portable snapshot')
+    else:
+        source = file
+    os.link(source, tmp_path / 'outside-alias')
+    with pytest.raises(ValueError, match='hard links'):
+        if kind == 'snapshot':
+            restore_project(source, tmp_path / 'not-restored')
+        else:
+            backup_project(file, tmp_path / 'not-published.zip', project_dir=root)
+    assert not (tmp_path / 'not-published.zip').exists()
+    assert not (tmp_path / 'not-restored').exists()
+
+
+def test_snapshot_uses_shared_local_drive_guard_before_reading(project, tmp_path, monkeypatch):
+    import carr_library.audio.backup as module
+    _, file, root = project
+    calls = []
+    def remote_drive(path):
+        calls.append(path)
+        raise ValueError('Mapped network drives are not local audio destinations')
+    monkeypatch.setattr(module, 'checked_directory', remote_drive)
+    with pytest.raises(ValueError, match='Mapped network'):
+        backup_project(file, tmp_path / 'never.zip', project_dir=root)
+    assert calls == [file.parent] and not (tmp_path / 'never.zip').exists()

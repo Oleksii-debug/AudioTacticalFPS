@@ -2,12 +2,14 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+import ctypes
 import hashlib
 import json
 import os
 from pathlib import Path
 import shutil
 import stat
+import sys
 import tempfile
 import uuid
 
@@ -23,6 +25,12 @@ def check_cancelled(cancelled):
         raise RenderCancelled('Audio production cancelled. Completed chunks are retained for resume.')
 
 
+def _windows_drive_type(anchor):
+    drive_type = ctypes.WinDLL('kernel32', use_last_error=True).GetDriveTypeW
+    drive_type.argtypes, drive_type.restype = [ctypes.c_wchar_p], ctypes.c_uint
+    return drive_type(str(anchor))
+
+
 def checked_directory(path, *, create=False):
     if str(path).startswith(('\\\\', '//')):
         raise ValueError('Audio projects must use local paths, without network shares.')
@@ -31,6 +39,8 @@ def checked_directory(path, *, create=False):
         raise ValueError('Audio projects must use local paths, without network shares or alternate streams.')
     for name in path.parts[1:]:
         filename_component(name)
+    if sys.platform == 'win32' and _windows_drive_type(path.anchor) == 4:
+        raise ValueError('Audio projects must use local paths, without mapped network drives.')
     for parent in (*reversed(path.parents), path):
         if parent.is_symlink():
             raise ValueError('Audio project paths cannot contain symbolic links.')
@@ -55,19 +65,70 @@ def regular_file(path):
     return info
 
 
-def sha256_file(path, *, cancelled=lambda: False):
-    regular_file(path)
+def file_identity(info):
+    """Bind validation to the bytes inspected, including same-size replacements."""
+    return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+
+
+@contextmanager
+def verified_reader(path, *, expected_identity=None):
+    before = file_identity(regular_file(path))
+    if expected_identity is not None and before != expected_identity:
+        raise RuntimeError('An audio input changed after it was validated. Restart the production.')
+    with Path(path).open('rb') as stream:
+        if file_identity(os.fstat(stream.fileno())) != before:
+            raise RuntimeError('An audio input changed while it was being opened.')
+        yield stream
+        if file_identity(os.fstat(stream.fileno())) != before or file_identity(regular_file(path)) != before:
+            raise RuntimeError('An audio input changed while it was being read. Restart the production.')
+
+
+def sha256_file(path, *, cancelled=lambda: False, expected_identity=None):
     result = hashlib.sha256()
-    with open(path, 'rb') as stream:
-        while block := stream.read(1024 * 1024):
+    with verified_reader(path, expected_identity=expected_identity) as stream:
+        remaining = os.fstat(stream.fileno()).st_size
+        while remaining:
             check_cancelled(cancelled)
+            block = stream.read(min(1024 * 1024, remaining))
+            if not block:
+                raise RuntimeError('An audio input was truncated during verification.')
             result.update(block)
+            remaining -= len(block)
+        check_cancelled(cancelled)
     return result.hexdigest()
+
+
+def read_json(path, *, limit=65536):
+    """Read at most the declared budget, rejecting ambiguous JSON objects."""
+    if type(limit) is not int or limit < 1:
+        raise ValueError('Invalid checkpoint size limit.')
+    with verified_reader(path) as stream:
+        if os.fstat(stream.fileno()).st_size > limit:
+            raise ValueError('Audio project manifest is too large.')
+        data = stream.read(limit + 1)
+        if len(data) > limit:
+            raise ValueError('Audio project manifest is too large.')
+
+    def unique(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError('Duplicate audio project field.')
+            result[key] = value
+        return result
+
+    def constant(value):
+        raise ValueError('Nonfinite audio project value.')
+
+    try:
+        return json.loads(data.decode('utf-8'), object_pairs_hook=unique, parse_constant=constant)
+    except RecursionError as exc:
+        raise ValueError('Audio project JSON is nested too deeply.') from exc
 
 
 def _sync_directory(path):
     if os.name == 'posix':
-        descriptor = os.open(path, os.O_RDONLY)
+        descriptor = os.open(path, os.O_RDONLY | getattr(os, 'O_DIRECTORY', 0))
         try:
             os.fsync(descriptor)
         finally:
@@ -97,18 +158,100 @@ def atomic_json(path, value):
             os.unlink(name)
 
 
-def publish_new(source, destination):
-    """Atomically publish without overwriting an existing path, including races."""
+def publish_noreplace(source, destination):
+    """Move a complete local stage atomically without replacing any destination.
+
+    Windows rename has no-replace semantics. Linux needs RENAME_NOREPLACE,
+    including for empty destination directories. No hardlink aliases remain
+    after a crash. A directory-sync error can occur after the move succeeds.
+    """
     source, destination = Path(source), Path(destination)
-    regular_file(source)
+    checked_directory(source.parent)
     checked_directory(destination.parent)
-    # Windows FlushFileBuffers (used by os.fsync) requires a writable handle.
-    # These are our generated staging/cache files; opening r+b does not modify
-    # their bytes. Never suppress a genuine flush error before publication.
-    with source.open('r+b') as stream:
-        os.fsync(stream.fileno())
-    os.link(source, destination)
+    if source.is_dir():
+        checked_directory(source)
+        _sync_directory(source)
+    else:
+        regular_file(source)
+        # Windows CRT rejects fsync on read-only file descriptors. Stages are
+        # writable; immutable/read-only inputs use publish_new's private copy.
+        with source.open('r+b') as stream:
+            os.fsync(stream.fileno())
+    if os.name == 'nt':
+        os.rename(source, destination)
+    elif sys.platform.startswith('linux'):
+        library = ctypes.CDLL(None, use_errno=True)
+        rename = getattr(library, 'renameat2', None)
+        if rename is None:
+            raise RuntimeError('This runtime does not support atomic no-replace publication.')
+        rename.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint]
+        rename.restype = ctypes.c_int
+        if rename(-100, os.fsencode(source), -100, os.fsencode(destination), 1):
+            error = ctypes.get_errno()
+            raise OSError(error, os.strerror(error), str(destination))
+    else:
+        raise RuntimeError('Atomic audio publication currently supports Windows and Linux.')
     _sync_directory(destination.parent)
+    if source.parent != destination.parent:
+        _sync_directory(source.parent)
+
+
+def publish_new(source, destination, *, cancelled=lambda: False, expected_identity=None):
+    """Publish an independent, durable copy without altering a source or output.
+
+    Copy in bounded blocks to a private writable stage. Exporting a cache chunk
+    must not leave a shared inode that an editor can modify through the export.
+    """
+    source, destination = Path(source), Path(destination)
+    parent = checked_directory(destination.parent)
+    if destination.exists() or destination.is_symlink():
+        raise FileExistsError(f'Audio output already exists: {destination.name}')
+    descriptor, name = tempfile.mkstemp(prefix='.publish-', dir=parent)
+    stage = Path(name)
+    try:
+        with os.fdopen(descriptor, 'wb') as target:
+            with verified_reader(source, expected_identity=expected_identity) as stream:
+                remaining = os.fstat(stream.fileno()).st_size
+                while remaining:
+                    check_cancelled(cancelled)
+                    block = stream.read(min(1024 * 1024, remaining))
+                    if not block:
+                        raise RuntimeError('An audio input was truncated during publication.')
+                    target.write(block)
+                    remaining -= len(block)
+            target.flush()
+            os.fsync(target.fileno())
+        check_cancelled(cancelled)
+        publish_noreplace(stage, destination)
+    finally:
+        stage.unlink(missing_ok=True)
+
+
+def storage_bytes(root, *, cancelled=lambda: False):
+    """Count actual project storage, including quarantine and unfinished stages.
+
+    Links are counted themselves, never followed outside the selected root.
+    Counting each hardlink is conservative for projects from older versions.
+    """
+    pending, total = [Path(root)], 0
+    while pending:
+        check_cancelled(cancelled)
+        try:
+            entries = os.scandir(pending.pop())
+        except FileNotFoundError:
+            continue  # A subprocess may have just removed its private stage.
+        with entries:
+            for entry in entries:
+                check_cancelled(cancelled)
+                try:
+                    info = entry.stat(follow_symlinks=False)
+                except FileNotFoundError:
+                    continue
+                if stat.S_ISDIR(info.st_mode) and not getattr(info, 'st_file_attributes', 0) & 0x400:
+                    pending.append(Path(entry.path))
+                else:
+                    total += info.st_size
+    return total
 
 
 @contextmanager
@@ -141,35 +284,18 @@ def project_lock(root):
 
 
 class ChunkCache:
-    def __init__(self, root, *, cancelled=lambda: False, disk_budget_bytes=32 * 1024 ** 3):
+    def __init__(self, root, *, cancelled=lambda: False, disk_budget_bytes=32 * 1024 ** 3, budget_root=None):
         if type(disk_budget_bytes) is not int or disk_budget_bytes < 0:
             raise ValueError('Invalid audio disk budget.')
         self.root = checked_directory(root, create=True)
         self.cancelled = cancelled
         self.disk_budget_bytes = disk_budget_bytes
+        self.budget_root = checked_directory(budget_root) if budget_root is not None else self.root
         self.used = self._retained_bytes()
 
     def _retained_bytes(self):
-        """Count every retained payload, including forensic quarantine.
-
-        A corrupt link may have been quarantined deliberately. Count the link
-        entry itself without following it or traversing a reparse directory.
-        Like the existing budget, this counts file sizes, not filesystem block
-        allocation; accepted chunks are maintained under the project lock.
-        """
-        total, pending = 0, [self.root]
-        while pending:
-            directory = checked_directory(pending.pop())
-            with os.scandir(directory) as entries:
-                for entry in entries:
-                    check_cancelled(self.cancelled)
-                    info = entry.stat(follow_symlinks=False)
-                    if (stat.S_ISDIR(info.st_mode) and not stat.S_ISLNK(info.st_mode)
-                            and not getattr(info, 'st_file_attributes', 0) & 0x400):
-                        pending.append(Path(entry.path))
-                    else:
-                        total += info.st_size
-        return total
+        """Count the full selected project, including retained corrupt payloads."""
+        return storage_bytes(self.budget_root, cancelled=self.cancelled)
 
     @staticmethod
     def _key(key):
@@ -181,6 +307,7 @@ class ChunkCache:
         check_cancelled(self.cancelled)
         if type(expected_bytes) is not int or expected_bytes < 0:
             raise ValueError('Invalid audio disk estimate.')
+        self.used = self._retained_bytes()
         if self.used + expected_bytes > self.disk_budget_bytes:
             raise RuntimeError('The project disk budget would be exceeded. Increase the budget or use smaller outputs.')
         if shutil.disk_usage(self.root).free < expected_bytes + 16 * 1024 ** 2:
@@ -192,10 +319,8 @@ class ChunkCache:
         if not audio.exists() and not meta.exists():
             return None
         try:
-            if regular_file(meta).st_size > 65536:
-                raise ValueError('Oversized chunk checkpoint.')
-            info = json.loads(meta.read_text('utf-8'))
-            if info.get('schema_version') != 1 or info.get('key') != key:
+            info = read_json(meta, limit=65536)
+            if not isinstance(info, dict) or info.get('schema_version') != 1 or info.get('key') != key:
                 raise ValueError('Invalid chunk checkpoint.')
             if regular_file(audio).st_size != info['size'] or sha256_file(audio, cancelled=self.cancelled) != info['sha256']:
                 raise ValueError('Audio chunk checksum mismatch.')
@@ -226,50 +351,50 @@ class ChunkCache:
         key = self._key(key)
         source = Path(source)
         from .ffmpeg import wav_info
+        source_identity = file_identity(regular_file(source))
         info = wav_info(source)
-        size = regular_file(source).st_size
+        size = source_identity[2]
         prepared, seen, payload_size = [], set(), size
         for suffix in companions:
             if suffix not in ('.mid', '.music.json') or suffix in seen:
                 raise ValueError('Unsupported or duplicate music companion.')
             seen.add(suffix)
             path = source.with_suffix(suffix)
-            companion_size = regular_file(path).st_size
-            prepared.append((path, key + suffix, companion_size))
-            payload_size += companion_size
+            identity = file_identity(regular_file(path))
+            prepared.append((path, key + suffix, identity))
+            payload_size += identity[2]
         self.reserve(payload_size)
-        checksum = sha256_file(source, cancelled=self.cancelled)
+        checksum = sha256_file(source, cancelled=self.cancelled, expected_identity=source_identity)
         target = self.root / (key + '.wav')
         metadata = {'schema_version': 1, 'key': key, 'sha256': checksum, 'size': size,
                     'sample_rate': info.rate, 'channels': info.channels, 'frames': info.frames,
                     'provenance': provenance or {}, 'companions': []}
-        for path, name, companion_size in prepared:
-            metadata['companions'].append({'name': name, 'size': companion_size,
-                'sha256': sha256_file(path, cancelled=self.cancelled)})
+        for path, name, identity in prepared:
+            metadata['companions'].append({'name': name, 'size': identity[2],
+                'sha256': sha256_file(path, cancelled=self.cancelled, expected_identity=identity)})
         metadata_size = len(_json_bytes(metadata))
         if metadata_size > 65536:
             raise ValueError('Oversized chunk checkpoint.')
-        # Check the complete committed payload before publishing even the first
-        # companion. The checkpoint uses exactly this JSON serialization.
-        reserved = payload_size + metadata_size
-        self.reserve(reserved)
+        # Reserve every copied companion and exactly the checkpoint bytes before
+        # exposing any new payload; quarantine never releases storage allowance.
+        self.reserve(payload_size + metadata_size)
         published = []
         try:
-            for path, name, _size in prepared:
+            for path, name, identity in prepared:
                 check_cancelled(self.cancelled)
-                publish_new(path, self.root / name)
+                publish_new(path, self.root / name, cancelled=self.cancelled, expected_identity=identity)
                 published.append(self.root / name)
             check_cancelled(self.cancelled)
-            publish_new(source, target)
+            publish_new(source, target, cancelled=self.cancelled, expected_identity=source_identity)
             published.append(target)
             check_cancelled(self.cancelled)
             atomic_json(self.root / (key + '.json'), metadata)
         except Exception:
             for path in published:
                 path.unlink()
-            # A checkpoint may have been replaced before a durability error.
-            # Its retained bytes still count even though this seal failed.
-            self.used = self._retained_bytes()
+            # A checkpoint may exist after a durability failure. Accounting must
+            # finish even if the original failure was a cancellation request.
+            self.used = storage_bytes(self.budget_root)
             raise
-        self.used += reserved
+        self.used = storage_bytes(self.budget_root)
         return target, metadata

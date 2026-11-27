@@ -3,19 +3,26 @@ from __future__ import annotations
 
 from dataclasses import asdict, replace
 import hashlib
+import inspect
 import json
 import os
 from pathlib import Path
 import shlex
 import shutil
 import tempfile
+import time
 import uuid
 
 from . import ffmpeg as audio
 from .jobs import (ChunkCache, RenderCancelled, atomic_json, checked_directory,
-                   check_cancelled, project_lock, publish_new, regular_file, sha256_file)
+                   check_cancelled, file_identity, project_lock, publish_new,
+                   publish_noreplace, read_json, regular_file, sha256_file)
 from .models import (Effect, Line, MusicCue, Pause, ProductionPlan, Role, Scene,
                      Sound, canonical, digest, text)
+
+
+# Version 1 could seal a step before detecting a changed external input.
+PIPELINE_VERSION = 2
 
 
 SCRIPT_HELP = '''Local audio script format
@@ -39,6 +46,8 @@ language, pan (-1 to 1, left/center/right), rate (-10 to 10), pitch (-10 to
 [output format=wav sample_rate=48000 stems=true disk_budget_mb=32768]
 Effects: highpass, lowpass, equalizer, gate, compressor, delay, denoise.
 Optional MusicGen: [music engine=musicgen model_manifest=musicgen/manifest.json]
+Optional SoundFont: [music engine=fluidsynth model_manifest=fluidsynth/manifest.json]
+Optional ACE-Step: [music engine=ace-step model_manifest=ace-step/manifest.json]
 The manifest and its reviewed assets must be installed under project/models.
 This is a guided local script parser. It does not interpret arbitrary prose
 as editing instructions and never executes shell commands or document code.
@@ -205,14 +214,7 @@ def plan_narration(text, *, title='Narration', voice='sapi5:default', language='
 
 
 def _read_json(path, limit=16 * 1024 ** 2):
-    if regular_file(path).st_size > limit:
-        raise ValueError('Audio project manifest is too large.')
-    with Path(path).open('rb') as source:
-        data = source.read(limit + 1)
-    if len(data) > limit:
-        raise ValueError('Audio project manifest is too large.')
-    from ..reader.narration_text import decode_json
-    return decode_json(data)
+    return read_json(path, limit=limit)
 
 
 def save_plan(plan, path):
@@ -322,6 +324,22 @@ def render_project(plan, project_dir, *, engine, ffmpeg, cancelled=lambda: False
 
 
 def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status):
+    cache = ChunkCache(root / 'cache', cancelled=cancelled, disk_budget_bytes=plan.disk_budget_bytes,
+                       budget_root=root)
+    cache.reserve(0)
+    requested_cancelled, last_budget_check = cancelled, 0.0
+
+    def guarded_cancelled():
+        nonlocal last_budget_check
+        if requested_cancelled():
+            return True
+        now = time.monotonic()
+        if now - last_budget_check >= 0.25:
+            last_budget_check = now
+            cache.reserve(0)
+        return False
+
+    cancelled = guarded_cancelled
     roles = {role.name: role for role in plan.roles}
     identities = {}
     used_roles = {event.role for scene in plan.scenes for event in scene.events if isinstance(event, Line)}
@@ -330,9 +348,19 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status):
             continue
         identify = getattr(engine, 'cache_identity', None)
         # Unknown engines cannot reuse prior speech across process invocations.
-        identities[role.name] = identify(role.voice) if callable(identify) else {'unverified_engine_session': uuid.uuid4().hex}
-    processor = audio.ffmpeg_identity(ffmpeg)
-    assets = {}
+        check_cancelled(cancelled)
+        if callable(identify):
+            try:
+                inspect.signature(identify).bind(role.voice, cancelled=cancelled)
+            except (TypeError, ValueError):
+                identities[role.name] = identify(role.voice)
+            else:
+                identities[role.name] = identify(role.voice, cancelled=cancelled)
+        else:
+            identities[role.name] = {'unverified_engine_session': uuid.uuid4().hex}
+        check_cancelled(cancelled)
+    processor = audio.ffmpeg_identity(ffmpeg, cancelled=cancelled)
+    assets, asset_identities = {}, {}
     music_models, music_identities = {}, {}
     composer_identity = None
     for scene in plan.scenes:
@@ -350,12 +378,13 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status):
         for event in scene.events:
             if isinstance(event, Sound) and event.asset not in assets:
                 asset = checked_directory(root / 'assets') / event.asset
+                asset_identities[event.asset] = file_identity(regular_file(asset))
                 audio.wav_info(asset)
-                assets[event.asset] = sha256_file(asset, cancelled=cancelled)
-    run_key = digest({'pipeline_version': 1, 'plan': plan.to_dict(), 'engines': identities,
+                assets[event.asset] = sha256_file(asset, cancelled=cancelled,
+                    expected_identity=asset_identities[event.asset])
+    run_key = digest({'pipeline_version': PIPELINE_VERSION, 'plan': plan.to_dict(), 'engines': identities,
                       'processor': processor, 'assets': assets, 'music_models': music_identities,
                       'composer': composer_identity, 'mix_revision': audio.MIX_REVISION})
-    cache = ChunkCache(root / 'cache', cancelled=cancelled, disk_budget_bytes=plan.disk_budget_bytes)
     renders = checked_directory(root / 'renders', create=True)
     output_dir = renders / run_key
     if output_dir.is_symlink():
@@ -365,6 +394,11 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status):
             raise ValueError('The output destination is not a directory.')
         previous = _verified_output(output_dir, run_key, cancelled)
         if previous:
+            # Repair a journal left running/failed by death after directory move.
+            atomic_json(root / 'render-journal.json', {'schema_version': 1, 'run_key': run_key,
+                'state': 'complete', 'output': str(output_dir / previous['output_name']),
+                'duration_seconds': previous['duration_seconds'], 'source_sha256': plan.source_sha256,
+                'message': 'Verified previously published production.'})
             on_status('This exact production is already complete; verified its output checksums.')
             return _public_result(previous, output_dir)
         quarantine = checked_directory(root / 'quarantine', create=True)
@@ -391,18 +425,29 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status):
         with tempfile.TemporaryDirectory(prefix='.work-', dir=root) as temporary:
             temp = Path(temporary)
 
-            def cached(settings, create, *, provenance=None, estimate=0, companions=()):
-                key = digest({'pipeline_version': 1, **settings})
+            def verify_dependencies(dependencies, identities=None):
+                identities = identities or [file_identity(regular_file(path)) for path, _ in dependencies]
+                for (path, metadata), identity in zip(dependencies, identities):
+                    if sha256_file(path, cancelled=cancelled, expected_identity=identity) != metadata['sha256']:
+                        raise RuntimeError('A cached audio input changed before its dependent step was sealed.')
+                return identities
+
+            def cached(settings, create, *, provenance=None, estimate=0, companions=(), dependencies=()):
+                key = digest({'pipeline_version': PIPELINE_VERSION, **settings})
                 ready = cache.get(key)
                 if ready is not None:
                     return ready
-                cache.reserve(estimate)
+                # A generated stage and its independent sealed copy can coexist.
+                cache.reserve(estimate * 2 + 65536)
+                identities = verify_dependencies(dependencies)
                 stage = temp / (key + '.wav')
                 if stage.exists():
                     stage.unlink()
                 try:
                     create(stage)
                     check_cancelled(cancelled)
+                    verify_dependencies(dependencies, identities)
+                    cache.reserve(0)
                     result = cache.seal(key, stage, provenance=provenance, companions=companions)
                     checkpoint('Completed and saved an audio step.')
                     return result
@@ -443,14 +488,16 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status):
                                 'sample_rate': plan.sample_rate, 'pan': role.pan, 'effects': [asdict(e) for e in role.effects], 'processor': processor},
                                 lambda path, source=raw, r=role: audio.process_voice(source, path, ffmpeg=ffmpeg,
                                     sample_rate=plan.sample_rate, pan=r.pan, effects=r.effects, cancelled=cancelled),
-                                estimate=round(raw_info['frames'] / raw_info['sample_rate'] * plan.sample_rate * 4) + 80)
+                                estimate=round(raw_info['frames'] / raw_info['sample_rate'] * plan.sample_rate * 4) + 80,
+                                dependencies=((raw, raw_info),))
                             spoken_parts.append(processed)
                         if len(spoken_parts) == 1:
                             chunk, info = spoken_parts[0]
                         else:
                             chunk, info = cached({'kind': 'long_line', 'parts': [i['sha256'] for _, i in spoken_parts]},
                                 lambda path: audio.concatenate([p for p, _ in spoken_parts], path, cancelled=cancelled),
-                                estimate=sum(i['frames'] for _, i in spoken_parts) * 4 + 80)
+                                estimate=sum(i['frames'] for _, i in spoken_parts) * 4 + 80,
+                                dependencies=spoken_parts)
                         role_name = role.name
                         subtitles.append({'role': role.name, 'text': event.text, 'start_frame': position + local_position,
                                           'end_frame': position + local_position + info['frames'], 'event_id': event.id,
@@ -463,15 +510,19 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status):
                         asset_root = checked_directory(root / 'assets')
                         asset = asset_root / event.asset
                         raw_info = audio.wav_info(asset)
-                        source_hash = sha256_file(asset, cancelled=cancelled)
+                        source_hash = sha256_file(asset, cancelled=cancelled,
+                            expected_identity=asset_identities[event.asset])
                         if source_hash != assets[event.asset]:
                             raise RuntimeError('A sound asset changed during the production. Restart to use the new version.')
                         chunk, info = cached({'kind': 'sound', 'source_sha256': source_hash,
                             'sample_rate': plan.sample_rate, 'pan': event.pan, 'gain': event.gain, 'processor': processor},
                             lambda path, source=asset, e=event: audio.process_voice(source, path, ffmpeg=ffmpeg,
-                                sample_rate=plan.sample_rate, pan=e.pan, gain=e.gain, cancelled=cancelled),
-                            estimate=round(raw_info.seconds * plan.sample_rate * 4) + 80)
-                        if sha256_file(asset, cancelled=cancelled) != source_hash:
+                                sample_rate=plan.sample_rate, pan=e.pan, gain=e.gain, cancelled=cancelled,
+                                expected_identity=asset_identities[e.asset]),
+                            estimate=round(raw_info.seconds * plan.sample_rate * 4) + 80,
+                            dependencies=((asset, {'sha256': source_hash}),))
+                        if sha256_file(asset, cancelled=cancelled,
+                            expected_identity=asset_identities[event.asset]) != source_hash:
                             raise RuntimeError('A sound asset changed while it was being rendered. Restart the production.')
                         role_name = 'Sound effects'
                     segments.append((chunk, info))
@@ -488,7 +539,8 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status):
                     local_position += info['frames']
                 scene_frames = local_position
                 core, core_info = cached({'kind': 'scene_narration', 'parts': [i['sha256'] for _, i in segments]},
-                    lambda path: audio.concatenate([p for p, _ in segments], path, cancelled=cancelled), estimate=scene_frames * 4 + 80)
+                    lambda path: audio.concatenate([p for p, _ in segments], path, cancelled=cancelled),
+                    estimate=scene_frames * 4 + 80, dependencies=segments)
                 music_file = None
                 music_info = None
                 if scene.music is not None:
@@ -497,7 +549,7 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status):
                     settings = {'kind': 'music', 'cue': asdict(cue), 'rate': plan.sample_rate,
                         'frames': scene_frames, 'processor': processor, 'composer': composer_identity,
                         'model': music_identities.get(cue.model_manifest)}
-                    music_key = digest({'pipeline_version': 1, **settings})
+                    music_key = digest({'pipeline_version': PIPELINE_VERSION, **settings})
                     companions = ('.mid', '.music.json') if cue.engine == 'procedural' else ('.music.json',)
 
                     def create_music(path):
@@ -527,10 +579,10 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status):
                                 mood=cue.mood, tempo=cue.tempo, seed=cue.seed, engine=cue.engine,
                                 gain=0.35, sample_rate=plan.sample_rate, cancelled=cancelled,
                                 manifest=music_models.get(cue.model_manifest), on_status=on_status,
-                                max_output_bytes=plan.disk_budget_bytes)
-                        publish_new(generated, path)
+                                max_output_bytes=max(1, plan.disk_budget_bytes - cache.used))
+                        publish_new(generated, path, cancelled=cancelled)
                         for suffix in companions:
-                            publish_new(generated.with_suffix(suffix), path.with_suffix(suffix))
+                            publish_new(generated.with_suffix(suffix), path.with_suffix(suffix), cancelled=cancelled)
 
                     music_file, music_info = cached(settings, create_music,
                         provenance={'kind': 'generated_music', 'method': cue.engine, 'cue': asdict(cue),
@@ -542,7 +594,8 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status):
                     'gain': scene.music.gain if scene.music else None, 'processor': processor,
                     'mix_revision': audio.MIX_REVISION},
                     lambda path: audio.mix_scene(core, music_file, path, ffmpeg=ffmpeg,
-                        music_gain=scene.music.gain if scene.music else 0, cancelled=cancelled), estimate=scene_frames * 4 + 80)
+                        music_gain=scene.music.gain if scene.music else 0, cancelled=cancelled), estimate=scene_frames * 4 + 80,
+                    dependencies=((core, core_info),) + (((music_file, music_info),) if music_file else ()))
                 scene_audio.append((mixed, mixed_info))
                 stems = {}
                 if plan.export_stems:
@@ -551,14 +604,15 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status):
                             continue
                         stem, metadata = cached({'kind': 'scene_stem', 'parts': [i['sha256'] for _, i in parts]},
                             lambda path, p=parts: audio.concatenate([f for f, _ in p], path, cancelled=cancelled),
-                            estimate=scene_frames * 4 + 80)
+                            estimate=scene_frames * 4 + 80, dependencies=parts)
                         stems[name] = (stem, metadata)
                     if music_file:
                         # Music stem is dry, without ducking, for independent remixing.
                         stem, metadata = cached({'kind': 'music_stereo', 'raw_sha256': music_info['sha256'],
                             'gain': scene.music.gain, 'rate': plan.sample_rate, 'processor': processor},
                             lambda path: audio.process_voice(music_file, path, ffmpeg=ffmpeg, sample_rate=plan.sample_rate,
-                                gain=scene.music.gain, cancelled=cancelled), estimate=scene_frames * 4 + 80)
+                                gain=scene.music.gain, cancelled=cancelled), estimate=scene_frames * 4 + 80,
+                            dependencies=((music_file, music_info),))
                         stems['Music (dry)'] = (stem, metadata)
                 scene_stems.append(stems)
                 chapters.append({'id': scene.id, 'title': scene.title, 'start_frame': position,
@@ -567,7 +621,9 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status):
                 position += mixed_info['frames']
                 checkpoint(f'Chapter {scene_index+1} is complete and saved.')
 
-            cache.reserve(position * 4 * (2 + (len(role_names) + 2 if plan.export_stems else 0)) + 1024 ** 2)
+            cache.reserve(position * 4 * (2 + (plan.output_format != 'wav')
+                + (len(role_names) + 2 if plan.export_stems else 0)) + 1024 ** 2)
+            scene_identities = verify_dependencies(scene_audio)
             staged_output = checked_directory(temp / 'finished', create=True)
             master = staged_output / 'master.wav'
             audio.concatenate([p for p, _ in scene_audio], master, cancelled=cancelled, on_status=on_status)
@@ -586,13 +642,13 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status):
                     audio.concatenate(parts, staged_output / filename, cancelled=cancelled)
                     stem_names.append(filename)
                     stem_labels[filename] = name
-            for index, (path, _) in enumerate(scene_audio, 1):
-                # New hardlink retains the sealed PCM exactly; final integrity is checked.
-                publish_new(path, staged_output / f'chapter-{index:06d}.wav')
+            for index, ((path, _), identity) in enumerate(zip(scene_audio, scene_identities), 1):
+                publish_new(path, staged_output / f'chapter-{index:06d}.wav',
+                            cancelled=cancelled, expected_identity=identity)
             for scene_number, music_info in music_companions:
                 for item in music_info.get('companions', ()):
                     suffix = '.mid' if item['name'].endswith('.mid') else '.music.json'
-                    publish_new(cache.root / item['name'], staged_output / f'music-{scene_number:06d}{suffix}')
+                    publish_new(cache.root / item['name'], staged_output / f'music-{scene_number:06d}{suffix}', cancelled=cancelled)
             srt = []
             for index, item in enumerate(subtitles, 1):
                 srt.extend([str(index), f"{_timestamp(item['start_frame'], plan.sample_rate, srt=True)} --> {_timestamp(item['end_frame'], plan.sample_rate, srt=True)}",
@@ -626,11 +682,8 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status):
                           'Output measurements do not replace listening or Windows/NVDA acceptance.']}
             atomic_json(staged_output / 'complete.json', result)
             check_cancelled(cancelled)
-            # A nonempty existing final directory is never overwritten. The OS lock
-            # prevents two cooperative renderers from racing this publication.
-            if output_dir.exists() or output_dir.is_symlink():
-                raise FileExistsError('The production output appeared during rendering.')
-            staged_output.rename(output_dir)
+            cache.reserve(0)
+            publish_noreplace(staged_output, output_dir)
             state.update(state='complete', output=str(output_dir / output_name), duration_seconds=result['duration_seconds'])
             atomic_json(journal, state)
             on_status(f"Audio production complete: {result['duration_seconds']:.2f} seconds.")

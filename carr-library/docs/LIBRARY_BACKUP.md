@@ -3,7 +3,8 @@
 The existing [checked library backup](COMPLETE_BACKUP.md) includes managed Audio
 Studio projects saved through **Save in library**, together with the database,
 registered originals, reader bookmarks, reading copies, recovery drafts, keyboard
-preferences and OCR presets. External projects remain supported by Audio Studio's
+preferences, evidence-note recovery, OCR presets and assistant checkpoints.
+External projects remain supported by Audio Studio's
 separate verified ZIP64 backup. The library backup never scans external folders.
 
 ## Preserved audio state
@@ -61,7 +62,8 @@ forged original or silently select a newer source revision.
 Database schema versions and backup-manifest versions are distinct. Existing
 version-1/2 backups remain supported. Reader-only backups retain the existing
 version-3 `filename` entries directly beside the database. Managed audio upgrades
-the snapshot to version 4: all included reader/audio files have `path`,
+the snapshot to version 4; assistant checkpoints use that same version-4 namespace.
+All included reader/audio/assistant files have `path`,
 `size_bytes` and `sha256` entries under a separate `sidecars/` folder. The two
 schemas are validated exactly; restoration never guesses mixed layouts.
 
@@ -73,6 +75,10 @@ studio/production JSON at 64 MiB, and managed project folders at 1,000. Existing
 reader bounds remain: 8 MiB reading state, 32 MiB per reading copy/draft and 64 MiB
 combined, 128 KiB keyboard preferences, 64 KiB OCR presets. The manifest is capped
 at 8 MiB. The database and registered original-file limits remain unchanged.
+Semantic keymaps add 64 KiB, evidence-note recovery 8 MiB and optional progress
+preferences 16 KiB. Assistant checkpoint limits and the distinction between
+preserved plan history and renewed execution permission are documented in
+[checked backups](COMPLETE_BACKUP.md).
 
 A failed or cancelled copy removes private staging. Backup publication writes
 its completion manifest last. Interrupted restore publication retains

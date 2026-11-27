@@ -135,8 +135,8 @@ def test_cancellation_between_companion_publications_cleans_only_new_links(tmp_p
     cache = ChunkCache(tmp_path / 'cache', cancelled=lambda: stopped[0])
     publish = jobs.publish_new
 
-    def first_then_cancel(source_path, destination):
-        publish(source_path, destination)
+    def first_then_cancel(source_path, destination, **kwargs):
+        publish(source_path, destination, **kwargs)
         stopped[0] = True
 
     monkeypatch.setattr(jobs, 'publish_new', first_then_cancel)
@@ -158,11 +158,11 @@ def test_failed_companion_publication_does_not_charge_or_leave_partial_payload(t
     publish = jobs.publish_new
     calls = [0]
 
-    def fail_second(source_path, destination):
+    def fail_second(source_path, destination, **kwargs):
         calls[0] += 1
         if calls[0] == 2:
             raise OSError('Synthetic publication failure')
-        return publish(source_path, destination)
+        return publish(source_path, destination, **kwargs)
 
     monkeypatch.setattr(jobs, 'publish_new', fail_second)
     with pytest.raises(OSError, match='publication failure'):

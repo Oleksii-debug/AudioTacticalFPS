@@ -15,7 +15,7 @@ import shutil
 import stat
 import sys
 
-from .ocr_languages import valid_model_code
+from .ocr_languages import valid_model_code, model_ids
 
 MANIFEST = 'ocr-manifest.json'
 MAX_MANIFEST = 2 * 1024 * 1024
@@ -118,8 +118,12 @@ class OcrRuntime:
                 'files_sha256': dict(self.files_sha256)}
 
     def require_languages(self, languages, orientation=False):
+        try:
+            selected = model_ids(languages)
+        except ValueError:
+            raise OcrRuntimeError('Invalid OCR language selection.') from None
         if self.portable:
-            wanted = set(languages.split('+')) | ({'osd'} if orientation else set())
+            wanted = set(selected) | ({'osd'} if orientation else set())
             if not wanted <= set(self.languages):
                 raise OcrRuntimeError('The portable OCR bundle lacks the selected language or orientation model.')
 
@@ -307,7 +311,24 @@ def _native_target():
     return None
 
 
-def discover_ocr_runtime(languages='eng', *, orientation=False, remaining=lambda: None):
+def discover_ocr_runtime(languages='eng', *, orientation=False, remaining=lambda: None,
+                         model_profile='installed'):
+    """Use the unchanged engine authority and one explicitly selected profile."""
+    try:
+        model_ids(languages)
+    except ValueError:
+        raise OcrRuntimeError('Invalid OCR language selection.') from None
+    if model_profile not in ('installed', 'fast', 'best'):
+        raise OcrRuntimeError('Choose an installed, Fast or Best OCR model profile.')
+    if model_profile == 'installed':
+        return _discover_ocr_runtime(languages, orientation=orientation, remaining=remaining)
+    runtime = _discover_ocr_runtime('eng', orientation=False, remaining=remaining)
+    from .managed_ocr import bind_model_profile
+    return bind_model_profile(runtime, model_profile, languages,
+                              orientation=orientation, remaining=remaining)
+
+
+def _discover_ocr_runtime(languages='eng', *, orientation=False, remaining=lambda: None):
     """Prefer explicitly selected or package-relative OCR, then developer PATH.
 
     Automatic discovery is limited to the interpreter prefixes and their two
