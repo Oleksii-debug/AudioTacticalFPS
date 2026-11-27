@@ -27,7 +27,7 @@ def cli(tmp_path):
     env['PYTHONPATH'] = os.pathsep.join((str(ROOT / 'src'), str(ROOT)))
     env['PYTHONUTF8'] = '1'
     def run(*arguments, expected=0):
-        result = subprocess.run([sys.executable, '-m', 'carr_library', '--data-dir', str(app.root),
+        result = subprocess.run([sys.executable, '-B', '-m', 'carr_library', '--data-dir', str(app.root),
                                  *map(str, arguments)], cwd=tmp_path, env=env, text=True,
                                 encoding='utf-8', capture_output=True, timeout=30)
         assert result.returncode == expected, (result.stdout, result.stderr, result.returncode)
@@ -50,7 +50,7 @@ def test_list_libraries_and_search_only_explicit_selection_without_desktop(cli):
     assert 'Unselected author' not in json.dumps(result)
 
 
-@pytest.mark.parametrize('mode', ['phrase', 'word', 'terms', 'thematic', 'semantic'])
+@pytest.mark.parametrize('mode', ['phrase', 'word', 'terms', 'thematic', 'semantic', 'advanced'])
 def test_existing_modes_and_metadata_filters_apply_in_each_selected_library(cli, mode):
     _, ids, run = cli
     result = json.loads(run('--search', 'history', '--workspace', ids[0], '--workspace', ids[1],
@@ -66,7 +66,7 @@ def test_existing_modes_and_metadata_filters_apply_in_each_selected_library(cli,
 def test_missing_library_selection_is_an_error_and_does_not_create_data(tmp_path):
     env = dict(os.environ, PYTHONPATH=os.pathsep.join((str(ROOT / 'src'), str(ROOT))))
     destination = tmp_path / 'must-not-exist'
-    result = subprocess.run([sys.executable, '-m', 'carr_library', '--data-dir', str(destination),
+    result = subprocess.run([sys.executable, '-B', '-m', 'carr_library', '--data-dir', str(destination),
                              '--search', 'history'], env=env, capture_output=True, text=True, timeout=30)
     assert result.returncode == 2 and '--workspace' in result.stderr
     assert not destination.exists()
@@ -101,3 +101,26 @@ def test_corrupt_library_database_fails_clearly_without_partial_json_or_replacin
     assert result.stderr.startswith('Research Library: ')
     assert 'file is not a database' in result.stderr
     assert app.database.read_bytes() == damaged
+
+
+def test_advanced_cli_pages_keep_originals_and_selected_libraries(cli):
+    app, ids, run = cli
+    source = "\f".join(f"Memory and identity, section {index}." for index in range(5))
+    imported = app.add_text(ids[0], 'Paged source', source)
+    query = ('--search', 'memory NEAR/2 identity', '--search-mode', 'advanced',
+             '--workspace', ids[0], '--workspace', ids[1], '--limit-per-library', '2')
+    pages = [json.loads(run(*query, '--offset-per-library', str(offset)).stdout)
+             for offset in (0, 2, 4)]
+    assert [page['has_more'] for page in pages] == [True, True, False]
+    assert [page['offset_per_library'] for page in pages] == [0, 2, 4]
+    quotes = [hit['quote'] for page in pages for group in page['libraries']
+              for hit in group['results']]
+    assert quotes == source.split('\f')
+    assert all(page['libraries'][1]['results'] == [] for page in pages)
+    assert app.assets.resolve(imported['asset']).read_bytes() == source.encode('utf-8')
+    invalid = run('--search', 'NOT memory', '--search-mode', 'advanced',
+                  '--workspace', ids[0], expected=1)
+    assert not invalid.stdout.strip()
+    invalid = run('--search', 'memory', '--workspace', ids[0],
+                  '--offset-per-library', '1', expected=1)
+    assert not invalid.stdout.strip()
