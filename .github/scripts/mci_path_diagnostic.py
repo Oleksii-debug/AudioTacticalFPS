@@ -159,6 +159,36 @@ def _fixtures(root, raw):
                         reader.getnframes(), reader.getcomptype()) != (1, 2, 16000, 48000, 'NONE'):
                     raise RuntimeError('The actual PCM fixture differs from the declared format.')
             result.append((kind, suffix, path))
+    # Keep the original four observations, then isolate basename from full path.
+    # The identical retained 64-hex leaf appears below and in both long cases.
+    for kind, target_units in (('short-same-leaf', None), ('boundary-127', 127),
+                               ('boundary-128', 128)):
+        for suffix in ('.wav', '.audio'):
+            leaf = checksum + suffix
+            if target_units is None:
+                path = root / leaf
+                if _units(path) + 1 > 128:
+                    raise RuntimeError('The same-leaf short filename does not fit the documented allowance.')
+            else:
+                base = root / 'r' / leaf
+                extra = target_units - _units(base)
+                if not 0 <= extra <= 120:
+                    raise RuntimeError('This runner cannot represent the requested filename boundary.')
+                path = root / ('r' + 'x' * extra) / leaf
+                if _units(path) != target_units:
+                    raise RuntimeError('The requested exact filename boundary was not reached.')
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with path.open('xb') as stream:
+                stream.write(raw)
+                stream.flush()
+                os.fsync(stream.fileno())
+            if _read(path, len(raw)) != raw:
+                raise RuntimeError('The basename/boundary controls changed the actual PCM bytes.')
+            with wave.open(str(path), 'rb') as reader:
+                if (reader.getnchannels(), reader.getsampwidth(), reader.getframerate(),
+                        reader.getnframes(), reader.getcomptype()) != (1, 2, 16000, 48000, 'NONE'):
+                    raise RuntimeError('The basename/boundary controls changed the PCM format.')
+            result.append((kind, suffix, path))
     return result
 
 
