@@ -3,7 +3,7 @@
 The directive contract and native controls adapt canonical PR152 ClipEditor.
 There is no second project store, runtime, renderer or history implementation.
 """
-from dataclasses import asdict, replace
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 import shlex
 import shutil
@@ -21,6 +21,24 @@ from .production import PIPELINE_VERSION, parse_script
 MAX_SOURCE_BYTES = 8 * 1024 ** 3
 CLIP_FIELDS = ('start', 'gain_db', 'pan', 'track', 'trim_start', 'duration',
                'fade_in', 'fade_out', 'title')
+
+
+@dataclass(frozen=True)
+class ClipClipboard:
+    """One process-local copy bound to an unchanged retained project asset."""
+    root: str
+    root_identity: tuple
+    clip: Clip
+    source_identity: tuple
+    source_sha256: str
+
+    def __post_init__(self):
+        if (not isinstance(self.root, str) or not isinstance(self.clip, Clip)
+                or not isinstance(self.root_identity, tuple) or len(self.root_identity) != 2
+                or not isinstance(self.source_identity, tuple) or not self.source_identity
+                or not isinstance(self.source_sha256, str) or len(self.source_sha256) != 64
+                or any(char not in '0123456789abcdef' for char in self.source_sha256)):
+            raise ValueError('Choose a clip copied in this project session.')
 
 
 def script_fingerprint(script, *, title, voice, language, input_kind, project_dir):
@@ -155,15 +173,85 @@ class ClipEditor:
         return _retain_pcm_asset(source, self.root, cancelled=cancelled,
             expected_sha256=expected_sha256, disk_budget_bytes=self.plan.disk_budget_bytes)
 
+    def _copy(self, clip, *, cancelled):
+        path, stamp, _ = self._retained(clip, cancelled=cancelled)
+        if regular_file(path).st_size > MAX_SOURCE_BYTES:
+            raise ValueError('A copied clip exceeds the retained source budget.')
+        source_sha = sha256_file(path, cancelled=cancelled, expected_identity=stamp)
+        root = checked_directory(self.root).stat()
+        check_cancelled(cancelled)
+        return ClipClipboard(str(self.root), (root.st_dev, root.st_ino), clip, stamp, source_sha)
+
+    def _pasted(self, clipboard, *, start, cancelled):
+        root = checked_directory(self.root).stat()
+        if (not isinstance(clipboard, ClipClipboard) or clipboard.root != str(self.root)
+                or clipboard.root_identity != (root.st_dev, root.st_ino)):
+            raise ValueError('Copy a retained clip in this project before pasting.')
+        candidate = replace(clipboard.clip, id=uuid4().hex,
+                            start=number(start, 0, MAX_CLIP_SECONDS, 'Pasted clip start'))
+        path, stamp, _ = self._retained(candidate, cancelled=cancelled)
+        if regular_file(path).st_size > MAX_SOURCE_BYTES:
+            raise ValueError('A pasted clip exceeds the retained source budget.')
+        if stamp != clipboard.source_identity:
+            raise ValueError('The copied audio changed. Review it and copy the clip again.')
+        if sha256_file(path, cancelled=cancelled, expected_identity=stamp) != clipboard.source_sha256:
+            raise ValueError('The copied audio changed. Review it and copy the clip again.')
+        return candidate
+
+    def _split(self, clip, at, *, cancelled):
+        _, _, info = self._retained(clip, cancelled=cancelled)
+        window = clip_window(clip, info, self.plan.sample_rate)
+        number(at, 0, MAX_CLIP_SECONDS, 'Split position from clip start')
+        count = round(at * info.rate)
+        total = window.source_end - window.source_start
+        if not 0 < count < total:
+            raise ValueError('Split at a whole source sample strictly inside the selected clip.')
+        first = replace(clip, duration=count / info.rate, fade_out=0)
+        first_window = clip_window(first, info, self.plan.sample_rate)
+        second = replace(clip, id=uuid4().hex,
+            start=(window.start_frame + first_window.frames) / self.plan.sample_rate,
+            trim_start=(window.source_start + count) / info.rate,
+            duration=(total - count) / info.rate, fade_in=0)
+        second_window = clip_window(second, info, self.plan.sample_rate)
+        if (first_window.frames + second_window.frames != window.frames
+                or first_window.source_start != window.source_start
+                or first_window.source_end != second_window.source_start
+                or second_window.source_end != window.source_end):
+            raise ValueError('Choose a split position aligned with both source and project samples.')
+        return first, second
+
+    def _joined(self, first, second, *, cancelled):
+        if first.id == second.id:
+            raise ValueError('Choose two different clips to join.')
+        _, _, info = self._retained(first, cancelled=cancelled)
+        self._retained(second, cancelled=cancelled)
+        if first.asset != second.asset:
+            raise ValueError('Join consecutive selections of the same retained audio source.')
+        a = clip_window(first, info, self.plan.sample_rate)
+        b = clip_window(second, info, self.plan.sample_rate)
+        if b.start_frame < a.start_frame:
+            first, second, a, b = second, first, b, a
+        if (a.source_end != b.source_start or a.start_frame + a.frames != b.start_frame
+                or (first.gain_db, first.pan, first.track) != (second.gain_db, second.pan, second.track)
+                or a.fade_out or b.fade_in):
+            raise ValueError('Join adjacent source and timeline selections with matching gain, pan and track, without an interior fade.')
+        combined = replace(first, duration=(b.source_end - a.source_start) / info.rate,
+                           fade_out=second.fade_out)
+        actual = clip_window(combined, info, self.plan.sample_rate)
+        if actual.frames != a.frames + b.frames:
+            raise ValueError('The joined selections do not share an exact project-sample boundary.')
+        return first, second, combined
+
     def apply(self, request, *, cancelled=lambda: False):
         """Return a new script; the existing draft owner performs the final edit."""
-        if type(request) is not dict or set(request) - {'action', 'scene_id', 'clip_id', 'source', 'values', 'minimum_duration'}:
+        if type(request) is not dict or set(request) - {'action', 'scene_id', 'clip_id', 'source', 'values', 'minimum_duration', 'clipboard', 'position', 'split_at', 'other_id'}:
             raise ValueError('Invalid clip editing request.')
         action = request.get('action')
         values = request.get('values', {})
         if type(values) is not dict or set(values) - set(CLIP_FIELDS):
             raise ValueError('Unknown clip control.')
         check_cancelled(cancelled)
+        copied = None
         with project_lock(self.root):
             if action == 'add':
                 index, scene = self._scene(request['scene_id'])
@@ -177,7 +265,41 @@ class ClipEditor:
                 clip_window(candidate, info, self.plan.sample_rate)
                 updated = self._replace([self._append(index, clip_directive(candidate))])
                 selected = candidate.id
-            elif action in ('edit', 'remove', 'move'):
+            elif action == 'copy':
+                _, _, original = self._clip(request['clip_id'])
+                copied = self._copy(original, cancelled=cancelled)
+                check_cancelled(cancelled)
+                return {'clipboard': copied, 'fingerprint': self.fingerprint, 'clip_id': original.id}
+            elif action == 'paste':
+                index, scene = self._scene(request['scene_id'])
+                if len(scene.clips) >= 32:
+                    raise ValueError('A chapter supports at most thirty-two clips.')
+                candidate = self._pasted(request.get('clipboard'), start=request.get('position'),
+                                         cancelled=cancelled)
+                updated = self._replace([self._append(index, clip_directive(candidate))])
+                selected = candidate.id
+            elif action == 'split':
+                _, scene, original = self._clip(request['clip_id'])
+                if len(scene.clips) >= 32:
+                    raise ValueError('A chapter supports at most thirty-two clips.')
+                first, second = self._split(original, request.get('split_at'), cancelled=cancelled)
+                line = self._clip_line(original.id)
+                ending = '\r\n' if self.lines[line].endswith('\r\n') else ('\n' if self.lines[line].endswith('\n') else '')
+                updated = self._replace([(line, line + 1,
+                    [clip_directive(first) + self.newline, clip_directive(second) + ending])])
+                selected = second.id
+            elif action == 'join':
+                index, _, original = self._clip(request['clip_id'])
+                other_index, _, other = self._clip(request['other_id'])
+                if index != other_index:
+                    raise ValueError('Choose both clips from the same chapter.')
+                first, second, combined = self._joined(original, other, cancelled=cancelled)
+                first_line, second_line = self._clip_line(first.id), self._clip_line(second.id)
+                ending = '\r\n' if self.lines[first_line].endswith('\r\n') else ('\n' if self.lines[first_line].endswith('\n') else '')
+                updated = self._replace([(first_line, first_line + 1, [clip_directive(combined) + ending]),
+                                         (second_line, second_line + 1, [])])
+                selected = combined.id
+            elif action in ('edit', 'remove', 'move', 'cut'):
                 index, scene, original = self._clip(request['clip_id'])
                 line = self._clip_line(original.id)
                 if action == 'edit':
@@ -187,6 +309,8 @@ class ClipEditor:
                     updated = self._replace([(line, line + 1, [clip_directive(candidate) + ending])])
                     selected = candidate.id
                 else:
+                    if action == 'cut':
+                        copied = self._copy(original, cancelled=cancelled)
                     replacement = []
                     if len(scene.clips) == 1 and not scene.events and not scene.minimum_duration:
                         replacement = ['[duration 1]' + self.newline]
@@ -212,9 +336,12 @@ class ClipEditor:
                 edit = (line, line + 1, [directive + self.newline]) if line is not None else self._append(index, directive)
                 updated, selected = self._replace([edit]), None
             else:
-                raise ValueError('Choose add, edit, remove, move or chapter duration.')
+                raise ValueError('Choose add, edit, remove, move, copy, cut, paste, split, join or chapter duration.')
             check_cancelled(cancelled)
-            return {'script': updated, 'fingerprint': self.fingerprint, 'clip_id': selected}
+            result = {'script': updated, 'fingerprint': self.fingerprint, 'clip_id': selected}
+            if copied is not None:
+                result['clipboard'] = copied
+            return result
 
     def preview(self, identity, *, ffmpeg, cancelled=lambda: False, broker=None, operation_id=None):
         """Render only the selected trim/gain/pan/fades through the shared cache."""

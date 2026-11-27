@@ -9,6 +9,7 @@ from unittest.mock import Mock
 import pytest
 
 from carr_library.ui.search_model import Hit, SearchModel
+from carr_library.search.pagination import SearchPage
 
 
 @pytest.fixture
@@ -52,7 +53,8 @@ def panel(handlers):
     panel.grid, panel.details, panel.status = Mock(), Mock(), Mock()
     panel._refresh_details = Mock()
     panel.frame = SimpleNamespace(working=False, cancel_event=Event(), run_job=Mock(),
-        library=SimpleNamespace(search=Mock(), semantic_ranker=object()), report=Mock())
+        library=SimpleNamespace(search_page=Mock(), semantic_ranker=object()), report=Mock())
+    panel.bound_library = panel.frame.library
     return panel
 
 
@@ -61,18 +63,18 @@ def test_empty_semantic_fallback_is_readable_after_background_completion(panel):
     def search(*args, on_status, cancelled, **kwargs):
         assert not cancelled()
         on_status(note)
-        return ()
-    panel.frame.library.search.side_effect = search
+        return SearchPage((), None, 0, 0, 'Source order.')
+    panel.frame.library.search_page.side_effect = search
     panel.on_search(None)
-    panel.frame.library.search.assert_not_called()
+    panel.frame.library.search_page.assert_not_called()
     _, operation, complete = panel.frame.run_job.call_args.args
     rows = operation()
     panel.status.ChangeValue.assert_not_called()
     complete(rows)
     assert note in panel.status.ChangeValue.call_args.args[0]
-    assert 'No results.' in panel.status.ChangeValue.call_args.args[0]
+    assert '0 results.' in panel.status.ChangeValue.call_args.args[0]
     panel.status.SetFocus.assert_called_once()
-    cancelled = panel.frame.library.search.call_args.kwargs['cancelled']
+    cancelled = panel.frame.library.search_page.call_args.kwargs['cancelled']
     panel.frame.cancel_event.set()
     assert cancelled()
 
@@ -95,12 +97,12 @@ def test_collection_refresh_distinguishes_all_books_and_preserves_selected_id(pa
 def test_status_notes_belong_only_to_their_search_and_ignore_stale_completion(panel):
     def first(*args, on_status, **kwargs):
         on_status('Old fallback notice.')
-        return ()
-    panel.frame.library.search.side_effect = first
+        return SearchPage((), None, 0, 0, 'Source order.')
+    panel.frame.library.search_page.side_effect = first
     panel.on_search(None)
     _, old_operation, old_complete = panel.frame.run_job.call_args.args
     old_rows = old_operation()
-    panel.frame.library.search.side_effect = lambda *args, **kwargs: ()
+    panel.frame.library.search_page.side_effect = lambda *args, **kwargs: SearchPage((), None, 0, 0, 'Source order.')
     panel.on_search(None)
     _, operation, complete = panel.frame.run_job.call_args.args
     complete(operation())
@@ -141,7 +143,7 @@ def test_saved_query_receives_live_cancellation_and_does_not_show_partial_result
     def search(*args, cancelled):
         if cancelled():
             raise TimeoutError('Saved search cancelled.')
-        return ()
+        return SearchPage((), None, 0, 0, 'Source order.')
     frame.library.run_query.side_effect = search
     frame.run_saved_query(None)
     _, operation, _ = frame.run_job.call_args.args

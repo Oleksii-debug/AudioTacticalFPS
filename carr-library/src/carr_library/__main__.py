@@ -125,6 +125,16 @@ def main(argv=None):
     parser.add_argument('--edition', help='Exact edition filter for --search')
     parser.add_argument('--limit-per-library', type=int, default=20,
                         help='Maximum results from each selected library, 1 to 100')
+    parser.add_argument('--search-pages', action='store_true',
+                        help='Use bounded resumable source pages, including scopes larger than 500 editions/20 libraries')
+    parser.add_argument('--search-cursor',
+                        help='Resume an exact --search-pages continuation with the same query and library selection')
+    parser.add_argument('--search-page-sources', type=int, default=500,
+                        help='Maximum source segments inspected per library page, 1 to 20000')
+    parser.add_argument('--search-library-budget', type=int, default=20,
+                        help='Maximum selected libraries inspected per request, 1 to 20')
+    parser.add_argument('--search-timeout', type=float,
+                        help='Cooperative seconds per request; paged search permits up to 3600')
     from .audio_cli import add_audio_arguments, audio_requested, validate_audio_arguments, run_audio
     add_audio_arguments(parser)
     args = parser.parse_args(arguments)
@@ -137,6 +147,9 @@ def main(argv=None):
         parser.error('Choose one operation: desktop, self-test, backup, restore, document formats, list libraries, search, DOI lookup, audio, or OCR models.')
     validate_audio_arguments(args, parser)
     validate_arguments(parser, args)
+    if (args.search_pages or args.search_cursor is not None or args.search_timeout is not None
+            or args.search_page_sources != 500 or args.search_library_budget != 20) and args.search is None:
+        parser.error('Search continuation/budget options require --search and --workspace.')
     if (args.ocr_model or args.ocr_all_models) and not args.install_ocr_models:
         parser.error('--ocr-model and --ocr-all-models require --install-ocr-models.')
     if args.ocr_all_models and args.ocr_model:
@@ -230,17 +243,34 @@ def main(argv=None):
         if args.search is not None:
             from .search.federated import FederatedSearch
             notices = []
-            session = FederatedSearch(app).search(args.workspaces, args.search,
-                mode=args.search_mode, result_mode=args.result_mode, title=args.title,
+            service = FederatedSearch(app)
+            options = dict(mode=args.search_mode, result_mode=args.result_mode, title=args.title,
                 author=args.author, language=args.language, edition=args.edition,
-                limit_per_library=args.limit_per_library, on_status=notices.append)
-            print(json.dumps({'query': session.query, 'mode': session.mode,
+                limit_per_library=args.limit_per_library, on_status=notices.append,
+                timeout=args.search_timeout if args.search_timeout is not None else 60.0)
+            page = None
+            if args.search_pages or args.search_cursor is not None:
+                page = service.search_page(args.workspaces, args.search, **options,
+                    cursor=args.search_cursor, page_budget=args.search_page_sources,
+                    library_budget=args.search_library_budget)
+                session = page.session
+            else:
+                session = service.search(args.workspaces, args.search, **options)
+            report = {'query': session.query, 'mode': session.mode,
                 'limit_per_library': session.limit_per_library,
                 'ordering': 'Selected libraries in selection order; relevance is local to each library.',
                 'notices': [*([app.semantic_notice] if app.semantic_notice else []), *notices],
                 'libraries': [{'id': group.workspace, 'name': group.library_name,
                                'results': [asdict(hit.result) for hit in group.hits]}
-                              for group in session.groups]}, ensure_ascii=False, indent=2))
+                              for group in session.groups]}
+            if page is not None:
+                report.update(next_cursor=page.next_cursor, complete=page.complete,
+                    selected_libraries=page.selected_libraries,
+                    scanned_libraries=page.scanned_libraries,
+                    scanned_segments=page.scanned_segments,
+                    ordering='Selected libraries in order; source windows in edition/segment order; '
+                             'relevance is local to each bounded window.')
+            print(json.dumps(report, ensure_ascii=False, indent=2))
             return 0
         if args.backup:
             checksum = app.backup(args.backup)

@@ -54,6 +54,8 @@ language, pan (-1 to 1, left/center/right), rate (-10 to 10), pitch (-10 to
 Effects: highpass, lowpass, equalizer, gate, compressor, delay, denoise, gain,
 lowshelf, highshelf, notch, limiter, declick, declip, deesser, reverb, chorus,
 tempo, pitch, width, loudness. Controls are numeric and bounded.
+Use enabled=false to bypass an effect while retaining its place and parameters.
+[effect Narrator gain gain_db=-3 enabled=false]
 [effect Narrator pitch semitones=2]
 [effect Narrator tempo factor=1.1]
 [effect Narrator loudness target_lufs=-18 peak_db=-1 range_lu=7]
@@ -188,8 +190,12 @@ def parse_script(script, *, title='Audio project', voice='sapi5:default', langua
                         raise ValueError('Define a role effect before that role speaks.')
                     if role_name not in roles or effect_name not in EFFECT_PARAMETERS:
                         raise ValueError('Declare the role and choose a supported effect first.')
-                    p = _options(parts[3:], EFFECT_PARAMETERS[effect_name])
-                    effect = Effect(effect_name, tuple((key, float(value)) for key, value in p.items()))
+                    p = _options(parts[3:], (*EFFECT_PARAMETERS[effect_name], 'enabled'))
+                    enabled = p.pop('enabled', 'true')
+                    if enabled not in ('true', 'false'):
+                        raise ValueError('Effect enabled must be true or false.')
+                    effect = Effect(effect_name, tuple((key, float(value)) for key, value in p.items()),
+                                    enabled=enabled == 'true')
                     roles[role_name] = replace(roles[role_name], effects=(*roles[role_name].effects, effect))
                 elif kind == 'output':
                     p = _options(parts[1:], ('format', 'sample_rate', 'stems', 'disk_budget_mb'))

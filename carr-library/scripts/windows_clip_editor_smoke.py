@@ -55,6 +55,12 @@ def drive_editor(wx, show_editor, frame, plan, action, record):
                     controls['destination'].SetSelection(1)
                 elif action == 'duration':
                     controls['minimum'].SetValue('2.5')
+                elif action == 'paste':
+                    controls['start'].SetValue('1.25')
+                elif action == 'split':
+                    controls['split_at'].SetValue('.25')
+                elif action == 'join':
+                    controls['join'].SetSelection(1)
             elif state['phase'] == 'invalid-duration':
                 assert dialog.IsShown() and 'duration' in status.GetValue().lower()
                 record('invalid duration retains owned modal')
@@ -89,7 +95,8 @@ def drive_editor(wx, show_editor, frame, plan, action, record):
 
     schedule()
     try:
-        result = show_editor(frame, plan, selected_id='clip-one', on_ready=ready)
+        result = show_editor(frame, plan, selected_id='clip-one',
+                             clipboard_available=action == 'paste', on_ready=ready)
         if errors:
             raise AssertionError(errors[-1])
         assert state['submitted'], 'The clip modal returned before the native action was submitted.'
@@ -108,6 +115,14 @@ def drive_editor(wx, show_editor, frame, plan, action, record):
                 assert result['scene_id'] == 'scene-000002'
             elif action == 'duration':
                 assert result['minimum_duration'] == 2.5
+            elif action in ('copy', 'cut'):
+                assert result['clip_id'] == 'clip-one'
+            elif action == 'paste':
+                assert result['position'] == 1.25 and 'clipboard' not in result
+            elif action == 'split':
+                assert result['split_at'] == .25 and result['clip_id'] == 'clip-one'
+            elif action == 'join':
+                assert result['other_id'] == 'clip-two' and result['clip_id'] == 'clip-one'
         assert plan.scenes[0].clips[0].title == 'Голос'
         return result
     finally:
@@ -132,6 +147,7 @@ def main():
     application.SetTopWindow(frame)
     frame.Show()
     plan = parse_script('# First\n[clip retained.wav id=clip-one duration=.5 title="Голос"]\n'
+                        '[clip retained.wav id=clip-two trim_start=.5 duration=.5 start=.5]\n'
                         '# Second\n[duration 1]')
     checks = []
 
@@ -140,7 +156,8 @@ def main():
         print('PASS:', label, flush=True)
 
     try:
-        for action in ('edit', 'move', 'duration', 'remove', 'preview', 'cancel'):
+        for action in ('edit', 'move', 'duration', 'remove', 'preview',
+                       'copy', 'cut', 'paste', 'split', 'join', 'cancel'):
             drive_editor(wx, show_clip_editor, frame, plan, action, record)
         print(json.dumps({'status': 'PASS', 'checks': checks,
                           'actual_pcm_processing': 'SEPARATE_STRICT_SUITE',

@@ -149,6 +149,15 @@ class DesktopSearchPanel(PagedSearchPanel):
         original = wx.Button(self, label='Open &original source file')
         original.Bind(wx.EVT_BUTTON, self.open_original)
         self.GetSizer().Add(original, 0, wx.ALL, 4)
+        pages = wx.BoxSizer(wx.HORIZONTAL)
+        self.previous_search_page = wx.Button(self, label='Previous search page')
+        self.next_search_page = wx.Button(self, label='Next search page')
+        for control, direction in ((self.previous_search_page, 'previous'), (self.next_search_page, 'next')):
+            control.SetName(control.GetLabel())
+            control.Disable()
+            control.Bind(wx.EVT_BUTTON, lambda event, direction=direction: self.on_search(event, direction=direction))
+            pages.Add(control, 0, wx.ALL, 4)
+        self.GetSizer().Add(pages, 0, wx.ALL, 4)
         for control in (self.retrieval, self.result_mode, self.collection):
             control.Bind(wx.EVT_CHOICE, self.on_options_changed)
         for control in (self.query, *self.filters.values()):
@@ -179,6 +188,8 @@ class DesktopSearchPanel(PagedSearchPanel):
 
     def on_options_changed(self, event=None):
         """Discard old results when query, filters or presentation change."""
+        self._navigation().reset()
+        self._paging_controls()
         self._context_epoch += 1
         self.model.clear()
         self.results.clear()
@@ -189,6 +200,8 @@ class DesktopSearchPanel(PagedSearchPanel):
             event.Skip()
 
     def refresh_collections(self):
+        self._navigation().reset()
+        self._paging_controls()
         index = self.collection.GetSelection()
         selected = self.collection_ids[index] if 0 <= index < len(self.collection_ids) else None
         pairs = tuple(self.frame.library.collections(self.model.workspace))
@@ -204,7 +217,21 @@ class DesktopSearchPanel(PagedSearchPanel):
         self.status.ChangeValue('Collections refreshed. Search again using the current selection.' if selected in self.collection_ids else
                                 'The selected collection is no longer available. Choose a collection and search again.')
 
-    def on_search(self, event):
+    def _navigation(self):
+        from carr_library.ui.search_paging import SearchNavigation
+        if not hasattr(self, '_search_navigation'):
+            self._search_navigation = SearchNavigation()
+        return self._search_navigation
+
+    def _paging_controls(self, *, busy=False):
+        nav = self._navigation()
+        for name, enabled in (('previous_search_page', bool(nav.history)),
+                              ('next_search_page', nav.next_cursor is not None)):
+            control = getattr(self, name, None)
+            if control is not None:
+                control.Enable(enabled and not busy)
+
+    def on_search(self, event, *, direction='first'):
         if self.frame.working:
             self.frame.report('An operation is already running. Wait or choose Cancel current operation.')
             return
@@ -242,6 +269,13 @@ class DesktopSearchPanel(PagedSearchPanel):
             self.collection.SetFocus()
             return
         options['collection'] = self.collection_ids[index]
+        navigation = self._navigation()
+        try:
+            continuation = navigation.target(direction)
+        except ValueError as exc:
+            self.status.ChangeValue(str(exc))
+            self.status.SetFocus()
+            return
         self._context_epoch += 1
         epoch = self._context_epoch
         self.model.clear()
@@ -249,19 +283,28 @@ class DesktopSearchPanel(PagedSearchPanel):
         self.grid.refresh()
         self.details.ChangeValue('')
         notes = []
+        self._paging_controls(busy=True)
 
-        def done(rows):
-            if self._context_epoch != epoch or self.model.workspace != workspace:
+        def done(page):
+            if (self._context_epoch != epoch or self.model.workspace != workspace
+                    or self.frame.library is not self.bound_library):
                 return
+            navigation.accept(direction, continuation, page.next_cursor)
+            self._paging_controls()
+            rows = page.results
             self.results = {r.ref: r for r in rows}
             self.model.replace(workspace, (Hit(r.workspace, r.ref, r.revision, r.title,
                 r.author, r.edition, r.page, r.quote, r.citation) for r in rows))
             self.grid.refresh()
-            info = f'{len(rows)} results.' if rows else 'No results. Change the query or source filters.'
+            info = (f'Search page {navigation.number}: {len(rows)} results. '
+                    f'Inspected {page.scanned_segments} source segments; '
+                    f'the catalog scope contains {page.scope_editions} editions. ')
+            info += ('More sources may remain; choose Next search page.' if page.next_cursor is not None
+                     else 'The selected source search is complete.')
             if rows:
                 info += (' Short source quotations.' if result_mode == 'short' else
                          ' Expanded source excerpts from the matching page or text segment.')
-                info += ' Showing excerpts from up to 100 matches. Use source filters to focus the search.'
+                info += ' ' + page.ordering
             if notes:
                 info += ' ' + ' '.join(dict.fromkeys(notes))
             if mode == 'advanced':
@@ -277,9 +320,17 @@ class DesktopSearchPanel(PagedSearchPanel):
             else:
                 self.status.SetFocus()
 
-        self.frame.run_job('Searching the selected library', lambda: self.frame.library.search(
+        def failed(exc):
+            if (self._context_epoch == epoch and self.model.workspace == workspace
+                    and self.frame.library is self.bound_library):
+                self._paging_controls()
+                self.status.ChangeValue(f'Search page failed: {exc}')
+                self.status.SetFocus()
+
+        self.frame.run_job('Searching the selected library', lambda: self.bound_library.search_page(
             workspace, query, mode=mode, result_mode=result_mode, cancelled=self.frame.cancel_event.is_set,
-            authorized_topic=self.bound_topic, on_status=notes.append, **options), done)
+            authorized_topic=self.bound_topic, on_status=notes.append, cursor=continuation, **options), done,
+            failed=failed)
 
     def on_more(self, event):
         if self.frame.working:

@@ -1,11 +1,20 @@
 # Local studio effects and output formats
 
-The existing typed role-effect chain now exposes 21 effect types through
-**Add role effect** on the studio Script page. Choose **Structured production
-script**, select a role and effect, then enter the named numeric settings.
-The action inserts a reviewed directive after that role's existing effects and
-before its first spoken line. It retains the original source and the draft's
-normal undo/recovery history. Each role still has a maximum of 16 effects.
+The existing typed role-effect chain exposes 21 effect types through
+**Role effect chains** on the studio Script page. Choose **Structured production
+script**, select a role and edit its ordered steps. Add, edit, move, bypass and
+remove operate on an isolated pending chain. **Apply chain changes** makes one
+ordinary narration-draft edit; **Cancel chain changes** leaves the script alone.
+The original source, spoken words, other roles, scene directions and normal
+undo/recovery history are retained. Each role has at most 16 effects.
+
+Unchanged effect directives retain their spelling even when moved. New or edited
+directives use the same quoted-role and bounded-numeric grammar as the parser.
+Editing a legacy step without changing an omitted control keeps that control
+omitted, so the existing default filter graph does not silently change. Bypass
+is saved explicitly as `enabled=false`; parameters remain validated and available
+when the step is enabled again. The selected voice, language, source draft and
+project identity are rechecked before applying the modal result.
 
 The same bounded model validates saved projects, native controls and script
 directives. No text can become a shell command, media URL or arbitrary FFmpeg
@@ -39,7 +48,38 @@ Examples:
     [effect Narrator compressor threshold_db=-20 ratio=3 knee=2.8 makeup_db=2 mix=0.8]
     [effect Narrator pitch semitones=2]
     [effect Narrator tempo factor=1.1]
+    [effect Narrator gain gain_db=-3 enabled=false]
     [effect Narrator loudness target_lufs=-18 peak_db=-1 range_lu=7]
+
+
+## Reusable named presets
+
+**Save named preset** writes the selected pending chain to an explicitly chosen
+JSON file. Enter a visible name of up to 120 characters. Saving a preset is a
+separate action and is not undone by subsequently cancelling the chain dialog.
+The existing export approval binds the selected file and parent directory;
+another writer's new bytes cannot acquire replacement permission from an older
+confirmation. The private library, current Studio project, recovery file and
+imported original source remain protected destinations.
+
+**Load preset** reads at most 64 KiB into an inert typed preview. Review the name,
+processing order, numeric settings and bypass states, select a role, then choose
+**Apply loaded preset**. This replaces that role's pending chain only. An empty
+preset explicitly means a dry role with no effects. The final **Apply chain
+changes** is still required to change the draft.
+
+The `carr-role-effect-preset/1` document has exactly `schema`, `name`
+and `effects`. Every effect has exactly `kind`, `parameters` and
+`enabled`, with the existing maximum of 16 steps and numeric ranges.
+Duplicate JSON fields, unknown keys, invalid booleans, nonfinite values and
+oversize files fail validation. Presets carry no voice, model, executable,
+credential or source path. They are reusable external exports, not an automatic
+preset catalogue or an active runtime profile. Complete project backup preserves
+the applied chain through the existing Studio draft schema.
+
+This editor operates on role chains. Compressor, delay, chorus and reverb expose
+their existing individual mix controls. A separate master effect chain and a
+general dry/wet control for an entire chain are not implemented here.
 
 ## Outputs
 
@@ -58,3 +98,13 @@ defaults, and encodes then decodes the three added formats. Source and installed
 Windows gates must pass before treating this extension as verified for the
 delivered runtime. The existing native Windows/NVDA and listening gates remain
 separate. No supplied private model, recording or source is included.
+
+
+The chain extension adds source-preservation, stale-modal, preset-file authority,
+draft undo/replay and complete-backup roundtrip tests. The selected FFmpeg signal
+test measures an actual order-dependent result and compares a bypassed chain
+with dry audio. The installed Windows probe drives real add/edit/reorder/bypass/
+remove/apply/cancel controls and checks a typed preset file roundtrip. Its file
+picker automation, NVDA speech and listening remain separately labelled.
+This checkpoint was prepared while the executor was unavailable: the new cases
+and extended native sequence are **NOT_RUN** until the strict gates execute them.

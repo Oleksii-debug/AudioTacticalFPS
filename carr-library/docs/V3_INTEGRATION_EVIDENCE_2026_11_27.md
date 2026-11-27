@@ -16,11 +16,40 @@ Tree: `58f8376c7cf1b38c11cc2451c33d7e0609890c22`.
 | [Signed client/maintenance](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45968137235) | PASS on Linux and Windows, including the actual isolated Windows credential-vault round trip and native permission/status controls. |
 | [Encrypted snapshots](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45968137184) | PASS. 319 source cases,151 installed cases and actual native publication/restore controls. |
 | [Integrated desktop](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45968137193) | Linux 67 strict suites plus the numeric-loopback suite PASS. Native keyboard/draft/progress/translation job PASS. Main Windows job stopped at the stale isolated-PDF cancellation observer; later installed/full-bundle/Inno stages were not reached. |
-| [Actual managed A-to-B](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45968137488) | Source transaction/target/launcher suites passed; actual two-setup Windows execution was still in progress when this checkpoint was written. Inspect the run for its final conclusion. |
+| [Actual managed A-to-B](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45968137488) | Five strict Windows suites /130 cases passed. Setup A was actually built, then the evidence-copy step requested a nonexistent builder receipt. The workflow now runs the existing source verifier over the sealed wheel and checks its manifest/commit/tree binding. Full A-to-B execution was not reached. |
 
 Counts overlap; they are not a unique aggregate. No earlier green run certifies
 a later commit. Private supplied source, model weights, credentials, recordings,
 runtime archives and installers are excluded from public evidence artifacts.
+
+## Next integrated feature candidate
+
+The next composition is based on corrected immutable source
+`665acf2c1fdb5a30a05ef31c482eb02dcaf1e141`. The previous installer builder
+always emitted launcher/audio flags that the native dependency checker did not
+admit. The correction accepts only their literal booleans, keeps unknown-field
+rejection and verifies the actual builder-to-native manifest boundary. This is
+a newly corrected test baseline, not a claim of an earlier qualified release.
+
+The managed lane now builds that baseline as A and the actual feature-bearing
+event source as B. The application source trees differ; the gate is not a
+same-code repair with two labels. It also requires the builder/native-manifest
+regressions before compiling either setup.
+
+The composition adds these reviewed source candidates:
+
+| Work | Source and executed boundary before composition |
+|---|---|
+| Search continuation | Source paging/federation/UI candidates through `976634809b08ae608ce0feb715211dda68ed9470`; actual initial18 backend and9 federation cases passed before the outage. New isolated CLI/native navigation, stale binding and UI acceptance cases remain NOT_RUN until this composition's CI. |
+| Clip clipboard/split/join | `b6251fa7b99ff497b21f0ccec8a4491c774533b0`; source-preserving project-bound Copy/Cut/Paste, exact-sample Split and compatible adjacent Join. Source reviewed; all new execution still pending. |
+| Role effect chains/presets | `bc0bc15a990148daa53f6c7a339e9c0cdb5a7430`; edit/reorder/bypass/remove and explicit named numeric presets, same draft history and approved file writer. Core and UI independently reviewed; all new execution still pending. |
+
+The existing main, audio and installed/full-bundle gates now include the new
+source suites and native controls. The baseline's old native checks and the
+new features must pass their actual composed runs before acceptance. The
+scanner continuation candidate is intentionally separate; durable batch/UI
+integration, large-source streaming, live reader completion, master effects and
+other finite scope gaps are still active work.
 
 ## Corrections staged after that source
 

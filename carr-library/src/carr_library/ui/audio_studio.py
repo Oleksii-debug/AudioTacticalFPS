@@ -130,6 +130,7 @@ class StudioController:
         self.source_reference = source_reference
         self.project_path = self.output_dir = self.result = None
         self._file_hash = self._saved_value = self._recovery_hash = None
+        self._clip_clipboard = None
 
     def from_reading_project(self, project, *, saved_digest):
         """Take one saved derivative into literal narration without writing back."""
@@ -410,6 +411,7 @@ class StudioController:
         self._saved_value = _json_text(self.to_dict())
         self._recovery_hash = None
         self.result = None
+        self._clip_clipboard = None
         return self
 
     def save_recovery(self, *, cancelled=lambda: False):
@@ -509,6 +511,8 @@ class StudioController:
                 result = {'preview': str(path), 'fingerprint': editor.fingerprint,
                           'clip_id': request['clip_id']}
             else:
+                if request.get('action') == 'paste':
+                    request = {**request, 'clipboard': getattr(self, '_clip_clipboard', None)}
                 result = editor.apply(request, cancelled=cancelled)
             self._assert_clip_snapshot(editor.fingerprint)
             return result
@@ -520,6 +524,8 @@ class StudioController:
         if 'script' in result:
             # Use the existing source-preserving draft undo/recovery mechanism.
             self.edit_script(result['script'])
+        if 'clipboard' in result:
+            self._clip_clipboard = result['clipboard']
         return result
 
     def render(self, *, cancelled=lambda: False, on_status=lambda status: None):
@@ -711,7 +717,7 @@ class AudioStudioDialog:
         from .legacy_studio_import import import_canonical_project
         self._button(script_page, script_buttons, 'Import canonical project',
                      lambda event: import_canonical_project(self, event))
-        self._button(script_page, script_buttons, 'Add role effect', self.add_effect)
+        self._button(script_page, script_buttons, 'Role effect chains', self.add_effect)
         self._button(script_page, script_buttons, 'Script and keyboard help', self.help)
         script_layout.Add(script_buttons, 0, wx.ALL, 5)
         script_page.SetSizer(script_layout)
@@ -1384,7 +1390,8 @@ class AudioStudioDialog:
                 return
             from .audio_clips import show_clip_editor
             request = show_clip_editor(self.dialog, editor.plan,
-                selected_id=getattr(self, '_selected_clip_id', None))
+                selected_id=getattr(self, '_selected_clip_id', None),
+                clipboard_available=getattr(self.controller, '_clip_clipboard', None) is not None)
             if request is None:
                 return
             self._selected_clip_id = request.get('clip_id')
@@ -1415,7 +1422,10 @@ class AudioStudioDialog:
                 else:
                     self._refresh_text()
                     self.script.SetFocus()
-                    self._message('Clip settings changed in the current draft. Save the project and render to update its master.', focus=True)
+                    message = ('Clip copied. Choose a chapter and Start, then Paste clip.'
+                               if 'clipboard' in value and 'script' not in value else
+                               'Clip edit applied to the draft. Undo keeps the previous script; save and render to update the master.')
+                    self._message(message, focus=True)
             label = 'Preparing selected clip preview' if request['action'] == 'preview' else 'Retaining and checking the clip edit'
             self._run(label, lambda: self.controller.prepare_clip_edit(
                 editor, request, cancelled=self.cancelled.is_set), accepted)
@@ -1426,20 +1436,35 @@ class AudioStudioDialog:
     def add_effect(self, event=None):
         try:
             self._capture()
-            if self.controller.input_kind != 'script':
-                raise ValueError('Choose Structured production script before adding a role effect.')
-            from ..audio.production import add_role_effect
-            from .audio_effects import choose_role_effect
-            selected = choose_role_effect(self.dialog, (role.name for role in self.controller.plan().roles))
-            if selected is None:
+            controller = self.controller
+            if controller.input_kind != 'script':
+                raise ValueError('Choose Structured production script before editing a role effect chain.')
+            from ..audio.effect_editing import RoleEffectEditor
+            from ..reader.narration import protect_original_path
+            from .audio_effects import show_effect_editor
+            editor = RoleEffectEditor(controller.script, voice=controller.voice, language=controller.language)
+            draft = controller.draft
+            binding = (controller.project_id, controller.voice, controller.language, controller.input_kind)
+
+            def protect(destination):
+                controller._protect_original(destination)
+                if controller.project_path is not None:
+                    protect_original_path(str(controller.project_path), destination)
+                    recovery = controller.project_path.with_name(controller.project_path.name + '.recovery.json')
+                    protect_original_path(str(recovery), destination)
+
+            updated = show_effect_editor(self.dialog, editor, private_root=controller.private_root,
+                                         protect_destination=protect)
+            if updated is None:
                 return
-            role, effect = selected
-            updated = add_role_effect(self.controller.script, role, effect,
-                                      voice=self.controller.voice, language=self.controller.language)
-            self.controller.edit_script(updated)
+            if (self.closed or self.controller is not controller or controller.draft is not draft
+                    or controller.script != editor.original_script
+                    or (controller.project_id, controller.voice, controller.language, controller.input_kind) != binding):
+                raise ValueError('The project changed while effect settings were open. Review its current chain again.')
+            controller.edit_script(updated)
             self._refresh_text()
             self.script.SetFocus()
-            self._message(f'{effect.kind} added to {role}. Preview the plan before rendering.', focus=True)
+            self._message('Role effect chains updated in the draft. Save and preview before rendering.', focus=True)
         except Exception as exc:
             self._error(exc)
 

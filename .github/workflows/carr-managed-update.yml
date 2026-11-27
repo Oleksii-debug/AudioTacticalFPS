@@ -30,11 +30,12 @@ jobs:
         shell: pwsh
         working-directory: source-b/carr-library
     env:
-      # A is a reviewed, immutable prior application/standard-installer source.
+      # A is the reviewed immutable source that fixes builder/native flag admission.
+      # It is a corrected test baseline, not an already-qualified public release.
       # B is the exact event head. Their wheel/source hashes are independently
       # verified, with actual version strings unchanged. The synthetic TUF
       # build sequence advances 1 -> 2 even when both display 0.2.0.dev1.
-      CARR_MANAGED_SOURCE_A: '4c3632fb1baac4705059e344b6c952f7760c4f00'
+      CARR_MANAGED_SOURCE_A: '665acf2c1fdb5a30a05ef31c482eb02dcaf1e141'
       PYTHONUTF8: '1'
       PYTHONUNBUFFERED: '1'
       PYTHONDONTWRITEBYTECODE: '1'
@@ -94,7 +95,7 @@ jobs:
       - name: Require source recovery, authority and publication regressions without skips
         timeout-minutes: 8
         run: |
-          & $env:CARR_MANAGED_PYTHON scripts/ci_check.py --jobs 3 tests/security/test_managed_installation.py tests/security/test_managed_registration.py tests/packaging/test_standard_installer.py tests/packaging/test_managed_launch_boundary.py tests/packaging/test_managed_update_native_policy.py 2>&1 | Tee-Object 'managed-update-results/strict-managed-contracts.txt'
+          & $env:CARR_MANAGED_PYTHON scripts/ci_check.py --jobs 3 tests/security/test_managed_installation.py tests/security/test_managed_registration.py tests/packaging/test_standard_installer.py tests/packaging/test_managed_launch_boundary.py tests/packaging/test_managed_update_native_policy.py tests/packaging/test_native_checks.py tests/packaging/test_windows_bundle.py 2>&1 | Tee-Object 'managed-update-results/strict-managed-contracts.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Acquire the existing pinned compilers and original Python/native runtime
