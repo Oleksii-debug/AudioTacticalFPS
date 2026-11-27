@@ -12,6 +12,7 @@ from ..speech.session import ReaderDraftStore, ReaderResume
 from .reader_playback import ReaderPlaybackControls, show_reader_playback
 from .reader_transport import ReaderPlaybackSession
 from .reader_navigation import ReaderNavigation
+from .reader_preparation import show_reader_preparation
 from ..speech.navigation import UNITS as READING_UNITS
 from .reader_output import ReaderOutputControls
 from .reader_presentation import ReaderPresentationControls
@@ -151,6 +152,9 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     replace_button.SetName('Find and replace in reading copy')
     pronunciation_button = wx.Button(dialog, label='Pronunciation &dictionary...')
     pronunciation_button.SetName('Reading pronunciation dictionary')
+    preparation_button = wx.Button(dialog, label='Prepare for speech...')
+    preparation_button.SetName('Prepare reading copy for speech')
+    dialog.reader_preparation_button = preparation_button
     spelling_button = wx.Button(dialog, label='Check &spelling...')
     spelling_button.SetName('Check spelling in reading copy')
     appearance_button = wx.Button(dialog, label='Reading appearance...')
@@ -159,7 +163,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     focus_button.SetName('Reading focus and approximate audio follow')
     keyboard_button = wx.Button(dialog, label='Reader &keyboard shortcuts...')
     keyboard_button.SetName('Voice reader keyboard shortcuts')
-    for control in (find_button, replace_button, pronunciation_button,
+    for control in (find_button, replace_button, pronunciation_button, preparation_button,
                     spelling_button, appearance_button, focus_button, keyboard_button):
         tools_row.Add(control, 0, wx.ALL, 4)
     layout.Add(tools_row, 0, wx.EXPAND)
@@ -231,7 +235,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             button.Enable(bool(current) and source_loaded and not busy and alive)
         for control in (navigation_unit, previous_unit, current_unit, next_unit):
             control.Enable(source_loaded and not busy and alive)
-        for button in (find_button, replace_button, pronunciation_button, spelling_button, appearance_button, focus_button):
+        for button in (find_button, replace_button, pronunciation_button, preparation_button, spelling_button, appearance_button, focus_button):
             button.Enable(source_loaded and not busy)
         output_controls.sync()
         if reader_tabs is not None:
@@ -732,6 +736,17 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         except Exception as exc:
             report(str(exc), focus=True)
 
+    def prepare_reading(event=None):
+        try:
+            if busy:
+                raise ValueError('Wait for the current reader operation before preparing text.')
+            capture_edit()
+            show_reader_preparation(dialog, host=edit_host)
+            if alive and not dialog_destroyed:
+                editor.SetFocus()
+        except Exception as exc:
+            report(str(exc), focus=True)
+
     def check_spelling(event=None):
         try:
             from .reader_spelling import show_reader_spelling
@@ -944,7 +959,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         (undo, history), (redo, lambda event: history(forward=True)),
         (original, compare), (seek, seek_audio), (playback_button, show_playback), (cleanup, clean),
         (find_button, find_replace), (replace_button, find_replace),
-        (pronunciation_button, pronunciation_dictionary), (spelling_button, check_spelling),
+        (pronunciation_button, pronunciation_dictionary), (preparation_button, prepare_reading),
+        (spelling_button, check_spelling),
         (appearance_button, appearance.show), (focus_button, choose_reading_focus), (close, closing)):
         control.Bind(wx.EVT_BUTTON, handler)
     previous_unit.Bind(wx.EVT_BUTTON, lambda event: navigate_unit(direction=-1))
@@ -965,6 +981,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         'voice_reader.find': (find_button, find_replace),
         'voice_reader.replace': (replace_button, find_replace),
         'voice_reader.pronunciation': (pronunciation_button, pronunciation_dictionary),
+        'voice_reader.prepare': (preparation_button, prepare_reading),
         'voice_reader.settings': (keyboard_button, lambda event: keyboard.settings(event)),
         'voice_reader.playback': (playback_button, show_playback),
         'voice_reader.read_word': (read_units['word'], lambda event: navigate_unit(unit='word', read_aloud=True)),

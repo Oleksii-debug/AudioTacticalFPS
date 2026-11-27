@@ -21,6 +21,9 @@ import struct
 import subprocess
 import sys
 from tempfile import TemporaryDirectory
+
+from .cleanup import retained_context, retained_temporary_directory, _pending_owners
+from .process import owned_process
 import time
 from typing import Callable
 import wave
@@ -172,32 +175,21 @@ def _run(command, directory, *, timeout_seconds, cancelled=None,
     """Bound engine logs and time; private speech never enters public diagnostics."""
     _cancel(cancelled)
     log = directory / 'engine.log'
-    with log.open('wb') as stream:
+    with retained_context(log.open('wb')) as stream:
         options = {'stdin': subprocess.DEVNULL, 'stdout': stream, 'stderr': stream,
                    'cwd': directory, 'shell': False}
-        if os.name == 'nt':
-            options['creationflags'] = subprocess.CREATE_NO_WINDOW
-        with subprocess.Popen([os.fspath(part) for part in command], **options) as process:
+        with owned_process([os.fspath(part) for part in command], **options) as process:
             start = time.monotonic()
-            try:
-                while process.poll() is None:
-                    _cancel(cancelled)
-                    if time.monotonic() - start > timeout_seconds:
-                        raise TimeoutError('The local speech engine exceeded this utterance time budget.')
-                    if log.stat().st_size > MAX_LOG_BYTES:
-                        raise RuntimeError('The local speech engine exceeded its diagnostic budget.')
-                    if output is not None and output.exists() and output.stat().st_size > max_output_bytes:
-                        raise RuntimeError('The local speech engine exceeded this utterance storage budget.')
-                    time.sleep(0.025)
+            while process.poll() is None:
                 _cancel(cancelled)
-            except BaseException:
-                process.terminate()
-                try:
-                    process.wait(timeout=2)
-                except subprocess.TimeoutExpired:
-                    process.kill()
-                    process.wait(timeout=2)
-                raise
+                if time.monotonic() - start > timeout_seconds:
+                    raise TimeoutError('The local speech engine exceeded this utterance time budget.')
+                if log.stat().st_size > MAX_LOG_BYTES:
+                    raise RuntimeError('The local speech engine exceeded its diagnostic budget.')
+                if output is not None and output.exists() and output.stat().st_size > max_output_bytes:
+                    raise RuntimeError('The local speech engine exceeded this utterance storage budget.')
+                time.sleep(0.025)
+            _cancel(cancelled)
             if process.returncode not in allowed_returncodes:
                 raise RuntimeError(f'The local speech engine failed (exit {process.returncode}).')
     if log.stat().st_size > MAX_LOG_BYTES:
@@ -319,7 +311,7 @@ class VoiceRegistry:
         if self.include_sapi:
             for arch, host in _sapi_hosts():
                 try:
-                    with TemporaryDirectory(prefix='carr-voice-discovery-') as temp:
+                    with retained_temporary_directory(prefix='carr-voice-discovery-', dir=None) as temp:
                         reply = self._sapi(host, Path(temp), {'operation': 'voices'}, 30)
                     voices = reply.get('voices')
                     if type(voices) is not list or len(voices) > 1000:
@@ -340,13 +332,15 @@ class VoiceRegistry:
                         routes[identifier] = ('sapi5', host, row['id'])
                     statuses.append({'engine': 'sapi5-' + arch, 'status': 'available', 'voices': len(voices)})
                 except (OSError, ValueError, RuntimeError, TimeoutError) as exc:
+                    if _pending_owners(exc):
+                        raise
                     statuses.append({'engine': 'sapi5-' + arch, 'status': 'unavailable',
                                      'reason': type(exc).__name__})
         if self.ffmpeg is not None:
             try:
                 from .render import tool_path
                 executable = tool_path('ffmpeg', self.ffmpeg)
-                with TemporaryDirectory(prefix='carr-voice-discovery-') as temp:
+                with retained_temporary_directory(prefix='carr-voice-discovery-', dir=None) as temp:
                     log = _run([executable, '-hide_banner', '-nostdin', '-f', 'lavfi',
                                 '-i', 'flite=list_voices=1', '-f', 'null', '-'], Path(temp),
                                timeout_seconds=15, allowed_returncodes=(0, 1, 255))
@@ -365,10 +359,12 @@ class VoiceRegistry:
                     routes[identifier] = ('flite', self.ffmpeg, name)
                 statuses.append({'engine': 'flite', 'status': 'available', 'voices': len(names)})
             except (OSError, ValueError, RuntimeError, TimeoutError) as exc:
+                if _pending_owners(exc):
+                    raise
                 statuses.append({'engine': 'flite', 'status': 'unavailable', 'reason': type(exc).__name__})
         if self.espeak is not None:
             try:
-                with TemporaryDirectory(prefix='carr-voice-discovery-') as temp:
+                with retained_temporary_directory(prefix='carr-voice-discovery-', dir=None) as temp:
                     log = _run([self.espeak, '--voices'], Path(temp), timeout_seconds=15)
                 seen = set()
                 for line in log.splitlines():
@@ -388,6 +384,8 @@ class VoiceRegistry:
                     raise RuntimeError('No eSpeak NG voices could be enumerated.')
                 statuses.append({'engine': 'espeak-ng', 'status': 'available', 'voices': len(seen)})
             except (OSError, ValueError, RuntimeError, TimeoutError) as exc:
+                if _pending_owners(exc):
+                    raise
                 statuses.append({'engine': 'espeak-ng', 'status': 'unavailable', 'reason': type(exc).__name__})
         for name in ('piper', 'dordiai-voices'):
             model = self._model_engines.get(name)
@@ -423,6 +421,8 @@ class VoiceRegistry:
                                  'voices': len(model_rows), 'profiles': profiles,
                                  'inference': 'not verified by enumeration'})
             except (OSError, ValueError, RuntimeError, TimeoutError) as exc:
+                if _pending_owners(exc):
+                    raise
                 statuses.append({'engine': name, 'status': 'unavailable',
                                  'reason': 'Configured assets did not pass voice enumeration: ' + type(exc).__name__})
         statuses.append({'engine': 'sapi4', 'status': 'unavailable', 'reason': 'Legacy compatibility is not verified.'})
@@ -458,7 +458,7 @@ class VoiceRegistry:
                 continue
             item = {'engine': engine, 'executable_sha256': _digest(executable)}
             if engine in ('flite', 'espeak-ng'):
-                with TemporaryDirectory(prefix='carr-voice-version-') as temp:
+                with retained_temporary_directory(prefix='carr-voice-version-', dir=None) as temp:
                     log = _run([executable, '-version' if engine == 'flite' else '--version'],
                                Path(temp), timeout_seconds=15)
                 item['version_sha256'] = sha256(log.encode('utf-8')).hexdigest()
@@ -523,7 +523,7 @@ class VoiceRegistry:
             if not supports_language(voice, language):
                 raise ValueError('The selected voice does not declare support for this language.')
         engine, executable, key = self._routes[voice_id]
-        with TemporaryDirectory(prefix='.carr-speech-', dir=destination.parent) as temp:
+        with retained_temporary_directory(prefix='.carr-speech-', dir=destination.parent) as temp:
             directory = Path(temp)
             rendered = directory / 'speech.wav'
             if engine == 'sapi5':

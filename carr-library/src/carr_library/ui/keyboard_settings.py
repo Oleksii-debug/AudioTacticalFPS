@@ -398,6 +398,7 @@ def voice_reader_commands():
         ('voice_reader.find', 'Find in reading copy', 'Ctrl+F'),
         ('voice_reader.replace', 'Find and replace in reading copy', 'Ctrl+H'),
         ('voice_reader.pronunciation', 'Reading pronunciation dictionary', 'Ctrl+Shift+D'),
+        ('voice_reader.prepare', 'Prepare reading copy for speech', ''),
         ('voice_reader.settings', 'Voice reader keyboard shortcuts', 'Ctrl+Alt+K'),
         ('voice_reader.playback', 'Playback volume, skips, speed and pitch', ''),
         ('voice_reader.read_word', 'Read current word', ''),

@@ -314,3 +314,58 @@ def test_passive_backup_refuses_unbound_batch_membership(batch, tmp_path, change
     assert not (tmp_path / 'invalid-backup' / 'manifest.json').exists()
     assert e.voices.calls == []
 
+
+
+@pytest.mark.parametrize('masked_stop', [False, True], ids=['direct-owner', 'interrupted-after-cancel'])
+def test_batch_keeps_batch_book_and_scene_locks_during_pending_native_cleanup(
+        batch, monkeypatch, masked_stop):
+    from carr_library.audio.cleanup import AudioCleanupPending, _pending_owners
+    from carr_library.operations._locks import NativeLock
+
+    e = batch
+    _, ready = prepare(e)
+    cancel = threading.Event()
+    run = e.production.run
+    if masked_stop:
+        def interrupted(*args, **kwargs):
+            try:
+                return run(*args, **kwargs)
+            except AudioCleanupPending as exc:
+                cancel.set()
+                raise InterruptedError('Modeled adapter cancellation while cleanup is pending') from exc
+        monkeypatch.setattr(e.production, 'run', interrupted)
+    original = tuple(e.app.assets.resolve(item['asset']).read_bytes() for item in e.imported)
+    with _fixtures._uncertain_book_probe(e, monkeypatch) as (owners, release, selected):
+        with pytest.raises((AudioCleanupPending, InterruptedError)) as caught:
+            e.groups.run(e.selected.id, e.outputs, approval=ready.fingerprint,
+                         cancelled=cancel.is_set)
+        assert selected and selected[0].poll() == 0 and _pending_owners(caught.value)
+        assert set(_pending_owners(caught.value)) == set(owners)
+        first = e.production.get(e.plans[0].job_id(1))
+        assert first['status'] == 'complete'
+        accepted = {row['path']: sha256(Path(row['path']).read_bytes()).hexdigest()
+                    for row in first['artifacts']}
+        assert e.production.get(e.plans[1].job_id(1))['status'] == 'pending'
+        assert len(e.voices.calls) == 2
+        assert len(e.production.broker.snapshot()['leases']) == 1
+        locks = (NativeLock(e.groups.root / ('.batch-' + e.selected.id + '.lock')),
+                 NativeLock(e.books.plans / ('.book-' + e.plans[0].id + '.lock')),
+                 NativeLock(e.production.jobs_root / e.plans[0].job_id(2) / '.render.lock'))
+        assert all(lock.acquire() is False for lock in locks)
+        cancel.clear()
+        with pytest.raises(RuntimeError, match='already being changed'):
+            e.groups.run(e.selected.id, e.outputs, approval=ready.fingerprint)
+        assert len(e.voices.calls) == 2
+        release.set()
+        assert all(owner.close() for owner in owners)
+        assert not e.production.broker.snapshot()['leases']
+        for lock in locks:
+            assert lock.acquire()
+            lock.release()
+        monkeypatch.setattr(e.production, 'run', run)
+        complete = e.groups.run(e.selected.id, e.outputs, approval=ready.fingerprint)
+        assert complete['status'] == 'complete'
+        assert len(e.voices.calls) == 4  # First accepted part is not synthesized again.
+        assert accepted == {path: sha256(Path(path).read_bytes()).hexdigest() for path in accepted}
+        assert original == tuple(e.app.assets.resolve(item['asset']).read_bytes() for item in e.imported)
+        assert not e.production.broker.snapshot()['leases']

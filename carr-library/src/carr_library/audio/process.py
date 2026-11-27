@@ -1,6 +1,7 @@
 """Cancellable bounded subprocess execution and atomic audio publication."""
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass
 import ctypes
 import os
@@ -44,6 +45,223 @@ def _terminate(process):
         process.wait(timeout=5)
 
 
+class _PosixGroupProcess:
+    """Keep a Linux session leader waitable until its owned group is quiet.
+
+    Popen.poll()/wait() normally reap the leader and release its numeric identity.
+    This adapter observes it with WNOWAIT instead. The existing new-session
+    launch then pins the process-group identity while verified pidfds prove
+    member exit. This is group ownership, not a process sandbox.
+    """
+
+    _MAX_PROC_ENTRIES = 100000
+    _MAX_MEMBERS = 4096
+
+    def __init__(self, args, **options):
+        import sys
+        if (not sys.platform.startswith('linux')
+                or not all(hasattr(os, name) for name in ('waitid', 'WNOWAIT', 'pidfd_open'))
+                or not hasattr(signal, 'pidfd_send_signal')):
+            raise RuntimeError('Owned local audio requires Linux waitid/pidfd support or the Windows process job.')
+        # Check native availability before creating a child. The leader must
+        # remain waitable; an explicitly ignored SIGCHLD would defeat that pin.
+        if signal.getsignal(signal.SIGCHLD) == signal.SIG_IGN:
+            raise RuntimeError('Owned audio requires a waitable child; SIGCHLD is explicitly ignored.')
+        self._stat(os.getpid())
+        probe = os.pidfd_open(os.getpid(), 0)
+        os.close(probe)
+        self._members = {}
+        self._lock = threading.RLock()
+        self._observed = None
+        self._disposal_error = None
+        self._group_quiet = self._reaped = self._closed = False
+        self._process = subprocess.Popen(args, **options)
+
+    def __getattr__(self, name):
+        return getattr(self._process, name)
+
+    @property
+    def returncode(self):
+        return self._observed
+
+    @staticmethod
+    def _stat(pid):
+        with open('/proc/' + str(pid) + '/stat', 'rb') as stream:
+            raw = stream.read(8193)
+        if len(raw) > 8192:
+            raise RuntimeError('The native process identity exceeds its bounded inventory.')
+        before, separator, after = raw.rpartition(b') ')
+        fields = after.split()
+        if (not separator or len(fields) < 20 or not before.startswith(str(pid).encode('ascii') + b' (')):
+            raise RuntimeError('The native process identity could not be verified.')
+        return int(fields[2]), int(fields[3]), int(fields[19])
+
+    def poll(self):
+        with self._lock:
+            if self._reaped:
+                return self._observed
+            value = os.waitid(os.P_PID, self.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT)
+            if value is not None and value.si_pid:
+                if value.si_pid != self.pid:
+                    raise RuntimeError('The owned process wait returned a different identity.')
+                if value.si_code == os.CLD_EXITED:
+                    self._observed = value.si_status
+                elif value.si_code in (os.CLD_KILLED, os.CLD_DUMPED):
+                    self._observed = -value.si_status
+                else:
+                    raise RuntimeError('The owned process did not return an exit status.')
+            return self._observed
+
+    def wait(self, timeout=None):
+        deadline = None if timeout is None else time.monotonic() + timeout
+        while self.poll() is None:
+            if deadline is not None and time.monotonic() >= deadline:
+                raise subprocess.TimeoutExpired(self.args, timeout)
+            time.sleep(.01 if deadline is None else min(.01, max(0, deadline - time.monotonic())))
+        return self.returncode
+
+    def send_signal(self, value):
+        with self._lock:
+            if self.poll() is None:
+                # The exact unreaped child still owns this PID.
+                os.kill(self.pid, value)
+
+    def terminate(self):
+        self.send_signal(signal.SIGTERM)
+
+    def kill(self):
+        self.send_signal(signal.SIGKILL)
+
+    @staticmethod
+    def _ready(descriptor):
+        import select
+        poller = select.poll()
+        poller.register(descriptor, select.POLLIN)
+        rows = poller.poll(0)
+        if not rows:
+            return False
+        flags = rows[0][1]
+        if flags & (select.POLLERR | select.POLLNVAL):
+            raise RuntimeError('An owned process handle lost its native exit proof.')
+        return bool(flags & (select.POLLIN | select.POLLHUP))
+
+    @staticmethod
+    def _deadline(deadline):
+        if time.monotonic() >= deadline:
+            raise subprocess.TimeoutExpired('owned audio process group cleanup', 5)
+
+    def _inventory(self, deadline):
+        # The caller has not reaped its session leader; another session cannot
+        # acquire this process-group ID while its original leader remains.
+        self.poll()
+        if self._stat(self.pid)[:2] != (self.pid, self.pid):
+            raise RuntimeError('The selected audio process group lost its leader identity.')
+        with os.scandir('/proc') as entries:
+            for index, entry in enumerate(entries):
+                self._deadline(deadline)
+                if index >= self._MAX_PROC_ENTRIES:
+                    raise RuntimeError('The native process inventory exceeded its bounded allowance.')
+                if not entry.name.isascii() or not entry.name.isdecimal():
+                    continue
+                pid = int(entry.name)
+                try:
+                    identity = self._stat(pid)
+                except (FileNotFoundError, ProcessLookupError):
+                    continue
+                if identity[:2] != (self.pid, self.pid):
+                    continue
+                key = pid, identity[2]
+                if key in self._members:
+                    continue
+                if len(self._members) >= self._MAX_MEMBERS:
+                    raise RuntimeError('The owned audio group exceeded its member allowance.')
+                try:
+                    descriptor = os.pidfd_open(pid, 0)
+                except ProcessLookupError:
+                    # The kernel no longer has this process object. A final
+                    # inventory still checks every remaining group member.
+                    continue
+                try:
+                    try:
+                        after = self._stat(pid)
+                    except (FileNotFoundError, ProcessLookupError):
+                        if not self._ready(descriptor):
+                            raise RuntimeError('A native process disappeared before its exit could be proved.')
+                        after = identity
+                    if after != identity:
+                        raise RuntimeError('A native process changed identity during group admission.')
+                except BaseException:
+                    try:
+                        os.close(descriptor)
+                    except OSError as exc:
+                        # Linux can release the number even when close fails.
+                        # Never retain/retry an unverified raw descriptor number.
+                        self._disposal_error = exc
+                    raise
+                self._members[key] = descriptor
+        if not any(pid == self.pid for pid, _ in self._members):
+            raise RuntimeError('The native inventory omitted the retained audio leader.')
+
+    def close(self):
+        with self._lock:
+            if self._closed:
+                return True
+            deadline = time.monotonic() + 5
+            if not self._group_quiet:
+                while True:
+                    self._deadline(deadline)
+                    try:
+                        self._inventory(deadline)
+                    except BaseException:
+                        # A failed inventory never proves quiescence. Still
+                        # stop the group if its exact unreaped leader can be
+                        # authenticated, and stop known handles independently.
+                        try:
+                            self.poll()
+                            if self._stat(self.pid)[:2] == (self.pid, self.pid):
+                                os.killpg(self.pid, signal.SIGKILL)
+                        except Exception:
+                            pass
+                        for descriptor in self._members.values():
+                            try:
+                                if not self._ready(descriptor):
+                                    signal.pidfd_send_signal(descriptor, signal.SIGKILL)
+                            except Exception:
+                                pass
+                        raise
+                    # WNOWAIT still pins the leader here, so this signal cannot
+                    # select a recycled group. Keep every admitted handle.
+                    os.killpg(self.pid, signal.SIGKILL)
+                    for descriptor in self._members.values():
+                        if not self._ready(descriptor):
+                            signal.pidfd_send_signal(descriptor, signal.SIGKILL)
+                    if all(self._ready(fd) for fd in self._members.values()):
+                        prior = set(self._members)
+                        self._inventory(deadline)
+                        if prior == set(self._members) and all(self._ready(fd) for fd in self._members.values()):
+                            self._group_quiet = True
+                            break
+                    time.sleep(min(.01, max(0, deadline - time.monotonic())))
+            if not self._reaped:
+                self._deadline(deadline)
+                self._observed = self._process.wait(timeout=max(0, deadline - time.monotonic()))
+                self._reaped = True
+            # Linux may release a descriptor number even when close reports
+            # an error. Never retry that integer: another thread could reuse it.
+            # Native exit proof remains retained and the failure stays explicit.
+            for key, descriptor in tuple(self._members.items()):
+                del self._members[key]
+                try:
+                    os.close(descriptor)
+                except OSError as exc:
+                    self._disposal_error = exc
+            if self._disposal_error is not None:
+                raise RuntimeError('Native audio stopped, but a Linux process handle could not be disposed '
+                                   'with certainty. Close the application before retrying this operation.') from self._disposal_error
+            self._closed = True
+            return True
+
+
 # Fixed quit/owned-family controls adapted from reviewed PR123 (28a4e542).
 def native_audio_environment(environment=None):
     """Keep required host settings without ambient FFmpeg report-file writes.
@@ -61,6 +279,8 @@ def native_audio_environment(environment=None):
 def _stop_owned(process):
     """Retain the exact owned family until each native member has stopped."""
     if os.name != 'nt':
+        if isinstance(process, _PosixGroupProcess):
+            return process.close()
         _terminate(process)
         if process.poll() is None:
             raise RuntimeError('The capture process has not confirmed shutdown.')
@@ -76,9 +296,54 @@ def _start_process(args, *, owned_tree=False, **options):
     if owned_tree and os.name == 'nt':
         from .windows_process import WindowsJobProcess
         launcher = WindowsJobProcess
+    elif owned_tree and os.name == 'posix':
+        launcher = _PosixGroupProcess
     return launcher(args, start_new_session=os.name == 'posix',
         creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0) if os.name == 'nt' else 0,
         **options)
+
+
+
+@contextmanager
+def owned_process(args, *, quiescent_callbacks=(), **options):
+    """Use the same native family owner with an adapter's existing I/O protocol.
+
+    File/pipe adapters keep their own bounded readers and legacy error contracts.
+    Their outer retained contexts keep staging and handles until this owner has
+    confirmed shutdown, including errors during reader allocation or startup.
+    """
+    callbacks = tuple(quiescent_callbacks)
+    if any(not callable(callback) for callback in callbacks):
+        raise TypeError('Owned process cleanup callbacks must be callable.')
+    options['env'] = native_audio_environment(options.get('env'))
+    process = _start_process(args, owned_tree=True, **options)
+
+    stopped = False
+    remaining = list(callbacks)
+
+    def finish():
+        nonlocal stopped
+        if not stopped:
+            if _stop_owned(process) is not True:
+                raise RuntimeError('The owned audio process has not confirmed shutdown.')
+            stopped = True
+        # These are required I/O cleanup steps, not optional notifications.
+        # A failed step stays owned and is retried before staging can be released.
+        while remaining:
+            if remaining[0]() is False:
+                raise RuntimeError('An owned audio reader has not confirmed shutdown.')
+            remaining.pop(0)
+        return True
+
+    try:
+        yield process
+    finally:
+        try:
+            finish()
+        except Exception as exc:
+            from .cleanup import pending_cleanup
+            raise pending_cleanup(finish,
+                message='Audio process cleanup is still pending; its resources remain reserved.') from exc
 
 
 def run_process(args, *, budget=None, cancelled=lambda: False,

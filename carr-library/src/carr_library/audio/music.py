@@ -20,6 +20,7 @@ import sys
 import tempfile
 
 from .effects import number
+from .cleanup import retained_temporary_directory
 from .musicgen_worker import plain_local, validate_model_assets
 from .render import (RenderResult, _disk_budget, _encoder_options, _ffmpeg_base,
                      _frames, _settings, check_cancelled, convert_audio,
@@ -139,7 +140,7 @@ def _procedural(spec, target, *, sample_rate, channels, cancelled, ffmpeg, ffpro
                 max_output_bytes, timeout_seconds):
     source, filters, frames = _procedural_graph(spec, sample_rate, channels)
     estimate = _disk_budget(target, frames, sample_rate, channels, max_output_bytes)
-    with tempfile.TemporaryDirectory(prefix='.carr-music-', dir=target.parent) as temp:
+    with retained_temporary_directory(prefix='.carr-music-', dir=target.parent) as temp:
         staged = Path(temp) / ('instrumental' + target.suffix.lower())
         args = [*_ffmpeg_base(ffmpeg), '-f', 'lavfi', '-i', source,
                 '-af', filters, '-map_metadata', '-1',
@@ -279,7 +280,7 @@ def _musicgen(spec, target, *, config, sample_rate, channels, cancelled, ffmpeg,
     plain_local(target.parent, directory=True)
     frames = _frames(spec.duration_seconds, sample_rate)
     estimate = _disk_budget(target, frames, sample_rate, channels, max_output_bytes)
-    with tempfile.TemporaryDirectory(prefix='.carr-musicgen-', dir=target.parent) as temp:
+    with retained_temporary_directory(prefix='.carr-musicgen-', dir=target.parent) as temp:
         stage = Path(temp)
         raw_audio, response = stage / 'generated.wav', stage / 'result.json'
         request = dict(version=1, engine='musicgen', spec=asdict(spec), model_dir=str(model),
@@ -330,7 +331,7 @@ def _fluidsynth(spec, target, *, soundfont, soundfont_license, fluidsynth_librar
     frames = _frames(spec.duration_seconds, sample_rate)
     estimate = _disk_budget(target, frames, sample_rate, channels, max_output_bytes)
     digest = file_sha256(sf2, cancelled)
-    with tempfile.TemporaryDirectory(prefix='.carr-midi-', dir=target.parent) as temp:
+    with retained_temporary_directory(prefix='.carr-midi-', dir=target.parent) as temp:
         stage = Path(temp)
         raw, response = stage / 'instrumental.pcm', stage / 'result.json'
         request = dict(version=1, engine='fluidsynth', spec=asdict(spec), sample_rate=sample_rate,
@@ -472,7 +473,7 @@ def _export_midi(spec, output, *, cancelled=None, max_output_bytes=32*1024**2):
     if target.suffix.lower() not in ('.mid', '.midi'):
         raise ValueError('Choose a new .mid or .midi file for symbolic music.')
     check_cancelled(cancelled)
-    with tempfile.TemporaryDirectory(prefix='.carr-midi-export-', dir=target.parent) as directory:
+    with retained_temporary_directory(prefix='.carr-midi-export-', dir=target.parent) as directory:
         staged = Path(directory)/'score.mid'
         duration = _write_midi_file(staged, spec, check=lambda: check_cancelled(cancelled),
                                     max_output_bytes=max_output_bytes)
@@ -512,7 +513,7 @@ def _render_sfx(name, output, *, duration_seconds=1, seed=0, sample_rate=24000, 
     source, frames = _sfx_graph(name, duration_seconds, seed, sample_rate)
     target = output_path(output)
     estimate = _disk_budget(target,frames,sample_rate,channels,max_output_bytes)
-    with tempfile.TemporaryDirectory(prefix='.carr-sfx-',dir=target.parent) as directory:
+    with retained_temporary_directory(prefix='.carr-sfx-',dir=target.parent) as directory:
         staged = Path(directory)/('cue'+target.suffix.lower())
         run_process([*_ffmpeg_base(ffmpeg),'-filter_complex',source,'-map','[out]',
                      *_encoder_options(target,sample_rate=sample_rate,channels=channels),'-n',str(staged)],

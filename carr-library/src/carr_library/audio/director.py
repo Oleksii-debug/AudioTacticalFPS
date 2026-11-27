@@ -4,6 +4,7 @@ The director invokes local engines through typed interfaces. It never interprets
 document text as commands, executes shell text, uploads content or downloads a
 model. A completed status requires verified output files, not a model response.
 """
+from contextlib import contextmanager
 from dataclasses import asdict, replace
 from hashlib import sha256
 import json
@@ -15,7 +16,7 @@ import tempfile
 import wave
 from uuid import uuid4
 
-from filelock import FileLock, Timeout
+from .cleanup import retained_context, retained_state_lock, retained_temporary_directory, _pending_owners
 
 from .projects import (Project, ProjectStore, atomic_json, canonical, digest, directory,
                        identity, now, plain, read_json)
@@ -60,17 +61,113 @@ def _timecode(seconds, separator=','):
 
 
 class ProductionDirector:
-    def __init__(self, root, *, registry=None, music_options=None):
+    def __init__(self, root, *, registry=None, music_options=None, broker=None):
         self.store = ProjectStore(root)
-        if registry is None:
+        self._registry = registry
+        self._music_options = None if music_options is None else dict(music_options)
+        self._broker = broker
+
+    @property
+    def registry(self):
+        # Listing saved projects/jobs and verifying an already committed result
+        # does not authenticate models or start voice/runtime discovery.
+        if self._registry is None:
             from .voices import VoiceRegistry
-            registry = VoiceRegistry.for_library(root)
-        self.registry = registry
-        # Trusted application configuration, never read from an imported script.
-        if music_options is None:
+            self._registry = VoiceRegistry.for_library(self.store.root)
+        return self._registry
+
+    @registry.setter
+    def registry(self, value):
+        self._registry = value
+
+    @property
+    def music_options(self):
+        if self._music_options is None:
             from .music_settings import load_music_options
-            music_options = load_music_options(root)
-        self.music_options = dict(music_options)
+            self._music_options = load_music_options(self.store.root)
+        return self._music_options
+
+    @music_options.setter
+    def music_options(self, value):
+        self._music_options = dict(value)
+
+    @property
+    def broker(self):
+        if self._broker is None:
+            from ..operations import ResourceBroker
+            self._broker = ResourceBroker.for_app(self.store.root)
+        return self._broker
+
+    def _neural_device(self, project, *, activated=False):
+        if not any(scene.music and scene.music.engine == 'musicgen' for scene in project.scenes):
+            return None
+        if activated or self._music_options is not None:
+            from .music import MusicGenConfig
+            config = self.music_options.get('musicgen_config')
+            if not isinstance(config, MusicGenConfig):
+                raise ValueError('Configure the selected local MusicGen installation before rendering.')
+            device = config.device
+        else:
+            # Pure existing settings validation reads declarations only; model
+            # and executable authentication remain inside the admitted work.
+            from .music_settings import MusicSettingsStore
+            record = MusicSettingsStore(self.store.root).read()['musicgen']
+            if record is None:
+                raise ValueError('Configure the selected local MusicGen installation before rendering.')
+            device = record['device']
+        if device == 'cpu':
+            return None
+        if device == 'cuda':
+            return 'cuda:0'
+        if isinstance(device, str) and device in tuple('cuda:' + str(i) for i in range(8)):
+            return device
+        raise ValueError('Select an explicit supported local MusicGen device.')
+
+    def _resource_request(self, project, folder, output, cancelled):
+        """Declare bounded cooperative estimates before any native discovery.
+
+        These estimates do not claim measured speech duration or neural peaks.
+        Actual disk and per-worker checks remain authoritative during rendering.
+        """
+        from ..operations import ResourceRequest, ResourceUnavailable
+        from .narration import spoken_cue
+        roles = {role.id: role for role in project.roles}
+        seconds = 0.0
+        for scene in project.scenes:
+            for cue in scene.cues:
+                if cancelled():
+                    raise InterruptedError('Production paused before resource admission.')
+                if cue.kind == 'speech':
+                    seconds += len(spoken_cue(project, cue)['text']) * .5 / roles[cue.role].rate
+                elif cue.kind == 'pause':
+                    seconds += cue.seconds
+                else:
+                    asset = plain(folder / 'assets' / (cue.asset + '.wav'))
+                    # Retained assets are decoded PCM. This deliberately uses
+                    # the lowest accepted mono byte rate, including header bytes,
+                    # so no native decoder or large hash runs before admission.
+                    seconds += max(cue.seconds, asset.st_size / 8000)
+        seconds += max(0, len(project.scenes) - 1) * project.settings.chapter_gap_seconds
+        pcm = math.ceil(max(1, seconds) * project.settings.sample_rate * project.settings.channels * 2)
+        stems = len(project.roles) if project.settings.stems else 0
+        cache_bytes = pcm * (6 + 2 * stems) + 16 * 1024**2
+        output_bytes = pcm * (2 + stems + int(project.settings.format != 'wav')) + 1024**2
+        if project.settings.disk_budget_bytes and cache_bytes + output_bytes > project.settings.disk_budget_bytes:
+            raise ValueError('The chosen audio disk budget cannot admit the declared production estimate; completed chunks were saved.')
+        neural = (any(scene.music and scene.music.engine == 'musicgen' for scene in project.scenes)
+                  or any(role.voice_id.startswith(('piper:', 'dordiai-voices:')) for role in project.roles))
+        limits, device = self.broker.limits, self._neural_device(project)
+        memory = limits.memory_bytes if neural else 512 * 1024**2
+        if neural and not memory:
+            raise ResourceUnavailable('Configure a positive declared memory budget for local neural production.')
+        gpu_bytes = dict(limits.gpu_devices).get(device, 0) if device else 0
+        if device and not gpu_bytes:
+            raise ResourceUnavailable('The selected music GPU needs an explicit shared memory allowance.')
+        request = ResourceRequest(cpu_slots=2, memory_bytes=memory,
+            gpu_device=device, gpu_memory_bytes=gpu_bytes,
+            disk_bytes=cache_bytes, disk_path=folder / 'cache',
+            additional_disks=((output.parent, output_bytes),))
+        return request, device
 
     def _job_path(self, project_id, job_id):
         identity(job_id, 'job identity')
@@ -148,15 +245,59 @@ class ProductionDirector:
         # A job is bound to its approved revision. Editing creates another job,
         # reusing unchanged content hashes rather than changing an in-flight plan.
         folder = self.store.path(project_id)
-        lock = folder / '.render.lock'
-        plain(lock, missing=True)
-        try:
-            with FileLock(lock, mode=0o600).acquire(timeout=0):
+        from ..operations import ResourceCancelled, ResourceTimeout
+        with retained_state_lock(folder, 'render'):
+            if job['state'] == 'complete':
                 return self._run(project, folder, job, cancelled, progress,
                                  Track, mix_tracks, concatenate_audio, convert_audio,
                                  probe_audio, MusicSpec, generate_music)
-        except Timeout as exc:
-            raise ValueError('This project already has a running audio job.') from exc
+            try:
+                if cancelled():
+                    raise InterruptedError('Production paused before resource admission.')
+                output = Path(job['output_dir'])
+                parent = plain(output.parent, directory=True)
+                parent_identity = parent.st_dev, parent.st_ino
+                request, expected_device = self._resource_request(project, folder, output, cancelled)
+                job['state'], job['message'] = 'queued', 'Waiting for shared local audio resources.'
+                self._write_job(job)
+                progress({'state': job['state'], 'job_id': job['id'],
+                          'message': job['message'], 'progress': job['progress']})
+                with retained_context(self.broker.reserve(request,
+                        operation_id='director:' + job['id'], cancelled=cancelled, timeout=60)) as lease:
+                    def stopped():
+                        if cancelled():
+                            return True
+                        try:
+                            lease.checkpoint()
+                        except (ResourceCancelled, ResourceTimeout) as exc:
+                            raise InterruptedError('Production paused while holding its shared resource reservation.') from exc
+                        return False
+                    if stopped():
+                        raise InterruptedError('Production paused before native audio work.')
+                    current = self.status(project_id, job_id)
+                    if any(current.get(key) != job.get(key) for key in
+                           ('project', 'project_fingerprint', 'output_dir')):
+                        raise ValueError('The production plan or output changed while waiting for resources.')
+                    current_parent = plain(output.parent, directory=True)
+                    if (current_parent.st_dev, current_parent.st_ino) != parent_identity:
+                        raise ValueError('The selected production output directory changed while waiting.')
+                    if self._neural_device(project, activated=True) != expected_device:
+                        raise ValueError('The configured music device changed while waiting; review the job again.')
+                    return self._run(project, folder, job, stopped, progress,
+                                     Track, mix_tracks, concatenate_audio, convert_audio,
+                                     probe_audio, MusicSpec, generate_music)
+            except BaseException as exc:
+                # Journal failures retain the original pending native owner in
+                # their exception chain, so the outer render lock stays held.
+                from .render import RenderCancelled
+                if job['state'] not in ('complete', 'paused', 'failed'):
+                    job['state'] = 'paused' if isinstance(exc, (
+                        InterruptedError, RenderCancelled, ResourceCancelled, ResourceTimeout)) else 'failed'
+                    job['message'] = str(exc)[:1000]
+                    self._write_job(job)
+                if isinstance(exc, (ResourceCancelled, ResourceTimeout)):
+                    raise InterruptedError('Production paused while waiting for shared resources.') from exc
+                raise
 
     def _run(self, project, folder, job, cancelled, progress, Track, mix_tracks,
              concatenate_audio, convert_audio, probe_audio, MusicSpec, generate_music):
@@ -249,7 +390,9 @@ class ProductionDirector:
                             and metadata['channels'] == measured.channels
                             and abs(metadata['duration_seconds'] - measured.duration_seconds)
                                 <= 1 / measured.sample_rate)
-                except (OSError, ValueError, KeyError, RuntimeError):
+                except (OSError, ValueError, KeyError, RuntimeError) as exc:
+                    if _pending_owners(exc):
+                        raise
                     valid = False
             if valid:
                 cache_hits += 1
@@ -262,7 +405,15 @@ class ProductionDirector:
                         old.rename(old.with_name(old.name + '.invalid-' + uuid4().hex))
             disk_check()
             temporary = work / (uuid4().hex + '.wav')
-            try:
+
+            @contextmanager
+            def attempt():
+                try:
+                    yield
+                finally:
+                    temporary.unlink(missing_ok=True)
+
+            with retained_context(attempt()):
                 producer(temporary)
                 check()
                 measured = probe_audio(temporary)
@@ -281,8 +432,6 @@ class ProductionDirector:
                 job['steps'][key] = {'state':'complete','sha256':checksum,'kind':kind}
                 self._write_job(job)
                 return path, metadata
-            finally:
-                temporary.unlink(missing_ok=True)
 
         def track_identity(track):
             return {'path_hash':file_sha256(track.path),'start':track.start_seconds,
@@ -533,18 +682,56 @@ class ProductionDirector:
                 raise ValueError('Completed production output was changed or removed; it was not overwritten.')
 
     def import_asset(self, project_id, source, *, cancelled=None):
-        """Explicit user-selected asset; convert to a private, content-addressed WAV."""
-        from .render import convert_audio
+        """Explicit selected asset, admitted through the existing shared broker."""
+        from .render import check_cancelled, convert_audio, local_file, probe_audio
+        from ..operations import ResourceRequest
         folder = self.store.path(project_id)
-        with tempfile.TemporaryDirectory(prefix='.asset-', dir=folder) as temp:
-            wave_path = Path(temp) / 'asset.wav'
-            convert_audio(source, wave_path, sample_rate=24000, channels=2, cancelled=cancelled)
-            checksum = file_sha256(wave_path)
-            target = folder / 'assets' / (checksum + '.wav')
-            with self.store.transaction():
-                if target.exists():
-                    if file_sha256(target) != checksum:
-                        raise ValueError('Existing audio asset is corrupted.')
-                else:
-                    os.link(wave_path, target)
-            return checksum
+        source = local_file(source)
+        stop = (cancelled.is_set if hasattr(cancelled, 'is_set') else cancelled) or (lambda: False)
+        if not callable(stop):
+            raise ValueError('Invalid asset import cancellation callback or event.')
+        check_cancelled(stop)
+        def stamp():
+            info = plain(source)
+            return info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns
+        before = stamp()
+        operation = 'director-asset:' + uuid4().hex
+        # Inspect under the same shared CPU/RAM policy, then reserve its actual
+        # decoded size before creating any private staging/output directory.
+        with retained_context(self.broker.reserve(
+                ResourceRequest(cpu_slots=2, memory_bytes=512 * 1024**2),
+                operation_id=operation + ':inspect', cancelled=stop, timeout=60)) as lease:
+            def inspecting():
+                if stop():
+                    return True
+                lease.checkpoint()
+                return False
+            info = probe_audio(source, cancelled=inspecting)
+            if stamp() != before:
+                raise ValueError('The selected audio source changed during asset inspection.')
+        estimated = math.ceil(info.frames * 24000 / info.sample_rate) * 4 + 65536
+        request = ResourceRequest(cpu_slots=2, memory_bytes=512 * 1024**2,
+            disk_bytes=2 * estimated + 1024**2, disk_path=folder / 'assets')
+        with retained_context(self.broker.reserve(request, operation_id=operation,
+                cancelled=stop, timeout=60)) as lease:
+            def stopping():
+                if stop():
+                    return True
+                lease.checkpoint()
+                return False
+            check_cancelled(stopping)
+            if stamp() != before:
+                raise ValueError('The selected audio source changed while waiting for resources.')
+            with retained_temporary_directory(prefix='.asset-', dir=folder) as temp:
+                wave_path = Path(temp) / 'asset.wav'
+                convert_audio(source, wave_path, sample_rate=24000, channels=2,
+                              cancelled=stopping, max_output_bytes=estimated)
+                checksum = file_sha256(wave_path)
+                target = folder / 'assets' / (checksum + '.wav')
+                with self.store.transaction():
+                    if target.exists():
+                        if file_sha256(target) != checksum:
+                            raise ValueError('Existing audio asset is corrupted.')
+                    else:
+                        os.link(wave_path, target)
+                return checksum

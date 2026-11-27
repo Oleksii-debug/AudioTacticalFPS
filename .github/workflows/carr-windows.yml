@@ -482,11 +482,26 @@ jobs:
           if ($LASTEXITCODE -ne 0) { $failures += 'installed-search-pagination' }
           if ($failures.Count) { throw ('Required native OCR/search failures: ' + ($failures -join ', ')) }
 
+      - name: Require actual reading preparation from source and installed package
+        if: ${{ !cancelled() && steps.desktop_dependencies.outcome == 'success' }}
+        timeout-minutes: 8
+        run: |
+          $failures = @()
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_reading_preparation_smoke.py --source src --report ci-results/source-reading-preparation.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'source-reading-preparation' }
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_reading_preparation_smoke.py --expect-installed --report ci-results/installed-reading-preparation.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'installed-reading-preparation' }
+          if ($failures.Count) { throw ('Required native reading preparation failures: ' + ($failures -join ', ')) }
+
       - name: Record required integrated source-suite inventory
         if: ${{ !cancelled() && steps.desktop_dependencies.outcome == 'success' && steps.ocr_runtime.outcome == 'success' }}
         timeout-minutes: 20
         run: |
           $suites = @(
+            'tests/audio/test_director_resources.py',
+            'tests/audio/test_legacy_owned_process.py',
+            'tests/speech/test_preparation.py',
+            'tests/ui/test_reader_preparation.py',
             'tests/speech/test_navigation.py',
             'tests/ui/test_reader_navigation.py',
             'tests/extract/test_language_detection.py',
@@ -1134,7 +1149,7 @@ jobs:
       - name: Build, install and exercise the complete bundle with runtime egress blocked
         id: complete_bundle
         if: ${{ !cancelled() && steps.desktop_dependencies.outcome == 'success' && steps.ocr_runtime.outcome == 'success' && steps.local_model.outcome == 'success' && steps.audio_runtime.outcome == 'success' && steps.launcher_build.outcome == 'success' }}
-        timeout-minutes: 73
+        timeout-minutes: 77
         run: |
           $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
           $wheelhouse = Join-Path $bundleWork 'wheelhouse'
@@ -1293,6 +1308,8 @@ jobs:
           } finally { $env:CARR_OCR_DIR = $previousExplicitOcr }
           & $installedPython -I -B -X utf8 scripts/windows_search_pagination_smoke.py --expect-installed --report ci-results/bundle-search-pagination.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -X utf8 scripts/windows_reading_preparation_smoke.py --expect-installed --report ci-results/bundle-reading-preparation.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -X utf8 scripts/windows_desktop_integration_smoke.py --installed 2>&1 | Tee-Object 'ci-results/bundle-desktop.txt'
           if ($LASTEXITCODE -ne 0) { throw 'bundle-desktop failed' }
           & $installedPython -I -B -X utf8 scripts/windows_incremental_backup_smoke.py --installed --output ci-results/bundle-incremental-backup.json 2>&1 | Tee-Object 'ci-results/bundle-incremental-backup.txt'
@@ -1414,6 +1431,13 @@ jobs:
           # Keep the shared workflow list intact while exercising the additive
           # contents reader in this same installed-package/native-runtime process.
           contents_suites = [
+              'tests/audio/test_director_resources.py',
+              'tests/audio/test_legacy_owned_process.py',
+              'tests/speech/test_preparation.py',
+              'tests/ui/test_reader_preparation.py',
+              'tests/audio/test_director_path_identity.py',
+              'tests/audio/test_voices.py',
+              'tests/audio/test_model_voices.py',
                             'tests/speech/test_navigation.py',
                             'tests/ui/test_reader_navigation.py',
                             'tests/extract/test_language_detection.py',

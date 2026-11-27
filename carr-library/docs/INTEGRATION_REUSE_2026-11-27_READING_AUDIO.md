@@ -7,7 +7,7 @@ the current finalization specification `db8adbdc483a03c262885928c7ed214ca70bbaa7
 and the detailed reading/audio requirements `d0b2761dd22b33233b311d4800230fb47f5d3d8b`.
 It extends the existing Resonance application in `carr-library/`.
 The canonical integration parent is `a44fac04072389caa40e0d6e799b13797712f797`;
-the previous composed product head is `751c4abcbb0a20d1078d780d75a1a3733636595a`.
+the previous composed product head is `a9da9c4ba591895a78c207eb683499e33c922d63`.
 
 Status: **implemented source, reviewed within the scopes below, composed execution
 NOT_RUN at creation of this checkpoint**. This is not whole-platform DONE, a
@@ -84,6 +84,37 @@ existing document stack; only the independent CI structural check uses its DTD A
 - A newly occupied publication destination is rejected without reading the
   competing file. Recorded EPUB shares the actual operation_progress owner.
 
+## Primary ownership and reviewed reading preparation successor
+
+- Primary Director now admits CPU, declared memory, disk and selected MusicGen
+  device through the existing ResourceBroker before native discovery or production.
+  Completed verified receipts remain passive. Existing compatibility voice, model
+  and FFmpeg calls use the same owned native process family; staging, diagnostics,
+  required reader cleanup, reservation and render lock remain owned through
+  uncertain shutdown. The Windows Job mechanism is unchanged. Linux retains its
+  unreaped session leader and verified pidfds until group exit is proved; failure
+  to prove or dispose ownership is explicit. This is not a sandbox for engines.
+- Book, Book batch and scene production now retain their same existing native
+  lock paths while a causal cleanup owner is pending, including masked cancellation
+  and failed status writes. Accepted source/cache parts are preserved for explicit
+  resume. The exact processed-master chapter frame fix is retained.
+- Reading preparation uses the existing ReadingPreview/ReaderToolSession and one
+  undoable derivative edit. English, Ukrainian or Slovak is selected explicitly;
+  all transformations start off. Finite digit names, valid ISO date field labels,
+  selected symbols and existing cleanup rules require preview and acceptance.
+  No language, natural grammar, stress, phonemes or voice switch is inferred.
+- New strict child/ownership, Director admission and preparation suites are added
+  to source and installed inventories. The native reading-preparation probe runs
+  from source, installed package and complete bundle, retaining its 180-second
+  watchdog and exact module hashes. Existing selectors and native process gates
+  are unchanged. Only scheduling budgets accommodate the additional work.
+
+All these successor changes are source-reviewed and **NOT_RUN** at composition.
+Earlier successes at d5f6048 or failures at4917 do not qualify this new head.
+Preflight46035380537 at a9da9c4 and the six94ecfdd workflows were still queued at
+the last check. A successful current full aggregate and all six same-head normal
+workflows are still mandatory before an application wheel is eligible.
+
 ## Exact evidence available before this checkpoint
 
 The process deadline/ownership diagnosis at
@@ -155,8 +186,7 @@ must still omit the optional audio runtime and offer explicit local setup.
 ## Remaining specification work, not reclassified as external-only blockers
 
 The audit also identified independent code work beyond the routes above:
-wider typed assistant/audio tool coverage and shared admission for the primary
-Director; language-aware text preparation; durable/scalable indexing, ranked
+wider typed assistant/audio tool coverage; durable/scalable indexing, ranked
 continuation and larger bounded source/import operations beyond the exact-search
 paging added here; native Word
 citation workflows; conflict-reviewed multi-device sync; and the remaining

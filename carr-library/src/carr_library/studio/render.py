@@ -407,7 +407,8 @@ class ProductionService:
         from ..audio import AudioCancelled, AudioError, Track, MusicSpec
         from ..speech import SpeechSettings
         job_root = self.jobs_root / _id(job_id)
-        with state_lock(job_root, 'render'), _production_reservations() as reservations:
+        from ..audio.cleanup import retained_state_lock
+        with retained_state_lock(job_root, 'render'), _production_reservations() as reservations:
             state = self.get(job_id)
             # Restored destinations are historical evidence, not permission to
             # inspect or write that machine's former external output location.

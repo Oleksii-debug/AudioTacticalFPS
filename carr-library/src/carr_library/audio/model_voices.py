@@ -26,6 +26,9 @@ import threading
 import time
 import wave
 
+from .cleanup import retained_context, retained_temporary_directory
+from .process import owned_process
+
 from .voice_manifest import (LocalModelManifest, ModelManifestError, digest_file,
                              local_path, offline_environment, read_json)
 
@@ -133,43 +136,17 @@ def _publish(source, target):
         os.close(descriptor)
 
 
-def _stop(process):
-    if process.poll() is not None:
-        return
-    if os.name == 'nt':
-        taskkill = Path(os.environ.get('SystemRoot', r'C:\Windows')) / 'System32/taskkill.exe'
-        try:
-            subprocess.run([str(taskkill), '/PID', str(process.pid), '/T', '/F'],
-                           stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                           stderr=subprocess.DEVNULL, timeout=5, check=False)
-        except (OSError, subprocess.TimeoutExpired):
-            pass
-    else:
-        try:
-            os.killpg(process.pid, signal.SIGTERM)
-        except (OSError, ProcessLookupError):
-            pass
-    if process.poll() is None:
-        process.kill()
-    try:
-        process.wait(timeout=5)
-    except subprocess.TimeoutExpired:
-        pass
-
-
 def _run(command, *, data=b'', cancelled=lambda: False, timeout=300, env=None, cwd=None,
          return_stderr=False, output=None, max_output_bytes=MAX_PCM_BYTES + 4096):
     """Bound both logs and lifetime; text is stdin data, never shell source."""
     if cancelled():
         raise InterruptedError('Speech operation cancelled.')
-    options = {'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)} if os.name == 'nt' else {'start_new_session': True}
-    with tempfile.TemporaryFile() as incoming, tempfile.TemporaryFile() as outgoing, tempfile.TemporaryFile() as errors:
+    with retained_context(tempfile.TemporaryFile()) as incoming, retained_context(tempfile.TemporaryFile()) as outgoing, retained_context(tempfile.TemporaryFile()) as errors:
         incoming.write(data)
         incoming.seek(0)
-        process = subprocess.Popen([str(item) for item in command], stdin=incoming, stdout=outgoing,
-                                   stderr=errors, shell=False, env=env, cwd=cwd, **options)
-        started = time.monotonic()
-        try:
+        with owned_process([str(item) for item in command], stdin=incoming, stdout=outgoing,
+                           stderr=errors, shell=False, env=env, cwd=cwd) as process:
+            started = time.monotonic()
             while process.poll() is None:
                 if cancelled():
                     raise InterruptedError('Local engine operation cancelled.')
@@ -193,8 +170,6 @@ def _run(command, *, data=b'', cancelled=lambda: False, timeout=300, env=None, c
             stream = errors if return_stderr else outgoing
             stream.seek(0)
             return stream.read(MAX_LOG_BYTES + 1)
-        finally:
-            _stop(process)
 
 
 class PiperEngine:
@@ -251,7 +226,7 @@ class PiperEngine:
             raise EngineUnavailable('The selected Piper model does not advertise this language.')
         self.manifest.verify(cancelled=cancelled)
         target = _output(output)
-        with tempfile.TemporaryDirectory(prefix='.speech-', dir=target.parent) as staging:
+        with retained_temporary_directory(prefix='.speech-', dir=target.parent) as staging:
             temporary = Path(staging) / 'speech.wav'
             command = [self.binary, '--model', self.manifest.asset(self.model),
                        '--config', self.manifest.asset(self.config), '--output_file', temporary,
@@ -455,7 +430,7 @@ class DordiaiVoicesEngine:
             request['nativeLocale'] = True
         elif backend == 'holos' and base_language not in {'uk', 'en', 'ru'}:
             request.update(wideLocale=True, reportLoading=True)
-        with tempfile.TemporaryDirectory(prefix='.speech-', dir=target.parent) as staging:
+        with retained_temporary_directory(prefix='.speech-', dir=target.parent) as staging:
             temporary = Path(staging) / 'speech.wav'
             self._stream(command, request, temporary, cancelled, max_output_bytes=max_output_bytes)
             _wave_info(temporary, max_output_bytes=max_output_bytes)
@@ -471,107 +446,129 @@ class DordiaiVoicesEngine:
             raise InterruptedError('Speech operation cancelled.')
         replies = queue.Queue(maxsize=2)
         finished = threading.Event()
-        options = {'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)} if os.name == 'nt' else {'start_new_session': True}
-        with tempfile.TemporaryFile() as errors:
-            process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=errors,
-                                       cwd=self.manifest.root, env=offline_environment(), shell=False, **options)
-            def read_replies():
-                try:
-                    while not finished.is_set():
-                        line = process.stdout.readline(4 * 1024 * 1024 + 1)
-                        if not line:
-                            item = EngineUnavailable('dordiai-voices closed its response stream.')
-                        elif len(line) > 4 * 1024 * 1024:
-                            item = ValueError('dordiai-voices response exceeded its byte budget.')
-                        else:
-                            try:
-                                item = json.loads(line)
-                            except (ValueError, UnicodeError):
-                                item = ValueError('dordiai-voices returned invalid JSON.')
-                        while not finished.is_set():
-                            try:
-                                replies.put(item, timeout=.1)
-                                break
-                            except queue.Full:
-                                continue
-                        if isinstance(item, Exception):
-                            break
-                except (OSError, ValueError):
-                    if not finished.is_set():
-                        try:
-                            replies.put_nowait(EngineUnavailable('dordiai-voices response stream failed.'))
-                        except queue.Full:
-                            pass
-            reader = threading.Thread(target=read_replies, daemon=True, name='dordiai-voices PCM reader')
-            reader.start()
-            def send(value):
-                process.stdin.write((json.dumps(value, ensure_ascii=True) + '\n').encode('ascii'))
-                process.stdin.flush()
-            started = time.monotonic()
-            total = 0
-            try:
-                send(request)
-                with wave.open(str(target), 'wb') as audio:
-                    audio.setnchannels(1)
-                    audio.setsampwidth(2)
-                    audio.setframerate(24000)
-                    while True:
-                        if cancelled():
-                            try:
-                                send({'mode': 'cancel'})
-                                send({'mode': 'drop'})
-                            except (OSError, BrokenPipeError):
-                                pass
-                            raise InterruptedError('Speech operation cancelled.')
-                        if time.monotonic() - started > self.timeout:
-                            raise TimeoutError('dordiai-voices exceeded its per-segment time budget.')
-                        if os.fstat(errors.fileno()).st_size > MAX_LOG_BYTES:
-                            raise EngineUnavailable('dordiai-voices exceeded its diagnostic byte budget.')
-                        try:
-                            row = replies.get(timeout=.05)
-                        except queue.Empty:
-                            continue
-                        if isinstance(row, Exception):
-                            raise row
-                        if not isinstance(row, dict):
-                            raise ValueError('dordiai-voices response is not an object.')
-                        if 'error' in row:
-                            raise EngineUnavailable('dordiai-voices rejected this local speech request.')
-                        if 'loadingStage' in row:
-                            if 'pcm' in row or 'chunk' in row or row.get('finished'):
-                                raise ValueError('Ambiguous dordiai-voices loading response.')
-                            continue
-                        if row.get('finished') is True:
-                            if 'pcm' in row or 'chunk' in row:
-                                raise ValueError('Ambiguous dordiai-voices completion response.')
-                            break
-                        if ('chunk' in row) == ('pcm' in row):
-                            raise ValueError('Expected one dordiai-voices PCM response.')
-                        data = row.get('chunk', row.get('pcm'))
-                        if not isinstance(data, str):
-                            raise ValueError('dordiai-voices PCM is not an encoded string.')
-                        try:
-                            pcm = base64.b64decode(data, validate=True)
-                        except (ValueError, TypeError) as exc:
-                            raise ValueError('Invalid dordiai-voices PCM encoding.') from exc
-                        if not pcm or len(pcm) % 2:
-                            raise ValueError('dordiai-voices PCM is empty or not sample-aligned.')
-                        total += len(pcm)
-                        if total > MAX_PCM_BYTES or total + 44 > max_output_bytes:
-                            raise ValueError('dordiai-voices segment exceeded the PCM byte budget.')
-                        audio.writeframesraw(pcm)
-                        if 'pcm' in row:
-                            break
-                        send({'mode': 'next'})
-                if not total:
-                    raise ValueError('dordiai-voices produced no audio.')
-            finally:
+        with retained_context(tempfile.TemporaryFile()) as errors:
+            reader = None
+
+            def release_replies():
                 finished.set()
-                _stop(process)
-                if process.stdin:
-                    process.stdin.close()
-                reader.join(timeout=1)
-                if process.stdout and not reader.is_alive():
-                    process.stdout.close()
+                failure = None
+                try:
+                    if process.stdin and not process.stdin.closed:
+                        process.stdin.close()
+                except Exception as exc:
+                    failure = exc
+                try:
+                    if reader is not None and reader.ident is not None:
+                        reader.join(timeout=1)
+                    if reader is not None and reader.is_alive():
+                        raise RuntimeError('The dordiai-voices reply reader has not exited.')
+                except Exception as exc:
+                    # Do not close a pipe still owned by a live reader.
+                    raise exc from failure
+                try:
+                    if process.stdout and not process.stdout.closed:
+                        process.stdout.close()
+                except Exception as exc:
+                    if failure is None:
+                        failure = exc
+                if failure is not None:
+                    raise failure
+                return True
+
+            with owned_process(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=errors,
+                    cwd=self.manifest.root, env=offline_environment(), shell=False,
+                    quiescent_callbacks=(release_replies,)) as process:
+                def read_replies():
+                    try:
+                        while not finished.is_set():
+                            line = process.stdout.readline(4 * 1024 * 1024 + 1)
+                            if not line:
+                                item = EngineUnavailable('dordiai-voices closed its response stream.')
+                            elif len(line) > 4 * 1024 * 1024:
+                                item = ValueError('dordiai-voices response exceeded its byte budget.')
+                            else:
+                                try:
+                                    item = json.loads(line)
+                                except (ValueError, UnicodeError):
+                                    item = ValueError('dordiai-voices returned invalid JSON.')
+                            while not finished.is_set():
+                                try:
+                                    replies.put(item, timeout=.1)
+                                    break
+                                except queue.Full:
+                                    continue
+                            if isinstance(item, Exception):
+                                break
+                    except (OSError, ValueError):
+                        if not finished.is_set():
+                            try:
+                                replies.put_nowait(EngineUnavailable('dordiai-voices response stream failed.'))
+                            except queue.Full:
+                                pass
+                reader = threading.Thread(target=read_replies, daemon=True, name='dordiai-voices PCM reader')
+                reader.start()
+                def send(value):
+                    process.stdin.write((json.dumps(value, ensure_ascii=True) + '\n').encode('ascii'))
+                    process.stdin.flush()
+                started = time.monotonic()
+                total = 0
+                try:
+                    send(request)
+                    with wave.open(str(target), 'wb') as audio:
+                        audio.setnchannels(1)
+                        audio.setsampwidth(2)
+                        audio.setframerate(24000)
+                        while True:
+                            if cancelled():
+                                try:
+                                    send({'mode': 'cancel'})
+                                    send({'mode': 'drop'})
+                                except (OSError, BrokenPipeError):
+                                    pass
+                                raise InterruptedError('Speech operation cancelled.')
+                            if time.monotonic() - started > self.timeout:
+                                raise TimeoutError('dordiai-voices exceeded its per-segment time budget.')
+                            if os.fstat(errors.fileno()).st_size > MAX_LOG_BYTES:
+                                raise EngineUnavailable('dordiai-voices exceeded its diagnostic byte budget.')
+                            try:
+                                row = replies.get(timeout=.05)
+                            except queue.Empty:
+                                continue
+                            if isinstance(row, Exception):
+                                raise row
+                            if not isinstance(row, dict):
+                                raise ValueError('dordiai-voices response is not an object.')
+                            if 'error' in row:
+                                raise EngineUnavailable('dordiai-voices rejected this local speech request.')
+                            if 'loadingStage' in row:
+                                if 'pcm' in row or 'chunk' in row or row.get('finished'):
+                                    raise ValueError('Ambiguous dordiai-voices loading response.')
+                                continue
+                            if row.get('finished') is True:
+                                if 'pcm' in row or 'chunk' in row:
+                                    raise ValueError('Ambiguous dordiai-voices completion response.')
+                                break
+                            if ('chunk' in row) == ('pcm' in row):
+                                raise ValueError('Expected one dordiai-voices PCM response.')
+                            data = row.get('chunk', row.get('pcm'))
+                            if not isinstance(data, str):
+                                raise ValueError('dordiai-voices PCM is not an encoded string.')
+                            try:
+                                pcm = base64.b64decode(data, validate=True)
+                            except (ValueError, TypeError) as exc:
+                                raise ValueError('Invalid dordiai-voices PCM encoding.') from exc
+                            if not pcm or len(pcm) % 2:
+                                raise ValueError('dordiai-voices PCM is empty or not sample-aligned.')
+                            total += len(pcm)
+                            if total > MAX_PCM_BYTES or total + 44 > max_output_bytes:
+                                raise ValueError('dordiai-voices segment exceeded the PCM byte budget.')
+                            audio.writeframesraw(pcm)
+                            if 'pcm' in row:
+                                break
+                            send({'mode': 'next'})
+                    if not total:
+                        raise ValueError('dordiai-voices produced no audio.')
+                finally:
+                    finished.set()
 
 
