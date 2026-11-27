@@ -1,0 +1,151 @@
+{
+  "schema": 1,
+  "status": "DECLARED_NOT_RUN",
+  "base_commit": "bf85c5ecbfee9e45068192d40e8cc8584f95986b",
+  "core_commit": "50c26d3a578d0e1af43120f07beb96921b6e6390",
+  "source": {
+    "tests.assistant.test_topic_tools": {
+      "test_native_guided_topics_preview_is_readonly_and_nested_run_is_scoped": 2,
+      "test_invalid_topic_references_refuse_the_whole_plan_before_earlier_creation": 8,
+      "test_reference_to_an_earlier_noncreation_step_is_rejected": 1,
+      "test_unreviewed_topic_arguments_cannot_run_an_earlier_valid_step": 15,
+      "test_current_library_creation_can_feed_nested_topics_without_an_alternate_store": 1,
+      "test_topic_export_preserves_exact_verified_source_notes_and_renderer_format": 5,
+      "test_each_topic_tool_requires_current_library_scope": 3,
+      "test_topic_budgets_fail_visibly_before_publication": 2,
+      "test_changed_completed_topic_is_refused_without_recreating_or_continuing": 4,
+      "test_existing_new_file_conflict_is_refused_before_inspecting_its_bytes": 1,
+      "test_concurrent_output_after_review_is_never_claimed_or_overwritten": 2,
+      "test_concurrent_creation_after_staging_keeps_the_foreign_file_and_removes_only_own_stage": 1,
+      "test_stop_preserves_the_actual_topic_export_commit_boundary": 3,
+      "test_postpublication_directory_sync_failure_is_a_completed_receipt_not_a_retry": 1,
+      "test_topic_output_aliases_are_refused_before_any_creation": 4,
+      "test_current_thirteen_tools_remain_allowed_alongside_exact_three_topic_tools": 1
+    },
+    "tests.assistant.test_topic_crash_recovery": {
+      "test_real_process_exit_around_topic_commit_recovers_one_deterministic_topic": 2,
+      "test_real_process_exit_before_and_after_publication_recovers_only_owned_bytes": 4,
+      "test_postcrash_output_cannot_be_replaced_or_adopted_by_hash_only": 4,
+      "test_real_link_publication_crash_rejects_unknown_or_changed_twins_without_cleanup": 3,
+      "test_prepared_crash_refuses_changed_evidence_or_an_unowned_destination": 2,
+      "test_committed_link_cleanup_failure_remains_complete_with_an_owned_notice": 1
+    },
+    "tests.assistant.test_topic_state": {
+      "test_forged_topic_receipts_fail_pure_validation_without_opening_saved_paths": 15,
+      "test_rehashed_plan_cannot_retarget_a_topic_reference_to_another_tool": 1,
+      "test_completed_topic_membership_is_checked_against_the_backup_database": 1,
+      "test_complete_backup_recovery_preserves_topic_jobs_templates_and_external_path_inertia": 1,
+      "test_combined_templates_rebase_each_local_topic_reference_without_mutating_saved_drafts": 1,
+      "test_existing_cli_previews_then_explicitly_runs_topic_steps": 2,
+      "test_shared_export_prepared_failure_preserves_destination_and_cleans_owned_stage": 2,
+      "test_prepared_hook_observes_fsynced_stage_before_atomic_publisher_runs": 1
+    }
+  },
+  "installed": {
+    "tests.assistant.test_topic_tools": {
+      "test_native_guided_topics_preview_is_readonly_and_nested_run_is_scoped": 2,
+      "test_invalid_topic_references_refuse_the_whole_plan_before_earlier_creation": 8,
+      "test_reference_to_an_earlier_noncreation_step_is_rejected": 1,
+      "test_unreviewed_topic_arguments_cannot_run_an_earlier_valid_step": 15,
+      "test_current_library_creation_can_feed_nested_topics_without_an_alternate_store": 1,
+      "test_topic_export_preserves_exact_verified_source_notes_and_renderer_format": 5,
+      "test_each_topic_tool_requires_current_library_scope": 3,
+      "test_topic_budgets_fail_visibly_before_publication": 2,
+      "test_changed_completed_topic_is_refused_without_recreating_or_continuing": 4,
+      "test_existing_new_file_conflict_is_refused_before_inspecting_its_bytes": 1,
+      "test_concurrent_output_after_review_is_never_claimed_or_overwritten": 2,
+      "test_concurrent_creation_after_staging_keeps_the_foreign_file_and_removes_only_own_stage": 1,
+      "test_stop_preserves_the_actual_topic_export_commit_boundary": 3,
+      "test_postpublication_directory_sync_failure_is_a_completed_receipt_not_a_retry": 1,
+      "test_topic_output_aliases_are_refused_before_any_creation": 4,
+      "test_current_thirteen_tools_remain_allowed_alongside_exact_three_topic_tools": 1
+    },
+    "tests.assistant.test_topic_crash_recovery": {
+      "test_real_process_exit_around_topic_commit_recovers_one_deterministic_topic": 2,
+      "test_real_process_exit_before_and_after_publication_recovers_only_owned_bytes": 4,
+      "test_postcrash_output_cannot_be_replaced_or_adopted_by_hash_only": 4,
+      "test_real_link_publication_crash_rejects_unknown_or_changed_twins_without_cleanup": 3,
+      "test_prepared_crash_refuses_changed_evidence_or_an_unowned_destination": 2,
+      "test_committed_link_cleanup_failure_remains_complete_with_an_owned_notice": 1
+    },
+    "tests.assistant.test_topic_state": {
+      "test_forged_topic_receipts_fail_pure_validation_without_opening_saved_paths": 15,
+      "test_rehashed_plan_cannot_retarget_a_topic_reference_to_another_tool": 1,
+      "test_completed_topic_membership_is_checked_against_the_backup_database": 1,
+      "test_complete_backup_recovery_preserves_topic_jobs_templates_and_external_path_inertia": 1,
+      "test_combined_templates_rebase_each_local_topic_reference_without_mutating_saved_drafts": 1,
+      "test_existing_cli_previews_then_explicitly_runs_topic_steps": 2,
+      "test_shared_export_prepared_failure_preserves_destination_and_cleans_owned_stage": 2,
+      "test_prepared_hook_observes_fsynced_stage_before_atomic_publisher_runs": 1
+    }
+  },
+  "total_cases": 94,
+  "requires": {
+    "real_subprocess_exits": true,
+    "no_skips": true,
+    "no_xfail": true,
+    "network": "strict offline",
+    "retained_tool_count": 13,
+    "new_tool_count": 3
+  },
+  "native": {
+    "status": "DECLARED_NOT_RUN",
+    "probe": "scripts/windows_topic_tools_smoke.py",
+    "timeout_seconds": 180,
+    "total_checks": 23,
+    "expected_label_counter": {
+      "native_current_dialog_completes_five_topic_steps": 1,
+      "native_created_topics_use_deterministic_scoped_references": 1,
+      "native_topic_list_excludes_unselected_workspace": 1,
+      "native_new_child_export_uses_its_resolved_topic": 1,
+      "native_exact_evidence_export_preserves_original_bytes": 1,
+      "native_export_keeps_commentary_separate_and_origins_visible": 1,
+      "native_created_outputs_leave_no_staging_files": 1,
+      "native_run_preserves_original_catalog_and_evidence": 1,
+      "native_result_is_visible_after_owned_worker_finishes": 1,
+      "native_topic_preview_has_no_jobs_or_new_topics": 1,
+      "native_review_exposes_all_three_topic_tools": 1,
+      "native_explicit_run_available_only_after_preview": 1,
+      "native_topic_scope_and_actions_are_named": 1,
+      "native_topic_instruction_accepts_keyboard_focus": 1,
+      "native_unreviewed_topic_draft_cannot_run": 1,
+      "native_assistant_workers_settle_before_backup": 1,
+      "actual_named_topic_workflow_is_an_inert_draft": 1,
+      "actual_backup_restore_preserves_all_scoped_topics": 1,
+      "actual_backup_restore_preserves_exact_evidence": 1,
+      "actual_restored_topic_job_requires_new_approval": 1,
+      "actual_restored_job_does_not_replay_external_exports": 1,
+      "actual_restore_retains_inert_topic_template": 1,
+      "actual_rebound_topic_template_is_preview_only": 1
+    },
+    "expected_metrics": {
+      "completed_steps": 5,
+      "new_topics": 2,
+      "exported_files": 2,
+      "restored_scoped_topics": 3,
+      "retained_template_records": 1,
+      "restored_jobs_replayed": 0
+    },
+    "probe_modules": [
+      "carr_library.assistant.models",
+      "carr_library.assistant.service",
+      "carr_library.assistant.validation",
+      "carr_library.assistant.topic_tools",
+      "carr_library.assistant.templates",
+      "carr_library.assistant.snapshots",
+      "carr_library.research.topic_tree",
+      "carr_library.research.evidence_export",
+      "carr_library.research.export_file",
+      "carr_library.ui.assistant_dialog"
+    ],
+    "required_fields": {
+      "status": "PASS",
+      "actual_windows": true,
+      "isolated": true,
+      "native_controls": true
+    },
+    "nvda": "NOT_RUN",
+    "language_model_quality": "NOT_QUALIFIED",
+    "physical_audio": "NOT_RUN"
+  }
+}

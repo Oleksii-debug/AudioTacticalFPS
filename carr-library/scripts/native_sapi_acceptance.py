@@ -102,6 +102,10 @@ def finalize(results):
                 'Native SAPI code differs from the exact source-bound installed wheel.')
         gate.require(runtime is None, 'Native SAPI qualification does not select an FFmpeg processing or inference runtime.')
         firewall = gate.read(results / 'native-firewall.json')
+        released = gate.read(results / 'native-firewall-cleanup.json')
+        gate.require(released['status'] == 'PASS' and released['qualified_applied'] is True
+            and released['absent'] is True and released['rule_name'] == firewall['name'],
+            'The exact run-owned native firewall rule was not safely removed and verified absent.')
         gate.require(firewall['status'] == 'PASS' and firewall['enabled'] is True
             and firewall['profiles_enabled'] is True and firewall['direction'] == 'Outbound'
             and firewall['action'] == 'Block'

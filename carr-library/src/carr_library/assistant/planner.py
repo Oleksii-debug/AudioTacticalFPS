@@ -11,6 +11,13 @@ Import folder "C:/Books" / Імпортуй папку "C:/Books"
 Search "railway transport" / Знайди "залізничний транспорт"
 List books / Покажи книги
 List libraries / Покажи бібліотеки
+List topics / Покажи теми
+Create topic "Research" / Створи тему "Дослідження"
+Create topic "Child" under "@0" / Створи тему "Підтема" у "@0"
+Export topic "TOPIC_ID" as "evidence.md" / Експортуй тему "TOPIC_ID" як "evidence.md"
+Topic @N refers to the zero-based index of an earlier topic.create step in this plan.
+Topic exports use saved verified evidence at execution, with source origins and notes kept separate.
+They require a selected output folder and a new filename; existing files are never replaced.
 Extract "EDITION_ID" as "reading.txt" / Експортуй текст "EDITION_ID" як "reading.txt"
 Backup "backup-name" / Резервна копія "backup-name"
 Convert "C:/Books/source.docx" as "reading.txt" / Конвертуй "C:/Books/source.docx" як "reading.txt"
@@ -60,6 +67,20 @@ def preview(value, scope):
             continue
         if re.fullmatch(r'(?:list\s+books|покажи\s+книги)\.?', line, re.IGNORECASE):
             steps.append(Step('library.catalog'))
+            continue
+        if re.fullmatch(r'(?:list\s+topics|покажи\s+теми)\.?', line, re.IGNORECASE):
+            steps.append(Step('topic.list'))
+            continue
+        match = re.fullmatch(r'(?:create\s+topic|створи\s+тему)\s+"([^"]+)"(?:\s+(?:under|у)\s+"([^"]+)")?\.?', line, re.IGNORECASE)
+        if match:
+            args = {'name': match.group(1)}
+            if match.group(2) is not None:
+                args['parent'] = match.group(2)
+            steps.append(Step('topic.create', args))
+            continue
+        match = re.fullmatch(r'(?:export\s+topic|експортуй\s+тему)\s+"([^"]+)"\s+(?:as|як)\s+"([^"]+)"\.?', line, re.IGNORECASE)
+        if match:
+            steps.append(Step('topic.export', {'topic': match.group(1), 'name': match.group(2)}))
             continue
         match = re.fullmatch(r'(?:convert|конвертуй)\s+"([^"]+)"\s+(?:as|як)\s+"([^"]+)"\.?', line, re.IGNORECASE)
         if match:

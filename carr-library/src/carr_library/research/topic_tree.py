@@ -92,15 +92,19 @@ class TopicTree:
         self.db.execute('UPDATE research_topic SET archived=1 WHERE workspace=? AND id=?',
                         (self.workspace, topic))
 
-    def list_topics(self, *, include_archived=False):
+    def list_topics(self, *, include_archived=False, limit=None):
         self._ready()
         fields = 'SELECT id,parent,name,position,archived FROM research_topic WHERE workspace=? '
         order = 'ORDER BY parent IS NOT NULL,parent,position,id'
         if type(include_archived) is not bool:
             raise ValueError('explicit archive flag required')
+        if limit is not None and (type(limit) is not int or not 1 <= limit <= 10001):
+            raise ValueError('bounded topic result limit required')
+        suffix = ' LIMIT ?' if limit is not None else ''
+        parameters = (limit,) if limit is not None else ()
         if include_archived:
-            rows = self.db.execute(fields + order, (self.workspace,))
+            rows = self.db.execute(fields + order + suffix, (self.workspace, *parameters))
         else:
-            rows = self.db.execute(_VISIBLE + fields + 'AND id IN (SELECT id FROM visible) ' + order,
-                                   (self.workspace, self.workspace, self.workspace))
+            rows = self.db.execute(_VISIBLE + fields + 'AND id IN (SELECT id FROM visible) ' + order + suffix,
+                                   (self.workspace, self.workspace, self.workspace, *parameters))
         return tuple(Topic(r[0], r[1], r[2], r[3], bool(r[4])) for r in rows)

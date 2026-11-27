@@ -77,6 +77,9 @@ class AssistantService:
                 path = plan.scope.input(step.arguments['path'])
                 if step.tool.endswith('_folder') != path.is_dir():
                     raise ValueError('The selected input does not match the import operation.')
+            if step.tool in ('topic.list', 'topic.create', 'topic.export'):
+                from .topic_tools import validate_live
+                validate_live(self.app, step, plan.scope, workspace, plan.steps, i)
             if step.tool in ('library.extract', 'library.backup'):
                 target = plan.scope.output(step.arguments['name'])
                 if target.exists():
@@ -99,6 +102,8 @@ class AssistantService:
                     raise RuntimeError('The audio production runtime is not configured.')
                 if callable(getattr(self.production, 'plan', None)):
                     self.production.plan(step.arguments, max_bytes=plan.scope.max_bytes)
+        from .topic_tools import validate_plan_outputs
+        validate_plan_outputs(plan)
         return plan
 
     def submit(self, plan):
@@ -253,6 +258,9 @@ class AssistantService:
                             pass
                     if checkpoint['status'] == 'complete':
                         try:
+                            if step.tool in ('topic.list', 'topic.create', 'topic.export'):
+                                from .topic_tools import verify_completed
+                                verify_completed(self.app, step, plan.scope, record, checkpoint, stopped, index)
                             self._verify_completed(checkpoint['result'], plan.scope, stopped)
                         except Exception:
                             checkpoint['status'] = 'failed'
@@ -272,6 +280,10 @@ class AssistantService:
                         validate_result(step, result, plan.scope.to_dict(), checkpoint['intent'])
                         # Publication is complete. Preserve that outcome if Stop
                         # arrives while the final artifact hashes are checked.
+                        result['artifacts'] = self._artifacts(result, plan.scope, lambda: False)
+                    elif step.tool == 'topic.export':
+                        # Existing publisher returned a committed file; a late Stop
+                        # cannot turn that publication into a retry.
                         result['artifacts'] = self._artifacts(result, plan.scope, lambda: False)
                     else:
                         result['artifacts'] = self._artifacts(result, plan.scope, stopped)
@@ -345,6 +357,9 @@ class AssistantService:
         args = step.arguments
         workspace = record['workspace']
         intent = checkpoint['intent']
+        if step.tool in ('topic.list', 'topic.create', 'topic.export'):
+            from .topic_tools import execute
+            return execute(self.app, step, scope, record, checkpoint, persist, cancelled, index)
         if step.tool in ('document.convert', 'audio.effects'):
             from .derived_tools import execute
             operation_id = uuid5(NAMESPACE_URL, 'carr-assistant:' + record['id'] + ':' + str(index)).hex

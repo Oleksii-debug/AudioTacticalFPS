@@ -89,7 +89,8 @@
       "test_large_selected_code_closure_keeps_every_reader_until_native_scope_exits": 2,
       "test_excessive_code_handle_inventory_is_refused_before_any_native_lease": 1,
       "test_djvu_final_odd_chunk_ends_exactly_at_its_containing_form": 4,
-      "test_djvu_final_padding_exception_never_relaxes_chunk_bounds_or_sibling_alignment": 2
+      "test_djvu_final_padding_exception_never_relaxes_chunk_bounds_or_sibling_alignment": 2,
+      "test_qualified_djvu_requires_explicit_selection_and_does_not_enable_other_families": 1
     }
   },
   "native_cases": 17,

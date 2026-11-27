@@ -25,6 +25,9 @@ _KEYS = {
 
 
 def validate_arguments(step):
+    if step.tool in ('topic.list', 'topic.create', 'topic.export'):
+        from .topic_tools import validate_arguments as validate_topic
+        return validate_topic(step)
     if step.tool in ('document.convert', 'audio.effects'):
         from .derived_tools import validate_arguments as validate_derived
         return validate_derived(step)
@@ -192,6 +195,9 @@ def validate_job(value, *, identity=None):
             raise ValueError('Invalid assistant step fields.')
         validated = Step(step['tool'], step['arguments'])
         validate_arguments(validated)
+        if validated.tool in ('topic.list', 'topic.create', 'topic.export'):
+            from .topic_tools import validate_reference
+            validate_reference(validated, steps, index)
         if validated.tool == 'library.create':
             creates += 1
             if index or not scope['allow_create'] or workspace is not None:
@@ -209,10 +215,10 @@ def validate_job(value, *, identity=None):
             if not any(type(target) is type(_path(root)) and target.is_relative_to(_path(root))
                        for root in scope['input_roots']):
                 raise ValueError('Checkpoint import is outside its approved input scope.')
-        if validated.tool in ('library.extract', 'library.backup', 'audio.produce'):
+        if validated.tool in ('library.extract', 'library.backup', 'audio.produce', 'topic.export'):
             if scope['output_root'] is None:
                 raise ValueError('Checkpoint operation has no approved output scope.')
-        if validated.tool in ('library.extract', 'library.backup'):
+        if validated.tool in ('library.extract', 'library.backup', 'topic.export'):
             _output_name(validated.arguments['name'])
         if (validated.tool not in ('library.create', 'library.list', 'library.backup', 'audio.produce',
                                    'document.convert', 'audio.effects')
@@ -227,7 +233,8 @@ def validate_job(value, *, identity=None):
         permitted = {'batch'} if validated.tool.startswith('library.import') else (
             {'sha256'} if validated.tool == 'library.extract' else
             {'derived_publication'} if validated.tool in ('document.convert', 'audio.effects') else
-            {'interactive_dispatch'} if validated.tool in ('reader.control', 'player.control') else set())
+            {'interactive_dispatch'} if validated.tool in ('reader.control', 'player.control') else
+            {'topic_publication'} if validated.tool == 'topic.export' else set())
         if set(intent) - permitted:
             raise ValueError('Invalid assistant step intent.')
         expected_operation = uuid5(NAMESPACE_URL, 'carr-assistant:' + job_id + ':' + str(index)).hex
@@ -244,6 +251,9 @@ def validate_job(value, *, identity=None):
         if 'sha256' in intent:
             _sha(intent['sha256'])
         result = checkpoint['result']
+        if validated.tool in ('topic.list', 'topic.create', 'topic.export'):
+            from .topic_tools import validate_checkpoint
+            validate_checkpoint(validated, scope, job_id, index, value['workspace'], checkpoint)
         if result is None:
             if checkpoint['status'] == 'complete':
                 raise ValueError('A complete step needs its result.')

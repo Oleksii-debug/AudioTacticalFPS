@@ -21,8 +21,9 @@ CALIBRE_SUFFIXES = frozenset(('.azw', '.azw3', '.lit', '.mobi', '.prc', '.tcr'))
 DJVU_SUFFIXES = frozenset(('.djvu',))
 CHM_SUFFIXES = frozenset(('.chm',))
 LEGACY_SUFFIXES = CALIBRE_SUFFIXES | DJVU_SUFFIXES | CHM_SUFFIXES
-# Fill only after source-bound real synthetic fixture execution is recorded.
-QUALIFIED_SUFFIXES = frozenset()
+# Qualified only by the recorded source-bound Windows fixture population.
+# DjVu: run 46018252073, exact source 00ed188039d045232f72f7a34472c5c22ef8aad8.
+QUALIFIED_SUFFIXES = frozenset(('.djvu',))
 MAX_MEMBERS = 2048
 MAX_MEMBER_BYTES = 8 * 1024**2
 

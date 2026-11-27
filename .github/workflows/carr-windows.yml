@@ -629,7 +629,13 @@ jobs:
             'tests/audio/test_native_sapi.py',
             'tests/reader/test_speech_punctuation.py',
             'tests/storage/test_speech_punctuation_backup.py',
-            'tests/ui/test_speech_punctuation.py'
+            'tests/ui/test_speech_punctuation.py',
+            'tests/assistant/test_topic_tools.py',
+            'tests/assistant/test_topic_crash_recovery.py',
+            'tests/assistant/test_topic_state.py',
+            'tests/reader/test_legacy_reader_session.py',
+            'tests/storage/test_legacy_reader_session_backup.py',
+            'tests/ui/test_legacy_reader_session.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -1240,6 +1246,11 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -X utf8 scripts/r7_native_gate.py native-sapi --report ci-results/full-bundle-native-sapi.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -X utf8 scripts/r7_native_gate.py legacy-reader-session --report ci-results/full-bundle-reader-session-native.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -X utf8 scripts/r7_native_gate.py assistant-topics --report ci-results/full-bundle-topic-native.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Remove-Item -LiteralPath 'ci-results/full-bundle-topic-work' -Recurse -Force -ErrorAction Stop
           $runInstalledTests = @'
           import ctypes, hashlib, json, os, pathlib, sys
           from ctypes import wintypes
@@ -1625,7 +1636,13 @@ jobs:
               'tests/audio/test_native_sapi.py',
               'tests/reader/test_speech_punctuation.py',
               'tests/storage/test_speech_punctuation_backup.py',
-              'tests/ui/test_speech_punctuation.py'
+              'tests/ui/test_speech_punctuation.py',
+              'tests/assistant/test_topic_tools.py',
+              'tests/assistant/test_topic_crash_recovery.py',
+              'tests/assistant/test_topic_state.py',
+              'tests/reader/test_legacy_reader_session.py',
+              'tests/storage/test_legacy_reader_session_backup.py',
+              'tests/ui/test_legacy_reader_session.py'
           ]
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:

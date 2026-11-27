@@ -1,4 +1,4 @@
-"""Boundary tests for unqualified legacy adapters; these do not certify vendors."""
+"""Boundaries for selected legacy adapters; synthetic tests do not certify vendors."""
 from dataclasses import asdict
 from hashlib import sha256
 import json
@@ -49,6 +49,19 @@ def test_unexecuted_native_formats_never_become_available_from_selection_alone(s
         calibre_selected=True, djvu_selected=True, chm_selected=True)}
     assert rows[suffix]['available'] is False
     assert rows[suffix]['qualification'] == 'native_fixture_not_qualified'
+
+
+def test_qualified_djvu_requires_explicit_selection_and_does_not_enable_other_families():
+    absent = {row['extension']: row for row in capabilities()}
+    assert absent['.djvu']['available'] is False
+    assert absent['.djvu']['qualification'] == 'explicit_selection_required'
+    selected = {row['extension']: row for row in capabilities(
+        calibre_selected=True, djvu_selected=True, chm_selected=True)}
+    assert selected['.djvu']['available'] is True
+    assert selected['.djvu']['qualification'] == 'selected_runtime_requires_check'
+    for suffix in legacy.LEGACY_SUFFIXES - {'.djvu'}:
+        assert selected[suffix]['available'] is False
+        assert selected[suffix]['qualification'] == 'native_fixture_not_qualified'
 
 
 @pytest.mark.parametrize('kind,path', [('calibre', 'ebook-convert.exe'), ('djvu', 'djvutxt.exe'), ('chm', '7z.exe')])

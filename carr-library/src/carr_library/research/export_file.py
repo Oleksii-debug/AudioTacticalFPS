@@ -227,7 +227,8 @@ def _export_paths(path, private_root):
     return requested, Path(private_root).absolute()
 
 
-def capture_export_destination(path, *, private_root, cancelled=lambda: False):
+def capture_export_destination(path, *, private_root, cancelled=lambda: False,
+                               require_absent=False):
     """Inspect a chosen path before asking to replace its existing file.
 
     Pass this same immutable snapshot to the writer after confirmation. It
@@ -243,14 +244,18 @@ def capture_export_destination(path, *, private_root, cancelled=lambda: False):
         if cancelled():
             raise TimeoutError('Export cancelled; the destination was not changed.')
 
+    if type(require_absent) is not bool:
+        raise ValueError('The export replacement policy must be boolean.')
     check_cancelled()
     requested, private = _export_paths(path, private_root)
-    target, parent_identity, state = _destination(requested, private, check_cancelled)
+    reject_existing = (FileExistsError('The export destination already exists; replacement was not authorized.')
+                       if require_absent else None)
+    target, parent_identity, state = _destination(requested, private, check_cancelled, reject_existing)
     return ExportDestination(requested, private, target, parent_identity, state)
 
 
 def write_export(path, content, *, private_root, cancelled=lambda: False,
-                 require_absent=False, approval=None):
+                 require_absent=False, approval=None, prepared=None):
     """Atomically write exact UTF-8 text to an explicitly selected destination.
 
     A normal existing file may be replaced after caller-side confirmation.
@@ -261,11 +266,15 @@ def write_export(path, content, *, private_root, cancelled=lambda: False,
     absent destination always uses atomic no-clobber publication. Once atomic
     replacement completes, the save is complete. CR, LF and CRLF remain unchanged.
     The receipt distinguishes a saved file from a remaining staging-cleanup warning.
+    An optional trusted prepared callback receives the fsynced staging path and
+    immutable destination before publication, for a caller's existing durable journal.
+    Its failure or cancellation leaves the destination unchanged.
     """
     if not isinstance(content, str):
         raise ValueError('Text export required.')
     return _write_payload(path, content.encode('utf-8'), private_root=private_root,
-                          cancelled=cancelled, require_absent=require_absent, approval=approval)
+                          cancelled=cancelled, require_absent=require_absent, approval=approval,
+                          prepared=prepared)
 
 
 def write_binary_export(path, content, *, private_root, cancelled=lambda: False,
@@ -282,11 +291,14 @@ def write_binary_export(path, content, *, private_root, cancelled=lambda: False,
                           cancelled=cancelled, require_absent=require_absent, approval=approval)
 
 
-def _write_payload(path, payload, *, private_root, cancelled, require_absent=False, approval=None):
+def _write_payload(path, payload, *, private_root, cancelled, require_absent=False, approval=None,
+                   prepared=None):
     if not callable(cancelled):
         raise ValueError('An export cancellation callback is required.')
     if type(require_absent) is not bool:
         raise ValueError('The export replacement policy must be boolean.')
+    if prepared is not None and not callable(prepared):
+        raise ValueError('An export preparation callback must be callable.')
 
     def check_cancelled():
         if cancelled():
@@ -328,6 +340,9 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
             output.flush()
             os.fsync(output.fileno())
 
+        check_cancelled()
+        if prepared is not None:
+            prepared(temporary, ExportDestination(requested, private, target, parent_identity, previous))
         check_cancelled()
         reject_existing = (ValueError('The export destination changed. Choose the destination again.')
                            if require_absent else None)

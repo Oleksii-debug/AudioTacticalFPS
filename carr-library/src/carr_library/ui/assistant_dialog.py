@@ -36,7 +36,7 @@ def show_assistant(frame, *, production=None, interactive=None, parent=None, ini
     current = frame.active[0] if frame.active else None
     scope_choice.SetSelection(next((i + 1 for i, row in enumerate(workspaces) if row.id == current), 0))
     input_folder = field('Allowed &input folder (optional; no other folders are readable)')
-    output_folder = field('Chosen &output folder (required for audio, extraction or backup)')
+    output_folder = field('Chosen &output folder (required for audio, text/topic exports or backup)')
     choose_row = wx.BoxSizer(wx.HORIZONTAL)
     folder_buttons = []
     for label, target in [('Choose input folder', input_folder), ('Choose output folder', output_folder)]:

@@ -1,0 +1,287 @@
+{
+  "schema": 1,
+  "recorded_utc": "2026-11-27 15:15:04 UTC",
+  "review_kind": "Bounded source-level feature preservation review",
+  "canonical": {
+    "commit": "e3cf74c243d4ef930b526b5648ca9003c0900057",
+    "tree": "5fc67a0d9a0ab18fb0662bb01e027d29d83af72f"
+  },
+  "current": {
+    "commit": "4c25cc43e795cacdd61e2a00e6db87960db25bb9",
+    "tree": "9e39f392687052093102d17441b8cd662a94fc0e"
+  },
+  "verdict": "GO within the reviewed paths: no concrete canonical feature-preservation gap found",
+  "method": "Fetched both exact commits through GitData, compared complete line sequences and class/function inventories, and read the changed bodies and the current export confirmation call sites.",
+  "mapping": [
+    {
+      "feature": "Catalog read views",
+      "files": [
+        "catalog/read_views.py"
+      ],
+      "preserved": "Existing workspace, collection, edition, metadata filters, order and bounded result contract remain.",
+      "delta": "Optional ID predicates are emitted explicitly with bound SQL parameters to retain the keyset index path."
+    },
+    {
+      "feature": "Bibliography workbench and command line",
+      "files": [
+        "citations/bibliography_workbench.py",
+        "bibliography_cli.py"
+      ],
+      "preserved": "Canonical import/preview/commit, author-name mode, pinned style/locale selection, freshness checks, text/HTML/DOCX export and publication receipts remain.",
+      "delta": "Adds editable Word citation output, snapshot regeneration and an installed-entrypoint lease."
+    },
+    {
+      "feature": "Offline CSL formatting",
+      "files": [
+        "citations/csl.py"
+      ],
+      "preserved": "All 39 canonical class/function names remain; source record validation, budgets, pinned offline resources, citation item handling, rendering, safe markup and unverified-locator notices remain.",
+      "delta": "Adds stable document citation IDs and explicit note indices, including input-budget accounting and returned document context. Legacy list-based clusters still map to the same default order and note positions."
+    },
+    {
+      "feature": "PDF review attestation",
+      "files": [
+        "citations/pdf_review_attestation.py"
+      ],
+      "preserved": "Reviewer identity, physical page validation, renderer identity and rendered-image fingerprint remain required.",
+      "delta": "Accepts the current bounded FileAsset path through pdf_document and a held verified source, alongside the original bounded byte input."
+    },
+    {
+      "feature": "Literal, thematic and semantic search",
+      "files": [
+        "search/literal.py",
+        "search/thematic.py",
+        "semantic.py"
+      ],
+      "preserved": "Canonical retrieval modes, authorization snapshots, query and resource validation, cancellation, result evidence and thematic fallback remain.",
+      "delta": "Adds explicit authorized source-page batches and literal continuation. Semantic fallback receives the same selected batch."
+    },
+    {
+      "feature": "Federated search and native continuation controls",
+      "files": [
+        "search/federated.py",
+        "ui/federated_search.py"
+      ],
+      "preserved": "Original FederatedSearch.search remains. Source-library grouping, selected-hit capabilities, current scope, context, copying and saving verified quotations remain.",
+      "delta": "Adds bounded search_page with scope/source fingerprint binding and invalidation, then accessible previous/next controls. The native presentation now continues all selected batches without claiming a global cross-library relevance order."
+    },
+    {
+      "feature": "Academic library, bibliography and outline flows",
+      "files": [
+        "ui/academic_actions.py",
+        "ui/academic_library_dialog.py",
+        "ui/academic_tools.py",
+        "ui/research_actions.py",
+        "ui/literature_matrix.py"
+      ],
+      "preserved": "Canonical academic actions and editable records, verified research outlines, literature matrix presentation, scope checks, selected export formats and source-linked actions remain.",
+      "delta": "Native export confirmation is routed to the current captured-destination helper. A programmatic academic export without explicit overwrite approval must choose an absent destination. Background matrix results also recheck cancellation and archived scope. The removed NativeDialogs.approve_export wrapper is not used by the compared canonical/current flows; their actual confirmation calls are present."
+    },
+    {
+      "feature": "Citation formatting dialog",
+      "files": [
+        "ui/citation_styles_dialog.py"
+      ],
+      "preserved": "Preview freshness, style/name/locale choices, clipboard actions, selected format export, destination approval, cancellation and completion receipt handling remain.",
+      "delta": "Adds optional live Word controls and explicit new-file regeneration from a retained citation snapshot; visible Word edits are not treated as imported source quotations."
+    },
+    {
+      "feature": "Export destination authority and publisher",
+      "files": [
+        "ui/export_destination.py",
+        "research/export_file.py"
+      ],
+      "preserved": "Approval captures the final selected path and state before confirmation. Private-library exclusion, no-clobber for absent targets, exact approved replacement, bounded content fingerprint, Windows ChangeTime, cancellation and cleanup receipt semantics remain.",
+      "delta": "Uses the shared native_file_metadata API and rejects a stale parent/file identity before native metadata and content reads. Current MessageDialog confirmation returns affirmative consent explicitly and is always destroyed."
+    }
+  ],
+  "inventory": [
+    {
+      "path": "carr-library/src/carr_library/catalog/read_views.py",
+      "canonical_blob": "84b9a28698f3b65f69c880fc3a10de11cdb3c864",
+      "current_blob": "741de693f305998afc7180b399bd5bf4c52d5ec6",
+      "canonical_lines": 101,
+      "current_lines": 107,
+      "diff_hunks": 1,
+      "added_lines": 8,
+      "removed_lines": 2
+    },
+    {
+      "path": "carr-library/src/carr_library/citations/bibliography_workbench.py",
+      "canonical_blob": "8fea042e38c4d4de9f7cb1f0a8d085f6a44ccaba",
+      "current_blob": "912ae43318a5268cf9eb922ac511e235b5302ef3",
+      "canonical_lines": 331,
+      "current_lines": 351,
+      "diff_hunks": 5,
+      "added_lines": 23,
+      "removed_lines": 3
+    },
+    {
+      "path": "carr-library/src/carr_library/citations/csl.py",
+      "canonical_blob": "2c193f6c8778ea82d0bae76c4859e0f635598a08",
+      "current_blob": "7145d04ef689a5b5d12955ceb1482c29c0d14de6",
+      "canonical_lines": 852,
+      "current_lines": 891,
+      "diff_hunks": 8,
+      "added_lines": 56,
+      "removed_lines": 17
+    },
+    {
+      "path": "carr-library/src/carr_library/citations/pdf_review_attestation.py",
+      "canonical_blob": "3bfbcbf14544c81bc17942183726c5c5f17f506c",
+      "current_blob": "a5a33b1bdac9d01906e9a5ae5c6777b0d9da4394",
+      "canonical_lines": 86,
+      "current_lines": 93,
+      "diff_hunks": 2,
+      "added_lines": 12,
+      "removed_lines": 5
+    },
+    {
+      "path": "carr-library/src/carr_library/bibliography_cli.py",
+      "canonical_blob": "5bb69732806e588cdb7973be465c42d2cba5dddf",
+      "current_blob": "71bbef780ac92db2dc5b8432b898804021534bdc",
+      "canonical_lines": 108,
+      "current_lines": 126,
+      "diff_hunks": 3,
+      "added_lines": 19,
+      "removed_lines": 1
+    },
+    {
+      "path": "carr-library/src/carr_library/search/federated.py",
+      "canonical_blob": "4f97c0bfc61156b090f40306f8590c4da9992cec",
+      "current_blob": "301e096f4405070d63966b37ccf7e45f9e7a6fe4",
+      "canonical_lines": 313,
+      "current_lines": 517,
+      "diff_hunks": 2,
+      "added_lines": 204,
+      "removed_lines": 0
+    },
+    {
+      "path": "carr-library/src/carr_library/search/literal.py",
+      "canonical_blob": "810a814174d0daece99aef739911b078e6709710",
+      "current_blob": "0b87be93ecb08cfd5a1fcd182420fe3b9d8f3927",
+      "canonical_lines": 380,
+      "current_lines": 409,
+      "diff_hunks": 4,
+      "added_lines": 30,
+      "removed_lines": 1
+    },
+    {
+      "path": "carr-library/src/carr_library/search/thematic.py",
+      "canonical_blob": "5a526259eb764b2f2a940d491802c4f903344487",
+      "current_blob": "462ba4f14f8154b7545f1a75a105763eab1e070d",
+      "canonical_lines": 529,
+      "current_lines": 536,
+      "diff_hunks": 3,
+      "added_lines": 11,
+      "removed_lines": 4
+    },
+    {
+      "path": "carr-library/src/carr_library/semantic.py",
+      "canonical_blob": "7e582dbfbbdc1bd6e670503785fcc798989fb70f",
+      "current_blob": "be3fcd9b7751b1af4e24dafa2c047670f76bb219",
+      "canonical_lines": 313,
+      "current_lines": 322,
+      "diff_hunks": 3,
+      "added_lines": 15,
+      "removed_lines": 6
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/academic_actions.py",
+      "canonical_blob": "9311eb9f272f11dbd166681b3a34aea6d75c5138",
+      "current_blob": "25b5afbd1d4ab8ad2cea521bcb043e2da748c954",
+      "canonical_lines": 391,
+      "current_lines": 391,
+      "diff_hunks": 5,
+      "added_lines": 5,
+      "removed_lines": 5
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/academic_library_dialog.py",
+      "canonical_blob": "52b328714a72fb0d650789477c28082e33dc2647",
+      "current_blob": "c64b4abdc9fcc758e2678af576b22823346cebce",
+      "canonical_lines": 1081,
+      "current_lines": 1082,
+      "diff_hunks": 3,
+      "added_lines": 7,
+      "removed_lines": 6
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/academic_tools.py",
+      "canonical_blob": "2c0b20c8db64083fd45b35be276a213601045dce",
+      "current_blob": "aac69e501226314d4280ca1d74ac866a79a11614",
+      "canonical_lines": 284,
+      "current_lines": 296,
+      "diff_hunks": 4,
+      "added_lines": 17,
+      "removed_lines": 5
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/citation_styles_dialog.py",
+      "canonical_blob": "365f9ce02fea9e05524bdeae06069a27a1c698a3",
+      "current_blob": "3a2962103876a75412bae8a3bbd967c2e45a1fa2",
+      "canonical_lines": 303,
+      "current_lines": 386,
+      "diff_hunks": 3,
+      "added_lines": 85,
+      "removed_lines": 2
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/federated_search.py",
+      "canonical_blob": "fbb6920a4eae81d9d5fbd4140530f6066681ba4d",
+      "current_blob": "81b8b88bba516cfbe3629ecd2bb7a6e0f2a14664",
+      "canonical_lines": 667,
+      "current_lines": 727,
+      "diff_hunks": 16,
+      "added_lines": 74,
+      "removed_lines": 14
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/research_actions.py",
+      "canonical_blob": "20348348fadaba3a941031d2508c542e46a29fb9",
+      "current_blob": "b678c3cd0b001b05a309d3b1e82e024967d1ee64",
+      "canonical_lines": 447,
+      "current_lines": 436,
+      "diff_hunks": 1,
+      "added_lines": 0,
+      "removed_lines": 11
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/export_destination.py",
+      "canonical_blob": "522e5fe297b5b28ced24ae51b981abe66747c4d7",
+      "current_blob": "14ea86babd1426902c6fd2f09982e5b04147c544",
+      "canonical_lines": 22,
+      "current_lines": 36,
+      "diff_hunks": 1,
+      "added_lines": 27,
+      "removed_lines": 13
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/literature_matrix.py",
+      "canonical_blob": "72c786f6c66a822286f8e8d2117cc164f4b59eaf",
+      "current_blob": "72c786f6c66a822286f8e8d2117cc164f4b59eaf",
+      "canonical_lines": 194,
+      "current_lines": 194,
+      "diff_hunks": 0,
+      "added_lines": 0,
+      "removed_lines": 0
+    },
+    {
+      "path": "carr-library/src/carr_library/research/export_file.py",
+      "canonical_blob": "cb6eb7b4b93f9eaec8feca9586742d3ffd9d1afa",
+      "current_blob": "f48eb5099b3e80e3ba3ff5bb1fd12c93d76fdfa4",
+      "canonical_lines": 375,
+      "current_lines": 372,
+      "diff_hunks": 10,
+      "added_lines": 26,
+      "removed_lines": 29
+    }
+  ],
+  "limits": {
+    "runtime_execution": "NOT_RUN by this review",
+    "whole_repository_convergence": false,
+    "byte_equality_claim": false,
+    "unreviewed_alternate_modules_not_declared_equivalent": true
+  },
+  "changes": "Documentation only. No product mutation, runtime oracle reduction, or canonical commit added as an ancestor."
+}

@@ -1014,5 +1014,163 @@
         "restored_state_sha256"
       ]
     ]
+  },
+  "assistant-topics": {
+    "probe": "scripts/windows_topic_tools_smoke.py",
+    "arguments": [
+      "--work",
+      "ci-results/full-bundle-topic-work"
+    ],
+    "subprocess_timeout_seconds": 180,
+    "modules": [
+      "carr_library.assistant.models",
+      "carr_library.assistant.service",
+      "carr_library.assistant.validation",
+      "carr_library.assistant.topic_tools",
+      "carr_library.assistant.templates",
+      "carr_library.assistant.snapshots",
+      "carr_library.research.topic_tree",
+      "carr_library.research.evidence_export",
+      "carr_library.research.export_file",
+      "carr_library.ui.assistant_dialog"
+    ],
+    "probe_modules": [
+      "carr_library.assistant.models",
+      "carr_library.assistant.service",
+      "carr_library.assistant.validation",
+      "carr_library.assistant.topic_tools",
+      "carr_library.assistant.templates",
+      "carr_library.assistant.snapshots",
+      "carr_library.research.topic_tree",
+      "carr_library.research.evidence_export",
+      "carr_library.research.export_file",
+      "carr_library.ui.assistant_dialog"
+    ],
+    "checks": {
+      "native_current_dialog_completes_five_topic_steps": 1,
+      "native_created_topics_use_deterministic_scoped_references": 1,
+      "native_topic_list_excludes_unselected_workspace": 1,
+      "native_new_child_export_uses_its_resolved_topic": 1,
+      "native_exact_evidence_export_preserves_original_bytes": 1,
+      "native_export_keeps_commentary_separate_and_origins_visible": 1,
+      "native_created_outputs_leave_no_staging_files": 1,
+      "native_run_preserves_original_catalog_and_evidence": 1,
+      "native_result_is_visible_after_owned_worker_finishes": 1,
+      "native_topic_preview_has_no_jobs_or_new_topics": 1,
+      "native_review_exposes_all_three_topic_tools": 1,
+      "native_explicit_run_available_only_after_preview": 1,
+      "native_topic_scope_and_actions_are_named": 1,
+      "native_topic_instruction_accepts_keyboard_focus": 1,
+      "native_unreviewed_topic_draft_cannot_run": 1,
+      "native_assistant_workers_settle_before_backup": 1,
+      "actual_named_topic_workflow_is_an_inert_draft": 1,
+      "actual_backup_restore_preserves_all_scoped_topics": 1,
+      "actual_backup_restore_preserves_exact_evidence": 1,
+      "actual_restored_topic_job_requires_new_approval": 1,
+      "actual_restored_job_does_not_replay_external_exports": 1,
+      "actual_restore_retains_inert_topic_template": 1,
+      "actual_rebound_topic_template_is_preview_only": 1
+    },
+    "fields": {
+      "status": "PASS",
+      "actual_windows": true,
+      "isolated": true,
+      "native_controls": true,
+      "nvda": "NOT_RUN",
+      "language_model_quality": "NOT_QUALIFIED",
+      "physical_audio": "NOT_RUN"
+    },
+    "exact_metrics": {
+      "metrics.completed_steps": 5,
+      "metrics.new_topics": 2,
+      "metrics.exported_files": 2,
+      "metrics.restored_scoped_topics": 3,
+      "metrics.retained_template_records": 1,
+      "metrics.restored_jobs_replayed": 0
+    }
+  },
+  "legacy-reader-session": {
+    "probe": "scripts/windows_legacy_reader_session_smoke.py",
+    "arguments": [
+      "--native"
+    ],
+    "subprocess_timeout_seconds": 210,
+    "modules": [
+      "carr_library.reader.legacy_reading",
+      "carr_library.reader.narration",
+      "carr_library.ui.reading_import",
+      "carr_library.library_backup",
+      "carr_library.reader.reading_desk",
+      "carr_library.audio.jobs"
+    ],
+    "probe_modules": [
+      "carr_library.reader.legacy_reading",
+      "carr_library.reader.narration",
+      "carr_library.ui.reading_import",
+      "carr_library.library_backup",
+      "carr_library.reader.reading_desk",
+      "carr_library.audio.jobs"
+    ],
+    "checks": {
+      "actual Windows historical reader controls": 1,
+      "exact original reader envelope retained in review": 1,
+      "old voice and audio position remain passive observations": 1,
+      "session review preserves complete undo and redo history": 1,
+      "review alone creates no retained project or reading settings": 1,
+      "native revision list preserves Unicode and redo": 1,
+      "native revision list selects exact earlier redo": 1,
+      "native selection returns exact retained revision": 1,
+      "native Cancel leaves original and current stores unchanged": 1,
+      "native accept returns explicitly reviewed Unicode title": 1,
+      "accepted session becomes a new current derivative bound to the full envelope": 1,
+      "complete backup restores exact original envelope and session observations": 1,
+      "restored reader history does not create active speech settings": 1,
+      "restored reader envelope supports exact full rebackup": 1,
+      "external original session bytes remain unchanged": 1,
+      "one owned native revision dialog": 1,
+      "enabled native revision decision button": 1,
+      "dispatched native revision decision event": 1,
+      "settled native revision dialog": 1,
+      "one owned native cancel dialog": 1,
+      "enabled native cancel decision button": 1,
+      "dispatched native cancel decision event": 1,
+      "settled native cancel dialog": 1,
+      "named native cancel review fields": 1,
+      "read-only native cancel historical session observations": 1,
+      "editable native cancel new copy title": 1,
+      "one owned native accept dialog": 1,
+      "enabled native accept decision button": 1,
+      "dispatched native accept decision event": 1,
+      "settled native accept dialog": 1,
+      "named native accept review fields": 1,
+      "read-only native accept historical session observations": 1,
+      "editable native accept new copy title": 1
+    },
+    "fields": {
+      "status": "PASS",
+      "installed_mode": true,
+      "isolated": true,
+      "native_controls": "EXECUTED",
+      "speech_settings_created": false,
+      "nvda": "NOT_RUN",
+      "physical_playback": "NOT_RUN",
+      "engine_execution": "NOT_RUN"
+    },
+    "exact_metrics": {
+      "historical_cursor": 5,
+      "historical_audio_seconds": 12.75,
+      "selected_revision": 2,
+      "saved_revision": 1
+    },
+    "digest_fields": [
+      "archive_sha256",
+      "restored_archive_sha256"
+    ],
+    "equal_fields": [
+      [
+        "archive_sha256",
+        "restored_archive_sha256"
+      ]
+    ]
   }
 }

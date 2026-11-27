@@ -130,7 +130,10 @@ def validate_sources(db, record):
         if result is None:
             continue
         tool = step['tool']
-        if tool == 'library.create':
+        if tool in ('topic.list', 'topic.create', 'topic.export'):
+            from .topic_tools import validate_sources as validate_topic_sources
+            validate_topic_sources(db, workspace, tool, result)
+        elif tool == 'library.create':
             if result.get('workspace') != workspace or workspace is None:
                 raise ValueError('Created-library result disagrees with its checkpoint.')
         elif tool == 'library.list':

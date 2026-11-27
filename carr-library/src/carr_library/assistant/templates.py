@@ -102,6 +102,9 @@ def checked_draft(value):
             raise ValueError('A workflow step needs only its allowed tool and arguments.')
         step = Step(row['tool'], row['arguments'])
         _check_arguments(step)
+        if step.tool in ('topic.list', 'topic.create', 'topic.export'):
+            from .topic_tools import validate_reference
+            validate_reference(step, steps, len(steps))
         used += len(canonical(step.to_dict()).encode('utf-8')) + int(bool(steps))
         if used > MAX_TEMPLATE_BYTES:
             raise ValueError('The workflow draft exceeds its 8 MiB record budget.')
@@ -189,7 +192,14 @@ def combine_instructions(values):
         raise ValueError('Choose one or more saved workflow templates.')
     steps = []
     for value in values:
-        steps.extend(value.draft['steps'])
+        offset = len(steps)
+        for row in value.draft['steps']:
+            if row['tool'] in ('topic.create', 'topic.export'):
+                key = 'parent' if row['tool'] == 'topic.create' else 'topic'
+                reference = row['arguments'].get(key)
+                if reference is not None and reference.startswith('@'):
+                    row['arguments'][key] = '@' + str(offset + int(reference[1:]))
+            steps.append(row)
         if len(steps) > MAX_TEMPLATE_STEPS:
             raise ValueError('The selected workflow batch exceeds 128 steps.')
     summary = '\n'.join(value.name for value in values)
