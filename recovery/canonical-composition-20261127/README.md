@@ -45,3 +45,7 @@ The real legacy Chicago author-date processor reached the256MiB allocator limit.
 The Windows/V3 workflow candidates now use the verified no-audio standard-installer bundle and its own manifest identity, bind the actual `carr_library.ui.command_registry`, and include the six restored regression suites with correct paths. PowerShell parsing and CPython3.11 replay remain pending until the dedicated validation job runs. Existing shared962 Windows jobs ended with real reader-fixture/DAISY/import/cleanup failures or timeouts, so those runs remain FAIL/CANCELLED.
 
 This checkpoint still changes only recovery records. The source archive is not an active application, release, installer, or a substitute for completing the in-progress composition. The preserved unfinished local c04 commit has not been published.
+
+## Checkpoint 6: exact archive transport repair
+
+Checkpoint 5 validation run 45980167359 failed before the citation tests and PowerShell parser. The archived Windows workflow had been captured from a truncated tool response; the active local application workflow remained valid. This checkpoint stores the complete 128,830-byte file, verifies Git blob `dd71a09369ec77e6d00181111c534fe25857c5aa`, and disables newline conversion inside this source archive. Fresh CI is required; no prior failure is relabelled as a pass. The active application integration is being verified separately.

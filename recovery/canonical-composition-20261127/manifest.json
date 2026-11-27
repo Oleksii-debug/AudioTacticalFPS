@@ -3,8 +3,8 @@
   "repository": "Oleksii-debug/AudioTacticalFPS",
   "canonical_commit": "966e5ccf892243ead6942c635af5fbab47e72551",
   "canonical_tree": "682b267cb237804c7a15e6ac0285b9b6861b847c",
-  "status": "DRAFT_RECOVERY_ONLY_NOT_AN_INTEGRATED_RELEASE",
-  "source_execution": "Partial isolated CI only: checkpoint2 candidate compilation passed; bounded citation composition has 271 passes, 1 failure and 7 setup errors. Newer candidates remain unexecuted. Local executor has recovered; exact composition and native qualification are pending.",
+  "status": "DRAFT_RECOVERY_ARCHIVE_NOT_RELEASE",
+  "source_execution": "Checkpoint5 validation failed before citation/runtime tests: malformed archived Windows workflow transport and Windows checkout newline conversion. Corrected exact source bytes and archive -text attributes; fresh CI is required. Local actual 279 citation tests passed on Python3.12.14/QuickJS-NG0.18.0.2. This archive is not the active integrated application.",
   "files": [
     {
       "path": ".github/workflows/carr-bibliography.yml",
@@ -47,16 +47,12 @@
       "base_ref": "96294e97498f2133bf93f02ce72f84b6e709c72b",
       "base_blob": "13ee8929dc4610c146c713063b750c1a1fce44a6",
       "owner": "root",
-      "status": "SOURCE_REVIEW_CORRECTED_POWERSHELL_PENDING",
-      "new_blob": "73b602b5365b4882b2d049f681be82ff968d493a",
+      "status": "SOURCE_BYTES_REVALIDATED_NATIVE_PARSER_PENDING",
+      "new_blob": "dd71a09369ec77e6d00181111c534fe25857c5aa",
       "readback": true,
       "saved_path": "recovery/canonical-composition-20261127/sources/.github/workflows/carr-windows.yml",
-      "supersedes_blob": "a2edd88641b251c5db8867fd7b268bb7bad6350c",
-      "remaining_findings": [
-        "Standard installer must use verified no-audio nativeBundle with its own manifest identity.",
-        "Installed command registry origin must be carr_library.ui.command_registry."
-      ],
-      "review_note": "Use the verified no-audio standard installer bundle and its own manifest hash; bind ui.command_registry; retain both source-selector sets and include the six newly restored regression suites."
+      "supersedes_blob": "73b602b5365b4882b2d049f681be82ff968d493a",
+      "review_note": "Correct full 128830-byte public-derived workflow copied in bounded chunks; computed Git blob matches exact local source. Checkpoint5 incorrectly captured truncated tool output for this archived file. Actual application worktree retained valid complete YAML."
     },
     {
       "path": "carr-library/docs/SUPPLIED_TRANSCRIPTION_ADAPTER.md",
@@ -1836,7 +1832,8 @@
     "Local executor recovered; preserved c04+966 merge index and all working sources were snapshotted before further work. Public candidates still require exact reconciliation with stronger local playback/effects/CAS.",
     "Five earlier base_commit fields are normalized into base_ref without changing their recorded base identity.",
     "The current Windows workflow candidate still has two explicit review findings (no-audio standard-installer input and command-registry import path). It must not be activated unchanged.",
-    "Checkpoint5 corrects only the bounded legacy citation memory profile and reviewed workflow source. Actual PowerShell parsing and CPython3.11 replay are pending a separate validation run. Archive objects are not a final platform build."
+    "Checkpoint5 corrects only the bounded legacy citation memory profile and reviewed workflow source. Actual PowerShell parsing and CPython3.11 replay are pending a separate validation run. Archive objects are not a final platform build.",
+    "Checkpoint6 repairs the archived Windows workflow transport using bounded chunks and verified Git blob dd71a09369ec77e6d00181111c534fe25857c5aa; adds recovery-local .gitattributes '* -text' so native source hash gates use unchanged committed bytes. Validation failures were retained and not relabelled."
   ],
   "root_notes": {
     "builder": {
@@ -1923,6 +1920,26 @@
       "seconds": 269.46,
       "native_windows": "NOT_RUN",
       "installed": "NOT_RUN"
+    },
+    {
+      "validation_commit": "eb76b813c6963116fbb91b08e4899dfb551e7b68",
+      "run_id": 45980167359,
+      "status": "FAIL",
+      "citation_job": {
+        "id": 140441753957,
+        "status": "FAIL_BEFORE_RUNTIME",
+        "cause": "Archived Windows workflow contained a truncated-tool-output string instead of full YAML."
+      },
+      "powershell_job": {
+        "id": 140441754392,
+        "status": "FAIL_BEFORE_PARSER",
+        "cause": "Exact archived byte identity was not retained through Windows checkout; archive now disables newline conversion."
+      },
+      "native_process_job": {
+        "id": 140441754298,
+        "status": "PENDING_AT_CHECKPOINT"
+      },
+      "release_claim": false
     }
   ],
   "deletions": [
@@ -1938,7 +1955,7 @@
     "shared": "8c981c7e947f8d144c8706b5ea022990517c7dd9",
     "note": "Latest public deltas are being reconciled in an isolated local composition; this archive still changes only recovery records and does not activate the application."
   },
-  "checkpoint": 5,
+  "checkpoint": 6,
   "public_composition_decisions": {
     "manifest_blob": "e4060c83eca99e44a58cd7b4ea682110a9aad29c",
     "shared_parent": "96294e97498f2133bf93f02ce72f84b6e709c72b",

@@ -17,7 +17,7 @@ import subprocess
 
 CANONICAL = "966e5ccf892243ead6942c635af5fbab47e72551"
 SHARED = "8e6d410019f90f54ea694a5ff69402bc52567d57"
-CHECKPOINT = "e286be421f143c76c4dbd3bb7d1c2d30721f6d21"
+CHECKPOINT = "f30136619c028a1a95dd6ca17b63e020f1b9d407"
 PREFIX = Path("recovery/canonical-composition-20261127")
 CITATION_PATHS = (
     "carr-library/src/carr_library/citations/csl.py",
