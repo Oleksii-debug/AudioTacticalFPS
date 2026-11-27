@@ -597,3 +597,51 @@ def test_default_player_does_not_capture_notification_reporter_as_media(tmp_path
         assert not hub.media_active
     finally:
         player.close()
+
+
+@pytest.mark.parametrize("when", ["opening", "closing"])
+def test_quarantined_native_handle_owns_media_until_its_actual_release(tmp_path, monkeypatch, when):
+    import gc
+    import carr_library.audio.playback as playback
+    from carr_library.progress import ProgressHub
+    api, retained, hub = SyntheticWinMM(), [], ProgressHub()
+    def position(handle, pointer, size):
+        value = ctypes.cast(pointer, ctypes.POINTER(_MMTIME)).contents
+        value.kind, value.time.value = 2, 0
+        return 0
+    monkeypatch.setattr(api, "waveOutGetPosition", position, raising=False)
+    monkeypatch.setattr(playback, "_api", lambda: api)
+    monkeypatch.setattr(playback, "_UNRELEASED_DEVICES", retained)
+    player = PCMPlayer(_backend_factory=playback._WinMMBackend, progress_hub=hub)
+    if when == "opening":
+        monkeypatch.setattr(api, "waveOutGetDevCapsW", lambda *_: 6)
+        api.reset_error = 6
+    try:
+        player.play(source(tmp_path / "quarantined-media.wav"))
+        if when == "closing":
+            wait(player, lambda status: status.state == "playing")
+            assert hub.media_active
+            api.reset_error = 6
+            with pytest.raises(PlaybackError, match="did not release"):
+                player.stop()
+        else:
+            wait(player, lambda status: status.state == "error")
+        player._thread.join(3)
+        assert not player._thread.is_alive()
+        assert len(retained) == 1 and retained[0].handle.value
+        if when == "closing":
+            assert retained[0].buffers  # The driver still owns queued memory.
+        assert hub.media_active
+        with pytest.raises(PlaybackError, match="did not release"):
+            player.close()
+        player = None
+        gc.collect()
+        assert hub.media_active
+    finally:
+        # Only this synthetic driver is repaired/released. Production retains
+        # its quarantined handle and suppression until application restart.
+        api.reset_error = 0
+        for backend in retained:
+            backend.close()
+    assert not hub.media_active
+    assert all(not backend.handle.value for backend in retained)

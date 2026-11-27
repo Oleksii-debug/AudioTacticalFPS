@@ -7,7 +7,7 @@ used. See docs/AUDIO_PLAYBACK.md for the reviewed native contracts and limits.
 from __future__ import annotations
 
 from collections import deque
-from contextlib import nullcontext
+from contextlib import ExitStack, nullcontext
 import ctypes as C
 from dataclasses import asdict, dataclass, replace
 import math
@@ -35,6 +35,9 @@ class PlaybackUnavailable(PlaybackError):
 
 class _PlaybackCleanupError(PlaybackError):
     """Opening failed after acquiring a device that could not be released."""
+    def __init__(self, message, *, backend):
+        super().__init__(message)
+        self.backend = backend
 
 
 @dataclass(frozen=True)
@@ -204,6 +207,7 @@ class _WinMMBackend:
     def __init__(self, info: WaveInfo, device_id=None):
         if _UNRELEASED_DEVICES:
             raise PlaybackUnavailable("A driver did not release an earlier audio buffer. Restart the application before playing again.")
+        self._media_activities = ExitStack()
         self.dll, self.handle, self.buffers = _api(), HANDLE(), []
         self.info = info
         self.counter = _PositionCounter(info.rate, info.channels * 2)
@@ -224,7 +228,7 @@ class _WinMMBackend:
             try:
                 self.close()
             except Exception as exc:
-                raise _PlaybackCleanupError(str(exc)) from exc
+                raise _PlaybackCleanupError(str(exc), backend=self) from exc
             raise
 
     def submit(self, data):
@@ -260,8 +264,16 @@ class _WinMMBackend:
         _check(self.dll, self.dll.waveOutGetPosition(self.handle, C.byref(position), C.sizeof(position)), "Read audio position")
         return self.counter.update(position.kind, position.time.value)
 
+    def retain_media_activity(self, activity):
+        """Keep this exact quarantined handle quiet, even after its caller dies."""
+        if self in _UNRELEASED_DEVICES and self.handle.value:
+            self._media_activities.callback(activity.__exit__, None, None, None)
+            return True
+        return False
+
     def close(self):
         if not self.handle.value:
+            self._media_activities.close()
             return
         try:
             self.reset()
@@ -273,6 +285,7 @@ class _WinMMBackend:
             if self not in _UNRELEASED_DEVICES:
                 _UNRELEASED_DEVICES.append(self)
             raise
+        self._media_activities.close()
 
 
 def _identity(info):
@@ -300,6 +313,7 @@ class PCMPlayer:
         self._wake, self._cancel = threading.Event(), threading.Event()
         self._thread, self._snapshot, self._closed = None, PlaybackStatus(), False
         self._cleanup_error = None
+        self._retained_backend = None
         self._range_end = 0
 
     def status(self) -> PlaybackStatus:
@@ -411,11 +425,17 @@ class PCMPlayer:
         # short-lived progress binding. Keep quiet while paused and through
         # cleanup; release even after source/device errors or observer failure.
         activity = self._progress_hub.media_activity() if self._progress_hub is not None else nullcontext()
-        with activity:
+        activity.__enter__()
+        try:
             self._run_device(path, expected_identity, info, start, end, device_id)
+        finally:
+            with self._lock:
+                retained = self._retained_backend
+            if retained is None or not retained.retain_media_activity(activity):
+                activity.__exit__(None, None, None)
 
     def _run_device(self, path, expected_identity, info, start, end, device_id):
-        backend, pending = None, deque()
+        backend, retained, pending = None, None, deque()
         state, failure, cleanup_error = "stopped", None, None
         base, cursor, completed = start, start, 0
         paused, native_paused = False, True
@@ -480,7 +500,7 @@ class PCMPlayer:
             state = "unavailable" if isinstance(exc, PlaybackUnavailable) else "error"
             failure = str(exc)
             if isinstance(exc, _PlaybackCleanupError):
-                cleanup_error = failure
+                cleanup_error, retained = failure, exc.backend
         finally:
             if backend is not None:
                 try:
@@ -488,8 +508,11 @@ class PCMPlayer:
                 except Exception as exc:
                     state, failure = "error", str(exc)
                     cleanup_error = failure
+                    if isinstance(backend, _WinMMBackend) and backend in _UNRELEASED_DEVICES:
+                        retained = backend
             with self._lock:
                 self._cleanup_error = cleanup_error
+                self._retained_backend = retained
             self._update(state=state, buffered_bytes=0, error=failure,
                          **({"position_frames": 0} if state == "stopped" else {}))
 
