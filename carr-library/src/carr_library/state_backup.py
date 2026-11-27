@@ -98,6 +98,35 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
             entries.append({'filename': relative.as_posix(), 'size_bytes': count, 'sha256': digest.hexdigest()})
     if inventory() != before_inventory:
         raise ValueError('Application state changed during backup; retry after saving.')
+    # A Windows creation timestamp is not a write counter, and last-write
+    # timestamps may be coarse or restored. Check copied content again before
+    # accepting the complete snapshot, without buffering whole state files.
+    for entry in entries:
+        if cancelled():
+            raise InterruptedError('Backup cancelled.')
+        relative = Path(entry['filename'])
+        source = local_path(root / relative, root=root, exists=True)
+        expected = before_inventory[relative]
+        digest, count = sha256(), 0
+        if _stamp(regular(source)) != expected:
+            raise ValueError('Application state changed during backup; retry after saving.')
+        with source.open('rb') as stream:
+            if _stamp(os.fstat(stream.fileno())) != expected:
+                raise ValueError('Application state changed during backup; retry after saving.')
+            while block := stream.read(1024 * 1024):
+                if cancelled():
+                    raise InterruptedError('Backup cancelled.')
+                count += len(block)
+                if count > entry['size_bytes']:
+                    raise ValueError('Application state changed during backup; retry after saving.')
+                digest.update(block)
+            if _stamp(os.fstat(stream.fileno())) != expected:
+                raise ValueError('Application state changed during backup; retry after saving.')
+        if (count != entry['size_bytes'] or digest.hexdigest() != entry['sha256']
+                or _stamp(regular(source)) != expected):
+            raise ValueError('Application state changed during backup; retry after saving.')
+    if inventory() != before_inventory:
+        raise ValueError('Application state changed during backup; retry after saving.')
     return sorted(entries, key=lambda entry: entry['filename'])
 
 

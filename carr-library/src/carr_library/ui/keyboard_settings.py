@@ -1,361 +1,597 @@
-"""Native menu shortcut preferences, with stable action paths and safe conflicts.
+"""Native keyboard settings and searchable commands for the existing desktop.
 
-These are application accelerators, never OS-wide hotkeys. The installer runs
-after the frame's menu installers. Call ``frame.keyboard_settings.reload()``
-after changing the data root. Native Windows/NVDA behavior requires human QA.
+Only application-local commands are installed. Menu events keep their original
+handlers, authorization checks and dirty-note protection. The persisted file
+contains stable IDs and shortcut text, never Python callbacks or wx IDs.
 """
 from dataclasses import dataclass
-from hashlib import sha256
 import json
-import os
 from pathlib import Path
-import re
+import weakref
 
-from ..durable_state import atomic_json, local_path, regular, state_lock
-
-MAX_COMMANDS = 512
-MAX_SETTINGS_BYTES = 128 * 1024
-_MODIFIERS = {'ctrl': 'Ctrl', 'control': 'Ctrl', 'alt': 'Alt', 'shift': 'Shift'}
-_ORDER = ('Ctrl', 'Alt', 'Shift')
-_EDITING = {'Ctrl+A', 'Ctrl+C', 'Ctrl+V', 'Ctrl+X', 'Ctrl+Z', 'Ctrl+Y',
-            'Ctrl+Shift+A', 'Ctrl+Shift+C', 'Ctrl+Shift+V', 'Ctrl+Shift+X', 'Ctrl+Shift+Z',
-            'Ctrl+F', 'Ctrl+H', 'Ctrl+W'}
-_RESERVED = _EDITING | {'F6', 'F10', 'Shift+F10', 'Alt+F4', 'Ctrl+Alt+N'}
+from ..keyboard_preferences import KeymapStore
+from ..research.export_file import write_export
+from .builtin_keyboard_commands import MAIN_COMMANDS, builtin_commands, plain_caption
+from .command_registry import CommandRegistry, normalize_shortcut
 
 
-def normalize_shortcut(value, *, original=False):
-    """Return a portable accelerator string; empty explicitly disables a key."""
-    if not isinstance(value, str) or len(value) > 80 or any(ord(c) < 32 for c in value):
-        raise ValueError('Enter one shortcut such as Ctrl+Shift+K or F9.')
-    value = value.strip()
-    if not value:
-        return ''
-    parts = [part.strip() for part in value.split('+')]
-    if any(part.casefold().replace(' ', '') in ('insert', 'ins', 'capslock', 'caps', 'nvda') for part in parts):
-        raise ValueError('Insert and Caps Lock belong to screen-reader commands and cannot be assigned.')
-    modifiers = []
-    for part in parts[:-1]:
-        modifier = _MODIFIERS.get(part.casefold())
-        if modifier is None or modifier in modifiers:
-            raise ValueError('Use Ctrl, Alt and Shift once each, followed by one letter, number or function key.')
-        modifiers.append(modifier)
-    key = parts[-1].upper()
-    if not re.fullmatch(r'[A-Z0-9]|F(?:[1-9]|1[0-9]|2[0-4])', key):
-        raise ValueError('Navigation and editing keys stay available to controls. Choose a letter, number or F1–F24.')
-    if len(key) == 1 and ('Ctrl' not in modifiers or modifiers == ['Shift']):
-        raise ValueError('Letters and numbers require Ctrl. Plain typing and Alt menu access stay available.')
-    if 'Alt' in modifiers and 'Ctrl' not in modifiers and len(key) == 1:
-        raise ValueError('Alt with a letter is reserved for menu access.')
-    result = '+'.join([*(modifier for modifier in _ORDER if modifier in modifiers), key])
-    if result in _RESERVED and not original:
-        raise ValueError('This shortcut is reserved for text editing, navigation, Windows or the screen reader.')
-    return result
+CONTEXT_NAMES = {'main': 'Main window', 'reader': 'Reading Desk'}
 
 
-def _label(value):
-    """Remove access-key markers without confusing an escaped literal ampersand."""
-    text = value.split('\t', 1)[0].replace('&&', '\x00').replace('&', '').replace('\x00', '&').strip()
-    return text
-
-
-def _part(value):
-    return _label(value).removesuffix('...').removesuffix('…').strip().casefold()
-
-
-@dataclass(frozen=True)
-class MenuCommand:
-    action: str
-    title: str
-    menu_id: int
-    default: str
-    original_label: str
+@dataclass
+class _MenuBinding:
     item: object
+    caption: str
+    top_index: int
 
 
-def capture_commands(menu_bar):
-    """Capture final menu paths once, before preference labels are applied."""
-    commands, known = [], set()
-    def visit(menu, parents, display):
-        for item in menu.GetMenuItems():
-            if item.IsSeparator():
-                continue
-            label = item.GetItemLabel()
-            part = _part(label)
-            if not part or '/' in part:
-                raise ValueError('A menu command needs a stable, unambiguous action path.')
-            path, title = (*parents, part), (*display, _label(label))
-            submenu = item.GetSubMenu()
-            if submenu is not None:
-                visit(submenu, path, title)
-                continue
-            identity = '/'.join(path)
-            if identity in known or len(commands) >= MAX_COMMANDS:
-                raise ValueError('Duplicate or excessive menu command paths.')
-            known.add(identity)
-            key = label.partition('\t')[2]
-            commands.append(MenuCommand(identity, ' / '.join(title), item.GetId(),
-                                         normalize_shortcut(key, original=True), label, item))
-    for index in range(menu_bar.GetMenuCount()):
-        label = menu_bar.GetMenuLabel(index)
-        visit(menu_bar.GetMenu(index), (_part(label),), (_label(label),))
-    if len({command.menu_id for command in commands}) != len(commands):
-        raise ValueError('Menu command IDs must identify separate actions.')
-    return tuple(commands)
-
-
-def effective_shortcuts(commands, overrides):
-    if not isinstance(overrides, dict) or len(overrides) > MAX_COMMANDS:
-        raise ValueError('Invalid keyboard shortcut settings.')
-    indexed = {command.action: command for command in commands}
-    if set(overrides) - set(indexed):
-        raise ValueError('A saved shortcut command is unavailable in this version. Reset the shortcuts to use the current menus.')
-    result, used = {}, {}
-    for command in commands:
-        raw = overrides.get(command.action, command.default)
-        key = normalize_shortcut(raw, original=True)
-        if key and key in _RESERVED and key != command.default:
-            normalize_shortcut(key)  # gives the accessible conflict explanation
-        if key and key in used:
-            raise ValueError(f'{key} is already assigned to both {used[key]} and {command.title}. Clear or change one assignment first.')
-        if key:
-            used[key] = command.title
-        result[command.action] = key
-    return result
-
-
-def _path(root):
-    root = local_path(root, exists=True)
-    regular(root, directory=True)
-    return local_path(root / 'state' / 'ui' / 'shortcuts.json')
-
-
-def _bytes(path):
-    if not os.path.lexists(path):
-        return None
-    path = local_path(path, exists=True)
-    before = regular(path)
-    if not 0 < before.st_size <= MAX_SETTINGS_BYTES:
-        raise ValueError('Keyboard shortcut settings exceed the supported size.')
-    with path.open('rb') as stream:
-        opened = os.fstat(stream.fileno())
-        raw = stream.read(MAX_SETTINGS_BYTES + 1)
-    after = regular(path)
-    fields = ('st_dev', 'st_ino', 'st_size', 'st_mtime_ns', 'st_ctime_ns')
-    if (len(raw) != before.st_size or any(getattr(before, key) != getattr(opened, key) or
-                                         getattr(before, key) != getattr(after, key) for key in fields)):
-        raise ValueError('Keyboard shortcut settings changed during read. Reopen this dialog.')
-    return raw
-
-
-def _token(raw):
-    return sha256(raw).hexdigest() if raw is not None else None
-
-
-def _unique(pairs):
-    value = {}
-    for key, item in pairs:
-        if key in value:
-            raise ValueError('Duplicate keyboard shortcut setting.')
-        value[key] = item
-    return value
-
-
-def _decode(raw, commands):
-    if raw is None:
-        return {}
-    try:
-        value = json.loads(raw, object_pairs_hook=_unique,
-                           parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Non-finite settings.')))
-    except (UnicodeError, RecursionError) as exc:
-        raise ValueError('Keyboard shortcut settings could not be read.') from exc
-    if (not isinstance(value, dict) or set(value) != {'schema', 'overrides', 'originals'}
-            or type(value['schema']) is not int or value['schema'] != 1
-            or not isinstance(value['overrides'], dict) or not isinstance(value['originals'], dict)
-            or set(value['originals']) != set(value['overrides'])):
-        raise ValueError('Invalid keyboard shortcut settings schema.')
-    effective_shortcuts(commands, value['overrides'])
-    defaults = {command.action: command.default for command in commands}
-    if any(value['originals'][key] != defaults[key] for key in value['overrides']):
-        raise ValueError('An original menu shortcut changed in this version. Reset shortcuts before editing them.')
-    return dict(value['overrides'])
-
-
-def load_shortcuts(root, commands):
-    """Return overrides and a compare-before-write token; never retarget actions."""
-    raw = _bytes(_path(root))
-    return _decode(raw, commands), _token(raw)
-
-
-def save_shortcuts(root, commands, overrides, *, expected_token):
-    keys = effective_shortcuts(commands, overrides)
-    kept = {command.action: keys[command.action] for command in commands if keys[command.action] != command.default}
-    originals = {command.action: command.default for command in commands if command.action in kept}
-    value = {'schema': 1, 'overrides': kept, 'originals': originals}
-    raw = (json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(',', ':')) + '\n').encode('utf-8')
-    if len(raw) > MAX_SETTINGS_BYTES:
-        raise ValueError('Keyboard shortcut settings exceed the supported size.')
-    path = _path(root)
-    with state_lock(path.parent, 'shortcuts'):
-        if _token(_bytes(path)) != expected_token:
-            raise ValueError('Another window changed the shortcuts. Reopen this dialog before applying changes.')
-        atomic_json(path, value, replace=path.exists())
-    return kept, _token(raw)
-
-
-def accelerator_entries(commands, keys, wx):
-    flags = {'Ctrl': wx.ACCEL_CTRL, 'Alt': wx.ACCEL_ALT, 'Shift': wx.ACCEL_SHIFT}
-    result = []
-    for command in commands:
-        value = keys[command.action]
-        if not value:
+def _menu_items(menu):
+    for item in menu.GetMenuItems():
+        if item.IsSeparator():
             continue
-        *modifiers, key = value.split('+')
-        mask = 0
-        for modifier in modifiers:
-            mask |= flags[modifier]
-        code = getattr(wx, 'WXK_' + key) if key.startswith('F') and len(key) > 1 else ord(key)
-        result.append((mask, code, command.menu_id))
-    return result
+        submenu = item.GetSubMenu()
+        if submenu is not None:
+            yield from _menu_items(submenu)
+        else:
+            yield item
 
 
-class KeyboardSettings:
-    def __init__(self, frame, *, wx_module=None):
-        if wx_module is None:
-            import wx as wx_module
-        self.frame, self.wx = frame, wx_module
-        self.commands = capture_commands(frame.menu_bar)
-        self.overrides, self.token, self.root = {}, None, None
-        self.reload()
+def accelerator_tuple(shortcut, identifier):
+    """Convert validated portable shortcut text through wx's own parser."""
+    import wx
+    entry = wx.AcceleratorEntry()
+    if not entry.FromString(shortcut):
+        raise ValueError('This keyboard combination is unavailable: ' + shortcut)
+    return entry.GetFlags(), entry.GetKeyCode(), int(identifier)
 
-    def _render(self, overrides):
-        keys = effective_shortcuts(self.commands, overrides)
-        table = self.wx.AcceleratorTable(accelerator_entries(self.commands, keys, self.wx))
-        for command in self.commands:
-            label = command.original_label.split('\t', 1)[0]
-            command.item.SetItemLabel(label + ('\t' + keys[command.action] if keys[command.action] else ''))
-        self.frame.SetAcceleratorTable(table)
 
-    def reload(self):
-        self.root = local_path(self.frame.library.root, exists=True)
-        raw = None
+class KeyboardManager:
+    def __init__(self, frame=None, *, store=None, registry=None):
+        self.frame = frame
+        self.registry = registry or CommandRegistry(builtin_commands())
+        self.store = store
+        self.overrides = {}
+        self.load_notice = ''
+        self.bindings = {}
+        self._adapters = weakref.WeakSet()
+        self._unmanaged = {}
+        self._pending_saved = None
+        self._load()
+
+    def _load(self):
+        self.overrides = {}
+        self.load_notice = ''
+        self._pending_saved = None
+        if self.store is not None:
+            try:
+                loaded = self.store.load()
+                self._pending_saved = loaded
+                self.overrides = self.registry.validate(loaded)
+                self._pending_saved = None
+            except (ValueError, OSError) as exc:
+                self.load_notice = ('Keyboard settings could not be loaded. Default shortcuts are active. '
+                                    'The existing file was kept. Open Options, Keyboard shortcuts to repair it. '
+                                    + str(exc))
+
+    def change_root(self, root):
+        self.store = KeymapStore(Path(root) / 'keyboard-shortcuts.json')
+        self._load()
+        self.activate_loaded()
+        if self.load_notice and self.frame is not None:
+            import wx
+            wx.CallAfter(lambda: self.frame.report(self.load_notice)
+                         if self.load_notice and not getattr(self.frame, '_closing', False) else None)
+
+    def register_menu_command(self, spec, item, *, fallback_unassigned=False):
+        """Register an explicit stable ID for a newly installed native module."""
+        if spec.context != 'main':
+            raise ValueError('A main-window menu command must use the main context.')
+        top_index = self._top_index(item)
+        known = {command.command_id: command for command in self.registry.commands()}
+        proposed = CommandRegistry(self.registry.commands())
+        if spec.command_id not in known:
+            proposed.register(spec)
+        elif known[spec.command_id] != spec:
+            raise ValueError('The command is already registered with different metadata.')
+        old_registry, old_bindings, old_unmanaged = self.registry, self.bindings, self._unmanaged
+        old_overrides = self.overrides
+        old_notice = self.load_notice
+        old_label = item.GetItemLabel()
+        self.registry, self.bindings = proposed, dict(self.bindings)
+        self.bindings[spec.command_id] = _MenuBinding(item, item.GetItemLabel().split('\t', 1)[0], top_index)
         try:
-            raw = _bytes(_path(self.root))
-            overrides = _decode(raw, self.commands)
-            self._render(overrides)
-            self.overrides, self.token = overrides, _token(raw)
-            return True
-        except (ValueError, OSError) as exc:
-            self._render({})
-            self.overrides, self.token = {}, _token(raw)
-            self.frame.report(f'Original keyboard shortcuts are active. Saved settings could not be applied: {exc}')
+            self._discover()
+            if self._pending_saved is not None:
+                try:
+                    recovered = self.validate(self._pending_saved)
+                except ValueError:
+                    pass  # Other modules may still be registering their IDs.
+                else:
+                    self.overrides = recovered
+            try:
+                self.validate(self.overrides)
+            except ValueError:
+                if not fallback_unassigned or spec.command_id in known:
+                    raise
+                fallback = dict(self.overrides)
+                fallback[spec.command_id] = ''
+                self.validate(fallback)
+                self.overrides = fallback
+                self.load_notice = (f'The new command "{spec.label}" has no shortcut because its default '
+                                    'conflicts with an existing command. Your saved keymap was kept. '
+                                    'Use Keyboard shortcuts to choose an assignment.')
+            self._render()
+        except Exception:
+            self.registry, self.bindings, self._unmanaged = old_registry, old_bindings, old_unmanaged
+            self.overrides = old_overrides
+            self.load_notice = old_notice
+            item.SetItemLabel(old_label)
+            self._render()
+            raise
+        if self._pending_saved is not None and self.overrides == self._pending_saved:
+            self._pending_saved = None
+            self.load_notice = ''
+
+    def _top_index(self, wanted):
+        menu_bar = self.frame.GetMenuBar()
+        for index in range(menu_bar.GetMenuCount()):
+            if any(item.GetId() == wanted.GetId() for item in _menu_items(menu_bar.GetMenu(index))):
+                return index
+        raise ValueError('The command is not attached to the current menu bar.')
+
+    def _discover(self):
+        if self.frame is None:
+            return
+        bar = self.frame.GetMenuBar()
+        known = {(plain_caption(menu), plain_caption(label)): identity
+                 for identity, menu, label, _ in MAIN_COMMANDS}
+        current = {}
+        present = {}
+        for index in range(bar.GetMenuCount()):
+            menu_caption = plain_caption(bar.GetMenuLabel(index))
+            for item in _menu_items(bar.GetMenu(index)):
+                present[item.GetId()] = index
+                label = item.GetItemLabel()
+                identity = known.get((menu_caption, plain_caption(label)))
+                if identity:
+                    previous = current.get(identity)
+                    if previous is not None and previous.item.GetId() != item.GetId():
+                        raise ValueError('Duplicate native command: ' + label.split('\t', 1)[0])
+                    current[identity] = _MenuBinding(item, label.split('\t', 1)[0], index)
+        # Explicit registrations survive discovery; removed menu objects do not.
+        for identity, binding in self.bindings.items():
+            if binding.item.GetId() in present and identity not in current:
+                current[identity] = _MenuBinding(binding.item, binding.caption, present[binding.item.GetId()])
+        self.bindings = current
+        managed = {binding.item.GetId() for binding in current.values()}
+        self._unmanaged = {}
+        for index in range(bar.GetMenuCount()):
+            for item in _menu_items(bar.GetMenu(index)):
+                label = item.GetItemLabel()
+                if item.GetId() in managed or '\t' not in label:
+                    continue
+                try:
+                    shortcut = normalize_shortcut(label.split('\t', 1)[1])
+                except ValueError:
+                    # OS-owned Exit/Alt+F4 stays with the native window manager.
+                    continue
+                if shortcut:
+                    self._unmanaged[shortcut] = label.split('\t', 1)[0].replace('&', '')
+
+    def validate(self, overrides):
+        normalized = self.registry.validate(overrides)
+        effective = self.registry.effective(normalized)
+        for command in self.registry.commands('main'):
+            shortcut = effective[command.command_id]
+            if shortcut and shortcut in self._unmanaged:
+                raise ValueError(f'{shortcut} is used by {self._unmanaged[shortcut]}. '
+                                 'Choose a different shortcut.')
+        return normalized
+
+    def refresh(self):
+        self._discover()
+        self.validate(self.overrides)
+        self._render()
+
+    def _render(self):
+        effective = self.registry.effective(self.overrides)
+        for identity, binding in self.bindings.items():
+            shortcut = effective[identity]
+            # Updating the native label removes the old implicit accelerator too.
+            binding.item.SetItemLabel(binding.caption + ('\t' + shortcut if shortcut else ''))
+        for adapter in tuple(self._adapters):
+            adapter.refresh()
+
+    def activate_loaded(self):
+        """An incompatible saved map must not prevent opening the application."""
+        try:
+            self.refresh()
+        except ValueError as exc:
+            self.overrides = {}
+            defaults = self.registry.effective({})
+            for command in self.registry.commands('main'):
+                if defaults[command.command_id] in self._unmanaged:
+                    self.overrides[command.command_id] = ''
+            self.refresh()
+            self.load_notice = ('Some keyboard settings conflict with newly installed commands. '
+                                'Safe defaults are active; conflicting defaults are unassigned. '
+                                'The saved file was kept. Review Options, Keyboard shortcuts. ' + str(exc))
+
+    def apply_overrides(self, overrides):
+        normalized = self.validate(overrides)
+        # Validate native key conversion before writing or changing any window.
+        for shortcut in self.registry.effective(normalized).values():
+            if shortcut:
+                accelerator_tuple(shortcut, 1)
+        previous = dict(self.overrides)
+        self.overrides = normalized
+        try:
+            self.refresh()
+            if self.store is not None:
+                self.store.save(normalized, self.registry)
+        except Exception:
+            self.overrides = previous
+            self._render()
+            raise
+        self.load_notice = ''
+        self._pending_saved = None
+        return dict(self.overrides)
+
+    def shortcut(self, command_id):
+        return self.registry.shortcut(command_id, self.overrides)
+
+    def available(self, command_id):
+        binding = self.bindings.get(command_id)
+        if binding is None or self.frame is None or getattr(self.frame, '_closing', False):
+            return False
+        try:
+            return (self.frame.IsEnabled() and binding.item.IsEnabled()
+                    and self.frame.GetMenuBar().IsEnabledTop(binding.top_index))
+        except RuntimeError:
             return False
 
-    def apply(self, overrides):
-        if local_path(self.frame.library.root, exists=True) != self.root:
-            raise ValueError('The library folder changed. Reopen keyboard shortcuts.')
-        effective_shortcuts(self.commands, overrides)
-        previous = dict(self.overrides)
-        try:
-            self._render(overrides)
-            kept, token = save_shortcuts(self.root, self.commands, overrides, expected_token=self.token)
-        except BaseException:
-            self._render(previous)
-            raise
-        self.overrides, self.token = kept, token
+    def invoke(self, command_id):
+        if not self.available(command_id):
+            return False
+        import wx
+        event = wx.CommandEvent(wx.EVT_MENU.typeId, self.bindings[command_id].item.GetId())
+        event.SetEventObject(self.frame)
+        return bool(self.frame.GetEventHandler().ProcessEvent(event))
 
-    def show(self, event=None):
-        wx = self.wx
-        if local_path(self.frame.library.root, exists=True) != self.root:
-            self.reload()
-        dialog = wx.Dialog(self.frame, title='Keyboard shortcuts', size=(780, 540),
-                           style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+    def help_text(self):
+        lines = [
+            'Alt opens the native menus. Alt+O opens Options. Tab and Shift+Tab move between controls.',
+            'Use Options, Find a command to search commands by name and run the selected action.',
+            'Options, Keyboard shortcuts edits separate Main window and Reading Desk bindings.',
+            'These shortcuts work inside this application. Your usual text-editing and screen-reader keys remain available.',
+            '', 'Current Main window shortcuts:',
+        ]
+        for command in self.registry.commands('main'):
+            if command.command_id in self.bindings:
+                lines.append(f'{self.shortcut(command.command_id) or "Not assigned"}: {command.label}')
+        lines.extend(('',
+            'Within the Reading Desk, open Reader keyboard guide for its current contextual bindings.',
+            'Choose a library or research topic before running scoped actions. The original handlers still check access and selections.',
+            'Library, Import Center manages files, folders and resumable import queues.',
+            'Academic library manages references, reading progress, tags and notes. Bibliography exports references.',
+            'Research Search Center searches only the libraries you explicitly select.',
+            'Original source text stays read-only. Put your commentary in Evidence and Notes.',
+            'Reading or bookmarks do not approve quotations. Unknown printed pagination remains unknown.'))
+        return '\n'.join(lines)
+
+
+class KeyboardSettingsDialog:
+    """Edit a local draft; only Save applies and persists the entire valid map."""
+    def __init__(self, parent, manager, *, context='main'):
+        import wx
+        self.wx, self.manager = wx, manager
+        self.original_store = manager.store
+        self.draft = dict(manager.overrides)
+        self.dialog = wx.Dialog(parent, title='Keyboard shortcuts', size=(760, 670))
+        layout = wx.BoxSizer(wx.VERTICAL)
+        explanation = wx.StaticText(self.dialog, label=(
+            'Choose a context and command. Type a combination such as Ctrl+Shift+J; leave it empty to remove it. '
+            'Changes take effect only when you choose Save.'))
+        explanation.Wrap(710)
+        layout.Add(explanation, 0, wx.ALL | wx.EXPAND, 8)
+        self.contexts = list(dict.fromkeys(command.context for command in manager.registry.commands()))
+        layout.Add(wx.StaticText(self.dialog, label='Command context'), 0, wx.LEFT | wx.TOP, 8)
+        self.context = wx.Choice(self.dialog, choices=[CONTEXT_NAMES.get(value, value) for value in self.contexts])
+        self.context.SetName('Command context')
+        self.context.SetSelection(self.contexts.index(context) if context in self.contexts else 0)
+        layout.Add(self.context, 0, wx.ALL | wx.EXPAND, 8)
+        layout.Add(wx.StaticText(self.dialog, label='Filter commands'), 0, wx.LEFT, 8)
+        self.search = wx.TextCtrl(self.dialog)
+        self.search.SetName('Filter keyboard commands')
+        layout.Add(self.search, 0, wx.ALL | wx.EXPAND, 8)
+        self.commands = wx.ListBox(self.dialog)
+        self.commands.SetName('Commands and their current shortcuts')
+        layout.Add(self.commands, 1, wx.ALL | wx.EXPAND, 8)
+        layout.Add(wx.StaticText(self.dialog, label='Shortcut for selected command'), 0, wx.LEFT, 8)
+        self.shortcut = wx.TextCtrl(self.dialog)
+        self.shortcut.SetName('Shortcut for selected command; leave empty to unassign')
+        layout.Add(self.shortcut, 0, wx.ALL | wx.EXPAND, 8)
+        actions = wx.WrapSizer(wx.HORIZONTAL)
+        for label, handler in (
+                ('&Assign shortcut', self.assign), ('Reset &selected', self.reset_selected),
+                ('Reset &all defaults', self.reset_all), ('&Import keymap...', self.import_map),
+                ('&Export keymap...', self.export_map)):
+            button = wx.Button(self.dialog, label=label)
+            button.Bind(wx.EVT_BUTTON, handler)
+            actions.Add(button, 0, wx.ALL, 4)
+        layout.Add(actions, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 4)
+        self.status = wx.TextCtrl(self.dialog, style=wx.TE_READONLY | wx.TE_MULTILINE)
+        self.status.SetName('Keyboard settings status')
+        self.status.SetMinSize((-1, 75))
+        layout.Add(self.status, 0, wx.ALL | wx.EXPAND, 8)
+        footer = wx.BoxSizer(wx.HORIZONTAL)
+        save = wx.Button(self.dialog, wx.ID_OK, '&Save')
+        save.Bind(wx.EVT_BUTTON, self.save)
+        footer.Add(save, 0, wx.ALL, 4)
+        footer.Add(wx.Button(self.dialog, wx.ID_CANCEL, 'Cancel'), 0, wx.ALL, 4)
+        layout.Add(footer, 0, wx.ALIGN_RIGHT | wx.ALL, 4)
+        self.dialog.SetSizer(layout)
+        self.dialog.SetEscapeId(wx.ID_CANCEL)
+        self.context.Bind(wx.EVT_CHOICE, self.rebuild)
+        self.search.Bind(wx.EVT_TEXT, self.rebuild)
+        self.commands.Bind(wx.EVT_LISTBOX, self.selected)
+        self.rows = []
+        self.rebuild()
+        if manager.load_notice:
+            self.status.ChangeValue(manager.load_notice)
+        self.search.SetFocus()
+
+    def _message(self, message):
+        self.status.ChangeValue(message)
+        self.status.SetFocus()
+
+    def rebuild(self, event=None, *, selected=None):
+        if selected is None and self.rows and self.commands.GetSelection() >= 0:
+            selected = self.rows[self.commands.GetSelection()].command_id
+        context = self.contexts[self.context.GetSelection()]
+        needle = self.search.GetValue().strip().casefold()
+        self.rows = [command for command in self.manager.registry.commands(context)
+                     if needle in command.label.casefold()
+                     or needle in self.manager.registry.shortcut(command.command_id, self.draft).casefold()]
+        self.commands.Set([f'{command.label} — '
+                           f'{self.manager.registry.shortcut(command.command_id, self.draft) or "Not assigned"}'
+                           for command in self.rows])
+        if self.rows:
+            index = next((i for i, row in enumerate(self.rows) if row.command_id == selected), 0)
+            self.commands.SetSelection(index)
+        self.selected()
+
+    def _selected(self):
+        index = self.commands.GetSelection()
+        if not 0 <= index < len(self.rows):
+            raise ValueError('Choose a command first.')
+        return self.rows[index]
+
+    def selected(self, event=None):
         try:
-            layout = wx.BoxSizer(wx.VERTICAL)
-            layout.Add(wx.StaticText(dialog, label='Choose a command and type a shortcut, for example Ctrl+Shift+K or F9.\n'
-                'An empty shortcut removes the assignment. Apply saves the selected shortcut.'), 0, wx.EXPAND | wx.ALL, 8)
-            layout.Add(wx.StaticText(dialog, label='&Command'), 0, wx.LEFT | wx.TOP, 8)
-            choice = wx.Choice(dialog, choices=[command.title for command in self.commands])
-            choice.SetName('Command to change')
-            choice.SetSelection(0)
-            layout.Add(choice, 0, wx.EXPAND | wx.ALL, 8)
-            current = wx.TextCtrl(dialog, style=wx.TE_READONLY)
-            current.SetName('Current and original shortcut')
-            layout.Add(current, 0, wx.EXPAND | wx.ALL, 8)
-            layout.Add(wx.StaticText(dialog, label='&Keyboard shortcut'), 0, wx.LEFT | wx.TOP, 8)
-            key = wx.TextCtrl(dialog)
-            key.SetName('Keyboard shortcut; empty means unassigned')
-            layout.Add(key, 0, wx.EXPAND | wx.ALL, 8)
-            status = wx.TextCtrl(dialog, style=wx.TE_READONLY | wx.TE_MULTILINE)
-            status.SetName('Shortcut settings status')
-            layout.Add(status, 1, wx.EXPAND | wx.ALL, 8)
-            buttons = wx.BoxSizer(wx.HORIZONTAL)
-            apply = wx.Button(dialog, wx.ID_APPLY, '&Apply')
-            reset = wx.Button(dialog, label='&Reset all shortcuts to original keys')
-            close = wx.Button(dialog, wx.ID_CANCEL, '&Cancel')
-            for button in (apply, reset, close):
-                buttons.Add(button, 0, wx.ALL, 6)
-            layout.Add(buttons, 0, wx.ALIGN_RIGHT)
-            dialog.SetSizer(layout)
-            dialog.SetEscapeId(wx.ID_CANCEL)
-            def selected():
-                index = choice.GetSelection()
-                if not 0 <= index < len(self.commands):
-                    raise ValueError('Choose a menu command first.')
-                return self.commands[index]
-            def refresh(event=None):
-                command = selected()
-                value = effective_shortcuts(self.commands, self.overrides)[command.action]
-                current.ChangeValue(f'Current: {value or "Unassigned"}. Original: {command.default or "Unassigned"}.')
-                key.ChangeValue(value)
-            def change(event=None):
-                try:
-                    command = selected()
-                    updated = dict(self.overrides)
-                    updated[command.action] = key.GetValue()
-                    self.apply(updated)
-                    refresh()
-                    status.ChangeValue(f'Applied shortcut for {command.title}.')
-                except (ValueError, OSError, RuntimeError) as exc:
-                    status.ChangeValue(f'Shortcut was not applied: {exc}')
-                    status.SetFocus()
-                    return
-                key.SetFocus()
-                key.SelectAll()
-            def reset_all(event=None):
-                try:
-                    self.apply({})
-                    refresh()
-                    status.ChangeValue('All original menu shortcuts restored and saved.')
-                except (ValueError, OSError, RuntimeError) as exc:
-                    status.ChangeValue(f'Original shortcuts could not be saved: {exc}')
-                status.SetFocus()
-            choice.Bind(wx.EVT_CHOICE, refresh)
-            apply.Bind(wx.EVT_BUTTON, change)
-            reset.Bind(wx.EVT_BUTTON, reset_all)
-            refresh()
-            choice.SetFocus()
-            dialog.ShowModal()
+            command = self._selected()
+        except ValueError:
+            self.shortcut.ChangeValue('')
+            self.shortcut.Disable()
+            return
+        self.shortcut.Enable()
+        self.shortcut.ChangeValue(self.manager.registry.shortcut(command.command_id, self.draft))
+
+    def assign(self, event=None):
+        try:
+            command = self._selected()
+            proposed = dict(self.draft)
+            proposed[command.command_id] = self.shortcut.GetValue()
+            self.draft = self.manager.validate(proposed)
+            self.rebuild(selected=command.command_id)
+            self._message('Shortcut assigned in this draft. Choose Save to apply the changes.')
+        except (ValueError, OSError) as exc:
+            self._message(str(exc))
+
+    def reset_selected(self, event=None):
+        try:
+            command = self._selected()
+            proposed = dict(self.draft)
+            proposed.pop(command.command_id, None)
+            self.draft = self.manager.validate(proposed)
+            self.rebuild(selected=command.command_id)
+            self._message('Default restored for this command in the draft. Choose Save to apply.')
+        except (ValueError, OSError) as exc:
+            self._message(str(exc))
+
+    def reset_all(self, event=None):
+        try:
+            self.draft = self.manager.validate({})
+            self.rebuild()
+            self._message('All default shortcuts are selected in this draft. Choose Save to apply.')
+        except ValueError as exc:
+            self._message(str(exc))
+
+    def import_map(self, event=None):
+        wx = self.wx
+        chooser = wx.FileDialog(self.dialog, 'Import keyboard shortcuts', wildcard='Keymap JSON (*.json)|*.json',
+                                style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+        try:
+            if chooser.ShowModal() != wx.ID_OK:
+                return
+            path = Path(chooser.GetPath())
         finally:
-            dialog.Destroy()
+            chooser.Destroy()
+        try:
+            proposed = self.manager.validate(KeymapStore(path).load())
+            self.draft = proposed
+            self.rebuild()
+            self._message('Keymap imported into the draft. Review it and choose Save to apply.')
+        except (ValueError, OSError) as exc:
+            self._message('Keymap not imported; the current draft was kept. ' + str(exc))
+
+    def export_map(self, event=None):
+        wx = self.wx
+        chooser = wx.FileDialog(self.dialog, 'Export keyboard shortcuts', defaultFile='keyboard-shortcuts.json',
+                                wildcard='Keymap JSON (*.json)|*.json', style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+        try:
+            if chooser.ShowModal() != wx.ID_OK:
+                return
+            path = Path(chooser.GetPath())
+        finally:
+            chooser.Destroy()
+        try:
+            normalized = self.manager.validate(self.draft)
+            root = (self.manager.store.path.parent if self.manager.store is not None
+                    else self.manager.private_root)
+            content = json.dumps({'version': 1, 'bindings': normalized}, ensure_ascii=False, indent=2) + '\n'
+            write_export(path, content, private_root=root)
+            self._message('The draft keymap was exported. Application shortcuts change only after Save.')
+        except (ValueError, OSError, AttributeError) as exc:
+            self._message('Keymap not exported. ' + str(exc))
+
+    def save(self, event=None):
+        if self.original_store is not self.manager.store:
+            self._message('The active library folder changed. Close and reopen keyboard settings.')
+            return
+        try:
+            if self.rows and self.commands.GetSelection() >= 0:
+                command = self._selected()
+                proposed = dict(self.draft)
+                proposed[command.command_id] = self.shortcut.GetValue()
+                self.draft = self.manager.validate(proposed)
+            self.manager.apply_overrides(self.draft)
+        except (ValueError, OSError) as exc:
+            self._message('Shortcuts were not saved. ' + str(exc))
+            return
+        self.dialog.EndModal(self.wx.ID_OK)
+
+    def show(self):
+        try:
+            return self.dialog.ShowModal() == self.wx.ID_OK
+        finally:
+            self.dialog.Destroy()
+
+
+def show_keyboard_settings(parent, manager, *, context='main'):
+    import wx
+    focus = wx.Window.FindFocus()
+    try:
+        return KeyboardSettingsDialog(parent, manager, context=context).show()
+    finally:
+        if focus:
+            try:
+                focus.SetFocus()
+            except RuntimeError:
+                pass
+
+
+def show_command_launcher(parent, manager, *, context='main', invoke=None, available=None):
+    import wx
+    invoke = invoke or manager.invoke
+    available = available or manager.available
+    focus = wx.Window.FindFocus()
+    dialog = wx.Dialog(parent, title='Find a command', size=(720, 560))
+    layout = wx.BoxSizer(wx.VERTICAL)
+    layout.Add(wx.StaticText(dialog, label='Search commands. Use Tab to choose a result, then Run command.'),
+               0, wx.ALL | wx.EXPAND, 8)
+    search = wx.TextCtrl(dialog)
+    search.SetName('Search commands by name')
+    layout.Add(search, 0, wx.ALL | wx.EXPAND, 8)
+    results = wx.ListBox(dialog)
+    results.SetName('Matching commands and shortcuts')
+    layout.Add(results, 1, wx.ALL | wx.EXPAND, 8)
+    status = wx.TextCtrl(dialog, style=wx.TE_READONLY)
+    status.SetName('Command availability')
+    layout.Add(status, 0, wx.ALL | wx.EXPAND, 8)
+    footer = wx.BoxSizer(wx.HORIZONTAL)
+    run = wx.Button(dialog, wx.ID_OK, '&Run command')
+    footer.Add(run, 0, wx.ALL, 4)
+    footer.Add(wx.Button(dialog, wx.ID_CANCEL, 'Cancel'), 0, wx.ALL, 4)
+    layout.Add(footer, 0, wx.ALIGN_RIGHT | wx.ALL, 4)
+    dialog.SetSizer(layout)
+    dialog.SetEscapeId(wx.ID_CANCEL)
+    # Capture enablement before ShowModal disables the parent window.
+    enabled = {command.command_id: available(command.command_id)
+               for command in manager.registry.commands(context)}
+    rows = []
+    choice = []
+
+    def selected(event=None):
+        index = results.GetSelection()
+        can_run = 0 <= index < len(rows) and enabled.get(rows[index].command_id, False)
+        run.Enable(can_run)
+        status.ChangeValue('Ready to run.' if can_run else 'This command is unavailable in the current view.')
+
+    def rebuild(event=None):
+        needle = search.GetValue().strip().casefold()
+        rows[:] = [command for command in manager.registry.commands(context)
+                   if needle in command.label.casefold()]
+        results.Set([f'{command.label} — {manager.shortcut(command.command_id) or "Not assigned"}'
+                     + ('' if enabled.get(command.command_id) else ' — unavailable') for command in rows])
+        if rows:
+            results.SetSelection(0)
+        selected()
+
+    def accept(event=None):
+        index = results.GetSelection()
+        if 0 <= index < len(rows) and enabled.get(rows[index].command_id, False):
+            choice[:] = [rows[index].command_id]
+            dialog.EndModal(wx.ID_OK)
+
+    search.Bind(wx.EVT_TEXT, rebuild)
+    results.Bind(wx.EVT_LISTBOX, selected)
+    results.Bind(wx.EVT_LISTBOX_DCLICK, accept)
+    run.Bind(wx.EVT_BUTTON, accept)
+    rebuild()
+    search.SetFocus()
+    try:
+        accepted = dialog.ShowModal() == wx.ID_OK
+    finally:
+        dialog.Destroy()
+        if focus:
+            try:
+                focus.SetFocus()
+            except RuntimeError:
+                pass
+    if accepted and choice:
+        return invoke(choice[0])  # Rechecks the live command state after closing.
+    return False
+
+
+def register_menu_command(frame, spec, item, *, fallback_unassigned=False):
+    """Register before or after the shared menu manager has been installed."""
+    manager = getattr(frame, 'keyboard_commands', None)
+    if manager is not None:
+        return manager.register_menu_command(spec, item, fallback_unassigned=fallback_unassigned)
+    if fallback_unassigned:
+        raise ValueError('Register conflict-tolerant optional shortcuts after the shared keyboard manager is installed.')
+    if spec.context != 'main':
+        raise ValueError('Native main-window menus require the main context.')
+    pending = getattr(frame, '_pending_keyboard_commands', [])
+    if any(previous.command_id == spec.command_id for previous, _ in pending):
+        raise ValueError('This command is already waiting for keyboard registration.')
+    frame._pending_keyboard_commands = [*pending, (spec, item)]
 
 
 def install_keyboard_settings(frame):
-    """Install after all menus exist; the returned controller owns live binding."""
     import wx
-    if getattr(frame, 'keyboard_settings', None) is not None:
-        frame.keyboard_settings.reload()
-        return frame.keyboard_settings
-    menu = next((frame.menu_bar.GetMenu(index) for index in range(frame.menu_bar.GetMenuCount())
-                 if _part(frame.menu_bar.GetMenuLabel(index)) == 'help'), None)
-    if menu is None:
-        menu = wx.Menu()
-        frame.menu_bar.Append(menu, '&Help')
-    settings = menu.Append(wx.ID_ANY, 'Keyboard shortcuts...\tCtrl+Alt+K')
-    focus_library = menu.Append(wx.ID_ANY, 'Focus library and research topic\tCtrl+Alt+L')
-    focus_status = menu.Append(wx.ID_ANY, 'Focus operation status\tCtrl+Alt+S')
-    frame.Bind(wx.EVT_MENU, lambda event: frame.choice.SetFocus(), focus_library)
-    frame.Bind(wx.EVT_MENU, lambda event: frame.status.SetFocus(), focus_status)
-    controller = KeyboardSettings(frame)
-    frame.keyboard_settings = controller
-    frame.Bind(wx.EVT_MENU, controller.show, settings)
-    return controller
+    existing = getattr(frame, 'keyboard_commands', None)
+    if existing is not None:
+        existing.refresh()
+        return existing
+    menu = wx.Menu()
+    commands = menu.Append(wx.ID_ANY, '&Find a command...\tCtrl+Shift+P')
+    settings = menu.Append(wx.ID_ANY, '&Keyboard shortcuts...\tCtrl+Alt+K')
+    frame.GetMenuBar().Append(menu, '&Options')
+    pending = getattr(frame, '_pending_keyboard_commands', [])
+    registry = CommandRegistry((*builtin_commands(), *(spec for spec, _ in pending)))
+    manager = KeyboardManager(frame, registry=registry,
+                              store=KeymapStore(Path(frame.library.root) / 'keyboard-shortcuts.json'))
+    for spec, item in pending:
+        manager.bindings[spec.command_id] = _MenuBinding(
+            item, item.GetItemLabel().split('\t', 1)[0], manager._top_index(item))
+    frame._pending_keyboard_commands = []
+    frame.keyboard_commands = manager
+    frame.Bind(wx.EVT_MENU, lambda event: show_command_launcher(frame, manager), commands)
+    frame.Bind(wx.EVT_MENU, lambda event: show_keyboard_settings(frame, manager), settings)
+    manager.activate_loaded()
+    if manager.load_notice:
+        wx.CallAfter(lambda: frame.report(manager.load_notice)
+                     if manager.load_notice and not getattr(frame, '_closing', False) else None)
+    return manager

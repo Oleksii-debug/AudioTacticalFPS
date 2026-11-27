@@ -19,6 +19,7 @@ unchanged until a verified migration; visible application titles use Resonance.
 | Keyboard and progress | Configurable menu keys, named native controls, measured or indeterminate progress, optional tones and playback suppression | Automated native/contract tests; human NVDA listening remains required; speech-mode progress is not implemented |
 | Language inventory | Exact canonical 135 entries, source audit and searchable capability matrix | Resource inventory is separate from acoustic qualification; no claim of 135 working voices |
 | Assistant and providers | Typed scoped tools, durable jobs, local-only default, protected credential references and per-request consent/budget | Local and synthetic provider tests; no paid provider call was made during implementation |
+| Supplied transcription | Opt-in adapter to the exact owner-supplied V4.3 worker through existing typed assistant jobs; verified TXT/SRT/VTT/JSON, input/settings binding, cancellation and publication recovery | Actual supplied worker protocol exercised with an isolated synthetic SDK; real model inference, desktop configuration, Windows/NVDA and complete ASR migration remain pending |
 | Translation | Optional Google Basic v2 selected-text derivatives, explicit supported-language query, consent, chunk receipts/resume and new exports | Synthetic transport with real gateway/ledger/reading objects; live API, translation quality, Advanced v3 and local model inference are not qualified |
 | Delivery preparation | Exact-source wheel checks, pinned dependency/SBOM closure, parent-manifest binding, strict paths and sealed runtime files | Source/packaging tests; checksum integrity is not a publisher signature |
 | Private integration boundary | Separate versioned entitlement/update protocols and preservation of user-data operations | 45 synthetic boundary tests; no verifier, authority, automatic renewal, production trust or updater is enabled |
@@ -47,12 +48,21 @@ The following cannot be labelled DONE by passing the current core tests:
 - Human Windows 11/NVDA and listening review. Automated Windows Server native
   execution is useful evidence, but does not substitute for that review.
 
-The supplied Whisper Transcribe V4.3 implementation has been received and
-statically reviewed; transcription is part of the approved platform scope.
-The current library/audio preview leaves its integration, real execution and
-qualification pending. The existing worker must be corrected and adapted through
-shared jobs and an isolated reviewed engine pack; no competing ASR stack or
-unverified runtime is bundled. See [the source review](TRANSCRIPTION_INTEGRATION_REVIEW.md).
+The supplied Whisper Transcribe V4.3 implementation now has an opt-in backend
+adapter using the existing assistant JobStore and bounded audio process runner.
+The reviewed worker is corrected on a private staging copy; it is not bundled.
+Three executions of that exact worker with a synthetic isolated SDK verified
+selected Ukrainian exports, rejected silent language fallback and rejected a
+required-SRT failure even when the worker claimed success. The primary integration
+passed 117 tests covering the adapter, assistant and common-v4/schema recovery.
+These are protocol and application tests, not acoustic recognition evidence.
+
+Real pinned SDK/model installation, native Windows offline execution, accessible
+desktop configuration and transcript editing, ASR source/output backup migration,
+long-input resource measurements and independent audio quality remain open.
+Diarization and word alignment are not implemented by this adapter. Existing GUI
+constructors leave the engine unconfigured. See the [source review](TRANSCRIPTION_INTEGRATION_REVIEW.md)
+and [exact adapter contract and limitations](SUPPLIED_TRANSCRIPTION_ADAPTER.md).
 
 The private build retains local operation and access to user-owned data. Private delivery does not waive dependency rights, notices or source obligations.
 This work does not authorize external distribution, pricing, billing, a public site,
