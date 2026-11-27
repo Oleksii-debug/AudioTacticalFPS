@@ -6,7 +6,7 @@ on:
       - carr-library/**
       - .github/workflows/carr-academic-reconciliation.yml
   push:
-    branches: [carr/academic-search-20261126, carr-library]
+    branches: [carr/academic-search-20261126, carr-library, carr/canonical-completion-2aa-20261127]
     paths:
       - carr-library/**
       - .github/workflows/carr-academic-reconciliation.yml
@@ -14,7 +14,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: carr-academic-reconciliation-${{ github.ref }}
+  group: carr-academic-reconciliation-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 jobs:
   reconciled-source:

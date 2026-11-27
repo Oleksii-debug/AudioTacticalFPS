@@ -4,13 +4,13 @@ on:
     branches: [carr-library]
     paths: ['carr-library/**', '.github/workflows/carr-transcription-bridge.yml']
   push:
-    branches: [feature/supplied-transcription-20261127-137c, carr-library]
+    branches: [feature/supplied-transcription-20261127-137c, carr-library, carr/canonical-completion-2aa-20261127]
     paths: ['carr-library/**', '.github/workflows/carr-transcription-bridge.yml']
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: transcription-bridge-${{ github.ref }}
+  group: transcription-bridge-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 jobs:
   protocol:
