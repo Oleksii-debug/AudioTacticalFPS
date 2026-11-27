@@ -149,6 +149,8 @@ def run_suite(suite: str) -> bool:
         env.pop(key, None)
     env['PYTEST_DISABLE_PLUGIN_AUTOLOAD'] = '1'
     env['PYTHONPATH'] = str(ROOT / 'src')
+    # Ordinary test descendants inherit this; the suite interpreter also has -B.
+    env['PYTHONDONTWRITEBYTECODE'] = '1'
     # Native ONNX initialization can precede Python socket mocks or API opt-outs.
     # Apply the documented opt-out before starting any test interpreter.
     env.update(ORT_DISABLE_TELEMETRY='1', HF_HUB_DISABLE_TELEMETRY='1',
@@ -162,7 +164,7 @@ def run_suite(suite: str) -> bool:
             report = Path(tmp) / 'junit.xml'
             phase = 'pytest process'
             returncode = _run_test_process([
-                sys.executable, '-c', PYTEST_CHILD, '-v', '-o', 'addopts=',
+                sys.executable, '-B', '-c', PYTEST_CHILD, '-v', '-o', 'addopts=',
                 '-o', 'xfail_strict=true', '-o', 'faulthandler_timeout=120',
                 '-o', 'faulthandler_exit_on_timeout=false', '--junitxml', str(report),
                 '--basetemp', str(Path(tmp) / 'pytest'),

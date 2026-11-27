@@ -25,11 +25,54 @@ class CIEntrypointTests(unittest.TestCase):
             (root / 'test_sample.py').write_text(source, encoding='utf-8')
             env = dict(os.environ)
             env.update(extra_env or {})
-            return subprocess.run([sys.executable, str(root / 'scripts' / SCRIPT.name), *suites],
+            return subprocess.run([sys.executable, '-B', str(root / 'scripts' / SCRIPT.name), *suites],
                                   cwd=root, env=env, capture_output=True, text=True, timeout=60)
 
     def test_pass(self):
         result = self.run_fixture('def test_ok(): assert True\n', 'test_sample.py')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn('passed=1, failed=0, skipped=0', result.stdout)
+
+    def test_real_imports_and_ordinary_descendants_preserve_sealed_module_bytes(self):
+        source = '''from hashlib import sha256
+import importlib
+import os
+from pathlib import Path
+import subprocess
+import sys
+
+def test_sealed_imports(tmp_path, monkeypatch):
+    sealed = tmp_path / 'sealed module tree Ž'
+    package = sealed / 'sealed_runner_fixture'
+    package.mkdir(parents=True)
+    (package / '__init__.py').write_text("VALUE = 'package'\\n", encoding='utf-8')
+    (package / 'parent.py').write_text("VALUE = 'parent imported'\\n", encoding='utf-8')
+    (package / 'child.py').write_text("VALUE = 'descendant imported'\\n", encoding='utf-8')
+    def inventory():
+        return {path.relative_to(sealed).as_posix(): sha256(path.read_bytes()).hexdigest()
+                for path in sealed.rglob('*') if path.is_file()}
+    before = inventory()
+    monkeypatch.syspath_prepend(str(sealed))
+    imported = importlib.import_module('sealed_runner_fixture.parent')
+    assert imported.VALUE == 'parent imported'
+    assert Path(imported.__file__).resolve() == (package / 'parent.py').resolve()
+    # This ordinary descendant deliberately has no -B: the runner must carry
+    # its bytecode policy across that real process boundary through the environment.
+    code = ("from pathlib import Path; import sys; import sealed_runner_fixture.child as m; "
+            "assert Path(m.__file__).resolve() == Path(sys.argv[1]).resolve(); "
+            "assert m.VALUE == 'descendant imported'; print(m.VALUE)")
+    child = subprocess.run([sys.executable, '-c', code, str(package / 'child.py')],
+        env=dict(os.environ, PYTHONPATH=str(sealed)), cwd=tmp_path,
+        capture_output=True, text=True, timeout=20)
+    assert child.returncode == 0, child.stdout + child.stderr
+    assert child.stdout.strip() == 'descendant imported'
+    assert inventory() == before, 'Imports changed the sealed module inventory'
+    assert not list(sealed.rglob('__pycache__')) and not list(sealed.rglob('*.pyc'))
+'''
+        # An empty value enables bytecode writes; '0' is still a non-empty
+        # PYTHONDONTWRITEBYTECODE value and would not exercise this regression.
+        result = self.run_fixture(source, 'test_sample.py',
+                                  extra_env={'PYTHONDONTWRITEBYTECODE': ''})
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn('passed=1, failed=0, skipped=0', result.stdout)
 

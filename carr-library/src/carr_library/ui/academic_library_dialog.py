@@ -1012,7 +1012,7 @@ def create_academic_dialog(parent, controller, *, executor=None):
                 self.export_to(path, format=format, identity=identity,
                                include_notes=include_notes, approval=approval)
             except Exception as exc:
-                report(self.status, f'Bibliography export: {exc}')
+                report(self.status, f'Bibliography not exported: {exc}')
 
     return AcademicDialog()
 

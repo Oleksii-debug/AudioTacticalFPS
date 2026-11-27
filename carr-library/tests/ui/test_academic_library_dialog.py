@@ -614,7 +614,7 @@ def test_export_handler_binds_actual_controller_publication_to_confirmation(
     elif competing:
         actual_render.assert_called_once()
         assert target.read_bytes() == competing_bytes
-        assert window.status.value.startswith('Bibliography export:')
+        assert window.status.value.startswith('Bibliography not exported:')
         assert 'Bibliography exported to' not in window.status.value
         assert 'destination changed' in window.status.value
     else:

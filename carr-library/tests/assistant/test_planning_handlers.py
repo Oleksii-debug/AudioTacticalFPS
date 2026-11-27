@@ -233,15 +233,38 @@ def test_narration_voice_discovery_is_background_and_cancelled_before_voice_choi
     assert e.dialog.assistant_service.jobs() == ()
 
 
-def test_assistant_close_cancels_work_without_nonexistent_production_lifecycle(native_handlers):
+def test_assistant_close_cancels_work_then_releases_owned_production_once(native_handlers, monkeypatch):
+    from carr_library import runtime_settings
+    from carr_library.speech import VoiceRegistry
+
     e = native_handlers
+    closed = []
+    class Provider:
+        name = 'Synthetic owned voice lifecycle'
+        def voices(self): return ()
+        def close(self): closed.append('provider closed')
+    registry = VoiceRegistry([Provider()])
+    monkeypatch.setattr(runtime_settings, 'voice_registry', lambda directory: registry)
+    production = e.dialog.assistant_service.production.__self__
+    assert production.voices is registry
     select_model(e)
     e.handlers['preview']()
+    proposal = e.executor.pending[0][0]
     e.handlers['close']()
     e.handlers['close']()  # Native close and wrapper cleanup remain idempotent.
-    assert len(e.executor.pending) == 1
-    assert e.executor.shutdowns == [{'wait': False, 'cancel_futures': True}]
+    assert not closed and not proposal.done()
+    assert len(e.executor.pending) == 2  # Proposal, then the one owned cleanup.
+    assert e.executor.shutdowns == [{'wait': False, 'cancel_futures': False}]
     before = e.controls['review'].GetValue()
-    e.executor.complete(); e.drain()
+    e.executor.complete()  # Cooperative cancellation ends the proposal first.
+    assert proposal.done() and not closed and len(e.executor.pending) == 1
+    e.drain()
     assert not e.calls and e.controls['review'].GetValue() == before
+    e.executor.complete(); e.drain()  # The real service now releases its registry.
+    assert closed == ['provider closed'] and not e.executor.pending
+    with pytest.raises(RuntimeError, match='production service is closed'):
+        production.create('Must not accept work after closing')
+    e.handlers['close']()
+    assert closed == ['provider closed'] and not e.executor.pending
+    assert e.controls['review'].GetValue() == before
     assert e.app.workspaces() == () and e.dialog.assistant_service.jobs() == ()
