@@ -1,0 +1,241 @@
+{
+  "schema": 1,
+  "status": "PASS",
+  "qualification_kind": "complete-assistant-tools",
+  "source_commit": "79d5252a4151a5b2552ad2d5f69c9c8310107559",
+  "source_tree": "3cf061554e009c0feaa6a17071e435438643e883",
+  "run": {
+    "id": 46007828475,
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46007828475",
+    "job_id": 140535379812,
+    "started_at": "2026-11-27T14:05:14Z",
+    "completed_at": "2026-11-27T14:10:59Z",
+    "conclusion": "success"
+  },
+  "artifact": {
+    "id": 15205225753,
+    "name": "carr-assistant-tools-79d5252a4151a5b2552ad2d5f69c9c8310107559-1",
+    "size_bytes": 105962,
+    "sha256": "5be7292be53a215fa4deece3691504723bc597c9ff9676744b00820c1763bf6e",
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46007828475/artifacts/15205225753"
+  },
+  "observed_summary": {
+    "actual_collection_cases": 412,
+    "actual_windows": true,
+    "ffmpeg_sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf",
+    "full_platform": "NOT_CLAIMED",
+    "installed_cases": 412,
+    "installed_package": true,
+    "isolated": true,
+    "model_quality": "NOT_RUN",
+    "native": {
+      "actual_assistant_jobs": true,
+      "actual_backup_restore": true,
+      "checks": [
+        {
+          "name": "actual_windows",
+          "passed": true
+        },
+        {
+          "name": "isolated_probe",
+          "passed": true
+        },
+        {
+          "name": "native_immutable_source_control",
+          "passed": true
+        },
+        {
+          "name": "actual_sapi_voice_available",
+          "passed": true
+        },
+        {
+          "name": "unsupported_sapi_pitch_stays_disabled",
+          "passed": true
+        },
+        {
+          "name": "native_assistant_action_named_and_reachable",
+          "passed": true
+        },
+        {
+          "name": "immutable_window_source_binding",
+          "passed": true
+        },
+        {
+          "name": "native_assistant_parent_prepare",
+          "passed": true
+        },
+        {
+          "name": "native_named_review_controls_prepare",
+          "passed": true
+        },
+        {
+          "name": "durable_dispatch_identity_prepare",
+          "passed": true
+        },
+        {
+          "name": "real_preparation_receipt",
+          "passed": true
+        },
+        {
+          "name": "actual_pcm_metrics_match_receipt",
+          "passed": true
+        },
+        {
+          "name": "actual_utf16_source_selection",
+          "passed": true
+        },
+        {
+          "name": "native_assistant_parent_stop",
+          "passed": true
+        },
+        {
+          "name": "native_named_review_controls_stop",
+          "passed": true
+        },
+        {
+          "name": "durable_dispatch_identity_stop",
+          "passed": true
+        },
+        {
+          "name": "actual_owned_pcm_released",
+          "passed": true
+        },
+        {
+          "name": "native_assistant_parent_select",
+          "passed": true
+        },
+        {
+          "name": "native_named_review_controls_select",
+          "passed": true
+        },
+        {
+          "name": "durable_dispatch_identity_select",
+          "passed": true
+        },
+        {
+          "name": "actual_unicode_cursor_command",
+          "passed": true
+        },
+        {
+          "name": "source_catalog_remains_exact",
+          "passed": true
+        },
+        {
+          "name": "native_commands_created_three_inert_receipts",
+          "passed": true
+        },
+        {
+          "name": "restored_receipts_preserve_exact_original_scope",
+          "passed": true
+        },
+        {
+          "name": "restored_receipts_are_not_current_native_authority",
+          "passed": true
+        },
+        {
+          "name": "restored_interactive_jobs_cannot_replay",
+          "passed": true
+        }
+      ],
+      "hardware_playback": "NOT_RUN",
+      "isolated": true,
+      "metrics": {
+        "frames": 93828,
+        "pcm_sha256": "8b9271616ea5e73842e4fabe5d783bc7bd6bba3d8ef8163ac5d9cb5b53d88a72",
+        "sample_rate": 24000,
+        "session_id": "bb1defda4a2c4ca3bb33e1a589844540",
+        "source_sha256": "e25f721bcb9abd7e2a43ff97b2c03cd74130343e940b9cf6bfa512b60b62127e"
+      },
+      "module_origins": {
+        "carr_library.assistant.interactive_tools": {
+          "path": "D:\\a\\_temp\\carr-assistant-python-16d4653276a541029baaf0391cf73afe\\Lib\\site-packages\\carr_library\\assistant\\interactive_tools.py",
+          "sha256": "ef95ef6b680d158f45567fdab8824aa6c30e9cf11fdc2d92c775ba3ed38da38e"
+        },
+        "carr_library.assistant.models": {
+          "path": "D:\\a\\_temp\\carr-assistant-python-16d4653276a541029baaf0391cf73afe\\Lib\\site-packages\\carr_library\\assistant\\models.py",
+          "sha256": "2888147c82ee4b4a29f31f80bb62b349c227517183e151f34c0b65f845f9ea4e"
+        },
+        "carr_library.assistant.service": {
+          "path": "D:\\a\\_temp\\carr-assistant-python-16d4653276a541029baaf0391cf73afe\\Lib\\site-packages\\carr_library\\assistant\\service.py",
+          "sha256": "99c8715c88afb1d9ca73cd255b2396c81c170e7ef57b81900698c2f01b05f814"
+        },
+        "carr_library.assistant.validation": {
+          "path": "D:\\a\\_temp\\carr-assistant-python-16d4653276a541029baaf0391cf73afe\\Lib\\site-packages\\carr_library\\assistant\\validation.py",
+          "sha256": "62b4426d97d9852d00146c1937e554a06f8cc2852404a67931e1e7c551524e12"
+        },
+        "carr_library.ui.assistant_dialog": {
+          "path": "D:\\a\\_temp\\carr-assistant-python-16d4653276a541029baaf0391cf73afe\\Lib\\site-packages\\carr_library\\ui\\assistant_dialog.py",
+          "sha256": "8d6a9aaceb6e27d3097d1681bb85cc0e92df185227ed2100263259b14406b856"
+        },
+        "carr_library.ui.assistant_interactive": {
+          "path": "D:\\a\\_temp\\carr-assistant-python-16d4653276a541029baaf0391cf73afe\\Lib\\site-packages\\carr_library\\ui\\assistant_interactive.py",
+          "sha256": "20006eb4681042b349e3c5675a970fa164f8d130aec7cf786646e0864c387c74"
+        },
+        "carr_library.ui.live_reading": {
+          "path": "D:\\a\\_temp\\carr-assistant-python-16d4653276a541029baaf0391cf73afe\\Lib\\site-packages\\carr_library\\ui\\live_reading.py",
+          "sha256": "31ce217c6193a74d016d212b94b04bdf926951654303006fca309f34d65a78f3"
+        }
+      },
+      "native_pause_resume_seek": "NOT_RUN",
+      "nvda": "NOT_RUN",
+      "platform": "win32",
+      "public_fixture": true,
+      "real_native_dialog": true,
+      "real_sapi_pcm": true,
+      "schema": 1,
+      "speech_quality": "NOT_RUN",
+      "status": "PASS"
+    },
+    "native_checks": 26,
+    "native_probe_sha256": "fee798933125bca57c6ca71689a91094431edd4aaa489eb3148c0d51f3af583a",
+    "nvda": "NOT_RUN",
+    "physical_audio": "NOT_RUN",
+    "schema": 1,
+    "source_cases": 412,
+    "source_commit": "79d5252a4151a5b2552ad2d5f69c9c8310107559",
+    "source_tree": "3cf061554e009c0feaa6a17071e435438643e883",
+    "status": "PASS",
+    "test_files": {
+      "tests/__init__.py": "bda1d1b86fa69f604fb87c19f27628942b6bd77aa46b605efbc9cb9d4457183d",
+      "tests/assistant/interactive_fixture.py": "21cc04db7e01a6321c10b084c17ed0c518dbac2f6e5d3d3c5a23f08975844110",
+      "tests/assistant/test_backup_receipt.py": "637d51e288f560d45b26565cb343ae3cade92b3cb85424c981311d7e2b699056",
+      "tests/assistant/test_canonical_backup.py": "71849dd2146e5213979f4c74bcc2e3ae8f809315443d454ed6d1fe4c0a95dece",
+      "tests/assistant/test_checkpoint_publication.py": "bbc56554c544bd3692f7ce62d89a7046d705f576dc424081d7665fe88c748b96",
+      "tests/assistant/test_derived_tools.py": "c62719105f2a45faaf4387f2450966669d19fbfebf6f31ca4a241a7031c5651b",
+      "tests/assistant/test_dialog_lifecycle.py": "889f30d451e862c34fbbcaada0c9329a773f26cfca20408c423c59de2d84c7cd",
+      "tests/assistant/test_interactive_service.py": "cd8d4308386b75923bdd5cdcb9552f6e8685a18ecc68f83876983ea425c09afe",
+      "tests/assistant/test_interactive_tools.py": "3a498eb47fe4404acd296504a31c206ef26da33ce6eeb86ad03286cefe6f21a5",
+      "tests/assistant/test_local_assistant.py": "b2af84988f2441d41b5e1c24f8570ccc7d7bd6dbd06c324a1859dd172bbf6249",
+      "tests/assistant/test_local_llm.py": "fe65b9c9123b0b8d818fac44529ceb0bc302b6ae08237ff2570843df2411c3d1",
+      "tests/assistant/test_planning_handlers.py": "a5951b5d88c1d4cd9499c3821a2f94a12679294ac32c2fdb1b9e1a1b03e08abd",
+      "tests/assistant/test_planning_runtime.py": "95082888d084628d1df9d98241ac645d345257919f958299eef3e730ad023c4a",
+      "tests/assistant/test_production_bridge.py": "d45268b8a4129e6661d87fdd754457d45ab6a62aa9a0763959fef22e49d18825",
+      "tests/assistant/test_state_validation.py": "489a0ba026e0b7069b93946a454aafe787c7106201d4217ee54f719dd4cfc7f8",
+      "tests/assistant/test_translation.py": "6864db8fd261f6a5674e7234ca6cdaaf99383da29a29aa3b18099827ed21ed19",
+      "tests/assistant/test_translation_advanced.py": "b4d91de42abe609a0d68a8e86a092c7e224e02f045989ff40a96f79391deeb3b",
+      "tests/assistant/test_translation_scopes.py": "545fd8c4c19029a05b6d754c2aae6cd59bb0f73222705069fa833297bb009f92",
+      "tests/reader/test_ebook_reader.py": "33ea4426a840d0f6536a33efdb406a8930d5b412a183254b539436d5cc97e59a",
+      "tests/ui/test_assistant_interactive.py": "3f0040b28d6811563c168c46bfe2361d4bc6309e7fb6498473aa021ed0b98db0"
+    }
+  },
+  "firewall": {
+    "status": "PASS",
+    "basis": "The exact qualification step created and read back Python and FFmpeg outbound block rules with all actual profiles enabled; its successful exit required own-rule removal and both active/persistent saved-profile readback.",
+    "raw_receipt_in_artifact": "firewall.json"
+  },
+  "scope": "Actual exact-SHA Windows qualification; no claim for later changed files or the final full-platform release.",
+  "limitations": {
+    "nvda": "NOT_RUN",
+    "model_quality": "NOT_RUN",
+    "physical_audio": "NOT_RUN",
+    "full_platform": "NOT_CLAIMED"
+  },
+  "prior_failed_run": {
+    "id": 46004355718,
+    "source_commit": "d8c0e409137ddaff9eaf28e09c5a6312d5eefb1a",
+    "source_passed": 412,
+    "installed_passed": 411,
+    "installed_failed": 1,
+    "cause": "Installed staging omitted tests/reader/test_ebook_reader.py; fixed by retaining that exact helper. The failed run is unchanged."
+  }
+}
