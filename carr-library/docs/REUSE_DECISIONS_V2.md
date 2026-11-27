@@ -39,7 +39,7 @@ Static inspection of [candidate12e6ce6](https://github.com/Oleksii-debug/AudioTa
 
 - Source revision: 836df4e85894b757debe268f84ffc08c57623a73.
 - Windows shared archive SHA256: f7ba27e7986a2d0835881e742a682dec17896f6dc2cdcf9e596f043d2763d894.
-- The package records LGPL-3.0-or-later; its build configuration disables GPL/nonfree dependencies. Do not misclassify this exact build based on unrelated license files.
+- The package records LGPL-3.0-or-later; its recorded build configuration disables the listed GPL/nonfree options; complete dependency clearance remains pending. Do not misclassify this exact build based on unrelated license files.
 - The manifest explicitly records public_distribution_clearance=false and third_party_complete_source_bundle=false. This is an outstanding package clearance item; a successful build does not change it.
 - Existing citeproc-js2.4.63 uses the selected CPAL1.0 route, QuickJS MIT and separately licensed styles/locales. Review actual attribution and source obligations in the final artifact.
 

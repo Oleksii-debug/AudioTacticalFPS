@@ -51,7 +51,7 @@ Do not introduce microservices, a web replacement UI, a second catalog, a new un
 
 **Resource broker:** admit heavy CPU/GPU/disk work and exclusive microphone/device use through one cooperating policy. Release reservations after crashes/cancellation; keep the UI and basic reading responsive. These runtime resource limits do not impose worker/PR orchestration caps.
 
-**Engine session:** prefer a reviewed persistent local worker for many segments where supported. Verify runtime/model identity at admission and invalidate it on changes; do not weaken content or cache integrity. Benchmark load cost, sustained throughput, memory/VRAM and recovery before claiming large-book performance. Repeated full model loading/verification per short chunk is a measured optimization candidate, not a reason to rewrite the engine.
+**Engine session:** prefer a reviewed persistent local worker for many segments where supported. Verify runtime/model identity at admission and invalidate it on changes; do not weaken content or cache integrity. Benchmark load cost, sustained throughput, memory/VRAM and recovery before claiming large-book performance. Repeated full model loading/verification per short chunk is a candidate for measurement and optimization, not a reason to rewrite the engine.
 
 **Planning:** retain the deterministic parser and typed allowlisted executor. A local LLM adapter can produce the same versioned plan; validate capability, arguments, paths, budgets and approvals before execution. No direct shell/filesystem/network authority for model output. Prompt text and imported documents are data, never application policy.
 
