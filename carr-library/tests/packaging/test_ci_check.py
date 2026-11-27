@@ -428,6 +428,29 @@ def test_local_only(request):
                     libc.prctl(36, previous_subreaper.value, 0, 0, 0)
 
 
+
+    def test_posix_settlement_waits_for_owned_descendant_confirmation(self):
+        spec = importlib.util.spec_from_file_location('settlement_ci_check', SCRIPT)
+        runner = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(runner)
+        events = []
+        process = types.SimpleNamespace(pid=12345, wait=lambda **options: events.append('leader-exited'))
+        checks = iter((False, True))
+        def quiescent(group):
+            self.assertEqual(group, process.pid)
+            answer = next(checks)
+            events.append(('family-empty', answer))
+            return answer
+        # A completed leader is intentionally not sufficient evidence.
+        with (mock.patch.object(runner, 'os', types.SimpleNamespace(name='posix',
+                    killpg=lambda group, signal: events.append(('kill-group', group)))),
+              mock.patch.object(runner, '_posix_group_quiescent', side_effect=quiescent),
+              mock.patch.object(runner, 'sleep', side_effect=lambda delay: events.append(('wait', delay)))):
+            runner._settle_test_process(process)
+        self.assertEqual(events, [('kill-group', 12345), 'leader-exited',
+                                  ('family-empty', False), ('wait', .02), ('family-empty', True)])
+
+
 class RelocatedCIChildTests(unittest.TestCase):
     """The installed replay reuses the exact child policy from another cwd."""
     def run_relocated_child(self, *, missing_helper=False):

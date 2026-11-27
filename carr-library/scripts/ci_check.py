@@ -164,6 +164,57 @@ def _start_test_process(command, *, env):
     return subprocess.Popen(command, start_new_session=True, **options)
 
 
+def _posix_group_quiescent(group):
+    """Confirm no live member remains; Linux zombies cannot retain writers.
+
+    A container's PID 1 may leave an orphan zombie unreaped indefinitely. It
+    owns no descriptors and cannot execute. Only an actual bounded /proc scan
+    of this exact killed group can distinguish that from a live descendant.
+    Other POSIX platforms keep the stronger group-disappearance check.
+    """
+    try:
+        os.killpg(group, 0)
+    except ProcessLookupError:
+        return True
+    if not sys.platform.startswith('linux'):
+        return False
+    seen = False
+    try:
+        with os.scandir('/proc') as entries:
+            for count, entry in enumerate(entries, 1):
+                if count > 100000:
+                    return False
+                if not entry.name.isdecimal():
+                    continue
+                try:
+                    if os.getpgid(int(entry.name)) != group:
+                        continue
+                    with open('/proc/' + entry.name + '/stat', 'rb') as stream:
+                        raw = stream.read(4097)
+                    if len(raw) > 4096:
+                        return False
+                    fields = raw.rsplit(b')', 1)[1].split()
+                    if len(fields) < 3 or int(fields[2]) != group:
+                        return False
+                    seen = True
+                    if fields[0] not in (b'Z', b'X'):
+                        return False
+                except ProcessLookupError:
+                    continue
+                except FileNotFoundError:
+                    continue
+    except (OSError, IndexError, ValueError):
+        return False
+    if seen:
+        return True
+    # No visible member is not proof under hidepid or a changing process table.
+    try:
+        os.killpg(group, 0)
+    except ProcessLookupError:
+        return True
+    return False
+
+
 def _settle_test_process(process):
     """Keep the current Windows job until its entire owned family is empty."""
     if os.name != 'nt':
@@ -174,6 +225,11 @@ def _settle_test_process(process):
         except ProcessLookupError:
             pass
         process.wait(timeout=10)
+        deadline = monotonic() + 2
+        while not _posix_group_quiescent(process.pid):
+            if monotonic() >= deadline:
+                raise TimeoutError('The required-suite process group did not become quiescent.')
+            sleep(.02)
         return
     job = getattr(process, '_carr_job', None)
     if job is None or job.handle is None:

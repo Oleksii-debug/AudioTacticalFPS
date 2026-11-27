@@ -34,7 +34,7 @@
   "changes": [
     "The current richer child network policy, watchdog, anti-XFAIL/XPASS policy, strict reporting, allowlisted numeric loopback fixtures, and per-suite time limits remain unchanged.",
     "Each Windows pytest suite uses the existing WindowsJobProcess, assigned to its job before the initial thread resumes. The CI wrapper terminates and observes the complete owned job empty before releasing its handles and report files.",
-    "POSIX pytest suites start in a private session; settlement sends SIGKILL to that owned process group even when the pytest leader has already returned, then reaps its leader.",
+    "POSIX suites retain a private process group; after SIGKILL and leader reaping, the same bounded group-quiescence algorithm as current ingest.worker confirms no live member before report cleanup. Linux zombie-only groups are quiescent; ambiguous, hidden or oversized process inventories are not accepted.",
     "Five cleanup attempts retry PermissionError only, with four 50 ms delays. Persistent errors produce failed named suites and preserve an original timeout as well.",
     "PASS is printed only after process settlement and private-report cleanup. Unconfirmed process ownership retains its exact process and temporary directory instead of deleting potentially live files or reporting success.",
     "Existing copied-runner fixtures now include the same unchanged Windows owner source. Relocated PYTEST_CHILD/watchdog isolation fixtures remain unchanged."
@@ -43,10 +43,11 @@
     "test_transient_report_cleanup_permission_error_is_retried_before_pass": 1,
     "test_persistent_report_cleanup_permission_error_is_named_and_never_passes": 1,
     "test_report_cleanup_permission_error_preserves_original_timeout": 1,
-    "test_timeout_terminates_real_descendant_before_temp_cleanup_and_stays_failed": 1
+    "test_timeout_terminates_real_descendant_before_temp_cleanup_and_stays_failed": 1,
+    "test_posix_settlement_waits_for_owned_descendant_confirmation": 1
   },
   "previous_test_cases": 43,
-  "test_cases": 47,
+  "test_cases": 48,
   "fixture_parameter_multipliers": 1,
   "test_scope": {
     "actual_descendant": "The fourth restored case starts a real pytest child and grandchild holding a file, acknowledges startup, imposes a short wait deadline, requires full family termination, verifies temporary directories are removed, and continues a second independent passing suite while retaining the overall FAIL.",
@@ -61,5 +62,14 @@
     "posix_descendants": "NOT_RUN",
     "independent_review": "PENDING"
   },
-  "remaining_shared_test_audit": "Separate native-launcher/historical-source/audio-bundle/forked-resource test disposition remains in progress; this component makes no equivalence claim for those paths."
+  "remaining_shared_test_audit": "Separate native-launcher/historical-source/audio-bundle/forked-resource test disposition remains in progress; this component makes no equivalence claim for those paths.",
+  "previous_checkpoint": "cf9abf0fba17b1a914ca49ad4e5b94a989e9636d",
+  "posix_quiescence_provenance": {
+    "path": "carr-library/src/carr_library/ingest/worker.py",
+    "blob": "22ea65b3ed5b6c218cd660d15b78e90aa05de338",
+    "function": "_posix_group_quiescent",
+    "algorithm": "Identical bounded 100000-entry /proc observation and 4096-byte same-PGID stat validation; only redundant local sys import omitted.",
+    "deadline_seconds": 2
+  },
+  "review_correction": "Independent review found the predecessor's leader-only POSIX wait insufficient; this successor confirms the full owned group and adds one delayed-descendant regression. Predecessor is not final qualification."
 }
