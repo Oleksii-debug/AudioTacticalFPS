@@ -56,7 +56,8 @@ def test_invalid_source_offsets_are_rejected(cursor):
         reading_unit_range('abc', cursor, 'word')
 
 
-@pytest.mark.parametrize('raw', ['bad\0text', '\ud800', 'x' * 2_000_001])
+@pytest.mark.parametrize('raw', ['bad\0text', '\ud800', 'x' * 2_000_001],
+    ids=['embedded-nul', 'surrogate', 'overlong'])
 def test_invalid_or_oversized_source_text_is_not_selected(raw):
     with pytest.raises(ValueError):
         reading_unit_range(raw, 0, 'sentence')

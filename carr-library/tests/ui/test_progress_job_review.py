@@ -1,6 +1,6 @@
 """Independent regression checks for truthful desktop job completion."""
 import ast
-from concurrent.futures import Future
+from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
 import threading
 from types import SimpleNamespace
@@ -377,24 +377,29 @@ def test_reader_host_delegates_audio_cleanup_without_blocking_native_close(clean
     tree = ast.parse(path.read_text(encoding='utf-8'))
     reader = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'show_speech_reader')
     cleanup = next(node.finalbody for node in reversed(reader.body) if isinstance(node, ast.Try) and node.finalbody)
-    helpers = [node for node in reader.body if isinstance(node, ast.FunctionDef)
-               and node.name in ('detach_reader', 'close_resources')]
+    names = ('detach_reader', 'transfer_owner', 'release_owner', 'close_resources')
+    helpers = [next(node for node in reader.body
+                    if isinstance(node, ast.FunctionDef) and node.name == name) for name in names]
     factory = ast.parse('''
-def make(autosave_timer, cancel, live, executor, parent):
+def make(autosave_timer, cancel, live, executor, parent, owner):
     alive, resources_closed = True, False
-    owned_registries, ownership_lock = set(), threading.RLock()
-    return close_resources, lambda: alive
+    ownership_lock = threading.RLock()
+    owned_registries = {owner}
+    return close_resources, lambda: alive, release_owner, owned_registries
 ''')
     factory.body[0].body[-1:-1] = helpers
-    factory_environment = {'threading': threading}
+    factory_environment = dict(threading=threading)
     exec(compile(ast.fix_missing_locations(factory), str(path), 'exec'), factory_environment)
     env = {name: Mock() for name in ('autosave_timer', 'cancel', 'live', 'executor', 'dialog', 'parent')}
+    env['parent']._reader_registry_retained = []
+    owner = Mock()
+    owner.close.return_value = not cleanup_pending
     completion = Future()
     if not cleanup_pending:
         completion.set_result(None)
     env['live'].close.return_value = completion
-    close_resources, is_alive = factory_environment['make'](*(env[name] for name in
-        ('autosave_timer', 'cancel', 'live', 'executor', 'parent')))
+    close_resources, is_alive, release_owner, owned_registries = factory_environment['make'](
+        *(env[name] for name in ('autosave_timer', 'cancel', 'live', 'executor', 'parent')), owner)
     env['close_resources'] = close_resources
     close_resources()  # The native Close callback may precede the modal's final unwind.
     exec(compile(ast.Module(body=cleanup, type_ignores=[]), str(path), 'exec'), env)
@@ -405,6 +410,16 @@ def make(autosave_timer, cancel, live, executor, parent):
     env['dialog'].Destroy.assert_called_once_with()
     assert is_alive() is False
     assert completion.done() is not cleanup_pending
+    owner.close.assert_called_once_with()
+    assert owned_registries == ({owner} if cleanup_pending else set())
+    assert env['parent']._reader_registry_retained == ([owner] if cleanup_pending else [])
+    if cleanup_pending:
+        # Actual failed ownership remains reachable after the dialog's unwind.
+        # A confirmed retry, not the native close event, removes that owner.
+        owner.close.return_value = True
+        release_owner(owner)
+        assert owner.close.call_count == 2
+        assert not owned_registries and not env['parent']._reader_registry_retained
 
 
 @pytest.mark.parametrize('device_failure', [False, True])
@@ -412,39 +427,74 @@ def test_studio_close_releases_device_and_both_observers_even_after_device_failu
     path = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/studio_dialog.py'
     tree = ast.parse(path.read_text(encoding='utf-8'))
     studio = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'show_studio')
-    helpers = [node for node in studio.body if isinstance(node, ast.FunctionDef)
-               and node.name in ('dispose', 'release_service', 'cleanup', 'close')]
+    names = ('dispose', 'release_service', 'cleanup', 'close')
+    helpers = [next(node for node in studio.body
+                    if isinstance(node, ast.FunctionDef) and node.name == name) for name in names]
     factory = ast.parse('''
 def make(autosave, cancel, service, timer, dialog, progress, parent_progress, report, executor):
     alive = True
     busy = True
     cleanup_started = False
     current_job = 'saved-production'
-    return close
+    frame = SimpleNamespace(report=report)
+    return close, cleanup, lambda: alive
 ''')
     factory.body[0].body[-1:-1] = helpers
-    env = dict(wx=SimpleNamespace(ID_CLOSE=123))
+    env = dict(wx=SimpleNamespace(ID_CLOSE=123, CallAfter=lambda callback: callback()),
+               SimpleNamespace=SimpleNamespace)
     exec(compile(ast.fix_missing_locations(factory), str(path), 'exec'), env)
-    autosave, cancel, service, timer, dialog, progress, parent_progress, report, executor = [Mock() for _ in range(9)]
+    autosave, cancel, service, timer, dialog, progress, parent_progress, report = [Mock() for _ in range(8)]
     dialog._playback_generation = 0
+    dialog._playback_navigation = Mock()
     if device_failure:
         dialog._audio_player.close.side_effect = RuntimeError('Audio device disconnected')
-    callback = env['make'](autosave, cancel, service, timer, dialog, progress, parent_progress, report, executor)
-    callback()
-    callback()  # A second native close must not release an owner twice.
-    dialog._audio_player.close.assert_called_once_with()
-    progress.unregister_player.assert_called_once_with(dialog._audio_player, silence_confirmed=not device_failure)
-    parent_progress.unregister_player.assert_called_once_with(dialog._audio_player, silence_confirmed=not device_failure)
-    progress.pause.assert_called_once_with('Audio production paused; completed chunks retained')
-    progress.close.assert_called_once_with()
-    dialog._playback_navigation.close.assert_called_once_with()
-    assert dialog._playback_generation == 1
-    service.close.assert_not_called()
-    executor.submit.assert_called_once()
-    release = executor.submit.call_args.args[0]
-    assert release.__name__ == 'release_service'
-    executor.shutdown.assert_called_once_with(wait=False, cancel_futures=False)
-    release()  # Owned registry release runs after already queued production work.
+    started, release, finished = threading.Event(), threading.Event(), threading.Event()
+    released = threading.Event()
+    owned_executor = ThreadPoolExecutor(max_workers=1)
+    executor = Mock(wraps=owned_executor)
+
+    def owned_work():
+        started.set()
+        assert release.wait(10), 'The test did not release the owned Studio work.'
+        finished.set()
+
+    def release_service_after_work():
+        assert finished.is_set(), 'The voice registry was closed before its owned work ended.'
+        released.set()
+        return True
+
+    service.close.side_effect = release_service_after_work
+    working = owned_executor.submit(owned_work)
+    try:
+        assert started.wait(5)
+        callback, cleanup, is_alive = env['make'](
+            autosave, cancel, service, timer, dialog, progress, parent_progress, report, executor)
+        callback()
+        # A duplicate native-close callback and final unwind do not repeat cleanup.
+        callback()
+        cleanup()
+        assert is_alive() is False
+        autosave.assert_called_once_with()
+        timer.Stop.assert_called_once_with()
+        service.request_pause.assert_called_once_with('saved-production')
+        dialog._audio_player.close.assert_called_once_with()
+        progress.unregister_player.assert_called_once_with(dialog._audio_player, silence_confirmed=not device_failure)
+        parent_progress.unregister_player.assert_called_once_with(dialog._audio_player, silence_confirmed=not device_failure)
+        progress.pause.assert_called_once_with('Audio production paused; completed chunks retained')
+        progress.close.assert_called_once_with()
+        dialog._playback_navigation.close.assert_called_once_with()
+        assert dialog._playback_generation == 1
+        executor.submit.assert_called_once()
+        assert executor.submit.call_args.args[0].__name__ == 'release_service'
+        # The queued real source helper must survive shutdown behind active work.
+        executor.shutdown.assert_called_once_with(wait=False, cancel_futures=False)
+        service.close.assert_not_called()
+        assert not working.done()
+        dialog.EndModal.assert_called_once_with(123)
+        assert report.call_count == int(device_failure)
+    finally:
+        release.set()
+        owned_executor.shutdown(wait=True, cancel_futures=False)
+    working.result()
     service.close.assert_called_once_with()
-    dialog.EndModal.assert_called_once_with(123)
-    assert report.call_count == int(device_failure)
+    assert released.is_set()

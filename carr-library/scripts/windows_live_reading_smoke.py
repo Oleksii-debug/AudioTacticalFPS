@@ -80,6 +80,17 @@ class ControlledPCMPlayer:
         self.state = 'closed'
 
 
+
+def independent_reading_desk(desk):
+    """Reopen the same sealed source with a new reader's cancellation lifetime."""
+    from carr_library.reader.reading_desk import ReadingDesk
+    fresh = ReadingDesk(desk.library, desk.workspace, desk.edition, topic=desk.topic,
+                        revision=desk.revision, timeout=desk.timeout)
+    assert (fresh.identity == desk.identity and fresh.metadata == desk.metadata
+            and fresh.pages == desk.pages), 'The source changed between native reader sessions.'
+    return fresh
+
+
 def canonical_copy_probe(wx, library, desk, discover, render):
     """Exercise the real canonical dialog, draft format and shared controller."""
     from carr_library.reader.live_reading import LiveReader
@@ -424,7 +435,12 @@ def main():
             wx_app.Yield()
             time.sleep(.01)
         assert len(delivered) == 3 and len(observed['renders']) == 5 and fixture.stream is None
-        copy_report = canonical_copy_probe(wx, library, desk, discover, render)
+        # The disposed source reader must stay cancelled. The next independent
+        # window reopens the same pinned source instead of reviving that owner.
+        assert reader.closed and reader.cancelled.is_set() and desk.cancelled()
+        copy_desk = independent_reading_desk(desk)
+        copy_report = canonical_copy_probe(wx, library, copy_desk, discover, render)
+        assert reader.cancelled.is_set() and desk.cancelled()
         assert len(observed['renders']) == 6
         report = dict(status='PASS', platform=platform.platform(),
                       native_modal_controls='PASS', native_unicode_crlf_selection='PASS',

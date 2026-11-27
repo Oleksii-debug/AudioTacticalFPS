@@ -286,3 +286,109 @@ def test_failed_preupdate_backup_never_activates_candidate(setup_update, monkeyp
     assert adapter.activated_path is None
     assert anchor.load().sequence == 1
     assert_preserved(setup_update)
+
+
+
+def test_cancel_during_prepared_journal_prevents_first_program_rename(setup_update, monkeypatch):
+    from carr_library.security.updates import UpdateCancelled
+    *_, package, transaction, anchor, adapter = setup_update
+    original = transaction._write
+    stopped = False
+    def stop_after_durable_preparation(record, phase):
+        nonlocal stopped
+        original(record, phase)
+        if phase == 'prepared':
+            stopped = True
+    monkeypatch.setattr(transaction, '_write', stop_after_durable_preparation)
+    with pytest.raises(UpdateCancelled, match='cancelled'):
+        transaction.apply(package, cancelled=lambda: stopped)
+    record = json.loads(transaction.journal.read_bytes())
+    assert record['phase'] == 'rolled-back'
+    assert (transaction.installed / 'version.txt').read_bytes() == b'A'
+    assert not (transaction.installed.parent / record['previous']).exists()
+    assert (transaction.work / record['stage'] / 'version.txt').read_bytes() == b'B'
+    assert anchor.load().sequence == 1 and adapter.checked == 0
+    assert (transaction.work / record['backup'] / 'manifest.json').is_file()
+    assert_preserved(setup_update)
+
+    # Only the live owner can attest that no first rename occurred. Its durable
+    # terminal phase lets a restarted owner recover and retry without guessing
+    # which program happens to occupy the installed pathname.
+    cancelled_record = transaction.journal.read_bytes()
+    restarted = UpdateTransaction(transaction.app, transaction.installed, transaction.work,
+        transaction.policy, anchor, adapter, idle_lease=idle, clock=transaction.clock)
+    assert restarted.recover() == 'rolled-back'
+    assert restarted.journal.read_bytes() == cancelled_record
+    assert (restarted.installed / 'version.txt').read_bytes() == b'A'
+    assert anchor.load().sequence == 1 and adapter.checked == 0
+    result = restarted.apply(package)
+    assert result['status'] == 'complete'
+    assert (restarted.installed / 'version.txt').read_bytes() == b'B'
+    assert (Path(result['previous']) / 'version.txt').read_bytes() == b'A'
+    assert anchor.load().sequence == 2 and adapter.checked == 1
+    assert json.loads(restarted.journal.read_bytes())['transaction'] != record['transaction']
+    assert (transaction.work / record['stage'] / 'version.txt').read_bytes() == b'B'
+    assert (transaction.work / record['backup'] / 'manifest.json').is_file()
+    assert_preserved(setup_update)
+
+
+def test_cancel_terminal_journal_failure_is_not_reported_as_recovered(setup_update, monkeypatch):
+    *_, package, transaction, anchor, adapter = setup_update
+    original = transaction._write
+    stopped = False
+
+    def stop_then_fail_terminal_write(record, phase):
+        nonlocal stopped
+        if phase == 'rolled-back':
+            raise OSError('Synthetic cancellation journal publication failure')
+        original(record, phase)
+        if phase == 'prepared':
+            stopped = True
+
+    monkeypatch.setattr(transaction, '_write', stop_then_fail_terminal_write)
+    with pytest.raises(OSError, match='cancellation journal publication failure'):
+        transaction.apply(package, cancelled=lambda: stopped)
+    raw = transaction.journal.read_bytes()
+    record = json.loads(raw)
+    assert record['phase'] == 'prepared'
+    assert (transaction.installed / 'version.txt').read_bytes() == b'A'
+    assert not (transaction.installed.parent / record['previous']).exists()
+    assert anchor.load().sequence == 1 and adapter.checked == 0
+    assert (transaction.work / record['stage'] / 'version.txt').read_bytes() == b'B'
+    assert (transaction.work / record['backup'] / 'manifest.json').is_file()
+    # A later process has no live-owner proof of the cancelled no-rename path.
+    # Preserve the strict missing-prior rejection instead of inferring identity.
+    with pytest.raises(TrustError, match='Previous installation is unavailable'):
+        transaction.recover()
+    assert transaction.journal.read_bytes() == raw
+    assert_preserved(setup_update)
+
+
+def test_missing_previous_installation_cannot_be_reported_as_rolled_back(setup_update, monkeypatch):
+    import shutil
+    *_, package, transaction, anchor, adapter = setup_update
+    original = transaction._write
+    class PowerLoss(BaseException):
+        pass
+    def stop_after_new_program(record, phase):
+        original(record, phase)
+        if phase == 'new-active':
+            raise PowerLoss()
+    monkeypatch.setattr(transaction, '_write', stop_after_new_program)
+    with pytest.raises(PowerLoss):
+        transaction.apply(package)
+    raw = transaction.journal.read_bytes()
+    record = json.loads(raw)
+    assert record['phase'] == 'new-active'
+    previous = transaction.installed.parent / record['previous']
+    assert (previous / 'version.txt').read_bytes() == b'A'
+    shutil.rmtree(previous)
+    assert (transaction.installed / 'version.txt').read_bytes() == b'B'
+    assert anchor.load().sequence == 1
+    with pytest.raises(TrustError, match='Previous installation is unavailable'):
+        transaction.recover()
+    assert transaction.journal.read_bytes() == raw
+    assert (transaction.installed / 'version.txt').read_bytes() == b'B'
+    assert not (transaction.work / record['failed']).exists()
+    assert (transaction.work / record['backup'] / 'manifest.json').is_file()
+    assert_preserved(setup_update)

@@ -24,7 +24,7 @@ import zipfile
 
 from ._files import TrustError, atomic_write, component, directory, file_info, json_bytes, json_value, locked, read_bytes, sync_directory
 from .anchors import Anchor, AnchorStore
-from .updates import Release, UpdatePolicy, VerifiedPackage, _cancel, relative_path, require_verified_package
+from .updates import Release, UpdateCancelled, UpdatePolicy, VerifiedPackage, _cancel, relative_path, require_verified_package
 
 
 class BundleAdapter(Protocol):
@@ -379,7 +379,10 @@ class UpdateTransaction:
                 os.rename(self.installed, failed)
             os.rename(previous, self.installed)
             sync_directory(self.installed.parent)
-        elif not self.installed.is_dir():
+        else:
+            # Directory existence cannot prove that rollback already restored A.
+            # Only the live no-rename cancellation owner can terminalize without
+            # this retained previous installation.
             raise TrustError('Previous installation is unavailable. Keep the backup and ask the owner to recover.')
         self._write(record, 'rolled-back')
 
@@ -439,6 +442,17 @@ class UpdateTransaction:
                 raise TrustError('Update transaction destination unexpectedly exists.')
             self._write(record, 'prepared')
             with exclusive_writer(self.app.root):
+                # Journal flushing and acquiring the existing writer lease may
+                # take time. Cancellation remains valid until the first move.
+                try:
+                    _cancel(cancelled)
+                except UpdateCancelled:
+                    # This live owner still holds every transaction lease and
+                    # knows no program rename has occurred. Record that fact so
+                    # a later owner can recover or retry without inferring the
+                    # installed program's identity from directory existence.
+                    self._write(record, 'rolled-back')
+                    raise
                 try:
                     os.rename(self.installed, previous)
                     sync_directory(self.installed.parent)
