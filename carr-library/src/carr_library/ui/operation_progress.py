@@ -495,6 +495,7 @@ class OperationProgress:
         self._pending, self._scheduled = None, False
         self._displayed_sequence, self._last_display, self._last_sound = -1, -math.inf, -math.inf
         self._last_state, self.audio_active, self.closed = 'idle', False, False
+        self._last_token, self._pending_sound = 0, None
         self._players = weakref.WeakSet()
         self._uncertain_players, self._audio_holds = set(), set()
         self.root, self.preferences = None, ProgressPreferences()
@@ -661,7 +662,8 @@ class OperationProgress:
             self._timer_state()
 
     def _timer_state(self):
-        if self.event.state == 'running' or self._players or self._uncertain_players or self._audio_holds:
+        if (self.event.state == 'running' or self._pending_sound is not None
+                or self._players or self._uncertain_players or self._audio_holds):
             if not self.timer.IsRunning():
                 self.timer.Start(250)
         else:
@@ -746,7 +748,7 @@ class OperationProgress:
         if (self.closed or event.token != self.event.token or event.sequence < self._displayed_sequence):
             return
         now = self.clock()
-        state_changed = event.state != self._last_state
+        state_changed = event.state != self._last_state or event.token != self._last_token
         if not force and not state_changed and now - self._last_display < .1:
             return
         text = describe_progress(event)
@@ -764,19 +766,37 @@ class OperationProgress:
         self._timer_state()
         self._mute()
         self._sound(event, state_changed=state_changed)
-        self._last_state = event.state
+        self._last_state, self._last_token = event.state, event.token
 
     def _sound(self, event, *, state_changed=False):
         preference = self.preferences
+        if self._pending_sound is not None and self._pending_sound[:2] != (event.token, event.state):
+            self._pending_sound = None
         available = (getattr(self.sound, 'speech_available', False)
                      if preference.mode in ('speech', 'both') else self.sound.available)
         if (self.sound.muted or not available or preference.volume == 0 or event.state == 'idle'
                 or not preference.background and not self.frame.IsActive()):
+            # Quiet/background/capture policy also discards a deferred cue; it
+            # must not be replayed later after its operation is no longer current.
+            self._pending_sound = None
+            self._timer_state()
             return
         now = self.clock()
-        if not state_changed and (event.state != 'running' or now - self._last_sound < preference.interval_seconds):
+        state = ('resumed' if state_changed and event.token == self._last_token
+                 and event.state == 'running' and self._last_state == 'paused' else event.state)
+        if state_changed:
+            # Keep only the latest state cue. The existing bounded worker may
+            # still be speaking the running state, so cancel that stale speech
+            # and retry this cue on the GUI timer after its owned output drains.
+            self._pending_sound = (event.token, event.state, state)
+            cancel = getattr(self.sound, 'cancel', None)
+            if callable(cancel):
+                cancel()
+        if (self._pending_sound is None and not state_changed
+                and (event.state != 'running' or now - self._last_sound < preference.interval_seconds)):
             return
-        state = 'resumed' if state_changed and event.state == 'running' and self._last_state == 'paused' else event.state
+        if self._pending_sound is not None:
+            state = self._pending_sound[2]
         if preference.mode in ('speech', 'both'):
             measured = (f'{event.percent} percent. ' if event.percent is not None else
                         'Total work is not yet known. ' if event.state == 'running' else '')
@@ -790,6 +810,8 @@ class OperationProgress:
             played = self.sound.play(event.percent, volume=preference.volume, state=state)
         if played:
             self._last_sound = now
+            self._pending_sound = None
+        self._timer_state()
 
     def _tick(self, event=None):
         if self.closed:
@@ -813,6 +835,7 @@ class OperationProgress:
 
     def close(self):
         self.closed = True
+        self._pending_sound = None
         self.timer.Stop()
         self.sound.close()
         self._players.clear()

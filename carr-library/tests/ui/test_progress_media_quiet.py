@@ -374,3 +374,71 @@ def test_provider_origin_cannot_be_reauthorized_by_passing_a_different_root_argu
     with pytest.raises(ValueError):
         media.controller.set_speech_provider(voice, root=media.frame.library.root)
     assert not media.sound.speech_available
+
+
+@pytest.mark.parametrize('method, label', [
+    ('succeed', 'Completed.'), ('fail', 'Failed.'),
+    ('cancel', 'Cancelled.'), ('pause', 'Paused.'),
+])
+def test_terminal_notice_replaces_in_flight_running_speech_without_losing_final_state(media, method, label):
+    voice = media.use_voice()
+    controller = media.controller
+    controller.configure(ProgressPreferences(mode='speech'))
+    token = controller.start('Importing synthetic books', 4)
+    assert voice.entered.wait(1)
+
+    getattr(controller, method)(token=token)
+    assert controller.timer.IsRunning(), 'The final cue must drain after active speech stops'
+    voice.release.set()
+    media.sound._thread.join(2)
+    assert not media.sound._thread.is_alive()
+    assert voice.heard == [], 'Stale running speech must be cancelled'
+
+    controller._tick()
+    media.sound._thread.join(2)
+    assert not media.sound._thread.is_alive()
+    assert len(voice.heard) == 1 and voice.heard[0].startswith(label)
+    assert not controller.timer.IsRunning()
+    controller._tick()
+    assert len(voice.heard) == 1, 'A final cue must not repeat'
+
+
+@pytest.mark.parametrize('finish_first', [False, True])
+def test_new_operation_replaces_old_running_or_deferred_terminal_speech(media, finish_first):
+    voice = media.use_voice()
+    controller = media.controller
+    controller.configure(ProgressPreferences(mode='speech'))
+    first = controller.start('First operation', 4)
+    assert voice.entered.wait(1)
+    if finish_first:
+        controller.succeed(token=first)
+    second = controller.start('Second operation', 8)
+    assert second != first
+    voice.release.set()
+    media.sound._thread.join(2)
+    assert not media.sound._thread.is_alive() and voice.heard == []
+
+    controller._tick()
+    media.sound._thread.join(2)
+    assert not media.sound._thread.is_alive()
+    assert len(voice.heard) == 1
+    assert 'Second operation' in voice.heard[0]
+    assert 'First operation' not in voice.heard[0] and 'Completed' not in voice.heard[0]
+
+
+def test_quiet_policy_discards_pending_final_speech_without_late_replay(media):
+    voice = media.use_voice()
+    controller = media.controller
+    controller.configure(ProgressPreferences(mode='speech'))
+    controller.start('A completed operation', 4)
+    assert voice.entered.wait(1)
+    controller.succeed()
+    controller.configure(ProgressPreferences(mode='speech', quiet=True))
+    controller._tick()
+    assert not controller.timer.IsRunning()
+    voice.release.set()
+    media.sound._thread.join(2)
+    assert not media.sound._thread.is_alive() and voice.heard == []
+    controller.configure(ProgressPreferences(mode='speech'))
+    controller._tick()
+    assert voice.heard == [] and not controller.timer.IsRunning()
