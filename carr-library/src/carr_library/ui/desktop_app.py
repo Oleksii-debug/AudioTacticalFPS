@@ -594,6 +594,7 @@ class DesktopFrame(WorkspaceFrame):
         install_query_manager_actions(self)
         from .speech_dialog import install_speech_actions
         from .studio_dialog import install_studio_actions
+        from .book_audio_dialog import install_book_audio_actions
         from .assistant_dialog import install_assistant_actions
         from .save_actions import install_save_actions
         from .document_conversion import install_conversion_actions
@@ -605,6 +606,7 @@ class DesktopFrame(WorkspaceFrame):
         install_speech_actions(self)
         install_language_actions(self)
         install_studio_actions(self)
+        install_book_audio_actions(self)
         install_assistant_actions(self)
         install_translation_actions(self)
         install_conversion_actions(self)
@@ -1296,6 +1298,8 @@ class DesktopFrame(WorkspaceFrame):
             'Library, Import Center opens folder scans, duplicate checks and saved import queues.\n'
             'Help, Document formats explains supported text, ebook, email, presentation and spreadsheet formats and their limits.\n'
             'Ctrl+R opens the selected book with page or segment resume, bookmarks and reading history.\n'
+            'Audio Studio, Book audio: split and render reviews exact source parts and output names before saving ordinary Studio jobs.\n'
+            'Book audio Prepare starts no speech. Run or resume is a separate action; restored plans require a new output review.\n'
             'Ctrl+Shift+R opens EPUB section navigation with chapter titles and separate image descriptions.\n'
             'Ctrl+Shift+O opens contents, headings, chapter search and an extraction report for the selected EPUB.\n'
             'Ctrl+Shift+I resumes an interrupted import in the selected library.\n'

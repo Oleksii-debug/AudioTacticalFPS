@@ -161,6 +161,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
                               ('language_matrix', 'install_language_actions'),
                               ('translation_dialog', 'install_translation_actions'),
                               ('studio_dialog', 'install_studio_actions'),
+                              ('book_audio_dialog', 'install_book_audio_actions'),
                               ('assistant_dialog', 'install_assistant_actions'),
                               ('document_conversion', 'install_conversion_actions'),
                               ('keyboard_settings', 'install_keyboard_settings'),
@@ -197,6 +198,8 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     for installer in (*installers.values(), ebook, *new_installers):
         installer.assert_called_once_with(value)
     assert install_order[-1] == 'install_keyboard_settings'
+    assert install_order.index('install_studio_actions') < install_order.index('install_book_audio_actions')
+    assert install_order.index('install_book_audio_actions') < install_order.index('install_keyboard_settings')
     assert install_order.index('install_transcription_actions') < install_order.index('install_command_palette')
     value.help(None)
     guide = env['show_text'].call_args.args[2]
@@ -206,6 +209,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     assert 'Ctrl+Alt+F opens Research Search Center' in guide
     assert 'Ctrl+Shift+F searches saved quotations and notes' in guide
     assert 'Ctrl+Shift+P opens Help, Find a command' in guide
+    assert 'Book audio Prepare starts no speech' in guide
 
 
 def test_repeated_enter_does_not_clear_an_active_search(classes):
