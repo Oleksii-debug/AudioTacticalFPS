@@ -763,10 +763,20 @@ def test_actual_worker_uncertain_cleanup_retains_source_clip_lock_and_admission(
     permitted, released = Event(), Event()
     attempts, files = [], []
     target, name = ((JobProcess, 'close') if stage == 'parser' and os.name == 'nt'
+                    else (process, '_wait_posix_group') if stage == 'parser'
                     else (process, '_terminate'))
     actual = getattr(target, name)
+    launched = {}
+    if stage == 'parser' and os.name != 'nt':
+        original_popen = process.subprocess.Popen
+        def observe_start(*args, **kwargs):
+            child = original_popen(*args, **kwargs)
+            launched[child.pid] = child
+            return child
+        monkeypatch.setattr(process.subprocess, 'Popen', observe_start)
 
-    def uncertain(child):
+    def uncertain(first, *args_after_child, **kwargs):
+        child = launched[first] if stage == 'parser' and os.name != 'nt' else first
         args = child.args
         selected = (stage == 'parser' and len(args) >= 3 and Path(args[-3]).name == 'source.epub'
                     or stage == 'inspection' and Path(args[-1]).name == 'recording.mp3'
@@ -777,7 +787,7 @@ def test_actual_worker_uncertain_cleanup_retains_source_clip_lock_and_admission(
             files.append(Path(args[-3] if stage == 'parser' else args[-1]))
             if not permitted.is_set():
                 raise OSError('Synthetic refusal after the actual native worker ran')
-        return actual(child)
+        return actual(first, *args_after_child, **kwargs)
 
     monkeypatch.setattr(target, name, uncertain)
     owner = None
@@ -789,7 +799,15 @@ def test_actual_worker_uncertain_cleanup_retains_source_clip_lock_and_admission(
                 session.prepare(0)
         owner = failure.value.cleanup_owner
         owner.add_quiescent_callback(released.set)
-        assert attempts and files and all(child.returncode == 0 for child in attempts)
+        def exited_successfully(child):
+            if child.returncode == 0:
+                return True
+            if stage == 'parser' and os.name != 'nt':
+                observed = os.waitid(os.P_PID, child.pid, os.WEXITED | os.WNOWAIT | os.WNOHANG)
+                return (observed is not None and observed.si_code == os.CLD_EXITED
+                        and observed.si_status == 0)
+            return False
+        assert attempts and files and all(exited_successfully(child) for child in attempts)
         retained = files[0]
         assert retained.is_file(), 'Native-owned input/output was removed before shutdown confirmation.'
         assert owner.close() is False and not owner.quiescent
@@ -905,7 +923,12 @@ def test_dialog_reports_start_failure_after_transport_invalidates_its_ticket(
         feedback=feedback, active_task=None, _flag=lambda _name: False,
         wx=SimpleNamespace(CallAfter=lambda callback: callbacks.put(callback)))
     media = ProgressMedia(panel)
-    progress = SimpleNamespace(hold_audio=media.hold_audio, refresh_audio_state=media.refresh)
+    class Progress:
+        def hold_audio(self):
+            return media.hold_audio()
+        def refresh_audio_state(self):
+            return media.refresh()
+    progress = Progress()
 
     dialog = object.__new__(EbookAudioDialog)
     dialog.closed, dialog.busy = False, False
