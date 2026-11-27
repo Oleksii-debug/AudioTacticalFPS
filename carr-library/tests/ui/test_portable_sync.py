@@ -848,3 +848,78 @@ def test_native_confirmation_helper_thread_failure_closes_launched_process(confi
     process.kill.assert_called_once()
     process.communicate.assert_called_once_with(timeout=1)
     timer.cancel.assert_called_once()
+
+
+def test_native_uia_failure_exposes_stage_and_matches_without_private_text(confirmation_probe, capsys):
+    secret = 'Purpose-written private control message and local path'
+    payload = dict(status='NATIVE_DIALOG_UIA_FAILED', stage='answer_match',
+        error_type='System.Management.Automation.RuntimeException',
+        inner_type='System.Windows.Automation.ElementNotAvailableException', hresult=-2146233087,
+        button_count=2, yes_matches=0, no_matches=None, owner_match=True,
+        dialog_match=dict(pid=True, title=True, hwnd=True, **{'class': True}),
+        controls=[dict(type=50000, pid_match=True, yes_exact=False, no_exact=False,
+            yes_without_mnemonic=True, no_without_mnemonic=False, enabled=True, offscreen=False,
+            name=secret)], message=secret, stack=secret)
+    operation, _ = _accessible_operation(confirmation_probe, output=payload, returncode=1)
+    operation.process.communicate.return_value = (
+        confirmation_probe.json.dumps(payload).encode('utf-8'), secret.encode('utf-8'))
+    with pytest.raises(AssertionError, match='interaction failed'):
+        operation.poll()
+    output = capsys.readouterr().out
+    diagnostic = confirmation_probe.json.loads(output)
+    assert diagnostic['stage'] == 'helper_exit' and diagnostic['helper_stage'] == 'answer_match'
+    assert diagnostic['error_type'] == payload['error_type']
+    assert diagnostic['inner_type'] == payload['inner_type']
+    assert diagnostic['returncode'] == 1 and diagnostic['yes_matches'] == 0
+    assert diagnostic['controls'][0]['yes_without_mnemonic'] is True
+    assert diagnostic['controls'][0]['yes_exact'] is False
+    assert secret not in output and 'message' not in diagnostic and 'stack' not in diagnostic
+
+
+def test_native_uia_failure_rejects_untyped_unbounded_diagnostic_metadata(confirmation_probe, capsys):
+    secret = 'Purpose-written diagnostic input, not a message to publish'
+    payload = dict(status='NATIVE_DIALOG_UIA_FAILED', stage=[secret], error_type=secret,
+        inner_type='System.Invalid\\nType', hresult=True, button_count=secret,
+        yes_matches=True, owner_match=secret, dialog_match=dict(title=secret),
+        controls=[dict(type=True, enabled=True, name=secret) for _ in range(40)])
+    operation, _ = _accessible_operation(confirmation_probe, output=payload, returncode=1)
+    with pytest.raises(AssertionError, match='interaction failed'):
+        operation.poll()
+    output = capsys.readouterr().out
+    diagnostic = confirmation_probe.json.loads(output)
+    assert 'helper_stage' not in diagnostic and 'error_type' not in diagnostic
+    assert 'inner_type' not in diagnostic and 'hresult' not in diagnostic
+    assert 'yes_matches' not in diagnostic and 'owner_match' not in diagnostic
+    assert diagnostic['dialog_match'] == {}
+    assert diagnostic['controls'] == [dict(enabled=True)] * 32
+    assert secret not in output and len(output) < 4096
+
+
+def test_native_uia_receipt_mismatch_logs_field_names_only(confirmation_probe, capsys):
+    operation, receipt = _accessible_operation(confirmation_probe)
+    secret = 'Purpose-written foreign window or control name'
+    receipt.update(title=secret, button_name=secret)
+    operation.process.communicate.return_value = (
+        confirmation_probe.json.dumps(receipt).encode('utf-8'), b'')
+    with pytest.raises(AssertionError, match='does not match'):
+        operation.poll()
+    output = capsys.readouterr().out
+    diagnostic = confirmation_probe.json.loads(output)
+    assert diagnostic['stage'] == 'receipt_mismatch'
+    assert diagnostic['mismatched_fields'] == ['title', 'button_name']
+    assert secret not in output
+
+
+@pytest.mark.parametrize('kind, stage', [('json', 'helper_json'), ('oversized', 'helper_output_budget'),
+                                        ('expired', 'helper_timeout')])
+def test_native_uia_transport_failure_remains_bounded_and_cannot_pass(confirmation_probe, capsys, kind, stage):
+    operation, _ = _accessible_operation(confirmation_probe, returncode=1)
+    private = b'Purpose-written private child diagnostic'
+    operation.process.communicate.return_value = (private if kind != 'oversized' else private * 500, private)
+    operation.expired = kind == 'expired'
+    with pytest.raises(AssertionError, match='interaction failed'):
+        operation.poll()
+    output = capsys.readouterr().out
+    diagnostic = confirmation_probe.json.loads(output)
+    assert diagnostic['stage'] == stage and diagnostic['returncode'] == 1
+    assert private.decode() not in output and len(output) < 1024

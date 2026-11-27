@@ -29,9 +29,17 @@ def not_run(reason):
 _UIA_REPLY = r"""
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+$stage = 'automation_load'
+$dialog_match = @{}
+$owned = $false
+$button_count = $null
+$yes_matches = $null
+$no_matches = $null
+$controls = @()
 try {
     Add-Type -AssemblyName UIAutomationClient
     Add-Type -AssemblyName UIAutomationTypes
+    $stage = 'owner_api'
     Add-Type -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;
@@ -40,13 +48,21 @@ public static class ConfirmationOwner {
     public static extern IntPtr GetWindow(IntPtr window, uint command);
 }
 '@
+    $stage = 'dialog_lookup'
     $dialog = [System.Windows.Automation.AutomationElement]::FromHandle([IntPtr]([long]$request.hwnd))
     $current = $dialog.Current
+    $stage = 'dialog_identity'
+    $dialog_match = @{
+        pid=($current.ProcessId -eq $request.pid); title=($current.Name -ceq $request.title)
+        hwnd=($current.NativeWindowHandle -eq $request.hwnd); class=($current.ClassName -eq '#32770')
+        enabled=[bool]$current.IsEnabled; onscreen=(-not $current.IsOffscreen)
+    }
     if ($current.ProcessId -ne $request.pid -or $current.Name -cne $request.title -or
             $current.NativeWindowHandle -ne $request.hwnd -or $current.ClassName -ne '#32770' -or
             -not $current.IsEnabled -or $current.IsOffscreen) {
         throw 'The accessible dialog identity changed'
     }
+    $stage = 'owner_chain'
     $seen = @{}
     $owned = $false
     $parent = [ConfirmationOwner]::GetWindow([IntPtr]([long]$request.hwnd), 4)
@@ -58,24 +74,41 @@ public static class ConfirmationOwner {
         $parent = [ConfirmationOwner]::GetWindow($parent, 4)
     }
     if (-not $owned) { throw 'The accessible dialog owner changed' }
+    $stage = 'button_search'
     $condition = [System.Windows.Automation.PropertyCondition]::new(
         [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
         [System.Windows.Automation.ControlType]::Button)
     $buttons = $dialog.FindAll([System.Windows.Automation.TreeScope]::Descendants, $condition)
+    $button_count = $buttons.Count
     if ($buttons.Count -gt 32) { throw 'Too many accessible confirmation buttons' }
+    $stage = 'answer_match'
     $answers = @{}
     foreach ($label in @($request.yes, $request.no)) {
         $matches = @()
         foreach ($button in $buttons) {
             $info = $button.Current
+            if ($label -ceq $request.yes -and $controls.Count -lt 32) {
+                try {
+                    $controls += @{
+                        pid_match=($info.ProcessId -eq $request.pid); type=[int]$info.ControlType.Id
+                        yes_exact=($info.Name -ceq $request.yes); no_exact=($info.Name -ceq $request.no)
+                        yes_without_mnemonic=($info.Name.Replace('&', '') -ceq $request.yes)
+                        no_without_mnemonic=($info.Name.Replace('&', '') -ceq $request.no)
+                        enabled=[bool]$info.IsEnabled; offscreen=[bool]$info.IsOffscreen
+                    }
+                } catch { } # Observations do not change the actual selection rule.
+            }
             if ($info.ProcessId -eq $request.pid -and $info.Name -ceq $label -and
                     $info.IsEnabled -and -not $info.IsOffscreen) {
                 $matches += $button
             }
         }
+        if ($label -ceq $request.yes) { $yes_matches = $matches.Count }
+        if ($label -ceq $request.no) { $no_matches = $matches.Count }
         if ($matches.Count -ne 1) { throw 'The owned dialog has no unique accessible Yes/No pair' }
         $answers[$label] = $matches[0]
     }
+    $stage = 'invoke_pattern'
     $selected = $answers[$request.answer]
     $info = $selected.Current
     $pattern = $null
@@ -91,14 +124,71 @@ public static class ConfirmationOwner {
         enabled=$info.IsEnabled; offscreen=$info.IsOffscreen
     }
     # Invoke the actual accessible control; never manufacture a modal result.
+    $stage = 'invoke'
     ([System.Windows.Automation.InvokePattern]$pattern).Invoke()
+    $stage = 'receipt'
     $receipt | ConvertTo-Json -Compress
     exit 0
 } catch {
-    @{status='FAIL'; error='Owned accessible confirmation interaction failed'} | ConvertTo-Json -Compress
+    $error_type = $_.Exception.GetType().FullName
+    $inner_type = if ($null -ne $_.Exception.InnerException) { $_.Exception.InnerException.GetType().FullName } else { '' }
+    # Fixed stages, type names, counts and match flags only: never exception
+    # messages, window/control text, request values, command lines or paths.
+    @{status='NATIVE_DIALOG_UIA_FAILED'; stage=$stage; error_type=$error_type
+      inner_type=$inner_type; hresult=[int]$_.Exception.HResult
+      dialog_match=$dialog_match; owner_match=$owned; button_count=$button_count
+      yes_matches=$yes_matches; no_matches=$no_matches; controls=$controls
+    } | ConvertTo-Json -Depth 4 -Compress
     exit 1
 }
 """
+
+
+_UIA_FAILURE_STAGES = frozenset((
+    'automation_load', 'owner_api', 'dialog_lookup', 'dialog_identity',
+    'owner_chain', 'button_search', 'answer_match', 'invoke_pattern', 'invoke', 'receipt'))
+
+
+def _uia_failure(request, stage, *, receipt=None, returncode=None, mismatches=()):
+    """Emit only bounded diagnostic metadata from the owned synthetic helper."""
+    value = dict(status='NATIVE_DIALOG_UIA_FAILED', stage=stage,
+                 answer='yes' if request['answer'] == request['yes'] else 'no')
+    if type(returncode) is int:
+        value['returncode'] = returncode
+    if mismatches:
+        value['mismatched_fields'] = list(mismatches)
+    if type(receipt) is dict and receipt.get('status') == 'NATIVE_DIALOG_UIA_FAILED':
+        if type(receipt.get('stage')) is str and receipt['stage'] in _UIA_FAILURE_STAGES:
+            value['helper_stage'] = receipt['stage']
+        for key in ('error_type', 'inner_type'):
+            item = receipt.get(key)
+            if (type(item) is str and item.startswith('System.') and len(item) <= 128
+                    and all(character.isascii() and (character.isalnum() or character in '._')
+                            for character in item)):
+                value[key] = item
+        for key in ('hresult', 'button_count', 'yes_matches', 'no_matches'):
+            item = receipt.get(key)
+            if type(item) is int and -(2**31) <= item < 2**31:
+                value[key] = item
+        if type(receipt.get('owner_match')) is bool:
+            value['owner_match'] = receipt['owner_match']
+        match = receipt.get('dialog_match')
+        if type(match) is dict:
+            value['dialog_match'] = {key: match[key] for key in (
+                'pid', 'title', 'hwnd', 'class', 'enabled', 'onscreen') if type(match.get(key)) is bool}
+        controls = receipt.get('controls')
+        if type(controls) is list:
+            value['controls'] = []
+            for control in controls[:32]:
+                if type(control) is not dict:
+                    continue
+                row = {key: control[key] for key in (
+                    'pid_match', 'yes_exact', 'no_exact', 'yes_without_mnemonic',
+                    'no_without_mnemonic', 'enabled', 'offscreen') if type(control.get(key)) is bool}
+                if type(control.get('type')) is int and 0 <= control['type'] <= 100000:
+                    row['type'] = control['type']
+                value['controls'].append(row)
+    print(json.dumps(value), flush=True)
 
 
 class AccessibleAnswer:
@@ -118,6 +208,7 @@ class AccessibleAnswer:
             stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
         self.deadline = monotonic() + 8
+        self.expired = False
         # A failed modal callback must not leave an unpolled UIA process alive.
         # This timer owns this exact Popen object, never a process-name/PID scan.
         self.watchdog = Timer(8, self._expire)
@@ -133,6 +224,7 @@ class AccessibleAnswer:
 
     def _expire(self):
         if self.process.poll() is None:
+            self.expired = True
             try:
                 self.process.kill()
             except OSError:
@@ -152,17 +244,28 @@ class AccessibleAnswer:
     def poll(self):
         if self.process.poll() is None:
             if monotonic() >= self.deadline:
+                _uia_failure(self.request, 'helper_timeout')
                 self.close()
                 raise AssertionError('Owned accessible confirmation lookup exceeded eight seconds')
             return False
         self._cancel_watchdog()
         output, unused_error = self.process.communicate(timeout=1)
-        if self.process.returncode or len(output) > 16384:
+        if self.process.returncode and getattr(self, 'expired', False):
+            _uia_failure(self.request, 'helper_timeout', returncode=self.process.returncode)
+            raise AssertionError('Owned accessible confirmation interaction failed')
+        if len(output) > 16384:
+            _uia_failure(self.request, 'helper_output_budget', returncode=self.process.returncode)
             raise AssertionError('Owned accessible confirmation interaction failed')
         try:
             receipt = json.loads(output.decode('utf-8-sig'))
         except (ValueError, UnicodeError):
+            _uia_failure(self.request, 'helper_json', returncode=self.process.returncode)
+            if self.process.returncode:
+                raise AssertionError('Owned accessible confirmation interaction failed') from None
             raise AssertionError('Invalid owned accessible confirmation receipt') from None
+        if self.process.returncode:
+            _uia_failure(self.request, 'helper_exit', receipt=receipt, returncode=self.process.returncode)
+            raise AssertionError('Owned accessible confirmation interaction failed')
         expected = dict(status='NATIVE_DIALOG', method='UIA_Invoke',
                         pid=self.request['pid'], hwnd=self.request['hwnd'],
                         owner=self.request['owner'], title=self.request['title'],
@@ -173,6 +276,15 @@ class AccessibleAnswer:
                        for key, value in expected.items())
                 or type(receipt.get('button_hwnd')) is not int or receipt['button_hwnd'] < 0
                 or type(receipt.get('button_id')) is not str or len(receipt['button_id']) > 256):
+            fields = list(expected) if type(receipt) is not dict else [
+                key for key, value in expected.items()
+                if type(receipt.get(key)) is not type(value) or receipt[key] != value]
+            if type(receipt) is dict:
+                if type(receipt.get('button_hwnd')) is not int or receipt['button_hwnd'] < 0:
+                    fields.append('button_hwnd')
+                if type(receipt.get('button_id')) is not str or len(receipt['button_id']) > 256:
+                    fields.append('button_id')
+            _uia_failure(self.request, 'receipt_mismatch', mismatches=fields)
             raise AssertionError('Owned accessible confirmation receipt does not match the request')
         print(json.dumps(receipt), flush=True)
         return True
@@ -302,6 +414,9 @@ class WindowsConfirmations:
 
         self.api.EnumChildWindows(window, child, 0)
         if not buttons and len(direct_ui) == 1:
+            print(json.dumps(dict(status='NATIVE_DIALOG_UIA_START', pid=os.getpid(),
+                                  hwnd=window, owner=owner, answer='yes' if accept else 'no',
+                                  control_count=len(controls))), flush=True)
             self.pending = (AccessibleAnswer(dict(
                 hwnd=window, owner=owner, pid=os.getpid(), title=title,
                 yes=self.yes_label, no=self.no_label,
