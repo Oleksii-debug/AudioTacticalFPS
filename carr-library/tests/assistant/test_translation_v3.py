@@ -484,9 +484,13 @@ def test_actual_native_handlers_queue_reviewed_glossary_and_focus_readable_compl
     e = translation_handlers
     def scenario():
         prepare_handler(e)
+        status = e.find('Preview, supported languages and job status')
+        assert status.focused and 'source: True' in status.value
         assert GLOSSARY not in e.state['approvals'][0]  # Discovery sends no glossary or text.
+        status.focused = False
         e.press('Preview')
-        assert GLOSSARY in e.find('Preview, supported languages and job status').value
+        assert GLOSSARY in status.value and status.focused
+        status.focused = False
         e.press('Translate / resume')
         assert len(transport['calls']) == 1 and len(e.state['queue']) == 1
         assert not e.find('Advanced v3 glossary resource; blank for none').enabled

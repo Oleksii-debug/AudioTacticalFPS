@@ -228,7 +228,7 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
                   lambda rows: report('Provider-declared NMT languages; no quality or 135-language qualification claim:\n' +
                                       '\n'.join(row['language'] + ' — ' + row['name'] +
                                           ('; source: ' + str(row['source']) + '; target: ' + str(row['target']) if 'source' in row else '')
-                                          for row in rows)))
+                                          for row in rows), True))
         except Exception as exc:
             report(str(exc), True)
 
@@ -249,7 +249,7 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
                         glossary.GetValue().strip() or None, rate.GetValue().strip() or None)
             report(json.dumps(result, ensure_ascii=False, indent=2) +
                    '\n\nNo request sent. Translate asks permission for this exact selected text and total budget. '
-                   'The budget is a local reservation bound, not a provider-enforced billing guarantee.')
+                   'The budget is a local reservation bound, not a provider-enforced billing guarantee.', True)
         except Exception as exc:
             reviewed = None
             report(str(exc), True)
@@ -388,7 +388,7 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
                     return service.export(identity, destination, cancelled=stopped, guard=guard)
                 begin('Exporting translation derivative',
                       publish,
-                      lambda result: report('Saved new files in: ' + result['path']))
+                      lambda result: report('Saved new files in: ' + result['path'], True))
         except Exception as exc:
             report(str(exc), True)
         finally:
