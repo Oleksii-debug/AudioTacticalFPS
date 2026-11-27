@@ -108,6 +108,13 @@ for index, source in enumerate(sources):
     (job / name).write_text(json.dumps(receipt), encoding='utf-8')
     status['receipts'].append(name)
     status['done'] += 1
+    if MODE == 'cancel-after-first' and index == 0:
+        publish()
+        while not (job / 'stop.flag').exists():
+            time.sleep(.02)
+        status.update(state='stopped', result_state='stopped')
+        publish()
+        raise SystemExit(2)
 status['failed'] = status['total'] - status['done']
 status.update(state='finished', result_state='partial' if status['failed'] else 'completed')
 publish()
@@ -342,3 +349,28 @@ def test_cli_and_application_share_one_durable_job_service(prepared, tmp_path):
         capture_output=True, text=True, encoding='utf-8')
     assert completed_job.returncode == 0, completed_job.stderr
     assert service.verify(identity)['status'] == 'completed'
+
+
+def test_stop_does_not_rehash_inputs_and_preserves_completed_worker_files(prepared, tmp_path, monkeypatch):
+    _, _, service, original, configure = prepared
+    configure('cancel-after-first')
+    second = tmp_path / 'second-stop.wav'
+    second.write_bytes(b'Another synthetic input.')
+    identity = service.submit([original, second])
+    path = service._path(identity)
+    def must_not_rehash(*args, **kwargs):
+        raise AssertionError('Stop must defer verification until explicit resume.')
+    monkeypatch.setattr(service, '_receipts', must_not_rehash)
+    def cancelled():
+        status = path / 'job_status.json'
+        return status.exists() and read_json(status).get('done') == 1
+    stopped = service.run(identity, timeout=30, cancelled=cancelled)
+    assert stopped['status'] == 'stopped'
+    assert stopped['artifacts'] == [] and stopped['done'] == 0
+    receipts = list((path / 'receipts').glob('*.result.json'))
+    assert len(receipts) == 1
+    assert len(list((path / 'results').rglob('*.*'))) == 6
+    assert len(list((path / 'input').iterdir())) == 2
+    monkeypatch.undo()
+    configure('complete')
+    assert service.run(identity, timeout=30)['status'] == 'completed'

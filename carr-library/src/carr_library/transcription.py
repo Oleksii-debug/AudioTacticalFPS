@@ -490,9 +490,19 @@ class TranscriptionService:
                         max_staging_files=10000))
             except (AudioError, OSError, ValueError, KeyboardInterrupt) as exc:
                 failure = exc
+            # A stop must not trigger a second potentially multi-gigabyte read.
+            # Keep worker cache/receipts on disk for the next explicit resume;
+            # do not present these unverified files as completed exports yet.
+            if stop_at is not None or isinstance(failure, (AudioCancelled, KeyboardInterrupt)) or cancelled():
+                job.update(status='stopped', done=0, failed=0, receipts=[], artifacts=[],
+                           last_error='Stopped. Saved worker results will be verified on the next resume.')
+                self._save(path, job)
+                if progress is not None:
+                    progress(0, len(job['sources']), 'stopped')
+                return job
             try:
                 status = read_json(prior) if prior.exists() else {}
-                receipts, artifacts = self._receipts(path, job, status)
+                receipts, artifacts = self._receipts(path, job, status, cancelled)
                 complete = (failure is None and stop_at is None
                             and status.get('result_state') == 'completed'
                             and len(receipts) == len(job['sources'])
@@ -505,6 +515,9 @@ class TranscriptionService:
                            worker_run_id=status.get('run_id'))
                 if not complete:
                     job['last_error'] = str(failure or 'The worker did not complete every requested export.')[:3000]
+            except AudioCancelled:
+                job.update(status='stopped', done=0, failed=0, receipts=[], artifacts=[],
+                           last_error='Verification stopped. Saved worker results remain available for resume.')
             except (ValueError, OSError, KeyError, TypeError) as exc:
                 job.update(status='stopped' if stop_at is not None else 'failed',
                            last_error=str(failure or exc)[:3000])
