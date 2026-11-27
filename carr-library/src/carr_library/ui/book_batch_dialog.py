@@ -167,10 +167,10 @@ class BookBatchDialog:
         self.body = wx.ScrolledWindow(self.dialog, style=wx.VSCROLL | wx.TAB_TRAVERSAL)
         self.body.SetScrollRate(0, 12)
         layout = wx.BoxSizer(wx.VERTICAL)
-        def field(label, factory=wx.TextCtrl, **kwargs):
-            layout.Add(wx.StaticText(self.body, label=label), 0, wx.ALL, 3)
+        def field(caption, factory=wx.TextCtrl, **kwargs):
+            layout.Add(wx.StaticText(self.body, label=caption), 0, wx.ALL, 3)
             item = factory(self.body, **kwargs)
-            item.SetName(label.replace('&', ''))
+            item.SetName(caption.replace('&', ''))
             layout.Add(item, 0, wx.EXPAND | wx.ALL, 3)
             return item
         self.title = field('Batch title', value=self.state.title)

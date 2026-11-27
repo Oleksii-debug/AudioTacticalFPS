@@ -281,3 +281,42 @@ def test_schedule_definition_cannot_add_executable_or_network_controls(scheduled
         validate_job(record)
     with pytest.raises(ValueError):
         Step('schedule.arm', {'id': identity})
+
+
+def test_completed_schedule_reverification_refuses_changed_actual_artifact_without_replaying(
+        scheduled, monkeypatch):
+    app, service, identity, clock, manager, view, output = scheduled
+    artifact = output / 'completed.txt'
+    actual = service._execute
+    def produce(step, *args, **kwargs):
+        result = actual(step, *args, **kwargs)
+        if step.tool == 'library.list':
+            artifact.write_text('original completed bytes', encoding='utf-8')
+            result['artifacts'] = [str(artifact)]
+        return result
+    monkeypatch.setattr(service, '_execute', produce)
+    session = ScheduleSession(manager)
+    session.arm({identity: view.schedule_sha256})
+    clock[0] += timedelta(minutes=5)
+    assert session.tick().status == 'complete'
+    before = service.store.path(identity).read_bytes()
+    artifact.write_text('changed completed bytes!', encoding='utf-8')
+    def no_dispatch(*args, **kwargs):
+        raise AssertionError('A completed scheduled operation cannot be dispatched during verification.')
+    monkeypatch.setattr(service, '_execute', no_dispatch)
+    with pytest.raises(ValueError, match='completed artifact changed'):
+        service.resume(identity)
+    assert service.store.path(identity).read_bytes() == before
+    assert len(app.workspaces()) == 1 and artifact.read_text('utf-8') == 'changed completed bytes!'
+
+
+def test_cancelled_completed_schedule_verification_preserves_exact_historical_receipt(scheduled):
+    app, service, identity, clock, manager, view, _ = scheduled
+    session = ScheduleSession(manager)
+    session.arm({identity: view.schedule_sha256})
+    clock[0] += timedelta(minutes=5)
+    assert session.tick().status == 'complete'
+    before = service.store.path(identity).read_bytes()
+    with pytest.raises(InterruptedError, match='saved result is retained'):
+        service.resume(identity, cancelled=lambda: True)
+    assert service.store.path(identity).read_bytes() == before and len(app.workspaces()) == 1

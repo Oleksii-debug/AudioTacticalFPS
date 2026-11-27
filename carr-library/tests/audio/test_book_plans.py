@@ -27,7 +27,7 @@ def make_plan(library, *, item=None, **options):
     return capture_plan(app, workspace, (item or first)['edition'],
         options=SplitOptions(**options),
         role=Role('Narrator', voice='fixture:uk', language='uk', pan=-.2, rate=1,
-                  effects=(Effect('highpass', {'frequency': 100}),)),
+                  effects=(Effect('highpass', (('frequency', 100),)),)),
         sample_rate=8000)
 
 

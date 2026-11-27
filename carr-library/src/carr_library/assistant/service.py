@@ -240,6 +240,21 @@ class AssistantService:
                         or perf_counter_ns() >= deadline)
             def persist():
                 self.store.save(record)
+            if record['status'] == 'complete' and record.get('schedule', {}).get('state') == 'complete':
+                # A completed one-shot schedule is historical evidence. Verify
+                # current output bytes under this same job lock without first
+                # publishing an impossible running-job/complete-schedule pair.
+                # Failure is an explicit verification error, never a new run.
+                for checkpoint in record['steps']:
+                    if stopped():
+                        raise InterruptedError('Completed schedule verification stopped; the saved result is retained.')
+                    if record['workspace']:
+                        with self.app.read(record['workspace']):
+                            pass
+                    self._verify_completed(checkpoint['result'], plan.scope, stopped)
+                if progress:
+                    progress(len(plan.steps), len(plan.steps), 'complete')
+                return self._report(record)
             record['status'] = 'running'
             record['message'] = ''
             persist()
