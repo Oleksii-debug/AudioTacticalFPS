@@ -56,6 +56,38 @@ reports real-model quality and NVDA as NOT_RUN. Source/controller tests, native
 Windows execution, real inference, human NVDA and distribution rights remain
 separate evidence; the presence of this probe is not a PASS result.
 
+## Create a local draft runtime manifest
+
+The existing transcription CLI can inspect an already installed local worker,
+Python interpreter, runtime package directory and Whisper model directory into
+the same manifest schema used by the adapter. This removes the need to type
+complete file hashes by hand. For example, with your actual local paths:
+
+```powershell
+python -m carr_library transcribe draft-runtime --python "C:\LocalASR\python.exe" --worker "C:\LocalASR\worker.py" --runtime-directory "C:\LocalASR\site-packages" --models-directory "C:\LocalASR\models" --model small --output "C:\LocalASR\runtime-draft.json"
+```
+
+All paths are explicit selections. The worker must still match the pinned
+supplied source; use its unmodified original, not a prepared copy. The helper
+reads files and prepares source text without executing the worker, interpreter,
+runtime imports or model. It rejects links/reparse points, standalone bytecode,
+changed files, incomplete required inventories and over-budget inspections.
+Canonical runtime cache directories are excluded using the same policy as the
+adapter. Default bounds are 100000 files, 150000 directory entries and 64 GiB
+of selected file bytes. Cancellation publishes no partial manifest.
+
+The output must be outside the selected runtime and model trees. It is created
+atomically under a new filename; an existing file or concurrent destination is
+preserved. No application database or transcription job is created by this
+inspection command.
+
+Both `runtime_reviewed` and `rights_reviewed` are always **false** in a generated
+draft. The adapter rejects it until a separate review of the exact code, native
+dependencies and model rights is recorded. Hash collection is not an approval,
+a model download, a runtime import test, a quality test or a distribution grant.
+The helper is implemented in `audio/supplied_runtime_manifest.py` and covered by
+`tests/audio/test_supplied_runtime_manifest.py`.
+
 ## Implemented boundary
 
 - The original worker must match SHA256

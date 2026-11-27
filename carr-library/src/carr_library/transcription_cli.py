@@ -15,6 +15,10 @@ def main(argv=None):
         'No model or runtime is downloaded.'))
     parser.add_argument('--data-dir', type=Path)
     actions = parser.add_subparsers(dest='action', required=True)
+    draft = actions.add_parser('draft-runtime', help='Inspect selected local files into an unapproved runtime manifest')
+    for name in ('output', 'python', 'worker', 'runtime-directory', 'models-directory'):
+        draft.add_argument('--' + name, type=Path, required=True)
+    draft.add_argument('--model', required=True)
     execute = actions.add_parser('run', help='Transcribe selected local files or resume a saved job')
     execute.add_argument('--runtime-manifest', type=Path, required=True)
     selected = execute.add_mutually_exclusive_group(required=True)
@@ -36,6 +40,13 @@ def main(argv=None):
         command.add_argument('job_id')
     args = parser.parse_args(argv)
     try:
+        if args.action == 'draft-runtime':
+            from .audio.supplied_runtime_manifest import write_draft_manifest
+            result = write_draft_manifest(args.output, python=args.python, worker=args.worker,
+                runtime_directory=args.runtime_directory, models_directory=args.models_directory,
+                model=args.model)
+            print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
+            return 0
         from .application import LibraryApp
         app = LibraryApp(data_directory(args.data_dir))
         runtime = SuppliedWhisperRuntime(args.runtime_manifest) if args.action == 'run' else None
@@ -67,7 +78,11 @@ def main(argv=None):
         print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
         return 0
     except KeyboardInterrupt:
-        print('Transcription interrupted. Resume its saved job to keep verified completed files.', file=sys.stderr)
+        if args.action == 'draft-runtime':
+            print('Manifest inspection interrupted. Any completed draft remains unapproved; inspect the selected output path.',
+                  file=sys.stderr)
+        else:
+            print('Transcription interrupted. Resume its saved job to keep verified completed files.', file=sys.stderr)
         return 130
     except (ValueError, TypeError, OSError, RuntimeError) as exc:
         print('Transcription: ' + str(exc), file=sys.stderr)
