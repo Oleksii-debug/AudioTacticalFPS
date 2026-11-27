@@ -64,9 +64,9 @@ def self_test():
 
 def main(argv=None):
     arguments = list(sys.argv[1:] if argv is None else argv)
-    if arguments == ['--carr-doi-metadata-worker']:
+    if arguments[:1] == ['--carr-doi-metadata-worker'] and len(arguments) in (1, 3):
         from .academic_integration.doi import _worker_main
-        return _worker_main()
+        return _worker_main(arguments[1:])
     if len(arguments) == 3 and arguments[0] == '--carr-sapi-native-worker':
         from .speech.sapi_native_worker import main as native_main
         return native_main(arguments[1:])

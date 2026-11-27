@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from collections import OrderedDict
 from collections.abc import Callable, Mapping
+from contextlib import nullcontext
 from dataclasses import asdict, dataclass, field, replace
 from datetime import date, datetime, timezone
 from email.utils import parsedate_to_datetime
@@ -23,8 +24,10 @@ import os
 from pathlib import Path
 import re
 import ssl
+import stat
 import subprocess
 import sys
+from tempfile import TemporaryDirectory
 from threading import Lock
 import time
 import unicodedata
@@ -899,11 +902,48 @@ def _https_once(request: MetadataRequest) -> MetadataResponse:
         connection.close()
 
 
-def _worker_argv() -> list[str]:
+def _file_framing_required() -> bool:
+    return (bool(getattr(sys, "frozen", False)) or Path(sys.executable).name.lower().startswith("pythonw")
+            or sys.stdin is None or sys.stdout is None)
+
+
+def _worker_argv(request_path=None, reply_path=None) -> list[str]:
     """Frozen launchers must dispatch this exact flag before starting wx."""
+    if (request_path is None) != (reply_path is None):
+        raise ValueError("Supply both private worker exchange paths.")
+    if _file_framing_required() and request_path is None:
+        raise ValueError("A windowed worker requires private request and reply files.")
     if getattr(sys, "frozen", False):
-        return [sys.executable, "--carr-doi-metadata-worker"]
-    return [sys.executable, "-I", str(Path(__file__).resolve()), "--metadata-worker"]
+        command = [sys.executable, "--carr-doi-metadata-worker"]
+    else:
+        command = [sys.executable, "-I", str(Path(__file__).resolve()), "--metadata-worker"]
+    return command + ([os.fspath(request_path), os.fspath(reply_path)] if request_path is not None else [])
+
+
+def _private_read(path, maximum):
+    path = Path(path)
+    info = path.lstat()
+    if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or info.st_size > maximum
+            or getattr(info, "st_file_attributes", 0) & 0x400):
+        raise ValueError("Invalid private worker exchange file.")
+    descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0))
+    with os.fdopen(descriptor, "rb") as stream:
+        current = os.fstat(stream.fileno())
+        if (current.st_dev, current.st_ino) != (info.st_dev, info.st_ino):
+            raise ValueError("Private worker exchange changed.")
+        raw = stream.read(maximum + 1)
+    if len(raw) > maximum:
+        raise ValueError("Private worker exchange exceeds its byte budget.")
+    return raw
+
+
+def _private_write(path, raw):
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0)
+                         | getattr(os, "O_NOFOLLOW", 0), 0o600)
+    with os.fdopen(descriptor, "wb") as stream:
+        stream.write(raw)
+        stream.flush()
+        os.fsync(stream.fileno())
 
 
 def _worker_transport(request: MetadataRequest, *, cancelled: Callable[[], bool]) -> MetadataResponse:
@@ -911,51 +951,65 @@ def _worker_transport(request: MetadataRequest, *, cancelled: Callable[[], bool]
     payload = json.dumps(asdict(request), ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     environment = {key: os.environ[key] for key in ("SystemRoot", "WINDIR", "TEMP", "TMP", "TMPDIR", "LANG", "LC_ALL") if key in os.environ}
     options = {"creationflags": getattr(subprocess, "CREATE_NO_WINDOW", 0)} if os.name == "nt" else {}
-    process = subprocess.Popen(_worker_argv(),
-        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, shell=False,
-        env=environment, **options)
-    deadline = time.monotonic() + request.timeout
-    try:
-        first = True
-        while True:
-            _cancel(cancelled)
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                raise DoiMetadataError("timeout", request.provider)
-            try:
-                outgoing, _ = process.communicate(payload if first else None, timeout=min(.05, remaining))
-                break
-            except subprocess.TimeoutExpired:
-                first = False
-        _cancel(cancelled)
-        if process.returncode != 0 or len(outgoing) > 4 * ((request.max_response_bytes + 2) // 3) + 65_536:
-            raise DoiMetadataError("worker", request.provider)
+    files = _file_framing_required()
+    with (TemporaryDirectory(prefix="carr-doi-") if files else nullcontext()) as directory:
+        incoming = Path(directory) / "request.json" if files else None
+        reply = Path(directory) / "reply.json" if files else None
+        if files:
+            _private_write(incoming, payload)
+        process = subprocess.Popen(_worker_argv(incoming, reply),
+            stdin=subprocess.DEVNULL if files else subprocess.PIPE,
+            stdout=subprocess.DEVNULL if files else subprocess.PIPE, stderr=subprocess.DEVNULL,
+            shell=False, env=environment, **options)
+        deadline = time.monotonic() + request.timeout
         try:
-            envelope = json.loads(outgoing)
-            if "error" in envelope:
-                code = envelope["error"]
-                raise DoiMetadataError(code if code in _ERRORS else "worker", request.provider)
-            raw = base64.b64decode(envelope["body"], validate=True)
-            return MetadataResponse(envelope["status"], envelope["headers"], raw, request.url)
-        except DoiMetadataError:
-            raise
-        except (ValueError, TypeError, KeyError, RecursionError):
-            raise DoiMetadataError("worker", request.provider) from None
-    finally:
-        if process.poll() is None:
-            process.kill()
-        process.wait(timeout=5)
+            first = True
+            while True:
+                _cancel(cancelled)
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise DoiMetadataError("timeout", request.provider)
+                try:
+                    outgoing, _ = process.communicate(payload if first and not files else None, timeout=min(.05, remaining))
+                    break
+                except subprocess.TimeoutExpired:
+                    first = False
+            _cancel(cancelled)
+            maximum = 4 * ((request.max_response_bytes + 2) // 3) + 65_536
+            if process.returncode != 0:
+                raise DoiMetadataError("worker", request.provider)
+            try:
+                if files:
+                    outgoing = _private_read(reply, maximum)
+                if not isinstance(outgoing, bytes) or len(outgoing) > maximum:
+                    raise DoiMetadataError("worker", request.provider)
+                envelope = json.loads(outgoing)
+                if "error" in envelope:
+                    code = envelope["error"]
+                    raise DoiMetadataError(code if code in _ERRORS else "worker", request.provider)
+                raw = base64.b64decode(envelope["body"], validate=True)
+                return MetadataResponse(envelope["status"], envelope["headers"], raw, request.url)
+            except DoiMetadataError:
+                raise
+            except (OSError, ValueError, TypeError, KeyError, RecursionError):
+                raise DoiMetadataError("worker", request.provider) from None
+        finally:
+            if process.poll() is None:
+                process.kill()
+            process.wait(timeout=5)
 
 
-def _worker_main() -> int:
-    provider = "crossref"
+def _worker_main(argv=None) -> int:
+    arguments = () if argv is None else tuple(argv)
+    if len(arguments) not in (0, 2):
+        return 2
+    files = bool(arguments)
     try:
-        raw = sys.stdin.buffer.read(8193)
+        raw = _private_read(arguments[0], 8192) if files else sys.stdin.buffer.read(8193)
         if len(raw) > 8192:
             raise ValueError
         data = json.loads(raw)
         request = MetadataRequest(**data)
-        provider = request.provider
         response = _https_once(request)
         result = {"status": response.status, "headers": response.headers,
                   "body": base64.b64encode(response.body).decode("ascii")}
@@ -965,11 +1019,20 @@ def _worker_main() -> int:
         result = {"error": "timeout"}
     except Exception:
         result = {"error": "connection"}
-    sys.stdout.write(json.dumps(result, separators=(",", ":")))
+    outgoing = json.dumps(result, separators=(",", ":")).encode("utf-8")
+    try:
+        if files:
+            _private_write(arguments[1], outgoing)
+        elif sys.stdout is not None:
+            sys.stdout.write(outgoing.decode("utf-8"))
+        else:
+            return 2
+    except (OSError, ValueError):
+        return 2
     return 0
 
 
 if __name__ == "__main__":
-    if sys.argv[1:] != ["--metadata-worker"]:
+    if sys.argv[1:2] != ["--metadata-worker"] or len(sys.argv) not in (2, 4):
         raise SystemExit("This module is an internal DOI metadata worker.")
-    raise SystemExit(_worker_main())
+    raise SystemExit(_worker_main(sys.argv[2:]))

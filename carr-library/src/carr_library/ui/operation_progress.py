@@ -20,6 +20,7 @@ import sys
 import threading
 import time
 import wave
+import weakref
 
 from ..durable_state import atomic_json, local_path, read_json, regular, state_lock
 
@@ -373,6 +374,7 @@ class OperationProgress:
         self._pending, self._scheduled = None, False
         self._displayed_sequence, self._last_display, self._last_sound = -1, -math.inf, -math.inf
         self._last_state, self.audio_active, self.closed = 'idle', False, False
+        self._players = weakref.WeakSet()
         self.root, self.preferences = None, ProgressPreferences()
         self.timer = self.wx.Timer(frame)
         frame.Bind(self.wx.EVT_TIMER, self._tick, self.timer)
@@ -406,8 +408,56 @@ class OperationProgress:
         self._mute()
 
     def _mute(self):
+        playing = False
+        for player in tuple(self._players):
+            try:
+                playing = playing or player.state in ('playing', 'recording', 'monitoring')
+            except (OSError, RuntimeError):
+                # An uncertain device state stays quiet until stop or close.
+                playing = True
         self.sound.muted = (self.preferences.mode == 'off' or self.preferences.quiet
-                            or self.preferences.mute_during_audio and self.audio_active)
+                            or self.preferences.mute_during_audio and (self.audio_active or playing))
+
+    def register_player(self, player):
+        """Observe actual playback state, including natural EOF/error/pause.
+
+        Multiple players are combined; one stopped player cannot unmute another
+        still playing. Weak references avoid keeping a closed dialog alive.
+        """
+        if threading.get_ident() != self._ui_thread:
+            self.wx.CallAfter(lambda: self.register_player(player))
+            return player
+        if self.closed:
+            return player
+        try:
+            self._players.add(player)
+        except TypeError as exc:
+            raise ValueError('A weak-referenceable playback object is required.') from exc
+        self.refresh_audio_state()
+        return player
+
+    def unregister_player(self, player):
+        if threading.get_ident() != self._ui_thread:
+            self.wx.CallAfter(lambda: self.unregister_player(player))
+            return
+        self._players.discard(player)
+        if not self.closed:
+            self.refresh_audio_state()
+
+    def refresh_audio_state(self):
+        if threading.get_ident() != self._ui_thread:
+            self.wx.CallAfter(self.refresh_audio_state)
+            return
+        if not self.closed:
+            self._mute()
+            self._timer_state()
+
+    def _timer_state(self):
+        if self.event.state == 'running' or self._players:
+            if not self.timer.IsRunning():
+                self.timer.Start(250)
+        else:
+            self.timer.Stop()
 
     def set_audio_active(self, active=True):
         if type(active) is not bool:
@@ -503,11 +553,8 @@ class OperationProgress:
         self.label.SetLabel(text)
         self.label.SetName('Operation progress details: ' + text)
         self._displayed_sequence, self._last_display = event.sequence, now
-        if event.state == 'running':
-            if not self.timer.IsRunning():
-                self.timer.Start(250)
-        else:
-            self.timer.Stop()
+        self._timer_state()
+        self._mute()
         self._sound(event, state_changed=state_changed)
         self._last_state = event.state
 
@@ -526,6 +573,7 @@ class OperationProgress:
     def _tick(self, event=None):
         if self.closed:
             return
+        self.refresh_audio_state()
         current = self.event
         # Flush a throttled latest value even if no further worker event arrives.
         if current.sequence > self._displayed_sequence:
@@ -541,6 +589,7 @@ class OperationProgress:
         self.closed = True
         self.timer.Stop()
         self.sound.close()
+        self._players.clear()
 
     def settings_dialog(self, event=None):
         if local_path(self.frame.library.root, exists=True) != self.root:

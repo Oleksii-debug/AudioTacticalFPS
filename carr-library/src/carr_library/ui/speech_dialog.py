@@ -20,6 +20,9 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     cancel = threading.Event()
     audio_files = TemporaryDirectory(prefix='research-reader-')
     player = WavePlayer()
+    progress = getattr(parent, 'operation_progress', None)
+    if progress is not None:
+        progress.register_player(player)
     document = ReadingDocument(text, title=title)
     registry = None
     owned_registries = set()
@@ -240,6 +243,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             voice = voices[voice_choice.GetSelection()]
             settings = SpeechSettings(rate=rate.GetValue(), volume=volume.GetValue())
             player.stop()
+            if progress is not None:
+                progress.refresh_audio_state()
             output = destination or (Path(audio_files.name) / (uuid4().hex + '.wav'))
 
             def rendered(result):
@@ -247,6 +252,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 last_audio = result.path
                 if destination is None:
                     player.play(result.path)
+                    if progress is not None:
+                        progress.refresh_audio_state()
                     report(f'Playing {result.duration_seconds:.1f} seconds. F7 pauses or resumes; F8 stops. '
                            'Word highlighting is unavailable for this voice.')
                 else:
@@ -270,6 +277,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 player.resume()
             else:
                 player.pause()
+            if progress is not None:
+                progress.refresh_audio_state()
             report(f'Playback {player.state}; {player.position_seconds:.1f} seconds.')
         except Exception as exc:
             report(str(exc), focus=True)
@@ -278,6 +287,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         cancel.set()
         try:
             player.stop()
+            if progress is not None:
+                progress.refresh_audio_state()
             report('Stopping synthesis or playback. Any completed saved audio remains available.')
         except Exception as exc:
             report(str(exc), focus=True)
@@ -350,6 +361,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 loaded = ReadingDocument(source.read_text(encoding='utf-8-sig'), title=source.stem, source_path=source)
                 selected = None
             player.stop()
+            if progress is not None:
+                progress.refresh_audio_state()
             document, save_path = loaded, selected
             editor.ChangeValue(document.text)
             sync_document()
@@ -440,7 +453,13 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         autosave_timer.Stop()
         alive = False
         cancel.set()
-        player.close()
+        try:
+            player.close()
+        except (OSError, RuntimeError) as exc:
+            parent.report(f'Playback device reported a close error: {exc}')
+        finally:
+            if progress is not None:
+                progress.unregister_player(player)
         # Wait only for the bounded worker cancellation path before deleting its
         # output directory. The UI never destroys a still-running worker's files.
         executor.shutdown(wait=True, cancel_futures=True)

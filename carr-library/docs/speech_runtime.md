@@ -28,7 +28,7 @@ contains only entries actually enumerated by installed engines.
 
 | Engine | Implemented adapter | Actual evidence in this development environment |
 | --- | --- | --- |
-| SAPI 5 | Fixed PowerShell COM helper, separate 32/64-bit host discovery, installed tokens, native rate/volume/punctuation, PCM file rendering | Requires Windows; named native test included, not executed on Linux |
+| SAPI 5 | Default isolated native Python COM worker using pinned comtypes; installed tokens, native rate/volume/punctuation, real PCM file rendering. PowerShell compatibility hosts require explicit opt-in | Native Windows gate required; Linux tests validate protocol/cancellation and do not claim Windows audio acceptance |
 | FFmpeg Flite | Actual runtime voice enumeration, CMU English voices, PCM rendering and gain; no invented native rate/pitch controls | FFmpeg 7.1.5 Debian, five discovered voices; three distinct voices rendered and measured |
 | eSpeak/eSpeak NG | Installed CLI enumeration and rendering, native rate/volume/pitch/punctuation | Adapter implemented; executable unavailable in this environment |
 | Piper | Explicit local executable and existing model/config, mandatory independent SHA256 and voice-license fields, no download-by-model-name | Hash/manifest boundaries tested; no neural weights downloaded or inference claimed |
@@ -42,6 +42,41 @@ Its GPL engine and each voice's separate terms still apply. No engine, voice,
 model, DLL or binary is copied into this source package. Installed Flite and
 FFmpeg retain their own build/license requirements. The private-use profile
 does not change these obligations.
+
+### Native Windows COM dependency and offline startup
+
+Windows uses `NativeSapiProvider` with `comtypes==1.5.0` (MIT, pure Python,
+Python 3.9+). The reviewed upstream tag points to
+[`7732dc3de25797e658d26f375e78310bd7febbda`](https://github.com/enthought/comtypes/tree/7732dc3de25797e658d26f375e78310bd7febbda).
+The exact wheel is `comtypes-1.5.0-py3-none-any.whl`, 325563 bytes, SHA256
+`c648ed3b243b1eb3b7cb893a873d1b35104ca1c8922061f4b1efafeb255bacb5`.
+The preserved `COMTYPES_LICENSE.txt` and `speech/UPSTREAM.json` record its rights
+and provenance. Deployment installs the pinned Windows dependency; runtime
+discovery never downloads it.
+
+The fixed native worker uses `comtypes.client.CreateObject(..., dynamic=True,
+clsctx=CLSCTX_INPROC_SERVER)` for only `SAPI.SpVoice`, `SAPI.SpFileStream` and
+`SAPI.SpAudioFormat`. It needs no PowerShell/.NET startup or generated typelib
+wrapper. This change addresses observed PowerShell discovery timeouts during
+the firewall-blocked Windows gate; actual native COM success still must pass
+that gate. It does not change firewall, execution policy or OS security settings.
+
+Native discovery exposes the application's real interpreter bitness (64-bit in
+the target Windows build), preserving `sapi5-64:<token-hash>` IDs. It cannot see
+an unrelated 32-bit-only voice registry. The legacy fixed PowerShell adapter
+remains separately available through `SapiProvider`, or explicit
+`VoiceRegistry.discover(include_powershell=True)`; it is not a silent fallback.
+No SAPI4 support or 135-language qualification is implied.
+
+The worker accepts bounded JSON in private `request.json` and returns a bounded
+private `reply.json`. Frozen/windowed startup dispatch is
+`--carr-sapi-native-worker REQUEST_JSON REPLY_JSON`; `main()` is invoked before
+GUI initialization. File framing works even when a windowed host has no console
+streams. New PCM output is confined to `speech.wav` beside the request and only
+then published into the parent's private chunk staging. The normal WAV merge
+and final no-overwrite publication remain in force. Source execution uses the
+current Python with `-I`; install dependencies in that interpreter's environment
+or the packaged application, not only an unrelated user-site installation.
 
 ## Source fidelity and persistence
 
@@ -145,7 +180,8 @@ On Windows run the real native gate:
 python -m pytest -q tests/speech/test_runtime.py::test_native_windows_sapi_voice_and_pcm_output
 ```
 
-The helper `.ps1` is required package data. The gate fails if no installed SAPI
+The legacy helper `.ps1`, native Python worker, COM client license and provenance
+are required package content. The gate fails if no installed SAPI
 voice can generate actual nonempty PCM. Linux skips that native test explicitly.
 No native Windows/NVDA, Ukrainian/Slovak listening, Piper, SAPI4 or
 dordiai-voices acceptance is implied by the Linux results.
