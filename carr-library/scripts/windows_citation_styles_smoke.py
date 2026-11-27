@@ -72,6 +72,9 @@ def main():
             return False
 
     gui = ProbeApp(False)
+    # Keep an active native loop while Yield dispatches real MSW key messages.
+    native_loop = wx.GUIEventLoop()
+    loop_activation = wx.EventLoopActivator(native_loop)
     simulator = wx.UIActionSimulator()
     main_thread = threading.get_ident()
 
