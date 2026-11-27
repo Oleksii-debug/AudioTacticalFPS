@@ -69,6 +69,16 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -m pip install --only-binary=:all: --require-hashes -r packaging/trusted-client.lock
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $spellInput = Join-Path $env:RUNNER_TEMP 'carr-spell-input'
+          $spellDerived = Join-Path $env:RUNNER_TEMP 'carr-spell-derived'
+          New-Item -ItemType Directory -Force $spellInput, $spellDerived | Out-Null
+          & $python -m pip download --only-binary=:all: --no-deps spylls==0.1.7 --dest $spellInput
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -I -B scripts/repack_spellcheck.py (Join-Path $spellInput 'spylls-0.1.7-py2.py3-none-any.whl') (Join-Path $spellDerived 'spylls-0.1.7+carr.1-py2.py3-none-any.whl') | Tee-Object 'ci-results/spellcheck-repack.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --no-index --no-deps --require-hashes --find-links $spellDerived -r packaging/spellcheck.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_SPELL_WHEELHOUSE=$spellDerived" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           & $python -m pip install --no-deps .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -m pip check
@@ -397,16 +407,21 @@ jobs:
                   assert pins[name][0] == version and digest in pins[name][1], name
               else:
                   pins[name] = (version, {digest})
+          spell_path = pathlib.Path('packaging/spellcheck.lock')
+          spell = builder.read_lock(spell_path)
+          assert set(spell) == {'spylls'}
+          assert 'spylls' not in pins
+          pins.update(spell)
           out = pathlib.Path(sys.argv[1])
           out.write_text(''.join(name + '==' + version + ' ' + ' '.join('--hash=sha256:' + h for h in sorted(hashes)) + '\n'
                                  for name, (version, hashes) in sorted(pins.items())), encoding='utf-8')
           assert builder.read_lock(out) == pins
           print(json.dumps(dict(status='PASS', components=len(pins), lock_sha256=sha256(out.read_bytes()).hexdigest(),
-              source_sha256={p.name: sha256(p.read_bytes()).hexdigest() for p in (base_path, client_path, review_path)})))
+              source_sha256={p.name: sha256(p.read_bytes()).hexdigest() for p in (base_path, client_path, review_path, spell_path)})))
           '@
           $composeFullLock | & $env:CARR_PYTHON -I -B - $fullLock | Tee-Object 'ci-results/full-client-lock.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $env:CARR_PYTHON -m pip download --only-binary=:all: --no-deps --require-hashes -r $fullLock --dest $wheelhouse
+          & $env:CARR_PYTHON -m pip download --only-binary=:all: --no-deps --require-hashes --find-links $env:CARR_SPELL_WHEELHOUSE -r $fullLock --dest $wheelhouse
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $composeFullSbom = @'
           import importlib.util, json, pathlib, sys
@@ -454,6 +469,19 @@ jobs:
               components[name] = component
               bom['components'].append(component)
               new_names.add(name)
+          spell_sbom = pathlib.Path('packaging/spellcheck-sbom.json')
+          spell_bom = json.loads(spell_sbom.read_text(encoding='utf-8'))
+          assert len(spell_bom['components']) == 1
+          spell_component = spell_bom['components'][0]
+          assert spell_component['name'] == 'spylls' and 'spylls' not in components
+          assert spell_component['version'] == pins['spylls'][0]
+          assert spell_component['hashes'] == [dict(alg='SHA-256', content=builder.sha256(selected['spylls'][0]))]
+          assert spell_component['licenses'] == [dict(license=dict(id='MPL-2.0'))]
+          assert not selected['spylls'][2].get_all('Requires-Dist', [])
+          assert spell_bom['dependencies'] == [dict(ref=spell_component['bom-ref'], dependsOn=[])]
+          components['spylls'] = spell_component
+          bom['components'].append(spell_component)
+          new_names.add('spylls')
           assert {(n, c['version']) for n, c in components.items()} == {(n, v) for n, (v, _) in pins.items()}
           environment = default_environment()
           environment.update(os_name='nt', sys_platform='win32', platform_system='Windows', platform_machine='AMD64',
@@ -470,12 +498,13 @@ jobs:
           root_ref = bom['metadata']['component']['bom-ref']
           root_dependencies = next(item for item in bom['dependencies'] if item['ref'] == root_ref)
           root_dependencies['dependsOn'] = sorted(set(root_dependencies.get('dependsOn', ())) |
-              {components[row['name']]['bom-ref'] for row in items})
+              {components[row['name']]['bom-ref'] for row in items} | {spell_component['bom-ref']})
           bom['metadata'].setdefault('tools', []).append(dict(vendor='Resonance', name='checked CI runtime union', version='1'))
           bom['metadata'].setdefault('properties', []).extend([
               dict(name='carr:base-sbom-sha256', value=sha256(base_path.read_bytes()).hexdigest()),
               dict(name='carr:trusted-client-review-sha256', value=sha256(review_path.read_bytes()).hexdigest()),
-              dict(name='carr:combined-lock-sha256', value=sha256(lock.read_bytes()).hexdigest())])
+              dict(name='carr:combined-lock-sha256', value=sha256(lock.read_bytes()).hexdigest()),
+              dict(name='carr:spellcheck-sbom-sha256', value=sha256(spell_sbom.read_bytes()).hexdigest())])
           destination.write_text(json.dumps(bom, indent=2) + '\n', encoding='utf-8')
           print(json.dumps(dict(status='PASS', components=len(components), added=sorted(new_names),
               sbom_sha256=sha256(destination.read_bytes()).hexdigest(), lock_sha256=sha256(lock.read_bytes()).hexdigest())))
@@ -695,6 +724,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Installed native Studio pronunciation review failed.' }
           & $installedPython -I -B -X utf8 scripts/windows_reader_tools_smoke.py 2>&1 | Tee-Object 'ci-results/native-reader-tools.txt'
           if ($LASTEXITCODE -ne 0) { throw 'Installed native reader editing and keymap tools failed.' }
+          & $installedPython -I -B -X utf8 scripts/windows_reader_appearance_smoke.py 2>&1 | Tee-Object 'ci-results/native-reader-appearance.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Installed native reader appearance failed.' }
+          & $installedPython -I -B -X utf8 scripts/windows_spellcheck_smoke.py 2>&1 | Tee-Object 'ci-results/native-spellcheck.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Installed native spelling review failed.' }
           & $installedPython -I -B -X utf8 tests/ui/native_trust_status_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-trust-status.txt'
           if ($LASTEXITCODE -ne 0) { throw 'Installed native signed-status controls failed.' }
           & $installedPython -I -B -X utf8 tests/ui/probe_portable_sync_native.py --native --encrypted 2>&1 | Tee-Object 'ci-results/native-portable-sync.txt'
@@ -751,7 +784,7 @@ jobs:
                                               carr_library.reader.ebook_audio, carr_library.ui.pronunciation_dialog,
                                               carr_library.ui.command_palette, carr_library.ui.language_matrix,
                                               carr_library.assistant.llm, carr_library.assistant.service)}
-          additional_names = ('carr_library.file_publication', 'carr_library.security._files', 'carr_library.security.anchors', 'carr_library.security.boundary', 'carr_library.security.controller', 'carr_library.security.entitlements', 'carr_library.security.installation', 'carr_library.security.refresh', 'carr_library.security.updates', 'carr_library.sync.archive', 'carr_library.sync.cli', 'carr_library.sync.crypto', 'carr_library.sync.service', 'carr_library.sync.vault', 'carr_library.ui.portable_sync', 'carr_library.ui.trust_status', 'carr_library.studio.pronunciation', 'carr_library.ui.studio_pronunciation', 'carr_library.ui.playback_navigation', 'carr_library.ui.find_replace_dialog', 'carr_library.speech.regex_worker', 'carr_library.ui.live_reading', 'carr_library.ui.keyboard_settings', 'carr_library.reader.reading_units')
+          additional_names = ('carr_library.reader.appearance', 'carr_library.ui.reader_appearance', 'carr_library.speech.spellcheck', 'carr_library.speech.spell_worker', 'carr_library.ui.spellcheck_dialog', 'carr_library.file_publication', 'carr_library.security._files', 'carr_library.security.anchors', 'carr_library.security.boundary', 'carr_library.security.controller', 'carr_library.security.entitlements', 'carr_library.security.installation', 'carr_library.security.refresh', 'carr_library.security.updates', 'carr_library.sync.archive', 'carr_library.sync.cli', 'carr_library.sync.crypto', 'carr_library.sync.service', 'carr_library.sync.vault', 'carr_library.ui.portable_sync', 'carr_library.ui.trust_status', 'carr_library.studio.pronunciation', 'carr_library.ui.studio_pronunciation', 'carr_library.ui.playback_navigation', 'carr_library.ui.find_replace_dialog', 'carr_library.speech.regex_worker', 'carr_library.ui.live_reading', 'carr_library.ui.keyboard_settings', 'carr_library.reader.reading_units')
           for name in additional_names:
               module = importlib.import_module(name)
               installed_origins[name] = str(pathlib.Path(module.__file__).resolve())
@@ -848,6 +881,8 @@ jobs:
               'tests/e2e/test_extended_document_workflows.py',
               'tests/reader/test_live_reading.py',
               'tests/reader/test_reading_units.py',
+              'tests/reader/test_appearance.py',
+              'tests/ui/test_reader_appearance.py',
               'tests/reader/test_live_player.py',
               'tests/ui/test_live_reading_controls.py',
               'tests/ui/test_reading_copy_save_guard.py',
@@ -941,6 +976,10 @@ jobs:
               'tests/speech/test_find_replace_handlers.py',
               'tests/speech/test_find_replace_reader_hook.py',
               'tests/speech/test_clipboard_reader.py',
+              'tests/speech/test_spellcheck.py',
+              'tests/speech/test_spellcheck_handlers.py',
+              'tests/speech/test_spellcheck_reader_hook.py',
+              'tests/packaging/test_spellcheck_component.py',
               'tests/ui/test_keymap_interchange.py',
               'tests/ui/test_keyboard_settings_dialog.py',
               'tests/ui/test_native_menu_contract.py',
@@ -1196,6 +1235,8 @@ jobs:
             'tests/e2e/test_extended_document_workflows.py',
             'tests/reader/test_live_reading.py',
             'tests/reader/test_reading_units.py',
+            'tests/reader/test_appearance.py',
+            'tests/ui/test_reader_appearance.py',
             'tests/reader/test_live_player.py',
             'tests/ui/test_live_reading_controls.py',
             'tests/ui/test_reading_copy_save_guard.py',
@@ -1289,6 +1330,10 @@ jobs:
             'tests/speech/test_find_replace_handlers.py',
             'tests/speech/test_find_replace_reader_hook.py',
             'tests/speech/test_clipboard_reader.py',
+            'tests/speech/test_spellcheck.py',
+            'tests/speech/test_spellcheck_handlers.py',
+            'tests/speech/test_spellcheck_reader_hook.py',
+            'tests/packaging/test_spellcheck_component.py',
             'tests/ui/test_keymap_interchange.py',
             'tests/ui/test_keyboard_settings_dialog.py',
             'tests/ui/test_native_menu_contract.py',

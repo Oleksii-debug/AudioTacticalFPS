@@ -115,13 +115,16 @@ def test_late_error_cannot_adopt_foreign_or_modified_publication(tmp_path, monke
                                                               envelopes, decrypt, change):
     source, target, invoke = operation(tmp_path, envelopes, decrypt)
     original = getattr(os, 'rename' if os.name == 'nt' else 'link')
+    relocate = os.rename
     observed = []
 
     def changed_publication(*args, **kwargs):
         original(*args, **kwargs)
         before = target.read_bytes()
         if change == 'foreign_equal_bytes':
-            target.rename(tmp_path / 'owned-original')
+            # Windows publication also uses os.rename. Keep the independent
+            # replacement out of the patched publication callback itself.
+            relocate(target, tmp_path / 'owned-original')
             target.write_bytes(before)
         else:
             with target.open('r+b') as stream:

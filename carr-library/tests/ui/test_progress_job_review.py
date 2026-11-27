@@ -380,7 +380,7 @@ def test_reader_host_delegates_audio_cleanup_without_blocking_native_close(clean
     helpers = [node for node in reader.body if isinstance(node, ast.FunctionDef)
                and node.name in ('detach_reader', 'close_resources')]
     factory = ast.parse('''
-def make(autosave_timer, cancel, live, executor, parent):
+def make(autosave_timer, cancel, live, executor, parent, appearance):
     alive, resources_closed = True, False
     owned_registries, ownership_lock = set(), threading.RLock()
     return close_resources, lambda: alive
@@ -388,13 +388,14 @@ def make(autosave_timer, cancel, live, executor, parent):
     factory.body[0].body[-1:-1] = helpers
     factory_environment = {'threading': threading}
     exec(compile(ast.fix_missing_locations(factory), str(path), 'exec'), factory_environment)
-    env = {name: Mock() for name in ('autosave_timer', 'cancel', 'live', 'executor', 'dialog', 'parent')}
+    env = {name: Mock() for name in ('autosave_timer', 'cancel', 'live', 'executor', 'dialog', 'parent', 'appearance')}
+    env['appearance'] = Mock(spec=['close'])
     completion = Future()
     if not cleanup_pending:
         completion.set_result(None)
     env['live'].close.return_value = completion
     close_resources, is_alive = factory_environment['make'](*(env[name] for name in
-        ('autosave_timer', 'cancel', 'live', 'executor', 'parent')))
+        ('autosave_timer', 'cancel', 'live', 'executor', 'parent', 'appearance')))
     env['close_resources'] = close_resources
     close_resources()  # The native Close callback may precede the modal's final unwind.
     exec(compile(ast.Module(body=cleanup, type_ignores=[]), str(path), 'exec'), env)
@@ -402,6 +403,7 @@ def make(autosave_timer, cancel, live, executor, parent):
     env['executor'].shutdown.assert_called_once_with(wait=False, cancel_futures=True)
     env['cancel'].set.assert_called_once_with()
     env['autosave_timer'].Stop.assert_called_once_with()
+    env['appearance'].close.assert_called_once_with()
     env['dialog'].Destroy.assert_called_once_with()
     assert is_alive() is False
     assert completion.done() is not cleanup_pending

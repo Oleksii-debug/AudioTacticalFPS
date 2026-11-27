@@ -1,0 +1,44 @@
+{
+  "provenance": {
+    "license": "MPL-2.0",
+    "removed": [
+      "spylls/hunspell/data/en/en_US.aff",
+      "spylls/hunspell/data/en/en_US.dic",
+      "spylls/hunspell/data/ru/ru.aff",
+      "spylls/hunspell/data/ru/ru.dic",
+      "spylls/hunspell/data/sv/sv_SE.aff",
+      "spylls/hunspell/data/sv/sv_SE.dic"
+    ],
+    "schema": 1,
+    "unchanged_python_sha256": {
+      "spylls/__init__.py": "20c8e430ededc2143396e553a3c67aac4ec483ef54efdfcb18a31cb162ca0646",
+      "spylls/hunspell/__init__.py": "1520fb1f5297709e2f5347dac048a87978b07e39838cbbefd74c0528f6909322",
+      "spylls/hunspell/algo/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "spylls/hunspell/algo/capitalization.py": "6082fb9bc6cad3438fb7d41b1c8056b30b0d223cf16628561812f593a0cb0cac",
+      "spylls/hunspell/algo/lookup.py": "75e5bdf7290a409be1060b88f974fc7756184ae193363e06dec31218d30c4e8d",
+      "spylls/hunspell/algo/ngram_suggest.py": "b3bbd435475f7691c9efa338a5303ee4f2adf2eaae38970e5572e07133b0bd38",
+      "spylls/hunspell/algo/permutations.py": "acc56a0b94f5dbd9141f45913b656e91de2b5954aea5d5d1a09e84b5c428e7b5",
+      "spylls/hunspell/algo/phonet_suggest.py": "696214842a75a5c830b43b77cfc7ae220819cb54bdd6c3c2b5e5df66ed204a49",
+      "spylls/hunspell/algo/string_metrics.py": "7bd3e237798786e195914bcd869943d0565ca495325c873cd0c67a4acdbdf302",
+      "spylls/hunspell/algo/suggest.py": "9f3764e093d5d099556320fec138f8f991d4c9316251614a029c044d46a6be9f",
+      "spylls/hunspell/algo/trie.py": "0804af6c62179e84e5dc1ea92575397274456f07315282205cbc7ee1d5810e0c",
+      "spylls/hunspell/data/__init__.py": "c75b53d450286bdb1f45803b43ff211ed426a93f905e1ffc4d73e57384166555",
+      "spylls/hunspell/data/aff.py": "8f8e2ca0cee0ab4fb5be9188790b9e823ebcde9c967a7ad08fbadf60d7fb66e2",
+      "spylls/hunspell/data/dic.py": "31dc9aea0189080fa8fb5cd13eb634175be28620ad823634d8ea88bbdb118cde",
+      "spylls/hunspell/dictionary.py": "69746a91a30d5611cb374ddabae6a4d8ffc2eefa2916f6024fff09feb30cd855",
+      "spylls/hunspell/readers/__init__.py": "5d1a9039b702f5a647821e1ef88d8280d3f9a64f3a794174ee52a5d4c73dcc8c",
+      "spylls/hunspell/readers/aff.py": "45ef90f76c8dd77a5cd7ca4489c5ab9a0c578686de3ef94513a6d207494a9883",
+      "spylls/hunspell/readers/dic.py": "4867c696de90372d506892f1788d797dd495d19b158ba688023cacf44081cdd5",
+      "spylls/hunspell/readers/file_reader.py": "8d92e0c9fa960e634b08770841504934899eb26e9c69d46f955a57c7ea04fc99",
+      "tests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests/test_spyll.py": "d37a84bcc4f497393192b06f34b2ea0c820e25cd827be4d42a5689bb082a9e40"
+    },
+    "upstream_sha256": "0c7fa4b66615f390bd12fd37939b85934c012309fd3cce8584844c54270b7776",
+    "upstream_size": 1509482,
+    "upstream_wheel": "spylls-0.1.7-py2.py3-none-any.whl",
+    "version": "0.1.7+carr.1"
+  },
+  "sha256": "10b65cc18b2166c2fe4ae2aba1ee0839e7a0a4a0f5aa2a76d13ec653f9c71b66",
+  "size": 224323,
+  "wheel": "spylls-0.1.7+carr.1-py2.py3-none-any.whl"
+}

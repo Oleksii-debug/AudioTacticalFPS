@@ -85,8 +85,8 @@ class Control:
     def Stop(self): pass
 
 
-@pytest.fixture
-def native_menus(tmp_path, monkeypatch):
+@pytest.fixture(params=['current-import', 'cached-native-import'])
+def native_menus(tmp_path, monkeypatch, request):
     wx = ModuleType('wx')
     wx.Menu, wx.MenuBar = Menu, MenuBar
     wx.Dialog = wx.Frame = wx.Panel = wx.Window = Control
@@ -99,6 +99,15 @@ def native_menus(tmp_path, monkeypatch):
     for name in ('EVT_MENU', 'EVT_BUTTON', 'EVT_WINDOW_DESTROY', 'EVT_TIMER'):
         setattr(wx, name, name)
     for number in range(1, 25): setattr(wx, 'WXK_F' + str(number), 2000 + number)
+    if request.param == 'cached-native-import':
+        # Windows installed suites may have imported an installer using real
+        # native event binders before this headless fixture replaces wx.
+        previous = ModuleType('wx')
+        previous.__dict__.update(wx.__dict__)
+        previous.EVT_MENU = object()
+        monkeypatch.setitem(sys.modules, 'wx', previous)
+        cached = importlib.import_module('carr_library.ui.trust_status')
+        monkeypatch.setattr(cached, 'wx', previous)
     monkeypatch.setitem(sys.modules, 'wx', wx)
     source = Path(importlib.util.find_spec('carr_library.ui.desktop_app').origin)
     tree = ast.parse(source.read_text(encoding='utf-8'))
@@ -123,7 +132,10 @@ def native_menus(tmp_path, monkeypatch):
             if not hasattr(frame, node.attr):
                 setattr(frame, node.attr, lambda event=None: None)
     env = dict(wx=wx, __name__='carr_library.ui._native_menu_contract', __package__='carr_library.ui')
-    for node in tree.body:
+    # Installers imported inside _menus can already be cached by preceding
+    # installed/native suites. Bind their actual globals to this fixture's wx
+    # just like top-level installers; do not replace any production installer.
+    for node in (*tree.body, *ast.walk(builder)):
         if isinstance(node, ast.ImportFrom) and node.level == 1:
             for alias in node.names:
                 if alias.name.startswith('install_'):
@@ -159,7 +171,8 @@ def test_actual_desktop_installers_retain_every_native_command_across_wrapper_re
     published = actions['audio studio/publish synchronized epub3']
     assert 'EPUB3 / DAISY' in published.title
     assert published.menu_id in native_menus.bindings
-    assert all(row.menu_id in native_menus.bindings for row in commands)
+    missing = [(row.action, row.menu_id) for row in commands if row.menu_id not in native_menus.bindings]
+    assert not missing, f'Actual menu commands without a selected native event binding: {missing}'
     effective_shortcuts(commands, {})  # All actual unchanged defaults coexist.
     assert not native_menus.notices
     controller = frame.keyboard_settings

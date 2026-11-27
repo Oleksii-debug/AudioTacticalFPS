@@ -258,6 +258,32 @@ def test_closed_reader_never_plays_a_pending_unit_after_its_native_display_owner
     assert player.handle is None
 
 
+def test_native_probe_stages_do_not_reuse_a_closed_readers_cancelled_desk(source):
+    import importlib.util
+    app, _workspace, _book, desk, pages = source
+    path = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_live_reading_smoke.py'
+    spec = importlib.util.spec_from_file_location('_native_live_probe_cancellation', path)
+    probe = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(probe)
+    stopped = threading.Event()
+    desk.cancelled = stopped.is_set
+    stopped.set()
+    with pytest.raises(TimeoutError):
+        desk.page(1)
+    independent = probe._independent_probe_desk(app, desk)
+    assert type(independent) is ReadingDesk and independent is not desk
+    assert independent.identity == desk.identity
+    assert independent.page(1).raw_text == pages[0]
+    assert desk.cancelled() and stopped.is_set(), 'Do not clear or replace the previous reader stop state.'
+    with pytest.raises(TimeoutError):
+        desk.page(1)
+    later_stop = threading.Event()
+    independent.cancelled = later_stop.is_set
+    later_stop.set()
+    with pytest.raises(TimeoutError):
+        independent.page(1)
+
+
 def test_continuous_reading_is_explicit_and_skips_only_unspoken_whitespace(source, make_reader):
     _app, _workspace, _book, desk, pages = source
     reader, render, player = make_reader(SourceSequence(desk))

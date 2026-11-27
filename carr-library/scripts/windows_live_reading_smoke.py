@@ -80,6 +80,13 @@ class ControlledPCMPlayer:
         self.state = 'closed'
 
 
+def _independent_probe_desk(library, previous):
+    """Keep revision authority while giving a new native probe its own stop state."""
+    from carr_library.reader.reading_desk import ReadingDesk
+    return ReadingDesk(library, previous.workspace, previous.edition,
+                       revision=previous.identity.revision)
+
+
 def canonical_copy_probe(wx, library, desk, discover, render):
     """Exercise the real canonical dialog, draft format and shared controller."""
     from carr_library.reader.live_reading import LiveReader
@@ -87,6 +94,7 @@ def canonical_copy_probe(wx, library, desk, discover, render):
     from carr_library.speech.source import read_source_range
     from carr_library.ui.live_reading import native_cursor_position
     from carr_library.ui.speech_dialog import show_speech_reader
+    desk = _independent_probe_desk(library, desk)
     original = desk.page(1).raw_text
     fixture = ControlledPCMPlayer()
     frame = wx.Frame(None, title='Canonical reading-copy acceptance host')
