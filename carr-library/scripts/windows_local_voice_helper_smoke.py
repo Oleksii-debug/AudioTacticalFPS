@@ -330,11 +330,11 @@ def main():
             report.update(run_native())
             if identity() != before:
                 raise ValueError('Installed application bytes changed during the native helper probe.')
-            report.update(status='PASS', native_controls='EXECUTED', synthetic_helper_execution='EXECUTED',
-                          module_origins=before)
+        report.update(status='PASS', native_controls='EXECUTED', synthetic_helper_execution='EXECUTED',
+                      module_origins=before)
     except BaseException as error:
         print(''.join(traceback.format_exception(type(error), error, error.__traceback__))[-12000:], flush=True)
-        report['reason'] = type(error).__name__ + ': ' + str(error)
+        report.update(status='FAIL', reason=type(error).__name__ + ': ' + str(error))
     print(json.dumps(report, ensure_ascii=False), flush=True)
     return 0 if report['status'] == 'PASS' else 1
 
