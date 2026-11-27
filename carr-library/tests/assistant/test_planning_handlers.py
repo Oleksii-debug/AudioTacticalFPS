@@ -50,7 +50,7 @@ class Sizer:
 
 class ControlledExecutor:
     """Hold work and completion independently to reproduce edited-input races."""
-    def __init__(self, **kwargs): self.pending = []
+    def __init__(self, **kwargs): self.pending, self.shutdowns = [], []
     def submit(self, callback, *args, **kwargs):
         future = Future()
         future.set_running_or_notify_cancel()
@@ -62,7 +62,7 @@ class ControlledExecutor:
             future.set_result(callback(*args, **kwargs))
         except BaseException as exc:
             future.set_exception(exc)
-    def shutdown(self, **kwargs): pass
+    def shutdown(self, **kwargs): self.shutdowns.append(kwargs)
 
 
 @pytest.fixture
@@ -245,12 +245,19 @@ def test_assistant_close_queues_service_cleanup_after_current_worker(native_hand
     monkeypatch.setattr(ProductionService, 'close', close)
     select_model(e)
     e.handlers['preview']()
+    review = e.controls['review'].GetValue()
+    e.handlers['close']()
     e.handlers['close']()
     assert len(e.executor.pending) == 2 and closed == []
+    assert e.executor.shutdowns == [{'wait': False, 'cancel_futures': False}]
     e.executor.complete(); e.drain()
     assert closed == []
-    e.executor.complete()
-    assert closed == [True]
+    assert e.controls['review'].GetValue() == review
+    assert not e.calls and e.dialog.assistant_service.jobs() == ()
+    assert e.app.workspaces() == ()
+    e.executor.complete(); e.drain()
+    assert closed == [True] and not e.executor.pending
+    assert e.executor.shutdowns == [{'wait': False, 'cancel_futures': False}]
 
 
 def test_rewrapped_native_destruction_discards_pending_plan_without_widget_access(

@@ -10,6 +10,7 @@ from zipfile import ZipFile
 import pytest
 
 from carr_library.application import LibraryApp
+from carr_library.extract.page_ocr import Config
 from carr_library.ingest import worker
 
 
@@ -211,6 +212,8 @@ def test_changed_request_identity_cannot_authorize_reconciliation(tmp_path, monk
         changed['metadata']['language'] = 'uk'
     worker._store(app.root, result['request_id'], changed)
     assert worker._published_after_stop(app, initial, attempt) is None
+    with pytest.raises(ValueError):
+        worker._reconcile_publication(app.root, result['request_id'], attempt, initial=initial)
 
 
 def test_corrupted_retained_bytes_cannot_authorize_reconciliation(tmp_path, monkeypatch):
@@ -227,6 +230,8 @@ def test_corrupted_retained_bytes_cannot_authorize_reconciliation(tmp_path, monk
     raw[-1] ^= 1
     retained.write_bytes(raw)
     assert worker._published_after_stop(app, initial, attempt) is None
+    with pytest.raises(ValueError):
+        worker._reconcile_publication(app.root, result['request_id'], attempt, initial=initial)
 
 
 def test_other_import_after_parent_snapshot_is_not_this_workers_commit(tmp_path, monkeypatch):
@@ -360,8 +365,9 @@ def test_pdf_resume_attempt_rejects_a_replaced_frozen_job_or_config(
         assert tuple(db.execute('SELECT * FROM import_publication').fetchone()) == receipt
 
 
+@pytest.mark.parametrize('binding', ('job', 'configuration'))
 def test_pdf_reconciliation_rechecks_config_against_a_valid_captured_attempt(
-        tmp_path, monkeypatch):
+        tmp_path, monkeypatch, binding):
     app = LibraryApp(tmp_path / 'library')
     workspace = app.create_workspace('Committed PDF configuration')
     source = source_file(tmp_path, 'pdf')
@@ -375,6 +381,57 @@ def test_pdf_reconciliation_rechecks_config_against_a_valid_captured_attempt(
     assert recovered['state'] == 'complete' and recovered['id'] == result['id']
     request = worker.load_request(app.root, result['request_id'])
     assert request['job'] == result['id']
-    request['config']['dpi'] += 1
+    if binding == 'job':
+        request['job'] = 'f' * 64 if request['job'] != 'f' * 64 else 'e' * 64
+    else:
+        request['config']['dpi'] += 1
     worker._store(app.root, result['request_id'], request)
     assert worker._published_after_stop(app, initial, attempt) is None
+
+
+@pytest.mark.parametrize('boundary', (None, 0))
+def test_legacy_watermark_survives_backup_validation_but_is_not_restored(tmp_path, boundary):
+    from carr_library.library_backup import create_backup, restore_backup
+
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Legacy request backup')
+    source = source_file(tmp_path, 'txt')
+    result = worker.run_request(app.root, workspace, source,
+        dict(title=None, authors=(), language=None, edition=None, volume=None,
+             collections=(), work_id=None, edition_id=None), Config())
+    assert result['state'] == 'complete'
+    request = worker.load_request(app.root, result['request_id'])
+    request['publication_watermark'] = boundary
+    request['state'] = 'running'  # The parent never received its final reply.
+    request.pop('result')
+    worker._store(app.root, result['request_id'], request)
+    backup = tmp_path / 'backup'
+    checksum = create_backup(app, backup)
+    source.unlink()
+
+    restored_root = restore_backup(backup, tmp_path / 'restored', checksum)
+    restored = worker.load_request(restored_root, result['request_id'])
+    assert not {'publication_watermark', 'attempt', 'publication_candidate'} & restored.keys()
+    reopened = LibraryApp(restored_root)
+    resumed = reopened.resume_import(workspace, result['request_id'])
+    assert resumed['state'] == 'complete' and resumed['id'] == result['id']
+    with reopened.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+        assert db.execute('SELECT count(*) FROM import_publication').fetchone()[0] == 1
+
+
+@pytest.mark.parametrize('boundary', (True, -1, 2 ** 63, '0'))
+def test_malformed_legacy_watermark_cannot_enter_backup(tmp_path, boundary):
+    from carr_library.library_backup import create_backup
+
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Rejected legacy request')
+    result = worker.run_request(app.root, workspace, source_file(tmp_path, 'txt'),
+        dict(title=None, authors=(), language=None, edition=None, volume=None,
+             collections=(), work_id=None, edition_id=None), Config())
+    assert result['state'] == 'complete'
+    request = worker.load_request(app.root, result['request_id'])
+    request['publication_watermark'] = boundary
+    worker._store(app.root, result['request_id'], request)
+    with pytest.raises(ValueError, match='publication boundary'):
+        create_backup(app, tmp_path / 'rejected-backup')

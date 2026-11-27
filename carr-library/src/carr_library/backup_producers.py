@@ -127,16 +127,29 @@ def _studio_job(value, identity):
     if 'resource_plan' in value:
         from .operations.models import ResourceRequest
         plan = value['resource_plan']
-        fields(plan, {'schema', 'request', 'source_sha256', 'estimated_duration',
-                      'cpu_basis', 'memory_basis', 'disk_basis', 'enforcement'})
-        if type(plan['schema']) is not int or plan['schema'] != 1 or type(plan['source_sha256']) is not dict:
+        fields(plan, {'schema', 'request', 'cpu_basis', 'memory_basis',
+                      'disk_basis', 'enforcement'}, {'source_sha256', 'estimated_duration'})
+        if type(plan['schema']) is not int or plan['schema'] != 1:
             raise ValueError('Invalid Studio resource declaration.')
+        # Canonical historical plans predate source hashes and measured clip
+        # estimates. Recognize that exact inert shape without inventing either;
+        # explicit rendering always computes a new admission plan.
+        present = {'source_sha256', 'estimated_duration'} & plan.keys()
+        if present and present != {'source_sha256', 'estimated_duration'}:
+            raise ValueError('Incomplete Studio source declaration.')
         ResourceRequest.from_dict(plan['request'])
-        number(plan['estimated_duration'])
-        if len(plan['source_sha256']) > 100000:
-            raise ValueError('Studio source declaration exceeds its limit.')
-        for source, checksum in plan['source_sha256'].items():
-            path(source); digest(checksum)
+        if plan['request']['disk_path'] is not None:
+            path(plan['request']['disk_path'])
+        for directory, _ in plan['request']['additional_disks']:
+            path(directory)
+        if present:
+            if type(plan['source_sha256']) is not dict:
+                raise ValueError('Invalid Studio source declaration.')
+            number(plan['estimated_duration'])
+            if len(plan['source_sha256']) > 100000:
+                raise ValueError('Studio source declaration exceeds its limit.')
+            for source, checksum in plan['source_sha256'].items():
+                path(source); digest(checksum)
         for key in ('cpu_basis', 'memory_basis', 'disk_basis', 'enforcement'):
             text(plan[key], 8192)
     for name in ('created', 'updated'):
@@ -344,7 +357,7 @@ def _translation_languages(value, identity):
     for row in rows:
         fields(row, {'language', 'name', 'source', 'target'} if advanced else {'language', 'name'})
         _translation_language(row['language'])
-        text(row['name'], 1000)
+        text(row['name'], 512 if advanced else 1000, empty=advanced)
         if advanced and (type(row['source']) is not bool or type(row['target']) is not bool):
             raise ValueError('Invalid declared translation language directions.')
         if row['language'] in seen:
@@ -452,8 +465,11 @@ def _translation_job(value, identity, db):
         digest(row['response_sha256'])
         if advanced:
             glossary = {'glossary': value['glossary'], 'ignoreCase': False} if value.get('glossary') else None
+            observed_glossary = row.get('glossary_config')
             if (row.get('reported_model') != google_v3_parent(profile.endpoint) + '/models/' + profile.model
-                    or 'glossary_config' not in row or row['glossary_config'] != glossary):
+                    or 'glossary_config' not in row or observed_glossary != glossary
+                    or (glossary is not None and (type(observed_glossary) is not dict
+                                                 or observed_glossary.get('ignoreCase') is not False))):
                 raise ValueError('Advanced translation provenance differs from its approved model or glossary.')
         if bound or 'decoded_translation_sha256' in row:
             if row.get('decoded_translation_sha256') != translation_receipt_sha256(row['text'], row['detected_source']):

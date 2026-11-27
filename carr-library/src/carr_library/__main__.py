@@ -73,15 +73,18 @@ def main(argv=None):
     if arguments and arguments[0] in ('studio', 'assistant'):
         from .studio.cli import main as studio_main, assistant_main
         return (studio_main if arguments[0] == 'studio' else assistant_main)(arguments[1:])
-    if arguments[:1] == ['transcribe']:
+    if arguments[:1] in (['transcribe'], ['transcription']):
         from .transcription_cli import main as transcription_main
         return transcription_main(arguments[1:])
     if arguments[:1] == ['operations']:
         from .operations_cli import main as operations_main
         return operations_main(arguments[1:])
-    if arguments[:1] == ['translate']:
+    if arguments[:1] in (['translate'], ['translation']):
         from .assistant.translation_cli import main as translation_main
         return translation_main(arguments[1:])
+    if arguments[:1] == ['documents']:
+        from .conversion.cli import main as documents_main
+        return documents_main(arguments[1:])
     if arguments[:1] == ['sync']:
         from .sync.cli import main as sync_main
         return sync_main(arguments[1:])

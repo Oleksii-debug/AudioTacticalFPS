@@ -6,6 +6,7 @@ import sys
 
 from carr_library.ui.assistant_dialog import install_assistant_actions
 from carr_library.ui.library_assistant import install_library_assistant_actions
+from carr_library.ui.operations_dialog import install_operations_actions
 from carr_library.ui.speech_dialog import install_speech_actions
 from carr_library.ui.studio_dialog import install_studio_actions
 from carr_library.ui.builtin_keyboard_commands import builtin_commands
@@ -69,12 +70,13 @@ def test_studio_queues_named_commands_before_final_keyboard_install(monkeypatch,
     install_studio_actions(frame)
     install_assistant_actions(frame)
     install_library_assistant_actions(frame)
+    install_operations_actions(frame)
     pending = frame._pending_keyboard_commands
     assert [spec.command_id for spec, _ in pending] == [
         'voice.reader', 'voice.clipboard', 'voice.book', 'audio.studio', 'audio.clips',
         'audio.pronunciation', 'audio.recording', 'audio.publishing', 'audio.convert',
         'audio.metadata', 'audio.transcription', 'audio.engines',
-        'assistant.local', 'assistant.providers', 'library.workflows']
+        'assistant.local', 'assistant.providers', 'library.workflows', 'operations.tasks']
     registry = CommandRegistry((*builtin_commands(), *(spec for spec, _ in pending)))
     assert registry.shortcut('audio.studio', {}) == 'Ctrl+Alt+A'
     assert registry.shortcut('voice.reader', {}) == 'Ctrl+Alt+V'
@@ -83,14 +85,17 @@ def test_studio_queues_named_commands_before_final_keyboard_install(monkeypatch,
     assert registry.shortcut('research.search_center', {}) == 'Ctrl+Alt+F'
     assert registry.shortcut('audio.studio', {'audio.studio': 'Ctrl+Alt+U'}) == 'Ctrl+Alt+U'
     assert [label for _, label in frame.menu_bar.menus] == ['&Voice', 'Audio St&udio', '&Tools']
-    assert len(frame.menu_bar.menus[-1][0].items) == 3
-    assert frame.Bind.call_count == 15
+    assert registry.shortcut('operations.tasks', {}) == ''
+    assert registry.shortcut('operations.tasks', {'operations.tasks': 'Ctrl+Alt+F12'}) == 'Ctrl+Alt+F12'
+    assert len(frame.menu_bar.menus[-1][0].items) == 4
+    assert frame.Bind.call_count == 16
     for (_, item), call in zip(pending, frame.Bind.call_args_list):
         assert call.args[2] is item
 
     # A saved canonical voice binding must survive actual menu capture, rather
     # than being dropped or renamed to a generated caption-hash identity.
-    saved = {'voice.reader': 'Ctrl+Shift+V', 'voice.book': 'Ctrl+Shift+R'}
+    saved = {'voice.reader': 'Ctrl+Shift+V', 'voice.book': 'Ctrl+Shift+R',
+             'operations.tasks': 'Ctrl+Alt+F12'}
     path = tmp_path / 'keyboard-shortcuts.json'
     KeymapStore(path).save(saved, registry)
     before = path.read_bytes()
@@ -98,6 +103,7 @@ def test_studio_queues_named_commands_before_final_keyboard_install(monkeypatch,
     assert manager.overrides == saved and path.read_bytes() == before
     assert manager.shortcut('voice.reader') == saved['voice.reader']
     assert manager.shortcut('voice.book') == saved['voice.book']
+    assert manager.shortcut('operations.tasks') == saved['operations.tasks']
     assert manager.shortcut('audio.studio') == 'Ctrl+Alt+A'
     assert set(spec.command_id for spec, _ in pending) <= set(manager.bindings)
     assert len({binding.item.GetId() for binding in manager.bindings.values()}) == len(manager.bindings)

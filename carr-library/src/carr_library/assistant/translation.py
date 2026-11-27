@@ -400,8 +400,11 @@ class TranslationService:
                 raise ValueError('A completed translation chunk is damaged.')
             if advanced and job['chunks'][index].strip():
                 expected_glossary = {'glossary': job['glossary'], 'ignoreCase': False} if job.get('glossary') else None
+                observed_glossary = row.get('glossary_config')
                 if (row.get('reported_model') != google_v3_parent(profile.endpoint) + '/models/' + profile.model
-                        or row.get('glossary_config') != expected_glossary):
+                        or 'glossary_config' not in row or observed_glossary != expected_glossary
+                        or (expected_glossary is not None and (type(observed_glossary) is not dict
+                                                              or observed_glossary.get('ignoreCase') is not False))):
                     raise ValueError('The Advanced v3 receipt has no verified model/glossary provenance.')
             if requests[index] is None:
                 if (row['text'] != job['chunks'][index] or row.get('request_sha256') is not None

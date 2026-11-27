@@ -1414,8 +1414,9 @@ class DesktopFrame(WorkspaceFrame):
             'DOCX and EPUB extraction remains unverified. Reading or bookmarking does not approve quotations.\n'
             'The Source menu records or withdraws an independent review of the selected PDF page.\n'
             'For quarantined OCR imports, use Library, Review pending imported page; each page needs explicit independent comparison.\n'
-            'Backups include completed libraries. Unfinished imports and pending reviews are excluded.\n'
-            'New full library backups include reading positions and bookmarks. Reading menu export/import also supports selective transfer and recovery from older backups.\n'
+            'Backups include all libraries, reading positions, bookmarks, saved projects, unfinished imports and retained inputs. '
+            'Generated audio can be included explicitly. Restoration creates a new folder; external engines, models and credentials remain separate.\n'
+            'Reading menu export/import also supports selective transfer and recovery from older backups.\n'
             'Printed pages are shown only when verified; otherwise physical PDF pages or unpaginated segments are identified.')
 
     def on_close(self, event):

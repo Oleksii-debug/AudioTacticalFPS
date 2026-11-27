@@ -313,7 +313,7 @@ def test_existing_file_hash_can_stop_between_bounded_reads(
                 target, private_root=target.parent / 'private', cancelled=lambda: stopped)
         else:
             publish(approval=approval, cancelled=lambda: stopped)
-    assert inspected == [1024 * 1024]
+    assert inspected == [128 * 1024]
     _assert_fingerprint_descriptors_closed(sessions)
     assert target.read_bytes() == previous
     assert not list(target.parent.glob('.research-export-*'))

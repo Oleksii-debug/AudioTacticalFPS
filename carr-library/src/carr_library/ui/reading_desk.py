@@ -343,8 +343,11 @@ class ReadingDialog:
         # Only this UI-thread acceptance can change resume/history. A worker
         # completed after cancellation or close never reaches this point.
         self.controller.accept(navigation)
+        help_shortcut = self.keyboard.shortcut('reader.help') if hasattr(self, 'keyboard') else 'F1'
         self.status.ChangeValue(self.controller.save_warning or
-            'Source location loaded. Page-level resume saved. Use F1 for reader shortcuts.')
+            ('Source location loaded. Page-level resume saved. '
+             + (f'Use {help_shortcut} for reader shortcuts.' if help_shortcut else
+                'Choose Reader keyboard guide for shortcuts.')))
         if focus:
             self.text.SetFocus()
 
@@ -416,7 +419,9 @@ class ReadingDialog:
             return
         def choose(rows):
             if not rows:
-                self._message('This book has no page bookmarks yet. Use Ctrl+B to add one.')
+                shortcut = self.keyboard.shortcut('reader.bookmark_add') if hasattr(self, 'keyboard') else 'Ctrl+B'
+                self._message('This book has no page bookmarks yet. '
+                              + (f'Use {shortcut} to add one.' if shortcut else 'Choose Add named page bookmark.'))
                 return
             labels = [f'{item.label}; {item.location.kind.replace("_", " ")} '
                       f'{item.location.index}; source revision {item.location.revision[:12]}' for item in rows]
@@ -713,13 +718,15 @@ class ReadingActions:
             approval = self.dialogs.approve_export(self.frame, path, private_root=scope.library.root)
             if approval is None:
                 return
+            self._guard(scope)
 
             def save():
                 self._authorize(scope)
                 state = self.state_factory(scope.library.root)
                 content = state.export_state(scope.workspace)
                 return self._run(scope, lambda: write_export(path, content,
-                    private_root=scope.library.root, approval=approval))
+                    private_root=scope.library.root, approval=approval,
+                    cancelled=self.frame.cancel_event.is_set))
             self.frame.run_job('Exporting reading state', lambda: self._run(scope, save),
                 lambda receipt: self.frame.report(export_completion(
                     'Reading positions and page bookmarks exported.', receipt)))

@@ -691,3 +691,24 @@ def test_advanced_discovery_rechecks_account_after_gateway_construction(
         status = e.find('Preview, supported languages and job status')
         assert 'unavailable, disabled or changed' in status.value and status.focused
     e.scenario(scenario)
+
+
+@pytest.mark.parametrize('damage', ('integer-zero', 'missing-field'))
+def test_saved_glossary_provenance_requires_exact_declared_boolean(tmp_path, transport, damage):
+    service, profile, vault = ready(tmp_path, transport)
+    identity, _authorization = submit(service, profile, glossary=GLOSSARY)
+    assert service.resume(identity)['status'] == 'complete'
+    value = service.jobs.load(identity)
+    if damage == 'integer-zero':
+        value['receipts'][0]['glossary_config']['ignoreCase'] = 0
+    else:
+        del value['receipts'][0]['glossary_config']
+    service.jobs.save(value)
+    before = service.jobs.load(identity)
+    calls, credentials = len(transport['calls']), len(vault.calls)
+    destination = tmp_path / 'unverified-glossary-export'
+    with pytest.raises(ValueError, match='model/glossary provenance'):
+        service.export(identity, destination)
+    assert not destination.exists()
+    assert service.jobs.load(identity) == before
+    assert len(transport['calls']) == calls and len(vault.calls) == credentials
