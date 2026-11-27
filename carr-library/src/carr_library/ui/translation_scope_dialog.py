@@ -7,6 +7,7 @@ from threading import Event
 from uuid import uuid4
 
 from ..assistant.models import canonical
+from ..providers import LOCAL_TRANSLATION_PROVIDER
 from ..assistant.translation import language_approval
 from ..assistant.translation_selection import DocumentSelection, capture_selection
 from ..assistant.translation_scope import TranslationScopeService
@@ -85,7 +86,7 @@ def show_translation_scope(frame, *, service=None):
     documents = field('Documents to translate; Space checks each &item', wx.CheckListBox, proportion=1, choices=[])
     selection_view = field('Selected documents in transfer order', style=wx.TE_MULTILINE | wx.TE_READONLY)
     chapter = field('Exact EPUB &chapter; load contents after choosing one book', wx.Choice, choices=[])
-    provider = field('Google Translation &account', wx.Choice, choices=[])
+    provider = field('Translation &connection; Google or local', wx.Choice, choices=[])
     source = field('&Source language', wx.Choice, choices=[])
     target = field('Target &language', wx.Choice, choices=[])
     glossary = field('Advanced v3 &glossary resource; blank for none', value='')
@@ -137,6 +138,9 @@ def show_translation_scope(frame, *, service=None):
             control.Enable(editable)
         index = provider.GetSelection()
         glossary.Enable(editable and 0 <= index < len(profiles) and profiles[index].provider == 'google-translation-v3')
+        if 0 <= index < len(profiles) and profiles[index].provider == LOCAL_TRANSLATION_PROVIDER:
+            rate.Enable(False)
+            budget.Enable(False)
         for name in ('books', 'next', 'clear', 'chapters', 'connections', 'languages', 'preview'):
             buttons[name].Enable(editable)
         buttons['chapters'].Enable(editable and mode.GetSelection() == 1)
@@ -186,7 +190,7 @@ def show_translation_scope(frame, *, service=None):
         guard()
         index = provider.GetSelection()
         if not 0 <= index < len(profiles):
-            raise ValueError('Choose a connected Google Basic v2 or Advanced v3 account.')
+            raise ValueError('Choose an explicit Google or local translation connection.')
         return profiles[index]
 
     def languages_loaded(event=None):
@@ -196,8 +200,11 @@ def show_translation_scope(frame, *, service=None):
         except Exception as exc:
             inventory = ()
             report(str(exc))
-        sources = [row for row in inventory if row.get('source', True)]
-        targets = [row for row in inventory if row.get('target', True)]
+        sources = [row for row in inventory if row.get('source', bool(row.get('targets', True)))]
+        local_targets = ({target for row in inventory for target in row['targets']}
+                         if inventory and all('targets' in row for row in inventory) else None)
+        targets = [row for row in inventory if row.get('target', True)
+                   and (local_targets is None or row['language'] in local_targets)]
         source_codes = ['auto'] + [row['language'] for row in sources]
         target_codes = [row['language'] for row in targets]
         source.SetItems(['auto — detect'] + [row['language'] + ' — ' + row['name'] for row in sources])
@@ -208,6 +215,9 @@ def show_translation_scope(frame, *, service=None):
         selected_index = provider.GetSelection()
         if not 0 <= selected_index < len(profiles) or profiles[selected_index].provider != 'google-translation-v3':
             glossary.ChangeValue('')
+        if 0 <= selected_index < len(profiles) and profiles[selected_index].provider == LOCAL_TRANSLATION_PROVIDER:
+            budget.ChangeValue('0')
+            rate.ChangeValue('')
         controller.reviewed = None
         controls()
 
@@ -333,9 +343,11 @@ def show_translation_scope(frame, *, service=None):
                     for row in result['items'])
                 if wx.MessageBox('Account: ' + args[0].name + '\nEndpoint: ' + args[0].endpoint +
                     '\nModel: ' + args[0].model + '\nGlossary: ' + (options['glossary'] or 'none') +
-                    '\nLanguage pair: ' + args[3] + ' → ' + args[4] + '\n' + items +
-                    '\nSend exactly the reviewed extracted source blocks? The provider may charge this account. '
-                    'Originals remain unchanged. Reservations are not a provider-enforced bill limit.',
+                    '\nLanguage pair: ' + args[3] + ' → ' + args[4] + '\n' + items
+                    + ('\nSend the reviewed source blocks to this local endpoint with zero remote reservation? '
+                       if args[0].local else
+                       '\nSend exactly the reviewed extracted source blocks? The provider may charge this account. ')
+                    + 'Originals remain unchanged.',
                     'Approve exact structured source transfer', wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION,
                     dialog) != wx.YES:
                     return

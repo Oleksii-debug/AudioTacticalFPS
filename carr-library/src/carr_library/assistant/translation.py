@@ -1,4 +1,4 @@
-"""Explicit Google Basic v2 and Advanced v3 translation through the shared gateway.
+"""Explicit Google and selected loopback translation through the shared gateway.
 
 Source text is immutable; accepted chunks survive restart. A durable request
 intent precedes each call. A lost ledger, uncertain charge or missing paid
@@ -15,14 +15,14 @@ from uuid import uuid4
 from .models import canonical, local_path
 from .state import now, read_json, regular
 from .translation_state import (
-    ADVANCED_CACHE_SCHEMA, ADVANCED_SCHEMA, CACHE_SCHEMA, MAX_CACHE_BYTES,
+    ADVANCED_CACHE_SCHEMA, ADVANCED_SCHEMA, CACHE_SCHEMA, LOCAL_CACHE_SCHEMA, LOCAL_SCHEMA, MAX_CACHE_BYTES,
     MAX_OUTPUT_CHARACTERS, SCHEMA, TranslationStore,
     allocations, approval_from_dict, split_text, text_hash, validate_language_cache)
 from ..ingest.writer_guard import exclusive_writer
 from ..providers import (
     BudgetLedger, GoogleTranslationRequest, JobApproval, ProfileStore, ProviderError,
     ProviderGateway, ProviderProfile, GOOGLE_TRANSLATION_ENDPOINT,
-    GOOGLE_TRANSLATION_PROVIDERS, decode_translation_response, translation_request,
+    TRANSLATION_PROVIDERS, LOCAL_TRANSLATION_PROVIDER, decode_translation_response, translation_request,
     translation_receipt_sha256)
 from ..reader.narration_text import NarrationDraft
 from ..research.export_file import _destination, _filename, write_export
@@ -30,22 +30,33 @@ from ..research.export_file import _destination, _filename, write_export
 ENDPOINT = GOOGLE_TRANSLATION_ENDPOINT
 
 
+def _cache_schema(profile):
+    return (LOCAL_CACHE_SCHEMA if profile.provider == LOCAL_TRANSLATION_PROVIDER else
+            ADVANCED_CACHE_SCHEMA if profile.provider == 'google-translation-v3' else CACHE_SCHEMA)
+
+
 def translation_approval(profile, value, source, target, budget_micros, *, glossary=''):
     """Only call after the user reviews these exact data and integer USD bound."""
-    if not isinstance(profile, ProviderProfile) or profile.provider not in GOOGLE_TRANSLATION_PROVIDERS:
-        raise ValueError('Choose a Google Basic v2 or Advanced v3 profile.')
+    if not isinstance(profile, ProviderProfile) or profile.provider not in TRANSLATION_PROVIDERS:
+        raise ValueError('Choose an installed translation adapter and an explicit connection profile.')
+    local = profile.provider == LOCAL_TRANSLATION_PROVIDER
+    if local and (type(budget_micros) is not int or budget_micros != 0):
+        raise ValueError('The local translator requires an explicit zero remote reservation.')
     parts = split_text(value)
     hashes = tuple(translation_request(profile, part, source, target, glossary=glossary).fingerprint(profile)
                    for part in parts if part.strip())
     return JobApproval(uuid4().hex, profile.fingerprint, hashes,
                        budget_micros=budget_micros, max_calls=len(hashes),
-                       currency='USD', mode='APPROVED_REMOTE')
+                       currency='USD', mode='LOCAL_ONLY' if local else 'APPROVED_REMOTE',
+                       allow_loopback=local)
 
 
 def language_approval(profile):
     request = translation_request(profile, operation='languages')
     return JobApproval(uuid4().hex, profile.fingerprint, (request.fingerprint(profile),),
-                       budget_micros=0, max_calls=1, currency='USD', mode='APPROVED_REMOTE')
+                       budget_micros=0, max_calls=1, currency='USD',
+                       mode='LOCAL_ONLY' if profile.local else 'APPROVED_REMOTE',
+                       allow_loopback=profile.local)
 
 
 def _json_value(value):
@@ -98,13 +109,14 @@ class TranslationService:
 
     def available_profiles(self):
         return tuple(profile for profile in self.profiles.profiles()
-                     if profile.provider in GOOGLE_TRANSLATION_PROVIDERS)
+                     if profile.provider in TRANSLATION_PROVIDERS)
 
     def _current_profile(self, profile):
-        if not isinstance(profile, ProviderProfile) or profile.provider not in GOOGLE_TRANSLATION_PROVIDERS:
-            raise ValueError('Choose a Google Basic v2 or Advanced v3 profile.')
+        if not isinstance(profile, ProviderProfile) or profile.provider not in TRANSLATION_PROVIDERS:
+            raise ValueError('Choose an installed translation adapter and an explicit connection profile.')
         current = next((item for item in self.available_profiles() if item.id == profile.id), None)
-        if current is None or current.fingerprint != profile.fingerprint or not current.credential_ref:
+        if (current is None or current.fingerprint != profile.fingerprint
+                or (not current.local and not current.credential_ref)):
             raise PermissionError('This account changed or was disconnected. Review the current profile before sending text.')
         return current
 
@@ -117,7 +129,7 @@ class TranslationService:
         if not path.exists():
             return ()
         value = validate_language_cache(read_json(path, maximum=MAX_CACHE_BYTES), profile_id=profile.id)
-        expected_schema = ADVANCED_CACHE_SCHEMA if profile.provider == 'google-translation-v3' else CACHE_SCHEMA
+        expected_schema = _cache_schema(profile)
         if (value['profile_fingerprint'] != profile.fingerprint or value['schema'] != expected_schema
                 or value['endpoint'] != profile.endpoint or value['model'] != profile.model):
             raise ValueError('Explicitly refresh languages for this exact account and model.')
@@ -129,13 +141,15 @@ class TranslationService:
         if (not isinstance(approval, JobApproval) or approval.profile_fingerprint != profile.fingerprint
                 or approval.request_hashes != (request.fingerprint(profile),)
                 or approval.max_calls != 1 or approval.budget_micros != 0
-                or approval.currency != 'USD' or approval.mode != 'APPROVED_REMOTE'
-                or approval.allow_loopback or not re.fullmatch('[0-9a-f]{32}', approval.job_id)):
+                or approval.currency != 'USD'
+                or approval.mode != ('LOCAL_ONLY' if profile.local else 'APPROVED_REMOTE')
+                or approval.allow_loopback is not profile.local
+                or not re.fullmatch('[0-9a-f]{32}', approval.job_id)):
             raise PermissionError('Approve only this account\'s supported-language query; no selected text is sent.')
         raw = self.gateway.perform(profile, request, approval=approval, operation_id=approval.job_id,
                                    estimated_micros=0, cancelled=cancelled)
         rows = decode_translation_response(request, raw, profile=profile)['languages']
-        schema = ADVANCED_CACHE_SCHEMA if profile.provider == 'google-translation-v3' else CACHE_SCHEMA
+        schema = _cache_schema(profile)
         value = {'schema': schema, 'profile_id': profile.id,
             'profile_fingerprint': profile.fingerprint, 'endpoint': profile.endpoint, 'model': profile.model,
             'fetched_at': now(), 'languages': rows, 'languages_sha256': text_hash(canonical(rows)),
@@ -156,7 +170,13 @@ class TranslationService:
             raise ValueError('Explicitly fetch the supported language list before translating.')
         if target not in targets or (source != 'auto' and source not in sources):
             raise ValueError('This source/target pair is not declared supported by this account\'s NMT model.')
-        estimate = None
+        local = profile.provider == LOCAL_TRANSLATION_PROVIDER
+        if local:
+            from .translation_local import require_pair
+            require_pair(list(rows), source, target)
+            if rate_per_million not in (None, ''):
+                raise ValueError('The local translator has no remote price; leave the contract price empty.')
+        estimate = '0' if local else None
         if rate_per_million not in (None, ''):
             try:
                 rate = Decimal(rate_per_million)
@@ -170,7 +190,8 @@ class TranslationService:
             'calls': sum(bool(part.strip()) for part in parts), 'chunks': len(parts),
             'source': source, 'target': target, 'estimated_cost': estimate,
             'language_catalog_sha256': text_hash(canonical(list(rows))),
-            'estimate_basis': 'owner-entered rate; not a provider quote or a provider-enforced spending cap',
+            'estimate_basis': ('local endpoint; zero remote reservation, no runtime or quality attestation' if local
+                               else 'owner-entered rate; not a provider quote or a provider-enforced spending cap'),
             'glossary': glossary, 'provider': profile.provider, 'endpoint': profile.endpoint, 'model': profile.model,
             'preservation': 'plain-text derivative; original text is retained; document layout and translation quality are not guaranteed'}
 
@@ -180,7 +201,8 @@ class TranslationService:
             raise PermissionError('Review a fresh exact translation approval.')
         parts = split_text(value)
         stamp = now()
-        schema = ADVANCED_SCHEMA if profile.provider == 'google-translation-v3' else SCHEMA
+        schema = (LOCAL_SCHEMA if profile.provider == LOCAL_TRANSLATION_PROVIDER else
+                  ADVANCED_SCHEMA if profile.provider == 'google-translation-v3' else SCHEMA)
         job = {'schema': schema, 'id': approval.job_id, 'library_root': str(self.root),
             'ledger_identity': self._ledger_identity(), 'created': stamp, 'updated': stamp, 'status': 'queued',
             'profile': _json_value(asdict(profile)), 'title': title, 'source_text': value,
@@ -245,11 +267,18 @@ class TranslationService:
         return {'id': job['id'], 'title': job['title'], 'status': job['status'],
                 'completed': len(job['receipts']), 'total': len(split_text(job['source_text'])),
                 'source': job['source_language'], 'target': job['target_language'],
-                'billed_cost': 'unknown; local amounts are reservations only'}
+                'billed_cost': ('zero remote reservation; runtime operating costs not measured'
+                                if job['schema'] == LOCAL_SCHEMA else
+                                'unknown; local amounts are reservations only')}
 
-    def resume(self, identity, *, cancelled=lambda: False, progress=lambda *args: None):
+    def resume(self, identity, *, cancelled=lambda: False, progress=lambda *args: None,
+               expected_job_sha256=None):
         with self.jobs.lock(identity):
             job = self.jobs.load(identity)
+            if expected_job_sha256 is not None and (
+                    not isinstance(expected_job_sha256, str)
+                    or text_hash(canonical(job)) != expected_job_sha256):
+                raise PermissionError('The saved translation changed after review. Inspect it before an explicit run.')
             if job['status'] == 'complete':
                 self._receipt_integrity(job)
                 return self._summary(job)
@@ -280,6 +309,13 @@ class TranslationService:
                     chunk = parts[index]
                     if chunk.strip():
                         profile = self._binding(job)
+                        local_pairs = None
+                        if profile.provider == LOCAL_TRANSLATION_PROVIDER:
+                            from .translation_local import require_pair
+                            local_pairs = self.languages(profile)
+                            if text_hash(canonical(list(local_pairs))) != job['language_catalog_sha256']:
+                                raise ValueError('The local language inventory changed. Review a new translation job.')
+                            require_pair(list(local_pairs), job['source_language'], job['target_language'])
                         request = translation_request(profile, chunk, job['source_language'],
                                                       job['target_language'], glossary=job.get('glossary', ''))
                         operation = identity + '_' + str(index)
@@ -288,6 +324,9 @@ class TranslationService:
                         raw = self.gateway.perform(profile, request, approval=approval, operation_id=operation,
                             estimated_micros=job['allocations'][index], cancelled=cancelled)
                         result = decode_translation_response(request, raw, profile=profile)
+                        if local_pairs is not None:
+                            require_pair(list(local_pairs), job['source_language'], job['target_language'],
+                                         detected=result['detected_source'])
                         row = {'index': index, 'source_sha256': text_hash(chunk), 'text': result['text'],
                             'translation_sha256': text_hash(result['text']), 'detected_source': result['detected_source'],
                             'operation_id': operation, 'request_hash': request.fingerprint(profile),
@@ -329,7 +368,9 @@ class TranslationService:
         if job['library_root'] != str(self.root) or job['ledger_identity'] != self._ledger_identity():
             raise ValueError('The original provider ledger is unavailable; saved receipts remain inspectable offline.')
         return {'job': self._summary(job), 'operations': self.gateway.ledger.report(job['id']),
-                'qualification': 'local reservations and response hashes, not independently verified provider bills'}
+                'qualification': ('selected local endpoint with zero remote reservation; runtime not attested'
+                                  if job['schema'] == LOCAL_SCHEMA else
+                                  'local reservations and response hashes, not independently verified provider bills')}
 
     def export(self, identity, output, *, cancelled=lambda: False):
         with self.jobs.lock(identity):
@@ -371,6 +412,11 @@ class TranslationService:
                 'files': hashes}
             if job['schema'] == ADVANCED_SCHEMA:
                 report.update(schema='carr-translation-export/2', glossary=job['glossary'])
+            if job['schema'] == LOCAL_SCHEMA:
+                report.update(schema='carr-translation-export/4',
+                    local_runtime_identity='not attested by the local API',
+                    local_protocol='LibreTranslate selected loopback origin; credentials forbidden',
+                    billed_cost='zero remote reservation; runtime operating costs not measured')
             # A provenance manifest is the final complete-export marker.
             write_export(target / 'translation-provenance.json', canonical(report) + '\n',
                          private_root=self.root, cancelled=cancelled, require_absent=True)

@@ -14,9 +14,9 @@ from .models import canonical, text
 from .state import now, read_bytes, state_write_guard
 from .translation_selection import blocks, validate_selection
 from .translation_state import (
-    ADVANCED_SCHEMA, SCHEMA, TranslationStore, allocations, approval_from_dict,
+    ADVANCED_SCHEMA, SCHEMA, LOCAL_SCHEMA, TranslationStore, allocations, approval_from_dict,
     split_text, text_hash, validate_translation_job, _hash, _stamp)
-from ..providers import ProviderProfile
+from ..providers import ProviderProfile, LOCAL_TRANSLATION_PROVIDER
 
 SCOPE_SCHEMA = 'carr-translation-scope/1'
 MAX_SCOPES = 100
@@ -104,7 +104,8 @@ def child_title(plan, unit):
 
 def child_template(plan, unit, approval):
     profile = ProviderProfile.from_dict(plan['profile'])
-    schema = ADVANCED_SCHEMA if profile.provider == 'google-translation-v3' else SCHEMA
+    schema = (LOCAL_SCHEMA if profile.provider == LOCAL_TRANSLATION_PROVIDER else
+              ADVANCED_SCHEMA if profile.provider == 'google-translation-v3' else SCHEMA)
     value = dict(schema=schema, id=approval['job_id'], library_root=plan['library_root'],
         ledger_identity=list(plan['ledger_identity']), created=plan['created'], updated=plan['updated'],
         status='queued', profile=plan['profile'], title=child_title(plan, unit), source_text=unit['text'],
@@ -134,6 +135,9 @@ def validate_scope_plan(value, *, identity=None):
     if value['selection_sha256'] != text_hash(canonical(selection)):
         raise ValueError('The immutable translation selection changed.')
     profile = ProviderProfile.from_dict(value['profile'])
+    if profile.provider == LOCAL_TRANSLATION_PROVIDER and (
+            value['budget_micros'] != 0 or value['rate_per_million'] != '' or value['glossary'] != ''):
+        raise ValueError('Local scoped translation requires zero remote reservation, no price and no glossary.')
     digest = review_digest(selection, profile, value['source_language'], value['target_language'],
         value['glossary'], value['budget_micros'], value['language_catalog_sha256'], value['rate_per_million'])
     if value['approved_review_sha256'] != digest:

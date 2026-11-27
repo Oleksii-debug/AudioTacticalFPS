@@ -55,7 +55,11 @@ def strict_junit(path, expected_functions):
 
 
 
-def run_population(mode, checkout, output, expected_functions):
+def run_population(mode, checkout, output, expected_functions, *, network_mode='offline'):
+    if network_mode not in ('offline', 'numeric-loopback'):
+        raise ValueError('Choose a declared finite qualification network policy.')
+    if network_mode == 'numeric-loopback' and set(expected_functions) != {'tests.loopback.test_translation_local_adapter'}:
+        raise ValueError('Local translation TCP qualification accepts only its exact synthetic fixture.')
     selectors = tuple(name.replace('.', '/') + '.py' for name in expected_functions)
     child = runpy.run_path(str(checkout / 'scripts/ci_check.py'))['PYTEST_CHILD']
     origins = output / (mode + '-origins.json')
@@ -78,7 +82,7 @@ pathlib.Path(__OUTPUT__).write_text(json.dumps({'isolated': bool(sys.flags.isola
     arguments = [sys.executable]
     if mode == 'installed':
         arguments.append('-I')
-    arguments += ['-B', '-X', 'utf8', '-c', binding + '\n' + child, 'offline',
+    arguments += ['-B', '-X', 'utf8', '-c', binding + '\n' + child, network_mode,
                   '-o', 'addopts=', '-o', 'pythonpath=', '-o', 'xfail_strict=true',
                   '--import-mode=importlib', '--durations=13', '--junitxml',
                   str(output / (mode + '-junit.xml')), '--basetemp', str(output / (mode + '-tmp')),

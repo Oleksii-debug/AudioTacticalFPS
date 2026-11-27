@@ -14,6 +14,7 @@ import uuid
 from ..providers import (BudgetLedger, JobApproval, ProfileStore, ProviderGateway,
                          ProviderProfile, ProviderRequest, ProviderError,
                          GOOGLE_TRANSLATION_ENDPOINT, GOOGLE_TRANSLATION_PROVIDERS,
+                         TRANSLATION_PROVIDERS, LOCAL_TRANSLATION_PROVIDER,
                          google_v3_parent)
 from ..research.export_file import _filename, _destination
 
@@ -154,10 +155,11 @@ def show_api_connections(frame):
                 'Local or remote OpenAI-compatible text model',
                 'ElevenLabs speech, music and sound effects',
                 'Google Cloud Translation Basic v2 (NMT)',
-                'Google Cloud Translation Advanced v3 (NMT; IAM/ADC OAuth)'])
+                'Google Cloud Translation Advanced v3 (NMT; IAM/ADC OAuth)',
+                'Local LibreTranslate service (explicit loopback; no credentials)'])
             if provider_index is None:
                 return
-            provider = ('openai-compatible', 'elevenlabs', *GOOGLE_TRANSLATION_PROVIDERS)[provider_index]
+            provider = ('openai-compatible', 'elevenlabs', *TRANSLATION_PROVIDERS)[provider_index]
             fields = {}
             prompts = [('name', 'Friendly account name', '')]
             if provider == 'google-translation-v2':
@@ -177,6 +179,10 @@ def show_api_connections(frame):
                 fields.update(endpoint='https://translation.googleapis.com/v3/projects/' + project.strip()
                               + '/locations/' + location.strip(), model='general/nmt')
                 google_v3_parent(fields['endpoint'])
+            elif provider == LOCAL_TRANSLATION_PROVIDER:
+                prompts.extend([
+                    ('endpoint', 'Selected local translator origin; loopback IP and port', 'http://127.0.0.1:5000'),
+                    ('model', 'Your reviewed local runtime label; the API does not attest model files', '')])
             else:
                 prompts.extend([
                     ('endpoint', 'API base URL (loopback IP for local service)',
@@ -194,15 +200,15 @@ def show_api_connections(frame):
                 if kind is None:
                     return
                 local, capabilities = kind == 0, ('llm',)
-            elif provider in GOOGLE_TRANSLATION_PROVIDERS:
-                local, capabilities = False, ('translation',)
+            elif provider in TRANSLATION_PROVIDERS:
+                local, capabilities = provider == LOCAL_TRANSLATION_PROVIDER, ('translation',)
             else:
                 cap = self.choose('Capability for this profile and model', ['Speech synthesis', 'Music generation', 'Sound effects'])
                 if cap is None:
                     return
                 local, capabilities = False, (('tts', 'music', 'sound_effects')[cap],)
             advanced = provider == 'google-translation-v3'
-            key = self.prompt('OAuth access token' if advanced else 'API key',
+            key = '' if provider == LOCAL_TRANSLATION_PROVIDER else self.prompt('OAuth access token' if advanced else 'API key',
                 ('IAM/ADC OAuth access token (masked), not an API key or JSON file. '
                  'Leave blank only to keep an unchanged profile credential.' if advanced else
                  'API key (masked). Leave blank for local access or to keep an unchanged profile key.'),
@@ -212,7 +218,8 @@ def show_api_connections(frame):
             try:
                 profile = ProviderProfile(previous.id if previous else uuid.uuid4().hex,
                     provider=provider, capabilities=capabilities, local=local,
-                    credential_ref=previous.credential_ref if previous and (not key or advanced) else None, **fields)
+                    credential_ref=(previous.credential_ref if previous and (not key or advanced)
+                                    and provider != LOCAL_TRANSLATION_PROVIDER else None), **fields)
                 if advanced and key:
                     expires = self.prompt('OAuth token expiry',
                         'Actual expiry with UTC offset, for example 2026-11-27T15:30:00Z. '
@@ -281,7 +288,7 @@ def show_api_connections(frame):
         def run(self, event):
             try:
                 profile = self.selected()
-                if profile.provider in GOOGLE_TRANSLATION_PROVIDERS:
+                if profile.provider in TRANSLATION_PROVIDERS:
                     from .translation_dialog import show_translation
                     self.EndModal(wx.ID_OK)
                     wx.CallAfter(show_translation, frame)

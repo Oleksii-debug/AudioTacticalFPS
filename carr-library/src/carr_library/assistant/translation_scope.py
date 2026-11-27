@@ -20,7 +20,7 @@ from .translation_scope_state import (
     estimate_micros, normalized_rate, review_digest, scope_budgets,
     validate_scope_links, validate_scope_plan)
 from .translation_state import MAX_OUTPUT_CHARACTERS, split_text, text_hash
-from ..providers import ProviderProfile
+from ..providers import ProviderProfile, LOCAL_TRANSLATION_PROVIDER
 from ..research.export_file import _destination, _filename, write_export
 from ..research.topic_tree import TopicTree
 
@@ -41,6 +41,9 @@ class TranslationScopeService:
 
     def preview(self, profile, selection, source, target, budget_micros, *,
                 glossary='', rate='', cancelled=lambda: False):
+        local = profile.provider == LOCAL_TRANSLATION_PROVIDER
+        if local and (type(budget_micros) is not int or budget_micros != 0 or rate not in (None, '') or glossary):
+            raise ValueError('Local scoped translation requires zero remote reservation, no price and no glossary.')
         selection = validate_selection(selection)
         revalidate_selection(self.library, selection, cancelled=cancelled)
         budgets = scope_budgets(selection, budget_micros)
@@ -51,14 +54,14 @@ class TranslationScopeService:
                 raise InterruptedError('Translation preview cancelled.')
             row = dict(index=index, item=unit['item'], section=unit['section'], block=unit['block'],
                        characters=len(unit['text']), calls=0, budget_micros=budget,
-                       estimated_micros=0 if rate else None, source_sha256=text_hash(unit['text']))
+                       estimated_micros=0 if local or rate else None, source_sha256=text_hash(unit['text']))
             if unit['text'].strip():
                 checked = self.service.preview(profile, unit['text'], source, target,
                                                 rate_per_million=rate or None, glossary=glossary)
                 if catalog is not None and checked['language_catalog_sha256'] != catalog:
                     raise ValueError('The supported language inventory changed during review.')
                 catalog = checked['language_catalog_sha256']
-                row.update(calls=checked['calls'], estimated_micros=estimate_micros(len(unit['text']), rate))
+                row.update(calls=checked['calls'], estimated_micros=0 if local else estimate_micros(len(unit['text']), rate))
                 if row['estimated_micros'] is not None and row['estimated_micros'] > budget:
                     raise ValueError('An item price estimate exceeds its allocated reservation. Increase or review the total budget.')
             inventory.append(row)
@@ -69,7 +72,7 @@ class TranslationScopeService:
                 title=item['title'], chapter=item['chapter'], sections=len(item['sections']),
                 blocks=len(rows), characters=sum(row['characters'] for row in rows),
                 calls=sum(row['calls'] for row in rows), budget_micros=sum(row['budget_micros'] for row in rows),
-                estimated_micros=None if not rate else sum(row['estimated_micros'] for row in rows)))
+                estimated_micros=0 if local else None if not rate else sum(row['estimated_micros'] for row in rows)))
         digest = review_digest(selection, profile, source, target, glossary, budget_micros, catalog, rate)
         return dict(review_sha256=digest, selection_sha256=text_hash(canonical(selection)),
             language_catalog_sha256=catalog, provider=profile.provider, provider_name=profile.name,
@@ -77,8 +80,9 @@ class TranslationScopeService:
             source=source, target=target, budget_micros=budget_micros, currency='USD',
             rate_per_million=rate, items=items, blocks=inventory,
             characters=sum(row['characters'] for row in inventory), calls=sum(row['calls'] for row in inventory),
-            estimated_micros=None if not rate else sum(row['estimated_micros'] for row in inventory),
-            estimate_basis='owner-entered rate; local reservations are not independently verified provider bills',
+            estimated_micros=0 if local else None if not rate else sum(row['estimated_micros'] for row in inventory),
+            estimate_basis=('selected local endpoint; zero remote reservation, runtime and quality not attested' if local
+                            else 'owner-entered rate; local reservations are not independently verified provider bills'),
             preservation='source chapter/page order, original headings and exact source locators; no source-layout or translation-quality guarantee')
 
     def submit(self, profile, selection, source, target, budget_micros, *, approval,
@@ -125,11 +129,19 @@ class TranslationScopeService:
         return dict(id=plan['id'], mode=plan['selection']['mode'], status=plan['status'],
                     documents=len(plan['selection']['items']), completed=finished, total=len(units),
                     source=plan['source_language'], target=plan['target_language'],
-                    budget_micros=plan['budget_micros'], billed_cost='unknown; reservations only')
+                    budget_micros=plan['budget_micros'],
+                    billed_cost=('zero remote reservation; runtime operating costs not measured'
+                                 if plan['profile']['provider'] == LOCAL_TRANSLATION_PROVIDER else
+                                 'unknown; reservations only'))
 
-    def resume(self, identity, *, cancelled=lambda: False, progress=lambda *args: None):
+    def resume(self, identity, *, cancelled=lambda: False, progress=lambda *args: None,
+               expected_job_sha256=None):
         with self.plans.lock(identity):
             plan = self.plans.load(identity)
+            if expected_job_sha256 is not None and (
+                    not isinstance(expected_job_sha256, str)
+                    or text_hash(canonical(plan)) != expected_job_sha256):
+                raise PermissionError('The saved translation changed after review. Inspect it before an explicit run.')
             jobs = self._children(plan)
             if plan['status'] == 'preparing':
                 raise PermissionError('This plan did not finish creating its approved children. No missing job may be recreated or billed automatically.')
@@ -285,6 +297,10 @@ class TranslationScopeService:
                 budget_micros=plan['budget_micros'], billed_cost='unknown; local reservations only',
                 source_layout_preserved=False, structure_preserved='ordered selected sections, original headings and source block boundaries',
                 translation_quality='not independently qualified', blocks=receipts, files=files)
+            if plan['profile']['provider'] == LOCAL_TRANSLATION_PROVIDER:
+                report.update(local_runtime_identity='not attested by the local API',
+                    local_protocol='LibreTranslate selected loopback origin; credentials forbidden',
+                    billed_cost='zero remote reservation; runtime operating costs not measured')
             # Report publication is the only complete-export marker.
             write_export(target / 'translation-provenance.json', canonical(report) + '\n',
                          private_root=self.root, cancelled=cancelled, require_absent=True)

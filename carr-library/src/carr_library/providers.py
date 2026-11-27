@@ -41,6 +41,8 @@ MAX_TRANSLATION_RESPONSE = 1024 * 1024
 _LANGUAGE = re.compile(r'[a-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,3}')
 _ADVANCED_LANGUAGE = re.compile(r'[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8}){0,3}')
 GOOGLE_TRANSLATION_PROVIDERS = ('google-translation-v2', 'google-translation-v3')
+LOCAL_TRANSLATION_PROVIDER = 'libretranslate-local'
+TRANSLATION_PROVIDERS = (*GOOGLE_TRANSLATION_PROVIDERS, LOCAL_TRANSLATION_PROVIDER)
 
 
 class ProviderError(ValueError):
@@ -169,7 +171,7 @@ class ProviderProfile:
         for text in (self.name, self.model):
             if not isinstance(text, str) or not 1 <= len(text) <= 200 or any(ord(c) < 32 for c in text):
                 raise ProviderError('Profile name and model must be plain text.')
-        if self.provider not in ('elevenlabs', 'openai-compatible', *GOOGLE_TRANSLATION_PROVIDERS):
+        if self.provider not in ('elevenlabs', 'openai-compatible', *TRANSLATION_PROVIDERS):
             raise ProviderError('This provider adapter is not installed.')
         if (not isinstance(self.capabilities, tuple) or not self.capabilities
                 or set(self.capabilities) - (CAPABILITIES | {'translation'}) or len(set(self.capabilities)) != len(self.capabilities)):
@@ -186,6 +188,10 @@ class ProviderProfile:
             google_v3_parent(self.endpoint)
             if self.capabilities != ('translation',) or self.model != 'general/nmt' or self.local:
                 raise ProviderError('Google Advanced v3 requires the NMT model, translation capability and an IAM/ADC OAuth token.')
+        if self.provider == LOCAL_TRANSLATION_PROVIDER and (
+                self.capabilities != ('translation',) or self.local is not True
+                or self.credential_ref is not None):
+            raise ProviderError('The local translator requires explicit loopback translation without credentials.')
         if type(self.local) is not bool:
             raise ProviderError('Invalid local-service setting.')
         if not isinstance(self.endpoint, str) or len(self.endpoint) > 2048:
@@ -209,6 +215,8 @@ class ProviderProfile:
                 raise ProviderError('Local services require an explicit loopback IP address.')
         elif parts.scheme != 'https':
             raise ProviderError('Remote providers require HTTPS.')
+        if self.provider == LOCAL_TRANSLATION_PROVIDER and parts.path not in ('', '/'):
+            raise ProviderError('Use the explicit local translator origin without a path prefix.')
         if self.provider == 'elevenlabs' and (
                 self.local or parts.hostname != 'api.elevenlabs.io' or port not in (None, 443)
                 or parts.path.rstrip('/') != '/v1'):
@@ -384,6 +392,8 @@ class ProfileStore:
             return previous
 
     def _save_locked(self, profile, *, secret=None):
+        if profile.provider == LOCAL_TRANSLATION_PROVIDER and secret is not None:
+            raise ProviderError('This local translator adapter does not accept or retrieve credentials.')
         profiles = {p.id: p for p in self.profiles()}
         previous = profiles.get(profile.id)
         if secret is not None:
@@ -498,6 +508,37 @@ class GoogleTranslationRequest:
 
 
 @dataclass(frozen=True)
+class LocalTranslationRequest(GoogleTranslationRequest):
+    """One bounded local protocol; no remote model selector or secret payload."""
+    def __post_init__(self):
+        from .assistant.translation_local import language
+        if self.operation not in ('text', 'languages'):
+            raise ProviderError('Unsupported local translation operation.')
+        language(self.source, auto=True)
+        language(self.target)
+        if self.operation == 'languages':
+            if self.text != '' or self.source != 'auto' or self.target != 'en':
+                raise ProviderError('Local language discovery is a fixed request without selected text.')
+        elif (type(self.text) is not str or not self.text.strip()
+                or len(self.text) > 5000 or '\x00' in self.text or self.source == self.target):
+            raise ProviderError('Choose a nonempty bounded local translation chunk and a different target.')
+        try:
+            self.text.encode('utf-8', errors='strict')
+        except UnicodeError:
+            raise ProviderError('Local translation text contains invalid Unicode.') from None
+
+
+def _local_translation_wire(profile, request):
+    from .assistant.translation_local import request as local_request
+    if profile.provider != LOCAL_TRANSLATION_PROVIDER or type(request) is not LocalTranslationRequest:
+        raise ProviderError('Use the exact typed request for the local translator profile.')
+    payload = ({'target': 'en'} if request.operation == 'languages' else
+               {'q': request.text, 'source': request.source, 'target': request.target})
+    route, body, _ = local_request('translation.' + request.operation, payload)
+    return route, body
+
+
+@dataclass(frozen=True)
 class GoogleAdvancedTranslationRequest(GoogleTranslationRequest):
     """Distinct payload keeps every existing Basic v2 approval hash unchanged."""
     glossary: str = ''
@@ -541,6 +582,10 @@ def translation_request(profile, text='', source='auto', target='en', operation=
     """One version-aware factory for gateway, approvals and durable checkpoints."""
     if not isinstance(profile, ProviderProfile):
         raise ProviderError('Choose a typed Google Translation profile.')
+    if profile.provider == LOCAL_TRANSLATION_PROVIDER:
+        if not isinstance(glossary, str) or glossary:
+            raise ProviderError('The reviewed local translation protocol does not accept a glossary.')
+        return LocalTranslationRequest(text, source, target, operation)
     if profile.provider == 'google-translation-v2':
         if not isinstance(glossary, str) or glossary:
             raise ProviderError('Glossaries require an Advanced v3 profile.')
@@ -671,6 +716,15 @@ def decode_translation_response(request, raw, *, secret=None, profile=None):
         raise ProviderError('Invalid translation response.')
     if not 0 < len(raw) <= MAX_TRANSLATION_RESPONSE:
         raise ProviderError('Translation response exceeds its resource budget.')
+    if type(request) is LocalTranslationRequest:
+        if not isinstance(profile, ProviderProfile) or secret is not None:
+            raise ProviderError('Local translation response needs its exact profile and no credential.')
+        _, body = _local_translation_wire(profile, request)
+        from .assistant.translation_local import response as local_response
+        try:
+            return local_response(raw, 'translation.' + request.operation, body, maximum=200000)
+        except (ValueError, TypeError, KeyError, IndexError, UnicodeError, RecursionError):
+            raise ProviderError('Unsupported local translation response; no result was accepted.') from None
     if isinstance(request, GoogleAdvancedTranslationRequest):
         if not isinstance(profile, ProviderProfile):
             raise ProviderError('Advanced v3 response verification requires the selected profile.')
@@ -877,6 +931,7 @@ class DirectTransport:
         parts = urlsplit(profile.endpoint)
         port = parts.port or (443 if parts.scheme == 'https' else 80)
         google = profile.provider in GOOGLE_TRANSLATION_PROVIDERS
+        local_translation = profile.provider == LOCAL_TRANSLATION_PROVIDER
         advanced = profile.provider == 'google-translation-v3'
         if advanced:
             expected = (':translateText' if method == 'POST' else
@@ -888,9 +943,14 @@ class DirectTransport:
             expected = '' if method == 'POST' else '/languages?target=en&model=nmt'
             if method not in ('GET', 'POST') or route != expected or (method == 'GET' and payload is not None):
                 raise ProviderError('Invalid Google Basic v2 adapter route.')
+        elif local_translation:
+            expected = '/translate' if method == 'POST' else '/languages'
+            if (method not in ('GET', 'POST') or route != expected
+                    or (method == 'GET' and payload is not None) or headers):
+                raise ProviderError('Invalid local translation route or forbidden credential header.')
         elif method != 'POST' or not re.fullmatch(r'/[a-zA-Z0-9_/-]+', route):
             raise ProviderError('Invalid adapter route.')
-        maximum = MAX_TRANSLATION_RESPONSE if google else MAX_RESPONSE
+        maximum = MAX_TRANSLATION_RESPONSE if google or local_translation else MAX_RESPONSE
         host = parts.hostname
         deadline = monotonic() + 120
         sent = False
@@ -932,14 +992,14 @@ class DirectTransport:
             sent = True  # Expiry gates transmission, not an already accepted response body.
             connection.request(method, parts.path.rstrip('/') + route, body=payload,
                 headers={**headers, 'Host': host_header, 'Content-Type': 'application/json',
-                         'Accept': 'application/json' if google or route.endswith('/completions') else 'audio/mpeg',
+                         'Accept': 'application/json' if google or local_translation or route.endswith('/completions') else 'audio/mpeg',
                          'Connection': 'close'})
             active(connection)
             response = connection.getresponse()
             if response.status != 200:
                 raise ProviderError(f'Provider returned HTTP {response.status}; no automatic retry was made.')
-            if advanced and response.getheader('Content-Type', '').split(';', 1)[0].strip().lower() != 'application/json':
-                raise ProviderError('The Advanced v3 provider returned an unexpected content type.')
+            if (advanced or local_translation) and response.getheader('Content-Type', '').split(';', 1)[0].strip().lower() != 'application/json':
+                raise ProviderError('The selected translation provider returned an unexpected content type.')
             declared = response.getheader('Content-Length')
             if declared and (not declared.isdecimal() or int(declared) > maximum):
                 raise ProviderError('Provider response exceeds its resource budget.')
@@ -985,8 +1045,13 @@ class ProviderGateway:
             raise ProviderError('This profile does not provide the requested capability.')
         if ((profile.provider == 'google-translation-v2' and type(request) is not GoogleTranslationRequest)
                 or (profile.provider == 'google-translation-v3' and type(request) is not GoogleAdvancedTranslationRequest)
-                or (profile.provider not in GOOGLE_TRANSLATION_PROVIDERS and isinstance(request, GoogleTranslationRequest))):
+                or (profile.provider == LOCAL_TRANSLATION_PROVIDER and type(request) is not LocalTranslationRequest)
+                or (profile.provider not in TRANSLATION_PROVIDERS and isinstance(request, GoogleTranslationRequest))):
             raise ProviderError('Use the typed request for the selected provider adapter.')
+        if profile.provider == LOCAL_TRANSLATION_PROVIDER and (
+                approval.mode != 'LOCAL_ONLY' or approval.budget_micros != 0
+                or type(estimated_micros) is not int or estimated_micros != 0):
+            raise ProviderError('Approve the selected local translator with zero remote reservation in LOCAL ONLY mode.')
         if profile.local:
             if not approval.allow_loopback:
                 raise ProviderError('Authorize this exact local service before sending it task data.')
@@ -994,7 +1059,9 @@ class ProviderGateway:
             raise ProviderError('LOCAL ONLY blocks every remote provider request.')
         if cancelled():
             raise ProviderError('Provider operation cancelled before transmission.')
-        if isinstance(request, GoogleAdvancedTranslationRequest):
+        if type(request) is LocalTranslationRequest:
+            route, body = _local_translation_wire(profile, request)
+        elif isinstance(request, GoogleAdvancedTranslationRequest):
             route, body = _advanced_wire(profile, request)
         elif isinstance(request, GoogleTranslationRequest):
             route = '/languages?target=en&model=nmt' if request.operation == 'languages' else ''

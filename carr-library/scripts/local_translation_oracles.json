@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "required_cases_per_population": 306,
+  "existing_cases_per_population": 268,
+  "local_loopback_cases_per_population": 38,
+  "local_functions": {
+    "tests.loopback.test_translation_local_adapter": {
+      "test_local_profile_refuses_remote_destinations_and_credentials": 9,
+      "test_explicit_loopback_discovery_is_separate_and_local_jobs_keep_zero_remote_reservation": 1,
+      "test_pair_direction_glossary_price_and_credentials_are_refused_before_local_execution": 1,
+      "test_local_typed_request_cannot_be_sent_with_a_google_request_or_remote_permission": 1,
+      "test_resumed_local_job_checks_exact_direction_inventory_before_another_request": 6,
+      "test_accepted_local_response_keeps_pre_request_inventory_even_if_cache_disappears": 1,
+      "test_actual_loopback_errors_never_redirect_fall_back_or_repeat_an_uncertain_attempt": 3,
+      "test_local_detection_requires_one_finite_bounded_receipt": 6,
+      "test_local_structured_job_cannot_drop_its_immutable_source_context": 1,
+      "test_complete_local_translation_backup_restores_derivatives_without_endpoint_authority": 1,
+      "test_actual_cli_local_review_queue_run_and_offline_export": 1,
+      "test_live_decoded_local_receipt_tampering_blocks_export_without_recontact": 1,
+      "test_local_scopes_use_existing_children_and_passive_complete_backup": 2,
+      "test_local_current_ui_controllers_require_exact_review_and_zero_cost": 2,
+      "test_cli_stale_saved_review_does_not_send_a_local_request": 1,
+      "test_cli_scoped_local_preview_queue_run_export_uses_current_catalog": 1
+    }
+  },
+  "native_flows": [
+    "existing-selected-advanced",
+    "existing-document",
+    "existing-chapter",
+    "existing-batch",
+    "local-selected",
+    "local-document",
+    "local-chapter",
+    "local-batch"
+  ],
+  "actual_local_engine": "NOT_RUN",
+  "translation_quality": "NOT_QUALIFIED"
+}

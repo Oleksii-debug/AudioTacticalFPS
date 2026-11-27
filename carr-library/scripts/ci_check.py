@@ -29,7 +29,7 @@ import socket
 
 # Existing installed replays consume PYTEST_CHILD directly, with pytest options
 # first. Such callers stay offline; only an explicit recognized prefix changes
-# this policy. run_suite admits numeric loopback for one exact fixture below.
+# this policy. run_suite admits numeric loopback only for its exact fixtures below.
 network_mode = 'offline'
 if len(sys.argv) > 1 and sys.argv[1] in ('offline', 'numeric-loopback'):
     network_mode = sys.argv.pop(1)
@@ -131,9 +131,9 @@ def run_suite(suite: str, *, allow_loopback=False) -> bool:
     if not path.is_relative_to(ROOT) or not path.exists():
         print(f'FAIL: missing or out-of-tree required suite: {suite}', flush=True)
         return False
-    fixture = 'tests/loopback/test_local_planning.py'
-    if allow_loopback and (suite != fixture or path != ROOT / fixture):
-        print('FAIL: numeric loopback is limited to the explicit local-planning HTTP fixture.', flush=True)
+    fixtures = ('tests/loopback/test_local_planning.py', 'tests/loopback/test_translation_local_adapter.py')
+    if allow_loopback and (suite not in fixtures or path != ROOT / suite):
+        print('FAIL: numeric loopback is limited to the explicit local planning/translation HTTP fixtures.', flush=True)
         return False
     env = dict(os.environ)
     for key in ('PYTEST_ADDOPTS', 'PYTEST_PLUGINS', 'PYTHONPATH', 'CARR_CI_ALLOW_LOOPBACK'):
@@ -177,7 +177,7 @@ def main() -> int:
     parser.add_argument('--jobs', type=int, choices=range(1, 5), default=1,
                         help='Run up to four isolated required suites concurrently; default: one')
     parser.add_argument('--allow-loopback', action='store_true',
-                        help='Only the explicit synthetic local-planning fixture may use numeric loopback TCP')
+                        help='Only explicit synthetic local planning/translation fixtures may use numeric loopback TCP')
     parser.add_argument('suites', nargs='+', help='Explicit required test paths relative to carr-library')
     args = parser.parse_args()
     runner = partial(run_suite, allow_loopback=args.allow_loopback)

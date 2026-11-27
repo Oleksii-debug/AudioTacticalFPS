@@ -19,7 +19,7 @@ from .validation import decode_state_json
 from ..ingest.writer_guard import exclusive_writer
 from ..providers import (GoogleTranslationRequest, JobApproval, ProviderProfile,
                          GOOGLE_TRANSLATION_ENDPOINT, decode_translation_response,
-                         GOOGLE_TRANSLATION_PROVIDERS, google_v3_parent, translation_request,
+                         TRANSLATION_PROVIDERS, LOCAL_TRANSLATION_PROVIDER, google_v3_parent, translation_request,
                          translation_receipt_sha256)
 
 DIRECTORY = 'state/translation'
@@ -33,6 +33,8 @@ MAX_OUTPUT_CHARACTERS = 8_000_000
 SCHEMA = 'carr-translation-job/1'
 CACHE_SCHEMA = 'carr-translation-languages/1'
 ADVANCED_SCHEMA = 'carr-translation-job/2'
+LOCAL_SCHEMA = 'carr-translation-local-job/1'
+LOCAL_CACHE_SCHEMA = 'carr-translation-languages/3'
 ADVANCED_CACHE_SCHEMA = 'carr-translation-languages/2'
 _JOB = re.compile(r'([0-9a-f]{32})\.json')
 _CACHE = re.compile(r'languages-([a-zA-Z0-9_-]{1,100})\.json')
@@ -113,13 +115,14 @@ def validate_translation_job(value, *, identity=None):
     if type(value) is not dict:
         raise ValueError('Invalid typed translation checkpoint.')
     advanced = value.get('schema') == ADVANCED_SCHEMA
+    local = value.get('schema') == LOCAL_SCHEMA
     keys = {'schema', 'id', 'library_root', 'ledger_identity', 'created', 'updated', 'status',
             'profile', 'title', 'source_text', 'source_sha256', 'source_language',
             'target_language', 'language_catalog_sha256', 'approval', 'allocations',
             'receipts', 'pending'}
     if advanced:
         keys.add('glossary')
-    if (set(value) != keys or value['schema'] not in (SCHEMA, ADVANCED_SCHEMA)
+    if (set(value) != keys or value['schema'] not in (SCHEMA, ADVANCED_SCHEMA, LOCAL_SCHEMA)
             or not isinstance(value['id'], str) or not re.fullmatch('[0-9a-f]{32}', value['id'])
             or (identity is not None and value['id'] != identity)):
         raise ValueError('Invalid typed translation checkpoint.')
@@ -143,8 +146,9 @@ def validate_translation_job(value, *, identity=None):
         profile = ProviderProfile.from_dict(value['profile'])
     except (TypeError, ValueError):
         raise ValueError('Invalid translation profile binding.') from None
-    expected_provider = 'google-translation-v3' if advanced else 'google-translation-v2'
-    if profile.provider != expected_provider or not profile.credential_ref:
+    expected_provider = (LOCAL_TRANSLATION_PROVIDER if local else
+                         'google-translation-v3' if advanced else 'google-translation-v2')
+    if profile.provider != expected_provider or (not local and not profile.credential_ref):
         raise ValueError('Translation must bind the connected provider declared by its checkpoint version.')
     glossary = value['glossary'] if advanced else ''
     requests = [translation_request(profile, part, value['source_language'], value['target_language'], glossary=glossary)
@@ -153,7 +157,8 @@ def validate_translation_job(value, *, identity=None):
     if (approval.job_id != value['id'] or approval.profile_fingerprint != profile.fingerprint
             or approval.request_hashes != tuple(request.fingerprint(profile) for request in requests)
             or approval.max_calls != len(requests) or approval.currency != 'USD'
-            or approval.mode != 'APPROVED_REMOTE' or approval.allow_loopback):
+            or approval.mode != ('LOCAL_ONLY' if local else 'APPROVED_REMOTE')
+            or approval.allow_loopback is not local or (local and approval.budget_micros != 0)):
         raise ValueError('Translation approval does not match the exact profile, source, languages and call count.')
     if (type(value['allocations']) is not list
             or any(item is not None and type(item) is not int for item in value['allocations'])
@@ -186,10 +191,12 @@ def validate_translation_job(value, *, identity=None):
                     or row['request_hash'] != expected.fingerprint(profile)):
                 raise ValueError('A translation receipt does not match its approved request.')
             _hash(row['response_sha256'])
-            language_pattern = _ADVANCED_LANGUAGE if advanced else _LANGUAGE
+            language_pattern = _ADVANCED_LANGUAGE if advanced or local else _LANGUAGE
             if row['detected_source'] is not None and (
                     not isinstance(row['detected_source'], str) or not language_pattern.fullmatch(row['detected_source'])):
                 raise ValueError('Invalid detected source language.')
+            if local and ((value['source_language'] == 'auto') != (row['detected_source'] is not None)):
+                raise ValueError('The local receipt must match the explicitly selected detection mode.')
             if 'decoded_translation_sha256' in row:
                 _hash(row['decoded_translation_sha256'])
                 if row['decoded_translation_sha256'] != translation_receipt_sha256(
@@ -222,7 +229,7 @@ def validate_language_cache(value, *, profile_id=None):
     keys = {'schema', 'profile_id', 'profile_fingerprint', 'endpoint', 'model', 'fetched_at',
             'languages', 'languages_sha256', 'operation_id', 'request_hash', 'response_sha256'}
     if (type(value) is not dict or set(value) != keys
-            or value['schema'] not in (CACHE_SCHEMA, ADVANCED_CACHE_SCHEMA)
+            or value['schema'] not in (CACHE_SCHEMA, ADVANCED_CACHE_SCHEMA, LOCAL_CACHE_SCHEMA)
             or not isinstance(value['profile_id'], str)
             or not re.fullmatch('[a-zA-Z0-9_-]{1,100}', value['profile_id'])
             or (profile_id is not None and value['profile_id'] != profile_id)
@@ -230,12 +237,19 @@ def validate_language_cache(value, *, profile_id=None):
             or not re.fullmatch('[0-9a-f]{32}', value['operation_id'])):
         raise ValueError('Invalid translation language cache.')
     advanced = value['schema'] == ADVANCED_CACHE_SCHEMA
-    if not advanced and (value['endpoint'] != GOOGLE_TRANSLATION_ENDPOINT or value['model'] != 'nmt'):
+    local = value['schema'] == LOCAL_CACHE_SCHEMA
+    if not advanced and not local and (value['endpoint'] != GOOGLE_TRANSLATION_ENDPOINT or value['model'] != 'nmt'):
         raise ValueError('Invalid Basic v2 language-cache endpoint or model.')
     _stamp(value['fetched_at'])
     for field in ('profile_fingerprint', 'languages_sha256', 'request_hash', 'response_sha256'):
         _hash(value[field])
-    if advanced:
+    if local:
+        from .translation_local import validate_languages
+        # Validate an inert historical declaration without contacting its origin.
+        ProviderProfile(value['profile_id'], 'Historical local language inventory',
+            LOCAL_TRANSLATION_PROVIDER, value['endpoint'], value['model'], ('translation',), local=True)
+        parsed = validate_languages(value['languages'])
+    elif advanced:
         # This is a pure shape check, not a reconstructed account or permission.
         profile = ProviderProfile(value['profile_id'], 'Historical language inventory',
                                   'google-translation-v3', value['endpoint'], value['model'], ('translation',))
@@ -376,8 +390,8 @@ class TranslationStore:
         return self.directory / (identity + '.json')
 
     def cache_path(self, profile):
-        if not isinstance(profile, ProviderProfile) or profile.provider not in GOOGLE_TRANSLATION_PROVIDERS:
-            raise ValueError('Choose a Google Basic v2 or Advanced v3 translation profile.')
+        if not isinstance(profile, ProviderProfile) or profile.provider not in TRANSLATION_PROVIDERS:
+            raise ValueError('Choose an installed translation adapter and an explicit connection profile.')
         return self.directory / ('languages-' + profile.id + '.json')
 
     def load(self, identity):

@@ -8,6 +8,7 @@ from uuid import uuid4
 from ..assistant.translation import (
     TranslationService, language_approval, translation_approval)
 from ..assistant.translation_state import MAX_SOURCE_CHARACTERS
+from ..providers import LOCAL_TRANSLATION_PROVIDER
 from .api_connections import parse_budget
 
 
@@ -21,7 +22,10 @@ class TranslationController:
 
     @staticmethod
     def selection(profile, value, source, target, budget, title, rate, glossary=''):
-        return (profile.fingerprint, value, source, target, parse_budget(budget), title, rate, glossary)
+        amount = parse_budget(budget)
+        if profile.provider == LOCAL_TRANSLATION_PROVIDER and (amount != 0 or rate or glossary):
+            raise ValueError('Local translation requires a zero remote reservation, no price and no glossary.')
+        return (profile.fingerprint, value, source, target, amount, title, rate, glossary)
 
     def preview(self, profile, value, source, target, budget, *, title='Translation', rate='', glossary=''):
         self.reviewed = None
@@ -68,7 +72,7 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
         layout.Add(control, proportion, wx.EXPAND | wx.ALL, 4)
         return control
 
-    provider = field('Google Translation &account; Basic v2 or Advanced v3', wx.Choice, choices=[])
+    provider = field('Translation &connection; Google Basic, Advanced or local', wx.Choice, choices=[])
     job_title = field('Translation &title', value=title)
     source = field('&Source language', wx.Choice, choices=[])
     target = field('Target &language', wx.Choice, choices=[])
@@ -108,7 +112,7 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
             raise ValueError('The selected library changed. Reopen translation before reviewing a request.')
         index = provider.GetSelection()
         if not 0 <= index < len(profiles):
-            raise ValueError('Create a connected Google Basic v2 or Advanced v3 profile in AI/API connections.')
+            raise ValueError('Choose an explicit Google or local translation profile in AI/API connections.')
         return profiles[index]
 
     def pair():
@@ -125,6 +129,9 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
             control.Enable(editable)
         index = provider.GetSelection()
         glossary.Enable(editable and 0 <= index < len(profiles) and profiles[index].provider == 'google-translation-v3')
+        if 0 <= index < len(profiles) and profiles[index].provider == LOCAL_TRANSLATION_PROVIDER:
+            rate.Enable(False)
+            budget.Enable(False)
         for name in ('settings', 'languages', 'preview'):
             buttons[name].Enable(editable)
         for name in ('new', 'jobs', 'run'):
@@ -141,8 +148,11 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
                 rows = service.languages(profile())
             except Exception as exc:
                 report(str(exc))
-        source_rows = [row for row in rows if row.get('source', True)]
-        target_rows = [row for row in rows if row.get('target', True)]
+        source_rows = [row for row in rows if row.get('source', bool(row.get('targets', True)))]
+        local_targets = ({target for row in rows for target in row['targets']}
+                         if rows and all('targets' in row for row in rows) else None)
+        target_rows = [row for row in rows if row.get('target', True)
+                       and (local_targets is None or row['language'] in local_targets)]
         source_codes = ['auto'] + [row['language'] for row in source_rows]
         target_codes = [row['language'] for row in target_rows]
         source.SetItems(['auto — detect source language'] +
@@ -155,12 +165,15 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
         index = provider.GetSelection()
         if not (0 <= index < len(profiles) and profiles[index].provider == 'google-translation-v3'):
             glossary.ChangeValue('')
+        if 0 <= index < len(profiles) and profiles[index].provider == LOCAL_TRANSLATION_PROVIDER:
+            budget.ChangeValue('0')
+            rate.ChangeValue('')
         controls()
 
     def load_profiles():
         nonlocal profiles
         profiles = list(service.available_profiles())
-        provider.SetItems([p.name + ' — ' + p.provider + (' — credential not connected' if not p.credential_ref else '') for p in profiles])
+        provider.SetItems([p.name + ' — ' + p.provider + (' — credential not connected' if not p.local and not p.credential_ref else '') for p in profiles])
         if profiles:
             provider.SetSelection(0)
         load_languages()
@@ -213,15 +226,18 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
         try:
             chosen = profile()
             if wx.MessageBox(
-                    'Contact Google Translation to fetch its NMT supported-language list for this account? '
-                    'No selected text is sent. The account credential stays in its HTTPS header.',
+                    (f'Contact this selected local translator at {chosen.endpoint} for its declared language pairs? '
+                     'No selected text or credential is sent. This request does not attest its runtime or translation quality.'
+                     if chosen.local else
+                     'Contact Google Translation to fetch its NMT supported-language list for this account? '
+                     'No selected text is sent. The account credential stays in its HTTPS header.'),
                     'Approve supported-language discovery', wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION,
                     dialog) != wx.YES:
                 return
             approval = language_approval(chosen)
             def complete(rows):
                 load_languages()
-                report(f'{len(rows)} provider-declared NMT language codes cached for this exact profile. '
+                report(f'{len(rows)} provider-declared language codes cached for this exact profile. '
                        'This list is not a claim of independently verified translation quality.')
             begin('Fetching supported translation languages',
                   lambda: service.refresh_languages(chosen, approval=approval, cancelled=stopped), complete)
@@ -238,8 +254,9 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
                                         glossary=glossary.GetValue().strip())
             result_view.ChangeValue('')
             report(json.dumps(result, ensure_ascii=False, indent=2) +
-                   '\n\nNo text sent. Translate asks permission for these exact data. '
-                   'This budget limits local reservations; provider billing is not guaranteed by this application.')
+                   '\n\nNo text sent. Translate asks permission for these exact data. ' +
+                   ('Local translation uses zero remote reservation.' if profile().local else
+                    'This budget limits local reservations; provider billing is not guaranteed by this application.'))
         except Exception as exc:
             controller.reviewed = None
             report(str(exc))
@@ -264,8 +281,11 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
                         f'Glossary: {exact[7] or "none"}\n'
                         f'Characters: {len(chosen[1])}\nLanguage pair: {chosen[2]} → {chosen[3]}\n'
                         f'Approved total reservation: USD {Decimal(exact[4]) / 1000000}\n'
-                        'Send only this selected text? The provider may charge your account. '
-                        'No automatic retry or fallback will be made.',
+                        + ('Send this selected text to the displayed local endpoint? Zero remote reservation. '
+                           'The local API does not attest runtime identity, offline egress or language quality. '
+                           if chosen[0].local else
+                           'Send only this selected text? The provider may charge your account. ')
+                        + 'No automatic retry or fallback will be made.',
                         'Approve exact text transfer', wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION,
                         dialog) != wx.YES:
                     return
@@ -376,7 +396,9 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
     provider.Bind(wx.EVT_CHOICE, load_languages)
     dialog.Bind(wx.EVT_CLOSE, close)
     try:
-        report('LOCAL ONLY until an exact task is explicitly approved. Basic v2 uses an API key; Advanced v3 '
+        report('An optional local translator uses the selected loopback origin without credentials. '
+               'Choose its declared language pair and approve the exact selected text. '
+               'External translation requires separate explicit approval. Basic v2 uses an API key; Advanced v3 '
                'uses an explicitly supplied IAM/ADC OAuth token and expiry in Windows Credential Manager. '
                'Advanced v3 verifies its project, location, general/nmt model and optional existing regional glossary. '
                'This workspace produces plain-text derivatives, without layout or independent language-quality guarantees.')

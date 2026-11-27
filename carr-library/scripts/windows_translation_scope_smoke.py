@@ -48,12 +48,16 @@ def run_native(args, progress, runtime_owner):
 
     parent = 'projects/123456789/locations/us-central1'
     endpoint = 'https://translation.googleapis.com/v3/' + parent
-    glossary = parent + '/glossaries/native-scopes'
+    glossary = '' if args.local else parent + '/glossaries/native-scopes'
     token = 'SYNTHETIC_NATIVE_SCOPE_TOKEN_NEVER_REAL'
     requests, approvals, failures = [], [], []
 
     class Transport:
         def check(self, headers, options):
+            if args.local:
+                if headers or 'credential_expires_at' in options:
+                    raise AssertionError('Local native flow must not use credentials.')
+                return
             if headers != {'Authorization': 'Bearer ' + token, 'X-goog-user-project': '123456789'}:
                 raise AssertionError('The native job used a different reviewed credential scope.')
             if options.get('credential_expires_at', 0) <= time():
@@ -61,12 +65,22 @@ def run_native(args, progress, runtime_owner):
         def get(self, profile, route, headers, **options):
             self.check(headers, options)
             requests.append(('languages', route))
+            if args.local:
+                assert route == '/languages'
+                return json.dumps([{'code': 'en', 'name': 'English', 'targets': ['uk']},
+                                   {'code': 'uk', 'name': 'Ukrainian', 'targets': []}]).encode()
             return json.dumps({'languages': [
                 {'languageCode': 'en', 'displayName': 'English', 'supportSource': True},
                 {'languageCode': 'uk', 'displayName': 'Ukrainian', 'supportTarget': True}]}).encode()
         def post(self, profile, route, raw, headers, **options):
             self.check(headers, options)
             body = json.loads(raw)
+            if args.local:
+                assert route == '/translate' and set(body) == {'q', 'source', 'target', 'format'}
+                assert body['source'] == 'en' and body['target'] == 'uk' and body['format'] == 'text'
+                requests.append(('text', body['q']))
+                return json.dumps({'translatedText': 'СИНТЕТИЧНИЙ ПЕРЕКЛАД ' + body['q']},
+                                  ensure_ascii=False).encode()
             if (body.get('sourceLanguageCode') != 'en' or body['targetLanguageCode'] != 'uk'
                     or body['mimeType'] != 'text/plain' or body['model'] != parent + '/models/general/nmt'
                     or body['glossaryConfig'] != {'glossary': glossary, 'ignoreCase': False}):
@@ -103,11 +117,20 @@ def run_native(args, progress, runtime_owner):
         progress('synthetic-sources-verified', retained_originals=len(original))
         exports = root / 'exports'
         exports.mkdir()
-        vault = WindowsCredentialVault()
+        class NoVault:
+            def get(self, *args): raise AssertionError('Local flow retrieved credentials.')
+            def put(self, *args): raise AssertionError('Local flow stored credentials.')
+            def delete(self, *args): raise AssertionError('Local flow deleted credentials.')
+        vault = NoVault() if args.local else WindowsCredentialVault()
         profiles = ProfileStore(library.root / 'api-connections.json', vault)
-        selected_profile = profiles.save_google_token(ProviderProfile(
-            'native-scoped', 'Synthetic scoped IAM account', 'google-translation-v3',
-            endpoint, 'general/nmt', ('translation',)), token, time() + 1800)
+        if args.local:
+            selected_profile = profiles.save(ProviderProfile('native-scoped-local', 'Synthetic local translator',
+                'libretranslate-local', 'http://127.0.0.1:55123', 'synthetic-protocol-only',
+                ('translation',), local=True))
+        else:
+            selected_profile = profiles.save_google_token(ProviderProfile(
+                'native-scoped', 'Synthetic scoped IAM account', 'google-translation-v3',
+                endpoint, 'general/nmt', ('translation',)), token, time() + 1800)
         try:
             translation = TranslationService(library.root, profiles=profiles,
                 gateway=ProviderGateway(BudgetLedger(library.root / 'api-operations.sqlite'),
@@ -237,8 +260,10 @@ def run_native(args, progress, runtime_owner):
                         choice(sources, next(i for i, name in enumerate(sources.GetItems()) if name.startswith('en —')))
                         choice(targets, next(i for i, name in enumerate(targets.GetItems()) if name.startswith('uk —')))
                         child(dialog, 'Advanced v3 glossary resource; blank for none').ChangeValue(glossary)
-                        child(dialog, 'Optional owner contract price per million characters in USD').ChangeValue('20')
-                        child(dialog, 'Total approved reservation in USD; preview allocates each item').ChangeValue('2.000003')
+                        child(dialog, 'Optional owner contract price per million characters in USD').ChangeValue('' if args.local else '20')
+                        child(dialog, 'Total approved reservation in USD; preview allocates each item').ChangeValue('0' if args.local else '2.000003')
+                        if args.local:
+                            assert not child(dialog, 'Total approved reservation in USD; preview allocates each item').IsEnabled()
                         button(dialog, 'Preview transfers')
                         phase[0] = 4
                     elif phase[0] == 4 and not frame.working:
@@ -296,6 +321,13 @@ def run_native(args, progress, runtime_owner):
                         phase[0] = 7
                         timer.Stop()
                         button(dialog, 'Close')
+                        if args.local:
+                            assert report['local_runtime_identity'] == 'not attested by the local API'
+                            assert plan['budget_micros'] == 0 and selected_profile.credential_ref is None
+                            assert all(job is None or (job['mode'] == 'LOCAL_ONLY' and job['allow_loopback'] is True
+                                       and job['budget_micros'] == 0) for job in plan['jobs'])
+                            final.update(actual_credential_vault='NOT_USED', local_adapter='libretranslate-local', zero_remote_reservation=True,
+                                         credential_calls=0, actual_local_engine='NOT_RUN', translation_quality='NOT_QUALIFIED')
                         progress('native-controls-complete', synthetic_requests=len(requests))
                 except BaseException as exc:
                     failures.append(type(exc).__name__ + ': ' + str(exc))
@@ -335,7 +367,8 @@ def run_native(args, progress, runtime_owner):
             if failures or phase[0] != 7:
                 raise RuntimeError('Native scoped translation failed: ' + '; '.join(failures or ['incomplete flow']))
         finally:
-            vault.delete(selected_profile.credential_ref, selected_profile.credential_binding)
+            if selected_profile.credential_ref is not None:
+                vault.delete(selected_profile.credential_ref, selected_profile.credential_binding)
             progress('synthetic-vault-cleaned', vault_cleanup='PASS')
     return final
 
@@ -345,6 +378,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', choices=('document', 'chapter', 'batch'), required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--local', action='store_true', help='Use the explicitly selected credential-free local adapter.')
     args = parser.parse_args()
     state = {'schema': 'carr-native-translation-progress/1', 'status': 'RUNNING',
              'flow': getattr(args, 'mode', 'selected-advanced'), 'phase': 'starting',
