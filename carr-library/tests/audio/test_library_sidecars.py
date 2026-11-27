@@ -10,6 +10,7 @@ import pytest
 from carr_library.application import LibraryApp
 from carr_library.audio.ffmpeg import wav_info
 from carr_library.audio.jobs import project_lock
+from carr_library.audio import library_sidecars
 from carr_library.audio.managed import ManagedProjects
 from carr_library.audio.narration_bridge import snapshot_reading_project
 from carr_library.library_backup import create_backup, restore_backup, verify_backup
@@ -124,6 +125,31 @@ def test_metadata_default_excludes_real_generated_files_without_losing_draft(tmp
     reopened.open(restored / value.project_path.relative_to(app.root))
     assert reopened.output_dir.is_dir() and not list(reopened.output_dir.iterdir())
     assert wav_info(reopened.render()['output']).frames == 960
+
+
+def test_managed_snapshot_rechecks_source_bytes_despite_equal_metadata(tmp_path, monkeypatch):
+    app, value = studio(tmp_path)
+    source = value.project_path
+    original = source.read_bytes()
+    replacement = original.replace(b'Owned audio', b'Owned other')
+    assert replacement != original and len(replacement) == len(original)
+    identity, copy = library_sidecars._identity, library_sidecars._copy
+    monkeypatch.setattr(library_sidecars, '_identity', lambda info: (*identity(info)[:-2], 0, 0))
+
+    def copied_then_changed(path, target, **kwargs):
+        receipt = copy(path, target, **kwargs)
+        if path == source and target is not None:
+            stamp = source.stat()
+            source.write_bytes(replacement)
+            os.utime(source, ns=(stamp.st_atime_ns, stamp.st_mtime_ns))
+        return receipt
+
+    monkeypatch.setattr(library_sidecars, '_copy', copied_then_changed)
+    destination = tmp_path / 'rejected-stale-audio'
+    with pytest.raises(ValueError, match='digest or size mismatch'):
+        create_backup(app, destination)
+    assert not destination.exists()
+    assert source.read_bytes() == replacement
 
 
 def test_bridge_snapshot_and_historical_original_survive_common_backup(tmp_path):

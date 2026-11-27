@@ -11,7 +11,6 @@ import json
 import os
 from pathlib import Path
 import shutil
-import subprocess
 import threading
 from uuid import uuid4
 
@@ -19,6 +18,7 @@ from ..audio.runtime import available_tool
 from ..reader.narration_text import NarrationDraft, decode_json, read_document, text_digest
 from ..research.export_file import write_export
 from ..audio.managed import ManagedProjects, MissingInputAssets
+from ..audio.player import WavePlayer as LocalPlayback
 
 
 def _plain(value, label, *, limit=2048, empty=False):
@@ -464,49 +464,6 @@ class StudioController:
         write_export(selected, self.script, private_root=self.private_root)
 
 
-class LocalPlayback:
-    """Play/stop an explicitly rendered local WAV; never open a file association."""
-
-    def __init__(self):
-        self.process = None
-        self.windows = False
-
-    def play(self, path):
-        selected = _local_path(path, 'audio file')
-        with selected.open('rb') as stream:
-            header = stream.read(12)
-        if len(header) != 12 or header[:4] not in (b'RIFF', b'RF64') or header[8:] != b'WAVE':
-            raise ValueError('Preview requires the rendered PCM WAV master.')
-        self.stop()
-        if os.name == 'nt':
-            import winsound
-            winsound.PlaySound(str(selected), winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT)
-            self.windows = True
-        else:
-            player = available_tool('ffplay')
-            if player is None:
-                raise ValueError('Local playback is unavailable. Open the exported WAV in your audio player.')
-            self.process = subprocess.Popen([player, '-nodisp', '-autoexit', '-loglevel', 'error',
-                                             '-protocol_whitelist', 'file,pipe', '-i', str(selected)],
-                                            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                                            stderr=subprocess.DEVNULL, shell=False)
-
-    def stop(self):
-        if self.windows:
-            import winsound
-            winsound.PlaySound(None, 0)
-            self.windows = False
-        if self.process is not None:
-            if self.process.poll() is None:
-                self.process.terminate()
-                try:
-                    self.process.wait(timeout=1)
-                except subprocess.TimeoutExpired:
-                    self.process.kill()
-                    self.process.wait(timeout=1)
-            self.process = None
-
-
 SCRIPT_HELP = (
     'Literal narration reads all entered text using the selected voice. Headings, speaker-like '
     'labels and bracketed text stay spoken text. Source page separators become chapter boundaries.\n'
@@ -554,7 +511,7 @@ class AudioStudioDialog:
         self._loading = True
         outer = wx.BoxSizer(wx.VERTICAL)
         self.notebook = wx.Notebook(self.dialog)
-        self.notebook.SetName('Audio Studio pages: Script, Preparation, Production')
+        self.notebook.SetName('Audio Studio pages: Script, Preparation, Production, Playback')
         script_page, preparation_page, production_page = (wx.Panel(self.notebook) for _ in range(3))
         for page, title in ((script_page, 'Script'), (preparation_page, 'Preparation'), (production_page, 'Production')):
             self.notebook.AddPage(page, title)
@@ -630,6 +587,12 @@ class AudioStudioDialog:
         self._button(production_page, production_buttons, 'Stop playback', self.stop_playback, busy_safe=True)
         prod_layout.Add(production_buttons, 0, wx.ALL, 5)
         production_page.SetSizer(prod_layout)
+
+        from .playback_controls import PlaybackControls
+        self._playback_source = None
+        self.playback_controls = PlaybackControls(self.notebook, controller.private_root,
+            guard=self._transport_guard, progress=self._media_panel, owner=self, player=self.playback)
+        self.notebook.AddPage(self.playback_controls.window, 'Playback')
 
         self.status = wx.TextCtrl(self.dialog, value='Local only. Enter a script, choose a local voice and output folder, then preview or render.',
                                   style=wx.TE_MULTILINE | wx.TE_READONLY)
@@ -774,6 +737,9 @@ class AudioStudioDialog:
             return False
 
     def _stop_owned_playback(self):
+        controls = getattr(self, 'playback_controls', None)
+        if controls is not None:
+            return controls.quiesce()
         self.playback.stop()
         if self._media_panel is not None:
             self._media_panel.set_media_state(owner=self)
@@ -1337,6 +1303,29 @@ class AudioStudioDialog:
             if self.editing_dirty:
                 raise ValueError('The script has unsaved edits. Preview and render it before playing a current result.')
             result_file = Path(self.controller.result['output'])
+            controls = getattr(self, 'playback_controls', None)
+            if controls is not None:
+                from ..audio.playback_resume import PlaybackOwner
+                project, path = self.controller.project_id, self.controller.project_path
+                managed = self.controller._managed.locate(path, project) if path is not None else None
+                owner = (PlaybackOwner('project', project=project, revision=self.controller._file_hash)
+                         if managed is not None else None)
+                self._playback_source = self._transport_identity()
+                def authorize():
+                    self._transport_guard()
+                    if owner is not None:
+                        self.controller._managed.check_root(self.controller.private_root)
+                        current = self.controller._managed._state(path)
+                        if current is None or current[1] != owner.revision:
+                            raise ValueError('The saved library project changed. Open and render it again.')
+                result = self.controller.result
+                rate = result.get('sample_rate', 48000)
+                segments = tuple((row['start_frame'] / rate, row['title']) for row in result.get('chapters', ()))
+                controls.set_source(result_file.parent / 'master.wav' if result_file.suffix.lower() != '.wav' else result_file,
+                                    owner=owner, segments=segments, autoplay=True, authorize=authorize)
+                self.notebook.SetSelection(3)
+                controls.play_button.SetFocus()
+                return
             self._stop_owned_playback()
             if (self._media_panel is not None
                     and not self._media_panel.prepare_media(playback=True, owner=self)):
@@ -1353,10 +1342,27 @@ class AudioStudioDialog:
 
     def stop_playback(self, event=None):
         try:
+            controls = getattr(self, 'playback_controls', None)
+            if controls is not None:
+                controls.stop()
+                return
             self._stop_owned_playback()
             self._message('Studio playback stopped.', focus=True)
         except Exception as exc:
             self._error(exc)
+
+    def _transport_identity(self):
+        path = self.controller.project_path
+        info = path.stat() if path is not None else None
+        return (self.controller.project_id, path, self.controller._file_hash, id(self.controller.result),
+                (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns) if info is not None else None)
+
+    def _transport_guard(self):
+        if not self._current() or self.busy or self.editing_dirty:
+            raise ValueError('The Studio source changed or is busy. Prepare its current recording again.')
+        previous = getattr(self, '_playback_source', None)
+        if previous is not None and self._transport_identity() != previous:
+            raise ValueError('The Studio project or recording changed. Prepare its current recording again.')
 
     def close(self, event=None):
         if self.closed:
@@ -1367,10 +1373,25 @@ class AudioStudioDialog:
             if event is not None and hasattr(event, 'CanVeto') and event.CanVeto():
                 event.Veto()
             return
+        controls = getattr(self, 'playback_controls', None)
+        if controls is not None and controls.busy:
+            controls.stop(on_stopped=lambda: self.close() if not self.closed else None)
+            if event is not None and hasattr(event, 'CanVeto') and event.CanVeto():
+                event.Veto()
+            return
         if not self._unsaved():
             if event is not None and hasattr(event, 'CanVeto') and event.CanVeto():
                 event.Veto()
             return
+        controls = getattr(self, 'playback_controls', None)
+        if controls is not None:
+            try:
+                controls.quiesce()
+            except Exception as exc:
+                self._error(exc)
+                if event is not None and hasattr(event, 'CanVeto') and event.CanVeto():
+                    event.Veto()
+                return
         self._dispose()
         if not self._window_alive:
             return
@@ -1401,10 +1422,14 @@ class AudioStudioDialog:
             self.timer.Stop()
         except RuntimeError:
             pass
-        try:
-            self._stop_owned_playback()
-        except Exception:
-            pass  # Retain suppression when the audio owner has not confirmed stop.
+        controls = getattr(self, 'playback_controls', None)
+        if controls is not None:
+            controls.dispose()
+        else:
+            try:
+                self._stop_owned_playback()
+            except Exception:
+                pass  # Retain suppression when the audio owner has not confirmed stop.
         self.executor.shutdown(wait=False, cancel_futures=True)
 
     def _destroyed(self, event):

@@ -15,7 +15,16 @@ def batch_summary(batch):
               ('duplicate', 'exact duplicates'), ('rejected', 'not accepted'),
               ('failed', 'failed'), ('quarantined', 'need page review'), ('excluded', 'excluded')]
     detail = ', '.join(f'{counts.get(key, 0)} {label}' for key, label in labels if counts.get(key, 0))
-    return f'{batch.get("total", len(batch.get("rows", ())))} files: {detail or "none"}.'
+    text = f'{batch.get("total", len(batch.get("rows", ())))} files: {detail or "none"}.'
+    scan = batch.get('scan')
+    if scan:
+        text = f'Scan page {scan["page"]}. ' + text
+        if scan.get('next_offset') is not None:
+            text += ' More source files remain. Choose Next scan page to check them.'
+        unscanned = len(scan.get('unscanned', ())) or scan.get('unscanned_count', 0)
+        if unscanned:
+            text += f' Scan incomplete: {unscanned} source scopes were not fully scanned; select smaller folders.'
+    return text
 
 
 def row_details(row):
@@ -74,18 +83,31 @@ def row_details(row):
 
 def batch_report(batch):
     """A user-requested report contains filenames/results, never source passages."""
-    return ('Import report\n' + batch_summary(batch) + '\n\n' +
+    unscanned = (batch.get('scan') or {}).get('unscanned', ())
+    incomplete = ('\nUnscanned or partly scanned source scopes:\n' +
+                  '\n'.join(readable(path) for path in unscanned) + '\n') if unscanned else ''
+    return ('Import report\n' + batch_summary(batch) + '\n' + incomplete + '\n' +
             '\n\n'.join(row_details(row) for row in batch.get('rows', ())) + '\n')
 
 
 class ImportCenterActions:
     """Handlers separated from native construction for meaningful event tests."""
     def _bound(self):
+        self._scope_current()
+        with self.library.read(self.workspace):
+            pass
+
+    def _scope_current(self):
         if (self.closed or getattr(self.frame, '_closing', False)
                 or self.frame.library is not self.library):
             raise ValueError('The library folder changed. Reopen Import Center.')
-        with self.library.read(self.workspace):
-            pass
+        guard = getattr(self, '_library_guard', None)
+        if guard is not None:
+            guard._bound()
+
+    def _cancelled(self):
+        self._scope_current()
+        return self.frame.cancel_event.is_set()
 
     def report(self, text, *, focus=True):
         self.status.SetValue(text)
@@ -139,6 +161,12 @@ class ImportCenterActions:
         self.rows.SetSelection(min(max(selected, 0), len(batch['rows']) - 1))
         self.select_row()
         self.report(batch_summary(batch), focus=False)
+        next_button = getattr(self, 'next_scan_button', None)
+        if next_button is not None:
+            if not self.busy and (batch.get('scan') or {}).get('next_offset') is not None:
+                next_button.Enable()
+            else:
+                next_button.Disable()
 
     def select_row(self, event=None):
         index = self.rows.GetSelection()
@@ -175,7 +203,10 @@ class ImportCenterActions:
                     self.report(str(exc))
 
         try:
-            self.frame.run_job(title, operation, lambda value: finish(value),
+            def guarded_operation():
+                self._bound()
+                return operation()
+            self.frame.run_job(title, guarded_operation, lambda value: finish(value),
                                failed=lambda exc: finish(error=exc))
         except Exception as exc:
             finish(error=exc)
@@ -196,7 +227,26 @@ class ImportCenterActions:
 
         self._job('Checking files and duplicates', lambda: self.library.plan_import_batch(
             self.workspace, paths, collections=collections, recursive=recursive, config=config,
-            cancelled=self.frame.cancel_event.is_set), done, planning=True)
+            cancelled=self._cancelled), done, planning=True)
+
+    def next_scan_page(self, event=None):
+        """Use the selected saved page's choices, never the mutable new-plan controls."""
+        if self.busy or self.frame.working:
+            self.report('An operation is already running. Wait or choose Cancel operation.')
+            return
+        try:
+            self._bound()
+            if self.batch is None or (self.batch.get('scan') or {}).get('next_offset') is None:
+                raise ValueError('Select a saved scan page with more source files to check.')
+            batch_id = self.batch['batch_id']
+            def done(batch):
+                self.refresh(selected=batch['batch_id'])
+                self.report('Next scan page saved. ' + batch_summary(batch) +
+                    ' Review this page before starting its queued files. Earlier pages were kept.')
+            self._job('Checking next scan page', lambda: self.library.next_import_scan_page(
+                self.workspace, batch_id, cancelled=self._cancelled), done, planning=True)
+        except Exception as exc:
+            self.report(str(exc))
 
     def _new_plan_ocr_config(self):
         from ..extract.page_ocr import Config
@@ -368,6 +418,8 @@ def show_import_center(frame, workspace):
             super().__init__(frame, title='Import Center', size=(920, 760),
                              style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
             self.frame, self.library, self.workspace = frame, frame.library, workspace
+            from ..ingest.batches import ImportBatchStore
+            self._library_guard = ImportBatchStore(self.library)
             self.busy = self.closed = False
             self.batch, self.summaries = None, ()
             self.custom_ocr_config = None
@@ -410,6 +462,11 @@ def show_import_center(frame, workspace):
                 control.Bind(wx.EVT_BUTTON, handler)
                 self.mutable.append(control)
                 add.Add(control, 0, wx.RIGHT, 8)
+            self.next_scan_button = wx.Button(self, label='&Next scan page')
+            self.next_scan_button.SetName('Check and save the next source scan page')
+            self.next_scan_button.Bind(wx.EVT_BUTTON, self.next_scan_page)
+            self.mutable.append(self.next_scan_button)
+            add.Add(self.next_scan_button, 0, wx.RIGHT, 8)
             layout.Add(add, 0, wx.ALL, 8)
             layout.Add(wx.StaticText(self, label='Saved import batches'), 0, wx.LEFT | wx.RIGHT, 8)
             self.batches = wx.ListBox(self, size=(-1, 65))

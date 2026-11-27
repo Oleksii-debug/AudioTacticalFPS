@@ -24,7 +24,9 @@ jobs:
   integrated-desktop:
     name: Windows x64 / CPython 3.11 / integrated desktop
     runs-on: windows-2022
-    timeout-minutes: 45
+    # The observed source gate takes about 18 minutes before native and sealed
+    # bundle acceptance; retain room for both without weakening either gate.
+    timeout-minutes: 60
     defaults:
       run:
         shell: pwsh
@@ -159,6 +161,8 @@ jobs:
             $env:CARR_OCR_DIR = $env:CARR_CI_OCR_DIR
             & $env:CARR_PYTHON scripts/ci_check.py tests/extract/test_managed_ocr.py tests/e2e/test_managed_ocr_import.py tests/ui/test_ocr_selection.py 2>&1 | Tee-Object 'ci-results/managed-ocr-unicode.txt'
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            & $env:CARR_PYTHON scripts/ci_check.py tests/conversion tests/ui/test_document_conversion.py 2>&1 | Tee-Object 'ci-results/document-conversion.txt'
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             # Fingerprint tests intentionally exercise PATH discovery and a
             # changed TESSDATA_PREFIX; keep the same real engine on PATH while
             # removing the explicit portable override for this separate gate.
@@ -184,10 +188,14 @@ jobs:
             'tests/ui/test_portable_sync.py',
             'tests/audio',
             'tests/ui/test_audio_studio.py',
+            'tests/reader/test_live_reader.py',
+            'tests/ui/test_reader_playback_controls.py',
             'tests/assistant',
             'tests/ui/test_assistant_actions.py',
             'tests/ui/test_assistant_menu.py',
             'tests/language_qualification',
+            'tests/transcription',
+            'tests/ingest/test_batch_continuation.py',
             'tests/ui/test_language_matrix_host.py',
             'tests/ui/test_backup_options.py',
             'tests/e2e/test_library_backup_cli.py',
@@ -199,6 +207,9 @@ jobs:
             'bootstrap/semantic_compat/test_probe.py',
             'tests/e2e/test_application.py',
             'tests/e2e/test_result_presentation.py',
+            'tests/search/test_catalog_pages.py',
+            'tests/search/test_federated_pages.py',
+            'tests/search/test_federated_advanced.py',
             'tests/e2e/test_import_batches.py',
             'tests/ingest/test_batch_scan.py',
             'tests/ui/test_import_center.py',
@@ -385,6 +396,12 @@ jobs:
           & $env:CARR_PYTHON -I -B tests/ui/native_language_matrix_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-language-matrix.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Exercise installed source narration and native playback controls
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/native_reader_transport_smoke.py --ui-only 2>&1 | Tee-Object 'ci-results/native-reader-transport.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Exercise installed native citation formatting and BibTeX import
         timeout-minutes: 3
         run: |
@@ -394,7 +411,13 @@ jobs:
       - name: Exercise native Import Center and durable batch workflow
         timeout-minutes: 3
         run: |
-          & $env:CARR_PYTHON -I tests/ui/native_import_center_smoke.py 2>&1 | Tee-Object 'ci-results/native-import-center.txt'
+          & $env:CARR_PYTHON -I -B tests/ui/native_import_center_smoke.py 2>&1 | Tee-Object 'ci-results/native-import-center.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise installed conversion commands and native result views
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/probe_document_conversion_native.py --native 2>&1 | Tee-Object 'ci-results/native-document-conversion.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise native reading copies, save commands and keyboard preferences
@@ -624,6 +647,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; probe=sys.argv.pop(1); runpy.run_path(probe,run_name='__main__')" (Resolve-Path tests/ui/native_language_matrix_smoke.py).Path --native 2>&1 | Tee-Object 'ci-results/full-bundle-language-matrix.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; probe=sys.argv.pop(1); runpy.run_path(probe,run_name='__main__')" (Resolve-Path tests/ui/probe_document_conversion_native.py).Path --native 2>&1 | Tee-Object 'ci-results/full-bundle-conversion-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; from carr_library.audio.runtime import activate_bundled_audio_runtime; handle=activate_bundled_runtime(); audio=activate_bundled_audio_runtime(); assert handle is not None and audio is not None; probe=sys.argv.pop(1); runpy.run_path(probe,run_name='__main__')" (Resolve-Path tests/ui/native_reader_transport_smoke.py).Path --ui-only 2>&1 | Tee-Object 'ci-results/full-bundle-reader-transport.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_ocr_languages_smoke.py --require-bundled 2>&1 | Tee-Object 'ci-results/full-bundle-ocr-languages-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if ((Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash -ne $manifestBefore) { throw 'Bundle manifest changed during installation or startup.' }
@@ -700,12 +727,25 @@ jobs:
                             'tests/ui/test_audio_progress.py',
                             'tests/audio/test_encoded_verification.py',
                             'tests/audio/test_production_commit.py',
+                            'tests/audio/test_player.py',
+                            'tests/audio/test_playback.py',
+                            'tests/audio/test_playback_resume.py',
+                            'tests/audio/test_transport.py',
+                            'tests/reader/test_live_reader.py',
+                            'tests/ui/test_reader_playback_controls.py',
                             'tests/assistant',
                             'tests/ui/test_assistant_actions.py',
                             'tests/ui/test_assistant_menu.py',
                             'tests/ingest/test_import_replay_identity.py',
                             'tests/language_qualification',
+                            'tests/transcription',
+                            'tests/ingest/test_batch_continuation.py',
                             'tests/ui/test_language_matrix_host.py',
+                            'tests/conversion',
+                            'tests/ui/test_document_conversion.py',
+                            'tests/search/test_catalog_pages.py',
+                            'tests/search/test_federated_pages.py',
+                            'tests/search/test_federated_advanced.py',
                             'tests/ui/test_backup_options.py',
                             'tests/audio/test_managed_projects.py',
                             'tests/audio/test_managed_input_adoption.py',

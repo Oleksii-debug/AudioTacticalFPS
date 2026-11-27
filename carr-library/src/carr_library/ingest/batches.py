@@ -9,6 +9,7 @@ from collections import Counter
 from contextlib import contextmanager
 from dataclasses import asdict
 from datetime import datetime, timezone
+from hashlib import sha256
 import json
 import math
 import os
@@ -38,6 +39,19 @@ _BATCH_KEYS = {'version', 'batch_id', 'data_dir', 'workspace', 'created', 'updat
                'state', 'collections', 'recursive', 'config', 'rows', 'counts', 'total'}
 _ROW_KEYS = {'row_id', 'work_id', 'edition_id', 'request_id', 'source', 'file', 'title',
              'state', 'message', 'manifest', 'duplicate_of', 'result'}
+_SCAN_KEYS = {'version', 'roots', 'inventory_sha256', 'inventory_entries', 'offset',
+              'next_offset', 'unscanned', 'chain_id', 'page', 'previous_batch_id',
+              'next_batch_id', 'options_sha256'}
+
+
+def _options_digest(record):
+    fields = {key: record[key] for key in ('workspace', 'collections', 'recursive', 'config')}
+    fields['roots'] = record['scan']['roots']
+    return sha256(canonical(fields).encode('utf-8')).hexdigest()
+
+
+def _page_id(chain, page, offset):
+    return chain if page == 1 else sha256(f'import-scan-page/1:{chain}:{page}:{offset}'.encode()).hexdigest()[:32]
 
 
 def _text(value, limit, *, empty=True):
@@ -70,8 +84,39 @@ class ImportBatchStore:
     def __init__(self, app):
         self.app = app
         self.root = app.root
+        self._binding = self._identity()
+
+    def _identity(self):
+        paths = (self.app.root, self.app.database, self.app.assets_dir, self.app.assets.root)
+        identities = []
+        for path in paths:
+            info = path.lstat()
+            if (stat.S_ISLNK(info.st_mode) or getattr(info, 'st_file_attributes', 0)
+                    & stat.FILE_ATTRIBUTE_REPARSE_POINT):
+                raise ValueError('Import batches require the original private library folder.')
+            identities.append((str(path), info.st_dev, info.st_ino, stat.S_IFMT(info.st_mode)))
+        return tuple(identities)
+
+    def _bound(self):
+        if self._identity() != self._binding:
+            raise ValueError('The library folder changed. Reopen Import Center.')
+
+    def _cancellation(self, cancelled):
+        if not callable(cancelled):
+            raise ValueError('An import cancellation callback is required.')
+        stopped = False
+        def check():
+            nonlocal stopped
+            self._bound()
+            stopped = stopped or bool(cancelled())
+            self._bound()
+            if stopped:
+                raise InterruptedError('Import scan cancelled; saved pages were kept.')
+            return False
+        return check
 
     def _directory(self):
+        self._bound()
         path = self.root / 'import-batches'
         path.mkdir(mode=0o700, exist_ok=True)
         info = path.lstat()
@@ -96,14 +141,17 @@ class ImportBatchStore:
             raise ValueError('This import batch is already running.') from exc
 
     def _authorize(self, workspace, collections=()):
+        self._bound()
         with self.app.read(workspace) as db:
             catalog = Catalog(db, workspace)
             for collection in collections:
                 catalog._active_collection(collection)
+        self._bound()
 
     def _validate(self, record, batch_id):
-        if (not isinstance(record, dict) or set(record) != _BATCH_KEYS
-                or type(record['version']) is not int or record['version'] != 1
+        if (not isinstance(record, dict)
+                or type(record.get('version')) is not int or record['version'] not in (1, 2)
+                or set(record) != (_BATCH_KEYS | ({'scan'} if record['version'] == 2 else set()))
                 or record['batch_id'] != batch_id or record['data_dir'] != str(self.root)
                 or not _text(record['workspace'], 200, empty=False)
                 or not _text(record['created'], 64, empty=False)
@@ -117,6 +165,8 @@ class ImportBatchStore:
                 or not isinstance(record['rows'], list) or len(record['rows']) > MAX_ROWS):
             raise ValueError('Invalid import batch schema or data-directory binding.')
         Config(**record['config'])
+        if record['version'] == 2:
+            self._validate_scan(record)
         seen = {name: set() for name in ('row_id', 'work_id', 'edition_id', 'request_id')}
         for row in record['rows']:
             if (not isinstance(row, dict) or set(row) != _ROW_KEYS
@@ -153,6 +203,38 @@ class ImportBatchStore:
                 or record['counts'] != counts):
             raise ValueError('Import batch summary differs from its rows.')
         return record
+
+    @staticmethod
+    def _validate_scan(record):
+        from .batch_scan import MAX_ROOTS, MAX_SCAN_ENTRIES, MAX_PATH_BYTES
+        scan = record['scan']
+        if (type(scan) is not dict or set(scan) != _SCAN_KEYS or type(scan['version']) is not int
+                or scan['version'] != 1 or type(scan['roots']) is not list or len(scan['roots']) > MAX_ROOTS
+                or any(not _text(path, 32768, empty=False) or not Path(path).is_absolute()
+                       or '..' in Path(path).parts for path in scan['roots'])
+                or len(set(scan['roots'])) != len(scan['roots'])
+                or sum(len(path.encode('utf-8')) for path in scan['roots']) > MAX_PATH_BYTES
+                or not isinstance(scan['inventory_sha256'], str)
+                or not re.fullmatch('[0-9a-f]{64}', scan['inventory_sha256'])
+                or type(scan['inventory_entries']) is not int or not 0 <= scan['inventory_entries'] <= MAX_SCAN_ENTRIES + 1
+                or type(scan['offset']) is not int or not 0 <= scan['offset'] <= MAX_SCAN_ENTRIES + MAX_ROOTS
+                or type(scan['page']) is not int or not 1 <= scan['page'] <= MAX_SCAN_ENTRIES + MAX_ROOTS
+                or not isinstance(scan['chain_id'], str) or not _ID.fullmatch(scan['chain_id'])
+                or scan['next_offset'] is not None and (type(scan['next_offset']) is not int
+                    or not scan['offset'] < scan['next_offset'] <= MAX_SCAN_ENTRIES + MAX_ROOTS)
+                or type(scan['unscanned']) is not list or len(scan['unscanned']) > MAX_ROOTS + 1
+                or any(not _text(path, 32768, empty=False) or not Path(path).is_absolute()
+                       for path in scan['unscanned'])):
+            raise ValueError('Invalid import scan continuation metadata.')
+        if ((scan['page'] == 1) != (scan['offset'] == 0)
+                or (scan['page'] == 1) != (scan['previous_batch_id'] is None)
+                or scan['previous_batch_id'] is not None and
+                   (not isinstance(scan['previous_batch_id'], str) or not _ID.fullmatch(scan['previous_batch_id']))
+                or record['batch_id'] != _page_id(scan['chain_id'], scan['page'], scan['offset'])
+                or scan['next_batch_id'] != (None if scan['next_offset'] is None else
+                    _page_id(scan['chain_id'], scan['page'] + 1, scan['next_offset']))
+                or scan['options_sha256'] != _options_digest(record)):
+            raise ValueError('The scan cursor differs from its saved selection and options.')
 
     def _load(self, batch_id):
         path = self._path(batch_id)
@@ -216,7 +298,7 @@ class ImportBatchStore:
 
     def plan(self, workspace, paths, *, collections=(), recursive=True,
              config=None, cancelled=lambda: False):
-        from .batch_scan import MAX_EXISTING_ASSETS, scan_paths
+        from .batch_scan import scan_page
         if (not isinstance(collections, (list, tuple)) or len(collections) > 128
                 or type(recursive) is not bool or not callable(cancelled)):
             raise ValueError('Invalid import batch options.')
@@ -224,26 +306,83 @@ class ImportBatchStore:
         config = config or Config()
         settings = asdict(config)
         Config(**settings)
+        check = self._cancellation(cancelled)
+        check()
         self._authorize(workspace, collections)
+        page = scan_page(paths, recursive=recursive, existing_assets=self._existing(workspace), cancelled=check)
+        record = self._planned_record(workspace, collections, recursive, settings, page)
+        self._authorize(workspace, collections)
+        with self._lock(record['batch_id']):
+            check()
+            self._authorize(workspace, collections)
+            self._store(record, create=True)
+        return _copy(record)
+
+    def _existing(self, workspace):
+        from .batch_scan import MAX_EXISTING_ASSETS
         with self.app.read(workspace) as db:
-            existing = tuple(row[0] for row in db.execute(
+            return tuple(row[0] for row in db.execute(
                 'SELECT DISTINCT asset FROM catalog_edition WHERE workspace=? LIMIT ?',
                 (workspace, MAX_EXISTING_ASSETS + 1)))
+
+    def _planned_record(self, workspace, collections, recursive, settings, page, *, previous=None):
         rows = []
-        for candidate in scan_paths(paths, recursive=recursive, existing_assets=existing,
-                                    cancelled=cancelled):
+        for candidate in page.rows:
             rows.append(dict(candidate, row_id=uuid4().hex, work_id=uuid4().hex,
                              edition_id=uuid4().hex, request_id=uuid4().hex, result=None))
             if len(rows) > MAX_ROWS:
                 raise ValueError('Too many files in one import batch.')
-        self._authorize(workspace, collections)
-        record = dict(version=1, batch_id=uuid4().hex, data_dir=str(self.root),
+        chain = uuid4().hex if previous is None else previous['scan']['chain_id']
+        number = 1 if previous is None else previous['scan']['page'] + 1
+        record = dict(version=2, batch_id=_page_id(chain, number, page.offset), data_dir=str(self.root),
                       workspace=workspace, created=_now(), updated=_now(), state='queued',
                       collections=list(collections), recursive=recursive, config=settings,
-                      rows=rows, counts={}, total=len(rows))
-        with self._lock(record['batch_id']):
-            self._store(record, create=True, paused=bool(cancelled()))
-        return _copy(record)
+                      rows=rows, counts={}, total=len(rows),
+                      scan=dict(version=1, roots=list(page.roots), inventory_sha256=page.inventory_sha256,
+                        inventory_entries=page.inventory_entries, offset=page.offset,
+                        next_offset=page.next_offset, unscanned=list(page.unscanned),
+                        chain_id=chain, page=number, previous_batch_id=None if previous is None else previous['batch_id'],
+                        next_batch_id=None if page.next_offset is None else _page_id(chain, number + 1, page.next_offset),
+                        options_sha256=''))
+        record['scan']['options_sha256'] = _options_digest(record)
+        return record
+
+    def next_scan_page(self, workspace, batch_id, *, cancelled=lambda: False):
+        """Save one next page, using the original choices; repeat calls reuse its ID.
+
+        Every page remains an ordinary import batch. Neither a failed scan nor a
+        cancellation rewrites previous rows or advances their saved continuation.
+        Pending external sources keep the existing local-only backup boundary.
+        """
+        from .batch_scan import scan_page
+        check = self._cancellation(cancelled)
+        check()
+        self._authorize(workspace)
+        with self._lock(batch_id):
+            previous = self.get(workspace, batch_id)
+            scan = previous.get('scan')
+            if scan is None or scan['next_offset'] is None:
+                raise ValueError('This saved page has no continuation. Select new source folders to scan.')
+            self._authorize(workspace, previous['collections'])
+            page = scan_page(scan['roots'], recursive=previous['recursive'],
+                existing_assets=self._existing(workspace), offset=scan['next_offset'],
+                expected_inventory=scan['inventory_sha256'], cancelled=check)
+            record = self._planned_record(workspace, previous['collections'], previous['recursive'],
+                                          previous['config'], page, previous=previous)
+            self._authorize(workspace, previous['collections'])
+            with self._lock(record['batch_id']):
+                check()
+                self._authorize(workspace, previous['collections'])
+                if self._path(record['batch_id']).exists():
+                    saved = self.get(workspace, record['batch_id'])
+                    if (saved['scan'] != record['scan'] or saved['collections'] != record['collections']
+                            or saved['config'] != record['config'] or saved['recursive'] != record['recursive']
+                            or [(row['source'], row['manifest']) for row in saved['rows']]
+                               != [(row['source'], row['manifest']) for row in record['rows']]):
+                        raise ValueError('The saved next page differs from its source continuation.')
+                    return _copy(saved)
+                self._store(record, create=True)
+                return _copy(record)
 
     def get(self, workspace, batch_id):
         self._authorize(workspace)
@@ -301,8 +440,12 @@ class ImportBatchStore:
             record = self._load(path.stem)
             if record['workspace'] == workspace:
                 record = self._reconcile(record)
-                rows.append({key: record[key] for key in
-                             ('batch_id', 'created', 'updated', 'state', 'counts', 'total')})
+                summary = {key: record[key] for key in
+                           ('batch_id', 'created', 'updated', 'state', 'counts', 'total')}
+                if 'scan' in record:
+                    summary['scan'] = {key: record['scan'][key] for key in ('page', 'next_offset')}
+                    summary['scan']['unscanned_count'] = len(record['scan']['unscanned'])
+                rows.append(summary)
         return tuple(sorted(rows, key=lambda row: (row['created'], row['batch_id']), reverse=True))
 
     def set_row(self, workspace, batch_id, row_id, *, included):

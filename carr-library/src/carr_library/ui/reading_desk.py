@@ -171,10 +171,20 @@ class ReadingDialog:
         self.dialog = wx.Dialog(parent, title='Read book — ' + desk.title, size=(880, 700))
         self.dialogs = NativeDialogs()
         self.cancelled = threading.Event()
+        self._window_alive = True
+        root = Path(desk.library.root).absolute()
+        root_info = root.stat()
+        root_identity = root_info.st_dev, root_info.st_ino
+        def bound_guard():
+            guard()
+            current = root.stat()
+            if (Path(desk.library.root).absolute() != root
+                    or (current.st_dev, current.st_ino) != root_identity):
+                raise ValueError('The reader data folder changed. Open the book again.')
         # Native source validation must observe this dialog's cancel action,
         # independently of the host job that originally created the desk.
         desk.cancelled = self.cancelled.is_set
-        self.controller = ReaderController(desk, state, guard, self.cancelled.is_set, defer_display=True)
+        self.controller = ReaderController(desk, state, bound_guard, self.cancelled.is_set, defer_display=True)
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='reading-desk')
         self.closed = self.busy = False
         self.buttons = []
@@ -213,6 +223,8 @@ class ReadingDialog:
                      command_id='reader.bookmarks')
         self._button(bookmarks, 'Create editable reading copy...', self.edit_reading_copy,
                      command_id='reader.reading_copy')
+        self._button(bookmarks, 'Read source aloud...', self.read_aloud,
+                     command_id='reader.read_aloud')
         self._button(bookmarks, 'Reader keyboard guide', self.help, command_id='reader.help')
         self._button(bookmarks, 'Find a reader command...', lambda event: self.keyboard.commands(event),
                      command_id='reader.commands')
@@ -237,6 +249,7 @@ class ReadingDialog:
         from .reading_shortcuts import ReaderKeyboardAdapter
         self.keyboard = ReaderKeyboardAdapter(self, getattr(parent, 'keyboard_commands', None))
         self.dialog.Bind(wx.EVT_CLOSE, self.close)
+        self.dialog.Bind(wx.EVT_WINDOW_DESTROY, self._destroyed)
 
     def _button(self, sizer, label, handler, modifier=None, key=None, *, command_id=None):
         wx = self.wx
@@ -255,8 +268,51 @@ class ReadingDialog:
         return button
 
     def _error(self, error):
+        if self.closed or not getattr(self, '_window_alive', True):
+            return
         self.status.ChangeValue(str(error))
         self.status.SetFocus()
+
+    def read_aloud(self, event=None):
+        if self.closed or self.busy or not getattr(self, '_window_alive', True):
+            return
+        try:
+            self.controller.check()
+            page = self.controller.current
+            if page is None:
+                raise ValueError('Open a source page before reading aloud.')
+            # GetRange converts native UTF-16/CRLF positions to actual text.
+            # Passing GetSelection's integers into Python would corrupt spans.
+            first, last = self.text.GetSelection()
+            cursor = self.text.GetInsertionPoint()
+            selection_prefix = self.text.GetRange(0, first)
+            selection_end = self.text.GetRange(0, last)
+            cursor_prefix = self.text.GetRange(0, cursor)
+            displayed = self.text.GetValue()
+            mode = self.dialogs.choose(self.dialog, 'Read source aloud',
+                'Choose the exact source passage. Reading does not approve extracted text or quotations.',
+                ('Current source page or segment', 'Selected source text', 'From the text cursor to the end of this source'))
+            if mode is None:
+                if not self.closed:
+                    self.text.SetFocus()
+                return
+            mode = _chosen(mode, ('page', 'selection', 'cursor'))
+            def opened(fresh):
+                from ..reader.live_reader import select_source
+                from .live_reader import LiveReaderDialog
+                self.controller.check()
+                if fresh.location != page.location:
+                    raise ValueError('The source location changed. Choose the narration again.')
+                selection = select_source(fresh, mode=mode,
+                    prefix=cursor_prefix if mode == 'cursor' else selection_prefix,
+                    through_selection=selection_end, displayed=displayed)
+                LiveReaderDialog(self.dialog, self.parent, self.controller, selection).show()
+                if not self.closed and self._window_alive:
+                    self.controller.check()
+                    self.text.SetFocus()
+            self._run('Validating exact narration source', self.controller.where, opened)
+        except Exception as exc:
+            self._error(exc)
 
     def edit_reading_copy(self, event=None):
         def opened(page):
@@ -434,7 +490,9 @@ class ReadingDialog:
             'Unknown printed pagination remains unknown. Unverified extracted text remains unverified. '
             'Reading and bookmarks do not approve quotations.\n\n'
             'Reading, Export reading positions and bookmarks saves a separate JSON backup. '
-            'The existing library backup does not yet include this reader state.')
+            'A complete library backup includes saved reading positions, bookmarks and exact-recording resume metadata. '
+            'Read source aloud uses the configured local voices and preserves the original text. '
+            'Windows playback supports measured pause, seek and A–B; word timing is not inferred.')
         self.text.SetFocus()
 
     def close(self, event=None):
@@ -443,10 +501,19 @@ class ReadingDialog:
         self.closed = True
         self.cancelled.set()
         if hasattr(self, 'keyboard'):
-            self.keyboard.close()
+            try:
+                self.keyboard.close()
+            except RuntimeError:
+                pass
         self.executor.shutdown(wait=False, cancel_futures=True)
-        if self.dialog.IsModal():
+        if getattr(self, '_window_alive', True) and self.dialog.IsModal():
             self.dialog.EndModal(self.wx.ID_CANCEL)
+
+    def _destroyed(self, event):
+        if event.GetEventObject() is self.dialog:
+            self._window_alive = False
+            self.close()
+        event.Skip()
 
     def show(self):
         try:
@@ -454,7 +521,8 @@ class ReadingDialog:
             self.dialog.ShowModal()
         finally:
             self.close()
-            self.dialog.Destroy()
+            if self._window_alive:
+                self.dialog.Destroy()
 
 
 @dataclass(frozen=True)

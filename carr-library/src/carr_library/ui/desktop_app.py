@@ -42,6 +42,8 @@ from .audio_studio import install_audio_studio_actions
 from .api_connections import install_api_connection_actions
 from .assistant_dialog import install_assistant_actions
 from .language_matrix import install_language_actions
+from .document_conversion import install_conversion_actions
+from .transcription import install_transcription_actions
 from .acquisition_dialog import show_acquisition_dialog
 
 
@@ -495,7 +497,7 @@ class DesktopFrame(WorkspaceFrame):
         self.working = False
         self._closing = False
         super().__init__(None, library.list_scopes, self._bind)
-        self.SetTitle('Universal Research Library')
+        self.SetTitle('Resonance — Sceneria Innovative Technologies')
         self.SetMinSize((760, 650))
         self._menus()
         from .productivity import install_productivity_actions
@@ -578,6 +580,8 @@ class DesktopFrame(WorkspaceFrame):
         install_api_connection_actions(self)
         install_assistant_actions(self)
         install_language_actions(self)
+        install_conversion_actions(self)
+        install_transcription_actions(self)
 
     def build_advanced_query(self, event=None):
         if self.working:

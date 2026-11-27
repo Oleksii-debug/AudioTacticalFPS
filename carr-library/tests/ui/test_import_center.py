@@ -117,6 +117,83 @@ def test_plan_captures_choices_and_passes_live_cancellation_to_background_work(c
     assert kwargs['recursive'] is True and kwargs['cancelled']()
 
 
+def test_next_scan_page_uses_saved_identity_and_not_current_new_plan_options(center):
+    center.batch['scan'] = dict(page=1, next_offset=5000, unscanned=[])
+    center.library.next_import_scan_page = Mock()
+    center.next_scan_page()
+    assert center.busy and len(center.jobs) == 1
+    center.collection.SetSelection(0)
+    center.recursive.SetValue(False)
+    center.languages.SetSelection(0)
+    center.jobs[0].operation()
+    args, kwargs = center.library.next_import_scan_page.call_args
+    assert args == ('library', 'first') and set(kwargs) == {'cancelled'}
+    assert kwargs['cancelled']() is False
+    center.cancel_operation()
+    assert kwargs['cancelled']() is True
+
+
+def test_next_scan_completion_selects_saved_page_and_keeps_previous(center):
+    center.batch['scan'] = dict(page=1, next_offset=5000, unscanned=[])
+    following = batch('following')
+    following['scan'] = dict(page=2, next_offset=None, unscanned=[])
+    center.library.next_import_scan_page = Mock(return_value=following)
+    center.next_scan_button = Control()
+    center.next_scan_page()
+    returned = center.jobs[0].operation()
+    center.saved['following'] = returned
+    complete(center, center.jobs[0], returned)
+    assert center.batch['batch_id'] == 'following'
+    assert set(center.saved) == {'first', 'following'}
+    assert not center.next_scan_button.enabled
+    assert 'Scan page 2' in center.status.value and 'Earlier pages were kept' in center.status.value
+
+
+@pytest.mark.parametrize('change', ['closed', 'closing', 'library'])
+def test_queued_next_scan_checks_original_live_host_before_call(center, change):
+    center.batch['scan'] = dict(page=1, next_offset=5000, unscanned=[])
+    center.library.next_import_scan_page = Mock()
+    center.next_scan_page()
+    if change == 'closed':
+        center.closed = True
+    elif change == 'closing':
+        center.frame._closing = True
+    else:
+        center.frame.library = object()
+    with pytest.raises(ValueError, match='folder changed'):
+        center.jobs[0].operation()
+    center.library.next_import_scan_page.assert_not_called()
+
+
+def test_failed_next_keeps_previous_page_and_reports_stale_inventory(center):
+    center.batch['scan'] = dict(page=1, next_offset=5000, unscanned=[])
+    original = deepcopy(center.batch)
+    center.library.next_import_scan_page = Mock()
+    center.next_scan_page()
+    center.frame.working = False
+    center.jobs[0].failed(ValueError('Source inventory changed. Start a new scan.'))
+    assert center.batch == original and not center.busy
+    assert 'inventory changed' in center.status.value
+
+
+def test_next_scan_with_no_continuation_does_not_queue_work(center):
+    center.library.next_import_scan_page = Mock()
+    center.next_scan_page()
+    assert not center.jobs
+    center.library.next_import_scan_page.assert_not_called()
+    assert 'more source files' in center.status.value
+
+
+def test_stale_next_completion_cannot_replace_visible_batch(center):
+    center.batch['scan'] = dict(page=1, next_offset=5000, unscanned=[])
+    center.library.next_import_scan_page = Mock()
+    center.next_scan_page()
+    center.frame.library = object()
+    complete(center, center.jobs[0], batch('stale'))
+    assert center.batch['batch_id'] == 'first'
+    assert 'folder changed' in center.status.value
+
+
 @pytest.mark.parametrize('control,selection', [('collection', -1), ('collection', 2)])
 def test_invalid_plan_choices_never_start_a_job(center, control, selection):
     getattr(center, control).SetSelection(selection)

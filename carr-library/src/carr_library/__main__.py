@@ -68,7 +68,7 @@ def main(argv=None):
         from .sync.cli import main as sync_main
         return sync_main(arguments[1:])
     from . import __version__
-    parser = argparse.ArgumentParser(description='Offline Universal Research Library')
+    parser = argparse.ArgumentParser(description='Resonance — offline academic libraries and media tools')
     parser.add_argument('--version', action='version', version=__version__)
     parser.add_argument('--data-dir', type=Path, help='Private persistent data directory')
     parser.add_argument('--self-test', action='store_true', help='Check an isolated synthetic library and exit')

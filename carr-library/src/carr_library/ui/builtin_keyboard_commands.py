@@ -83,6 +83,7 @@ READER_COMMANDS = (
     CommandSpec('reader.bookmark_add', 'Add named page bookmark', 'reader', 'Ctrl+B'),
     CommandSpec('reader.bookmarks', 'Manage page bookmarks', 'reader', 'Ctrl+Shift+B'),
     CommandSpec('reader.reading_copy', 'Create editable reading copy', 'reader', ''),
+    CommandSpec('reader.read_aloud', 'Read source aloud', 'reader', ''),
     CommandSpec('reader.help', 'Reader keyboard guide', 'reader', 'F1'),
     CommandSpec('reader.commands', 'Find a reader command', 'reader', 'Ctrl+Shift+P'),
     CommandSpec('reader.settings', 'Reader keyboard shortcuts', 'reader', 'Ctrl+Alt+K'),

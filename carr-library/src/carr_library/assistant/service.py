@@ -509,6 +509,14 @@ class AssistantService:
                 return {'results': rows, 'source_status': 'verified_this_run',
                         'notice': 'Each verified excerpt was resolved from its exact source. '
                                   'Saved reports are historical and do not authorize evidence actions.'}
+            except TimeoutError as exc:
+                # Search shares one bounded exception for cancellation and
+                # deadlines. A withdrawn assistant window/scope must retain a
+                # resumable paused task, while an actual search timeout still
+                # reports failure when no cancellation was requested.
+                if cancelled():
+                    raise InterruptedError('Search paused before displaying results.') from exc
+                raise
             finally:
                 self._search.clear()
         if step.tool == 'library.extract':

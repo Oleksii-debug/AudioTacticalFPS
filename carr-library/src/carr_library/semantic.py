@@ -207,7 +207,7 @@ class OfflineSemanticRanker:
                 if score >= self.minimum_similarity]
 
 
-def search_snapshot(db, workspace, allowed, query, ranker, *, limit=100,
+def search_snapshot(db, workspace, allowed, query, ranker, *, limit=100, offset=0,
                     timeout=60.0, cancelled=lambda: False, on_status=None, cache=None):
     """Read active pages and rank windows inside the caller's authorized snapshot."""
     if (not db.in_transaction or db.execute('PRAGMA read_uncommitted').fetchone()[0]
@@ -217,6 +217,7 @@ def search_snapshot(db, workspace, allowed, query, ranker, *, limit=100,
                    for pair in allowed.items() for value in pair)
             or not isinstance(ranker, OfflineSemanticRanker)
             or type(limit) is not int or not 1 <= limit <= 100
+            or type(offset) is not int or offset < 0
             or type(timeout) not in (int, float) or not 0 < timeout <= 60
             or not callable(cancelled)
             or (on_status is not None and not callable(on_status))):
@@ -246,7 +247,7 @@ def search_snapshot(db, workspace, allowed, query, ranker, *, limit=100,
         if on_status is not None:
             on_status('The local model\'s text limit was reached. Keyword search used. '
                       'Shorten the query or narrow the source filters to use the local model.')
-        hits = search_active(db, workspace, allowed, query, limit=limit,
+        hits = search_active(db, workspace, allowed, query, limit=limit, offset=offset,
                              timeout=remaining(), cancelled=stopped)
         for hit in hits:
             hit['reason'] = 'Semantic window limit reached; using lexical thematic search. ' + reason
@@ -290,7 +291,7 @@ def search_snapshot(db, workspace, allowed, query, ranker, *, limit=100,
 
     try:
         hits = search_windowed(workspace, passages, query, tokenizer=ranker.tokenizer,
-                               semantic_ranker=rank, limit=limit, timeout=remaining(),
+                               semantic_ranker=rank, limit=limit, offset=offset, timeout=remaining(),
                                cancelled=stopped)
     except ValueError as exc:
         if 'budget' in str(exc).lower() or 'semantic window' in str(exc).lower():

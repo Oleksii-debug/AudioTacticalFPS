@@ -28,6 +28,20 @@ class View:
         self.verified = self.selected = self.busy = False
         self.copied, self.focus = [], None
         self.busy_history = []
+        self.query, self.mode = 'Railway history', 'phrase'
+        self.navigation = (False, False)
+
+    def set_navigation(self, previous, next_page):
+        self.navigation = previous, next_page
+
+    def query_value(self):
+        return self.query
+
+    def set_advanced_query(self, query):
+        self.query, self.mode = query, 'advanced'
+
+    def focus_query(self):
+        self.focus = 'query'
 
     def clear_results(self):
         self.labels, self.details, self.index = (), '', -1
@@ -182,6 +196,223 @@ def test_filters_group_labels_limit_and_source_details(center):
     assert center.two in center.view.details and 'Original context.' in center.view.details
     assert 'Current Library: 0' in center.view.messages[-1]
     assert 'Up to 1 results per library' in center.view.messages[-1]
+
+
+def test_advanced_query_searches_only_checked_libraries_with_source_filters(center):
+    center.controller.search(SearchOptions((center.one, center.two),
+        '("railway" NEAR/0 "history") AND NOT "current"', mode='advanced',
+        author='Author Two', language='en', edition='Second'))
+    hit, = center.controller.rows
+    assert hit.workspace == center.two
+    assert 'Railway history from another library.' in hit.result.quote
+    assert center.frame.active == (center.one, center.local_topic)
+    center.controller.copy('quote')
+    assert center.view.copied == [hit.result.quote]
+
+
+def test_invalid_advanced_query_does_not_start_worker_or_keep_old_handles(center):
+    search(center)
+    jobs = len(center.frame.jobs)
+    center.controller.search(SearchOptions((center.one,), 'railway OR', mode='advanced'))
+    assert len(center.frame.jobs) == jobs and center.controller.rows == ()
+    assert 'Invalid advanced query:' in center.view.messages[-1]
+    assert center.view.focus == 'status'
+
+
+def test_builder_cancel_keeps_results_scope_and_current_query(center):
+    search(center)
+    source_hit(center)
+    before = (center.controller.rows, center.controller.epoch, center.view.index,
+              center.view.query, center.view.mode, center.frame.active)
+    builder = Mock(return_value=None)
+    center.controller.build_query(builder)
+    assert (center.controller.rows, center.controller.epoch, center.view.index,
+            center.view.query, center.view.mode, center.frame.active) == before
+    builder.assert_called_once_with(center.view.parent, current_query='Railway history')
+    assert center.view.focus == 'query'
+
+
+def test_builder_use_withdraws_old_handles_and_preserves_notebook(center):
+    search(center)
+    old = source_hit(center)
+    draft = center.frame.unsaved_note
+    center.controller.build_query(lambda *args, **kwargs: '"railway" AND NOT "fiction"')
+    assert center.view.query == '"railway" AND NOT "fiction"'
+    assert center.view.mode == 'advanced' and center.view.focus == 'query'
+    assert center.controller.rows == () and center.controller.service.current is None
+    assert center.view.labels == () and not center.view.verified
+    assert center.frame.active == (center.one, center.local_topic)
+    assert center.frame.unsaved_note == draft
+    with pytest.raises(ValueError):
+        center.controller.service.copy(old, 'quote')
+
+
+@pytest.mark.parametrize('change', ['query', 'options', 'active', 'folder', 'busy', 'dispose'])
+def test_builder_cannot_replace_changed_scope_or_options(center, tmp_path, change):
+    def changed(*args, **kwargs):
+        if change == 'query':
+            center.view.query = 'replacement'
+        elif change == 'options':
+            center.controller.options_changed()
+        elif change == 'active':
+            center.frame.active = (center.two, center.destination)
+        elif change == 'folder':
+            center.frame.library = LibraryApp(tmp_path / 'new-folder')
+        elif change == 'busy':
+            center.frame.working = True
+        else:
+            center.controller.dispose()
+        return '"railway"'
+    center.controller.build_query(changed)
+    assert center.view.query == ('replacement' if change == 'query' else 'Railway history')
+    assert center.view.mode == 'phrase'
+
+
+def test_running_search_cannot_open_builder(center):
+    center.frame.deferred = True
+    search(center)
+    builder = Mock(return_value='"railway"')
+    center.controller.build_query(builder)
+    builder.assert_not_called()
+    center.frame.finish()
+
+
+def test_search_center_builder_keyboard_shortcut_dispatches_without_main_menu():
+    native = NativeSearchCenter.__new__(NativeSearchCenter)
+    native.wx = SimpleNamespace(WXK_ESCAPE=27)
+    native.controller = SimpleNamespace(build_query=Mock())
+    key = Mock()
+    key.GetKeyCode.return_value = ord('Q')
+    key.ControlDown.return_value = key.AltDown.return_value = True
+    native._key(key)
+    native.controller.build_query.assert_called_once()
+    key.Skip.assert_not_called()
+    key.ControlDown.return_value = False
+    native._key(key)
+    key.Skip.assert_called_once()
+
+
+@pytest.mark.parametrize('mode', ['terms', 'advanced'])
+def test_previous_next_pages_keep_exact_scope_filters_and_allow_exhausted_library(center, mode):
+    for workspace, count in ((center.one, 5), (center.two, 2), (center.hidden, 4)):
+        for number in range(count):
+            center.app.add_text(workspace, f'Page source {number}',
+                f'Paging rail source {number}.', authors=('Page Author',), language='en', edition='Reviewed')
+    query = 'paging rail' if mode == 'terms' else '"paging" NEAR/0 "rail"'
+    options = SearchOptions((center.one, center.two), query, mode=mode,
+        author='Page Author', language='en', edition='Reviewed', limit_per_library=2)
+    host_selections = dict(center.app._selections)
+    center.controller.search(options)
+    first = center.controller.rows
+    assert len(first) == 4 and center.view.navigation == (False, True)
+    center.controller.navigate(1)
+    second = center.controller.rows
+    assert len(second) == 2 and center.view.navigation == (True, True)
+    assert center.controller.options.offset_per_library == 2
+    assert center.controller.options.workspaces == options.workspaces
+    assert center.controller.options.author == options.author
+    assert center.controller.options.language == options.language
+    assert center.controller.options.edition == options.edition
+    assert {hit.workspace for hit in second} == {center.one}
+    with pytest.raises(ValueError):
+        center.controller.service.copy(first[0], 'quote')
+    center.controller.navigate(1)
+    third = center.controller.rows
+    assert len(third) == 1 and center.view.navigation == (True, False)
+    def identity(hit):
+        return hit.workspace, hit.result.title, hit.result.page, hit.result.quote
+    keys = [identity(hit) for hit in (*first, *second, *third)]
+    assert len(keys) == len(set(keys)) == 7
+    jobs = len(center.frame.jobs)
+    center.controller.navigate(1)
+    assert len(center.frame.jobs) == jobs and center.controller.rows == third
+    center.controller.navigate(-1)
+    assert [identity(hit) for hit in center.controller.rows] == [identity(hit) for hit in second]
+    assert 'Page 2.' in center.view.messages[-1]
+    assert 'fresh results' in center.view.messages[-1]
+    assert center.frame.active == (center.one, center.local_topic)
+    assert center.app._selections == host_selections
+
+
+def test_changing_query_or_filters_clears_paging_and_cannot_repeat_previous_query(center):
+    for number in range(3):
+        center.app.add_text(center.one, f'Additional {number}', 'Paging railway source.')
+    center.controller.search(SearchOptions((center.one,), 'paging', mode='advanced', limit_per_library=1))
+    assert center.view.navigation == (False, True)
+    jobs = len(center.frame.jobs)
+    center.view.query = 'replacement'
+    center.controller.options_changed()
+    assert center.view.navigation == (False, False) and center.controller.options is None
+    center.controller.navigate(1)
+    assert len(center.frame.jobs) == jobs and center.controller.rows == ()
+
+
+def test_ranked_and_phrase_modes_do_not_expose_unstable_result_paging(center):
+    for mode in ('phrase', 'word', 'thematic'):
+        center.controller.search(SearchOptions((center.one,), 'railway', mode=mode, limit_per_library=1))
+        assert center.controller.rows and center.view.navigation == (False, False)
+        jobs = len(center.frame.jobs)
+        center.controller.navigate(1)
+        assert len(center.frame.jobs) == jobs
+
+
+def test_cancelled_result_page_preserves_last_completed_source_handles(center):
+    for number in range(3):
+        center.app.add_text(center.one, f'Additional {number}', 'Paging railway source.')
+    center.controller.search(SearchOptions((center.one,), 'paging', mode='advanced', limit_per_library=1))
+    assert center.view.navigation == (False, True)
+    previous = center.controller.rows
+    options = center.controller.options
+    center.frame.deferred = True
+    center.controller.navigate(1)
+    assert center.view.navigation == (False, False) and center.controller.rows is previous
+    center.controller.cancel()
+    center.frame.finish()
+    assert center.controller.rows is previous and center.controller.options is options
+    assert center.view.navigation == (False, True) and center.view.verified
+    assert center.controller.service.copy(previous[0], 'quote') == previous[0].result.quote
+    assert 'Previous results remain available' in center.view.messages[-1]
+
+
+@pytest.mark.parametrize('mode', ('phrase', 'word', 'terms', 'advanced', 'thematic', 'semantic'))
+def test_every_mode_exposes_fresh_previous_and_next_source_pages(center, mode):
+    for number in range(3):
+        center.app.add_text(center.one, f'Continuation {number}',
+            f'Continued railway source {number}.')
+    center.controller.search(SearchOptions((center.one,), 'continued', mode=mode, limit_per_library=1))
+    first = center.controller.rows[0]
+    assert center.view.navigation == (False, True)
+    center.controller.navigate(1)
+    second = center.controller.rows[0]
+    assert first.result.edition_id != second.result.edition_id
+    assert center.view.navigation == (True, True)
+    center.controller.navigate(-1)
+    assert center.controller.rows[0].result.edition_id == first.result.edition_id
+    assert 'Rankings apply within the displayed source windows' in center.view.messages[-1]
+
+
+def test_search_center_visits_more_than_twenty_explicitly_selected_libraries(center):
+    selected = tuple(center.app.create_workspace(f'Large selection {number}') for number in range(23))
+    for workspace in selected:
+        center.app.add_text(workspace, 'Selected', 'Selectiontoken original.')
+    center.controller.search(SearchOptions(selected, 'Selectiontoken', limit_per_library=1))
+    assert len(center.controller.rows) == 20 and center.view.navigation == (False, True)
+    center.controller.navigate(1)
+    assert len(center.controller.rows) == 3 and center.view.navigation == (True, False)
+    assert {row.workspace for row in center.controller.rows} == set(selected[20:])
+    assert 'Libraries 21–23 of 23' in center.view.messages[-1]
+
+
+def test_changed_catalog_next_page_keeps_previous_page_and_explains_restart(center):
+    for number in range(3):
+        center.app.add_text(center.one, f'Scope {number}', f'Continuationtoken source {number}.')
+    center.controller.search(SearchOptions((center.one,), 'Continuationtoken', limit_per_library=1))
+    previous = center.controller.rows
+    center.app.add_text(center.one, 'New source after search', 'Continuationtoken changed scope.')
+    center.controller.navigate(1)
+    assert center.controller.rows is previous
+    assert 'catalog changed' in center.view.messages[-1]
+    assert 'Previous results remain available' in center.view.messages[-1]
 
 
 def test_copy_context_and_save_route_to_result_library_without_touching_notebook(center):

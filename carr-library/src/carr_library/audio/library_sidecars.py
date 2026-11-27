@@ -367,6 +367,14 @@ def snapshot(db, root, stage, *, include_generated=False, max_bytes=MAX_BYTES, c
         _current, after = _capture(db, root, projects, include_generated, max_bytes, cancelled)
         if _projects(root) != projects or after != before:
             raise RestoreError('managed audio projects changed during backup')
+        # Metadata cannot prove unchanged content on every filesystem. Re-read
+        # each source against its copied digest before accepting the snapshot.
+        for entry in result:
+            name = entry['filename']
+            _copy(paths[name], None, maximum=limit(name), cancelled=cancelled, expected=entry)
+        _current, after = _capture(db, root, projects, include_generated, max_bytes, cancelled)
+        if _projects(root) != projects or after != before:
+            raise RestoreError('managed audio projects changed during backup')
         managed.check_root()
         validate_tree(db, stage, result, include_generated=include_generated, cancelled=cancelled)
         return result

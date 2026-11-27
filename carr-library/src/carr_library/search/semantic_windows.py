@@ -63,7 +63,7 @@ def source_windows(tokenizer, raw, *, max_windows=MAX_WINDOWS, check=lambda: Non
 
 
 def search_windowed(workspace, passages, query, *, tokenizer=None,
-                    semantic_ranker=None, limit=20, timeout=5.0,
+                    semantic_ranker=None, limit=20, offset=0, timeout=5.0,
                     cancelled=lambda: False):
     """Rank source pages with complete lexical and bounded semantic evidence.
 
@@ -73,13 +73,14 @@ def search_windowed(workspace, passages, query, *, tokenizer=None,
     Window cuts never remove whole-page lexical matches. Semantic windows are
     deduplicated to their source pages before combining the two page rankings.
     """
-    from .thematic import Passage, _groups, search, search_hybrid, fuse_scoped_rankings
+    from .thematic import Passage, _groups, search, search_hybrid, fuse_scoped_rankings, _lexical_ranking
     if semantic_ranker is None:
-        return search_hybrid(workspace, passages, query, limit=limit,
+        return search_hybrid(workspace, passages, query, limit=limit, offset=offset,
                              timeout=timeout, cancelled=cancelled)
     if (tokenizer is None or not callable(semantic_ranker) or not callable(cancelled)
             or not isinstance(workspace, str) or not workspace
             or type(limit) is not int or not 1 <= limit <= 100
+            or type(offset) is not int or offset < 0
             or type(timeout) not in (int, float) or not 0 < timeout <= 60):
         raise ValueError('invalid semantic window scope or budget')
     deadline = monotonic() + timeout
@@ -151,8 +152,8 @@ def search_windowed(workspace, passages, query, *, tokenizer=None,
     check()
     # Lexical concepts can straddle a tokenizer cut. Rank the original source
     # spans, rather than changing the query's meaning to "inside one window".
-    lexical = search(workspace, refs, query, limit=100, timeout=remaining(),
-                     cancelled=stopped)
+    lexical = _lexical_ranking(workspace, refs, query, remaining=remaining,
+                               cancelled=stopped)
     parent_keys = [(p.workspace, p.edition_id, p.revision_id, p.passage_id) for p in refs]
     lexical_keys = [(workspace, hit['edition_id'], hit['revision_id'], hit['passage_id'])
                     for hit in lexical]
@@ -182,8 +183,10 @@ def search_windowed(workspace, passages, query, *, tokenizer=None,
     # Deduplication precedes the result limit, so a long page with many relevant
     # windows cannot consume all slots before a second page is considered.
     ranked = (fuse_scoped_rankings(workspace, parent_keys, lexical_keys, semantic_parents,
-                                   limit=limit, work_ids=dict(zip(parent_keys, (p.work_id for p in refs))))
-              if semantic else [(key, lexical_by_parent[key]['score']) for key in lexical_keys[:limit]])
+                                   limit=limit, offset=offset,
+                                   work_ids=dict(zip(parent_keys, (p.work_id for p in refs))))
+              if semantic else [(key, lexical_by_parent[key]['score'])
+                                for key in lexical_keys[offset:offset + limit]])
     result = []
     for parent, score in ranked:
         check()

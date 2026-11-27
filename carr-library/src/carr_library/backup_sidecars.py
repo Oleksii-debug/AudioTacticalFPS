@@ -21,7 +21,7 @@ from .reader.reading_state import MAX_BYTES as READING_BYTES, _decode
 MAX_FILES = 100_000
 MAX_BYTES = 512 * 1024 * 1024
 _SIMPLE = ('reading-state.json', 'keybindings.json', 'keyboard-shortcuts.json',
-           'evidence-drafts.json', 'ocr-language-presets.json', 'operation-progress.json')
+           'evidence-drafts.json', 'ocr-language-presets.json', 'operation-progress.json', 'playback-resume.json')
 _DIRECTORIES = ('narration-projects', 'reading-copies', 'state')
 _ID = r'[A-Za-z0-9_-]{1,80}'
 _STUDIO = re.compile(r'state/studio/projects/(' + _ID + r')/(?:project\.json|revisions/(\d{8})-([0-9a-f]{64})\.json)\Z')
@@ -71,6 +71,8 @@ def sidecar_limit(name):
         return _model('extract.ocr_languages').MAX_PRESET_BYTES
     if name == 'operation-progress.json':
         return _model('progress').MAX_BYTES
+    if name == 'playback-resume.json':
+        return _model('audio.playback_resume').MAX_BYTES
     if name.startswith('state/assistant/'):
         return _model('assistant.backup').limit(name)
     if name.startswith('audio-projects/'):
@@ -142,6 +144,20 @@ def validate_sidecar(db, name, raw):
             _model('extract.ocr_languages').validate_presets_bytes(raw)
         elif name == 'operation-progress.json':
             _model('progress').validate_preferences_bytes(raw)
+        elif name == 'playback-resume.json':
+            points = _model('audio.playback_resume').validate_bytes(raw)
+            validate_locations(db, [point.owner.source for point in points if point.owner.kind == 'source'])
+            for point in points:
+                owner = point.owner
+                if owner.kind == 'source':
+                    location = owner.source
+                    row = db.execute('SELECT raw FROM page WHERE revision=? AND digest=? AND '
+                        '((?=\'physical_page\' AND physical=?) OR '
+                        '(?=\'logical_segment\' AND physical IS NULL AND ordinal=?))',
+                        (location.revision, location.text_sha256, location.kind, location.index,
+                         location.kind, location.index)).fetchone()
+                    if row is None or owner.end > len(row[0]):
+                        raise ValueError('Playback range lies outside its exact saved source.')
         elif name.startswith('state/assistant/'):
             _model('assistant.backup').validate(name, raw)
         elif name.startswith('audio-projects/'):
@@ -383,8 +399,19 @@ def snapshot(db, root, stage, *, max_bytes=MAX_BYTES, include_generated=False, c
         entries.append(dict(filename=name, size_bytes=len(raw), sha256=sha256(raw).hexdigest()))
     if _capture(root, cancelled=cancelled) != before:
         raise RestoreError('application state changed during backup; pause its producer and retry')
+    # Equal-size writes can preserve the observed Windows timestamps. Compare
+    # copied content again before publishing, while retaining the original
+    # inventory/identity checks and the same bounded producer formats.
+    for entry in entries:
+        _check_cancelled(cancelled)
+        raw = read_regular(root / entry['filename'], sidecar_limit(entry['filename']))
+        if len(raw) != entry['size_bytes'] or sha256(raw).hexdigest() != entry['sha256']:
+            raise RestoreError('application state content changed during backup; pause its producer and retry')
+    if _capture(root, cancelled=cancelled) != before:
+        raise RestoreError('application state changed during backup; pause its producer and retry')
     entries.extend(_model('audio.library_sidecars').snapshot(db, root, stage,
         include_generated=include_generated, max_bytes=max_bytes - total, cancelled=cancelled))
+    _validate_playback_inventory(stage, entries)
     if len(entries) > MAX_FILES:
         raise RestoreError('combined sidecar inventory exceeds its file budget')
     _check_cancelled(cancelled)
@@ -436,7 +463,18 @@ def restore(db, source, stage, inventory, *, cancelled=lambda: False, copy_files
     if audio_entries:
         _model('audio.library_sidecars').restore(db, source, stage, audio_entries,
             include_generated=inventory.generated_audio_included, cancelled=cancelled, copy_files=copy_files)
+    _validate_playback_inventory(source, inventory.entries)
     _check_cancelled(cancelled)
+
+
+def _validate_playback_inventory(directory, entries):
+    names = {entry['filename'] for entry in entries}
+    if 'playback-resume.json' in names:
+        model = _model('audio.playback_resume')
+        try:
+            model.validate_inventory(read_regular(directory / 'playback-resume.json', model.MAX_BYTES), names)
+        except ValueError as exc:
+            raise RestoreError(str(exc)) from exc
 
 
 def publish(stage, destination, entries, *, sync_directory):

@@ -165,6 +165,54 @@ def test_completed_search_late_pause_yields_historical_report(host):
     assert historical.results[0]['results'][0]['verified'] is False
 
 
+@pytest.mark.parametrize('change', ['close', 'scope', 'library'])
+def test_running_search_cancel_is_paused_before_results_are_accepted(host, tmp_path, change):
+    frame, _, _, _ = host
+    original = frame.library
+    original.add_text(frame.active[0], 'Text', 'Exact railway quotation.')
+    actions = AssistantActions(frame)
+    actions.preview('Search "railway"', Scope(frame.active[0]))
+    entered, release = Event(), Event()
+    execute = actions.service._execute
+
+    def held(*args, **kwargs):
+        entered.set()
+        assert release.wait(5)
+        return execute(*args, **kwargs)
+
+    actions.service._execute = held
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        generation, future = actions.start(executor)
+        assert entered.wait(5)
+        if change == 'close':
+            actions.close()
+        elif change == 'scope':
+            frame.active = None
+        else:
+            frame.library = LibraryApp(tmp_path / 'replacement')
+        release.set()
+        report = future.result(timeout=5)
+    assert report.status == 'paused' and report.completed == 0
+    assert not report.results and not actions.finish(generation)
+    assert actions.service.get(report.id).status == 'paused'
+
+
+def test_search_timeout_without_cancellation_remains_visible_failure(host, monkeypatch):
+    frame, _, _, _ = host
+    actions = AssistantActions(frame)
+    actions.preview('Search "railway"', Scope(frame.active[0]))
+
+    def timed_out(*args, **kwargs):
+        raise TimeoutError('Controlled search deadline exceeded')
+
+    monkeypatch.setattr(actions.service._search, 'search', timed_out)
+    generation, operation = actions.prepare_run()
+    report = operation()
+    assert report.status == 'failed' and report.completed == 0
+    assert 'deadline exceeded' in report.message
+    assert not actions.cancel_event.is_set() and actions.finish(generation)
+
+
 def test_completion_from_destroyed_parent_is_not_deliverable(host):
     frame, _, _, _ = host
     actions = AssistantActions(frame)

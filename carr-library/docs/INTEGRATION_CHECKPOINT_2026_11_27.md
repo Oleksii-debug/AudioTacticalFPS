@@ -6,6 +6,66 @@ and its [finalization addendum](UNIVERSAL_SCOPE_V3_FINALIZATION.md).
 Keep the integration PR in draft until its exact-source gates and the outstanding
 product acceptance work are complete.
 
+## Latest composed checkpoint
+
+The latest observed public Windows source is
+`0cf4228dc7a35b17ed7eba3e55c9f6613905b3a2`.
+[Its integrated run](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45927121458)
+completed all **188 required source-suite paths**: **5,053 executed cases, zero
+failures or skips** within that step. Six earlier scoped checks in the same job
+are not added to that total. The separate native keyboard job passed.
+
+The integrated job then failed after 24 native assistant checks: closing an
+active search produced `failed` instead of `paused`. This was reproduced with
+the real local assistant and SQLite source. The correction maps the shared
+search `TimeoutError` to interruption only when the operation's cancellation
+callback is latched; a genuine search deadline remains failure. Four affected
+strict suites pass 73 cases. The native assertion remains unchanged and needs
+the next exact-source Windows run.
+
+The same public source passed the separate
+[audio](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45927121546),
+[bibliography](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45927121466)
+and [portable snapshot](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45927121650)
+workflows. These results do not certify subsequently composed changes.
+
+The current source additionally integrates:
+
+- Bounded catalog and selected-library search continuation, including catalogs
+  beyond 500 editions and scopes beyond 20 libraries, through the existing
+  search host. Cancelled or failed navigation preserves the last valid page;
+  completed navigation invalidates old source handles.
+- Durable import scan pages, with a real 5,001-file round trip through import,
+  search, backup and restore. Five component suites pass 119 cases. The
+  20,000-entry structural inventory cap still reports incomplete scopes.
+- Shared PCM playback, source read-aloud, seeking, pause/resume, loops, sleep,
+  playlists and typed resume state, using the existing audio and reading
+  projects. Native device availability and human listening are separate gates.
+- The canonical 135-language evidence matrix and actual installed-runtime
+  inventory; an inventory row is not language or acoustic qualification.
+- Reusable bounded document conversion and native shared commands. Converted
+  text is a derivative; it does not become verified quotation evidence.
+- A public neutral adapter for the supplied private transcription protocol,
+  with explicit input snapshots, reviewed manifests, cancellation, bounded
+  child execution and independently verified derivative receipts. Its
+  controlled-backend tests do not establish real ASR inference or model quality.
+- The canonical equivalent-path OCR correction and a content recheck before
+  publishing sidecar backups, including streamed managed audio. The latter
+  passes 79 composed cases and detects equal-size writes with coarse observed
+  timestamps. A first run hit shared temporary-disk exhaustion; it is not
+  counted as a passing run.
+
+The assembled Desktop/transcription/reader/import host passes 198 cases over
+five strict suites. These component and composition totals overlap; do not add
+them to the earlier Windows total. All new source/installed groups and native
+reader/conversion probes are required by the next integrated workflow.
+
+The user-visible title is Resonance; existing internal storage and launcher
+names remain compatible. Translation integration, transcription backup
+coverage, final wheel identity and final installed Windows acceptance are still
+being completed at this checkpoint. The historical sections below describe
+their named predecessor sources only.
+
 ## Published predecessor and observed failures
 
 The published predecessor is

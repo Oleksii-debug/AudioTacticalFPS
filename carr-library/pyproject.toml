@@ -91,6 +91,7 @@ packages = [
   "carr_library.search._vendor.rifflux",
   "carr_library.storage",
   "carr_library.sync",
+  "carr_library.transcription",
   "carr_library.ui",
   "carr_library.ui._vendor",
   "carr_library.ui._vendor.wx_grid",

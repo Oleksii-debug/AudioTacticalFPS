@@ -65,6 +65,32 @@ def test_v4_preserves_exact_historical_reader_state(reading, tmp_path):
     assert files(backup) == before
 
 
+def test_backup_rechecks_content_after_copy_when_timestamps_are_coarse(reading, tmp_path, monkeypatch):
+    app, *_ = reading
+    source = app.root / 'reading-state.json'
+    original = source.read_bytes()
+    replacement = original.replace(b'Anchor-A', b'Anchor-B')
+    assert replacement != original and len(replacement) == len(original)
+    real_identity, real_write = backup_sidecars._identity, backup_sidecars._write
+    # Preserve real file/inode/type/length checks, model a filesystem whose
+    # reported time fields cannot distinguish two writes in the same tick.
+    monkeypatch.setattr(backup_sidecars, '_identity', lambda info: (*real_identity(info)[:-2], 0, 0))
+
+    def change_after_copy(stage, name, raw):
+        real_write(stage, name, raw)
+        if name == 'reading-state.json':
+            stamp = source.stat()
+            source.write_bytes(replacement)
+            os.utime(source, ns=(stamp.st_atime_ns, stamp.st_mtime_ns))
+
+    monkeypatch.setattr(backup_sidecars, '_write', change_after_copy)
+    destination = tmp_path / 'rejected-stale-snapshot'
+    with pytest.raises(ValueError, match='content changed'):
+        create_backup(app, destination)
+    assert not destination.exists()
+    assert source.read_bytes() == replacement
+
+
 @pytest.mark.parametrize('shape', ['reading_state', 'sidecars'])
 def test_exact_v3_reader_shapes_restore_without_rewriting(reading, tmp_path, shape):
     app, workspace, page, bookmark = reading

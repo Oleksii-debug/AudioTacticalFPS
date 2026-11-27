@@ -70,7 +70,7 @@ def _quote(value):
     return '"' + value.replace('"', '""') + '"'
 
 
-def search(workspace, passages, query, limit=20, *, timeout=5.0, cancelled=lambda: False):
+def search(workspace, passages, query, limit=20, *, offset=0, timeout=5.0, cancelled=lambda: False):
     """Rank active, authorized source spans supplied by the caller.
 
     The caller must resolve active revisions and collection/topic memberships
@@ -81,7 +81,8 @@ def search(workspace, passages, query, limit=20, *, timeout=5.0, cancelled=lambd
     may exceed the deadline, but a stopped search never returns partial results.
     """
     if (not isinstance(workspace, str) or not workspace or type(limit) is not int
-            or not 1 <= limit <= 100 or type(timeout) not in (int, float)
+            or not 1 <= limit <= 100 or type(offset) is not int or offset < 0
+            or type(timeout) not in (int, float)
             or not 0 < timeout <= 60 or not callable(cancelled)):
         raise ValueError("explicit workspace and bounded search budget required")
     deadline = monotonic() + timeout
@@ -146,7 +147,7 @@ def search(workspace, passages, query, limit=20, *, timeout=5.0, cancelled=lambd
                 works.add(p.work_id)
                 hits.append((rowid, rank))
         result = []
-        for rowid, rank in (hits + deferred)[:limit]:
+        for rowid, rank in (hits + deferred)[offset:offset + limit]:
             check()
             p = refs[rowid-1]
             matched = tuple(v for g in groups for v in g if db.execute(
@@ -169,7 +170,7 @@ def search(workspace, passages, query, limit=20, *, timeout=5.0, cancelled=lambd
         db.close()
 
 
-def search_active(db, workspace, edition_to_work, query, *, limit=20,
+def search_active(db, workspace, edition_to_work, query, *, limit=20, offset=0,
                   timeout=5.0, cancelled=lambda: False):
     """Candidate handoff for the PR21 active_page view and PR23 locator V2.
 
@@ -183,6 +184,7 @@ def search_active(db, workspace, edition_to_work, query, *, limit=20,
             not isinstance(edition_to_work, dict) or len(edition_to_work) > 500 or
             any(not isinstance(v, str) or not v for pair in edition_to_work.items() for v in pair) or
             type(limit) is not int or not 1 <= limit <= 100 or
+            type(offset) is not int or offset < 0 or
             type(timeout) not in (int, float) or not 0 < timeout <= 60 or
             not callable(cancelled)):
         raise ValueError('invalid active thematic scope or budget')
@@ -235,7 +237,8 @@ def search_active(db, workspace, edition_to_work, query, *, limit=20,
 
     source = passages()
     try:
-        hits = search(workspace, source, query, limit=limit, timeout=timeout, cancelled=stopped)
+        hits = search(workspace, source, query, limit=limit, offset=offset,
+                      timeout=timeout, cancelled=stopped)
     except sqlite3.OperationalError as exc:
         if stopped():
             raise TimeoutError('active thematic search cancelled or timed out') from exc
@@ -374,7 +377,7 @@ def extract_query_terms(query: str) -> list[str]:
 # SOFTWARE.
 
 
-def fuse_scoped_rankings(workspace, authorized, lexical, semantic, *, limit=20, work_ids=None):
+def fuse_scoped_rankings(workspace, authorized, lexical, semantic, *, limit=20, offset=0, work_ids=None):
     """Fuse already-authorized locator keys; never construct or resolve quotes.
 
     Each key is (workspace, edition, revision, passage). The trusted caller
@@ -387,7 +390,8 @@ def fuse_scoped_rankings(workspace, authorized, lexical, semantic, *, limit=20, 
     from ._vendor.rifflux.rrf import rrf_fuse
 
     if (not isinstance(workspace, str) or not workspace or len(workspace) > 256
-            or '\x00' in workspace or type(limit) is not int or not 1 <= limit <= 100):
+            or '\x00' in workspace or type(limit) is not int or not 1 <= limit <= 100
+            or type(offset) is not int or offset < 0):
         raise ValueError('explicit workspace and bounded fusion limit required')
 
     def validated(keys):
@@ -416,7 +420,7 @@ def fuse_scoped_rankings(workspace, authorized, lexical, semantic, *, limit=20, 
     ranked = [(keys[int(token)], score) for token, score in scores.items()]
     ranked.sort(key=lambda pair: (-pair[1], pair[0]))
     if work_ids is None:
-        return ranked[:limit]
+        return ranked[offset:offset + limit]
     if (not isinstance(work_ids, dict) or set(work_ids) != allowed
             or any(not isinstance(work, str) or not work or len(work) > 256
                    or '\x00' in work for work in work_ids.values())):
@@ -439,10 +443,24 @@ def fuse_scoped_rankings(workspace, authorized, lexical, semantic, *, limit=20, 
         else:
             editions.add(edition)
             second.append(pair)
-    return (first + second + rest)[:limit]
+    return (first + second + rest)[offset:offset + limit]
 
 
-def search_hybrid(workspace, passages, query, *, semantic_ranker=None, limit=20,
+def _lexical_ranking(workspace, refs, query, *, remaining, cancelled):
+    """Read the complete bounded semantic candidate ranking in small pages."""
+    if len(refs) > 500:
+        raise ValueError('scope exceeds semantic candidate budget')
+    result = []
+    while len(result) < len(refs):
+        page = search(workspace, refs, query, limit=100, offset=len(result),
+                      timeout=remaining(), cancelled=cancelled)
+        result.extend(page)
+        if len(page) < 100:
+            break
+    return result
+
+
+def search_hybrid(workspace, passages, query, *, semantic_ranker=None, limit=20, offset=0,
                   timeout=5.0, cancelled=lambda: False):
     """Candidate hybrid handoff over one caller-authorized active snapshot.
 
@@ -454,10 +472,11 @@ def search_hybrid(workspace, passages, query, *, semantic_ranker=None, limit=20,
     synchronous ranker must cooperate with the caller's runtime budget.
     """
     if semantic_ranker is None:
-        return search(workspace, passages, query, limit=limit, timeout=timeout,
+        return search(workspace, passages, query, limit=limit, offset=offset, timeout=timeout,
                       cancelled=cancelled)
     if (not callable(semantic_ranker) or not isinstance(workspace, str)
             or not workspace or type(limit) is not int or not 1 <= limit <= 100
+            or type(offset) is not int or offset < 0
             or type(timeout) not in (int, float) or not 0 < timeout <= 60
             or not callable(cancelled)):
         raise ValueError('invalid hybrid search scope or budget')
@@ -493,8 +512,12 @@ def search_hybrid(workspace, passages, query, *, semantic_ranker=None, limit=20,
     if remaining <= 0:
         raise TimeoutError('hybrid search cancelled or timed out')
     # Native BM25 also verifies every source anchor before the model sees text.
-    lexical = search(workspace, refs, query, limit=100, timeout=remaining,
-                     cancelled=stopped)
+    def remaining_time():
+        check()
+        return min(timeout, deadline - monotonic())
+
+    lexical = _lexical_ranking(workspace, refs, query, remaining=remaining_time,
+                               cancelled=stopped)
     check()
     by_key = {(p.workspace, p.edition_id, p.revision_id, p.passage_id): p for p in refs}
     keys = list(by_key)
@@ -505,10 +528,10 @@ def search_hybrid(workspace, passages, query, *, semantic_ranker=None, limit=20,
     semantic = semantic_ranker(query, tuple((key, p.raw_page[p.start:p.end])
                                             for key, p in by_key.items()))
     check()
-    fused = fuse_scoped_rankings(workspace, keys, lex_keys, semantic, limit=limit,
+    fused = fuse_scoped_rankings(workspace, keys, lex_keys, semantic, limit=limit, offset=offset,
                                   work_ids={key: p.work_id for key, p in by_key.items()})
     if not semantic:
-        return lexical[:limit]
+        return lexical[offset:offset + limit]
     by_hit = dict(zip(lex_keys, lexical))
     results = []
     for key, score in fused:

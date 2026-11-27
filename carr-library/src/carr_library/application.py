@@ -592,6 +592,11 @@ class LibraryApp:
         from .ingest.batches import ImportBatchStore
         return ImportBatchStore(self).get(workspace, batch_id)
 
+    def next_import_scan_page(self, workspace, batch_id, *, cancelled=lambda: False):
+        """Persist the next bounded source page with the saved scope and choices."""
+        from .ingest.batches import ImportBatchStore
+        return ImportBatchStore(self).next_scan_page(workspace, batch_id, cancelled=cancelled)
+
     def run_import_batch(self, workspace, batch_id, *, cancelled=lambda: False,
                          timeout=120.0, retry_failed=False, progress=None):
         from .ingest.batches import ImportBatchStore
@@ -888,46 +893,71 @@ class LibraryApp:
             raise ValueError('Historical source metadata is missing.')
         return selected, identity, locator, row['raw'], Metadata(*meta)
 
+    def search_page(self, workspace, query, *, cursor=None, edition_limit=500, **options):
+        """Search the next bounded source/result page with fresh authorization."""
+        from .search.catalog_pages import PageRequest
+        if 'offset' in options or '_page_request' in options:
+            raise ValueError('Continue using the returned search cursor.')
+        return self.search(workspace, query, _page_request=PageRequest(cursor, edition_limit), **options)
+
     def search(self, workspace, query, *, mode='phrase', collection=None, title=None,
                author=None, language=None, edition=None, limit=100, timeout=60.0,
                cancelled=lambda: False, authorized_topic=None, on_status=None,
-               result_mode=None):
+               result_mode=None, offset=0, _page_request=None):
         if mode not in ('word', 'phrase', 'terms', 'thematic', 'semantic', 'advanced'):
             raise ValueError('Unknown search mode.')
         if result_mode not in (None, 'short', 'thematic'):
             raise ValueError('Choose Short quotations or Thematic excerpts.')
         if type(limit) is not int or not 1 <= limit <= 100:
             raise ValueError('Invalid search operation budget.')
+        if type(offset) is not int or offset < 0:
+            raise ValueError('Invalid search page offset.')
+        if offset and _page_request is None and mode not in ('terms', 'advanced'):
+            raise ValueError('Result pages are available for All words and Advanced searches.')
         if on_status is not None and not callable(on_status):
             raise ValueError('Search status callback must be callable.')
         with self._search_read(workspace, timeout, cancelled) as (db, budget):
             if authorized_topic is not None:
                 TopicTree(db, workspace)._visible(authorized_topic)
             catalog = Catalog(db, workspace)
-            views = browse_editions(catalog, collection=collection, title=title, author=author,
-                                    language=language, edition=edition, limit=500)
+            window = None
+            if _page_request is not None:
+                from .search.catalog_pages import begin_page
+                window = begin_page(self, db, workspace, query, _page_request,
+                    dict(mode=mode, collection=collection, title=title, author=author,
+                         language=language, edition=edition, limit=limit,
+                         result_mode=result_mode, authorized_topic=authorized_topic), budget.check)
+                views, offset = window.views, window.offset
+            else:
+                views = browse_editions(catalog, collection=collection, title=title, author=author,
+                                        language=language, edition=edition, limit=500)
             budget.check()
-            if len(views) == 500:
+            if window is None and len(views) == 500:
                 more = browse_editions(catalog, collection=collection, title=title, author=author,
                     language=language, edition=edition, after=views[-1].edition_id, limit=1)
                 budget.check()
                 if more:
-                    raise ValueError('Narrow the search to at most 500 editions using filters.')
+                    raise ValueError('Use paged Search Center or narrow the search to at most 500 editions using filters.')
             allowed = {v.edition_id: v.work_id for v in views}
-            if mode in ('thematic', 'semantic'):
-                if mode == 'semantic' and self.semantic_ranker is not None:
-                    from .semantic import search_snapshot
-                    hits = search_snapshot(db, workspace, allowed, query, self.semantic_ranker,
-                                           limit=limit, timeout=budget.remaining(), cancelled=budget.stopped,
-                                           on_status=on_status, cache=self.semantic_cache)
-                else:
+            def retrieve(result_limit, result_offset):
+                page_options = {'offset': result_offset} if result_offset else {}
+                if mode in ('thematic', 'semantic'):
+                    if mode == 'semantic' and self.semantic_ranker is not None:
+                        from .semantic import search_snapshot
+                        return search_snapshot(db, workspace, allowed, query, self.semantic_ranker,
+                            limit=result_limit, timeout=budget.remaining(), cancelled=budget.stopped,
+                            on_status=on_status, cache=self.semantic_cache, **page_options)
                     if mode == 'semantic' and on_status is not None:
                         on_status('Local model unavailable; keyword search used.')
-                    hits = thematic.search_active(db, workspace, allowed, query, limit=limit,
-                                                  timeout=budget.remaining(), cancelled=budget.stopped)
-            else:
-                hits = literal.search(db, workspace, query, edition_ids=tuple(allowed),
-                                      mode=mode, limit=limit, timeout=budget.remaining(), cancelled=budget.stopped)
+                    return thematic.search_active(db, workspace, allowed, query, limit=result_limit,
+                        timeout=budget.remaining(), cancelled=budget.stopped, **page_options)
+                else:
+                    return literal.search(db, workspace, query, edition_ids=tuple(allowed),
+                        mode=mode, limit=result_limit, offset=result_offset,
+                        timeout=budget.remaining(), cancelled=budget.stopped)
+            hits = retrieve(limit, offset)
+            more_results = bool(window is not None and len(hits) == limit
+                                and retrieve(1, offset + len(hits)))
             # Catalog selection, active source selection, and metadata materialization
             # all share this read transaction. No cached edition filters cross snapshots.
             loader, metadata, attestor = self._loaders(db, workspace, cancelled=budget.stopped)
@@ -979,7 +1009,7 @@ class LibraryApp:
         self._selections.update(selections)
         while len(self._selections) > 2000:
             del self._selections[next(iter(self._selections))]
-        return tuple(results)
+        return window.finish(results, len(hits), more_results) if window is not None else tuple(results)
 
     def _anchor(self, db, workspace, ref, revision, *, cancelled=lambda: False):
         selected, identity, locator, raw, metadata = self._selected(

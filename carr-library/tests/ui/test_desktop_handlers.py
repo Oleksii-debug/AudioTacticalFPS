@@ -129,7 +129,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
         'install_federated_search_actions', 'install_query_manager_actions',
         'install_academic_comparison_actions', 'install_portable_sync_actions',
         'install_audio_studio_actions', 'install_api_connection_actions', 'install_assistant_actions',
-        'install_language_actions')}
+        'install_language_actions', 'install_conversion_actions', 'install_transcription_actions')}
     env.update(installers)
     ebook = Mock()
     monkeypatch.setitem(sys.modules, 'carr_library.ui.ebook_reader',
@@ -263,6 +263,8 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
                 ('api_connections', 'install_api_connection_actions'),
                 ('assistant_dialog', 'install_assistant_actions'),
                 ('language_matrix', 'install_language_actions'),
+                ('document_conversion', 'install_conversion_actions'),
+                ('transcription', 'install_transcription_actions'),
                 ('portable_sync', 'install_portable_sync_actions')):
             if action_name in menu_globals:
                 module = importlib.import_module('carr_library.ui.' + module_name)
@@ -293,6 +295,9 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
         assert 'file.open_reading_copy' in bindings
         assert 'options.keyboard' in bindings
         assert 'language.capabilities' in bindings
+        assert 'conversion.documents' in bindings
+        assert 'conversion.formats' in bindings
+        assert 'transcription.open' in bindings
         assert value.menu_bar.GetMenuLabel(0) == '&File'
         assert not hasattr(value, 'keyboard_actions')
         assert sum(value.menu_bar.GetMenuLabel(index).replace('&', '') == 'Options'
