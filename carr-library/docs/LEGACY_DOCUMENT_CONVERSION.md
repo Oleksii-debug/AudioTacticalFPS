@@ -27,7 +27,7 @@ installed module origins. The fixed wrapper still requires an explicitly
 selected installation and rejects every calibre version except 9.19.0.
 This evidence applies to those six tested unprotected format/container
 combinations; it does not qualify every book or Palm subtype. Later CHM recovery
-changes require their own current 221-case portable gate. CHM remains
+changes require their own current 235-case portable gate. CHM remains
 unqualified while that separate gate is pending.
 
 Selection never follows PATH or enables a runtime silently. Missing DjVu text
@@ -107,10 +107,10 @@ https://djvu.sourceforge.net/doc/man/djvutxt.html
 
 .github/workflows/carr-legacy-converters.yml has independent Windows jobs for
 calibre, DjVuLibre and CHM. Each builds an exact source-bound wheel, verifies all
-installed Python bytes and runs under -I. The current oracle requires 221
+installed Python bytes and runs under -I. The current oracle requires 235
 portable boundary cases from both source and installed wheel: all 179 exercised
 by the recorded calibre run, six explicit-selection regressions, two
-strict-version rejection cases and 34 bounded CHM recovery cases. Both DjVu and calibre native fixtures use the
+strict-version rejection cases and 48 bounded CHM recovery cases. Both DjVu and calibre native fixtures use the
 ordinary service admission path with legacy_preview=False. CHM fixtures retain
 explicit preview admission until their separate qualification succeeds.
 
@@ -226,14 +226,26 @@ cannot silently discard, reorder, add or expose visible content. Whitespace
 and layout remain unverified. Both original member SHA256 and parsed-member
 SHA256 remain in the existing source locator.
 
-The additional34 cases cover every observed malformed shape, declared legacy
-charsets and numeric Unicode, active/hidden suppression, pre-recovery refusal
-and budgets, serialized expansion, post-recovery text loss/reordering/exposure
-and complete worker provenance. The focused Linux source-only lane requires
-these34 plus all100 existing legacy adapter cases; it does not qualify a native
-Windows converter. The authoritative Windows lane still requires all221
-portable cases per mode and all four actual CHM native cases per mode. CHM
-remains unqualified until that frozen candidate succeeds.
+The 48 recovery cases cover the original 34 malformed-shape, charset,
+suppression, budget, text-loss and worker-provenance cases plus 14 exact
+named-reference and repeated-description cases. A named reference is decoded
+from its actual source lexeme, including its real semicolon. If normalization
+is already needed, numeric references preserve that decoded value before
+libxml can reinterpret it. A terminated named reference alone does not start
+native recovery. Direct repeated DD starts materialize only the implicit
+same-tag closure already supported by the existing strict reader; orphan DD
+ends remain refused.
+
+The focused Linux source-only lane requires all 48 recovery cases plus all 100
+legacy adapter cases. At `65ae1e9` it passed all 148; the separate exact
+two-member public-file diagnostic also returned both members successfully.
+The same candidate's Windows gate refused one terminated-reference case after
+234 passes, before installed/native work. The narrow successor preserves all
+235 portable cases per mode and all four actual CHM native cases per mode.
+These earlier Linux results do not qualify a Windows converter. CHM remains
+unqualified until its exact fresh candidate succeeds, including the complete
+publisher fixture. [The observed failure and correction](evidence/chm-terminated-reference-windows-repair-20261127.json)
+retain the separate source, job and artifact identities.
 
 Primary parser API and its explicit recovery/data-loss caveat:
 https://lxml.de/parsing.html

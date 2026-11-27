@@ -4,8 +4,17 @@ This standalone gate prepares explicit test tools and runs synthetic local files
 It does not install, discover or download converters from the application, and it
 does not grant a format a successful qualification before the gate actually runs.
 
-Status when authored: **NOT_RUN**. The authoring executor was unavailable.
-GitData readback and source review are not runtime evidence.
+At initial authoring, execution was **NOT_RUN** because the local executor was
+unavailable. Actual frozen candidate `955165132fd530d6c3deb0e5b4b48f66dde77963`
+subsequently passed all six selected-tool cases from source and all six from
+the isolated installed wheel in run `45992503530`, job `140483608266`.
+[The recorded evidence](evidence/optional-converter-observed-results-20261127.json)
+retains that successful lane and the separate failed Office lane.
+
+Later Office corrections remain subject to the complete seven-case source and
+installed selection, including XLS. A source review, successful provisioning,
+partial six-case run or a diagnostic census does not qualify all five Office
+formats. No historical result is transferred to a changed source tree.
 
 ## Exact required populations
 
@@ -23,7 +32,7 @@ function's expected multiplicity, zero failure/error/skip, and rejects XFAIL/XPA
 through the existing ci_check child runner. An interrupted, missing or partial
 report never becomes PASS. The XLS case remains required.
 
-Both jobs build the candidate wheel, install the exact existing 17-pin Windows
+Both jobs build the candidate wheel, install the exact existing 18-pin Windows
 runtime, and verify every installed carr_library/bootstrap Python file against
 that source-bound wheel. Installed cases run under -I with pytest pythonpath
 disabled. The evidence binds the exact Git commit/tree, helper/test hashes,
@@ -45,12 +54,13 @@ packaging/conversion-runtimes.json is the fixed input lock for the gate.
   is downloaded; extraction rejects unsafe paths and bounds entries and bytes.
 * LibreOffice 26.2.7 Windows x64 MSI: fixed official release URL and candidate
   SHA256 480fecf759fc6393bd614fbf43753eb95a8198fc1a065d41b727e3b664cd1e59.
-  The authoring tool could read the official release index but could not reach
-  its deep MirrorBrain metadata. Therefore the lock does NOT claim publisher
-  verification. The helper requires the publisher's exact HTTPS Metalink to
+  The initial authoring tool could not reach the deep MirrorBrain metadata.
+  The actual gate therefore requires the publisher's exact HTTPS Metalink to
   independently match this digest and supply an exact size no larger than
-  512 MiB before download or MSI administrative extraction. An unavailable or
-  differing publisher response fails the Office job. There is no fallback
+  512 MiB before download or MSI administrative extraction. The recorded
+  Windows Office runs passed this provisioning boundary; their later
+  conversion failures remain failures. An unavailable or differing publisher
+  response still fails the Office job. There is no fallback
   to a moving latest build, an unverified installer or a dropped XLS case.
 * Tesseract 5.5.4: reuse the project's complete reviewed
   packaging/windows-ocr.lock.json and prepare_windows_ocr.py. This is an MSYS2
