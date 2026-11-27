@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   book-contracts-windows:
-    name: Book 98 source, 98 installed and actual native Windows controls
+    name: Book 106 source, 106 installed and actual native Windows controls
     runs-on: windows-2022
     timeout-minutes: 145
     concurrency:
@@ -51,7 +51,7 @@ jobs:
           $verify = @'
           from hashlib import sha1
           import importlib.util, pathlib, sys
-          pins = {"scripts/ci_book_measured_contracts.py":"21a905ce7877c947a016cbc71dd154d5bc418ffe","packaging/prepare_windows_audio.py":"65b172ac432f28e865200aed2f8e610dda1ac7cf","packaging/windows-audio.lock.json":"2bc706ffc6208f5596a10abee61d3da33f20e6c6","packaging/windows-cp311.lock":"8dad99c0ea80470b7253873aee78e08857affec6","packaging/windows-sync-cp311.lock":"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3","packaging/trusted-client.lock":"6c4b48ac09572dc259d62d0d801057ab47c04583","packaging/windows-sync-test-cp311.lock":"e3f6eda5976e867abe7267c04e0b867b1fd16f7a"}
+          pins = {"scripts/ci_book_measured_contracts.py":"ca2a659632d93d913d2fe8b5fc6113af98ffa63e","packaging/prepare_windows_audio.py":"65b172ac432f28e865200aed2f8e610dda1ac7cf","packaging/windows-audio.lock.json":"2bc706ffc6208f5596a10abee61d3da33f20e6c6","packaging/windows-cp311.lock":"8dad99c0ea80470b7253873aee78e08857affec6","packaging/windows-sync-cp311.lock":"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3","packaging/trusted-client.lock":"6c4b48ac09572dc259d62d0d801057ab47c04583","packaging/windows-sync-test-cp311.lock":"e3f6eda5976e867abe7267c04e0b867b1fd16f7a"}
           for name, expected in pins.items():
               path = pathlib.Path(name)
               assert path.is_file() and not path.is_symlink()
@@ -67,7 +67,7 @@ jobs:
           module.sources()
           for name in ('INSTALLED_CHILD', 'ORIGIN_CHILD', 'NATIVE_VERIFY'):
               compile(getattr(module, name), '<book-'+name+'>', 'exec')
-          assert len(module.SUITES) == 6 and sum(module.SUITES.values()) == 98
+          assert len(module.SUITES) == 7 and sum(module.SUITES.values()) == 106
           print('Exact Book source and embedded Python compile checks passed.')
           '@
           $verify | & python -I -B -X utf8 -
@@ -84,7 +84,7 @@ jobs:
           Copy-Item -LiteralPath (Join-Path $audio 'runtime-manifest.json') -Destination 'ci-book-acceptance/audio-manifest.json' -ErrorAction Stop
           "CARR_BOOK_AUDIO_DIR=$audio" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-      - name: Require all 98 source, 98 isolated installed and native 77 checks
+      - name: Require all 106 source, 106 isolated installed and native 77 checks
         timeout-minutes: 115
         run: |
           $ErrorActionPreference = 'Stop'
@@ -147,7 +147,7 @@ jobs:
               'native-origins-before.json','native-origins-before.txt',
               'native-origins-after.json','native-origins-after.txt',
               'native-book-audio.txt','native-book-audio.json','native-report-validation.txt','contracts-summary.json'}
-          contract.update(f'installed-{number}{suffix}' for number in range(1,7)
+          contract.update(f'installed-{number}{suffix}' for number in range(1,8)
                           for suffix in ('.xml','-origins.json','.txt'))
           allowed.update('contracts/'+name for name in contract)
           files = list(root.rglob('*'))

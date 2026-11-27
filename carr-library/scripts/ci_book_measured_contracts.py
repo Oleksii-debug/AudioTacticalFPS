@@ -25,6 +25,7 @@ SUITES = {
     "tests/studio/test_book_measured_cli.py": 9,
     "tests/ui/test_book_effects.py": 5,
     "tests/ui/test_book_duration_dialog.py": 17,
+    "tests/ui/test_native_book_publication_driver.py": 8,
 }
 PINS = {
     "src/carr_library/studio/book_audio.py": "d1e54a397ea5ad22737f34aa1c7160e56759f2bb",
@@ -39,8 +40,9 @@ PINS = {
     "tests/studio/test_book_measured_cli.py": "07d107d1c10eb341f43cfcd8a0823ba1f93554cb",
     "tests/ui/test_book_effects.py": "12a47c7a05879eeaeab7047dd7eddac17dbf9cdb",
     "tests/ui/test_book_duration_dialog.py": "d9516c2bf87ea38c34149d87185cb201ba3a34f5",
-    "scripts/windows_book_audio_smoke.py": "fe9bf5de5be698116107f89fd2ea1c872853bcb3",
-    "scripts/ci_check.py": "8a23ef36c2df93928b0aff3edd8b59a53c54684c",
+    "scripts/windows_book_audio_smoke.py": "fe4d7f64686da37557e3913805f8d27a4a130724",
+    "tests/ui/test_native_book_publication_driver.py": "f9b2475291eae1724fef366ba59ab86e83a02792",
+    "scripts/ci_check.py": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473",
     "packaging/source_wheel.py": "478de248451d59a44b35784eb808fb2974f0af67",
     "packaging/prepare_windows_audio.py": "65b172ac432f28e865200aed2f8e610dda1ac7cf",
     "packaging/windows-audio.lock.json": "2bc706ffc6208f5596a10abee61d3da33f20e6c6",
@@ -71,7 +73,7 @@ PINS = {
     "tests/ui/test_book_audio_dialog.py": "180dda968201569a11711f44e406b82443c9945c",
     "tests/reader/test_ebook_reader.py": "39f3837d66bac1dc69ab9b2b05f9e31e6e1be849",
 }
-COMPANIONS = ["tests/studio/test_book_audio.py","tests/ui/test_book_audio_dialog.py","tests/reader/test_ebook_reader.py"]
+COMPANIONS = ["tests/studio/test_book_audio.py","tests/ui/test_book_audio_dialog.py","tests/reader/test_ebook_reader.py","scripts/windows_book_audio_smoke.py"]
 MODULES = ["carr_library.studio.book_audio","carr_library.ui.book_audio_dialog","carr_library.ui.worker_lifetime","carr_library.studio.render","carr_library.studio.project","carr_library.reader.reading_desk","carr_library.speech.source","carr_library.runtime_settings","carr_library.operations.broker","carr_library.audio.dsp","carr_library.audio.process","carr_library.ui.desktop_app","carr_library.studio.measured_audio","carr_library.studio.publishing","carr_library.ui.book_duration_dialog","carr_library.ui.effects_dialog","carr_library.audio.effect_presets","carr_library.audio.envelopes","carr_library.studio.book_cli","bootstrap"]
 
 
@@ -349,8 +351,8 @@ def main():
     ci = load('book_existing_ci_check', ROOT / 'scripts/ci_check.py')
     proof_module = load('book_existing_source_wheel', ROOT / 'packaging/source_wheel.py')
     source_log = evidence / 'source-contracts.txt'
-    # Three two-suite waves retain each 600 s strict child and the existing
-    # 30 s tree cleanup/report retries. 2000 s includes aggregate reporting.
+    # The six product suites retain their strict 600 s child limits. The
+    # portable probe driver is additional; aggregate/reporting stays bounded.
     code = child([sys.executable, '-B', str(ROOT / 'scripts/ci_check.py'),
                   '--jobs', '2', *SUITES], source_log, cwd=ROOT, ci=ci, timeout=2000)
     lines = source_log.read_text(encoding='utf-8').splitlines()

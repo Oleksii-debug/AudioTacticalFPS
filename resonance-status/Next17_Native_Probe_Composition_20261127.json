@@ -1,0 +1,99 @@
+{
+  "schema": "resonance-focused-native-composition/1",
+  "base": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3",
+  "status": "STATIC_REVIEWED_NOT_RUN",
+  "files": [
+    {
+      "path": "carr-library/scripts/ci_check.py",
+      "preimage": "8a23ef36c2df93928b0aff3edd8b59a53c54684c",
+      "sha": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_ci_check.py",
+      "preimage": "33d9b62c6aabeea518751aaef3cafb865ab7f919",
+      "sha": "78a59aae58e455c5b2c1d3e369859bd7a32d8c73"
+    },
+    {
+      "path": "carr-library/scripts/windows_backup_capacity_smoke.py",
+      "preimage": "ac651695779424fcba69696ce05c2d84c807899e",
+      "sha": "3f633a875f8232d4c0cce5cdf40e47d9064f9987"
+    },
+    {
+      "path": "carr-library/tests/ui/test_native_backup_capacity_driver.py",
+      "preimage": null,
+      "sha": "a1f05ecf49e2eba8d8d2ba3a980221d0e44cd32c"
+    },
+    {
+      "path": "carr-library/scripts/ci_capacity_contracts.py",
+      "preimage": "671bfd9a3adccdb7f3bcdf13a59e30c9e9b4d1f1",
+      "sha": "ecf829419c172d681e2bb00e57fe67674282e0f7"
+    },
+    {
+      "path": ".github/workflows/carr-next9-capacity.yml",
+      "preimage": "8164d479c14eb109a76aba3d779284917e651676",
+      "sha": "1facf53b5ae14492c96d7ab2328c284031a556c1"
+    },
+    {
+      "path": ".github/workflows/carr-next11-capacity-repair.yml",
+      "preimage": "7303b9cb868392b26fd4c919beb877aa39936721",
+      "sha": "f2fc47da07dab2b61d9f24d13be46984f199fcf4"
+    },
+    {
+      "path": "carr-library/scripts/windows_book_audio_smoke.py",
+      "preimage": "fe9bf5de5be698116107f89fd2ea1c872853bcb3",
+      "sha": "fe4d7f64686da37557e3913805f8d27a4a130724"
+    },
+    {
+      "path": "carr-library/tests/ui/test_native_book_publication_driver.py",
+      "preimage": null,
+      "sha": "f9b2475291eae1724fef366ba59ab86e83a02792"
+    },
+    {
+      "path": "carr-library/scripts/ci_book_measured_contracts.py",
+      "preimage": "21a905ce7877c947a016cbc71dd154d5bc418ffe",
+      "sha": "ca2a659632d93d913d2fe8b5fc6113af98ffa63e"
+    },
+    {
+      "path": ".github/workflows/carr-next12-book.yml",
+      "preimage": "e8463a2a39b2b088fd2a06ab9bf8212b11c60afb",
+      "sha": "33cc07c7aab7865b756ff69abf38f6078f41fae3"
+    }
+  ],
+  "reports": [
+    {
+      "path": "resonance-status/next17/book_publication_native_review.json",
+      "sha": "c89f9d26490f5916c8444050275b0f3f5af1ae3b"
+    },
+    {
+      "path": "resonance-status/next17/capacity_native_choice_review.json",
+      "sha": "4d17024436587b2e8d0c58e6514f705b4585ff03"
+    },
+    {
+      "path": "resonance-status/next17/direct_pytest_diagnostic_factory_review.json",
+      "sha": "dd447bb794e533752f90e3e8d67959ae0bc8ac5a"
+    },
+    {
+      "path": "resonance-status/next17/actual_book_6e95.json",
+      "sha": "d0f8c9f7d4a178cef0f13ed0ee4abb2d8ca4775c"
+    },
+    {
+      "path": "resonance-status/next17/actual_capacity_6e95.json",
+      "sha": "be46d8749922d8cd37259661f5a0fde095fd94f2"
+    }
+  ],
+  "contracts": {
+    "book": {
+      "source": 106,
+      "installed": 106,
+      "native_checks": 77,
+      "origins": 18
+    },
+    "capacity": {
+      "source": 184,
+      "installed": 184,
+      "native_checks": 44,
+      "origins": 12
+    }
+  },
+  "scope": "Run the reviewed live choice and measured-publication diagnostics on existing focused branches. Product behavior and prior native acceptance requirements are unchanged. Actual prior evidence is not a result for this composition."
+}

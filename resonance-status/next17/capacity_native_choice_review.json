@@ -1,0 +1,90 @@
+{
+  "schema": "carr.reviewed-source-delta/1",
+  "status": "STATIC_NOT_RUN",
+  "base_commit": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3",
+  "base_tree": "bfcd3a10c2acddd7b3bc8d4cf77c7bf03127558c",
+  "purpose": "Use live native choice state before OK; require six source and installed regressions; refresh only the shared reviewed ci_check dependency.",
+  "files": [
+    {
+      "path": "carr-library/scripts/windows_backup_capacity_smoke.py",
+      "before": "ac651695779424fcba69696ce05c2d84c807899e",
+      "after": "3f633a875f8232d4c0cce5cdf40e47d9064f9987"
+    },
+    {
+      "path": "carr-library/tests/ui/test_native_backup_capacity_driver.py",
+      "before": null,
+      "after": "a1f05ecf49e2eba8d8d2ba3a980221d0e44cd32c"
+    },
+    {
+      "path": "carr-library/scripts/ci_capacity_contracts.py",
+      "before": "671bfd9a3adccdb7f3bcdf13a59e30c9e9b4d1f1",
+      "after": "ecf829419c172d681e2bb00e57fe67674282e0f7"
+    },
+    {
+      "path": ".github/workflows/carr-next9-capacity.yml",
+      "before": "8164d479c14eb109a76aba3d779284917e651676",
+      "after": "1facf53b5ae14492c96d7ab2328c284031a556c1"
+    },
+    {
+      "path": ".github/workflows/carr-next11-capacity-repair.yml",
+      "before": "7303b9cb868392b26fd4c919beb877aa39936721",
+      "after": "f2fc47da07dab2b61d9f24d13be46984f199fcf4"
+    }
+  ],
+  "dependency": {
+    "path": "carr-library/scripts/ci_check.py",
+    "before": "8a23ef36c2df93928b0aff3edd8b59a53c54684c",
+    "after": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473",
+    "ownership": "Root/Progress shared reviewed successor; not duplicated in this file map."
+  },
+  "actual_evidence": {
+    "blob": "be46d8749922d8cd37259661f5a0fde095fd94f2",
+    "run_id": 46074879941,
+    "windows_job": 140760166819,
+    "linux_job": 140760167185,
+    "result": "Both178 source+178 installed PASS at base; Windows native FAIL at the pre-OK cached result check. No result transfer to this184 successor."
+  },
+  "diagnosis": {
+    "primary_sources": [
+      "https://github.com/wxWidgets/wxWidgets/blob/v3.2.8/include/wx/generic/choicdgg.h",
+      "https://github.com/wxWidgets/wxWidgets/blob/v3.2.8/src/generic/choicdgg.cpp"
+    ],
+    "change": "Capture the unique actual ListBox for every chooser visit; require its ordinary initial selection; retain actual Down and OK keyboard actions; observe live selection before OK and actual returned profiles in the unchanged real backup/restore assertions."
+  },
+  "tests": {
+    "path": "tests/ui/test_native_backup_capacity_driver.py",
+    "cases": 6,
+    "functions": [
+      "test_native_capacity_uses_live_list_then_requires_actual_modal_acceptance",
+      "test_native_capacity_refuses_a_down_key_that_did_not_change_the_live_list",
+      "test_native_capacity_refuses_ambiguous_embedded_lists_before_any_key",
+      "test_native_capacity_default_requires_actual_ordinary_list_not_cached_result_only",
+      "test_native_capacity_cancel_does_not_select_or_accept_any_allowance"
+    ],
+    "companion": "scripts/windows_backup_capacity_smoke.py",
+    "semantics": "Executes the actual AST visit body with controlled live list/cached modal result. The positive reproduces the real cached0/live1 boundary; negatives retain wrong key effect, ambiguous controls, nonordinary default and cancellation.",
+    "source_suites": 11,
+    "installed_suites": 11,
+    "prior_cases_each": 178,
+    "new_cases_each": 184,
+    "source_and_installed_required": true
+  },
+  "unchanged": {
+    "per_suite_seconds": 600,
+    "source_aggregate_seconds": 3200,
+    "helper_minutes": 170,
+    "validation_job_minutes": 195,
+    "native_step_minutes": 5,
+    "native_watchdog_seconds": 180,
+    "native_required_checks": 44,
+    "native_installed_origins": 12,
+    "book_proof": "Book98/98 and native77/18 unchanged; its dependency-pin refresh is separate."
+  },
+  "retention": "Existing closed text/JSON/XML artifacts and full source/wheel/origin before-after proof unchanged; pinned native companion copied and rehashed in isolated staging.",
+  "peer": {
+    "reviewer": "progress_completion",
+    "verdict": "ACCEPTED_STATIC_NOT_RUN",
+    "scope": "Exact native default/live selection delta, all six AST cases, helper source/installed suite and companion preservation."
+  },
+  "readback": "Every new blob and each exact preimage was fetched and compared; no refs moved."
+}

@@ -410,22 +410,26 @@ def main(argv=None):
                     own_modal(dialog)
                     handle = dialog.GetHandle()
                     if isinstance(dialog, wx.SingleChoiceDialog) and not state['choice']:
+                        lists = [child for child in descendants(dialog) if isinstance(child, wx.ListBox)]
+                        if len(lists) != 1:
+                            raise AssertionError('The native capacity choice has no unique list.')
+                        choices = lists[0]
                         if handle not in visited:
                             check('capacity dialog starts with the ordinary allowance',
                                   dialog.GetName() == 'Complete-backup capacity'
-                                  and dialog.GetSelection() == 0)
+                                  and dialog.GetSelection() == 0 and choices.GetSelection() == 0)
                             visited.add(handle)
                         if cancel_choice:
                             state['choice'] = True
                             press(dialog.FindWindowById(wx.ID_CANCEL))
                         elif selected == 1 and not state['selection_key']:
-                            lists = [child for child in descendants(dialog) if isinstance(child, wx.ListBox)]
-                            if len(lists) != 1:
-                                raise AssertionError('The native capacity choice has no unique list.')
                             state['selection_key'] = True
-                            press(lists[0], wx.WXK_DOWN)
+                            press(choices, wx.WXK_DOWN)
                         else:
-                            if dialog.GetSelection() != selected:
+                            # wxSingleChoiceDialog caches its modal result until OK.
+                            # Observe the actual keyboard-driven list before accepting;
+                            # run_steps checks the returned profile at both real APIs.
+                            if choices.GetSelection() != selected:
                                 raise AssertionError('Native keyboard did not select the reviewed capacity.')
                             state['choice'] = True
                             press(dialog.FindWindowById(wx.ID_OK))
