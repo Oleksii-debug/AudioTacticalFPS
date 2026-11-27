@@ -1,14 +1,18 @@
 """Project/controller lifecycle; audio-quality acceptance belongs to real renders."""
 from dataclasses import dataclass
+from concurrent.futures import Future
 import hashlib
 import json
 from pathlib import Path
+from threading import Event
 from types import SimpleNamespace
+from unittest.mock import Mock
 import wave
 
 import pytest
 
-from carr_library.ui.audio_studio import StudioController, AudioStudioActions, plan_description
+from carr_library.ui.audio_studio import (StudioController, AudioStudioActions,
+                                         AudioStudioDialog, plan_description)
 
 
 @dataclass
@@ -272,3 +276,185 @@ def test_selected_book_import_uses_exact_pages_and_retains_revision(tmp_path):
     controller.draft.replace_literal('Перший', 'Змінений')
     assert controller.draft.source_text == raw
     assert app._selections == {}
+
+
+def _studio_dialog(controller):
+    """Exercise native handlers and their real worker routing without claiming wx execution."""
+    dialog = AudioStudioDialog.__new__(AudioStudioDialog)
+    dialog.controller = controller
+    dialog.dialog = object()
+    dialog.busy = dialog.closed = dialog.close_pending = False
+    dialog.cancelled = Event()
+    dialog.controls, dialog.cancel_button, dialog.playback = [Mock()], Mock(), Mock()
+    dialog.jobs, dialog.posted = [], []
+
+    def submit(action):
+        future = Future()
+        dialog.jobs.append((action, future))
+        return future
+
+    chooser = Mock()
+    chooser.ShowModal.return_value = 1
+    chooser.GetSelection.return_value = 0
+    dialog.wx = SimpleNamespace(ID_OK=1, SingleChoiceDialog=Mock(return_value=chooser),
+                                CallAfter=dialog.posted.append)
+    dialog.executor = SimpleNamespace(submit=submit)
+    dialog._capture, dialog._refresh_text, dialog._message, dialog._error = (Mock() for _ in range(4))
+    dialog._unsaved = Mock(return_value=True)
+    dialog._file = Mock(side_effect=AssertionError('Unexpected standalone file chooser'))
+    dialog.plan_text = Mock()
+    return dialog
+
+
+def _finish_studio_job(dialog, *, after_read=None):
+    action, future = dialog.jobs.pop(0)
+    try:
+        future.set_result(action())
+    except Exception as exc:
+        future.set_exception(exc)
+    if after_read is not None:
+        after_read()
+    while dialog.posted:
+        dialog.posted.pop(0)()
+
+
+def test_native_save_library_backup_restore_and_reopen_keeps_original_and_draft(tmp_path):
+    from carr_library.application import LibraryApp
+    from carr_library.library_backup import restore_backup
+
+    app = LibraryApp(tmp_path / 'original-library')
+    app.create_workspace('Research')
+    controller = StudioController(private_root=app.root)
+    original = 'Точне джерело.\r\nSecond original line.'
+    controller.new(original, title='Дослідницький аудіопроєкт')
+    dialog = _studio_dialog(controller)
+    dialog._capture.side_effect = lambda: controller.edit_script('Explicit saved reading copy.')
+    assert dialog.save() is True
+    assert controller.project_path.is_relative_to(app.root / 'audio-projects')
+    assert controller.output_dir == controller.project_path.parent.parent / 'audio'
+    assert controller.output_dir.is_dir()
+    dialog._file.assert_not_called()
+    controller.edit_script('Uncommitted recovery copy.')
+    controller.save_recovery()
+    project_bytes = controller.project_path.read_bytes()
+    relative = controller.project_path.relative_to(app.root)
+
+    snapshot, destination = tmp_path / 'backup', tmp_path / 'restored-library'
+    checksum = app.backup(snapshot)
+    restored_root = Path(restore_backup(snapshot, destination, checksum))
+    reopened = StudioController(private_root=restored_root)
+    restored_dialog = _studio_dialog(reopened)
+    restored_dialog.open_library()
+    assert restored_dialog.busy and len(restored_dialog.jobs) == 1
+    restored_dialog.wx.SingleChoiceDialog.assert_not_called()
+    restored_dialog.controls[0].Disable.assert_called_once()
+    _finish_studio_job(restored_dialog)
+    restored_dialog._error.assert_not_called()
+    assert not restored_dialog.busy
+    restored_dialog.controls[0].Enable.assert_called_once()
+    assert reopened.project_path == restored_root / relative
+    assert reopened.project_path.read_bytes() == project_bytes
+    assert reopened.draft.source_text == original
+    assert reopened.script == 'Explicit saved reading copy.'
+    assert reopened.output_dir == reopened.project_path.parent.parent / 'audio'
+    assert reopened.output_dir.is_relative_to(restored_root)
+    reopened.recover()
+    assert reopened.script == 'Uncommitted recovery copy.'
+    assert reopened.draft.source_text == original
+    reopened.save()
+    assert controller.project_path.read_bytes() == project_bytes
+    assert json.loads(reopened.project_path.read_text(encoding='utf-8'))['output_dir'] == str(reopened.output_dir)
+
+
+@pytest.mark.parametrize('accepted', [True, False], ids=['standalone-save', 'standalone-cancel'])
+def test_native_first_save_preserves_explicit_external_output_choice(tmp_path, accepted):
+    controller = StudioController(private_root=tmp_path / 'private')
+    controller.new('Exact original')
+    destination = tmp_path / 'standalone.json'
+    dialog = _studio_dialog(controller)
+    # The output choice is captured from the UI before deciding where to save.
+    dialog._capture.side_effect = lambda: controller.configure(output_dir=tmp_path)
+    dialog._file = Mock(return_value=destination if accepted else None)
+    assert dialog.save() is accepted
+    assert controller.project_path == (destination if accepted else None)
+    assert destination.exists() is accepted
+    assert controller.output_dir == tmp_path
+    assert not (controller.private_root / 'audio-projects').exists()
+    assert controller.draft.source_text == 'Exact original'
+
+
+def test_native_save_keeps_an_existing_external_project_external(tmp_path):
+    controller = StudioController(private_root=tmp_path / 'private')
+    controller.new('Source')
+    path = controller.save(tmp_path / 'external.json')
+    dialog = _studio_dialog(controller)
+    dialog._capture.side_effect = lambda: controller.edit_script('Saved external edit')
+    assert dialog.save() is True
+    assert controller.project_path == path
+    assert not (controller.private_root / 'audio-projects').exists()
+    reopened = StudioController(private_root=controller.private_root).open(path)
+    assert reopened.script == 'Saved external edit' and reopened.draft.source_text == 'Source'
+    dialog._file.assert_not_called()
+
+
+@pytest.mark.parametrize('guard', ['busy', 'closed', 'unsaved'], ids=['busy', 'closed', 'unsaved-cancel'])
+def test_native_library_chooser_respects_existing_operation_and_unsaved_guards(tmp_path, guard):
+    dialog = _studio_dialog(StudioController(private_root=tmp_path / 'private'))
+    if guard == 'unsaved':
+        dialog._unsaved.return_value = False
+    else:
+        setattr(dialog, guard, True)
+    dialog.open_library()
+    assert not dialog.jobs
+    dialog.wx.SingleChoiceDialog.assert_not_called()
+
+
+@pytest.mark.parametrize('phase', ['before', 'after'], ids=['cancel-before-read', 'cancel-before-chooser'])
+def test_native_library_discovery_cancel_does_not_open_a_project(tmp_path, phase):
+    from carr_library.application import LibraryApp
+    app = LibraryApp(tmp_path / 'library')
+    saved = StudioController(private_root=app.root)
+    saved.new('Saved source')
+    saved.save_in_library()
+    current = StudioController(private_root=app.root)
+    current.new('Keep current editing session')
+    dialog = _studio_dialog(current)
+    dialog.open_library()
+    if phase == 'before':
+        dialog.cancelled.set()
+    _finish_studio_job(dialog, after_read=dialog.cancelled.set if phase == 'after' else None)
+    assert current.project_path is None and current.script == 'Keep current editing session'
+    dialog.wx.SingleChoiceDialog.assert_not_called()
+    dialog._refresh_text.assert_not_called()
+    assert not dialog.busy
+
+
+@pytest.mark.parametrize('selection', [None, -1, 1], ids=['native-cancel', 'no-selection', 'out-of-range'])
+def test_native_library_chooser_cancel_or_invalid_row_preserves_current_project(tmp_path, selection):
+    from carr_library.application import LibraryApp
+    app = LibraryApp(tmp_path / 'library')
+    saved = StudioController(private_root=app.root)
+    saved.new('Saved source')
+    saved.save_in_library()
+    current = StudioController(private_root=app.root)
+    current.new('Keep this source')
+    dialog = _studio_dialog(current)
+    chooser = dialog.wx.SingleChoiceDialog.return_value
+    chooser.ShowModal.return_value = 0 if selection is None else dialog.wx.ID_OK
+    chooser.GetSelection.return_value = selection
+    dialog.open_library()
+    _finish_studio_job(dialog)
+    chooser.Destroy.assert_called_once()
+    assert current.project_path is None and current.script == 'Keep this source'
+    dialog._refresh_text.assert_not_called()
+    if selection is not None:
+        assert isinstance(dialog._error.call_args.args[0], ValueError)
+
+
+def test_native_library_chooser_empty_library_reports_without_file_dialog(tmp_path):
+    dialog = _studio_dialog(StudioController(private_root=tmp_path / 'private'))
+    dialog.open_library()
+    _finish_studio_job(dialog)
+    dialog.wx.SingleChoiceDialog.assert_not_called()
+    dialog._file.assert_not_called()
+    assert 'no saved audio projects' in dialog._message.call_args.args[0]

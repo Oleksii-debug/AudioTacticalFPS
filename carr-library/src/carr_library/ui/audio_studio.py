@@ -17,6 +17,7 @@ from uuid import uuid4
 from ..reader.narration_text import NarrationDraft, decode_json, read_document, text_digest
 from ..research.export_file import write_export
 from ..audio.ffmpeg import find_local_tool
+from ..audio.managed import ManagedProjects
 
 
 def _plain(value, label, *, limit=2048, empty=False):
@@ -162,7 +163,12 @@ class StudioController:
         if not candidate.is_dir():
             raise ValueError('Choose an existing output folder.')
         if candidate.resolve().is_relative_to(self.private_root.resolve()):
-            raise ValueError('Choose an audio output folder outside the private library.')
+            managed = (ManagedProjects(self.private_root).locate(self.project_path, self.project_id)
+                       if self.project_path is not None else None)
+            if managed is None or candidate.absolute() != managed / 'audio':
+                raise ValueError('Choose an audio output folder outside the private library or use this managed project audio folder.')
+        elif self.project_path is not None and ManagedProjects(self.private_root).locate(self.project_path, self.project_id):
+            raise ValueError('This project saves audio with its library backup. Use Save As for a standalone project before choosing an external audio folder.')
         for parent in (candidate, *candidate.parents):
             info = parent.lstat()
             if parent.is_symlink() or getattr(info, 'st_file_attributes', 0) & 0x400:
@@ -227,12 +233,49 @@ class StudioController:
                 raise FileExistsError('Choose a new project filename or confirm replacement.')
         elif same and self._file_hash is not None:
             raise ValueError('The saved project was removed. Use Save As to choose a destination.')
-        value = _json_text(self.to_dict())
-        write_export(selected, value, private_root=self.private_root, cancelled=cancelled)
+        managed = ManagedProjects(self.private_root)
+        selected_root = managed.locate(selected, self.project_id)
+        value_data = self.to_dict()
+        detach_output = (selected_root is None and self.project_path is not None
+                         and managed.locate(self.project_path, self.project_id) is not None)
+        if detach_output:
+            value_data['output_dir'] = None
+        value = _json_text(value_data)
+        if selected_root is not None:
+            managed.write(self.project_id, selected, value,
+                          expected_sha256=self._file_hash if same else None, cancelled=cancelled)
+        else:
+            write_export(selected, value, private_root=self.private_root, cancelled=cancelled)
+        if detach_output:
+            self.output_dir = None
         self.project_path = selected
         self._file_hash = hashlib.sha256(value.encode('utf-8')).hexdigest()
         self._saved_value = value
         return selected
+
+    def save_in_library(self, *, cancelled=lambda: False):
+        """Save a new project and its output in the complete-backup namespace."""
+        managed = ManagedProjects(self.private_root)
+        _, path, output = managed.paths(self.project_id)
+        if self.project_path is not None and managed.locate(self.project_path, self.project_id) is None:
+            raise ValueError('An external project remains standalone. Open or create a library project to use complete library backups.')
+        if self.output_dir is not None and self.output_dir.absolute() != output:
+            raise ValueError('Use Save As for the selected external output folder, or clear it to save this project inside the library.')
+        previous = self.output_dir
+        self.output_dir = output
+        try:
+            return self.save(path, cancelled=cancelled)
+        except BaseException:
+            self.output_dir = previous
+            raise
+
+    def _rebind_managed_output(self, path, values):
+        root = ManagedProjects(self.private_root).locate(path, values['project_id'])
+        if root is not None:
+            # A portable library never follows the old absolute output path.
+            # Keep original saved bytes/hash for recovery-base authentication.
+            values['output_dir'] = root / 'audio'
+        return values
 
     def _validated(self, payload):
         keys = {'kind', 'version', 'mode', 'project_id', 'title', 'voice', 'language',
@@ -273,7 +316,7 @@ class StudioController:
         selected = _local_path(path, 'project file')
         data = read_document(selected, byte_budget=self.loading_budget)
         payload = decode_json(data.decode('utf-8'))
-        values = self._validated(payload)
+        values = self._rebind_managed_output(selected, self._validated(payload))
         for key, value in values.items():
             setattr(self, key, value)
         self.project_path = selected
@@ -287,9 +330,13 @@ class StudioController:
         if self.project_path is None or self._file_hash is None:
             return None
         path = self.project_path.with_name(self.project_path.name + '.recovery.json')
+        previous_sha = None
+
+        self._protect_original(path)
         if path.exists():
             raw = read_document(path, byte_budget=self.loading_budget)
             actual = hashlib.sha256(raw).hexdigest()
+            previous_sha = actual
             if self._recovery_hash is None:
                 previous = decode_json(raw.decode('utf-8'))
                 if (not isinstance(previous, dict) or previous.get('kind') != 'audio-studio-recovery'
@@ -300,7 +347,13 @@ class StudioController:
         payload = {'kind': 'audio-studio-recovery', 'version': 1, 'project_id': self.project_id,
                    'base_sha256': self._file_hash, 'project': self.to_dict()}
         text = _json_text(payload)
-        write_export(path, text, private_root=self.private_root, cancelled=cancelled)
+        managed = ManagedProjects(self.private_root)
+        if managed.locate(path, self.project_id) is not None:
+            managed.write(self.project_id, path, text,
+                expected_sha256=previous_sha,
+                cancelled=cancelled)
+        else:
+            write_export(path, text, private_root=self.private_root, cancelled=cancelled)
         self._recovery_hash = hashlib.sha256(text.encode('utf-8')).hexdigest()
         return path
 
@@ -316,7 +369,7 @@ class StudioController:
                 or payload['base_sha256'] != self._file_hash
                 or _path_digest(self.project_path, budget=self.loading_budget) != self._file_hash):
             raise ValueError('This recovery draft belongs to a different saved project revision.')
-        values = self._validated(payload['project'])
+        values = self._rebind_managed_output(self.project_path, self._validated(payload['project']))
         if values['project_id'] != self.project_id:
             raise ValueError('The recovery draft belongs to a different project.')
         for key, value in values.items():
@@ -530,7 +583,8 @@ class AudioStudioDialog:
         self.status.SetMinSize((-1, 80))
         outer.Add(self.status, 0, wx.EXPAND | wx.ALL, 8)
         file_buttons = wx.WrapSizer(wx.HORIZONTAL)
-        for label, handler in (('New project', self.new), ('Open project', self.open), ('Save project', self.save),
+        for label, handler in (('New project', self.new), ('Saved library projects', self.open_library),
+                               ('Open project', self.open), ('Save project', self.save),
                                ('Save project as', self.save_as), ('Recover draft', self.recover),
                                ('Back up audio project', self.backup), ('Restore audio snapshot', self.restore)):
             self._button(self.dialog, file_buttons, label, handler)
@@ -744,17 +798,59 @@ class AudioStudioDialog:
     def save(self, event=None):
         if self.busy:
             return False
-        if self.controller.project_path is None:
-            return self.save_as()
         try:
             self._capture()
-            self.controller.save()
+            if self.controller.project_path is None:
+                if self.controller.output_dir is not None:
+                    return self.save_as()
+                self.controller.save_in_library()
+            else:
+                self.controller.save()
             self._refresh_text()
             self._message('Project saved, including the original and current reading copy.', focus=True)
             return True
         except Exception as exc:
             self._error(exc)
             return False
+
+    def open_library(self, event=None):
+        if self.busy or self.closed or not self._unsaved():
+            return
+        from ..audio.managed import ManagedProjects
+
+        def read():
+            if self.cancelled.is_set():
+                raise InterruptedError('Library audio project discovery cancelled.')
+            projects = ManagedProjects(self.controller.private_root).projects()
+            if self.cancelled.is_set():
+                raise InterruptedError('Library audio project discovery cancelled.')
+            return projects
+
+        def choose(projects):
+            if self.closed or self.close_pending or self.cancelled.is_set():
+                return
+            if not projects:
+                self._message('There are no saved audio projects in this library yet.', focus=True)
+                return
+            labels = [f'{title} — project {index}' for index, (title, _path) in enumerate(projects, 1)]
+            chooser = self.wx.SingleChoiceDialog(self.dialog, 'Choose a saved audio project.',
+                                                'Library audio projects', labels)
+            try:
+                if chooser.ShowModal() != self.wx.ID_OK:
+                    return
+                selected = chooser.GetSelection()
+            finally:
+                chooser.Destroy()
+            if self.closed or self.close_pending or self.cancelled.is_set():
+                return
+            if not 0 <= selected < len(projects):
+                raise ValueError('Choose a saved audio project from the list.')
+            self.controller.open(projects[selected][1])
+            self._refresh_text()
+            self.plan_text.ChangeValue('')
+            self._message('Library audio project opened. Its output stays with this library.', focus=True)
+
+        self._run('Reading saved audio projects in this library.', read, choose)
 
     def save_as(self, event=None):
         if self.busy:
