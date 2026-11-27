@@ -96,6 +96,11 @@ jobs:
             tests/audio/test_process_deadline.py \
             tests/audio/test_process_scratch.py \
             tests/assistant/test_player_tools.py 2>&1 | tee ci-playback-controls/source.txt
+      - name: Require POSIX listening descriptor boundaries without skips
+        if: runner.os == 'Linux'
+        run: |
+          python scripts/ci_check.py --diagnostics --jobs 1 \
+            tests/speech/test_listening_posix.py 2>&1 | tee ci-playback-controls/source-posix.txt
       - name: Require identical installed controls and owner boundaries without skips
         if: "!cancelled() && steps.install.outcome == 'success'"
         run: |
@@ -135,6 +140,8 @@ jobs:
           try:
               before = identities()
               suites = ["tests/speech/test_listening.py","tests/speech/test_wave_output.py","tests/reader/test_live_listening.py","tests/ui/test_playback_settings.py","tests/reader/test_live_player.py","tests/reader/test_live_reading.py","tests/ui/test_live_reading_controls.py","tests/ui/test_playback_navigation.py","tests/ui/test_studio_playback_actions.py","tests/speech/test_output_device_playback.py","tests/studio/test_clip_dialog.py","tests/studio/test_clip_timeline_dialog.py","tests/ui/test_studio_progress_isolation.py","tests/audio/test_output_devices.py","tests/audio/test_dsp.py","tests/audio/test_process_deadline.py","tests/audio/test_process_scratch.py","tests/assistant/test_player_tools.py"]
+              if sys.platform != "win32":
+                  suites.append("tests/speech/test_listening_posix.py")
               output = checkout / "ci-playback-controls" / "installed.xml"
               code = pytest.main(["-q", "--junitxml=" + str(output), *suites])
               totals = {"tests": 0, "failures": 0, "errors": 0, "skipped": 0}

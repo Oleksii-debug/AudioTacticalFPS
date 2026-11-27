@@ -281,10 +281,11 @@ def prepare_listening(request, directory, *, state_root=None, cancelled=lambda: 
                     raise ValueError('The original recording changed during its private snapshot.')
                 source_hash = digest.hexdigest()
                 snapshot_identity = stamp(snapshot)
-                with wave.open(str(snapshot), 'rb') as audio:
-                    if (audio.getframerate(), audio.getnchannels(), audio.getnframes(), audio.getsampwidth()) != (rate, channels, frames, width):
-                        raise ValueError('The private snapshot differs from the selected original PCM.')
-                    _verify_pcm_payload(audio, frames, channels, width, cancelled)
+                with _opened(snapshot, snapshot_identity) as stream:
+                    with wave.open(stream, 'rb') as audio:
+                        if (audio.getframerate(), audio.getnchannels(), audio.getnframes(), audio.getsampwidth()) != (rate, channels, frames, width):
+                            raise ValueError('The private snapshot differs from the selected original PCM.')
+                        _verify_pcm_payload(audio, frames, channels, width, cancelled)
                 if request.settings == ListeningSettings():
                     # Explicit reset keeps exact original bytes and needs no optional
                     # engine. The private copy still has the same ownership lifetime.
@@ -316,19 +317,19 @@ def prepare_listening(request, directory, *, state_root=None, cancelled=lambda: 
                     if _hash(snapshot, snapshot_identity, cancelled) != source_hash:
                         raise ValueError('The private original snapshot changed during conversion.')
                     expected_output_hash = result.sha256
-                with wave.open(str(output), 'rb') as audio:
-                    if (audio.getcomptype() != 'NONE' or audio.getframerate() != rate
-                            or audio.getnchannels() != channels or audio.getsampwidth() != width
-                            or abs(audio.getnframes() - expected_frames) > 1):
-                        raise AudioError('Listening conversion did not produce the measured frame plan.')
-                    # Converter duration arithmetic can round one frame differently
-                    # from the original integer count. All transport mapping uses the
-                    # actual measured output count, never the nominal speed alone.
-                    mapping = FrameMapping(frames, audio.getnframes(), rate)
-                    _verify_pcm_payload(audio, mapping.output_frames, channels, width, cancelled)
+                output_identity = stamp(output)
+                with _opened(output, output_identity) as stream:
+                    with wave.open(stream, 'rb') as audio:
+                        if (audio.getcomptype() != 'NONE' or audio.getframerate() != rate
+                                or audio.getnchannels() != channels or audio.getsampwidth() != width
+                                or abs(audio.getnframes() - expected_frames) > 1):
+                            raise AudioError('Listening conversion did not produce the measured frame plan.')
+                        # Map actual integer output frames, including one-frame
+                        # converter rounding; never infer from nominal speed.
+                        mapping = FrameMapping(frames, audio.getnframes(), rate)
+                        _verify_pcm_payload(audio, mapping.output_frames, channels, width, cancelled)
                 if _hash(source, request.identity, cancelled) != source_hash:
                     raise ValueError('The original recording changed during listening conversion.')
-                output_identity = stamp(output)
                 output_hash = _hash(output, output_identity, cancelled)
                 if output_hash != expected_output_hash:
                     raise ValueError('The listening copy changed after conversion.')

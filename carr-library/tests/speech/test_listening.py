@@ -368,3 +368,39 @@ def test_same_pending_native_owner_retains_private_pcm_and_actual_resource_lease
             child.wait(timeout=10)
         if owned.get('owner') is not None:
             assert owned['owner'].close()
+
+
+@pytest.mark.parametrize('selected', ['source.wav', 'listening.wav'])
+def test_private_pcm_name_replacement_is_refused_before_any_header_read(reader, monkeypatch, selected):
+    import os
+    actual = listening._open_stream
+    replaced, reads = [], []
+    class NoHeaderRead:
+        def __init__(self, stream):
+            self.stream = stream
+        def __getattr__(self, name):
+            return getattr(self.stream, name)
+        def __enter__(self):
+            self.stream.__enter__()
+            return self
+        def __exit__(self, *args):
+            return self.stream.__exit__(*args)
+        def read(self, *args):
+            reads.append(args)
+            raise AssertionError('Replaced private PCM reached header parsing.')
+    def opened(path):
+        path = Path(path)
+        if path.name == selected and not replaced:
+            foreign = path.with_name('foreign-pcm.tmp')
+            foreign.write_bytes(path.read_bytes())
+            old = path.stat().st_ino
+            os.replace(foreign, path)
+            assert path.stat().st_ino != old
+            replaced.append(path)
+            return NoHeaderRead(actual(path))
+        return actual(path)
+    monkeypatch.setattr(listening, '_open_stream', opened)
+    with pytest.raises(ValueError, match='changed'):
+        prepare(reader)
+    assert len(replaced) == 1 and reads == []
+    assert reader.source.read_bytes() == reader.original and not list(reader.directory.iterdir())
