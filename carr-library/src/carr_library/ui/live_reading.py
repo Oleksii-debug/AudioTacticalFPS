@@ -35,6 +35,17 @@ def native_cursor_position(control, raw, offset):
     def mapped(position):
         try:
             prefix = control.GetRange(0, position)
+            # Normalization maps both the prefix ending in CR and the complete
+            # CRLF to one source newline. Never restore inside the native pair:
+            # a following exact-text selection would otherwise include its LF.
+            if prefix.endswith('\r') and position < last:
+                try:
+                    following = control.GetRange(position, position + 1)
+                except UnicodeError:
+                    following = ''
+                if following == '\n':
+                    position += 1
+                    prefix += following
             return native_text_range(raw, displayed, prefix, prefix)[0], position
         except (UnicodeError, ValueError):
             # A native UTF-16 position can split a surrogate pair. Probe its
@@ -267,12 +278,20 @@ class LiveReadingControls:
             view = self.core.status()
             if view.state not in ('playing', 'paused') or not view.duration_seconds:
                 raise ValueError('Read text before seeking within its current audio chunk.')
-            with self.wx.TextEntryDialog(self.dialog,
-                    f'Seconds from 0 to {view.duration_seconds:.2f} within this speech chunk. '
-                    'This does not identify a source word.', 'Seek current speech chunk',
-                    str(round(view.audio_seconds, 2))) as prompt:
-                if prompt.ShowModal() == self.wx.ID_OK:
-                    self.core.seek(float(prompt.GetValue()), expected=view)
+            prompt = self.wx.TextEntryDialog(self.dialog,
+                f'Seconds from 0 to {view.duration_seconds:.2f} within this speech chunk. '
+                'This does not identify a source word.', 'Seek current speech chunk',
+                str(round(view.audio_seconds, 2)))
+            try:
+                answer = prompt.ShowModal()
+                if self.closed or not self.dialog or not prompt or answer != self.wx.ID_OK:
+                    return
+                seconds = float(prompt.GetValue())
+            finally:
+                if prompt:
+                    prompt.Destroy()
+            if not self.closed and self.dialog:
+                self.core.seek(seconds, expected=view)
         except Exception as exc:
             self._report(exc)
 

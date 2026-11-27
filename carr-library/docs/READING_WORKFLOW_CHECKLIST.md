@@ -37,18 +37,18 @@ References: [official description](https://www.cross-plus-a.com/balabolka.htm),
 | READ-03 | Read all, selected text or from cursor | Integrated: `ui/speech_dialog.py`, `speech/live_adapter.py`, `reader/live_reading.py` | Exact source text and selection/cursor mapping, cancel and actual native playback |
 | READ-04 | Pause, resume, stop and seek | Integrated through shared LiveReadingControls and native player | Actual device cleanup, resume position and Windows keyboard execution |
 | READ-05 | Continue through source positions and save reading state | Integrated: Reading Desk, DocumentSequence and `reader/live_state.py` | No inferred printed page labels; restore exact source identity before resuming |
-| READ-06 | Editable reading copy with original/diff and undo/redo | Integrated: `speech/reading.py`, reader dialog and draft store | Original retained bytes and quotation authority stay unchanged |
-| READ-07 | Pronunciation substitutions and preview | Integrated: existing rule model and `ui/pronunciation_dialog.py` | Rule validation, source invariance, saved copy and native keyboard/lifetime cases |
+| READ-06 | Editable reading copy with original/diff and undo/redo | Integrated: `speech/reading.py`, reader dialog and draft store; literal or bounded isolated-regex Find/Replace with selection-bound preview and explicit apply | Original retained bytes and quotation authority stay unchanged; native line endings map back to the exact reading text before applying |
+| READ-07 | Pronunciation substitutions and preview | Integrated: existing rule model, native dictionary import/export and `ui/pronunciation_dialog.py`; selected Studio spoken-line drafts save a new project revision with conflict-checked undo | Rule validation, source invariance, captured destination approval, committed-save warnings and native keyboard/lifetime cases; exported dictionaries use Resonance's own versioned schema |
 | READ-08 | Third-party dictionary formats | Pending | Existing native rules do not claim BXD/REX/DIC file compatibility |
 | READ-09 | Normalize reading text | Limited: existing reversible whitespace/reading edits | Not a universal language-specific cleanup or typography engine |
 | READ-10 | Spell checking | Pending | Choose reviewed dictionary/runtime and language coverage before implementation |
-| READ-11 | Clipboard reading | Limited: explicit paste into editable reading text | Dedicated clipboard capture/automatic monitoring is not implemented |
+| READ-11 | Clipboard reading | Integrated explicit text snapshot opened as a separate reading copy | Snapshot is bounded, never monitors the clipboard, and checks native owner lifetime before reading or opening it; no automatic clipboard capture |
 | READ-12 | Tray controls and system-wide hotkeys | Pending | Current configurable accelerators are application commands, not global hooks |
 | READ-13 | Font, color and editor appearance customization | Pending beyond OS/native defaults | Must preserve accessibility and saved settings |
 | READ-14 | SAPI5 | Integrated adapter and native acceptance path | Qualify actual installed token/architecture; a registered voice is not a cloning engine |
 | READ-15 | SAPI4 and other legacy speech platforms | Pending verified compatibility | No claim that obsolete drivers work on Windows11 x64 |
 | READ-16 | Explicit output-device selection | Limited | Recording selects a capture device; the current player does not expose the complete requested output-device workflow |
-| READ-17 | Searchable commands and saved shortcuts | Integrated: existing command registry, keyboard settings and command palette | Saved explicit conflicts and stable action IDs remain authoritative; manual NVDA still required |
+| READ-17 | Searchable commands and saved shortcuts | Integrated: existing command registry, keyboard settings, command palette and reviewed keymap import/export | Saved explicit conflicts and stable action IDs remain authoritative; changed/imported mappings require review before apply; manual NVDA still required |
 
 ## Input formats
 
@@ -90,11 +90,18 @@ References: [official FAQ](https://www.cross-plus-a.com/bfaq.htm),
 | AUDIO-09 | SRT/VTT and measured text timing | Integrated at supported line/segment boundaries | Does not claim word-level speech alignment |
 | AUDIO-10 | LRC | Integrated `script.lrc` from existing measured narration-line onsets and normal artifact receipts | Exact-head line/timing and old-complete-job preservation tests; no word timing or recorded-clip transcript is inferred |
 | AUDIO-11 | Synchronized EPUB3 and DAISY2.02 | Integrated selected publisher/reader formats over current publication authority | EPUBCheck, pinned DTD checks, exact receipts and real reader interoperability are distinct gates |
-| AUDIO-12 | Audio codecs and conversion | Integrated typed encodings: WAV, FLAC, MP3, Vorbis, Opus, AAC/M4A/M4B, AIFF and WMA | Actual codec availability, bit depth/quality controls and UI coverage are qualified individually; a generic M4B encoding is not chaptered-book acceptance |
+| AUDIO-12 | Audio codecs and conversion | Integrated typed encodings: WAV, FLAC, MP3, Vorbis, Opus, AAC/M4A/M4B, AIFF and WMA; numeric native rate/channel/PCM-depth/bitrate/range/gain/tempo/loudness controls reuse current DSP and shared admission | Actual codec availability and format-specific constraints are checked; optional post-save measurement failure reports a saved output with a warning; a generic M4B encoding is not chaptered-book acceptance |
 | AUDIO-13 | Metadata, cover art and embedded synchronized tags | Limited to explicit fields in supported exporters | General cover/tag editor and MP3 embedded lyric parity remain pending |
 | AUDIO-14 | Microphone capture, retakes and clip editing | Integrated explicit capture and schema2 clip workflow | Physical device, pause/resume capture, real-time monitoring and full edit/undo/loop workflow remain separately pending |
 | AUDIO-15 | Repeatable workflow presets/macros | Limited: current typed plans/projects and command registry | Reusable named batch templates/macros need explicit UI and allowlisted service mapping |
 | AUDIO-16 | Automatic online speech | Not enabled by the reader | Optional provider workflows require their separate explicit consent/profile; no scraped consumer endpoint |
+
+The rendered-master preview in Audio Studio additionally supports pause/resume,
+bounded skips, percentage seek, A–B repeat and a sleep timer over the existing
+player. Its timer and queued actions are bound to one playback generation and
+the actual source-file identity. These controls do not establish cross-chunk
+A–B repeat in the live text reader. Windows transport, physical output devices
+and audible precision require their respective native and listening evidence.
 
 ## Evidence ownership and remaining decisions
 

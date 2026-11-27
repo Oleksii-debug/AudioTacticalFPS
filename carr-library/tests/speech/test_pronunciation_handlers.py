@@ -5,6 +5,7 @@ from queue import Queue
 from threading import Event, get_ident
 from types import SimpleNamespace
 import time
+import runpy
 
 import pytest
 
@@ -70,7 +71,7 @@ class ReaderWorker:
         self.busy, self.future, self.worker_threads = False, None, []
         self.reject = False
 
-    def __call__(self, operation, done, *, on_failed):
+    def __call__(self, operation, done, *, on_failed, committed=False):
         assert get_ident() == self.owner
         if self.busy or self.reject:
             return False
@@ -307,7 +308,9 @@ def test_dictionary_save_import_export_are_explicit_and_no_clobber(view, tmp_pat
     view.picks.append(external); view.dialog.on_export(); view.worker.drain()
     assert import_dictionary(external) == (rule,)
     original = external.read_bytes()
-    view.picks.append(external); view.dialog.on_export(); view.worker.drain()
+    preceding = view.worker.future
+    view.picks.append(external); view.dialog.on_export()
+    assert not view.dialog.busy and view.worker.future is preceding
     assert external.read_bytes() == original and 'exists' in view.dialog.status.GetValue()
     incoming = tmp_path / 'imported.json'
     imported = PronunciationRule('kg', 'kilograms')
@@ -419,6 +422,150 @@ def test_idle_native_destruction_does_not_cancel_an_unrelated_reader_operation(v
     dialog.Destroy()
     assert not dialog.alive and not view.cancel.is_set()
 
+
+@pytest.mark.parametrize('change', ['new_file', 'replaced_parent'])
+def test_dictionary_export_binds_destination_before_actual_queued_encoding(view, tmp_path, monkeypatch, change):
+    rule = add_rule(view)
+    directory = tmp_path / 'selected'; directory.mkdir()
+    destination = directory / 'rules.json'
+    captures = []
+    actual = ui.capture_export_destination
+    def capture(*args, **kwargs):
+        captures.append((Path(args[0]), get_ident()))
+        return actual(*args, **kwargs)
+    monkeypatch.setattr(ui, 'capture_export_destination', capture)
+    view.worker.gate.clear()
+    view.picks.append(destination)
+    view.dialog.on_export()
+    assert captures == [(destination, view.owner)] and view.dialog.busy
+    foreign = b'A separately saved file must be preserved.'
+    if change == 'new_file':
+        destination.write_bytes(foreign)
+    else:
+        directory.rename(tmp_path / 'previous-parent')
+        directory.mkdir()
+        (directory / 'independent.txt').write_bytes(foreign)
+    view.worker.gate.set(); view.worker.drain()
+    assert 'destination changed' in view.dialog.status.GetValue()
+    assert view.dialog.rules == (rule,) and not view.state.applied
+    if change == 'new_file':
+        assert destination.read_bytes() == foreign
+    else:
+        assert not destination.exists() and not (tmp_path / 'previous-parent' / 'rules.json').exists()
+        assert (directory / 'independent.txt').read_bytes() == foreign
+    assert not list(directory.glob('.research-export-*'))
+
+
+def test_dictionary_export_cannot_target_private_library_state(view):
+    add_rule(view)
+    previous = view.worker.future
+    view.picks.append(view.dialog.store.library_root / 'protected.json')
+    view.dialog.on_export()
+    assert not view.dialog.busy and view.worker.future is previous
+    assert not (view.dialog.store.library_root / 'protected.json').exists()
+    assert 'library' in view.dialog.status.GetValue().lower()
+
+
+@pytest.mark.parametrize('cleanup_warning', [False, True])
+def test_real_outer_reader_run_keeps_published_dictionary_success_after_late_stop(
+        view, tmp_path, monkeypatch, cleanup_warning):
+    from hashlib import sha256
+    import os
+    from carr_library.research import export_file
+    fixtures = runpy.run_path(str(Path(__file__).with_name('test_reader_native_lifetime.py')))
+    queue, reports, admitted = Queue(), [], []
+    controls = SimpleNamespace(owned_registries=set())
+    wx = SimpleNamespace(Dialog=fixtures['Window'], EVT_WINDOW_DESTROY='destroy',
+                         CallAfter=lambda callback, *args: queue.put((callback, args)))
+    executor = ThreadPoolExecutor(max_workers=1)
+    owner, run, _state = fixtures['reader_boundary']()(wx, executor, view.cancel, controls, reports.append)
+    actual_writer = ui.write_binary_export
+    destination = tmp_path / 'saved-after-stop.json'
+    actual_unlink = Path.unlink
+    class LinkPublication:
+        name = 'posix'
+        def __getattr__(self, name): return getattr(os, name)
+    if cleanup_warning:
+        # Exercise the real hardlink publication branch on each supported OS.
+        # Only its later staging cleanup fails; the output bytes are real.
+        monkeypatch.setattr(export_file, 'os', LinkPublication())
+        def unlink(path, *args, **kwargs):
+            if path.name.startswith('.research-export-') and destination.exists():
+                raise OSError('Synthetic postpublication cleanup failure')
+            return actual_unlink(path, *args, **kwargs)
+        monkeypatch.setattr(Path, 'unlink', unlink)
+    def published(*args, **kwargs):
+        receipt = actual_writer(*args, **kwargs)
+        view.cancel.set()  # Stop arrives after actual durable publication.
+        return receipt
+    def delegate(worker, operation, done, *, on_failed, committed=False):
+        admitted.append(committed)
+        return run(operation, done, on_failed=on_failed, committed=committed)
+    monkeypatch.setattr(ui, 'write_binary_export', published)
+    monkeypatch.setattr(ReaderWorker, '__call__', delegate)
+    rule = add_rule(view)
+    try:
+        view.picks.append(destination); view.dialog.on_export()
+        callback, args = queue.get(timeout=5)
+        callback(*args)
+        assert not view.dialog.busy
+        # A real cleanup warning leaves the temporary hardlink. Inspect the
+        # committed bytes without passing that two-link file to the stricter
+        # dictionary importer until its owned alias has been removed below.
+        saved_bytes = destination.read_bytes()
+        assert rule.pattern.encode('utf-8') in saved_bytes
+        assert 'New dictionary saved' in view.dialog.status.GetValue() and not reports
+        assert sha256(destination.read_bytes()).hexdigest() in view.dialog.status.GetValue()
+        assert ('cleanup is still pending' in view.dialog.status.GetValue()) is cleanup_warning
+        assert view.cancel.is_set() and admitted == [True]
+    finally:
+        owner.Destroy()
+        executor.shutdown(wait=True, cancel_futures=True)
+        for path in tmp_path.glob('.research-export-*'):
+            actual_unlink(path)
+    assert import_dictionary(destination) == (rule,)
+
+
+@pytest.mark.parametrize('operation', ['import', 'export'])
+@pytest.mark.parametrize('boundary', ['modal_return', 'picker_cleanup'])
+def test_dictionary_picker_owner_deletion_never_reads_or_destroys_a_deleted_peer(
+        view, tmp_path, monkeypatch, operation, boundary):
+    rule = add_rule(view)
+    incoming = tmp_path / 'incoming.json'
+    export_dictionary((rule,), incoming)
+    original = incoming.read_bytes()
+    destination = incoming if operation == 'import' else tmp_path / 'export.json'
+    view.picks.append(destination)
+    forbidden, detached = [], []
+    previous = view.worker.future
+    actual_native = Widget.native
+    def checked(widget):
+        if widget.destroyed:
+            forbidden.append(type(widget).__name__)
+        actual_native(widget)
+    monkeypatch.setattr(Widget, 'native', checked)
+    def detach():
+        Widget.Destroy(view.dialog)
+        view.dialog.on_destroy(SimpleNamespace(GetId=lambda: view.dialog._native_id, Skip=lambda: None,
+            GetEventObject=lambda: pytest.fail('Native wrapper identity cannot authorize destruction.')))
+        detached.append(True)
+    actual_picker = view.wx.FileDialog
+    class Picker(actual_picker):
+        def ShowModal(self):
+            result = super().ShowModal()
+            if boundary == 'modal_return':
+                detach()
+            return result
+        def Destroy(self):
+            result = super().Destroy()
+            if boundary == 'picker_cleanup' and not detached:
+                detach()
+            return result
+    view.wx.FileDialog = Picker
+    getattr(view.dialog, 'on_' + operation)()
+    assert detached == [True] and forbidden == [] and not view.cancel.is_set()
+    assert view.worker.future is previous and incoming.read_bytes() == original
+    assert not (tmp_path / 'export.json').exists()
 
 def test_export_keeps_the_selected_parent_identity_while_reader_work_is_queued(view, tmp_path):
     add_rule(view)

@@ -67,6 +67,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5 et-xmlfile==2.0.0
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/trusted-client.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -m pip install --no-deps .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -m pip check
@@ -370,7 +372,115 @@ jobs:
           $baseBundle = Join-Path $bundleWork 'base bundle'
           $bundle = Join-Path $bundleWork 'complete bundle'
           New-Item -ItemType Directory -Force $wheelhouse, $applicationWheels | Out-Null
-          & $env:CARR_PYTHON -m pip download --only-binary=:all: --no-deps --require-hashes -r packaging/windows-semantic-cp311.lock --dest $wheelhouse
+          # Compose the reviewed optional-client closure before the existing builder seals the bundle.
+          $fullLock = Join-Path $bundleWork 'windows-full-ci.lock'
+          $fullSbom = Join-Path $bundleWork 'windows-full-ci-sbom.cdx.json'
+          $composeFullLock = @'
+          import importlib.util, json, pathlib, sys
+          from hashlib import sha256
+          spec = importlib.util.spec_from_file_location('ci_full_bundle', pathlib.Path('packaging/build_windows_bundle.py'))
+          builder = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(builder)
+          base_path = pathlib.Path('packaging/windows-semantic-cp311.lock')
+          client_path = pathlib.Path('packaging/trusted-client.lock')
+          review_path = pathlib.Path('packaging/trusted-client-dependencies.json')
+          pins = builder.read_lock(base_path)
+          client = builder.read_lock(client_path)
+          review = json.loads(review_path.read_text(encoding='utf-8'))
+          assert review['target'] == 'Windows x86-64 CPython 3.11'
+          items = review['dependencies']
+          assert len(items) == len(client) and {row['name'] for row in items} == set(client)
+          for row in items:
+              name, version, digest = row['name'], row['version'], row['sha256']
+              assert client[name][0] == version and digest in client[name][1], name
+              if name in pins:
+                  assert pins[name][0] == version and digest in pins[name][1], name
+              else:
+                  pins[name] = (version, {digest})
+          out = pathlib.Path(sys.argv[1])
+          out.write_text(''.join(name + '==' + version + ' ' + ' '.join('--hash=sha256:' + h for h in sorted(hashes)) + '\n'
+                                 for name, (version, hashes) in sorted(pins.items())), encoding='utf-8')
+          assert builder.read_lock(out) == pins
+          print(json.dumps(dict(status='PASS', components=len(pins), lock_sha256=sha256(out.read_bytes()).hexdigest(),
+              source_sha256={p.name: sha256(p.read_bytes()).hexdigest() for p in (base_path, client_path, review_path)})))
+          '@
+          $composeFullLock | & $env:CARR_PYTHON -I -B - $fullLock | Tee-Object 'ci-results/full-client-lock.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -m pip download --only-binary=:all: --no-deps --require-hashes -r $fullLock --dest $wheelhouse
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $composeFullSbom = @'
+          import importlib.util, json, pathlib, sys
+          from hashlib import sha256
+          from packaging.markers import default_environment
+          from packaging.requirements import Requirement
+          from packaging.utils import canonicalize_name
+          spec = importlib.util.spec_from_file_location('ci_full_bundle', pathlib.Path('packaging/build_windows_bundle.py'))
+          builder = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(builder)
+          lock, wheelhouse, destination = map(pathlib.Path, sys.argv[1:4])
+          pins = builder.read_lock(lock)
+          base_path = pathlib.Path('packaging/windows-semantic-sbom.cdx.json')
+          review_path = pathlib.Path('packaging/trusted-client-dependencies.json')
+          bom = json.loads(base_path.read_text(encoding='utf-8'))
+          items = json.loads(review_path.read_text(encoding='utf-8'))['dependencies']
+          components = {canonicalize_name(c['name']): c for c in bom['components']}
+          assert len(components) == len(bom['components'])
+          selected = {}
+          for path in wheelhouse.iterdir():
+              builder.regular(path)
+              assert path.suffix == '.whl', path.name
+              name, version, metadata = builder.wheel_metadata(path)
+              assert name not in selected and name in pins and str(version) == pins[name][0]
+              assert builder.sha256(path) in pins[name][1], path.name
+              selected[name] = (path, version, metadata)
+          assert set(selected) == set(pins)
+          builder.verify_dependency_closure(selected)
+          new_names = set()
+          for row in items:
+              name = row['name']
+              wheel = selected[name][0]
+              assert wheel.name == row['filename'] and builder.sha256(wheel) == row['sha256'], name
+              if name in components:
+                  assert components[name]['version'] == row['version'], name
+                  continue
+              component = dict(type='library', name=name, version=row['version'],
+                  purl='pkg:pypi/' + name + '@' + row['version'],
+                  **{'bom-ref': 'trusted-client:' + name + '@' + row['version']},
+                  hashes=[dict(alg='SHA-256', content=row['sha256'])],
+                  licenses=[dict(expression=row['license_expression'])],
+                  externalReferences=[dict(type='distribution', url=row['source'])])
+              if row.get('vendored_license_expression'):
+                  component['properties'] = [dict(name='carr:vendored-license-expression', value=row['vendored_license_expression'])]
+              components[name] = component
+              bom['components'].append(component)
+              new_names.add(name)
+          assert {(n, c['version']) for n, c in components.items()} == {(n, v) for n, (v, _) in pins.items()}
+          environment = default_environment()
+          environment.update(os_name='nt', sys_platform='win32', platform_system='Windows', platform_machine='AMD64',
+              python_version='3.11', python_full_version='3.11.0', implementation_name='cpython',
+              platform_python_implementation='CPython', extra='')
+          for name in sorted(new_names):
+              dependencies = set()
+              for raw in selected[name][2].get_all('Requires-Dist', []):
+                  requirement = Requirement(raw)
+                  if requirement.marker and not requirement.marker.evaluate(environment):
+                      continue
+                  dependencies.add(components[canonicalize_name(requirement.name)]['bom-ref'])
+              bom['dependencies'].append({'ref': components[name]['bom-ref'], 'dependsOn': sorted(dependencies)})
+          root_ref = bom['metadata']['component']['bom-ref']
+          root_dependencies = next(item for item in bom['dependencies'] if item['ref'] == root_ref)
+          root_dependencies['dependsOn'] = sorted(set(root_dependencies.get('dependsOn', ())) |
+              {components[row['name']]['bom-ref'] for row in items})
+          bom['metadata'].setdefault('tools', []).append(dict(vendor='Resonance', name='checked CI runtime union', version='1'))
+          bom['metadata'].setdefault('properties', []).extend([
+              dict(name='carr:base-sbom-sha256', value=sha256(base_path.read_bytes()).hexdigest()),
+              dict(name='carr:trusted-client-review-sha256', value=sha256(review_path.read_bytes()).hexdigest()),
+              dict(name='carr:combined-lock-sha256', value=sha256(lock.read_bytes()).hexdigest())])
+          destination.write_text(json.dumps(bom, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps(dict(status='PASS', components=len(components), added=sorted(new_names),
+              sbom_sha256=sha256(destination.read_bytes()).hexdigest(), lock_sha256=sha256(lock.read_bytes()).hexdigest())))
+          '@
+          $composeFullSbom | & $env:CARR_PYTHON -I -B - $fullLock $wheelhouse $fullSbom | Tee-Object 'ci-results/full-client-sbom.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON -m pip wheel --no-deps --wheel-dir $applicationWheels .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -406,12 +516,12 @@ jobs:
           '@
           $sourceProofScript | & $env:CARR_PYTHON -I -B - $applicationWheel $sourceCommit | Tee-Object 'ci-results/source-wheel-before-native.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $env:CARR_PYTHON packaging/build_windows_bundle.py --wheel $applicationWheel --wheelhouse $wheelhouse --lock packaging/windows-semantic-cp311.lock --sbom packaging/windows-semantic-sbom.cdx.json --python-archive $pythonArchive --model-dir $env:CARR_CI_MODEL_DIR --model-manifest $env:CARR_CI_MODEL_MANIFEST --ocr-dir $ocr --ocr-source-archive $ocrSource --source-commit $sourceCommit --native-launcher $env:CARR_NATIVE_LAUNCHER --native-launcher-sha256 $env:CARR_NATIVE_LAUNCHER_SHA256 --output $baseBundle | Tee-Object 'ci-results/full-bundle-build.json'
+          & $env:CARR_PYTHON packaging/build_windows_bundle.py --wheel $applicationWheel --wheelhouse $wheelhouse --lock $fullLock --sbom $fullSbom --python-archive $pythonArchive --model-dir $env:CARR_CI_MODEL_DIR --model-manifest $env:CARR_CI_MODEL_MANIFEST --ocr-dir $ocr --ocr-source-archive $ocrSource --source-commit $sourceCommit --native-launcher $env:CARR_NATIVE_LAUNCHER --native-launcher-sha256 $env:CARR_NATIVE_LAUNCHER_SHA256 --output $baseBundle | Tee-Object 'ci-results/full-bundle-build.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON packaging/add_native_runtime.py --bundle $baseBundle --native-runtime $nativeRuntime --output $bundle | Tee-Object 'ci-results/full-bundle-native-runtime.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $manifest = Join-Path $bundle 'bundle-manifest.json'
-          $expectedSbom = (Get-FileHash -Algorithm SHA256 -LiteralPath 'packaging/windows-semantic-sbom.cdx.json').Hash.ToLowerInvariant()
+          $expectedSbom = (Get-FileHash -Algorithm SHA256 -LiteralPath $fullSbom).Hash.ToLowerInvariant()
           $sealedSbom = Join-Path $bundle 'runtime-sbom.cdx.json'
           if (!(Test-Path -LiteralPath $sealedSbom -PathType Leaf)) { throw 'Missing sealed SBOM' }
           $actualSbom = (Get-FileHash -Algorithm SHA256 -LiteralPath $sealedSbom).Hash.ToLowerInvariant()
@@ -577,6 +687,18 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Required installed command-palette acceptance failed.' }
           & $installedPython -I -B -X utf8 scripts/windows_reader_lifetime_smoke.py 2>&1 | Tee-Object 'ci-results/native-reader-lifetime.txt'
           if ($LASTEXITCODE -ne 0) { throw 'Required installed reader-lifetime acceptance failed.' }
+          & $installedPython -I -B -X utf8 scripts/windows_audio_conversion_smoke.py --audio-evidence 'ci-results/external-test-audio-binding.json' 2>&1 | Tee-Object 'ci-results/native-audio-conversion.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Installed native audio conversion failed.' }
+          & $installedPython -I -B -X utf8 scripts/windows_playback_navigation_smoke.py --audio-evidence 'ci-results/external-test-audio-binding.json' 2>&1 | Tee-Object 'ci-results/native-playback-navigation.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Installed native Studio navigation failed.' }
+          & $installedPython -I -B -X utf8 scripts/windows_studio_pronunciation_smoke.py 2>&1 | Tee-Object 'ci-results/native-studio-pronunciation.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Installed native Studio pronunciation review failed.' }
+          & $installedPython -I -B -X utf8 scripts/windows_reader_tools_smoke.py 2>&1 | Tee-Object 'ci-results/native-reader-tools.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Installed native reader editing and keymap tools failed.' }
+          & $installedPython -I -B -X utf8 tests/ui/native_trust_status_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-trust-status.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Installed native signed-status controls failed.' }
+          & $installedPython -I -B -X utf8 tests/ui/probe_portable_sync_native.py --native --encrypted 2>&1 | Tee-Object 'ci-results/native-portable-sync.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Installed native encrypted snapshot workflow failed.' }
           & $installedPython -I -B -X utf8 scripts/epubcheck_acceptance.py --archive $env:CARR_EPUBCHECK_ARCHIVE --java $env:CARR_EPUBCHECK_JAVA --audio-evidence 'ci-results/external-test-audio-binding.json' --require-installed --report 'ci-results/installed-epub-conformance.json' 2>&1 | Tee-Object 'ci-results/installed-epub-conformance.txt'
           if ($LASTEXITCODE -ne 0) { throw 'Installed EPUBCheck conformance acceptance failed.' }
           if ((Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash -ne $manifestBefore) { throw 'Bundle manifest changed during installation or startup.' }
@@ -600,7 +722,7 @@ jobs:
           $env:CARR_OCR_DIR = Join-Path $bundle 'ocr'
           $env:PYTEST_DISABLE_PLUGIN_AUTOLOAD = '1'
           $runInstalledTests = @'
-          import ctypes, json, os, pathlib, sys
+          import atexit, ctypes, hashlib, importlib, json, os, pathlib, sys
           from ctypes import wintypes
           import carr_library
           import carr_library.durable_state, carr_library.ui.save_actions
@@ -615,6 +737,9 @@ jobs:
           import carr_library.assistant.llm, carr_library.assistant.service
           from carr_library.native_runtime import activate_bundled_runtime
           root = pathlib.Path(sys.argv[1]).resolve()
+          runtime_handle = activate_bundled_runtime(bundle_root=root)
+          assert runtime_handle is not None
+          atexit.register(runtime_handle.close)
           installed_origins = {module.__name__: str(pathlib.Path(module.__file__).resolve())
                                for module in (carr_library, carr_library.durable_state, carr_library.ui.save_actions,
                                               carr_library.assistant.providers, carr_library.assistant.translation,
@@ -626,16 +751,26 @@ jobs:
                                               carr_library.reader.ebook_audio, carr_library.ui.pronunciation_dialog,
                                               carr_library.ui.command_palette, carr_library.ui.language_matrix,
                                               carr_library.assistant.llm, carr_library.assistant.service)}
+          additional_names = ('carr_library.file_publication', 'carr_library.security._files', 'carr_library.security.anchors', 'carr_library.security.boundary', 'carr_library.security.controller', 'carr_library.security.entitlements', 'carr_library.security.installation', 'carr_library.security.refresh', 'carr_library.security.updates', 'carr_library.sync.archive', 'carr_library.sync.cli', 'carr_library.sync.crypto', 'carr_library.sync.service', 'carr_library.sync.vault', 'carr_library.ui.portable_sync', 'carr_library.ui.trust_status', 'carr_library.studio.pronunciation', 'carr_library.ui.studio_pronunciation', 'carr_library.ui.playback_navigation', 'carr_library.ui.find_replace_dialog', 'carr_library.speech.regex_worker', 'carr_library.ui.live_reading', 'carr_library.ui.keyboard_settings')
+          for name in additional_names:
+              module = importlib.import_module(name)
+              installed_origins[name] = str(pathlib.Path(module.__file__).resolve())
           assert all(pathlib.Path(path).is_relative_to(root / '.venv') for path in installed_origins.values()), installed_origins
+          installed_source_sha256 = {}
+          for name, origin in installed_origins.items():
+              installed = pathlib.Path(origin)
+              source = pathlib.Path.cwd() / 'src' / pathlib.Path(*name.split('.'))
+              source = source / '__init__.py' if installed.name == '__init__.py' else source.with_suffix('.py')
+              digest = hashlib.sha256(installed.read_bytes()).hexdigest()
+              assert digest == hashlib.sha256(source.read_bytes()).hexdigest(), (name, str(source), origin)
+              installed_source_sha256[name] = digest
           manifest = json.loads((root / 'bundle-manifest.json').read_text())
           assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime']
           # Test-only command discovery is scoped to this installed-package child.
           # Production calls bind the verified runtime and never mutate PATH.
           os.environ['PATH'] = str(root / 'ocr') + os.pathsep + os.environ.get('PATH', '')
           os.environ['TESSDATA_PREFIX'] = str(root / 'ocr' / 'tessdata')
-          runtime_handle = activate_bundled_runtime(bundle_root=root)
-          assert runtime_handle is not None
-          print(json.dumps({'installed_package': True, 'source_commit': manifest['source_commit'], 'origins': installed_origins}), flush=True)
+          print(json.dumps({'installed_package': True, 'source_commit': manifest['source_commit'], 'origins': installed_origins, 'installed_source_sha256': installed_source_sha256}), flush=True)
           import pytest
           # Keep the shared workflow list intact while exercising the additive
           # contents reader in this same installed-package/native-runtime process.
@@ -780,6 +915,42 @@ jobs:
               'tests/studio/test_audiobook_publication.py',
               'tests/audio/test_publication_fsync.py',
               'tests/speech/test_python_helper.py',
+              'tests/security/test_anchor_locking.py',
+              'tests/security/test_canonical_boundary.py',
+              'tests/security/test_controller.py',
+              'tests/security/test_entitlement_publication.py',
+              'tests/security/test_entitlements.py',
+              'tests/security/test_idle_renewal.py',
+              'tests/security/test_independent_review_boundaries.py',
+              'tests/security/test_installation.py',
+              'tests/security/test_publication_integrity.py',
+              'tests/security/test_refresh.py',
+              'tests/security/test_updates.py',
+              'tests/sync/test_archive.py',
+              'tests/sync/test_cli.py',
+              'tests/sync/test_complete_state.py',
+              'tests/sync/test_crypto.py',
+              'tests/sync/test_crypto_publication.py',
+              'tests/sync/test_publication_outcomes.py',
+              'tests/sync/test_service.py',
+              'tests/sync/test_vault.py',
+              'tests/ui/test_portable_sync.py',
+              'tests/ui/test_trust_dialog_lifetime.py',
+              'tests/speech/test_find_replace.py',
+              'tests/speech/test_find_replace_handlers.py',
+              'tests/speech/test_find_replace_reader_hook.py',
+              'tests/speech/test_clipboard_reader.py',
+              'tests/ui/test_keymap_interchange.py',
+              'tests/ui/test_keyboard_settings_dialog.py',
+              'tests/ui/test_native_menu_contract.py',
+              'tests/studio/test_pronunciation.py',
+              'tests/studio/test_pronunciation_dialog.py',
+              'tests/studio/test_pronunciation_render.py',
+              'tests/ui/test_audio_conversion_controls.py',
+              'tests/ui/test_playback_navigation.py',
+              'tests/ui/test_studio_playback_actions.py',
+              'tests/studio/test_production.py',
+              'tests/security/test_windows_vault.py',
           ]
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:
@@ -1091,7 +1262,43 @@ jobs:
             'tests/studio/test_audiobook_publication.py',
             'tests/audio/test_publication_fsync.py',
             'tests/packaging/test_prepare_windows_audio.py',
-            'tests/speech/test_python_helper.py'
+            'tests/speech/test_python_helper.py',
+            'tests/security/test_anchor_locking.py',
+            'tests/security/test_canonical_boundary.py',
+            'tests/security/test_controller.py',
+            'tests/security/test_entitlement_publication.py',
+            'tests/security/test_entitlements.py',
+            'tests/security/test_idle_renewal.py',
+            'tests/security/test_independent_review_boundaries.py',
+            'tests/security/test_installation.py',
+            'tests/security/test_publication_integrity.py',
+            'tests/security/test_refresh.py',
+            'tests/security/test_updates.py',
+            'tests/sync/test_archive.py',
+            'tests/sync/test_cli.py',
+            'tests/sync/test_complete_state.py',
+            'tests/sync/test_crypto.py',
+            'tests/sync/test_crypto_publication.py',
+            'tests/sync/test_publication_outcomes.py',
+            'tests/sync/test_service.py',
+            'tests/sync/test_vault.py',
+            'tests/ui/test_portable_sync.py',
+            'tests/ui/test_trust_dialog_lifetime.py',
+            'tests/speech/test_find_replace.py',
+            'tests/speech/test_find_replace_handlers.py',
+            'tests/speech/test_find_replace_reader_hook.py',
+            'tests/speech/test_clipboard_reader.py',
+            'tests/ui/test_keymap_interchange.py',
+            'tests/ui/test_keyboard_settings_dialog.py',
+            'tests/ui/test_native_menu_contract.py',
+            'tests/studio/test_pronunciation.py',
+            'tests/studio/test_pronunciation_dialog.py',
+            'tests/studio/test_pronunciation_render.py',
+            'tests/ui/test_audio_conversion_controls.py',
+            'tests/ui/test_playback_navigation.py',
+            'tests/ui/test_studio_playback_actions.py',
+            'tests/studio/test_production.py',
+            'tests/security/test_windows_vault.py'
           )
           $previousPath = $env:PATH
           $previousOcr = $env:CARR_OCR_DIR

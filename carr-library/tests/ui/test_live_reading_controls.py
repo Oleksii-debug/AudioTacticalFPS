@@ -156,6 +156,24 @@ def test_saved_python_cursor_roundtrips_every_complete_native_boundary():
         assert reading_range(control, raw, 'cursor') == (offset, len(raw))
 
 
+@pytest.mark.parametrize('normalize', [False, True])
+def test_exact_native_selection_starts_after_complete_crlf_not_between_its_bytes(normalize):
+    raw = '😀 retained\r\nDr. source\r🚂 next.'
+    control = NativeText(raw)
+    if not normalize:
+        control.text = raw
+    start = raw.index('Dr.')
+    first = native_cursor_position(control, raw, start)
+    last = native_cursor_position(control, raw, start + 3)
+    assert control.GetRange(first, last) == 'Dr.'
+    assert not control.GetRange(0, first).endswith('\r')
+    # A standalone CR immediately before an astral character remains valid;
+    # probing its next UTF-16 unit must not reject this complete boundary.
+    after_cr = raw.index('\r🚂') + 1
+    control.cursor = native_cursor_position(control, raw, after_cr)
+    assert reading_range(control, raw, 'cursor') == (after_cr, len(raw))
+
+
 def test_native_crlf_presentation_does_not_create_authored_reading_revision():
     from carr_library.speech.reading import ReadingDocument
     from carr_library.ui.speech_dialog import capture_document_text
@@ -182,6 +200,58 @@ def test_discovery_does_not_preselect_voice_or_steal_focus():
         owner._voice_settings()
     owner.voice.SetSelection(0)
     assert owner._voice_settings() == ('test:explicit', 1., 1.)
+
+
+@pytest.mark.parametrize('boundary', ['modal_return', 'prompt_cleanup'])
+@pytest.mark.parametrize('accepted', [False, True])
+def test_seek_owner_deletion_drops_native_modal_result_without_dead_peer_access(boundary, accepted):
+    owner = controls()
+    forbidden, sought = [], []
+    owner.core.view = LiveStatus(sequence=8, state='paused', duration_seconds=4, audio_seconds=.5)
+    owner.core.seek = lambda *args, **kwargs: sought.append((args, kwargs))
+    class Peer(Control):
+        def __bool__(self): return not self.destroyed
+    owner.dialog = Peer()
+    class Prompt(Peer):
+        def __enter__(self): return self
+        def __exit__(self, *args): self.Destroy()
+        def detach(self):
+            owner.close()  # Actual owner detachment, not a replaced close hook.
+            owner.dialog.destroyed = owner.status.destroyed = self.destroyed = True
+        def ShowModal(self):
+            if boundary == 'modal_return':
+                self.detach()
+            return 1 if accepted else 0
+        def GetValue(self):
+            if self.destroyed: forbidden.append('GetValue')
+            self.alive()
+            return '1.25'
+        def Destroy(self):
+            if self.destroyed: forbidden.append('Destroy')
+            self.alive()
+            self.destroyed = True
+            if boundary == 'prompt_cleanup':
+                self.detach()
+    prompt = Prompt()
+    owner.wx = SimpleNamespace(ID_OK=1, TextEntryDialog=lambda *args, **kwargs: prompt)
+    owner.seek()
+    assert owner.closed and not owner.dialog and not prompt
+    assert forbidden == [] and sought == []
+
+
+@pytest.mark.parametrize('accepted', [False, True])
+def test_seek_modal_keeps_its_exact_current_chunk_and_cancellation_semantics(accepted):
+    owner = controls()
+    sought, destroyed = [], []
+    view = owner.core.view = LiveStatus(sequence=8, state='paused', duration_seconds=4, audio_seconds=.5)
+    owner.core.seek = lambda *args, **kwargs: sought.append((args, kwargs))
+    owner.dialog = object()
+    prompt = SimpleNamespace(ShowModal=lambda: 1 if accepted else 0, GetValue=lambda: '1.25',
+                             Destroy=lambda: destroyed.append(True))
+    owner.wx = SimpleNamespace(ID_OK=1, TextEntryDialog=lambda *args, **kwargs: prompt)
+    owner.seek()
+    assert destroyed == [True] and not owner.closed
+    assert sought == ([((1.25,), {'expected': view})] if accepted else [])
 
 
 def test_approximate_backend_position_is_labelled_without_word_alignment_claim():

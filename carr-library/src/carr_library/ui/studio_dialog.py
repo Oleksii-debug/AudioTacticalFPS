@@ -154,7 +154,9 @@ def show_studio(frame):
                  ('roles', 'Edit &roles and voices'), ('help', '&Help')),
                 (('render', '&Render / resume (F6)'), ('pause', '&Pause (F8)'), ('jobs', 'Saved &jobs'),
                  ('preview', 'Listen to &output'), ('close', '&Close')),
-                (('progress_voice', 'Use voice for progress...'),)):
+                (('progress_voice', 'Use voice for progress...'),
+                 ('navigation', 'Playback navigation...'), ('pause_preview', 'Pause/resume playback'),
+                 ('stop_preview', 'Stop playback'))):
         box = wx.BoxSizer(wx.HORIZONTAL)
         for identity, label in row:
             button = wx.Button(dialog, label=label)
@@ -197,6 +199,9 @@ def show_studio(frame):
             buttons[name].Enable(not busy)
         buttons['pause'].Enable(busy)
         buttons['preview'].Enable(not busy and current_job is not None)
+        buttons['navigation'].Enable(not busy and getattr(dialog, '_playback_navigation', None) is not None)
+        buttons['pause_preview'].Enable(not busy and getattr(dialog, '_audio_player', None) is not None)
+        buttons['stop_preview'].Enable(getattr(dialog, '_audio_player', None) is not None)
         selected = voice_choice.GetSelection()
         buttons['progress_voice'].Enable(not busy and 0 <= selected < len(voices)
                                           and 'volume' in voices[selected].capabilities)
@@ -613,6 +618,57 @@ def show_studio(frame):
         except Exception as exc:
             report(str(exc), True)
 
+    def stop_preview(event=None):
+        if not alive:
+            return
+        dialog._playback_generation = getattr(dialog, '_playback_generation', 0) + 1
+        navigation = getattr(dialog, '_playback_navigation', None)
+        if navigation is not None:
+            navigation.invalidate()
+        try:
+            player = getattr(dialog, '_audio_player', None)
+            if player is not None:
+                player.stop()
+            report('Stopped the rendered-master preview.')
+        except Exception as exc:
+            report(f'Playback stop needs attention: {exc}', True)
+
+    def playback_navigation(event=None):
+        if not alive:
+            return
+        try:
+            if busy:
+                raise ValueError('Wait for the current Studio operation before changing playback.')
+            navigation = getattr(dialog, '_playback_navigation', None)
+            if navigation is None:
+                raise ValueError('Listen to a rendered output before opening its playback navigation.')
+            navigation.show()
+        except Exception as exc:
+            report(f'Playback navigation could not be opened. {exc}', True)
+
+    def pause_preview(event=None):
+        if not alive or busy:
+            return
+        try:
+            player = getattr(dialog, '_audio_player', None)
+            if player is None or player.state not in ('playing', 'paused'):
+                raise ValueError('Listen to the rendered master before pausing or resuming it.')
+            if player.state == 'playing':
+                player.pause()
+                report('Rendered-master preview paused.')
+            else:
+                generation = dialog._playback_generation
+                def resumed():
+                    if player.state != 'paused':
+                        return
+                    player.resume()
+                    report('Rendered-master preview resumed.')
+                play_when_quiet((progress, parent_progress), resumed, schedule=wx.CallLater,
+                    alive=lambda: alive and generation == dialog._playback_generation,
+                    on_error=lambda exc: report(f'Playback did not resume. {exc}', True))
+        except Exception as exc:
+            report(f'Playback pause/resume needs attention: {exc}', True)
+
     def preview(event=None):
         if not alive:
             return
@@ -624,16 +680,30 @@ def show_studio(frame):
             if not source.exists():
                 raise ValueError('There is no completed master yet; render or resume the job.')
             from ..speech.player import WavePlayer
+            from .playback_navigation import PlaybackNavigationHost
             player = getattr(dialog, '_audio_player', None) or WavePlayer()
             dialog._audio_player = player
+            dialog._playback_generation = getattr(dialog, '_playback_generation', 0) + 1
+            generation = dialog._playback_generation
+            navigation = getattr(dialog, '_playback_navigation', None)
+            if navigation is None:
+                navigation = PlaybackNavigationHost(dialog, player,
+                    generation=lambda: dialog._playback_generation, alive=lambda: alive,
+                    stop_current=stop_preview, progress=(progress, parent_progress),
+                    report=report, wx_module=wx)
+                dialog._playback_navigation = navigation
+            navigation.invalidate()
             progress.register_player(player)
             if parent_progress is not None:
                 parent_progress.register_player(player)
             def playing():
                 player.play(source)
+                navigation.bind()
+                controls()
                 report('Playing the rendered master. Close this dialog to stop playback.', True)
             play_when_quiet((progress, parent_progress), playing, schedule=wx.CallLater,
-                alive=lambda: alive, on_error=lambda exc: report(f'Playback did not start. {exc}', True))
+                alive=lambda: alive and generation == dialog._playback_generation,
+                on_error=lambda exc: report(f'Playback did not start. {exc}', True))
         except Exception as exc:
             report(str(exc), True)
 
@@ -665,15 +735,23 @@ def show_studio(frame):
         if cleanup_started:
             return
         cleanup_started = True
+        dialog._playback_generation = getattr(dialog, '_playback_generation', 0) + 1
         try:
             timer.Stop()
         except RuntimeError:
             pass
         close_notices = []
+        navigation = getattr(dialog, '_playback_navigation', None)
+        if navigation is not None:
+            try:
+                navigation.close()
+            except (OSError, RuntimeError) as exc:
+                close_notices.append(f'Playback navigation timer needs attention: {exc}')
         if getattr(dialog, '_audio_player', None):
             silence_confirmed = False
             try:
-                dialog._audio_player.close()
+                if dialog._audio_player.close() is False:
+                    raise RuntimeError('The playback device has not confirmed closure.')
                 silence_confirmed = True
             except (OSError, RuntimeError) as exc:
                 close_notices.append(f'Playback device reported a close error: {exc}')
@@ -713,6 +791,8 @@ def show_studio(frame):
     for name, callback in {'save': save, 'open': open_project, 'saveas': save_as, 'roles': edit_roles,
                            'render': render, 'pause': lambda event: cancel.set(), 'jobs': jobs,
                            'preview': preview, 'help': help_text, 'close': close,
+                           'navigation': playback_navigation, 'pause_preview': pause_preview,
+                           'stop_preview': stop_preview,
                            'progress_voice': select_progress_voice}.items():
         buttons[name].Bind(wx.EVT_BUTTON, callback)
     bindings = []
@@ -775,83 +855,210 @@ def show_studio(frame):
                 dialog.Destroy()
 
 
+def audio_conversion_settings(*, sample_rate, channels, bit_depth, bitrate, start, duration,
+                              gain, tempo, loudness, cleanup):
+    """Validate the displayed numeric controls before admitting audio work."""
+    from ..audio import Effect
+    from ..audio.models import finite, integer
+    integer(sample_rate, 'Output sample rate', 8000, 192000)
+    integer(channels, 'Output channels', 1, 2)
+    if type(bit_depth) is not int or bit_depth not in (16, 24, 32):
+        raise ValueError('PCM bit depth must be 16, 24 or 32.')
+    integer(bitrate, 'Output bitrate', 32, 512)
+    start = finite(start, 'Selection start', 0)
+    duration = None if duration is None else finite(duration, 'Selection duration', .000001)
+    gain = finite(gain, 'Gain', -60, 12)
+    tempo = finite(tempo, 'Playback speed', .5, 2)
+    if type(cleanup) is not bool:
+        raise ValueError('Choose whether speech cleanup should be applied.')
+    chain = [Effect('gain', gain_db=gain), Effect('tempo', factor=tempo)]
+    if cleanup:
+        chain += [Effect('denoise'), Effect('compressor')]
+    if loudness is not None:
+        chain.append(Effect('loudness', target_lufs=finite(loudness, 'Target loudness', -40, -9), peak_db=-1))
+    return {'sample_rate': sample_rate, 'channels': channels, 'bit_depth': bit_depth,
+            'bitrate': bitrate, 'start': start, 'duration': duration, 'effects': tuple(chain)}
+
+
 def show_audio_conversion(frame):
     """Numeric, keyboard-driven offline DSP and conversion of a selected local file."""
     import wx
-    from ..audio import AudioRuntime, Effect
+    import math
+    import os
+    from uuid import uuid4
+    from ..durable_state import local_path
+    from ..research.export_file import capture_export_destination
+    selected_library = frame.library
+    selected_root = local_path(selected_library.root, exists=True)
+    def guard():
+        if (getattr(frame, '_closing', False) or frame.library is not selected_library
+                or local_path(frame.library.root, exists=True) != selected_root):
+            raise ValueError('The library changed or closed. Reopen audio conversion.')
+    def native_alive():
+        return bool(frame) and not getattr(frame, '_closing', False)
+    def report_error(exc):
+        if native_alive():
+            frame.report(str(exc))
     chooser = wx.FileDialog(frame, 'Choose a local audio or video source', style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
     try:
-        if chooser.ShowModal() != wx.ID_OK:
+        if chooser.ShowModal() != wx.ID_OK or not chooser or not native_alive():
             return
+        guard()
         source = Path(chooser.GetPath())
+    except Exception as exc:
+        report_error(exc)
+        return
     finally:
-        chooser.Destroy()
-    dialog = wx.Dialog(frame, title='Convert audio and apply effects', size=(700, 550),
+        if chooser:
+            chooser.Destroy()
+    dialog = wx.Dialog(frame, title='Convert audio and apply effects', size=(760, 750),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+    panel = wx.ScrolledWindow(dialog, style=wx.VSCROLL)
+    panel.SetScrollRate(0, 12)
     layout = wx.BoxSizer(wx.VERTICAL)
     def entry(label, value):
-        layout.Add(wx.StaticText(dialog, label=label), 0, wx.ALL, 5)
-        control = wx.TextCtrl(dialog, value=value)
+        layout.Add(wx.StaticText(panel, label=label), 0, wx.ALL, 5)
+        control = wx.TextCtrl(panel, value=value)
         control.SetName(label)
         layout.Add(control, 0, wx.EXPAND | wx.ALL, 5)
         return control
     start = entry('Start in seconds', '0')
     duration = entry('Duration in seconds; empty means remainder', '')
+    sample_rate = entry('Output sample rate in Hz, 8000 to 192000; Opus requires 48000', '24000')
+    channels = entry('Output channels: 1 for mono, 2 for stereo', '2')
+    bit_depth = entry('PCM bit depth: 16 or 24; 32 for WAV or AIFF only', '16')
+    bitrate = entry('Target compressed bitrate in kbps, 32 to 512; MP3, AAC, Opus and WMA', '192')
     gain = entry('Gain in decibels, -60 to 12', '0')
     tempo = entry('Playback speed without pitch change, 0.5 to 2', '1')
     loudness = entry('Target loudness in LUFS; empty leaves levels unchanged', '-18')
-    effects = wx.CheckBox(dialog, label='Apply speech noise reduction and gentle compression')
+    effects = wx.CheckBox(panel, label='Apply speech noise reduction and gentle compression')
+    effects.SetName('Apply speech noise reduction and gentle compression')
     layout.Add(effects, 0, wx.ALL, 6)
-    layout.Add(dialog.CreateButtonSizer(wx.OK | wx.CANCEL), 0, wx.ALL, 6)
-    dialog.SetSizer(layout)
+    notice = wx.StaticText(panel, label='The new filename selects its audio format. Bit depth applies to PCM/FLAC; '
+        'bitrate applies to the listed compressed encoders. Ogg Vorbis uses the existing quality setting. '
+        'The installed runtime verifies the actual rate and channels before saving. Originals stay unchanged.')
+    notice.Wrap(690); layout.Add(notice, 0, wx.ALL | wx.EXPAND, 6)
+    panel.SetSizer(layout)
+    outer = wx.BoxSizer(wx.VERTICAL); outer.Add(panel, 1, wx.EXPAND)
+    outer.Add(dialog.CreateButtonSizer(wx.OK | wx.CANCEL), 0, wx.ALL, 6)
+    dialog.SetSizer(outer); panel.FitInside()
     try:
-        if dialog.ShowModal() != wx.ID_OK:
+        if dialog.ShowModal() != wx.ID_OK or not dialog or not native_alive():
             return
-        start_value, duration_value = float(start.GetValue()), float(duration.GetValue()) if duration.GetValue().strip() else None
-        gain_value, tempo_value = float(gain.GetValue()), float(tempo.GetValue())
-        if not -60 <= gain_value <= 12 or not .5 <= tempo_value <= 2:
-            raise ValueError('Gain or speed is outside the displayed range.')
-        chain = [Effect('gain', gain_db=gain_value), Effect('tempo', factor=tempo_value)]
-        if effects.GetValue():
-            chain += [Effect('denoise'), Effect('compressor')]
-        if loudness.GetValue().strip():
-            chain.append(Effect('loudness', target_lufs=float(loudness.GetValue()), peak_db=-1))
+        guard()
+        options = audio_conversion_settings(sample_rate=int(sample_rate.GetValue()),
+            channels=int(channels.GetValue()), bit_depth=int(bit_depth.GetValue()), bitrate=int(bitrate.GetValue()),
+            start=float(start.GetValue()), duration=float(duration.GetValue()) if duration.GetValue().strip() else None,
+            gain=float(gain.GetValue()), tempo=float(tempo.GetValue()),
+            loudness=float(loudness.GetValue()) if loudness.GetValue().strip() else None,
+            cleanup=effects.GetValue())
     except Exception as exc:
-        frame.report(str(exc))
+        report_error(exc)
         return
     finally:
-        dialog.Destroy()
+        if dialog:
+            dialog.Destroy()
     chooser = wx.FileDialog(frame, 'Save converted audio to a new file', defaultFile=source.stem + '-converted.wav',
-                            wildcard='Audio (*.wav;*.flac;*.mp3;*.m4a;*.ogg;*.opus)|*.wav;*.flac;*.mp3;*.m4a;*.ogg;*.opus',
+                            wildcard='Audio (*.wav;*.flac;*.mp3;*.m4a;*.m4b;*.aac;*.ogg;*.opus;*.aiff;*.aif;*.wma)|*.wav;*.flac;*.mp3;*.m4a;*.m4b;*.aac;*.ogg;*.opus;*.aiff;*.aif;*.wma',
                             style=wx.FD_SAVE)
     try:
-        if chooser.ShowModal() != wx.ID_OK:
+        if chooser.ShowModal() != wx.ID_OK or not chooser or not native_alive():
             return
+        guard()
         output = Path(chooser.GetPath())
+        if os.path.lexists(output):
+            raise FileExistsError('Audio output already exists. Choose a new filename.')
+        approval = capture_export_destination(output, private_root=selected_root)
+        if not approval.require_absent:
+            raise FileExistsError('Audio output already exists. Choose a new filename.')
+    except Exception as exc:
+        report_error(exc)
+        return
     finally:
-        chooser.Destroy()
+        if chooser:
+            chooser.Destroy()
     def operation():
+        guard()
+        if output.suffix.lower() == '.opus' and options['sample_rate'] != 48000:
+            raise ValueError('Select 48000 Hz explicitly for Opus output.')
+        if output.suffix.lower() == '.flac' and options['bit_depth'] == 32:
+            raise ValueError('Select 16 or 24 bits for this FLAC conversion profile.')
         from ..runtime_settings import audio_runtime
-        runtime = audio_runtime(output.parent, state_root=frame.library.root / 'state', input_roots=(source.parent,))
-        result = runtime.convert(source, output, start=start_value, duration=duration_value,
-                                  effects=chain, cancelled=frame.cancel_event.is_set)
-        measurement = runtime.measure(output, cancelled=frame.cancel_event.is_set)
-        return result, measurement
+        from ..audio.models import AudioCleanupPending
+        from ..durable_state import regular
+        from ..studio.backup_inputs import _checked_digest, _stamp
+        runtime = audio_runtime(output.parent, state_root=selected_root / 'state', input_roots=(source.parent,))
+        service = ProductionService(selected_root / 'state' / 'studio')
+        cancelled = frame.cancel_event.is_set
+        def destination():
+            guard()
+            if capture_export_destination(output, private_root=selected_root, cancelled=cancelled) != approval:
+                raise ValueError('The selected audio destination changed. Choose it again.')
+        destination()
+        with service._audio_admission(runtime, operation_id='conversion-inspect:' + uuid4().hex,
+                                      cancelled=cancelled) as stopping:
+            destination()
+            inspected = runtime.inspect(source, cancelled=stopping)
+        remaining = max(0, inspected.duration - options['start'])
+        duration_seconds = remaining if options['duration'] is None else min(remaining, options['duration'])
+        speed = next(effect.parameters['factor'] for effect in options['effects'] if effect.kind == 'tempo')
+        expected_seconds = duration_seconds / speed
+        reserved = 2 * math.ceil((expected_seconds + 1) * options['sample_rate']
+            * options['channels'] * (options['bit_depth'] // 8)) + 1024**2 + runtime.budget.reserve_disk_bytes
+        result = measurement = saved_identity = None
+        warnings = []
+        try:
+            with service._audio_admission(runtime, operation_id='conversion:' + uuid4().hex,
+                    disk_bytes=reserved, disk_path=output.parent, cancelled=cancelled) as stopping:
+                destination()
+                result = runtime.convert(source, output, **options, cancelled=stopping)
+                saved_identity = regular(output)
+                # The converter returned its verified committed result. An
+                # optional measurement cannot reverse that completed save.
+                try:
+                    measurement = runtime.measure(output, cancelled=stopping)
+                except AudioCleanupPending:
+                    # The shared admission retains its lease until this exact
+                    # native owner confirms quiescence, even after publication.
+                    raise
+                except (Exception, KeyboardInterrupt) as exc:
+                    warnings.append(f'Loudness measurement did not complete: {exc}')
+        except (Exception, KeyboardInterrupt) as exc:
+            if result is None or saved_identity is None:
+                raise
+            warnings.append('The audio is saved and verified; shared resource release needs attention: '
+                            + type(exc).__name__ + ': ' + str(exc)[:1000])
+        if (_stamp(regular(output)) != _stamp(saved_identity)
+                or saved_identity.st_size != result.size
+                or _checked_digest(output, saved_identity, lambda: False) != result.sha256):
+            raise ValueError('The saved conversion changed during final cleanup.')
+        return result, measurement, ' '.join(warnings)
+    def complete(result):
+        if not native_alive():
+            return
+        guard()
+        info, measured, warning = result
+        frame.report(f'Saved {output}. Duration {info.duration:.2f} seconds; '
+                     f'{info.sample_rate} Hz; {info.channels} channel(s). '
+                     + (f'Measured loudness {measured.integrated_lufs} LUFS. ' if measured is not None else '')
+                     + warning)
     frame.run_job('Converting local audio', operation,
-        lambda result: frame.report(f'Saved {output}. Duration {result[0].duration:.2f} seconds. '
-                                    f'Measured loudness {result[1].integrated_lufs} LUFS.'))
+                  complete)
 
 
 def install_studio_actions(frame):
     import wx
+    from .keyboard_settings import register_command_identity
     from .engine_settings import show_engine_settings
     from .studio_clips import show_clip_editor
+    from .studio_pronunciation import show_studio_pronunciations
     from .recording_dialog import show_recording
     from .transcription_dialog import show_transcription
     from .publishing_dialog import show_publishing
     menu = wx.Menu()
     for title, handler in [('Script and audio production...\tCtrl+Alt+A', lambda e: show_studio(frame)),
                             ('Edit scene audio clips...', lambda e: show_clip_editor(frame)),
+                            ('Review spoken-line pronunciation...', lambda e: show_studio_pronunciations(frame)),
                             ('Record microphone...', lambda e: show_recording(frame)),
                             ('Publish synchronized EPUB3 / DAISY...', lambda e: show_publishing(frame)),
                             ('Convert audio and apply effects...', lambda e: show_audio_conversion(frame)),
@@ -859,6 +1066,6 @@ def install_studio_actions(frame):
                             ('Local voice and music engines...', lambda e: show_engine_settings(frame))]:
         item = menu.Append(wx.ID_ANY, title)
         if title == 'Publish synchronized EPUB3 / DAISY...':
-            item.carr_command_name = 'publish synchronized epub3'
+            register_command_identity(frame.menu_bar, item, 'publish synchronized epub3')
         frame.Bind(wx.EVT_MENU, handler, item)
     frame.menu_bar.Append(menu, 'Audio St&udio')

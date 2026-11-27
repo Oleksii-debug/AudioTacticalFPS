@@ -107,3 +107,42 @@ def test_canonical_windows_paused_seek_never_sends_play_before_explicit_resume(c
     assert player._resume_from_seek is False
     with pytest.raises(ValueError):
         player.seek(float('nan'))
+
+
+@pytest.mark.parametrize('failure', ['stop', 'close', 'both', 'interrupt-close'])
+def test_canonical_native_close_retains_unconfirmed_alias_and_original_stop_error(chunk, monkeypatch, failure):
+    from types import SimpleNamespace
+    import carr_library.speech.player as implementation
+    player = implementation.WavePlayer()
+    monkeypatch.setattr(implementation, 'os', SimpleNamespace(name='nt'))
+    player.path, player.duration_seconds = chunk, .2
+    player._open, player._state = True, 'playing'
+    before = chunk.read_bytes()
+    commands = []
+    stop_error = RuntimeError('Synthetic native stop failure')
+    close_error = (KeyboardInterrupt('Synthetic interrupted native close') if failure == 'interrupt-close'
+                   else RuntimeError('Synthetic native close failure'))
+    def native(command):
+        commands.append(command)
+        if command.startswith('stop ') and failure in ('stop', 'both'):
+            raise stop_error
+        if command.startswith('close ') and failure in ('close', 'both', 'interrupt-close'):
+            raise close_error
+        return ''
+    monkeypatch.setattr(player, '_mci', native)
+    expected = stop_error if failure in ('stop', 'both') else close_error
+    with pytest.raises(type(expected)) as caught:
+        player.close()
+    assert caught.value is expected
+    assert commands == [f'stop {player._alias}', f'close {player._alias}']
+    assert player._open is (failure != 'stop')
+    if failure == 'both':
+        assert caught.value.__cause__ is close_error
+    assert player.path == chunk and chunk.read_bytes() == before
+    # Retry the same retained native alias; no second player or guessed silence.
+    commands.clear()
+    monkeypatch.setattr(player, '_mci', lambda command: commands.append(command) or '')
+    assert player.close() is True
+    assert not player._open and player._state == 'stopped'
+    assert commands == ([] if failure == 'stop' else [f'stop {player._alias}', f'close {player._alias}'])
+    assert chunk.read_bytes() == before

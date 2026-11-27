@@ -228,6 +228,7 @@ def make(autosave, cancel, service, timer, dialog, progress, parent_progress, re
     environment = {'wx': SimpleNamespace(ID_CLOSE=321), 'SimpleNamespace': SimpleNamespace}
     exec(compile(ast.fix_missing_locations(factory), str(source), 'exec'), environment)
     autosave, service, timer, dialog, progress, parent_progress, executor = [Mock() for _ in range(7)]
+    dialog._playback_generation, dialog._playback_navigation = 0, None
     cancel, reports = threading.Event(), []
     dialog._audio_player.close.side_effect = RuntimeError('The native device did not confirm silence')
     progress.unregister_player.side_effect = RuntimeError('The local progress view is detached')

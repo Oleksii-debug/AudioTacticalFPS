@@ -73,6 +73,8 @@ class Frame:
         self.bindings[item.GetId()] = callback
     def SetAcceleratorTable(self, table):
         self.table = table
+    def GetMenuBar(self):
+        return self.menu_bar
     def report(self, message):
         self.reports.append(message)
 
@@ -410,11 +412,15 @@ def test_expanded_publication_menu_preserves_saved_epub_shortcut(frame, wx, monk
 class Control(Focus):
     def __init__(self, parent, *args, value='', choices=(), label='', style=0, **kwargs):
         super().__init__()
+        if len(args) > 1:
+            label = args[1]
         self.parent, self.value, self.choices, self.label = parent, value, list(choices), label
         self.identity = args[0] if args else None
-        self.handlers, self.selection, self.name = {}, -1, ''
+        self.handlers, self.selection, self.name, self.enabled = {}, -1, '', True
         parent.controls.append(self)
     def SetName(self, value): self.name = value
+    def GetLabel(self): return self.label
+    def Enable(self, value=True): self.enabled = value
     def SetSelection(self, value): self.selection = value
     def GetSelection(self): return self.selection
     def ChangeValue(self, value): self.value = value
@@ -424,7 +430,13 @@ class Control(Focus):
 
 
 class Dialog:
-    def __init__(self, parent, wx, **kwargs): self.controls, self.wx, self.destroyed = [], wx, False
+    def __init__(self, parent, wx, **kwargs):
+        self.controls, self.wx, self.destroyed, self.handlers = [], wx, False, {}
+    def __bool__(self): return not self.destroyed
+    def GetId(self):
+        assert not self.destroyed
+        return id(self)
+    def Bind(self, event, callback): self.handlers[event] = callback
     def SetSizer(self, value): self.sizer = value
     def SetEscapeId(self, value): self.escape = value
     def ShowModal(self): self.wx.on_modal(self)
@@ -436,10 +448,15 @@ def _dialog_wx(wx, on_modal):
                  'LEFT', 'TOP', 'TE_READONLY', 'TE_MULTILINE', 'ALIGN_RIGHT'):
         setattr(wx, name, 1)
     wx.ID_APPLY, wx.ID_CANCEL, wx.EVT_CHOICE, wx.EVT_BUTTON = 10, 11, 'choice', 'button'
+    wx.EVT_TEXT = 'text'
+    wx.EVT_WINDOW_DESTROY = 'destroy'
     wx.Choice = wx.TextCtrl = wx.StaticText = wx.Button = Control
     wx.BoxSizer = lambda value: SimpleNamespace(Add=lambda *args, **kwargs: None)
     wx.on_modal = on_modal
-    wx.Dialog = lambda parent, **kwargs: Dialog(parent, wx, **kwargs)
+    class NativeDialog(Dialog):
+        def __init__(self, parent, **kwargs):
+            super().__init__(parent, wx, **kwargs)
+    wx.Dialog = NativeDialog
 
 
 @pytest.mark.parametrize('mode', ['apply', 'conflict', 'reset', 'cancel'])

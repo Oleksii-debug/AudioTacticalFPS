@@ -17,6 +17,39 @@ def capture_document_text(document, native_value, *, displayed_value, displayed_
     return document.set_text(value)
 
 
+def _read_clipboard_text(wx):
+    """Take one explicit Unicode snapshot without modifying the clipboard."""
+    from ..speech._io import text_value
+    clipboard = wx.TheClipboard
+    if not clipboard.Open():
+        raise ValueError('The clipboard is busy. Try again when the other application releases it.')
+    try:
+        if not clipboard.IsSupported(wx.DataFormat(wx.DF_UNICODETEXT)):
+            raise ValueError('The clipboard does not contain Unicode text to read.')
+        data = wx.TextDataObject()
+        if not clipboard.GetData(data):
+            raise ValueError('The clipboard text could not be read. Copy the text again and retry.')
+        text = data.GetText()
+    finally:
+        clipboard.Close()
+    return text_value(text, 'Clipboard reading text')
+
+
+def show_clipboard_reader(parent):
+    """Open one editable snapshot; neither opening nor discovery starts speech."""
+    import wx
+    try:
+        if not parent or getattr(parent, '_closing', False):
+            raise ValueError('The library is closing.')
+        text = _read_clipboard_text(wx)
+        if not parent or getattr(parent, '_closing', False):
+            return
+        show_speech_reader(parent, text=text, title='Clipboard reading copy', recovery_slot='clipboard')
+    except Exception as exc:
+        if parent:
+            parent.report(f'The clipboard reading copy could not be opened. {exc}')
+
+
 def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=None,
                        source_guard=lambda: None, recovery_slot='manual',
                        on_ready=None, live_factory=None):
@@ -574,6 +607,83 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             report(str(exc), focus=True)
 
 
+    def find_replace(event=None):
+        if not alive:
+            return
+        try:
+            if busy or live.core.busy or not source_loaded:
+                raise ValueError('Wait for the reader operation to finish before finding or replacing text.')
+            from ..durable_state import local_path
+            from .find_replace_dialog import ReadingSnapshot, apply_replacement, create_find_replace_dialog
+            selected_library = parent.library
+            selected_root = local_path(selected_library.root, exists=True)
+
+            def guard():
+                if (not alive or getattr(parent, '_closing', False) or parent.library is not selected_library
+                        or local_path(parent.library.root, exists=True) != selected_root):
+                    raise ValueError('The library changed or the reader closed. Reopen Find and replace.')
+                source_guard()
+
+            def capture():
+                guard(); sync_document()
+                native_start, native_end = editor.GetSelection()
+                if native_start == native_end:
+                    start, _ = reading_range(editor, document.text, 'cursor')
+                    end = start
+                else:
+                    start, end = reading_range(editor, document.text, 'selection')
+                return ReadingSnapshot.capture(document, (start, end))
+
+            def select(expected, selection):
+                guard()
+                if capture() != expected:
+                    raise ValueError('The reading copy or selection changed. Find again.')
+                start, end = selection
+                document._range(start, end)
+                first = native_cursor_position(editor, document.text, start)
+                last = native_cursor_position(editor, document.text, end)
+                editor.SetSelection(first, last)
+                if capture().selection != selection:
+                    raise ValueError('The text control could not select the exact matching passage.')
+
+            def synchronize():
+                display_document()
+                try:
+                    save_recovery(force=True)
+                except Exception as exc:
+                    return f'The reading change is in memory, but recovery save failed: {exc}. Use Save As before closing.'
+                return with_recovery_warning('')
+
+            def apply(preview):
+                guard(); current = capture()
+                live.stop()
+                apply_replacement(document, preview, current)
+                warning = synchronize()
+                return capture(), warning
+
+            def undo_replace(expected):
+                guard()
+                if capture() != expected:
+                    raise ValueError('The reading copy changed after applying. Use the reader undo history explicitly.')
+                live.stop()
+                if not document.undo():
+                    raise ValueError('The find/replace edit is no longer available to undo.')
+                return synchronize()
+
+            review = create_find_replace_dialog(dialog, capture=capture, select=select, apply=apply,
+                undo=undo_replace, guard=guard, run=run, cancel=cancel)
+            try:
+                review.ShowModal()
+            finally:
+                if review.alive:
+                    review.finish_close()
+                if review:
+                    review.Destroy()
+            if alive:
+                live.capabilities(); editor.SetFocus()
+        except Exception as exc:
+            report(str(exc), focus=True)
+
     def clean(event=None):
         if not alive:
             return
@@ -716,6 +826,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     button('R&edo reading edit', lambda event: history(forward=True), 'redo')
     button('Original and &diff', compare, 'diff')
     button('Normalize s&paces', clean, 'cleanup')
+    button('&Find and replace', find_replace, 'find_replace')
     button('Pronunciatio&n rules', pronunciations, 'pronunciations')
     button('Save &WAV', save_audio, 'export_audio')
     progress_voice = button('Use voice for progress...', select_progress_voice, 'progress_voice')
@@ -730,7 +841,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     accelerators = []
     shortcut_ids = []
     for flags, key, handler in ((wx.ACCEL_CTRL, ord('S'), save_project),
-        (wx.ACCEL_CTRL | wx.ACCEL_SHIFT, ord('S'), lambda event: save_project(choose=True))):
+        (wx.ACCEL_CTRL | wx.ACCEL_SHIFT, ord('S'), lambda event: save_project(choose=True)),
+        (wx.ACCEL_CTRL, ord('F'), find_replace), (wx.ACCEL_CTRL, ord('H'), find_replace)):
         identifier = wx.NewIdRef()
         shortcut_ids.append(identifier)
         accelerators.append((flags, key, int(identifier)))
@@ -838,6 +950,8 @@ def install_speech_actions(frame):
     menu = wx.Menu()
     item = menu.Append(wx.ID_ANY, 'Voice reader and reading copy...\tCtrl+Alt+V')
     frame.Bind(wx.EVT_MENU, lambda event: show_speech_reader(frame), item)
+    clipboard = menu.Append(wx.ID_ANY, 'Read &clipboard...')
+    frame.Bind(wx.EVT_MENU, lambda event: show_clipboard_reader(frame), clipboard)
     from .reading_desk import ReadingActions
     from ..speech.source import read_source_range
 

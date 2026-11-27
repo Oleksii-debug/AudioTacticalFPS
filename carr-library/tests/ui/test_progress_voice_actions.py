@@ -472,6 +472,8 @@ def test_studio_preview_waits_for_both_controllers_and_close_invalidates_start(t
     local, parent, player = Progress('studio'), Progress('parent'), Mock()
     dialog = Mock()
     dialog._audio_player = player
+    dialog._playback_generation = 0
+    dialog._playback_navigation = Mock()
     values = dict(current_job='completed-test-job', service=SimpleNamespace(
         get=lambda job: {'destination': str(tmp_path)}, close=Mock()), dialog=dialog,
         progress=local, parent_progress=parent, wx=SimpleNamespace(CallLater=scheduler, ID_CLOSE=3),

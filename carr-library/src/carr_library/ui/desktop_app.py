@@ -598,6 +598,8 @@ class DesktopFrame(WorkspaceFrame):
         from .language_matrix import install_language_actions
         from .translation_dialog import install_translation_actions
         from .transcription_dialog import install_transcription_actions
+        from .portable_sync import install_portable_sync_actions
+        from .trust_status import install_trust_actions
         install_speech_actions(self)
         install_language_actions(self)
         install_studio_actions(self)
@@ -608,6 +610,8 @@ class DesktopFrame(WorkspaceFrame):
         install_conversion_actions(self)
         install_save_actions(self)
         install_citation_actions(self)
+        install_portable_sync_actions(self)
+        install_trust_actions(self)
         install_operation_progress(self)
         install_keyboard_settings(self)
 

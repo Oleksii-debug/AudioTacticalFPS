@@ -238,6 +238,7 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
                 guard()
                 require_current_account(p)
                 service.gateway = Gateway(root / 'provider', mode='APPROVED_REMOTE')
+                require_current_account(p)
                 def discovery_stopped():
                     if stopped():
                         return True

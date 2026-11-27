@@ -472,12 +472,28 @@ def _checkpoint(checkpoint, job, ordinal, kind):
         raise ValueError('Pending checkpoint source or locator identity mismatch.')
 
 
+def _present(path):
+    """Only genuine absence is optional; permission and lookup errors fail closed."""
+    try:
+        Path(path).lstat()
+    except FileNotFoundError:
+        return False
+    return True
+
+
+def pending_roots(root):
+    # Probe every root, even when the first exists. A short-circuiting any()
+    # could hide an inaccessible request or batch directory.
+    return tuple(name for name in ('imports.sqlite', 'import-requests', 'import-batches')
+                 if _present(Path(root) / name))
+
+
 def _inventory(root):
     """Recognize canonical committed sidecars; ignore only known transient names."""
     found = {}
     for name in ('import-requests', 'import-batches'):
         directory = root / name
-        if not os.path.lexists(directory):
+        if not _present(directory):
             continue
         local_path(directory, exists=True)
         regular(directory, directory=True)
@@ -603,10 +619,13 @@ def _source_checkpoints(asset, raw, jobs, journal):
                     raise ValueError('Pending text checkpoint differs from the exact original bytes.')
 
 
-def snapshot_pending(app, target, *, cancelled=lambda: False):
+def snapshot_pending(app, target, *, cancelled=lambda: False, expected_roots=None):
     """Create a self-contained component under the caller's root writer guard."""
     _check(cancelled)
     root = local_path(app.root, exists=True)
+    roots = pending_roots(root)
+    if expected_roots is not None and roots != expected_roots:
+        raise ValueError('Pending import roots changed during backup; retry after pausing imports.')
     target = local_path(target)
     target.mkdir(mode=0o700)
     before = _inventory(root)
@@ -619,9 +638,9 @@ def snapshot_pending(app, target, *, cancelled=lambda: False):
         with closing(_catalog(catalog_path)) as catalog:
             jobs = {}
             journal_path = root / 'imports.sqlite'
-            if os.path.lexists(journal_path):
+            if _present(journal_path):
                 for suffix in ('-wal', '-shm', '-journal'):
-                    if os.path.lexists(Path(str(journal_path) + suffix)):
+                    if _present(Path(str(journal_path) + suffix)):
                         local_path(Path(str(journal_path) + suffix), exists=True)
                 source_db, _ = _journal(journal_path, catalog, cancelled)
                 page_size = source_db.execute('PRAGMA page_size').fetchone()[0]
@@ -690,7 +709,7 @@ def snapshot_pending(app, target, *, cancelled=lambda: False):
             for asset in assets.values():
                 _check(cancelled)
                 _source_checkpoints(asset, _read(target / 'originals' / asset['filename'], MAX_BYTES), jobs, journal)
-        if _inventory(root) != before:
+        if _inventory(root) != before or pending_roots(root) != roots:
             raise ValueError('Pending import state changed during backup; retry after pausing imports.')
     finally:
         if journal is not None:
@@ -773,20 +792,33 @@ def restore_pending(source, stage, new_root, metadata, *, cancelled=lambda: Fals
     stage = local_path(stage, exists=True)
     regular(stage, directory=True)
     new_root = local_path(new_root)
-    names = set()
-    for directory, dirs, filenames in os.walk(source, followlinks=False):
-        for name in dirs:
-            regular(Path(directory) / name, directory=True)
-            if (Path(directory) / name).relative_to(source).as_posix() not in ('originals', 'import-requests', 'import-requests/reviews', 'import-batches'):
-                raise ValueError('Unexpected directory in pending import backup.')
-        for name in filenames:
-            path = Path(directory) / name
-            regular(path)
-            relative = path.relative_to(source).as_posix()
-            if not _component_name(relative):
-                raise ValueError('Unexpected file in pending import backup.')
-            names.add(relative)
-    if names != {entry['filename'] for entry in metadata['files']}:
+    names = {entry['filename'] for entry in metadata['files']}
+    missing = set(names)
+    # Stream entries rather than building an os.walk directory listing.
+    # Only four directory names are permitted, and file tracking is bounded
+    # by the already validated manifest. Enumeration errors must propagate.
+    directories = [source]
+    while directories:
+        _check(cancelled)
+        directory = directories.pop()
+        with os.scandir(directory) as children:
+            for child in children:
+                _check(cancelled)
+                path = directory / child.name
+                relative = path.relative_to(source).as_posix()
+                if child.is_dir(follow_symlinks=False):
+                    regular(path, directory=True)
+                    if relative not in ('originals', 'import-requests', 'import-requests/reviews', 'import-batches'):
+                        raise ValueError('Unexpected directory in pending import backup.')
+                    directories.append(path)
+                else:
+                    regular(path)
+                    if not _component_name(relative):
+                        raise ValueError('Unexpected file in pending import backup.')
+                    if relative not in missing:
+                        raise ValueError('Pending import backup has missing or unlisted files.')
+                    missing.remove(relative)
+    if missing:
         raise ValueError('Pending import backup has missing or unlisted files.')
     # Verify into a fresh private component first. No database is queried and no
     # original is accepted until all component hashes have been checked.

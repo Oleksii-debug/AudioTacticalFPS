@@ -53,6 +53,7 @@ jobs:
           mkdir -p ci-source-results
           git rev-parse HEAD > ci-source-results/tested-commit.txt
           python -m pip install '.[test]'
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/trusted-client.lock
           python -m pip freeze > ci-source-results/installed-dependencies.txt
           python -m pip check
           python -c "from carr_library.extract.ocr_runtime import discover_ocr_runtime; assert discover_ocr_runtime() is not None, 'Required actual OCR runtime is unavailable'"
@@ -200,6 +201,42 @@ jobs:
             tests/audio/test_publication_fsync.py \
             tests/packaging/test_prepare_windows_audio.py \
             tests/speech/test_python_helper.py \
+            tests/security/test_anchor_locking.py \
+            tests/security/test_canonical_boundary.py \
+            tests/security/test_controller.py \
+            tests/security/test_entitlement_publication.py \
+            tests/security/test_entitlements.py \
+            tests/security/test_idle_renewal.py \
+            tests/security/test_independent_review_boundaries.py \
+            tests/security/test_installation.py \
+            tests/security/test_publication_integrity.py \
+            tests/security/test_refresh.py \
+            tests/security/test_updates.py \
+            tests/sync/test_archive.py \
+            tests/sync/test_cli.py \
+            tests/sync/test_complete_state.py \
+            tests/sync/test_crypto.py \
+            tests/sync/test_crypto_publication.py \
+            tests/sync/test_publication_outcomes.py \
+            tests/sync/test_service.py \
+            tests/sync/test_vault.py \
+            tests/ui/test_portable_sync.py \
+            tests/ui/test_trust_dialog_lifetime.py \
+            tests/speech/test_find_replace.py \
+            tests/speech/test_find_replace_handlers.py \
+            tests/speech/test_find_replace_reader_hook.py \
+            tests/speech/test_clipboard_reader.py \
+            tests/ui/test_keymap_interchange.py \
+            tests/ui/test_keyboard_settings_dialog.py \
+            tests/ui/test_native_menu_contract.py \
+            tests/studio/test_pronunciation.py \
+            tests/studio/test_pronunciation_dialog.py \
+            tests/studio/test_pronunciation_render.py \
+            tests/ui/test_audio_conversion_controls.py \
+            tests/ui/test_playback_navigation.py \
+            tests/ui/test_studio_playback_actions.py \
+            tests/studio/test_production.py \
+            tests/audio/test_playback_navigation_posix.py \
             --junitxml=ci-source-results/source-tests.xml
           python -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-source-results/source-tests.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); assert cases and failed==skipped==0; print(json.dumps(dict(status='PASS',passed=len(cases),failed=failed,skipped=skipped,native_windows='NOT_RUN',real_asr='NOT_RUN',nvda='NOT_RUN')))"
       - name: Preserve source evidence and dependency identity
@@ -242,6 +279,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5 et-xmlfile==2.0.0
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/trusted-client.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pip install --no-deps .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pip check
@@ -280,7 +319,11 @@ jobs:
           PYTEST_ADDOPTS: ''
         run: |
           $installedRecovery = @'
-          import json, pathlib, sys, xml.etree.ElementTree as ET
+          import atexit, json, pathlib, sys, xml.etree.ElementTree as ET
+          from carr_library.native_runtime import activate_bundled_runtime
+          runtime_handle = activate_bundled_runtime()
+          if runtime_handle is not None:
+              atexit.register(runtime_handle.close)
           import carr_library, carr_library.state_backup, carr_library.ingest.worker
           import carr_library.application, carr_library.pending_backup, carr_library.library_backup
           import carr_library.speech.reading, carr_library.speech.source, carr_library.ui.speech_dialog
@@ -304,6 +347,7 @@ jobs:
           import importlib
           names = tuple(dict.fromkeys((*names, 'carr_library.backup_extensions', 'carr_library.studio.backup_inputs', 'carr_library.studio.clips', 'carr_library.audio.recording', 'carr_library.audio.audiobook', 'carr_library.reader.live_reading', 'carr_library.speech.dordiai', 'carr_library.integrations.dordiai_voices', 'carr_library.search.advanced', 'carr_library.semantic_cache', 'carr_library.extract.document_formats', 'carr_library.acquisition.service', 'carr_library.assistant.llm', 'carr_library.extract.ocr_runtime')))
           names = tuple(dict.fromkeys((*names, 'carr_library.reader.ebook_audio', 'carr_library.ui.ebook_audio_dialog', 'carr_library.ui.reading_desk', 'carr_library.speech.player', 'carr_library.ui.pronunciation_dialog', 'carr_library.ui.translation_dialog', 'carr_library.ui.studio_dialog')))
+          names = tuple(dict.fromkeys((*names, 'carr_library.file_publication', 'carr_library.security._files', 'carr_library.security.anchors', 'carr_library.security.boundary', 'carr_library.security.controller', 'carr_library.security.entitlements', 'carr_library.security.installation', 'carr_library.security.refresh', 'carr_library.security.updates', 'carr_library.sync.archive', 'carr_library.sync.cli', 'carr_library.sync.crypto', 'carr_library.sync.service', 'carr_library.sync.vault', 'carr_library.ui.portable_sync', 'carr_library.ui.trust_status', 'carr_library.studio.pronunciation', 'carr_library.ui.studio_pronunciation', 'carr_library.ui.playback_navigation', 'carr_library.ui.find_replace_dialog', 'carr_library.speech.regex_worker', 'carr_library.ui.live_reading', 'carr_library.ui.keyboard_settings')))
           for name in names:
               importlib.import_module(name)
           from hashlib import sha256
@@ -424,6 +468,42 @@ jobs:
               'tests/ui/test_profile_project_exports.py',
               'tests/studio/test_production_cancellation_outcomes.py',
               'tests/packaging/test_refresh_private_bundle_review.py',
+              'tests/security/test_anchor_locking.py',
+              'tests/security/test_canonical_boundary.py',
+              'tests/security/test_controller.py',
+              'tests/security/test_entitlement_publication.py',
+              'tests/security/test_entitlements.py',
+              'tests/security/test_idle_renewal.py',
+              'tests/security/test_independent_review_boundaries.py',
+              'tests/security/test_installation.py',
+              'tests/security/test_publication_integrity.py',
+              'tests/security/test_refresh.py',
+              'tests/security/test_updates.py',
+              'tests/sync/test_archive.py',
+              'tests/sync/test_cli.py',
+              'tests/sync/test_complete_state.py',
+              'tests/sync/test_crypto.py',
+              'tests/sync/test_crypto_publication.py',
+              'tests/sync/test_publication_outcomes.py',
+              'tests/sync/test_service.py',
+              'tests/sync/test_vault.py',
+              'tests/ui/test_portable_sync.py',
+              'tests/ui/test_trust_dialog_lifetime.py',
+              'tests/speech/test_find_replace.py',
+              'tests/speech/test_find_replace_handlers.py',
+              'tests/speech/test_find_replace_reader_hook.py',
+              'tests/speech/test_clipboard_reader.py',
+              'tests/ui/test_keymap_interchange.py',
+              'tests/ui/test_keyboard_settings_dialog.py',
+              'tests/ui/test_native_menu_contract.py',
+              'tests/studio/test_pronunciation.py',
+              'tests/studio/test_pronunciation_dialog.py',
+              'tests/studio/test_pronunciation_render.py',
+              'tests/ui/test_audio_conversion_controls.py',
+              'tests/ui/test_playback_navigation.py',
+              'tests/ui/test_studio_playback_actions.py',
+              'tests/studio/test_production.py',
+              'tests/security/test_windows_vault.py',
           ]
           status = pytest.main(['-v', '-o', 'addopts=', '-o', 'pythonpath=',
                                '-o', 'xfail_strict=true', '--import-mode=importlib',
@@ -550,6 +630,18 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw 'Required installed command-palette acceptance failed.' }
             & $python -I -B -X utf8 scripts/windows_reader_lifetime_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-reader-lifetime.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Required installed reader-lifetime acceptance failed.' }
+            & $python -I -B -X utf8 scripts/windows_audio_conversion_smoke.py --audio-evidence 'ci-v3-results/external-test-audio-binding.json' 2>&1 | Tee-Object 'ci-v3-results/native-audio-conversion.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Installed native audio conversion failed.' }
+            & $python -I -B -X utf8 scripts/windows_playback_navigation_smoke.py --audio-evidence 'ci-v3-results/external-test-audio-binding.json' 2>&1 | Tee-Object 'ci-v3-results/native-playback-navigation.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Installed native Studio navigation failed.' }
+            & $python -I -B -X utf8 scripts/windows_studio_pronunciation_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-studio-pronunciation.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Installed native Studio pronunciation review failed.' }
+            & $python -I -B -X utf8 scripts/windows_reader_tools_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-reader-tools.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Installed native reader editing and keymap tools failed.' }
+            & $python -I -B -X utf8 tests/ui/native_trust_status_smoke.py --native 2>&1 | Tee-Object 'ci-v3-results/native-trust-status.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Installed native signed-status controls failed.' }
+            & $python -I -B -X utf8 tests/ui/probe_portable_sync_native.py --native --encrypted 2>&1 | Tee-Object 'ci-v3-results/native-portable-sync.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Installed native encrypted snapshot workflow failed.' }
             & $python -I -B -X utf8 scripts/epubcheck_acceptance.py --archive $env:CARR_EPUBCHECK_ARCHIVE --java $env:CARR_EPUBCHECK_JAVA --audio-evidence 'ci-v3-results/external-test-audio-binding.json' --require-installed --report 'ci-v3-results/epub-conformance.json' 2>&1 | Tee-Object 'ci-v3-results/epub-conformance.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Actual EPUBCheck conformance acceptance failed.' }
           } finally {
@@ -566,7 +658,7 @@ jobs:
         run: |
           node --version | Tee-Object 'ci-v3-results/citation-node-version.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python -m pytest -q --import-mode=importlib tests/audio tests/speech tests/assistant tests/studio tests/academic_integration tests/conversion tests/research/test_bibtex_import.py tests/language_qualification tests/ui/test_transcription_dialog.py tests/ui/test_operation_progress.py tests/ui/test_progress_job_review.py tests/ui/test_keyboard_settings.py tests/test_delivery_contract.py tests/storage/test_atomic_state_publication.py tests/storage/test_v3_state_backup.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_backup_v4_review.py tests/storage/test_state_backup_portability.py tests/e2e/test_import_worker_publication.py tests/ingest/test_import_replay_identity.py tests/packaging/test_worker_bytecode.py tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py tests/packaging/test_refresh_private_bundle_review.py tests/ui/test_profile_project_exports.py tests/integrations/test_dordiai_convergence.py tests/ui/test_progress_voice_actions.py tests/integrations/test_dordiai_voices.py tests/integrations/test_dordiai_ownership.py tests/integrations/test_dordiai_probe_cancellation.py tests/ui/test_command_palette.py tests/reader/test_ebook_audio.py tests/ui/test_reader_dialog_lifetime.py tests/ui/test_recording_dialog.py tests/storage/test_studio_input_backup.py tests/ui/test_studio_progress_isolation.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
+          python -m pytest -q --import-mode=importlib tests/audio tests/speech tests/assistant tests/studio tests/academic_integration tests/conversion tests/research/test_bibtex_import.py tests/language_qualification tests/ui/test_transcription_dialog.py tests/ui/test_operation_progress.py tests/ui/test_progress_job_review.py tests/ui/test_keyboard_settings.py tests/test_delivery_contract.py tests/storage/test_atomic_state_publication.py tests/storage/test_v3_state_backup.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_backup_v4_review.py tests/storage/test_state_backup_portability.py tests/e2e/test_import_worker_publication.py tests/ingest/test_import_replay_identity.py tests/packaging/test_worker_bytecode.py tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py tests/packaging/test_refresh_private_bundle_review.py tests/ui/test_profile_project_exports.py tests/integrations/test_dordiai_convergence.py tests/ui/test_progress_voice_actions.py tests/integrations/test_dordiai_voices.py tests/integrations/test_dordiai_ownership.py tests/integrations/test_dordiai_probe_cancellation.py tests/ui/test_command_palette.py tests/reader/test_ebook_audio.py tests/ui/test_reader_dialog_lifetime.py tests/ui/test_recording_dialog.py tests/storage/test_studio_input_backup.py tests/ui/test_studio_progress_isolation.py tests/security tests/sync tests/ui/test_portable_sync.py tests/ui/test_trust_dialog_lifetime.py tests/ui/test_keymap_interchange.py tests/ui/test_keyboard_settings_dialog.py tests/ui/test_native_menu_contract.py tests/ui/test_audio_conversion_controls.py tests/ui/test_playback_navigation.py tests/ui/test_studio_playback_actions.py --ignore=tests/audio/test_playback_navigation_posix.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Require actual import-attempt, migration and export integrity regressions
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' }}
@@ -580,7 +672,7 @@ jobs:
         env:
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
-          python scripts/ci_check.py --jobs 3 tests/operations/test_resources.py tests/operations/test_worker_start_cleanup.py tests/operations/test_facade.py tests/operations/test_canonical_asr_admission.py tests/operations/test_ocr_admission.py tests/ui/test_operations_policy.py tests/ui/test_operations_dialog.py tests/e2e/test_operations_cli.py tests/operations/test_production_admission.py tests/operations/test_resource_backup.py tests/audio/test_music.py tests/storage/test_state_json_reader.py tests/ui/test_save_actions.py tests/extract/test_ocr_inventory_boundary.py tests/assistant/test_translation.py tests/ui/test_translation_selection.py tests/studio/test_publishing.py tests/studio/test_publishing_cli.py tests/studio/test_publishing_handlers.py tests/integrations/test_dordiai_convergence.py tests/speech/test_progress_speech.py tests/ui/test_progress_voice_actions.py tests/integrations/test_dordiai_voices.py tests/integrations/test_dordiai_ownership.py tests/integrations/test_dordiai_probe_cancellation.py tests/ui/test_keyboard_settings.py tests/speech/test_pronunciation_review.py tests/speech/test_pronunciation_reader_hook.py tests/speech/test_pronunciation_handlers.py tests/speech/test_source.py tests/speech/test_reader_native_lifetime.py tests/ui/test_command_palette.py tests/reader/test_ebook_audio.py tests/ui/test_reader_dialog_lifetime.py tests/language_qualification/test_ui.py tests/audio/test_recording.py tests/audio/test_audio_process.py tests/audio/test_recording_process_windows.py tests/ui/test_recording_dialog.py tests/studio/test_clip_dialog.py tests/studio/test_clip_editing.py tests/storage/test_studio_input_backup.py tests/studio/test_project_v1_compatibility.py tests/ui/test_studio_progress_isolation.py tests/assistant/test_local_planning.py tests/assistant/test_planning_handlers.py tests/studio/test_daisy_publishing.py tests/studio/test_studio_controller.py tests/audio/test_audiobook.py tests/studio/test_audiobook_publication.py tests/audio/test_publication_fsync.py tests/storage/test_state_backup_portability.py::test_state_inventory_rejects_unreadable_subtree tests/storage/test_state_backup_portability.py::test_state_restore_rejects_unlisted_file_before_scanning_later_subtree tests/storage/test_state_backup_portability.py::test_state_root_lookup_error_is_not_absence tests/storage/test_state_backup_portability.py::test_state_root_missing_is_optional_only_when_requested tests/storage/test_v3_state_backup.py::test_backup_state_lookup_failure_never_publishes tests/speech/test_python_helper.py 2>&1 | Tee-Object 'ci-v3-results/strict-shared-resources.txt'
+          python scripts/ci_check.py --jobs 3 tests/operations/test_resources.py tests/operations/test_worker_start_cleanup.py tests/operations/test_facade.py tests/operations/test_canonical_asr_admission.py tests/operations/test_ocr_admission.py tests/ui/test_operations_policy.py tests/ui/test_operations_dialog.py tests/e2e/test_operations_cli.py tests/operations/test_production_admission.py tests/operations/test_resource_backup.py tests/audio/test_music.py tests/storage/test_state_json_reader.py tests/ui/test_save_actions.py tests/extract/test_ocr_inventory_boundary.py tests/assistant/test_translation.py tests/ui/test_translation_selection.py tests/studio/test_publishing.py tests/studio/test_publishing_cli.py tests/studio/test_publishing_handlers.py tests/integrations/test_dordiai_convergence.py tests/speech/test_progress_speech.py tests/ui/test_progress_voice_actions.py tests/integrations/test_dordiai_voices.py tests/integrations/test_dordiai_ownership.py tests/integrations/test_dordiai_probe_cancellation.py tests/ui/test_keyboard_settings.py tests/speech/test_pronunciation_review.py tests/speech/test_pronunciation_reader_hook.py tests/speech/test_pronunciation_handlers.py tests/speech/test_source.py tests/speech/test_reader_native_lifetime.py tests/ui/test_command_palette.py tests/reader/test_ebook_audio.py tests/ui/test_reader_dialog_lifetime.py tests/language_qualification/test_ui.py tests/audio/test_recording.py tests/audio/test_audio_process.py tests/audio/test_recording_process_windows.py tests/ui/test_recording_dialog.py tests/studio/test_clip_dialog.py tests/studio/test_clip_editing.py tests/storage/test_studio_input_backup.py tests/studio/test_project_v1_compatibility.py tests/ui/test_studio_progress_isolation.py tests/assistant/test_local_planning.py tests/assistant/test_planning_handlers.py tests/studio/test_daisy_publishing.py tests/studio/test_studio_controller.py tests/audio/test_audiobook.py tests/studio/test_audiobook_publication.py tests/audio/test_publication_fsync.py tests/storage/test_state_backup_portability.py::test_state_inventory_rejects_unreadable_subtree tests/storage/test_state_backup_portability.py::test_state_restore_rejects_unlisted_file_before_scanning_later_subtree tests/storage/test_state_backup_portability.py::test_state_root_lookup_error_is_not_absence tests/storage/test_state_backup_portability.py::test_state_root_missing_is_optional_only_when_requested tests/storage/test_v3_state_backup.py::test_backup_state_lookup_failure_never_publishes tests/speech/test_python_helper.py tests/security/test_anchor_locking.py tests/security/test_canonical_boundary.py tests/security/test_controller.py tests/security/test_entitlement_publication.py tests/security/test_entitlements.py tests/security/test_idle_renewal.py tests/security/test_independent_review_boundaries.py tests/security/test_installation.py tests/security/test_publication_integrity.py tests/security/test_refresh.py tests/security/test_updates.py tests/sync/test_archive.py tests/sync/test_cli.py tests/sync/test_complete_state.py tests/sync/test_crypto.py tests/sync/test_crypto_publication.py tests/sync/test_publication_outcomes.py tests/sync/test_service.py tests/sync/test_vault.py tests/ui/test_portable_sync.py tests/ui/test_trust_dialog_lifetime.py tests/speech/test_find_replace.py tests/speech/test_find_replace_handlers.py tests/speech/test_find_replace_reader_hook.py tests/speech/test_clipboard_reader.py tests/ui/test_keymap_interchange.py tests/ui/test_keyboard_settings_dialog.py tests/ui/test_native_menu_contract.py tests/studio/test_pronunciation.py tests/studio/test_pronunciation_dialog.py tests/studio/test_pronunciation_render.py tests/ui/test_audio_conversion_controls.py tests/ui/test_playback_navigation.py tests/ui/test_studio_playback_actions.py tests/studio/test_production.py tests/security/test_windows_vault.py 2>&1 | Tee-Object 'ci-v3-results/strict-shared-resources.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Keep source and test evidence only
         if: always()

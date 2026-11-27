@@ -27,7 +27,8 @@ unchanged until a verified migration; visible application titles use Resonance.
 | Assistant and providers | Existing typed scoped executor and deterministic parser plus an explicit local compatible-LLM proposal path, profile selection, plan preview and separate Run action in UI/CLI | Capability, profile identity, scope, budget and plan validation surround the real gateway. Edited goals discard pending proposals. Synthetic loopback HTTP and native controls are tested before the runtime firewall; actual model inference and paid provider quality remain unqualified |
 | Translation | Optional official Google Basic v2 and Advanced v3 plain-text translation, explicit source ranges, directional language inventory, existing glossary selection, scoped consent, decoded-text receipts, resume and export through the same gateway | Exact source/account/model/glossary/approval bindings and short-lived OAuth expiry are covered by synthetic provider, CLI and native-handler cases. Completed saved derivatives remain exportable offline. Actual API/IAM, glossary language coverage, formatted-document fidelity, automatic token renewal and local inference remain separate |
 | Delivery preparation | Native ResearchLibrary.exe, exact-source sealed bundles and the existing Inno Setup wrapper: per-user Start-menu launch, versioned repair generations and normal uninstall preserving unknown/data files | Required Windows gates bind build/source/executable identities and actual install, failing bootstrap, repair with an old interpreter alive, uninstall and final bundle seal. This is an unsigned development installer; exact-head native acceptance, publisher signing and distribution clearance are separate |
-| Private integration boundary | Separate versioned entitlement/update protocols and preservation of user-data operations | 45 synthetic boundary tests; no verifier, authority, automatic renewal, production trust or updater is enabled |
+| Portable snapshots | Explicit snapshot publication, inspected transfer codes, optional password encryption and restore into a new folder over the complete typed backup producers | AES-GCM, scrypt and HKDF use the pinned cryptography library. Actual encrypted roundtrips, competing writers, process interruption, changed destinations and committed-cleanup outcomes are covered by source tests. Windows DPAPI/native controls and the installed artifact need exact-head qualification |
+| Public trust client | Versioned Ed25519 entitlement verification, signed-file renewal, configurable idle refresh, protected credential references, replay anchors and local TUF update verification | Public clients and synthetic policy fixtures are integrated; production authority, endpoints, trust roots, account/billing service and signing material remain separate owner configuration. Managed installations continue to use their approved installer path; an update is not activated merely by checking status |
 
 The native V3 acceptance script performs installed SAPI synthesis, scene
 production, output verification, restart, CSL/DOCX, isolated text conversion and
@@ -35,6 +36,29 @@ named native dialogs while the selected runtime executables have outbound
 firewall rules. Its evidence explicitly labels manual NVDA as NOT_RUN.
 
 ## Current composition and evidence states
+
+The final integration also selects compatible reader tools and Studio controls
+from the reviewed PR112 source, plus the public trust and portable-snapshot
+clients from the reviewed PR99 source. It retains the current source reader,
+resource broker, project versions, publication receipts and archive-v5 producer.
+Find/Replace uses an isolated bounded regex worker; clipboard capture is explicit;
+dictionary and keymap exports use the existing destination approval and completion
+receipts. Studio pronunciation edits use revision and fingerprint checks.
+
+The latest integrity corrections check cancellation immediately before publishing
+a staged Studio artifact, probe every pending-import root without suppressing
+access errors, and enumerate restore contents against the bounded manifest.
+Recorded-EPUB cleanup retains its input, lock and resource lease while an actual
+worker or playback device still owns them. A verified committed output is
+reported as saved when only subsequent cleanup or directory durability fails;
+changed or foreign outputs do not acquire that status.
+
+Each current CI run identifies its exact source commit, installed Python module
+bytes and dependency pack. The earlier evidence snapshots below are historical
+inputs; they do not qualify newly composed code. Required native probes include
+reader tools, keyboard identities, conversion controls, Studio playback and
+pronunciation, trust status and encrypted portable restore. Human NVDA and
+acoustic/model/profile qualification remain distinct evidence.
 
 The source composition reconciles these immutable input revisions:
 

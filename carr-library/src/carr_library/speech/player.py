@@ -15,6 +15,7 @@ from uuid import uuid4
 import wave
 
 from ._io import local_file, stop_process
+from ..audio.process import native_audio_environment
 
 
 class WavePlayer:
@@ -100,7 +101,7 @@ class WavePlayer:
                 '-nodisp', '-autoexit', '-nostats', '-ss', str(float(start_seconds)),
                 '-protocol_whitelist', 'file,pipe', '-i', str(target)],
                 stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                start_new_session=True, shell=False)
+                start_new_session=True, shell=False, env=native_audio_environment())
         self._started = time.monotonic()
         self._state = 'playing'
 
@@ -162,11 +163,21 @@ class WavePlayer:
         self._resume_from_seek = False
 
     def close(self):
+        stop_error = None
         try:
             self.stop()
-        finally:
+        except BaseException as exc:
+            stop_error = exc
+        try:
             if os.name == 'nt' and self._open:
-                # A rejected close still owns the device and its WAV. Keep
-                # the alias live so the retained cleanup owner can retry.
                 self._mci(f'close {self._alias}')
+                # Retain the native alias until the device confirms closure.
+                # A failed close must remain retryable by its existing owner.
                 self._open = False
+        except BaseException as exc:
+            if stop_error is not None:
+                raise stop_error from exc
+            raise
+        if stop_error is not None:
+            raise stop_error
+        return True

@@ -33,6 +33,9 @@ license-files = [
 ]
 
 [project.optional-dependencies]
+sync = ["cryptography==50.0.2"]
+trusted-client = ["cryptography==50.0.2", "tuf==7.0.1", "securesystemslib==1.6.0",
+                  "urllib3==2.8.0", "cffi==2.1.1", "pycparser==3.12"]
 desktop = ["wxPython==4.2.4"]
 semantic = [
   "fastembed==0.9.1",
@@ -57,6 +60,7 @@ test = [
 
 [project.scripts]
 research-library = "carr_library.__main__:main"
+research-library-trust = "carr_library.security.__main__:main"
 research-library-ocr-models = "carr_library.extract.ocr_model_catalog:main"
 
 [project.gui-scripts]
@@ -92,6 +96,8 @@ packages = [
   "carr_library.studio",
   "carr_library.assistant",
   "carr_library.operations",
+  "carr_library.security",
+  "carr_library.sync",
   "carr_library.conversion",
   "carr_library.academic_integration",
   "carr_library.language_qualification",

@@ -1,4 +1,4 @@
-"""Installed wx lifetime acceptance for the six native reader/review dialogs.
+"""Installed wx lifetime acceptance for the seven native reader/review dialogs.
 
 Real direct and parent-driven deletion, native IDs and queued callbacks are
 required. Worker values are explicit synthetic lifetime fixtures. This does not
@@ -44,11 +44,11 @@ def _run():
     from carr_library.speech import VoiceRegistry, live_adapter
     from carr_library.reader import live_reading
     from carr_library import runtime_settings
-    from carr_library.ui import command_palette, ebook_audio_dialog, language_matrix
+    from carr_library.ui import command_palette, ebook_audio_dialog, find_replace_dialog, language_matrix
     from carr_library.ui import keyboard_settings, pronunciation_dialog, reading_desk, speech_dialog
 
     source_identity = _acceptance_bindings().verify_installed_sources(
-        command_palette, ebook_audio_dialog, language_matrix, keyboard_settings,
+        command_palette, ebook_audio_dialog, find_replace_dialog, language_matrix, keyboard_settings,
         pronunciation_dialog, reading_desk, speech_dialog, live_adapter, live_reading)
     checks, failures, reports, events = [], [], [], []
     owners, hosts, releases, restore_registry = [], [], [], []
@@ -193,7 +193,7 @@ def _run():
         asset = library.assets.resolve(book['asset'])
         original = asset.read_bytes()
         cases = iter((kind, termination) for kind in
-                     ('reading', 'audio', 'pronunciation', 'palette', 'languages', 'voice')
+                     ('reading', 'audio', 'pronunciation', 'find-replace', 'palette', 'languages', 'voice')
                      for termination in ('direct', 'native-parent'))
 
         def next_case():
@@ -231,7 +231,8 @@ def _run():
             elif kind == 'pronunciation':
                 document = ReadingDocument(desk.page(1).raw_text)
                 snapshot = pronunciation_dialog.ReadingSnapshot.capture(document, (0, 0))
-                def run(work, done, *, on_failed):
+                def run(work, done, *, on_failed, committed=False):
+                    assert committed is False  # This fixture queues a dictionary load.
                     pending.append((work, done, on_failed))
                     return True
                 owner = pronunciation_dialog.create_pronunciation_dialog(host, library_root=library.root,
@@ -244,6 +245,23 @@ def _run():
                 owner = language_matrix._native_dialog_type()(host, language_matrix.LanguageMatrixController())
                 window = owner
                 owner.refresh()
+            elif kind == 'find-replace':
+                document = ReadingDocument('Exact retained source. No quotation approval.')
+                snapshot = pronunciation_dialog.ReadingSnapshot.capture(document, (0, 0))
+                def run(work, done, *, on_failed):
+                    pending.append((work, done, on_failed))
+                    return True
+                owner = find_replace_dialog.create_find_replace_dialog(host, capture=lambda: snapshot,
+                    select=lambda *args: accepted.append('unexpected selection'),
+                    apply=lambda *args: accepted.append('unexpected edit'), undo=lambda value: '',
+                    guard=lambda: None, run=run, cancel=host.cancel_event)
+                window = owner
+                owner.pattern.ChangeValue('source')
+                owner.on_find()
+                # Produce a real isolated-worker result, hold its actual UI
+                # completion until after the native owner is deleted below.
+                find_result = pending[0][0]()
+                check('real isolated search found the retained passage', len(find_result.matches) == 1)
             else:
                 bar, menu = wx.MenuBar(), wx.Menu()
                 menu.Append(wx.ID_ANY, 'Keyboard guide\tF1')
@@ -317,6 +335,15 @@ def _run():
                     owner.refresh()
                     owner.cancel()
                     check('canonical entries remain exact', len(owner.controller.catalog.entries) == 135)
+                elif kind == 'find-replace':
+                    _, done, failed = pending[0]
+                    done(find_result)
+                    failed(RuntimeError('Late search failure'))
+                    owner.report('Late search report')
+                    owner.controls()
+                    owner.on_find()
+                    owner.on_apply()
+                    check('late search cannot change its source', document.text == snapshot.text)
                 else:
                     owner.refresh()
                     owner.selection_changed()
@@ -344,7 +371,7 @@ def _run():
                     until(completed.is_set, drained)
                 else:
                     check('owned cancellation matches pending work',
-                          host.cancel_event.is_set() == (kind in ('pronunciation', 'languages')))
+                          host.cancel_event.is_set() == (kind in ('pronunciation', 'find-replace', 'languages')))
                     wx.CallAfter(replay)
 
             def destroy_owner():
@@ -368,7 +395,7 @@ def _run():
         try:
             later(next_case)
             gui.MainLoop()
-            check('all twelve direct and parent cases completed', finished and len(events) == 12 and not failures)
+            check('all fourteen direct and parent cases completed', finished and len(events) == 14 and not failures)
         finally:
             for release in releases:
                 release.set()

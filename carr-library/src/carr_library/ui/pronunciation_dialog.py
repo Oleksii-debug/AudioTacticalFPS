@@ -126,9 +126,16 @@ def _dictionary_bytes(rules, cancelled):
 def export_reviewed_dictionary(rules, destination, *, private_root, approval=None,
                                cancelled=lambda: False) -> tuple[str, ExportReceipt]:
     """Publish a new dictionary through the common export policy and receipt."""
+    # Capture before dictionary serialization; the native caller supplies the
+    # selection captured before it queued this worker. Export stays create-only.
+    check_cancelled(cancelled)
+    if approval is None:
+        approval = capture_export_destination(destination, private_root=private_root, cancelled=cancelled)
+    if not approval.require_absent:
+        raise FileExistsError('Choose a new dictionary filename; this destination already exists.')
     raw = _dictionary_bytes(rules, cancelled)
     receipt = write_binary_export(destination, raw, private_root=private_root,
-                                  cancelled=cancelled, require_absent=True, approval=approval)
+                                  require_absent=True, approval=approval, cancelled=cancelled)
     return sha256(raw).hexdigest(), receipt
 
 
@@ -383,7 +390,7 @@ def create_pronunciation_dialog(parent, *, library_root, capture, apply, undo, g
                 if self.alive:
                     self.close_after_save = False; self.report(error); self.controls()
             try:
-                admitted = run(operation, done, on_failed=failed)
+                admitted = run(operation, done, on_failed=failed, committed=committed)
                 if admitted is False:
                     failed('A reader operation is running. Finish or cancel it first.')
                     return False
@@ -424,11 +431,15 @@ def create_pronunciation_dialog(parent, *, library_root, capture, apply, undo, g
             picker = wx.FileDialog(self, 'Import pronunciation rules for review',
                                    wildcard='Pronunciation dictionary (*.json)|*.json', style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
             try:
-                if picker.ShowModal() != wx.ID_OK:
+                answer = picker.ShowModal()
+                if not self.alive or not self or not picker or answer != wx.ID_OK:
                     return
                 source = Path(picker.GetPath())
             finally:
-                picker.Destroy()
+                if picker:
+                    picker.Destroy()
+            if not self.alive or not self:
+                return
             def done(result):
                 self.rules = result[0]; self.refresh()
                 self.report(f'Imported {len(self.rules)} rules for review. Save explicitly to retain them; preview before applying.')
@@ -444,18 +455,23 @@ def create_pronunciation_dialog(parent, *, library_root, capture, apply, undo, g
                 picker = wx.FileDialog(self, 'Export rules to a new dictionary', defaultFile='pronunciations.json',
                                        wildcard='Pronunciation dictionary (*.json)|*.json', style=wx.FD_SAVE)
                 try:
-                    if picker.ShowModal() != wx.ID_OK:
+                    answer = picker.ShowModal()
+                    if not self.alive or not self or not picker or answer != wx.ID_OK:
                         return
                     destination = Path(picker.GetPath())
                 finally:
-                    picker.Destroy()
-                if not self.alive:
+                    if picker:
+                        picker.Destroy()
+                if not self.alive or not self:
                     return
                 guard()
+                if self.rules != rules:
+                    raise ValueError('The pronunciation rules changed while choosing the destination. Review them again.')
                 private_root = self.store.library_root
                 approval = capture_export_destination(destination, private_root=private_root,
                                                       cancelled=self.stopping)
-
+                if not approval.require_absent:
+                    raise FileExistsError('Choose a new dictionary filename; this destination already exists.')
                 def saved(result):
                     digest, receipt = result
                     self.report(export_completion(f'New dictionary saved; SHA-256 {digest}.', receipt))

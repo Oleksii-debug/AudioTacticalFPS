@@ -312,4 +312,15 @@ def test_unselected_cue_directory_is_denied_before_publication(tmp_path, actual_
     with pytest.raises(ValueError, match='selected input'):
         service.run(job)
     assert not list(outputs.iterdir())
-    assert service.get(job)['status'] == 'failed'
+    stopped = service.get(job)
+    assert stopped['status'] == 'attention'
+    assert 'selected input' in stopped['error']
+    assert stopped['artifacts'] == []
+    assert service.restored_inputs_to_review(job) == (str(outside),)
+    original = sha256(outside.read_bytes()).hexdigest()
+    service.approve_restored_inputs((str(outside),))
+    completed = service.run(job)
+    assert completed['status'] == 'complete'
+    service._verify_artifacts(completed)
+    assert service.restored_inputs_to_review(job) == ()
+    assert sha256(outside.read_bytes()).hexdigest() == original

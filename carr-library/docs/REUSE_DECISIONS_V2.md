@@ -87,8 +87,34 @@ result does not qualify new glue or the installed wheel. The dependency/model
 rights and distribution profiles described earlier are unchanged; this selection
 does not authorize publishing private implementations, references, voices or packs.
 
-## Historical prototype evidence — preserved, not current readiness
+## Final reader, Studio and public trust composition
 
+The reader and Studio additions selectively reuse reviewed PR112 source
+`40c58b4f631e48b863ef2867d61100ee8445092a` through the current contracts. The
+public trust and snapshot input is PR99 source
+`7f29e861fe8cef42be302e395f109eccccf18e83`. Both selections are reconciled with
+the later canonical implementation. No alternate source reader, DSP renderer,
+settings store or transcription service is introduced.
+
+| Component | Selected reuse and compatibility decision | Verification boundary |
+| --- | --- | --- |
+| Find/Replace and clipboard | Existing reading document, draft store and bounded regex subprocess; explicit native clipboard snapshot | Exact selection and native newline mapping, stale preview rejection, cancellation, owner destruction and actual non-UTF-8 child environment |
+| Keymaps and dictionaries | Current stable command registry, pronunciation schema and selected-file publication receipts | Preview/apply for imported mappings, conflict preservation, explicit overwrite approval and truthful post-commit completion |
+| Studio controls | Current WavePlayer, shared quiet-start lifecycle, FFmpeg/DSP, typed project store and admission broker | Actual conversion and pronunciation rerender; generation-bound master navigation; separate native and acoustic qualification |
+| Portable snapshots | Reviewed PR99 archive/vault integration around current complete backup and new-folder restore | Pinned cryptography AES-GCM/scrypt/HKDF, authenticated byte bounds, competing writer/CAS, interruption, exact committed-output identity and inventory |
+| Trust and signed update clients | Reviewed PR99 public contracts plus compatible protected-anchor fixes; existing credential references and managed-installation refusal | Pinned cryptography and python-tuf, signature/replay/key-rotation/expiry fixtures, source-bound local update packages and data-preserving recovery; private authority remains unconfigured |
+| Last publication and restore checks | Narrow PR176 pre-link cancellation and PR177 pending-root/streamed-restore checks | Preserve current M4B, typed archive-v5 extensions, capture locks, immutable input receipts and the stronger completion-write regression |
+| Transcript export follow-up | PR175 targets an alternate transcription package and is not substituted for the canonical `audio/transcription.py` service | The canonical transcript-reading path already binds the exact bounded bytes to the verified receipt; the native workflow exposes verified result files and a separate reading copy |
+
+The reviewed runtime additions are declared in
+`packaging/trusted-client-dependencies.json` and the hash-pinned
+`packaging/trusted-client.lock`. They remain optional dependencies in the Python
+package. The Windows acceptance bundle composes their reviewed wheel identities
+with the existing lock and SBOM before building and sealing the bundle. No
+dependency is inserted into a sealed application after verification.
+
+
+## Historical prototype evidence — preserved, not current readiness
 
 ## Adopted and executed
 - SQLite FTS5 (https://sqlite.org/fts5.html): tested 3.46.1 with unicode61, BM25, external-content index and insert trigger. Parameterized FTS, post-filter against raw page offsets and scoped collection membership. No separate search server or own inverted index.

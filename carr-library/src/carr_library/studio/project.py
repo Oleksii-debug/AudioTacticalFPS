@@ -304,15 +304,21 @@ class ProjectStore:
     def directory(self, project_id):
         return self.root / _id(project_id)
 
-    def save(self, project, *, expected_revision=None):
+    def save(self, project, *, expected_revision=None, expected_fingerprint=None):
         if not isinstance(project, Project):
             raise ValueError('A typed audio project is required.')
+        if expected_fingerprint is not None and (not isinstance(expected_fingerprint, str)
+                or re.fullmatch(r'[0-9a-f]{64}', expected_fingerprint) is None):
+            raise ValueError('Invalid expected project fingerprint.')
         directory = self.directory(project.id)
         with state_lock(directory):
             path = directory / 'project.json'
             previous = Project.from_dict(read_json(path)) if path.exists() else None
             if expected_revision is not None and (previous is None or previous.revision != expected_revision):
                 raise ValueError('Project changed since it was opened. Reload before saving.')
+            if expected_fingerprint is not None and (previous is None
+                    or previous.fingerprint != expected_fingerprint):
+                raise ValueError('Project content changed since it was opened. Reload before saving.')
             if previous:
                 if project.to_dict() == previous.to_dict():
                     return project

@@ -139,10 +139,11 @@ def create_backup(app, destination, *, include_generated=False, cancelled=lambda
                 if selected is not None and selected != scoped_state_selection(state_root, snapshot, included):
                     raise RestoreError('Source-bound reading drafts changed during backup; retry after saving.')
                 manifest.update(version=3, state=state, generated_audio_included=include_generated)
-            if any(os.path.lexists(app.root / name) for name in
-                   ('imports.sqlite', 'import-requests', 'import-batches')):
-                from .pending_backup import snapshot_pending
-                manifest.update(version=4, pending=snapshot_pending(app, stage / 'pending', cancelled=cancelled))
+            from .pending_backup import pending_roots, snapshot_pending
+            roots = pending_roots(app.root)
+            if roots:
+                manifest.update(version=4, pending=snapshot_pending(app, stage / 'pending',
+                    cancelled=cancelled, expected_roots=roots))
                 if 'state' not in manifest:
                     (stage / 'state').mkdir()
                     manifest.update(state=[], generated_audio_included=include_generated)
