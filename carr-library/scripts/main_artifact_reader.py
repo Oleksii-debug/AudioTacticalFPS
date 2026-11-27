@@ -294,7 +294,9 @@ class Evidence:
     def text(self, name):
         raw = self.raw(name)
         encoding = "utf-16" if raw.startswith((b"\xff\xfe", b"\xfe\xff")) else "utf-8-sig"
-        return raw.decode(encoding)
+        # Match producer Path.read_text universal-newline interpretation only.
+        # raw() keeps the original bytes for every size and SHA256 comparison.
+        return raw.decode(encoding).replace("\r\n", "\n").replace("\r", "\n")
 
     def terminal(self, name):
         values = []
@@ -495,6 +497,7 @@ def verify_wheel(raw, filename, source):
     for path, content in files.items():
         if path in admitted:
             source_name = admitted[path]
+            payload_count += 1
         elif path in expected_licenses:
             source_name = "carr-library/" + path[len(prefix + "licenses/"):]
         elif path.startswith(prefix) and path[len(prefix):] in standard:
@@ -502,7 +505,6 @@ def verify_wheel(raw, filename, source):
         else:
             raise ValueError("Public wheel contains undeclared payload: " + path)
         same(content, source.raw(source_name), "Public wheel payload differs from exact source: " + path)
-        payload_count += 1
     # Entry-point declarations are inert configuration, not executable imports.
     import configparser
     entries = configparser.ConfigParser(interpolation=None)
@@ -551,6 +553,13 @@ def source_selectors(source):
     return rows
 
 
+SOURCE_SUITE_RESULT = re.compile(
+    r"(?<![A-Za-z0-9_])(PASS|FAIL): ([^\r\n]+): junit_passed=(\d+), failed=(\d+), skipped=(\d+), pytest_exit=(-?\d+)$",
+    re.M)
+SOURCE_SUITE_COMPLETE = re.compile(
+    r"^Required suites complete: (\d+); passed=(\d+); failed=(\d+)$", re.M)
+
+
 def source_population(evidence, source, config):
     oracle = source.json("carr-library/scripts/v3_acceptance_oracles.json")["source"]
     expected_modules = {module.replace(".", "/") + ".py": sum(functions.values())
@@ -558,16 +567,16 @@ def source_population(evidence, source, config):
     require(len(expected_modules) == 252 and sum(expected_modules.values()) == 5813,
             "Protected source oracle population differs.")
     text = evidence.text("integrated-tests.txt")
-    receipts = re.findall(
-        r"^(PASS|FAIL): ([^\r\n]+): junit_passed=(\d+), failed=(\d+), skipped=(\d+), pytest_exit=(-?\d+)$",
-        text, re.M)
+    # Parallel pytest progress can precede a complete verdict on the same line.
+    # Exact selector/status/count Counters below still reject missing or extra rows.
+    receipts = SOURCE_SUITE_RESULT.findall(text)
     selectors = source_selectors(source)
     compare_counter(Counter(row[1] for row in receipts), Counter(selectors),
                     "Source suite-result selector inventory differs.")
     failed_rows = [row for row in receipts if row[0] != "PASS"
                    or any(int(n) != 0 for n in row[3:]) or int(row[2]) <= 0]
     require(not failed_rows, "Required source suites failed: " + repr(failed_rows[:12]))
-    summaries = re.findall(r"^Required suites complete: (\d+); passed=(\d+); failed=(\d+)$", text, re.M)
+    summaries = SOURCE_SUITE_COMPLETE.findall(text)
     same(summaries, [("451", "451", "0")], "Source aggregate completion differs.")
     observed_totals = {row[1]: int(row[2]) for row in receipts}
     for selector, count in expected_modules.items():
@@ -1400,7 +1409,7 @@ def closed_members(evidence, plan):
 
 
 def self_check():
-    """Four narrow negative controls for the new inert reader, in memory only."""
+    """Four negative controls and one exact log-parser control, in memory only."""
     checks = []
     def refuses(label, action):
         try:
@@ -1411,13 +1420,28 @@ def self_check():
             raise AssertionError("Reader negative control did not refuse: " + label)
 
     limits = {"members": 10000, "expanded_bytes": 512 * 1024**2, "member_bytes": 4 * 1024**2}
+    parser_raw = (
+        b".PASS: tests/ui/test_audio_studio_keyboard.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0\r\n"
+        b"Required suites complete: 451; passed=451; failed=0\r")
     memory = io.BytesIO()
     with zipfile.ZipFile(memory, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         archive.writestr("known.json", b'{"status":"PASS"}\n')
+        archive.writestr("parser.txt", parser_raw)
     evidence = Evidence(memory.getvalue(), {}, limits)
     try:
         same(evidence.json("known.json"), {"status": "PASS"}, "Positive reader control failed.")
         refuses("missing-required-member", lambda: evidence.raw("absent.json"))
+        same(evidence.raw("parser.txt"), parser_raw, "Log parsing changed retained raw bytes.")
+        parsed = evidence.text("parser.txt")
+        same(parsed, parser_raw.decode("utf-8").replace("\r\n", "\n").replace("\r", "\n"),
+             "Universal-newline log interpretation differs.")
+        same(SOURCE_SUITE_RESULT.findall(parsed),
+             [("PASS", "tests/ui/test_audio_studio_keyboard.py", "4", "0", "0", "0")],
+             "Complete appended verdict was not preserved.")
+        same(SOURCE_SUITE_COMPLETE.findall(parsed), [("451", "451", "0")],
+             "CRLF aggregate was not preserved.")
+        same(SOURCE_SUITE_RESULT.findall(parsed.replace(".PASS:", "BYPASS:")), [],
+             "Partial verdict word was incorrectly admitted.")
     finally:
         evidence.close()
     memory = io.BytesIO()
@@ -1437,7 +1461,9 @@ def self_check():
             lambda: bound_receipt({"source_commit": "c" * 40, "source_tree": "b" * 40}, identity))
     SUMMARY["members"].clear()
     print(json.dumps({"schema": "carr-full-main-reader-self-check/1", "status": "PASS",
-                      "negative_controls": checks, "actual_application_execution": "NOT_RUN"},
+                      "negative_controls": checks,
+                      "positive_controls": ["appended-verdict-and-universal-newlines"],
+                      "actual_application_execution": "NOT_RUN"},
                      sort_keys=True), flush=True)
 
 

@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "status": "PREPARED_SOURCE_ONLY",
+  "parent": "c76f65d953a0704d5da373f760bcbbb2aaa3322e",
+  "tested_application": {
+    "source_commit": "f77cdd445c158f3f66d13c03d920418965840d16",
+    "source_tree": "88a99ee91806d71dca04c75c0aca8c963f5292e1",
+    "run_id": 46078342596,
+    "job_id": 140771249163
+  },
+  "reader": {
+    "path": "carr-library/scripts/main_artifact_reader.py",
+    "sha256": "8f0ed96ba3b5ece1bd5aab1fe556013e5479ec164efa7f87e62f6ae86bcf8624",
+    "lines": 1617
+  },
+  "corrections": [
+    {
+      "scope": "Source suite result parsing",
+      "observed_log_sha256": "f8f1267f32533fd84e79657341db59d76b33132f5c4111abdf77765a543c3286",
+      "actual_suffix": ".PASS: tests/ui/test_audio_studio_keyboard.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0",
+      "repair": "Recognize a complete PASS/FAIL token after concurrent pytest progress, rejecting an alphabetic/number/underscore prefix. Exact 451 selector Counter, all statuses/counts, 5813 protected function count and 6469 selector-multiplied CASE_START Counter remain required."
+    },
+    {
+      "scope": "Text newline interpretation",
+      "repair": "Evidence.text applies the same CRLF/lone-CR to LF interpretation as the producers' Path.read_text. Evidence.raw, size checks, all member/source/receipt hashes and wheel bytes remain unchanged.",
+      "control": "An in-memory ZIP retains the exact raw CRLF/lone-CR log, parses the actual appended verdict and complete aggregate, and refuses a partial BYPASS word."
+    },
+    {
+      "scope": "Source-wheel payload_files",
+      "producer_blob": "bba3d0cda29b475d51347434d832af9187840547",
+      "repair": "Count only admitted package files, matching packaging/source_wheel.py. Source-license bytes and all RECORD declarations still undergo exact validation; licenses do not inflate payload_files."
+    }
+  ],
+  "unchanged": [
+    "Artifact pins remain null; no artifact read or workflow/ref launch.",
+    "Source config, workflow, all 20 source blob bindings, archive/path/size bounds and closed member selection.",
+    "Four in-memory negative controls and all application/native/runtime/public-wheel verdict requirements."
+  ],
+  "review": {
+    "root": "Identified exact appended-verdict and CRLF issues; other assigned source/config/Counter orchestration review GO pending this correction.",
+    "native_peer": "Bounded source GO for transport/ZIP/native/reader-interactive/closed-members/self-check/inspect.",
+    "payload_peer": "Identified license-count issue; other assigned historical-source/wheel/standard/shell/runtime/translation producer contracts GO pending this correction."
+  },
+  "execution": "NOT_RUN. These are source corrections; the reader and added parser control have not executed, and completed artifact metadata is still unavailable.",
+  "refs_changed": false,
+  "reader_launched": false
+}
