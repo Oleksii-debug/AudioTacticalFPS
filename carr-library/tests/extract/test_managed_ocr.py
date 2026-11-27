@@ -154,7 +154,7 @@ def test_real_list_languages_uses_managed_model_directory(real_models, monkeypat
     monkeypatch.setenv('TESSDATA_PREFIX', str(tmp_path / 'missing'))
     result = run_ocr(runtime, [runtime.executable, '--list-langs'], remaining=lambda: 10)
     report = result.stdout.decode('utf-8')
-    assert str(runtime.tessdata) in report and '\neng\n' in report and '\nosd\n' in report
+    assert str(runtime.tessdata) in report and report.splitlines()[1:] == ['eng', 'osd']
 
 
 def test_real_pdf_managed_profile_preserves_review_boundary_and_exact_provenance(real_models, monkeypatch, tmp_path):
@@ -170,10 +170,19 @@ def test_real_pdf_managed_profile_preserves_review_boundary_and_exact_provenance
     source = tmp_path / 'managed source.pdf'
     image.save(source, resolution=300)
     original_hash = sha256(source.read_bytes()).hexdigest()
+    from carr_library.extract import page_ocr as page_module
+    execute = page_module.run_ocr
+    def traced(runtime, argv, *, remaining):
+        try:
+            return execute(runtime, argv, remaining=remaining)
+        except subprocess.CalledProcessError as exc:
+            raise AssertionError({'arguments': exc.cmd,
+                                  'stderr': exc.stderr.decode('utf-8', 'replace')}) from exc
+    monkeypatch.setattr(page_module, 'run_ocr', traced)
     config = Config(model_profile='fast')
     identity = runtime_identity(config)
     result = extract_page(source, 1, config)
-    assert result['raw_text'].strip() == 'Managed source evidence'
+    assert result['raw_text'].strip() == 'Managed source evidence', result
     assert result['status'] == 'review_required' and result['blocks']
     assert result['physical_index'] == 1 and result['printed_label'] is None
     assert result['printed_label_verified'] is False
