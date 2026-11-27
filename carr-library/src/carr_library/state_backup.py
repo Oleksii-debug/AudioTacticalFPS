@@ -143,6 +143,12 @@ def _transcription_snapshot_guard(root, locks, cancelled):
     return guard
 
 
+def _walk_error(error):
+    # os.walk silently suppresses directory enumeration errors by default.
+    # An unreadable subtree is not evidence that it contains no user state.
+    raise error
+
+
 def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE_BYTES,
                    cancelled=lambda: False):
     root = Path(root)
@@ -161,7 +167,7 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
 def _snapshot_locked_state(root, target, *, include_generated, max_bytes, cancelled, guard):
     def inventory():
         found = {}
-        for directory, dirs, files in os.walk(root, followlinks=False):
+        for directory, dirs, files in os.walk(root, followlinks=False, onerror=_walk_error):
             if cancelled():
                 raise InterruptedError('Backup cancelled.')
             guard(Path(directory))
@@ -292,15 +298,20 @@ def restore_state(source, target, entries, *, destination_root=None):
     validate_state(entries)
     source = local_path(source, exists=True)
     regular(source, directory=True)
-    found = []
-    for directory, dirs, files in os.walk(source, followlinks=False):
+    missing = {item['filename'] for item in entries}
+    for directory, dirs, files in os.walk(source, followlinks=False, onerror=_walk_error):
         for name in dirs:
             regular(Path(directory) / name, directory=True)
         for name in files:
             path = Path(directory) / name
             regular(path)
-            found.append(path.relative_to(source).as_posix())
-    if set(found) != {item['filename'] for item in entries}:
+            # Reject the first unexpected file rather than accumulating an
+            # attacker-controlled inventory beyond the manifest's file budget.
+            relative = path.relative_to(source).as_posix()
+            if relative not in missing:
+                raise ValueError('Backup has missing or unlisted application state.')
+            missing.remove(relative)
+    if missing:
         raise ValueError('Backup has missing or unlisted application state.')
     target = Path(target)
     target.mkdir(parents=True, exist_ok=True)

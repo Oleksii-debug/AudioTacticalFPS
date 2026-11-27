@@ -180,6 +180,37 @@ def test_folder_changed_during_preflight_is_not_an_accepted_partial_selection(tm
         select_inputs(folders=(folder,))
 
 
+@pytest.mark.parametrize('mutation', ('add', 'remove', 'rename'))
+def test_folder_membership_change_is_rejected_with_unchanged_directory_metadata(
+        tmp_path, monkeypatch, mutation):
+    folder = folder_sources(tmp_path)
+    original = input_selection.regular
+    initial = original(folder, directory=True)
+    changed = False
+
+    def regular(path, **kwargs):
+        nonlocal changed
+        value = original(path, **kwargs)
+        if Path(path) == folder and kwargs.get('directory'):
+            # Windows observed unchanged directory stamps after a real late
+            # entry. Keep actual per-file checks and directory enumeration.
+            return initial
+        if Path(path).name == 'b.wav' and not changed:
+            changed = True
+            if mutation == 'add':
+                (folder / 'late.wav').write_bytes(b'late source')
+            elif mutation == 'remove':
+                (folder / 'A.WAV').unlink()
+            else:
+                (folder / 'A.WAV').rename(folder / 'renamed.WAV')
+        return value
+
+    monkeypatch.setattr(input_selection, 'regular', regular)
+    with pytest.raises(ValueError, match='folder changed'):
+        select_inputs(folders=(folder,))
+    assert changed
+
+
 def test_cli_folder_review_discloses_skips_and_retains_only_selected_files(tmp_path):
     folder = folder_sources(tmp_path)
     root = tmp_path / 'library'

@@ -121,6 +121,21 @@ def select_inputs(files=(), *, folders=(), recursive=False, cancelled=lambda: Fa
         local_path(directory, root=root, exists=True)
         if _stamp(regular(directory, directory=True)) != _stamp(before):
             raise ValueError('A selected folder changed during selection. Choose it again.')
+        # Native directory timestamps need not expose a late entry immediately.
+        # Verify the exact bounded name set as well; do not accept a partial
+        # snapshot or silently incorporate sources added during review. At most
+        # len(names) matching entries and one unexpected entry are examined.
+        remaining = set(names)
+        with os.scandir(directory) as children:
+            for child in children:
+                check()
+                if child.name not in remaining:
+                    raise ValueError('A selected folder changed during selection. Choose it again.')
+                remaining.remove(child.name)
+        check()
+        local_path(directory, root=root, exists=True)
+        if remaining or _stamp(regular(directory, directory=True)) != _stamp(before):
+            raise ValueError('A selected folder changed during selection. Choose it again.')
 
     check()
     for path in files:

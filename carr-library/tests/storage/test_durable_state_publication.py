@@ -102,16 +102,22 @@ def test_create_only_primitive_failure_cleans_stage_without_publishing(tmp_path,
 def test_replace_true_keeps_the_existing_atomic_replacement_contract(tmp_path, monkeypatch, fail):
     target = tmp_path / 'state.bin'
     target.write_bytes(b'Previous state')
-    original = os.replace
+    original = durable_state._replace_state_file
     calls = []
 
-    def replacement(*args, **kwargs):
-        calls.append(args)
+    def replacement(source, destination, staged):
+        calls.append((source, destination))
+        assert destination == target
+        assert source.read_bytes() == PAYLOAD
+        assert (source.stat().st_dev, source.stat().st_ino, source.stat().st_size) == (
+            staged.st_dev, staged.st_ino, staged.st_size)
         if fail:
             raise PermissionError('Synthetic replacement refusal')
-        return original(*args, **kwargs)
+        return original(source, destination, staged)
 
-    monkeypatch.setattr(os, 'replace', replacement)
+    # Windows now publishes through FileRenameInfoEx. Inject at the common
+    # staging boundary; the success branch still calls the real platform API.
+    monkeypatch.setattr(durable_state, '_replace_state_file', replacement)
     if fail:
         with pytest.raises(PermissionError, match='replacement refusal'):
             durable_state.atomic_bytes(target, PAYLOAD, replace=True)

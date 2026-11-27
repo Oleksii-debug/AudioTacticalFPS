@@ -18,6 +18,56 @@ import traceback
 import wave
 
 
+def _cleanup_call(errors, label, callback):
+    """Keep every owned cleanup attempt reachable after an earlier failure."""
+    try:
+        callback()
+    except Exception:
+        detail = label + ':\n' + traceback.format_exc()
+        errors.append(detail)
+        print('FAIL:', detail, flush=True)
+
+
+def _release_native_keys(simulator, pressed, errors):
+    for key in tuple(pressed):
+        def release(key=key):
+            if not simulator.KeyUp(key):
+                raise RuntimeError('The native simulator did not confirm key release.')
+        try:
+            _cleanup_call(errors, 'Releasing native key ' + str(key), release)
+        finally:
+            pressed.discard(key)
+
+
+def _abort_native_probe(wx, application, owner_loop, frame, owners, release, errors, detail):
+    """Unwind only our dialogs, then terminate their retained outer loop."""
+    errors.append(detail)
+    print('FAIL:', detail, flush=True)
+    try:
+        if frame is not None:
+            _cleanup_call(errors, 'Cancelling desktop work', frame.cancel_event.set)
+        _cleanup_call(errors, 'Releasing held native keys', release)
+        for owner in owners:
+            if owner is None:
+                continue
+            _cleanup_call(errors, 'Cancelling reader work', owner.cancelled.set)
+            timer = getattr(owner, 'timer', None)
+            if timer is not None:
+                _cleanup_call(errors, 'Stopping recorded-audio timer', timer.Stop)
+            _cleanup_call(errors, 'Closing ' + type(owner).__name__, owner.close)
+            def end_modal(owner=owner):
+                if owner.dialog and owner.dialog.IsModal():
+                    owner.dialog.EndModal(wx.ID_CANCEL)
+            _cleanup_call(errors, 'Unwinding owned reader dialog', end_modal)
+    finally:
+        # App.ExitMainLoop exits the currently active ShowModal loop. The
+        # retained owner must also exit after those nested loops unwind.
+        loop = owner_loop if owner_loop is not None else application.GetMainLoop()
+        if loop is None:
+            raise RuntimeError('The recorded-reading main event loop is unavailable during abort.')
+        loop.ScheduleExit(1)
+
+
 def _run_native():
     if os.name != 'nt':
         print(json.dumps({'result': 'NOT_RUN', 'reason': 'Actual Windows is required.', 'nvda': 'NOT_RUN'}))
@@ -41,6 +91,7 @@ def _run_native():
     errors, checks, pressed, audio_proof = [], [], set(), {}
     deadline = monotonic() + 120
     stage, key_pending, finished = 0, False, False
+    in_drive, aborting, owner_loop = False, False, None
     frame = reader = overlay = service = None
 
     def check(name, condition):
@@ -51,8 +102,7 @@ def _run_native():
 
     class ProbeApp(wx.App):
         def OnExceptionInMainLoop(self):
-            errors.append(traceback.format_exc())
-            abort()
+            abort(traceback.format_exc())
             return True
 
     gui = ProbeApp(False)
@@ -63,26 +113,34 @@ def _run_native():
     user32.GetForegroundWindow.argtypes = []
     user32.GetForegroundWindow.restype = wintypes.HWND
 
-    def abort():
-        for owner in (overlay, reader):
-            if owner is not None:
-                try:
-                    owner.close()
-                    if owner.dialog.IsModal():
-                        owner.dialog.EndModal(wx.ID_CANCEL)
-                except Exception:
-                    errors.append(traceback.format_exc())
-        gui.ExitMainLoop()
+    def release_all():
+        nonlocal key_pending
+        try:
+            _release_native_keys(simulator, pressed, errors)
+        finally:
+            key_pending = False
+
+    def abort(detail):
+        nonlocal aborting
+        if aborting:
+            errors.append(detail)
+            print('FAIL:', detail, flush=True)
+            return
+        aborting = True
+        _abort_native_probe(wx, gui, owner_loop, frame, (overlay, reader), release_all,
+                            errors, 'Stage ' + str(stage) + ': ' + detail)
 
     def guarded(callback):
         def invoke():
+            nonlocal owner_loop
             if finished or errors:
                 return
             try:
+                if owner_loop is None:
+                    owner_loop = gui.GetMainLoop()
                 callback()
             except Exception:
-                errors.append(traceback.format_exc())
-                abort()
+                abort(traceback.format_exc())
         return invoke
 
     def press(control, key=wx.WXK_SPACE):
@@ -97,8 +155,8 @@ def _run_native():
             try:
                 if key in pressed:
                     check('native key release: ' + name, simulator.KeyUp(key))
+                    pressed.discard(key)
             finally:
-                pressed.discard(key)
                 key_pending = False
 
         def dispatch():
@@ -197,12 +255,13 @@ def _run_native():
                     pass
 
             def drive():
-                nonlocal stage, overlay
-                if errors or finished:
+                nonlocal stage, overlay, in_drive
+                if errors or finished or in_drive:
                     return
-                if monotonic() >= deadline:
-                    raise TimeoutError('Native recorded-EPUB acceptance exceeded its deadline at stage ' + str(stage))
+                in_drive = True
                 try:
+                    if monotonic() >= deadline:
+                        raise TimeoutError('Native recorded-EPUB acceptance exceeded its deadline at stage ' + str(stage))
                     if key_pending:
                         return
                     if stage == 0 and reader.controller.current is not None and not reader.busy:
@@ -215,7 +274,10 @@ def _run_native():
                             return
                         check('opening recorded audio does not start playback', overlay.player.state == 'stopped'
                               and not overlay.transport.active)
-                        check('native source highlight is an exact Unicode fragment', overlay.text.GetStringSelection()
+                        print('PHASE: reading the native Unicode source selection', flush=True)
+                        native_selection = overlay.text.GetStringSelection()
+                        print('PHASE: native Unicode source selection returned: ' + ascii(native_selection), flush=True)
+                        check('native source highlight is an exact Unicode fragment', native_selection
                               == expected_page.raw_text[overlay.session.chapter.cues[0].start:overlay.session.chapter.cues[0].end])
                         check('existing progress observes the owned transport', overlay.transport.observed
                               in frame.operation_progress._players)
@@ -257,6 +319,7 @@ def _run_native():
                         stage = 11
                         press(wx.Window.FindWindowById(wx.ID_CANCEL, reader.dialog), wx.WXK_ESCAPE)
                 finally:
+                    in_drive = False
                     if not errors and not finished:
                         wx.CallLater(25, guarded(drive))
 
@@ -270,9 +333,7 @@ def _run_native():
                 reader = reading_desk.ReadingDialog(frame, desk, ReadingState(library.root), guard)
                 wx.CallLater(25, guarded(drive))
                 reader.show()
-                for key in tuple(pressed):
-                    check('native key released after modal completion', simulator.KeyUp(key))
-                    pressed.discard(key)
+                release_all()
                 finished = True
                 if not errors:
                     check('native Escape closes the existing reader after playback cleanup', stage == 11 and reader.closed)
@@ -280,7 +341,7 @@ def _run_native():
                           and library.assets.resolve(desk.identity.asset_sha256).read_bytes() == original)
                     check('reading does not create quotation approval', not expected_page.verified and library._selections == {})
                     check('completed publication receipt still verifies', PublicationService(service).verify(receipt['id']) == receipt)
-                gui.ExitMainLoop()
+                owner_loop.ScheduleExit(1 if errors else 0)
 
             wx.CallAfter(guarded(open_reader))
             print('PHASE: entering the native recorded-reading event loop', flush=True)
@@ -288,29 +349,30 @@ def _run_native():
             print('PHASE: native recorded-reading event loop returned', flush=True)
         finally:
             print('PHASE: releasing held native keys', flush=True)
-            for key in tuple(pressed):
-                simulator.KeyUp(key)
-                pressed.discard(key)
+            _cleanup_call(errors, 'Releasing held native keys', release_all)
             for owner in (overlay, reader):
                 if owner is not None:
                     print('PHASE: closing ' + type(owner).__name__, flush=True)
-                    owner.close()
+                    _cleanup_call(errors, 'Closing ' + type(owner).__name__, owner.close)
                     print('PHASE: waiting for ' + type(owner).__name__ + ' executor cleanup', flush=True)
-                    owner.executor.shutdown(wait=True, cancel_futures=True)
+                    _cleanup_call(errors, 'Waiting for reader executor cleanup',
+                                  lambda owner=owner: owner.executor.shutdown(wait=True, cancel_futures=True))
             if service is not None:
                 print('PHASE: closing the owned production service', flush=True)
-                service.close()
+                _cleanup_call(errors, 'Closing the owned production service', service.close)
             if frame is not None:
                 frame.cancel_event.set(); frame._closing = True
                 print('PHASE: waiting for desktop executor cleanup', flush=True)
-                frame.executor.shutdown(wait=True, cancel_futures=True)
+                _cleanup_call(errors, 'Waiting for desktop executor cleanup',
+                              lambda: frame.executor.shutdown(wait=True, cancel_futures=True))
                 print('PHASE: closing desktop progress and destroying the frame', flush=True)
-                frame.operation_progress.close(); frame.Destroy()
+                _cleanup_call(errors, 'Closing desktop progress', frame.operation_progress.close)
+                _cleanup_call(errors, 'Destroying the desktop frame', frame.Destroy)
             print('PHASE: yielding deferred native destruction', flush=True)
-            gui.Yield()
+            _cleanup_call(errors, 'Yielding deferred native destruction', gui.Yield)
             if native_handle is not None:
                 print('PHASE: closing the bundled native runtime handle', flush=True)
-                native_handle.close()
+                _cleanup_call(errors, 'Closing the bundled native runtime handle', native_handle.close)
             print('PHASE: recorded-reading cleanup returned', flush=True)
         if errors:
             raise RuntimeError('\n'.join(errors))

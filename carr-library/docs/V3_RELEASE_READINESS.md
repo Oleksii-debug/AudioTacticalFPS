@@ -216,7 +216,7 @@ The implemented additions are:
   existing shortcut preferences. Previously accepted Unicode JSON encodings
   remain readable.
 
-The composed Windows workflow selects 218 unique source suites and 125 unique
+At `270ec95`, the Windows workflow selected 218 unique source suites and 125 unique
 installed suites. Required named cases, exact installed module origins and
 zero-skip checks remain enforced. Exact `270ec95` collection found all 3,123
 installed cases, all 129 required named cases and exactly 58 metadata cases;
@@ -265,3 +265,93 @@ defect alone is not asserted to explain every native failure.
 
 New source results do not establish final installed Windows, human NVDA,
 physical-device, listening, model/language, signing or distribution acceptance.
+
+## Native-driver repairs and bounded inventory rechecks
+
+The completed `b0fbc43` job log identifies concrete native test-driver defects.
+The Tasks probe changed the reviewed CPU field before its focus helper was ready,
+then repeated the prior assertion on its next timer tick. Preparation and the
+native key action now have separate phases, and reentrant/late timer callbacks
+cannot repeat a phase. The palette called the pinned wxPython simulator's
+byte-string API with a Python string; its actual filter-typing call now supplies
+ASCII bytes and retains the resulting native-text assertion.
+
+Both failures then remained inside the outer event loop after attempting to exit
+an active modal loop. The recorded-EPUB probe had the same abort boundary. Each
+probe now retains and schedules the owning main loop to exit, unwinds only its
+owned dialogs, preserves the original error and continues cleanup after a key,
+timer or dialog cleanup error. The EPUB Unicode/MCI/source assertions are
+retained, with immediate original-error and selection diagnostics. Source
+`4fbf59c` passed all 46 cases across the three driver/controller suites with zero
+failures/errors/skips. These callbacks run against explicit native-control
+fixtures locally; actual Windows replay remains required.
+
+The full-bundle run passed fresh EXE installation and two GUI lifecycles before
+its document-format probe rejected a duplicated script pathname in `sys.argv`.
+All seven existing `runpy` wrappers now remove their bootstrap target argument
+before executing it. An actual subprocess/argparse regression verifies Unicode
+script paths, retained `--native` arguments and rejection of unknown options.
+Native activation, exact-source checks and the original bundle gates remain.
+
+That Windows source run also exposed a real transcription folder-selection gap:
+a late file could be missed while directory timestamps remained unchanged.
+Source `8aecafb` rechecks the exact bounded entry names after file inspection.
+It rejects additions, removals and renames without adding unseen files to the
+review. The three unchanged-metadata cases reproduced failure before the fix;
+all 48 CLI/native-handler cases then passed with zero failures/errors/skips.
+The ordinary submit step still captures and verifies the accepted input bytes.
+
+Reviewed narrow changes from PR166 and PR168 are also composed without removing
+the existing transcription snapshot locks or retained Studio-input handling.
+Unreadable state subtrees now fail backup/restore; restore stops at the first
+unlisted file. Music model/SDK inventories propagate enumeration errors, bound
+every entry and observe cancellation, including empty directories and
+case-variant Python files. Source `fcf2b43` passed 114 backup/music cases in five
+suites with zero failures/errors/skips. Synthetic inventory tests do not establish
+actual neural inference or model distribution rights.
+
+Exact public source `4d9804f03159fbdb532839abdef0ca3b1910d685`
+[Windows run 45946977181](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45946977181)
+passed the actual numeric-conversion native step, the explicitly synthetic
+playback-controls step, reader pronunciation and Studio pronunciation. Recorded
+EPUB reading failed again and is not accepted. The matching
+[V3 run 45946977206](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45946977206)
+completed successfully: 311 installed backup/import cases passed without skips,
+the actual native SAPI/Studio/restart probe passed, and ten strict progress suites
+passed 233 cases without skips. Its broad optional service suite passed 1,435
+cases with 24 disclosed skips and no failures; that suite is separate from
+zero-skip acceptance. The complete desktop workflow still has the three known
+native failures. These results belong to `4d9804f`, not the later repaired source.
+
+The repaired workflow selects 220 unique source suites and 127 unique installed
+suites. Final collection on the composed application source found all 3,164
+installed cases, all 135 required named cases and exactly 58 metadata cases.
+Both native-driver regression files are installed/source gates; the existing
+music and wrapper suites remain in their existing source/V3 gates. Strict skip,
+failure, origin and source-identity checks are retained. Collection and the
+local callback tests are not native Windows execution.
+
+The canonical branch then advanced to `4b6f8169986c4a58b43e4a23bc081fbefadbbdcb`.
+Its bounded, fail-closed OCR inventory change and exact required cases are now
+merged alongside the already-composed music correction. The complete OCR runtime
+suite passed 44 cases without skips, including actual local Tesseract fixtures.
+
+The reviewed PR163 reader/writer and native autosave-timer corrections are also
+selectively composed at `05ad32f`. Windows state readers use bounded coherent
+opened snapshots; replacement publication remains bound to the flushed staging
+identity and preserves old open readers through the reviewed native primitive.
+The existing create-only publication and transcription backup/control policies
+remain intact. Autosave now latches inactive on destruction of its captured
+native owner, without querying a dying frame wrapper. A composed seven-suite run
+passed 226 cases without failures/errors/skips, including all 116 transcription
+cases, keymap interchange and reading-session recovery. The dedicated Windows
+25-case replacement diagnostic and real 3-second timer/Close/Destroy probe are
+mandatory in the installed-wheel, full-bundle and V3 paths. Their native result
+is pending on this new composition; earlier donor execution is not transferred.
+
+The final workflow now has 222 unique source selectors and 132 installed
+selectors spanning 130 test files. Importlib collection succeeds for all 3,193
+cases, all 142 required named cases, the three additional exact OCR cases and
+exactly 58 metadata cases. The previous 220/127 selection above remains a
+historical collection record. All native probes and strict source/origin/skip
+checks are retained.

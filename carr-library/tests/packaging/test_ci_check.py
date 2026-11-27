@@ -1,8 +1,10 @@
 from pathlib import Path
+import ast
 import contextlib
 import ctypes
 import importlib.util
 import io
+import json
 import os
 import shutil
 import subprocess
@@ -17,6 +19,41 @@ SCRIPT = Path(__file__).resolve().parents[2] / 'scripts' / 'ci_check.py'
 
 
 class CIEntrypointTests(unittest.TestCase):
+    def test_native_bundle_runpy_wrappers_forward_only_selected_script_arguments(self):
+        workflow = SCRIPT.parents[2] / '.github' / 'workflows' / 'carr-windows.yml'
+        lines = [line for line in workflow.read_text(encoding='utf-8').splitlines()
+                 if 'runpy.run_path(' in line]
+        self.assertEqual(len(lines), 7)
+        with tempfile.TemporaryDirectory(prefix='Native argv Ž ') as temporary:
+            source = Path(temporary) / 'Перевірка.py'
+            source.write_text('import argparse,json,sys\n'
+                'parser=argparse.ArgumentParser()\nparser.add_argument("--native",action="store_true")\n'
+                'value=parser.parse_args()\nprint(json.dumps({"argv":sys.argv,"native":value.native}))\n',
+                encoding='utf-8')
+            expressions = set()
+            for line in lines:
+                code = line.split(' -c "', 1)[1].split('" (Resolve-Path', 1)[0]
+                # Native runtime activation remains in the real Windows gate.
+                # Exercise its exact argument-forwarding expression with real
+                # runpy/argparse and an explicit non-ASCII script path here.
+                node, = [node for node in ast.parse(code).body if isinstance(node, ast.Expr)
+                         and isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Attribute)
+                         and node.value.func.attr == 'run_path']
+                expressions.add(ast.unparse(node))
+            for expression in expressions:
+                for flags in ([], ['--native']):
+                    result = subprocess.run([sys.executable, '-I', '-B', '-c',
+                        'import runpy,sys;' + expression, str(source), *flags],
+                        capture_output=True, text=True, encoding='utf-8', timeout=10)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(json.loads(result.stdout),
+                        {'argv': [str(source), *flags], 'native': bool(flags)})
+                rejected = subprocess.run([sys.executable, '-I', '-B', '-c',
+                    'import runpy,sys;' + expression, str(source), '--unknown'],
+                    capture_output=True, text=True, encoding='utf-8', timeout=10)
+                self.assertEqual(rejected.returncode, 2)
+                self.assertIn('unrecognized arguments: --unknown', rejected.stderr)
+
     def run_fixture(self, source, *suites, extra_env=None):
         with tempfile.TemporaryDirectory(prefix='Research Ž ') as temp:
             root = Path(temp) / 'Дослідження'

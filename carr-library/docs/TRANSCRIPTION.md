@@ -29,6 +29,11 @@ default. Unsupported extensions, links/reparse points, hard links and excluded
 subfolders are reported in status. Nothing is recognized or copied during this
 review. The scan is bounded to 20,000 directory entries and 64 directory levels;
 exceeding a scan, file-count or byte budget rejects that whole new selection.
+Each scanned directory's exact entry names are rechecked after its files have
+been inspected, in addition to directory metadata. Adding, removing or renaming
+an entry during that inspection rejects the incomplete selection even when
+native directory timestamps do not change. The recheck remains bounded and
+cancellable; it does not expand the selected list.
 Cancel keeps the previous selection. Files added later are not included: choose
 the folder again to review a fresh list. Submitting it uses the ordinary immutable
 input snapshots, receipts, cancellation and resume behavior described below.

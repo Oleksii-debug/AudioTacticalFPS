@@ -58,6 +58,8 @@ def _run_native():
     application = ProbeApp(False)
     simulator = wx.UIActionSimulator()
     frame, timer, gate, detached = None, None, None, None
+    main_loop = None
+    aborted = in_tick = False
     held = [None]
     phase = ['start', monotonic()]
     deadline = monotonic() + 120
@@ -71,6 +73,12 @@ def _run_native():
         value, held[0] = held[0], None
         if value is not None and not simulator.KeyUp(*value):
             raise AssertionError('Native task-control key release failed.')
+
+    def release_scheduled():
+        try:
+            release()
+        except Exception:
+            abort(traceback.format_exc())
 
     def foreground(control):
         top = wx.GetTopLevelParent(control)
@@ -94,7 +102,7 @@ def _run_native():
         try:
             if not simulator.KeyDown(value, modifiers):
                 raise AssertionError('Native task-control key press failed.')
-            wx.CallLater(40, release)
+            wx.CallLater(40, release_scheduled)
         except Exception:
             release()
             raise
@@ -106,31 +114,64 @@ def _run_native():
                      and item.GetTitle() == title and item.IsShown()), None)
 
     def abort(detail):
+        nonlocal aborted
+        if aborted:
+            return
+        aborted = True
         errors.append(detail)
         print('FAIL:', detail, flush=True)
-        if timer is not None:
-            timer.Stop()
         try:
-            release()
-        except Exception:
-            errors.append(traceback.format_exc())
-        for item in wx.GetTopLevelWindows():
-            if item and isinstance(item, wx.Dialog) and item.GetParent() is frame:
-                controller = getattr(item, 'controller', None)
-                if controller is not None:
-                    controller.dispose()
-                if item.IsModal():
-                    item.EndModal(wx.ID_CANCEL)
-        if gate is not None and gate.held:
-            gate.release()
-        wx.CallAfter(application.ExitMainLoop)
+            try:
+                if frame is not None:
+                    frame.cancel_event.set()
+            except Exception:
+                errors.append(traceback.format_exc())
+            try:
+                if timer is not None:
+                    timer.Stop()
+            except Exception:
+                errors.append(traceback.format_exc())
+            try:
+                release()
+            except Exception:
+                errors.append(traceback.format_exc())
+            for item in reversed(tuple(wx.GetTopLevelWindows())):
+                if item and isinstance(item, wx.Dialog) and item.GetParent() is frame:
+                    try:
+                        controller = getattr(item, 'controller', None)
+                        if controller is not None:
+                            controller.dispose()
+                    except Exception:
+                        errors.append(traceback.format_exc())
+                    finally:
+                        try:
+                            if item.IsModal():
+                                item.EndModal(wx.ID_CANCEL)
+                        except Exception:
+                            errors.append(traceback.format_exc())
+            try:
+                if gate is not None and gate.held:
+                    gate.release()
+            except Exception:
+                errors.append(traceback.format_exc())
+        finally:
+            # ExitMainLoop targets the active modal loop. Schedule the owning
+            # outer loop to exit as soon as its owned modals finish unwinding.
+            owner = main_loop or application.GetMainLoop()
+            if owner is not None:
+                owner.ScheduleExit(1)
 
     def open_palette(next_phase):
         return key(frame.status, ord('P'), next_phase, wx.MOD_CONTROL | wx.MOD_SHIFT)
 
     def tick(event=None):
-        nonlocal gate, detached
+        nonlocal gate, detached, main_loop, in_tick
+        if aborted or in_tick or phase[0] == 'complete':
+            return
+        in_tick = True
         try:
+            if main_loop is None:
+                main_loop = application.GetMainLoop()
             if monotonic() > deadline or monotonic() - phase[1] > 15:
                 raise TimeoutError('Native Tasks/resources timed out at ' + phase[0])
             if held[0] is not None:
@@ -194,6 +235,8 @@ def _run_native():
                 broker.configure(ResourceLimits(cpu_slots=3, memory_bytes=1024**3,
                                                 disk_bytes=2*1024**3, min_free_disk_bytes=0))
                 dialog.cpu.SetValue(2)
+                advance('submit_stale_policy')
+            elif name == 'submit_stale_policy' and dialog is not None:
                 key(dialog.buttons['save'], wx.WXK_SPACE, 'stale_policy')
             elif name == 'stale_policy' and dialog is not None and not dialog.controller.busy:
                 if 'changed' not in dialog.controller.status:
@@ -205,6 +248,8 @@ def _run_native():
                     return
                 check('native Refresh shows the actual current policy', dialog.cpu.GetValue() == 3)
                 dialog.cpu.SetValue(2)
+                advance('submit_reviewed_policy')
+            elif name == 'submit_reviewed_policy' and dialog is not None:
                 key(dialog.buttons['save'], wx.WXK_SPACE, 'saved_policy')
             elif name == 'saved_policy' and dialog is not None and not dialog.controller.busy:
                 if not dialog.controller.status.startswith('Resource allowances saved.'):
@@ -255,9 +300,11 @@ def _run_native():
                       assistant.get(identity).status == 'queued' and len(assistant.jobs()) == 1)
                 advance('complete')
                 timer.Stop()
-                application.ExitMainLoop()
+                main_loop.ScheduleExit(0)
         except Exception:
             abort(traceback.format_exc())
+        finally:
+            in_tick = False
 
     try:
         purelib = Path(sysconfig.get_path('purelib')).resolve()

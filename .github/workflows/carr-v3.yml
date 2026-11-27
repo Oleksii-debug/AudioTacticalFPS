@@ -52,6 +52,22 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pip check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require the actual Windows JSON reader and replacement matrix
+        if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          python -I -B scripts/windows_json_replace_diagnostic.py 2>&1 | Tee-Object 'ci-v3-results/windows_json_replace_diagnostic.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $jsonMatrix = Get-Content 'ci-v3-results/windows_json_replace_diagnostic.txt' | Select-Object -Last 1 | ConvertFrom-Json
+          if ($jsonMatrix.status -ne 'PASS' -or $jsonMatrix.cases -ne 25 -or @($jsonMatrix.failures).Count -ne 0) { throw 'The actual Windows JSON replacement matrix is incomplete or failed.' }
+      - name: Require actual draft timer Close and Destroy lifecycle
+        if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' }}
+        timeout-minutes: 2
+        run: |
+          python -I -B scripts/windows_save_timer_smoke.py --output 'ci-v3-results/windows_save_timer_smoke.json' 2>&1 | Tee-Object 'ci-v3-results/windows_save_timer_smoke.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $saveTimer = Get-Content 'ci-v3-results/windows_save_timer_smoke.json' -Raw | ConvertFrom-Json
+          if ($saveTimer.status -ne 'PASS' -or @($saveTimer.checks).Count -ne 3 -or $saveTimer.actual_timer_events.Close -le 0 -or $saveTimer.actual_timer_events.Destroy -le 0) { throw 'The actual installed draft timer lifecycle is incomplete or failed.' }
       - name: Prepare explicitly pinned private test audio runtime
         id: audio-runtime
         run: |
@@ -85,6 +101,8 @@ jobs:
           import carr_library.speech.reading, carr_library.speech.source, carr_library.ui.speech_dialog
           import carr_library.speech.runtime, carr_library.academic_integration.doi
           import carr_library.speech.session
+          import carr_library.extract.ocr_runtime
+          import carr_library.durable_state, carr_library.ui.save_actions
           import carr_library.storage.revisions, carr_library.storage.schema_identity
           import pytest
           checkout = pathlib.Path.cwd().resolve()
@@ -93,6 +111,8 @@ jobs:
                    'carr_library.speech.reading', 'carr_library.speech.source', 'carr_library.ui.speech_dialog',
                    'carr_library.speech.runtime', 'carr_library.academic_integration.doi',
                    'carr_library.speech.session',
+                   'carr_library.extract.ocr_runtime',
+                   'carr_library.durable_state', 'carr_library.ui.save_actions',
                    'carr_library.storage.revisions', 'carr_library.storage.schema_identity')
           def installed_origins():
               origins = {name: str(pathlib.Path(sys.modules[name].__file__).resolve()) for name in names}
@@ -107,11 +127,19 @@ jobs:
           policy = RejectExpectedFailures()
           report = pathlib.Path('ci-v3-results/installed-recovery.xml')
           suites = ['tests/storage/test_v3_state_backup.py',
+                    'tests/storage/test_state_json_reader.py',
+                    'tests/storage/test_durable_state_publication.py',
+                    'tests/ui/test_save_actions.py',
                     'tests/storage/test_state_backup_portability.py::test_portable_manifest_rejects_collisions',
                     'tests/storage/test_state_backup_portability.py::test_portable_manifest_allows_distinct_siblings',
                     'tests/storage/test_state_backup_portability.py::test_portable_manifest_rejects_non_windows_names',
                     'tests/storage/test_state_backup_portability.py::test_portable_manifest_keeps_ordinary_unicode_names',
                     'tests/storage/test_state_backup_portability.py::test_portable_snapshot_roundtrip_unicode',
+                    'tests/storage/test_state_backup_portability.py::test_state_inventory_rejects_unreadable_subtree',
+                    'tests/storage/test_state_backup_portability.py::test_state_restore_rejects_unlisted_file_before_scanning_later_subtree',
+                    'tests/extract/test_ocr_runtime.py::test_unreadable_directory_rejects_entire_inventory',
+                    'tests/extract/test_ocr_runtime.py::test_empty_directory_inventory_has_a_bound',
+                    'tests/extract/test_ocr_runtime.py::test_directory_inventory_checks_budget_between_entries',
                     'tests/storage/test_pending_backup.py',
                     'tests/storage/test_complete_pending_backup.py',
                     'tests/storage/test_academic_migration.py',
@@ -129,10 +157,23 @@ jobs:
           failed = sum(any(case.find(tag) is not None for tag in ('failure', 'error')) for case in cases)
           skipped = sum(case.find('skipped') is not None for case in cases)
           passed = len(cases) - failed - skipped
-          ok = status == 0 and passed > 0 and failed == skipped == 0 and not policy.seen
+          required_ocr = {'test_unreadable_directory_rejects_entire_inventory', 'test_empty_directory_inventory_has_a_bound', 'test_directory_inventory_checks_budget_between_entries'}
+          ocr_cases = [c.get('name') for c in cases if c.get('classname', '').rsplit('.', 1)[-1] == 'test_ocr_runtime']
+          ocr_exact = len(ocr_cases) == len(required_ocr) and set(ocr_cases) == required_ocr
+          required_json_timer = {'test_atomic_replacement_between_stat_and_open_is_retried',
+                                 'test_legacy_replace_still_reproduces_shared_open_target_limit',
+                                 'test_replace_can_publish_first_unicode_state_with_actual_production_child',
+                                 'test_native_denied_save_keeps_its_primary_error_if_descriptor_close_raises',
+                                 'test_native_destroy_wrapper_needs_only_the_previously_captured_owner_id',
+                                 'test_child_destruction_keeps_the_live_frame_autosave_running',
+                                 'test_direct_destroy_also_blocks_a_previously_queued_autosave'}
+          json_timer_complete = required_json_timer <= {c.get('name') for c in cases}
+          ok = status == 0 and passed > 0 and failed == skipped == 0 and not policy.seen and ocr_exact and json_timer_complete
           result = dict(status='PASS' if ok else 'FAIL', passed=passed, failed=failed,
                         skipped=skipped, pytest_exit=int(status), expected_failures=policy.seen,
-                        origins=installed_origins(), manual_nvda='NOT_RUN')
+                        origins=installed_origins(), ocr_inventory_cases=sorted(ocr_cases),
+                        ocr_inventory_exact=ocr_exact, json_timer_required=sorted(required_json_timer),
+                        json_timer_complete=json_timer_complete, manual_nvda='NOT_RUN')
           pathlib.Path('ci-v3-results/installed-recovery.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
           print(json.dumps(result), flush=True)
           raise SystemExit(0 if ok else 1)

@@ -8,13 +8,47 @@ dialog, publication, preview, apply and undo handlers are real. This is automate
 native acceptance, not physical keyboard, native picker or NVDA QA.
 """
 from hashlib import sha256
+import faulthandler
 import json
 import os
 from pathlib import Path
+import sys
 import sysconfig
 from tempfile import TemporaryDirectory
 from time import monotonic
 import traceback
+
+
+def _abort_native_probe(wx, application, frame, owner_loop, timer, release, errors, detail):
+    """Unwind owned modal loops and schedule the retained outer loop to stop."""
+    errors.append(detail)
+    print('FAIL:', detail, flush=True)
+    callbacks = [release]
+    if timer is not None:
+        callbacks.insert(0, timer.Stop)
+    if frame is not None:
+        callbacks.insert(0, frame.cancel_event.set)
+    try:
+        for callback in callbacks:
+            try:
+                callback()
+            except Exception:
+                errors.append(traceback.format_exc())
+        for window in tuple(wx.GetTopLevelWindows()):
+            try:
+                if (window and isinstance(window, wx.Dialog)
+                        and window.GetParent() is frame and window.IsModal()):
+                    window.EndModal(wx.ID_CANCEL)
+            except Exception:
+                errors.append(traceback.format_exc())
+    finally:
+        # App.ExitMainLoop targets the active loop, which may still belong to
+        # ShowModal here. ScheduleExit also terminates an inactive outer loop
+        # once its modal children unwind (wxWidgets 2.9.5+).
+        loop = owner_loop if owner_loop is not None else application.GetMainLoop()
+        if loop is None:
+            raise RuntimeError('The palette acceptance main event loop is unavailable during abort.')
+        loop.ScheduleExit(1)
 
 
 def main():
@@ -24,13 +58,19 @@ def main():
                           'native_keymap': 'NOT_RUN', 'native_file_picker': 'NOT_RUN',
                           'manual_keyboard': 'NOT_RUN'}), flush=True)
         return 77
-    from carr_library.native_runtime import activate_bundled_runtime
-    native_handle = activate_bundled_runtime()
+    faulthandler.enable(all_threads=True)
+    faulthandler.dump_traceback_later(90, repeat=True, file=sys.stderr)
+    native_handle = None
     try:
+        from carr_library.native_runtime import activate_bundled_runtime
+        native_handle = activate_bundled_runtime()
         return _run_native()
     finally:
-        if native_handle is not None:
-            native_handle.close()
+        try:
+            if native_handle is not None:
+                native_handle.close()
+        finally:
+            faulthandler.cancel_dump_traceback_later()
 
 
 def _run_native():
@@ -68,6 +108,7 @@ def _run_native():
     application = ProbeApp(False)
     simulator = wx.UIActionSimulator()
     held = [None]
+    in_tick, owner_loop = [False], [None]
     frame, timer = None, None
     stage = ['starting', monotonic()]
     overall_deadline = monotonic() + 140
@@ -143,21 +184,23 @@ def _run_native():
         def GetPath(self): return str(keymap_file)
 
     def abort(detail):
-        errors.append(detail)
-        print('FAIL:', detail, flush=True)
-        if timer is not None:
-            timer.Stop()
-        try:
-            release()
-        except Exception:
-            errors.append(traceback.format_exc())
-        for window in wx.GetTopLevelWindows():
-            if (window and isinstance(window, wx.Dialog)
-                    and window.GetParent() is frame and window.IsModal()):
-                window.EndModal(wx.ID_CANCEL)
-        wx.CallAfter(application.ExitMainLoop)
+        _abort_native_probe(wx, application, frame, owner_loop[0], timer, release, errors,
+                            'Stage ' + stage[0] + ': ' + detail)
 
     def tick(event=None):
+        # Native simulation/control updates may dispatch another timer message
+        # before this callback returns. A stage must be evaluated once at a time.
+        if in_tick[0] or errors:
+            return
+        in_tick[0] = True
+        try:
+            if owner_loop[0] is None:
+                owner_loop[0] = application.GetMainLoop()
+            advance_stage()
+        finally:
+            in_tick[0] = False
+
+    def advance_stage():
         nonlocal save_binding
         try:
             if monotonic() > overall_deadline or monotonic() - stage[1] > 15:
@@ -204,7 +247,9 @@ def _run_native():
                 if not foreground(dialog.filter):
                     return
                 advance('navigation_filtered')
-                check('native typing reaches the filter', simulator.Text('file'))
+                # The pinned wxPython 4.2.4 char* binding requires ASCII bytes.
+                # The next stage still verifies the actual native text value.
+                check('native typing reaches the filter', simulator.Text(b'file'))
             elif name == 'navigation_filtered' and dialog is not None:
                 if dialog.filter.GetValue() != 'file' or len(dialog.rows) < 2:
                     return

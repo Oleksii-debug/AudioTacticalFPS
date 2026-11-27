@@ -1,8 +1,13 @@
 """Real threaded task-view initialization plus queued callback lifecycle checks."""
 from concurrent.futures import ThreadPoolExecutor
+import ast
+from pathlib import Path
 from queue import Queue
 import threading
 import time
+import traceback
+from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
 
@@ -271,3 +276,106 @@ def test_accepted_control_remains_requested_when_refresh_is_cancelled(tmp_path, 
     assert controller.status.startswith('Pause requested.') and 'Refresh' in controller.status
     assert assistant.get(identity).status == 'queued'
     controller.dispose()
+
+
+def _probe_callbacks(environment):
+    """Execute exact probe closures headlessly; this is not native acceptance."""
+    path = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_operations_smoke.py'
+    tree = ast.parse(path.read_text(encoding='utf-8'))
+    class ClosureBindings(ast.NodeTransformer):
+        def visit_Nonlocal(self, node):
+            return ast.copy_location(ast.Global(names=node.names), node)
+    names = {'check', 'advance', 'abort', 'tick'}
+    callbacks = [ClosureBindings().visit(node) for node in ast.walk(tree)
+                 if isinstance(node, ast.FunctionDef) and node.name in names]
+    assert {node.name for node in callbacks} == names
+    exec(compile(ast.fix_missing_locations(ast.Module(body=callbacks, type_ignores=[])),
+                 str(path), 'exec'), environment)
+    return environment
+
+
+@pytest.mark.parametrize('phase,expected', [('policy_page', 'stale_policy'),
+                                          ('refreshed_policy', 'saved_policy')])
+def test_native_probe_policy_review_is_not_repeated_while_save_waits_for_focus(phase, expected):
+    value, edits, pressed, focused = [3], [], [], [False]
+    def set_value(current):
+        value[0] = current
+        edits.append(current)
+    cpu = SimpleNamespace(GetValue=lambda: value[0], SetValue=set_value, GetName=lambda: 'Allowed CPU slots')
+    save = object()
+    dialog = SimpleNamespace(cpu=cpu, buttons={'save': save},
+        pages=SimpleNamespace(GetSelection=lambda: 1),
+        max_leases=SimpleNamespace(GetName=lambda: 'Maximum active reservations'),
+        usage=SimpleNamespace(GetWindowStyleFlag=lambda: 1),
+        controller=SimpleNamespace(busy=False, policy=ResourceLimits(cpu_slots=3)))
+    broker = SimpleNamespace(configure=Mock())
+    owner_loop = object()
+    env = {'phase': [phase, 0], 'deadline': 100, 'monotonic': lambda: 0,
+           'held': [None], 'aborted': False, 'in_tick': False, 'main_loop': None,
+           'application': SimpleNamespace(GetMainLoop=lambda: owner_loop),
+           'wx': SimpleNamespace(WXK_SPACE=32, TE_READONLY=1), 'checks': [], 'errors': [],
+           'traceback': traceback, 'ResourceLimits': ResourceLimits, 'broker': broker,
+           'window': lambda title: dialog if title == 'Tasks and resources' else None}
+    _probe_callbacks(env)
+    env['abort'] = lambda detail: pytest.fail(detail)
+    def key(control, code, next_phase):
+        assert control is save and code == 32
+        if not focused[0]:
+            return False
+        pressed.append(next_phase)
+        env['advance'](next_phase)
+        return True
+    env['key'] = key
+    for _ in range(4):
+        env['tick']()
+    assert edits == [2]
+    assert broker.configure.call_count == (1 if phase == 'policy_page' else 0)
+    assert not pressed and not env['errors']
+    focused[0] = True
+    env['tick']()
+    assert pressed == [expected] and env['phase'][0] == expected
+    if phase == 'refreshed_policy':
+        assert env['checks'].count('native Refresh shows the actual current policy') == 1
+
+
+@pytest.mark.parametrize('broken', ['none', 'timer_stop', 'key_release', 'controller_dispose', 'gate_release'])
+def test_native_probe_abort_exits_owned_outer_loop_and_keeps_cleanup_after_errors(broken):
+    calls, errors = [], []
+    frame = SimpleNamespace(cancel_event=threading.Event())
+    def action(name):
+        def invoke(*args):
+            calls.append((name, args))
+            if name == broken:
+                raise RuntimeError('Synthetic ' + name)
+        return invoke
+    class Dialog:
+        def __init__(self, parent):
+            self.parent = parent
+            self.controller = SimpleNamespace(dispose=action('controller_dispose'))
+        def GetParent(self): return self.parent
+        def IsModal(self): return True
+        def EndModal(self, code): calls.append(('end_modal', (self.parent, code)))
+    owned, foreign = Dialog(frame), Dialog(object())
+    outer = SimpleNamespace(ScheduleExit=action('outer_exit'))
+    active = SimpleNamespace(Exit=action('wrong_nested_exit'))
+    env = {'errors': errors, 'aborted': False, 'in_tick': False, 'main_loop': outer,
+           'frame': frame, 'timer': SimpleNamespace(Stop=action('timer_stop')),
+           'gate': SimpleNamespace(held=True, release=action('gate_release')),
+           'release': action('key_release'), 'traceback': traceback,
+           'application': SimpleNamespace(GetMainLoop=lambda: outer, ExitMainLoop=lambda: active.Exit(1)),
+           'wx': SimpleNamespace(Dialog=Dialog, ID_CANCEL=17,
+               GetTopLevelWindows=lambda: (foreign, owned), CallAfter=lambda callback: callback())}
+    _probe_callbacks(env)
+    env['abort']('Original failed native assertion')
+    assert errors[0] == 'Original failed native assertion'
+    assert ('outer_exit', (1,)) in calls
+    assert not any(name == 'wrong_nested_exit' for name, _ in calls)
+    assert ('end_modal', (frame, 17)) in calls
+    assert not any(name == 'end_modal' and args[0] is foreign.parent for name, args in calls)
+    assert {'timer_stop', 'key_release', 'controller_dispose', 'gate_release'} <= {name for name, _ in calls}
+    if broken != 'none':
+        assert any('Synthetic ' + broken in value for value in errors)
+    before = list(calls)
+    env['abort']('Late callback after abort')
+    env['tick']()
+    assert calls == before and errors[0] == 'Original failed native assertion'
