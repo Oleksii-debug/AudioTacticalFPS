@@ -24,6 +24,9 @@ def dialog(tmp_path):
     value.closed = value.closing = value.pending = False
     value.library_root = tmp_path
     value._destroy_when_closed = False
+    value._editor_closed = False
+    value._editor_close_lock = threading.RLock()
+    value._unregister_cleanup = Mock()
     value.editor = SimpleNamespace(close=Mock())
     value.player = None
     value.playback_generation = 0
@@ -320,3 +323,65 @@ def test_closed_effect_review_never_opens_a_late_modal(dialog, monkeypatch):
     review.assert_not_called()
     dialog.editor.service._runtime.assert_not_called()
     assert dialog.closed
+
+
+@pytest.mark.parametrize('active', [False, True])
+def test_registered_clip_owner_survives_forced_executor_close_without_ui_callback(dialog, active):
+    from carr_library.ui.worker_lifetime import DesktopExecutor
+    executor = DesktopExecutor()
+    entered, release = threading.Event(), threading.Event()
+    order, ordinary = [], []
+    owner_thread = threading.get_ident()
+
+    def operation():
+        entered.set()
+        assert release.wait(5)
+        order.append('operation-complete')
+
+    def cleanup():
+        assert order == ['operation-complete']
+        assert threading.get_ident() != owner_thread
+        order.append('editor-closed')
+
+    dialog.editor.close = Mock(side_effect=cleanup)
+    dialog._unregister_cleanup = executor.register_cleanup(dialog._close_editor)
+    if active:
+        def run_job(title, work, done, failed):
+            dialog.frame.working = True
+            return executor.submit(work)
+        dialog.frame.run_job = run_job
+        dialog._run('Active clip operation', operation, Mock())
+    else:
+        executor.submit(operation)
+    try:
+        assert entered.wait(5)
+        queued = executor.submit(lambda: ordinary.append('unwanted save'))
+        dialog.frame._closing = True
+        dialog.frame.cancel_event.set()
+        executor.shutdown(wait=False, cancel_futures=True)
+        assert queued.cancelled() and order == []
+        release.set()
+        executor.shutdown(wait=True, cancel_futures=True)
+        assert order == ['operation-complete', 'editor-closed']
+        assert dialog._editor_closed and not ordinary
+        dialog.editor.close.assert_called_once()
+        # A callback captured before unregister is harmless.
+        dialog._close_editor()
+        dialog.editor.close.assert_called_once()
+    finally:
+        release.set()
+        executor.shutdown(wait=True, cancel_futures=True)
+
+
+def test_failed_clip_release_keeps_registered_retry_authority(dialog):
+    dialog.editor.close.side_effect = OSError('native owner remains active')
+    with pytest.raises(OSError):
+        dialog._close_editor()
+    assert not dialog._editor_closed
+    dialog._unregister_cleanup.assert_not_called()
+    dialog.editor.close.side_effect = None
+    dialog._close_editor()
+    dialog._close_editor()
+    assert dialog._editor_closed
+    dialog._unregister_cleanup.assert_called_once()
+    assert dialog.editor.close.call_count == 2

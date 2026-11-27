@@ -1,5 +1,6 @@
 """Native scene clip controls; every operation is available from the keyboard."""
 from pathlib import Path
+import threading
 
 import wx
 
@@ -26,6 +27,13 @@ class ClipDialog(wx.Dialog):
         self.library_root = frame.library.root
         self._destroy_when_closed = False
         self._editor_closed = False
+        self._editor_close_lock = threading.RLock()
+        self._unregister_cleanup = lambda: None
+        try:
+            self._unregister_cleanup = frame.register_worker_cleanup(self._close_editor)
+        except Exception:
+            self._close_editor()
+            raise
         self.projects = ()
         self.project = None
         self.pending = self.closing = self.closed = False
@@ -566,9 +574,14 @@ class ClipDialog(wx.Dialog):
             self.message('Cancellation requested; waiting for the owned audio operation to finish.')
 
     def _close_editor(self):
-        if not getattr(self, '_editor_closed', False):
-            self.editor.close()
-            self._editor_closed = True
+        # Forced host shutdown may already hold a finalizer snapshot while
+        # ordinary Close is finishing. Serialize actual release and retain
+        # retry authority if the owned service cannot confirm cleanup.
+        with self._editor_close_lock:
+            if not self._editor_closed:
+                self.editor.close()
+                self._editor_closed = True
+                self._unregister_cleanup()
 
     def close(self, event=None):
         if self.closed:

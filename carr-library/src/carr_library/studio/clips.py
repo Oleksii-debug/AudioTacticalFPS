@@ -376,7 +376,9 @@ class ClipEditor:
             raise ValueError('No clip edit is available to redo.' if forward else 'No clip edit is available to undo.')
         change = stack[-1]
         snapshot = change[1] if forward else change[0]
-        existing = {cue for scene in project.scenes for cue in scene.cues}
+        # Effects retain immutable parameter mappings, so cues need value
+        # comparison rather than hashing when checking restored selections.
+        existing = tuple(cue for scene in project.scenes for cue in scene.cues)
         for scene in snapshot.scenes:
             for cue in scene.cues:
                 self._cancel(cancelled)
