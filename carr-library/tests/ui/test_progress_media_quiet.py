@@ -196,3 +196,77 @@ def test_unconfirmed_close_retains_each_player_until_its_own_silence(panel):
     second.state = 'paused'
     panel.refresh_audio_state()
     assert not panel.media.flags()[0] and not panel.media.uncertain
+
+
+@pytest.mark.parametrize('cancel_during_tone', [False, True])
+def test_combined_mode_keeps_tone_then_speech_on_one_owned_worker(cancel_during_tone):
+    from threading import get_ident
+    tone_entered, release_tone, speech_entered = Event(), Event(), Event()
+    calls = []
+    class ToneSink:
+        def play(self, tone, *, cancelled):
+            calls.append(('tone', get_ident()))
+            tone_entered.set()
+            assert release_tone.wait(3), 'Fixture did not release the finite owned tone'
+    class Speech:
+        quiescent = True
+        def speak_progress(self, text, *, volume, cancelled):
+            assert volume == 25
+            assert not cancelled()
+            calls.append(('speech', get_ident()))
+            speech_entered.set()
+    feedback = ProgressFeedback(ProgressPreferences(mode='beep_speech', volume=25),
+                                tone_sink=ToneSink(), speech_provider=Speech())
+    try:
+        task = ProgressHub().start('Measured phase', total=4)
+        task.advance(2)
+        assert feedback.update(task.snapshot()) is not None
+        assert tone_entered.wait(2) and not speech_entered.is_set()
+        if cancel_during_tone:
+            feedback.suspend()
+        release_tone.set()
+        eventually(lambda: feedback.quiescent)
+        if cancel_during_tone:
+            assert [name for name, _ in calls] == ['tone']
+            assert not speech_entered.is_set()
+        else:
+            assert [name for name, _ in calls] == ['tone', 'speech']
+            assert calls[0][1] == calls[1][1] != get_ident()
+    finally:
+        release_tone.set()
+        feedback.close()
+        if feedback._worker is not None:
+            feedback._worker.join(3)
+            assert not feedback._worker.is_alive()
+
+
+def test_close_cancels_active_speech_and_refuses_late_notifications(panel):
+    task = panel.begin('Owned speech before close', total=2)
+    voice = panel.fixture_voice
+    assert voice.entered.wait(2)
+    panel.close()
+    assert not panel.feedback.quiescent
+    task.update(completed=1)
+    assert panel.feedback.update(task.snapshot()) is None
+    voice.release.set()
+    eventually(lambda: panel.feedback.quiescent)
+    assert voice.heard == [] and len(voice.calls) == 1
+
+
+def test_finished_speech_worker_cannot_certify_unconfirmed_provider_silence(panel):
+    voice = panel.fixture_voice
+    voice.uncertain = True
+    voice.release.set()
+    panel.begin('Uncertain owned output', total=2)
+    assert voice.entered.wait(2)
+    with panel.feedback._condition:
+        assert panel.feedback._condition.wait_for(
+            lambda: not panel.feedback._playing and panel.feedback._pending is None, timeout=3)
+    hold = panel.hold_audio(recording=True)
+    try:
+        assert not panel.feedback.quiescent and not hold.ready
+        voice.uncertain = False
+        eventually(lambda: hold.ready)
+    finally:
+        voice.uncertain = False
+        hold.close()
