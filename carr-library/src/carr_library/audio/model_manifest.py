@@ -185,7 +185,7 @@ class LocalModelManifest:
         if set(raw) - known:
             raise ModelManifestError('Unsupported model manifest fields.')
         actual_engine = _text(raw.get('engine'), 'engine')
-        if actual_engine not in {'musicgen', 'piper', 'dordiai-voices', 'ace-step', 'fluidsynth'}:
+        if actual_engine not in {'musicgen', 'piper', 'dordiai-voices', 'ace-step', 'fluidsynth', 'supplied-whisper'}:
             raise ModelManifestError('Unsupported local model engine.')
         if engine is not None and actual_engine != engine:
             raise ModelManifestError('The model manifest belongs to another engine.')
@@ -244,6 +244,8 @@ class LocalModelManifest:
             raise ModelManifestError('Review and accept this local model license before use.')
         if self.engine == 'ace-step' and not self.trusted_weights:
             raise ModelManifestError('Review the exact ACE-Step checkpoints and installed code before execution.')
+        if self.engine == 'supplied-whisper' and not self.trusted_weights:
+            raise ModelManifestError('Review the supplied transcription worker, interpreter and exact local model before execution.')
         if self.engine == 'musicgen':
             if self.license != 'CC-BY-NC-4.0' or not self.personal_noncommercial:
                 raise ModelManifestError('MusicGen weights require the personal noncommercial profile.')

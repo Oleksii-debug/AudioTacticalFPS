@@ -109,10 +109,12 @@ def _open_worker_status(path):
         raise
 
 
-def read_worker_status(path):
+def read_worker_status(path, *, max_bytes=MAX_JSON_BYTES):
     """Use the existing bounded JSON contract for a replaceable status file."""
+    if type(max_bytes) is not int or not 1 <= max_bytes <= MAX_JSON_BYTES:
+        raise ValueError('Invalid worker status byte budget.')
     path = local_path(path, exists=True)
-    if regular(path).st_size > MAX_JSON_BYTES:
+    if regular(path).st_size > max_bytes:
         raise ValueError('State exceeds its configured JSON budget.')
     with _open_worker_status(path) as stream:
         info = os.fstat(stream.fileno())
@@ -120,8 +122,8 @@ def read_worker_status(path):
         if (not stat.S_ISREG(info.st_mode) or info.st_nlink not in (0, 1)
                 or getattr(info, 'st_file_attributes', 0) & 0x400):
             raise ValueError('State must use regular local files, without links.')
-        raw = stream.read(MAX_JSON_BYTES + 1)
-    if len(raw) > MAX_JSON_BYTES:
+        raw = stream.read(max_bytes + 1)
+    if len(raw) > max_bytes:
         raise ValueError('State grew beyond its JSON budget.')
     return json.loads(raw.decode('utf-8'), object_pairs_hook=_unique,
                       parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Non-finite state number.')))
