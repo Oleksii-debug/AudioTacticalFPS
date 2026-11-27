@@ -168,8 +168,17 @@ def main():
             mnemonics = [label.split('&', 1)[1][0].casefold() for label in labels if '&' in label]
             check('main menu access keys are distinct', len(mnemonics) == len(set(mnemonics)))
             index = frame.menu_bar.FindMenu('Academic')
+            required_actions = (
+                'Compare sources in active topic',
+                'Export research outline with subtopics',
+                'Import bibliographic metadata from RIS',
+                'Check catalog quality',
+            )
+            labels = ([item.GetItemLabelText()
+                       for item in frame.menu_bar.GetMenu(index).GetMenuItems()]
+                      if index >= 0 else [])
             check('Academic menu contains all four integrated actions', index >= 0 and
-                  frame.menu_bar.GetMenu(index).GetMenuItemCount() == 6)
+                  all(labels.count(label) == 1 for label in required_actions))
             frame.choice.SetSelection(frame.scopes.index((workspace, 'root')))
             button = next(child for child in frame.host.GetChildren()
                           if isinstance(child, wx.Button) and child.GetLabel() == 'Open selected scope')
