@@ -7,6 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 from carr_library.studio.project import Music, Project, ProjectStore, parse_script
+from carr_library.studio.pronunciation import StudioPronunciations
 from carr_library.ui.studio_dialog import StudioController
 
 
@@ -73,3 +74,30 @@ def test_project_edit_detects_stale_revision(tmp_path):
 def test_music_plan_rejects_values_not_supported_by_runtime(kwargs):
     with pytest.raises(ValueError):
         Music(**kwargs)
+
+
+@pytest.mark.parametrize('duplicate', [False, True])
+def test_studio_reparse_keeps_an_independently_saved_spoken_edit(tmp_path, duplicate):
+    ui = controller(tmp_path)
+    passage = 'Narrator: A word with two readings.\n[Pronunciation: First reading.]'
+    script = passage + '\nAn independent line.'
+    first = ui.save(script, 'Book', ('fixture:voice',))
+    service = StudioPronunciations(tmp_path)
+    scene = first.scenes[0]
+    draft = service.open_line(first, scene.id, scene.lines[0].id)
+    draft.document.set_text('Reviewed spoken version.', label='Pronunciation review')
+    ui.project = service.save_line(draft).after
+    if duplicate:
+        with pytest.raises(ValueError, match='unique'):
+            ui.save(script + '\n' + passage, first.title, ('fixture:voice',))
+        assert service.projects.load(first.id) == ui.project
+    else:
+        updated = 'A new introductory line.\n' + script
+        saved = ui.save(updated, first.title, ('fixture:voice',))
+        line = service.projects.load(first.id).scenes[0].lines[1]
+        assert saved.original_script == updated
+        assert line.text == 'A word with two readings.'
+        assert line.spoken_text == 'Reviewed spoken version.'
+        explicit = updated.replace('First reading.', 'New direct override.')
+        saved = ui.save(explicit, first.title, ('fixture:voice',))
+        assert saved.scenes[0].lines[1].spoken_text == 'New direct override.'

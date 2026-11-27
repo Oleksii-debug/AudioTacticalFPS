@@ -1,4 +1,5 @@
 """Keyboard-first native production workspace; no waveform or drag operation required."""
+from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 import json
@@ -36,6 +37,57 @@ WAV master, chapter files, speaker stems, subtitles and the source script are ex
 to a new project folder. Unavailable models/codecs report a clear error.'''
 
 
+def _keep_spoken_edits(previous, revised):
+    """Retain separately saved spoken text when the script keeps its source line."""
+    if not previous.original_script or not any(
+            line.spoken_text for scene in previous.scenes for line in scene.lines):
+        return revised
+    try:
+        original = parse_script(previous.original_script, mode=previous.mode, project_id=previous.id)
+    except ValueError:
+        # Imported projects may retain source text from before the current script grammar.
+        return revised
+    raw_roles = {role.id: role.name.casefold() for role in original.roles}
+    saved_roles = {role.id: role.name.casefold() for role in previous.roles}
+    fresh_roles = {role.id: role.name.casefold() for role in revised.roles}
+    raw_scenes = {(scene.id, scene.title): scene for scene in original.scenes}
+    saved_scenes = {(scene.id, scene.title): scene for scene in previous.scenes}
+
+    def key(line, roles):
+        return roles[line.role], line.text, line.spoken_text
+
+    scenes = []
+    for scene in revised.scenes:
+        identity = (scene.id, scene.title)
+        raw, saved = raw_scenes.get(identity), saved_scenes.get(identity)
+        if raw is None or saved is None:
+            scenes.append(scene)
+            continue
+        source_lines = {line.id: line for line in raw.lines}
+        source_keys = Counter(key(line, raw_roles) for line in raw.lines)
+        fresh_keys = Counter(key(line, fresh_roles) for line in scene.lines)
+        overrides = {}
+        for line in saved.lines:
+            original_line = source_lines.get(line.id)
+            if (original_line is None or not original_line.spoken_text
+                    or not line.spoken_text or line.spoken_text == original_line.spoken_text
+                    or line.text != original_line.text
+                    or saved_roles[line.role] != raw_roles[original_line.role]):
+                continue
+            anchor = key(original_line, raw_roles)
+            if not fresh_keys[anchor]:
+                continue
+            if source_keys[anchor] != 1 or fresh_keys[anchor] != 1:
+                raise ValueError('Make the edited spoken line unique before saving the script.')
+            overrides[anchor] = line.spoken_text
+        if overrides:
+            scene = replace(scene, lines=tuple(
+                replace(line, spoken_text=overrides.get(key(line, fresh_roles), line.spoken_text))
+                for line in scene.lines))
+        scenes.append(scene)
+    return replace(revised, scenes=tuple(scenes))
+
+
 class StudioController:
     """UI-independent draft/revision contract, also exercised by native smoke checks."""
     def __init__(self, library, *, service=None):
@@ -62,6 +114,7 @@ class StudioController:
                                    mode=previous_project.mode if previous_project else 'faithful',
                                    project_id=previous_project.id if previous_project else None)
         if previous_project and text != previous_project.original_script:
+            project = _keep_spoken_edits(previous_project, project)
             attached = {scene.id: scene for scene in previous_project.scenes if scene.cues or scene.effects}
             current = {scene.id: scene for scene in project.scenes}
             if any(identity not in current or current[identity].title != old.title
