@@ -1,0 +1,46 @@
+name: CARR exact public CHM member forensics
+on:
+  push:
+    branches: ['carr/chm-forensics-*']
+    paths: ['carr-library/scripts/chm_public_member_forensics.py', '.github/workflows/carr-chm-forensics.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  public-members:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONUNBUFFERED: '1'
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Select only the existing reviewed lxml wheel
+        timeout-minutes: 3
+        run: |
+          python -I -B -X utf8 carr-library/scripts/chm_public_member_forensics.py --prepare
+          python -I -m pip install --disable-pip-version-check --no-deps --only-binary=:all: --require-hashes -r carr-library/ci-results/chm-forensics-lxml.lock
+      - name: Inspect only two hash-bound public help members without executing extracted programs
+        timeout-minutes: 5
+        run: python -I -B -X utf8 carr-library/scripts/chm_public_member_forensics.py
+      - name: Preserve the bounded inert report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-chm-forensics-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            carr-library/ci-results/chm-forensics.json
+            carr-library/ci-results/chm-forensics-lxml.lock
+          if-no-files-found: error
+          retention-days: 7

@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "kind": "exact-public-chm-read-only-forensics",
+  "status": "NOT_RUN",
+  "source_base": "1b13c06cf17383014a5bb787ad792d63ee978fa7",
+  "observed_windows": {
+    "run": 46046112267,
+    "job": 140665695266,
+    "artifact": 15223334464,
+    "sha256": "ff3325a9652c3a96e733c34482e12d9e69b7512feb5598d12d161a1abe6a04d1"
+  },
+  "scope": "Use the existing hash/size-pinned official2MB MSI only as data; fixed host7-Zip parses its help data without executing extracted programs. The exact two member hashes must match observed Windows failures. Reuse one lxml6.1.3 Linux wheel already covered by windows-cp311.lock, independently matched to primary PyPI metadata. General HTML/product parsers are not edited.",
+  "parser_provenance": "Execute the unchanged three CHM normalization functions, two constants and current ConversionError from their exact source AST. Only relative preview import is redirected to the same complete stdlib-only preview source loaded under a private diagnostic name. Capture traceback locals for first differing ordered tokens; never relax equality.",
+  "source_only_hashes": {
+    "legacy": "f2bbe7058f6c267d00930d3910b01067a4e7ae12454f72313b6d1b59384ff826",
+    "preview": "0e81fa6b2c22e8ff1745fc474484cf879fdf6b1c3fcd69d804f1bf78d1e78d7f"
+  },
+  "lxml_wheel": {
+    "version": "6.1.3",
+    "sha256": "527195c188d7d0af748cd48d220ab8cdc5cb99be3d49ac4d9be7324d8abf9bc0",
+    "publisher": "https://pypi.org/project/lxml/6.1.3/",
+    "product_lock_changes": false
+  },
+  "qualification": "Read-only diagnostics, not Windows/native/product/release qualification. Report contains bounded safe excerpts and token windows, not the complete public manual or installer."
+}
