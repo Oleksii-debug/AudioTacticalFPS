@@ -30,7 +30,7 @@ def test_installed_selection_excludes_osd_and_missing_models():
 def test_actual_installed_tesseract_inventory():
     models = installed_languages()
     assert any(model.code == 'eng' for model in models)
-    assert all(model.kind in ('language','script','orientation','equation') for model in models)
+    assert all(model.kind in ('language','script','orientation') for model in models)
 
 
 def test_offline_pack_checksums_no_overwrite_and_cancellation(tmp_path):

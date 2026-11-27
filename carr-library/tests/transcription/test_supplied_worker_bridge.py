@@ -17,7 +17,7 @@ from carr_library.application import LibraryApp
 from carr_library.durable_state import read_json, atomic_json
 from carr_library.library_backup import restore_backup
 from carr_library.transcription import TranscriptionService, settings
-from carr_library.ui.operation_progress import ProgressTracker, operation_outcome
+from carr_library.progress import ProgressHub, operation_outcome
 
 
 SYNTHETIC_WORKER = r'''
@@ -762,14 +762,14 @@ def test_stop_keeps_worker_counts_monotonic_and_unverified_results_distinct(prep
     second.write_bytes(b'Second purpose-written protocol input; no acoustic inference.')
     identity = service.submit([original, second])
     path = service._path(identity)
-    tracker = ProgressTracker()
-    tracker.start('Recognizing retained inputs', 2)
+    hub = ProgressHub()
+    task = hub.start('Recognizing retained inputs', total=2)
     calls, events, observer_errors = [], [], []
 
     def progress(completed, total, phase):
         calls.append((completed, total, phase))
         try:
-            events.append(tracker.update(completed, total, phase))
+            events.append(task.update(completed=completed, total=total, phase=phase))
         except Exception as exc:
             observer_errors.append(str(exc))
             raise
@@ -801,7 +801,7 @@ def test_stop_keeps_worker_counts_monotonic_and_unverified_results_distinct(prep
     assert observer_errors == []
     assert operation_outcome(result) == 'cancelled'
     assert all(event.percent is None or event.percent < 100 for event in events)
-    assert tracker.transition('cancelled', 'Stopped; saved files await verification').percent < 100
+    assert task.cancelled('Stopped; saved files await verification').percent < 100
 
 
 def test_partial_progress_requires_verified_resume_before_host_success(prepared, tmp_path):
@@ -810,23 +810,23 @@ def test_partial_progress_requires_verified_resume_before_host_success(prepared,
     second = tmp_path / 'second-partial-progress.wav'
     second.write_bytes(b'Second synthetic retained input for partial and resume.')
     identity = service.submit([original, second])
-    tracker, events = ProgressTracker(), []
-    tracker.start('Recognizing retained inputs', 2)
+    hub, events = ProgressHub(), []
+    task = hub.start('Recognizing retained inputs', total=2)
 
     def progress(completed, total, phase):
-        events.append(tracker.update(completed, total, phase))
+        events.append(task.update(completed=completed, total=total, phase=phase))
 
     partial = service.run(identity, timeout=30, progress=progress)
     assert partial['status'] == 'partial' and partial['done'] == 1, partial
     assert operation_outcome(partial) == 'paused'
     assert events and all(event.percent is None or event.percent < 100 for event in events)
-    assert tracker.transition(operation_outcome(partial), 'Review remaining input').percent < 100
+    assert task.pause('Review remaining input').percent < 100
 
     configure('complete')
-    tracker.start('Resuming retained inputs', 2)
+    task = hub.start('Resuming retained inputs', total=2)
     completed = service.run(identity, timeout=30, progress=progress)
     assert completed['status'] == 'completed' and completed['done'] == 2
     assert operation_outcome(completed) == 'succeeded'
     assert all(event.percent is None or event.percent < 100 for event in events)
-    assert tracker.event.percent == 99
-    assert tracker.transition(operation_outcome(completed), 'Host accepted all results').percent == 100
+    assert task.snapshot().percent == 99
+    assert task.succeed(message='Host accepted all results').percent == 100

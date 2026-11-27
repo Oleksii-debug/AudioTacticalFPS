@@ -24,8 +24,8 @@ def references():
 
 @pytest.fixture(scope='module')
 def real_results():
-    if not shutil.which('node'):
-        pytest.skip('Actual CSL acceptance requires locally installed Node.js 18 or newer.')
+    import quickjs  # Required canonical runtime; missing dependencies must fail.
+    assert quickjs.Context
     items = [dict(id='book-doe', type='book', title='The Book of Science',
                   author=[{'family': 'Doe', 'given': 'Jane'}],
                   issued={'date-parts': [[2020]]}, publisher='Example Press', page='1-400')]
@@ -56,15 +56,15 @@ def test_real_styles_preserve_page_extent_and_apply_the_actual_rules(
 
 def test_upstream_pins_licenses_and_all_asset_digests():
     root = formatting._ROOT
-    manifest = json.loads((root / 'UPSTREAM.json').read_text())
-    raw = (root / 'vendor/citeproc.js').read_bytes()
+    manifest = formatting._manifest()
+    raw = (root / '_vendor_citeproc/citeproc.js').read_bytes()
     assert sha256(raw).hexdigest() == manifest['processor']['sha256']
     assert manifest['processor']['chosen_license'] == 'CPAL-1.0'
-    assert 'ATTRIBUTION' in (root / 'vendor/LICENSE-CPAL-1.0.txt').read_text()
+    assert 'ATTRIBUTION' in (root / '_vendor_citeproc/CPAL').read_text()
     for style in manifest['styles']:
         assert sha256((root / 'styles' / style['filename']).read_bytes()).hexdigest() == style['sha256']
     for name, digest in manifest['locales'].items():
-        assert sha256((root / 'locales' / name).read_bytes()).hexdigest() == digest
+        assert sha256((root / name).read_bytes()).hexdigest() == digest
 
 
 def test_no_pinpoint_is_inferred_from_publication_page_extent(references):
@@ -126,8 +126,8 @@ def test_cluster_group_and_repeated_notes_use_real_processor_state(references):
         CitationCluster((CitationRequest('book-doe', '12', locator_verified=True),), 'first', 1),
         CitationCluster((CitationRequest('book-doe', '18', locator_verified=True),), 'second', 2)])
     assert result.citations[0].text == 'Jane Doe, The Book of Science (Example Press, 2020), 12.'
-    # The pinned Chicago style's ibid-with-locator branch keeps author + locator.
-    assert result.citations[1].text == 'Doe, 18.'
+    # Canonical Chicago 18 uses an author/title short note for the repeated source.
+    assert result.citations[1].text == 'Doe, The Book of Science, 18.'
     assert [x.cluster_id for x in result.citations] == ['first', 'second']
 
 
@@ -173,7 +173,7 @@ def test_local_style_is_explicit_offline_and_no_macro_cycles(tmp_path, reference
     assert result.style.source == 'local:local.csl'
     assert str(tmp_path) not in json.dumps(result.interchange)
     path.write_text(template.format(macro='<macro name="loop"><text macro="loop"/></macro>'), encoding='utf-8')
-    with pytest.raises(CitationError, match='Recursive'):
+    with pytest.raises(CitationError, match='(?i)recursive'):
         render_citations(references, style_path=path)
     path.write_text('<!DOCTYPE style [<!ENTITY leak SYSTEM "file:///etc/passwd">]>' + template.split('?>')[1].format(macro=''), encoding='utf-8')
     with pytest.raises(CitationError, match='DTD'):
@@ -183,9 +183,8 @@ def test_local_style_is_explicit_offline_and_no_macro_cycles(tmp_path, reference
 def test_tampered_packaged_style_is_rejected(tmp_path, references, monkeypatch):
     source = formatting._ROOT
     (tmp_path / 'styles').mkdir()
-    shutil.copy(source / 'UPSTREAM.json', tmp_path)
     (tmp_path / 'styles/apa.csl').write_text('tampered')
-    monkeypatch.setattr(formatting, '_ROOT', tmp_path)
+    monkeypatch.setattr(formatting._csl, '_ROOT', tmp_path)
     with pytest.raises(CitationError, match='integrity'):
         render_citations(references)
 

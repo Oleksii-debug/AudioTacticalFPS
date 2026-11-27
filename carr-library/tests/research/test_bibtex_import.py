@@ -442,3 +442,30 @@ def test_real_sqlite_import_metadata_preserves_notes_and_scope_after_reopen(tmp_
         assert AcademicLibrary(reopened, 'second').list() == ()
     finally:
         reopened.close()
+
+
+
+
+@pytest.mark.parametrize(('name', 'expected'), [
+    (', Jr., John', '{, Jr., John}'),
+    (', Jane', '{, Jane}'),
+    ('{}, Jr., John', '{, Jr., John}'),
+    ('Doe, Jr., {}', '{Doe, Jr.,}'),
+    ('Doe, {}', '{Doe,}'),
+])
+def test_incomplete_comma_names_preserve_identity_instead_of_shifting_fields_workbench(name, expected):
+    import json
+    from carr_library.citations.bibliography_workbench import records_for_style
+
+    original = '@book{x,title={Test},author={' + name + '}}'
+    values, warnings = one(original)
+    assert values['authors'] == (expected,)
+    assert original in values['notes']
+    assert any('Incomplete comma-separated person name' in warning for warning in warnings)
+    # The explicit personal-name mode must continue treating the preserved
+    # incomplete name as literal, rather than assigning John/Jr. new roles.
+    snapshot = json.dumps([{'id': 'x', 'type': 'book', 'title': 'Test',
+                           'author': [{'literal': expected}]}])
+    records, _ = records_for_style(snapshot, name_mode='family-given')
+    assert records[0]['author'] == [{'literal': expected[1:-1]}]
+

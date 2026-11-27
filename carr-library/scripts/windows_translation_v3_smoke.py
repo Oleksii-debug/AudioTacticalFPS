@@ -188,6 +188,8 @@ def main():
                     check('original selected text unchanged', selected.GetValue() == original)
                     before = len(calls)
                     before_approvals = len(approvals)
+                    check('completed job retains its approved scope',
+                          not glossary_input.IsEnabled() and not find('Preview').IsEnabled())
                     press(find('New translation'))
                     check('new translation returns focus to editable selected text',
                           wx.Window.FindFocus() is selected and selected.IsEditable())
@@ -197,6 +199,9 @@ def main():
                     glossary_input.ChangeValue(glossary)
                     find('Maximum approved budget in USD; no default price').ChangeValue('1')
                     press(find('Preview'))
+                    check('new translation preview restores the exact reviewed scope',
+                          address in status.GetValue() and glossary in status.GetValue()
+                          and selected.GetValue() == original and len(calls) == before)
                     check('new translation preview status focus', wx.Window.FindFocus() is status)
                     glossary_input.SetFocus()
                     pump(lambda: wx.Window.FindFocus() is glossary_input, 'Glossary edit focus')

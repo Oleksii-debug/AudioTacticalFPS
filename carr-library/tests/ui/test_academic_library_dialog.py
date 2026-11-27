@@ -109,6 +109,24 @@ def test_pinned_controller_rechecks_library_authorization(controller):
     assert controller.get(row.id) == row
 
 
+def test_academic_controller_captures_destination_before_render(controller, tmp_path, monkeypatch):
+    controller.create(form_values(draft()))
+    target = tmp_path / 'bibliography.txt'
+    target.write_bytes(b'Approved previous export')
+    original = controller.export
+
+    def render(**kwargs):
+        content = original(**kwargs)
+        target.write_bytes(b'Independent work saved while rendering')
+        return content
+
+    monkeypatch.setattr(controller, 'export', render)
+    with pytest.raises(ValueError, match='destination changed'):
+        controller.export_to(target)
+    assert target.read_bytes() == b'Independent work saved while rendering'
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
 def test_import_dialog_selection_is_explicit_and_failed_batch_is_atomic(controller):
     data = json.dumps([
         {'type': 'book', 'title': 'First imported reference'},
@@ -565,21 +583,18 @@ def test_export_handler_binds_actual_controller_publication_to_confirmation(
     target.write_bytes(original_bytes)
     ui = native_handlers
     ui.wx.FD_SAVE, ui.wx.FD_OVERWRITE_PROMPT = 4, 8
-    ui.wx.ID_YES, ui.wx.ID_NO = 10, 11
+    ui.wx.YES, ui.wx.NO = 10, 11
     ui.wx.YES_NO, ui.wx.NO_DEFAULT, ui.wx.ICON_QUESTION = 16, 32, 64
     chooser = Mock()
     chooser.ShowModal.return_value = ui.wx.ID_OK
     chooser.GetPath.return_value = str(target)
     ui.wx.FileDialog = Mock(return_value=chooser)
-    question = Mock()
-
-    def answer_question():
+    def answer_question(*args):
         if competing:
             target.write_bytes(competing_bytes)
-        return ui.wx.ID_YES if answer == 'yes' else ui.wx.ID_NO
+        return ui.wx.YES if answer == 'yes' else ui.wx.NO
 
-    question.ShowModal.side_effect = answer_question
-    ui.wx.MessageDialog = Mock(return_value=question)
+    ui.wx.MessageBox = Mock(side_effect=answer_question)
     window = ui.make('academic', controller)
     window.controller = controller
     window._export_options = Mock(return_value=(FORMATS[0], None, False))
@@ -588,18 +603,19 @@ def test_export_handler_binds_actual_controller_publication_to_confirmation(
     window.on_export()
 
     assert ui.wx.FileDialog.call_args.kwargs['style'] == ui.wx.FD_SAVE
-    parent, message, caption, style = ui.wx.MessageDialog.call_args.args
+    message, caption, style, parent = ui.wx.MessageBox.call_args.args
     assert parent is window and target.name in message and caption == 'Replace academic bibliography'
     assert style == ui.wx.YES_NO | ui.wx.NO_DEFAULT | ui.wx.ICON_QUESTION
     chooser.Destroy.assert_called_once()
-    question.Destroy.assert_called_once()
+    ui.wx.MessageBox.assert_called_once()
     if answer == 'no':
         actual_render.assert_not_called()
         assert target.read_bytes() == original_bytes
     elif competing:
         actual_render.assert_called_once()
         assert target.read_bytes() == competing_bytes
-        assert 'Bibliography not exported:' in window.status.value
+        assert window.status.value.startswith('Bibliography export:')
+        assert 'Bibliography exported to' not in window.status.value
         assert 'destination changed' in window.status.value
     else:
         actual_render.assert_called_once()

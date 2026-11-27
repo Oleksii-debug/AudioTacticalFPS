@@ -9,7 +9,7 @@ from ..durable_state import atomic_json, encode, read_json
 from ..research.export_file import write_binary_export
 from ..studio.project import Project, parse_script
 from ..studio.render import ProductionService
-from .operation_progress import OperationProgress, operation_outcome
+from ..progress import ProgressError, ProgressState, bind_progress, operation_outcome
 from ..speech.progress_speech import activate_progress_voice, play_when_quiet
 from .export_destination import confirm_export_destination
 
@@ -49,9 +49,25 @@ class StudioController:
     def save(self, text, title, voice_ids):
         # Keep even an invalid script draft, and report the validation failure.
         self.autosave(text, title, voice_ids)
-        project = parse_script(text, title=title, voice_ids=voice_ids,
-                               project_id=self.project.id if self.project else None)
-        if self.project:
+        previous_project = self.project
+        if previous_project and text == previous_project.original_script:
+            # JSON projects can contain recorded clips, source bindings and
+            # non-default render settings which the prose grammar cannot express.
+            # Saving an unchanged script must preserve that complete performance.
+            project = replace(previous_project, title=title)
+        else:
+            project = parse_script(text, title=title, voice_ids=voice_ids,
+                                   mode=previous_project.mode if previous_project else 'faithful',
+                                   project_id=previous_project.id if previous_project else None)
+        if previous_project and text != previous_project.original_script:
+            attached = {scene.id: scene for scene in previous_project.scenes if scene.cues}
+            current = {scene.id: scene for scene in project.scenes}
+            if any(identity not in current or current[identity].title != old.title
+                   for identity, old in attached.items()):
+                raise ValueError('A scene with attached audio changed its identity. '
+                                 'Move or remove its clips in the scene audio editor before changing scene structure.')
+            scenes = tuple(replace(scene, cues=attached[scene.id].cues)
+                           if scene.id in attached else scene for scene in project.scenes)
             previous = {role.name.casefold(): role for role in self.project.roles}
             roles = tuple(replace(role, voice_id=previous[role.name.casefold()].voice_id,
                                   language=previous[role.name.casefold()].language,
@@ -60,17 +76,22 @@ class StudioController:
                                   rate=previous[role.name.casefold()].rate,
                                   volume=previous[role.name.casefold()].volume)
                           if role.name.casefold() in previous else role for role in project.roles)
-            project = replace(project, roles=roles, revision=self.project.revision)
-            if project.to_dict() != self.project.to_dict():
-                project = replace(project, revision=self.project.revision + 1)
-        self.service.projects.save(project)
+            project = replace(project, roles=roles, scenes=scenes,
+                              sample_rate=previous_project.sample_rate,
+                              schema=previous_project.schema, revision=previous_project.revision)
+        if previous_project and project.to_dict() != previous_project.to_dict():
+            project = replace(project, revision=previous_project.revision + 1)
+        self.service.projects.save(project,
+            expected_revision=previous_project.revision if previous_project else None)
         self.project = project
         return project
 
 
 def show_studio(frame):
     import wx
-    controller = StudioController(frame.library)
+    library = frame.library
+    library_root = Path(library.root)
+    controller = StudioController(library)
     service = controller.service
     dialog = wx.Dialog(frame, title='Audio Studio — script, voices and production', size=(980, 850),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
@@ -79,6 +100,15 @@ def show_studio(frame):
     cancel = threading.Event()
     voices, current_job, alive, busy = (), None, True, False
     draft_dirty = False
+    saved_signature = None
+    owned_progress_voices = set()
+
+    def scope_current():
+        return (alive and getattr(frame, 'library', None) is library
+                and Path(library.root) == library_root and not getattr(frame, '_closing', False))
+
+    def stopping():
+        return cancel.is_set() or not scope_current()
 
     def field(label, factory=wx.TextCtrl, proportion=0, **kwargs):
         layout.Add(wx.StaticText(dialog, label=label), 0, wx.LEFT | wx.TOP, 6)
@@ -99,10 +129,6 @@ def show_studio(frame):
     layout.Add(stems, 0, wx.ALL, 6)
     status = field('Production and save status', style=wx.TE_MULTILINE | wx.TE_READONLY,
                    value='Loading installed local voices. No audio starts automatically.', size=(-1, 100))
-    progress_label = wx.StaticText(dialog, label='Ready')
-    progress_gauge = wx.Gauge(dialog, range=100, style=wx.GA_HORIZONTAL)
-    layout.Add(progress_label, 0, wx.EXPAND | wx.ALL, 6)
-    layout.Add(progress_gauge, 0, wx.EXPAND | wx.ALL, 6)
     buttons = {}
     for row in ((('save', '&Save (Ctrl+S)'), ('open', '&Open project'), ('saveas', 'Save &as (Ctrl+Shift+S)'),
                  ('roles', 'Edit &roles and voices'), ('help', '&Help')),
@@ -125,15 +151,31 @@ def show_studio(frame):
             if focus:
                 status.SetFocus()
 
-    dialog.library, dialog.status = frame.library, status
+    # Reuse the same native observer and state contract as the main window.
+    # Its modal view keeps query/mute controls reachable while Studio is busy.
+    from .progress_panel import NativeProgressPanel
+    dialog.library, dialog.host, dialog.layout = library, dialog, layout
+    dialog.status = status
     dialog.report = lambda message: report(message, True)
-    progress = OperationProgress(dialog, progress_gauge, progress_label, wx_module=wx)
-    parent_progress = getattr(frame, 'operation_progress', None)
-    if parent_progress is not None and parent_progress.speech_provider is not None:
+    dialog.working = False
+    parent_progress = getattr(frame, 'progress_panel', None)
+    selected_provider = getattr(parent_progress, 'speech_provider', None)
+    dialog.progress_speech_provider = None
+    if callable(getattr(selected_provider, 'copy_selection', None)):
         try:
-            progress.set_speech_provider(parent_progress.speech_provider.copy_selection(), root=dialog.library.root)
+            dialog.progress_speech_provider = selected_provider.copy_selection()
         except (ValueError, OSError, RuntimeError) as exc:
             report(f'Select a progress voice again: {exc}')
+    dialog.progress_media_busy = lambda: (
+        getattr(getattr(dialog, '_audio_player', None), 'state', 'stopped') == 'playing')
+    progress = NativeProgressPanel(dialog)
+    if parent_progress is not None:
+        progress.hub = parent_progress.hub
+    layout.Detach(progress.panel)
+    layout.Insert(layout.GetItemCount() - 2, progress.panel, 0, wx.EXPAND | wx.ALL, 6)
+    progress.gauge.SetName('Audio Studio operation progress')
+    progress.text.SetName('Audio Studio current progress and phase')
+    progress.query_button.SetName('Query Audio Studio progress')
 
     def selected_voices():
         selected = voice_choice.GetSelection()
@@ -143,170 +185,179 @@ def show_studio(frame):
         return ()
 
     def controls():
+        if not alive:
+            return
+        available = not busy and scope_current()
         for name in ('render', 'open', 'roles', 'jobs'):
-            buttons[name].Enable(not busy)
+            buttons[name].Enable(available)
         buttons['pause'].Enable(busy)
-        buttons['preview'].Enable(not busy and current_job is not None)
+        buttons['preview'].Enable(available and current_job is not None)
         selected = voice_choice.GetSelection()
         buttons['progress_voice'].Enable(not busy and 0 <= selected < len(voices)
                                           and 'volume' in voices[selected].capabilities)
-        editor.Enable(not busy)
-        title.Enable(not busy)
-        voice_choice.Enable(not busy)
+        editor.Enable(available)
+        title.Enable(available)
+        voice_choice.Enable(available)
 
     def run(operation, complete, *, phase='Audio Studio operation', with_progress=False):
         nonlocal busy
-        if busy or not alive:
+        if busy:
+            return
+        if not scope_current():
+            report('The active library changed or is closing. Reopen Audio Studio from that library.', True)
             return
         busy = True
+        dialog.working = True
         cancel.clear()
         controls()
-        token, observer_available = None, True
+        task, observer_error = None, None
         job_identity = current_job
         finished = threading.Event()
-        try:
-            progress.reporting_error = None
-        except Exception:
-            pass
 
-        def unavailable(exc):
-            nonlocal observer_available
-            observer_available = False
-            # Feedback must not change a committed render's business result or
-            # overwrite the callback's detailed output location with an error.
+        def observe(callback):
+            nonlocal observer_error
             try:
-                progress.reporting_error = 'Progress feedback is unavailable: ' + str(exc)
-            except Exception:
-                pass
-            if token is not None:
-                try:
-                    progress.finalize(token=token)
-                except Exception:
-                    pass
-
-        def observe(method, *args, **kwargs):
-            if observer_available:
-                try:
-                    return getattr(progress, method)(*args, **kwargs)
-                except Exception as exc:
-                    unavailable(exc)
-            return None
-
-        token = observe('start', phase)
-
-        def measured_phase(message):
-            # The production service currently emits exact phase receipts, not
-            # an overall measured unit total. Keep its gauge indeterminate.
-            if finished.is_set():
-                return
-            try:
-                description = ' '.join(str(message).split())[:512] or phase
-                observe('update', None, None, description, token=token)
-                def show_phase():
-                    if alive and not finished.is_set():
-                        report(message)
-                wx.CallAfter(show_phase)
+                return callback()
             except Exception as exc:
-                # A detached native label or a stopped UI event loop cannot
-                # interrupt the production service after it saved a receipt.
-                unavailable(exc)
+                observer_error = exc
+
+        task = observe(lambda: progress.begin(phase))
+
+        def measured(message):
+            if finished.is_set() or not scope_current():
+                return
+            description = ' '.join(str(message).split())[:512] or phase
+            if task is not None and not stopping() and task.snapshot().state == ProgressState.RUNNING:
+                observe(lambda: task.update(phase=description))
+            def show_phase():
+                if scope_current() and not finished.is_set():
+                    report(description)
+            observe(lambda: wx.CallAfter(show_phase))
+
+        def execute():
+            if stopping():
+                raise InterruptedError('Audio Studio operation cancelled before it could use the selected library.')
+            if task is None:
+                return operation(measured) if with_progress else operation()
+            with bind_progress(task):
+                return operation(measured) if with_progress else operation()
+
+        def finish_progress(outcome):
+            if observer_error is None:
+                observe(lambda: progress.finish(task, outcome, phase + ': ' + outcome))
+            if observer_error is not None:
+                warning = 'Work returned ' + outcome + '; progress feedback is unavailable: ' + str(observer_error)
+                observe(lambda: progress.reporting_unavailable(task, outcome, warning))
 
         def failed_operation(exc, *, worker=False):
             from carr_library.audio.models import AudioCancelled
             interrupted = worker and isinstance(exc, (InterruptedError, AudioCancelled))
-            state = 'paused' if interrupted else 'failed'
-            if worker and with_progress and job_identity is not None:
+            outcome = 'paused' if interrupted else 'failed'
+            if interrupted and with_progress and job_identity is not None:
                 try:
-                    saved_state = operation_outcome(service.get(job_identity))
-                    if interrupted and saved_state in ('paused', 'cancelled', 'failed'):
-                        state = saved_state
+                    saved = operation_outcome(service.get(job_identity))
+                    if saved in ('paused', 'cancelled', 'failed'):
+                        outcome = saved
                 except Exception:
-                    pass  # A missing receipt cannot hide the original error.
-            if state == 'cancelled':
-                observe('cancel', phase + ': cancelled', token=token)
-            elif state == 'paused':
-                observe('pause', phase + ': paused; completed chunks retained', token=token)
-            else:
-                observe('fail', phase + ': failed', token=token)
-            observe('finalize', token=token)
-            report(str(exc), True)
-
-        try:
-            future = executor.submit(lambda: operation(measured_phase) if with_progress else operation())
-        except Exception as exc:
-            finished.set()
-            busy = False
-            controls()
-            failed_operation(exc)
-            return
+                    pass
+            finish_progress(outcome)
+            if alive:
+                report(str(exc), True)
 
         def finish(done):
             def apply():
                 nonlocal busy
                 finished.set()
-                if not alive:
-                    return
                 busy = False
-                controls()
+                dialog.working = False
+                if alive:
+                    controls()
                 try:
                     result = done.result()
                 except Exception as exc:
                     failed_operation(exc, worker=True)
                     return
+                outcome = observe(lambda: operation_outcome(result))
                 try:
-                    # Completion may verify or publish a final artifact. It is
-                    # business work and must finish before any success signal.
-                    complete(result)
+                    if scope_current() and outcome in ('succeeded', None):
+                        complete(result)
+                    elif scope_current():
+                        report(phase + ': ' + outcome + '. Saved work is retained.', True)
+                    elif alive:
+                        report('The active library changed or is closing. Any saved result remains in its original library.', True)
                 except Exception as exc:
                     failed_operation(exc)
                     return
-                if not alive:
-                    return
+                finish_progress(outcome or 'unavailable')
+            if alive:
                 try:
-                    outcome = operation_outcome(result)
-                except Exception as exc:
-                    unavailable(exc)
-                    return
-                if outcome == 'succeeded':
-                    observe('succeed', phase + ': verified complete', token=token)
-                elif outcome == 'paused':
-                    observe('pause', phase + ': needs attention', token=token)
-                elif outcome == 'cancelled':
-                    observe('cancel', phase + ': cancelled', token=token)
-                else:
-                    observe('fail', phase + ': failed', token=token)
-                observe('finalize', token=token)
-            wx.CallAfter(apply)
+                    wx.CallAfter(apply)
+                except RuntimeError:
+                    finished.set()
+            else:
+                # Closed panels suppress refresh. Finish the shared task without
+                # scheduling callbacks for a destroyed native dialog.
+                apply()
+
+        try:
+            future = executor.submit(execute)
+        except Exception as exc:
+            finished.set()
+            busy = False
+            dialog.working = False
+            if alive:
+                controls()
+            failed_operation(exc)
+            return
         future.add_done_callback(finish)
+        return future
 
     def select_progress_voice(event=None):
         selected = voice_choice.GetSelection()
         if not 0 <= selected < len(voices):
             return
-        root = Path(dialog.library.root)
-        voice_id = voices[selected].id
+        root, voice_id = Path(dialog.library.root), voices[selected].id
+
+        def activate():
+            provider = activate_progress_voice(root, voice_id)
+            owned_progress_voices.add(provider)
+            return provider
 
         def activated(provider):
             try:
                 progress.set_speech_provider(provider, root=root)
+                owned_progress_voices.discard(provider)
                 if parent_progress is not None:
-                    parent_progress.set_speech_provider(provider.copy_selection(), root=root)
+                    copied = provider.copy_selection()
+                    try:
+                        parent_progress.set_speech_provider(copied, root=root)
+                    except Exception:
+                        copied.close()
+                        raise
             except Exception:
                 provider.close()
                 raise
-            progress.settings_dialog()
+            progress.settings()
             if parent_progress is not None:
-                parent_progress.reload_preferences()
+                parent_progress.preferences = parent_progress.store.load()
+                parent_progress.feedback.set_preferences(
+                    parent_progress._effective_preferences(parent_progress.preferences))
+                parent_progress.mute.SetValue(parent_progress.preferences.muted)
+                parent_progress.refresh_audio_state()
             report(f'Progress voice selected for this session: {provider.label}. '
                    f'Sound mode: {progress.preferences.mode}.')
 
-        run(lambda: activate_progress_voice(root, voice_id), activated, phase='Selecting a local progress voice')
+        run(activate, activated, phase='Selecting a local progress voice')
 
     def save(event=None):
-        nonlocal draft_dirty
+        nonlocal draft_dirty, saved_signature
+        if not scope_current():
+            report('The active library changed or is closing. Reopen Audio Studio before saving.', True)
+            return None
         try:
             result = controller.save(editor.GetValue(), title.GetValue(), selected_voices())
             draft_dirty = False
+            saved_signature = (editor.GetValue(), title.GetValue(), selected_voices())
             report(f'Saved project revision {result.revision}. {len(result.scenes)} scenes, {len(result.roles)} roles.', True)
             return result
         except Exception as exc:
@@ -321,7 +372,7 @@ def show_studio(frame):
 
     def autosave(event=None):
         nonlocal draft_dirty
-        if not draft_dirty or busy:
+        if not draft_dirty or busy or not scope_current():
             return
         try:
             controller.autosave(editor.GetValue(), title.GetValue(), selected_voices())
@@ -336,6 +387,8 @@ def show_studio(frame):
         try:
             if chooser.ShowModal() != wx.ID_OK:
                 return
+            if not scope_current():
+                raise ValueError('The active library changed. Reopen Audio Studio before opening a project.')
             path = Path(chooser.GetPath())
             if path.stat().st_size > 16 * 1024**2:
                 raise ValueError('The script exceeds the editable text budget; split it by chapters.')
@@ -373,9 +426,11 @@ def show_studio(frame):
                     return
                 if frame.library is not library:
                     raise ValueError('The library changed. Reopen the studio before exporting.')
-                write_binary_export(path, encode(project.to_dict()), private_root=library.root,
+                receipt = write_binary_export(path, encode(project.to_dict()), private_root=library.root,
                                     approval=approval)
-                report('Project exported. Voice credentials and source library files are not embedded.', True)
+                warning = getattr(receipt, 'cleanup_warning', None)
+                report('Project exported. Voice credentials and source library files are not embedded.'
+                    + ('\n' + warning if isinstance(warning, str) and warning else ''), True)
         except Exception as exc:
             report(str(exc), True)
         finally:
@@ -425,6 +480,8 @@ def show_studio(frame):
                              rate=rate.GetValue(), volume=volume.GetValue())
             updated = replace(project, roles=tuple(edited if i == index else r for i, r in enumerate(project.roles)),
                               revision=project.revision + 1)
+            if not scope_current():
+                raise ValueError('The active library changed. Reopen Audio Studio before saving role edits.')
             service.projects.save(updated, expected_revision=project.revision)
             controller.project = updated
             current_job = None
@@ -436,7 +493,7 @@ def show_studio(frame):
 
     def render(event=None):
         nonlocal current_job
-        if busy:
+        if busy or not scope_current():
             return
         if current_job is None:
             project = save()
@@ -446,6 +503,8 @@ def show_studio(frame):
             try:
                 if chooser.ShowModal() != wx.ID_OK:
                     return
+                if not scope_current():
+                    raise ValueError('The active library changed. Reopen Audio Studio before rendering.')
                 current_job = service.submit(project, Path(chooser.GetPath()),
                     format=formats[format_choice.GetSelection()], stems=stems.GetValue())
             except Exception as exc:
@@ -454,13 +513,38 @@ def show_studio(frame):
             finally:
                 chooser.Destroy()
         identity = current_job
-        run(lambda measured: service.run(identity, cancelled=cancel.is_set, progress=measured),
+        new_parent = None
+        try:
+            if service.get(identity).get('recovery', {}).get('requires_output_directory') is True:
+                chooser = wx.DirDialog(dialog, 'Choose a new output folder for the restored production job')
+                try:
+                    if chooser.ShowModal() != wx.ID_OK:
+                        return
+                    new_parent = Path(chooser.GetPath())
+                finally:
+                    chooser.Destroy()
+        except Exception as exc:
+            report(str(exc), True)
+            return
+
+        def render_selected(measured):
+            if stopping():
+                raise InterruptedError('Audio production cancelled before using the selected library.')
+            if new_parent is not None:
+                measured('Preparing a new output folder for the restored production')
+                service.relocate_restored_job(identity, new_parent)
+            if stopping():
+                raise InterruptedError('Audio production cancelled before rendering.')
+            return service.run(identity, cancelled=stopping, progress=measured)
+        run(render_selected,
             lambda result: report('Production complete. ' + result['destination'] +
                 '\nWAV, chapters, requested stems, subtitles and checksums are saved.', True),
             phase='Rendering audio production', with_progress=True)
 
     def jobs(event=None):
         nonlocal current_job
+        if not scope_current():
+            return
         try:
             rows = service.jobs()
             chooser = wx.SingleChoiceDialog(dialog, 'Select a saved job to inspect, resume, or replay.', 'Production jobs',
@@ -473,6 +557,8 @@ def show_studio(frame):
                 chooser.Destroy()
             if not 0 <= index < len(rows):
                 return
+            if not scope_current():
+                raise ValueError('The active library changed. Reopen Audio Studio before selecting a saved job.')
             row = rows[index]
             project = Project.from_dict(row['project'])
             controller.project = service.projects.load(project.id)
@@ -486,9 +572,13 @@ def show_studio(frame):
 
     def preview(event=None):
         try:
-            if current_job is None:
+            if busy or current_job is None or not scope_current():
                 return
-            row = service.get(current_job)
+            identity = current_job
+            row = service.get(identity)
+            if (row.get('recovery', {}).get('requires_output_directory') is True
+                    or row.get('status') == 'waiting-input'):
+                raise ValueError('This restored job needs a new output folder. Choose Render / resume first.')
             source = Path(row['destination']) / 'master.wav'
             if not source.exists():
                 raise ValueError('There is no completed master yet; render or resume the job.')
@@ -499,10 +589,13 @@ def show_studio(frame):
             if parent_progress is not None:
                 parent_progress.register_player(player)
             def playing():
+                if not scope_current() or current_job != identity or busy:
+                    return
                 player.play(source)
                 report('Playing the rendered master. Close this dialog to stop playback.', True)
             play_when_quiet((progress, parent_progress), playing, schedule=wx.CallLater,
-                alive=lambda: alive, on_error=lambda exc: report(f'Playback did not start. {exc}', True))
+                alive=lambda: scope_current() and current_job == identity and not busy,
+                on_error=lambda exc: report(f'Playback did not start. {exc}', True) if scope_current() else None)
         except Exception as exc:
             report(str(exc), True)
 
@@ -510,37 +603,53 @@ def show_studio(frame):
         from .desktop_app import show_text
         show_text(dialog, 'Audio Studio keyboard and script guide', SCRIPT_HELP)
 
-    def close(event=None):
+    def close(event=None, *, destroying=False):
         nonlocal alive
-        autosave()
+        if not alive:
+            return
+        if destroying:
+            progress.close()
+            alive = False
+        else:
+            autosave()
         cancel.set()
         if current_job is not None and busy:
             service.request_pause(current_job)
         timer.Stop()
-        close_notices = []
         if getattr(dialog, '_audio_player', None):
             silence_confirmed = False
             try:
-                dialog._audio_player.close()
+                if dialog._audio_player.close() is False:
+                    raise RuntimeError('The audio device has not confirmed Stop.')
                 silence_confirmed = True
             except (OSError, RuntimeError) as exc:
-                close_notices.append(f'Playback device reported a close error: {exc}')
-            # Each controller must retain uncertain native output even if a
-            # different progress view has already been detached or destroyed.
+                report(f'Playback device reported a close error: {exc}')
             for observer in (progress, parent_progress):
                 if observer is not None:
                     try:
                         observer.unregister_player(dialog._audio_player, silence_confirmed=silence_confirmed)
                     except Exception as exc:
-                        close_notices.append(f'Playback progress feedback could not be refreshed: {exc}')
-        if close_notices:
-            report(' '.join(close_notices))
+                        report(f'Playback feedback could not be refreshed: {exc}')
         if busy:
-            progress.pause('Audio production paused; completed chunks retained')
+            progress.request_cancel()
         progress.close()
         alive = False
-        executor.shutdown(wait=False, cancel_futures=True)
-        dialog.EndModal(wx.ID_CLOSE)
+        from .worker_cleanup import close_after_worker
+        class StudioResources:
+            def close(self):
+                try:
+                    for provider in owned_progress_voices:
+                        provider.close()
+                finally:
+                    service.close()
+        close_after_worker(executor, StudioResources())
+        if not destroying:
+            dialog.EndModal(wx.ID_CLOSE)
+
+    def destroyed(event):
+        if event.GetEventObject() is dialog:
+            close(destroying=True)
+        event.Skip()
 
     for name, callback in {'save': save, 'open': open_project, 'saveas': save_as, 'roles': edit_roles,
                            'render': render, 'pause': lambda event: cancel.set(), 'jobs': jobs,
@@ -557,14 +666,18 @@ def show_studio(frame):
     dialog.SetAcceleratorTable(wx.AcceleratorTable(bindings))
     editor.Bind(wx.EVT_TEXT, changed)
     title.Bind(wx.EVT_TEXT, changed)
-    voice_choice.Bind(wx.EVT_CHOICE, lambda event: controls())
+    def voice_changed(event):
+        changed(event)
+        controls()
+    voice_choice.Bind(wx.EVT_CHOICE, voice_changed)
     dialog.Bind(wx.EVT_CLOSE, close)
+    dialog.Bind(wx.EVT_WINDOW_DESTROY, destroyed)
     timer = wx.Timer(dialog)
     dialog.Bind(wx.EVT_TIMER, autosave, timer)
     timer.Start(4000)
 
     def loaded(result):
-        nonlocal voices, draft_dirty
+        nonlocal voices, draft_dirty, saved_signature
         voices = result
         voice_choice.SetItems([v.name + '; ' + v.language for v in voices])
         if voices:
@@ -586,14 +699,30 @@ def show_studio(frame):
                 return
         draft_dirty = False
         controls()
+        if controller.project is not None and (editor.GetValue(), title.GetValue()) == (
+                controller.project.original_script, controller.project.title):
+            saved_signature = (editor.GetValue(), title.GetValue(), selected_voices())
         report(f'{len(voices)} installed voices available. Enter a script and choose roles, then Render.'
                if voices else 'No local voice is installed. Configure a local SAPI/Piper voice before narration.', True)
         editor.SetFocus()
 
+    from .save_all import SaveResult, coordinator_for
+    coordinator = coordinator_for(frame)
+    def unsaved():
+        return bool(editor.GetValue()) and (editor.GetValue(), title.GetValue(), selected_voices()) != saved_signature
+    def save_registered(completed):
+        if busy:
+            completed(SaveResult(False, 'Audio production is running; pause it before saving the project.'))
+        else:
+            completed(SaveResult(save() is not None, 'Project validation or saving did not complete.'))
+    unregister = (coordinator.register('studio.' + str(id(controller)), 'Audio Studio project',
+                    dirty=unsaved, save=save_registered, focus=editor.SetFocus)
+                  if coordinator is not None else lambda: None)
     run(lambda: service.voices.voices(), loaded, phase='Checking installed local voices')
     try:
         dialog.ShowModal()
     finally:
+        unregister()
         if alive:
             close()
         dialog.Destroy()
@@ -669,10 +798,18 @@ def show_audio_conversion(frame):
 def install_studio_actions(frame):
     import wx
     from .engine_settings import show_engine_settings
+    from .publishing_dialog import show_publishing
+    from .studio_clips import show_clip_editor
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
     menu = wx.Menu()
-    for title, handler in [('Script and audio production...\tCtrl+Alt+A', lambda e: show_studio(frame)),
-                            ('Convert audio and apply effects...', lambda e: show_audio_conversion(frame)),
-                            ('Local voice and music engines...', lambda e: show_engine_settings(frame))]:
+    for identity, title, shortcut, handler in [
+            ('audio.studio', 'Script and audio production...', 'Ctrl+Alt+A', lambda e: show_studio(frame)),
+            ('audio.clips', 'Scene audio clips...', '', lambda e: show_clip_editor(frame)),
+            ('audio.publishing', 'Publish synchronized EPUB3...', '', lambda e: show_publishing(frame)),
+            ('audio.convert', 'Convert audio and apply effects...', '', lambda e: show_audio_conversion(frame)),
+            ('audio.engines', 'Local voice and music engines...', '', lambda e: show_engine_settings(frame))]:
         item = menu.Append(wx.ID_ANY, title)
         frame.Bind(wx.EVT_MENU, handler, item)
+        register_menu_command(frame, CommandSpec(identity, title, 'main', shortcut), item)
     frame.menu_bar.Append(menu, 'Audio St&udio')

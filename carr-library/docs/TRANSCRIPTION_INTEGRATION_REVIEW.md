@@ -2,6 +2,27 @@
 
 Review date: 2026-11-27. Status: SOURCE_RECEIVED_AND_STATICALLY_REVIEWED; runtime/integration/Windows/NVDA/model-quality acceptance NOT_RUN in this audit. This is a work package under the [current platform specification](UNIVERSAL_SCOPE_V3_FINALIZATION.md), not a separate ASR product.
 
+## Subsequent integration evidence — 2026-11-27
+
+The original review below remains a snapshot of the supplied source. The exact
+37,974-byte worker has since been bound to SHA256
+`1df2a1694b35bdf69dab614f91f1e8dea99716dfb039182ef5b83ca5ccb46ec9`.
+The [primary opt-in adapter](SUPPLIED_TRANSCRIPTION_ADAPTER.md) reuses the existing
+assistant JobStore, scoped plans and bounded audio process runner. It addresses
+ASR-01/02 by using immutable one-file staging and content/settings/runtime-bound
+receipts, ASR-03 through the exact reviewed no-fallback source correction, ASR-04
+through mandatory export verification, and ASR-05/06 through isolated single-file
+workers, serialized admission within one application store and owned-process
+cancellation. Interrupted files restart; generic hard-kill recovery and acoustic
+mid-file checkpoints are not qualified.
+
+The actual supplied worker protocol has been executed on Linux with a synthetic
+isolated SDK for successful Ukrainian exports and two truthful-failure cases.
+That advances integration/protocol evidence only. ASR-07 real runtime/model and
+cold offline Windows qualification, ASR-08 additional capabilities, native UI,
+complete ASR backup migration and real recognition quality remain open. No private
+worker, source recordings, transcripts, models or dependencies were published.
+
 ## Source and boundary
 
 The owner-supplied implementation identifies itself as V4.3. The current source includes worker.py (37,974 bytes), accessible_window.ps1 (49,718 bytes), README_UA.txt and download_models_once.py. The readable worker source was inspected. File bytes/immutable source hash and dependency lock must be recorded before code adoption; this review has not created a redistributed source snapshot.

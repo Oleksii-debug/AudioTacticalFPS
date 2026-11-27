@@ -12,7 +12,7 @@ from tempfile import TemporaryDirectory
 import threading
 from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from carr_library.application import LibraryApp
 from carr_library.ui import catalog_insights_actions as ui
@@ -120,6 +120,13 @@ class Dialogs:
 
 class CatalogInsightsActionsTests(unittest.TestCase):
     def setUp(self):
+        self.wx = SimpleNamespace(YES_NO=1, NO_DEFAULT=2, ICON_QUESTION=4, YES=8, NO=16)
+        self.wx.MessageBox = Mock(return_value=self.wx.YES)
+        confirm = ui.confirm_export_destination
+        native = patch.object(ui, 'confirm_export_destination',
+            lambda *args, **kwargs: confirm(*args, **kwargs, wx_module=self.wx))
+        native.start()
+        self.addCleanup(native.stop)
         temporary = TemporaryDirectory(prefix='catalog-insights-actions-')
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
@@ -142,16 +149,13 @@ class CatalogInsightsActionsTests(unittest.TestCase):
         self.destination = self.root / 'matrix.csv'
         self.approve_overwrite = True
         owner = self
-        class Confirmation:
-            def __init__(self, *args, **kwargs):
-                assert threading.get_ident() == owner.frame.main_thread
-            def ShowModal(self): return 1 if owner.approve_overwrite else 0
-            def Destroy(self): pass
-        wx = SimpleNamespace(MessageDialog=Confirmation, ID_YES=1,
-                             YES_NO=2, NO_DEFAULT=4, ICON_QUESTION=8)
+        def answer_question(*args):
+            assert threading.get_ident() == owner.frame.main_thread
+            return self.wx.YES if owner.approve_overwrite else self.wx.NO
+        self.wx.MessageBox.side_effect = answer_question
         missing = object()
         previous_wx = sys.modules.get('wx', missing)
-        sys.modules['wx'] = wx
+        sys.modules['wx'] = self.wx
         def restore_wx():
             if previous_wx is missing:
                 sys.modules.pop('wx', None)

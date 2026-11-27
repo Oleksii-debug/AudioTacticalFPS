@@ -820,8 +820,13 @@ def install_citation_actions(frame):
         bar.Append(menu, "&Academic")
     elif menu.GetMenuItemCount():
         menu.AppendSeparator()
-    item = menu.Append(wx.ID_ANY, "Format bibliography and citations...\tCtrl+Alt+C")
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
+    item = menu.Append(wx.ID_ANY, "Format bibliography and citations...")
     frame.Bind(wx.EVT_MENU, lambda event: show_citation_formatter(frame), item)
+    register_menu_command(frame, CommandSpec("academic.citation_document", "Format bibliography and citations",
+                                             "main", "Ctrl+Alt+C"), item)
     item = menu.Append(wx.ID_ANY, "Preview DOI metadata (opt-in)...")
     frame.Bind(wx.EVT_MENU, lambda event: show_doi_preview(frame), item)
+    register_menu_command(frame, CommandSpec("academic.doi_preview", "Preview DOI metadata (opt-in)"), item)
     frame._carr_citation_actions_installed = True

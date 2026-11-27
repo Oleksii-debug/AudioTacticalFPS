@@ -310,3 +310,6 @@ def test_oversized_query_is_rejected_before_character_processing(monkeypatch):
     monkeypatch.setattr(advanced, '_valid_text', unexpected_scan)
     with pytest.raises(ValueError, match='at most 500'):
         advanced.compile_query('x' * 1_000_000)
+
+
+

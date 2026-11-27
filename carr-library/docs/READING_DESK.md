@@ -12,6 +12,7 @@ and current verification status as ordinary text.
 Open the Reading menu with **Alt+D**. Select a source in Books and Collections
 and press **Ctrl+R**, or use **Reading,
 Read selected book**. If no source is selected, a named book chooser opens.
+Use **Alt+D** to open the Reading menu from the main window.
 
 - **Ctrl+PageDown / Ctrl+PageUp:** next / previous source location.
 - **Ctrl+G:** jump to a reading-order position.
@@ -60,29 +61,31 @@ passages. Import validates every referenced source before making one atomic merg
 It preserves existing resume positions and rejects conflicting bookmark identities.
 Importing the same file again does not duplicate its bookmarks.
 
-The full library backup includes this file, together with every library's
-bookmarks and resume positions. It checks the source identities against the
-same database snapshot and binds the saved bytes to the backup manifest. Restore
-creates a new data folder and preserves bookmark names, times and locations.
-Archived libraries and historical reading revisions remain unchanged; opening
-an old position never silently jumps to a newer revision. Damaged state or a
-location that does not match the saved source stops the backup or restore before
-publication, keeping the existing data intact.
+The current full-library backup uses common format 4. It includes this file
+automatically, together with every library's bookmarks and resume positions,
+the supported typed application state and pending-import recovery records.
+The database and sidecars are captured under the same library writer lock;
+their sizes and SHA256 values are bound to the manifest. Saved reading places
+are checked against the copied source identities before publication.
 
-Older version-one and version-two backups remain readable; they do not contain
-personal reading state. For those backups, keep the separate reading-state
-export when moving to another computer. A restored library retains the same
-source identities; a different library cannot accept the export. No cloud
-account or network retrieval is involved.
+Restore creates a new data folder. Bookmark names, identifiers, timestamps and
+locations are preserved exactly. Archived libraries and older sealed revisions
+keep their historical reading state; opening an old place reports an unavailable
+or stale location instead of silently jumping to a newer revision. Damaged,
+linked or mismatched state stops the operation and preserves the existing data.
 
-The same backup also preserves the existing application-state and pending-import
-records. When personal reading state exists, version five binds those records and
-the reading sidecar in one manifest. Without a reading sidecar, the existing
-version-two, version-three or version-four format is retained. Both historical
-version-three layouts remain readable: application state and reading-state-only
-backups are distinguished by their exact declared fields. A mixed or incomplete
-manifest is rejected. Generated audio remains an explicit backup option; pending
-source inputs needed to resume an import remain part of the checked snapshot.
+Historical formats 1 through 5 remain readable under their exact declared
+layouts. The two historical format-3 layouts are distinguished by their fields;
+a mixed or incomplete manifest is rejected. Formats 1 and 2 contain no personal
+reading state, so retain the separate per-library reading export when moving
+those older backups. A different library cannot accept that export.
+
+Keep the reported manifest SHA256 separately from the backup. Generated audio
+has its own explicit inclusion option; retained recording originals, managed
+project inputs and pending source bytes needed for recovery follow their typed
+producer rules. External runtimes, models and operating-system credential
+secrets require separate configuration. Restored jobs do not start automatically.
+No cloud account or network retrieval is involved.
 
 ## Implementation and primary references
 

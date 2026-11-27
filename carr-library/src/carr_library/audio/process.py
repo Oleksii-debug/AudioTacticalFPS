@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 import os
 from pathlib import Path
 import shutil
@@ -14,11 +15,86 @@ import time
 from .models import AudioBudget, AudioCancelled, AudioError
 
 
+# Query current Windows metadata without retaining a Python file handle.
+# Directory enumeration can report a stale size until the writer closes.
+# Native filters can still perform transient opens, so atomic producers need
+# bounded Windows publication. The final check still uses fresh lstat.
+_USE_WINDOWS_LIVE_FILE_STATS = os.name == 'nt'
+
+
+@dataclass(frozen=True)
+class _FileObservation:
+    st_mode: int
+    st_size: int
+    st_file_attributes: int
+
+
+@lru_cache(maxsize=1)
+def _windows_metadata_query():
+    """Bind the current Win32 file metadata query once."""
+    import ctypes
+
+    class FileAttributeData(ctypes.Structure):
+        _fields_ = [('attributes', ctypes.c_uint32),
+                    ('timestamps', ctypes.c_uint32 * 6),
+                    ('size_high', ctypes.c_uint32), ('size_low', ctypes.c_uint32)]
+
+    try:
+        query = ctypes.WinDLL('kernel32', use_last_error=True).GetFileAttributesExW
+    except (AttributeError, OSError) as error:
+        raise AudioError('Windows live file-size observation is unavailable.') from error
+    query.argtypes = [ctypes.c_wchar_p, ctypes.c_int32, ctypes.POINTER(FileAttributeData)]
+    query.restype = ctypes.c_int32
+
+    def observe(path):
+        text = os.path.abspath(os.fspath(path))
+        if '\x00' in text:
+            raise ValueError('Invalid watched path.')
+        # Preserve long Unicode and UNC paths without changing their target.
+        if not text.startswith('\\\\?\\'):
+            text = ('\\\\?\\UNC\\' + text[2:] if text.startswith('\\\\')
+                    else '\\\\?\\' + text)
+        result = FileAttributeData()
+        if not query(text, 0, ctypes.byref(result)):  # GetFileExInfoStandard
+            error = ctypes.WinError(ctypes.get_last_error())
+            error.filename = os.fspath(path)
+            raise error
+        mode = stat.S_IFDIR if result.attributes & 0x10 else stat.S_IFREG
+        if result.attributes & 0x40:  # FILE_ATTRIBUTE_DEVICE is not regular output.
+            mode = 0
+        return _FileObservation(mode, (result.size_high << 32) | result.size_low,
+                                result.attributes)
+
+    return observe
+
+
+def _live_file_info(path):
+    if os.name == 'nt':
+        return _windows_metadata_query()(path)
+    # Tests exercise the same walker on POSIX without simulating the Windows ABI.
+    return os.stat(path, follow_symlinks=False)
+
+
 @dataclass(frozen=True)
 class ProcessResult:
     stdout: bytes
     stderr: bytes
     elapsed: float
+    returncode: int = 0
+    stopped: bool = False
+
+
+def native_audio_environment(environment=None):
+    """Keep required host settings without ambient FFmpeg report-file writes.
+
+    FFREPORT can write to an arbitrary inherited path even for a read-only
+    inspection. Diagnostic capture belongs to this application's bounded pipes.
+    Work on a copy so callers' explicit environments and the host stay intact.
+    """
+    return {key: value for key, value in
+            (os.environ if environment is None else environment).items()
+            if not ((isinstance(key, str) and key.casefold() == 'ffreport')
+                    or (isinstance(key, bytes) and key.lower() == b'ffreport'))}
 
 
 def _terminate(process):
@@ -42,14 +118,19 @@ def _terminate(process):
 
 
 def run_process(args, *, budget=None, cancelled=lambda: False,
-                watch=(), progress=None, env=None, cwd=None):
+                watch=(), progress=None, env=None, cwd=None, owned_windows_job=False,
+                stop_requested=None, allow_failure=False):
     """Run an already constructed argument vector, never a shell expression.
 
     Progress callbacks receive rendered seconds from FFmpeg's progress stream.
     Ordinary stdout/stderr have a *total* byte cap, including a fast child which
     finishes between polls. Expected progress is streamed into a single latest
     value rather than accumulated for multi-hour renders.  Callbacks run on the
-    caller's thread. No child inherits stdin.
+    caller's thread. No child inherits stdin. Explicit recording callers may
+    request FFmpeg's fixed q command through an owned pipe; cancellation still
+    terminates and discards incomplete output. The Windows-only ownership opt-in
+    attaches a private process job at launch; ordinary callers and POSIX process
+    groups keep their existing termination behavior.
     """
     budget = budget or AudioBudget()
     if not isinstance(args, (tuple, list)) or not args:
@@ -58,17 +139,30 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
         raise ValueError('Invalid audio worker argument.')
     if not Path(args[0]).is_absolute():
         raise ValueError('Audio worker must use a resolved executable.')
+    if stop_requested is not None and not callable(stop_requested):
+        raise ValueError('Graceful audio stop requires a callback.')
+    if type(allow_failure) is not bool or type(owned_windows_job) is not bool:
+        raise ValueError('Audio process ownership and diagnostic exits must be explicit.')
+    if owned_windows_job and os.name != 'nt':
+        raise ValueError('Owned Windows audio jobs require native Windows.')
     if cancelled():
         raise AudioCancelled('Audio operation cancelled before starting.')
     watched = tuple(Path(path) for path in watch)
     overflow = threading.Event()
     buffers = {'stdout': bytearray(), 'stderr': bytearray()}
     latest = [None]
-    process = subprocess.Popen(args, stdin=subprocess.DEVNULL,
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False,
-        cwd=cwd, env=env, start_new_session=os.name == 'posix',
-        creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0) if os.name == 'nt' else 0)
+    if owned_windows_job and os.name == 'nt':
+        from .windows_job import JobProcess
+        process = JobProcess(args, cwd=cwd, env=env,
+                             stdin_pipe=stop_requested is not None)
+    else:
+        process = subprocess.Popen(args,
+            stdin=subprocess.PIPE if stop_requested is not None else subprocess.DEVNULL,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False,
+            cwd=cwd, env=env, start_new_session=os.name == 'posix',
+            creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0) if os.name == 'nt' else 0)
     started = time.monotonic()
+    stopped_at = None
 
     def read_pipe(pipe, name):
         count = 0
@@ -102,26 +196,36 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
         finally:
             pipe.close()
 
-    threads = [threading.Thread(target=read_pipe, args=(process.stdout, 'stdout'), daemon=True),
-               threading.Thread(target=read_pipe, args=(process.stderr, 'stderr'), daemon=True)]
-    for thread in threads:
-        thread.start()
+    threads = []
     last_progress = None
 
     def check():
-        nonlocal last_progress
+        nonlocal last_progress, stopped_at
         if cancelled():
             raise AudioCancelled('Audio operation cancelled; incomplete output discarded.')
+        if (stop_requested is not None and stopped_at is None
+                and stop_requested() and process.poll() is None):
+            stopped_at = time.monotonic()
+            try:
+                process.stdin.write(b'q\n')
+                process.stdin.flush()
+                process.stdin.close()
+            except BrokenPipeError:
+                pass  # A concurrent exit is checked by the normal result path.
+        if (stopped_at is not None and time.monotonic() - stopped_at > 5
+                and process.poll() is None):
+            raise AudioError('Audio capture did not finalize within its stop allowance; incomplete output discarded.')
         if overflow.is_set():
             raise AudioError('Audio worker exceeded its diagnostic output budget.')
         if time.monotonic() - started > budget.timeout:
             raise AudioError('Audio worker exceeded its time allowance; completed chunks remain reusable.')
         total, count = 0, 0
+        live_files = _USE_WINDOWS_LIVE_FILE_STATS and process.poll() is None
         pending = list(watched)
         while pending:
             path = pending.pop()
             try:
-                info = path.lstat()
+                info = _live_file_info(path) if live_files else path.lstat()
             except FileNotFoundError:
                 continue
             if stat.S_ISLNK(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400:
@@ -146,6 +250,10 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
             last_progress = latest[0]
 
     try:
+        for pipe, name in ((process.stdout, 'stdout'), (process.stderr, 'stderr')):
+            threads.append(threading.Thread(target=read_pipe, args=(pipe, name), daemon=True))
+        for thread in threads:
+            thread.start()
         while process.poll() is None:
             check()
             try:
@@ -158,15 +266,45 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
             raise AudioError('Audio worker did not close its diagnostic streams.')
         # Required even for a child which exited before the first polling tick.
         check()
-        if process.returncode:
+        if process.returncode and not allow_failure:
             message = bytes(buffers['stderr']).decode('utf-8', errors='replace')[-3000:]
             raise AudioError(f'Local audio worker failed (exit {process.returncode}): {message.strip()}')
         return ProcessResult(bytes(buffers['stdout']), bytes(buffers['stderr']),
-                             time.monotonic() - started)
+                             time.monotonic() - started, process.returncode,
+                             stopped_at is not None)
     finally:
-        _terminate(process)
-        for thread in threads:
-            thread.join(timeout=2)
+        def cleanup_process():
+            if owned_windows_job and os.name == 'nt':
+                return process.close()
+            _terminate(process)
+            return True
+
+        def release_streams():
+            if process.stdin is not None:
+                try:
+                    process.stdin.close()
+                except OSError:
+                    pass
+            for index, pipe in enumerate((process.stdout, process.stderr)):
+                thread = threads[index] if index < len(threads) else None
+                if thread is not None and thread.ident is not None:
+                    thread.join(timeout=2)
+                elif pipe is not None:
+                    pipe.close()
+
+        if not owned_windows_job and stop_requested is None:
+            # Existing render/conversion callers keep their termination path.
+            _terminate(process)
+            release_streams()
+        else:
+            try:
+                cleanup_process()
+            except Exception as exc:
+                from .cleanup import pending_cleanup
+                raise pending_cleanup(cleanup_process,
+                    message='Audio process cleanup is still pending; its admission remains reserved.',
+                    callbacks=(release_streams,)) from exc
+            release_streams()
 
 
 def fsync_directory(path):
@@ -194,5 +332,9 @@ def publish_file(staged, destination, *, cancelled=lambda: False):
     # Windows requires a writable descriptor to flush the completed staging file.
     with staged.open('r+b') as source:
         os.fsync(source.fileno())
+    # Flush may block long enough for the user to cancel. Check again at the
+    # last pre-commit boundary; after link succeeds, publication is committed.
+    if cancelled():
+        raise AudioCancelled('Audio operation cancelled before publication.')
     os.link(staged, destination, follow_symlinks=False)
     fsync_directory(destination.parent)

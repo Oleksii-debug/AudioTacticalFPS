@@ -9,6 +9,7 @@ import sys
 import threading
 from types import ModuleType, SimpleNamespace
 from unittest.mock import patch
+from unittest.mock import Mock
 
 import pytest
 
@@ -50,7 +51,7 @@ def module(monkeypatch):
     for n, name in enumerate(('VERTICAL', 'HORIZONTAL', 'EXPAND', 'ALL', 'LEFT', 'RIGHT',
             'TOP', 'ALIGN_RIGHT', 'TE_MULTILINE', 'TE_READONLY', 'ID_CANCEL', 'ID_OK',
             'EVT_BUTTON', 'EVT_CLOSE', 'EVT_CHOICE', 'FD_SAVE', 'FD_OVERWRITE_PROMPT',
-            'ID_YES', 'ID_NO', 'YES_NO', 'NO_DEFAULT', 'ICON_QUESTION')):
+            'YES_NO', 'NO_DEFAULT', 'ICON_QUESTION', 'YES', 'NO')):
         setattr(wx, name, 1 << n)
     wx.callbacks = []
     wx.CallAfter = lambda callback: wx.callbacks.append(callback)
@@ -58,15 +59,7 @@ def module(monkeypatch):
     wx.file_result = wx.ID_OK
     wx.file_path = ''
     wx.file_hook = None
-    wx.overwrite_result, wx.overwrite_hook, wx.overwrites = wx.ID_YES, None, []
-    class MessageDialog(Control):
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args, **kwargs)
-            wx.overwrites.append(self)
-        def ShowModal(self):
-            if wx.overwrite_hook: wx.overwrite_hook()
-            return wx.overwrite_result
-    wx.MessageDialog = MessageDialog
+    wx.MessageBox = Mock(return_value=wx.YES)
 
     class FileDialog(Control):
         def __init__(self, *args, **kwargs):
@@ -228,6 +221,25 @@ def test_exports_forward_exact_scope_format_and_write_complete_utf8(module, setu
     assert form.close_button.enabled and not form.pending
 
 
+def test_completed_export_keeps_cleanup_warning_visible(module, setup, monkeypatch):
+    from dataclasses import replace
+
+    form, frame, library = setup
+    actual_write = module.write_export
+    warning = 'Synthetic private staging cleanup needs attention.'
+
+    def write_with_warning(*args, **kwargs):
+        return replace(actual_write(*args, **kwargs), cleanup_warning=warning)
+
+    monkeypatch.setattr(module, 'write_export', write_with_warning)
+    assert form.export_inventory()
+    frame.finish()
+    assert Path(module.wx.file_path).read_bytes() == library.export_value.encode('utf-8')
+    assert library.original.read_bytes() == b'unchanged original source'
+    assert 'exported to' in form.status.GetValue() and warning in form.status.GetValue()
+    assert form.status.focused and not form.pending
+
+
 def test_cancel_file_dialog_restores_initiating_button_without_job(module, setup):
     form, frame, library = setup
     module.wx.file_result = module.wx.ID_CANCEL
@@ -290,6 +302,19 @@ def test_checked_writer_refuses_private_source_overwrite(module, setup):
     assert library.original.read_bytes() == b'unchanged original source'
     assert 'outside the private library folder' in form.status.GetValue()
     assert not form.pending and form.inventory_button.enabled
+
+
+@pytest.mark.parametrize('kind', ['bibliography', 'inventory', 'matrix'])
+def test_catalog_export_preserves_file_changed_during_render(module, setup, kind):
+    form, frame, library = setup
+    target = Path(module.wx.file_path)
+    target.write_bytes(b'Approved previous export')
+    library.hook = lambda: target.write_bytes(b'Independent edit during rendering')
+    assert getattr(form, 'export_' + kind)()
+    frame.finish()
+    assert target.read_bytes() == b'Independent edit during rendering'
+    assert 'destination changed' in form.status.GetValue()
+    assert not list(target.parent.glob('.research-export-*'))
 
 
 def test_report_limit_is_explicit_and_does_not_show_a_partial_result(module, setup):
@@ -423,7 +448,8 @@ def test_catalog_overwrite_decline_restores_button_without_render(module, setup)
     form, frame, library = setup
     destination = Path(module.wx.file_path)
     destination.write_bytes(b'Keep work')
-    module.wx.overwrite_result = module.wx.ID_NO
+    module.wx.MessageBox.return_value = module.wx.NO
     assert form.export_inventory() is False
     assert frame.jobs == [] and library.calls == [] and form.inventory_button.focused
-    assert destination.read_bytes() == b'Keep work' and module.wx.overwrites[0].destroyed
+    assert destination.read_bytes() == b'Keep work'
+    module.wx.MessageBox.assert_called_once()

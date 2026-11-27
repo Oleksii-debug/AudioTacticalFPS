@@ -67,10 +67,11 @@ text decoding, so an empty protected component such as `{}` cannot evade it.
 The existing Academic Library selects the parser's `literal_names=True` mode,
 which omits parser-generated markers while preserving actual decoded braces.
 It never strips guessed markers from a name. Its CSL export and the
-canonical citation formatter continue to use literal names; they do not guess
-personal-name roles from commas. The full original entry remains in inert
+compatibility citation formatter continue to use literal names; they do not guess
+personal-name roles from commas. The canonical workbench offers a separate explicit
+Family, Given convention, which the user must choose deliberately. The full original entry remains in inert
 import provenance. This extends the existing bibliography preview/import and
-CSL/DOCX workflow, with no second citation processor, style registry or dialog.
+CSL/DOCX workflow, through the single canonical QuickJS/citeproc-js processor and resource set.
 
 Open **Academic library**, choose **Import bibliography**, select a `.bib` file,
 review the entries and warnings, and explicitly import the selected records.
@@ -142,7 +143,7 @@ metadata constraints may reject a field earlier than these parser budgets.
 
 ## Executed verification
 
-Linux CPython 3.12 with the actual pinned distributions:
+Historical parser qualification used Linux CPython 3.12 with the actual pinned distributions:
 
 ```text
 python scripts/ci_check.py tests/research/test_bibtex_import.py
@@ -163,8 +164,16 @@ import, closing and reopening the SQLite library, citeproc-js rendering and
 DOCX export/readback. Corporate names, incomplete names, Unicode and genuine
 literal braces survive without assigning guessed personal-name roles.
 The corresponding required path is
-`tests/academic_integration/test_end_to_end.py` (11 passing cases).
+`tests/academic_integration/test_end_to_end.py`. Its current composed runtime must
+be qualified with the canonical QuickJS resource pins; old Node-run results do not
+qualify the new runtime.
 
 These are functional parser/storage checks. Native Windows/NVDA acceptance,
 arbitrary BibLaTeX compatibility, and all CSL style combinations are separate
 checks; this document does not claim them.
+
+Current reconciliation preserves both parser/storage test sets, including all
+cached-depth orderings and literal-brace cases. The focused combined metadata
+run (BibTeX, academic library, RIS apply, advanced search, CSL author boundaries)
+completed with 340 passing cases and no failures or skips on Linux; this does
+not substitute for the final installed Windows and native accessibility gates.

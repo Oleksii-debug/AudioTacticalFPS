@@ -6,6 +6,7 @@ a successful partial snapshot. Rebuildable audio cache is optional; a restored
 render checks every receipt and regenerates missing/corrupt chunks.
 """
 from hashlib import sha256
+import json
 import os
 from pathlib import Path, PurePosixPath
 import re
@@ -15,6 +16,11 @@ from .durable_state import local_path, regular, sync_directory
 
 MAX_STATE_FILES = 100_000
 MAX_STATE_BYTES = 32 * 1024**3
+
+
+def _local_studio_origin(path):
+    parts = tuple(unicodedata.normalize('NFC', part).casefold() for part in path.parts)
+    return parts[:2] == ('studio', '.local-origin.json')
 
 
 def relative_name(value):
@@ -32,6 +38,8 @@ def relative_name(value):
                 *(f'{prefix}{i}' for prefix in ('com', 'lpt') for i in digits)}
     if any(x.split('.')[0].rstrip(' ').casefold() in reserved for x in path.parts):
         raise ValueError('Invalid portable state filename.')
+    if _local_studio_origin(path):
+        raise ValueError('Local Studio origin authority must not be restored from a backup.')
     return path
 
 
@@ -40,7 +48,8 @@ def _stamp(value):
 
 
 def _include(path, generated):
-    return (not any(part.startswith('.pending-') or part.endswith(('.lock', '.tmp')) for part in path.parts)
+    return (not _local_studio_origin(path)
+            and not any(part.startswith('.pending-') or part.endswith(('.lock', '.tmp')) for part in path.parts)
             and (generated or 'cache' not in path.parts))
 
 
@@ -111,38 +120,39 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
             entries.append({'filename': relative.as_posix(), 'size_bytes': count, 'sha256': digest.hexdigest()})
     if inventory() != before_inventory:
         raise ValueError('Application state changed during backup; retry after saving.')
-    # File metadata is not a content identity: on Windows an equal-size write
-    # can retain the observed timestamps. Recheck every copied source against
-    # its manifest hash before the caller can publish this snapshot.
+    # A Windows creation timestamp is not a write counter, and last-write
+    # timestamps may be coarse or restored. Check copied content again before
+    # accepting the complete snapshot, without buffering whole state files.
     for entry in entries:
         if cancelled():
             raise InterruptedError('Backup cancelled.')
         relative = Path(entry['filename'])
-        source = root / relative
-        expected_stamp = before_inventory[relative]
-        if _stamp(regular(source)) != expected_stamp:
-            raise ValueError('Application state changed during backup; retry after saving.')
+        source = local_path(root / relative, root=root, exists=True)
+        expected = before_inventory[relative]
         digest, count = sha256(), 0
-        with source.open('rb') as read:
-            if _stamp(os.fstat(read.fileno())) != expected_stamp:
+        if _stamp(regular(source)) != expected:
+            raise ValueError('Application state changed during backup; retry after saving.')
+        with source.open('rb') as stream:
+            if _stamp(os.fstat(stream.fileno())) != expected:
                 raise ValueError('Application state changed during backup; retry after saving.')
-            while block := read.read(min(1024 * 1024, entry['size_bytes'] + 1 - count)):
+            while block := stream.read(min(1024 * 1024, entry['size_bytes'] + 1 - count)):
                 if cancelled():
                     raise InterruptedError('Backup cancelled.')
                 count += len(block)
                 if count > entry['size_bytes']:
-                    raise ValueError('Application state grew during backup; retry after saving.')
+                    raise ValueError('Application state changed during backup; retry after saving.')
                 digest.update(block)
-            if _stamp(os.fstat(read.fileno())) != expected_stamp:
+            if _stamp(os.fstat(stream.fileno())) != expected:
                 raise ValueError('Application state changed during backup; retry after saving.')
         if (count != entry['size_bytes'] or digest.hexdigest() != entry['sha256']
-                or _stamp(regular(source)) != expected_stamp):
+                or _stamp(regular(source)) != expected):
             raise ValueError('Application state changed during backup; retry after saving.')
     if inventory() != before_inventory:
         raise ValueError('Application state changed during backup; retry after saving.')
     # A snapshot must pass the same portable manifest checks as a restore.
     # Keep this after content revalidation and before publication.
     validate_state(entries)
+    _validate_managed_clip_inputs(target, entries, cancelled=cancelled)
     return sorted(entries, key=lambda entry: entry['filename'])
 
 
@@ -180,8 +190,89 @@ def validate_state(entries):
         raise ValueError('Application state manifest exceeds its byte budget.')
 
 
+def _validate_managed_clip_inputs(copied_root, entries, *, cancelled=lambda: False):
+    """Check valid schema2 Studio records against this already-copied state.
+
+    Opaque historical sidecars and schema1 declarations remain byte archives;
+    their external paths are never opened. A Studio local-origin nonce is
+    excluded separately and can never supply restored output authority.
+    """
+    from .durable_state import MAX_JSON_BYTES, _unique
+    from .studio.managed_inputs import (
+        managed_input_sha256, project_managed_inputs, resolve_managed_input,
+    )
+    from .studio.project import Project
+
+    copied_root = Path(copied_root)
+    by_name = {entry['filename']: entry for entry in entries}
+    checked = set()
+    identifier = r'[a-zA-Z0-9_-]{1,80}'
+    for entry in entries:
+        if cancelled():
+            raise InterruptedError('Studio input backup validation cancelled.')
+        name = entry['filename']
+        current = re.fullmatch(rf'studio/projects/({identifier})/project\.json', name, re.IGNORECASE)
+        revision = re.fullmatch(rf'studio/projects/({identifier})/revisions/([0-9]{{8,}})-([0-9a-f]{{64}})\.json', name, re.IGNORECASE)
+        job = re.fullmatch(rf'studio/jobs/({identifier})/job\.json', name, re.IGNORECASE)
+        exported = re.fullmatch(rf'studio/jobs/({identifier})/project\.json', name, re.IGNORECASE)
+        if not any((current, revision, job, exported)) or entry['size_bytes'] > MAX_JSON_BYTES:
+            # A larger opaque sidecar cannot be a readable ProjectStore record.
+            continue
+        path = local_path(copied_root / name, root=copied_root, exists=True)
+        before = regular(path)
+        if before.st_size != entry['size_bytes']:
+            raise ValueError('Copied Studio state differs from its manifest.')
+        raw = bytearray()
+        with path.open('rb') as stream:
+            if _stamp(os.fstat(stream.fileno())) != _stamp(before):
+                raise ValueError('Copied Studio state changed before validation.')
+            while block := stream.read(min(1024 * 1024, before.st_size + 1 - len(raw))):
+                if cancelled():
+                    raise InterruptedError('Studio input backup validation cancelled.')
+                raw.extend(block)
+                if len(raw) > before.st_size:
+                    raise ValueError('Copied Studio state grew during validation.')
+            if _stamp(os.fstat(stream.fileno())) != _stamp(before):
+                raise ValueError('Copied Studio state changed during validation.')
+        if (len(raw) != entry['size_bytes'] or sha256(raw).hexdigest() != entry['sha256']
+                or _stamp(regular(path)) != _stamp(before)):
+            raise ValueError('Copied Studio state differs from its manifest.')
+        try:
+            value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique,
+                parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Non-finite state number.')))
+        except (UnicodeError, ValueError, RecursionError):
+            # Preserve opaque historical sidecars, including non-JSON bytes.
+            continue
+        if not isinstance(value, dict):
+            continue
+        declaration = value.get('project') if job else value
+        if (not isinstance(declaration, dict)
+                or type(declaration.get('schema')) is not int or declaration['schema'] != 2):
+            continue
+        project = Project.from_dict(declaration)
+        if current and project.id != current[1]:
+            raise ValueError('Copied Studio project directory differs from its identity.')
+        if revision and (project.id != revision[1]
+                or revision[2] != f'{project.revision:08d}' or revision[3] != project.fingerprint):
+            raise ValueError('Copied Studio revision differs from its identity.')
+        if job and (type(value.get('schema')) is not int or value['schema'] != 1
+                or value.get('id') != job[1] or value.get('fingerprint') != project.fingerprint):
+            raise ValueError('Copied Studio job differs from its project identity.')
+        for declared in project_managed_inputs(project):
+            expected = managed_input_sha256(declared)
+            incoming = by_name.get('studio/' + declared)
+            if (incoming is None or incoming['sha256'] != expected
+                    or incoming['size_bytes'] <= 0):
+                raise ValueError('A managed Studio input is missing or differs from its content identity.')
+            if declared not in checked:
+                resolve_managed_input(copied_root / 'studio', declared, cancelled=cancelled)
+                checked.add(declared)
+
+
 def restore_state(source, target, entries):
     validate_state(entries)
+    if os.path.lexists(Path(target) / 'studio' / '.local-origin.json'):
+        raise ValueError('Choose a restore target without existing local Studio origin authority.')
     source = local_path(source, exists=True)
     regular(source, directory=True)
     missing = {item['filename'] for item in entries}
@@ -219,6 +310,7 @@ def restore_state(source, target, entries):
             os.fsync(write.fileno())
         if size != item['size_bytes'] or digest.hexdigest() != item['sha256']:
             raise ValueError('Application state checksum mismatch.')
+    _validate_managed_clip_inputs(target, entries)
     sync_directory(target)
 
 
