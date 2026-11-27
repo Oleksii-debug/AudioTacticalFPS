@@ -1,0 +1,348 @@
+{
+  "schema": "carr-c3-capacity-verified-summary/1",
+  "status": "ACTUAL_SOURCE_MEASUREMENT",
+  "inspection": {
+    "run": 46075590981,
+    "job": 140762436050,
+    "head": "774804fc56d8b958941400e3d293d00ac037b782",
+    "workflow_blob": "b3a9368afa595fae7aa5a2860e71ce2fca9e4150",
+    "result": "SUCCESS"
+  },
+  "source": {
+    "head": "b524b3ac3453864903ec415ce7a5f048da09d700",
+    "tree": "209daa1ab7b68192b5956ac2849ae183dc83ede1",
+    "run": 46065560954,
+    "harness_git_blob": "ec198e50daffd3d3687048e15882c3744c3c54c4"
+  },
+  "full_evidence_blob": "ad8af002b1032cd85e67c96494785f1fc7e6feb6",
+  "profiles": [
+    {
+      "books": 1000,
+      "segments_per_book": 20,
+      "segments": 20000,
+      "artifact": {
+        "id": 15231350971,
+        "job_id": 140730553170,
+        "zip_bytes": 26423,
+        "zip_sha256": "5aa7647bdcc7d9cd6b94df0422b29394f04d8a3dec3b8f1343efa76a05316d2d",
+        "report_sha256": "c4f224826447c57b4c79a1a3fba720c880d621a72e9a415ebdc9892ecc48a231"
+      },
+      "environment": {
+        "logical_cpus": 4,
+        "machine": "x86_64",
+        "peak_rss_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss; KiB converted to bytes",
+        "platform": "Linux-7.0.0-1018-aws-x86_64-with-glibc2.39",
+        "python": "3.11.18 (main, Oct 26 2026, 02:48:34) [GCC 13.3.0]",
+        "sqlite": "3.45.1"
+      },
+      "phases": [
+        {
+          "phase": "build",
+          "status": "PASS",
+          "wall_seconds": 2.3195790319999787,
+          "rss_bytes": 42758144,
+          "disk_bytes": 23005796
+        },
+        {
+          "phase": "measure",
+          "status": "PASS",
+          "wall_seconds": 42.651937472999975,
+          "rss_bytes": 46444544,
+          "disk_bytes": 23011999
+        },
+        {
+          "phase": "restart",
+          "status": "PASS",
+          "wall_seconds": 1.9694712379999828,
+          "rss_bytes": 45953024,
+          "disk_bytes": 23018780
+        },
+        {
+          "phase": "operations",
+          "status": "PASS",
+          "wall_seconds": 12.443010782999977,
+          "rss_bytes": 73121792,
+          "disk_bytes": 44527113
+        },
+        {
+          "phase": "backup",
+          "status": "PASS",
+          "wall_seconds": 5.126453086000026,
+          "rss_bytes": 59465728,
+          "disk_bytes": 129576349
+        }
+      ],
+      "traversal": {
+        "copied_result_samples": 600,
+        "elapsed_seconds": 40.66009425100003,
+        "exact_no_loss_no_duplicates": true,
+        "latency": {
+          "count": 600,
+          "maximum_seconds": 0.08788793399997985,
+          "minimum_seconds": 0.0496848239999963,
+          "p50_seconds": 0.06356655500002262,
+          "p95_seconds": 0.08135712000000694,
+          "total_seconds": 39.04136465100089
+        },
+        "requests": 600,
+        "results": 20000,
+        "source_windows": 200
+      },
+      "first_page": {
+        "count": 9,
+        "maximum_seconds": 0.06561306200001127,
+        "minimum_seconds": 0.06225157699998363,
+        "p50_seconds": 0.06254150400002345,
+        "p95_seconds": 0.06561306200001127,
+        "total_seconds": 0.5654083589998891
+      },
+      "late_page": {
+        "count": 9,
+        "maximum_seconds": 0.019156777000034708,
+        "minimum_seconds": 0.018648662000032346,
+        "p50_seconds": 0.018749880999962443,
+        "p95_seconds": 0.019156777000034708,
+        "total_seconds": 0.16933983699999544
+      },
+      "public_imports": {
+        "count": 12,
+        "maximum_seconds": 0.1836177050000174,
+        "minimum_seconds": 0.17857202800001915,
+        "p50_seconds": 0.17967844200001082,
+        "p95_seconds": 0.1836177050000174,
+        "total_seconds": 2.163505728000132
+      },
+      "public_exact_retries": {
+        "count": 12,
+        "maximum_seconds": 0.3482196079999653,
+        "minimum_seconds": 0.341737898999952,
+        "p50_seconds": 0.34619706099999803,
+        "p95_seconds": 0.3482196079999653,
+        "total_seconds": 4.14766316399988
+      },
+      "cancel_resume": {
+        "status": "PASS",
+        "cancel_seconds": 0.010440453000001071,
+        "resume_seconds": 3.133305971000027,
+        "reopen_seconds": 0.1831780809999941,
+        "checkpoints": 6,
+        "exact_source": true,
+        "receipt_unchanged": true,
+        "original_removed": true,
+        "native_reservations_released": true,
+        "worker_memory": "NOT_MEASURED; phase RSS belongs to the supervising measurement process."
+      },
+      "backup": {
+        "status": "PASS",
+        "create_seconds": 1.4784885650000206,
+        "verify_seconds": 0.7655613809999977,
+        "restore_seconds": 1.2702837639999984,
+        "old_root_absent": true,
+        "all_manifest_files_verified": true,
+        "catalog": {
+          "editions": 1014,
+          "ordered_identity_sha256": "272cbb9031d41efd1cae82a99b8444d3f2a9d6959ee5616a4d7ae2787ba4e908"
+        }
+      },
+      "total": {
+        "actual_status": "PASS",
+        "phases_not_run": [],
+        "qualification": "Exact retained-fixture source measurement only; no sustained ordinary-import, unrelated platform, general capacity or release claim.",
+        "requested_books": 1000,
+        "segments": 20000,
+        "sum_phase_wall_seconds": 64.51045161199994
+      }
+    },
+    {
+      "books": 10000,
+      "segments_per_book": 20,
+      "segments": 200000,
+      "artifact": {
+        "id": 15231372124,
+        "job_id": 140730553169,
+        "zip_bytes": 26501,
+        "zip_sha256": "8ff170f2f87fb9ed331b009857ab63eac74dd60e4ec0e6c7fb172dbbc2ec2c86",
+        "report_sha256": "8a2d361fe840ca495756c3e93f431bfca26bf7c3a3ac8fa362d9057ce538a832"
+      },
+      "environment": {
+        "logical_cpus": 4,
+        "machine": "x86_64",
+        "peak_rss_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss; KiB converted to bytes",
+        "platform": "Linux-7.0.0-1018-aws-x86_64-with-glibc2.39",
+        "python": "3.11.18 (main, Oct 26 2026, 02:48:34) [GCC 13.3.0]",
+        "sqlite": "3.45.1"
+      },
+      "phases": [
+        {
+          "phase": "build",
+          "status": "PASS",
+          "wall_seconds": 28.360877517000006,
+          "rss_bytes": 42586112,
+          "disk_bytes": 227706460
+        },
+        {
+          "phase": "measure",
+          "status": "PASS",
+          "wall_seconds": 441.35629353300004,
+          "rss_bytes": 45621248,
+          "disk_bytes": 227712671
+        },
+        {
+          "phase": "restart",
+          "status": "PASS",
+          "wall_seconds": 9.036183015000006,
+          "rss_bytes": 44519424,
+          "disk_bytes": 227719471
+        },
+        {
+          "phase": "operations",
+          "status": "PASS",
+          "wall_seconds": 86.06950858300002,
+          "rss_bytes": 73592832,
+          "disk_bytes": 249240110
+        },
+        {
+          "phase": "backup",
+          "status": "PASS",
+          "wall_seconds": 34.94289574100003,
+          "rss_bytes": 78065664,
+          "disk_bytes": 745497281
+        }
+      ],
+      "traversal": {
+        "copied_result_samples": 6000,
+        "elapsed_seconds": 432.381463435,
+        "exact_no_loss_no_duplicates": true,
+        "latency": {
+          "count": 6000,
+          "maximum_seconds": 0.09409822300000314,
+          "minimum_seconds": 0.05212020199996914,
+          "p50_seconds": 0.06890115099997729,
+          "p95_seconds": 0.08672782999997253,
+          "total_seconds": 416.32767668500094
+        },
+        "requests": 6000,
+        "results": 200000,
+        "source_windows": 2000
+      },
+      "first_page": {
+        "count": 9,
+        "maximum_seconds": 0.07109609800005501,
+        "minimum_seconds": 0.06762977300002149,
+        "p50_seconds": 0.0679971370000203,
+        "p95_seconds": 0.07109609800005501,
+        "total_seconds": 0.6145119980000686
+      },
+      "late_page": {
+        "count": 9,
+        "maximum_seconds": 0.027279763000024104,
+        "minimum_seconds": 0.026749577999964913,
+        "p50_seconds": 0.026886167000043315,
+        "p95_seconds": 0.027279763000024104,
+        "total_seconds": 0.24224714500002165
+      },
+      "public_imports": {
+        "count": 12,
+        "maximum_seconds": 1.8208514899999955,
+        "minimum_seconds": 1.8048785500000122,
+        "p50_seconds": 1.8093505730000743,
+        "p95_seconds": 1.8208514899999955,
+        "total_seconds": 21.724600128000134
+      },
+      "public_exact_retries": {
+        "count": 12,
+        "maximum_seconds": 3.6160683900000095,
+        "minimum_seconds": 3.5904460080000717,
+        "p50_seconds": 3.608375781999939,
+        "p95_seconds": 3.6160683900000095,
+        "total_seconds": 43.27500741999995
+      },
+      "cancel_resume": {
+        "status": "PASS",
+        "cancel_seconds": 0.010344942000074298,
+        "resume_seconds": 6.299742046000006,
+        "reopen_seconds": 1.798491991999981,
+        "checkpoints": 32,
+        "exact_source": true,
+        "receipt_unchanged": true,
+        "original_removed": true,
+        "native_reservations_released": true,
+        "worker_memory": "NOT_MEASURED; phase RSS belongs to the supervising measurement process."
+      },
+      "backup": {
+        "status": "PASS",
+        "create_seconds": 8.963822084000071,
+        "verify_seconds": 4.786987381000017,
+        "restore_seconds": 9.590301265999983,
+        "old_root_absent": true,
+        "all_manifest_files_verified": true,
+        "catalog": {
+          "editions": 10014,
+          "ordered_identity_sha256": "9cf70e9125f9145a8e7130458edfbe57464137e3a479f34e73b2da861fdcb21e"
+        }
+      },
+      "total": {
+        "actual_status": "PASS",
+        "phases_not_run": [],
+        "qualification": "Exact retained-fixture source measurement only; no sustained ordinary-import, unrelated platform, general capacity or release claim.",
+        "requested_books": 10000,
+        "segments": 200000,
+        "sum_phase_wall_seconds": 599.7657583890001
+      }
+    },
+    {
+      "books": 50000,
+      "segments_per_book": 40,
+      "segments": 2000000,
+      "artifact": {
+        "id": 15234810136,
+        "job_id": 140730553121,
+        "zip_bytes": 12570,
+        "zip_sha256": "e5eb6ec3586a85589f28357d58cd1803eb79c737d854ea60af1b2a1a8c6670d6",
+        "report_sha256": "c4249589a9b5cfe2b1dd9fe9941d4c50fe15dbee1c58b6b3ac1f6f523ce67996"
+      },
+      "environment": {
+        "logical_cpus": 4,
+        "machine": "x86_64",
+        "peak_rss_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss; KiB converted to bytes",
+        "platform": "Linux-7.0.0-1020-azure-x86_64-with-glibc2.39",
+        "python": "3.11.18 (main, Oct 26 2026, 02:48:34) [GCC 13.3.0]",
+        "sqlite": "3.45.1"
+      },
+      "phases": [
+        {
+          "phase": "build",
+          "status": "PASS",
+          "wall_seconds": 617.8407272149999,
+          "rss_bytes": 42438656,
+          "disk_bytes": 2202280284
+        },
+        {
+          "phase": "measure",
+          "status": "PARTIAL",
+          "wall_seconds": 3600.3658137070006,
+          "rss_bytes": 47800320
+        }
+      ],
+      "total": {
+        "actual_status": "PARTIAL",
+        "phases_not_run": [
+          "restart",
+          "operations",
+          "backup"
+        ],
+        "qualification": "Exact retained-fixture source measurement only; no sustained ordinary-import, unrelated platform, general capacity or release claim.",
+        "requested_books": 50000,
+        "segments": 2000000,
+        "sum_phase_wall_seconds": 4218.206540922
+      }
+    }
+  ],
+  "limitations": [
+    "1000x20 and10000x20 completed all five distinct-process phases with exact retained source, full no-loss/no-duplicate traversal, bounded12 public import/retry samples, actual cancellation/recovery, and complete backup/verify/restore after retiring original root.",
+    "50000x40 built/audited2,000,000 actual segments; measurement returned BudgetExceeded after3600.365813707s under declared3600s phase allowance. The report preserves only progress.phase=measure; stdout/stderr are empty, so the exact internal substage/exception message was not recorded.",
+    "The observed wall time strongly supports the declared phase deadline as the limit; this is an inference, not an exception-message attribution. No budget has been increased.",
+    "50000x20's separately completed PASS artifact15234104321 remains to be inspected by the four-artifact successor; no timing/RSS transferred from other profiles.",
+    "Fixture construction is not sustained ordinary ingestion; real public sample latency and supervising-process RSS are separately labeled. No Windows/physical/NVDA/power-loss/general-release qualification."
+  ]
+}
