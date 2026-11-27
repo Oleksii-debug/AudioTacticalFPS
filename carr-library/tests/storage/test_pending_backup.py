@@ -77,7 +77,7 @@ def _partial(app, tmp_path):
 def _rewrite_json(path, update):
     value = json.loads(path.read_bytes())
     update(value)
-    path.write_text(canonical(value) + '\n', encoding='utf-8')
+    path.write_bytes((canonical(value) + '\n').encode('utf-8'))
 
 
 def _refresh_file(metadata, component, name):
