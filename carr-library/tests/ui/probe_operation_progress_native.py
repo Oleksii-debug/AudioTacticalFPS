@@ -39,6 +39,7 @@ def run_native(source=None):
     from carr_library.progress import FeedbackPreferences, ProgressPreferenceStore
 
     errors, checks, timers = [], [], []
+    panel = None
 
     class ProbeApp(wx.App):
         def OnExceptionInMainLoop(self):
@@ -52,6 +53,26 @@ def run_native(source=None):
 
     def check(label, condition):
         if not condition:
+            # Capture the real control and producer state before cleanup. These
+            # observations diagnose a native failure; they never make it pass.
+            if panel is not None:
+                try:
+                    detail = {
+                        'check': label,
+                        'alive': panel.alive,
+                        'bound': panel._bound(),
+                        'timer_running': panel.timer.IsRunning(),
+                        'gauge_value': panel.gauge.GetValue(),
+                        'gauge_range': panel.gauge.GetRange(),
+                        'displayed': panel.text.GetValue(),
+                        'events': [item.describe() for item in panel.hub.snapshot()],
+                        'feedback_notice': panel.feedback.notice,
+                    }
+                    print(json.dumps({'native_progress_diagnostic': detail},
+                                     ensure_ascii=True), flush=True)
+                except Exception as diagnostic_error:
+                    print(json.dumps({'native_progress_diagnostic_error':
+                        type(diagnostic_error).__name__}), flush=True)
             raise AssertionError(label)
         checks.append(label)
         print('PASS:', label, flush=True)

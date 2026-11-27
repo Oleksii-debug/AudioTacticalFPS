@@ -8,6 +8,22 @@ product acceptance work are complete.
 
 ## Latest composed checkpoint
 
+### Native feedback from source 6d8fdfd
+
+The next exact-source Windows integrated run passed actual managed Unicode OCR
+and the installed native assistant approval/restart probe. It then failed the
+native progress assertion that the real gauge reaches the observed 99 percent.
+That failure is unresolved at this diagnostic checkpoint; later probes and the
+long source gate were skipped by the workflow and are not claimed as passing.
+
+The native progress probe now records the real gauge, timer, binding and producer
+state on failure. Independent native and source checks may proceed after another
+native check fails, only when installation and both required runtime preparations
+succeeded. Each original nonzero result still fails the job; no assertion or
+required gate is removed. The subsequent build remains dependent on successful
+prior checks. The diagnostic changes were prepared while the local executor was
+unavailable; their actual execution is delegated to the required Windows run.
+
 ### Follow-up to the first complete feature composition
 
 Published composition `6b3a343a06862aa8002e59be5597ea02c7363d19` has successful
@@ -50,7 +66,7 @@ The existing canonical private-delivery interface is included with its 45
 passing synthetic boundary tests. It is disabled preparation: there is no new
 license restriction, signature verifier, trusted authority or automatic updater.
 
-The latest observed public Windows source is
+An earlier fully exercised public Windows source is
 `0cf4228dc7a35b17ed7eba3e55c9f6613905b3a2`.
 [Its integrated run](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45927121458)
 completed all **188 required source-suite paths**: **5,053 executed cases, zero
