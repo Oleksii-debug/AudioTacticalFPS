@@ -20,6 +20,7 @@ from tempfile import NamedTemporaryFile
 from uuid import uuid4
 
 from ..ingest.writer_guard import _private_root, _regular_if_present, exclusive_writer
+from ..backup_files import optional_present
 from ..research.export_file import write_export
 from .reading_state import ReadingLocation, _file_identity, _location, _text, _timestamp, _unique
 from .legacy_reading import LegacyReadingOrigin, decode_origin
@@ -618,7 +619,7 @@ def _directory(root, *, create=False):
     path = root / DIRECTORY
     if create:
         path.mkdir(mode=0o700, exist_ok=True)
-    if path.exists() or path.is_symlink():
+    if optional_present(path):
         _private_root(path)
     return path
 
@@ -626,7 +627,7 @@ def _directory(root, *, create=False):
 def snapshot_narration_files(root):
     """Return strict validated relative filenames/bytes; caller holds writer lock."""
     path = _directory(root)
-    if not path.exists():
+    if not optional_present(path):
         return {}
     result, total = {}, 0
     for file in path.iterdir():

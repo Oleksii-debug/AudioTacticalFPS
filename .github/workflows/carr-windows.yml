@@ -1364,7 +1364,9 @@ jobs:
               'tests/ui/test_desktop_result_modes.py',
               'tests/ui/test_federated_labels.py',
               'tests/audio/test_audio_publication.py',
-              'tests/audio/test_production_integrity.py'
+              'tests/audio/test_production_integrity.py',
+              'tests/ui/test_import_center.py',
+              'tests/ui/test_ebook_reader.py'
           ]
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:

@@ -566,6 +566,19 @@
       "test_all_catalogue_filters_preserve_baseline_rows_and_author_order": 46,
       "test_complete_fingerprint_bytes_and_counts_equal_baseline": 18,
       "test_active_revision_change_in_first_or_later_batch_rejects_old_cursor": 2
+    },
+    "tests.storage.test_backup_content_revalidation": {
+      "test_equal_metadata_content_change_cannot_publish_a_complete_backup": 1,
+      "test_final_byte_verification_obeys_cancellation_before_publication": 1,
+      "test_unchanged_preferences_roundtrip_and_read_only_verify": 1,
+      "test_uninspectable_registered_root_cannot_publish_complete_backup": 28,
+      "test_absent_and_empty_registered_roots_still_roundtrip": 1,
+      "test_optional_root_disappearance_after_presence_stays_a_failure": 1,
+      "test_optional_missing_child_cannot_hide_a_regular_file_parent": 1,
+      "test_windows_path_not_found_mapping_cannot_hide_a_file_parent": 1,
+      "test_dangling_optional_link_stays_present_for_existing_path_guard": 1,
+      "test_optional_root_fix_never_collects_private_engine_configuration": 1,
+      "test_unreadable_staged_pending_tree_never_publishes_completion": 2
     }
   },
   "installed": {
@@ -1064,6 +1077,19 @@
       "test_all_catalogue_filters_preserve_baseline_rows_and_author_order": 46,
       "test_complete_fingerprint_bytes_and_counts_equal_baseline": 18,
       "test_active_revision_change_in_first_or_later_batch_rejects_old_cursor": 2
+    },
+    "tests.storage.test_backup_content_revalidation": {
+      "test_equal_metadata_content_change_cannot_publish_a_complete_backup": 1,
+      "test_final_byte_verification_obeys_cancellation_before_publication": 1,
+      "test_unchanged_preferences_roundtrip_and_read_only_verify": 1,
+      "test_uninspectable_registered_root_cannot_publish_complete_backup": 28,
+      "test_absent_and_empty_registered_roots_still_roundtrip": 1,
+      "test_optional_root_disappearance_after_presence_stays_a_failure": 1,
+      "test_optional_missing_child_cannot_hide_a_regular_file_parent": 1,
+      "test_windows_path_not_found_mapping_cannot_hide_a_file_parent": 1,
+      "test_dangling_optional_link_stays_present_for_existing_path_guard": 1,
+      "test_optional_root_fix_never_collects_private_engine_configuration": 1,
+      "test_unreadable_staged_pending_tree_never_publishes_completion": 2
     }
   },
   "native_trust": [

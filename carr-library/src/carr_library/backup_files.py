@@ -22,6 +22,32 @@ def portable_relative(value):
     return path
 
 
+def optional_present(path):
+    """Only a genuinely absent name is optional for a typed backup producer.
+
+    Unlike lexists/exists, this does not suppress inaccessible or invalid
+    lookups. Keep links present so the existing regular-path guards reject
+    them. Windows PATH_NOT_FOUND also requires a valid lexical ancestor.
+    """
+    path = Path(path)
+    try:
+        try:
+            path.lstat()
+        except FileNotFoundError:
+            for parent in path.parents:
+                try:
+                    parent.lstat()
+                except FileNotFoundError:
+                    continue
+                regular(parent, directory=True)
+                break
+            return False
+    except OSError as exc:
+        from .ingest.restore import RestoreError
+        raise RestoreError('Backup state could not be inspected; retry when its registered paths are accessible.') from exc
+    return True
+
+
 def regular(path, *, directory=False):
     path = Path(path)
     value = path.lstat()
@@ -39,7 +65,7 @@ def local_path(value, *, root=None, exists=False):
     # Inspect the lexical ancestors before resolving; resolution must not hide
     # a symlink or Windows junction supplied by a caller.
     for parent in reversed((path, *path.parents)):
-        if os.path.lexists(parent):
+        if optional_present(parent):
             regular(parent, directory=(parent != path or parent.is_dir()))
     path = path.resolve(strict=exists)
     if root is not None and not path.is_relative_to(Path(root).resolve(strict=True)):
@@ -59,11 +85,16 @@ def sync_directory(path):
 def publish_tree(source, target, *, cancelled=lambda: False):
     """Publish a caller-owned, already verified staging tree without replacing."""
     source, target = Path(source), Path(target)
+    regular(source, directory=True)
+    def unreadable(error):
+        # Never publish a completion marker after silently skipped state.
+        raise error
     target.mkdir(mode=0o700)
     directories = [target]
-    for directory, dirs, files in os.walk(source, followlinks=False):
+    for directory, dirs, files in os.walk(source, followlinks=False, onerror=unreadable):
         if cancelled():
             raise InterruptedError('Library backup or restore cancelled.')
+        regular(directory, directory=True)
         relative = Path(directory).relative_to(source)
         for name in sorted(dirs):
             regular(Path(directory) / name, directory=True)

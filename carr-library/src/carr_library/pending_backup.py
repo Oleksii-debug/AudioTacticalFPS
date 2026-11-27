@@ -22,7 +22,7 @@ import time
 
 from .catalog.intake import MAX_BYTES, classify
 from .catalog.streaming_pdf import (FileAsset, MAX_PDF_BYTES, pdf_budget, valid_original_size)
-from .backup_files import local_path, regular, sync_directory
+from .backup_files import local_path, regular, sync_directory, optional_present
 from .extract.page_ocr import Config
 from .ingest.batch_scan import planned_snapshot
 from .ingest.batches import (MAX_BATCH, MAX_BATCHES, MAX_ROWS, STATES, _ROW_KEYS,
@@ -492,7 +492,7 @@ def _inventory(root):
     found = {}
     for name in ('import-requests', 'import-batches'):
         directory = root / name
-        if not os.path.lexists(directory):
+        if not optional_present(directory):
             continue
         local_path(directory, exists=True)
         regular(directory, directory=True)
@@ -656,7 +656,7 @@ def _pending_guards(app, cancelled):
         for identity in batches:
             _check(cancelled)
             path = root / 'import-batches' / (identity + '.lock')
-            if os.path.lexists(path):
+            if optional_present(path):
                 local_path(path, exists=True)
                 regular(path)
             try:
@@ -689,7 +689,7 @@ def _snapshot_pending(app, target, *, cancelled=lambda: False):
     target.mkdir(mode=0o700)
     before = _inventory(root)
     catalog_path = target.parent / 'library.sqlite'
-    if not catalog_path.exists():
+    if not optional_present(catalog_path):
         catalog_path = app.database
     journal = None
     files, assets, bindings = [], {}, []
@@ -697,9 +697,9 @@ def _snapshot_pending(app, target, *, cancelled=lambda: False):
         with closing(_catalog(catalog_path)) as catalog:
             jobs = {}
             journal_path = root / 'imports.sqlite'
-            if os.path.lexists(journal_path):
+            if optional_present(journal_path):
                 for suffix in ('-wal', '-shm', '-journal'):
-                    if os.path.lexists(Path(str(journal_path) + suffix)):
+                    if optional_present(Path(str(journal_path) + suffix)):
                         local_path(Path(str(journal_path) + suffix), exists=True)
                 source_db, _ = _journal(journal_path, catalog, cancelled)
                 page_size = source_db.execute('PRAGMA page_size').fetchone()[0]
@@ -739,7 +739,7 @@ def _snapshot_pending(app, target, *, cancelled=lambda: False):
                 retained = None
                 if wanted is not None:
                     candidates = [root / 'originals' / (wanted + suffix) for suffix in SUFFIXES.values()]
-                    if any(os.path.lexists(path) for path in candidates):
+                    if any(optional_present(path) for path in candidates):
                         retained = app.assets.resolve(wanted, cancelled=cancelled)
                 try:
                     incoming = planned_snapshot(local_path(retained or source, exists=True),
@@ -1021,7 +1021,7 @@ def restore_pending(source, stage, new_root, metadata, *, cancelled=lambda: Fals
     for asset in metadata['assets']:
         _check(cancelled)
         target = stage / 'originals' / asset['filename']
-        if os.path.lexists(target):
+        if optional_present(target):
             _original_payload(target, asset, cancelled)
         else:
             _copy(verified / 'originals' / asset['filename'], target, asset, cancelled)
@@ -1030,4 +1030,4 @@ def restore_pending(source, stage, new_root, metadata, *, cancelled=lambda: Fals
     shutil.rmtree(verified)
     sync_directory(stage)
     return {'assets': added, 'paths': [name for name in ('imports.sqlite', 'import-requests', 'import-batches')
-                                      if (stage / name).exists()]}
+                                      if optional_present(stage / name)]}

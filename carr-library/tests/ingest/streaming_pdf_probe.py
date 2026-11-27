@@ -95,7 +95,7 @@ def main():
             peak_rss_bytes=peak_rss(), baseline_peak_rss_bytes=before,
             traced_peak_bytes=allocated, max_single_parser_read=MAX_READ_BYTES,
             profile=dict(os=platform.system(), release=platform.release(), machine=platform.machine(),
-                         cpu_count=os.cpu_count(), python=platform.python_version()),
+                         cpu_count=os.cpu_count(), python=platform.python_version(), isolated=bool(sys.flags.isolated)),
             native_text=True, render_fingerprint=True, retained_readback=True,
             real_corpus=False, multi_gigabyte_execution=asset.size > 2 * 1024 ** 3)
         import hashlib

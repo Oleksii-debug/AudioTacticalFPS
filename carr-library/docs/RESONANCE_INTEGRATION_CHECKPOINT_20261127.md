@@ -3,7 +3,7 @@
 ## Composed acceptance candidate r6 — execution in progress
 
 The current technical contract is `UNIVERSAL_SCOPE_V3_FINALIZATION.md` read from
-canonical `3beebd5aca900b8bf2e86498ae79db4015c96705`. Its contents are unchanged
+canonical `e69ba2403515f21509686d66f4bc8b3673756d81`. Its contents are unchanged
 from the previously reviewed `4b6f8169986c4a58b43e4a23bc081fbefadbbdcb`.
 The implementation remains scoped to `carr-library/**` and its CARR workflows.
 This checkpoint is not a declaration that every V3 release gate has passed.
@@ -20,6 +20,10 @@ lifecycle correction (`e5d03cca`). Durable product composition is
 `2f062a429054bc0f971accc7af6811151deb21d0`; native recovery composition is
 `e71ced734624320f2ef881158d0f8e590d319a79`.
 
+- Optional backup roots use strict metadata inspection: only confirmed absence
+  is omitted. Access errors, invalid parent types and staged traversal failures
+  stop completion. The 39-case regression module is required in both source and
+  installed execution; this final port has not yet been executed.
 - PDF source identity, copying, parser access, retained readback and backup
   paths use bounded streams. Scan continuation carries cancellation and its
   deadline into PDF hashing. Existing originals remain immutable.
@@ -90,11 +94,16 @@ interrupted baseline are retained in evidence rather than replaced by a PASS.
 
 The complete r6 Windows workflow retains all prior source, installed, native,
 firewall, provenance, ASR, Advanced, recording, Word and installer gates. It now
-declares 296 source selectors, 159 additive installed selectors plus the existing
+declares 296 source selectors, 161 additive installed selectors plus the existing
 external installed list, and 94 exact standard-recovery source cases. A separate
 standard lane runs the same native A/B probe sooner; its success cannot replace
 the full integrated lane. A separate 2,049 MiB PDF measurement requires actual
 Windows parsing/rendering/readback and installed-source hashes.
+
+The latest owner source also contains new live-reader, clip/mastering, audio
+publication, explicit selected conversion and streamed UTF-8 features. Their
+compatible integration is a separate r7 workline; this r6 snapshot does not
+claim those newly identified implementation gaps are closed.
 
 The following remain distinct qualifications until actual evidence is obtained:
 the full composed Windows run, the new native A/B/restart/50-case sequence, the

@@ -37,7 +37,7 @@ from .catalog.streaming_pdf import valid_original_size
 from .ingest.restore import RestoreError
 from .ingest.writer_guard import exclusive_writer, _regular_if_present
 from .data_paths import guard_data_directory
-from .backup_files import local_path, portable_relative, publish_tree
+from .backup_files import local_path, portable_relative, publish_tree, optional_present
 from .backup_historical import (
     DIRECTORY as HISTORICAL_DIRECTORY, is_state_path as _historical_path,
     state_paths as _historical_files, validate_state_tree as _validate_historical,
@@ -245,13 +245,13 @@ def _translation_path(value):
 
 
 def _translation_files(root, *, cancelled=lambda: False):
-    if not os.path.lexists(root / 'state' / 'translation'):
+    if not optional_present(root / 'state' / 'translation'):
         return ()
     return _translation_adapter().state_paths(root, cancelled=cancelled)
 
 
 def _validate_translations(db, root, *, cancelled=lambda: False):
-    if os.path.lexists(root / 'state' / 'translation'):
+    if optional_present(root / 'state' / 'translation'):
         _translation_adapter().validate_state_tree(db, root, cancelled=cancelled)
 
 
@@ -278,14 +278,14 @@ def _transcription_path(value):
 def _transcription_files(root, *, cancelled=lambda: False):
     files = []
     for namespace in _TRANSCRIPTION_NAMESPACES:
-        if os.path.lexists(root / namespace):
+        if optional_present(root / namespace):
             files.extend(_transcription_adapter(namespace).state_paths(root, cancelled=cancelled))
     return tuple(sorted(files))
 
 
 def _validate_transcriptions(db, root, *, cancelled=lambda: False):
     for namespace in _TRANSCRIPTION_NAMESPACES:
-        if os.path.lexists(root / namespace):
+        if optional_present(root / namespace):
             _transcription_adapter(namespace).validate_state_tree(db, root, cancelled=cancelled)
 
 
@@ -430,7 +430,7 @@ def _children(path, limit):
 
 def _projects(root):
     folder = root / 'audio-projects'
-    if not os.path.lexists(folder):
+    if not optional_present(folder):
         return ()
     result = []
     for child in _children(folder, MAX_AUDIO_PROJECTS):
@@ -473,14 +473,14 @@ def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES, *, cancelled=lambda: Fal
     transcription = ()
     resource_policy = _resource_policy_files(root, cancelled=cancelled)
     with ExitStack() as stack:
-        if os.path.lexists(root / _recording_adapter().DIRECTORY):
+        if optional_present(root / _recording_adapter().DIRECTORY):
             try:
                 stack.enter_context(_recording_adapter().snapshot_guard(root))
             except RuntimeError as exc:
                 raise RestoreError('A microphone recording or cleanup is active; retry the backup after it stops.') from exc
         recordings = _recording_files(root, cancelled=cancelled)
         directory = root / 'state' / 'assistant'
-        if os.path.lexists(directory):
+        if optional_present(directory):
             _plain(directory, directory=True)
             try:
                 # The outer application writer is already held. Publication and
@@ -492,7 +492,7 @@ def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES, *, cancelled=lambda: Fal
                 raise RestoreError('An assistant job or control is being updated. Retry the backup after it stops.') from exc
             if _assistant_documents(root, max_files) != assistant:
                 raise RestoreError('Assistant checkpoints changed before backup. Retry when they are idle.')
-        if os.path.lexists(root / 'state' / 'translation'):
+        if optional_present(root / 'state' / 'translation'):
             try:
                 stack.enter_context(_translation_adapter().snapshot_guard(root))
             except RuntimeError as exc:
@@ -500,7 +500,7 @@ def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES, *, cancelled=lambda: Fal
             if _translation_files(root) != translation:
                 raise RestoreError('Translation checkpoints changed before backup; retry when idle.')
         for namespace in _TRANSCRIPTION_NAMESPACES:
-            if os.path.lexists(root / namespace):
+            if optional_present(root / namespace):
                 try:
                     stack.enter_context(_transcription_adapter(namespace).snapshot_guard(root))
                 except RuntimeError as exc:
@@ -526,7 +526,7 @@ def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES, *, cancelled=lambda: Fal
                 stack.enter_context(FileLock(str(lock_path), timeout=0))
             except Timeout as exc:
                 raise RestoreError('An audio project is being edited. Retry the backup after it stops.') from exc
-            if os.path.lexists(project / 'studio' / 'project.json'):
+            if optional_present(project / 'studio' / 'project.json'):
                 try:
                     # A saved draft may have no render files yet. Establish its
                     # canonical lock before a renderer can publish those files.
@@ -547,15 +547,15 @@ def _studio_files(project, max_files):
     """Reuse the production backup member allowlist with a bounded traversal."""
     from .audio.backup import _allowed, input_assets
     saved = project / 'studio' / 'project.json'
-    if not os.path.lexists(saved):
+    if not optional_present(saved):
         return
     yield saved
     recovery = saved.with_name(saved.name + '.recovery.json')
-    if os.path.lexists(recovery):
+    if optional_present(recovery):
         yield recovery
     audio = project / 'audio'
     yield from input_assets(saved, audio, file_budget=max_files).values()
-    if not os.path.lexists(audio):
+    if not optional_present(audio):
         return
     for child in _children(audio, max_files):
         if _allowed('audio/' + child.name):
@@ -636,8 +636,8 @@ def _validate_studios(db, root, *, strict_assets=False):
     from .audio.backup import input_assets
     for project in _projects(root):
         saved = project / 'studio' / 'project.json'
-        if not os.path.lexists(saved):
-            if strict_assets and os.path.lexists(project / 'audio' / 'assets'):
+        if not optional_present(saved):
+            if strict_assets and optional_present(project / 'audio' / 'assets'):
                 raise RestoreError('archived sound inputs require their saved Studio project')
             continue
         payload = _audio_document(saved)
@@ -645,7 +645,7 @@ def _validate_studios(db, root, *, strict_assets=False):
         if payload['project_id'] != project.name:
             raise RestoreError('saved audio project identity differs from its managed folder')
         recovery = saved.with_name(saved.name + '.recovery.json')
-        if os.path.lexists(recovery):
+        if optional_present(recovery):
             value = _audio_document(recovery)
             if (set(value) != {'kind', 'version', 'project_id', 'base_sha256', 'project'}
                     or value['kind'] != 'audio-studio-recovery' or type(value['version']) is not int
@@ -691,7 +691,7 @@ def _sidecar_inventory(root, max_files, max_bytes, cancelled):
         for path in _studio_files(project, max_files):
             add(path)
         provenance = project / 'restore-manifest.json'
-        if os.path.lexists(provenance):
+        if optional_present(provenance):
             add(provenance)
     _check_internal_links(root, files)
     return dict(sorted(files.items()))
@@ -791,7 +791,7 @@ def _verify_sidecar_tree(root, entries, max_files, ignored=()):
 def _destination(value, source):
     path = local_path(guard_data_directory(value, purpose='backup or restored library'))
     _plain(path.parent, directory=True)
-    if os.path.lexists(path):
+    if optional_present(path):
         raise FileExistsError(path)
     path = path.parent.resolve() / path.name
     source = Path(source).resolve(strict=True)
@@ -840,7 +840,7 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
     destination = _destination(destination, app.root)
     with exclusive_writer(app.root), _locked_sidecars(app.root, max_sidecar_files, cancelled=cancelled) as check_projects:
         _plain(app.database)
-        if os.path.lexists(app.root / INCOMPLETE):
+        if optional_present(app.root / INCOMPLETE):
             raise RestoreError('the source library restore is incomplete')
         with TemporaryDirectory(prefix='.carr-library-backup-', dir=destination.parent) as tmp:
             stage = Path(tmp)
@@ -888,7 +888,7 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
                 raise RestoreError('Reading/audio state changed during backup. Retry with the projects idle.')
             check_projects()
             pending = None
-            if any(os.path.lexists(app.root / name) for name in
+            if any(optional_present(app.root / name) for name in
                    ('imports.sqlite', 'import-requests', 'import-batches', HISTORICAL_DIRECTORY)):
                 from .pending_backup import snapshot_pending
                 pending = snapshot_pending(app, stage / PENDING, cancelled=cancelled)
