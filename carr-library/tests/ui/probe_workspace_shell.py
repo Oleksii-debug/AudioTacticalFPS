@@ -6,17 +6,24 @@ from types import ModuleType, SimpleNamespace
 import unittest
 from unittest.mock import patch
 
+from carr_library.academic_integration import citation_attribution
+
 
 class Control:
     def __init__(self, *args, **kw):
         self.items, self.pages = [], []
         self.selection, self.value = -1, ''
         self.destroyed = self.focused = self.hidden = False
+        self.label, self.name = kw.get('label', ''), ''
+        self.children, self.added = [], []
+        if args and isinstance(args[0], Control):
+            args[0].children.append(self)
     def SetSizer(self, x): pass
-    def SetName(self, x): pass
+    def SetName(self, x): self.name = x
+    def Wrap(self, width): self.wrap_width = width
     def Bind(self, *args): pass
     def Layout(self): pass
-    def Add(self, *args): pass
+    def Add(self, *args): self.added.append(args)
     def Detach(self, *args): pass
     def Clear(self): self.items, self.selection = [], -1
     def Append(self, x): self.items.append(x)
@@ -86,6 +93,20 @@ class Tests(unittest.TestCase):
     def open(self, i):
         self.f.choice.SetSelection(i)
         self.f.open_selected()
+    def test_named_startup_credit_precedes_scope_selection_and_survives_scope_changes(self):
+        credit = self.f.citation_attribution
+        self.assertEqual(credit.label, citation_attribution())
+        self.assertEqual(credit.name, 'Citation processor attribution. ' + citation_attribution().replace('\n', ' '))
+        self.assertIs(self.f.layout.added[0][0], credit)
+        self.assertLess(self.f.host.children.index(credit), self.f.host.children.index(self.f.choice))
+        self.assertEqual(credit.wrap_width, 700)
+        self.assertFalse(credit.focused or credit.hidden or credit.destroyed)
+        self.open(0)
+        self.open(2)
+        self.scopes.clear()
+        self.f.refresh_scopes()
+        self.assertIs(self.f.citation_attribution, credit)
+        self.assertFalse(credit.focused or credit.hidden or credit.destroyed)
     def test_tabs_and_identity(self):
         self.open(0)
         self.assertEqual(self.f.active, ('a', 't'))

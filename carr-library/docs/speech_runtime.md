@@ -5,6 +5,12 @@ This is one component of Scope V3. The main application installs its native
 reader; `Ctrl+Alt+R` narrates a selected book/chapter through the existing
 `ReadingActions` and `ReadingDesk` authorization and original-source checks.
 
+For current integration and qualification status, use the
+[27 November requirement snapshot](RESONANCE_REQUIREMENT_STATUS_20261127.md),
+audited at `ca143218cf24108b47798175e763f8b1ddb726eb` (especially V3-03 and V3-21).
+Final composed Windows acceptance, human Windows 11/NVDA and owner-engine
+listening qualification remain separate and pending.
+
 ## Working interfaces
 
 ```python
@@ -34,7 +40,12 @@ contains only entries actually enumerated by installed engines.
 | Piper | Explicit local executable and existing model/config, mandatory independent SHA256 and voice-license fields, no download-by-model-name | Hash/manifest boundaries tested; no neural weights downloaded or inference claimed |
 | Local JSON helper | Explicit opt-in, executable SHA256, configurable catalog budget, JSON v1 enumerate/render contract | Contract boundary implemented; no claim of a particular vendor implementation |
 | SAPI 4 | No available verified Windows 11 32-bit engine contract | Unavailable; no simulated voice or promised obsolete-driver compatibility |
-| dordiai-voices | Exact-name integration remains dependent on its actual private/local contract | Not claimed; a reviewed bridge may implement the JSON contract below |
+| dordiai-voices | Integrated exact-name versioned bridge in `integrations/dordiai_speech.py`, explicit engine configuration, persistent worker lifetime and registry fingerprinting | Adapter/protocol boundaries are integrated; actual owner runtime/model/voice pairs, multilingual inference, cloning and listening require separate qualification |
+
+The [dordiai desktop workflow](DORDIAI_DESKTOP.md) describes this existing bridge.
+It does not depend on inventing a provider for the generic JSON helper below.
+Neither voice enumeration nor a configured model path establishes successful
+neural execution or a cloning/profile-creation workflow.
 
 Piper support follows the inspected upstream CLI at
 `OHF-Voice/piper1-gpl` revision `6aacdbc98eda4b1cb81d960bef7c7fae710b13fd`.

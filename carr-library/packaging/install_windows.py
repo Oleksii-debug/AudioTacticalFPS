@@ -13,6 +13,7 @@ import json
 import os
 from pathlib import Path, PurePosixPath
 import platform
+import re
 import stat
 import subprocess
 import venv
@@ -58,6 +59,36 @@ def verify(root, *, manifest_bytes=None):
         if ("runtime/python.exe" not in actual
                 or actual != {p for p in files if p.startswith("runtime/")}):
             raise ValueError("unexpected or missing Python runtime file")
+    launcher_names = {"ResearchLibrary.exe", "native-launcher-build.json"}
+    launcher_folds = {name.casefold() for name in launcher_names}
+    included_launcher = manifest.get("bundled_native_launcher", False)
+    declared_launcher = {name for name in files if name.casefold() in launcher_folds}
+    actual_launcher = {path.name for path in root.iterdir() if path.name.casefold() in launcher_folds}
+    if type(included_launcher) is not bool:
+        raise ValueError("invalid native launcher installation flag")
+    if included_launcher:
+        if (not manifest.get("bundled_python") or declared_launcher != launcher_names
+                or actual_launcher != launcher_names
+                or manifest.get("native_launcher_source_commit") != manifest.get("source_commit")
+                or not isinstance(manifest.get("source_commit"), str)
+                or not re.fullmatch(r"[0-9a-f]{40}", manifest["source_commit"])
+                or manifest.get("native_launcher_sha256") != files["ResearchLibrary.exe"]):
+            raise ValueError("unexpected or incomplete native launcher identity")
+        proof_path = root / "native-launcher-build.json"
+        if proof_path.stat().st_size > 65536:
+            raise ValueError("native launcher proof exceeds its size limit")
+        proof = json.loads(proof_path.read_bytes())
+        if (not isinstance(proof, dict) or proof.get("schema") != 1
+                or proof.get("target") != "x86_64-windows-gnu"
+                or proof.get("release_status") != "unsigned-private-candidate"
+                or not isinstance(proof.get("pe"), dict)
+                or proof["pe"].get("sha256") != files["ResearchLibrary.exe"]
+                or proof["pe"].get("bytes") != (root / "ResearchLibrary.exe").stat().st_size
+                or proof["pe"].get("authenticode_signed") is not False):
+            raise ValueError("native launcher build proof differs from the sealed executable")
+    elif (declared_launcher or actual_launcher or "native_launcher_sha256" in manifest
+          or "native_launcher_source_commit" in manifest):
+        raise ValueError("unannounced native launcher files or identity")
     if manifest.get("bundled_ocr"):
         ocr = root / "ocr"
         for directory, dirs, _names in os.walk(ocr, followlinks=False):
@@ -153,7 +184,8 @@ def main():
     # An incomplete or interrupted install must never be treated as ready.
     # Exclusive creation is the final lifecycle step; never delete an old environment.
     (destination / ".installation-complete").touch(exist_ok=False)
-    print("Installation complete. Open ResearchLibrary.cmd. Research data has not been changed.")
+    entrypoint = "ResearchLibrary.exe" if (root / "ResearchLibrary.exe").is_file() else "ResearchLibrary.cmd"
+    print("Installation complete. Open " + entrypoint + ". Research data has not been changed.")
     return 0
 
 

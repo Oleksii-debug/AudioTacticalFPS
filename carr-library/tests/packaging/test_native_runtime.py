@@ -64,6 +64,54 @@ class NativeRuntimeTests(unittest.TestCase):
             del self.outer['bundled_native_runtime']
         (self.root / 'bundle-manifest.json').write_text(json.dumps(self.outer))
 
+    def test_prepare_manifest_uses_lf_bytes(self):
+        from io import BytesIO
+        import importlib.util
+        import tarfile
+        from zipfile import ZipFile
+        import zstandard
+
+        spec = importlib.util.spec_from_file_location('prepare_native_runtime_lf_test',
+            Path(__file__).resolve().parents[2] / 'packaging/prepare_native_runtime.py')
+        producer = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(producer)
+        here = self.parent / 'producer'
+        metadata = here / 'native-runtime'
+        metadata.mkdir(parents=True)
+        selected, buffer = {}, BytesIO()
+        with tarfile.open(fileobj=buffer, mode='w', format=tarfile.USTAR_FORMAT) as archive:
+            for destination in sorted(native.FILES):
+                if not destination.startswith(('bin/', 'licenses/')):
+                    continue
+                data = (self.runtime / destination).read_bytes()
+                original = 'Library/' + destination
+                selected[original] = {'destination': destination, 'size': len(data),
+                    'sha256': hashlib.sha256(data).hexdigest()}
+                info = tarfile.TarInfo(original)
+                info.size = len(data)
+                archive.addfile(info, BytesIO(data))
+        package = self.parent / 'synthetic.conda'
+        with ZipFile(package, 'w') as archive:
+            archive.writestr('pkg-synthetic.tar.zst',
+                zstandard.ZstdCompressor().compress(buffer.getvalue()))
+        lock = {'package': {'size': package.stat().st_size, 'sha256': digest(package)},
+                'selected_original_files': selected}
+        lock_path = metadata / 'source-lock.json'
+        lock_path.write_bytes((json.dumps(lock, indent=2) + '\n').encode('utf-8'))
+        (metadata / 'README.txt').write_bytes((self.runtime / 'README.txt').read_bytes())
+        (metadata / 'pe-compatibility.json').write_bytes(b'{"fixture": true}\n')
+        output = self.parent / 'prepared-native'
+        with patch.object(producer, 'HERE', here), \
+                patch.object(native, 'SOURCE_LOCK_SHA256', digest(lock_path)), \
+                patch.object(sys, 'path', list(sys.path)):
+            report = producer.prepare(package, output)
+        raw = (output / native.MANIFEST).read_bytes()
+        self.assertTrue(raw.endswith(b'\n'))
+        self.assertNotIn(b'\r', raw)
+        self.assertEqual(set(json.loads(raw)['files']), native.FILES)
+        self.assertEqual(report['native_execution'], 'NOT_RUN')
+        self.assertEqual(report['manifest_sha256'], hashlib.sha256(raw).hexdigest())
+
     def test_standalone_verification_reports_no_native_execution(self):
         report = native.verify_native_runtime(self.runtime)
         self.assertEqual(report['dlls'], ['msvcp140.dll', 'msvcp140_1.dll'])

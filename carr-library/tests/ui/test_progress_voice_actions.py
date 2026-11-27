@@ -124,7 +124,8 @@ def reader(tmp_path, monkeypatch):
     progress, scheduler, work = Progress(), Scheduler(), WorkQueue()
     registry, roots, activations, created = VoiceRegistry([ListedVoices()]), [], [], []
 
-    def registry_factory(state_root):
+    def registry_factory(state_root, *, cancelled=lambda: False):
+        assert callable(cancelled) and not cancelled()
         roots.append(Path(state_root))
         return registry
 
@@ -143,9 +144,10 @@ def reader(tmp_path, monkeypatch):
         alive=True, playback_generation=0, cancel=threading.Event(), player=Mock(),
         wx=SimpleNamespace(CallLater=scheduler, ID_CANCEL=1),
         document=SimpleNamespace(dirty=False, text=''), source_loaded=True,
-        source_guard=lambda: None, recovered=None, recovery_notice='', draft_store=None, editor=Mock(),
+        source_guard=lambda: None, draft_store=None, recovered=None, recovery_notice='', editor=Mock(),
         source_status=Mock(), sync_document=lambda: None, save_project=lambda: True,
-        dialog=Mock(), autosave_timer=Mock(), executor=Mock(), audio_files=Mock())
+        dialog=Mock(), autosave_timer=Mock(), executor=Mock(), audio_files=Mock(),
+        unregister=Mock(), owned_registries=set())
     handlers = callbacks('speech_dialog.py', 'show_speech_reader',
         ['reload', 'select_progress_voice', 'start_playback', 'stop_audio', 'closing'],
         values, globals_={'activate_progress_voice': activate}, cleanup=True)
@@ -249,7 +251,7 @@ def test_studio_preview_waits_for_both_controllers_and_close_invalidates_start(t
     dialog = Mock()
     dialog._audio_player = player
     values = dict(current_job='completed-test-job', service=SimpleNamespace(
-        get=lambda job: {'destination': str(tmp_path)}), dialog=dialog,
+        get=lambda job: {'destination': str(tmp_path)}, close=Mock()), dialog=dialog,
         progress=local, parent_progress=parent, wx=SimpleNamespace(CallLater=scheduler, ID_CLOSE=3),
         report=lambda message, focus=False: reports.append(message), alive=True,
         autosave=lambda: None, cancel=threading.Event(), busy=False,
@@ -262,6 +264,8 @@ def test_studio_preview_waits_for_both_controllers_and_close_invalidates_start(t
     scheduler.tick()
     player.play.assert_not_called()
     handlers.close()
+    values['executor'].submit.assert_called_once_with(values['service'].close)
+    values['service'].close.assert_not_called()
     parent.ready = True
     scheduler.tick()
     player.play.assert_not_called()
@@ -415,6 +419,7 @@ def test_reader_dialog_is_destroyed_even_when_final_cleanup_raises(reader, stage
     assert any(message in report for report in reader.reports)
     if stage == 'worker_shutdown':
         temporary.cleanup.assert_not_called()
+        assert reader.parent._reader_engines_retained == list(reader.values['owned_registries'])
     else:
         temporary.cleanup.assert_called_once()
 

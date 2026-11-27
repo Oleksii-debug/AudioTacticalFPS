@@ -41,7 +41,7 @@ def operation_outcome(result):
     complete = {'complete', 'completed', 'succeeded', 'success', 'ok', 'passed', 'pass',
                 'ready', 'verified', 'saved', 'exported', 'duplicate', 'excluded'}
     failure = {'failed', 'error', 'timed_out', 'timeout', 'corrupt', 'invalid'}
-    cancelled = {'cancelled', 'canceled', 'aborted'}
+    cancelled = {'cancelled', 'canceled', 'aborted', 'stopped'}
     rank = {'succeeded': 0, 'paused': 1, 'cancelled': 2, 'failed': 3}
     outcome, pending, inspected = 'succeeded', [result], 0
     while pending:
@@ -467,10 +467,33 @@ class _AudioQuietHold:
         controller = self.controller
         if self.closed or controller.closed:
             return False
+        if controller._uncertain_players:
+            return False
+        if not self.recording and any(hold.recording and not hold.closed
+                                      for hold in tuple(controller._audio_holds)):
+            return False
+        for player in tuple(controller._players):
+            try:
+                state = player.state
+            except Exception:
+                return False
+            if state not in ('playing', 'stopped', 'paused', 'error'):
+                return False
+            if self.recording and state == 'playing':
+                return False
+        if self.recording:
+            try:
+                feedback = getattr(controller, 'live_media_feedback', None)
+                if controller.audio_active or (feedback is not None and feedback.busy):
+                    return False
+                media = getattr(controller.frame, 'progress_media_busy', False)
+                if bool(media() if callable(media) else media):
+                    return False
+            except Exception:
+                return False
         if not self.recording and not controller.preferences.mute_during_audio:
             return True
-        return (not controller._uncertain_players
-                and bool(getattr(controller.sound, 'quiescent', True)))
+        return bool(getattr(controller.sound, 'quiescent', True))
 
     def close(self):
         if self.closed:
@@ -485,10 +508,16 @@ class _AudioQuietHold:
 
 class OperationProgress:
     """Bind measured events to native controls without changing keyboard focus."""
-    def __init__(self, frame, gauge, label, *, wx_module=None, clock=time.monotonic, sound=None):
+    def __init__(self, frame, gauge, label, *, wx_module=None, clock=time.monotonic,
+                 sound=None, accessible_name=None):
         if wx_module is None:
             import wx as wx_module
         self.frame, self.gauge, self.label, self.wx = frame, gauge, label, wx_module
+        if accessible_name is not None and (not isinstance(accessible_name, str)
+                or not accessible_name.strip() or len(accessible_name) > 256
+                or any(ord(character) < 32 for character in accessible_name)):
+            raise ValueError('Use a short readable native progress control name.')
+        self.accessible_name = accessible_name
         self.clock, self.tracker = clock, ProgressTracker(clock=clock)
         self.sound = sound or WindowsProgressSound()
         self._ui_thread, self._pending_lock = threading.get_ident(), threading.Lock()
@@ -759,7 +788,7 @@ class OperationProgress:
         if not force and not state_changed and now - self._last_display < .1:
             return
         text = describe_progress(event)
-        self.gauge.SetName('Operation progress: ' + _LABELS[event.state])
+        self.gauge.SetName(self.accessible_name or ('Operation progress: ' + _LABELS[event.state]))
         self.gauge.SetRange(100)
         if event.percent is not None:
             self.gauge.SetValue(event.percent)

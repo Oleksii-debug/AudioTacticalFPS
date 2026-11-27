@@ -8,7 +8,11 @@ from unittest.mock import Mock
 
 import pytest
 
+import carr_library
+
 from carr_library.ui.operation_progress import ProgressTracker, operation_outcome
+
+UI_ROOT = Path(carr_library.__file__).resolve().parent / 'ui'
 
 
 class Progress:
@@ -35,7 +39,7 @@ class Progress:
 
 @pytest.fixture
 def desktop():
-    path = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/desktop_app.py'
+    path = UI_ROOT / 'desktop_app.py'
     tree = ast.parse(path.read_text(encoding='utf-8'))
     cls = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == 'DesktopFrame')
     functions = [node for node in cls.body if isinstance(node, ast.FunctionDef) and node.name in ('run_job', '_finish_job_controls')]
@@ -48,7 +52,7 @@ def desktop():
     frame.menu_bar.GetMenuCount.return_value = 2
     frame.menu_bar.GetMenuLabel.side_effect = lambda index: ('&Library', '&Help')[index]
     text, reports = ['Ready'], []
-    frame.status = SimpleNamespace(GetValue=lambda: text[0])
+    frame.status = SimpleNamespace(GetValue=lambda: text[0], SetValue=lambda value: text.__setitem__(0, value))
     def report(message):
         text[0] = message
         reports.append(message)
@@ -185,6 +189,32 @@ def test_completion_summary_preserves_the_callback_focus_target(desktop, target_
     assert frame.operation_progress.tracker.event.percent == 100
 
 
+@pytest.mark.parametrize('callback_owns_focus', [False, True])
+def test_completion_preserves_callback_focus_and_keeps_default_feedback(desktop, callback_owns_focus):
+    frame, queued, reports = desktop
+    text, focus = ['Ready'], ['initial']
+    frame.status = SimpleNamespace(GetValue=lambda: text[0],
+                                   SetValue=lambda value: text.__setitem__(0, value))
+    def report(message):
+        text[0] = message
+        focus[0] = 'frame status'
+        reports.append(message)
+    frame.report = report
+    def source_ready(result):
+        focus[0] = 'search status'
+    future = Future()
+    frame.executor.submit.return_value = future
+    frame.run_job('Preparing original source file', lambda: None,
+                  source_ready if callback_owns_focus else None)
+    assert focus[0] == 'frame status'
+    future.set_result(None)
+    queued.pop()()
+    assert text[0] == 'Preparing original source file: complete.'
+    assert focus[0] == ('search status' if callback_owns_focus else 'frame status')
+    assert frame.operation_progress.tracker.event.state == 'succeeded'
+    assert not frame.working
+
+
 def test_old_completion_does_not_overwrite_a_callback_started_job(desktop):
     frame, queued, reports = desktop
     first, second = Future(), Future()
@@ -195,6 +225,29 @@ def test_old_completion_does_not_overwrite_a_callback_started_job(desktop):
     assert frame.working and frame.operation_progress.tracker.event.phase == 'Render'
     assert frame.operation_progress.tracker.event.state == 'running'
     assert reports[-1] == 'Render…'
+
+
+def test_generic_completion_updates_notice_without_overriding_callback_focus(desktop):
+    frame, queued, reports = desktop
+    focused = ['query']
+    report = frame.report
+    def focusing_report(message):
+        focused[0] = 'host-status'
+        report(message)
+    frame.report = focusing_report
+    future = Future()
+    frame.executor.submit.return_value = future
+    def display_results(result):
+        focused[0] = 'result-grid'
+    frame.run_job('Search', lambda: ['source result'], display_results)
+    future.set_result(['source result'])
+    queued.pop()()
+    assert focused[0] == 'result-grid'
+    assert frame.status.GetValue() == 'Search: complete.'
+    # This composed fixture records status SetValue too; that update must
+    # remain visible while the real callback keeps its result-grid focus.
+    assert reports == ['Search…', 'Search: complete.']
+    assert frame.operation_progress.tracker.event.state == 'succeeded'
 
 
 @pytest.mark.parametrize('observer', ['start', 'update', 'succeed', 'finalize'])
@@ -281,7 +334,7 @@ def test_measurements_use_captured_token_and_late_updates_do_not_touch_next_job(
 @pytest.fixture
 def studio():
     """Exercise the actual nested Studio job handler without an audio device."""
-    path = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/studio_dialog.py'
+    path = UI_ROOT / 'studio_dialog.py'
     tree = ast.parse(path.read_text(encoding='utf-8'))
     window = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'show_studio')
     run = next(node for node in window.body if isinstance(node, ast.FunctionDef) and node.name == 'run')
@@ -373,18 +426,23 @@ def test_studio_executor_start_failure_is_terminal_and_unlocks_controls(studio):
 
 @pytest.mark.parametrize('device_failure', [False, True])
 def test_reader_close_always_unregisters_playback_and_finishes_resource_cleanup(device_failure):
-    path = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/speech_dialog.py'
+    path = UI_ROOT / 'speech_dialog.py'
     tree = ast.parse(path.read_text(encoding='utf-8'))
     reader = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'show_speech_reader')
     cleanup = next(node.finalbody for node in reversed(reader.body) if isinstance(node, ast.Try) and node.finalbody)
-    env = {name: Mock() for name in ('autosave_timer', 'cancel', 'player', 'progress', 'parent',
+    env = {name: Mock() for name in ('unregister', 'autosave_timer', 'cancel', 'player', 'progress', 'parent',
                                       'executor', 'audio_files', 'dialog')}
+    registries = [Mock(), Mock()]
+    env['owned_registries'] = registries
     if device_failure:
         env['player'].close.side_effect = RuntimeError('Audio device disconnected')
     exec(compile(ast.Module(body=cleanup, type_ignores=[]), str(path), 'exec'), env)
+    env['unregister'].assert_called_once_with()
     env['player'].close.assert_called_once_with()
     env['progress'].unregister_player.assert_called_once_with(env['player'], silence_confirmed=not device_failure)
     env['executor'].shutdown.assert_called_once_with(wait=True, cancel_futures=True)
+    for registry in registries:
+        registry.close.assert_called_once_with()
     if device_failure:
         env['audio_files'].cleanup.assert_not_called()
         assert env['parent']._reader_playback_retained == [(env['player'], env['audio_files'])]
@@ -397,7 +455,7 @@ def test_reader_close_always_unregisters_playback_and_finishes_resource_cleanup(
 
 @pytest.mark.parametrize('device_failure', [False, True])
 def test_studio_close_releases_device_and_both_observers_even_after_device_failure(device_failure):
-    path = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/studio_dialog.py'
+    path = UI_ROOT / 'studio_dialog.py'
     tree = ast.parse(path.read_text(encoding='utf-8'))
     studio = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'show_studio')
     close = next(node for node in studio.body if isinstance(node, ast.FunctionDef) and node.name == 'close')
@@ -409,7 +467,7 @@ def make(autosave, cancel, service, timer, dialog, progress, parent_progress, re
     return close
 ''')
     factory.body[0].body.insert(-1, close)
-    env = dict(wx=SimpleNamespace(ID_CLOSE=123))
+    env = dict(__package__='carr_library.ui', wx=SimpleNamespace(ID_CLOSE=123))
     exec(compile(ast.fix_missing_locations(factory), str(path), 'exec'), env)
     autosave, cancel, service, timer, dialog, progress, parent_progress, report, executor = [Mock() for _ in range(9)]
     if device_failure:
@@ -421,6 +479,156 @@ def make(autosave, cancel, service, timer, dialog, progress, parent_progress, re
     parent_progress.unregister_player.assert_called_once_with(dialog._audio_player, silence_confirmed=not device_failure)
     progress.pause.assert_called_once_with('Audio production paused; completed chunks retained')
     progress.close.assert_called_once_with()
-    executor.shutdown.assert_called_once_with(wait=False, cancel_futures=True)
+    executor.submit.assert_called_once_with(service.close)
+    service.close.assert_not_called()  # Owned engine cleanup belongs to the serial worker.
+    executor.shutdown.assert_called_once_with(wait=False, cancel_futures=False)
     dialog.EndModal.assert_called_once_with(123)
     assert report.call_count == int(device_failure)
+    callback()
+    executor.submit.assert_called_once_with(service.close)  # Native close and finally may both run.
+
+
+# CARR-A11Y-014: execute the actual render/jobs closures with controlled
+# dialogs and production receipts. Native rendering and NVDA are separate.
+class StudioOptionControl:
+    def __init__(self, value):
+        self.value = value
+    def GetSelection(self):
+        return self.value
+    def GetValue(self):
+        return self.value
+    def SetSelection(self, value):
+        self.value = value
+    SetValue = ChangeValue = SetSelection
+
+
+def studio_output_fixture():
+    N = SimpleNamespace
+    rows, calls, reports, decisions, prompts, saves, entries = [], [], [], [], [], [], []
+    project = N(id='p', original_script='test', title='Test')
+
+    class Dialog:
+        def __init__(self, *args):
+            prompts.append(args[1])
+            if len(args) > 3:
+                entries.extend(args[3])
+        def ShowModal(self):
+            return decisions.pop(0) if decisions else 1
+        def GetPath(self):
+            return '/synthetic'
+        def GetSelection(self):
+            return 0
+        def Destroy(self):
+            pass
+
+    def submit(p, path, **kwargs):
+        row = dict(id=str(len(rows)), project={'title': 'Test'}, status='complete',
+                   progress=100, error='', **kwargs)
+        rows.append(row)
+        return row['id']
+
+    def run_job(identity, **kwargs):
+        calls.append(identity)
+        return {'destination': 'synthetic'}
+
+    service = N(submit=submit, run=run_job, get=lambda i: rows[int(i)],
+                jobs=lambda: rows, projects=N(load=lambda i: project))
+
+    def save():
+        saves.append(project)
+        return project
+
+    env = dict(wx=N(DirDialog=Dialog, SingleChoiceDialog=Dialog, ID_OK=1),
+               Path=Path, dialog=None, service=service, save=save,
+               format_choice=StudioOptionControl(0), stems=StudioOptionControl(True),
+               formats=['wav', 'flac'], cancel=N(is_set=lambda: False),
+               report=lambda *a: reports.append(a), Project=N(from_dict=lambda _: project),
+               controller=N(project=project), editor=StudioOptionControl('test'),
+               title=StudioOptionControl('Test'), controls=lambda: None,
+               run=lambda op, done, **kw: done(op(lambda _: None)),
+               rows=rows, calls=calls, reports=reports, decisions=decisions,
+               prompts=prompts, saves=saves, entries=entries)
+    path = UI_ROOT / 'studio_dialog.py'
+    source = path.read_text(encoding='utf-8')
+    methods = source[source.index('    def render(event=None):'):
+                     source.index('    def preview(event=None):')]
+    exec('def factory():\n    current_job = None\n    busy = False\n'
+         + methods + '    return render, jobs\n', env)
+    env['render'], env['jobs'] = env['factory']()
+    return N(**env)
+
+
+def test_studio_unchanged_output_reuses_job():
+    f = studio_output_fixture()
+    f.render()
+    f.render()
+    assert f.calls == ['0', '0'] and len(f.rows) == 1
+
+
+@pytest.mark.parametrize('option', ['format', 'stems'])
+def test_studio_changed_output_creates_explicit_new_job(option):
+    f = studio_output_fixture()
+    f.render()
+    old = f.rows[0].copy()
+    if option == 'format':
+        f.format_choice.SetSelection(1)
+    else:
+        f.stems.SetValue(False)
+    f.render()
+    assert len(f.rows) == 2 and f.calls == ['0', '1'] and f.rows[0] == old
+    assert f.rows[1]['format'] == ('flac' if option == 'format' else 'wav')
+    assert f.rows[1]['stems'] == (option == 'format')
+    assert 'NEW production job' in f.prompts[-1]
+
+
+def test_studio_saved_job_restores_output_settings():
+    f = studio_output_fixture()
+    f.format_choice.SetSelection(1)
+    f.stems.SetValue(False)
+    f.render()
+    f.format_choice.SetSelection(0)
+    f.stems.SetValue(True)
+    f.jobs()
+    assert (f.format_choice.GetSelection(), f.stems.GetValue()) == (1, False)
+    assert 'Final format: flac; separate stems: No' in f.reports[-1][0]
+
+
+def test_studio_changed_options_cancel_preserves_prior_job_and_settings():
+    f = studio_output_fixture()
+    f.render()
+    f.format_choice.SetSelection(1)
+    f.stems.SetValue(False)
+    f.decisions.append(0)
+    f.render()
+    assert len(f.rows) == 1 and f.calls == ['0'] and len(f.saves) == 1
+    assert (f.format_choice.GetSelection(), f.stems.GetValue()) == (0, True)
+    f.render()
+    assert f.calls == ['0', '0']
+
+
+def test_studio_invalid_format_selection_fails_closed():
+    f = studio_output_fixture()
+    f.format_choice.SetSelection(-1)
+    f.render()
+    assert not f.rows and not f.calls and not f.prompts
+    assert 'Choose a final audio format' in f.reports[-1][0]
+
+
+def test_studio_invalid_saved_output_settings_fail_closed():
+    f = studio_output_fixture()
+    f.render()
+    f.rows[0]['format'] = 'unknown'
+    f.jobs()
+    assert 'unsupported output settings' in f.reports[-1][0]
+
+
+def test_studio_distinct_job_labels_include_durable_options_and_identity():
+    f = studio_output_fixture()
+    f.render()
+    f.format_choice.SetSelection(1)
+    f.stems.SetValue(False)
+    f.render()
+    f.jobs()
+    assert len(f.entries) == 2 and len(set(f.entries)) == 2
+    assert 'wav; separate stems: Yes; job 0' in f.entries[0]
+    assert 'flac; separate stems: No; job 1' in f.entries[1]

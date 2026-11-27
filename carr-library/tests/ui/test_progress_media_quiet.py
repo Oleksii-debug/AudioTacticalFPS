@@ -497,3 +497,77 @@ def test_quiet_toggle_between_timer_ticks_discards_pending_final_speech(media):
     assert not media.sound._thread.is_alive()
     assert voice.heard == [], 'Unmuting must not replay a cue discarded by the quiet policy'
     assert not controller.timer.IsRunning()
+
+
+def test_recording_admission_waits_for_every_registered_player(media):
+    class Player:
+        state = 'playing'
+    first, second = Player(), Player()
+    for player in (first, second):
+        media.controller.register_player(player)
+    hold = media.controller.hold_audio(recording=True)
+    try:
+        assert not hold.ready
+        first.state = 'stopped'
+        assert not hold.ready
+        second.state = 'paused'
+        assert hold.ready
+        assert media.sound.muted
+    finally:
+        hold.close()
+
+
+def test_playback_admission_stays_blocked_by_any_recording_hold(media):
+    first = media.controller.hold_audio(recording=True)
+    second = media.controller.hold_audio(recording=True)
+    playback = media.controller.hold_audio()
+    try:
+        assert media.controller.preferences.mute_during_audio is False
+        assert not playback.ready
+        first.close()
+        assert not playback.ready
+        second.close()
+        assert playback.ready
+    finally:
+        first.close()
+        second.close()
+        playback.close()
+
+
+@pytest.mark.parametrize('state', ['playing', 'unknown', 'query-failed'])
+def test_recording_waits_for_external_media_activity_or_uncertainty(media, state):
+    def active():
+        if state == 'query-failed':
+            raise RuntimeError('External player could not confirm silence')
+        return state in ('playing', 'unknown')
+    media.frame.progress_media_busy = active
+    hold = media.controller.hold_audio(recording=True)
+    try:
+        assert not hold.ready
+        media.frame.progress_media_busy = False
+        assert hold.ready
+    finally:
+        hold.close()
+
+
+def test_stable_accessible_progress_name_preserves_measured_state(media):
+    controller = OperationProgress(media.frame, Gauge(), Label(), wx_module=media.controller.wx,
+        sound=WindowsProgressSound(backend=media.backend), accessible_name='Recording operation progress')
+    try:
+        token = controller.start('Synthetic capture', 10)
+        controller.update(3, 10, 'Recorded three units', token=token)
+        controller.pause(token=token)
+        controller.succeed(token=token)
+        assert set(controller.gauge.names) == {'Recording operation progress'}
+        assert controller.event.state == 'succeeded'
+        assert controller.gauge.values[-1] == 100
+        assert 'Completed' in controller.label.label
+    finally:
+        controller.close()
+
+
+@pytest.mark.parametrize('name', ['', '\nunsafe', 'x' * 257, 42])
+def test_invalid_accessible_progress_name_is_rejected_before_timer_creation(media, name):
+    with pytest.raises(ValueError, match='native progress control name'):
+        OperationProgress(media.frame, Gauge(), Label(), wx_module=media.controller.wx,
+                          sound=media.sound, accessible_name=name)

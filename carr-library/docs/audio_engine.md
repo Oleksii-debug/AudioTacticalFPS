@@ -256,5 +256,9 @@ source revision
 The vendor identifies its static build as GPL v3. This preparation is for the
 authorized private personal deployment and local validation. A complete
 corresponding-source bundle for all linked third-party components has not been
-assembled here; the lock does not authorize public binary distribution.
+assembled here. The transfer helper therefore rejects this runtime in a new
+delivery archive, including a private archive. The library transfer profile
+omits FFmpeg and retains the independent local citation processor. For local
+audio use, obtain the reviewed runtime directly from its publisher and select
+FFmpeg and FFprobe through **Audio Studio → Local voice and music engines...**.
 The existing frozen release is not replaced by this optional runtime.

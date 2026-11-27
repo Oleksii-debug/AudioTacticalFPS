@@ -2,6 +2,7 @@
 from hashlib import sha256
 import json
 import os
+from pathlib import Path
 
 import pytest
 
@@ -133,3 +134,60 @@ def test_interrupted_publication_is_explicitly_unopenable(populated,tmp_path,mon
     with pytest.raises(ValueError,match='incomplete'):
         LibraryApp(destination)
     assert len(app.workspaces(include_archived=True)) == 2
+
+
+@pytest.mark.parametrize('operation', ('backup', 'restore'))
+def test_original_copy_cancels_mid_stream_without_publishing_destination(tmp_path, monkeypatch, operation):
+    from threading import Event
+
+    app = LibraryApp(tmp_path / 'data')
+    workspace = app.create_workspace('Registered original before extraction')
+    original_bytes = b'Original retained source.\n' * 131072
+    digest = sha256(original_bytes).hexdigest()
+    original = app.assets.retain(original_bytes, 'text/plain', digest)
+    with app.catalog_transaction(workspace) as catalog:
+        catalog.add_work('large-original', 'Retained original')
+        catalog.add_edition('large-edition', 'large-original',
+            dict(sha256=digest, mime='text/plain', size=len(original_bytes)))
+    backup, destination = tmp_path / 'backup', tmp_path / 'destination'
+    if operation == 'restore':
+        manifest_digest = create_backup(app, backup)
+        selected = backup / 'originals' / original.name
+        action = lambda cancelled: restore_backup(backup, destination, manifest_digest, cancelled=cancelled)
+    else:
+        selected = original
+        action = lambda cancelled: create_backup(app, destination, cancelled=cancelled)
+    stopped, reads = Event(), []
+    path_open = Path.open
+
+    class ObservedSource:
+        def __init__(self, stream):
+            self.stream = stream
+        def __enter__(self):
+            self.stream.__enter__()
+            return self
+        def __exit__(self, *args):
+            return self.stream.__exit__(*args)
+        def read(self, size):
+            data = self.stream.read(size)
+            reads.append((size, len(data)))
+            stopped.set()
+            return data
+
+    def observe_source(path, mode='r', *args, **kwargs):
+        stream = path_open(path, mode, *args, **kwargs)
+        return ObservedSource(stream) if path == selected and mode == 'rb' else stream
+
+    # Trigger cancellation after the real source stream has delivered a block,
+    # rather than cancelling before entry or replacing the copy implementation.
+    with monkeypatch.context() as context:
+        context.setattr(Path, 'open', observe_source)
+        with pytest.raises(InterruptedError, match='cancelled'):
+            action(stopped.is_set)
+    assert reads and all(0 < requested <= 1024 * 1024 for requested, _ in reads)
+    assert 0 < sum(length for _, length in reads) < len(original_bytes)
+    assert not destination.exists()
+    assert not list(tmp_path.glob('.carr-library-backup-*'))
+    assert not list(tmp_path.glob('.carr-library-restore-*'))
+    assert original.read_bytes() == selected.read_bytes() == original_bytes
+    assert original.stat().st_nlink == selected.stat().st_nlink == 1

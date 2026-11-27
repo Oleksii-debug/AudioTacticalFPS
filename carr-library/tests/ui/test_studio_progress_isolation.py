@@ -12,8 +12,12 @@ from unittest.mock import Mock
 
 import pytest
 
+import carr_library
+
 from carr_library.audio.models import AudioCancelled
 from carr_library.ui.operation_progress import ProgressTracker, operation_outcome
+
+UI_ROOT = Path(carr_library.__file__).resolve().parent / 'ui'
 
 
 class Progress:
@@ -49,7 +53,7 @@ class Progress:
 
 @pytest.fixture
 def studio():
-    source = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/studio_dialog.py'
+    source = UI_ROOT / 'studio_dialog.py'
     parsed = ast.parse(source.read_text(encoding='utf-8'))
     window = next(node for node in parsed.body if isinstance(node, ast.FunctionDef) and node.name == 'show_studio')
     run = next(node for node in window.body if isinstance(node, ast.FunctionDef) and node.name == 'run')
@@ -210,7 +214,7 @@ def test_start_failure_never_finalizes_callback_started_new_operation(studio, mo
 
 def test_studio_close_retains_parent_observer_when_device_and_local_feedback_both_fail():
     """A local view cannot hide uncertain native audio from the surviving parent."""
-    source = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/studio_dialog.py'
+    source = UI_ROOT / 'studio_dialog.py'
     parsed = ast.parse(source.read_text(encoding='utf-8'))
     window = next(node for node in parsed.body if isinstance(node, ast.FunctionDef) and node.name == 'show_studio')
     close = next(node for node in window.body if isinstance(node, ast.FunctionDef) and node.name == 'close')
@@ -221,7 +225,7 @@ def make(autosave, cancel, service, timer, dialog, progress, parent_progress, re
     return close
 ''')
     factory.body[0].body.insert(-1, close)
-    environment = {'wx': SimpleNamespace(ID_CLOSE=321)}
+    environment = {'__package__': 'carr_library.ui', 'wx': SimpleNamespace(ID_CLOSE=321)}
     exec(compile(ast.fix_missing_locations(factory), str(source), 'exec'), environment)
     autosave, service, timer, dialog, progress, parent_progress, executor = [Mock() for _ in range(7)]
     cancel, reports = threading.Event(), []
@@ -238,5 +242,6 @@ def make(autosave, cancel, service, timer, dialog, progress, parent_progress, re
     assert 'native device did not confirm silence' in diagnostic
     assert 'local progress view is detached' in diagnostic
     progress.close.assert_called_once_with()
-    executor.shutdown.assert_called_once_with(wait=False, cancel_futures=True)
+    executor.submit.assert_called_once_with(service.close)
+    executor.shutdown.assert_called_once_with(wait=False, cancel_futures=False)
     dialog.EndModal.assert_called_once_with(321)

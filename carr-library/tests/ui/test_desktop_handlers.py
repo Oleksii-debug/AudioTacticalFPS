@@ -28,10 +28,22 @@ class BaseFrame:
     def refresh_scopes(self,event=None):
         pass
 
+    def __bool__(self):
+        return not getattr(self, 'native_destroyed', False)
+
+    def Destroy(self):
+        self.native_destroy_observation = (
+            self._closing, self.cancel_event.is_set(),
+            getattr(self, '_draft_save_timer', None).IsRunning()
+                if getattr(self, '_draft_save_timer', None) is not None else None)
+        self.native_destroyed = True
+        return True
+
 
 @pytest.fixture
 def classes():
-    source = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/desktop_app.py'
+    import carr_library
+    source = Path(carr_library.__file__).resolve().parent / 'ui/desktop_app.py'
     parsed = ast.parse(source.read_text(encoding='utf-8'))
     nodes = [node for node in parsed.body if isinstance(node,(ast.ClassDef,ast.FunctionDef)) and
              node.name in {'DesktopFrame','DesktopSearchPanel','format_topic_results'}]
@@ -132,6 +144,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     for module, installer in [('speech_dialog', 'install_speech_actions'),
                               ('language_matrix', 'install_language_actions'),
                               ('translation_dialog', 'install_translation_actions'),
+                              ('transcription_dialog', 'install_transcription_actions'),
                               ('studio_dialog', 'install_studio_actions'),
                               ('assistant_dialog', 'install_assistant_actions'),
                               ('document_conversion', 'install_conversion_actions'),
@@ -801,3 +814,49 @@ def test_save_presentation_equivalent_topic_labels(classes, names, index):
         'a', f'topic-{index}', 'hit', 'revision',
         authorized_topic=None, cancelled=p.frame.cancel_event.is_set)
     chooser.return_value.Destroy.assert_called_once()
+
+
+def _retained_draft_timer():
+    state = {'running': True}
+    return SimpleNamespace(IsRunning=lambda: state['running'],
+        Stop=lambda: state.update(running=False))
+
+
+@pytest.mark.parametrize('forced', [False, True])
+def test_accepted_close_stops_retained_autosave_before_native_deletion(classes, forced):
+    f = frame(classes)
+    f._draft_save_timer = timer = _retained_draft_timer()
+    f.working = forced
+    event = close_event(not forced)
+    f.on_close(event)
+    assert event.skipped and not event.veto
+    assert not timer.IsRunning() and f._closing and f.cancel_event.is_set()
+    f.executor.shutdown.assert_called_once_with(wait=False, cancel_futures=True)
+
+
+@pytest.mark.parametrize('reason', ['running', 'unsaved_note'])
+def test_vetoed_close_preserves_the_live_research_draft_timer(classes, monkeypatch, reason):
+    f = frame(classes)
+    f._draft_save_timer = timer = _retained_draft_timer()
+    if reason == 'running':
+        f.working = True
+    else:
+        monkeypatch.setattr(BaseFrame, 'on_close', lambda self, event: event.Veto())
+    event = close_event(True)
+    f.on_close(event)
+    assert event.veto and timer.IsRunning()
+    assert not f._closing and not f.cancel_event.is_set()
+    f.executor.shutdown.assert_not_called()
+
+
+@pytest.mark.parametrize('with_timer', [False, True])
+def test_direct_destroy_cleans_its_owner_before_native_teardown(classes, with_timer):
+    f = frame(classes)
+    if with_timer:
+        f._draft_save_timer = timer = _retained_draft_timer()
+    assert f.Destroy() is True
+    assert f.native_destroy_observation == (True, True, False if with_timer else None)
+    f.executor.shutdown.assert_called_once_with(wait=False, cancel_futures=True)
+    assert f.Destroy() is False
+    if with_timer:
+        assert not timer.IsRunning()

@@ -21,6 +21,7 @@ import time
 from uuid import uuid4
 
 from .pipeline import Ingest, canonical
+from .retained_assets import SUFFIXES as MIME_SUFFIXES
 
 MAX_REQUEST = 64_000
 MAX_REPLY = 64_000
@@ -99,7 +100,7 @@ def _request_identity(record):
         'metadata', 'config', 'expected_manifest')}
 
 
-def _publication_state(db, record, revision):
+def _publication_state(db, record, revision, *, budget=None):
     """Inspect this exact sealed revision and registration in the caller's snapshot.
 
     The digest includes original source identity, requested catalog metadata and
@@ -111,6 +112,12 @@ def _publication_state(db, record, revision):
 
     workspace, metadata = record['workspace'], record['metadata']
     LibraryApp._authorize(db, workspace)
+    size = db.execute('SELECT length(CAST(config AS BLOB)) FROM revision WHERE id=?',
+                      (revision,)).fetchone()
+    if size is None:
+        return None
+    if not 0 < size[0] <= 4 * 1024 * 1024:
+        raise ValueError('Import publication configuration exceeds its limit.')
     row = db.execute('SELECT workspace,edition,asset,config FROM revision WHERE id=?',
                      (revision,)).fetchone()
     if row is None:
@@ -135,6 +142,28 @@ def _publication_state(db, record, revision):
             or (record.get('expected_manifest') is not None
                 and record['expected_manifest'] != manifest)):
         raise ValueError('Import publication metadata changed.')
+    settings = json.loads(row[3])
+    if (manifest['mime'] not in MIME_SUFFIXES or type(manifest['size']) is not int
+            or not 0 < manifest['size'] <= 64 * 1024 * 1024
+            or not isinstance(settings, dict) or canonical(settings) != row[3]
+            or sha256(canonical([workspace, metadata['edition_id'], row[2], row[3]])
+                      .encode('utf-8')).hexdigest() != revision
+            or (record.get('job') is not None and record['job'] != revision)):
+        raise ValueError('Import publication extraction identity changed.')
+    if manifest['mime'] == 'application/pdf':
+        if (record.get('job') != revision or settings.get('adapter') != 'page_ocr-v1'
+                or settings.get('kind') != 'physical_page'
+                or settings.get('config') != record['config']):
+            raise ValueError('Import publication PDF configuration changed.')
+    else:
+        adapter = ('strict-utf8-v1' if manifest['mime'] == 'text/plain' else
+                   'python-docx-ordered-v1' if manifest['mime'].endswith('wordprocessingml.document')
+                   else 'epub-spine-v1')
+        if (settings.get('adapter') != adapter or settings.get('kind') != 'logical_segment'
+                or (manifest['mime'] != 'text/plain' and (
+                    not isinstance(settings.get('provenance'), dict)
+                    or settings['provenance'].get('asset_sha256') != row[2]))):
+            raise ValueError('Import publication source configuration changed.')
     authors = tuple(r[0] for r in db.execute(
         'SELECT name FROM catalog_author WHERE workspace=? AND work=? ORDER BY position',
         (workspace, metadata['work_id'])))
@@ -156,17 +185,27 @@ def _publication_state(db, record, revision):
         raise ValueError('Import publication source metadata changed.')
     digest = sha256(canonical([_request_identity(record), list(row), list(catalog),
                                list(source), authors]).encode('utf-8'))
+    limit = 10000 if manifest['mime'].endswith('wordprocessingml.document') else 1000
+    shape = db.execute('SELECT count(*),coalesce(sum(length(CAST(raw AS BLOB))),0) '
+                       'FROM page WHERE revision=?', (revision,)).fetchone()
+    if not 1 <= shape[0] <= limit or not 0 < shape[1] <= 64 * 1024 * 1024:
+        raise ValueError('Import publication exceeds its source capacity.')
     completed = 0
-    for page in db.execute('SELECT ordinal,physical,printed,verified,raw,digest '
-                           'FROM page WHERE revision=? ORDER BY ordinal', (revision,)):
+    for page in db.execute('SELECT p.ordinal,p.physical,p.printed,p.verified,p.raw,p.digest,i.raw '
+                           'FROM page p LEFT JOIN indexed i ON i.id=p.id '
+                           'WHERE p.revision=? ORDER BY p.ordinal', (revision,)):
+        if budget is not None:
+            budget.check()
         completed += 1
         # Extraction already enforces its format-specific capacity. This
         # streaming verifier must not impose the PDF page limit on DOCX records.
-        if (page[0] != completed
+        if (page[0] != completed or page[1] != (completed if manifest['mime'] == 'application/pdf' else None)
+                or page[2] is not None or page[3] != 0 or not isinstance(page[4], str)
+                or '\x00' in page[4] or page[6] != page[4]
                 or sha256(page[4].encode('utf-8')).hexdigest() != page[5]):
             raise ValueError('Import publication page integrity changed.')
         digest.update(b'\n')
-        digest.update(canonical(list(page)).encode('utf-8'))
+        digest.update(canonical(list(page[:6])).encode('utf-8'))
     if completed == 0:
         raise ValueError('Import publication contains no source pages.')
     return dict(sha256=digest.hexdigest(), completed=completed, manifest=manifest)
@@ -197,9 +236,12 @@ def record_publication_candidate(root, request_id, db, workspace, revision):
         attempt=attempt, revision=revision, **state))
 
 
-def _reconcile_publication(root, request_id, attempt):
+def _reconcile_publication(root, request_id, attempt, *, library=None,
+                           initial=None, database_identity=None):
     """Recover only a fresh publication from this stopped child, without replay."""
     record = load_request(root, request_id)
+    if initial is not None and _request_identity(record) != _request_identity(initial):
+        raise ValueError('Import request identity changed while its worker was running.')
     candidate = record.get('publication_candidate')
     if candidate is None:
         return None
@@ -213,11 +255,18 @@ def _reconcile_publication(root, request_id, attempt):
             or type(candidate.get('completed')) is not int or candidate['completed'] < 1
             or not isinstance(candidate.get('manifest'), dict)):
         raise ValueError('Import publication candidate changed.')
-    from ..application import LibraryApp
+    from ..application import LibraryApp, _SearchBudget
     from ..citations.anchors import Identity
 
-    app = LibraryApp(root)
-    with app.read(record['workspace']) as db:
+    app = LibraryApp(root) if library is None else library
+    if not isinstance(app, LibraryApp) or app.root != Path(root).resolve():
+        raise ValueError('Import supervisor library identity changed.')
+    app._check_database_paths()
+    current_identity = app.database.stat()
+    if database_identity is not None and not os.path.samestat(database_identity, current_identity):
+        raise ValueError('Import publication database identity changed.')
+    budget = _SearchBudget(5, lambda: False)
+    with app.read(record['workspace'], budget=budget) as db:
         receipt = db.execute('SELECT request_id,attempt,sha256 FROM import_publication '
                              'WHERE revision=?', (candidate['revision'],)).fetchone()
         if receipt is None or tuple(receipt[:2]) != (request_id, attempt):
@@ -226,19 +275,40 @@ def _reconcile_publication(root, request_id, attempt):
             return None
         if receipt['sha256'] != candidate['sha256']:
             raise ValueError('Import publication receipt differs from its candidate.')
-        state = _publication_state(db, record, candidate['revision'])
+        state = _publication_state(db, record, candidate['revision'], budget=budget)
         if state is None:  # The child died before its SQLite transaction committed.
             return None
         if state != {key: candidate[key] for key in ('sha256', 'completed', 'manifest')}:
             raise ValueError('Committed import differs from its publication candidate.')
         identity = Identity(record['workspace'], record['metadata']['edition_id'],
                             state['manifest']['sha256'], candidate['revision'])
-        app._retained_source(db, record['workspace'], identity)
+        original, _, _ = app._retained_source(db, record['workspace'], identity)
+        budget.check()
+        if state['manifest']['mime'] == 'text/plain':
+            from ..citations.text_attestation import CONFIG, MAX_SEGMENTS
+            config = db.execute('SELECT config FROM revision WHERE id=?',
+                                (candidate['revision'],)).fetchone()[0]
+            raw_source = original.read_bytes()
+            text = raw_source.decode('utf-8-sig', errors='strict')
+            if (config != CONFIG or sha256(raw_source).hexdigest() != identity.asset_sha256
+                    or not text.strip() or re.search(r'[\x00-\x08\x0b\x0e-\x1f]', text)):
+                raise ValueError('Import publication text source changed.')
+            expected = text.split('\f', MAX_SEGMENTS)
+            if len(expected) != state['completed']:
+                raise ValueError('Import publication text segments changed.')
+            for page, text in zip(db.execute('SELECT raw FROM page WHERE revision=? ORDER BY ordinal',
+                                             (candidate['revision'],)), expected):
+                budget.check()
+                if page[0] != text:
+                    raise ValueError('Import publication text differs from original bytes.')
+        budget.check()
+        if not os.path.samestat(current_identity, app.database.stat()):
+            raise ValueError('Import publication database identity changed.')
     return dict(state='complete', id=candidate['revision'], workspace=record['workspace'],
                 edition=record['metadata']['edition_id'], asset=state['manifest']['sha256'],
                 completed=state['completed'], total=state['completed'], error=None,
                 verified=state['manifest']['mime'] == 'text/plain',
-                publication_recovered=True,
+                publication_recovered=True, recovered_publication=True,
                 message='Import completed before the worker stopped; the committed source was verified.')
 
 
@@ -508,18 +578,18 @@ def prepare_request(root, workspace, source, metadata, config, *, request_id=Non
 
 
 def run_request(root, workspace, source, metadata, config, *, cancelled=lambda: False,
-                timeout=120.0, request_id=None):
+                timeout=120.0, request_id=None, _library=None):
     """Execute a new or resumed PDF/DOCX/EPUB request without parsing in the caller."""
     new = request_id is None
     request_id = request_id or uuid4().hex
     with request_lock(root, request_id):
         return _run_request(root, workspace, source, metadata, config,
                             cancelled=cancelled, timeout=timeout,
-                            request_id=request_id, new=new)
+                            request_id=request_id, new=new, library=_library)
 
 
 def _run_request(root, workspace, source, metadata, config, *, cancelled,
-                 timeout, request_id, new):
+                 timeout, request_id, new, library=None):
     if (not callable(cancelled) or type(timeout) not in (int, float)
             or not math.isfinite(timeout) or not 0.1 <= timeout <= 600):
         raise ValueError('Import timeout must be between 0.1 and 600 seconds.')
@@ -532,25 +602,36 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
             raise ValueError('Import request belongs to another library.')
         if record.get('state') == 'complete' and isinstance(record.get('result'), dict):
             return dict(record['result'], request_id=request_id, isolated=True)
+    from ..application import LibraryApp, _SearchBudget
+    app = LibraryApp(root) if library is None else library
+    if not isinstance(app, LibraryApp) or app.root != Path(root).resolve():
+        raise ValueError('Import supervisor library identity changed.')
+    app._check_database_paths()
+    database_identity = app.database.stat()
+    with app.read(workspace, budget=_SearchBudget(5, lambda: False)):
+        pass
+    if not os.path.samestat(database_identity, app.database.stat()):
+        raise ValueError('The library database changed before worker execution.')
     attempt = uuid4().hex
     record_progress(root, request_id, state='running', attempt=attempt, publication_candidate=None)
     result = _invoke({'data_dir': str(Path(root).resolve()), 'request_id': request_id,
                       'timeout': timeout}, timeout=timeout, cancelled=cancelled)
     if result.get('state') in ('cancelled', 'timed_out', 'failed'):
         try:
-            committed = _reconcile_publication(root, request_id, attempt)
+            committed = _reconcile_publication(root, request_id, attempt, library=app,
+                initial=record, database_identity=database_identity)
         except (KeyError, TypeError, ValueError, OSError, sqlite3.Error):
             result = dict(state='failed', message=
                           'The stopped import could not verify its publication. Review or resume this request.')
         else:
             if committed is not None:
-                result = committed
+                result = dict(committed, worker_state=result['state'])
     result = dict(result, request_id=request_id, isolated=True)
     record_progress(root, request_id, state=result.get('state', 'failed'), result=result)
     return result
 
 
-def _invoke(message, *, timeout, cancelled=lambda: False):
+def _invoke(message, *, timeout, cancelled=lambda: False, on_started=None):
     """One process supervisor for import and render operations."""
     payload = canonical(message).encode('utf-8')
     if len(payload) > MAX_REQUEST:
@@ -579,6 +660,8 @@ def _invoke(message, *, timeout, cancelled=lambda: False):
                                            stdin=input_stream, stdout=output, stderr=errors,
                                            env=dict(os.environ, PYTHONUTF8='1', PYTHONIOENCODING='utf-8'),
                                            **options)
+                if on_started is not None:
+                    on_started()
                 deadline = time.monotonic() + timeout
                 while process.poll() is None:
                     if cancelled():

@@ -80,7 +80,7 @@ def prepare(package, output):
                     source_lock_sha256=SOURCE_LOCK_SHA256,
                     files={p.relative_to(output).as_posix(): digest(p)
                            for p in output.rglob('*') if p.is_file()})
-    (output / MANIFEST).write_text(json.dumps(manifest, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+    (output / MANIFEST).write_text(json.dumps(manifest, indent=2, sort_keys=True) + '\n', encoding='utf-8', newline='\n')
     return verify_native_runtime(output)
 
 

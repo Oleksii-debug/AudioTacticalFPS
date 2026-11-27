@@ -13,7 +13,7 @@ import shutil
 from tempfile import TemporaryDirectory
 
 from build_windows_bundle import (read_lock, wheel_metadata, verify_application_source,
-                                  verify_dependency_closure, sha256)
+                                  verify_dependency_closure, sha256, capture_native_launcher)
 from install_windows import verify
 from prepare_windows_audio import load_lock, regular, local, _pe64
 from create_delivery import _read_manifest, _manifest
@@ -22,7 +22,8 @@ HERE = Path(__file__).resolve().parent
 
 
 def refresh(source, wheel, output, source_commit, *, parent_manifest_sha256,
-            audio=None, citations=None, extra_wheelhouse=None):
+            audio=None, citations=None, extra_wheelhouse=None, native_launcher=None,
+            native_launcher_proof=None, native_launcher_sha256=None):
     source, wheel, output = local(source, exists=True), local(wheel, exists=True), local(output)
     if output.exists() or output.is_relative_to(source) or source.is_relative_to(output):
         raise ValueError('Choose a new bundle directory outside the previous one.')
@@ -35,6 +36,21 @@ def refresh(source, wheel, output, source_commit, *, parent_manifest_sha256,
     previous = _manifest(raw, json.loads(raw).get('source_commit'))
     verify(source, manifest_bytes=raw)
     identity = verify_application_source(wheel, source_commit)
+    native_options = (native_launcher, native_launcher_proof, native_launcher_sha256)
+    reuse_native = not any(value is not None for value in native_options) and previous.get('bundled_native_launcher') is True
+    if reuse_native:
+        native_options = (source / 'ResearchLibrary.exe', source / 'native-launcher-build.json',
+                          previous['native_launcher_sha256'])
+    native_evidence = capture_native_launcher(*native_options, source_commit,
+                                             bundled_python=previous.get('bundled_python') is True)
+    if native_evidence is not None:
+        if native_evidence['report']['source_tree'] != identity['source_tree']:
+            raise ValueError('Native launcher and application source identities disagree.')
+        if reuse_native:
+            for name, key in (('ResearchLibrary.exe', 'executable_bytes'),
+                              ('native-launcher-build.json', 'proof_bytes')):
+                if hashlib.sha256(native_evidence[key]).hexdigest() != previous['files'][name]:
+                    raise ValueError('The parent native launcher changed during refresh.')
     lock = read_lock(HERE / ('windows-semantic-cp311.lock' if previous.get('bundled_model') else 'windows-cp311.lock'))
     dependencies = {}
     selected = {}
@@ -101,6 +117,8 @@ def refresh(source, wheel, output, source_commit, *, parent_manifest_sha256,
         for name, expected in previous['files'].items():
             if name.startswith(('audio/', 'citation-runtime/')):
                 continue
+            if name in ('ResearchLibrary.exe', 'native-launcher-build.json'):
+                continue  # Replaced only by the captured, source-verified snapshots.
             if name.startswith('wheelhouse/'):
                 continue
             origin = local(source / name, exists=True)
@@ -123,7 +141,7 @@ def refresh(source, wheel, output, source_commit, *, parent_manifest_sha256,
         for path in sorted((stage / 'wheelhouse').iterdir()):
             name, version, _ = wheel_metadata(path)
             requirements.append(f'{name}=={version} --hash=sha256:{sha256(path)}')
-        (stage / 'install.lock').write_text('\n'.join(requirements) + '\n', encoding='utf-8')
+        (stage / 'install.lock').write_text('\n'.join(requirements) + '\n', encoding='utf-8', newline='\n')
         for name in ('install_windows.py', 'Install.cmd', 'ResearchLibrary.cmd', 'CheckInstallation.cmd'):
             shutil.copyfile(HERE / name, stage / name)
         shutil.copyfile(HERE.parent / 'docs' / 'RUNNING.md', stage / 'README.txt')
@@ -146,14 +164,23 @@ def refresh(source, wheel, output, source_commit, *, parent_manifest_sha256,
             if files:
                 lock_name = 'windows-audio.lock.json' if directory == 'audio' else 'windows-citations.lock.json'
                 shutil.copyfile(HERE / lock_name, stage / directory / 'provenance.json')
-        (stage / 'application-source.json').write_text(json.dumps(identity, indent=2) + '\n', encoding='utf-8')
-        manifest = {key: value for key, value in previous.items() if key not in ('files', 'source_commit')}
-        manifest.update(source_commit=source_commit, bundled_audio=bool(audio_files),
+        if native_evidence is not None:
+            (stage / 'ResearchLibrary.exe').write_bytes(native_evidence['executable_bytes'])
+            (stage / 'native-launcher-build.json').write_bytes(native_evidence['proof_bytes'])
+        (stage / 'application-source.json').write_text(json.dumps(identity, indent=2) + '\n', encoding='utf-8', newline='\n')
+        refreshed = {'files', 'source_commit', 'source_tree', 'bundled_native_launcher',
+                     'native_launcher_sha256', 'native_launcher_source_commit'}
+        manifest = {key: value for key, value in previous.items() if key not in refreshed}
+        manifest.update(source_commit=source_commit, source_tree=identity['source_tree'], bundled_audio=bool(audio_files),
                         bundled_citation_runtime=bool(node_files), use_scope='private-personal-installation',
                         parent_source_commit=previous['source_commit'],
                         parent_manifest_sha256=parent_manifest_sha256,
                         files={p.relative_to(stage).as_posix(): sha256(p) for p in sorted(stage.rglob('*')) if p.is_file()})
-        (stage / 'bundle-manifest.json').write_text(json.dumps(manifest, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+        if native_evidence is not None:
+            manifest.update(bundled_native_launcher=True,
+                            native_launcher_sha256=native_evidence['report']['launcher_sha256'],
+                            native_launcher_source_commit=source_commit)
+        (stage / 'bundle-manifest.json').write_text(json.dumps(manifest, indent=2, sort_keys=True) + '\n', encoding='utf-8', newline='\n')
         verify(stage)
         output.mkdir(mode=0o700)
         for path in stage.iterdir():
@@ -169,11 +196,17 @@ def main():
     parser.add_argument('--audio')
     parser.add_argument('--citations')
     parser.add_argument('--extra-wheelhouse')
+    parser.add_argument('--native-launcher')
+    parser.add_argument('--native-launcher-proof')
+    parser.add_argument('--native-launcher-sha256')
     args = parser.parse_args()
     print(json.dumps(refresh(args.source, args.wheel, args.output, args.source_commit,
                              parent_manifest_sha256=args.parent_manifest_sha256,
                              audio=args.audio, citations=args.citations,
-                             extra_wheelhouse=args.extra_wheelhouse)))
+                             extra_wheelhouse=args.extra_wheelhouse,
+                             native_launcher=args.native_launcher,
+                             native_launcher_proof=args.native_launcher_proof,
+                             native_launcher_sha256=args.native_launcher_sha256)))
 
 
 if __name__ == '__main__':

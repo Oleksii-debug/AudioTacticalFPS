@@ -19,7 +19,7 @@ implemented functionality.
 | Read retained books | Full-source reader, EPUB sections, named bookmarks and last-page resume | Source identities and unverified text remain explicit; bookmark state has a separate export |
 | Inspect the source catalog | Completeness reports, retained-file duplicate groups, bibliography and review-matrix exports | Reports do not infer source verification or silently merge records |
 | Find prior research | Search quotations and personal notes across topics, with exact tags and explicit archive scope | Source-backed quotations remain separately authenticated; unsaved drafts are protected |
-| Upgrade and recover | Exact V3-to-V4 migration and V3/V4 backup validation | Transactional migration; schema identity; archived data retained |
+| Upgrade and recover | Exact V3/V4-to-V5 migration and V3/V4/V5 backup validation | Transactional migration; schema identity; archived data retained |
 
 These are implemented using the existing SQLite, native wx controls and pinned
 RIS components. No additional required runtime dependency or hosted service is

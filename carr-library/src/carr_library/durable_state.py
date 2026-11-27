@@ -62,12 +62,64 @@ def _unique(pairs):
     return value
 
 
+def _open_json_file(path):
+    """Read one snapshot with delete sharing for the atomic state publisher."""
+    if os.name != 'nt':
+        return path.open('rb')
+    import ctypes
+    from ctypes import wintypes
+    import msvcrt
+
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    create = kernel.CreateFileW
+    create.argtypes = (wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                       ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE)
+    create.restype = wintypes.HANDLE
+    close = kernel.CloseHandle
+    close.argtypes, close.restype = (wintypes.HANDLE,), wintypes.BOOL
+    # GENERIC_READ; FILE_SHARE_READ | WRITE | DELETE; OPEN_EXISTING;
+    # FILE_FLAG_OPEN_REPARSE_POINT. No delete-on-close or write access is given.
+    handle = create(str(path), 0x80000000, 0x7, None, 3, 0x00200000, None)
+    if handle == ctypes.c_void_p(-1).value:
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        descriptor = msvcrt.open_osfhandle(handle, os.O_RDONLY | os.O_BINARY)
+    except BaseException:
+        close(handle)
+        raise
+    try:
+        return os.fdopen(descriptor, 'rb')
+    except BaseException:
+        os.close(descriptor)
+        raise
+
+
 def read_json(path):
-    path = local_path(path, exists=True)
-    if regular(path).st_size > MAX_JSON_BYTES:
-        raise ValueError('State exceeds its configured JSON budget.')
-    with path.open('rb') as stream:
-        raw = stream.read(MAX_JSON_BYTES + 1)
+    # An atomic writer can win between lstat and open. Retry that race only;
+    # linked paths and invalid opened objects still fail before reading bytes.
+    for _ in range(8):
+        path = local_path(path, exists=True)
+        before = regular(path)
+        if before.st_size > MAX_JSON_BYTES:
+            raise ValueError('State exceeds its configured JSON budget.')
+        with _open_json_file(path) as stream:
+            opened = os.fstat(stream.fileno())
+            # A valid snapshot can already have zero links after replacement;
+            # multiple links or reparse points are never admitted.
+            if (not stat.S_ISREG(opened.st_mode)
+                    or getattr(opened, 'st_file_attributes', 0) & 0x400
+                    or opened.st_nlink > 1):
+                raise ValueError('State must use regular local files, without links.')
+            if (opened.st_dev, opened.st_ino) != (before.st_dev, before.st_ino):
+                continue
+            # Recheck ancestors after opening, before consuming the bound handle.
+            local_path(path, exists=True)
+            if opened.st_size > MAX_JSON_BYTES:
+                raise ValueError('State exceeds its configured JSON budget.')
+            raw = stream.read(MAX_JSON_BYTES + 1)
+        break
+    else:
+        raise ValueError('State changed repeatedly while opening; retry the operation.')
     if len(raw) > MAX_JSON_BYTES:
         raise ValueError('State grew beyond its JSON budget.')
     return json.loads(raw.decode('utf-8'), object_pairs_hook=_unique,
@@ -81,6 +133,59 @@ def sync_directory(path):
             os.fsync(descriptor)
         finally:
             os.close(descriptor)
+
+
+def _replace_file(source, destination):
+    """Atomically publish a new file while existing readers retain their snapshot."""
+    try:
+        return os.replace(source, destination)
+    except PermissionError as error:
+        if os.name != 'nt' or getattr(error, 'winerror', None) not in (5, 32, 33):
+            raise
+    import ctypes
+    from ctypes import wintypes
+
+    class RenameInfo(ctypes.Structure):
+        _fields_ = [('Flags', wintypes.DWORD), ('RootDirectory', wintypes.HANDLE),
+                    ('FileNameLength', wintypes.DWORD), ('FileName', wintypes.WCHAR * 1)]
+
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    create = kernel.CreateFileW
+    create.argtypes = (wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                       ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE)
+    create.restype = wintypes.HANDLE
+    rename = kernel.SetFileInformationByHandle
+    rename.argtypes = (wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD)
+    rename.restype = wintypes.BOOL
+    close = kernel.CloseHandle
+    close.argtypes, close.restype = (wintypes.HANDLE,), wintypes.BOOL
+
+    # MoveFileEx (used by os.replace) cannot replace an open destination even
+    # when it shares delete access. FileRenameInfoEx with POSIX semantics keeps
+    # existing handles on the old file and atomically publishes the new name.
+    # Ordinary DELETE permission still applies; no access or readonly bypass.
+    filename = str(destination).encode('utf-16-le')
+    # Win32 may convert the DOS filename before forwarding the counted name to
+    # the filesystem. Keep a complete zero WCHAR after the encoded name; the
+    # byte count itself excludes that terminator. Never expose adjacent memory
+    # as part of the target path during this conversion.
+    size = max(ctypes.sizeof(RenameInfo),
+               RenameInfo.FileName.offset + len(filename) + ctypes.sizeof(wintypes.WCHAR))
+    buffer = ctypes.create_string_buffer(size)
+    info = ctypes.cast(buffer, ctypes.POINTER(RenameInfo)).contents
+    info.Flags = 0x1 | 0x2  # REPLACE_IF_EXISTS | POSIX_SEMANTICS
+    info.RootDirectory = None
+    info.FileNameLength = len(filename)
+    ctypes.memmove(ctypes.addressof(buffer) + RenameInfo.FileName.offset, filename, len(filename))
+    # DELETE; FILE_SHARE_READ | WRITE | DELETE; OPEN_EXISTING; OPEN_REPARSE_POINT.
+    handle = create(str(source), 0x00010000, 0x7, None, 3, 0x00200000, None)
+    if handle == ctypes.c_void_p(-1).value:
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        if not rename(handle, 22, buffer, size):  # FileRenameInfoEx
+            raise ctypes.WinError(ctypes.get_last_error())
+    finally:
+        close(handle)
 
 
 def atomic_bytes(path, raw, *, replace=False):
@@ -99,14 +204,31 @@ def atomic_bytes(path, raw, *, replace=False):
             stream.flush()
             os.fsync(stream.fileno())
         if replace:
-            os.replace(temporary, path)
+            _replace_file(temporary, path)
+        elif os.name == 'nt':
+            # Windows rename refuses an existing destination and leaves no
+            # second hard link if the process exits immediately after success.
+            # POSIX rename can overwrite, so it must not use this branch.
+            os.rename(temporary, path)
+            temporary = None
         else:
-            # link is the portable same-filesystem no-replace publication primitive.
-            os.link(temporary, path)
-            temporary.unlink()
+            # The portable create-only fallback is atomic against a competing
+            # destination. Process death between link and unlink can still leave
+            # a residual link; this branch does not claim crash recovery.
+            os.link(temporary, path, follow_symlinks=False)
+            published_stage, temporary = temporary, None
+            try:
+                published_stage.unlink()
+            except OSError:
+                try:
+                    published_stage.unlink(missing_ok=True)
+                except OSError as exc:
+                    raise OSError('File was published, but its temporary link '
+                                  'could not be removed.') from exc
         sync_directory(path.parent)
     finally:
-        temporary.unlink(missing_ok=True)
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
     return path
 
 

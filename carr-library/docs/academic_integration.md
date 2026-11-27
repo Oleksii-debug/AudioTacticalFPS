@@ -141,6 +141,27 @@ Errors expose short operational explanations rather than raw processor traces
 or source passages. Returned HTML retains only a small formatting allowlist;
 scripts, external resources, event attributes and links are not published.
 
+## Reviewed bibliography import and safe desktop export
+
+The existing **Academic library** window imports `.ris`, `.bib` and CSL `.json`
+files through the same review dialog. A BibTeX file is parsed locally using the
+pinned upstream packages described in [UPSTREAM_BIBTEX.md](UPSTREAM_BIBTEX.md).
+Review warnings, check the desired entries, then choose **Import selected**.
+The original citation keys and unsupported fields remain in private reference
+notes; attached files and URLs are never opened by bibliography import.
+The existing **Format bibliography and citations** command then formats the
+selected library's references through this same CSL processor.
+
+Desktop bibliography, outline, topic, catalog, comparison, reading-state,
+import-report, provider-profile and studio-project exports capture their
+selected destination before serialization, rendering or
+queue submission. An existing file receives an explicit replacement question
+with **No** as the default. If another operation changes that file while the
+question is open or the document is rendering, saving stops and keeps the newer
+bytes. Select the destination again after reviewing the changed file. A newly
+created competing destination is also preserved. The canonical citation DOCX
+export and regeneration continue to require a new filename.
+
 ## Editable Word export and regeneration metadata
 
 ```python
@@ -183,9 +204,60 @@ follow external relationships.
 
 This is an offline DOCX integration. It does **not** claim an installed native
 Word add-in, live citation fields, a Zotero bridge, Word automation, or automatic
-bibliography updates inside Word. Later regeneration can read the snapshot,
-apply explicit edits and call the formatting/export APIs to create a new file.
+bibliography updates inside Word. The regeneration helper below reads the
+snapshot, applies explicit edits and reuses the formatting/export APIs to create
+a new file.
 Word installation, Office login and paid services are not required to export.
+
+### Regenerating an existing CARR citation document
+
+The public `regenerate_citation_docx` helper reads the bounded, hash-checked
+embedded snapshot, reconstructs typed citation requests, runs the same pinned
+local processor and writes a new DOCX through the existing atomic exporter:
+
+```python
+from carr_library.academic_integration import regenerate_citation_docx
+
+regenerate_citation_docx(
+    chosen_source_folder / "research-citations.docx",
+    chosen_output_folder / "research-citations-regenerated.docx",
+    cancelled=lambda: False,
+)
+```
+
+The default retains the saved document title, exact paragraph text, stable
+reference and cluster IDs, citation order, note indices and prior locator-check
+records. All citation strings and the bibliography are actually reformatted;
+cached rendered strings are not trusted as new output. Optional `references`,
+typed `citations` and `paragraphs` supply explicit edits using the same contracts
+as `render_citations` and `export_citation_docx`. Inserted citations need new IDs;
+move existing IDs together with their paragraph references and supply the full
+ordered sequence. Native endnotes still require consecutive numbers starting at
+one; the helper never silently renumbers a supplied sequence.
+
+Replacing a reference's bibliographic metadata invalidates automatic reuse of
+that reference's checked locators. Supply explicit newly reviewed
+`CitationRequest` values, or remove the locator. A source revision can change
+without changing CSL metadata: callers must declare such changes through
+`changed_reference_ids=("reference-17",)` and freshly check its locators. The
+standalone helper does not inspect a library database or prove that source pages
+remain current. A retained check is a historical caller assertion, not a new
+independent source verification.
+
+Regeneration requires the original processor identity and style bytes. If either
+identity differs, it stops rather than assigning the old provenance to new rules.
+A custom style needs an explicitly supplied `style_path` with the original hash;
+stored source URLs and private paths are never followed. For a deliberate style
+or processor migration, review the data and use the explicit formatting API.
+The existing archive/XML bounds, canonical metadata/locator guards, unchanged
+source checks, cancellation and no-overwrite publication remain in effect.
+
+This helper regenerates the **embedded paragraph snapshot**. It does not read or
+merge edits made to visible text in Word, preserve arbitrary Word layout edits,
+install an add-in or update fields in a running Word application. Pass reviewed
+paragraph edits explicitly. The original DOCX is retained. Snapshot checksums
+detect corruption, not an attacker who rewrites both data and its checksum;
+structural validation does not authenticate the source assertions.
 
 ## DOI metadata preview
 
@@ -203,6 +275,18 @@ AGPL-3.0-or-later**. This distribution selects CPAL-1.0. Preserve its copyright,
 license, upstream source identity and user-visible attribution. The full CPAL
 text and the upstream alternative AGPL text are in `vendor/`; do not relabel
 the vendored processor as MIT or as application-owned code.
+
+Every native desktop launch displays the canonical citation credit above the
+library/topic selector. It remains visible while scopes and operation status
+change, has an accessible name beginning **Citation processor attribution**
+followed by the complete credit, and does
+not open a dialog, move keyboard focus or contact a website. Its complete text
+comes from the installed [`UPSTREAM.json`](../src/carr_library/academic_integration/UPSTREAM.json)
+through `citation_attribution()`; reading it does not discover or start Node.
+The processor copyright is **Copyright (c) 2009-2019 Frank Bennett**. Preserve
+the accompanying [upstream notice](../src/carr_library/academic_integration/vendor/NOTICE.txt),
+[CPAL license](../src/carr_library/academic_integration/vendor/LICENSE-CPAL-1.0.txt)
+and [pinned processor source](https://github.com/Juris-M/citeproc-js/blob/56e7ef310154748368665cc8a2be124e3c141832/citeproc.js).
 
 Bundled styles and locales are **CC BY-SA 3.0**. Their upstream author,
 contributor, source and rights XML remains intact. The full license and a notice
@@ -229,3 +313,7 @@ timeout, runtime preload isolation, path safety and corruption handling.
 Online adapter tests exercise the explicit transport boundary without querying
 a user's account or claiming a real external lookup. Native Windows Word/NVDA
 interaction remains a separate platform acceptance check.
+The installed `windows_bibliography_interchange_smoke.py` probe also opens the
+actual desktop frame in a live wx event loop and verifies visible, fully named
+startup credit before opening any academic dialog. Its existing bibliography
+import, keyboard, overwrite and source-preservation checks remain in place.

@@ -363,7 +363,8 @@ def test_journal_online_backup_includes_committed_wal(app, tmp_path):
         assert journal.execute('SELECT error FROM job').fetchone()[0] == 'committed_wal_evidence'
 
 
-@pytest.mark.skipif(shutil.which('tesseract') is None, reason='Actual local OCR engine required')
+@pytest.mark.skipif(shutil.which('tesseract') is None and not os.environ.get('CARR_OCR_DIR'),
+                    reason='Actual local OCR engine required')
 def test_actual_reviewed_ocr_checkpoint_retains_attestation_and_resumes(app, tmp_path):
     from PIL import Image, ImageDraw, ImageFont
     from reportlab.lib.utils import ImageReader

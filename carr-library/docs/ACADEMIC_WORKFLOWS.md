@@ -1,7 +1,8 @@
 # Academic bibliography and research outlines
 
-These desktop commands operate on the currently open library. They use local
-files and existing source verification; they require no account or online API.
+The catalog exchange and research-outline commands operate on the currently open
+library. They use local files and existing source verification; they require no
+account or online API.
 
 ## Review metadata from a reference manager
 
@@ -33,6 +34,12 @@ Malformed, ambiguous JSON keys and oversized input fail before any save. Split
 larger files into smaller batches. This is a documented, limited exchange
 profile, not a lossless replacement for a reference manager's complete database.
 
+For standalone references and reading lists, open **Academic → Academic library**.
+Its reviewed import also accepts BibTeX; the selected-book metadata chooser above
+continues to accept RIS and CSL-JSON. See [Academic library](ACADEMIC_LIBRARY.md)
+and [Academic integration](academic_integration.md#reviewed-bibliography-import-and-safe-desktop-export)
+for the respective fields and limits.
+
 ## Export a bibliography
 
 Choose **Bibliography → Export library or collection bibliography**, select all
@@ -47,6 +54,13 @@ remain individual literal names; publication dates and more specific reference
 types are not guessed. Bibliographies exclude source text, research notes, file
 paths and original-file hashes. They are not library backups or formatted
 APA/Chicago reference lists.
+
+For styled references, choose **Academic → Format bibliography and citations**.
+The separate CSL workflow also creates editable Word documents. Optional
+**Academic → Preview DOI metadata (opt-in)** requests require explicit network
+permission and return proposals for review without automatic imports or paper
+downloads. See [Academic integration](academic_integration.md) for supported
+styles, local runtime requirements and Word-regeneration limits.
 
 The export uses one consistent catalog snapshot and accepts up to **50,000
 references and 32 MiB of UTF-8 output**, within a 60-second cooperative time budget.
@@ -84,8 +98,9 @@ file publisher.
 - [CSL 1.0.2 item-data schema](https://github.com/citation-style-language/schema/blob/v1.0.2/schemas/input/csl-data.json)
   defines generic `document` items and literal author names.
 
-The existing licensed rispy reader/writer is reused. No new runtime dependency,
-database schema or network service is introduced. See the
+These catalog-exchange commands reuse the existing licensed rispy reader/writer
+and source catalog. Their local RIS/CSL-JSON review does not require a network
+service. See the
 [reference exchange profile](../src/carr_library/catalog/REFERENCE_EXCHANGE.md)
 and [Catalog tools](CATALOG_TOOLS.md) for the reviewed intake adapter, shared
 catalog exporter and upstream provenance.

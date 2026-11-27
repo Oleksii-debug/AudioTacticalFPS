@@ -57,6 +57,24 @@ class WindowsBundleTests(unittest.TestCase):
         installer.verify(self.output)
         self.assertIn("universal-research-library==1.0", (self.output / "install.lock").read_text())
         self.assertEqual((self.output / "wheelhouse" / self.app.name).read_bytes(), self.app.read_bytes())
+        for name in ("install.lock", "bundle-manifest.json"):
+            raw = (self.output / name).read_bytes()
+            self.assertTrue(raw.endswith(b"\n"), name)
+            self.assertNotIn(b"\r", raw, name)
+
+    def test_generated_wheel_notice_inventory_has_host_independent_bytes(self):
+        self.dep.unlink()
+        self.dep = wheel(self.wheels, "flatbuffers")
+        self.lock.write_bytes(f"flatbuffers==1.0 --hash=sha256:{builder.sha256(self.dep)}\n".encode())
+        self.app = wheel(self.root, "universal_research_library",
+                         requires=["flatbuffers==1.0"], entrypoint=True)
+        self.build()
+        installer.verify(self.output)
+        raw = (self.output / "notices/wheels/SOURCES.json").read_bytes()
+        self.assertTrue(raw.endswith(b"\n"))
+        self.assertNotIn(b"\r", raw)
+        records = json.loads((builder.HERE / "wheel-notices/SOURCES.json").read_bytes())
+        self.assertEqual(json.loads(raw), [row for row in records if row["component"] == "flatbuffers"])
 
     def sbom(self, version="1.0"):
         path = self.root / "input-sbom.json"

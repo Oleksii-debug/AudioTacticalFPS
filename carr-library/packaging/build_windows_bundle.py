@@ -13,6 +13,7 @@ from pathlib import Path
 import re
 import shutil
 import stat
+import subprocess
 import tempfile
 import tarfile
 import sys
@@ -26,6 +27,8 @@ from packaging.utils import canonicalize_name, parse_wheel_filename
 
 
 TARGET = "Windows x64 / CPython 3.11"
+# Exact unsigned candidate built and exercised by the reviewed Windows producer.
+NATIVE_LAUNCHER_SHA256 = "5ba9218a329f8d002539bd57f73d91170125f5ec91c78d49ff85ca6c74443cec"
 HERE = Path(__file__).resolve().parent
 TAGS = set(cpython_tags((3, 11), abis=["cp311"], platforms=["win_amd64"]))
 TAGS.update(compatible_tags((3, 11), interpreter="cp311", platforms=["win_amd64"]))
@@ -103,7 +106,9 @@ def verify_application_source(wheel, source_commit):
         "carr_source_wheel_verifier", HERE / "source_wheel.py")
     verifier = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(verifier)
-    return verifier.verify_application_wheel(wheel, HERE.parent.parent, source_commit)
+    evidence = verifier.verify_application_wheel(wheel, HERE.parent.parent, source_commit)
+    evidence["source_tree"] = _native_git("rev-parse", "--verify", source_commit + "^{tree}").decode("ascii").strip()
+    return evidence
 
 
 def verify_dependency_closure(selected):
@@ -123,14 +128,112 @@ def verify_dependency_closure(selected):
                 raise ValueError(f"unsatisfied Windows dependency: {req}")
 
 
+def _native_unique(pairs):
+    result = {}
+    for name, value in pairs:
+        if name in result:
+            raise ValueError("duplicate native launcher proof key")
+        result[name] = value
+    return result
+
+
+def _native_git(*arguments):
+    try:
+        return subprocess.check_output(
+            ["git", "--no-replace-objects", "-C", str(HERE.parent.parent), *arguments],
+            stderr=subprocess.PIPE, timeout=15)
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise ValueError("native launcher source is unavailable in the selected commit") from exc
+
+
+def verify_native_launcher(executable, proof, expected_sha256, source_commit):
+    """Capture a pinned producer PE and bind its build inputs to committed source.
+
+    This uses the existing Zig build evidence and PE inspector. It neither builds
+    nor executes native code, and does not claim signing or Windows acceptance.
+    A delivery caller must independently bind these exact bytes to its CI run.
+    """
+    if (not isinstance(source_commit, str) or not re.fullmatch(r"[0-9a-f]{40}", source_commit)
+            or not isinstance(expected_sha256, str)
+            or not re.fullmatch(r"[0-9a-f]{64}", expected_sha256)):
+        raise ValueError("native launcher requires exact source and executable hashes")
+    executable, proof = regular(Path(executable)), regular(Path(proof))
+    if not 0 < executable.stat().st_size <= 2 * 1024 * 1024 or not 0 < proof.stat().st_size <= 65536:
+        raise ValueError("native launcher or build proof exceeds its size limit")
+    executable_bytes, proof_bytes = executable.read_bytes(), proof.read_bytes()
+    if hashlib.sha256(executable_bytes).hexdigest() != expected_sha256:
+        raise ValueError("native launcher checksum differs from its explicit pin")
+    data = json.loads(proof_bytes, object_pairs_hook=_native_unique)
+    if (not isinstance(data, dict) or data.get("schema") != 1
+            or data.get("target") != "x86_64-windows-gnu"
+            or data.get("release_status") != "unsigned-private-candidate"):
+        raise ValueError("expected unsigned pinned Zig native launcher evidence")
+    spec = importlib.util.spec_from_file_location(
+        "carr_native_launcher_pe", HERE / "native-launcher" / "probe_pe.py")
+    inspector = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(inspector)
+    pe = inspector.inspect_pe(executable)
+    if (pe != data.get("pe") or pe["file"] != "ResearchLibrary.exe"
+            or pe["sha256"] != expected_sha256 or pe["bytes"] != len(executable_bytes)):
+        raise ValueError("native launcher PE differs from the producer build proof")
+    if _native_git("rev-parse", "--verify", source_commit + "^{commit}").decode("ascii").strip() != source_commit:
+        raise ValueError("native launcher source commit differs")
+    source_tree = _native_git("rev-parse", "--verify", source_commit + "^{tree}").decode("ascii").strip()
+    sources = ("launcher.c", "launcher_core.h", "launcher.rc", "launcher.manifest", "toolchain.lock.json")
+    declared = data.get("source_sha256")
+    if not isinstance(declared, dict) or set(declared) != set(sources):
+        raise ValueError("native launcher build source inventory differs")
+    committed = {name: _native_git("cat-file", "blob", source_commit +
+                                  ":carr-library/packaging/native-launcher/" + name) for name in sources}
+    source_hashes = {name: hashlib.sha256(raw).hexdigest() for name, raw in committed.items()}
+    if declared != source_hashes:
+        raise ValueError("native launcher build proof differs from committed source")
+    toolchain_lock = json.loads(committed["toolchain.lock.json"], object_pairs_hook=_native_unique)
+    compiler = data.get("toolchain")
+    if (not isinstance(compiler, dict) or compiler.get("version") != toolchain_lock.get("version")
+            or not isinstance(compiler.get("binary_sha256"), str)
+            or not re.fullmatch(r"[0-9a-f]{64}", compiler["binary_sha256"])):
+        raise ValueError("native launcher compiler identity is missing")
+    hosts = [host for host in ("x86_64-linux", "x86_64-windows")
+             if compiler.get("archive_sha256") == toolchain_lock[host]["sha256"]
+             and compiler.get("archive_bytes") == toolchain_lock[host]["bytes"]
+             and compiler.get("primary_url") == toolchain_lock[host]["url"]]
+    if len(hosts) != 1:
+        raise ValueError("native launcher compiler is not admitted by the committed toolchain lock")
+    report = {"schema": 1, "status": "PASS", "source_commit": source_commit, "source_tree": source_tree,
+              "launcher_sha256": expected_sha256, "launcher_bytes": len(executable_bytes),
+              "build_proof_sha256": hashlib.sha256(proof_bytes).hexdigest(), "source_sha256": source_hashes,
+              "toolchain_host": hosts[0], "release_status": "unsigned-private-candidate",
+              "native_windows_execution": "NOT_RUN", "authenticode_verified": False, "nvda_verified": False}
+    return {"executable_bytes": executable_bytes, "proof_bytes": proof_bytes, "report": report}
+
+
+def capture_native_launcher(executable, proof, expected_sha256, source_commit, *, bundled_python):
+    """Admit optional producer inputs under the current release's fixed pin."""
+    options = (executable, proof, expected_sha256)
+    if not any(value is not None for value in options):
+        return None
+    if not all(value is not None for value in options):
+        raise ValueError("supply native launcher, build proof and explicit SHA256 together")
+    if not bundled_python or source_commit is None:
+        raise ValueError("native launcher requires bundled Python and an exact source commit")
+    if expected_sha256 != NATIVE_LAUNCHER_SHA256:
+        raise ValueError("native launcher differs from the fixed Windows-tested executable pin")
+    return verify_native_launcher(executable, proof, expected_sha256, source_commit)
+
+
 def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                  model_dir=None, model_manifest=None, sbom=None, source_commit=None, ocr_dir=None,
-                 ocr_source_archive=None):
+                 ocr_source_archive=None, native_launcher=None, native_launcher_proof=None,
+                 native_launcher_sha256=None):
     wheel, wheelhouse, lock, output = map(Path, (wheel, wheelhouse, lock, output))
     if output.exists() or output.is_symlink():
         raise ValueError("output must be a new directory")
     if source_commit is not None and not re.fullmatch(r"[0-9a-f]{40}", source_commit):
         raise ValueError("source commit must be a full lowercase Git SHA")
+    native_evidence = capture_native_launcher(
+        native_launcher, native_launcher_proof, native_launcher_sha256, source_commit,
+        bundled_python=python_archive is not None)
     if wheelhouse.is_symlink() or not wheelhouse.is_dir():
         raise ValueError("expected a dedicated wheel directory")
     pins = read_lock(lock)
@@ -239,7 +342,7 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
             if sha256(destination) != inventory[source.name]:
                 raise ValueError("wheel changed during bundle assembly")
             install.append(f"{name}=={version} --hash=sha256:{inventory[source.name]}")
-        (staged / "install.lock").write_text("\n".join(install) + "\n", encoding="utf-8")
+        (staged / "install.lock").write_text("\n".join(install) + "\n", encoding="utf-8", newline="\n")
         if python_archive is not None:
             unpacked = staged / "_python"
             with tarfile.open(python_archive, "r:gz") as archive:
@@ -274,7 +377,7 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
             for record in included:
                 shutil.copyfile(regular(notices_root / record["file"]), notices_destination / record["file"])
             (notices_destination / "SOURCES.json").write_text(
-                json.dumps(included, indent=2) + "\n", encoding="utf-8")
+                json.dumps(included, indent=2) + "\n", encoding="utf-8", newline="\n")
         if ocr_dir is not None:
             # The runtime verifier validates every payload file and rejects
             # links and unlisted additions. Copy only its admitted inventory.
@@ -294,8 +397,21 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
             shutil.copyfile(regular(HERE / name), staged / name)
         shutil.copyfile(HERE.parent / "docs" / "RUNNING.md", staged / "README.txt")
         shutil.copyfile(HERE.parent / "docs" / "START_UK.txt", staged / "START_UK.txt")
+        # Ship the guides referenced by the installed README, including the
+        # exact advanced-query syntax and complete-backup behavior.
+        guides = staged / "docs"
+        guides.mkdir()
+        for name in ("ACADEMIC_SEARCH.md", "ADVANCED_SEARCH.md", "ACADEMIC_LIBRARY.md",
+                     "ACADEMIC_WORKFLOWS.md", "CATALOG_TOOLS.md", "READING_DESK.md",
+                     "RESEARCH_NOTEBOOK.md", "EPUB_READING.md", "IMPORT_CENTER.md",
+                     "TRANSCRIPTION.md", "academic_integration.md"):
+            shutil.copyfile(regular(HERE.parent / "docs" / name), guides / name)
         if sbom is not None:
             (staged / "runtime-sbom.cdx.json").write_bytes(sbom_bytes)
+        if native_evidence is not None:
+            # Only verified snapshots enter the seal, never a later pathname read.
+            (staged / "ResearchLibrary.exe").write_bytes(native_evidence["executable_bytes"])
+            (staged / "native-launcher-build.json").write_bytes(native_evidence["proof_bytes"])
         files = {p.relative_to(staged).as_posix(): sha256(p)
                  for p in sorted(staged.rglob("*")) if p.is_file()}
         manifest = {"schema": 1, "target": TARGET, "bundled_python": python_archive is not None,
@@ -304,8 +420,13 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                     "files": files}
         if source_commit is not None:
             manifest["source_commit"] = source_commit
+            manifest["source_tree"] = source_evidence["source_tree"]
+        if native_evidence is not None:
+            manifest["bundled_native_launcher"] = True
+            manifest["native_launcher_sha256"] = native_launcher_sha256
+            manifest["native_launcher_source_commit"] = source_commit
         (staged / "bundle-manifest.json").write_text(
-            json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
         # Reserve a fresh destination; never overwrite an existing installation.
         output.mkdir(exist_ok=False)
         for item in staged.iterdir():
@@ -331,10 +452,17 @@ def main():
                         help="Verified portable Windows Tesseract runtime and language models")
     parser.add_argument("--ocr-source-archive", type=Path,
                         help="Corresponding-source archive pinned by the OCR runtime manifest")
+    parser.add_argument("--native-launcher", type=Path,
+                        help="Private executable matching the fixed reviewed Windows launcher pin")
+    parser.add_argument("--native-launcher-proof", type=Path,
+                        help="Producer build-evidence.json for the exact executable")
+    parser.add_argument("--native-launcher-sha256",
+                        help="Explicit SHA256; must equal the fixed reviewed launcher pin")
     args = parser.parse_args()
     print(json.dumps(build_bundle(args.wheel, args.wheelhouse, args.lock, args.output,
                                   args.python_archive, args.model_dir, args.model_manifest,
-                                  args.sbom, args.source_commit, args.ocr_dir, args.ocr_source_archive)))
+                                  args.sbom, args.source_commit, args.ocr_dir, args.ocr_source_archive,
+                                  args.native_launcher, args.native_launcher_proof, args.native_launcher_sha256)))
 
 
 if __name__ == "__main__":

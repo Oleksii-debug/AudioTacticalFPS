@@ -378,9 +378,12 @@ def _cleanup(stage, identity, parent_fd):
         shutil.rmtree(stage)
 
 
-def _start_here(application_name, source_name, reused):
+def _start_here(application_name, source_name, reused, native_launcher=False):
     source_note = ("Архів джерел використано повторно: він залишається у попередньому місці. "
                    "Візьміть його разом з архівом програми.\n" if reused else "")
+    entrypoint = "ResearchLibrary.exe" if native_launcher else "ResearchLibrary.cmd"
+    first_launch = ("запустіть ResearchLibrary.exe: він виконає офлайн-встановлення та відкриє програму"
+                    if native_launcher else "запустіть Install.cmd і дочекайтеся успішного завершення встановлення")
     return ("Universal Research Library — встановлення у Windows x64\n\n"
             "1. Потрібні обидва ZIP-архіви:\n"
             + application_name + "\n" + source_name + "\n" + source_note + "\n"
@@ -388,9 +391,9 @@ def _start_here(application_name, source_name, reused):
             "Під час кожного розпакування вкажіть цю саму папку. Обидва архіви мають "
             "утворити одну спільну папку Universal-Research-Library.\n\n"
             "3. У спільній папці повинні бути Install.cmd та ocr-corresponding-source.tar. "
-            "Лише після розпакування обох архівів запустіть Install.cmd і дочекайтеся "
-            "успішного завершення встановлення. Самого архіву програми недостатньо.\n\n"
-            "4. Запускайте програму через ResearchLibrary.cmd. Для перевірки встановлення "
+            "Лише після розпакування обох архівів " + first_launch + ". "
+            "Самого архіву програми недостатньо.\n\n"
+            "4. Запускайте програму через " + entrypoint + ". Для перевірки встановлення "
             "використовуйте CheckInstallation.cmd.\n\n"
             "delivery-verification.json містить точну версію коду й контрольні суми архівів. "
             "Цей приватний пакет призначений для локального встановлення.\n")
@@ -475,7 +478,7 @@ def create_delivery(bundle, expected_source_commit, output, *, source_companion=
         report_stamp = _stamp(_plain(stage / "delivery-verification.json"))
         with (stage / "START_HERE_UK.txt").open("x", encoding="utf-8") as stream:
             stream.write(_start_here(app_name, json.dumps(companion.name, ensure_ascii=False),
-                                     source_companion is not None))
+                                     source_companion is not None, data.get("bundled_native_launcher") is True))
             stream.flush()
             os.fsync(stream.fileno())
         instructions_stamp = _stamp(_plain(stage / "START_HERE_UK.txt"))

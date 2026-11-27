@@ -2,6 +2,12 @@
 
 Review date: 2026-11-27. Status: SOURCE_RECEIVED_AND_STATICALLY_REVIEWED; runtime/integration/Windows/NVDA/model-quality acceptance NOT_RUN in this audit. This is a work package under the [current platform specification](UNIVERSAL_SCOPE_V3_FINALIZATION.md), not a separate ASR product.
 
+This document retains the original source-review findings. The current
+[transcription workflow](TRANSCRIPTION.md) records the later shared-service/UI
+integration and separate private-repair Linux execution evidence. The original
+findings below must not be read as the current integration status; Windows
+neural inference, manual NVDA and acoustic qualification remain separate gates.
+
 ## Source and boundary
 
 The owner-supplied implementation identifies itself as V4.3. The current source includes worker.py (37,974 bytes), accessible_window.ps1 (49,718 bytes), README_UA.txt and download_models_once.py. The readable worker source was inspected. File bytes/immutable source hash and dependency lock must be recorded before code adoption; this review has not created a redistributed source snapshot.

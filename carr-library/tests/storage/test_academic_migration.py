@@ -279,7 +279,7 @@ def test_process_exit_during_v4_migration(tmp_path, mode, committed):
     project_root = str(Path(source_root).parent)
     env["PYTHONPATH"] = os.pathsep.join(filter(None, (source_root, project_root, env.get("PYTHONPATH"))))
     result = subprocess.run(
-        [sys.executable, str(Path(__file__).resolve()), str(path), str(int(committed))],
+        [sys.executable, '-B', str(Path(__file__).resolve()), str(path), str(int(committed))],
         env=env, capture_output=True, text=True, timeout=30,
     )
     assert result.returncode == 73, (result.returncode, result.stdout, result.stderr)
@@ -350,7 +350,7 @@ def test_process_exit_during_import_receipt_migration_preserves_exact_old_data(
             academic = ()
     source_root = str(Path(revisions.__file__).resolve().parents[2])
     env = dict(os.environ, PYTHONPATH=os.pathsep.join((source_root, str(Path(source_root).parent))))
-    result = subprocess.run([sys.executable, str(Path(__file__).resolve()), str(path),
+    result = subprocess.run([sys.executable, '-B', str(Path(__file__).resolve()), str(path),
                              str(int(committed)), '5'],
                             env=env, capture_output=True, text=True, timeout=30)
     assert result.returncode == 73, (result.returncode, result.stdout, result.stderr)

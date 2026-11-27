@@ -270,7 +270,7 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
     identifiers = count(10000)
     wx = SimpleNamespace(Dialog=Dialog, FileDialog=FileDialog, TextEntryDialog=FileDialog,
         TextCtrl=Control, StaticText=Control, Choice=Control, SpinCtrl=Control,
-        Button=Control, BoxSizer=Control, Timer=Control,
+        Button=Control, BoxSizer=Control, WrapSizer=Control, Timer=Control,
         CallAfter=lambda callback, *args: callbacks.put((callback, args)),
         NewIdRef=lambda: next(identifiers), AcceleratorTable=lambda entries: entries,
         MessageBox=lambda *args, **kwargs: 4, ID_OK=5100, ID_CANCEL=5101,

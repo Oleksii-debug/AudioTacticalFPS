@@ -367,7 +367,8 @@ class LibraryApp:
                                         collection=collection, cancelled=budget.stopped)
 
     def update_metadata(self, workspace, edition_id, *, title, authors=(),
-                        language=None, edition=None, volume=None, expected_metadata=None):
+                        language=None, edition=None, volume=None, expected_metadata=None,
+                        selected_fields=None, cancelled=lambda: False):
         """Publish a metadata revision without changing any original source bytes.
 
         Already saved evidence keeps the previous metadata and source revision.
@@ -376,14 +377,42 @@ class LibraryApp:
         new citation snapshots when those fields change. Edition-specific fields
         change only on the selected edition. An optional prior EditionView guards
         interactive edits against overwriting a concurrently changed catalog.
+        Partial imports must supply both selected_fields and expected_metadata.
+        Unselected values are retained exactly from the locked current catalog;
+        only explicitly selected values receive the usual edit validation.
         """
-        title = _name(title)
-        if not isinstance(authors, (tuple, list)) or len(authors) > 100:
-            raise ValueError('authors must be a list or tuple of at most 100 names.')
-        authors = tuple(_name(name) for name in authors)
-        language, edition, volume = map(_metadata, (language, edition, volume))
+        def check_cancelled():
+            if cancelled():
+                raise InterruptedError('Metadata update cancelled; no catalog changes were committed.')
+
+        check_cancelled()
+        allowed_fields = frozenset(('title', 'authors', 'language', 'edition', 'volume'))
+        if selected_fields is None:
+            fields = allowed_fields
+        else:
+            if (not isinstance(selected_fields, (tuple, list, set, frozenset))
+                    or not selected_fields
+                    or any(not isinstance(field, str) for field in selected_fields)
+                    or expected_metadata is None):
+                raise ValueError('A partial metadata edit requires selected fields and the reviewed metadata.')
+            fields = frozenset(selected_fields)
+            if not fields <= allowed_fields:
+                raise ValueError('Select only supported metadata fields.')
+        if 'title' in fields:
+            title = _name(title)
+        if 'authors' in fields:
+            if not isinstance(authors, (tuple, list)) or len(authors) > 100:
+                raise ValueError('authors must be a list or tuple of at most 100 names.')
+            authors = tuple(_name(name) for name in authors)
+        if 'language' in fields:
+            language = _metadata(language)
+        if 'edition' in fields:
+            edition = _metadata(edition)
+        if 'volume' in fields:
+            volume = _metadata(volume)
         revision = uuid4().hex
         with exclusive_writer(self.root):
+            check_cancelled()
             self._check_database_paths()
             with closing(Storage(self.database, schema_version=CURRENT_SCHEMA_VERSION)) as storage:
                 with storage.transaction():
@@ -392,6 +421,12 @@ class LibraryApp:
                     current = get_edition(Catalog(db, workspace), edition_id)
                     if expected_metadata is not None and current != expected_metadata:
                         raise ValueError('Book metadata changed. Refresh the catalog before editing again.')
+                    if selected_fields is not None:
+                        title = title if 'title' in fields else current.title
+                        authors = authors if 'authors' in fields else current.authors
+                        language = language if 'language' in fields else current.language
+                        edition = edition if 'edition' in fields else current.edition
+                        volume = volume if 'volume' in fields else current.volume
                     row = db.execute('SELECT e.work,e.asset,a.revision,r.config FROM catalog_edition e '
                         'JOIN active a ON a.workspace=e.workspace AND a.edition=e.id '
                         'JOIN revision r ON r.id=a.revision WHERE e.workspace=? AND e.id=?',
@@ -413,6 +448,7 @@ class LibraryApp:
                     db.execute('UPDATE catalog_edition SET language=?,edition=?,volume=? WHERE workspace=? AND id=?',
                         (language, edition, volume, workspace, edition_id))
                     for affected_row in affected:
+                        check_cancelled()
                         eid, asset, previous, config, previous_label, previous_volume = affected_row
                         source_pages = tuple(db.execute(
                             'SELECT * FROM page WHERE revision=? ORDER BY ordinal', (previous,)))
@@ -429,6 +465,7 @@ class LibraryApp:
                         db.execute('INSERT INTO source_metadata VALUES(?,?,?,?,?,?,?)',
                             (workspace, eid, next_revision, '; '.join(authors) or None,
                              title, next_volume, next_label))
+                    check_cancelled()
         return revision
 
     def rename_collection(self, workspace, collection, name):
@@ -484,7 +521,7 @@ class LibraryApp:
             with self.read(workspace):
                 pass
             return run_request(self.root, workspace, path, metadata, config or Config(),
-                               cancelled=cancelled, timeout=timeout)
+                               cancelled=cancelled, timeout=timeout, _library=self)
         return self._import_file(workspace, path, **metadata, cancelled=cancelled, config=config)
 
     def resume_import(self, workspace, request_id, *, cancelled=lambda: False, timeout=120.0):
@@ -495,7 +532,8 @@ class LibraryApp:
             if request.get('workspace') != workspace:
                 raise ValueError('Import request belongs to another library.')
         return run_request(self.root, workspace, request['source'], {}, None,
-                           request_id=request_id, cancelled=cancelled, timeout=timeout)
+                           request_id=request_id, cancelled=cancelled, timeout=timeout,
+                           _library=self)
 
     def import_requests(self, workspace):
         """List resumable native requests without exposing paths as source authority."""
@@ -654,16 +692,10 @@ class LibraryApp:
                         job = ingest.start(workspace, record.edition_id, self.assets_dir, retained.name, settings)
                     record_progress(self.root, _request_id, job=job)
                     result = ingest.run(workspace, job, self.assets_dir, retained.name, settings, cancelled=cancelled)
-                    if result['state'] in ('complete', 'superseded') and not publisher.published_here:
-                        if cancelled():
-                            raise InterruptedError('Import cancelled before catalog registration.')
-                        # Recovery validates the retained asset/configuration and
-                        # checkpoint/page identity, but does not replay catalog
-                        # registration. Apply the same atomic membership and
-                        # metadata-conflict gate as the DOCX/EPUB replay path.
-                        # A journal's terminal state alone is not proof that its
-                        # source was actually published. Never reactivate an old
-                        # revision when current metadata has superseded it.
+                    if result['state'] in ('complete', 'superseded'):
+                        # A terminal journal state alone cannot establish a
+                        # published source. Always validate the sealed revision
+                        # and its current authorized identity before returning.
                         with storage.transaction():
                             self._authorize(storage.db, workspace)
                             published = storage.db.execute(
@@ -677,10 +709,19 @@ class LibraryApp:
                                 raise ValueError('Completed import is missing its sealed source revision.')
                             if (published[3] == job) != (result['state'] == 'complete'):
                                 raise ValueError('Completed import active revision changed.')
-                            register_batch(Catalog(storage.db, workspace), (record,))
-                            storage._check()
-                            if cancelled():
-                                raise InterruptedError('Import registration cancelled before commit.')
+                            if not publisher.published_here:
+                                if cancelled():
+                                    raise InterruptedError('Import cancelled before catalog registration.')
+                                # Replay can add membership only with matching
+                                # current metadata, without reactivating an old
+                                # source revision. Keep the existing pre-commit
+                                # cancellation check inside this transaction.
+                                register_batch(Catalog(storage.db, workspace), (record,))
+                                storage._check()
+                                if cancelled():
+                                    raise InterruptedError('Import registration cancelled before commit.')
+                            # First publication already registered and checked
+                            # the request atomically with its source revision.
                     result['verified'] = asset.mime == 'text/plain' and result['state'] == 'complete'
                     return result
 
@@ -855,13 +896,17 @@ class LibraryApp:
     def search(self, workspace, query, *, mode='phrase', collection=None, title=None,
                author=None, language=None, edition=None, limit=100, timeout=60.0,
                cancelled=lambda: False, authorized_topic=None, on_status=None,
-               result_mode=None):
-        if mode not in ('word', 'phrase', 'terms', 'thematic', 'semantic'):
+               result_mode=None, offset=0):
+        if mode not in ('word', 'phrase', 'terms', 'thematic', 'semantic', 'advanced'):
             raise ValueError('Unknown search mode.')
         if result_mode not in (None, 'short', 'thematic'):
             raise ValueError('Choose Short quotations or Thematic excerpts.')
         if type(limit) is not int or not 1 <= limit <= 100:
             raise ValueError('Invalid search operation budget.')
+        if type(offset) is not int or offset < 0:
+            raise ValueError('Invalid search page offset.')
+        if offset and mode not in ('terms', 'advanced'):
+            raise ValueError('Result pages are available for All words and Advanced searches.')
         if on_status is not None and not callable(on_status):
             raise ValueError('Search status callback must be callable.')
         with self._search_read(workspace, timeout, cancelled) as (db, budget):
@@ -891,7 +936,8 @@ class LibraryApp:
                                                   timeout=budget.remaining(), cancelled=budget.stopped)
             else:
                 hits = literal.search(db, workspace, query, edition_ids=tuple(allowed),
-                                      mode=mode, limit=limit, timeout=budget.remaining(), cancelled=budget.stopped)
+                                      mode=mode, limit=limit, offset=offset,
+                                      timeout=budget.remaining(), cancelled=budget.stopped)
             # Catalog selection, active source selection, and metadata materialization
             # all share this read transaction. No cached edition filters cross snapshots.
             loader, metadata, attestor = self._loaders(db, workspace, cancelled=budget.stopped)
@@ -1158,6 +1204,10 @@ class LibraryApp:
             load, metadata, _ = self._loaders(db, workspace, cancelled=budget.stopped)
             return SavedTopicQueries(SavedEvidenceStore(db, workspace, load, metadata)).run(
                 topic, identity, timeout=budget.remaining(), cancelled=budget.stopped)
+
+    def transcription(self, workspace):
+        from .transcription import TranscriptionService
+        return TranscriptionService(self, workspace)
 
     def backup(self, destination):
         from .library_backup import create_backup

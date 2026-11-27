@@ -48,7 +48,7 @@ def test_backup_restores_exact_state_sources_and_evidence_without_cache(populate
     original_files = {p.name: p.read_bytes() for p in app.assets_dir.iterdir()}
     folder = tmp_path / 'backup'
     digest = create_backup(app, folder)
-    manifest = json.loads((folder / 'manifest.json').read_text())
+    manifest = json.loads((folder / 'manifest.json').read_text(encoding='utf-8'))
     assert manifest['version'] == 4 and manifest['generated_audio_included'] is False
     assert {entry['filename'] for entry in manifest['state']} == set(values)
     for entry in manifest['state']:
@@ -71,7 +71,7 @@ def test_optional_generated_cache_roundtrips_exactly(populated, tmp_path):
     app, *_ = populated
     folder = tmp_path / 'with-cache'
     digest = create_backup(app, folder, include_generated=True)
-    manifest = json.loads((folder / 'manifest.json').read_text())
+    manifest = json.loads((folder / 'manifest.json').read_text(encoding='utf-8'))
     assert manifest['generated_audio_included'] is True
     destination = restore_backup(folder, tmp_path / 'restored-with-cache', digest)
     assert (destination / 'state/studio/cache/chunk.wav').read_bytes() == b'synthetic-generated-audio-cache'
@@ -95,7 +95,7 @@ def test_corrupt_state_never_publishes_usable_restore(populated, tmp_path, damag
         import shutil
         shutil.rmtree(folder / 'state')
     else:
-        manifest = json.loads((folder / 'manifest.json').read_text())
+        manifest = json.loads((folder / 'manifest.json').read_text(encoding='utf-8'))
         manifest['state'][0]['size_bytes'] += 1
         raw = json.dumps(manifest).encode()
         (folder / 'manifest.json').write_bytes(raw)
@@ -183,6 +183,29 @@ def test_snapshot_detects_changes_to_already_copied_tree(tmp_path, mutation):
     with pytest.raises((ValueError, OSError), match='changed|snapshot|backup'):
         snapshot_state(root, target, cancelled=concurrent_writer)
     assert modified
+
+
+def test_same_size_changed_bytes_are_rechecked_when_metadata_is_unchanged(tmp_path, monkeypatch):
+    from carr_library import state_backup
+    root, target = tmp_path / 'source', tmp_path / 'snapshot'
+    root.mkdir()
+    target.mkdir()
+    source = root / 'a.json'
+    source.write_bytes(b'old')
+    (root / 'b.json').write_bytes(b'other file')
+    # Windows can keep creation-time and last-write metadata stable until an
+    # open writer closes. Model that stat behavior while changing real bytes.
+    monkeypatch.setattr(state_backup, '_stamp', lambda st: (st.st_dev, st.st_ino, st.st_size))
+    changed = False
+    def mutate_after_copy():
+        nonlocal changed
+        if not changed and (target / 'b.json').exists():
+            source.write_bytes(b'new')
+            changed = True
+        return False
+    with pytest.raises(ValueError, match='changed during backup'):
+        snapshot_state(root, target, cancelled=mutate_after_copy)
+    assert changed and (target / 'a.json').read_bytes() == b'old'
 
 
 def test_snapshot_rejects_same_metadata_content_change_before_publication(populated, tmp_path, monkeypatch):
@@ -282,7 +305,7 @@ def test_legacy_backup_still_restores_without_state(tmp_path):
     # Construct the historical v2 shape from the same verified catalog bytes.
     # New backups also preserve the import journal, which did not exist in v2.
     import shutil
-    manifest = json.loads((backup / 'manifest.json').read_text())
+    manifest = json.loads((backup / 'manifest.json').read_text(encoding='utf-8'))
     manifest['version'] = 2
     for key in ('state', 'generated_audio_included', 'pending'):
         manifest.pop(key, None)
