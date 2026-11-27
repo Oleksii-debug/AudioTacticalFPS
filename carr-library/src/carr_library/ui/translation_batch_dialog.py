@@ -13,7 +13,7 @@ from uuid import uuid4
 
 from ..assistant.models import canonical
 from ..assistant.profiles import ProfileStore
-from ..assistant.providers import Authorization, Gateway, money
+from ..assistant.providers import Gateway, money, translation_language_approval
 from ..assistant.translation import TranslationService
 from ..assistant.translation_batch import TranslationBatchService, MAX_ITEMS, MAX_CHARACTERS
 from ..assistant.translation_source import capture_source, read_text_file
@@ -49,7 +49,7 @@ def create_translation_batch_dialog(frame, *, items=(), wx_module=None):
     batches = TranslationBatchService(service)
     accounts = ProfileStore(root / 'state' / 'providers')
     profiles = tuple(p for p in accounts.list()
-                     if p.adapter in ('google-translation-v2', 'google-translation-v3') and p.enabled)
+                     if p.adapter in ('google-translation-v2', 'google-translation-v3', 'libretranslate-local') and p.enabled)
     draft = json.loads(canonical(list(items)))
     if (len(draft) > MAX_ITEMS or any(type(row) is not dict or type(row.get('text')) is not str for row in draft)
             or sum(len(row['text']) for row in draft) > MAX_CHARACTERS):
@@ -97,7 +97,7 @@ def create_translation_batch_dialog(frame, *, items=(), wx_module=None):
     source = field('Source language code; auto detects', value='auto')
     target = field('Target language code', value='uk')
     glossary = field('Advanced glossary resource; blank for none', value='')
-    budget = field('Per-document USD reservation; explicit, no default', value='')
+    budget = field('Per-document USD reservation; enter 0 for local translation', value='')
     rate = field('Optional contract rate per million characters', value='')
     selected = field('Ordered translation &documents', wx.Choice, choices=[])
     status = field('Translation batch review and existing checkpoints', proportion=1,
@@ -157,6 +157,8 @@ def create_translation_batch_dialog(frame, *, items=(), wx_module=None):
         p = profiles[index]
         if accounts.get(p.id) != p or not p.enabled:
             raise PermissionError('The selected account changed. Reopen its selection.')
+        if p.local and money(budget.GetValue()) != 0:
+            raise ValueError('Local translation requires an explicit zero external cost bound.')
         return dict(profile=p.to_dict(), source=source.GetValue().strip(), target=target.GetValue().strip(),
                     glossary=glossary.GetValue().strip() or None, budget=str(money(budget.GetValue())),
                     rate_per_million=rate.GetValue().strip() or None)
@@ -402,7 +404,8 @@ def create_translation_batch_dialog(frame, *, items=(), wx_module=None):
                 raise PermissionError('The account changed. Reopen the batch.')
             chooser = wx.MessageDialog(dialog,
                 f'Fetch the declared supported languages from {p.endpoint} using {p.name}? '
-                'No document text is sent. This is an explicit remote account request.',
+                ('No document text is sent. This contacts only the selected local endpoint.' if p.local else
+                 'No document text is sent. This is an explicit remote account request.'),
                 'Fetch translation languages', wx.YES_NO | wx.NO_DEFAULT)
             try:
                 answer = chooser.ShowModal()
@@ -420,15 +423,15 @@ def create_translation_batch_dialog(frame, *, items=(), wx_module=None):
                     if accounts.get(p.id) != p or not p.enabled:
                         raise PermissionError('The selected account was disabled or changed.')
                 current_account()
-                service.gateway = Gateway(service.directory / 'provider', mode='APPROVED_REMOTE')
+                service.gateway = Gateway(service.directory / 'provider',
+                                          mode='LOCAL_ONLY' if p.local else 'APPROVED_REMOTE')
                 current_account()
-                identity = uuid4().hex
-                authorization = Authorization(identity, identity, ((p.id, p.endpoint),),
-                    ('translation.languages',), ('user-instruction',), '0', 1, time() + 600)
+                authorization = translation_language_approval(p, expires_at=time() + 600)
                 def cancelled():
                     current_account()
                     return stopped()
-                return service.refresh_languages(p, authorization=authorization, cancelled=cancelled)
+                return service.refresh_languages(p, authorization=authorization, cancelled=cancelled,
+                                                 interrupt_cancelled=stopped)
             begin('Fetching explicitly requested translation language declarations', work,
                   lambda rows: report(display(rows) + '\nProvider declarations are not translation-quality evidence.'))
         except Exception as error:
@@ -481,13 +484,17 @@ def create_translation_batch_dialog(frame, *, items=(), wx_module=None):
                 raise ValueError('Review this exact order, text, settings and reservations before approval.')
             frozen, review_hash = json.loads(raw), reviewed[2]
             total = sum((Decimal(row['budget']) for row in frozen), Decimal(0))
+            local_transfer = any(row['profile']['local'] for row in frozen)
+            remote_transfer = any(not row['profile']['local'] for row in frozen)
+            cost_notice = ('Provider terms and charges apply; this is not a provider billing cap.'
+                           if remote_transfer else 'All selected transfers use local endpoints with zero external cost.')
             accounts_text = '\n'.join(f"{index}. {row['title']}: {row['profile']['endpoint']}; "
                 f"model {row['profile']['model']}; {row['source']} → {row['target']}; "
                 f"glossary {row.get('glossary') or 'none'}; {row['budget']} USD"
                 for index, row in enumerate(frozen, 1))
             chooser = wx.MessageDialog(dialog,
                 f'Approve these {len(frozen)} documents and {sum(len(row["text"]) for row in frozen)} characters?\n'
-                f'Total reservation: {total} USD. Provider terms and charges apply; this is not a provider billing cap.\n'
+                f'Total reservation: {total} USD. {cost_notice}\n'
                 f'Review SHA-256: {review_hash}\n{accounts_text}\n\nPrepare saves approvals only. Run/resume sends text.',
                 'Approve exact translation batch', wx.YES_NO | wx.NO_DEFAULT)
             try:
@@ -503,7 +510,8 @@ def create_translation_batch_dialog(frame, *, items=(), wx_module=None):
             def work():
                 require_accounts(frozen)
                 identity = batches.submit(frozen, title=frozen_title, review_sha256=review_hash,
-                                          approve_remote=True, cancelled=stopped, guard=guard)
+                                          approve_remote=remote_transfer, approve_local=local_transfer,
+                                          cancelled=stopped, guard=guard)
                 # These reads verify the committed record. Window lifetime was
                 # checked before submission and cannot revoke a saved approval.
                 return identity, batches.get(identity), batches.get_review(identity)
@@ -519,7 +527,10 @@ def create_translation_batch_dialog(frame, *, items=(), wx_module=None):
         def work():
             review = retained(identity)
             require_accounts(review['items'])
-            service.gateway = Gateway(service.directory / 'provider', mode='APPROVED_REMOTE')
+            local_transfer = any(row['profile']['local'] for row in review['items'])
+            remote_transfer = any(not row['profile']['local'] for row in review['items'])
+            mode = ('HYBRID' if local_transfer else 'APPROVED_REMOTE') if remote_transfer else 'LOCAL_ONLY'
+            service.gateway = Gateway(service.directory / 'provider', mode=mode)
             require_accounts(review['items'])
             from ..progress import current_progress
             progress = current_progress()

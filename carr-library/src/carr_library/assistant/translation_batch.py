@@ -17,7 +17,7 @@ from zipfile import ZipFile, ZIP_DEFLATED
 
 from .models import canonical, local_path, text
 from .profiles import ProviderProfile
-from .providers import Authorization, money
+from .providers import money, translation_authorization_type
 from .state import JobStore, now
 from .translation import (TranslationService, _approved_requests, _preview_fields, _source_job_id,
                           split_text, translation_approval)
@@ -84,6 +84,8 @@ def _inputs(items):
             raise ValueError('The batch exceeds the two-million-character review limit.')
         title = text(item.get('title', 'Translation'), 'batch item title', maximum=512)
         rate = item.get('rate_per_million')
+        if profile.local and money(item['budget']) != 0:
+            raise ValueError('Local translation requires an explicit zero external cost bound.')
         result.append({'profile': profile.to_dict(), 'text': value, 'title': title,
             'source': item['source'], 'target': item['target'], 'budget': str(money(item['budget'])),
             'glossary': item.get('glossary'),
@@ -153,7 +155,7 @@ def _template(job, metadata):
         raise ValueError('Invalid approved batch provider or authorization.')
     try:
         profile = ProviderProfile(**job['profile'])
-        approval = Authorization(**job['authorization'])
+        approval = translation_authorization_type(profile)(**job['authorization'])
     except (TypeError, ValueError) as exc:
         raise ValueError('Invalid approved batch provider or authorization.') from exc
     if approval.currency != 'USD':
@@ -319,10 +321,12 @@ class TranslationBatchService:
         return {**review, 'review_sha256': _hash(review)}
 
     def submit(self, items, *, title='Translation batch', review_sha256, approve_remote=False,
-               cancelled=lambda: False, guard=lambda: None):
-        if approve_remote is not True:
-            raise PermissionError('Explicitly review and approve every document before preparing a remote batch.')
+               approve_local=False, cancelled=lambda: False, guard=lambda: None):
         frozen = _inputs(items)
+        if any(not item['profile']['local'] for item in frozen) and approve_remote is not True:
+            raise PermissionError('Explicitly review and approve every remote document before preparing this batch.')
+        if any(item['profile']['local'] for item in frozen) and approve_local is not True:
+            raise PermissionError('Explicitly review and approve every local document before preparing this batch.')
         reviewed = self.preview(frozen, title=title, cancelled=cancelled, guard=guard)
         if review_sha256 != reviewed['review_sha256']:
             raise PermissionError('The exact batch text, order, source, settings or reservations changed. Review again.')
