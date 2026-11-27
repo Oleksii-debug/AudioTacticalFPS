@@ -144,7 +144,7 @@ def selectable_models(profile, identifiers, *, initial=None):
     return tuple(rows)
 
 
-def selected_config(profile, identifiers, available, *, orientation=False, initial=None):
+def selected_config(profile, identifiers, available, *, orientation=False, automatic_languages=False, initial=None):
     """Validate final native choices and preserve existing resource budgets."""
     if profile not in dict(PROFILES):
         raise ValueError('Choose an OCR model profile.')
@@ -162,7 +162,7 @@ def selected_config(profile, identifiers, available, *, orientation=False, initi
     if policy == POLICY and (profile == 'best' or not set(chosen) <= set(MODELS)):
         policy = 'default'
     return replace(previous, languages='+'.join(chosen), model_profile=profile,
-                   orientation=orientation, model_policy=policy)
+                   orientation=orientation, automatic_languages=automatic_languages, model_policy=policy)
 
 
 def _discover_with_dialog(parent):
@@ -270,6 +270,10 @@ def _choose_languages(parent, profile, available, initial):
             self.orientation.SetValue(initial.orientation and 'osd' in available)
             self.orientation.Enable('osd' in available)
             layout.Add(self.orientation, 0, wx.ALL, 8)
+            self.automatic = wx.CheckBox(self, label='Automatic language review within selected models')
+            self.automatic.SetName('Automatic OCR language identification and regional candidates')
+            self.automatic.SetValue(initial.automatic_languages)
+            layout.Add(self.automatic, 0, wx.ALL, 8)
             self.status = wx.TextCtrl(self, value=(
                 f'Profile: {profile}. Orientation detection does not identify languages.' if 'osd' in available else
                 f'Profile: {profile}. Orientation detection is unavailable because osd is not installed.'),
@@ -293,7 +297,7 @@ def _choose_languages(parent, profile, available, initial):
             try:
                 checked = tuple(row[0] for index, row in enumerate(rows) if self.entries.IsChecked(index))
                 self.result = selected_config(profile, checked, available,
-                    orientation=self.orientation.GetValue(), initial=initial)
+                    orientation=self.orientation.GetValue(), automatic_languages=self.automatic.GetValue(), initial=initial)
                 self.EndModal(wx.ID_OK)
             except ValueError as exc:
                 self.status.SetValue(str(exc))

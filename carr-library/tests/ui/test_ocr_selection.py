@@ -378,3 +378,19 @@ def test_inventory_dialog_runs_future_off_ui_thread_and_can_cancel(wx, monkeypat
     wx.on_show = cancel
     assert selection._discover_with_dialog(None) is None
     assert wx.dialogs[-1].destroyed
+
+
+def test_compatibility_picker_automatic_choice_and_manual_override_use_same_config(wx):
+    initial = Config(languages='ukr+eng', dpi=150, timeout=73, max_pixels=123456)
+    def automatic(dialog):
+        dialog.automatic.SetValue(True)
+        dialog.accept()
+    wx.on_show = automatic
+    selected = selection._choose_languages(None, 'installed', ('ukr', 'eng'), initial)
+    assert selected == replace(initial, automatic_languages=True)
+    def manual(dialog):
+        assert dialog.automatic.GetValue() is True
+        dialog.automatic.SetValue(False)
+        dialog.accept()
+    wx.on_show = manual
+    assert selection._choose_languages(None, 'installed', ('ukr', 'eng'), selected) == initial

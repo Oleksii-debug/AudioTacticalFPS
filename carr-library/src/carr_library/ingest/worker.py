@@ -22,6 +22,7 @@ from uuid import uuid4
 
 from .pipeline import Ingest, canonical
 from ..extract.document_formats import MIME_SUFFIXES
+from ..extract.page_ocr import config_dict
 
 MAX_REQUEST = 64_000
 MAX_REPLY = 64_000
@@ -775,7 +776,7 @@ def _request_record(root, workspace, source, metadata, config, request_id, expec
     metadata['edition_id'] = metadata.get('edition_id') or uuid4().hex
     record = dict(version=1, request_id=request_id, data_dir=str(Path(root).resolve()),
                   workspace=workspace, source=str(Path(source).absolute()),
-                  metadata=metadata, config=asdict(config), state='pending')
+                  metadata=metadata, config=config_dict(config), state='pending')
     if expected_manifest is not None:
         from ..catalog.intake import MAX_BYTES
         if (not isinstance(expected_manifest, dict)

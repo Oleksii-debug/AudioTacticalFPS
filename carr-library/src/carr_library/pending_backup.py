@@ -187,7 +187,8 @@ def _manifest(value):
 
 
 def _config(value):
-    if not isinstance(value, dict) or set(value) != set(asdict(Config())):
+    fields = set(asdict(Config()))
+    if not isinstance(value, dict) or set(value) not in (fields, fields - {'automatic_languages'}):
         raise ValueError('Invalid pending extraction configuration.')
     if any(type(value[key]) is not int for key in ('dpi', 'timeout', 'max_pixels')):
         raise ValueError('Invalid pending extraction resource limits.')

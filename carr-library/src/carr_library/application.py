@@ -34,6 +34,7 @@ from .research.saved_topic_query import SavedTopicQueries
 from .research.anchored_export import export_saved
 from .research.topic_tree import TopicTree
 from .search import literal, thematic
+from .search.pagination import CursorStore, catalog_snapshot, request_identity
 from .storage.revisions import (Storage, Page, CURRENT_SCHEMA_VERSION,
                                 _schema_signature, _expected_signature)
 from .data_paths import guard_data_directory
@@ -179,6 +180,7 @@ class LibraryApp:
         self.semantic_ranker = semantic_ranker
         self.semantic_cache = None
         self._selections = {}
+        self._search_cursors = CursorStore()
         with exclusive_writer(self.root):
             self._check_database_paths()
             with closing(Storage(self.database, schema_version=CURRENT_SCHEMA_VERSION)) as storage:
@@ -1009,6 +1011,32 @@ class LibraryApp:
                author=None, language=None, edition=None, limit=100, timeout=60.0,
                cancelled=lambda: False, authorized_topic=None, on_status=None,
                result_mode=None):
+        return self._search(workspace, query, mode=mode, collection=collection,
+            title=title, author=author, language=language, edition=edition,
+            limit=limit, timeout=timeout, cancelled=cancelled,
+            authorized_topic=authorized_topic, on_status=on_status, result_mode=result_mode)
+
+    def search_page(self, workspace, query, *, mode='phrase', collection=None, title=None,
+                    author=None, language=None, edition=None, limit=100, timeout=60.0,
+                    cancelled=lambda: False, authorized_topic=None, on_status=None,
+                    result_mode=None, cursor=None):
+        """Continue exact/Boolean results using current source authorization."""
+        if mode not in ('word', 'phrase', 'terms', 'advanced'):
+            raise ValueError('Paged search currently supports exact and advanced source search.')
+        request = request_identity(workspace, query, mode=mode, collection=collection,
+            title=title, author=author, language=language, edition=edition, limit=limit,
+            authorized_topic=authorized_topic, result_mode=result_mode)
+        continuation = self._search_cursors.begin(request, cursor)
+        return self._search(workspace, query, mode=mode, collection=collection,
+            title=title, author=author, language=language, edition=edition,
+            limit=limit, timeout=timeout, cancelled=cancelled,
+            authorized_topic=authorized_topic, on_status=on_status,
+            result_mode=result_mode, _continuation=continuation)
+
+    def _search(self, workspace, query, *, mode='phrase', collection=None, title=None,
+                author=None, language=None, edition=None, limit=100, timeout=60.0,
+                cancelled=lambda: False, authorized_topic=None, on_status=None,
+                result_mode=None, _continuation=None):
         if mode not in ('word', 'phrase', 'terms', 'thematic', 'semantic', 'advanced'):
             raise ValueError('Unknown search mode.')
         if result_mode not in (None, 'short', 'thematic'):
@@ -1031,7 +1059,13 @@ class LibraryApp:
                 if more:
                     raise ValueError('Narrow the search to at most 500 editions using filters.')
             allowed = {v.edition_id: v.work_id for v in views}
-            if mode in ('thematic', 'semantic'):
+            if _continuation is not None:
+                page = literal.search_page(db, workspace, query, edition_ids=tuple(allowed),
+                    mode=mode, limit=limit, timeout=budget.remaining(), cancelled=budget.stopped,
+                    after=_continuation.after, expected_snapshot=_continuation.snapshot,
+                    scope_key=catalog_snapshot(_continuation.request, views), result_mode=result_mode)
+                hits = page.hits
+            elif mode in ('thematic', 'semantic'):
                 if mode == 'semantic' and self.semantic_ranker is not None:
                     from .semantic import search_snapshot
                     hits = search_snapshot(db, workspace, allowed, query, self.semantic_ranker,
@@ -1093,9 +1127,15 @@ class LibraryApp:
                     raw[selected.start:selected.end], citation, verified, reason))
         # A stopped or failed operation must neither publish partial selections
         # nor evict selections belonging to the previous completed search.
+        prepared = None
+        if _continuation is not None:
+            answer, prepared = self._search_cursors.prepare(_continuation, results, page)
         self._selections.update(selections)
         while len(self._selections) > 2000:
             del self._selections[next(iter(self._selections))]
+        if _continuation is not None:
+            self._search_cursors.publish(prepared)
+            return answer
         return tuple(results)
 
     def _anchor(self, db, workspace, ref, revision, *, cancelled=lambda: False):

@@ -467,11 +467,40 @@ jobs:
           }
 
 
+      - name: Require exact source and installed OCR and result-page controls
+        if: ${{ !cancelled() && steps.desktop_dependencies.outcome == 'success' && steps.ocr_runtime.outcome == 'success' }}
+        timeout-minutes: 12
+        run: |
+          $failures = @()
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_automatic_ocr_smoke.py --source src --report ci-results/source-automatic-ocr.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'source-automatic-ocr' }
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_automatic_ocr_smoke.py --expect-installed --report ci-results/installed-automatic-ocr.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'installed-automatic-ocr' }
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_search_pagination_smoke.py --source . --report ci-results/source-search-pagination.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'source-search-pagination' }
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_search_pagination_smoke.py --expect-installed --report ci-results/installed-search-pagination.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'installed-search-pagination' }
+          if ($failures.Count) { throw ('Required native OCR/search failures: ' + ($failures -join ', ')) }
+
       - name: Record required integrated source-suite inventory
         if: ${{ !cancelled() && steps.desktop_dependencies.outcome == 'success' && steps.ocr_runtime.outcome == 'success' }}
         timeout-minutes: 20
         run: |
           $suites = @(
+            'tests/speech/test_navigation.py',
+            'tests/ui/test_reader_navigation.py',
+            'tests/extract/test_language_detection.py',
+            'tests/extract/test_ocr_language_regions.py',
+            'tests/storage/test_ocr_language_presets.py',
+            'tests/search/test_literal_pagination.py',
+            'tests/e2e/test_search_pagination.py',
+            'tests/ui/test_search_pagination.py',
+            'tests/search/test_literal_catalog_api.py',
+            'tests/search/test_literal_filter.py',
+            'tests/search/test_literal_integrity.py',
+            'tests/search/test_literal_readonly.py',
+            'tests/search/test_literal_scoped.py',
+            'tests/extract/test_automatic_ocr_native.py',
             'tests/packaging/test_prepare_daisy_schemas.py',
             'tests/reader/test_ebook_audio.py',
             'tests/reader/test_ebook_audio_lifecycle.py',
@@ -906,7 +935,7 @@ jobs:
 
       - name: Require source and installed reader editing, spelling, appearance and output controls
         if: ${{ !cancelled() && steps.desktop_dependencies.outcome == 'success' && steps.audio_endpoint.outcome == 'success' }}
-        timeout-minutes: 32
+        timeout-minutes: 38
         run: |
           $failures = @()
           & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_reading_tools_smoke.py --source . --output ci-results/source-reading-tools.json
@@ -934,6 +963,8 @@ jobs:
             if ($LASTEXITCODE -ne 0) { $failures += 'source-reader-output' }
             & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_reader_player_smoke.py --source . --require-output-device --expected-device-identity ([string]$selected[0].identity) --ffmpeg (Join-Path $env:CARR_AUDIO_RUNTIME 'bin/ffmpeg.exe') --ffprobe (Join-Path $env:CARR_AUDIO_RUNTIME 'bin/ffprobe.exe') --report ci-results/source-reader-player.json
             if ($LASTEXITCODE -ne 0) { $failures += 'source-reader-player' }
+            & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_reader_navigation_smoke.py --source . --expected-device-identity ([string]$selected[0].identity) --output ci-results/source-reader-navigation.json
+            if ($LASTEXITCODE -ne 0) { $failures += 'source-reader-navigation' }
             & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_ebook_daisy_smoke.py --source . --output ci-results/source-ebook-daisy.json
             if ($LASTEXITCODE -ne 0) { $failures += 'source-ebook-daisy' }
             & $env:CARR_PYTHON -B -X utf8 scripts/windows_recording_monitor_probe.py --device-index $deviceIndex --expected-device-identity ([string]$selected[0].identity) --report ci-results/source-recording-monitor.json
@@ -947,6 +978,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { $failures += 'installed-reader-output' }
           & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_reader_player_smoke.py --require-output-device --expected-device-identity ([string]$selected[0].identity) --ffmpeg (Join-Path $env:CARR_AUDIO_RUNTIME 'bin/ffmpeg.exe') --ffprobe (Join-Path $env:CARR_AUDIO_RUNTIME 'bin/ffprobe.exe') --report ci-results/installed-reader-player.json
           if ($LASTEXITCODE -ne 0) { $failures += 'installed-reader-player' }
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_reader_navigation_smoke.py --expect-installed --expected-device-identity ([string]$selected[0].identity) --output ci-results/installed-reader-navigation.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'installed-reader-navigation' }
           & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_ebook_daisy_smoke.py --expect-installed --output ci-results/installed-ebook-daisy.json
           if ($LASTEXITCODE -ne 0) { $failures += 'installed-ebook-daisy' }
           & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_recording_monitor_probe.py --expect-installed --device-index $deviceIndex --expected-device-identity ([string]$selected[0].identity) --report ci-results/installed-recording-monitor.json
@@ -1101,7 +1134,7 @@ jobs:
       - name: Build, install and exercise the complete bundle with runtime egress blocked
         id: complete_bundle
         if: ${{ !cancelled() && steps.desktop_dependencies.outcome == 'success' && steps.ocr_runtime.outcome == 'success' && steps.local_model.outcome == 'success' && steps.audio_runtime.outcome == 'success' && steps.launcher_build.outcome == 'success' }}
-        timeout-minutes: 65
+        timeout-minutes: 73
         run: |
           $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
           $wheelhouse = Join-Path $bundleWork 'wheelhouse'
@@ -1252,6 +1285,14 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -X utf8 scripts/windows_reading_tools_smoke.py --expect-installed --output ci-results/bundle-reading-tools.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $previousExplicitOcr = $env:CARR_OCR_DIR
+          try {
+            $env:CARR_OCR_DIR = Join-Path $bundle 'ocr'
+            & $installedPython -I -B -X utf8 scripts/windows_automatic_ocr_smoke.py --expect-installed --report ci-results/bundle-automatic-ocr.json
+            if ($LASTEXITCODE -ne 0) { throw 'bundle automatic OCR controls failed' }
+          } finally { $env:CARR_OCR_DIR = $previousExplicitOcr }
+          & $installedPython -I -B -X utf8 scripts/windows_search_pagination_smoke.py --expect-installed --report ci-results/bundle-search-pagination.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -X utf8 scripts/windows_desktop_integration_smoke.py --installed 2>&1 | Tee-Object 'ci-results/bundle-desktop.txt'
           if ($LASTEXITCODE -ne 0) { throw 'bundle-desktop failed' }
           & $installedPython -I -B -X utf8 scripts/windows_incremental_backup_smoke.py --installed --output ci-results/bundle-incremental-backup.json 2>&1 | Tee-Object 'ci-results/bundle-incremental-backup.txt'
@@ -1280,6 +1321,8 @@ jobs:
           & $installedPython -I -B -X utf8 scripts/windows_reader_output_smoke.py --expect-installed --device-index ([int]$selectedOutput[0].index) --expected-device-identity ([string]$selectedOutput[0].identity) --report ci-results/bundle-reader-output.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -X utf8 scripts/windows_reader_player_smoke.py --require-output-device --expected-device-identity ([string]$selectedOutput[0].identity) --report ci-results/bundle-reader-player.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -X utf8 scripts/windows_reader_navigation_smoke.py --expect-installed --expected-device-identity ([string]$selectedOutput[0].identity) --output ci-results/bundle-reader-navigation.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -X utf8 scripts/windows_ebook_daisy_smoke.py --expect-installed --output ci-results/bundle-ebook-daisy.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -1371,6 +1414,36 @@ jobs:
           # Keep the shared workflow list intact while exercising the additive
           # contents reader in this same installed-package/native-runtime process.
           contents_suites = [
+                            'tests/speech/test_navigation.py',
+                            'tests/ui/test_reader_navigation.py',
+                            'tests/extract/test_language_detection.py',
+                            'tests/extract/test_ocr_language_regions.py',
+                            'tests/storage/test_ocr_language_presets.py',
+                            'tests/ui/test_ocr_language_dialog.py',
+                            'tests/ui/test_ocr_selection.py',
+                            'tests/ui/test_ocr_options.py',
+                            'tests/search/test_literal_pagination.py',
+                            'tests/e2e/test_search_pagination.py',
+                            'tests/ui/test_search_pagination.py',
+                            'tests/ui/test_desktop_handlers.py',
+                            'tests/ui/test_desktop_query_jobs.py',
+                            'tests/ui/test_desktop_result_modes.py',
+                            'tests/e2e/test_advanced_research_search.py',
+                            'tests/e2e/test_nested_search_clock_budget.py',
+                            'tests/e2e/test_research_search_cli.py',
+                            'tests/e2e/test_retained_source_search_integrity.py',
+                            'tests/e2e/test_search_deadline.py',
+                            'tests/e2e/test_search_operation_budget.py',
+                            'tests/search/test_advanced_search.py',
+                            'tests/search/test_literal_catalog_api.py',
+                            'tests/search/test_literal_filter.py',
+                            'tests/search/test_literal_integrity.py',
+                            'tests/search/test_literal_long_source.py',
+                            'tests/search/test_literal_readonly.py',
+                            'tests/search/test_literal_scoped.py',
+                            'tests/search/test_literal_unicode_memory.py',
+                            'tests/search/test_literal_v2_composition.py',
+                            'tests/extract/test_automatic_ocr_native.py',
                             'tests/packaging/test_prepare_daisy_schemas.py',
                             'tests/reader/test_ebook_audio.py',
                             'tests/reader/test_ebook_audio_lifecycle.py',

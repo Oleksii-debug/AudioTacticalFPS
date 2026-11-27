@@ -7,7 +7,7 @@ the current finalization specification `db8adbdc483a03c262885928c7ed214ca70bbaa7
 and the detailed reading/audio requirements `d0b2761dd22b33233b311d4800230fb47f5d3d8b`.
 It extends the existing Resonance application in `carr-library/`.
 The canonical integration parent is `a44fac04072389caa40e0d6e799b13797712f797`;
-the previous composed product head is `d913b7234369447051863344fb38fb26a03bbc55`.
+the previous composed product head is `751c4abcbb0a20d1078d780d75a1a3733636595a`.
 
 Status: **implemented source, reviewed within the scopes below, composed execution
 NOT_RUN at creation of this checkpoint**. This is not whole-platform DONE, a
@@ -29,6 +29,9 @@ older component runs do not qualify the newly composed code.
 | Desktop settings, optional tray, explicit global controls/clipboard policy | Current menu/key registry and one wx loop; default-off optional actions and captured native owner identity | Desktop root composition and `3a6eabd5` |
 | DAISY 2.02 authoring | Existing completed Studio/primary production, PublicationService and measured timeline; official pinned DTDs used only for explicit CI validation | `d7138f2c` |
 | Authored recorded audio in imported EPUB | Existing retained EPUB parser in an owned child, Reading Desk worker/source guards, current audio runtime and WavePlayer | `d7138f2c`; authored fragments, no invented word timing or TTS fallback |
+| Current word, logical line, sentence and paragraph speech | Existing ReaderToolSession, native selection offsets, single narrator/player and shared key registry | `59c7062b`; four explicit Read and three passive navigation commands |
+| Automatic language/per-region OCR | Existing installed-model chooser, Tesseract path, worker and candidate-review provenance | `10da3735`, runtime-environment correction `47d06262`, exact py3langid packaging `f0331787` |
+| Exact/Boolean result continuation | Existing literal/advanced retrieval, scoped source transaction, raw quotation validation and Search panel | Opaque per-app keyset cursors, bounded navigation state; ranked/index capacity remains separate |
 
 These paths preserve immutable originals and the distinction between extracted
 text, an editable reading copy, and independently approved quotations. Restoring
@@ -112,6 +115,16 @@ at 05594e86 adds exact-endpoint shared WASAPI HRESULT reporting without Start,
 buffer acquisition, device fallback, or policy changes. It is diagnostic evidence,
 not a successful capture gate. The required measured capture gate remains intact.
 
+The corrected production/clipboard composition `751c4abc` was submitted to
+[preflight 46031798475](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46031798475).
+The ordinary evaluation candidate `94ecfdd4` adds only the retained capture
+workflow to that product tree. All six expected workflow records exist on that
+SHA: main `46031920263`, V3 `46031920252`, compatibility `46031920482`,
+transcription `46031920280`, bibliography `46031920357`, and launcher
+`46031920446`. At this checkpoint they remain queued; no eligible application
+wheel is available. The newer OCR/navigation/pagination composition has not
+borrowed their results.
+
 ## Qualification carried forward
 
 The main integrated workflow retains every earlier selector and adds the new
@@ -120,6 +133,12 @@ conversion, metadata, player, recorded-EPUB and DAISY controls run from source a
 the installed application; the complete bundle runs the corresponding probes.
 Independent DAISY DTD validation uses the exact five pinned official resources
 and a deliberately invalid XHTML control. Existing EPUBCheck gates remain.
+Automatic OCR controls require the actual pinned detector and actual English
+Tesseract on a synthetic scanned PDF; missing prerequisites fail the selected
+gate. Native source/installed/bundle chooser and result-page controls are added,
+plus scoped speech on the existing explicitly identified output endpoint. The
+complete bundle keeps its own explicitly selected OCR runtime instead of being
+rebound to a source-test runtime. No runtime or private payload is uploaded.
 
 Only job/step scheduling budgets grow to accommodate added checks. Individual
 native watchdogs, process deadlines, skip/xfail rejection, source authorization,
@@ -136,10 +155,10 @@ must still omit the optional audio runtime and offer explicit local setup.
 ## Remaining specification work, not reclassified as external-only blockers
 
 The audit also identified independent code work beyond the routes above:
-automatic installed-language/per-region OCR; explicit current word, line,
-sentence and paragraph speech; wider typed assistant/audio tool coverage and
-shared admission for the primary Director; language-aware text preparation;
-scalable continuation/indexing beyond the existing bounded search; native Word
+wider typed assistant/audio tool coverage and shared admission for the primary
+Director; language-aware text preparation; durable/scalable indexing, ranked
+continuation and larger bounded source/import operations beyond the exact-search
+paging added here; native Word
 citation workflows; conflict-reviewed multi-device sync; and the remaining
 recording-to-managed-voice lifecycle. These are not satisfied merely by existing
 nearby menus or isolated adapters. Separate current work must reconcile these

@@ -14,3 +14,24 @@ No third-party source bytes or executable binaries are redistributed by this cha
 ## Offline native SAPI5 bridge — 2026-11-26
 
 Windows now pins comtypes 1.5.0 (MIT), upstream commit `7732dc3de25797e658d26f375e78310bd7febbda`. The exact PyPI wheel hash is in both Windows locks; its complete LICENSE.txt is retained in `wheel-notices/comtypes-LICENSE.txt` and in the wheel. It has no mandatory third-party dependencies. The application invokes the native Windows COM SAPI5 classes in a bounded local worker and does not download voices.
+
+## Offline automatic OCR language review — 2026-11-27
+
+The optional automatic OCR mode uses py3langid 0.4.0 under BSD-3-Clause, from
+https://github.com/adbar/py3langid/tree/3b99caf00d0dcbc9416a9d06f8e5b690e919a74e .
+Both Windows locks admit only the reviewed universal wheel SHA256
+c25bd038147951ba3a89efe9ec12cc7d2116cb6f311ff8af84ade398a8bc0616.
+The existing NumPy pins remain 2.4.6 in the ordinary runtime and 2.3.5 in the
+semantic runtime; py3langid's dependency is NumPy >= 2.0.
+
+The complete original license is retained at
+src/carr_library/extract/PY3LANGID_LICENSE and included in the application wheel's
+declared license files. The package data file ocr-language-detector.json records
+the exact implementation/model identities, upstream commit and original identity
+evidence. The existing Windows SBOMs retain their prior resolver inventory and
+mark this reviewed package addition explicitly; no new resolver run is claimed.
+
+This code does not fetch models while processing documents, contact a language
+service, or turn a classifier score into source or quotation approval. Runtime
+acceptance and language-quality evidence are tracked separately in
+docs/AUTOMATIC_OCR.md.

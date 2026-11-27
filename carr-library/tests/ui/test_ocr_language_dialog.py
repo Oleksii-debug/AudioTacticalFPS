@@ -42,6 +42,7 @@ def dialog(monkeypatch, tmp_path):
     view.result = None
     view.filter, view.available, view.chosen = Control(), Control(), Control()
     view.profile, view.orientation, view.presets = Control(selection=0), Control(False), Control()
+    view.automatic = Control(False)
     view.status, view.ok, view.rescan_button = Control(), Control(), Control()
     view.preset_root = tmp_path
     view.EndModal = Mock()
@@ -185,3 +186,29 @@ def test_profile_switch_cannot_reuse_previous_inventory_or_preset_silently(dialo
     before = list(dialog.selected_codes)
     dialog.apply_preset()
     assert dialog.selected_codes == before and 'preset uses Best' in dialog.status.value
+
+
+def test_explicit_automatic_choice_keeps_order_and_resource_limits(dialog):
+    dialog.selected_codes = ['ukr', 'eng']
+    dialog.automatic.SetValue(True)
+    dialog.accept()
+    assert dialog.result == Config(languages='ukr+eng', dpi=200, timeout=45,
+                                   automatic_languages=True)
+    assert dialog.initial.automatic_languages is False
+    dialog.EndModal.assert_called_once_with(1)
+
+
+def test_automatic_preset_round_trip_and_legacy_manual_override(dialog):
+    store_preset(dialog.preset_root, 'Automatic pool',
+                 Config(languages='ukr+eng', automatic_languages=True))
+    store_preset(dialog.preset_root, 'Manual French', Config(languages='fra'))
+    dialog._presets()
+    for label, expected, languages in [('Automatic pool', True, ['ukr', 'eng']),
+                                        ('Manual French', False, ['fra'])]:
+        dialog.presets.SetSelection(next(i for i, row in enumerate(dialog.preset_items)
+                                         if row[2] == label))
+        dialog.apply_preset()
+        assert dialog.selected_codes == languages
+        assert dialog.automatic.GetValue() is expected
+    dialog.accept()
+    assert dialog.result == Config(languages='fra', dpi=200, timeout=45)
