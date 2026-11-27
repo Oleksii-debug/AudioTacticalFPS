@@ -9,6 +9,7 @@ import sys
 import threading
 from types import ModuleType, SimpleNamespace
 from unittest.mock import patch
+from unittest.mock import Mock
 
 import pytest
 
@@ -58,15 +59,14 @@ def module(monkeypatch):
     wx.file_result = wx.ID_OK
     wx.file_path = ''
     wx.file_hook = None
-    wx.overwrite_result, wx.overwrite_hook, wx.overwrites = wx.ID_YES, None, []
-    class MessageDialog(Control):
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args, **kwargs)
-            wx.overwrites.append(self)
-        def ShowModal(self):
-            if wx.overwrite_hook: wx.overwrite_hook()
-            return wx.overwrite_result
-    wx.MessageDialog = MessageDialog
+    wx.YES, wx.NO = wx.ID_YES, wx.ID_NO
+    wx.overwrite_result, wx.overwrite_hook, wx.overwrites = wx.YES, None, []
+    def message_box(message, title, style, parent):
+        wx.overwrites.append(SimpleNamespace(message=message, title=title, style=style, parent=parent))
+        if wx.overwrite_hook:
+            wx.overwrite_hook()
+        return wx.overwrite_result
+    wx.MessageBox = Mock(side_effect=message_box)
 
     class FileDialog(Control):
         def __init__(self, *args, **kwargs):
@@ -292,6 +292,19 @@ def test_checked_writer_refuses_private_source_overwrite(module, setup):
     assert not form.pending and form.inventory_button.enabled
 
 
+@pytest.mark.parametrize('kind', ['bibliography', 'inventory', 'matrix'])
+def test_catalog_export_preserves_file_changed_during_render(module, setup, kind):
+    form, frame, library = setup
+    target = Path(module.wx.file_path)
+    target.write_bytes(b'Approved previous export')
+    library.hook = lambda: target.write_bytes(b'Independent edit during rendering')
+    assert getattr(form, 'export_' + kind)()
+    frame.finish()
+    assert target.read_bytes() == b'Independent edit during rendering'
+    assert 'destination changed' in form.status.GetValue()
+    assert not list(target.parent.glob('.research-export-*'))
+
+
 def test_report_limit_is_explicit_and_does_not_show_a_partial_result(module, setup):
     form, frame, library = setup
     library.report_value = 'X' * (module.REPORT_MAX_CHARACTERS + 1)
@@ -426,4 +439,4 @@ def test_catalog_overwrite_decline_restores_button_without_render(module, setup)
     module.wx.overwrite_result = module.wx.ID_NO
     assert form.export_inventory() is False
     assert frame.jobs == [] and library.calls == [] and form.inventory_button.focused
-    assert destination.read_bytes() == b'Keep work' and module.wx.overwrites[0].destroyed
+    assert destination.read_bytes() == b'Keep work' and module.wx.overwrites[0].style & module.wx.NO_DEFAULT

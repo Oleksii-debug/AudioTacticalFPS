@@ -10,6 +10,7 @@ from pathlib import Path
 from ..catalog.insights import analyze_catalog, display_value, format_checklist, format_overview, report_collections
 from ..catalog.membership import Catalog
 from ..research.export_file import write_export
+from .export_destination import confirm_export_destination
 from ..research.topic_tree import TopicTree
 from .research_actions import NativeDialogs
 from .export_destination import confirm_export_destination

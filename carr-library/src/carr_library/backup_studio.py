@@ -169,6 +169,18 @@ def validate_collection(db, stage, entries, *, cancelled):
             scopes[match[1]] = scopes.get(match[1], 0) + 1
             if scopes[match[1]] > 4096:
                 raise ValueError('Book plan snapshot exceeds its scope limit.')
+    for plan in plans.values():
+        for index in range(1, len(plan.parts) + 1):
+            if cancelled():
+                raise InterruptedError('Backup verification cancelled.')
+            name = 'state/studio/jobs/' + plan.job_id(index) + '/job.json'
+            if name not in by_name:
+                # Preparing a batch can stop after the immutable plan is saved.
+                continue
+            job = read_json(Path(stage) / name)
+            if (job['fingerprint'] != plan.project(index).fingerprint
+                    or job['format'] != plan.format or job['stems'] is not False):
+                raise ValueError('A retained Book item differs from its immutable reviewed plan.')
     for name in by_name:
         if match := BOOK_SOURCE.fullmatch(name):
             value = read_json(Path(stage) / name)

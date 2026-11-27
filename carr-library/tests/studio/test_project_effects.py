@@ -71,7 +71,8 @@ def test_schema_three_roundtrip_preserves_typed_order_and_all_bypass_values():
 
 @pytest.mark.parametrize('scope', ['master', 'role', 'scene', 'clip'])
 def test_saved_effect_edits_share_project_cas_and_history(tmp_path, scope):
-    service = ProductionService(tmp_path / 'library/state/studio', voices=VoiceRegistry([]))
+    service = ProductionService(tmp_path / 'library/state/studio', voices=VoiceRegistry([]),
+                                input_roots=(tmp_path,))
     editor = ClipEditor(tmp_path / 'library', service=service)
     require_audio()
     source = write_tone(tmp_path / 'selected.wav')

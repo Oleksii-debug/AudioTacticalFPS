@@ -337,7 +337,7 @@ class ImportCenterActions:
                 dialog.Destroy()
             if path:
                 approval = confirm_export_destination(self, path, private_root=self.library.root,
-                                                       title='Replace import report')
+                                                       title='Replace import report', wx_module=wx)
                 if approval is None:
                     return
                 self._bound()

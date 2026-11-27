@@ -6,7 +6,7 @@ Every bound service must independently enforce authorization on each operation.
 No global search, database access, or new persistence contract here.
 """
 import wx
-from carr_library.academic_integration.formatting import processor_attribution
+from carr_library.citations.csl import ATTRIBUTION
 from .paged_search_panel import PagedSearchPanel
 from .catalog_panel import CatalogPanel
 from .topic_panel import TopicPanel
@@ -24,11 +24,9 @@ class WorkspaceFrame(wx.Frame):
         self.host = wx.Panel(self)
         self.layout = wx.BoxSizer(wx.VERTICAL)
         self.host.SetSizer(self.layout)
-        notice = processor_attribution()
-        self.attribution = wx.StaticText(self.host, label=notice)
-        self.attribution.SetName(notice)
-        self.attribution.Wrap(820)
-        self.layout.Add(self.attribution, 0, wx.EXPAND)
+        self.citation_credit = wx.StaticText(self.host, label=ATTRIBUTION)
+        self.citation_credit.SetName('Citation processor attribution. ' + ATTRIBUTION.replace('\n', ' '))
+        self.layout.Add(self.citation_credit, 0, wx.EXPAND)
         self.choice = wx.Choice(self.host)
         self.choice.SetName('Library and research topic')
         self.layout.Add(wx.StaticText(self.host, label='Library and research topic'))
@@ -49,9 +47,15 @@ class WorkspaceFrame(wx.Frame):
         return p is not None and p.displayed is not None and p.note.GetValue() != p.displayed.note
 
     def _confirm(self):
-        return not self._dirty() or wx.MessageBox(
+        if not self._dirty():
+            return True
+        confirmed = wx.MessageBox(
             'Discard the unsaved research note?', 'Unsaved note',
             wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, self) == wx.YES
+        if not confirmed:
+            return False
+        discard = getattr(self.evidence, 'discard_recovery', None)
+        return discard() if callable(discard) else True
 
     def _restore_note_focus(self):
         # A dirty note can belong to a hidden page. Reveal that exact page

@@ -252,7 +252,7 @@ class LibraryToolsDialog(wx.Dialog):
                 return False
             path = Path(dialog.GetPath())
             approval = confirm_export_destination(self, path, private_root=self.private_root,
-                                                   title=f'Replace {name}')
+                                                   title=f'Replace {name}', wx_module=wx)
             if approval is None:
                 self.status.SetValue('Export cancelled. No file was written.')
                 button.SetFocus()

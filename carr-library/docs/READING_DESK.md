@@ -202,5 +202,53 @@ contracts. `scripts/windows_reader_player_smoke.py` requires the installed packa
 and actual Windows MCI; it measures pause, silent seek, explicit resume, stop and
 file release on a silent synthetic recording. A missing native output device
 fails that gate. It does not establish audible quality, NVDA acceptance or
-physical microphone behavior. This transport increment does not claim A–B repeat,
-sleep-timer or configurable-skip completion.
+physical microphone behavior.
+
+## A–B repeat, sleep and configurable skips
+
+After reading text once, open **Playback controls** in the same voice reader.
+The controls operate on the current rendered WAV through the same WavePlayer,
+with no new playback engine or background worker. Opening the controls,
+selecting A/B, or configuring skips and sleep never starts a stopped recording.
+**Play current recording** is the explicit start action; **Pause or resume
+recording** preserves a silent paused seek.
+
+Enter A and B in seconds within the recording, at least 0.05 seconds apart,
+then choose **Apply A–B repeat**. A playing recording continues from its current
+position if it is inside that range; otherwise it starts at A. A stopped or
+paused recording stays stopped or paused. Windows uses a native millisecond
+end boundary; the FFplay fallback receives a bounded duration. On reaching B,
+the reader's existing UI lifetime and quiet-progress checks admit the next
+repeat. Repetition is not promised to be gapless or word-aligned. **Clear A–B
+repeat** removes the range without starting a stopped or paused recording.
+
+Backward and forward skips are independently configurable from 0.1 to 600
+seconds. They stop at the current recording or A–B boundaries. Skipping while
+paused or stopped remains silent. The selected intervals last for this open
+reader session, including a new recording in that session.
+
+Choose a positive sleep duration of at most seven days, then press **Set sleep
+timer**. The timer uses monotonic elapsed time and continues while paused.
+Expiry stops playback on the reader's next timer tick and disarms repeat.
+**Clear sleep timer** removes that timer. **Stop** cancels synthesis, deferred
+playback, active repeat and sleep; it retains the A/B values for a later explicit
+Play. A newly played recording clears the earlier repeat and sleep choices.
+
+Closing the playback-controls dialog keeps current playback running in the
+voice reader, but cancels that dialog's unexecuted queued controls. Closing the
+voice reader stops its timer and closes its owned playback resource. Recovery
+opens without audio and does not reinstate an active repeat or sleep timer.
+Source authorization and the selected library are checked again before every
+automatic repeat. Stop, pause, quiet-controller stop, sleep expiry or a library
+switch cannot revive an already deferred repeat. Reopening a recording checks
+its admitted local file identity, size and modification stamps; source text and
+audio are not edited by these controls. Windows reports measured positions;
+the POSIX FFplay position remains explicitly an elapsed-time estimate.
+
+The added portable suites exercise actual PCM headers with controlled transport
+commands, delayed quiet admission, stale source/library refusal, silent paused
+and stopped actions, source replacement and closed-dialog callbacks. The
+installed Windows player probe also drives real native keyboard controls over
+actual MCI repeat, sleep, skips and file release. New source needs its own
+successful CI execution; these gates do not qualify acoustic accuracy or NVDA.
+

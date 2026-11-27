@@ -476,7 +476,7 @@ def _regular(path):
     return info
 
 
-def read_regular(path, maximum):
+def read_regular(path, maximum, *, minimum=1):
     before = _regular(path)
     if not minimum <= before.st_size <= maximum:
         raise RestoreError('sidecar is empty or exceeds its data-format budget')
@@ -498,6 +498,12 @@ def _ignored(name):
     path = PurePosixPath(name)
     if path.parent.as_posix() in ('narration-projects', 'reading-copies'):
         return path.name.startswith('.reading-copy-') and path.name.endswith('.tmp')
+    if name in ('state/studio/.input-review.lock',
+                'state/studio/recordings/.recording.lock',
+                'state/studio/effect-presets/.effect-presets.lock'):
+        return True
+    if re.fullmatch(r'state/studio/book-plans/[0-9a-f]{64}/\.book-[0-9a-f]{32}\.lock', name):
+        return True
     if name.startswith('state/studio/'):
         return path.name in ('.state.lock', '.render.lock') or path.name.startswith('.pending-')
     if path.parent.as_posix() == 'state/speech':
@@ -555,7 +561,7 @@ def _stream_file(source, *, destination=None, expected=None, maximum, cancelled,
     """Copy or recheck actual bytes without allocating a complete media file."""
     _check_cancelled(cancelled)
     before = _regular(source)
-    if not 0 < before.st_size <= maximum:
+    if not minimum <= before.st_size <= maximum:
         raise RestoreError('sidecar is empty or exceeds its data-format budget')
     flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
     digest, size, header = sha256(), 0, b''
@@ -614,7 +620,7 @@ def snapshot(db, root, stage, *, max_bytes=MAX_BYTES, include_generated=False, c
             if backup_generated.is_media(name):
                 backup_generated.validate_container(name, header, size)
         else:
-            raw = read_regular(root / name, sidecar_limit(name))
+            raw = read_regular(root / name, sidecar_limit(name), minimum=minimum_size(name))
             validate_sidecar(db, name, raw)
             _write(stage, name, raw)
             size, checksum = len(raw), sha256(raw).hexdigest()
@@ -684,7 +690,7 @@ def restore(db, source, stage, inventory, *, cancelled=lambda: False):
             if backup_generated.is_media(name):
                 backup_generated.validate_container(name, header, size)
         else:
-            raw = read_regular(source / name, sidecar_limit(name))
+            raw = read_regular(source / name, sidecar_limit(name), minimum=minimum_size(name))
             if len(raw) != entry['size_bytes'] or sha256(raw).hexdigest() != entry['sha256']:
                 raise RestoreError('sidecar digest or size disagrees with the backup manifest: ' + name)
             validate_sidecar(db, name, raw)

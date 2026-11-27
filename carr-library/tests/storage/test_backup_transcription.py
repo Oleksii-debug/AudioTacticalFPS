@@ -42,7 +42,7 @@ def _remove_fixture_instrumentation(service, identity):
 
 @pytest.fixture
 def factory(tmp_path):
-    def make(protocol=LEGACY, *, count=1, scenario='success', empty_text=False, word_timestamps=True):
+    def make(protocol=LEGACY, *, count=1, scenario='success', empty_text=False, word_timestamps=True, nested_outputs=False):
         app = LibraryApp(tmp_path / 'library')
         workspace = app.create_workspace('Typed retained transcription')
         service = app.transcription(workspace)
@@ -55,6 +55,14 @@ def factory(tmp_path):
             old = r"Synthetic transcript. Український текст.\n"
             assert old in source
             source = source.replace(old, '')
+        if nested_outputs:
+            assert protocol == V5
+            assert "name=f'source_{index+1:03d}.'+suffix" in source
+            source = source.replace("name=f'source_{index+1:03d}.'+suffix",
+                                    "name=f'input/source_{index+1:03d}.'+suffix")
+            assert "path=result/name\n" in source
+            source = source.replace("path=result/name\n",
+                                    "path=result/name\n        path.parent.mkdir(parents=True, exist_ok=True)\n")
         worker.write_text(source, encoding='utf-8')
         models = tmp_path / 'models'
         models.mkdir()
@@ -106,10 +114,12 @@ def _replace_member(folder, manifest, name, raw):
     entry.update(size_bytes=len(raw), sha256=sha256(raw).hexdigest())
 
 
-@pytest.mark.parametrize('protocol,word_timestamps', [(LEGACY, True), (V5, True), (V5, False)])
+@pytest.mark.parametrize('protocol,word_timestamps,nested_outputs', [
+    (LEGACY, True, False), (V5, True, False), (V5, False, False), (V5, True, True)])
 def test_actual_completed_roundtrip_keeps_receipts_edits_and_missing_engine_passive(
-        factory, tmp_path, monkeypatch, protocol, word_timestamps):
-    value, result = _complete(factory, protocol, word_timestamps=word_timestamps)
+        factory, tmp_path, monkeypatch, protocol, word_timestamps, nested_outputs):
+    value, result = _complete(factory, protocol, word_timestamps=word_timestamps,
+                              nested_outputs=nested_outputs)
     app, workspace, service, identity, originals, runtime, models = value
     source = result['sources'][0]['filename']
     original_text = service.text(identity, source)

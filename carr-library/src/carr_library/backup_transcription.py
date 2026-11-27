@@ -91,9 +91,8 @@ def _member(name):
             if v5 is None or v5[2] != identity:
                 return None
             suffix = v5[3]
-            if '/' in suffix and not (suffix.startswith('host-derived/')
-                    and '/' not in suffix[len('host-derived/'):]
-                    and _kind(suffix) in ('words.srt', 'words.vtt')):
+            if (len(PurePosixPath(suffix).parts) > 2
+                    or suffix.startswith('host-derived/') and _kind(suffix) not in ('words.srt', 'words.vtt')):
                 return None
         if relative.endswith('/result_manifest.json'):
             if v5 is None or v5[3] != 'result_manifest.json':
@@ -500,7 +499,7 @@ def _manifest(value):
     _wrappers(value['wrapper_sources_sha256'])
     for row in value['artifacts']:
         fields(row, {'path', 'bytes', 'sha256'})
-        _relative(row['path'], depth=1)
+        _relative(row['path'], depth=2)
         if _kind(row['path']) not in ('txt', 'srt', 'vtt', 'json', 'words.txt'):
             raise ValueError('Unknown Whisper output format.')
         number(row['bytes'], integer=True, maximum=MAX_METADATA_BYTES)
