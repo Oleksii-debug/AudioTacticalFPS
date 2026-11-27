@@ -186,6 +186,187 @@ def test_duplicate_source_names_remain_separate(prepared, tmp_path):
     assert len(result['artifacts']) == 12
 
 
+def test_folder_intake_retains_nested_media_and_reports_nonmedia_without_merging_names(prepared, tmp_path):
+    _, _, service, _, _ = prepared
+    folder = tmp_path / 'Записи'
+    (folder / 'nested').mkdir(parents=True)
+    first, second = folder / 'Лекція.WAV', folder / 'nested' / 'Лекція.WAV'
+    first.write_bytes(b'First synthetic recording.')
+    second.write_bytes(b'Second synthetic recording.')
+    ignored = folder / 'notes.txt'
+    ignored.write_text('Private sidecar, not audio.')
+    originals = {path: path.read_bytes() for path in (first, second, ignored)}
+
+    intake = service.submit_folder(folder, title='Folder intake')
+    assert intake['files'] == 2 and intake['excluded_files'] == 1
+    job = service.get(intake['id'])
+    assert job['status'] == 'ready' and len(service.list()) == 1
+    assert {row['original_name'] for row in job['sources']} == {'Лекція.WAV', 'nested/Лекція.WAV'}
+    assert len({row['filename'] for row in job['sources']}) == 2
+    assert {row['sha256'] for row in job['sources']} == {sha256(originals[path]).hexdigest() for path in (first, second)}
+    result = service.run(intake['id'], timeout=10)
+    assert result['status'] == 'completed' and len(result['artifacts']) == 12
+    assert service.verify(intake['id'])['done'] == 2
+    assert originals == {path: path.read_bytes() for path in originals}
+
+
+@pytest.mark.parametrize('unsupported', [False, True], ids=['empty', 'nonmedia-only'])
+def test_folder_without_supported_media_fails_without_creating_a_job(prepared, tmp_path, unsupported):
+    service = prepared[2]
+    folder = tmp_path / 'folder'
+    folder.mkdir()
+    if unsupported:
+        (folder / 'notes.txt').write_text('Not a recording.')
+    with pytest.raises(ValueError, match=f'No supported audio or video files.*{int(unsupported)} unsupported'):
+        service.submit_folder(folder)
+    assert service.list() == () and not service.jobs_root.exists()
+
+
+@pytest.mark.parametrize('kind', ['file', 'directory', 'root', 'ancestor', 'hardlink'])
+def test_folder_intake_refuses_real_links_without_following_or_retaining_them(prepared, tmp_path, monkeypatch, kind):
+    from carr_library import transcription
+    service = prepared[2]
+    folder, external = tmp_path / 'selected', tmp_path / 'external'
+    folder.mkdir()
+    (external / 'nested').mkdir(parents=True)
+    media = external / 'nested' / 'private.wav'
+    media.write_bytes(b'Synthetic external recording that must not be followed.')
+    selected = folder
+    if kind == 'file':
+        (folder / 'link.wav').symlink_to(media)
+    elif kind == 'directory':
+        (folder / 'linked-folder').symlink_to(external, target_is_directory=True)
+    elif kind == 'hardlink':
+        os.link(media, folder / 'hardlink.wav')
+    else:
+        selected = tmp_path / 'selected-alias'
+        selected.symlink_to(external, target_is_directory=True)
+        if kind == 'ancestor':
+            selected /= 'nested'
+    monkeypatch.setattr(transcription, '_checked_digest',
+                        lambda *args, **kwargs: pytest.fail('A linked input was opened.'))
+    with pytest.raises(ValueError, match='[Ll]ink|[Rr]eparse'):
+        service.submit_folder(selected)
+    assert service.list() == () and not service.jobs_root.exists()
+    assert media.read_bytes().startswith(b'Synthetic external')
+
+
+@pytest.mark.parametrize('when', ['before', 'scan', 'retain', 'retain-last'])
+def test_folder_intake_cancellation_leaves_no_partial_job(prepared, tmp_path, monkeypatch, when):
+    from carr_library import transcription
+    from carr_library.audio.models import AudioCancelled
+    service = prepared[2]
+    folder = tmp_path / 'folder'
+    folder.mkdir()
+    names = ('first.wav',) if when == 'retain-last' else ('first.wav', 'second.wav')
+    for name in names:
+        (folder / name).write_bytes(name.encode())
+    stopped, processed = [when == 'before'], []
+    name = '_copy' if when.startswith('retain') else '_checked_digest'
+    original = getattr(transcription, name)
+    def capture(*args, **kwargs):
+        result = original(*args, **kwargs)
+        processed.append(args[0])
+        stopped[0] = True
+        return result
+    monkeypatch.setattr(transcription, name, capture)
+    with pytest.raises(AudioCancelled, match='cancelled'):
+        service.submit_folder(folder, cancelled=lambda: stopped[0])
+    assert len(processed) == (0 if when == 'before' else 1)
+    assert service.list() == ()
+    assert not service.jobs_root.exists() or not any(path.name.startswith('.pending-') for path in service.jobs_root.iterdir())
+    for name in names:
+        assert (folder / name).read_bytes() == name.encode()
+
+
+@pytest.mark.parametrize('budget', ['files', 'source-bytes', 'batch-bytes', 'entries', 'depth'])
+def test_folder_intake_limits_reject_the_whole_selection(prepared, tmp_path, monkeypatch, budget):
+    from carr_library import transcription
+    from carr_library.ingest import batch_scan
+    service = prepared[2]
+    folder = tmp_path / 'folder'
+    (folder / 'nested').mkdir(parents=True)
+    for name in ('first.wav', 'second.wav'):
+        (folder / name).write_bytes(b'123')
+    (folder / 'nested' / 'third.wav').write_bytes(b'123')
+    module, name, limit = {
+        'files': (transcription, 'MAX_FILES', 2),
+        'source-bytes': (transcription, 'MAX_SOURCE_BYTES', 2),
+        'batch-bytes': (transcription, 'MAX_BATCH_BYTES', 5),
+        'entries': (batch_scan, 'MAX_SCAN_ENTRIES', 1),
+        'depth': (batch_scan, 'MAX_DEPTH', 1),
+    }[budget]
+    monkeypatch.setattr(module, name, limit)
+    with pytest.raises(ValueError, match='budget|limit'):
+        service.submit_folder(folder)
+    assert service.list() == () and not service.jobs_root.exists()
+
+
+def test_create_folder_cli_uses_the_same_retained_job_and_exclusion_counts(prepared, tmp_path):
+    app, workspace, service, _, _ = prepared
+    folder = tmp_path / 'folder'
+    (folder / 'nested').mkdir(parents=True)
+    (folder / 'nested' / 'clip.mp4').write_bytes(b'Synthetic video container placeholder.')
+    (folder / 'notes.txt').write_text('Excluded nonmedia sidecar.')
+    created = subprocess.run([sys.executable, '-m', 'carr_library', 'transcribe',
+        '--data-dir', str(app.root), '--workspace', workspace, 'create-folder', str(folder),
+        '--title', 'CLI folder', '--language', 'uk', '--no-word-timestamps'],
+        check=True, capture_output=True, text=True, encoding='utf-8')
+    result = json.loads(created.stdout)
+    assert result['files'] == 1 and result['excluded_files'] == 1
+    job = service.get(result['id'])
+    assert job['status'] == 'ready' and job['title'] == 'CLI folder'
+    assert job['sources'][0]['original_name'] == 'nested/clip.mp4'
+    assert job['settings']['language'] == 'uk' and not job['settings']['word_timestamps']
+
+
+@pytest.mark.parametrize('replacement', [b'new!', b'longer replacement'])
+def test_folder_intake_rejects_media_changed_after_preflight(prepared, tmp_path, monkeypatch, replacement):
+    from carr_library.ingest import batch_scan
+    service = prepared[2]
+    folder = tmp_path / 'folder'
+    folder.mkdir()
+    source = folder / 'recording.wav'
+    source.write_bytes(b'old!')
+    scan = batch_scan.scan_paths
+    def changed(*args, **kwargs):
+        rows = scan(*args, **kwargs)
+        source.write_bytes(replacement)
+        return rows
+    monkeypatch.setattr(batch_scan, 'scan_paths', changed)
+    with pytest.raises(ValueError, match='changed after the folder scan'):
+        service.submit_folder(folder)
+    assert service.list() == ()
+    assert not any(path.name.startswith('.pending-') for path in service.jobs_root.iterdir())
+    assert source.read_bytes() == replacement
+
+
+def test_folder_intake_rejects_scanned_parent_replaced_by_an_outside_link(prepared, tmp_path, monkeypatch):
+    from carr_library import transcription
+    from carr_library.ingest import batch_scan
+    service = prepared[2]
+    folder, external = tmp_path / 'folder', tmp_path / 'outside'
+    nested = folder / 'nested'
+    nested.mkdir(parents=True)
+    external.mkdir()
+    (nested / 'recording.wav').write_bytes(b'Selected synthetic recording.')
+    (external / 'recording.wav').write_bytes(b'Outside synthetic file must not be followed.')
+    scan = batch_scan.scan_paths
+    def replaced(*args, **kwargs):
+        rows = scan(*args, **kwargs)
+        nested.rename(tmp_path / 'original-directory')
+        nested.symlink_to(external, target_is_directory=True)
+        return rows
+    monkeypatch.setattr(batch_scan, 'scan_paths', replaced)
+    monkeypatch.setattr(transcription, '_copy',
+                        lambda *args, **kwargs: pytest.fail('An outside link reached retention.'))
+    with pytest.raises(ValueError, match='[Ll]inks'):
+        service.submit_folder(folder)
+    assert service.list() == ()
+    assert not any(path.name.startswith('.pending-') for path in service.jobs_root.iterdir())
+    assert (external / 'recording.wav').read_bytes() == b'Outside synthetic file must not be followed.'
+
+
 def test_optional_word_timestamps_keep_four_base_formats(prepared):
     _, result = completed(prepared, options={'word_timestamps': False})
     assert {row['format'] for row in result['artifacts']} == {'txt', 'srt', 'vtt', 'json'}

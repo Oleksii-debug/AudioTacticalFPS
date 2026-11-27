@@ -6,6 +6,7 @@ import sys
 from tempfile import TemporaryDirectory
 import time
 import traceback
+from unittest.mock import patch
 
 import wx
 
@@ -29,12 +30,22 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
     worker = root / 'synthetic-worker.py'
     worker.write_text(fixture.SYNTHETIC_WORKER.replace('__MODE__', repr('complete')), encoding='utf-8')
     service.configure(Path(sys.executable).resolve(), worker, models)
-    original = root / 'Запис.wav'
+    recordings = root / 'recordings'
+    (recordings / 'nested').mkdir(parents=True)
+    original = recordings / 'nested' / 'Запис.wav'
     original.write_bytes(b'Synthetic protocol audio placeholder; no acoustic inference.')
-    job_id = service.submit([original], title='Native transcript workflow')
+    sidecar = recordings / 'notes.txt'
+    sidecar.write_text('Excluded synthetic nonmedia sidecar.', encoding='utf-8')
+    class FolderAnswer:
+        """Control the picker answer; the actual folder button/service still run."""
+        def __init__(self, *args, **kwargs): pass
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def ShowModal(self): return wx.ID_OK
+        def GetPath(self): return str(recordings)
     frame = DesktopFrame(library)
     frame.Show()
-    failures, state = [], {'phase': 0, 'finished': False}
+    failures, state = [], {'phase': 0, 'finished': False, 'job': None}
     started = time.monotonic()
     def click(control):
         event = wx.CommandEvent(wx.EVT_BUTTON.typeId, control.GetId())
@@ -54,16 +65,34 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
                 return control
             if state['phase'] == 0:
                 assert frame.active[0] == workspace
-                assert find('Збережені завдання').GetCount() == 1
-                assert find('Запис для редагування').GetCount() == 1
+                assert service.list() == ()
+                assert find('Збережені завдання').GetCount() == 0
+                assert find('Запис для редагування').GetCount() == 0
                 assert find('Часові мітки кожного слова').GetValue()
                 assert not find('Зупинити').IsEnabled()
                 assert not find('Текст: редагування зберігається окремою версією').IsEnabled()
+                folder_button = find('Додати папку з підпапками')
+                assert folder_button.IsEnabled()
+                find('Назва нового завдання').SetValue('Native transcript workflow')
+                with patch.object(wx, 'DirDialog', FolderAnswer):
+                    click(folder_button)
+                assert frame.working
+                state['phase'] = 'retaining'
+            elif state['phase'] == 'retaining' and not frame.working:
+                job, = service.list()
+                assert job['status'] == 'ready' and len(job['sources']) == 1
+                assert job['sources'][0]['original_name'] == 'nested/Запис.wav'
+                state['job'] = job['id']
+                assert find('Збережені завдання').GetCount() == 1
+                assert find('Запис для редагування').GetCount() == 1
+                notice = find('Стан транскрипції').GetValue()
+                assert 'Збережено записів: 1.' in notice
+                assert 'Непідтримуваних файлів пропущено: 1.' in notice
                 click(find('Запустити / продовжити'))
                 assert frame.working
                 state['phase'] = 1
             elif state['phase'] == 1 and not frame.working:
-                job = service.verify(job_id)
+                job = service.verify(state['job'])
                 assert job['status'] == 'completed' and len(job['artifacts']) == 6
                 editor = find('Текст: редагування зберігається окремою версією')
                 assert editor.IsEnabled() and 'Український' in editor.GetValue()
@@ -76,11 +105,13 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
                 click(save)
                 state['phase'] = 3
             elif state['phase'] == 3 and not frame.working:
+                job_id = state['job']
                 edit, = service.edits(job_id)
                 assert edit['text'] == 'Виправлена окрема версія.'
                 original_text = service.text(job_id, service.get(job_id)['sources'][0]['filename'])
                 assert original_text.startswith('Synthetic transcript.')
                 assert original.read_bytes().startswith(b'Synthetic protocol')
+                assert sidecar.read_text(encoding='utf-8') == 'Excluded synthetic nonmedia sidecar.'
                 assert not find('Зберегти правки').IsEnabled()
                 state['finished'] = True
                 click(find('Закрити'))
@@ -103,5 +134,7 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
         frame.Destroy()
         desktop.Yield()
 print(json.dumps({'status':'PASS', 'checks':['actual named wx controls','shared background operation',
+    'actual named folder action','background folder intake','relative source and exclusion count',
     'actual isolated child protocol','six verified formats','separate edit revision','original unchanged'],
+    'folder_picker_interaction':'NOT_RUN', 'folder_picker_answer':'controlled synthetic directory',
     'whisper_acoustic_inference':'NOT_RUN', 'manual_NVDA':'NOT_RUN'}, ensure_ascii=False))
