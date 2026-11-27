@@ -4,11 +4,13 @@ import hashlib
 import json
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import Mock
 import wave
 
 import pytest
 
-from carr_library.ui.audio_studio import StudioController, AudioStudioActions, plan_description
+from carr_library.ui.audio_studio import StudioController, AudioStudioActions, AudioStudioDialog, plan_description
+from carr_library.ui.save_all import SaveCoordinator
 
 
 @dataclass
@@ -39,6 +41,75 @@ def controller(tmp_path):
     ffmpeg = tmp_path / 'ffmpeg-test-placeholder'
     ffmpeg.write_text('No subprocess is launched in controller tests.', encoding='utf-8')
     return StudioController(private_root=tmp_path / 'private', registry=Registry(), parser=parser, ffmpeg=ffmpeg)
+
+
+@pytest.fixture
+def save_view(controller, tmp_path):
+    controller.new('Immutable original text.')
+    controller.save(tmp_path / 'studio-project.json')
+    view = object.__new__(AudioStudioDialog)
+    view.controller = controller
+    view.busy = view.closed = False
+    view.editing_dirty = True
+    view.parent = SimpleNamespace(save_coordinator=SaveCoordinator())
+    view.script = SimpleNamespace(SetFocus=Mock())
+    view._capture = lambda: controller.edit_script('Explicit reading-copy edit.')
+    view._refresh_text = lambda: setattr(view, 'editing_dirty', controller.dirty)
+    view._message, view._error = Mock(), Mock()
+    view._register_save_all()
+    return view
+
+
+def test_save_all_studio_completion_follows_actual_project_write(save_view):
+    summaries = []
+    save_view.parent.save_coordinator.save_all(summaries.append)
+    assert len(summaries) == 1 and summaries[0].complete
+    assert summaries[0].saved == ('Audio Studio project',)
+    assert not save_view.editing_dirty and not save_view.controller.dirty
+    payload = json.loads(save_view.controller.project_path.read_text(encoding='utf-8'))
+    restored = StudioController(private_root=save_view.controller.private_root)
+    restored.open(save_view.controller.project_path)
+    assert restored.script == 'Explicit reading-copy edit.'
+    assert restored.draft.source_text == 'Immutable original text.'
+    assert payload['project_id'] == save_view.controller.project_id
+
+
+def test_save_all_studio_conflict_preserves_file_and_unsaved_editor(save_view):
+    path = save_view.controller.project_path
+    external = path.read_bytes() + b'\n'
+    path.write_bytes(external)
+    summaries = []
+    save_view.parent.save_coordinator.save_all(summaries.append)
+    assert not summaries[0].complete
+    assert path.read_bytes() == external
+    assert save_view.controller.dirty and save_view.editing_dirty
+    assert save_view.controller.script == 'Explicit reading-copy edit.'
+    save_view._error.assert_called_once()
+
+
+def test_save_all_studio_save_as_cancellation_retains_draft(save_view):
+    save_view.controller.project_path = None
+    save_view._file = Mock(return_value=None)
+    summaries = []
+    save_view.parent.save_coordinator.save_all(summaries.append)
+    assert not summaries[0].complete and save_view.controller.dirty
+    assert save_view.editing_dirty and save_view.controller.project_path is None
+    assert 'cancelled' in summaries[0].remaining[0][1]
+
+
+def test_save_all_studio_unregisters_only_its_live_participant(save_view):
+    coordinator = save_view.parent.save_coordinator
+    assert len(coordinator.participants) == 1
+    save_view._unregister_save_all()
+    save_view._unregister_save_all()
+    assert not coordinator.participants
+
+
+def test_save_all_studio_does_not_accept_truthy_save_without_clean_baseline(save_view):
+    save_view.save = Mock(return_value=True)
+    reports = []
+    save_view._save_for_all(reports.append)
+    assert len(reports) == 1 and reports[0].saved is False
 
 
 def test_save_open_preserves_immutable_source_and_derivative_and_dirty_state(controller, tmp_path):

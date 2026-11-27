@@ -79,11 +79,16 @@ def test_missing_voice_or_existing_output_never_changes_voice_or_overwrites(tmp_
     assert engine.calls == [] and existing.read_bytes() == b'Keep unchanged'
 
 
-def test_real_installed_flite_synthesis_uses_same_registry_as_studio(tmp_path):
-    ffmpeg = shutil.which('ffmpeg')
-    if ffmpeg is None:
-        pytest.skip('An actual FFmpeg build with Flite is required.')
-    engine = FliteEngine(Path(ffmpeg).resolve())
+def test_real_installed_local_synthesis_uses_same_registry_as_studio(tmp_path):
+    if os.name == 'nt':
+        # SAPI is the actual installed Windows voice provider. The reviewed
+        # Windows FFmpeg build does not promise the optional Flite filter.
+        engine = SAPI5Engine()
+    else:
+        ffmpeg = shutil.which('ffmpeg')
+        if ffmpeg is None:
+            pytest.skip('An actual FFmpeg build with Flite is required.')
+        engine = FliteEngine(Path(ffmpeg).resolve())
     voices = engine.voices()
     registry = VoiceRegistry(CoreRegistry((engine,)))
     result = registry.synthesize('A real local voice reads this synthetic sentence.', voices[0].id,

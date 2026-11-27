@@ -1,5 +1,6 @@
 """Native local voice reader with keyboard controls and reversible reading copy."""
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import ExitStack
 from hashlib import sha256
 import json
 from pathlib import Path
@@ -10,6 +11,21 @@ from uuid import uuid4
 from ..speech import ReadingDocument, SpeechSettings, VoiceRegistry
 from ..speech.player import WavePlayer
 from ..speech.session import ReaderDraftStore, ReaderResume
+
+
+def _close_reader_resources(*, cancel, timer, keyboard, player, executor, audio_files, dialog):
+    """Attempt every close operation and propagate cleanup failures visibly."""
+    with ExitStack() as cleanup:
+        cleanup.callback(dialog.Destroy)
+        cleanup.callback(audio_files.cleanup)
+        # Join the bounded cancellation path before deleting worker outputs,
+        # even when a keyboard or native playback device refuses to close.
+        cleanup.callback(executor.shutdown, wait=True, cancel_futures=True)
+        cleanup.callback(player.close)
+        if keyboard is not None:
+            cleanup.callback(keyboard.close)
+        cleanup.callback(timer.Stop)
+        cancel.set()
 
 
 def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=None,
@@ -465,17 +481,9 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         editor.SetFocus()
         dialog.ShowModal()
     finally:
-        autosave_timer.Stop()
         alive = False
-        cancel.set()
-        if keyboard is not None:
-            keyboard.close()
-        player.close()
-        # Wait only for the bounded worker cancellation path before deleting its
-        # output directory. The UI never destroys a still-running worker's files.
-        executor.shutdown(wait=True, cancel_futures=True)
-        audio_files.cleanup()
-        dialog.Destroy()
+        _close_reader_resources(cancel=cancel, timer=autosave_timer, keyboard=keyboard,
+            player=player, executor=executor, audio_files=audio_files, dialog=dialog)
 
 
 class VoiceReaderActions:
@@ -495,7 +503,7 @@ class VoiceReaderActions:
                 raise ValueError('Wait for the active library operation or cancel it first.')
             self.reader(frame, source_guard=guard)
         except Exception as exc:
-            frame.report('The voice reader could not open: ' + str(exc))
+            frame.report('The voice reader operation did not complete: ' + str(exc))
 
 
 def install_voice_reader_actions(frame, menu):

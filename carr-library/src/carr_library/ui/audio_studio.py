@@ -417,6 +417,8 @@ SCRIPT_HELP = (
     'The Preparation page applies explicit literal replacements and has separate undo/redo buttons. '
     'The original is read-only. Save the project before rendering to keep resumable work. '
     'Named projects keep an automatic recovery draft while edited; Recover draft restores it explicitly.'
+    '\nSave all open drafts saves this project and open research notes, then reports any remaining edits. '
+    'Save project and Save project as continue to affect only this audio project.'
 )
 
 
@@ -518,6 +520,8 @@ class AudioStudioDialog:
                                ('Save project as', self.save_as), ('Recover draft', self.recover),
                                ('Back up audio project', self.backup), ('Restore audio snapshot', self.restore)):
             self._button(self.dialog, file_buttons, label, handler)
+        if callable(getattr(parent, 'save_all', None)):
+            self._button(self.dialog, file_buttons, 'Save all open drafts', self.save_all)
         close_button = wx.Button(self.dialog, wx.ID_CANCEL, 'Close Audio Studio')
         close_button.SetName('Close Audio Studio')
         close_button.Bind(wx.EVT_BUTTON, self.close)
@@ -536,6 +540,43 @@ class AudioStudioDialog:
         self.timer.Start(30000)
         self._loading = False
         self._refresh_text()
+        self._register_save_all()
+
+    def _register_save_all(self):
+        coordinator = getattr(self.parent, 'save_coordinator', None)
+        self._save_all_unregister = (coordinator.register(
+            f'audio-project:{id(self)}', 'Audio Studio project',
+            dirty=lambda: not self.closed and (self.editing_dirty or self.controller.dirty),
+            save=self._save_for_all, focus=self.script.SetFocus)
+            if coordinator is not None else None)
+
+    def _unregister_save_all(self):
+        unregister = getattr(self, '_save_all_unregister', None)
+        if unregister is not None:
+            unregister()
+            self._save_all_unregister = None
+
+    def _save_for_all(self, completed):
+        from .save_all import SaveResult
+        if self.closed or self.busy:
+            completed(SaveResult(False, 'The studio is closed or busy; its draft is retained.'))
+            return
+        saved = self.save()
+        confirmed = saved is True and not self.editing_dirty and not self.controller.dirty
+        completed(SaveResult(confirmed, '' if confirmed else
+                            'Project save was cancelled or failed; its draft is retained.'))
+
+    def save_all(self, event=None):
+        if self.closed or self.busy:
+            return False
+        action = getattr(self.parent, 'save_all', None)
+        if action is None:
+            return False
+        self._message('Saving open research notes and audio projects...')
+        started = action(completed=lambda summary: self._message(summary.message(), focus=True))
+        if not started:
+            self._message('A save or another operation is already running. Wait or cancel it first.', focus=True)
+        return started
 
     def _text(self, parent, layout, label, value):
         wx = self.wx
@@ -1023,6 +1064,7 @@ class AudioStudioDialog:
                 event.Veto()
             return
         self.closed = True
+        self._unregister_save_all()
         self.cancelled.set()
         self.timer.Stop()
         self.playback.stop()
@@ -1039,6 +1081,7 @@ class AudioStudioDialog:
             self.dialog.ShowModal()
         finally:
             self.closed = True
+            self._unregister_save_all()
             self.cancelled.set()
             self.timer.Stop()
             self.playback.stop()

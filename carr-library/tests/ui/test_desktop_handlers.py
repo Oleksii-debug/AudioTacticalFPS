@@ -144,6 +144,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     assert len(shortcuts) == len(set(shortcuts))
     assert 'Academic library...\tCtrl+Shift+B' in labels
     assert 'Import Center: files, folders and queues' in labels
+    assert 'Save all open drafts\tCtrl+Alt+S' in labels
     for handler in (value.import_center, value.open_academic_library, value.export_topic):
         assert any(call.args[1] == handler for call in value.Bind.call_args_list)
     for installer in (*installers.values(), ebook, keyboard):
@@ -157,6 +158,23 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     assert 'Ctrl+Alt+F opens Research Search Center' in guide
     assert 'Ctrl+Alt+Q opens the advanced query builder' in guide
     assert 'Ctrl+Shift+F searches saved quotations and notes' in guide
+
+
+def test_main_save_all_reports_only_after_participant_completion(classes):
+    from carr_library.ui.save_all import SaveCoordinator, SaveResult
+    value = frame(classes)
+    value.save_coordinator = SaveCoordinator()
+    pending, dirty, summaries = [], [True], []
+    value.save_coordinator.register('note', 'Research note', dirty=lambda: dirty[0], save=pending.append)
+    assert value.save_all(completed=summaries.append)
+    assert value.last_save_all_summary is None
+    assert value.save_coordinator.busy
+    assert not value.save_all()
+    dirty[0] = False
+    pending[0](SaveResult(True))
+    assert len(summaries) == 1 and summaries[0].complete
+    assert value.last_save_all_summary == summaries[0]
+    assert value.report.call_args.args[0] == summaries[0].message()
 
 
 def test_repeated_enter_does_not_clear_an_active_search(classes):

@@ -40,6 +40,12 @@ def main():
     from carr_library.citations import bibliography_workbench, csl
     from carr_library.research import bibtex_import
     from carr_library.ui import academic_library_dialog, citation_styles_dialog
+    import ctypes
+    from ctypes import wintypes
+
+    user32 = ctypes.WinDLL('user32', use_last_error=True)
+    user32.GetForegroundWindow.argtypes = ()
+    user32.GetForegroundWindow.restype = wintypes.HWND
 
     checks, failures, network_attempts = [], [], []
 
@@ -93,8 +99,19 @@ def main():
             raise AssertionError('The native keyboard simulator rejected a key.')
 
     def focus(control):
+        # GetFocus (and thus wx.Window.FindFocus) is thread-local on MSW. It
+        # can identify a control in a background window while keybd_event,
+        # used by UIActionSimulator, sends input to another foreground window.
+        # Complete activation first, then give the intended child focus.
+        top = wx.GetTopLevelParent(control)
+        top.Raise()
+        pump_until(lambda: top.IsActive()
+                   and user32.GetForegroundWindow() == top.GetHandle(),
+                   'The native probe window did not acquire Windows foreground activation.')
         control.SetFocus()
-        pump_until(lambda: focused(control), 'Native keyboard focus was not acquired.')
+        pump_until(lambda: focused(control) and top.IsActive()
+                   and user32.GetForegroundWindow() == top.GetHandle(),
+                   'Native keyboard focus was not acquired in the foreground window.')
 
     def press(button):
         check('native action button is keyboard reachable', button.AcceptsFocusFromKeyboard())
@@ -207,7 +224,25 @@ def main():
                   and 'customfield' in review.details.GetValue()
                   and bool(review.details.GetWindowStyleFlag() & wx.TE_READONLY))
             focus(review.entries)
-            key(wx.WXK_SPACE)
+            check('the focused native import row is the first unchecked entry',
+                  review.entries.GetSelection() == 0 and not review.entries.IsChecked(0))
+            received_space = []
+
+            def observe_space(event):
+                if event.GetKeyCode() == wx.WXK_SPACE:
+                    received_space.append((focused(review.entries), review.entries.GetSelection()))
+                # Observe native dispatch without replacing the CheckListBox's
+                # own key handling or changing any check state in the probe.
+                event.Skip()
+
+            review.entries.Bind(wx.EVT_KEY_DOWN, observe_space)
+            try:
+                key(wx.WXK_SPACE)
+                pump_until(lambda: bool(received_space),
+                           'Windows did not deliver the simulated Space key to the focused import list.')
+            finally:
+                review.entries.Unbind(wx.EVT_KEY_DOWN, handler=observe_space)
+            check('native Space reaches the selected import row', received_space == [(True, 0)])
             pump_until(lambda: review.entries.IsChecked(0), 'Space did not select the BibTeX entry.')
             check('Space selects exactly the intended native import row',
                   not review.entries.IsChecked(1))

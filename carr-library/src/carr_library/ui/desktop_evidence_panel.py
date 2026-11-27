@@ -29,6 +29,12 @@ class DesktopEvidencePanel(EvidencePanel):
         recover.SetName('Recover or discard a locally saved research note draft')
         recover.Bind(wx.EVT_BUTTON, self.recover_draft)
         self.GetSizer().Add(recover, 0, wx.ALL, 3)
+        coordinator = getattr(frame, 'save_coordinator', None)
+        self._save_all_pending = None
+        self._save_all_unregister = (coordinator.register(
+            f'research-note:{id(self)}', 'Research note', dirty=self._dirty,
+            save=lambda done: self.save_note(completed=done),
+            focus=frame._restore_note_focus) if coordinator is not None else None)
 
     def _recovery_edited(self, event):
         event.Skip()
@@ -119,6 +125,13 @@ class DesktopEvidencePanel(EvidencePanel):
 
     def _recovery_destroy(self, event):
         if event.GetEventObject() is self:
+            unregister = getattr(self, '_save_all_unregister', None)
+            if unregister is not None:
+                unregister()
+                self._save_all_unregister = None
+            pending = getattr(self, '_save_all_pending', None)
+            if pending is not None:
+                pending(False, 'The note view closed before save confirmation.')
             self._recovery_timer.Stop()
             # No access to already destroyed child controls: EVT_TEXT captured
             # the exact pending note. Preserve it even after scope revocation;
@@ -328,15 +341,35 @@ class DesktopEvidencePanel(EvidencePanel):
             lambda error: self._failed(epoch,'Evidence unavailable. Check the library and original source.'))
         return True
 
-    def save_note(self,event=None):
+    def save_note(self,event=None,*,completed=None):
+        from carr_library.ui.save_all import SaveResult
+        replied = False
+
+        def finish(saved, message=''):
+            nonlocal replied
+            if replied:
+                return
+            replied = True
+            if getattr(self, '_save_all_pending', None) is finish:
+                self._save_all_pending = None
+            if completed is not None:
+                completed(SaveResult(saved, message))
+
+        if self.frame._closing or getattr(self, '_recovery_disposed', False):
+            finish(False, 'The note view is closed; the draft is retained.')
+            return
         if self.frame.working:
             self.frame.report('An operation is already running. Wait or choose Cancel current operation.')
+            finish(False, 'Another library operation is running; the draft is retained.')
             return
         row = self._selected()
         if row is None or row != self.displayed:
             self.status.SetValue('Select the evidence whose note you want to save. Your draft is retained.')
             self.status.SetFocus()
+            finish(False, 'Select the evidence for this note; the draft is retained.')
             return
+        if completed is not None:
+            self._save_all_pending = finish
         note = self.note.GetValue()
         self._capture_recovery()
         saving_draft = getattr(self, '_recovery_owned', None)
@@ -357,6 +390,7 @@ class DesktopEvidencePanel(EvidencePanel):
 
         def done(saved):
             if not self._current(epoch):
+                finish(False, 'The note view changed before save confirmation.')
                 return
             self.rows = tuple(saved if current.evidence_id == saved.evidence_id else current for current in self.rows)
             self.displayed = saved
@@ -374,6 +408,13 @@ class DesktopEvidencePanel(EvidencePanel):
             if getattr(self, '_recovery_error', ''):
                 self.status.SetValue(self.status.GetValue() + ' ' + self._recovery_error)
             self.note.SetFocus()
+            finish(True)
 
-        self.frame.run_job('Saving research note',save,done,
-            lambda error: self._failed(epoch,'Note not saved. Check the library and original source, then retry.'))
+        def failed(error):
+            self._failed(epoch,'Note not saved. Check the library and original source, then retry.')
+            finish(False, 'Note not saved; draft retained. ' + str(error))
+
+        try:
+            self.frame.run_job('Saving research note',save,done,failed)
+        except Exception as error:
+            failed(error)

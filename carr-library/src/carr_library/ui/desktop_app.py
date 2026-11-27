@@ -492,6 +492,9 @@ class DesktopFrame(WorkspaceFrame):
         self.cancel_event = threading.Event()
         self.working = False
         self._closing = False
+        from .save_all import SaveCoordinator
+        self.save_coordinator = SaveCoordinator()
+        self.last_save_all_summary = None
         super().__init__(None, library.list_scopes, self._bind)
         self.SetTitle('Universal Research Library')
         self.SetMinSize((760, 650))
@@ -513,7 +516,8 @@ class DesktopFrame(WorkspaceFrame):
 
     def _menus(self):
         self.menu_bar = wx.MenuBar()
-        menus = [('&Library', [('New library\tCtrl+N', self.new_library),
+        menus = [('&File', [('Save all open drafts\tCtrl+Alt+S', self.save_all)]),
+            ('&Library', [('New library\tCtrl+N', self.new_library),
             ('Open existing library folder',self.open_library_folder),
             ('Rename or describe library', self.rename_library), ('Archive library', self.archive_library),
             ('Restore archived library', self.unarchive_library),
@@ -567,6 +571,27 @@ class DesktopFrame(WorkspaceFrame):
         install_api_connection_actions(self)
         from .keyboard_settings import install_keyboard_settings
         install_keyboard_settings(self)
+
+    def save_all(self, event=None, *, completed=None):
+        """Start coordinated saves; only its completion reports durable success."""
+        if self._closing:
+            return False
+        if self.working or self.save_coordinator.busy:
+            self.report('A save or another operation is already running. Wait or cancel it first.')
+            return False
+        self.cancel_event.clear()
+        self.last_save_all_summary = None
+        self.report('Saving open research notes and audio projects...')
+
+        def finished(summary):
+            self.last_save_all_summary = summary
+            if not self._closing:
+                self.report(summary.message())
+                if completed is not None:
+                    completed(summary)
+
+        return self.save_coordinator.save_all(finished,
+            cancelled=lambda: self._closing or self.cancel_event.is_set())
 
     def build_advanced_query(self, event=None):
         if self.working:
@@ -1160,9 +1185,11 @@ class DesktopFrame(WorkspaceFrame):
             show_text(self, 'Keyboard guide', self.keyboard_commands.help_text())
             return
         show_text(self, 'Keyboard guide',
-            'Use Alt+L for Library, Alt+R for Research, Alt+A for Academic, Alt+B for Bibliography, '
+            'Use Alt+F for File, Alt+L for Library, Alt+R for Research, Alt+A for Academic, Alt+B for Bibliography, '
             'Alt+S for Source, Alt+D for Reading, Alt+T for Tools, and Alt+H for Help.\n'
             'Tools, Local library workflow assistant previews and runs selected local library operations with saved recovery checkpoints.\n'
+            'File, Save all open drafts (Ctrl+Alt+S by default) waits for research notes and audio projects to finish saving. '
+            'Its final message lists any failed, cancelled or newer unsaved changes.\n'
             'Ctrl+Alt+M compares saved sources in the active topic. Academic also exports filtered outlines, reviews RIS metadata and checks the catalog.\n'
             'Ctrl+N creates a library. Ctrl+I imports books. Ctrl+Shift+N adds original text.\n'
             'Library, Import Center opens folder scans, duplicate checks and saved import queues.\n'

@@ -63,6 +63,8 @@ It does not copy arbitrary JSON, settings directories or credentials.
 | `reading-state.json` | `reader.reading_state` | Every location binds the exact workspace, edition, sealed revision, asset, page kind/index and page-text digest. |
 | `keyboard-shortcuts.json` | `keyboard_preferences.validate_keymap`, 64 KiB | Command availability and context rules are checked again when the UI activates the profile. |
 | `evidence-drafts.json` | `evidence_drafts.validate_evidence_drafts`, 8 MiB and 128 drafts | Each workspace/topic/evidence tuple must exist in the copied database. Exact source and saved-note baseline hashes remain unchanged. |
+| `voice-reader-state.json` | `speech.session.session_source_bindings`, including `validate_sessions_bytes`, 8 MiB and 64 sessions | Every source-bound reading range matches its exact workspace, edition, sealed revision, asset, reading ordinal, locator kind/index and page-text digest. Manual copies retain their explicit manual identity. |
+| `audio-engine-settings.json` | `audio.engine_settings.validate_settings_bytes`, 64 KiB | Only the producer's four optional local path settings are accepted. Backup validation neither opens those paths nor activates a speech engine. |
 | `keybindings.json` | Optional legacy `keybindings.decode_preferences` | The real producer must be installed. |
 | `ocr-language-presets.json` | Optional `extract.ocr_languages.validate_presets_bytes` | The real producer must be installed. |
 | `narration-projects/<id>.json` and `<id>.draft.json` | Optional `reader.narration.validate_narration_payload` | Source-bound original text must match the exact checked page; producer count and aggregate byte limits also apply. |
@@ -84,6 +86,23 @@ Draft restoration likewise preserves personal recovery data without applying an
 edit. A changed saved-note baseline or source hash remains a conflict for the
 normal editor to review. Fresh scope authorization, source comparison and the
 user's recovery decision are still required after restore.
+
+Live-reader recovery retains the exact original source text, separately edited
+reading copy, edit replay, cursor, selected voice and playback identity fields.
+The producer verifies complete source-range coverage, substring hashes and
+consecutive ordinals before the backup adapter checks every position against the
+copied database. Reading order and a PDF's physical page number are checked
+separately. Source IDs use the producer's canonical hash; catalog IDs containing
+slashes remain opaque. Historical sessions retain their original revision and
+session key, so they do not become the current revision's reading copy.
+
+Local engine settings are declarative data. Restoring them does not execute a
+program, load a model manifest or read any referenced external file. The normal
+engine configuration code checks the selected local files again before use.
+Missing installations can therefore be retained as settings without being
+mistaken for an available engine. Session audio keys and WAV hashes are recovery
+references; the corresponding generated WAV files and playback cache are not
+included in this library backup.
 
 ## Publication and interruption
 
@@ -131,7 +150,8 @@ the unchanged imported producer-test file SHA256 is
 `098d544e833a67e5ee5c961c1e2aa4e1da1b54814921c5e143b475c2aa70a96b`.
 
 Required focused suites include `test_backup_v4_sidecars.py`,
-`test_backup_keyboard_drafts.py`, `test_library_backup_reading_state.py`,
+`test_backup_keyboard_drafts.py`, `test_backup_voice_reader.py`,
+`test_backup_publication_recovery.py`, `test_library_backup_reading_state.py`,
 `test_library_backup.py`, `test_backup_schema_identity.py`, and the library
 assistant recovery suites. They exercise real SQLite and original files,
 historical and archived bindings, byte-identical personal-state recovery,

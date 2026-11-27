@@ -21,7 +21,8 @@ from .reader.reading_state import MAX_BYTES as READING_BYTES, _decode
 MAX_FILES = 100_000
 MAX_BYTES = 512 * 1024 * 1024
 _SIMPLE = ('reading-state.json', 'keybindings.json', 'keyboard-shortcuts.json',
-           'evidence-drafts.json', 'ocr-language-presets.json')
+           'evidence-drafts.json', 'ocr-language-presets.json',
+           'voice-reader-state.json', 'audio-engine-settings.json')
 _DIRECTORIES = ('narration-projects', 'reading-copies', 'state')
 _ID = r'[A-Za-z0-9_-]{1,80}'
 _STUDIO = re.compile(r'state/studio/projects/(' + _ID + r')/(?:project\.json|revisions/(\d{8})-([0-9a-f]{64})\.json)\Z')
@@ -67,6 +68,10 @@ def sidecar_limit(name):
         return _model('keyboard_preferences').MAX_BYTES
     if name == 'evidence-drafts.json':
         return _model('evidence_drafts').MAX_BYTES
+    if name == 'voice-reader-state.json':
+        return _model('speech.session').MAX_BYTES
+    if name == 'audio-engine-settings.json':
+        return _model('audio.engine_settings').MAX_BYTES
     if name == 'ocr-language-presets.json':
         return _model('extract.ocr_languages').MAX_PRESET_BYTES
     if re.fullmatch(r'narration-projects/[0-9a-f]{32}(?:\.draft)?\.json', name):
@@ -109,6 +114,27 @@ def _validate_original_text(db, location, text):
         raise RestoreError('reading-copy original text does not match its exact saved source')
 
 
+def _validate_live_reader_sources(db, raw):
+    # The real producer validates edit replay, complete source-text coverage,
+    # substring hashes, consecutive ordinals and the canonical hashed source ID.
+    # IDs are opaque: slashes in catalog identifiers must never be interpreted.
+    for binding in _model('speech.session').session_source_bindings(raw):
+        for position in binding['positions']:
+            row = db.execute('''SELECT 1 FROM revision r
+                JOIN sealed s ON s.revision=r.id
+                JOIN page p ON p.revision=r.id
+                JOIN catalog_edition e ON e.workspace=r.workspace AND e.id=r.edition AND e.asset=r.asset
+                WHERE r.workspace=? AND r.edition=? AND r.id=? AND r.asset=?
+                  AND p.ordinal=? AND p.digest=?
+                  AND ((?='physical_page' AND p.physical=?) OR
+                       (?='logical_segment' AND p.physical IS NULL AND p.ordinal=?))''',
+                (binding['workspace'], binding['edition'], binding['revision'],
+                 position['asset_sha256'], position['ordinal'], position['text_sha256'],
+                 position['kind'], position['index'], position['kind'], position['index'])).fetchone()
+            if row is None:
+                raise ValueError('Live-reader recovery does not match its exact saved source position.')
+
+
 def _json(raw):
     return json.loads(raw.decode('utf-8'), object_pairs_hook=_unique_object,
                       parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Invalid JSON number.')))
@@ -139,6 +165,12 @@ def validate_sidecar(db, name, raw):
             # Archived scopes and changed saved-note/source baselines are kept.
             # A recovery copy is not an evidence edit: the editor authorizes
             # again after restore and offers conflicting copies read-only.
+        elif name == 'voice-reader-state.json':
+            _validate_live_reader_sources(db, raw)
+        elif name == 'audio-engine-settings.json':
+            # Parsing paths is not authorization to open a model or executable.
+            # The engine registry revalidates selected local files when used.
+            _model('audio.engine_settings').validate_settings_bytes(raw)
         elif name == 'ocr-language-presets.json':
             _model('extract.ocr_languages').validate_presets_bytes(raw)
         elif name.startswith('narration-projects/'):
