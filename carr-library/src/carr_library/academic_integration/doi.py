@@ -914,7 +914,7 @@ def _worker_argv(request_path=None, reply_path=None) -> list[str]:
     if getattr(sys, "frozen", False):
         command = [sys.executable, "--carr-doi-metadata-worker"]
     else:
-        command = [sys.executable, "-I", str(Path(__file__).resolve()), "--metadata-worker"]
+        command = [sys.executable, "-I", "-B", str(Path(__file__).resolve()), "--metadata-worker"]
     return command + ([os.fspath(request_path), os.fspath(reply_path)] if request_path is not None else [])
 
 
