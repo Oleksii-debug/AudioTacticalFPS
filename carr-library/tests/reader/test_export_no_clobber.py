@@ -220,7 +220,7 @@ def test_existing_approval_rejects_same_size_edit_with_unchanged_observed_times(
     def modify():
         target.write_bytes(newer)
         os.utime(target, ns=(original.st_atime_ns, original.st_mtime_ns))
-        assert export_file._file_state(target.stat()) == approval.state
+        assert export_file._file_state(target.stat()) == approval.state[:6]
 
     if when == 'queued':
         modify()
@@ -296,39 +296,15 @@ def test_existing_file_hash_can_stop_between_bounded_reads(
     stopped = False
     clock = 0.0
     inspected = []
-    opened = 0
-    actual_open = os.fdopen
 
-    class ObservedFile:
-        def __init__(self, stream, interrupt):
-            self.stream, self.interrupt = stream, interrupt
+    def observe(session, block):
+        nonlocal stopped, clock
+        if session['index'] == (1 if stage == 'staging' else 0):
+            inspected.append(len(block))
+            stopped = reason == 'cancelled'
+            clock = export_file.APPROVAL_TIMEOUT + 1
 
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            self.stream.close()
-
-        def fileno(self):
-            return self.stream.fileno()
-
-        def read(self, size):
-            nonlocal stopped, clock
-            assert 0 < size <= 1024 * 1024
-            data = self.stream.read(size)
-            if self.interrupt:
-                inspected.append(len(data))
-                stopped = reason == 'cancelled'
-                clock = export_file.APPROVAL_TIMEOUT + 1
-            return data
-
-    def observed_open(fd, *args, **kwargs):
-        nonlocal opened
-        opened += 1
-        return ObservedFile(actual_open(fd, *args, **kwargs),
-                            opened == (2 if stage == 'staging' else 1))
-
-    monkeypatch.setattr(os, 'fdopen', observed_open)
+    sessions = _observe_destination_reads(monkeypatch, observe)
     monkeypatch.setattr(export_file, 'monotonic', lambda: clock)
     message = 'cancelled' if reason == 'cancelled' else 'too long.*new filename'
     with pytest.raises(TimeoutError, match=message):
@@ -338,6 +314,7 @@ def test_existing_file_hash_can_stop_between_bounded_reads(
         else:
             publish(approval=approval, cancelled=lambda: stopped)
     assert inspected == [1024 * 1024]
+    _assert_fingerprint_descriptors_closed(sessions)
     assert target.read_bytes() == previous
     assert not list(target.parent.glob('.research-export-*'))
 
@@ -672,7 +649,7 @@ def test_raced_private_hardlink_is_rejected_before_any_descriptor_read(export, m
     target.write_bytes(b'An ordinary external file')
     private = target.parent / 'private' / 'retained.txt'
     private.write_bytes(b'Private retained content')
-    original_open, changed = os.open, []
+    changed = []
 
     def replace_before_open(path, flags, *args, **kwargs):
         if Path(path) == target and not changed:
@@ -682,6 +659,7 @@ def test_raced_private_hardlink_is_rejected_before_any_descriptor_read(export, m
         return original_open(path, flags, *args, **kwargs)
 
     sessions = _observe_destination_reads(monkeypatch)
+    original_open = os.open
     monkeypatch.setattr(os, 'open', replace_before_open)
     with pytest.raises(ValueError, match='destination changed'):
         publish()
@@ -695,7 +673,7 @@ def test_raced_private_hardlink_is_rejected_before_any_descriptor_read(export, m
 def test_raced_nonregular_destination_never_blocks_or_reads_content(export, monkeypatch):
     target, _, publish = export
     target.write_bytes(b'An ordinary external file')
-    original_open, changed = os.open, []
+    changed = []
 
     def replace_before_open(path, flags, *args, **kwargs):
         if Path(path) == target and not changed:
@@ -710,6 +688,7 @@ def test_raced_nonregular_destination_never_blocks_or_reads_content(export, monk
         return original_open(path, flags, *args, **kwargs)
 
     sessions = _observe_destination_reads(monkeypatch)
+    original_open = os.open
     monkeypatch.setattr(os, 'open', replace_before_open)
     with pytest.raises((ValueError, OSError)):
         publish()
@@ -730,41 +709,44 @@ def _keep_windows_creation_time(monkeypatch, target):
 
 
 def _observe_destination_reads(monkeypatch, after_read=lambda *args: None):
-    """Observe real unbuffered reads without substituting filesystem bytes."""
-    original = os.fdopen
-    sessions = []
+    """Observe real OS reads and closes without substituting filesystem bytes."""
+    actual_open, actual_read, actual_close = os.open, os.read, os.close
+    sessions, active = [], {}
 
-    class Read:
-        def __init__(self, source, session):
-            self.source, self.session = source, session
-        def __enter__(self):
-            self.source.__enter__()
-            return self
-        def __exit__(self, *args):
-            return self.source.__exit__(*args)
-        def read(self, count):
+    def observe_open(path, flags, *args, **kwargs):
+        descriptor = actual_open(path, flags, *args, **kwargs)
+        if not flags & os.O_CREAT and flags & os.O_ACCMODE == os.O_RDONLY:
+            session = {'index': len(sessions), 'descriptor': descriptor,
+                       'requested': [], 'returned': [], 'closed': False}
+            sessions.append(session)
+            active[descriptor] = session
+        return descriptor
+
+    def observe_read(descriptor, count):
+        result = actual_read(descriptor, count)
+        session = active.get(descriptor)
+        if session is not None:
             assert 0 < count <= 1024 * 1024
-            result = self.source.read(count)
-            self.session['requested'].append(count)
-            self.session['returned'].append(len(result))
-            after_read(self.session, result)
-            return result
+            session['requested'].append(count)
+            session['returned'].append(len(result))
+            after_read(session, result)
+        return result
 
-    def observe(descriptor, *args, **kwargs):
-        source = original(descriptor, *args, **kwargs)
-        session = {'index': len(sessions), 'descriptor': descriptor,
-                   'source': source, 'requested': [], 'returned': []}
-        sessions.append(session)
-        return Read(source, session)
+    def observe_close(descriptor):
+        result = actual_close(descriptor)
+        session = active.pop(descriptor, None)
+        if session is not None:
+            session['closed'] = True
+        return result
 
-    monkeypatch.setattr(os, 'fdopen', observe)
+    monkeypatch.setattr(os, 'open', observe_open)
+    monkeypatch.setattr(os, 'read', observe_read)
+    monkeypatch.setattr(os, 'close', observe_close)
     return sessions
-
 
 
 def _assert_fingerprint_descriptors_closed(sessions):
     for session in sessions:
-        assert session['source'].closed
+        assert session['closed']
         with pytest.raises(OSError):
             os.fstat(session['descriptor'])
-

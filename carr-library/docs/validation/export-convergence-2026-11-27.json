@@ -1,0 +1,47 @@
+{
+  "schema": "carr-source-convergence/1",
+  "base_commit": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+  "canonical_commit": "3beebd5aca900b8bf2e86498ae79db4015c96705",
+  "status": "SOURCE_REVIEWED_RECONSTRUCTED_AWAITING_EXACT_CI",
+  "scope": "Export destination and publication boundaries only; not a complete canonical merge or release qualification.",
+  "historical_local_evidence": "Prior unavailable-worktree export composition: 146 passed. Byte identity of this reconstructed composition is not established, so that result is not transferred.",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/research/export_file.py",
+      "sha": "fb95127e3938a66ec1c4cb4f0d9fa92468fc9ef8",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/export_destination.py",
+      "sha": "26a227fab5a7737ae3469e4d342fc70d5a44ef6c",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/tests/reader/test_export_no_clobber.py",
+      "sha": "0b15b2a0f6aae9cc7dcb9cc26e9de730c1f4c0c9",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/tests/reader/test_export_change_time.py",
+      "sha": "ebeba99d47eea6e4e97d9447ac568e576af0240c",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/tests/ui/test_export_confirmation.py",
+      "sha": "bf1a4134995af42c0e4ee3d40dc49e784d57d34f",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": ".github/workflows/carr-convergence-review.yml",
+      "sha": "695a846e3f60e2e48c95e061bdcf27e45a86c6f2",
+      "mode": "100644",
+      "type": "blob"
+    }
+  ],
+  "remaining": "Canonical bibliography CLI / stale CSL metadata tests remain preserved in the source recovery inventory pending workbench integration. Private engines and NVDA are outside this finite check."
+}
