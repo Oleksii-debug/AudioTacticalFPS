@@ -21,6 +21,7 @@ import threading
 
 MARKER = 'managed-install.ini'
 LEASE = 'installation.lease'
+BOOTSTRAP_OWNER = 'bootstrap-owner.json'
 _application_holds = {}
 _application_hold_lock = threading.RLock()
 
@@ -128,6 +129,21 @@ def installation_lease(root: Path, *, exclusive=False, owner=None):
             os.close(descriptor)
 
 
+def require_clean_bootstrap(root):
+    """An unacknowledged managed installer can never be inferred idle.
+
+    This receipt is a conservative veto, not authority based on a PID or age.
+    Check it only while holding the shared application or exclusive setup lease.
+    """
+    root = Path(root).absolute()
+    plain(root, directory=True)
+    if any(path.name.casefold() == BOOTSTRAP_OWNER for path in root.iterdir()):
+        raise RuntimeError(
+            'The previous installation bootstrap did not confirm complete cleanup. '
+            'Preserve this program folder and its retained recovery files; use the '
+            'matching verified setup in a new program folder.')
+
+
 @contextmanager
 def _process_application_hold(root):
     # Nested CLI dispatch and concurrent jobs share one actual OS lease. The
@@ -182,6 +198,7 @@ def application_lease(arguments=(), *, prefix=None, allow_bootstrap_self_test=Fa
             return
         raise RuntimeError('Installation is incomplete. Run Repair from the Resonance setup.')
     with _process_application_hold(root):
+        require_clean_bootstrap(root)
         yield
 
 

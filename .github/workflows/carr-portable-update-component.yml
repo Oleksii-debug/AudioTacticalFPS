@@ -137,9 +137,9 @@ jobs:
         if: ${{ !cancelled() && steps.dependencies.conclusion == 'success' && steps.launcher_probe.conclusion == 'success' }}
         timeout-minutes: 8
         run: |
-          & $env:CARR_PYTHON -B -m pytest -q -o xfail_strict=true tests/packaging/test_portable_entry_windows.py tests/security/test_activation_lifetime_windows.py --junitxml=ci-portable-results/native-source.xml
+          & $env:CARR_PYTHON -B -m pytest -q -o xfail_strict=true tests/packaging/test_portable_entry_windows.py tests/security/test_activation_lifetime_windows.py tests/packaging/test_managed_bootstrap_windows.py --junitxml=ci-portable-results/native-source.xml
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $env:CARR_PYTHON -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-portable-results/native-source.xml').iter('testcase')); assert len(cases)==20 and not any(c.find(t) is not None for c in cases for t in ('failure','error','skipped')); print(json.dumps(dict(status='PASS',passed=20,skipped=0,windows='actual Job, handles, files and exclusive leases')))" | Tee-Object 'ci-portable-results/native-source.json'
+          & $env:CARR_PYTHON -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-portable-results/native-source.xml').iter('testcase')); assert len(cases)==25 and not any(c.find(t) is not None for c in cases for t in ('failure','error','skipped')); print(json.dumps(dict(status='PASS',passed=25,skipped=0,windows='actual Job, handles, files and exclusive leases')))" | Tee-Object 'ci-portable-results/native-source.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Require the same actual barriers from the installed application
@@ -172,11 +172,12 @@ jobs:
                                 '-o', 'xfail_strict=true', '--import-mode=importlib',
                                 '--junitxml=' + str(report),
                                 'tests/packaging/test_portable_entry_windows.py',
-                                'tests/security/test_activation_lifetime_windows.py'], plugins=[policy])
+                                'tests/security/test_activation_lifetime_windows.py',
+                                'tests/packaging/test_managed_bootstrap_windows.py'], plugins=[policy])
           cases = list(ET.parse(report).iter('testcase')) if report.exists() else []
           failed = sum(any(case.find(tag) is not None for tag in ('failure', 'error')) for case in cases)
           skipped = sum(case.find('skipped') is not None for case in cases)
-          ok = status == 0 and len(cases) == 20 and failed == skipped == 0 and not policy.seen
+          ok = status == 0 and len(cases) == 25 and failed == skipped == 0 and not policy.seen
           result = dict(status='PASS' if ok else 'FAIL', passed=len(cases)-failed-skipped,
                         failed=failed, skipped=skipped, pytest_exit=int(status),
                         expected_failures=policy.seen, origins=origins())

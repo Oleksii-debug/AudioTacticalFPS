@@ -147,6 +147,7 @@ def test_failed_repair_restores_previous_complete_application_and_receipts(insta
     retained = list(root.parent.glob(root.name + '-incomplete-*'))
     assert len(retained) == 1
     assert (retained[0] / 'partial-private-fixture.txt').read_bytes() == b'partial bootstrap output'
+    assert not (root / service.lease_module.BOOTSTRAP_OWNER).exists()
 
 
 @pytest.mark.parametrize('phase', ['move-previous', 'copy-owner', 'copy-marker', 'publish-stage'])
@@ -533,10 +534,23 @@ def test_bootstrap_uses_captured_owned_process_and_closes_it_on_all_exits(tmp_pa
     events = []
     command_seen = {}
 
+    class Handle(int):
+        def Close(self):
+            events.append('close exact process handle')
+
     class Child:
         def __init__(self):
             self.calls = 0
-            self._carr_job = SimpleNamespace(close=lambda: events.append('close owned job'))
+            self._handle = Handle(101)
+            self._carr_job = SimpleNamespace(
+                stop_and_wait=lambda value: events.append(('confirm owned tree exit', value)),
+                close=lambda: events.append('close owned job'))
+
+        def poll(self):
+            return 0
+
+        def kill(self):
+            pytest.fail('Acknowledged fixture cleanup does not need fallback termination.')
 
         def wait(self, *, timeout):
             self.calls += 1
@@ -567,7 +581,8 @@ def test_bootstrap_uses_captured_owned_process_and_closes_it_on_all_exits(tmp_pa
         expected_error = subprocess.TimeoutExpired if outcome == 'timeout' else subprocess.CalledProcessError
         with pytest.raises(expected_error):
             service._bootstrap(program)
-    assert events == [('wait', 1800), 'close owned job', ('wait', 5)]
+    assert events == [('wait', 1800), ('confirm owned tree exit', 101),
+                      'close owned job', ('wait', 5), 'close exact process handle']
     assert command_seen['command'] == [str(program / 'runtime/python.exe'), '-I', '-B', '-X', 'utf8',
                                       str(program / 'install_windows.py')]
     assert command_seen['cwd'] == program
@@ -763,3 +778,106 @@ def test_standard_setup_refuses_sealed_portable_profile_before_creating_output(
     with pytest.raises(ValueError, match='Standard setup cannot wrap'):
         service.bundle(root, expected, allow_installed=installed_bundle)
     assert service.inventory(root) == before
+
+
+@pytest.mark.parametrize('failure', ['launch', 'descendant-cleanup'])
+def test_unconfirmed_bootstrap_retains_both_applications_receipts_and_durable_veto(
+        installed, tmp_path, failure):
+    """Real filesystem preservation; native acknowledgement has its own gate."""
+    root, payload, expected, setup = installed
+    (root / 'app/user-note.txt').write_bytes(b'retain user bytes with the old application')
+    old_files = service.inventory(root / 'app')
+    old_receipts = {name: (root / name).read_bytes() for name in (service.OWNER, service.MARKER)}
+    library = tmp_path / 'external-library'
+    library.mkdir()
+    (library / 'content.sqlite').write_bytes(b'unchanged external library')
+    library_before = service.inventory(library)
+
+    def uncertain(program):
+        receipt = json.loads((root / service.lease_module.BOOTSTRAP_OWNER).read_bytes())
+        assert receipt['schema'] == 'carr-managed-bootstrap-owner/1'
+        assert receipt['program'] == str(program.absolute()) and receipt['owner_pid'] == os.getpid()
+        assert receipt['bundle_sha256'] == expected and receipt['setup_sha256'] == setup
+        synthetic_bootstrap(program)
+        (program / 'native-child-output.txt').write_bytes(b'unconfirmed output must stay at its path')
+        raise service.BootstrapCleanupError('synthetic unconfirmed ' + failure)
+
+    with pytest.raises(service.BootstrapCleanupError, match='unconfirmed'):
+        service.install(payload, root, expected, setup, runner=uncertain)
+    retained, = root.parent.glob(root.name + '-recovery-*')
+    assert service.inventory(retained / 'app') == old_files
+    assert {name: (retained / name).read_bytes() for name in old_receipts} == old_receipts
+    assert {name: (root / name).read_bytes() for name in old_receipts} == old_receipts
+    assert (root / 'app/native-child-output.txt').read_bytes() == b'unconfirmed output must stay at its path'
+    assert not list(root.parent.glob(root.name + '-incomplete-*'))
+    assert service.inventory(library) == library_before
+    before = service.inventory(root)
+    for operation in (
+            lambda: service.check(root, expected, setup),
+            lambda: service.install(payload, root, expected, setup, runner=synthetic_bootstrap),
+            lambda: service.uninstall(root, expected, setup)):
+        with pytest.raises(RuntimeError, match='did not confirm complete cleanup'):
+            operation()
+        assert service.inventory(root) == before
+        assert service.inventory(retained / 'app') == old_files
+        assert service.inventory(library) == library_before
+    with pytest.raises(RuntimeError, match='did not confirm complete cleanup'):
+        with application_lease(prefix=root / 'app/.venv'):
+            pytest.fail('An unacknowledged native bootstrap cannot authorize application work.')
+    assert service.inventory(root) == before
+
+
+@pytest.mark.parametrize('name,kind', [
+    ('bootstrap-owner.json', 'file'),
+    ('BOOTSTRAP-OWNER.JSON', 'file'),
+    ('bootstrap-owner.json', 'directory'),
+])
+def test_managed_bootstrap_receipt_presence_is_a_veto_not_pid_or_age_authority(
+        installed, name, kind):
+    root, payload, expected, setup = installed
+    receipt = root / name
+    if kind == 'directory':
+        receipt.mkdir()
+    else:
+        # Malformed/stale data must never become an inferred cleanup receipt.
+        receipt.write_bytes(b'{"owner_pid":999999999,"created":"1900-01-01"}')
+    before = service.inventory(root)
+    with pytest.raises(RuntimeError, match='did not confirm complete cleanup'):
+        service.check(root, expected, setup)
+    with pytest.raises(RuntimeError, match='did not confirm complete cleanup'):
+        service.install(payload, root, expected, setup, runner=synthetic_bootstrap)
+    with pytest.raises(RuntimeError, match='did not confirm complete cleanup'):
+        service.uninstall(root, expected, setup)
+    with pytest.raises(RuntimeError, match='did not confirm complete cleanup'):
+        with application_lease(prefix=root / 'app/.venv'):
+            pytest.fail('An unclean managed owner was admitted.')
+    assert service.inventory(root) == before
+
+
+def test_managed_bootstrap_cannot_remove_a_changed_owner_receipt(installed):
+    root, payload, expected, setup = installed
+    other_receipt = b'changed ownership proof must remain'
+    old = service.inventory(root / 'app')
+
+    def changed(program):
+        synthetic_bootstrap(program)
+        (root / service.lease_module.BOOTSTRAP_OWNER).write_bytes(other_receipt)
+
+    with pytest.raises(service.BootstrapCleanupError, match='cleanup could not be recorded'):
+        service.install(payload, root, expected, setup, runner=changed)
+    assert (root / service.lease_module.BOOTSTRAP_OWNER).read_bytes() == other_receipt
+    retained, = root.parent.glob(root.name + '-recovery-*')
+    assert service.inventory(retained / 'app') == old
+    assert (root / 'app/.venv/.installation-complete').is_file()
+    assert not list(root.parent.glob(root.name + '-incomplete-*'))
+
+
+def test_bootstrap_constructor_failure_is_uncertain_before_a_handle_is_returned(tmp_path, monkeypatch):
+    def failed(*arguments, **keywords):
+        raise OSError('synthetic creation failure after the native API boundary')
+    monkeypatch.setattr(service, 'os', SimpleNamespace(name='nt', environ={}))
+    monkeypatch.setattr(service, '_module',
+                        lambda *args: SimpleNamespace(WindowsJobProcess=failed))
+    with pytest.raises(service.BootstrapCleanupError, match='launch cleanup is unconfirmed') as failure:
+        service._bootstrap(tmp_path / 'program')
+    assert isinstance(failure.value.__cause__, OSError)

@@ -69,7 +69,12 @@ static int acquire_managed_lease(void) {
         present(scratch, 0) != 1) return 0;
     managed_lease = CreateFileW(scratch, GENERIC_READ, FILE_SHARE_READ, NULL,
                                OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OPEN_REPARSE_POINT, NULL);
-    return managed_lease != INVALID_HANDLE_VALUE;
+    if (managed_lease == INVALID_HANDLE_VALUE) return 0;
+    /* A crashed or unconfirmed installer keeps this durable veto. Check while
+       the shared lease prevents a new cooperating bootstrap from starting. */
+    if (!rl_join(scratch, CAP, managed_parent, L"bootstrap-owner.json") ||
+        present(scratch, 0) != 0) return 0;
+    return 1;
 }
 
 /* Only bundles whose sealed inventory explicitly opts in use this sibling
@@ -189,7 +194,7 @@ static int run(void) {
     root[index] = 0; /* Retaining the slash also preserves C:\\ correctly. */
     if (!acquire_managed_lease() ||
         (managed_lease == INVALID_HANDLE_VALUE && !acquire_portable_lease()))
-        return fail(RL_PROCESS_ERROR, L"Installation maintenance is in progress. Wait for setup or repair to finish, then open Resonance again.");
+        return fail(RL_PROCESS_ERROR, L"Installation maintenance is in progress or previous installer cleanup was not confirmed. Wait for active setup; preserve this folder and its recovery files if the problem remains.");
     if (!rl_join(python, CAP, root, L".venv\\Scripts\\python.exe") ||
         !rl_join(base_python, CAP, root, L"runtime\\python.exe") ||
         !rl_join(script, CAP, root, L"install_windows.py") ||
