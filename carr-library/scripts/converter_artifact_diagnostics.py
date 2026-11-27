@@ -12,12 +12,12 @@ import xml.etree.ElementTree as ET
 REPOSITORY = 'Oleksii-debug/AudioTacticalFPS'
 ARTIFACTS = [
   {
-    "run": 46061428962,
-    "commit": "2d1a4bd89b3c8d63d55848f129e38489e2ea4157",
-    "id": 15229972246,
-    "bytes": 1697192,
-    "sha256": "3e2f5f9ab7011612950c0196849edcd6ae89f8d78616c86c389fd897eeb78af9",
-    "kind": "standard-original-maintenance-and-managed-health-failure"
+    "run": 46066498865,
+    "commit": "910b1498d801cabcf9ba2751b93ecbe01d825ea8",
+    "id": 15232821513,
+    "bytes": 1777762,
+    "sha256": "e1871dbd86a345f902c56e1a2ca4f476cdd5f3f6799b6d81c3e786c5b10e3d64",
+    "kind": "standard-managed-health-repaired-installed-library-failure"
   }
 ]
 
@@ -77,7 +77,8 @@ root_wanted = {
     'native-runtime.json', 'full-lock-source-inventory.json',
     'native-launcher-installed-proof.json', 'native-launcher-process.json',
     'full-bundle-verified.json', 'sealed-sbom.json'}
-installer_wanted = {'inputs.json', 'native.json', 'proof.json', 'disk-budget.json'}
+installer_wanted = {'inputs.json', 'native.json', 'proof.json', 'disk-budget.json',
+                    'payload-manifest.json', 'good-build.json', 'negative-build.json'}
 library_wanted = {'before-test-dependencies.json', 'installed-library.json', 'qualification.log'}
 for number in range(1, 7):
     library_wanted.update({'library-' + str(number) + '.xml',
@@ -99,6 +100,8 @@ def selected_member(name):
         return (parts[1] in wanted
                 or (parts[1].startswith('native-managed-') and parts[1].endswith('.log')))
     if len(parts) == 3 and parts[0] == 'standard-update':
+        if parts[1] in ('original-application-wheel', 'previous-application-wheel'):
+            return parts[2] == 'manifest.json'
         directory = parts[1]
         return (directory.startswith('standard-library-')
                 and len(directory) == len('standard-library-') + 32
