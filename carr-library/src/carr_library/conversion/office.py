@@ -455,8 +455,16 @@ def _run(args, stage, deadline, *, output=None, output_limit=0, stage_limit=PROF
                 if process.poll() is not None:
                     break
                 time.sleep(.02)
-            if process.returncode:
-                raise ConversionUnavailable('The selected LibreOffice fixed conversion failed (exit ' + str(process.returncode) + ').')
+            if any(os.fstat(stream.fileno()).st_size > 256 * 1024 for stream in (stdout, stderr)):
+                raise ConversionError('Selected LibreOffice diagnostics exceeded their byte budget.')
+            if process.returncode or output is not None and not os.path.lexists(output):
+                stderr.seek(0)
+                detail = stderr.read(2048).decode('utf-8', 'replace').strip()
+                stdout.seek(0)
+                detail = (detail + '\n' + stdout.read(2048).decode('utf-8', 'replace').strip()).strip()
+                reason = ('The selected LibreOffice fixed conversion failed (exit ' + str(process.returncode) + ').'
+                          if process.returncode else 'Selected LibreOffice did not produce its single declared intermediate.')
+                raise ConversionUnavailable(reason + (' Diagnostic: ' + detail if detail else ''))
             stdout.seek(0)
             return stdout.read(256 * 1024), os.fstat(stderr.fileno()).st_size > 0
         finally:

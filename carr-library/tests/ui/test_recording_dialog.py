@@ -82,7 +82,7 @@ def handlers(values):
     module = ast.parse(source.read_text(encoding='utf-8'))
     window = next(node for node in module.body if isinstance(node, ast.FunctionDef) and node.name == 'show_recording')
     names = {'controls', 'release_holds', 'release_completed', 'release_when_stopped', 'poll_cleanup', 'display_record', 'show_records', 'run', 'refresh',
-             'start', 'close', 'stop_recording', 'cancel_recording', 'detach', 'on_destroy',
+             'start', 'retake', 'close', 'stop_recording', 'cancel_recording', 'detach', 'on_destroy',
              'report', 'preview', 'use', 'stop_playback', 'refresh_monitor', 'pause_recording', 'resume_recording'}
     definitions = [node for node in window.body if isinstance(node, ast.FunctionDef) and node.name in names]
     assert {node.name for node in definitions} == names
@@ -108,7 +108,7 @@ def view():
         return result
     service = SimpleNamespace(devices=Mock(return_value=(device,)), capture=capture,
                               monitoring_outputs=Mock(return_value=()))
-    buttons = {name: Control() for name in ('refresh', 'refresh_monitor', 'start', 'stop', 'cancel', 'pause', 'resume', 'preview', 'use', 'stop_preview', 'close')}
+    buttons = {name: Control() for name in ('refresh', 'refresh_monitor', 'start', 'retake', 'stop', 'cancel', 'pause', 'resume', 'preview', 'use', 'stop_preview', 'close')}
     values = dict(native_id=71, busy=False, alive=True, closing=False, generation=0, active_future=None, devices=(), records=(), holds=[],
         cleanup_owner=None, cleanup_future=None, cleanup_retry=None, hold_guard=threading.RLock(), frame=Mock(),
         monitor_outputs=(), capture_phase='idle', current_token=None, paused=threading.Event(),
@@ -118,7 +118,7 @@ def view():
         microphone=Control(selection=-1), title=Control('My recording'), minutes=Control(2),
         sample_rate=Control('24000'), channels=Control(selection=0), saved=Control(selection=-1),
         buttons=buttons, details=Control(), status=Control(), dialog=Mock(),
-        wx=SimpleNamespace(NOT_FOUND=-1, ID_CANCEL=2, CallAfter=lambda callback: callback(),
+        wx=SimpleNamespace(NOT_FOUND=-1, ID_CANCEL=2, ID_OK=1, CallAfter=lambda callback: callback(),
                            CallLater=lambda delay, callback: deferred.append(callback)))
     values['frame'].library = values['library']
     return SimpleNamespace(handlers=handlers(values), values=values, progress=progress, parent=parent,
@@ -485,3 +485,108 @@ def test_queued_capture_state_cannot_touch_destroyed_or_replaced_library_view(vi
     if invalidate == 'detach':
         queued[2]()
         assert view.values['status'].value == before
+
+
+def test_retake_requires_explicit_saved_input_microphone_and_ready_monitor(view):
+    original = dict(view.result, id='a' * 32)
+    view.handlers.show_records((original,))
+    view.handlers.controls()
+    assert view.values['saved'].GetSelection() == -1
+    assert not view.values['buttons']['retake'].enabled
+    view.handlers.retake()
+    assert not view.captures and not view.executor.pending
+    assert 'Select a saved recording' in view.values['status'].value
+    view.values['saved'].SetSelection(0)
+    view.handlers.retake()
+    assert not view.captures and not view.executor.pending
+    assert 'Select a microphone' in view.values['status'].value
+    discovered(view)
+    view.handlers.controls()
+    assert view.values['buttons']['retake'].enabled
+    view.values['monitoring'].SetValue(True)
+    view.handlers.controls()
+    assert not view.values['buttons']['retake'].enabled
+    view.handlers.retake()
+    assert not view.captures and not view.executor.pending
+    assert 'Select a monitoring output' in view.values['status'].value
+
+
+def test_retake_freezes_selected_identity_and_never_attaches_until_use(view):
+    selected = Mock()
+    view.values['on_selected'] = selected
+    view.handlers = handlers(view.values)
+    original = dict(view.result, id='a' * 32, title='Original retained take')
+    other = dict(view.result, id='c' * 32, title='Another saved recording')
+    view.result.update(id='b' * 32, title='New take',
+                       retake_of={'id': original['id'], 'audio_sha256': 'd' * 64})
+    discovered(view)
+    view.handlers.show_records((original, other), original['id'])
+    view.handlers.retake()
+    assert not view.captures and not view.executor.pending
+    assert len(view.progress.holds) == len(view.parent.holds) == 1
+    # The real picker is disabled during this wait. Even an injected late
+    # selection cannot retarget the captured explicit predecessor.
+    view.values['saved'].SetSelection(1)
+    view.progress.ready = view.parent.ready = True
+    view.deferred.pop(0)()
+    assert len(view.executor.pending) == 1 and not view.captures
+    view.executor.finish()
+    assert len(view.captures) == 1
+    assert view.captures[0][0] == 'selected-device'
+    assert view.captures[0][1]['retake_of'] == original['id']
+    assert view.progress.holds[0].closed and view.parent.holds[0].closed
+    selected.assert_not_called()
+    assert view.values['saved'].GetSelection() == 2
+    assert 'another take of aaaaaaaa' in view.values['saved'].items[2]
+    assert 'Studio selection are unchanged' in view.values['status'].value
+    assert 'Another take of ' + original['id'] in view.values['details'].value
+    view.service.get = Mock(return_value=view.result)
+    view.handlers.use()
+    selected.assert_not_called()
+    view.executor.finish()
+    selected.assert_called_once_with(view.result)
+    view.service.get.assert_called_once()
+    assert view.service.get.call_args.args == (view.result['id'],)
+    view.values['dialog'].EndModal.assert_called_once_with(view.values['wx'].ID_OK)
+
+
+def test_retake_cancel_during_quiet_wait_opens_no_input_and_preserves_selection(view):
+    original = dict(view.result, id='a' * 32)
+    discovered(view)
+    view.handlers.show_records((original,), original['id'])
+    view.handlers.retake()
+    assert view.deferred and not view.executor.pending
+    view.handlers.cancel_recording()
+    view.progress.ready = view.parent.ready = True
+    view.deferred.pop(0)()
+    assert not view.captures and not view.executor.pending
+    assert view.values['saved'].GetSelection() == 0
+    assert view.progress.holds[0].closed and view.parent.holds[0].closed
+
+
+def test_retake_cannot_start_while_another_owned_operation_is_pending(view):
+    original = dict(view.result, id='a' * 32)
+    discovered(view)
+    view.handlers.show_records((original,), original['id'])
+    view.handlers.refresh()
+    assert len(view.executor.pending) == 1
+    before = tuple(view.executor.pending)
+    view.handlers.retake()
+    assert tuple(view.executor.pending) == before and not view.captures
+
+
+def test_retake_refuses_changed_library_and_is_inert_after_native_parent_deletion(view):
+    original = dict(view.result, id='a' * 32)
+    discovered(view)
+    view.handlers.show_records((original,), original['id'])
+    view.values['frame'].library = object()
+    view.handlers.retake()
+    assert 'library folder changed' in view.values['status'].value
+    assert not view.captures and not view.executor.pending
+    event = Mock()
+    event.GetId.return_value = view.values['native_id']
+    view.handlers.on_destroy(event)
+    poison_controls(view)
+    view.handlers.retake()
+    assert not view.captures and not view.executor.pending
+    assert view.values['cancelled'].is_set()

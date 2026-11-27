@@ -1,4 +1,4 @@
-name: Owned process and canonical export integration
+name: Owned native deadlines, ASR and canonical export integration
 on:
   push:
     branches: [carr/process-export-review-20261127]
@@ -16,7 +16,7 @@ jobs:
       matrix:
         os: [ubuntu-24.04, windows-2022]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: carr-library
@@ -36,10 +36,23 @@ jobs:
           python-version: '3.11'
       - name: Install the exact selected source
         run: python -m pip install ".[test]"
+      - name: Prepare actual Linux test audio
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y ffmpeg
+      - name: Prepare pinned Windows test audio
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $audio = Join-Path $env:RUNNER_TEMP 'carr-process-review-audio'
+          python packaging/prepare_windows_audio.py --cache (Join-Path $env:RUNNER_TEMP 'carr-audio-cache') --output $audio --download
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Require source process ownership and export regressions
         run: |
           mkdir -p ci-process-export
-          python scripts/ci_check.py --jobs 3 --diagnostics tests/audio/test_process_group_cleanup.py tests/audio/test_windows_job_cleanup.py tests/audio/test_owned_process_tree.py tests/conversion/test_calibre_process_ownership.py tests/reader/test_export_reconciliation.py tests/reader/test_export_publication_boundary.py tests/reader/test_export_no_clobber.py tests/reader/test_export_change_time.py tests/reader/test_file_export.py tests/reader/test_binary_file_export.py tests/ui/test_export_confirmation.py 2>&1 | tee ci-process-export/source.txt
+          python scripts/ci_check.py --jobs 3 --diagnostics tests/audio/test_process_group_cleanup.py tests/audio/test_process_deadline.py tests/audio/test_windows_job_cleanup.py tests/audio/test_owned_process_tree.py tests/audio/test_audio_process.py tests/audio/test_cleanup_ownership.py tests/audio/test_process_start_cleanup.py tests/conversion/test_calibre_process_ownership.py tests/reader/test_export_reconciliation.py tests/reader/test_export_publication_boundary.py tests/reader/test_export_no_clobber.py tests/reader/test_export_change_time.py tests/reader/test_file_export.py tests/reader/test_binary_file_export.py tests/ui/test_export_confirmation.py tests/transcription/test_service.py tests/transcription/test_convergence.py tests/transcription/test_admission_boundaries.py 2>&1 | tee ci-process-export/source.txt
       - name: Require the same installed modules and actual subprocess cases
         if: "!cancelled()"
         run: |
@@ -58,7 +71,9 @@ jobs:
           installed = Path(sysconfig.get_path('purelib')).resolve()
           names = ('carr_library.audio.process', 'carr_library.audio.windows_job',
                    'carr_library.conversion.calibre', 'carr_library.conversion.office',
-                   'carr_library.research.export_file')
+                   'carr_library.research.export_file', 'carr_library.transcription.service',
+                   'carr_library.transcription.runtime', 'carr_library.backup_transcription',
+                   'carr_library.backup_sidecars', 'carr_library.library_backup')
           def inventory():
               result = {}
               for name in names:
@@ -74,7 +89,7 @@ jobs:
           def offline(*args, **kwargs):
               raise OSError('Network access is disabled in these synthetic process/export tests.')
           socket.socket.connect = socket.socket.connect_ex = socket.create_connection = offline
-          suites = ["tests/audio/test_process_group_cleanup.py","tests/audio/test_windows_job_cleanup.py","tests/audio/test_owned_process_tree.py","tests/conversion/test_calibre_process_ownership.py","tests/reader/test_export_reconciliation.py","tests/reader/test_export_publication_boundary.py","tests/reader/test_export_no_clobber.py","tests/reader/test_export_change_time.py","tests/reader/test_file_export.py","tests/reader/test_binary_file_export.py","tests/ui/test_export_confirmation.py"]
+          suites = ["tests/audio/test_process_group_cleanup.py","tests/audio/test_process_deadline.py","tests/audio/test_windows_job_cleanup.py","tests/audio/test_owned_process_tree.py","tests/audio/test_audio_process.py","tests/audio/test_cleanup_ownership.py","tests/audio/test_process_start_cleanup.py","tests/conversion/test_calibre_process_ownership.py","tests/reader/test_export_reconciliation.py","tests/reader/test_export_publication_boundary.py","tests/reader/test_export_no_clobber.py","tests/reader/test_export_change_time.py","tests/reader/test_file_export.py","tests/reader/test_binary_file_export.py","tests/ui/test_export_confirmation.py","tests/transcription/test_service.py","tests/transcription/test_convergence.py","tests/transcription/test_admission_boundaries.py"]
           with tempfile.TemporaryDirectory(prefix='carr-process-export-') as temporary:
               report = Path(temporary) / 'junit.xml'
               status = pytest.main(['-q', '-o', 'pythonpath=', '-o', 'addopts=',

@@ -542,3 +542,63 @@ def test_oversized_control_fails_before_any_worker_or_control_payload_read(setup
     assert (root / 'job.json').read_bytes() == saved_job
     assert audio.read_bytes() == saved_audio
     assert starts(runtime) == 0
+
+def test_control_missing_leaf_does_not_hide_missing_root_or_read_errors(setup, tmp_path, monkeypatch):
+    service, runtime, profile, audio = setup
+    state = job(setup)
+    control = service.jobs_root / state['id'] / 'control.json'
+    original = control.read_bytes()
+    control.unlink()
+    assert service._control(state['id']) == 'run'
+    control.write_bytes(original)
+    actual = module.read_json
+    calls = []
+    def denied(path, **kwargs):
+        calls.append((Path(path), kwargs.get('maximum')))
+        if Path(path) == control:
+            raise PermissionError('Authored current control read refusal.')
+        return actual(path, **kwargs)
+    with monkeypatch.context() as failure:
+        failure.setattr(module, 'read_json', denied)
+        with pytest.raises(PermissionError, match='read refusal'):
+            service._control(state['id'])
+    assert calls == [(control, 4096)] and control.read_bytes() == original
+    prior = tmp_path / 'retained-original-state'
+    service.root.rename(prior)
+    with pytest.raises(FileNotFoundError):
+        service._control(state['id'])
+    assert (prior / 'jobs' / state['id'] / 'control.json').read_bytes() == original
+    assert starts(runtime) == 0
+
+
+def test_actual_worker_status_reads_use_the_declared_bounded_snapshot(setup, monkeypatch):
+    from carr_library import durable_state
+    service, runtime, profile, audio = setup
+    state = job(setup)
+    real_open, calls = durable_state._open_json_file, []
+
+    class StatusReader:
+        def __init__(self, stream):
+            self.stream = stream
+        def __enter__(self):
+            self.stream.__enter__()
+            return self
+        def __exit__(self, *args):
+            return self.stream.__exit__(*args)
+        def fileno(self):
+            return self.stream.fileno()
+        def read(self, count):
+            value = self.stream.read(count)
+            calls.append((count, len(value)))
+            return value
+
+    def opened(path):
+        stream = real_open(path)
+        return StatusReader(stream) if Path(path).name == 'job_status.json' else stream
+    monkeypatch.setattr(durable_state, '_open_json_file', opened)
+    result = service.run(state['id'])
+    assert result['status'] == 'complete', result['error']
+    assert starts(runtime) == 1 and calls
+    assert all(requested == 256 * 1024 + 1 and 0 < consumed <= 256 * 1024
+               for requested, consumed in calls)
+    assert service.read_transcript(state['id'])['text']
