@@ -267,13 +267,20 @@ class MetadataController:
             self.notify('choices', value)
         self._run('Loading passive audio metadata choices', operation, complete)
 
-    def export_cover(self, destination):
+    def export_cover(self, destination, *, expected_cover=None):
         self._available()
+        if expected_cover is None:
+            value = self.saved_choices
+            if value is None or value['cover'] is None:
+                raise ValueError('Load a saved review with replacement artwork first.')
+            expected_cover = {key: value['cover'][key] for key in metadata_review.COVER_IDENTITY_FIELDS}
+        expected_cover = dict(expected_cover)
         self.invalidate()
         selected = str(destination)
         def operation(report):
             self.guard()
-            return metadata_review.export_saved_cover(self.root, selected, cancelled=self.cancelled)
+            return metadata_review.export_saved_cover(self.root, selected,
+                expected_cover=expected_cover, cancelled=self.cancelled)
         self._run('Exporting explicitly selected retained artwork', operation, lambda value: None)
 
     def save(self, form):
@@ -495,7 +502,8 @@ def show_audio_metadata(frame):
         value = controller.saved_choices
         if value is None or value['cover'] is None:
             raise ValueError('Load a saved review with replacement artwork first.')
-        suffix = '.png' if value['cover']['codec'] == 'png' else '.jpg'
+        expected_cover = {key: value['cover'][key] for key in metadata_review.COVER_IDENTITY_FIELDS}
+        suffix = '.png' if expected_cover['codec'] == 'png' else '.jpg'
         picker = wx.FileDialog(dialog, 'Export saved artwork to a new file',
             defaultFile='reviewed-cover' + suffix,
             wildcard='PNG or JPEG (*.png;*.jpg;*.jpeg)|*.png;*.jpg;*.jpeg', style=wx.FD_SAVE)
@@ -507,7 +515,7 @@ def show_audio_metadata(frame):
             if picker:
                 picker.Destroy()
         if alive():
-            controller.export_cover(selected)
+            controller.export_cover(selected, expected_cover=expected_cover)
 
     def close(event=None):
         controller.close()
