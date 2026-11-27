@@ -147,7 +147,8 @@ def create_backup(app, destination, *, include_generated=False, cancelled=lambda
             with closing(Storage(snapshot, schema_version=CURRENT_SCHEMA_VERSION)) as snapshot_storage:
                 reading = _reading_snapshot(app.root, snapshot_storage.db)
                 entries = copy_catalog_assets(snapshot_storage.db, app.assets, stage / ORIGINALS,
-                    include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
+                    include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES,
+                    cancelled=cancelled)
                 fingerprint = schema_fingerprint(snapshot_storage.db)
             reading_manifest = None
             if reading is not None:
@@ -310,7 +311,7 @@ def _read_manifest(directory, expected_manifest_sha256):
     return manifest
 
 
-def _copy_database(source, target, library_manifest):
+def _copy_database(source, target, library_manifest, *, cancelled=lambda: False):
     manifest = library_manifest['database']
     if _plain(source).st_size != manifest['size_bytes']:
         raise RestoreError('database size mismatch')
@@ -318,6 +319,8 @@ def _copy_database(source, target, library_manifest):
     digest = sha256()
     with source.open('rb') as incoming, target.open('xb') as output:
         while block := incoming.read(min(1024 * 1024, manifest['size_bytes'] + 1 - count)):
+            if cancelled():
+                raise InterruptedError('Restore cancelled.')
             count += len(block)
             if count > manifest['size_bytes']:
                 raise RestoreError('database grew during restore')
@@ -338,7 +341,7 @@ def _copy_database(source, target, library_manifest):
             raise RestoreError('backup schema fingerprint mismatch')
 
 
-def restore_backup(source, destination, expected_manifest_sha256):
+def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=lambda: False):
     """Restore a trusted backup into a new data root; return that root's Path.
 
     Keep the expected digest independently of the backup. The source is never
@@ -347,6 +350,8 @@ def restore_backup(source, destination, expected_manifest_sha256):
     """
     # Validate the original lexical path before resolving it, otherwise an
     # ancestor symlink/junction would be hidden from the component verifiers.
+    if cancelled():
+        raise InterruptedError('Restore cancelled.')
     source = local_path(source, exists=True)
     _plain(source, directory=True)
     source = source.resolve(strict=True)
@@ -356,7 +361,7 @@ def restore_backup(source, destination, expected_manifest_sha256):
     with TemporaryDirectory(prefix='.carr-library-restore-', dir=destination.parent) as tmp:
         stage = Path(tmp)
         snapshot = stage / DATABASE
-        _copy_database(source / DATABASE, snapshot, manifest)
+        _copy_database(source / DATABASE, snapshot, manifest, cancelled=cancelled)
         with closing(Storage(snapshot, schema_version=manifest['schema_version'])) as storage:
             storage.check()
             reading = None
@@ -365,18 +370,30 @@ def restore_backup(source, destination, expected_manifest_sha256):
                 _sync_file(stage / READING_STATE, reading)
             original_store = RetainedAssets(source / ORIGINALS)
             entries = verify_catalog_assets(storage.db, original_store,
-                include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
+                include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES,
+                cancelled=cancelled)
             if _asset_manifest(entries) != manifest['assets']:
                 raise RestoreError('asset manifest disagrees with the database')
             copy_catalog_assets(storage.db, original_store, stage / ORIGINALS,
-                include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
+                include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES,
+                cancelled=cancelled)
+        if cancelled():
+            raise InterruptedError('Restore cancelled.')
         pending = {'assets': [], 'paths': []}
         if 'state' in manifest:
             from .state_backup import restore_state
-            restore_state(source / 'state', stage / 'state', manifest['state'])
+            restore_state(source / 'state', stage / 'state', manifest['state'], cancelled=cancelled)
+            from .studio.backup_media import validate_media_snapshot
+            validate_media_snapshot(stage / 'state', manifest['state'], cancelled=cancelled)
+            # Verify the sealed state first. Only the staging projection is
+            # rebound to the explicitly selected new library and output policy.
+            from .studio.backup_inputs import restore_inputs
+            restore_inputs(stage / 'state', destination / 'state', manifest['state'], cancelled=cancelled)
         if manifest.get('pending') is not None:
             from .pending_backup import restore_pending
-            pending = restore_pending(source / 'pending', stage, destination, manifest['pending'])
+            pending = restore_pending(source / 'pending', stage, destination, manifest['pending'], cancelled=cancelled)
+        if cancelled():
+            raise InterruptedError('Restore cancelled before publication.')
         destination.mkdir(mode=0o700)
         _sync_file(destination / INCOMPLETE, b'Restore has not completed. Do not open this data directory.\n')
         _sync_directory(destination)

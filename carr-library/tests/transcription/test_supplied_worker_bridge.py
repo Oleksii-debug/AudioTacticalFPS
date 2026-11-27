@@ -356,6 +356,216 @@ def test_cli_and_application_share_one_durable_job_service(prepared, tmp_path):
     assert service.verify(identity)['status'] == 'completed'
 
 
+def _folder(prepared, tmp_path, names=('z.MP4', 'a.wav', 'Лекція.flac')):
+    folder = tmp_path / 'Обрані записи'
+    folder.mkdir()
+    for name in names:
+        (folder / name).write_bytes(('Synthetic media ' + name).encode('utf-8'))
+    return folder
+
+
+def _no_intake_job(service):
+    assert service.list() == ()
+    assert not service.jobs_root.exists() or not any(path.is_dir() for path in service.jobs_root.iterdir())
+
+
+def test_folder_retains_flat_supported_set_in_stable_order_without_changing_originals(prepared, tmp_path):
+    service = prepared[2]
+    folder = _folder(prepared, tmp_path)
+    (folder / 'notes.txt').write_bytes(b'Non-media notes stay outside the selected set.')
+    nested = folder / 'subfolder'
+    nested.mkdir()
+    (nested / 'unselected.wav').write_bytes(b'Not selected recursively.')
+    before = {path.relative_to(folder): (path.read_bytes(), path.stat().st_mtime_ns)
+              for path in folder.rglob('*') if path.is_file()}
+    updates = []
+    identity = service.submit_folder(folder, title='Folder originals', options={'language': 'uk'},
+        progress=lambda *values: updates.append(values))
+    job = service.get(identity)
+    assert job['workspace'] == prepared[1] and job['status'] == 'ready'
+    assert job['settings']['language'] == 'uk' and job['done'] == 0
+    assert [row['original_name'] for row in job['sources']] == ['a.wav', 'z.MP4', 'Лекція.flac']
+    for row in job['sources']:
+        assert (service._path(identity) / 'input' / row['filename']).read_bytes() == (folder / row['original_name']).read_bytes()
+    assert {path.relative_to(folder): (path.read_bytes(), path.stat().st_mtime_ns)
+            for path in folder.rglob('*') if path.is_file()} == before
+    assert updates[0][:2] == (None, None)
+    assert [value[:2] for value in updates[1:]] == [(0, 3), (1, 3), (2, 3), (3, 3)]
+    assert prepared[0].transcription(prepared[0].create_workspace('Other folder scope')).list() == ()
+
+
+@pytest.mark.parametrize('kind', ['empty', 'unsupported-only', 'nested-only'])
+def test_folder_without_direct_media_publishes_nothing(prepared, tmp_path, kind):
+    folder = _folder(prepared, tmp_path, ())
+    if kind == 'unsupported-only':
+        (folder / 'notes.txt').write_bytes(b'Only a note.')
+    elif kind == 'nested-only':
+        (folder / 'child').mkdir()
+        (folder / 'child/recording.wav').write_bytes(b'Not recursive.')
+    with pytest.raises(ValueError, match='no supported'):
+        prepared[2].submit_folder(folder)
+    _no_intake_job(prepared[2])
+
+
+@pytest.mark.parametrize('count', [64, 65])
+def test_folder_applies_existing_64_file_bound_without_truncation(prepared, tmp_path, count):
+    folder = _folder(prepared, tmp_path, (f'recording-{i:03}.wav' for i in range(count)))
+    if count == 65:
+        with pytest.raises(ValueError, match='between 1 and 64'):
+            prepared[2].submit_folder(folder)
+        _no_intake_job(prepared[2])
+    else:
+        job = prepared[2].get(prepared[2].submit_folder(folder))
+        assert len(job['sources']) == 64
+        assert [row['original_name'] for row in job['sources']] == sorted(path.name for path in folder.iterdir())
+    assert len(list(folder.iterdir())) == count
+
+
+@pytest.mark.parametrize('budget', ['MAX_SOURCE_BYTES', 'MAX_BATCH_BYTES'])
+def test_folder_rejects_oversized_set_before_retaining_any_input(prepared, tmp_path, monkeypatch, budget):
+    from carr_library import transcription as module
+    folder = _folder(prepared, tmp_path, ('one.wav', 'two.wav'))
+    sizes = [path.stat().st_size for path in folder.iterdir()]
+    monkeypatch.setattr(module, budget, max(sizes) - 1 if budget == 'MAX_SOURCE_BYTES' else sum(sizes) - 1)
+    with pytest.raises(ValueError, match='size budget'):
+        prepared[2].submit_folder(folder)
+    _no_intake_job(prepared[2])
+
+
+@pytest.mark.parametrize('kind', ['selected-folder', 'ancestor', 'media-link', 'non-media-link',
+                                  'child-folder-link', 'media-hardlink', 'non-media-hardlink'])
+def test_folder_links_are_rejected_without_touching_external_files(prepared, tmp_path, kind):
+    folder = _folder(prepared, tmp_path, ('allowed.wav',))
+    outside = tmp_path / 'outside.wav'
+    outside.write_bytes(b'An external original must never be retained by a folder alias.')
+    before = outside.read_bytes(), outside.stat().st_mtime_ns
+    selected = folder
+    if kind == 'selected-folder':
+        selected = tmp_path / 'folder-alias'
+        selected.symlink_to(folder, target_is_directory=True)
+    elif kind == 'ancestor':
+        nested = folder / 'nested'
+        nested.mkdir()
+        (nested / 'one.wav').write_bytes(b'A nested direct input.')
+        alias = tmp_path / 'ancestor-alias'
+        alias.symlink_to(folder, target_is_directory=True)
+        selected = alias / 'nested'
+    elif kind == 'child-folder-link':
+        (folder / 'linked-directory').symlink_to(tmp_path, target_is_directory=True)
+    else:
+        destination = folder / ('linked.txt' if kind.startswith('non-media') else 'linked.wav')
+        if kind.endswith('hardlink'):
+            destination.hardlink_to(outside)
+        else:
+            destination.symlink_to(outside)
+    with pytest.raises(ValueError, match='links'):
+        prepared[2].submit_folder(selected)
+    _no_intake_job(prepared[2])
+    assert (outside.read_bytes(), outside.stat().st_mtime_ns) == before
+    assert (folder / 'allowed.wav').is_file()
+
+
+@pytest.mark.parametrize('phase', ['scan', 'after-copy', 'before-publication'])
+def test_folder_cancellation_retains_no_partial_job(prepared, tmp_path, monkeypatch, phase):
+    from threading import Event
+    from carr_library import transcription as module
+    folder = _folder(prepared, tmp_path)
+    original = {path.name: path.read_bytes() for path in folder.iterdir()}
+    stop, updates, scans = Event(), [], []
+    if phase == 'after-copy':
+        actual = module._copy
+        def copied(*args, **kwargs):
+            result = actual(*args, **kwargs)
+            stop.set()
+            return result
+        monkeypatch.setattr(module, '_copy', copied)
+    elif phase == 'before-publication':
+        actual = module.atomic_json
+        def saved(path, value, **kwargs):
+            result = actual(path, value, **kwargs)
+            if path.name == 'job.json':
+                assert path.parent.name.startswith('.pending-')
+                stop.set()
+            return result
+        monkeypatch.setattr(module, 'atomic_json', saved)
+    def cancelled():
+        scans.append(True)
+        return stop.is_set() or (phase == 'scan' and len(scans) == 3)
+    with pytest.raises(RuntimeError, match='cancelled'):
+        prepared[2].submit_folder(folder, cancelled=cancelled, progress=lambda *values: updates.append(values))
+    _no_intake_job(prepared[2])
+    assert {path.name: path.read_bytes() for path in folder.iterdir()} == original
+    assert not any(done == total and total is not None for done, total, _ in updates)
+
+
+def test_changed_folder_is_rejected_before_publication(prepared, tmp_path):
+    folder = _folder(prepared, tmp_path)
+    def progress(done, total, phase):
+        if done == 0:
+            (folder / 'late.wav').write_bytes(b'A new file after the selection snapshot.')
+    with pytest.raises(ValueError, match='folder changed'):
+        prepared[2].submit_folder(folder, progress=progress)
+    _no_intake_job(prepared[2])
+    assert (folder / 'late.wav').read_bytes() == b'A new file after the selection snapshot.'
+
+
+def test_optional_intake_progress_error_does_not_reverse_retention(prepared, tmp_path):
+    folder = _folder(prepared, tmp_path)
+    calls = []
+    def unavailable(*values):
+        calls.append(values)
+        raise RuntimeError('Synthetic detached observer.')
+    identity = prepared[2].submit_folder(folder, progress=unavailable)
+    assert prepared[2].get(identity)['status'] == 'ready'
+    assert len(calls) == 1
+
+
+def test_folder_inventory_budget_is_bounded_without_partial_selection(prepared, tmp_path, monkeypatch):
+    from carr_library import transcription as module
+    folder = _folder(prepared, tmp_path)
+    monkeypatch.setattr(module, 'MAX_FOLDER_ENTRIES', 2)
+    with pytest.raises(ValueError, match='inventory budget'):
+        prepared[2].submit_folder(folder)
+    _no_intake_job(prepared[2])
+
+
+def test_actual_folder_cli_uses_existing_workspace_job_and_worker_protocol(prepared, tmp_path):
+    app, workspace, service, _, _ = prepared
+    folder = _folder(prepared, tmp_path, ('b.wav', 'a.mp3'))
+    (folder / 'notes.txt').write_bytes(b'Unselected ordinary text.')
+    original = {path.name: path.read_bytes() for path in folder.iterdir()}
+    prefix = [sys.executable, '-B', '-X', 'utf8', '-m', 'carr_library', 'transcribe',
+              '--data-dir', str(app.root), '--workspace', workspace]
+    created = subprocess.run([*prefix, 'create', '--folder', str(folder), '--title', 'Folder CLI'],
+                             capture_output=True, text=True, encoding='utf-8', timeout=30)
+    assert created.returncode == 0, created.stderr
+    identity = json.loads(created.stdout)['id']
+    job = service.get(identity)
+    assert job['workspace'] == workspace and job['title'] == 'Folder CLI'
+    assert [row['original_name'] for row in job['sources']] == ['a.mp3', 'b.wav']
+    completed_job = subprocess.run([*prefix, 'run', identity, '--timeout', '30'],
+                                  capture_output=True, text=True, encoding='utf-8', timeout=40)
+    assert completed_job.returncode == 0, completed_job.stderr
+    assert service.verify(identity)['status'] == 'completed'
+    assert {path.name: path.read_bytes() for path in folder.iterdir()} == original
+
+
+@pytest.mark.parametrize('kind', ['no-selection', 'mixed-modes', 'empty-folder'])
+def test_actual_folder_cli_rejects_ambiguous_or_empty_selection(prepared, tmp_path, kind):
+    app, workspace, service, original, _ = prepared
+    folder = _folder(prepared, tmp_path, ())
+    arguments = ([] if kind == 'no-selection' else
+                 [str(original), '--folder', str(folder)] if kind == 'mixed-modes' else
+                 ['--folder', str(folder)])
+    result = subprocess.run([sys.executable, '-B', '-X', 'utf8', '-m', 'carr_library', 'transcribe',
+        '--data-dir', str(app.root), '--workspace', workspace, 'create', *arguments],
+        capture_output=True, text=True, encoding='utf-8', timeout=30)
+    assert result.returncode == (1 if kind == 'empty-folder' else 2)
+    assert 'no supported' in result.stderr if kind == 'empty-folder' else 'either' in result.stderr
+    assert not result.stdout.strip()
+    _no_intake_job(service)
+
+
 def test_stop_does_not_rehash_inputs_and_preserves_completed_worker_files(prepared, tmp_path, monkeypatch):
     _, _, service, original, configure = prepared
     configure('cancel-after-first')

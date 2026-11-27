@@ -70,6 +70,11 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
                 assert find('Часові мітки кожного слова').GetValue()
                 assert not find('Зупинити').IsEnabled()
                 assert not find('Текст: редагування зберігається окремою версією').IsEnabled()
+                folder_action = find('Додати папку записів')
+                assert folder_action.IsEnabled()
+                assert dialog.GetClientRect().Contains(folder_action.GetRect())
+                folder_action.SetFocus()
+                assert wx.Window.FindFocus() is folder_action
                 save_all = find('Зберегти всі відкриті правки')
                 assert save_all.IsEnabled()
                 assert dialog.GetClientRect().Contains(save_all.GetRect())
@@ -142,5 +147,5 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
 print(json.dumps({'status':'PASS', 'checks':['actual named wx controls','shared background operation',
     'actual isolated child protocol','six verified formats','manual edit revision','original unchanged',
     'shared completion-aware Save All','second separate edit revision','native Save All focus and bounds',
-    'semantic Library menu','closed modal participant removed'],
+    'semantic Library menu','closed modal participant removed','named folder action focus and bounds'],
     'whisper_acoustic_inference':'NOT_RUN', 'manual_NVDA':'NOT_RUN'}, ensure_ascii=False))

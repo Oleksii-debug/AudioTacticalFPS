@@ -59,8 +59,9 @@ def show_transcription(frame):
               'часові мітки слів — за вибором. Моделі не завантажуються автоматично. '
               'Після зупинки завершені файли повторно використовуються, незавершений файл обробляється спочатку.')
     buttons = {}
-    row = wx.GridSizer(rows=3, cols=3, vgap=3, hgap=3)
+    row = wx.GridSizer(rows=0, cols=3, vgap=3, hgap=3)
     for name, label in [('configure', 'Підключити &Whisper'), ('create', '&Додати записи'),
+                        ('folder', 'Додати пап&ку записів'),
                         ('run', 'Запустити / &продовжити'), ('stop', 'З&упинити'),
                         ('save', 'Зберегти &правки'), ('saveall', 'Зберегти &всі відкриті правки'),
                         ('export', '&Експорт'),
@@ -235,22 +236,31 @@ def show_transcription(frame):
                   lambda value: report('Рушій підключено. Якість і доступність моделі перевіряються під час фактичного розпізнавання.'))
         except (ValueError, OSError, RuntimeError) as exc:
             report(exc)
-    def create(event):
+    def create(event, *, folder=False):
         if not can_replace():
             return
         try:
-            with wx.FileDialog(dialog, 'Оберіть аудіо або відео', style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST | wx.FD_MULTIPLE) as chooser:
-                if chooser.ShowModal() != wx.ID_OK:
-                    return
-                selected = chooser.GetPaths()
+            if folder:
+                with wx.DirDialog(dialog, 'Аудіо й відео лише з цієї папки: 1–64 файли, без підпапок',
+                                  style=wx.DD_DIR_MUST_EXIST) as chooser:
+                    if chooser.ShowModal() != wx.ID_OK:
+                        return
+                    selected = Path(chooser.GetPath())
+            else:
+                with wx.FileDialog(dialog, 'Оберіть аудіо або відео', style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST | wx.FD_MULTIPLE) as chooser:
+                    if chooser.ShowModal() != wx.ID_OK:
+                        return
+                    selected = tuple(chooser.GetPaths())
             options = {'model': model.GetValue().strip(), 'language': language.GetValue().strip(),
                        'word_timestamps': words.GetValue(), 'multilingual': mixed.GetValue(),
                        'device': 'cuda' if device.GetSelection() == 1 else 'cpu',
                        'compute_type': 'float16' if device.GetSelection() == 1 else 'int8'}
             job_title = title.GetValue()
+            submit = service.submit_folder if folder else service.submit
             begin('Збереження оригінальних записів',
-                  lambda: service.submit(selected, title=job_title, options=options, cancelled=cancelled),
-                  lambda identity: refresh(identity))
+                  lambda progress: submit(selected, title=job_title, options=options,
+                                          cancelled=cancelled, progress=progress),
+                  lambda identity: refresh(identity), with_progress=True)
         except (ValueError, OSError, RuntimeError) as exc:
             report(exc)
     def run(event):
@@ -391,7 +401,8 @@ def show_transcription(frame):
             return
         alive = False
         dialog.EndModal(wx.ID_CLOSE)
-    for name, handler in [('configure', configure), ('create', create), ('run', run), ('save', save),
+    for name, handler in [('configure', configure), ('create', create),
+                          ('folder', lambda event: create(event, folder=True)), ('run', run), ('save', save),
                           ('saveall', save_all), ('export', export), ('refresh', update_jobs), ('close', close)]:
         buttons[name].Bind(wx.EVT_BUTTON, handler)
     buttons['stop'].Bind(wx.EVT_BUTTON, lambda event: cancel.set())

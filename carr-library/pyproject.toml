@@ -111,3 +111,4 @@ bootstrap = "bootstrap"
 [tool.pytest.ini_options]
 testpaths = ["tests", "bootstrap", "docs/contracts/probes"]
 pythonpath = ["src", "."]
+markers = ["requires_loopback: uses an owned synthetic server on 127.0.0.1; no external provider or model"]

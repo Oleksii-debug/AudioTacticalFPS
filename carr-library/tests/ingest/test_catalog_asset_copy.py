@@ -141,3 +141,30 @@ def test_consent_limits_no_clobber(state, tmp_path):
         copy_catalog_assets(snap, source, dst, **CONSENT)
     with pytest.raises(RetentionError, match='overlaps'):
         copy_catalog_assets(snap, source, source.root / 'nested', **CONSENT)
+
+
+@pytest.mark.parametrize('operation', ('copy', 'verify'))
+def test_cancellation_after_one_verified_original_stops_before_next(state, tmp_path, monkeypatch, operation):
+    from threading import Event
+
+    _, snapshot, source, *_ = state
+    before = {path.name: path.read_bytes() for path in source.root.iterdir()}
+    cancelled, checked = Event(), []
+    resolve = source.resolve
+
+    def verify_one(identity):
+        path = resolve(identity)
+        checked.append(identity)
+        cancelled.set()
+        return path
+
+    monkeypatch.setattr(source, 'resolve', verify_one)
+    destination = tmp_path / 'cancelled-copy'
+    with pytest.raises(InterruptedError, match='cancelled'):
+        if operation == 'copy':
+            copy_catalog_assets(snapshot, source, destination, cancelled=cancelled.is_set, **CONSENT)
+        else:
+            verify_catalog_assets(snapshot, source, cancelled=cancelled.is_set, **CONSENT)
+    assert len(checked) == 1
+    assert not destination.exists()
+    assert {path.name: path.read_bytes() for path in source.root.iterdir()} == before

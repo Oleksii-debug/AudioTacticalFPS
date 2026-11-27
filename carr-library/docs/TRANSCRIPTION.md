@@ -8,7 +8,7 @@ Open a library, then **Library → Transcription: local audio and video...**.
 
 1. Choose **Підключити Whisper** and select the reviewed worker's Python interpreter, its repaired worker.py, and the folder containing already installed local models. Model/runtime files remain separate from the backed-up research library.
 2. Enter a title, model name, language code (or auto), CPU/CUDA profile, and whether to request per-word timestamps or mixed-language recognition.
-3. Choose **Додати записи**. The program makes checked private copies; original filenames remain visible and duplicate names are retained as separate inputs.
+3. Choose **Додати записи** for selected files, or **Додати папку записів** for one folder. Folder selection includes only supported audio/video files directly in that folder, in a stable filename order. Subfolders and ordinary non-media files are excluded; links and unsafe entries are rejected. The complete selection must contain 1–64 files within the existing 8 GiB per-file and 32 GiB batch limits; oversized selections are rejected without truncation. Scanning and verified private copying run in the shared background operation and can be stopped before the job is published. Original files remain unchanged, original filenames remain visible, and duplicate names from explicit file selection remain separate inputs.
 4. Choose **Запустити / продовжити**. The shared background-operation controls remain available. A stop first requests cooperation, then terminates a worker which has not stopped within the grace interval. Completed files remain reusable; an interrupted file is replayed from its beginning. A stop defers large receipt/source verification until the next explicit resume, so unverified saved files are not counted as completed exports.
 5. Open the selected transcript and save corrections with **Зберегти правки** or the application's **Зберегти все** command. Both use the same captured job/source identity and save coordinator. Every save creates a separate edit version. Recognition text, original media and initial timestamps are preserved. Editing plain text does not realign the subtitles automatically.
 6. Choose **Експорт** and a new directory. The export includes verified TXT, phrase SRT, phrase VTT and timed JSON, plus word SRT/VTT when selected, a manifest and separately labelled edited text. An existing directory is never overwritten.
@@ -33,12 +33,20 @@ Run python -m carr_library --list-libraries --data-dir DATA to obtain the active
 
 - python -m carr_library transcribe --data-dir DATA --workspace ID configure --python PYTHON --worker WORKER --models-dir MODELS
 - python -m carr_library transcribe --data-dir DATA --workspace ID create recording.wav --title Lecture --language auto --model small
+- python -m carr_library transcribe --data-dir DATA --workspace ID create --folder RECORDINGS_DIRECTORY --title Lectures --language auto --model small
 - python -m carr_library transcribe --data-dir DATA --workspace ID run JOB_ID
 - python -m carr_library transcribe --data-dir DATA --workspace ID jobs
 - python -m carr_library transcribe --data-dir DATA --workspace ID verify JOB_ID
 - python -m carr_library transcribe --data-dir DATA --workspace ID export JOB_ID NEW_DIRECTORY
 
-The create command also supports --multilingual, --no-word-timestamps, --device, --compute-type and an exact --model-revision commit. The edit command takes a retained source filename from show and a UTF-8 --text-file. Recognition is original-language transcription; translation is a separate existing application workflow.
+Choose either explicit files or --folder in one create command. Folder selection is nonrecursive and uses the same format, link, count and byte checks as the native action. The create command also supports --multilingual, --no-word-timestamps, --device, --compute-type and an exact --model-revision commit. The edit command takes a retained source filename from show and a UTF-8 --text-file. Recognition is original-language transcription; translation is a separate existing application workflow.
+
+The flat folder scan and native folder-selector pattern are adapted from PR147,
+commit `9f8511f895ef134b1f644c398ba965546c4a190b`, into the existing workspace-scoped
+service. Its separate runtime/profile store, 512-source limit, recursive mode,
+job schema and operation broker are not part of this change. This integration
+retains the current 64-file limits and existing job, receipt, edit and backup
+formats. Donor workflow results do not establish acceptance of this integration.
 
 ## Evidence boundaries
 

@@ -6,6 +6,7 @@ including schema, FK, revision seals, evidence and FTS. Stable private local
 parents only. Existing revision-only asset_copy stays unchanged.
 """
 from dataclasses import dataclass
+from io import BytesIO
 import os
 from pathlib import Path
 import re
@@ -66,43 +67,67 @@ def catalog_inventory(db, *, include_all_workspaces=False,
     return tuple(entries)
 
 
-def _checked_path(store, entry):
+def _check_cancelled(cancelled):
+    if cancelled():
+        raise InterruptedError('Catalog asset operation cancelled.')
+
+
+def _checked_path(store, entry, *, cancelled=lambda: False):
+    _check_cancelled(cancelled)
     path = store.resolve(entry.digest)  # existing hash, file type and link checks
+    _check_cancelled(cancelled)
     if path.name != entry.filename or path.stat().st_size != entry.size:
         raise RetentionError('retained asset disagrees with catalog MIME or size')
     return path
 
 
-def verify_catalog_assets(db, store, **limits):
+def verify_catalog_assets(db, store, *, cancelled=lambda: False, **limits):
     """Verify exact copied namespace and return catalog-derived manifest entries."""
+    _check_cancelled(cancelled)
     entries = catalog_inventory(db, **limits)
     if {p.name for p in store.root.iterdir()} != {e.filename for e in entries}:
         raise RetentionError('unexpected or incomplete catalog asset namespace')
     for entry in entries:
-        _checked_path(store, entry)
+        _checked_path(store, entry, cancelled=cancelled)
     return entries
 
 
-def copy_catalog_assets(db, source, destination, **limits):
+def copy_catalog_assets(db, source, destination, *, cancelled=lambda: False, **limits):
     """Copy originals with existing retention API; never overwrite.
 
     Partial output on failure remains explicitly incomplete until independently
     verified. A future outer manifest must bind the DB bytes and these entries.
+    Poll cancellation between bounded source reads and around the existing
+    retention API. Its verification/publication processes at most one original
+    (MAX_BYTES) without a callback; keep that producer's checks unchanged.
     """
+    _check_cancelled(cancelled)
     entries = catalog_inventory(db, **limits)
-    paths = [_checked_path(source, entry) for entry in entries]
+    paths = [_checked_path(source, entry, cancelled=cancelled) for entry in entries]
     destination = Path(destination)
     if os.path.lexists(destination):
         raise FileExistsError(destination)
     resolved = destination.resolve()
     if resolved.is_relative_to(source.root) or source.root.is_relative_to(resolved):
         raise RetentionError('asset copy destination overlaps source')
+    _check_cancelled(cancelled)
     destination.mkdir(mode=0o700)
     target = RetainedAssets(destination)
     for entry, path in zip(entries, paths):
-        with path.open('rb') as stream:
-            data = stream.read(entry.size + 1)
-        if len(data) != entry.size:
-            raise RetentionError('retained asset size changed')
-        target.retain(data, entry.mime, entry.digest)
-    return verify_catalog_assets(db, target, **limits)
+        _check_cancelled(cancelled)
+        with path.open('rb') as stream, BytesIO() as buffered:
+            count = 0
+            while count <= entry.size:
+                _check_cancelled(cancelled)
+                block = stream.read(min(1024 * 1024, entry.size + 1 - count))
+                _check_cancelled(cancelled)
+                if not block:
+                    break
+                buffered.write(block)
+                count += len(block)
+            if count != entry.size:
+                raise RetentionError('retained asset size changed')
+            _check_cancelled(cancelled)
+            target.retain(buffered.getvalue(), entry.mime, entry.digest)
+        _check_cancelled(cancelled)
+    return verify_catalog_assets(db, target, cancelled=cancelled, **limits)

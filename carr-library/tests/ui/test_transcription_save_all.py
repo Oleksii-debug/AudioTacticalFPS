@@ -60,8 +60,12 @@ def native_view(tmp_path, monkeypatch):
             state.dialog = self
             state.drive(self)
             return 5101
+    class CheckBox(Control):
+        def __init__(self, *args, **kwargs):
+            kwargs.setdefault('value', False)
+            super().__init__(*args, **kwargs)
     wx = SimpleNamespace(Dialog=Dialog, TextCtrl=Control, StaticText=Control, Choice=Control,
-        Button=Control, BoxSizer=Control, GridSizer=Control, CheckBox=Control,
+        Button=Control, BoxSizer=Control, GridSizer=Control, CheckBox=CheckBox,
         MessageBox=lambda *args, **kwargs: 4, ID_OK=5100, ID_CANCEL=5101, ID_CLOSE=5102,
         NOT_FOUND=-1, YES=2, NO=4, EVT_BUTTON='button', EVT_MENU='menu',
         EVT_CHOICE='choice', EVT_TEXT='text', EVT_CLOSE='close', CallAfter=lambda *args: None)
@@ -186,6 +190,137 @@ def transcript_view(native_view, tmp_path, monkeypatch):
     finally:
         frame.cancel_event.set()
         pool.shutdown(wait=True, cancel_futures=True)
+
+
+@pytest.fixture
+def folder_view(transcript_view, tmp_path, monkeypatch):
+    state = transcript_view
+    wx = sys.modules['wx']
+    folder = tmp_path / 'Папка записів'
+    folder.mkdir()
+    for name in ('b.wav', 'a.MP3', 'notes.txt'):
+        (folder / name).write_bytes(('Synthetic folder input ' + name).encode('utf-8'))
+    state.folder, state.picker_result = folder, wx.ID_OK
+    class Picker:
+        def __init__(self, parent, message, **kwargs):
+            assert parent is state.dialog
+            assert 'без підпапок' in message
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+        def ShowModal(self): return state.picker_result
+        def GetPath(self): return str(state.folder)
+    monkeypatch.setattr(wx, 'DirDialog', Picker, raising=False)
+    monkeypatch.setattr(wx, 'DD_DIR_MUST_EXIST', 0, raising=False)
+    return state
+
+
+def test_named_folder_action_scans_and_copies_in_shared_worker_with_captured_options(folder_view, monkeypatch):
+    from threading import get_ident
+    from carr_library import transcription as module
+    state, owner = folder_view, get_ident()
+    original = {path.name: path.read_bytes() for path in state.folder.iterdir()}
+    scanned, copied = [], []
+    actual_scan, actual_copy = module.os.scandir, module._copy
+    def scan(path):
+        if isinstance(path, (str, Path)) and Path(path) == state.folder:
+            scanned.append(get_ident())
+            assert get_ident() != owner
+        return actual_scan(path)
+    def copy(*args, **kwargs):
+        copied.append(get_ident())
+        assert get_ident() != owner
+        return actual_copy(*args, **kwargs)
+    monkeypatch.setattr(module.os, 'scandir', scan)
+    monkeypatch.setattr(module, '_copy', copy)
+    def drive(dialog):
+        state.ready()
+        button = state.named('Додати папку записів')
+        assert button.enabled and button.name == 'Додати папку записів'
+        state.named('Назва нового завдання').SetValue('Captured folder title')
+        state.named('Мова:').SetValue('uk')
+        state.action('Додати папку записів')
+        assert state.parent.working and state.pending[0][-1] is True
+        assert state.named('Зупинити').enabled and not button.enabled
+        assert not scanned and not copied
+        assert len(state.transcription.list()) == 1
+        state.named('Назва нового завдання').SetValue('Later control text')
+        state.named('Мова:').SetValue('en')
+        state.finish()
+        created = [job for job in state.transcription.list() if job['id'] != state.job]
+        assert len(created) == 1, state.named('Стан транскрипції').GetValue()
+        job, = created
+        assert job['title'] == 'Captured folder title' and job['settings']['language'] == 'uk'
+        assert job['workspace'] == state.workspace and job['status'] == 'ready'
+        assert [row['original_name'] for row in job['sources']] == ['a.MP3', 'b.wav']
+        assert scanned and len(copied) == 2
+        assert state.progress_calls[0][:2] == (None, None)
+        assert state.progress_calls[-1][:2] == (2, 2)
+        assert not state.parent.working and button.enabled
+        assert not state.named('Зупинити').enabled
+    state.drive = drive
+    state.open()
+    with actual_scan(state.folder) as entries:
+        assert {entry.name: Path(entry.path).read_bytes() for entry in entries} == original
+
+
+@pytest.mark.parametrize('stop', ['button', 'scope-change'])
+def test_folder_handler_cancellation_and_scope_change_publish_no_job(folder_view, stop):
+    state = folder_view
+    other = state.app.create_workspace('Different active library') if stop == 'scope-change' else None
+    original = {path.name: path.read_bytes() for path in state.folder.iterdir()}
+    def drive(dialog):
+        state.ready()
+        state.action('Додати папку записів')
+        assert len(state.pending) == 1 and state.parent.working
+        if stop == 'button':
+            state.action('Зупинити')
+        else:
+            state.parent.active = (other, None)
+        state.finish()
+        assert [job['id'] for job in state.transcription.list()] == [state.job]
+        assert not list(state.transcription.jobs_root.glob('.pending-*'))
+        assert not state.parent.working
+        if stop == 'button':
+            assert 'cancelled' in state.named('Стан транскрипції').GetValue()
+            assert state.named('Додати папку записів').enabled
+    state.drive = drive
+    state.open()
+    assert {path.name: path.read_bytes() for path in state.folder.iterdir()} == original
+
+
+@pytest.mark.parametrize('rejected', ['empty', 'linked-folder'])
+def test_folder_handler_reports_real_service_rejection_without_partial_job(folder_view, tmp_path, rejected):
+    state = folder_view
+    selected = tmp_path / 'Selected invalid folder'
+    if rejected == 'empty':
+        selected.mkdir()
+    else:
+        selected.symlink_to(state.folder, target_is_directory=True)
+    state.folder = selected
+    def drive(dialog):
+        state.ready()
+        state.action('Додати папку записів')
+        state.finish()
+        assert [job['id'] for job in state.transcription.list()] == [state.job]
+        assert not list(state.transcription.jobs_root.glob('.pending-*'))
+        message = state.named('Стан транскрипції').GetValue()
+        assert ('no supported' in message) if rejected == 'empty' else ('links' in message)
+        assert state.named('Додати папку записів').enabled
+    state.drive = drive
+    state.open()
+
+
+def test_dismissed_folder_picker_does_not_start_background_work(folder_view):
+    state = folder_view
+    state.picker_result = sys.modules['wx'].ID_CANCEL
+    def drive(dialog):
+        state.ready()
+        state.action('Додати папку записів')
+        assert not state.pending and not state.parent.working
+        assert [job['id'] for job in state.transcription.list()] == [state.job]
+        assert state.named('Додати папку записів').enabled
+    state.drive = drive
+    state.open()
 
 
 @pytest.mark.parametrize('newer_edit', [False, True])

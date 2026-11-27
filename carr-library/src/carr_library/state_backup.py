@@ -44,6 +44,12 @@ def _include(path, generated):
             and (generated or 'cache' not in path.parts))
 
 
+def _walk_error(error):
+    # os.walk silently suppresses directory enumeration errors by default.
+    # An unreadable subtree is not evidence that it contains no user state.
+    raise error
+
+
 def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE_BYTES,
                    cancelled=lambda: False):
     root = Path(root)
@@ -55,7 +61,7 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
     regular(root, directory=True)
     def inventory():
         found = {}
-        for directory, dirs, files in os.walk(root, followlinks=False):
+        for directory, dirs, files in os.walk(root, followlinks=False, onerror=_walk_error):
             if cancelled():
                 raise InterruptedError('Backup cancelled.')
             for name in dirs:
@@ -105,10 +111,16 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
             entries.append({'filename': relative.as_posix(), 'size_bytes': count, 'sha256': digest.hexdigest()})
     if inventory() != before_inventory:
         raise ValueError('Application state changed during backup; retry after saving.')
+    # The typed Studio producer retains required media alongside the copied
+    # project bytes. Recheck the original state after that potentially long copy.
+    original_entries = tuple(entries)
+    from .studio.backup_inputs import snapshot_inputs
+    entries = snapshot_inputs(target, entries, max_bytes=max_bytes,
+                              max_files=MAX_STATE_FILES, cancelled=cancelled)
     # A Windows creation timestamp is not a write counter, and last-write
     # timestamps may be coarse or restored. Check copied content again before
     # accepting the complete snapshot, without buffering whole state files.
-    for entry in entries:
+    for entry in original_entries:
         if cancelled():
             raise InterruptedError('Backup cancelled.')
         relative = Path(entry['filename'])
@@ -137,6 +149,8 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
     # A snapshot must pass the same portable manifest checks as a restore.
     # Keep this after content revalidation and before publication.
     validate_state(entries)
+    from .studio.backup_media import validate_media_snapshot
+    validate_media_snapshot(target, entries, cancelled=cancelled)
     return sorted(entries, key=lambda entry: entry['filename'])
 
 
@@ -174,23 +188,34 @@ def validate_state(entries):
         raise ValueError('Application state manifest exceeds its byte budget.')
 
 
-def restore_state(source, target, entries):
+def restore_state(source, target, entries, *, cancelled=lambda: False):
+    if cancelled():
+        raise InterruptedError('Restore cancelled.')
     validate_state(entries)
     source = local_path(source, exists=True)
     regular(source, directory=True)
-    found = []
-    for directory, dirs, files in os.walk(source, followlinks=False):
+    missing = {item['filename'] for item in entries}
+    for directory, dirs, files in os.walk(source, followlinks=False, onerror=_walk_error):
+        if cancelled():
+            raise InterruptedError('Restore cancelled.')
         for name in dirs:
             regular(Path(directory) / name, directory=True)
         for name in files:
             path = Path(directory) / name
             regular(path)
-            found.append(path.relative_to(source).as_posix())
-    if set(found) != {item['filename'] for item in entries}:
+            # Reject the first unexpected file rather than accumulating an
+            # attacker-controlled inventory beyond the manifest's file budget.
+            relative = path.relative_to(source).as_posix()
+            if relative not in missing:
+                raise ValueError('Backup has missing or unlisted application state.')
+            missing.remove(relative)
+    if missing:
         raise ValueError('Backup has missing or unlisted application state.')
     target = Path(target)
     target.mkdir(parents=True, exist_ok=True)
     for item in entries:
+        if cancelled():
+            raise InterruptedError('Restore cancelled.')
         incoming = local_path(source / item['filename'], root=source, exists=True)
         if regular(incoming).st_size != item['size_bytes']:
             raise ValueError('Application state size mismatch.')
@@ -199,6 +224,8 @@ def restore_state(source, target, entries):
         digest, size = sha256(), 0
         with incoming.open('rb') as read, destination.open('xb') as write:
             while block := read.read(1024 * 1024):
+                if cancelled():
+                    raise InterruptedError('Restore cancelled.')
                 size += len(block)
                 if size > item['size_bytes']:
                     raise ValueError('Application state changed during restore.')

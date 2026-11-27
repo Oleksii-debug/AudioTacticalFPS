@@ -21,6 +21,7 @@ from .durable_state import (atomic_bytes, atomic_json, digest_file, local_path,
 from .state_backup import relative_name
 
 MAX_FILES = 64
+MAX_FOLDER_ENTRIES = 100000
 MAX_SOURCE_BYTES = 8 * 1024**3
 MAX_BATCH_BYTES = 32 * 1024**3
 MAX_TEXT_BYTES = 16 * 1024**2
@@ -110,6 +111,16 @@ def _identifier(value):
 
 def _stamp(value):
     return value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns, value.st_ctime_ns
+
+
+def _notice(progress, done, total, phase):
+    if progress is not None:
+        try:
+            progress(done, total, phase)
+        except Exception:
+            # Optional progress must not reverse input retention or publication.
+            return None
+    return progress
 
 
 def _copy(source, destination, *, maximum, cancelled):
@@ -303,7 +314,55 @@ class TranscriptionService:
             result.append(self.get(path.name))
         return tuple(sorted(result, key=lambda x: (x['created'], x['id']), reverse=True))
 
-    def submit(self, files, *, title='Transcription', options=None, cancelled=lambda: False):
+    def submit_folder(self, folder, *, title='Transcription', options=None,
+                      cancelled=lambda: False, progress=None):
+        """Retain supported direct children of one explicitly selected folder.
+
+        Reuses the flat os.scandir/local_path selection pattern reviewed in
+        PR147; existing workspace, size, job and receipt contracts stay in submit.
+        Subfolders and ordinary non-media files are outside this selection.
+        """
+        self._authorize()
+        if cancelled():
+            raise AudioCancelled('Transcription folder preparation was cancelled.')
+        folder = local_path(folder, exists=True)
+        before = regular(folder, directory=True)
+        def checked_cancelled():
+            if cancelled():
+                return True
+            current = local_path(folder, exists=True)
+            if _stamp(regular(current, directory=True)) != _stamp(before):
+                raise ValueError('The selected transcription folder changed; select it again.')
+            return False
+        selected, total = [], 0
+        progress = _notice(progress, None, None, 'Checking the selected folder; subfolders are excluded.')
+        with os.scandir(folder) as entries:
+            for visited, entry in enumerate(entries, 1):
+                if checked_cancelled():
+                    raise AudioCancelled('Transcription folder preparation was cancelled.')
+                if visited > MAX_FOLDER_ENTRIES:
+                    raise ValueError('The selected folder exceeds its inventory budget.')
+                source = local_path(entry.path, root=folder, exists=True)
+                if source.is_dir():
+                    continue
+                info = regular(source)
+                if source.suffix.lower() not in MEDIA_SUFFIXES:
+                    continue
+                selected.append(source)
+                total += info.st_size
+                if len(selected) > MAX_FILES:
+                    raise ValueError('Choose a folder containing between 1 and 64 supported local media files; no files were retained.')
+                if info.st_size > MAX_SOURCE_BYTES or total > MAX_BATCH_BYTES:
+                    raise ValueError('The selected folder exceeds the transcription source or batch size budget.')
+        if checked_cancelled():
+            raise AudioCancelled('Transcription folder preparation was cancelled.')
+        if not selected:
+            raise ValueError('The selected folder contains no supported audio or video files; subfolders are excluded.')
+        return self.submit(sorted(selected, key=lambda path: (path.name.casefold(), path.name)),
+                           title=title, options=options, cancelled=checked_cancelled, progress=progress)
+
+    def submit(self, files, *, title='Transcription', options=None, cancelled=lambda: False,
+               progress=None):
         self._authorize()
         chosen = settings(options)
         files = tuple(files)
@@ -311,6 +370,8 @@ class TranscriptionService:
             raise ValueError('Choose between 1 and 64 local audio or video files.')
         if not isinstance(title, str) or not title.strip() or len(title) > 200 or '\0' in title:
             raise ValueError('Enter a transcription title of 1 to 200 characters.')
+        if cancelled():
+            raise AudioCancelled('Transcription input preparation was cancelled.')
         identity = uuid4().hex
         with state_lock(self.jobs_root, 'submit'):
             pending = self.jobs_root / ('.pending-' + identity)
@@ -319,11 +380,14 @@ class TranscriptionService:
             total, sources = 0, []
             try:
                 for index, original in enumerate(files):
+                    if cancelled():
+                        raise AudioCancelled('Transcription input preparation was cancelled.')
                     original = local_path(original, exists=True)
                     suffix = original.suffix.lower()
                     if suffix not in MEDIA_SUFFIXES:
                         raise ValueError('Unsupported audio/video extension: ' + suffix)
                     name = f'{index + 1:03d}-{uuid4().hex}{suffix}'
+                    progress = _notice(progress, index, len(files), 'Retaining and verifying selected original media.')
                     record = _copy(original, pending / 'input' / name,
                         maximum=min(MAX_SOURCE_BYTES, MAX_BATCH_BYTES - total), cancelled=cancelled)
                     total += record['size_bytes']
@@ -334,12 +398,17 @@ class TranscriptionService:
                          'done': 0, 'failed': 0, 'receipts': [], 'artifacts': [],
                          'run_context': None, 'last_error': ''}
                 self._authorize()
+                if cancelled():
+                    raise AudioCancelled('Transcription input preparation was cancelled before publication.')
                 atomic_json(pending / 'job.json', value)
+                if cancelled():
+                    raise AudioCancelled('Transcription input preparation was cancelled before publication.')
                 os.rename(pending, self._path(identity))
                 sync_directory(self.jobs_root)
             finally:
                 if pending.exists():
                     shutil.rmtree(pending)
+        _notice(progress, len(files), len(files), 'Original media retained; recognition has not started.')
         return identity
 
     def _sources(self, path, job, cancelled):

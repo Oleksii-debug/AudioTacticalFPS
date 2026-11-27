@@ -18,7 +18,9 @@ def main(argv=None):
     configure.add_argument('--models-dir', type=Path, required=True)
     commands.add_parser('jobs', help='List saved library transcription jobs')
     create = commands.add_parser('create', help='Retain original media and save a transcription job')
-    create.add_argument('files', type=Path, nargs='+')
+    create.add_argument('files', type=Path, nargs='*')
+    create.add_argument('--folder', type=Path,
+                        help='Select 1–64 supported media files directly in this folder; no subfolders')
     create.add_argument('--title', default='Transcription')
     create.add_argument('--model', default='small')
     create.add_argument('--model-revision')
@@ -42,6 +44,8 @@ def main(argv=None):
     export.add_argument('job')
     export.add_argument('destination', type=Path, help='New directory outside library data')
     args = parser.parse_args(argv)
+    if args.operation == 'create' and bool(args.files) == (args.folder is not None):
+        parser.error('create requires either one or more files or --folder, exclusively.')
     try:
         from .application import LibraryApp
         from .durable_state import local_path, regular
@@ -54,7 +58,9 @@ def main(argv=None):
             result = [{'id': job['id'], 'title': job['title'], 'status': job['status'],
                        'done': job['done'], 'total': len(job['sources'])} for job in service.list()]
         elif args.operation == 'create':
-            result = {'id': service.submit(args.files, title=args.title, options={
+            submit = service.submit_folder if args.folder is not None else service.submit
+            result = {'id': submit(args.folder if args.folder is not None else args.files,
+                title=args.title, options={
                 'model': args.model, 'model_revision': args.model_revision,
                 'language': args.language, 'device': args.device, 'compute_type': args.compute_type,
                 'multilingual': args.multilingual, 'word_timestamps': not args.no_word_timestamps})}

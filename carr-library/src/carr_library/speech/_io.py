@@ -96,11 +96,14 @@ def system_powershell(path, *, architecture=None):
     return local_file(candidate, _allow_hardlinks=True)
 
 
-def digest(path):
+def digest(path, *, cancelled=lambda: False):
+    check_cancelled(cancelled)
     h = sha256()
     with open(path, 'rb') as source:
         for block in iter(lambda: source.read(1024 * 1024), b''):
+            check_cancelled(cancelled)
             h.update(block)
+    check_cancelled(cancelled)
     return h.hexdigest()
 
 

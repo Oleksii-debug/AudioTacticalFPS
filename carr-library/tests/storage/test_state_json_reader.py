@@ -43,8 +43,9 @@ def replace_in_child(path, *, legacy=False):
     return json.loads(process.stdout)
 
 
-def test_production_json_reader_allows_actual_atomic_child_replacement(tmp_path, monkeypatch):
-    target = tmp_path / 'стан 🌿.json'
+@pytest.mark.parametrize('filename', ['state.json', 'стан 🌿.json'])
+def test_production_json_reader_allows_actual_atomic_child_replacement(tmp_path, monkeypatch, filename):
+    target = tmp_path / filename
     target.write_bytes(b'{"done":0}')
     # Raw os.replace is the legacy negative control. The production publisher
     # can succeed even with an ordinary reader on current Windows; requiring it
@@ -81,6 +82,7 @@ def test_production_json_reader_allows_actual_atomic_child_replacement(tmp_path,
     assert state.read_json(target) == {'done': 0}
     assert observed == [{'published': True}]
     assert not list(tmp_path.glob('.pending-*'))
+    assert [item.name for item in tmp_path.iterdir()] == [target.name]
     assert all(stream.closed for stream in streams)
     monkeypatch.setattr(state, '_open_json_file', original)
     assert state.read_json(target) == {'done': 1}

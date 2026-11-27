@@ -165,7 +165,12 @@ def _replace_file(source, destination):
     # existing handles on the old file and atomically publishes the new name.
     # Ordinary DELETE permission still applies; no access or readonly bypass.
     filename = str(destination).encode('utf-16-le')
-    size = RenameInfo.FileName.offset + len(filename)
+    # Win32 may convert the DOS filename before forwarding the counted name to
+    # the filesystem. Keep a complete zero WCHAR after the encoded name; the
+    # byte count itself excludes that terminator. Never expose adjacent memory
+    # as part of the target path during this conversion.
+    size = max(ctypes.sizeof(RenameInfo),
+               RenameInfo.FileName.offset + len(filename) + ctypes.sizeof(wintypes.WCHAR))
     buffer = ctypes.create_string_buffer(size)
     info = ctypes.cast(buffer, ctypes.POINTER(RenameInfo)).contents
     info.Flags = 0x1 | 0x2  # REPLACE_IF_EXISTS | POSIX_SEMANTICS
