@@ -128,7 +128,11 @@ def _positions(command):
     return index, index + 1
 
 
-def _relative(path, cwd):
+def _ascii_path(path, cwd):
+    # Preserve an already-safe absolute path instead of introducing parent
+    # traversal through a Unicode working directory unnecessarily.
+    if str(path).isascii():
+        return str(path)
     try:
         value = os.path.relpath(path, cwd)
     except ValueError:  # Different Windows drives.
@@ -215,8 +219,8 @@ def run_ocr(runtime, argv, *, remaining):
     stdout = command[output_index] in ('stdout', '-')
     destination = None if stdout else base / Path(command[output_index])
     cwd = model_directory if model_directory is not None else Path(runtime.root or Path.cwd())
-    relative_input = _relative(source, cwd)
-    relative_output = 'stdout' if stdout else _relative(destination, cwd)
+    relative_input = _ascii_path(source, cwd)
+    relative_output = 'stdout' if stdout else _ascii_path(destination, cwd)
     if relative_input is not None and relative_output is not None:
         bound = (_replace_option(command, model_option, '--tessdata-dir', '.')
                  if model_option else list(command))
@@ -231,8 +235,8 @@ def run_ocr(runtime, argv, *, remaining):
         image = staging / 'input.png'
         _copy(source, image, _MAX_IMAGE, remaining)
         output = staging / 'result'
-        relative_input = _relative(image, cwd)
-        relative_output = 'stdout' if stdout else _relative(output, cwd)
+        relative_input = _ascii_path(image, cwd)
+        relative_output = 'stdout' if stdout else _ascii_path(output, cwd)
         bound = list(command)
         if model_option:
             bound = _replace_option(bound, model_option, '--tessdata-dir', '.')
@@ -242,7 +246,7 @@ def run_ocr(runtime, argv, *, remaining):
             cwd = staging
             relative_input, relative_output = 'input.png', 'stdout' if stdout else 'result'
             if model_directory is not None:
-                model_relative = _relative(model_directory, cwd)
+                model_relative = _ascii_path(model_directory, cwd)
                 if model_relative is None:
                     language_option = _option(command, '-l')
                     languages = model_ids(language_option[2] if language_option else 'eng')

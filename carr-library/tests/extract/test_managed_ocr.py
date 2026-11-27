@@ -154,11 +154,12 @@ def test_real_list_languages_uses_managed_model_directory(real_models, monkeypat
     monkeypatch.setenv('TESSDATA_PREFIX', str(tmp_path / 'missing'))
     result = run_ocr(runtime, [runtime.executable, '--list-langs'], remaining=lambda: 10)
     report = result.stdout.decode('utf-8')
-    assert str(runtime.tessdata) in report and '\neng\n' in report and '\nosd\n' in report
+    assert str(runtime.tessdata) in report and report.splitlines()[1:] == ['eng', 'osd']
 
 
 def test_real_pdf_managed_profile_preserves_review_boundary_and_exact_provenance(real_models, monkeypatch, tmp_path):
     from PIL import Image, ImageDraw, ImageFont
+    from carr_library.extract import page_ocr
     from carr_library.extract.page_ocr import Config, extract_page
     from carr_library.extract.runtime_identity import runtime_identity
     runtime, _ = real_models
@@ -172,8 +173,22 @@ def test_real_pdf_managed_profile_preserves_review_boundary_and_exact_provenance
     original_hash = sha256(source.read_bytes()).hexdigest()
     config = Config(model_profile='fast')
     identity = runtime_identity(config)
+    # Keep bounded synthetic native failure details available to CI reviewers.
+    failures = []
+    execute = page_ocr.run_ocr
+    def observed(*args, **kwargs):
+        try:
+            output = execute(*args, **kwargs)
+            if output.stderr:
+                failures.append((output.returncode, output.stderr[:2048]))
+            return output
+        except subprocess.CalledProcessError as exc:
+            failures.append((exc.returncode, (exc.stderr or b'')[:2048]))
+            raise
+    monkeypatch.setattr(page_ocr, 'run_ocr', observed)
     result = extract_page(source, 1, config)
-    assert result['raw_text'].strip() == 'Managed source evidence'
+    assert result['raw_text'].strip() == 'Managed source evidence', (
+        result['warnings'], failures, result['provenance'].get('method'))
     assert result['status'] == 'review_required' and result['blocks']
     assert result['physical_index'] == 1 and result['printed_label'] is None
     assert result['printed_label_verified'] is False
