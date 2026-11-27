@@ -10,8 +10,10 @@ from unittest.mock import Mock
 import pytest
 
 from carr_library.audio.models import AudioCancelled
-from carr_library.audio.recording import RecordingOptions
+from carr_library.audio.recording import RecordingOptions, RecordingState
+from carr_library.audio.process import CaptureCleanupError
 from carr_library.progress import ProgressHub, ProgressState, bind_progress, current_progress
+from carr_library.speech.playback_devices import PlaybackDevice
 
 
 class Control:
@@ -86,14 +88,16 @@ def handlers(values):
     module = ast.parse(source.read_text(encoding='utf-8'))
     window = next(node for node in module.body if isinstance(node, ast.FunctionDef) and node.name == 'show_recording')
     names = {'controls', 'release_holds', 'release_when_stopped', 'display_record', 'show_records', 'run', 'refresh',
-             'start', 'close', 'stop_recording', 'cancel_recording'}
+             'refresh_monitor', 'start', 'close', 'stop_recording', 'cancel_recording', 'pause_recording', 'resume_recording'}
     definitions = [node for node in window.body if isinstance(node, ast.FunctionDef) and node.name in names]
     assert {node.name for node in definitions} == names
     result = ', '.join(repr(name) + ': ' + name for name in sorted(names))
     factory = ast.parse('def build(' + ', '.join(values) + '):\n    return {' + result + '}\n')
     factory.body[0].body[:0] = definitions
     namespace = {'RecordingOptions': RecordingOptions, 'AudioCancelled': AudioCancelled, 'time': time,
-                 'ProgressState': ProgressState, 'bind_progress': bind_progress}
+                 'ProgressState': ProgressState, 'bind_progress': bind_progress,
+                 'current_progress': current_progress, 'CaptureCleanupError': CaptureCleanupError,
+                 '_UNCONFIRMED_RECORDING_HOLDS': values['retained_holds']}
     exec(compile(ast.fix_missing_locations(factory), str(source), 'exec'), namespace)
     return SimpleNamespace(**namespace['build'](**values))
 
@@ -110,11 +114,15 @@ def view():
         if kwargs['cancelled'](): raise AudioCancelled('User cancelled before capture')
         kwargs['progress'](1.0)
         return result
-    service = SimpleNamespace(devices=Mock(return_value=(device,)), capture=capture)
-    buttons = {name: Control() for name in ('refresh', 'start', 'stop', 'cancel', 'preview', 'use', 'stop_preview', 'close')}
+    service = SimpleNamespace(devices=Mock(return_value=(device,)), capture=capture,
+                              monitoring_outputs=Mock(return_value=()))
+    buttons = {name: Control() for name in ('refresh', 'refresh_monitor', 'start', 'stop', 'cancel',
+                                          'pause', 'resume', 'preview', 'use', 'stop_preview', 'close')}
     values = dict(busy=False, alive=True, closing=False, generation=0, active_future=None, devices=(), records=(), holds=[],
         selected_result=None, controllers=(progress, parent), progress=progress, player=Mock(),
         executor=executor, service=service, cancelled=threading.Event(), stopped=threading.Event(),
+        paused=threading.Event(), capture_phase='idle', monitor_outputs=(), retained_holds=[],
+        monitoring=Control(False), monitor_output=Control(selection=-1),
         microphone=Control(selection=-1), title=Control('My recording'), minutes=Control(2),
         sample_rate=Control('24000'), channels=Control(selection=0), saved=Control(selection=-1),
         buttons=buttons, details=Control(), status=Control(), dialog=Mock(),
@@ -219,6 +227,122 @@ def test_progress_observer_failure_cannot_turn_retained_recording_into_failed_wo
     assert view.values['saved'].items == ['My recording (2026-11-27T01:00:00)']
     assert len(view.captures) == 1 and view.progress.holds[0].closed
     assert 'Detached progress view' in view.progress.reporting_error
+
+
+def test_pause_request_waits_for_confirmed_backend_state_and_resume_keeps_same_progress_task(view):
+    discovered(view)
+    view.progress.ready = view.parent.ready = True
+    observed = []
+    def capture(device_id, **options):
+        task = current_progress()
+        observed.append(task)
+        options['state_changed'](RecordingState('recording', 2400, 24000, 0))
+        options['progress'](.1)
+        assert view.values['buttons']['pause'].enabled and not view.values['buttons']['resume'].enabled
+        view.handlers.pause_recording()
+        assert options['pause_requested']() and task.snapshot().state == ProgressState.RUNNING
+        assert not view.values['buttons']['resume'].enabled
+        options['state_changed'](RecordingState('pausing', 2400, 24000, 0))
+        assert task.snapshot().state == ProgressState.RUNNING
+        options['state_changed'](RecordingState('paused', 3000, 24000, 1))
+        assert task.snapshot().state == ProgressState.PAUSED
+        assert view.values['buttons']['resume'].enabled and not view.values['buttons']['pause'].enabled
+        assert all(not hold.closed for hold in (*view.progress.holds, *view.parent.holds))
+        view.handlers.resume_recording()
+        assert not options['pause_requested']() and task.snapshot().state == ProgressState.PAUSED
+        options['state_changed'](RecordingState('opening', 3000, 24000, 1))
+        assert current_progress() is task and task.snapshot().state == ProgressState.RUNNING
+        options['state_changed'](RecordingState('recording', 6000, 24000, 1))
+        options['progress'](.25)
+        assert task.snapshot().completed == 250
+        return view.result
+    view.service.capture = capture
+    view.handlers.start()
+    view.executor.finish()
+    assert observed == [view.progress.active_task]
+    assert view.progress.active_task.snapshot().state == ProgressState.SUCCEEDED
+
+
+def test_stop_while_paused_resumes_final_verification_before_success_without_opening_input(view):
+    discovered(view)
+    view.progress.ready = view.parent.ready = True
+    def capture(device_id, **options):
+        options['state_changed'](RecordingState('recording', 2400, 24000, 0))
+        view.handlers.pause_recording()
+        options['state_changed'](RecordingState('paused', 2400, 24000, 1))
+        assert current_progress().snapshot().state == ProgressState.PAUSED
+        view.handlers.stop_recording()
+        view.handlers.resume_recording()
+        assert options['stop_requested']() and options['pause_requested']()
+        options['state_changed'](RecordingState('finalizing', 2400, 24000, 1))
+        assert current_progress().snapshot().state == ProgressState.RUNNING
+        assert not view.values['buttons']['resume'].enabled
+        return view.result
+    view.service.capture = capture
+    view.handlers.start()
+    view.executor.finish()
+    assert view.progress.active_task.snapshot().state == ProgressState.SUCCEEDED
+
+
+def test_monitoring_is_default_off_inventory_is_worker_only_and_selection_is_frozen(view):
+    discovered(view)
+    selected = PlaybackDevice(1, 'Chosen headphones', 'interface-one', 1, 2, 3, 2)
+    view.service.monitoring_outputs.return_value = (selected,)
+    assert view.values['monitoring'].GetValue() is False
+    assert view.service.monitoring_outputs.call_count == 0
+    view.handlers.refresh_monitor()
+    assert view.service.monitoring_outputs.call_count == 0
+    view.executor.finish()
+    assert view.service.monitoring_outputs.call_count == 1
+    assert view.values['monitor_output'].GetSelection() == -1
+    assert view.values['monitoring'].GetValue() is False
+    view.values['monitoring'].SetValue(True)
+    view.handlers.start()
+    assert view.executor.pending == [] and 'Select a monitoring output' in view.values['status'].value
+    view.values['monitor_output'].SetSelection(0)
+    view.progress.ready = view.parent.ready = True
+    view.handlers.start()
+    view.values['monitoring'].SetValue(False)
+    view.values['monitor_output'].SetSelection(-1)
+    view.executor.finish()
+    assert view.captures[0][1]['monitor_output'] is selected
+
+
+def test_unconfirmed_capture_cleanup_does_not_release_quiet_or_report_discarded_success(view):
+    discovered(view)
+    view.progress.ready = view.parent.ready = True
+    def capture(*args, **kwargs):
+        raise CaptureCleanupError('Owned monitoring buffers remain active; restart required.')
+    view.service.capture = capture
+    view.handlers.start()
+    view.handlers.release_when_stopped()
+    view.executor.finish()
+    assert len(view.values['retained_holds']) == 2
+    assert all(not hold.closed for hold in (*view.progress.holds, *view.parent.holds))
+    assert view.progress.active_task.snapshot().state == ProgressState.FAILED
+    assert 'restart required' in view.values['status'].value
+
+
+def test_late_recording_state_callbacks_after_close_do_not_touch_native_controls(view):
+    discovered(view)
+    view.progress.ready = view.parent.ready = True
+    queued = []
+    view.values['wx'].CallAfter = queued.append
+    def capture(device_id, **options):
+        options['state_changed'](RecordingState('recording', 2400, 24000, 0))
+        options['state_changed'](RecordingState('paused', 2400, 24000, 1))
+        return view.result
+    view.service.capture = capture
+    view.handlers.start()
+    view.executor.finish()
+    assert len(queued) == 3
+    view.handlers.close(Mock())
+    original = view.values['status'].value
+    for callback in queued[:2]:
+        callback()
+    assert view.values['status'].value == original
+    queued[2]()
+    assert view.values['dialog'].EndModal.call_count == 1
 
 
 def test_recording_progress_uses_actual_duration_in_the_bound_canonical_task(view):

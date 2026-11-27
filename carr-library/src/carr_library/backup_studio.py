@@ -129,7 +129,7 @@ def validate_collection(db, stage, entries, *, cancelled):
     from .durable_state import read_json
     from .studio.backup_inputs import validate_backup_inputs
     from .studio.book_audio import BookPlan
-    from .audio.recording import RecordingOptions, RecordingService
+    from .audio.recording import RecordingOptions, RecordingService, verify_recording_segments
 
     by_name = {entry['filename']: entry for entry in entries}
     state_entries = [dict(entry, filename=entry['filename'][6:])
@@ -157,6 +157,7 @@ def validate_collection(db, stage, entries, *, cancelled):
             if RecordingService._audio(Path(stage) / audio_name,
                     RecordingOptions(**value['limits']), cancelled) != value['audio']:
                 raise ValueError('Recording PCM differs from its saved receipt.')
+            verify_recording_segments(Path(stage) / audio_name, value, cancelled=cancelled)
         elif PRESET.fullmatch(name):
             presets += 1
             if presets > 256:
