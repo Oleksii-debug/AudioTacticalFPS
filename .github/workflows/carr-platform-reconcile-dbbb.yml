@@ -114,7 +114,10 @@ jobs:
             'tests/reader/test_export_publication_boundary.py',
             'tests/reader/test_export_no_clobber.py',
             'tests/ui/test_export_confirmation.py',
-            'tests/operations_posix/test_fork_ownership.py'
+            'tests/operations_posix/test_fork_ownership.py',
+            'tests/ui/test_progress_job_review.py',
+            'tests/ui/test_save_all_access.py',
+            'tests/storage/test_recording_backup.py'
           )
           python scripts/ci_check.py --jobs 2 @suites 2>&1 | Tee-Object ci-platform-results/strict-source.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
