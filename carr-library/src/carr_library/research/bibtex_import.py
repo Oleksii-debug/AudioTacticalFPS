@@ -162,26 +162,37 @@ class _Expressions:
     def __init__(self, definitions):
         self.definitions = definitions
         self.cache = {}
+        self.depths = {}
         self.total = 0
 
     def symbol(self, key, stack):
         key = key.lower()
+        if key not in self.definitions:
+            if key in _MONTHS:
+                # Built-in months are constant values, like braced literals;
+                # only explicit @string definitions add a dependency level.
+                return _MONTHS[key], frozenset()
+            raise ValueError(f'Undefined BibTeX string: {key}. Quote literal text in braces.')
         if key in stack or len(stack) >= MAX_MACRO_DEPTH:
             raise ValueError('Cyclic or excessively nested BibTeX string definition.')
         if key in self.cache:
+            if len(stack) + self.depths[key] > MAX_MACRO_DEPTH:
+                raise ValueError('Cyclic or excessively nested BibTeX string definition.')
             return self.cache[key]
-        if key not in self.definitions:
-            if key in _MONTHS:
-                return _MONTHS[key], frozenset()
-            raise ValueError(f'Undefined BibTeX string: {key}. Quote literal text in braces.')
         expression = self.definitions[key].value.rstrip()
         # BibTeX permits one optional trailing comma in @string blocks; the
         # upstream structural parser retains that comma in String.value.
         if expression.endswith(','):
             expression = expression[:-1]
         value, used = self.resolve(expression, (*stack, key))
+        # A cached expansion still carries its full dependency depth. Otherwise
+        # defining parents first lets arbitrarily long chains appear shallow.
+        depth = 1 + max((self.depths[name] for name in used), default=0)
+        if len(stack) + depth > MAX_MACRO_DEPTH:
+            raise ValueError('Cyclic or excessively nested BibTeX string definition.')
         result = value, used | {key}
         self.cache[key] = result
+        self.depths[key] = depth
         return result
 
     def resolve(self, expression, stack=()):
@@ -345,20 +356,27 @@ def _keywords(value, warnings, decoder):
 
 def _inherit_records(records):
     completed = {}
+    depths = {}
 
     def inherited(key, stack=()):
         if key in stack or len(stack) >= MAX_CROSSREF_DEPTH:
             raise ValueError('Cyclic or excessively nested BibTeX cross-reference.')
         if key in completed:
+            if len(stack) + depths[key] > MAX_CROSSREF_DEPTH:
+                raise ValueError('Cyclic or excessively nested BibTeX cross-reference.')
             return completed[key]
         entry, own, used, warnings = records[key]
         fields = dict(own)
         parent_key = fields.get('crossref', '').strip()
+        depth = 1
         if parent_key:
             if parent_key not in records:
                 raise ValueError(f'BibTeX cross-reference {parent_key} is missing from this file.')
             parent, _, _, _ = records[parent_key]
             parent_fields = inherited(parent_key, (*stack, key))
+            depth += depths[parent_key]
+            if len(stack) + depth > MAX_CROSSREF_DEPTH:
+                raise ValueError('Cyclic or excessively nested BibTeX cross-reference.')
             copied = []
             for field in sorted(_INHERIT):
                 if field not in fields and field in parent_fields:
@@ -372,6 +390,7 @@ def _inherit_records(records):
                             + (', '.join(copied) if copied else 'no supported missing fields')
                             + '. Child title, authors, identifiers and page extent are not inferred.')
         completed[key] = fields
+        depths[key] = depth
         return fields
 
     for key in records:

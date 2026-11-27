@@ -295,6 +295,59 @@ def test_macro_chain_depth_is_bounded():
         bib.parse_bibtex('\n'.join(strings) + '\n@book{x,title=s0}')
 
 
+def _dependency_order(rows, order):
+    if order == 'child-first':
+        return list(reversed(rows))
+    if order == 'interleaved':
+        return rows[::2] + rows[1::2]
+    return rows
+
+
+@pytest.mark.parametrize('order', ['parent-first', 'child-first', 'interleaved'])
+@pytest.mark.parametrize('over_limit', [False, True])
+@pytest.mark.parametrize(('leaf', 'expected'), [('{Synthetic leaf}', 'Synthetic leaf'), ('jan', 'January')])
+def test_macro_depth_boundary_is_independent_of_definition_order(order, over_limit, leaf, expected):
+    depth = bib.MAX_MACRO_DEPTH + int(over_limit)
+    strings = ['@string{s0=' + leaf + '}']
+    strings.extend(f'@string{{s{i}=s{i-1}}}' for i in range(1, depth))
+    source = '\n'.join(_dependency_order(strings, order))
+    source += f'\n@book{{x,title=s{depth - 1}}}'
+    if over_limit:
+        with pytest.raises(ValueError, match='nested BibTeX string'):
+            bib.parse_bibtex(source)
+    else:
+        values, _ = one(source)
+        assert values['title'] == expected
+
+
+@pytest.mark.parametrize('order', ['parent-first', 'child-first', 'interleaved'])
+@pytest.mark.parametrize('over_limit', [False, True])
+def test_crossref_depth_boundary_is_independent_of_entry_order(order, over_limit):
+    depth = bib.MAX_CROSSREF_DEPTH + int(over_limit)
+    entries = ['@book{p0,title={Synthetic parent 0},year=2026}']
+    entries.extend('@inbook{p%d,title={Synthetic parent %d},crossref={p%d}}' % (i, i, i - 1)
+                   for i in range(1, depth))
+    source = '\n'.join(_dependency_order(entries, order))
+    if over_limit:
+        with pytest.raises(ValueError, match='nested BibTeX cross-reference'):
+            bib.parse_bibtex(source)
+    else:
+        rows = bib.parse_bibtex(source)
+        assert len(rows) == depth
+        assert {values['title'] for values, _ in rows} == {
+            f'Synthetic parent {index}' for index in range(depth)}
+        assert all(values['year'] == '2026' for values, _ in rows)
+
+
+def test_macro_depth_counts_the_longest_chain_not_sibling_dependencies(monkeypatch):
+    monkeypatch.setattr(bib, 'MAX_MACRO_DEPTH', 2)
+    strings = [f'@string{{s{i}={{Word{i}}}}}' for i in range(20)]
+    strings.append('@string{joined=' + ' # { } # '.join(f's{i}' for i in range(20)) + '}')
+    source = '\n'.join(strings) + '\n@book{x,title=joined}'
+    values, _ = one(source)
+    assert values['title'] == ' '.join(f'Word{i}' for i in range(20))
+
+
 def test_deeply_nested_input_is_rejected_before_upstream_parser(monkeypatch):
     monkeypatch.setattr(bib, '_upstream', lambda: pytest.fail('Upstream must not receive overdeep input'))
     with pytest.raises(ValueError, match='nesting'):
