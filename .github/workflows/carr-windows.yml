@@ -7,7 +7,7 @@ on:
       - carr-library/**
       - .github/workflows/carr-windows.yml
   push:
-    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/notebook-release-ascii-e021-20261126, carr/v3-integrated-private-ce034-20261126]
+    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/notebook-release-ascii-e021-20261126, carr/v3-integrated-private-ce034-20261126, carr/backup-compose-primary-20261126]
     paths:
       - carr-library/**
       - .github/workflows/carr-windows.yml
@@ -360,6 +360,10 @@ jobs:
             'tests/storage/test_backup_reading_state.py',
             'tests/storage/test_backup_source_binding_review.py',
             'tests/storage/test_backup_v4_sidecars.py',
+            'tests/storage/test_backup_publication_recovery.py',
+            'tests/storage/test_backup_audio_composition.py',
+            'tests/storage/test_backup_generated_audio.py',
+            'tests/audio/test_input_asset_backup.py',
             'tests/storage/test_crash_backup.py',
             'tests/storage/test_evidence_drafts.py',
             'tests/storage/test_keyboard_preferences.py',
@@ -744,6 +748,10 @@ jobs:
               'tests/citations/test_bibliography_workbench.py',
               'tests/catalog/test_ris_apply.py',
               'tests/storage/test_backup_v4_sidecars.py',
+              'tests/storage/test_backup_publication_recovery.py',
+              'tests/storage/test_backup_audio_composition.py',
+              'tests/storage/test_backup_generated_audio.py',
+              'tests/audio/test_input_asset_backup.py',
               'tests/storage/test_backup_source_binding_review.py',
               'tests/storage/test_backup_keyboard_drafts.py',
               'tests/storage/test_keyboard_preferences.py',
