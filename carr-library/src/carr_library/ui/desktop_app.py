@@ -774,7 +774,14 @@ class DesktopFrame(WorkspaceFrame):
                     if not self.working and (status is None or status.GetValue() == before):
                         label = {'succeeded': 'complete', 'paused': 'needs attention',
                                  'failed': 'failed', 'cancelled': 'cancelled'}[outcome]
-                        self.report(title + ': ' + label + '.')
+                        message = title + ': ' + label + '.'
+                        if status is not None:
+                            # A completion callback may have focused its result
+                            # or opened another view. Update the host notice
+                            # without taking that native keyboard focus away.
+                            status.SetValue(message)
+                        else:
+                            self.report(message)
                 except Exception as exc:
                     if progress is not None:
                         if isinstance(exc, InterruptedError):

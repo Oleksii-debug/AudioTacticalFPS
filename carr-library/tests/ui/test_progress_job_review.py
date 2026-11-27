@@ -48,7 +48,7 @@ def desktop():
     frame.menu_bar.GetMenuCount.return_value = 2
     frame.menu_bar.GetMenuLabel.side_effect = lambda index: ('&Library', '&Help')[index]
     text, reports = ['Ready'], []
-    frame.status = SimpleNamespace(GetValue=lambda: text[0])
+    frame.status = SimpleNamespace(GetValue=lambda: text[0], SetValue=lambda value: text.__setitem__(0, value))
     def report(message):
         text[0] = message
         reports.append(message)
@@ -138,6 +138,27 @@ def test_old_completion_does_not_overwrite_a_callback_started_job(desktop):
     assert frame.working and frame.operation_progress.tracker.event.phase == 'Render'
     assert frame.operation_progress.tracker.event.state == 'running'
     assert reports[-1] == 'Render…'
+
+
+def test_generic_completion_updates_notice_without_overriding_callback_focus(desktop):
+    frame, queued, reports = desktop
+    focused = ['query']
+    report = frame.report
+    def focusing_report(message):
+        focused[0] = 'host-status'
+        report(message)
+    frame.report = focusing_report
+    future = Future()
+    frame.executor.submit.return_value = future
+    def display_results(result):
+        focused[0] = 'result-grid'
+    frame.run_job('Search', lambda: ['source result'], display_results)
+    future.set_result(['source result'])
+    queued.pop()()
+    assert focused[0] == 'result-grid'
+    assert frame.status.GetValue() == 'Search: complete.'
+    assert reports == ['Search…']
+    assert frame.operation_progress.tracker.event.state == 'succeeded'
 
 
 @pytest.fixture
