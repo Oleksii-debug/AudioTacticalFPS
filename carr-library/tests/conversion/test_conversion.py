@@ -369,3 +369,17 @@ def test_unicode_batch_name_fits_portable_component_budget(tmp_path):
     assert len(results) == 1
     assert len(results[0].report_path.name.encode('utf-8')) < 255
     assert_report(results[0], source)
+
+
+@pytest.mark.parametrize('name', [
+    'CON.txt', 'CON .txt', 'COM\u00b9.txt', 'LPT9.txt', 'CONOUT$.txt',
+    'stream:reading.txt', 'question?.txt', 'reading.txt ', 'reading.txt.',
+    'control\u0085.txt',
+])
+def test_output_uses_existing_portable_export_filename_guard(tmp_path, name):
+    raw = 'Unchanged \u041a\u0438\u0457\u0432 source.\r\n'.encode('utf-8')
+    source, output, converter = selected(tmp_path, raw)
+    with pytest.raises(ValueError, match='export filename'):
+        converter.extract(source, name)
+    assert source.read_bytes() == raw
+    assert list(output.iterdir()) == []

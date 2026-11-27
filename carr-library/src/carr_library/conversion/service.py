@@ -12,7 +12,7 @@ from time import monotonic
 from ..audio.jobs import (
     checked_directory, regular_file, file_identity, verified_reader, publish_noreplace, read_json,
 )
-from ..audio.paths import filename_component
+from ..research.export_file import _filename as filename_component
 from ..data_paths import guard_data_directory
 from ..extract.document_formats import SUPPORTED_SUFFIXES
 from ..extract.page_ocr import Config
