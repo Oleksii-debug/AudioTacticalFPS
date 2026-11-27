@@ -543,10 +543,11 @@ class PublicationService:
         return tuple(rows)
 
     def _source(self, state, check, progress):
+        from .render import _owner_receipt
         if state.get('status') != 'complete' or state.get('recovery', {}).get('requires_output_directory'):
             raise ValueError('Choose a completed Studio job with verified local output files.')
         destination = local_path(state['destination'], exists=True)
-        if read_json(destination / 'production-owner.json') != {'job': state['id'], 'fingerprint': state['fingerprint']}:
+        if read_json(destination / 'production-owner.json') != _owner_receipt(state):
             raise ValueError('The Studio output directory belongs to another production.')
         artifacts = state.get('artifacts')
         if not isinstance(artifacts, list) or not 3 <= len(artifacts) <= 100000:
