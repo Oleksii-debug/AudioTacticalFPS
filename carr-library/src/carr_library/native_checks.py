@@ -52,7 +52,7 @@ def _manifest(root):
     required = {'schema', 'target', 'bundled_python', 'bundled_model', 'bundled_ocr', 'files'}
     optional_flags = {'bundled_native_runtime', 'bundled_audio_runtime', 'bundled_native_launcher'}
     if (type(value) is not dict or not required <= value.keys()
-            or value.keys() - required - {'source_commit'} - optional_flags
+            or value.keys() - required - {'source_commit', 'source_tree'} - optional_flags
             or type(value['schema']) is not int or value['schema'] != 1
             or value['target'] != TARGET
             or any(type(value[name]) is not bool
@@ -62,9 +62,10 @@ def _manifest(root):
     for flag in optional_flags:
         if flag in value and type(value[flag]) is not bool:
             raise ValueError('The ' + flag + ' installation flag must be a boolean.')
-    if ('source_commit' in value and (not isinstance(value['source_commit'], str)
-            or not re.fullmatch('[0-9a-f]{40}', value['source_commit']))):
-        raise ValueError('Invalid installation source commit.')
+    for field in ('source_commit', 'source_tree'):
+        if field in value and (not isinstance(value[field], str)
+                or not re.fullmatch('[0-9a-f]{40}', value[field])):
+            raise ValueError('Invalid installation source identity: ' + field + '.')
     folded = set()
     for name, digest in value['files'].items():
         if not isinstance(name, str):

@@ -2273,6 +2273,14 @@
       "test_complete_backup_preserves_exact_canonical_settings_then_explicit_save_uses_current_schema": 2,
       "test_failed_explicit_migration_preserves_original_canonical_bytes": 1,
       "test_current_schema_one_and_two_remain_unambiguous": 2
+    },
+    "tests.packaging.test_native_checks_manifest": {
+      "test_current_source_bound_audio_bundle_manifest_is_accepted": 1,
+      "test_legacy_manifest_without_optional_fields_is_accepted": 1,
+      "test_optional_runtime_flags_remain_strict_booleans": 6,
+      "test_source_identities_require_full_lowercase_git_sha": 10,
+      "test_unknown_installation_fields_are_still_rejected": 1,
+      "test_audio_runtime_false_and_source_commit_only_remain_valid": 1
     }
   },
   "installed": {
@@ -4478,6 +4486,14 @@
       "test_complete_backup_preserves_exact_canonical_settings_then_explicit_save_uses_current_schema": 2,
       "test_failed_explicit_migration_preserves_original_canonical_bytes": 1,
       "test_current_schema_one_and_two_remain_unambiguous": 2
+    },
+    "tests.packaging.test_native_checks_manifest": {
+      "test_current_source_bound_audio_bundle_manifest_is_accepted": 1,
+      "test_legacy_manifest_without_optional_fields_is_accepted": 1,
+      "test_optional_runtime_flags_remain_strict_booleans": 6,
+      "test_source_identities_require_full_lowercase_git_sha": 10,
+      "test_unknown_installation_fields_are_still_rejected": 1,
+      "test_audio_runtime_false_and_source_commit_only_remain_valid": 1
     }
   },
   "native_trust": [

@@ -20,7 +20,7 @@ from carr_library.runtime_settings import EngineProfileStore, profile_reference
 
 
 def binary():
-    selected = os.environ.get('CARR_AUDIO_FFMPEG') or shutil.which('ffmpeg')
+    selected = os.environ.get('CARR_FFMPEG') or os.environ.get('CARR_AUDIO_FFMPEG') or shutil.which('ffmpeg')
     if not selected:
         pytest.fail('Actual FFmpeg is required for headless resource qualification.')
     return Path(selected).resolve()

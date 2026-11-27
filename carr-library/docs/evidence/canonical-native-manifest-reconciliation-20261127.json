@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "status": "SOURCE_RECONCILIATION_NOT_RUN",
+  "base": "4c25cc43e795cacdd61e2a00e6db87960db25bb9",
+  "canonical": {
+    "commit": "e3cf74c243d4ef930b526b5648ca9003c0900057",
+    "test_blob": "05e2c92925d9df1002bd6cbd4786d887b34af5b7"
+  },
+  "finding": "The current native checker recognized source_commit but rejected the canonical optional source_tree manifest identity.",
+  "repair": "Accept only the existing optional source_tree field and validate both source identities as exact lower-case 40-character Git hashes. Retain current bundled_native_launcher and all existing manifest path/flag validation.",
+  "preserved_tests": {
+    "path": "tests/packaging/test_native_checks_manifest.py",
+    "cases": 20,
+    "functions": {
+      "test_current_source_bound_audio_bundle_manifest_is_accepted": 1,
+      "test_legacy_manifest_without_optional_fields_is_accepted": 1,
+      "test_optional_runtime_flags_remain_strict_booleans": 6,
+      "test_source_identities_require_full_lowercase_git_sha": 10,
+      "test_unknown_installation_fields_are_still_rejected": 1,
+      "test_audio_runtime_false_and_source_commit_only_remain_valid": 1
+    },
+    "source_bytes": "unchanged canonical blob"
+  },
+  "focused_gate": {
+    "source_cases": 232,
+    "installed_cases": 232,
+    "provider_native_checks": 22,
+    "prior132cases": "all retained",
+    "new_current_headless_fixture": "Use the existing explicitly pinned CARR_FFMPEG selection before a compatibility alias or ambient PATH."
+  },
+  "limits": {
+    "runtime": "NOT_RUN",
+    "whole_final_candidate": "NOT_RUN",
+    "nvda": "NOT_RUN"
+  }
+}

@@ -1,4 +1,4 @@
-name: CARR owned request and speech publication regressions
+name: CARR preserved publication and canonical recovery regressions
 on:
   push:
     branches: ['carr/v3-acceptance-*', 'carr/request-cleanup-*']
@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   source-installed-native:
-    name: Windows / source and installed request handles and atomic speech cancellation
+    name: Windows / preserved publication, canonical recovery and headless admission
     runs-on: windows-2022
     timeout-minutes: 75
     defaults:
@@ -163,7 +163,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "CARR_FFMPEG=$(Join-Path $audio 'ffmpeg.exe')" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
-      - name: Run all original failing source suites and new cleanup boundaries
+      - name: Run all preserved source publication and canonical recovery boundaries
         id: source
         timeout-minutes: 22
         run: |
@@ -177,6 +177,20 @@ jobs:
         run: |
           & $env:CARR_BATCH_PYTHON -I -B -X utf8 scripts/request_cleanup_acceptance.py installed --results request-cleanup-ci-results --work $env:CARR_BATCH_WORK 2>&1 | Tee-Object 'request-cleanup-ci-results/installed-runner.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require actual installed native provider import and passive recovery
+        id: provider-native
+        if: ${{ !cancelled() && steps.prepare-runtime.outcome == 'success' }}
+        timeout-minutes: 5
+        run: |
+          New-Item -ItemType Directory -Path ci-results -Force | Out-Null
+          try {
+            & $env:CARR_BATCH_PYTHON -I -B -X utf8 scripts/r7_native_gate.py provider-recovery --report request-cleanup-ci-results/provider-recovery-native.json
+            if ($LASTEXITCODE -ne 0) { throw 'Installed provider recovery native flow failed.' }
+          } finally {
+            $fixture = Join-Path (Get-Location) 'ci-results/full-bundle-provider-recovery-fixture'
+            if (Test-Path -LiteralPath $fixture) { Remove-Item -LiteralPath $fixture -Recurse -Force }
+          }
 
       - name: Require both exact Windows source and installed receipts
         if: always()
