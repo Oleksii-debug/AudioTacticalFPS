@@ -145,7 +145,7 @@ def reader(tmp_path, monkeypatch):
         document=SimpleNamespace(dirty=False, text=''), source_loaded=True,
         source_guard=lambda: None, draft_store=None, recovered=None, recovery_notice='', editor=Mock(),
         source_status=Mock(), sync_document=lambda: None, save_project=lambda: True,
-        dialog=Mock(), autosave_timer=Mock(), executor=Mock(), audio_files=Mock())
+        dialog=Mock(), autosave_timer=Mock(), executor=Mock(), audio_files=Mock(), navigation_host=Mock())
     handlers = callbacks('speech_dialog.py', 'show_speech_reader',
         ['reload', 'select_progress_voice', 'start_playback', 'stop_audio', 'closing'],
         values, globals_={'activate_progress_voice': activate}, cleanup=True)

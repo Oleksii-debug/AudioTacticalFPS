@@ -33,6 +33,7 @@ def factory(state):
     cancel = Event()
     last_audio = object()
     playback_generation = 10
+    navigation_host = None
     def source_guard():
         if not state.authorized:
             raise ValueError('The source scope is no longer available.')

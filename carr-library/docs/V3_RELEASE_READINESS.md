@@ -150,7 +150,7 @@ including four real WAVE files larger than 3 MiB that stop after one 1 MiB read
 with no runtime launch or leaked reservation. See [audiobook chapters](AUDIOBOOK_CHAPTERS.md)
 and [shared resource behavior](runtime_resources.md).
 
-The composed Windows workflow selects 210 unique source suites and 117 unique
+The preceding composed Windows workflow selected 210 unique source suites and 117 unique
 installed suites, including the new Studio pronunciation, Tasks/resources,
 ASR admission and microphone admission cases. Real-key Studio pronunciation and
 Tasks/resources probes are required for both the installed desktop and complete
@@ -188,3 +188,80 @@ Public source `5ba8389a193f1907810b8f00aba2e386993fd7a3` completed the
 [academic reconciliation run](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45942462279)
 successfully. Its Windows/V3 jobs were queued when these corrections were
 prepared, and no Windows pass is inferred from that queue state.
+
+## Reader, playback, conversion and keymap composition
+
+The application source `270ec95` passed 407 distinct cases in 18 focused suites
+with zero failures/errors/skips. This composition covers the new Find/Replace
+worker and real reader closures, playback navigation and reader lifetime,
+actual POSIX ffplay process lifecycle, measured audio conversion, reviewed keymap
+interchange and existing keyboard/palette behavior, plus cursor, clipboard,
+reading-source and session recovery. Actual Studio M4B rendering remains in the
+same run. Earlier overlapping feature runs are not added to this count.
+
+The implemented additions are:
+
+- [Find/Replace](READING_FIND_REPLACE.md): bounded literal/regex next/previous,
+  fixed selected-text or whole-copy scope, preview and explicit undoable apply,
+  native Unicode position conversion and cancellation of the owned subprocess.
+- [Playback navigation](PLAYBACK_NAVIGATION.md): generation-bound skips,
+  seconds/percentage seek, explicit A–B repeat and sleep through the existing
+  player, with obsolete commands revoked on Stop, edit or source replacement.
+- [Audio conversion settings](AUDIO_CONVERSION_CONTROLS.md): explicit sample
+  rate, channels, supported PCM depth and compressed bitrate, checked against
+  actual output. A post-publication observation failure reports the already
+  committed result accurately.
+- [Keymap interchange](KEYMAP_INTERCHANGE.md): previewed schema-one merge,
+  exact file/current-command checks, no-clobber export and full-map undo through
+  existing shortcut preferences. Previously accepted Unicode JSON encodings
+  remain readable.
+
+The composed Windows workflow selects 218 unique source suites and 125 unique
+installed suites. Required named cases, exact installed module origins and
+zero-skip checks remain enforced. Exact `270ec95` collection found all 3,123
+installed cases, all 129 required named cases and exactly 58 metadata cases;
+collection is not execution of those cases. Existing native reading, audio, publication,
+pronunciation and palette gates remain present. New conversion acceptance uses
+the actual pinned FFmpeg/ffprobe through the real dialog and worker; its output
+must be 48 kHz mono 24-bit PCM with measured frames and unchanged source bytes.
+The separate playback-navigation native probe explicitly uses a synthetic
+clocked transport and does not claim MCI or physical-device acceptance.
+
+## Failures observed on public candidate b0fbc43
+
+Exact public source `b0fbc43a627cf3e90805ea06fdc94fa986dcf344`
+[V3 run 45943636356](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45943636356)
+completed with failure. The installed integrity step recorded 307 passes and two
+failures without skips: both timeout/PDF publication tests expired before their
+required child-process barrier was reached. A three-second fixture deadline
+incorrectly depended on cold native parser startup time. The corrected fixture
+keeps a real bounded startup deadline, advances only the supervisor's clock
+after the actual before/after-commit marker, and retains real child termination,
+durable receipt and rollback assertions. Instrumentation is local to the worker
+module instead of replacing the shared subprocess class. Source `4f6d9b5`
+passed all 58 publication/replay cases with zero failures/errors/skips, including
+deadline-arming checks when a child reaches its barrier unusually quickly.
+
+That V3 run's broader source step recorded 1,379 passes, one failure and 22
+skips; this is not a strict acceptance pass. The failed actual M4B fixture
+assumed a Flite filter absent from the pinned Windows FFmpeg. It now uses the
+existing actual native SAPI provider on Windows and actual Flite on POSIX.
+Missing voices still fail, and all original output, chapter, LRC, hash and reuse
+assertions remain. The ten separately strict progress suites passed. The native
+V3 acceptance step was skipped after the preceding integrity failure.
+
+The same source's
+[Windows run 45943636357](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45943636357)
+reached actual installed native execution. Recorded EPUB reading and
+Tasks/resources exceeded their five-minute step deadlines, and the palette and
+full-bundle steps also failed. Reader and Studio pronunciation passed. These
+failures remain open until their exact diagnostics and corrected candidate
+results are available. Periodic thread traces and flushed phase records now
+cover the two blocked probes without changing their deadlines or acceptance
+assertions. Independent source replay also proved that the old palette fixture
+targeted a note on an unselected notebook page; it now explicitly reveals and
+asserts the visible Evidence page before the original key sequence. That source
+defect alone is not asserted to explain every native failure.
+
+New source results do not establish final installed Windows, human NVDA,
+physical-device, listening, model/language, signing or distribution acceptance.

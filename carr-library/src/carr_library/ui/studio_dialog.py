@@ -645,10 +645,41 @@ def show_studio(frame):
         dialog.Destroy()
 
 
+def audio_conversion_settings(*, sample_rate, channels, bit_depth, bitrate, start, duration,
+                              gain, tempo, loudness, cleanup):
+    """Validate the displayed numeric controls before admitting audio work."""
+    from ..audio import Effect
+    from ..audio.models import finite, integer
+    integer(sample_rate, 'Output sample rate', 8000, 192000)
+    integer(channels, 'Output channels', 1, 2)
+    if type(bit_depth) is not int or bit_depth not in (16, 24, 32):
+        raise ValueError('PCM bit depth must be 16, 24 or 32.')
+    integer(bitrate, 'Output bitrate', 32, 512)
+    start = finite(start, 'Selection start', 0)
+    duration = None if duration is None else finite(duration, 'Selection duration', .000001)
+    gain = finite(gain, 'Gain', -60, 12)
+    tempo = finite(tempo, 'Playback speed', .5, 2)
+    if type(cleanup) is not bool:
+        raise ValueError('Choose whether speech cleanup should be applied.')
+    chain = [Effect('gain', gain_db=gain), Effect('tempo', factor=tempo)]
+    if cleanup:
+        chain += [Effect('denoise'), Effect('compressor')]
+    if loudness is not None:
+        chain.append(Effect('loudness', target_lufs=finite(loudness, 'Target loudness', -40, -9), peak_db=-1))
+    return {'sample_rate': sample_rate, 'channels': channels, 'bit_depth': bit_depth,
+            'bitrate': bitrate, 'start': start, 'duration': duration, 'effects': tuple(chain)}
+
+
 def show_audio_conversion(frame):
     """Numeric, keyboard-driven offline DSP and conversion of a selected local file."""
     import wx
-    from ..audio import AudioRuntime, Effect
+    from ..durable_state import local_path
+    selected_library = frame.library
+    selected_root = local_path(selected_library.root, exists=True)
+    def guard():
+        if (getattr(frame, '_closing', False) or frame.library is not selected_library
+                or local_path(frame.library.root, exists=True) != selected_root):
+            raise ValueError('The library changed or closed. Reopen audio conversion.')
     chooser = wx.FileDialog(frame, 'Choose a local audio or video source', style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
     try:
         if chooser.ShowModal() != wx.ID_OK:
@@ -656,43 +687,54 @@ def show_audio_conversion(frame):
         source = Path(chooser.GetPath())
     finally:
         chooser.Destroy()
-    dialog = wx.Dialog(frame, title='Convert audio and apply effects', size=(700, 550),
+    dialog = wx.Dialog(frame, title='Convert audio and apply effects', size=(760, 750),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+    panel = wx.ScrolledWindow(dialog, style=wx.VSCROLL)
+    panel.SetScrollRate(0, 12)
     layout = wx.BoxSizer(wx.VERTICAL)
     def entry(label, value):
-        layout.Add(wx.StaticText(dialog, label=label), 0, wx.ALL, 5)
-        control = wx.TextCtrl(dialog, value=value)
+        layout.Add(wx.StaticText(panel, label=label), 0, wx.ALL, 5)
+        control = wx.TextCtrl(panel, value=value)
         control.SetName(label)
         layout.Add(control, 0, wx.EXPAND | wx.ALL, 5)
         return control
     start = entry('Start in seconds', '0')
     duration = entry('Duration in seconds; empty means remainder', '')
+    sample_rate = entry('Output sample rate in Hz, 8000 to 192000; Opus requires 48000', '24000')
+    channels = entry('Output channels: 1 for mono, 2 for stereo', '2')
+    bit_depth = entry('PCM bit depth: 16 or 24; 32 for WAV or AIFF only', '16')
+    bitrate = entry('Target compressed bitrate in kbps, 32 to 512; MP3, AAC, Opus and WMA', '192')
     gain = entry('Gain in decibels, -60 to 12', '0')
     tempo = entry('Playback speed without pitch change, 0.5 to 2', '1')
     loudness = entry('Target loudness in LUFS; empty leaves levels unchanged', '-18')
-    effects = wx.CheckBox(dialog, label='Apply speech noise reduction and gentle compression')
+    effects = wx.CheckBox(panel, label='Apply speech noise reduction and gentle compression')
+    effects.SetName('Apply speech noise reduction and gentle compression')
     layout.Add(effects, 0, wx.ALL, 6)
-    layout.Add(dialog.CreateButtonSizer(wx.OK | wx.CANCEL), 0, wx.ALL, 6)
-    dialog.SetSizer(layout)
+    notice = wx.StaticText(panel, label='The new filename selects its audio format. Bit depth applies to PCM/FLAC; '
+        'bitrate applies to the listed compressed encoders. Ogg Vorbis uses the existing quality setting. '
+        'The installed runtime verifies the actual rate and channels before saving. Originals stay unchanged.')
+    notice.Wrap(690); layout.Add(notice, 0, wx.ALL | wx.EXPAND, 6)
+    panel.SetSizer(layout)
+    outer = wx.BoxSizer(wx.VERTICAL); outer.Add(panel, 1, wx.EXPAND)
+    outer.Add(dialog.CreateButtonSizer(wx.OK | wx.CANCEL), 0, wx.ALL, 6)
+    dialog.SetSizer(outer); panel.FitInside()
     try:
         if dialog.ShowModal() != wx.ID_OK:
             return
-        start_value, duration_value = float(start.GetValue()), float(duration.GetValue()) if duration.GetValue().strip() else None
-        gain_value, tempo_value = float(gain.GetValue()), float(tempo.GetValue())
-        if not -60 <= gain_value <= 12 or not .5 <= tempo_value <= 2:
-            raise ValueError('Gain or speed is outside the displayed range.')
-        chain = [Effect('gain', gain_db=gain_value), Effect('tempo', factor=tempo_value)]
-        if effects.GetValue():
-            chain += [Effect('denoise'), Effect('compressor')]
-        if loudness.GetValue().strip():
-            chain.append(Effect('loudness', target_lufs=float(loudness.GetValue()), peak_db=-1))
+        guard()
+        options = audio_conversion_settings(sample_rate=int(sample_rate.GetValue()),
+            channels=int(channels.GetValue()), bit_depth=int(bit_depth.GetValue()), bitrate=int(bitrate.GetValue()),
+            start=float(start.GetValue()), duration=float(duration.GetValue()) if duration.GetValue().strip() else None,
+            gain=float(gain.GetValue()), tempo=float(tempo.GetValue()),
+            loudness=float(loudness.GetValue()) if loudness.GetValue().strip() else None,
+            cleanup=effects.GetValue())
     except Exception as exc:
         frame.report(str(exc))
         return
     finally:
         dialog.Destroy()
     chooser = wx.FileDialog(frame, 'Save converted audio to a new file', defaultFile=source.stem + '-converted.wav',
-                            wildcard='Audio (*.wav;*.flac;*.mp3;*.m4a;*.ogg;*.opus)|*.wav;*.flac;*.mp3;*.m4a;*.ogg;*.opus',
+                            wildcard='Audio (*.wav;*.flac;*.mp3;*.m4a;*.m4b;*.aac;*.ogg;*.opus;*.aiff;*.aif;*.wma)|*.wav;*.flac;*.mp3;*.m4a;*.m4b;*.aac;*.ogg;*.opus;*.aiff;*.aif;*.wma',
                             style=wx.FD_SAVE)
     try:
         if chooser.ShowModal() != wx.ID_OK:
@@ -701,15 +743,30 @@ def show_audio_conversion(frame):
     finally:
         chooser.Destroy()
     def operation():
+        guard()
+        if output.suffix.lower() == '.opus' and options['sample_rate'] != 48000:
+            raise ValueError('Select 48000 Hz explicitly for Opus output.')
+        if output.suffix.lower() == '.flac' and options['bit_depth'] == 32:
+            raise ValueError('Select 16 or 24 bits for this FLAC conversion profile.')
         from ..runtime_settings import audio_runtime
-        runtime = audio_runtime(output.parent, state_root=frame.library.root / 'state', input_roots=(source.parent,))
-        result = runtime.convert(source, output, start=start_value, duration=duration_value,
-                                  effects=chain, cancelled=frame.cancel_event.is_set)
-        measurement = runtime.measure(output, cancelled=frame.cancel_event.is_set)
-        return result, measurement
+        runtime = audio_runtime(output.parent, state_root=selected_root / 'state', input_roots=(source.parent,))
+        result = runtime.convert(source, output, **options, cancelled=frame.cancel_event.is_set)
+        # Conversion has already published a verified new file. Optional
+        # measurement cannot retroactively turn that committed save into failure.
+        try:
+            measurement = runtime.measure(output, cancelled=frame.cancel_event.is_set)
+            warning = ''
+        except Exception as exc:
+            measurement, warning = None, f'Loudness measurement did not complete: {exc}'
+        return result, measurement, warning
+    def complete(result):
+        guard()
+        info, measured, warning = result
+        frame.report(f'Saved {output}. Duration {info.duration:.2f} seconds; '
+                     f'{info.sample_rate} Hz; {info.channels} channel(s). '
+                     + (f'Measured loudness {measured.integrated_lufs} LUFS.' if measured is not None else warning))
     frame.run_job('Converting local audio', operation,
-        lambda result: frame.report(f'Saved {output}. Duration {result[0].duration:.2f} seconds. '
-                                    f'Measured loudness {result[1].integrated_lufs} LUFS.'))
+                  complete)
 
 
 def install_studio_actions(frame):

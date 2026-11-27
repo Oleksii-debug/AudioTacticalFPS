@@ -73,6 +73,8 @@ class Frame:
         self.bindings[item.GetId()] = callback
     def SetAcceleratorTable(self, table):
         self.table = table
+    def GetMenuBar(self):
+        return self.menu_bar
     def report(self, message):
         self.reports.append(message)
 
@@ -410,11 +412,15 @@ def test_expanded_publication_menu_preserves_saved_epub_shortcut(frame, wx, monk
 class Control(Focus):
     def __init__(self, parent, *args, value='', choices=(), label='', style=0, **kwargs):
         super().__init__()
+        if len(args) > 1:
+            label = args[1]
         self.parent, self.value, self.choices, self.label = parent, value, list(choices), label
         self.identity = args[0] if args else None
-        self.handlers, self.selection, self.name = {}, -1, ''
+        self.handlers, self.selection, self.name, self.enabled = {}, -1, '', True
         parent.controls.append(self)
     def SetName(self, value): self.name = value
+    def GetLabel(self): return self.label
+    def Enable(self, value=True): self.enabled = value
     def SetSelection(self, value): self.selection = value
     def GetSelection(self): return self.selection
     def ChangeValue(self, value): self.value = value
@@ -436,6 +442,7 @@ def _dialog_wx(wx, on_modal):
                  'LEFT', 'TOP', 'TE_READONLY', 'TE_MULTILINE', 'ALIGN_RIGHT'):
         setattr(wx, name, 1)
     wx.ID_APPLY, wx.ID_CANCEL, wx.EVT_CHOICE, wx.EVT_BUTTON = 10, 11, 'choice', 'button'
+    wx.EVT_TEXT = 'text'
     wx.Choice = wx.TextCtrl = wx.StaticText = wx.Button = Control
     wx.BoxSizer = lambda value: SimpleNamespace(Add=lambda *args, **kwargs: None)
     wx.on_modal = on_modal

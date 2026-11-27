@@ -163,10 +163,12 @@ def _unique(pairs):
     return value
 
 
-def _decode(raw, commands):
-    if raw is None:
-        return {}, ()
+def _settings_value(raw):
+    if not isinstance(raw, bytes) or not 0 < len(raw) <= MAX_SETTINGS_BYTES:
+        raise ValueError('Keyboard shortcut settings exceed the supported size.')
     try:
+        # Preserve schema 1's existing BOM/UTF-16/UTF-32 read compatibility.
+        # All new writes still use the canonical UTF-8 payload below.
         value = json.loads(raw, object_pairs_hook=_unique,
                            parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Non-finite settings.')))
     except (UnicodeError, RecursionError) as exc:
@@ -174,8 +176,21 @@ def _decode(raw, commands):
     if (not isinstance(value, dict) or set(value) != {'schema', 'overrides', 'originals'}
             or type(value['schema']) is not int or value['schema'] != 1
             or not isinstance(value['overrides'], dict) or not isinstance(value['originals'], dict)
-            or set(value['originals']) != set(value['overrides'])):
+            or len(value['overrides']) > MAX_COMMANDS
+            or set(value['originals']) != set(value['overrides'])
+            or any(not isinstance(key, str) or not key or len(key) > 1024
+                   or any(ord(char) < 32 for char in key) for key in value['overrides'])):
         raise ValueError('Invalid keyboard shortcut settings schema.')
+    for mapping in (value['overrides'], value['originals']):
+        for shortcut in mapping.values():
+            normalize_shortcut(shortcut, original=True)
+    return value
+
+
+def _decode(raw, commands):
+    if raw is None:
+        return {}, ()
+    value = _settings_value(raw)
     # Schema 1 records explicit choices and their original keys, not the whole
     # old command catalogue. Validate those choices independently of today's
     # implicit defaults; duplicate explicit owners and unknown actions still
@@ -205,7 +220,7 @@ def load_shortcuts(root, commands):
     return overrides, _token(raw)
 
 
-def save_shortcuts(root, commands, overrides, *, expected_token):
+def _settings_payload(commands, overrides):
     keys = effective_shortcuts(commands, overrides)
     kept = {command.action: keys[command.action] for command in commands if keys[command.action] != command.default}
     originals = {command.action: command.default for command in commands if command.action in kept}
@@ -213,12 +228,99 @@ def save_shortcuts(root, commands, overrides, *, expected_token):
     raw = (json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(',', ':')) + '\n').encode('utf-8')
     if len(raw) > MAX_SETTINGS_BYTES:
         raise ValueError('Keyboard shortcut settings exceed the supported size.')
+    return value, raw
+
+
+def save_shortcuts(root, commands, overrides, *, expected_token):
+    value, raw = _settings_payload(commands, overrides)
     path = _path(root)
     with state_lock(path.parent, 'shortcuts'):
         if _token(_bytes(path)) != expected_token:
             raise ValueError('Another window changed the shortcuts. Reopen this dialog before applying changes.')
         atomic_json(path, value, replace=path.exists())
-    return kept, _token(raw)
+    return value['overrides'], _token(raw)
+
+
+@dataclass(frozen=True, eq=False)
+class ShortcutScope:
+    root: Path
+    library: object
+    menu_bar: object
+    commands: tuple
+    token: str | None
+    overrides: tuple
+
+    def __eq__(self, other):
+        if not isinstance(other, ShortcutScope):
+            return NotImplemented
+        return (self.library is other.library and self.menu_bar is other.menu_bar
+                and self.commands is other.commands and self.root == other.root
+                and self.token == other.token and self.overrides == other.overrides)
+
+
+@dataclass(frozen=True)
+class KeymapImport:
+    source: Path
+    source_token: str
+    scope: ShortcutScope
+    overrides: tuple
+    recognized: tuple
+    notices: tuple
+    issues: tuple
+
+    @property
+    def description(self):
+        rows = ['Import preview only; no shortcuts have changed.',
+                'Only listed choices are merged. Other saved choices remain unchanged.']
+        rows.extend(self.recognized or ('The file contains no explicit shortcut choices.',))
+        rows.extend('Default made unassigned: ' + row for row in self.notices)
+        rows.extend('Cannot apply: ' + row for row in self.issues)
+        if not self.issues:
+            rows.append('Review these changes, then choose Apply reviewed import.')
+        return '\n'.join(rows)
+
+
+@dataclass(frozen=True)
+class ShortcutUndo:
+    before: tuple
+    after: ShortcutScope
+
+
+def _merge_import(commands, current, value):
+    """Merge explicit choices; never discard an unmentioned saved override."""
+    indexed = {command.action: command for command in commands}
+    previous = effective_shortcuts(commands, current)
+    updated, recognized, notices, issues = dict(current), [], [], []
+    for action, raw in value['overrides'].items():
+        command = indexed.get(action)
+        if command is None:
+            issues.append(f'Unavailable command: {action}.')
+            continue
+        if value['originals'][action] != command.default:
+            issues.append(f'The original shortcut changed for {command.title} [{action}].')
+            continue
+        try:
+            key = normalize_shortcut(raw, original=True)
+            if key in _RESERVED and key != command.default:
+                normalize_shortcut(key)
+        except ValueError as exc:
+            issues.append(f'{command.title}: {exc}')
+            continue
+        updated[action] = key
+        recognized.append(f'{command.title} [{action}]: {previous[action] or "Unassigned"}'
+                          f' → {key or "Unassigned"}.')
+    # Explicit owners, including existing saved choices, must not conflict.
+    try:
+        explicit = effective_shortcuts(commands, {**{row.action: '' for row in commands}, **updated})
+        owners = {explicit[action]: indexed[action].title for action in updated if explicit[action]}
+        for command in commands:
+            if command.action not in updated and command.default and command.default in owners:
+                updated[command.action] = ''
+                notices.append(f'{command.title}: {command.default} is used by {owners[command.default]}.')
+        effective_shortcuts(commands, updated)
+    except ValueError as exc:
+        issues.append(str(exc))
+    return tuple(sorted(updated.items())), tuple(recognized), tuple(notices), tuple(issues)
 
 
 def accelerator_entries(commands, keys, wx):
@@ -242,6 +344,7 @@ class KeyboardSettings:
         if wx_module is None:
             import wx as wx_module
         self.frame, self.wx = frame, wx_module
+        self.menu_bar = frame.menu_bar
         self.commands = capture_commands(frame.menu_bar)
         self.overrides, self.token, self.root = {}, None, None
         self.load_notice = ''
@@ -257,6 +360,7 @@ class KeyboardSettings:
 
     def reload(self):
         self.root = local_path(self.frame.library.root, exists=True)
+        self.library = self.frame.library
         raw = None
         try:
             raw = _bytes(_path(self.root))
@@ -276,9 +380,37 @@ class KeyboardSettings:
             self.frame.report(self.load_notice)
             return False
 
-    def apply(self, overrides):
-        if local_path(self.frame.library.root, exists=True) != self.root:
+    def _guard(self):
+        frame = self.frame
+        if (not frame or getattr(frame, '_closing', False)
+                or (hasattr(frame, 'IsBeingDeleted') and frame.IsBeingDeleted())):
+            raise ValueError('The application is closing; reopen keyboard shortcuts.')
+        if (frame.library is not self.library
+                or local_path(frame.library.root, exists=True) != self.root):
             raise ValueError('The library folder changed. Reopen keyboard shortcuts.')
+        if (frame.menu_bar is not self.menu_bar
+                or (hasattr(frame, 'GetMenuBar') and frame.GetMenuBar() is not self.menu_bar)
+                or getattr(frame, 'keyboard_settings', self) is not self):
+            raise ValueError('The menu commands changed. Reopen the application before editing shortcuts.')
+        current = capture_commands(self.menu_bar)
+        identity = lambda rows: tuple((row.action, row.menu_id, id(row.item)) for row in rows)
+        expected_keys = effective_shortcuts(self.commands, self.overrides)
+        if (identity(current) != identity(self.commands)
+                or any(row.default != expected_keys[row.action] for row in current)):
+            raise ValueError('The menu commands changed. Reopen the application before editing shortcuts.')
+
+    def _scope(self):
+        return ShortcutScope(self.root, self.library, self.menu_bar, self.commands,
+                             self.token, tuple(sorted(self.overrides.items())))
+
+    def _current_scope(self):
+        self._guard()
+        if _token(_bytes(_path(self.root))) != self.token:
+            raise ValueError('Another window changed the shortcuts. Reopen this dialog before applying changes.')
+        return self._scope()
+
+    def apply(self, overrides):
+        self._guard()
         effective_shortcuts(self.commands, overrides)
         previous = dict(self.overrides)
         try:
@@ -290,16 +422,71 @@ class KeyboardSettings:
         self.overrides, self.token = kept, token
         self.load_notice = ''
 
+    def apply_with_undo(self, overrides):
+        before = self._current_scope()
+        self.apply(overrides)
+        return ShortcutUndo(before.overrides, self._scope())
+
+    def undo(self, change):
+        if not isinstance(change, ShortcutUndo) or self._current_scope() != change.after:
+            raise ValueError('Shortcuts changed since the last edit. Reopen this dialog before changing them.')
+        self.apply(dict(change.before))
+
+    def preview_import(self, source, *, cancelled=lambda: False):
+        if cancelled():
+            raise InterruptedError('Keymap import cancelled.')
+        scope = self._current_scope()
+        regular(source)  # Reject a selected link or non-file before path traversal.
+        source = local_path(source, exists=True)
+        raw = _bytes(source)
+        value = _settings_value(raw)
+        merged = _merge_import(self.commands, self.overrides, value)
+        if cancelled():
+            raise InterruptedError('Keymap import cancelled.')
+        if self._current_scope() != scope:
+            raise ValueError('Shortcuts changed during import. Preview the file again.')
+        return KeymapImport(source, _token(raw), scope, *merged)
+
+    def apply_import(self, plan, *, cancelled=lambda: False):
+        if not isinstance(plan, KeymapImport):
+            raise ValueError('Preview a keymap file before applying it.')
+        if self.preview_import(plan.source, cancelled=cancelled) != plan:
+            raise ValueError('The file, library or shortcuts changed after review. Preview the import again.')
+        if plan.issues:
+            raise ValueError('Resolve every reported import conflict before applying this keymap.')
+        if cancelled():
+            raise InterruptedError('Keymap import cancelled.')
+        return self.apply_with_undo(dict(plan.overrides))
+
+    def export_keymap(self, destination, *, cancelled=lambda: False):
+        from ..research.export_file import write_export
+        scope = self._current_scope()
+        _, raw = _settings_payload(self.commands, self.overrides)
+        def check():
+            if cancelled():
+                return True
+            if self._current_scope() != scope:
+                raise ValueError('Shortcuts changed during export. Choose a new destination and try again.')
+            return False
+        write_export(destination, raw.decode('utf-8'), private_root=self.root,
+                     require_absent=True, cancelled=check)
+
     def show(self, event=None):
         wx = self.wx
-        if local_path(self.frame.library.root, exists=True) != self.root:
+        if (self.frame.library is not self.library
+                or local_path(self.frame.library.root, exists=True) != self.root):
             self.reload()
-        dialog = wx.Dialog(self.frame, title='Keyboard shortcuts', size=(780, 540),
+        self._guard()
+        opened = (self.library, self.root, self.menu_bar, self.commands)
+        alive, reviewed, undo = True, None, None
+        dialog = wx.Dialog(self.frame, title='Keyboard shortcuts', size=(900, 680),
                            style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
         try:
             layout = wx.BoxSizer(wx.VERTICAL)
             layout.Add(wx.StaticText(dialog, label='Choose a command and type a shortcut, for example Ctrl+Shift+K or F9.\n'
-                'An empty shortcut removes the assignment. Apply saves the selected shortcut.'), 0, wx.EXPAND | wx.ALL, 8)
+                'An empty shortcut removes the assignment. Apply saves the selected shortcut.\n'
+                'Import previews a merge before applying. Undo restores the entire preceding keymap in this window.\n'
+                'Closing discards an unapplied preview; already applied changes remain saved.'), 0, wx.EXPAND | wx.ALL, 8)
             layout.Add(wx.StaticText(dialog, label='&Command'), 0, wx.LEFT | wx.TOP, 8)
             choice = wx.Choice(dialog, choices=[command.title for command in self.commands])
             choice.SetName('Command to change')
@@ -316,31 +503,69 @@ class KeyboardSettings:
             status.SetName('Shortcut settings status')
             status.ChangeValue(self.load_notice)
             layout.Add(status, 1, wx.EXPAND | wx.ALL, 8)
+            interchange = wx.BoxSizer(wx.HORIZONTAL)
+            preview = wx.Button(dialog, label='&Preview keymap import...')
+            import_apply = wx.Button(dialog, label='Apply reviewed &import')
+            export = wx.Button(dialog, label='E&xport keymap...')
+            for button in (preview, import_apply, export):
+                button.SetName(_label(button.GetLabel()))
+                interchange.Add(button, 0, wx.ALL, 6)
+            layout.Add(interchange, 0, wx.EXPAND)
+            import_apply.Enable(False)
             buttons = wx.BoxSizer(wx.HORIZONTAL)
             apply = wx.Button(dialog, wx.ID_APPLY, '&Apply')
             reset = wx.Button(dialog, label='&Reset all shortcuts to original keys')
-            close = wx.Button(dialog, wx.ID_CANCEL, '&Cancel')
-            for button in (apply, reset, close):
+            undo_button = wx.Button(dialog, label='&Undo last change')
+            close = wx.Button(dialog, wx.ID_CANCEL, 'C&lose')
+            for button in (apply, reset, undo_button, close):
+                button.SetName(_label(button.GetLabel()))
                 buttons.Add(button, 0, wx.ALL, 6)
             layout.Add(buttons, 0, wx.ALIGN_RIGHT)
+            undo_button.Enable(False)
             dialog.SetSizer(layout)
             dialog.SetEscapeId(wx.ID_CANCEL)
+            def guard():
+                self._guard()
+                if (not alive or self.library is not opened[0] or self.root != opened[1]
+                        or self.menu_bar is not opened[2] or self.commands is not opened[3]):
+                    raise ValueError('The library or commands changed. Reopen keyboard shortcuts.')
+                return False
+            def clear_preview(event=None):
+                nonlocal reviewed
+                if not alive:
+                    return
+                if reviewed is not None:
+                    status.ChangeValue('The editor changed; preview the keymap again before importing.')
+                reviewed = None
+                import_apply.Enable(False)
+                if event is not None:
+                    event.Skip()
             def selected():
                 index = choice.GetSelection()
                 if not 0 <= index < len(self.commands):
                     raise ValueError('Choose a menu command first.')
                 return self.commands[index]
             def refresh(event=None):
+                if not alive:
+                    return
+                if event is not None:
+                    clear_preview()
                 command = selected()
                 value = effective_shortcuts(self.commands, self.overrides)[command.action]
                 current.ChangeValue(f'Current: {value or "Unassigned"}. Original: {command.default or "Unassigned"}.')
                 key.ChangeValue(value)
             def change(event=None):
+                nonlocal undo
+                if not alive:
+                    return
                 try:
+                    guard()
                     command = selected()
                     updated = dict(self.overrides)
                     updated[command.action] = key.GetValue()
-                    self.apply(updated)
+                    undo = self.apply_with_undo(updated)
+                    undo_button.Enable(True)
+                    clear_preview()
                     refresh()
                     status.ChangeValue(f'Applied shortcut for {command.title}.')
                 except (ValueError, OSError, RuntimeError) as exc:
@@ -350,20 +575,100 @@ class KeyboardSettings:
                 key.SetFocus()
                 key.SelectAll()
             def reset_all(event=None):
+                nonlocal undo
+                if not alive:
+                    return
                 try:
-                    self.apply({})
+                    guard()
+                    undo = self.apply_with_undo({})
+                    undo_button.Enable(True)
+                    clear_preview()
                     refresh()
                     status.ChangeValue('All original menu shortcuts restored and saved.')
                 except (ValueError, OSError, RuntimeError) as exc:
                     status.ChangeValue(f'Original shortcuts could not be saved: {exc}')
                 status.SetFocus()
+            def undo_last(event=None):
+                nonlocal undo
+                if not alive:
+                    return
+                try:
+                    guard()
+                    self.undo(undo)
+                    undo = None
+                    undo_button.Enable(False)
+                    clear_preview()
+                    refresh()
+                    status.ChangeValue('The complete keymap before the last applied change is restored and saved.')
+                except (ValueError, OSError, RuntimeError) as exc:
+                    status.ChangeValue(f'Shortcuts could not be restored: {exc}')
+                status.SetFocus()
+            def file_choice(importing):
+                guard()
+                with wx.FileDialog(dialog, 'Preview keymap import' if importing else 'Export keymap to a new file',
+                        wildcard='Keyboard shortcuts (*.json)|*.json',
+                        style=(wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) if importing else wx.FD_SAVE) as picker:
+                    if picker.ShowModal() != wx.ID_OK:
+                        return None
+                    destination = picker.GetPath()
+                guard()
+                return destination
+            def preview_file(event=None):
+                nonlocal reviewed
+                if not alive:
+                    return
+                try:
+                    source = file_choice(True)
+                    if source is None:
+                        return
+                    clear_preview()
+                    reviewed = self.preview_import(source, cancelled=guard)
+                    status.ChangeValue(reviewed.description)
+                    import_apply.Enable(not reviewed.issues)
+                except (ValueError, OSError, RuntimeError) as exc:
+                    clear_preview()
+                    status.ChangeValue(f'Keymap was not imported: {exc}')
+                status.SetFocus()
+            def import_file(event=None):
+                nonlocal undo
+                if not alive:
+                    return
+                try:
+                    guard()
+                    undo = self.apply_import(reviewed, cancelled=guard)
+                    undo_button.Enable(True)
+                    clear_preview()
+                    refresh()
+                    status.ChangeValue('The reviewed keymap was merged and saved. Other saved choices are preserved.')
+                except (ValueError, OSError, RuntimeError) as exc:
+                    clear_preview()
+                    status.ChangeValue(f'Keymap was not applied: {exc}')
+                status.SetFocus()
+            def export_file(event=None):
+                if not alive:
+                    return
+                try:
+                    destination = file_choice(False)
+                    if destination is None:
+                        return
+                    self.export_keymap(destination, cancelled=guard)
+                    status.ChangeValue('Current saved keymap exported to a new file. Existing files are never replaced.')
+                except (ValueError, OSError, RuntimeError) as exc:
+                    status.ChangeValue(f'Keymap was not exported: {exc}')
+                status.SetFocus()
             choice.Bind(wx.EVT_CHOICE, refresh)
+            key.Bind(wx.EVT_TEXT, clear_preview)
             apply.Bind(wx.EVT_BUTTON, change)
             reset.Bind(wx.EVT_BUTTON, reset_all)
+            undo_button.Bind(wx.EVT_BUTTON, undo_last)
+            preview.Bind(wx.EVT_BUTTON, preview_file)
+            import_apply.Bind(wx.EVT_BUTTON, import_file)
+            export.Bind(wx.EVT_BUTTON, export_file)
             refresh()
             choice.SetFocus()
             dialog.ShowModal()
         finally:
+            alive = False
             dialog.Destroy()
 
 

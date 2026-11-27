@@ -3,12 +3,14 @@
 The source audio is an explicit synthetic tone, not a qualified voice/model.
 This exercises owned native keys and WavePlayer, not NVDA or listening quality.
 """
+import faulthandler
 from hashlib import file_digest, sha256
 import json
 import math
 import os
 from pathlib import Path
 import struct
+import sys
 from tempfile import TemporaryDirectory
 from time import monotonic
 from types import SimpleNamespace
@@ -16,12 +18,14 @@ import traceback
 import wave
 
 
-def main():
+def _run_native():
     if os.name != 'nt':
         print(json.dumps({'result': 'NOT_RUN', 'reason': 'Actual Windows is required.', 'nvda': 'NOT_RUN'}))
         return 77
     from carr_library.native_runtime import activate_bundled_runtime
+    print('PHASE: activating bundled native runtime', flush=True)
     native_handle = activate_bundled_runtime()
+    print('PHASE: importing native desktop and recorded-reading modules', flush=True)
     import ctypes
     from ctypes import wintypes
     import wx
@@ -162,21 +166,27 @@ def main():
                 check('exact installed source: ' + module.__name__, not actual.is_relative_to(checkout)
                       and sha256(actual.read_bytes()).digest() == sha256(source.read_bytes()).digest())
             check('real native Windows controls', wx.Platform == '__WXMSW__')
+            print('PHASE: creating the synthetic library and production service', flush=True)
             library = LibraryApp(root / 'library')
             workspace = library.create_workspace('Recorded EPUB acceptance')
             service = ProductionService(library.root / 'state' / 'studio', voices=SyntheticTones())
+            print('PHASE: verifying the actual local audio executables', flush=True)
             verify_audio(service._runtime())
             script = '[Scene: Native source]\nNarrator: Exact α 😀 source & words.\n[Pause: 0.2]\nReader: Second recorded line.'
             project = service.create(script, title='Recorded EPUB native fixture', voice_ids=('synthetic-tone',))
             job = service.submit(project, root, stems=False)
+            print('PHASE: rendering actual synthetic PCM before the native event loop', flush=True)
             check('actual local production completes', service.run(job)['status'] == 'complete')
             publication = root / 'recorded.epub'
+            print('PHASE: exporting the recorded EPUB before the native event loop', flush=True)
             receipt = PublicationService(service).export_epub(job, publication, language='en')
             original = publication.read_bytes()
+            print('PHASE: importing the recorded EPUB before the native event loop', flush=True)
             book = library.import_file(workspace, publication)
             check('actual publication imports as a retained EPUB', book['state'] == 'complete')
             desk = ReadingDesk(library, workspace, book['edition'])
             expected_page = desk.page(1)
+            print('PHASE: constructing the actual desktop frame', flush=True)
             frame = DesktopFrame(library)
             frame.Show(); gui.SetTopWindow(frame)
 
@@ -273,24 +283,35 @@ def main():
                 gui.ExitMainLoop()
 
             wx.CallAfter(guarded(open_reader))
+            print('PHASE: entering the native recorded-reading event loop', flush=True)
             gui.MainLoop()
+            print('PHASE: native recorded-reading event loop returned', flush=True)
         finally:
+            print('PHASE: releasing held native keys', flush=True)
             for key in tuple(pressed):
                 simulator.KeyUp(key)
                 pressed.discard(key)
             for owner in (overlay, reader):
                 if owner is not None:
+                    print('PHASE: closing ' + type(owner).__name__, flush=True)
                     owner.close()
+                    print('PHASE: waiting for ' + type(owner).__name__ + ' executor cleanup', flush=True)
                     owner.executor.shutdown(wait=True, cancel_futures=True)
             if service is not None:
+                print('PHASE: closing the owned production service', flush=True)
                 service.close()
             if frame is not None:
                 frame.cancel_event.set(); frame._closing = True
+                print('PHASE: waiting for desktop executor cleanup', flush=True)
                 frame.executor.shutdown(wait=True, cancel_futures=True)
+                print('PHASE: closing desktop progress and destroying the frame', flush=True)
                 frame.operation_progress.close(); frame.Destroy()
+            print('PHASE: yielding deferred native destruction', flush=True)
             gui.Yield()
             if native_handle is not None:
+                print('PHASE: closing the bundled native runtime handle', flush=True)
                 native_handle.close()
+            print('PHASE: recorded-reading cleanup returned', flush=True)
         if errors:
             raise RuntimeError('\n'.join(errors))
     print(json.dumps({'result': 'PASS', 'checks': checks, 'audio_runtime': audio_proof,
@@ -298,6 +319,19 @@ def main():
         'native_keyboard': 'PASS', 'epubcheck': 'NOT_RUN', 'third_party_reader': 'NOT_RUN',
         'manual_keyboard': 'NOT_RUN', 'nvda': 'NOT_RUN'}, indent=2))
     return 0
+
+
+def main():
+    if os.name != 'nt':
+        return _run_native()
+    # Diagnostics only: workflow and native stage deadlines remain mandatory.
+    # This also records a native call or teardown wait blocking the wx timer.
+    faulthandler.enable(file=sys.stderr, all_threads=True)
+    faulthandler.dump_traceback_later(90, repeat=True, file=sys.stderr)
+    try:
+        return _run_native()
+    finally:
+        faulthandler.cancel_dump_traceback_later()
 
 
 if __name__ == '__main__':

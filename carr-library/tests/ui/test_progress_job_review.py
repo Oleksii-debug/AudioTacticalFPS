@@ -444,11 +444,12 @@ def test_reader_close_always_unregisters_playback_and_finishes_resource_cleanup(
     reader = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'show_speech_reader')
     cleanup = next(node.finalbody for node in reversed(reader.body) if isinstance(node, ast.Try) and node.finalbody)
     env = {name: Mock() for name in ('autosave_timer', 'cancel', 'player', 'progress', 'parent',
-                                      'executor', 'audio_files', 'dialog')}
+                                      'executor', 'audio_files', 'dialog', 'navigation_host')}
     registry = Mock()
     cleanup_order = []
     env['owned_registries'] = {registry}
     env['executor'].shutdown.side_effect = lambda **kwargs: cleanup_order.append('worker finished')
+    env['navigation_host'].close.side_effect = lambda: cleanup_order.append('navigation closed')
     registry.close.side_effect = lambda: cleanup_order.append('registry closed') or True
     if device_failure:
         env['player'].close.side_effect = RuntimeError('Audio device disconnected')
@@ -457,7 +458,7 @@ def test_reader_close_always_unregisters_playback_and_finishes_resource_cleanup(
     env['progress'].unregister_player.assert_called_once_with(env['player'], silence_confirmed=not device_failure)
     env['executor'].shutdown.assert_called_once_with(wait=True, cancel_futures=True)
     registry.close.assert_called_once_with()
-    assert cleanup_order == ['worker finished', 'registry closed']
+    assert cleanup_order == ['navigation closed', 'worker finished', 'registry closed']
     assert env['owned_registries'] == set()
     if device_failure:
         env['audio_files'].cleanup.assert_not_called()

@@ -78,7 +78,7 @@ jobs:
             tests/ui/test_desktop_result_modes.py \
             tests/ui/probe_advanced_query_builder.py \
             tests/ui/test_progress_job_review.py \
-            tests/audio/test_posix_process.py tests/storage/test_state_backup_portability_posix.py tests/operations/test_resources_posix.py \
+            tests/audio/test_posix_process.py tests/storage/test_state_backup_portability_posix.py tests/operations/test_resources_posix.py tests/audio/test_playback_navigation_posix.py \
             tests/e2e/test_advanced_research_search.py \
             tests/e2e/test_research_search_cli.py \
             tests/storage/test_library_backup_reading_state.py \

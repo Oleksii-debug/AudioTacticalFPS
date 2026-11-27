@@ -18,7 +18,9 @@ def main():
         if len(matches) >= 10000 or output_size > 1_000_000:
             raise ValueError('Substitution output is too large.')
         matches.append([match.start(), match.end(), replacement])
-    sys.stdout.write(json.dumps({'matches': matches}, ensure_ascii=False))
+    # This protocol is UTF-8 even when redirected Windows stdout uses a legacy
+    # code page. The parent decodes bytes, not terminal display text.
+    sys.stdout.buffer.write(json.dumps({'matches': matches}, ensure_ascii=False).encode('utf-8'))
 
 
 if __name__ == '__main__':

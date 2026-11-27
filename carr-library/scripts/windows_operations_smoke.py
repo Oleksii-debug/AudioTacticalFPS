@@ -4,22 +4,26 @@ Reuses PR143's task-view lifecycle cases and the existing native command
 registry. Saved jobs and concurrent policy edits are synthetic test data; no
 inference, external request, hardware benchmark or manual NVDA claim is made.
 """
+import faulthandler
 import json
 import os
 from pathlib import Path
+import sys
 import sysconfig
 from tempfile import TemporaryDirectory
 from time import monotonic
 import traceback
 
 
-def main():
+def _run_native():
     if os.name != 'nt':
         print(json.dumps({'status': 'NOT_RUN', 'reason': 'Native Windows is required.',
                           'native_keyboard': 'NOT_RUN', 'nvda': 'NOT_RUN'}), flush=True)
         return 77
     from carr_library.native_runtime import activate_bundled_runtime
+    print('PHASE: activating bundled native runtime', flush=True)
     native_handle = activate_bundled_runtime()
+    print('PHASE: importing the native desktop and Tasks modules', flush=True)
     import ctypes
     from ctypes import wintypes
     import wx
@@ -261,12 +265,14 @@ def main():
               all(Path(module.__file__).resolve().is_relative_to(purelib) for module in (ui, facade_module)))
         check('native Windows wx is active', wx.Platform == '__WXMSW__')
         with TemporaryDirectory(prefix='resonance-tasks-native-') as directory:
+            print('PHASE: creating the synthetic library, saved job and resource policy', flush=True)
             library = LibraryApp(Path(directory) / 'library')
             workspace = library.create_workspace('Synthetic native task controls')
             assistant = AssistantService(library)
             identity = assistant.submit(assistant.preview('List books', Scope(workspace)))
             broker = ResourceBroker.for_app(library.root, limits=ResourceLimits(cpu_slots=1,
                 memory_bytes=1024**3, disk_bytes=2*1024**3, min_free_disk_bytes=0))
+            print('PHASE: constructing the actual desktop frame', flush=True)
             frame = DesktopFrame(library)
             try:
                 application.SetTopWindow(frame)
@@ -274,9 +280,12 @@ def main():
                 timer = wx.Timer(frame)
                 frame.Bind(wx.EVT_TIMER, tick, timer)
                 timer.Start(35)
+                print('PHASE: entering the native Tasks event loop', flush=True)
                 application.MainLoop()
+                print('PHASE: native Tasks event loop returned', flush=True)
                 check('all native Tasks/resources stages completed', phase[0] == 'complete' and not errors)
             finally:
+                print('PHASE: stopping the Tasks timer and releasing held keys', flush=True)
                 if timer is not None:
                     timer.Stop()
                 try:
@@ -284,19 +293,25 @@ def main():
                 finally:
                     try:
                         if gate is not None and gate.held:
+                            print('PHASE: releasing the owned admission test lock', flush=True)
                             gate.release()
                     finally:
                         if frame and not frame.IsBeingDeleted():
                             frame.cancel_event.set()
                             try:
+                                print('PHASE: closing the actual desktop frame', flush=True)
                                 frame.Close(force=True)
                             finally:
+                                print('PHASE: waiting for desktop executor cleanup', flush=True)
                                 frame.executor.shutdown(wait=True, cancel_futures=True)
+                                print('PHASE: yielding deferred native destruction', flush=True)
                                 application.Yield()
+                print('PHASE: Tasks cleanup returned', flush=True)
     except Exception:
         errors.append(traceback.format_exc())
     finally:
         if native_handle is not None:
+            print('PHASE: closing the bundled native runtime handle', flush=True)
             native_handle.close()
     result = {'status': 'FAIL' if errors else 'PASS', 'checks': checks, 'errors': errors,
               'native_keyboard': 'INCOMPLETE' if errors else 'PASS', 'nvda': 'NOT_RUN',
@@ -304,6 +319,18 @@ def main():
               'model_inference': 'NOT_RUN'}
     print(json.dumps(result, ensure_ascii=False), flush=True)
     return 1 if errors else 0
+
+
+def main():
+    if os.name != 'nt':
+        return _run_native()
+    # Diagnostics only; neither stage deadlines nor final assertions change.
+    faulthandler.enable(file=sys.stderr, all_threads=True)
+    faulthandler.dump_traceback_later(90, repeat=True, file=sys.stderr)
+    try:
+        return _run_native()
+    finally:
+        faulthandler.cancel_dump_traceback_later()
 
 
 if __name__ == '__main__':

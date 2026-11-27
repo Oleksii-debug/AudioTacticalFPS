@@ -39,6 +39,8 @@ def _run_native():
     import carr_library.ui.pronunciation_dialog as pronunciation_module
     import carr_library.ui.speech_dialog as reader_module
     import carr_library.ui.ebook_model as position_module
+    import carr_library.ui.find_replace_dialog as find_module
+    import carr_library.speech.regex_worker as regex_module
     import carr_library.runtime_settings as runtime_settings
 
     checks, errors, observed = [], [], {}
@@ -54,7 +56,7 @@ def _run_native():
           else 'site-packages' in origin.parts)
     checkout = Path(__file__).resolve().parents[1]
     source_identity = {}
-    for module in (reading_module, pronunciation_module, reader_module, position_module):
+    for module in (reading_module, pronunciation_module, reader_module, position_module, find_module, regex_module):
         actual = Path(module.__file__).resolve()
         expected = checkout / 'src' / Path(*module.__name__.split('.')).with_suffix('.py')
         digest = sha256(actual.read_bytes()).hexdigest()
@@ -207,7 +209,7 @@ def _run_native():
             if reader is None:
                 return False
             button = named(reader, 'Pronunciation rules')
-            return button.IsEnabled()
+            return button.IsEnabled() and named(reader, 'Find and replace').IsEnabled()
 
         def open_review():
             reader = top_with_title('Voice reader and reading copy')
@@ -228,6 +230,81 @@ def _run_native():
                   and editor.GetRange(start, start + 3) == 'Dr.')
             editor.SetSelection(start, start + 3)
             observed.update(reader=reader, editor=editor, initial=initial)
+            press(named(reader, 'Find and replace'), lambda: until(
+                lambda: top_with_title('Find and replace in reading copy') is not None, find_ready))
+
+        def find_ready():
+            dialog = top_with_title('Find and replace in reading copy')
+            observed['find_dialog'] = dialog
+            check('native find uses the original selected-text scope', dialog.scope.GetSelection() == 1)
+            check('native find controls have accessible names', all(control.GetName() for control in
+                  (dialog.pattern, dialog.replacement, dialog.scope, dialog.before, dialog.after, dialog.status)))
+            dialog.pattern.ChangeValue('Dr.')
+            dialog.replacement.ChangeValue('Doctor')
+            press(dialog.buttons['next'], lambda: until(lambda: not dialog.busy, find_selected))
+
+        def find_selected():
+            dialog, editor = observed['find_dialog'], observed['editor']
+            first, last = editor.GetSelection()
+            check('native find selects the exact Unicode-offset match',
+                  editor.GetRange(first, last) == 'Dr.' and 'Match 1 of 1' in dialog.status.GetValue()
+                  and editor.GetValue() == observed['initial'])
+            press(dialog.buttons['one'], lambda: until(lambda: not dialog.busy, find_reviewed))
+
+        def find_reviewed():
+            dialog = observed['find_dialog']
+            check('native single-replacement preview is explicit', dialog.before.GetValue() == 'Dr.'
+                  and dialog.after.GetValue() == 'Doctor' and dialog.buttons['apply'].IsEnabled()
+                  and observed['editor'].GetValue() == observed['initial'])
+            press(dialog.buttons['apply'], find_applied)
+
+        def find_applied():
+            dialog, initial = observed['find_dialog'], observed['initial']
+            offset = initial.rindex('Dr.')
+            check('native find apply changes only the selected occurrence',
+                  observed['editor'].GetValue() == initial[:offset] + 'Doctor' + initial[offset + 3:])
+            check('native find apply preserves the retained source bytes', original_asset.read_bytes() == asset_bytes)
+            press(dialog.buttons['undo'], find_undone)
+
+        def find_undone():
+            dialog = observed['find_dialog']
+            check('native find undo restores the exact displayed copy',
+                  observed['editor'].GetValue() == observed['initial'])
+            dialog.scope.SetSelection(0)
+            dialog.pattern.ChangeValue(r'Dr\.')
+            dialog.replacement.ChangeValue('Доктор 😀')
+            dialog.regex.SetValue(True)
+            press(dialog.buttons['all'], lambda: until(lambda: not dialog.busy, find_all_reviewed))
+
+        def find_all_reviewed():
+            dialog, initial = observed['find_dialog'], observed['initial']
+            check('native regex preview preserves UTF-8 expanded replacements',
+                  dialog.preview is not None and len(dialog.preview.indexes) == 2
+                  and dialog.before.GetValue() == initial
+                  and dialog.after.GetValue() == initial.replace('Dr.', 'Доктор 😀')
+                  and observed['editor'].GetValue() == initial)
+            press(dialog.buttons['apply'], find_all_applied)
+
+        def find_all_applied():
+            dialog = observed['find_dialog']
+            check('native replace-all applies the reviewed Unicode copy',
+                  observed['editor'].GetValue() == observed['initial'].replace('Dr.', 'Доктор 😀'))
+            press(dialog.buttons['undo'], find_all_undone)
+
+        def find_all_undone():
+            dialog = observed['find_dialog']
+            check('native regex undo keeps original copy and source',
+                  observed['editor'].GetValue() == observed['initial']
+                  and original_asset.read_bytes() == asset_bytes)
+            observed['find_complete'] = True
+            press(dialog.buttons['close'], lambda: until(
+                lambda: top_with_title('Find and replace in reading copy') is None, open_pronunciation))
+
+        def open_pronunciation():
+            editor = observed['editor']
+            start = editor.GetLastPosition() - len('Dr. Second listens.')
+            check('find workflow leaves pronunciation selection available', editor.GetRange(start, start + 3) == 'Dr.')
+            editor.SetSelection(start, start + 3)
             key(editor, ord('N'), lambda: until(
                 lambda: top_with_title('Pronunciation rules') is not None, dictionary_ready), wx.MOD_ALT)
 
@@ -323,6 +400,7 @@ def _run_native():
                 source_loader=lambda cancelled: read_source_range(desk, 1, 1, cancelled=cancelled))
             release()
             if not errors:
+                check('complete native find/replace workflow returned', observed.get('find_complete') is True)
                 recovered = ReaderDraftStore(library.root, slot='pronunciation-native').load()
                 check('reading recovery retains exact source lineage', recovered is not None
                       and recovered.document.source_anchor == source.reading_document().source_anchor
@@ -340,14 +418,16 @@ def _run_native():
             later(launch)
             gui.MainLoop()
         finally:
-            release()
-            runtime_settings.voice_registry = original_registry
-            wx.FileDialog, wx.MessageBox = original_picker, original_message
-            for window in tuple(wx.GetTopLevelWindows()):
-                try:
-                    window.Destroy()
-                except RuntimeError:
-                    pass
+            try:
+                release()
+            finally:
+                runtime_settings.voice_registry = original_registry
+                wx.FileDialog, wx.MessageBox = original_picker, original_message
+                for window in tuple(wx.GetTopLevelWindows()):
+                    try:
+                        window.Destroy()
+                    except RuntimeError:
+                        pass
         if errors:
             raise RuntimeError('\n'.join(errors))
         check('normal native MainLoop completed the whole workflow', observed.get('workflow_complete') is True)
@@ -355,6 +435,7 @@ def _run_native():
                           'source_identity': source_identity,
                           'source_sha256': sha256(asset_bytes).hexdigest(),
                           'dictionary_sha256': sha256(observed['exported']).hexdigest(),
+                          'native_find_replace': 'PASS',
                           'native_keyboard_automation': 'PASS', 'native_file_picker': 'NOT_RUN',
                           'confirmation_dialog': 'NOT_RUN', 'nvda': 'NOT_RUN',
                           'voice_quality': 'NOT_RUN'}, ensure_ascii=False))
