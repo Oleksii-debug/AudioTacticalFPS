@@ -112,17 +112,37 @@ def native(checkout, output, identity, *, mode=None):
     for key in ('PYTHONPATH', 'PYTHONHOME', 'PYTEST_ADDOPTS', 'PYTEST_PLUGINS'):
         env.pop(key, None)
     log = output / ('native-' + label + '.txt')
-    with log.open('wb') as stream:
-        process = subprocess.run(arguments, cwd=checkout, env=env, stdin=subprocess.DEVNULL,
-                                 stdout=stream, stderr=subprocess.STDOUT, timeout=180, check=False)
+    process = None
+    try:
+        with log.open('wb') as stream:
+            process = subprocess.run(arguments, cwd=checkout, env=env, stdin=subprocess.DEVNULL,
+                                     stdout=stream, stderr=subprocess.STDOUT, timeout=180, check=False)
+    except subprocess.TimeoutExpired:
+        # Preserve the last actual native phase and make the parent deadline
+        # an explicit failed receipt, including a child that emitted PASS early.
+        try:
+            partial = json.loads(result_path.read_text(encoding='utf-8')) if result_path.is_file() else {}
+        except (ValueError, OSError):
+            partial = {}
+        partial.update(status='FAIL', parent_timeout_seconds=180,
+                       error='The native child did not exit within its unchanged parent deadline.')
+        result_path.write_text(json.dumps(partial, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+        raise
+    finally:
+        if process is None or process.returncode:
+            if log.is_file():
+                with log.open('rb') as stream:
+                    stream.seek(max(0, log.stat().st_size - 48000))
+                    print(stream.read(48000).decode('utf-8', errors='replace'), flush=True)
     if process.returncode:
-        print(log.read_text(encoding='utf-8', errors='replace')[-32000:], flush=True)
         raise ValueError('Native translation flow failed: ' + label)
     result = json.loads(result_path.read_text(encoding='utf-8'))
     if (result.get('status') != 'PASS' or result.get('native_controls') is not True
             or result.get('source_immutable') is not True or result.get('quotation_authority') is not False
             or result.get('actual_credential_vault') != 'PASS' or result.get('actual_google_api') != 'NOT_RUN'
-            or result.get('nvda') != 'NOT_RUN'):
+            or result.get('nvda') != 'NOT_RUN'
+            or result.get('vault_cleanup') != 'PASS' or result.get('runtime_cleanup') != 'PASS'
+            or result.get('native_event_loop') != 'owned-modal-unwound'):
         raise ValueError('Required actual native translation evidence is incomplete.')
     if mode:
         if (result.get('schema') != 'carr-native-scoped-translation/1' or result.get('mode') != mode
@@ -183,8 +203,13 @@ def main():
               'tests/reader/test_ebook_reader.py', 'scripts/translation_scope_oracles.json',
               'scripts/translation_scope_acceptance.py', 'packaging/source_wheel.py', 'scripts/ci_check.py']
     report = dict(schema=1, status='RUNNING', source_commit=args.source_commit, source_tree=args.source_tree,
-                  source='NOT_RUN', installed='NOT_RUN', native='NOT_RUN',
+                  source='NOT_RUN', installed='NOT_RUN',
+                  native={name: 'NOT_RUN' for name in ('selected-advanced', 'document', 'chapter', 'batch')},
                   actual_google_api='NOT_RUN', translation_quality='NOT_QUALIFIED', nvda='NOT_RUN')
+    def checkpoint():
+        (output / 'translation-scope-gate.json').write_text(
+            json.dumps(report, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+    checkpoint()
     try:
         if sys.platform != 'win32' or not sys.flags.isolated or sys.version_info[:2] != (3, 11):
             raise ValueError('This gate requires actual isolated Windows CPython3.11.')
@@ -200,10 +225,24 @@ def main():
         report['fixture_and_harness_sha256'] = {path: digest(checkout / path) for path in paths}
         (output / 'before-execution.json').write_text(json.dumps(report, sort_keys=True), encoding='utf-8')
         report['source'] = run_population('source', checkout, output, expected)
+        report['source_cases'] = report['source']['cases']
+        checkpoint()
+        print(json.dumps({'phase': 'source', 'status': 'PASS', 'cases': report['source_cases']}), flush=True)
         report['installed'] = run_population('installed', checkout, output, expected)
-        report['native'] = {'selected-advanced': native(checkout, output, report['installed_identity'])}
-        for mode in ('document', 'chapter', 'batch'):
-            report['native'][mode] = native(checkout, output, report['installed_identity'], mode=mode)
+        report['installed_cases'] = report['installed']['cases']
+        checkpoint()
+        print(json.dumps({'phase': 'installed', 'status': 'PASS', 'cases': report['installed_cases']}), flush=True)
+        for label, mode in (('selected-advanced', None), ('document', 'document'),
+                            ('chapter', 'chapter'), ('batch', 'batch')):
+            try:
+                report['native'][label] = native(checkout, output, report['installed_identity'], mode=mode)
+                print(json.dumps({'phase': label, 'status': 'PASS'}), flush=True)
+            except BaseException as error:
+                report['native'][label] = {'status': 'FAIL', 'error': type(error).__name__ + ': ' + str(error)[:2000],
+                                           'receipt': 'native-' + label + '.json'}
+                raise
+            finally:
+                checkpoint()
         if installed_identity(args.wheel) != report['installed_identity']:
             raise ValueError('Installed product source changed during qualification.')
         if {path: digest(checkout / path) for path in paths} != report['fixture_and_harness_sha256']:

@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "status": "OBSERVED_TIMEOUT_CORRECTION_NOT_RUN",
+  "observed": {
+    "run": 46000394557,
+    "job": 140510257134,
+    "commit": "a68fb643bc968020a11e1625e4e59b2d8a9865df",
+    "phase": "native selected-advanced",
+    "error": "subprocess.TimeoutExpired after180 seconds",
+    "artifact": {
+      "id": 15200390892,
+      "bytes": 4494145,
+      "sha256": "d6b1132c2549a10e6ab46b9bcadc4a1ef4152b606a30a3d07dc6e644d0a6a091"
+    }
+  },
+  "source_and_installed_junit_verification": "PENDING_DIAGNOSTIC_READBACK",
+  "source_review_findings": [
+    "The probe posted ExitMainLoop from inside the dialog's nested ShowModal; exit now posts only after the owned modal returns.",
+    "Native keyboard focus was asserted in the same event turn as SetFocus; the probe now observes actual focus on a later native turn.",
+    "Original child emitted evidence only after full success; every actual phase, parent timeout and cleanup now leaves a bounded failure receipt."
+  ],
+  "causal_localization": "The old raw native report was not yet read when this correction was authored; these are explicit liveness/diagnostic corrections, not a claim that the exact timeout phase is proven.",
+  "unchanged_acceptance": {
+    "source_cases": 268,
+    "installed_cases": 268,
+    "existing_cases": 215,
+    "new_cases": 53,
+    "native_flows": [
+      "selected-advanced",
+      "document",
+      "chapter",
+      "batch"
+    ],
+    "parent_native_timeout_seconds": 180,
+    "synthetic_transports_only": true
+  },
+  "added_completion_requirements": [
+    "vault_cleanup=PASS",
+    "runtime_cleanup=PASS",
+    "owned-modal-unwound"
+  ],
+  "runtime_status": "NOT_RUN"
+}
