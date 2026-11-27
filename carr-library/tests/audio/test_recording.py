@@ -190,3 +190,33 @@ def test_capture_admission_is_exclusive_and_released_after_failure(capture):
         capture.service.capture(capture.device.id, cancelled=lambda: True)
     assert recording._CAPTURE.acquire(blocking=False)
     recording._CAPTURE.release()
+
+def test_unconfirmed_capture_cleanup_retains_private_stage_and_blocks_new_capture(
+        capture, monkeypatch):
+    from carr_library.audio.process import CaptureCleanupError
+    # The uncertain lifetime latch belongs to this host. Isolate it so this
+    # failure-path test cannot affect a later independent recording fixture.
+    latch = threading.Lock()
+    monkeypatch.setattr(recording, '_CAPTURE', latch)
+    staged = []
+
+    def unconfirmed(args, **kwargs):
+        path = Path(args[-1])
+        path.write_bytes(b'incomplete microphone bytes')
+        staged.append(path)
+        raise CaptureCleanupError('Owned child termination remains unconfirmed')
+
+    monkeypatch.setattr(recording, 'run_process', unconfirmed)
+    with pytest.raises(CaptureCleanupError, match='Incomplete recording retained at') as error:
+        capture.service.capture(capture.device.id, options=capture.options)
+    assert len(staged) == 1 and staged[0].read_bytes() == b'incomplete microphone bytes'
+    assert str(staged[0].parent) in str(error.value)
+    assert not list(capture.service.root.glob('*.wav'))
+    assert not list(capture.service.root.glob('*.json'))
+    assert list(capture.service.root.glob('.pending-recording-*')) == [staged[0].parent]
+    assert latch.locked()
+    with pytest.raises(RuntimeError, match='Another microphone recording'):
+        capture.service.capture(capture.device.id, options=capture.options)
+    # The fixture owns these synthetic bytes; no live child was created here.
+    staged[0].unlink()
+    staged[0].parent.rmdir()
