@@ -39,7 +39,7 @@ PYTHON_SIZE = 18353938
 PYTHON_SHA256 = "5676dadd9d4fba1bce51bd7e5cf8fcf76f85b88b7baa15bd10ca00557e67f10e"
 CANONICAL_BASE = "6ed9cb20f039b8ef227c3a28d69b4acb305dd90a"
 SOURCE_BLOBS = {
-    "audio/music.py": "b1403b597ee832d0f250e0bf9633626fc9a1bb05",
+    "audio/music.py": "418ba0cede508c3bc4d2054cce9cde0a0cc1f437",
     "audio/models.py": "085587e46381a5b2db17dd75fa8b7b793f4094d1",
     "audio/dsp.py": "d33bc8d32751794fa24b7cf2ffa9c7e26b38e351",
     "audio/process.py": "93fe48b15bf8c0cd19086eeedae28c8a7815f169",
@@ -159,6 +159,7 @@ def environment(args, stage):
     env.update({"HF_HUB_OFFLINE": "1", "TRANSFORMERS_OFFLINE": "1", "HF_DATASETS_OFFLINE": "1",
                 "HF_HUB_DISABLE_TELEMETRY": "1", "DO_NOT_TRACK": "1", "PYTHONDONTWRITEBYTECODE": "1",
                 "HF_HOME": str(args.root / "hf-cache"), "TORCH_HOME": str(stage / "torch-cache"),
+                "NUMBA_CACHE_DIR": str(stage / "numba-cache"),
                 "TMPDIR": str(stage), "TEMP": str(stage), "TMP": str(stage),
                 "ACESTEP_CHECKPOINTS_DIR": str(args.root / "checkpoints"), "ACESTEP_DISABLE_TQDM": "1"})
     return env
@@ -387,10 +388,12 @@ def audit(args):
     probe = prefix + r'''
 from audiocraft.models import MusicGen
 import importlib.metadata
-import av, torchaudio, torchvision, transformers, audiocraft
+import av, torchaudio, torchvision, transformers, audiocraft, numba
 from audiocraft.modules import transformer
 root = pathlib.Path(job['directory']).resolve()
 runtime_root = root / 'runtime'
+if pathlib.Path(numba.config.CACHE_DIR).resolve() != stage / 'numba-cache' or not (stage / 'numba-cache').is_dir():
+    raise RuntimeError('Numba must use the current canonical staging cache')
 if not (sys.flags.isolated == 1 and sys.flags.no_site == 1 and sys.flags.dont_write_bytecode == 1):
     raise RuntimeError('Canonical isolated/no-site/no-bytecode startup flags were not applied')
 if not pathlib.Path(sys.argv[1]).resolve().is_relative_to(stage):
@@ -466,7 +469,7 @@ print(json.dumps({'stage':'canonical_audited_windows_framework_imports', 'python
  'av_library_versions':av.library_versions, 'local_native_modules':sorted(local_dlls),
  'attention_backend':transformer._efficient_attention_backend,
  'startup_flags':{'isolated':sys.flags.isolated,'no_site':sys.flags.no_site,'dont_write_bytecode':sys.flags.dont_write_bytecode},
- 'canonical_request_protocol':'JSON file at argv[1]', 'audit_controls':'network and child commands denied; writes confined to staging',
+ 'canonical_request_protocol':'JSON file at argv[1]', 'numba_cache_scope':'current operation staging', 'audit_controls':'network and child commands denied; writes confined to staging',
  'canonical_model_admission':'NOT_RUN_NO_CHECKPOINTS', 'actual_musicgen_inference':'NOT_RUN',
  'model_weights':'NOT_DOWNLOADED'}))
 '''
