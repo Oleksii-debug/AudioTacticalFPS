@@ -1,0 +1,80 @@
+{
+  "schema": 1,
+  "source_parent": "bf6038cd5db3cd2e7508c899327932bf344e6250",
+  "status": "NOT_RUN",
+  "execution": "Native Windows execution is required; source review is not a native PASS.",
+  "command": [
+    "<installed-python>",
+    "-I",
+    "-B",
+    "-X",
+    "utf8",
+    "tests/ui/probe_import_epub_continuation_native.py",
+    "--native"
+  ],
+  "strict_receipt": {
+    "result": "PASS",
+    "check_count": 26,
+    "checks": [
+      "actual-desktop-frame-exists-before-mainloop",
+      "import-continue-control-keyboard-addressable",
+      "small-injected-import-page-is-durable",
+      "import-page-status-announces-continuation",
+      "native-continue-starts-existing-background-service",
+      "native-cancel-reaches-live-scan-callback",
+      "cancelled-page-keeps-previous-durable-batch",
+      "cancelled-page-does-not-publish-next-batch",
+      "native-continue-retries-the-same-next-identity",
+      "continued-page-has-a-distinct-exact-selected-source",
+      "continued-batches-reopen-without-rescanning",
+      "native-import-close-destroys-owned-hwnd",
+      "native-epub-command-opens-first-bounded-page",
+      "epub-chooser-is-keyboard-addressable",
+      "native-epub-next-opens-second-page",
+      "epub-second-page-has-previous-and-next",
+      "native-epub-previous-restores-first-book-choice",
+      "native-epub-selection-opens-the-second-edition",
+      "selected-epub-text-matches-retained-original",
+      "epub-list-and-source-work-use-existing-worker-thread",
+      "native-epub-back-destroys-owned-reader-hwnd",
+      "native-epub-cancel-opens-no-source-section",
+      "host-library-scope-is-preserved",
+      "all-synthetic-original-bytes-are-unchanged",
+      "native-close-destroys-owned-desktop-hwnd",
+      "all-recorded-owned-native-windows-are-gone"
+    ],
+    "multiset_required": true,
+    "failures": [],
+    "actual_native_keys": true,
+    "actual_domain_services": true,
+    "synthetic_sources": true,
+    "injected_test_page_limits": {
+      "import_files": 1,
+      "epub_editions": 1
+    }
+  },
+  "required_module_origins": [
+    "carr_library.application",
+    "carr_library.ingest.batch_scan",
+    "carr_library.ingest.batches",
+    "carr_library.reader.ebook",
+    "carr_library.ui.ebook_reader",
+    "carr_library.ui.import_center"
+  ],
+  "native_lifecycle": "The actual DesktopFrame is created and shown by priming the generator before MainLoop; exact same-process HWNDs are checked with IsWindow, with owned-window cleanup and a 180-second scenario deadline.",
+  "proof_scope": "Real wx keyboard controls, actual LibraryApp/SQLite/import journals and retained EPUB source reads, live cancellation barrier, durable next-page replay, worker-thread callbacks and native window closure.",
+  "limits": "Only the page budgets are injected to one file and one book. Actual 5001 source paths, more than 20000 directory entries and 503 EPUB editions are separate source regressions. This probe is not a real large-corpus benchmark, physical accessibility audit or NVDA qualification.",
+  "synthetic_sources": {
+    "txt_files": 3,
+    "epub_files": 3,
+    "epub_pages": [
+      1,
+      2,
+      1,
+      2
+    ],
+    "external_reads": "Only the explicitly created temporary sources and the current installed application are used."
+  },
+  "nvda": "NOT_RUN",
+  "real_corpus_benchmark": "NOT_RUN"
+}
