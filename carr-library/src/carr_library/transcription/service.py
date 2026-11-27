@@ -690,6 +690,10 @@ class TranscriptionService:
                 environment = dict(os.environ)
                 for name in ('PYTHONPATH', 'PYTHONHOME', 'PYTHONSTARTUP'):
                     environment.pop(name, None)
+                if verified:
+                    for name in tuple(environment):
+                        if name in ('LD_PRELOAD', 'LD_LIBRARY_PATH', '__PYVENV_LAUNCHER__', '_PYTHON_PROJECT_BASE') or name.startswith('DYLD_'):
+                            environment.pop(name, None)
                 environment.update(HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1',
                                    HF_HUB_DISABLE_TELEMETRY='1', PYTHONUTF8='1')
                 process_active = False

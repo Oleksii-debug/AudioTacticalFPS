@@ -98,7 +98,7 @@ def _environment(python):
         raise ValueError('Verified worker inspection requires the CPython marker contract.')
     markers.update(python_version=major_minor, python_full_version=str(version),
                    implementation_version=str(version), extra='')
-    return root, selected, markers, file_identity(configuration)
+    return root, selected, markers, file_identity(configuration), base_home
 
 
 def _installed(site, *, cancel=None):
@@ -232,11 +232,79 @@ def _visible_inventory(site, *, cancel=None):
             'files': len(rows), 'size_bytes': total}
 
 
+def _stdlib_inventory(base_home, markers, *, cancel=None):
+    """Pin ordinary CPython's importable standard library and base libpython."""
+    prefix = base_home.parent if base_home.name.casefold() in ('bin', 'scripts') else base_home
+    version = markers['python_version']
+    library = prefix / ('Lib' if os.name == 'nt' else 'lib/python' + version)
+    library = local_path(library, root=prefix, exists=True)
+    regular(library, directory=True)
+    for relative in ('os.py', 'runpy.py', 'json/__init__.py',
+                     'importlib/__init__.py', 'encodings/__init__.py'):
+        regular(local_path(library / relative, root=library, exists=True))
+    pending, rows, visited, total = [library], [], 0, 0
+    while pending:
+        directory = pending.pop()
+        regular(local_path(directory, root=library, exists=True), directory=True)
+        with os.scandir(directory) as entries:
+            for entry in entries:
+                stopped(cancel)
+                visited += 1
+                if visited > 40000:
+                    raise ValueError('Standard-library directory inventory exceeds its bound.')
+                # -S excludes these independent package installations.
+                if directory == library and entry.name in ('site-packages', 'dist-packages'):
+                    continue
+                path = local_path(entry.path, root=library, exists=True)
+                if path.is_dir():
+                    pending.append(path)
+                    continue
+                if path.suffix in ('.pyc', '.pyo'):
+                    if '__pycache__' not in path.parts:
+                        raise ValueError('Unsealed sourceless standard-library bytecode is unsupported.')
+                    continue
+                actual = file_identity(path, cancel=cancel, maximum=2 * 1024**3)
+                total += actual['size']
+                if len(rows) >= 20000 or total > 2 * 1024**3:
+                    raise ValueError('Standard-library file or byte inventory exceeds its bound.')
+                rows.append({'path': path.relative_to(library).as_posix(),
+                             'sha256': actual['sha256'], 'size_bytes': actual['size']})
+    # CPython puts this path on sys.path even when the archive is absent.
+    archive = prefix / (('python' + version.replace('.', '') + '.zip') if os.name == 'nt'
+                        else 'lib/python' + version.replace('.', '') + '.zip')
+    archived = {'path': str(archive), 'present': os.path.lexists(archive)}
+    if archived['present']:
+        archived.update(file_identity(local_path(archive, root=prefix, exists=True),
+                                      cancel=cancel, maximum=2 * 1024**3))
+    libraries = {}
+    if os.name != 'nt':
+        for directory in (prefix / 'lib', base_home):
+            if not directory.exists():
+                continue
+            directory = local_path(directory, root=prefix, exists=True)
+            candidates = sorted(directory.glob('libpython' + version + '*'))
+            if len(candidates) > 32:
+                raise ValueError('Ambiguous base libpython inventory.')
+            for candidate in candidates:
+                if not candidate.is_file():
+                    raise ValueError('Base libpython must be a regular local file.')
+                # Normal SONAME aliases are permitted at the last component,
+                # like the selected interpreter alias. Pin spelling and target.
+                local_path(candidate.parent, root=prefix, exists=True)
+                resolved = local_path(candidate.resolve(strict=True), root=prefix, exists=True)
+                identity = file_identity(resolved, cancel=cancel, maximum=512 * 1024**2)
+                if candidate.resolve(strict=True) != resolved:
+                    raise ValueError('Base libpython alias changed during inspection.')
+                libraries[str(candidate)] = {'resolved': str(resolved), **identity}
+    return {'directory': str(library), 'sha256': digest(sorted(rows, key=lambda row: row['path'])),
+            'files': len(rows), 'size_bytes': total, 'archive': archived, 'libpython': libraries}
+
+
 def extend_profile(profile, *, cancel=None, progress=None):
     """Opt in through a verified descriptor; retain the existing trust workflow."""
     implementation, descriptor = worker_descriptor(profile['worker_path'],
         profile['python_resolved'], cancel=cancel)
-    root, site, markers, configuration = _environment(profile['python_executable'])
+    root, site, markers, configuration, base_home = _environment(profile['python_executable'])
     installed = _installed(site, cancel=cancel)
     selected = _closure(installed, markers)
     packages, counter = [], [0, 0]
@@ -249,6 +317,7 @@ def extend_profile(profile, *, cancel=None, progress=None):
     validate_packages(packages)
     model_identity(profile['model_files'])
     visible = _visible_inventory(site, cancel=cancel)
+    standard_library = _stdlib_inventory(base_home, markers, cancel=cancel)
     if file_identity(root / 'pyvenv.cfg') != configuration:
         raise ValueError('Virtual environment configuration changed during inspection.')
     current_implementation, current_descriptor = worker_descriptor(profile['worker_path'],
@@ -259,6 +328,7 @@ def extend_profile(profile, *, cancel=None, progress=None):
     result.update(protocol=PROTOCOL, protocol_descriptor=descriptor,
                   verified_packages=packages, verified_implementation=implementation,
                   verified_site_packages=[str(site)], verified_visible_files=visible,
+                  verified_standard_library=standard_library,
                   verified_markers=markers,
                   runtime_capability='complete-installed-files-reviewed; execution-and-quality-unqualified')
     result['fingerprint'] = fingerprint(result)

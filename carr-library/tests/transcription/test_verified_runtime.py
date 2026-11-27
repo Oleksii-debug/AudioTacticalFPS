@@ -4,6 +4,7 @@ import importlib.util
 import json
 import os
 import shutil
+import sys
 from pathlib import Path
 import threading
 import time
@@ -239,3 +240,42 @@ def test_restored_historical_cancel_flags_are_scrubbed(setup, tmp_path):
     prepare_restored_state(service.root.parent)
     assert not (worker / 'cancel.flag').exists()
     assert service.list_runtimes()[0]['trusted'] is False
+
+
+def test_changed_standard_library_source_revokes_profile_before_launch(runtime, tmp_path, monkeypatch):
+    """Inert synthetic base layout: the fake base interpreter is never executed."""
+    environment = runtime.python.parent.parent
+    base = runtime.root / 'synthetic-base'
+    home = base if os.name == 'nt' else base / 'bin'
+    home.mkdir(parents=True)
+    executable = home / Path(runtime.python.resolve()).name
+    executable.write_bytes(b'Synthetic base executable identity; never executed.')
+    version = f'{sys.version_info.major}.{sys.version_info.minor}'
+    library = base / ('Lib' if os.name == 'nt' else 'lib/python' + version)
+    for relative in ('os.py', 'runpy.py', 'json/__init__.py',
+                     'importlib/__init__.py', 'encodings/__init__.py'):
+        path = library / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text('# Synthetic standard-library identity only.\n', encoding='utf-8')
+    configuration = environment / 'pyvenv.cfg'
+    configuration.write_text(
+        f'home = {home}\ninclude-system-site-packages = false\n'
+        f'version = {version}.{sys.version_info.micro}\n', encoding='utf-8')
+    service = TranscriptionService(tmp_path / 'inert-library/state/transcription')
+    inspected = service.inspect_runtime(runtime.python, runtime.worker, runtime.model)
+    assert inspected['verified_standard_library']['files'] == 5
+    profile = service.register_runtime('Inert synthetic standard library', runtime.python,
+        runtime.worker, runtime.model, owner_trusted=True,
+        expected_fingerprint=inspected['fingerprint'])
+    source = tmp_path / 'synthetic.wav'
+    source.write_bytes(b'Synthetic source.')
+    created = service.create_job(profile['id'], [source])
+    (library / 'runpy.py').write_text('# Changed entry bootstrap source bytes.\n', encoding='utf-8')
+    launched = []
+    def forbidden(*args, **kwargs):
+        launched.append(True)
+        raise AssertionError('The synthetic base executable must never launch.')
+    monkeypatch.setattr(service_module, 'run_process', forbidden)
+    result = service.run(created['id'])
+    assert result['status'] == 'failed' and 'changed' in result['error']
+    assert launched == [] and starts(runtime) == 0
