@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "version": "0.14.1",
+  "primary_index": "https://ziglang.org/download/index.json",
+  "license": "https://github.com/ziglang/zig/blob/0.14.1/LICENSE",
+  "x86_64-linux": {
+    "url": "https://ziglang.org/download/0.14.1/zig-x86_64-linux-0.14.1.tar.xz",
+    "sha256": "24aeeec8af16c381934a6cd7d95c807a8cb2cf7df9fa40d359aa884195c4716c",
+    "bytes": 49086504
+  },
+  "x86_64-windows": {
+    "url": "https://ziglang.org/download/0.14.1/zig-x86_64-windows-0.14.1.zip",
+    "sha256": "554f5378228923ffd558eac35e21af020c73789d87afeabf4bfd16f2e6feed2c",
+    "bytes": 82229343
+  }
+}
