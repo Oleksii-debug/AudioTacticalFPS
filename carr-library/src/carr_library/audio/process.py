@@ -210,13 +210,16 @@ def _capture_lifetime(process):
                     remaining = deadline - time.monotonic()
                     if remaining <= 0 or status(handle, max(1, int(remaining * 1000))) != 0:
                         raise CaptureCleanupError('Capture process termination remains unconfirmed.')
-                if not members():
+                remaining_members = members()
+                if all(identity in handles and status(handles[identity]) == 0
+                       for identity in remaining_members):
+                    # A Job may retain an exited member while its process
+                    # handle is open. Require actual termination signals for
+                    # every final member, not disappearance from accounting.
                     confirmed = True
                     break
-                # This waits for the observed Job membership transition, not
-                # for a guessed file-release delay; every process wait above
-                # has already required the actual kernel termination signal.
-                threading.Event().wait(min(.01, max(0, deadline - time.monotonic())))
+                # A descendant appeared during the preceding snapshot. The
+                # next pass retains, verifies, stops and waits for its handle.
         except BaseException as exc:
             raise CaptureCleanupError(
                 'Windows could not confirm complete microphone cleanup. '
