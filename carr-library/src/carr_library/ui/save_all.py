@@ -117,11 +117,12 @@ class SaveCoordinator:
             for key, participant in failures:
                 if participant is None or self.participants.get(key) is not participant:
                     continue
-                if participant.focus is not None:
-                    try:
-                        participant.focus()
-                    except Exception:
-                        pass
+                if participant.focus is None:
+                    continue
+                try:
+                    participant.focus()
+                except Exception:
+                    continue
                 break
 
         def dispatch(key, participant):
