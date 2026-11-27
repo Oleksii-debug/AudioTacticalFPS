@@ -120,6 +120,7 @@ class ListedVoices:
 @pytest.fixture
 def reader(tmp_path, monkeypatch):
     from carr_library import runtime_settings
+    from carr_library.ui.reader_transport import ReaderPlaybackSession
 
     progress, scheduler, work = Progress(), Scheduler(), WorkQueue()
     registry, roots, activations, created = VoiceRegistry([ListedVoices()]), [], [], []
@@ -150,6 +151,15 @@ def reader(tmp_path, monkeypatch):
         dialog=Mock(), autosave_timer=Mock(), transport=Mock(), playback_guard=Mock(),
         executor=Mock(), audio_files=Mock(), keyboard=Mock(), output_controls=Mock(),
         unregister_save=Mock())
+    # The production finally block owns the existing listening adapter too.
+    # Keep its real close/drain state machine with this fixture's same borrowed
+    # player/worker; do not replace or remove cleanup calls from the extraction.
+    values['playback_session'] = ReaderPlaybackSession(values['player'],
+        submit=work, guard=values['playback_guard'], capture=Mock(), verify=Mock(),
+        alive=lambda: not values['cancel'].is_set(), busy=lambda: values['busy'],
+        cancelled=values['cancel'].is_set, clear_cancel=values['cancel'].clear,
+        start=Mock(), stop=values['player'].stop, pause=values['player'].pause,
+        report=report, refresh=progress.refresh_audio_state, state_root=tmp_path)
     handlers = callbacks('speech_dialog.py', 'show_speech_reader',
         ['reload', 'select_progress_voice', 'start_playback', 'stop_audio',
          'confirm_current_close', 'owner_destroyed', 'closing'],
@@ -409,6 +419,9 @@ def test_reader_failed_close_retains_its_pcm_and_still_destroys_dialog(reader):
 @pytest.mark.parametrize('stage', ['worker_shutdown', 'temporary_cleanup'])
 def test_reader_dialog_is_destroyed_even_when_final_cleanup_raises(reader, stage):
     player, temporary = reader.values['player'], reader.values['audio_files']
+    pending = threading.Event()
+    listening = reader.values['playback_session']
+    listening.operation = pending
     if stage == 'worker_shutdown':
         message = 'Worker shutdown unavailable'
         reader.values['executor'].shutdown.side_effect = RuntimeError(message)
@@ -419,10 +432,15 @@ def test_reader_dialog_is_destroyed_even_when_final_cleanup_raises(reader, stage
     reader.values['dialog'].Destroy.assert_called_once()
     assert (player, temporary) in reader.parent._reader_playback_retained
     assert any(message in report for report in reader.reports)
+    assert listening.closed and pending.is_set()
     if stage == 'worker_shutdown':
         temporary.cleanup.assert_not_called()
+        assert listening.operation is pending
+        assert listening in reader.parent._reader_listening_retained
     else:
         temporary.cleanup.assert_called_once()
+        assert listening.operation is None
+        assert not hasattr(reader.parent, '_reader_listening_retained')
 
 
 def test_reader_detached_parent_reporter_cannot_prevent_dialog_destruction(reader):
@@ -437,6 +455,8 @@ def test_reader_detached_parent_reporter_cannot_prevent_dialog_destruction(reade
 
 
 def test_reader_detached_progress_observer_does_not_prevent_actual_resource_cleanup(reader):
+    listening = reader.values['playback_session']
+    pending = listening.operation = threading.Event()
     reader.progress.unregister_player = Mock(side_effect=RuntimeError('Progress observer detached'))
     reader.handlers.cleanup()
     reader.values['player'].close.assert_called_once()
@@ -445,6 +465,8 @@ def test_reader_detached_progress_observer_does_not_prevent_actual_resource_clea
     reader.values['dialog'].Destroy.assert_called_once()
     assert any('Progress observer detached' in message for message in reader.reports)
     assert not hasattr(reader.parent, '_reader_playback_retained')
+    assert listening.closed and pending.is_set() and listening.operation is None
+    assert not hasattr(reader.parent, '_reader_listening_retained')
 
 
 def test_reader_deferred_playback_rechecks_source_before_native_start(reader):

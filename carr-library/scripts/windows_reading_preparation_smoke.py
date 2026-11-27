@@ -262,9 +262,10 @@ def _run_probe(args, report, checkpoint):
                   and recovered.document.source_sha256 == source_hash)
 
         def first(reader):
-            host = focus_editor(reader)
+            host = reader.reader_edit_host
             check('initial voice inventory completes without synthesis',
-                  pump(lambda: not host.busy(), timeout=35))
+                  pump(lambda: not host.busy() and reader.reader_editor.IsEnabled(), timeout=35))
+            focus_editor(reader)
             check('opening the reader preserves exact Unicode source',
                   host.capture().text == raw and host.capture().source_sha256 == source_hash)
             start, end = raw.index('12'), raw.index('3.') + 1
@@ -383,8 +384,10 @@ def _run_probe(args, report, checkpoint):
             click(button(reader, 'Close'))
 
         def reopened(reader):
-            host = focus_editor(reader)
-            check('reopened reader inventory completes', pump(lambda: not host.busy(), timeout=35))
+            host = reader.reader_edit_host
+            check('reopened reader inventory completes',
+                  pump(lambda: not host.busy() and reader.reader_editor.IsEnabled(), timeout=35))
+            focus_editor(reader)
             check('saved prepared copy reopens with unchanged original identity',
                   host.capture().text == expected[0] and host.capture().source_sha256 == source_hash)
             with_tool(reader, lambda view: check('language and flags remain explicit after reopen',

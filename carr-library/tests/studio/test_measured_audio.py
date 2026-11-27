@@ -339,7 +339,7 @@ def test_measured_member_names_reject_windows_device_aliases_on_every_host(rende
 
 
 @pytest.mark.parametrize('masked', [False, True], ids=['direct-pending', 'masked-pending'])
-def test_measured_inspection_retains_stage_locks_and_lease_until_cleanup(rendered, monkeypatch):
+def test_measured_inspection_retains_stage_locks_and_lease_until_cleanup(rendered, monkeypatch, masked):
     from carr_library.audio.cleanup import AudioCleanupPending, CleanupOwner
     from carr_library.operations._locks import NativeLock
 

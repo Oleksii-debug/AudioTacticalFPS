@@ -424,7 +424,7 @@ def normalize_manifest(manifest):
         for value in manifest['state']:
             if type(value) is not dict or not isinstance(value.get('filename'), str):
                 raise RestoreError('invalid legacy state entry')
-            portable_name(value['filename'])
+            portable_name('state/' + value['filename'])
             entries.append({**value, 'filename': 'state/' + value['filename']})
         roots = frozenset({'state'})
         if version >= 4:

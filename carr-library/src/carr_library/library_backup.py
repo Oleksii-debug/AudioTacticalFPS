@@ -237,6 +237,11 @@ def _read_manifest(directory, expected_manifest_sha256, *, cancelled=lambda: Fal
             if type(manifest.get('generated_audio_included')) is not bool or 'state' not in actual_files:
                 raise RestoreError('incomplete application state backup')
             validate_state(manifest.get('state'))
+            if not manifest['generated_audio_included']:
+                from . import backup_transcription
+                if any(backup_transcription.is_cache_file('state/' + entry['filename'])
+                       for entry in manifest['state']):
+                    raise RestoreError('Transcription cache requires explicit manifest inclusion.')
             required_files.add('state')
         elif 'state' in actual_files:
             raise RestoreError('unexpected state in legacy backup')

@@ -206,3 +206,40 @@ unqualified where not implemented and exercised.
 The execution host was unavailable during this checkpoint. Work was preserved
 through immutable repository objects and branch updates; no private final ZIP
 has been assembled or presented as a completed delivery.
+
+
+## Actual 94ec failures and canonical reconciliation (2026-11-27 17:21 UTC)
+
+The six-workflow evaluation at `94ecfdd48c65d03f0b29abee9000fd4e2a1610ee`
+started executing. Both transcription matrix jobs failed the same existing
+`test_transcription_backup.py` module: 110 passed, 33 failed, zero skips.
+The other nineteen selected modules passed on both platforms. The new narrow
+correction validates legacy state filenames in their final `state/` namespace
+and applies the existing typed cache-inclusion policy to native state manifests
+before restore publication. All original transcription assertions remain.
+
+The V3 run46031920252 exposed actual collection/fixture defects: the DAISY
+adapter imported missing shared XML budgets, the Book CLI retained an unavailable
+donor entrypoint decorator, one measured-audio test omitted its parametrized
+`masked` argument, the local-runtime CLI doubles lacked mandatory service close,
+and seven reader cleanup cases omitted their actual playback-session closure.
+The corrections preserve current production lifetime owners and every existing
+test, strengthening close-order and pending-listening assertions. The shared
+XML parser now enforces bounded member length and aggregate metadata size.
+Book CLI uses this product's existing main-to-Studio entrypoint contract.
+
+Canonical advanced to `e5c64a5245583f8f8b404a0f042f6ca438c24d7f` (PR183).
+Its exact Save All controller `c109f48ccb561b25fc9f348dacc4688f734f2e6b`
+and tests `849fcdf2b0ad71d63be4a08ea1b044554f988881` are retained,
+including registration identity, late durable completion and usable failure
+focus. The governing AGENTS and both updated V3 technical documents are unchanged.
+
+The reader-preparation native fixture now waits for the real reader to become
+usable before keyboard input. Its existing native Windows step is placed in
+the Windows preflight job; portable preparation service contracts remain in
+Linux. No original native watchdog, test selector or qualification rule is
+removed. Full source suites for these corrections remain required.
+
+These source-reviewed successor corrections are **NOT_RUN**. Neither the
+failing94ec aggregate nor earlier component successes qualify the new source.
+No eligible exact-head wheel or private final archive is available.

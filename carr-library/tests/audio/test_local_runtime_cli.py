@@ -14,11 +14,15 @@ from carr_library.studio import cli
 @pytest.mark.parametrize('operation', ['projects', 'jobs'])
 def test_scene_data_inspection_does_not_require_selected_audio(tmp_path, monkeypatch, operation):
     monkeypatch.setattr(application, 'LibraryApp', lambda root: SimpleNamespace(root=Path(root)))
-    service = SimpleNamespace(projects=SimpleNamespace(list=lambda: []), jobs=lambda: [])
+    service = create_autospec(cli.ProductionService, instance=True)
+    service.projects = SimpleNamespace(list=lambda: [])
+    service.jobs.return_value = []
     monkeypatch.setattr(cli, 'ProductionService', lambda *a, **k: service)
     monkeypatch.setattr(local_runtime, 'open_local_audio_runtime',
                         lambda *a, **k: pytest.fail('saved project inspection attempted audio activation'))
     assert cli.main(['--data-dir', str(tmp_path), operation]) == 0
+    service.close.assert_called_once_with()
+    service.run.assert_not_called()
 
 
 def test_scene_resume_binds_and_releases_the_actual_execution_lifetime(tmp_path, monkeypatch):
@@ -36,9 +40,14 @@ def test_scene_resume_binds_and_releases_the_actual_execution_lifetime(tmp_path,
         return {'id': identity, 'status': 'completed', 'destination': str(tmp_path / 'out'),
                 'artifacts': [], 'result': {}}
     monkeypatch.setattr(local_runtime, 'open_local_audio_runtime', bind)
-    monkeypatch.setattr(cli, 'ProductionService', lambda *a, **k: SimpleNamespace(run=run))
+    service = create_autospec(cli.ProductionService, instance=True, spec_set=True)
+    service.run.side_effect = run
+    service.close.side_effect = lambda: calls.append('production.close')
+    monkeypatch.setattr(cli, 'ProductionService', lambda *a, **k: service)
     assert cli.main(['--data-dir', str(tmp_path), 'resume', 'saved-job']) == 0
-    assert calls == ['bind', 'run', 'close']
+    assert calls == ['bind', 'run', 'production.close', 'close']
+    service.run.assert_called_once()
+    service.close.assert_called_once_with()
 
 
 @pytest.mark.parametrize('operation, extra', [('jobs', []), ('show', ['id']),
