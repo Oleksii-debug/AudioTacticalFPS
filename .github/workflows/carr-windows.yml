@@ -639,7 +639,10 @@ jobs:
             'tests/ui/test_progress_concurrency.py',
             'tests/audio/test_local_voice_helper.py',
             'tests/ui/test_progress_registered_voices.py',
-            'tests/storage/test_historical_asr_cache_policy.py'
+            'tests/storage/test_historical_asr_cache_policy.py',
+            'tests/storage/test_atomic_state_publication.py',
+            'tests/audio/test_ffmpeg_process_boundaries.py',
+            'tests/ui/test_save_actions_routes.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -1028,7 +1031,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B tests/audio/native_playback_probe.py 2>&1 | Tee-Object 'ci-results/full-bundle-native-playback.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B tests/ui/native_save_all_smoke.py --native 2>&1 | Tee-Object 'ci-results/full-bundle-native-save-all.txt'
+          & $installedPython -I -B -X utf8 scripts/r7_native_gate.py save-actions --report ci-results/full-bundle-native-save-all.json 2>&1 | Tee-Object 'ci-results/full-bundle-native-save-all.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_audio_effects_smoke.py --native 2>&1 | Tee-Object 'ci-results/full-bundle-native-audio-effects.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -1655,7 +1658,10 @@ jobs:
               'tests/ui/test_progress_concurrency.py',
               'tests/audio/test_local_voice_helper.py',
               'tests/ui/test_progress_registered_voices.py',
-              'tests/storage/test_historical_asr_cache_policy.py'
+              'tests/storage/test_historical_asr_cache_policy.py',
+              'tests/storage/test_atomic_state_publication.py',
+              'tests/audio/test_ffmpeg_process_boundaries.py',
+              'tests/ui/test_save_actions_routes.py'
           ]
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:

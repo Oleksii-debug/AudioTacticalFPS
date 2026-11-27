@@ -1,0 +1,1050 @@
+{
+  "schema": 1,
+  "status": "PASS_INDEPENDENT_ARTIFACT_READ",
+  "recorded_utc": "2026-11-27 16:21:41 UTC",
+  "observation": {
+    "source_commit": "43f6908c82982630c85e6b72ebf7b940dfb06b45",
+    "source_tree": "acb92a0e27145178e5c43d438ae447e455afef19",
+    "run_id": 46023226615,
+    "job_id": 140587903077,
+    "artifact": {
+      "run": 46023226615,
+      "commit": "43f6908c82982630c85e6b72ebf7b940dfb06b45",
+      "id": 15210489316,
+      "sha256": "3fc657ad100bc1769c7baf3fec35a170ac159a04490fee5aa1b015846c78435b",
+      "bytes": 6384403,
+      "kind": "local-and-existing-translation",
+      "name": "carr-local-translation-43f6908c82982630c85e6b72ebf7b940dfb06b45"
+    },
+    "source_cases": 306,
+    "installed_cases": 306,
+    "existing_per_mode": 268,
+    "local_per_mode": 38,
+    "native_flows": 8
+  },
+  "reader": {
+    "commit": "904ac91fa5f8e00cd3782f468803d001720da5ea",
+    "tree": "a3547a37ae8055bd7a1b4db6b2310b0ab4cb9d47",
+    "run_id": 46028537646,
+    "job_id": 140606095178,
+    "status": "PASS",
+    "completed_utc": "2026-11-27T16:17:33Z",
+    "helper_blob": "43eed7003451a9e5b036113160de692a5bf596c0",
+    "method": "Ubuntu read-only bounded ZIP inspection with exact run/head/metadata and raw archive length/SHA256 checks, then inert JSON/XML/text parsing; no artifact code imported or executed."
+  },
+  "junit": [
+    {
+      "artifact": 15210489316,
+      "file": "existing/installed-junit.xml",
+      "cases": 268,
+      "exact_counter": true,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0,
+      "pass": true,
+      "raw_member": {
+        "name": "existing/installed-junit.xml",
+        "bytes": 40559,
+        "sha256": "f3fc4ee1e49ca0b5aa4fdb8f7e21d0c4226ef5763db011f1019c9fe7f79a572d"
+      },
+      "function_counter": {
+        "tests.assistant.test_translation::test_accepted_chunks_survive_restart_and_never_rebill": 1,
+        "tests.assistant.test_translation::test_chunking_and_integer_allocations_preserve_all_unicode": 1,
+        "tests.assistant.test_translation::test_complete_restored_derivative_exports_offline_without_rebinding": 1,
+        "tests.assistant.test_translation::test_completed_translation_requires_independent_decoded_ledger_evidence": 5,
+        "tests.assistant.test_translation::test_export_is_new_source_pinned_narration_derivative": 1,
+        "tests.assistant.test_translation::test_export_restores_source_chunk_separators_without_rewriting_receipts": 4,
+        "tests.assistant.test_translation::test_failed_intent_publication_sends_no_request": 1,
+        "tests.assistant.test_translation::test_forged_state_is_rejected_before_resume_or_backup": 8,
+        "tests.assistant.test_translation::test_historical_wire_only_job_remains_exportable_without_invented_decoded_proof": 1,
+        "tests.assistant.test_translation::test_known_unsent_pause_can_resume_exact_call": 1,
+        "tests.assistant.test_translation::test_live_binding_changes_revoke_saved_remote_permission": 4,
+        "tests.assistant.test_translation::test_lost_paid_output_checkpoint_blocks_rebilling": 1,
+        "tests.assistant.test_translation::test_opening_preview_and_submit_never_send_selected_text": 1,
+        "tests.assistant.test_translation::test_preview_requires_exact_profile_language_inventory": 1,
+        "tests.assistant.test_translation::test_pure_snapshot_validation_and_same_owner_lock_reuse": 1,
+        "tests.assistant.test_translation::test_resumed_legacy_job_preserves_old_receipts_and_binds_only_new_calls": 1,
+        "tests.assistant.test_translation::test_single_chunk_preserves_provider_outer_whitespace_and_offline_profile_history": 1,
+        "tests.assistant.test_translation::test_snapshot_cannot_borrow_another_threads_live_job_guard": 1,
+        "tests.assistant.test_translation::test_snapshot_rejects_unknown_files_and_traversal": 1,
+        "tests.assistant.test_translation::test_submit_cannot_expand_reviewed_authority": 7,
+        "tests.assistant.test_translation::test_supported_pair_is_required_before_job_creation": 3,
+        "tests.assistant.test_translation::test_translation_connection_paths_use_the_same_safe_canonical_library": 2,
+        "tests.assistant.test_translation::test_translation_safe_path_binding_refuses_foreign_and_linked_connections": 8,
+        "tests.assistant.test_translation::test_typed_translation_never_writes_generic_assistant_checkpoint": 1,
+        "tests.assistant.test_translation::test_typed_translation_rejects_invalid_decoded_receipt_before_backup": 2,
+        "tests.assistant.test_translation::test_uncertain_charge_survives_restart_without_automatic_retry": 1,
+        "tests.assistant.test_translation::test_unknown_pending_intent_without_ledger_never_restarts_silently": 1,
+        "tests.assistant.test_translation::test_whitespace_chunks_are_preserved_without_billable_requests": 1,
+        "tests.assistant.test_translation::test_windows_native_short_path_connections_bind_the_same_real_library": 1,
+        "tests.assistant.test_translation_advanced::test_advanced_decoded_result_cannot_diverge_from_live_ledger": 4,
+        "tests.assistant.test_translation_advanced::test_basic_and_advanced_cache_names_keep_the_existing_shared_namespace": 1,
+        "tests.assistant.test_translation_advanced::test_cache_cannot_keep_old_fingerprint_but_change_project": 1,
+        "tests.assistant.test_translation_advanced::test_complete_backup_restore_exports_offline_and_pending_permission_stays_old": 1,
+        "tests.assistant.test_translation_advanced::test_directional_inventory_is_not_expanded_by_preview": 3,
+        "tests.assistant.test_translation_advanced::test_job_versions_cannot_smuggle_or_rebind_accepted_advanced_results": 6,
+        "tests.assistant.test_translation_advanced::test_new_schema_preserves_immutable_source_and_old_namespace": 1,
+        "tests.assistant.test_translation_advanced::test_paused_accepted_chunks_survive_exact_token_renewal_without_rebilling": 1,
+        "tests.assistant.test_translation_advanced::test_replacing_account_cannot_reuse_a_queued_remote_approval": 1,
+        "tests.assistant.test_translation_advanced::test_uncertain_request_is_attention_and_never_resubmitted": 1,
+        "tests.assistant.test_translation_advanced::test_whitespace_has_no_false_model_or_glossary_receipt": 1,
+        "tests.assistant.test_translation_scopes::test_actual_epub_chapter_keeps_declared_headings_and_excludes_unselected_chapter": 1,
+        "tests.assistant.test_translation_scopes::test_archived_scope_revokes_saved_remote_transfer_before_send": 1,
+        "tests.assistant.test_translation_scopes::test_batch_preview_has_exact_per_document_and_block_prices_without_network": 1,
+        "tests.assistant.test_translation_scopes::test_cancelled_capture_never_opens_an_original": 1,
+        "tests.assistant.test_translation_scopes::test_character_preflight_refuses_before_materializing_source_pages": 1,
+        "tests.assistant.test_translation_scopes::test_child_rebinding_is_rejected_by_typed_backup_and_resume": 4,
+        "tests.assistant.test_translation_scopes::test_complete_derivative_preserves_bilingual_blocks_headings_and_safe_html": 1,
+        "tests.assistant.test_translation_scopes::test_destination_is_rejected_before_reading_derived_source": 1,
+        "tests.assistant.test_translation_scopes::test_document_selection_retains_empty_sections_unicode_locators_and_source_order": 1,
+        "tests.assistant.test_translation_scopes::test_foreign_workspace_is_refused_before_original_access": 1,
+        "tests.assistant.test_translation_scopes::test_incomplete_or_cancelled_export_has_no_complete_marker": 1,
+        "tests.assistant.test_translation_scopes::test_no_inferred_chapter_from_an_unstructured_text_page": 3,
+        "tests.assistant.test_translation_scopes::test_original_drift_invalidates_review_before_any_provider_request": 1,
+        "tests.assistant.test_translation_scopes::test_overlapping_batch_documents_are_rejected_before_any_approval": 1,
+        "tests.assistant.test_translation_scopes::test_partial_child_preparation_is_durable_but_cannot_recreate_missing_jobs": 1,
+        "tests.assistant.test_translation_scopes::test_preview_cost_above_an_item_reservation_blocks_approval": 1,
+        "tests.assistant.test_translation_scopes::test_removed_approved_child_is_not_recreated_or_rebilled": 1,
+        "tests.assistant.test_translation_scopes::test_reviewed_manifest_cannot_expand_transfer_or_price_authority": 5,
+        "tests.assistant.test_translation_scopes::test_saved_scope_pause_restart_and_complete_resume_never_rebill_accepted_children": 1,
+        "tests.assistant.test_translation_scopes::test_scope_and_child_native_locks_share_existing_snapshot_protocol": 1,
+        "tests.assistant.test_translation_scopes::test_scope_reuses_both_existing_google_job_versions": 2,
+        "tests.assistant.test_translation_scopes::test_typed_backup_restores_passive_structure_without_rebinding_remote_permission": 1,
+        "tests.assistant.test_translation_scopes::test_typed_selection_rejects_source_or_structure_forgery": 8,
+        "tests.assistant.test_translation_scopes::test_uncertain_paid_child_blocks_every_later_item_and_never_retries": 1,
+        "tests.e2e.test_google_translation_gateway::test_changed_request_cannot_borrow_prior_approval": 3,
+        "tests.e2e.test_google_translation_gateway::test_default_local_only_rejects_before_vault_or_transport": 1,
+        "tests.e2e.test_google_translation_gateway::test_direct_get_route_is_not_general_url_capability": 3,
+        "tests.e2e.test_google_translation_gateway::test_direct_language_transport_keeps_tls_and_exact_get_authority": 1,
+        "tests.e2e.test_google_translation_gateway::test_existing_provider_request_hash_is_backward_compatible": 1,
+        "tests.e2e.test_google_translation_gateway::test_existing_wire_only_ledger_migration_is_concurrent_and_never_backfills_proof": 1,
+        "tests.e2e.test_google_translation_gateway::test_gateway_binds_decoded_translation_and_language_in_live_ledger": 2,
+        "tests.e2e.test_google_translation_gateway::test_known_unsent_cancellation_reuses_only_exact_original_reservation": 1,
+        "tests.e2e.test_google_translation_gateway::test_language_query_sends_no_selected_text_and_key_is_header_only": 1,
+        "tests.e2e.test_google_translation_gateway::test_malformed_responses_are_uncertain_and_not_displayed": 6,
+        "tests.e2e.test_google_translation_gateway::test_profile_pins_official_v2_authority": 10,
+        "tests.e2e.test_google_translation_gateway::test_reflected_credentials_never_become_results_or_receipts": 10,
+        "tests.e2e.test_google_translation_gateway::test_request_rejects_unbounded_or_ambiguous_inputs": 7,
+        "tests.e2e.test_google_translation_gateway::test_translation_uses_exact_plaintext_pair_and_model": 1,
+        "tests.e2e.test_google_translation_v3::test_basic_v2_request_and_profile_hash_contract_stays_exact": 1,
+        "tests.e2e.test_google_translation_v3::test_changed_account_or_profile_requires_new_authority": 1,
+        "tests.e2e.test_google_translation_v3::test_changed_or_wrong_version_requests_stop_before_credentials_and_ledger": 4,
+        "tests.e2e.test_google_translation_v3::test_credentials_are_explicit_bounded_and_unexpired": 10,
+        "tests.e2e.test_google_translation_v3::test_direct_transport_cannot_be_a_general_url_route": 3,
+        "tests.e2e.test_google_translation_v3::test_expired_before_send_is_unsent_and_exact_renewal_can_resume": 1,
+        "tests.e2e.test_google_translation_v3::test_expiry_after_vault_read_is_rechecked_before_transport": 1,
+        "tests.e2e.test_google_translation_v3::test_expiry_offset_and_exact_endpoint_record": 1,
+        "tests.e2e.test_google_translation_v3::test_glossary_cannot_borrow_a_different_scope": 5,
+        "tests.e2e.test_google_translation_v3::test_language_query_has_no_source_text_and_preserves_directional_support": 1,
+        "tests.e2e.test_google_translation_v3::test_native_transport_boundary_keeps_tls_and_accepts_already_sent_response": 2,
+        "tests.e2e.test_google_translation_v3::test_profile_pins_explicit_google_project_location_and_nmt": 12,
+        "tests.e2e.test_google_translation_v3::test_reflected_oauth_material_is_never_accepted": 4,
+        "tests.e2e.test_google_translation_v3::test_same_account_token_renewal_preserves_exact_approval_reference": 1,
+        "tests.e2e.test_google_translation_v3::test_text_uses_exact_model_glossary_and_literal_entities": 1,
+        "tests.e2e.test_google_translation_v3::test_unverified_result_is_uncertain_and_never_retried": 8,
+        "tests.e2e.test_google_translation_v3::test_v3_store_rejects_raw_key_without_mutating_profiles": 1,
+        "tests.ui.test_translation_advanced::test_controller_binds_glossary_to_preview_approval_and_submission": 1,
+        "tests.ui.test_translation_advanced::test_native_approval_does_not_launch_after_modal_selection_changes": 4,
+        "tests.ui.test_translation_advanced::test_native_profile_form_keeps_token_only_in_vault_and_renewal_explicit": 5,
+        "tests.ui.test_translation_dialog::test_changed_ui_selection_requires_new_preview": 7,
+        "tests.ui.test_translation_dialog::test_close_is_idempotent_and_late_worker_callbacks_do_not_touch_widgets": 1,
+        "tests.ui.test_translation_dialog::test_controller_rejects_service_for_another_library": 1,
+        "tests.ui.test_translation_dialog::test_estimated_cost_over_budget_revokes_prior_preview": 1,
+        "tests.ui.test_translation_dialog::test_failed_worker_submission_releases_dialog_controls": 1,
+        "tests.ui.test_translation_dialog::test_preview_and_approval_are_distinct_and_bind_exact_data": 1,
+        "tests.ui.test_translation_dialog::test_translation_cannot_start_beside_another_shared_operation": 2,
+        "tests.ui.test_translation_dialog::test_translation_installer_registers_one_semantic_command_and_keeps_overrides": 2,
+        "tests.ui.test_translation_scopes::test_failed_preview_revokes_prior_scope_review": 1,
+        "tests.ui.test_translation_scopes::test_scope_menu_is_additive_idempotent_and_preserves_existing_shortcuts": 2,
+        "tests.ui.test_translation_scopes::test_scope_ui_change_revokes_review_before_child_creation": 8,
+        "tests.ui.test_translation_scopes::test_scope_ui_requires_separate_exact_approval_and_never_sends_on_preview": 1
+      }
+    },
+    {
+      "artifact": 15210489316,
+      "file": "existing/source-junit.xml",
+      "cases": 268,
+      "exact_counter": true,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0,
+      "pass": true,
+      "raw_member": {
+        "name": "existing/source-junit.xml",
+        "bytes": 40559,
+        "sha256": "b266c7c38b5303ad753327b27540ce2ff285d4058644625a52806a2b7dd9094b"
+      },
+      "function_counter": {
+        "tests.assistant.test_translation::test_accepted_chunks_survive_restart_and_never_rebill": 1,
+        "tests.assistant.test_translation::test_chunking_and_integer_allocations_preserve_all_unicode": 1,
+        "tests.assistant.test_translation::test_complete_restored_derivative_exports_offline_without_rebinding": 1,
+        "tests.assistant.test_translation::test_completed_translation_requires_independent_decoded_ledger_evidence": 5,
+        "tests.assistant.test_translation::test_export_is_new_source_pinned_narration_derivative": 1,
+        "tests.assistant.test_translation::test_export_restores_source_chunk_separators_without_rewriting_receipts": 4,
+        "tests.assistant.test_translation::test_failed_intent_publication_sends_no_request": 1,
+        "tests.assistant.test_translation::test_forged_state_is_rejected_before_resume_or_backup": 8,
+        "tests.assistant.test_translation::test_historical_wire_only_job_remains_exportable_without_invented_decoded_proof": 1,
+        "tests.assistant.test_translation::test_known_unsent_pause_can_resume_exact_call": 1,
+        "tests.assistant.test_translation::test_live_binding_changes_revoke_saved_remote_permission": 4,
+        "tests.assistant.test_translation::test_lost_paid_output_checkpoint_blocks_rebilling": 1,
+        "tests.assistant.test_translation::test_opening_preview_and_submit_never_send_selected_text": 1,
+        "tests.assistant.test_translation::test_preview_requires_exact_profile_language_inventory": 1,
+        "tests.assistant.test_translation::test_pure_snapshot_validation_and_same_owner_lock_reuse": 1,
+        "tests.assistant.test_translation::test_resumed_legacy_job_preserves_old_receipts_and_binds_only_new_calls": 1,
+        "tests.assistant.test_translation::test_single_chunk_preserves_provider_outer_whitespace_and_offline_profile_history": 1,
+        "tests.assistant.test_translation::test_snapshot_cannot_borrow_another_threads_live_job_guard": 1,
+        "tests.assistant.test_translation::test_snapshot_rejects_unknown_files_and_traversal": 1,
+        "tests.assistant.test_translation::test_submit_cannot_expand_reviewed_authority": 7,
+        "tests.assistant.test_translation::test_supported_pair_is_required_before_job_creation": 3,
+        "tests.assistant.test_translation::test_translation_connection_paths_use_the_same_safe_canonical_library": 2,
+        "tests.assistant.test_translation::test_translation_safe_path_binding_refuses_foreign_and_linked_connections": 8,
+        "tests.assistant.test_translation::test_typed_translation_never_writes_generic_assistant_checkpoint": 1,
+        "tests.assistant.test_translation::test_typed_translation_rejects_invalid_decoded_receipt_before_backup": 2,
+        "tests.assistant.test_translation::test_uncertain_charge_survives_restart_without_automatic_retry": 1,
+        "tests.assistant.test_translation::test_unknown_pending_intent_without_ledger_never_restarts_silently": 1,
+        "tests.assistant.test_translation::test_whitespace_chunks_are_preserved_without_billable_requests": 1,
+        "tests.assistant.test_translation::test_windows_native_short_path_connections_bind_the_same_real_library": 1,
+        "tests.assistant.test_translation_advanced::test_advanced_decoded_result_cannot_diverge_from_live_ledger": 4,
+        "tests.assistant.test_translation_advanced::test_basic_and_advanced_cache_names_keep_the_existing_shared_namespace": 1,
+        "tests.assistant.test_translation_advanced::test_cache_cannot_keep_old_fingerprint_but_change_project": 1,
+        "tests.assistant.test_translation_advanced::test_complete_backup_restore_exports_offline_and_pending_permission_stays_old": 1,
+        "tests.assistant.test_translation_advanced::test_directional_inventory_is_not_expanded_by_preview": 3,
+        "tests.assistant.test_translation_advanced::test_job_versions_cannot_smuggle_or_rebind_accepted_advanced_results": 6,
+        "tests.assistant.test_translation_advanced::test_new_schema_preserves_immutable_source_and_old_namespace": 1,
+        "tests.assistant.test_translation_advanced::test_paused_accepted_chunks_survive_exact_token_renewal_without_rebilling": 1,
+        "tests.assistant.test_translation_advanced::test_replacing_account_cannot_reuse_a_queued_remote_approval": 1,
+        "tests.assistant.test_translation_advanced::test_uncertain_request_is_attention_and_never_resubmitted": 1,
+        "tests.assistant.test_translation_advanced::test_whitespace_has_no_false_model_or_glossary_receipt": 1,
+        "tests.assistant.test_translation_scopes::test_actual_epub_chapter_keeps_declared_headings_and_excludes_unselected_chapter": 1,
+        "tests.assistant.test_translation_scopes::test_archived_scope_revokes_saved_remote_transfer_before_send": 1,
+        "tests.assistant.test_translation_scopes::test_batch_preview_has_exact_per_document_and_block_prices_without_network": 1,
+        "tests.assistant.test_translation_scopes::test_cancelled_capture_never_opens_an_original": 1,
+        "tests.assistant.test_translation_scopes::test_character_preflight_refuses_before_materializing_source_pages": 1,
+        "tests.assistant.test_translation_scopes::test_child_rebinding_is_rejected_by_typed_backup_and_resume": 4,
+        "tests.assistant.test_translation_scopes::test_complete_derivative_preserves_bilingual_blocks_headings_and_safe_html": 1,
+        "tests.assistant.test_translation_scopes::test_destination_is_rejected_before_reading_derived_source": 1,
+        "tests.assistant.test_translation_scopes::test_document_selection_retains_empty_sections_unicode_locators_and_source_order": 1,
+        "tests.assistant.test_translation_scopes::test_foreign_workspace_is_refused_before_original_access": 1,
+        "tests.assistant.test_translation_scopes::test_incomplete_or_cancelled_export_has_no_complete_marker": 1,
+        "tests.assistant.test_translation_scopes::test_no_inferred_chapter_from_an_unstructured_text_page": 3,
+        "tests.assistant.test_translation_scopes::test_original_drift_invalidates_review_before_any_provider_request": 1,
+        "tests.assistant.test_translation_scopes::test_overlapping_batch_documents_are_rejected_before_any_approval": 1,
+        "tests.assistant.test_translation_scopes::test_partial_child_preparation_is_durable_but_cannot_recreate_missing_jobs": 1,
+        "tests.assistant.test_translation_scopes::test_preview_cost_above_an_item_reservation_blocks_approval": 1,
+        "tests.assistant.test_translation_scopes::test_removed_approved_child_is_not_recreated_or_rebilled": 1,
+        "tests.assistant.test_translation_scopes::test_reviewed_manifest_cannot_expand_transfer_or_price_authority": 5,
+        "tests.assistant.test_translation_scopes::test_saved_scope_pause_restart_and_complete_resume_never_rebill_accepted_children": 1,
+        "tests.assistant.test_translation_scopes::test_scope_and_child_native_locks_share_existing_snapshot_protocol": 1,
+        "tests.assistant.test_translation_scopes::test_scope_reuses_both_existing_google_job_versions": 2,
+        "tests.assistant.test_translation_scopes::test_typed_backup_restores_passive_structure_without_rebinding_remote_permission": 1,
+        "tests.assistant.test_translation_scopes::test_typed_selection_rejects_source_or_structure_forgery": 8,
+        "tests.assistant.test_translation_scopes::test_uncertain_paid_child_blocks_every_later_item_and_never_retries": 1,
+        "tests.e2e.test_google_translation_gateway::test_changed_request_cannot_borrow_prior_approval": 3,
+        "tests.e2e.test_google_translation_gateway::test_default_local_only_rejects_before_vault_or_transport": 1,
+        "tests.e2e.test_google_translation_gateway::test_direct_get_route_is_not_general_url_capability": 3,
+        "tests.e2e.test_google_translation_gateway::test_direct_language_transport_keeps_tls_and_exact_get_authority": 1,
+        "tests.e2e.test_google_translation_gateway::test_existing_provider_request_hash_is_backward_compatible": 1,
+        "tests.e2e.test_google_translation_gateway::test_existing_wire_only_ledger_migration_is_concurrent_and_never_backfills_proof": 1,
+        "tests.e2e.test_google_translation_gateway::test_gateway_binds_decoded_translation_and_language_in_live_ledger": 2,
+        "tests.e2e.test_google_translation_gateway::test_known_unsent_cancellation_reuses_only_exact_original_reservation": 1,
+        "tests.e2e.test_google_translation_gateway::test_language_query_sends_no_selected_text_and_key_is_header_only": 1,
+        "tests.e2e.test_google_translation_gateway::test_malformed_responses_are_uncertain_and_not_displayed": 6,
+        "tests.e2e.test_google_translation_gateway::test_profile_pins_official_v2_authority": 10,
+        "tests.e2e.test_google_translation_gateway::test_reflected_credentials_never_become_results_or_receipts": 10,
+        "tests.e2e.test_google_translation_gateway::test_request_rejects_unbounded_or_ambiguous_inputs": 7,
+        "tests.e2e.test_google_translation_gateway::test_translation_uses_exact_plaintext_pair_and_model": 1,
+        "tests.e2e.test_google_translation_v3::test_basic_v2_request_and_profile_hash_contract_stays_exact": 1,
+        "tests.e2e.test_google_translation_v3::test_changed_account_or_profile_requires_new_authority": 1,
+        "tests.e2e.test_google_translation_v3::test_changed_or_wrong_version_requests_stop_before_credentials_and_ledger": 4,
+        "tests.e2e.test_google_translation_v3::test_credentials_are_explicit_bounded_and_unexpired": 10,
+        "tests.e2e.test_google_translation_v3::test_direct_transport_cannot_be_a_general_url_route": 3,
+        "tests.e2e.test_google_translation_v3::test_expired_before_send_is_unsent_and_exact_renewal_can_resume": 1,
+        "tests.e2e.test_google_translation_v3::test_expiry_after_vault_read_is_rechecked_before_transport": 1,
+        "tests.e2e.test_google_translation_v3::test_expiry_offset_and_exact_endpoint_record": 1,
+        "tests.e2e.test_google_translation_v3::test_glossary_cannot_borrow_a_different_scope": 5,
+        "tests.e2e.test_google_translation_v3::test_language_query_has_no_source_text_and_preserves_directional_support": 1,
+        "tests.e2e.test_google_translation_v3::test_native_transport_boundary_keeps_tls_and_accepts_already_sent_response": 2,
+        "tests.e2e.test_google_translation_v3::test_profile_pins_explicit_google_project_location_and_nmt": 12,
+        "tests.e2e.test_google_translation_v3::test_reflected_oauth_material_is_never_accepted": 4,
+        "tests.e2e.test_google_translation_v3::test_same_account_token_renewal_preserves_exact_approval_reference": 1,
+        "tests.e2e.test_google_translation_v3::test_text_uses_exact_model_glossary_and_literal_entities": 1,
+        "tests.e2e.test_google_translation_v3::test_unverified_result_is_uncertain_and_never_retried": 8,
+        "tests.e2e.test_google_translation_v3::test_v3_store_rejects_raw_key_without_mutating_profiles": 1,
+        "tests.ui.test_translation_advanced::test_controller_binds_glossary_to_preview_approval_and_submission": 1,
+        "tests.ui.test_translation_advanced::test_native_approval_does_not_launch_after_modal_selection_changes": 4,
+        "tests.ui.test_translation_advanced::test_native_profile_form_keeps_token_only_in_vault_and_renewal_explicit": 5,
+        "tests.ui.test_translation_dialog::test_changed_ui_selection_requires_new_preview": 7,
+        "tests.ui.test_translation_dialog::test_close_is_idempotent_and_late_worker_callbacks_do_not_touch_widgets": 1,
+        "tests.ui.test_translation_dialog::test_controller_rejects_service_for_another_library": 1,
+        "tests.ui.test_translation_dialog::test_estimated_cost_over_budget_revokes_prior_preview": 1,
+        "tests.ui.test_translation_dialog::test_failed_worker_submission_releases_dialog_controls": 1,
+        "tests.ui.test_translation_dialog::test_preview_and_approval_are_distinct_and_bind_exact_data": 1,
+        "tests.ui.test_translation_dialog::test_translation_cannot_start_beside_another_shared_operation": 2,
+        "tests.ui.test_translation_dialog::test_translation_installer_registers_one_semantic_command_and_keeps_overrides": 2,
+        "tests.ui.test_translation_scopes::test_failed_preview_revokes_prior_scope_review": 1,
+        "tests.ui.test_translation_scopes::test_scope_menu_is_additive_idempotent_and_preserves_existing_shortcuts": 2,
+        "tests.ui.test_translation_scopes::test_scope_ui_change_revokes_review_before_child_creation": 8,
+        "tests.ui.test_translation_scopes::test_scope_ui_requires_separate_exact_approval_and_never_sends_on_preview": 1
+      }
+    },
+    {
+      "artifact": 15210489316,
+      "file": "local/installed-junit.xml",
+      "cases": 38,
+      "exact_counter": true,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0,
+      "pass": true,
+      "raw_member": {
+        "name": "local/installed-junit.xml",
+        "bytes": 7243,
+        "sha256": "6c2c6f52c170b58fcf2768cdc4f3f703f5748172a24ce71996d65b0e7aac1eae"
+      },
+      "function_counter": {
+        "tests.loopback.test_translation_local_adapter::test_accepted_local_response_keeps_pre_request_inventory_even_if_cache_disappears": 1,
+        "tests.loopback.test_translation_local_adapter::test_actual_cli_local_review_queue_run_and_offline_export": 1,
+        "tests.loopback.test_translation_local_adapter::test_actual_loopback_errors_never_redirect_fall_back_or_repeat_an_uncertain_attempt": 3,
+        "tests.loopback.test_translation_local_adapter::test_cli_scoped_local_preview_queue_run_export_uses_current_catalog": 1,
+        "tests.loopback.test_translation_local_adapter::test_cli_stale_saved_review_does_not_send_a_local_request": 1,
+        "tests.loopback.test_translation_local_adapter::test_complete_local_translation_backup_restores_derivatives_without_endpoint_authority": 1,
+        "tests.loopback.test_translation_local_adapter::test_explicit_loopback_discovery_is_separate_and_local_jobs_keep_zero_remote_reservation": 1,
+        "tests.loopback.test_translation_local_adapter::test_live_decoded_local_receipt_tampering_blocks_export_without_recontact": 1,
+        "tests.loopback.test_translation_local_adapter::test_local_current_ui_controllers_require_exact_review_and_zero_cost": 2,
+        "tests.loopback.test_translation_local_adapter::test_local_detection_requires_one_finite_bounded_receipt": 6,
+        "tests.loopback.test_translation_local_adapter::test_local_profile_refuses_remote_destinations_and_credentials": 9,
+        "tests.loopback.test_translation_local_adapter::test_local_scopes_use_existing_children_and_passive_complete_backup": 2,
+        "tests.loopback.test_translation_local_adapter::test_local_structured_job_cannot_drop_its_immutable_source_context": 1,
+        "tests.loopback.test_translation_local_adapter::test_local_typed_request_cannot_be_sent_with_a_google_request_or_remote_permission": 1,
+        "tests.loopback.test_translation_local_adapter::test_pair_direction_glossary_price_and_credentials_are_refused_before_local_execution": 1,
+        "tests.loopback.test_translation_local_adapter::test_resumed_local_job_checks_exact_direction_inventory_before_another_request": 6
+      }
+    },
+    {
+      "artifact": 15210489316,
+      "file": "local/source-junit.xml",
+      "cases": 38,
+      "exact_counter": true,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0,
+      "pass": true,
+      "raw_member": {
+        "name": "local/source-junit.xml",
+        "bytes": 7243,
+        "sha256": "6b8e549afb8744482da0b8acf221a5a3abf507227154825ae12ef196b052b2d6"
+      },
+      "function_counter": {
+        "tests.loopback.test_translation_local_adapter::test_accepted_local_response_keeps_pre_request_inventory_even_if_cache_disappears": 1,
+        "tests.loopback.test_translation_local_adapter::test_actual_cli_local_review_queue_run_and_offline_export": 1,
+        "tests.loopback.test_translation_local_adapter::test_actual_loopback_errors_never_redirect_fall_back_or_repeat_an_uncertain_attempt": 3,
+        "tests.loopback.test_translation_local_adapter::test_cli_scoped_local_preview_queue_run_export_uses_current_catalog": 1,
+        "tests.loopback.test_translation_local_adapter::test_cli_stale_saved_review_does_not_send_a_local_request": 1,
+        "tests.loopback.test_translation_local_adapter::test_complete_local_translation_backup_restores_derivatives_without_endpoint_authority": 1,
+        "tests.loopback.test_translation_local_adapter::test_explicit_loopback_discovery_is_separate_and_local_jobs_keep_zero_remote_reservation": 1,
+        "tests.loopback.test_translation_local_adapter::test_live_decoded_local_receipt_tampering_blocks_export_without_recontact": 1,
+        "tests.loopback.test_translation_local_adapter::test_local_current_ui_controllers_require_exact_review_and_zero_cost": 2,
+        "tests.loopback.test_translation_local_adapter::test_local_detection_requires_one_finite_bounded_receipt": 6,
+        "tests.loopback.test_translation_local_adapter::test_local_profile_refuses_remote_destinations_and_credentials": 9,
+        "tests.loopback.test_translation_local_adapter::test_local_scopes_use_existing_children_and_passive_complete_backup": 2,
+        "tests.loopback.test_translation_local_adapter::test_local_structured_job_cannot_drop_its_immutable_source_context": 1,
+        "tests.loopback.test_translation_local_adapter::test_local_typed_request_cannot_be_sent_with_a_google_request_or_remote_permission": 1,
+        "tests.loopback.test_translation_local_adapter::test_pair_direction_glossary_price_and_credentials_are_refused_before_local_execution": 1,
+        "tests.loopback.test_translation_local_adapter::test_resumed_local_job_checks_exact_direction_inventory_before_another_request": 6
+      }
+    }
+  ],
+  "native": {
+    "existing-batch": {
+      "receipt": {
+        "actual_credential_vault": "PASS",
+        "actual_google_api": "NOT_RUN",
+        "approval_and_folder_picker": "injected explicit synthetic decisions",
+        "derivative_hashes": {
+          "bilingual.html": "a344a2683b2387c2f866134524555454ab8482c4ef7cc262654dddc163ef915f",
+          "bilingual.txt": "61fbd9d039ea004a026ece11660fd14adb63107f1f85c1e4a40ad0496b041226",
+          "original-selected.json": "dbc86cda66df548438840f0ad76d1eaf96b00727b34d5dab2e196fc2b5658030",
+          "translated.txt": "f767224722855198d0e10b54c5076e4b0d3f3e8f757662aa5d86f1c5cf8e32c4",
+          "translation-structure.json": "2e50ca0606a44ed3a5b2e7097acd19c0075d8b590966041e8c099194b54aa960"
+        },
+        "documents": 2,
+        "fixture_helper_sha256": "33ea4426a840d0f6536a33efdb406a8930d5b412a183254b539436d5cc97e59a",
+        "isolated": true,
+        "keyboard_focus": true,
+        "mode": "batch",
+        "module_origins": {
+          "carr_library.application": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\application.py",
+            "sha256": "0e0a13835767b2a64f8cdcfa0f09e7dc78ed9f148afb0f5635b513c06a9a41d8"
+          },
+          "carr_library.assistant.translation": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation.py",
+            "sha256": "de51e92b136222019968c703123f34e2cf14baf89a74c4bafb989f12038bd7f4"
+          },
+          "carr_library.assistant.translation_scope": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation_scope.py",
+            "sha256": "30fc471f973ba076b5afad722277a21c91f7721ee317b73d9b9efecb235c0c80"
+          },
+          "carr_library.assistant.translation_scope_state": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation_scope_state.py",
+            "sha256": "a717b5f1aba411c1a90a834e67840a6d28ad511c17a8922df5a4690189429686"
+          },
+          "carr_library.assistant.translation_selection": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation_selection.py",
+            "sha256": "2f17542de61ea6b88ae185ffc91daaa2ab3d1e7ef5609266d2361f36c2ddafe8"
+          },
+          "carr_library.assistant.translation_state": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation_state.py",
+            "sha256": "08b9f2d890d50730137e3a0fd2e6034f74e8fba5289b185bbbe9f6a54b77a7e3"
+          },
+          "carr_library.library_backup": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\library_backup.py",
+            "sha256": "22e553adc507439fb096239149c6497528371e04fefdc252267220777bfeca15"
+          },
+          "carr_library.providers": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\providers.py",
+            "sha256": "aa4933b4c85ff2d58436d447f0765a852492b27281bb4872d9c35b5f66c47bc5"
+          },
+          "carr_library.ui.translation_scope_dialog": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\ui\\translation_scope_dialog.py",
+            "sha256": "1a349ba27fba8d9f08b4eac786b0af56c4a3264196919e91c7674ba96d451c41"
+          }
+        },
+        "native_controls": true,
+        "native_event_loop": "owned-modal-unwound",
+        "nvda": "NOT_RUN",
+        "per_item_approval": true,
+        "quotation_authority": false,
+        "runtime_cleanup": "PASS",
+        "schema": "carr-native-scoped-translation/1",
+        "source_immutable": true,
+        "status": "PASS",
+        "structure_preserved": true,
+        "synthetic_provider_requests": 5,
+        "translated_blocks": 4,
+        "translation_quality": "NOT_QUALIFIED",
+        "vault_cleanup": "PASS",
+        "windows": true
+      },
+      "member": {
+        "name": "native-batch.json",
+        "bytes": 3865,
+        "sha256": "caf6e6063e2cc8771ee3a0ec1a1e59e935c8990664c031936a6e2f1c6a1c7664"
+      },
+      "exact_matches_gate": true,
+      "required_fields_verified": true
+    },
+    "existing-chapter": {
+      "receipt": {
+        "actual_credential_vault": "PASS",
+        "actual_google_api": "NOT_RUN",
+        "approval_and_folder_picker": "injected explicit synthetic decisions",
+        "derivative_hashes": {
+          "bilingual.html": "fb45b23e81c9aa71a7eb1b64f9328fcb6109e7410a22a499d4b48af54d8eb0b0",
+          "bilingual.txt": "38ab81c9377a171a8baa2fb0b302d5ae07caacba41bc9a42c5cfc0a28ac11caa",
+          "original-selected.json": "2007e65af55803b198c6e10fd916e74ca719fbf72e81eb0987709c7c20ac6e7e",
+          "translated.txt": "761bee642d049695378514524c546d92ba5d9949a72097a7608f8b9725b7bf2f",
+          "translation-structure.json": "a91647e561d2806e52562b408734f783893a7dff8d1c4d01b3a8433460077fe2"
+        },
+        "documents": 1,
+        "fixture_helper_sha256": "33ea4426a840d0f6536a33efdb406a8930d5b412a183254b539436d5cc97e59a",
+        "isolated": true,
+        "keyboard_focus": true,
+        "mode": "chapter",
+        "module_origins": {
+          "carr_library.application": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\application.py",
+            "sha256": "0e0a13835767b2a64f8cdcfa0f09e7dc78ed9f148afb0f5635b513c06a9a41d8"
+          },
+          "carr_library.assistant.translation": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation.py",
+            "sha256": "de51e92b136222019968c703123f34e2cf14baf89a74c4bafb989f12038bd7f4"
+          },
+          "carr_library.assistant.translation_scope": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation_scope.py",
+            "sha256": "30fc471f973ba076b5afad722277a21c91f7721ee317b73d9b9efecb235c0c80"
+          },
+          "carr_library.assistant.translation_scope_state": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation_scope_state.py",
+            "sha256": "a717b5f1aba411c1a90a834e67840a6d28ad511c17a8922df5a4690189429686"
+          },
+          "carr_library.assistant.translation_selection": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation_selection.py",
+            "sha256": "2f17542de61ea6b88ae185ffc91daaa2ab3d1e7ef5609266d2361f36c2ddafe8"
+          },
+          "carr_library.assistant.translation_state": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation_state.py",
+            "sha256": "08b9f2d890d50730137e3a0fd2e6034f74e8fba5289b185bbbe9f6a54b77a7e3"
+          },
+          "carr_library.library_backup": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\library_backup.py",
+            "sha256": "22e553adc507439fb096239149c6497528371e04fefdc252267220777bfeca15"
+          },
+          "carr_library.providers": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\providers.py",
+            "sha256": "aa4933b4c85ff2d58436d447f0765a852492b27281bb4872d9c35b5f66c47bc5"
+          },
+          "carr_library.ui.translation_scope_dialog": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\ui\\translation_scope_dialog.py",
+            "sha256": "1a349ba27fba8d9f08b4eac786b0af56c4a3264196919e91c7674ba96d451c41"
+          }
+        },
+        "native_controls": true,
+        "native_event_loop": "owned-modal-unwound",
+        "nvda": "NOT_RUN",
+        "per_item_approval": true,
+        "quotation_authority": false,
+        "runtime_cleanup": "PASS",
+        "schema": "carr-native-scoped-translation/1",
+        "source_immutable": true,
+        "status": "PASS",
+        "structure_preserved": true,
+        "synthetic_provider_requests": 2,
+        "translated_blocks": 1,
+        "translation_quality": "NOT_QUALIFIED",
+        "vault_cleanup": "PASS",
+        "windows": true
+      },
+      "member": {
+        "name": "native-chapter.json",
+        "bytes": 3867,
+        "sha256": "a45c29d9b8708d2f25419c9ed5cbc1af2dffda9adf76135f6d399f11b3b89977"
+      },
+      "exact_matches_gate": true,
+      "required_fields_verified": true
+    },
+    "existing-document": {
+      "receipt": {
+        "actual_credential_vault": "PASS",
+        "actual_google_api": "NOT_RUN",
+        "approval_and_folder_picker": "injected explicit synthetic decisions",
+        "derivative_hashes": {
+          "bilingual.html": "1829019761bac8e0716e7c0b73663c33a1782998b1e0cf05898a42e3c37d69df",
+          "bilingual.txt": "013f9c9f2bff7fe66111d37f2842a983f4da5bf1269c399655a86a8ce7510ec3",
+          "original-selected.json": "2e65d172811a1c910b198cd5dbcabd918230bd691480ab2278f15aaf54f1a7c7",
+          "translated.txt": "51a5e107eb9e777704953276bdf572e65c6a18ccac5d04c8964470d90a5d20ae",
+          "translation-structure.json": "ee221e8b28ce42e8a5c82b10d5e064723f250388a8c52e585c3ce9e5a669e1ad"
+        },
+        "documents": 1,
+        "fixture_helper_sha256": "33ea4426a840d0f6536a33efdb406a8930d5b412a183254b539436d5cc97e59a",
+        "isolated": true,
+        "keyboard_focus": true,
+        "mode": "document",
+        "module_origins": {
+          "carr_library.application": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\application.py",
+            "sha256": "0e0a13835767b2a64f8cdcfa0f09e7dc78ed9f148afb0f5635b513c06a9a41d8"
+          },
+          "carr_library.assistant.translation": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation.py",
+            "sha256": "de51e92b136222019968c703123f34e2cf14baf89a74c4bafb989f12038bd7f4"
+          },
+          "carr_library.assistant.translation_scope": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation_scope.py",
+            "sha256": "30fc471f973ba076b5afad722277a21c91f7721ee317b73d9b9efecb235c0c80"
+          },
+          "carr_library.assistant.translation_scope_state": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation_scope_state.py",
+            "sha256": "a717b5f1aba411c1a90a834e67840a6d28ad511c17a8922df5a4690189429686"
+          },
+          "carr_library.assistant.translation_selection": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation_selection.py",
+            "sha256": "2f17542de61ea6b88ae185ffc91daaa2ab3d1e7ef5609266d2361f36c2ddafe8"
+          },
+          "carr_library.assistant.translation_state": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation_state.py",
+            "sha256": "08b9f2d890d50730137e3a0fd2e6034f74e8fba5289b185bbbe9f6a54b77a7e3"
+          },
+          "carr_library.library_backup": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\library_backup.py",
+            "sha256": "22e553adc507439fb096239149c6497528371e04fefdc252267220777bfeca15"
+          },
+          "carr_library.providers": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\providers.py",
+            "sha256": "aa4933b4c85ff2d58436d447f0765a852492b27281bb4872d9c35b5f66c47bc5"
+          },
+          "carr_library.ui.translation_scope_dialog": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\ui\\translation_scope_dialog.py",
+            "sha256": "1a349ba27fba8d9f08b4eac786b0af56c4a3264196919e91c7674ba96d451c41"
+          }
+        },
+        "native_controls": true,
+        "native_event_loop": "owned-modal-unwound",
+        "nvda": "NOT_RUN",
+        "per_item_approval": true,
+        "quotation_authority": false,
+        "runtime_cleanup": "PASS",
+        "schema": "carr-native-scoped-translation/1",
+        "source_immutable": true,
+        "status": "PASS",
+        "structure_preserved": true,
+        "synthetic_provider_requests": 3,
+        "translated_blocks": 2,
+        "translation_quality": "NOT_QUALIFIED",
+        "vault_cleanup": "PASS",
+        "windows": true
+      },
+      "member": {
+        "name": "native-document.json",
+        "bytes": 3868,
+        "sha256": "5792b45cbff8dab4903eab5ec3322ce75d59cf298c3d0f30ca1b1e68c1d418e1"
+      },
+      "exact_matches_gate": true,
+      "required_fields_verified": true
+    },
+    "existing-selected-advanced": {
+      "receipt": {
+        "actual_credential_vault": "PASS",
+        "actual_google_api": "NOT_RUN",
+        "approval_and_folder_picker": "injected explicit synthetic decisions",
+        "derivative_hashes": {
+          "bilingual.txt": "09efa672e7712ea19ea58eaf538d836d047c0ec339c0e5eac6925bf6ef708d3d",
+          "original.txt": "b44b2e3d845324b0316d94bb43e1d968c00f63f1971106211e012cebecab7bf1",
+          "translated.txt": "117baa0a361e452b5ecd7f0324c3747038b202ca53f07111c43d84c851eb2af2",
+          "translation.narration.json": "57d2239b23a1947401b14fec3ad9b7bc84aefc51f18c880994bb52d915f709b0"
+        },
+        "directional_languages": true,
+        "exact_reviewed_pair": "en->uk",
+        "explicit_advanced_model": true,
+        "glossary_verified": true,
+        "installed_module": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\providers.py",
+        "native_controls": true,
+        "native_event_loop": "owned-modal-unwound",
+        "nvda": "NOT_RUN",
+        "quotation_authority": false,
+        "runtime_cleanup": "PASS",
+        "schema": "carr-native-translation-v3-smoke/1",
+        "source_immutable": true,
+        "status": "PASS",
+        "synthetic_provider_requests": 2,
+        "vault_cleanup": "PASS"
+      },
+      "member": {
+        "name": "native-selected-advanced.json",
+        "bytes": 1154,
+        "sha256": "f48817993253062bb36ce58cb79f513274311397d2d35be81117b3a19b0ae05e"
+      },
+      "exact_matches_gate": true,
+      "required_fields_verified": true
+    },
+    "local-batch": {
+      "receipt": {
+        "actual_credential_vault": "NOT_USED",
+        "actual_google_api": "NOT_RUN",
+        "actual_local_engine": "NOT_RUN",
+        "approval_and_folder_picker": "injected explicit synthetic decisions",
+        "credential_calls": 0,
+        "derivative_hashes": {
+          "bilingual.html": "a344a2683b2387c2f866134524555454ab8482c4ef7cc262654dddc163ef915f",
+          "bilingual.txt": "61fbd9d039ea004a026ece11660fd14adb63107f1f85c1e4a40ad0496b041226",
+          "original-selected.json": "259a167b4181b4d1a0620286e9d867f2b7c8b798417e3bc19dfb9b6b1f5ce6fd",
+          "translated.txt": "f767224722855198d0e10b54c5076e4b0d3f3e8f757662aa5d86f1c5cf8e32c4",
+          "translation-structure.json": "79b0d3002cfc5d7bf82e7769511c446ca9bd7af9312a91f4f4c5f691a84a3bfa"
+        },
+        "documents": 2,
+        "fixture_helper_sha256": "33ea4426a840d0f6536a33efdb406a8930d5b412a183254b539436d5cc97e59a",
+        "isolated": true,
+        "keyboard_focus": true,
+        "local_adapter": "libretranslate-local",
+        "mode": "batch",
+        "module_origins": {
+          "carr_library.application": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\application.py",
+            "sha256": "0e0a13835767b2a64f8cdcfa0f09e7dc78ed9f148afb0f5635b513c06a9a41d8"
+          },
+          "carr_library.assistant.translation": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation.py",
+            "sha256": "de51e92b136222019968c703123f34e2cf14baf89a74c4bafb989f12038bd7f4"
+          },
+          "carr_library.assistant.translation_scope": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation_scope.py",
+            "sha256": "30fc471f973ba076b5afad722277a21c91f7721ee317b73d9b9efecb235c0c80"
+          },
+          "carr_library.assistant.translation_scope_state": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation_scope_state.py",
+            "sha256": "a717b5f1aba411c1a90a834e67840a6d28ad511c17a8922df5a4690189429686"
+          },
+          "carr_library.assistant.translation_selection": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation_selection.py",
+            "sha256": "2f17542de61ea6b88ae185ffc91daaa2ab3d1e7ef5609266d2361f36c2ddafe8"
+          },
+          "carr_library.assistant.translation_state": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation_state.py",
+            "sha256": "08b9f2d890d50730137e3a0fd2e6034f74e8fba5289b185bbbe9f6a54b77a7e3"
+          },
+          "carr_library.library_backup": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\library_backup.py",
+            "sha256": "22e553adc507439fb096239149c6497528371e04fefdc252267220777bfeca15"
+          },
+          "carr_library.providers": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\providers.py",
+            "sha256": "aa4933b4c85ff2d58436d447f0765a852492b27281bb4872d9c35b5f66c47bc5"
+          },
+          "carr_library.ui.translation_scope_dialog": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\ui\\translation_scope_dialog.py",
+            "sha256": "1a349ba27fba8d9f08b4eac786b0af56c4a3264196919e91c7674ba96d451c41"
+          }
+        },
+        "native_controls": true,
+        "native_event_loop": "owned-modal-unwound",
+        "nvda": "NOT_RUN",
+        "per_item_approval": true,
+        "quotation_authority": false,
+        "runtime_cleanup": "PASS",
+        "schema": "carr-native-scoped-translation/1",
+        "source_immutable": true,
+        "status": "PASS",
+        "structure_preserved": true,
+        "synthetic_provider_requests": 5,
+        "translated_blocks": 4,
+        "translation_quality": "NOT_QUALIFIED",
+        "vault_cleanup": "PASS",
+        "windows": true,
+        "zero_remote_reservation": true
+      },
+      "member": {
+        "name": "native-local-batch.json",
+        "bytes": 4012,
+        "sha256": "a4f9293a753b9ce6727391afc45a12fb415fe21346170cc7b9517b58382ffa1a"
+      },
+      "exact_matches_gate": true,
+      "required_fields_verified": true
+    },
+    "local-chapter": {
+      "receipt": {
+        "actual_credential_vault": "NOT_USED",
+        "actual_google_api": "NOT_RUN",
+        "actual_local_engine": "NOT_RUN",
+        "approval_and_folder_picker": "injected explicit synthetic decisions",
+        "credential_calls": 0,
+        "derivative_hashes": {
+          "bilingual.html": "fb45b23e81c9aa71a7eb1b64f9328fcb6109e7410a22a499d4b48af54d8eb0b0",
+          "bilingual.txt": "38ab81c9377a171a8baa2fb0b302d5ae07caacba41bc9a42c5cfc0a28ac11caa",
+          "original-selected.json": "605df6561c4233cd7fc781bd2f8deaddf1691b0dbaafa7dd8a4c1bc8417346d8",
+          "translated.txt": "761bee642d049695378514524c546d92ba5d9949a72097a7608f8b9725b7bf2f",
+          "translation-structure.json": "c364c0add7aa5b4bcdf2e1f409b9f194654cb8790f9ea05ad832493d79879a2b"
+        },
+        "documents": 1,
+        "fixture_helper_sha256": "33ea4426a840d0f6536a33efdb406a8930d5b412a183254b539436d5cc97e59a",
+        "isolated": true,
+        "keyboard_focus": true,
+        "local_adapter": "libretranslate-local",
+        "mode": "chapter",
+        "module_origins": {
+          "carr_library.application": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\application.py",
+            "sha256": "0e0a13835767b2a64f8cdcfa0f09e7dc78ed9f148afb0f5635b513c06a9a41d8"
+          },
+          "carr_library.assistant.translation": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation.py",
+            "sha256": "de51e92b136222019968c703123f34e2cf14baf89a74c4bafb989f12038bd7f4"
+          },
+          "carr_library.assistant.translation_scope": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation_scope.py",
+            "sha256": "30fc471f973ba076b5afad722277a21c91f7721ee317b73d9b9efecb235c0c80"
+          },
+          "carr_library.assistant.translation_scope_state": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation_scope_state.py",
+            "sha256": "a717b5f1aba411c1a90a834e67840a6d28ad511c17a8922df5a4690189429686"
+          },
+          "carr_library.assistant.translation_selection": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation_selection.py",
+            "sha256": "2f17542de61ea6b88ae185ffc91daaa2ab3d1e7ef5609266d2361f36c2ddafe8"
+          },
+          "carr_library.assistant.translation_state": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation_state.py",
+            "sha256": "08b9f2d890d50730137e3a0fd2e6034f74e8fba5289b185bbbe9f6a54b77a7e3"
+          },
+          "carr_library.library_backup": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\library_backup.py",
+            "sha256": "22e553adc507439fb096239149c6497528371e04fefdc252267220777bfeca15"
+          },
+          "carr_library.providers": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\providers.py",
+            "sha256": "aa4933b4c85ff2d58436d447f0765a852492b27281bb4872d9c35b5f66c47bc5"
+          },
+          "carr_library.ui.translation_scope_dialog": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\ui\\translation_scope_dialog.py",
+            "sha256": "1a349ba27fba8d9f08b4eac786b0af56c4a3264196919e91c7674ba96d451c41"
+          }
+        },
+        "native_controls": true,
+        "native_event_loop": "owned-modal-unwound",
+        "nvda": "NOT_RUN",
+        "per_item_approval": true,
+        "quotation_authority": false,
+        "runtime_cleanup": "PASS",
+        "schema": "carr-native-scoped-translation/1",
+        "source_immutable": true,
+        "status": "PASS",
+        "structure_preserved": true,
+        "synthetic_provider_requests": 2,
+        "translated_blocks": 1,
+        "translation_quality": "NOT_QUALIFIED",
+        "vault_cleanup": "PASS",
+        "windows": true,
+        "zero_remote_reservation": true
+      },
+      "member": {
+        "name": "native-local-chapter.json",
+        "bytes": 4014,
+        "sha256": "51253fa485cfb8ec164af41bd7fda8ba2042ab3a67ab42ad9ddc38b5b25ab5bf"
+      },
+      "exact_matches_gate": true,
+      "required_fields_verified": true
+    },
+    "local-document": {
+      "receipt": {
+        "actual_credential_vault": "NOT_USED",
+        "actual_google_api": "NOT_RUN",
+        "actual_local_engine": "NOT_RUN",
+        "approval_and_folder_picker": "injected explicit synthetic decisions",
+        "credential_calls": 0,
+        "derivative_hashes": {
+          "bilingual.html": "1829019761bac8e0716e7c0b73663c33a1782998b1e0cf05898a42e3c37d69df",
+          "bilingual.txt": "013f9c9f2bff7fe66111d37f2842a983f4da5bf1269c399655a86a8ce7510ec3",
+          "original-selected.json": "a6bf3ad1b9d7aea0c7353489e15f9a286835d2f66c25321d447d192f74fa67cc",
+          "translated.txt": "51a5e107eb9e777704953276bdf572e65c6a18ccac5d04c8964470d90a5d20ae",
+          "translation-structure.json": "adc8a19852810b384c04ba6aa956e51cc566095c7767e92dbddc7a89914ee0d3"
+        },
+        "documents": 1,
+        "fixture_helper_sha256": "33ea4426a840d0f6536a33efdb406a8930d5b412a183254b539436d5cc97e59a",
+        "isolated": true,
+        "keyboard_focus": true,
+        "local_adapter": "libretranslate-local",
+        "mode": "document",
+        "module_origins": {
+          "carr_library.application": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\application.py",
+            "sha256": "0e0a13835767b2a64f8cdcfa0f09e7dc78ed9f148afb0f5635b513c06a9a41d8"
+          },
+          "carr_library.assistant.translation": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation.py",
+            "sha256": "de51e92b136222019968c703123f34e2cf14baf89a74c4bafb989f12038bd7f4"
+          },
+          "carr_library.assistant.translation_scope": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation_scope.py",
+            "sha256": "30fc471f973ba076b5afad722277a21c91f7721ee317b73d9b9efecb235c0c80"
+          },
+          "carr_library.assistant.translation_scope_state": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation_scope_state.py",
+            "sha256": "a717b5f1aba411c1a90a834e67840a6d28ad511c17a8922df5a4690189429686"
+          },
+          "carr_library.assistant.translation_selection": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation_selection.py",
+            "sha256": "2f17542de61ea6b88ae185ffc91daaa2ab3d1e7ef5609266d2361f36c2ddafe8"
+          },
+          "carr_library.assistant.translation_state": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation_state.py",
+            "sha256": "08b9f2d890d50730137e3a0fd2e6034f74e8fba5289b185bbbe9f6a54b77a7e3"
+          },
+          "carr_library.library_backup": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\library_backup.py",
+            "sha256": "22e553adc507439fb096239149c6497528371e04fefdc252267220777bfeca15"
+          },
+          "carr_library.providers": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\providers.py",
+            "sha256": "aa4933b4c85ff2d58436d447f0765a852492b27281bb4872d9c35b5f66c47bc5"
+          },
+          "carr_library.ui.translation_scope_dialog": {
+            "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\ui\\translation_scope_dialog.py",
+            "sha256": "1a349ba27fba8d9f08b4eac786b0af56c4a3264196919e91c7674ba96d451c41"
+          }
+        },
+        "native_controls": true,
+        "native_event_loop": "owned-modal-unwound",
+        "nvda": "NOT_RUN",
+        "per_item_approval": true,
+        "quotation_authority": false,
+        "runtime_cleanup": "PASS",
+        "schema": "carr-native-scoped-translation/1",
+        "source_immutable": true,
+        "status": "PASS",
+        "structure_preserved": true,
+        "synthetic_provider_requests": 3,
+        "translated_blocks": 2,
+        "translation_quality": "NOT_QUALIFIED",
+        "vault_cleanup": "PASS",
+        "windows": true,
+        "zero_remote_reservation": true
+      },
+      "member": {
+        "name": "native-local-document.json",
+        "bytes": 4015,
+        "sha256": "e274fe9c0732fc95e7ff1643f658b438c037b58364b21851943e5f3eddbad118"
+      },
+      "exact_matches_gate": true,
+      "required_fields_verified": true
+    },
+    "local-selected": {
+      "receipt": {
+        "actual_credential_vault": "NOT_USED",
+        "actual_google_api": "NOT_RUN",
+        "actual_local_engine": "NOT_RUN",
+        "approval_and_folder_picker": "injected explicit synthetic decisions",
+        "credential_calls": 0,
+        "derivative_hashes": {
+          "bilingual.txt": "09efa672e7712ea19ea58eaf538d836d047c0ec339c0e5eac6925bf6ef708d3d",
+          "original.txt": "b44b2e3d845324b0316d94bb43e1d968c00f63f1971106211e012cebecab7bf1",
+          "translated.txt": "117baa0a361e452b5ecd7f0324c3747038b202ca53f07111c43d84c851eb2af2",
+          "translation.narration.json": "57d2239b23a1947401b14fec3ad9b7bc84aefc51f18c880994bb52d915f709b0"
+        },
+        "directional_languages": true,
+        "exact_reviewed_pair": "en->uk",
+        "installed_module": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\providers.py",
+        "local_adapter": "libretranslate-local",
+        "native_controls": true,
+        "native_event_loop": "owned-modal-unwound",
+        "nvda": "NOT_RUN",
+        "quotation_authority": false,
+        "runtime_cleanup": "PASS",
+        "schema": "carr-native-local-translation/1",
+        "source_immutable": true,
+        "status": "PASS",
+        "synthetic_provider_requests": 2,
+        "translation_quality": "NOT_QUALIFIED",
+        "vault_cleanup": "PASS",
+        "zero_remote_reservation": true
+      },
+      "member": {
+        "name": "native-local-selected.json",
+        "bytes": 1275,
+        "sha256": "67ab0bbbd61ed9582c887fd7df8a2fdcf3b0b31a408042725cfb2e45649d255a"
+      },
+      "exact_matches_gate": true,
+      "required_fields_verified": true
+    }
+  },
+  "origins": {
+    "existing/installed-origins.json": {
+      "isolated": true,
+      "module_origins": {
+        "bootstrap": {
+          "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\bootstrap\\__init__.py",
+          "sha256": "a90e8b1d37413ef4fbc54cdbea7f67a8c2a09ac01ed8cee54e5b9c47fe8fc930"
+        },
+        "carr_library": {
+          "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\__init__.py",
+          "sha256": "92af4b25990d9f3dc0bacd2625e4629be1b94ad86d31244972592b7dad151dbf"
+        }
+      }
+    },
+    "existing/source-origins.json": {
+      "isolated": false,
+      "module_origins": {
+        "bootstrap": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\bootstrap\\__init__.py",
+          "sha256": "a90e8b1d37413ef4fbc54cdbea7f67a8c2a09ac01ed8cee54e5b9c47fe8fc930"
+        },
+        "carr_library": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\__init__.py",
+          "sha256": "92af4b25990d9f3dc0bacd2625e4629be1b94ad86d31244972592b7dad151dbf"
+        }
+      }
+    },
+    "local/installed-origins.json": {
+      "isolated": true,
+      "module_origins": {
+        "bootstrap": {
+          "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\bootstrap\\__init__.py",
+          "sha256": "a90e8b1d37413ef4fbc54cdbea7f67a8c2a09ac01ed8cee54e5b9c47fe8fc930"
+        },
+        "carr_library": {
+          "path": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\__init__.py",
+          "sha256": "92af4b25990d9f3dc0bacd2625e4629be1b94ad86d31244972592b7dad151dbf"
+        }
+      }
+    },
+    "local/source-origins.json": {
+      "isolated": false,
+      "module_origins": {
+        "bootstrap": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\bootstrap\\__init__.py",
+          "sha256": "a90e8b1d37413ef4fbc54cdbea7f67a8c2a09ac01ed8cee54e5b9c47fe8fc930"
+        },
+        "carr_library": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\__init__.py",
+          "sha256": "92af4b25990d9f3dc0bacd2625e4629be1b94ad86d31244972592b7dad151dbf"
+        }
+      }
+    }
+  },
+  "gate_member": {
+    "name": "local-translation-gate.json",
+    "bytes": 98109,
+    "sha256": "9bd5dc1f56df570184ba4c2d73e8db61826993c34020e557ed5aeae50271f8c2"
+  },
+  "installed_identity": {
+    "files": {
+      "canonical_sha256": "1109edc17512385ad7dd46aa31ddf1e9b02ecb4ab2e385824eb36fd9102d6840",
+      "entries": 368
+    },
+    "isolated": true,
+    "module_origins": {
+      "bootstrap": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\bootstrap\\__init__.py",
+      "carr_library": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed\\Lib\\site-packages\\carr_library\\__init__.py"
+    },
+    "prefix": "D:\\a\\_temp\\carr-local-translation-46023226615-1\\installed",
+    "wheel_sha256": "a89253618e0fec08d0ef8ec7ad1dbda2204276bebf5abd94795035c47ecc4859"
+  },
+  "wheel_source": {
+    "payload_files": 437,
+    "project_name": "universal-research-library",
+    "project_version": "0.2.0.dev1",
+    "required_runtime_files": 368,
+    "source_commit": "43f6908c82982630c85e6b72ebf7b940dfb06b45",
+    "wheel_sha256": "a89253618e0fec08d0ef8ec7ad1dbda2204276bebf5abd94795035c47ecc4859"
+  },
+  "fixture_and_harness_sha256": {
+    "packaging/source_wheel.py": "7a65579d14bde1de0a1bf4392150faa6111a741ca4c5fa39ecadb1ffb106e28b",
+    "scripts/ci_check.py": "a7e90c3a14dc51b78c9af17850a7038bf21513cc5ba41466293cc853cd0e2842",
+    "scripts/ci_watchdog.py": "e02be6a6c3406bdf1d9d4c24673363894d03a1ee7948b3b77d6b20fcc2bfc057",
+    "scripts/local_translation_acceptance.py": "2618c7d2e92d944695febb893584fa65453c94f8d6a22b24275d596bc868ed3f",
+    "scripts/local_translation_oracles.json": "5db81bd68c240aef1718437aba4205b029831552792d6726e0b7d4991de3f9c7",
+    "scripts/translation_scope_acceptance.py": "2b03b9202b3d548fcdbb220b67fec852249a1100d0b619dd0830b91df7bd4a69",
+    "scripts/translation_scope_oracles.json": "e46753a125fe106799dbe1b55d200f154e4e3ff369de40fff01111de34397f25",
+    "scripts/windows_translation_local_smoke.py": "7aa919464804f7acac897379c072a3ad8207eabf7ecc346d908ae399925def2e",
+    "scripts/windows_translation_scope_smoke.py": "055f3fccdc166cc0d990a1bd5e5235b978db5985fcd54f5ef1811111223a03fc",
+    "scripts/windows_translation_v3_smoke.py": "b4322ba881f67e6938f89177386a018e093c447776ab7b20c44cd8805321fd1a",
+    "tests/assistant/test_translation.py": "6864db8fd261f6a5674e7234ca6cdaaf99383da29a29aa3b18099827ed21ed19",
+    "tests/assistant/test_translation_advanced.py": "b4d91de42abe609a0d68a8e86a092c7e224e02f045989ff40a96f79391deeb3b",
+    "tests/assistant/test_translation_scopes.py": "545fd8c4c19029a05b6d754c2aae6cd59bb0f73222705069fa833297bb009f92",
+    "tests/e2e/test_google_translation_gateway.py": "2ab531699d6b62586799e5043b9a0f8f83035a64ce43cf411e8922436126f071",
+    "tests/e2e/test_google_translation_v3.py": "474c372b0749617079ae2945e171c0f8f4f0bddb44138b66664b1b3df6c65e3c",
+    "tests/loopback/test_translation_local_adapter.py": "2e913e3d138e82a66eaa41354272485a169ff8fc966817a09d1bd947cddcd1cc",
+    "tests/reader/test_ebook_reader.py": "33ea4426a840d0f6536a33efdb406a8930d5b412a183254b539436d5cc97e59a",
+    "tests/ui/test_translation_advanced.py": "8ebfb2e33e5cd492076c77ec79ab854b2d0f17f2a0faba5a0ce3eb9fdc766ba4",
+    "tests/ui/test_translation_dialog.py": "ba1a092cbf769c7721c1f5003dfcc8786d4092e5f39fe1cfc29f01305da100a6",
+    "tests/ui/test_translation_scopes.py": "a97ac36d4bff2356f1e802652dc42b6aa1fef150c67fa98858640bd344d547c7"
+  },
+  "oracles": {
+    "existing": {
+      "commit": "43f6908c82982630c85e6b72ebf7b940dfb06b45",
+      "path": "scripts/translation_scope_oracles.json",
+      "blob": "193a894827037bcb243353dc3f49b36c09c1914b",
+      "cases": 268
+    },
+    "local": {
+      "commit": "43f6908c82982630c85e6b72ebf7b940dfb06b45",
+      "path": "scripts/local_translation_oracles.json",
+      "blob": "59938e9643c825c1d25b1238e66c8a86f49aa816",
+      "cases": 38
+    }
+  },
+  "validation": [
+    "All four raw JUnit function Counters exactly equal the corresponding exact-head source oracles; zero failures/errors/skips.",
+    "All eight raw native JSON receipts exactly equal the gate's corresponding result and satisfy immutable originals, explicit approval, no quotation authority, completed owned event loop and both cleanup receipts.",
+    "Scoped native flows retain exact nine-module installed origin maps, document counts and translated block/request counts; selected-text flows retain exact en->uk and two synthetic requests.",
+    "All four raw population origin receipts match the gate; installed tests declare isolated=true and both package roots under the exact installed prefix.",
+    "Source-bound original gate verified complete installed-file and wheel identities. This inert reread preserves those exact receipts and canonical whole-map hashes; it does not execute the candidate again."
+  ],
+  "limits": {
+    "actual_google_api": "NOT_RUN",
+    "actual_local_engine": "NOT_RUN",
+    "production_models": "NOT_RUN",
+    "translation_quality": "NOT_QUALIFIED",
+    "nvda": "NOT_RUN",
+    "physical_audio": "NOT_RUN",
+    "scope": "Public synthetic loopback HTTP plus native UI boundary fixtures only; no translator quality or paid-service inference."
+  }
+}

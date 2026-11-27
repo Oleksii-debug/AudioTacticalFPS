@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "recorded_utc": "2026-11-27T15:22:00Z",
+  "recorded_utc": "2026-11-27 16:21:41 UTC",
   "feature": "Selected self-contained DjVu embedded-text reading",
   "qualified_suffixes": [
     ".djvu"
@@ -115,7 +115,304 @@
     "job_log_read": true,
     "artifact_metadata_read": true,
     "portable_population_enforced_by": "legacy_conversion_acceptance.py exact function Counter and 162-case checks, followed by the workflow's exact receipt checks",
-    "independent_archive_read": "PENDING: ef82bb1905e37bf27cb7ae3927b0dba3101acb09 / run 46023582044",
+    "independent_archive_read": {
+      "status": "PASS",
+      "reader_commit": "ef82bb1905e37bf27cb7ae3927b0dba3101acb09",
+      "run_id": 46023582044,
+      "job_id": 140589124613,
+      "scope": "Exact 00ed artifact 15208473846; inert ZIP bytes, JSON/XML/text only.",
+      "archive_size_sha256_run_head_exact": true,
+      "archive_code_executed": false,
+      "function_counter_comparison": "Both raw 162-case portable JUnits and both 4-case native JUnits equal the exact 00ed oracle; no failures, errors or skipped cases.",
+      "members": [
+        {
+          "name": "before-execution.json",
+          "bytes": 48368,
+          "sha256": "6bd3aefca79f8987fe3355feb3adf91f034619492266c16064bb66c5d5821c14"
+        },
+        {
+          "name": "boundaries/installed-junit.xml",
+          "bytes": 28486,
+          "sha256": "b961f512ad71305aa269bdbba3d94e43d156a8138a93687350ad2068f7c50759"
+        },
+        {
+          "name": "boundaries/installed-origins.json",
+          "bytes": 414,
+          "sha256": "f4b9a8d162c41555ab00130abfdda510fbba39450d81a0b292da4c3cda2c8599"
+        },
+        {
+          "name": "boundaries/installed-pytest.txt",
+          "bytes": 28274,
+          "sha256": "fb66be03c9974a4b4cb3195f9482e056f600e1a6b1697bc1e4e2e3672ce823a8"
+        },
+        {
+          "name": "boundaries/source-junit.xml",
+          "bytes": 28486,
+          "sha256": "83c676268b42026c0c75279a7b840e557500f28cd02fc6080ff182f405ab12e2"
+        },
+        {
+          "name": "boundaries/source-origins.json",
+          "bytes": 418,
+          "sha256": "9cf0c6f98f68730018062b2bbaf0b69792aa4938b81958555927f6f14c759dcc"
+        },
+        {
+          "name": "boundaries/source-pytest.txt",
+          "bytes": 28287,
+          "sha256": "6244a57b8f143b5ee2e4b65ce87ae9858ed20cca7a6fa82207dbc1507cc0bac5"
+        },
+        {
+          "name": "native/installed-junit.xml",
+          "bytes": 870,
+          "sha256": "a18e32284884062b9c5c94dd957bd0c178b74846c3edbaa8468425cf67ccd827"
+        },
+        {
+          "name": "native/installed-origins.json",
+          "bytes": 414,
+          "sha256": "f4b9a8d162c41555ab00130abfdda510fbba39450d81a0b292da4c3cda2c8599"
+        },
+        {
+          "name": "legacy-converter-gate.json",
+          "bytes": 68842,
+          "sha256": "0626fe28afd84dc21213f08fe9b29e68f9407856d4ee7e00682fe2b4ba536a6e"
+        },
+        {
+          "name": "native/installed-pytest.txt",
+          "bytes": 1900,
+          "sha256": "48c130fe2474eacf2127914fdf0727311a21df30bec43f0fb2688eabc0a31f7d"
+        },
+        {
+          "name": "native/source-junit.xml",
+          "bytes": 870,
+          "sha256": "c5b225267f72c75b9f46733b04fe4e10bce74ff092a08155af98b9525be3eda4"
+        },
+        {
+          "name": "native/source-pytest.txt",
+          "bytes": 1897,
+          "sha256": "651be7693b9f44ad68174850d8b44fb743330f5b1f7bd267157b059d37227a6e"
+        },
+        {
+          "name": "native/source-origins.json",
+          "bytes": 418,
+          "sha256": "9cf0c6f98f68730018062b2bbaf0b69792aa4938b81958555927f6f14c759dcc"
+        },
+        {
+          "name": "publisher-identities.json",
+          "bytes": 5452,
+          "sha256": "f0b8fe201fdb4cca973856bf4a29209cc5519c6f47f553faa39cd5507d005cfa"
+        },
+        {
+          "name": "source-provenance.json",
+          "bytes": 468,
+          "sha256": "c7a0c26c117dcdcb4639b25cb18d20fbc12227bdf374b738f89ecc00d85f09fc"
+        }
+      ],
+      "raw_junit_summaries": [
+        {
+          "artifact": 15208473846,
+          "file": "boundaries/installed-junit.xml",
+          "cases": 162,
+          "failures": 0,
+          "errors": 0,
+          "skips": 0
+        },
+        {
+          "artifact": 15208473846,
+          "file": "boundaries/source-junit.xml",
+          "cases": 162,
+          "failures": 0,
+          "errors": 0,
+          "skips": 0
+        },
+        {
+          "artifact": 15208473846,
+          "file": "native/installed-junit.xml",
+          "cases": 4,
+          "failures": 0,
+          "errors": 0,
+          "skips": 0
+        },
+        {
+          "artifact": 15208473846,
+          "file": "native/source-junit.xml",
+          "cases": 4,
+          "failures": 0,
+          "errors": 0,
+          "skips": 0
+        }
+      ],
+      "portable_function_counter": {
+        "tests.conversion.test_conversion::test_actual_batch_preserves_completed_first_file_when_later_reader_rejects": 1,
+        "tests.conversion.test_conversion::test_actual_docx_uses_ordered_body_and_simple_tables": 1,
+        "tests.conversion.test_conversion::test_actual_epub_uses_spine_instead_of_zip_order": 1,
+        "tests.conversion.test_conversion::test_actual_fb2_reuses_existing_bounded_xml_reader": 1,
+        "tests.conversion.test_conversion::test_actual_pdf_keeps_physical_page_order_without_claiming_printed_labels": 1,
+        "tests.conversion.test_conversion::test_actual_pdf_page_budget_is_checked_before_publication": 1,
+        "tests.conversion.test_conversion::test_actual_worker_keeps_utf8_crlf_formfeed_and_original": 1,
+        "tests.conversion.test_conversion::test_cancel_during_real_private_source_copy_keeps_original": 1,
+        "tests.conversion.test_conversion::test_capability_inventory_matches_current_registry_and_never_enables_legacy": 1,
+        "tests.conversion.test_conversion::test_capability_rejects_reader_version_the_existing_docx_parser_rejects": 1,
+        "tests.conversion.test_conversion::test_current_text_adapters_execute_in_supervised_worker": 3,
+        "tests.conversion.test_conversion::test_existing_output_or_report_never_changes": 2,
+        "tests.conversion.test_conversion::test_first_post_move_sync_failure_removes_only_unchanged_own_text": 3,
+        "tests.conversion.test_conversion::test_only_explicit_inputs_and_output_root_are_authorized": 1,
+        "tests.conversion.test_conversion::test_portable_filename_rejection_precedes_worker": 3,
+        "tests.conversion.test_conversion::test_post_move_sync_failure_preserves_matching_pair_but_is_not_success": 1,
+        "tests.conversion.test_conversion::test_real_resource_rejections_publish_nothing": 3,
+        "tests.conversion.test_conversion::test_receipt_collision_rolls_back_only_new_own_text": 1,
+        "tests.conversion.test_conversion::test_source_change_after_actual_worker_rejects_publication": 1,
+        "tests.conversion.test_conversion::test_unicode_batch_name_fits_portable_component_budget": 1,
+        "tests.conversion.test_conversion::test_worker_rejects_wrong_action_and_extra_request_keys": 1,
+        "tests.conversion.test_conversion_ui::test_image_selection_uses_existing_model_dialog_and_cancel_starts_no_job": 1,
+        "tests.conversion.test_conversion_ui::test_native_flow_passes_both_explicit_selections_to_the_current_service": 1,
+        "tests.conversion.test_conversion_ui::test_office_choice_and_shared_application_broker_reach_existing_worker": 1,
+        "tests.conversion.test_conversion_ui::test_office_picker_cancel_starts_no_worker_or_output": 1,
+        "tests.conversion.test_conversion_ui::test_rtf_converter_picker_cancel_does_not_activate_a_path_tool": 1,
+        "tests.conversion.test_conversion_ui::test_ui_does_not_write_unregistered_files_inside_library": 1,
+        "tests.conversion.test_conversion_ui::test_ui_selects_exact_files_and_uses_existing_job_cancel_event": 1,
+        "tests.conversion.test_legacy_adapters::test_cancel_during_runtime_snapshot_creates_no_manifest": 1,
+        "tests.conversion.test_legacy_adapters::test_chm_ambiguous_or_excessive_listing_never_selects_members": 5,
+        "tests.conversion.test_legacy_adapters::test_chm_known_legacy_doctype_is_inert_and_original_bytes_stay_bound": 4,
+        "tests.conversion.test_legacy_adapters::test_chm_member_path_cannot_escape_or_spoof_listing": 6,
+        "tests.conversion.test_legacy_adapters::test_chm_truncated_member_publishes_no_complete_worker_report": 1,
+        "tests.conversion.test_legacy_adapters::test_chm_undeclared_or_complex_doctype_remains_refused": 4,
+        "tests.conversion.test_legacy_adapters::test_chm_worker_uses_declared_toc_and_existing_inert_html_reader": 1,
+        "tests.conversion.test_legacy_adapters::test_djvu_final_odd_chunk_ends_exactly_at_its_containing_form": 4,
+        "tests.conversion.test_legacy_adapters::test_djvu_final_padding_exception_never_relaxes_chunk_bounds_or_sibling_alignment": 2,
+        "tests.conversion.test_legacy_adapters::test_djvu_framing_and_page_authority_are_bounded": 4,
+        "tests.conversion.test_legacy_adapters::test_djvu_shared_or_external_reference_is_refused_before_native_reader": 1,
+        "tests.conversion.test_legacy_adapters::test_encrypted_palm_header_is_refused_before_native_reader": 2,
+        "tests.conversion.test_legacy_adapters::test_excessive_code_handle_inventory_is_refused_before_any_native_lease": 1,
+        "tests.conversion.test_legacy_adapters::test_fixed_calibre_wrapper_enforces_private_io_and_no_network_or_programs": 5,
+        "tests.conversion.test_legacy_adapters::test_large_component_inventory_keeps_existing_worker_request_bound": 1,
+        "tests.conversion.test_legacy_adapters::test_large_selected_code_closure_keeps_every_reader_until_native_scope_exits": 2,
+        "tests.conversion.test_legacy_adapters::test_native_chm_empty_final_property_keeps_its_delimiter": 2,
+        "tests.conversion.test_legacy_adapters::test_protected_lit_marker_is_refused_before_calibre": 2,
+        "tests.conversion.test_legacy_adapters::test_real_hardlink_alias_remains_refused_after_fresh_windows_stat": 1,
+        "tests.conversion.test_legacy_adapters::test_relative_or_path_discovered_runtime_is_never_selected": 3,
+        "tests.conversion.test_legacy_adapters::test_renamed_or_foreign_book_formats_are_not_conversion_inputs": 5,
+        "tests.conversion.test_legacy_adapters::test_resealed_foreign_inventory_path_is_not_authority": 1,
+        "tests.conversion.test_legacy_adapters::test_selected_component_change_cannot_start_a_conversion": 4,
+        "tests.conversion.test_legacy_adapters::test_tcr_dictionary_and_actual_expansion_are_bounded_before_native_decoder": 3,
+        "tests.conversion.test_legacy_adapters::test_unexecuted_native_formats_never_become_available_from_selection_alone": 8,
+        "tests.conversion.test_legacy_adapters::test_unqualified_service_requires_explicit_fixture_preview": 1,
+        "tests.conversion.test_legacy_adapters::test_windows_cached_directory_metadata_does_not_invalidate_regular_components": 1,
+        "tests.conversion.test_office_selection::test_expired_deadline_never_spawns_a_native_process": 1,
+        "tests.conversion.test_office_selection::test_fixed_adapter_rejects_false_format_before_runtime_admission": 5,
+        "tests.conversion.test_office_selection::test_gui_launcher_is_not_silently_promoted_to_unselected_console": 1,
+        "tests.conversion.test_office_selection::test_native_launch_keeps_existing_owner_and_scrubs_unselected_configuration": 1,
+        "tests.conversion.test_office_selection::test_private_phase_survives_failure_without_publishing_source_or_native_logs": 3,
+        "tests.conversion.test_office_selection::test_profile_is_per_operation_and_disables_active_content_and_external_updates": 1,
+        "tests.conversion.test_office_selection::test_progress_refuses_untrusted_marker_content_and_aliased_marker": 1,
+        "tests.conversion.test_office_selection::test_queued_selection_refuses_new_authority_before_worker": 3,
+        "tests.conversion.test_office_selection::test_selected_console_manifest_binds_both_launchers_before_native_work": 1,
+        "tests.conversion.test_office_selection::test_selected_inventory_checks_fixed_installed_filter_without_executing": 1,
+        "tests.conversion.test_office_selection::test_snapshot_rechecks_earlier_component_after_last_hash": 1,
+        "tests.conversion.test_office_selection::test_staging_budget_and_lookup_failures_cannot_report_complete": 4,
+        "tests.conversion.test_office_selection::test_worker_admission_refuses_changed_or_incomplete_inventory": 5,
+        "tests.conversion.test_selected_adapters::test_additional_budgets_are_typed_and_bounded": 5,
+        "tests.conversion.test_selected_adapters::test_all_headers_are_bounded_before_ocr_runtime_discovery": 3,
+        "tests.conversion.test_selected_adapters::test_document_extension_never_activates_an_implicit_converter": 3,
+        "tests.conversion.test_selected_adapters::test_inventory_distinguishes_optional_adapters_from_unintegrated_legacy": 1,
+        "tests.conversion.test_selected_adapters::test_ocr_flag_requires_an_explicit_typed_model_choice": 1,
+        "tests.conversion.test_selected_adapters::test_queued_conversion_cannot_adopt_a_changed_selected_converter": 3,
+        "tests.conversion.test_selected_adapters::test_raster_header_must_match_extension_before_engine_execution": 1,
+        "tests.conversion.test_selected_adapters::test_rtf_selected_executable_hash_is_rechecked_before_start": 1,
+        "tests.conversion.test_selected_adapters::test_unselected_converter_path_cannot_come_from_source_metadata": 1,
+        "tests.conversion.test_selected_adapters::test_worker_refuses_unapproved_image_adapter_payload": 3
+      },
+      "native_function_counter": {
+        "tests.conversion.test_legacy_adapters_native::test_real_djvu_external_reference_is_refused_before_adjacent_content_read": 1,
+        "tests.conversion.test_legacy_adapters_native::test_real_djvu_without_text_layer_is_not_reported_as_ocr": 1,
+        "tests.conversion.test_legacy_adapters_native::test_real_djvulibre_reads_every_embedded_text_page": 2
+      },
+      "origins": {
+        "boundaries/installed-origins.json": {
+          "isolated": true,
+          "module_origins": {
+            "bootstrap": {
+              "path": "D:\\a\\_temp\\lc-696654a8\\installed\\Lib\\site-packages\\bootstrap\\__init__.py",
+              "sha256": "a90e8b1d37413ef4fbc54cdbea7f67a8c2a09ac01ed8cee54e5b9c47fe8fc930"
+            },
+            "carr_library": {
+              "path": "D:\\a\\_temp\\lc-696654a8\\installed\\Lib\\site-packages\\carr_library\\__init__.py",
+              "sha256": "92af4b25990d9f3dc0bacd2625e4629be1b94ad86d31244972592b7dad151dbf"
+            }
+          }
+        },
+        "boundaries/source-origins.json": {
+          "isolated": false,
+          "module_origins": {
+            "bootstrap": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\bootstrap\\__init__.py",
+              "sha256": "a90e8b1d37413ef4fbc54cdbea7f67a8c2a09ac01ed8cee54e5b9c47fe8fc930"
+            },
+            "carr_library": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\__init__.py",
+              "sha256": "92af4b25990d9f3dc0bacd2625e4629be1b94ad86d31244972592b7dad151dbf"
+            }
+          }
+        },
+        "native/installed-origins.json": {
+          "isolated": true,
+          "module_origins": {
+            "bootstrap": {
+              "path": "D:\\a\\_temp\\lc-696654a8\\installed\\Lib\\site-packages\\bootstrap\\__init__.py",
+              "sha256": "a90e8b1d37413ef4fbc54cdbea7f67a8c2a09ac01ed8cee54e5b9c47fe8fc930"
+            },
+            "carr_library": {
+              "path": "D:\\a\\_temp\\lc-696654a8\\installed\\Lib\\site-packages\\carr_library\\__init__.py",
+              "sha256": "92af4b25990d9f3dc0bacd2625e4629be1b94ad86d31244972592b7dad151dbf"
+            }
+          }
+        },
+        "native/source-origins.json": {
+          "isolated": false,
+          "module_origins": {
+            "bootstrap": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\bootstrap\\__init__.py",
+              "sha256": "a90e8b1d37413ef4fbc54cdbea7f67a8c2a09ac01ed8cee54e5b9c47fe8fc930"
+            },
+            "carr_library": {
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\__init__.py",
+              "sha256": "92af4b25990d9f3dc0bacd2625e4629be1b94ad86d31244972592b7dad151dbf"
+            }
+          }
+        }
+      },
+      "source_fixture_harness_sha256": {
+        "scripts\\conversion_acceptance.py": "dd2d0557af0f61d835114a2ffb538f9504a805e473c1be6cced88ec8b5451664",
+        "scripts\\legacy_conversion_acceptance.py": "417f043fcd6f82ced1207a2ac9ecb691d010dff61cb4fa40ef52a88346adcfc5",
+        "scripts\\legacy_conversion_oracles.json": "f145f42e8c786f7694235af8e81c6d01da224db4ab79f74c0776c9660fc7125e",
+        "tests\\conversion\\legacy_fixtures.py": "8148e3480af12084786485ebd20210ac6a7bb3c375430d534a41370531d46f24",
+        "tests\\conversion\\test_conversion.py": "0e2cfac30c1ecc83d22868b828fa7cf415bad6130354c4433de650cb3776ef69",
+        "tests\\conversion\\test_conversion_ui.py": "2213385a5002a2ca09a479b617377f4e89cab9e480a4b60412a0fa8652731df9",
+        "tests\\conversion\\test_legacy_adapters.py": "bba456d39ea1eee28bcfa6eb8f06c7f40770be9831e1c81e9bbf48a9cd373612",
+        "tests\\conversion\\test_legacy_adapters_native.py": "ed7716d161590db623329cd3e16dd069f64cef407a45f8eafe5263b50f267e29",
+        "tests\\conversion\\test_office_selection.py": "f09d55d710810009a5bed88720a09d940c426b3115b5b50359dabe05234a8a0c",
+        "tests\\conversion\\test_selected_adapters.py": "c456d33f16a3d2ddc8d244ae9cc248756769fae789484e74351148c79b0aca19"
+      },
+      "wheel_source": {
+        "payload_files": 434,
+        "project_name": "universal-research-library",
+        "project_version": "0.2.0.dev1",
+        "required_runtime_files": 366,
+        "source_commit": "00ed188039d045232f72f7a34472c5c22ef8aad8",
+        "wheel_sha256": "14ccacc3555953c7c60c23e8f52a61e2a4722d1669d7f21d7e0de9a75dec32e7"
+      },
+      "installed_identity": {
+        "files": {
+          "canonical_sha256": "e40fb170395571720eeba232fc880b271be141e422a7b24b5f2422696272782a",
+          "entries": 366
+        },
+        "isolated": true,
+        "module_origins": {
+          "bootstrap": "D:\\a\\_temp\\lc-696654a8\\installed\\Lib\\site-packages\\bootstrap\\__init__.py",
+          "carr_library": "D:\\a\\_temp\\lc-696654a8\\installed\\Lib\\site-packages\\carr_library\\__init__.py"
+        },
+        "prefix": "D:\\a\\_temp\\lc-696654a8\\installed",
+        "wheel_sha256": "14ccacc3555953c7c60c23e8f52a61e2a4722d1669d7f21d7e0de9a75dec32e7"
+      }
+    },
     "source_claim_is_not_inferred_from_publisher_metadata": true
   },
   "scope": {
@@ -147,6 +444,698 @@
     ],
     "portable_cases_per_mode": 163,
     "native_cases_per_mode": 4,
-    "execution_status": "NOT_RUN at authoring"
+    "execution_status": "PASS",
+    "commit": "684cc8ddac569fdcf5d685b33302f570481ea6f8",
+    "tree": "0aa5725d2e421e2f1c32cb932bb0c7a2639e6ca2",
+    "run_id": 46024229261,
+    "job_id": 140591354519,
+    "portable_source_cases": 163,
+    "portable_installed_cases": 163,
+    "native_source_cases": 4,
+    "native_installed_cases": 4,
+    "ordinary_service_admission": "All four native fixtures call ordinary qualified .djvu admission with legacy_preview=False.",
+    "artifact": {
+      "id": 15212322731,
+      "bytes": 2156228,
+      "sha256": "ccfa79ca774ca1255f0a6c7f46324767f0008fed009dbacd2a664dcf06d1146b"
+    },
+    "evidence": {
+      "completed_job_log_read": true,
+      "artifact_metadata_read": true,
+      "exact_counts_enforced_by": "Actual current legacy_conversion_acceptance.py and its workflow receipt checks.",
+      "independent_archive_read": {
+        "status": "PASS",
+        "reader": {
+          "commit": "904ac91fa5f8e00cd3782f468803d001720da5ea",
+          "tree": "a3547a37ae8055bd7a1b4db6b2310b0ab4cb9d47",
+          "run_id": 46028537646,
+          "job_id": 140606095178,
+          "status": "PASS",
+          "completed_utc": "2026-11-27T16:17:33Z",
+          "helper_blob": "43eed7003451a9e5b036113160de692a5bf596c0",
+          "method": "Ubuntu read-only bounded ZIP inspection with exact run/head/metadata and raw archive length/SHA256 checks, then inert JSON/XML/text parsing; no artifact code imported or executed."
+        },
+        "artifact": {
+          "run": 46024229261,
+          "commit": "684cc8ddac569fdcf5d685b33302f570481ea6f8",
+          "id": 15212322731,
+          "sha256": "ccfa79ca774ca1255f0a6c7f46324767f0008fed009dbacd2a664dcf06d1146b",
+          "bytes": 2156228,
+          "kind": "ordinary-djvu",
+          "name": "carr-legacy-converters-djvu-684cc8ddac569fdcf5d685b33302f570481ea6f8"
+        },
+        "junit": [
+          {
+            "artifact": 15212322731,
+            "file": "boundaries/installed-junit.xml",
+            "cases": 163,
+            "exact_counter": true,
+            "failures": 0,
+            "errors": 0,
+            "skips": 0,
+            "pass": true,
+            "raw_member": {
+              "name": "boundaries/installed-junit.xml",
+              "bytes": 28651,
+              "sha256": "2b36b698a9cdffc47913b7b312c809474c8d5d724af5cd45d1eda7860c93b8f9"
+            },
+            "function_counter": {
+              "tests.conversion.test_conversion::test_actual_batch_preserves_completed_first_file_when_later_reader_rejects": 1,
+              "tests.conversion.test_conversion::test_actual_docx_uses_ordered_body_and_simple_tables": 1,
+              "tests.conversion.test_conversion::test_actual_epub_uses_spine_instead_of_zip_order": 1,
+              "tests.conversion.test_conversion::test_actual_fb2_reuses_existing_bounded_xml_reader": 1,
+              "tests.conversion.test_conversion::test_actual_pdf_keeps_physical_page_order_without_claiming_printed_labels": 1,
+              "tests.conversion.test_conversion::test_actual_pdf_page_budget_is_checked_before_publication": 1,
+              "tests.conversion.test_conversion::test_actual_worker_keeps_utf8_crlf_formfeed_and_original": 1,
+              "tests.conversion.test_conversion::test_cancel_during_real_private_source_copy_keeps_original": 1,
+              "tests.conversion.test_conversion::test_capability_inventory_matches_current_registry_and_never_enables_legacy": 1,
+              "tests.conversion.test_conversion::test_capability_rejects_reader_version_the_existing_docx_parser_rejects": 1,
+              "tests.conversion.test_conversion::test_current_text_adapters_execute_in_supervised_worker": 3,
+              "tests.conversion.test_conversion::test_existing_output_or_report_never_changes": 2,
+              "tests.conversion.test_conversion::test_first_post_move_sync_failure_removes_only_unchanged_own_text": 3,
+              "tests.conversion.test_conversion::test_only_explicit_inputs_and_output_root_are_authorized": 1,
+              "tests.conversion.test_conversion::test_portable_filename_rejection_precedes_worker": 3,
+              "tests.conversion.test_conversion::test_post_move_sync_failure_preserves_matching_pair_but_is_not_success": 1,
+              "tests.conversion.test_conversion::test_real_resource_rejections_publish_nothing": 3,
+              "tests.conversion.test_conversion::test_receipt_collision_rolls_back_only_new_own_text": 1,
+              "tests.conversion.test_conversion::test_source_change_after_actual_worker_rejects_publication": 1,
+              "tests.conversion.test_conversion::test_unicode_batch_name_fits_portable_component_budget": 1,
+              "tests.conversion.test_conversion::test_worker_rejects_wrong_action_and_extra_request_keys": 1,
+              "tests.conversion.test_conversion_ui::test_image_selection_uses_existing_model_dialog_and_cancel_starts_no_job": 1,
+              "tests.conversion.test_conversion_ui::test_native_flow_passes_both_explicit_selections_to_the_current_service": 1,
+              "tests.conversion.test_conversion_ui::test_office_choice_and_shared_application_broker_reach_existing_worker": 1,
+              "tests.conversion.test_conversion_ui::test_office_picker_cancel_starts_no_worker_or_output": 1,
+              "tests.conversion.test_conversion_ui::test_rtf_converter_picker_cancel_does_not_activate_a_path_tool": 1,
+              "tests.conversion.test_conversion_ui::test_ui_does_not_write_unregistered_files_inside_library": 1,
+              "tests.conversion.test_conversion_ui::test_ui_selects_exact_files_and_uses_existing_job_cancel_event": 1,
+              "tests.conversion.test_legacy_adapters::test_cancel_during_runtime_snapshot_creates_no_manifest": 1,
+              "tests.conversion.test_legacy_adapters::test_chm_ambiguous_or_excessive_listing_never_selects_members": 5,
+              "tests.conversion.test_legacy_adapters::test_chm_known_legacy_doctype_is_inert_and_original_bytes_stay_bound": 4,
+              "tests.conversion.test_legacy_adapters::test_chm_member_path_cannot_escape_or_spoof_listing": 6,
+              "tests.conversion.test_legacy_adapters::test_chm_truncated_member_publishes_no_complete_worker_report": 1,
+              "tests.conversion.test_legacy_adapters::test_chm_undeclared_or_complex_doctype_remains_refused": 4,
+              "tests.conversion.test_legacy_adapters::test_chm_worker_uses_declared_toc_and_existing_inert_html_reader": 1,
+              "tests.conversion.test_legacy_adapters::test_djvu_final_odd_chunk_ends_exactly_at_its_containing_form": 4,
+              "tests.conversion.test_legacy_adapters::test_djvu_final_padding_exception_never_relaxes_chunk_bounds_or_sibling_alignment": 2,
+              "tests.conversion.test_legacy_adapters::test_djvu_framing_and_page_authority_are_bounded": 4,
+              "tests.conversion.test_legacy_adapters::test_djvu_shared_or_external_reference_is_refused_before_native_reader": 1,
+              "tests.conversion.test_legacy_adapters::test_encrypted_palm_header_is_refused_before_native_reader": 2,
+              "tests.conversion.test_legacy_adapters::test_excessive_code_handle_inventory_is_refused_before_any_native_lease": 1,
+              "tests.conversion.test_legacy_adapters::test_fixed_calibre_wrapper_enforces_private_io_and_no_network_or_programs": 5,
+              "tests.conversion.test_legacy_adapters::test_large_component_inventory_keeps_existing_worker_request_bound": 1,
+              "tests.conversion.test_legacy_adapters::test_large_selected_code_closure_keeps_every_reader_until_native_scope_exits": 2,
+              "tests.conversion.test_legacy_adapters::test_native_chm_empty_final_property_keeps_its_delimiter": 2,
+              "tests.conversion.test_legacy_adapters::test_protected_lit_marker_is_refused_before_calibre": 2,
+              "tests.conversion.test_legacy_adapters::test_qualified_djvu_requires_explicit_selection_and_does_not_enable_other_families": 1,
+              "tests.conversion.test_legacy_adapters::test_real_hardlink_alias_remains_refused_after_fresh_windows_stat": 1,
+              "tests.conversion.test_legacy_adapters::test_relative_or_path_discovered_runtime_is_never_selected": 3,
+              "tests.conversion.test_legacy_adapters::test_renamed_or_foreign_book_formats_are_not_conversion_inputs": 5,
+              "tests.conversion.test_legacy_adapters::test_resealed_foreign_inventory_path_is_not_authority": 1,
+              "tests.conversion.test_legacy_adapters::test_selected_component_change_cannot_start_a_conversion": 4,
+              "tests.conversion.test_legacy_adapters::test_tcr_dictionary_and_actual_expansion_are_bounded_before_native_decoder": 3,
+              "tests.conversion.test_legacy_adapters::test_unexecuted_native_formats_never_become_available_from_selection_alone": 8,
+              "tests.conversion.test_legacy_adapters::test_unqualified_service_requires_explicit_fixture_preview": 1,
+              "tests.conversion.test_legacy_adapters::test_windows_cached_directory_metadata_does_not_invalidate_regular_components": 1,
+              "tests.conversion.test_office_selection::test_expired_deadline_never_spawns_a_native_process": 1,
+              "tests.conversion.test_office_selection::test_fixed_adapter_rejects_false_format_before_runtime_admission": 5,
+              "tests.conversion.test_office_selection::test_gui_launcher_is_not_silently_promoted_to_unselected_console": 1,
+              "tests.conversion.test_office_selection::test_native_launch_keeps_existing_owner_and_scrubs_unselected_configuration": 1,
+              "tests.conversion.test_office_selection::test_private_phase_survives_failure_without_publishing_source_or_native_logs": 3,
+              "tests.conversion.test_office_selection::test_profile_is_per_operation_and_disables_active_content_and_external_updates": 1,
+              "tests.conversion.test_office_selection::test_progress_refuses_untrusted_marker_content_and_aliased_marker": 1,
+              "tests.conversion.test_office_selection::test_queued_selection_refuses_new_authority_before_worker": 3,
+              "tests.conversion.test_office_selection::test_selected_console_manifest_binds_both_launchers_before_native_work": 1,
+              "tests.conversion.test_office_selection::test_selected_inventory_checks_fixed_installed_filter_without_executing": 1,
+              "tests.conversion.test_office_selection::test_snapshot_rechecks_earlier_component_after_last_hash": 1,
+              "tests.conversion.test_office_selection::test_staging_budget_and_lookup_failures_cannot_report_complete": 4,
+              "tests.conversion.test_office_selection::test_worker_admission_refuses_changed_or_incomplete_inventory": 5,
+              "tests.conversion.test_selected_adapters::test_additional_budgets_are_typed_and_bounded": 5,
+              "tests.conversion.test_selected_adapters::test_all_headers_are_bounded_before_ocr_runtime_discovery": 3,
+              "tests.conversion.test_selected_adapters::test_document_extension_never_activates_an_implicit_converter": 3,
+              "tests.conversion.test_selected_adapters::test_inventory_distinguishes_optional_adapters_from_unintegrated_legacy": 1,
+              "tests.conversion.test_selected_adapters::test_ocr_flag_requires_an_explicit_typed_model_choice": 1,
+              "tests.conversion.test_selected_adapters::test_queued_conversion_cannot_adopt_a_changed_selected_converter": 3,
+              "tests.conversion.test_selected_adapters::test_raster_header_must_match_extension_before_engine_execution": 1,
+              "tests.conversion.test_selected_adapters::test_rtf_selected_executable_hash_is_rechecked_before_start": 1,
+              "tests.conversion.test_selected_adapters::test_unselected_converter_path_cannot_come_from_source_metadata": 1,
+              "tests.conversion.test_selected_adapters::test_worker_refuses_unapproved_image_adapter_payload": 3
+            }
+          },
+          {
+            "artifact": 15212322731,
+            "file": "boundaries/source-junit.xml",
+            "cases": 163,
+            "exact_counter": true,
+            "failures": 0,
+            "errors": 0,
+            "skips": 0,
+            "pass": true,
+            "raw_member": {
+              "name": "boundaries/source-junit.xml",
+              "bytes": 28651,
+              "sha256": "cd578c85f23d41413674dd6d799a94f2d764f84cb7b0e0fb0f9665e4d10113bf"
+            },
+            "function_counter": {
+              "tests.conversion.test_conversion::test_actual_batch_preserves_completed_first_file_when_later_reader_rejects": 1,
+              "tests.conversion.test_conversion::test_actual_docx_uses_ordered_body_and_simple_tables": 1,
+              "tests.conversion.test_conversion::test_actual_epub_uses_spine_instead_of_zip_order": 1,
+              "tests.conversion.test_conversion::test_actual_fb2_reuses_existing_bounded_xml_reader": 1,
+              "tests.conversion.test_conversion::test_actual_pdf_keeps_physical_page_order_without_claiming_printed_labels": 1,
+              "tests.conversion.test_conversion::test_actual_pdf_page_budget_is_checked_before_publication": 1,
+              "tests.conversion.test_conversion::test_actual_worker_keeps_utf8_crlf_formfeed_and_original": 1,
+              "tests.conversion.test_conversion::test_cancel_during_real_private_source_copy_keeps_original": 1,
+              "tests.conversion.test_conversion::test_capability_inventory_matches_current_registry_and_never_enables_legacy": 1,
+              "tests.conversion.test_conversion::test_capability_rejects_reader_version_the_existing_docx_parser_rejects": 1,
+              "tests.conversion.test_conversion::test_current_text_adapters_execute_in_supervised_worker": 3,
+              "tests.conversion.test_conversion::test_existing_output_or_report_never_changes": 2,
+              "tests.conversion.test_conversion::test_first_post_move_sync_failure_removes_only_unchanged_own_text": 3,
+              "tests.conversion.test_conversion::test_only_explicit_inputs_and_output_root_are_authorized": 1,
+              "tests.conversion.test_conversion::test_portable_filename_rejection_precedes_worker": 3,
+              "tests.conversion.test_conversion::test_post_move_sync_failure_preserves_matching_pair_but_is_not_success": 1,
+              "tests.conversion.test_conversion::test_real_resource_rejections_publish_nothing": 3,
+              "tests.conversion.test_conversion::test_receipt_collision_rolls_back_only_new_own_text": 1,
+              "tests.conversion.test_conversion::test_source_change_after_actual_worker_rejects_publication": 1,
+              "tests.conversion.test_conversion::test_unicode_batch_name_fits_portable_component_budget": 1,
+              "tests.conversion.test_conversion::test_worker_rejects_wrong_action_and_extra_request_keys": 1,
+              "tests.conversion.test_conversion_ui::test_image_selection_uses_existing_model_dialog_and_cancel_starts_no_job": 1,
+              "tests.conversion.test_conversion_ui::test_native_flow_passes_both_explicit_selections_to_the_current_service": 1,
+              "tests.conversion.test_conversion_ui::test_office_choice_and_shared_application_broker_reach_existing_worker": 1,
+              "tests.conversion.test_conversion_ui::test_office_picker_cancel_starts_no_worker_or_output": 1,
+              "tests.conversion.test_conversion_ui::test_rtf_converter_picker_cancel_does_not_activate_a_path_tool": 1,
+              "tests.conversion.test_conversion_ui::test_ui_does_not_write_unregistered_files_inside_library": 1,
+              "tests.conversion.test_conversion_ui::test_ui_selects_exact_files_and_uses_existing_job_cancel_event": 1,
+              "tests.conversion.test_legacy_adapters::test_cancel_during_runtime_snapshot_creates_no_manifest": 1,
+              "tests.conversion.test_legacy_adapters::test_chm_ambiguous_or_excessive_listing_never_selects_members": 5,
+              "tests.conversion.test_legacy_adapters::test_chm_known_legacy_doctype_is_inert_and_original_bytes_stay_bound": 4,
+              "tests.conversion.test_legacy_adapters::test_chm_member_path_cannot_escape_or_spoof_listing": 6,
+              "tests.conversion.test_legacy_adapters::test_chm_truncated_member_publishes_no_complete_worker_report": 1,
+              "tests.conversion.test_legacy_adapters::test_chm_undeclared_or_complex_doctype_remains_refused": 4,
+              "tests.conversion.test_legacy_adapters::test_chm_worker_uses_declared_toc_and_existing_inert_html_reader": 1,
+              "tests.conversion.test_legacy_adapters::test_djvu_final_odd_chunk_ends_exactly_at_its_containing_form": 4,
+              "tests.conversion.test_legacy_adapters::test_djvu_final_padding_exception_never_relaxes_chunk_bounds_or_sibling_alignment": 2,
+              "tests.conversion.test_legacy_adapters::test_djvu_framing_and_page_authority_are_bounded": 4,
+              "tests.conversion.test_legacy_adapters::test_djvu_shared_or_external_reference_is_refused_before_native_reader": 1,
+              "tests.conversion.test_legacy_adapters::test_encrypted_palm_header_is_refused_before_native_reader": 2,
+              "tests.conversion.test_legacy_adapters::test_excessive_code_handle_inventory_is_refused_before_any_native_lease": 1,
+              "tests.conversion.test_legacy_adapters::test_fixed_calibre_wrapper_enforces_private_io_and_no_network_or_programs": 5,
+              "tests.conversion.test_legacy_adapters::test_large_component_inventory_keeps_existing_worker_request_bound": 1,
+              "tests.conversion.test_legacy_adapters::test_large_selected_code_closure_keeps_every_reader_until_native_scope_exits": 2,
+              "tests.conversion.test_legacy_adapters::test_native_chm_empty_final_property_keeps_its_delimiter": 2,
+              "tests.conversion.test_legacy_adapters::test_protected_lit_marker_is_refused_before_calibre": 2,
+              "tests.conversion.test_legacy_adapters::test_qualified_djvu_requires_explicit_selection_and_does_not_enable_other_families": 1,
+              "tests.conversion.test_legacy_adapters::test_real_hardlink_alias_remains_refused_after_fresh_windows_stat": 1,
+              "tests.conversion.test_legacy_adapters::test_relative_or_path_discovered_runtime_is_never_selected": 3,
+              "tests.conversion.test_legacy_adapters::test_renamed_or_foreign_book_formats_are_not_conversion_inputs": 5,
+              "tests.conversion.test_legacy_adapters::test_resealed_foreign_inventory_path_is_not_authority": 1,
+              "tests.conversion.test_legacy_adapters::test_selected_component_change_cannot_start_a_conversion": 4,
+              "tests.conversion.test_legacy_adapters::test_tcr_dictionary_and_actual_expansion_are_bounded_before_native_decoder": 3,
+              "tests.conversion.test_legacy_adapters::test_unexecuted_native_formats_never_become_available_from_selection_alone": 8,
+              "tests.conversion.test_legacy_adapters::test_unqualified_service_requires_explicit_fixture_preview": 1,
+              "tests.conversion.test_legacy_adapters::test_windows_cached_directory_metadata_does_not_invalidate_regular_components": 1,
+              "tests.conversion.test_office_selection::test_expired_deadline_never_spawns_a_native_process": 1,
+              "tests.conversion.test_office_selection::test_fixed_adapter_rejects_false_format_before_runtime_admission": 5,
+              "tests.conversion.test_office_selection::test_gui_launcher_is_not_silently_promoted_to_unselected_console": 1,
+              "tests.conversion.test_office_selection::test_native_launch_keeps_existing_owner_and_scrubs_unselected_configuration": 1,
+              "tests.conversion.test_office_selection::test_private_phase_survives_failure_without_publishing_source_or_native_logs": 3,
+              "tests.conversion.test_office_selection::test_profile_is_per_operation_and_disables_active_content_and_external_updates": 1,
+              "tests.conversion.test_office_selection::test_progress_refuses_untrusted_marker_content_and_aliased_marker": 1,
+              "tests.conversion.test_office_selection::test_queued_selection_refuses_new_authority_before_worker": 3,
+              "tests.conversion.test_office_selection::test_selected_console_manifest_binds_both_launchers_before_native_work": 1,
+              "tests.conversion.test_office_selection::test_selected_inventory_checks_fixed_installed_filter_without_executing": 1,
+              "tests.conversion.test_office_selection::test_snapshot_rechecks_earlier_component_after_last_hash": 1,
+              "tests.conversion.test_office_selection::test_staging_budget_and_lookup_failures_cannot_report_complete": 4,
+              "tests.conversion.test_office_selection::test_worker_admission_refuses_changed_or_incomplete_inventory": 5,
+              "tests.conversion.test_selected_adapters::test_additional_budgets_are_typed_and_bounded": 5,
+              "tests.conversion.test_selected_adapters::test_all_headers_are_bounded_before_ocr_runtime_discovery": 3,
+              "tests.conversion.test_selected_adapters::test_document_extension_never_activates_an_implicit_converter": 3,
+              "tests.conversion.test_selected_adapters::test_inventory_distinguishes_optional_adapters_from_unintegrated_legacy": 1,
+              "tests.conversion.test_selected_adapters::test_ocr_flag_requires_an_explicit_typed_model_choice": 1,
+              "tests.conversion.test_selected_adapters::test_queued_conversion_cannot_adopt_a_changed_selected_converter": 3,
+              "tests.conversion.test_selected_adapters::test_raster_header_must_match_extension_before_engine_execution": 1,
+              "tests.conversion.test_selected_adapters::test_rtf_selected_executable_hash_is_rechecked_before_start": 1,
+              "tests.conversion.test_selected_adapters::test_unselected_converter_path_cannot_come_from_source_metadata": 1,
+              "tests.conversion.test_selected_adapters::test_worker_refuses_unapproved_image_adapter_payload": 3
+            }
+          },
+          {
+            "artifact": 15212322731,
+            "file": "native/installed-junit.xml",
+            "cases": 4,
+            "exact_counter": true,
+            "failures": 0,
+            "errors": 0,
+            "skips": 0,
+            "pass": true,
+            "raw_member": {
+              "name": "native/installed-junit.xml",
+              "bytes": 870,
+              "sha256": "fa263b8a0c603be6a90aeff6655702edfa6aca815f2471ab40b4c429da60c6af"
+            },
+            "function_counter": {
+              "tests.conversion.test_legacy_adapters_native::test_real_djvu_external_reference_is_refused_before_adjacent_content_read": 1,
+              "tests.conversion.test_legacy_adapters_native::test_real_djvu_without_text_layer_is_not_reported_as_ocr": 1,
+              "tests.conversion.test_legacy_adapters_native::test_real_djvulibre_reads_every_embedded_text_page": 2
+            }
+          },
+          {
+            "artifact": 15212322731,
+            "file": "native/source-junit.xml",
+            "cases": 4,
+            "exact_counter": true,
+            "failures": 0,
+            "errors": 0,
+            "skips": 0,
+            "pass": true,
+            "raw_member": {
+              "name": "native/source-junit.xml",
+              "bytes": 870,
+              "sha256": "381c93d287d0d6e41adf94493d610ba1d69a3139a6d0e8df8c711fcf93f3a82e"
+            },
+            "function_counter": {
+              "tests.conversion.test_legacy_adapters_native::test_real_djvu_external_reference_is_refused_before_adjacent_content_read": 1,
+              "tests.conversion.test_legacy_adapters_native::test_real_djvu_without_text_layer_is_not_reported_as_ocr": 1,
+              "tests.conversion.test_legacy_adapters_native::test_real_djvulibre_reads_every_embedded_text_page": 2
+            }
+          }
+        ],
+        "origins": {
+          "boundaries/installed-origins.json": {
+            "isolated": true,
+            "module_origins": {
+              "bootstrap": {
+                "path": "D:\\a\\_temp\\lc-f4158027\\installed\\Lib\\site-packages\\bootstrap\\__init__.py",
+                "sha256": "a90e8b1d37413ef4fbc54cdbea7f67a8c2a09ac01ed8cee54e5b9c47fe8fc930"
+              },
+              "carr_library": {
+                "path": "D:\\a\\_temp\\lc-f4158027\\installed\\Lib\\site-packages\\carr_library\\__init__.py",
+                "sha256": "92af4b25990d9f3dc0bacd2625e4629be1b94ad86d31244972592b7dad151dbf"
+              }
+            }
+          },
+          "boundaries/source-origins.json": {
+            "isolated": false,
+            "module_origins": {
+              "bootstrap": {
+                "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\bootstrap\\__init__.py",
+                "sha256": "a90e8b1d37413ef4fbc54cdbea7f67a8c2a09ac01ed8cee54e5b9c47fe8fc930"
+              },
+              "carr_library": {
+                "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\__init__.py",
+                "sha256": "92af4b25990d9f3dc0bacd2625e4629be1b94ad86d31244972592b7dad151dbf"
+              }
+            }
+          },
+          "native/installed-origins.json": {
+            "isolated": true,
+            "module_origins": {
+              "bootstrap": {
+                "path": "D:\\a\\_temp\\lc-f4158027\\installed\\Lib\\site-packages\\bootstrap\\__init__.py",
+                "sha256": "a90e8b1d37413ef4fbc54cdbea7f67a8c2a09ac01ed8cee54e5b9c47fe8fc930"
+              },
+              "carr_library": {
+                "path": "D:\\a\\_temp\\lc-f4158027\\installed\\Lib\\site-packages\\carr_library\\__init__.py",
+                "sha256": "92af4b25990d9f3dc0bacd2625e4629be1b94ad86d31244972592b7dad151dbf"
+              }
+            }
+          },
+          "native/source-origins.json": {
+            "isolated": false,
+            "module_origins": {
+              "bootstrap": {
+                "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\bootstrap\\__init__.py",
+                "sha256": "a90e8b1d37413ef4fbc54cdbea7f67a8c2a09ac01ed8cee54e5b9c47fe8fc930"
+              },
+              "carr_library": {
+                "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\__init__.py",
+                "sha256": "92af4b25990d9f3dc0bacd2625e4629be1b94ad86d31244972592b7dad151dbf"
+              }
+            }
+          }
+        },
+        "complete_gate_member": {
+          "name": "legacy-converter-gate.json",
+          "bytes": 69150,
+          "sha256": "d94af2578c381452bb70debd03bcb0cae453e695708564178665bca97e69d960"
+        },
+        "installed_identity": {
+          "files": {
+            "canonical_sha256": "aae2f9e46265f6f051b284ed0e3745680a81cc0d3afe8e775a7e450e65e69ecd",
+            "entries": 367
+          },
+          "isolated": true,
+          "module_origins": {
+            "bootstrap": "D:\\a\\_temp\\lc-f4158027\\installed\\Lib\\site-packages\\bootstrap\\__init__.py",
+            "carr_library": "D:\\a\\_temp\\lc-f4158027\\installed\\Lib\\site-packages\\carr_library\\__init__.py"
+          },
+          "prefix": "D:\\a\\_temp\\lc-f4158027\\installed",
+          "wheel_sha256": "e2a65dbf33fc0009e76fb1c1d1079efb748d3a8c1ac58e87c8d2d8773d70268b"
+        },
+        "wheel_source": {
+          "payload_files": 435,
+          "project_name": "universal-research-library",
+          "project_version": "0.2.0.dev1",
+          "required_runtime_files": 367,
+          "source_commit": "684cc8ddac569fdcf5d685b33302f570481ea6f8",
+          "wheel_sha256": "e2a65dbf33fc0009e76fb1c1d1079efb748d3a8c1ac58e87c8d2d8773d70268b"
+        },
+        "source_files": {
+          "scripts\\conversion_acceptance.py": "dd2d0557af0f61d835114a2ffb538f9504a805e473c1be6cced88ec8b5451664",
+          "scripts\\legacy_conversion_acceptance.py": "d8f5a513dff0f4e9b492f38ca24bb3090a09da81880ca2934e2cec8dc0e9f736",
+          "scripts\\legacy_conversion_oracles.json": "8230e02e0a4afc42916be22d70e8b7480814c2c40d7857c125f069862f9442dd",
+          "tests\\conversion\\legacy_fixtures.py": "8148e3480af12084786485ebd20210ac6a7bb3c375430d534a41370531d46f24",
+          "tests\\conversion\\test_conversion.py": "0e2cfac30c1ecc83d22868b828fa7cf415bad6130354c4433de650cb3776ef69",
+          "tests\\conversion\\test_conversion_ui.py": "2213385a5002a2ca09a479b617377f4e89cab9e480a4b60412a0fa8652731df9",
+          "tests\\conversion\\test_legacy_adapters.py": "015a9592fc16de57f71f934d515c4ae71586c9a4d92242ee86f41e5777eaf8e9",
+          "tests\\conversion\\test_legacy_adapters_native.py": "71fb406eaf2acc4dd19e1015fbf717abfd12a488e01b4e891f9ed1d6070db305",
+          "tests\\conversion\\test_office_selection.py": "f09d55d710810009a5bed88720a09d940c426b3115b5b50359dabe05234a8a0c",
+          "tests\\conversion\\test_selected_adapters.py": "c456d33f16a3d2ddc8d244ae9cc248756769fae789484e74351148c79b0aca19"
+        },
+        "runtime_files": {
+          "cjb2.exe": {
+            "bytes": 146437,
+            "sha256": "cccf39a4c90a4c989d2de1d5070ad129330664bc55a706d65f8f635889382015"
+          },
+          "djvm.exe": {
+            "bytes": 61069,
+            "sha256": "9708b6cf4be6790314743918da8879e88f02b1a79062e33bb4698bb044bfeb40"
+          },
+          "djvused.exe": {
+            "bytes": 170039,
+            "sha256": "ff1808176bf79aec7e3f8862c636be26a6e11608d2cc6bf39ebae583923ba4ec"
+          },
+          "djvutxt.exe": {
+            "bytes": 50793,
+            "sha256": "bb496f0ccce19bba0b4cdb738d2aa1eeb65960efdc87df8ffcb610ee2f03ced5"
+          },
+          "libLerc.dll": {
+            "bytes": 803103,
+            "sha256": "1ffee78579c25b073267bcac8d0a6045d9bd446e010c7953b569b2629ca8a58a"
+          },
+          "libarchive-13.dll": {
+            "bytes": 1001423,
+            "sha256": "862e1d2ed6c4adf86d60e0c2f08a16c2a49d015a49775f402698511258ac44d8"
+          },
+          "libb2-1.dll": {
+            "bytes": 35323,
+            "sha256": "01bbf64090367d511f41d9fc8f34c557f61d4a227b7c9e47ce04052cbfdc3e7d"
+          },
+          "libbrotlicommon.dll": {
+            "bytes": 140697,
+            "sha256": "7b0047dc16dd92a7932124dfd5a6e698d342f533a15d37d61f710def66091436"
+          },
+          "libbrotlidec.dll": {
+            "bytes": 60224,
+            "sha256": "c4c987a01597ddf969d93023f933f999a20f285588b0decb4deeb780c9e9cdf8"
+          },
+          "libbz2-1.dll": {
+            "bytes": 107741,
+            "sha256": "1790bf6473c9d48db14c1f0ee8124142327556d281299ea2a72ee361118ee01a"
+          },
+          "libcrypto-4-x64.dll": {
+            "bytes": 5590344,
+            "sha256": "ff5bd426835acf70a03e6fd8bb51b60441806bf228de608caf4355b57f0c2340"
+          },
+          "libcurl-4.dll": {
+            "bytes": 1413589,
+            "sha256": "07ffcc59d7c012b39956f4f21dc8875f3892d1570077606703e23ebb2b0dee0f"
+          },
+          "libdeflate.dll": {
+            "bytes": 97053,
+            "sha256": "61a60665da9fd15a0e8668c47424f325e1d74479c3f896fa7ae48ffcee4ca300"
+          },
+          "libdjvulibre-21.dll": {
+            "bytes": 1755813,
+            "sha256": "5bfbc3e8076a4b695fc3f719619886ce908bbd7dbb3060a6a6cc29eb2e2aae20"
+          },
+          "libgcc_s_seh-1.dll": {
+            "bytes": 150025,
+            "sha256": "44f6318f96eb2aaf6e90400bb1178ab6d55b01ae2cf24846d6b30d96e87e89dd"
+          },
+          "libgif-7.dll": {
+            "bytes": 46093,
+            "sha256": "547f069546e3233430d3cbf106b403fbdc9c5cf1518e525c462533d58843b31e"
+          },
+          "libgomp-1.dll": {
+            "bytes": 326944,
+            "sha256": "3de964e7d130009a9c58f70f01698552e3debc0707f0e19d4d1a7d7bec90052e"
+          },
+          "libiconv-2.dll": {
+            "bytes": 1139262,
+            "sha256": "9824e9f78e76ad513e5ba0d697c60de2fb24a21c20922bc2f918c86998a08cab"
+          },
+          "libidn2-0.dll": {
+            "bytes": 244380,
+            "sha256": "1103631c9f063083407d05d6baeacd564c774f6803ba54421ee53dfb3e25c1b9"
+          },
+          "libintl-8.dll": {
+            "bytes": 298164,
+            "sha256": "0e5a178731e6be6d115442a6ade3df7f03265cd1fc4338f8b6f86a8001cbf582"
+          },
+          "libjbig-0.dll": {
+            "bytes": 61598,
+            "sha256": "36b6155be36d24a19154a48177a09978ff6c26f48665d8c7bb5057aaace6b91c"
+          },
+          "libjpeg-8.dll": {
+            "bytes": 963471,
+            "sha256": "22286acc18b907d03eec1177c99f54a802a6f8437888d1abb79e65a7ecd14605"
+          },
+          "libleptonica-6.dll": {
+            "bytes": 2818986,
+            "sha256": "c48f31ed1cb3dbea30b1121a169dfcd9a4bdb0ed12b5b6fb20a006094a7480bf"
+          },
+          "liblz4.dll": {
+            "bytes": 187849,
+            "sha256": "4ec83678100682f0be6ba31e1e642332caa53b2efcee2c201b7cab0788d1260f"
+          },
+          "liblzma-5.dll": {
+            "bytes": 190872,
+            "sha256": "d97a260b8bb4f6affc34ec47249429240068b94bb6f7dc30c4d64daaafb3ac69"
+          },
+          "libnghttp2-14.dll": {
+            "bytes": 213153,
+            "sha256": "5e5460b1f9dd489566a747f7fb72bcc7862608213e1cc401e02a9ee0f1866da1"
+          },
+          "libnghttp3-9.dll": {
+            "bytes": 203451,
+            "sha256": "30ed479b0ae35b56bd79c816e2b9010f2d0a9f84c96b0a210d44e188e9222f1e"
+          },
+          "libngtcp2-16.dll": {
+            "bytes": 391446,
+            "sha256": "099bdd982e4c6ec0fc04dd00ebaa9fb8bc090cc5521175cceb7c66ea5b5b4aea"
+          },
+          "libngtcp2_crypto_ossl-0.dll": {
+            "bytes": 51580,
+            "sha256": "9ce610fc3d42e4d82e8242a71feace273f5e305fb551d2f6d6b09861362ebec9"
+          },
+          "libopenjp2-7.dll": {
+            "bytes": 517286,
+            "sha256": "94f9507828d391cf96d700d34918114f1c1e03f91dd1243a19275e0435690925"
+          },
+          "libpng16-16.dll": {
+            "bytes": 254777,
+            "sha256": "28db7a8c6fcc579ce621729d27f1952324cd3a2b4e24da121611bb586346e732"
+          },
+          "libpsl-5.dll": {
+            "bytes": 105846,
+            "sha256": "a531e72de3c64d43fb83cbfb6fa63e5ee982a970292ec51314e29d0acabf1dd5"
+          },
+          "libsharpyuv-0.dll": {
+            "bytes": 48938,
+            "sha256": "d29380c7056383f3e7a80bf9e150f0b8c425c1cf2568d1336e88979ddc2307af"
+          },
+          "libssh2-1.dll": {
+            "bytes": 336426,
+            "sha256": "682fd57a3d16f00f26025d01672d7ec3bfc4b1694c35e90b7b1ffc321c0fa5aa"
+          },
+          "libssl-4-x64.dll": {
+            "bytes": 1148375,
+            "sha256": "879b67699f587b4e1c5ce23c444f587f01a4fbe10f0cdf0374414e37bd606331"
+          },
+          "libstdc++-6.dll": {
+            "bytes": 2659194,
+            "sha256": "098e4964e3c8179847f7a1c313d2e8020ca12df3f1d18878a417a8f54d41505a"
+          },
+          "libtesseract-5.5.dll": {
+            "bytes": 4294548,
+            "sha256": "9a6e139504f3dbbc5db5aa3ed87c8fa641c7f9b4a6d7f0899cda2a381d48d704"
+          },
+          "libtiff-6.dll": {
+            "bytes": 614318,
+            "sha256": "d047260c3d456f84a2f9cd801d3b57bee0357cade32724caf16006c64c5fe8ff"
+          },
+          "libunistring-5.dll": {
+            "bytes": 2291262,
+            "sha256": "dfa746de2174d9471be54dd64c8ac478f981abf434d3c95c0e6b500ef78e63e7"
+          },
+          "libwebp-7.dll": {
+            "bytes": 746378,
+            "sha256": "8dfe40c4e0abc90ddf18f080898987e01253d099b2b2d6daf7db521e55c00446"
+          },
+          "libwebpmux-3.dll": {
+            "bytes": 78875,
+            "sha256": "9bd85116a22923d648d6b0ad09f21d08df7bd3d8860b24a5b4a6d4ac788b7340"
+          },
+          "libwinpthread-1.dll": {
+            "bytes": 73308,
+            "sha256": "94a9a4e2fe27b4bc827a4b209e9deb4cc3dc34bc025df06b849144f9d4c588f8"
+          },
+          "libz-1.dll": {
+            "bytes": 148154,
+            "sha256": "934103c50623302548a1cf66fbc22f0029e4eb4556343252a505e2fc005e835f"
+          },
+          "libzstd.dll": {
+            "bytes": 1217412,
+            "sha256": "48368ab0ca622d0ec12f41ce85d91f22866bf5da92c77a69a06483564c93816c"
+          },
+          "share/djvu/osi/cs/messages.xml": {
+            "bytes": 416,
+            "sha256": "81a2accd3c544b97b6d2993f684ad9e474c9a0c2e177d38e6ab7e0c777dc27a2"
+          },
+          "share/djvu/osi/de/libdjvu++.xml": {
+            "bytes": 57925,
+            "sha256": "d38a166c6ff0d613b1efdffbebbbd7d14901b84cf9feb9a58aebacdfc0aaaa67"
+          },
+          "share/djvu/osi/de/messages.xml": {
+            "bytes": 410,
+            "sha256": "f1a11857a3ec6896ea9fb1fb17753c85fcdb7ffcb9b9ba38520eeff87a4bcbbb"
+          },
+          "share/djvu/osi/en/djvutools-reference.xml": {
+            "bytes": 11611,
+            "sha256": "0faa3e434c58c19665e5cd75ea62d659224730f5ecc279614618b1f6cd4529f0"
+          },
+          "share/djvu/osi/en/libdjvu++.xml": {
+            "bytes": 53680,
+            "sha256": "dd10a0ba1f3690f628af84d41f8cc62544b7dcd2f26fdc6e806000a7b98d4cac"
+          },
+          "share/djvu/osi/en/messages.xml": {
+            "bytes": 404,
+            "sha256": "413f9bb54b2a4fd6aae93fd178835dcdf526300f216bb56280b8172a2dd3e9ad"
+          },
+          "share/djvu/osi/fr/libdjvu++.xml": {
+            "bytes": 59911,
+            "sha256": "d271daed886be7b914f5fa0868502ef39d3f682ed010004d40ec72099be2fe6e"
+          },
+          "share/djvu/osi/fr/messages.xml": {
+            "bytes": 410,
+            "sha256": "f1a11857a3ec6896ea9fb1fb17753c85fcdb7ffcb9b9ba38520eeff87a4bcbbb"
+          },
+          "share/djvu/osi/ja/libdjvu++.xml": {
+            "bytes": 65192,
+            "sha256": "8746231777979ee599c204386a90a28da979e6cdd618fbef92dc70db4c94b650"
+          },
+          "share/djvu/osi/ja/messages.xml": {
+            "bytes": 410,
+            "sha256": "f1a11857a3ec6896ea9fb1fb17753c85fcdb7ffcb9b9ba38520eeff87a4bcbbb"
+          },
+          "share/djvu/osi/languages.xml": {
+            "bytes": 1645,
+            "sha256": "f99181fdb255b58fcff8c856eab4ff67598a8d9837e428875f6d2127df93ca4b"
+          },
+          "share/djvu/osi/zh/libdjvu++.xml": {
+            "bytes": 50895,
+            "sha256": "ada4ff2b76833b0103eef6b3a8d54f7f2f5745af6530bc04ed83320fa47bb7f6"
+          },
+          "share/djvu/osi/zh/messages.xml": {
+            "bytes": 410,
+            "sha256": "f1a11857a3ec6896ea9fb1fb17753c85fcdb7ffcb9b9ba38520eeff87a4bcbbb"
+          },
+          "zlib1.dll": {
+            "bytes": 190835,
+            "sha256": "aa658771fb152b095eda1614d8bde798efb92324b6f4a0c99c743cd96b67ac90"
+          }
+        },
+        "publisher": {
+          "artifact": {
+            "bytes": 2015707,
+            "provider": "MSYS2 UCRT64",
+            "sha256": "ed51d57f1af30d963a1651ed71faae7ddf8824a3c685acd19203cea73335a641",
+            "status": "PINNED_BYTES_VERIFIED",
+            "url": "https://repo.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-djvulibre-3.5.30-2-any.pkg.tar.zst",
+            "version": "3.5.30-2"
+          },
+          "dependencies": {
+            "dependency_files": {
+              "libLerc.dll": "1ffee78579c25b073267bcac8d0a6045d9bd446e010c7953b569b2629ca8a58a",
+              "libarchive-13.dll": "862e1d2ed6c4adf86d60e0c2f08a16c2a49d015a49775f402698511258ac44d8",
+              "libb2-1.dll": "01bbf64090367d511f41d9fc8f34c557f61d4a227b7c9e47ce04052cbfdc3e7d",
+              "libbrotlicommon.dll": "7b0047dc16dd92a7932124dfd5a6e698d342f533a15d37d61f710def66091436",
+              "libbrotlidec.dll": "c4c987a01597ddf969d93023f933f999a20f285588b0decb4deeb780c9e9cdf8",
+              "libbz2-1.dll": "1790bf6473c9d48db14c1f0ee8124142327556d281299ea2a72ee361118ee01a",
+              "libcrypto-4-x64.dll": "ff5bd426835acf70a03e6fd8bb51b60441806bf228de608caf4355b57f0c2340",
+              "libcurl-4.dll": "07ffcc59d7c012b39956f4f21dc8875f3892d1570077606703e23ebb2b0dee0f",
+              "libdeflate.dll": "61a60665da9fd15a0e8668c47424f325e1d74479c3f896fa7ae48ffcee4ca300",
+              "libgcc_s_seh-1.dll": "44f6318f96eb2aaf6e90400bb1178ab6d55b01ae2cf24846d6b30d96e87e89dd",
+              "libgif-7.dll": "547f069546e3233430d3cbf106b403fbdc9c5cf1518e525c462533d58843b31e",
+              "libgomp-1.dll": "3de964e7d130009a9c58f70f01698552e3debc0707f0e19d4d1a7d7bec90052e",
+              "libiconv-2.dll": "9824e9f78e76ad513e5ba0d697c60de2fb24a21c20922bc2f918c86998a08cab",
+              "libidn2-0.dll": "1103631c9f063083407d05d6baeacd564c774f6803ba54421ee53dfb3e25c1b9",
+              "libintl-8.dll": "0e5a178731e6be6d115442a6ade3df7f03265cd1fc4338f8b6f86a8001cbf582",
+              "libjbig-0.dll": "36b6155be36d24a19154a48177a09978ff6c26f48665d8c7bb5057aaace6b91c",
+              "libjpeg-8.dll": "22286acc18b907d03eec1177c99f54a802a6f8437888d1abb79e65a7ecd14605",
+              "libleptonica-6.dll": "c48f31ed1cb3dbea30b1121a169dfcd9a4bdb0ed12b5b6fb20a006094a7480bf",
+              "liblz4.dll": "4ec83678100682f0be6ba31e1e642332caa53b2efcee2c201b7cab0788d1260f",
+              "liblzma-5.dll": "d97a260b8bb4f6affc34ec47249429240068b94bb6f7dc30c4d64daaafb3ac69",
+              "libnghttp2-14.dll": "5e5460b1f9dd489566a747f7fb72bcc7862608213e1cc401e02a9ee0f1866da1",
+              "libnghttp3-9.dll": "30ed479b0ae35b56bd79c816e2b9010f2d0a9f84c96b0a210d44e188e9222f1e",
+              "libngtcp2-16.dll": "099bdd982e4c6ec0fc04dd00ebaa9fb8bc090cc5521175cceb7c66ea5b5b4aea",
+              "libngtcp2_crypto_ossl-0.dll": "9ce610fc3d42e4d82e8242a71feace273f5e305fb551d2f6d6b09861362ebec9",
+              "libopenjp2-7.dll": "94f9507828d391cf96d700d34918114f1c1e03f91dd1243a19275e0435690925",
+              "libpng16-16.dll": "28db7a8c6fcc579ce621729d27f1952324cd3a2b4e24da121611bb586346e732",
+              "libpsl-5.dll": "a531e72de3c64d43fb83cbfb6fa63e5ee982a970292ec51314e29d0acabf1dd5",
+              "libsharpyuv-0.dll": "d29380c7056383f3e7a80bf9e150f0b8c425c1cf2568d1336e88979ddc2307af",
+              "libssh2-1.dll": "682fd57a3d16f00f26025d01672d7ec3bfc4b1694c35e90b7b1ffc321c0fa5aa",
+              "libssl-4-x64.dll": "879b67699f587b4e1c5ce23c444f587f01a4fbe10f0cdf0374414e37bd606331",
+              "libstdc++-6.dll": "098e4964e3c8179847f7a1c313d2e8020ca12df3f1d18878a417a8f54d41505a",
+              "libtesseract-5.5.dll": "9a6e139504f3dbbc5db5aa3ed87c8fa641c7f9b4a6d7f0899cda2a381d48d704",
+              "libtiff-6.dll": "d047260c3d456f84a2f9cd801d3b57bee0357cade32724caf16006c64c5fe8ff",
+              "libunistring-5.dll": "dfa746de2174d9471be54dd64c8ac478f981abf434d3c95c0e6b500ef78e63e7",
+              "libwebp-7.dll": "8dfe40c4e0abc90ddf18f080898987e01253d099b2b2d6daf7db521e55c00446",
+              "libwebpmux-3.dll": "9bd85116a22923d648d6b0ad09f21d08df7bd3d8860b24a5b4a6d4ac788b7340",
+              "libwinpthread-1.dll": "94a9a4e2fe27b4bc827a4b209e9deb4cc3dc34bc025df06b849144f9d4c588f8",
+              "libz-1.dll": "934103c50623302548a1cf66fbc22f0029e4eb4556343252a505e2fc005e835f",
+              "libzstd.dll": "48368ab0ca622d0ec12f41ce85d91f22866bf5da92c77a69a06483564c93816c",
+              "zlib1.dll": "aa658771fb152b095eda1614d8bde798efb92324b6f4a0c99c743cd96b67ac90"
+            },
+            "ocr_manifest_sha256": "a81c4297303078d5ca0f1ab12adee792ef97f426128140f266f8eb12428ebe8c",
+            "package_components": [
+              "ucrt64/bin/cjb2.exe",
+              "ucrt64/bin/djvm.exe",
+              "ucrt64/bin/djvused.exe",
+              "ucrt64/bin/djvutxt.exe",
+              "ucrt64/bin/libdjvulibre-21.dll",
+              "ucrt64/share/djvu/osi/cs/messages.xml",
+              "ucrt64/share/djvu/osi/de/libdjvu++.xml",
+              "ucrt64/share/djvu/osi/de/messages.xml",
+              "ucrt64/share/djvu/osi/en/djvutools-reference.xml",
+              "ucrt64/share/djvu/osi/en/libdjvu++.xml",
+              "ucrt64/share/djvu/osi/en/messages.xml",
+              "ucrt64/share/djvu/osi/fr/libdjvu++.xml",
+              "ucrt64/share/djvu/osi/fr/messages.xml",
+              "ucrt64/share/djvu/osi/ja/libdjvu++.xml",
+              "ucrt64/share/djvu/osi/ja/messages.xml",
+              "ucrt64/share/djvu/osi/languages.xml",
+              "ucrt64/share/djvu/osi/zh/libdjvu++.xml",
+              "ucrt64/share/djvu/osi/zh/messages.xml"
+            ]
+          },
+          "executable": "D:\\a\\_temp\\lc-f4158027\\optional\\payload\\djvutxt.exe",
+          "family": "djvu",
+          "lock_sha256": "9c711d6f2c29623863e25157243aded5216ba1b953179cbb28eedabd8018aba9",
+          "native_fixtures": "NOT_RUN",
+          "phase": "prepare-verified-runtime",
+          "runtime_root": "D:\\a\\_temp\\lc-f4158027\\optional\\payload",
+          "schema": 1,
+          "status": "PASS"
+        },
+        "oracle": {
+          "commit": "684cc8ddac569fdcf5d685b33302f570481ea6f8",
+          "path": "scripts/legacy_conversion_oracles.json",
+          "blob": "437a3735bd3747a4f915e9aa194aab6be1dda9d2",
+          "actual_function_sum": 163,
+          "historical_summary_field": 162,
+          "note": "The actual function inventory and all four raw Counters are exact. The stale top-level portable_cases=162/empty qualifications_advertised was subsequently corrected in integrated root7641; no cases were lowered or omitted."
+        }
+      }
+    }
   }
 }

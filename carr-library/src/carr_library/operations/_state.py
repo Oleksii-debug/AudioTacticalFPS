@@ -6,9 +6,9 @@ introduce a second job store or weaken the existing local path checks.
 import os
 from pathlib import Path
 import tempfile
-import time
 
 from ..audio import jobs
+from ..durable_state import _replace_state
 from ..audio.model_manifest import local_path as _asset_path
 
 MAX_JSON_BYTES = 32 * 1024 * 1024
@@ -45,20 +45,6 @@ def read_json(path):
 
 def sync_directory(path):
     return jobs._sync_directory(jobs.checked_directory(path))
-
-
-def _replace_state(stage, destination):
-    """Reuse the donor's bounded Windows sharing-error retry; never unlink."""
-    delays = iter((0.01, 0.02, 0.04, 0.08, 0.16, 0.32))
-    while True:
-        try:
-            jobs._replace_state_file(stage, destination)
-            return
-        except PermissionError as exc:
-            delay = next(delays, None)
-            if getattr(exc, 'winerror', None) not in (5, 32, 33) or delay is None:
-                raise
-            time.sleep(delay)
 
 
 def atomic_json(path, value, *, replace=False):

@@ -150,6 +150,10 @@ def run_ffmpeg(ffmpeg, arguments, *, cancelled=lambda: False, loglevel='error'):
                     raise RuntimeError('FFmpeg returned excessive diagnostic output.')
                 time.sleep(0.03)
             check_cancelled(cancelled)
+            # A fast child can exit before the polling loop checks its log.
+            # Apply the same bound at EOF before accepting either exit status.
+            if os.fstat(log.fileno()).st_size > 1024 * 1024:
+                raise RuntimeError('FFmpeg returned excessive diagnostic output.')
             log.seek(0)
             message = log.read(1024 * 1024).decode('utf-8', errors='replace')
             if process.returncode:

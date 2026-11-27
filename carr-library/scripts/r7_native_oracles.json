@@ -1336,5 +1336,79 @@
       "metrics.notification_audio_threads": 0,
       "metrics.changed_owner_refusals": 1
     }
+  },
+  "save-actions": {
+    "probe": "tests/ui/native_save_all_smoke.py",
+    "arguments": [
+      "--native"
+    ],
+    "subprocess_timeout_seconds": 300,
+    "modules": [
+      "carr_library.ui.productivity",
+      "carr_library.ui.save_all",
+      "carr_library.ui.desktop_app",
+      "carr_library.ui.desktop_evidence_panel",
+      "carr_library.ui.keyboard_settings",
+      "carr_library.evidence_drafts",
+      "carr_library.ui.narration_editor"
+    ],
+    "probe_modules": [
+      "carr_library.ui.productivity",
+      "carr_library.ui.save_all",
+      "carr_library.ui.desktop_app",
+      "carr_library.ui.desktop_evidence_panel",
+      "carr_library.ui.keyboard_settings",
+      "carr_library.evidence_drafts",
+      "carr_library.ui.narration_editor"
+    ],
+    "checks": {
+      "real Windows native controls": 1,
+      "save implementation loaded from installed package": 1,
+      "native_edit_menu_has_six_named_actions": 1,
+      "native_recovery_and_edit_commands_use_current_registry": 1,
+      "native_edit_undo_restores_previous_draft": 1,
+      "native_edit_redo_obeys_current_control_capability": 1,
+      "native_edit_copy_keeps_exact_draft": 1,
+      "native_edit_cut_changes_only_selected_draft": 1,
+      "native_edit_paste_restores_exact_unicode": 1,
+      "native_edit_select_all_covers_current_control": 1,
+      "native_edit_refuses_readonly_mutation": 1,
+      "native_file_recovery_requires_explicit_choice": 1,
+      "native_file_recovery_keeps_saved_note_and_original_unchanged": 1,
+      "Save All waits for the real note transaction": 2,
+      "note is uncommitted while the worker is held": 2,
+      "native Close keeps the editor open during save": 2,
+      "failed note commit cancels the pending close": 1,
+      "failed note remains editable and baseline is preserved": 1,
+      "another valid reading draft still saves after the failure": 1,
+      "reading editor shares the main Save All coordinator": 2,
+      "reading draft survives the complete native event flow": 2,
+      "successful pending close follows both durable writes": 1,
+      "closed reading editor unregisters its save participant": 2,
+      "existing File Save All command reaches the native handler": 1,
+      "native main close is deferred during the write": 1,
+      "main close occurs after the note is committed": 1,
+      "all save operations preserve immutable retained source bytes": 1,
+      "no native callback failed": 1,
+      "native button handler: Save all open drafts": 2,
+      "native button handler: C&lose": 2
+    },
+    "fields": {
+      "status": "PASS",
+      "actual_windows": true,
+      "isolated": true,
+      "native_controls": true,
+      "native_events": "PASS",
+      "durable_stores": "PASS",
+      "deferred_close": "PASS",
+      "physical_audio": "NOT_RUN",
+      "nvda": "NOT_RUN"
+    },
+    "exact_metrics": {
+      "metrics.edit_commands": 6,
+      "metrics.recovery_dialogs": 1,
+      "metrics.failed_save_scenarios": 1,
+      "metrics.successful_save_scenarios": 1
+    }
   }
 }

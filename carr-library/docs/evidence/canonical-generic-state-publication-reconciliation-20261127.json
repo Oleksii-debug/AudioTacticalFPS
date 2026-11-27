@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "status": "SOURCE_REVIEWED_RUNTIME_NOT_RUN",
+  "canonical": {
+    "commit": "a44fac04072389caa40e0d6e799b13797712f797",
+    "path": "src/carr_library/durable_state.py",
+    "test": "tests/storage/test_atomic_state_publication.py"
+  },
+  "current_base": "c73547a9942f49842a9e69d0cd2bb29f0487257d",
+  "component_commit": "bcb66742afcff1e5c6d887c32042d90682536972",
+  "observed_source_gap": "The generic atomic_bytes path called the native state publisher once. The canonical generic retry contract remained only in the resource adapter, so a transient non-delete-sharing reader could still reject a generic save.",
+  "reconciliation": "Restore the canonical six-delay retry as durable_state._replace_state, retain the current checked native publisher unchanged, and import this same helper in the resource adapter.",
+  "preserved": [
+    "0.01,0.02,0.04,0.08,0.16,0.32 second retry delays; at most seven publisher attempts.",
+    "Only PermissionError with winerror5,32,33 is retried; unrelated failure propagates.",
+    "One complete flushed sibling stage; no target deletion, attribute override or copy fallback.",
+    "Current native publisher never turns a committed save into a retryable descriptor-close error.",
+    "Create-only publication, regular local file guards, coherent JSON reader, byte budgets and final stage cleanup unchanged."
+  ],
+  "tests": {
+    "new_canonical_generic": 7,
+    "retained_resource": 6,
+    "existing_coherent_reader": "tests/storage/test_state_json_reader.py retained in full source and installed selectors"
+  },
+  "review": {
+    "independent_source": "capacity_measurements reviewed exact bcb667 four-file component; GO",
+    "runtime": "NOT_RUN"
+  },
+  "limits": {
+    "old_test_hooks": "Canonical tests inject synthetic denials after the current native publisher; the actual non-delete-sharing Windows handle case exercises the complete native path.",
+    "nvda": "NOT_RUN",
+    "platform_completion": "NOT_CLAIMED"
+  }
+}

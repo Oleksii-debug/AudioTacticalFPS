@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from carr_library.operations import _state
+from carr_library import durable_state
 
 
 @pytest.mark.parametrize('code', [5, 32, 33])
@@ -21,7 +22,7 @@ def test_transient_windows_sharing_retries_the_same_flushed_stage(tmp_path, monk
             raise failure
         return real_replace(stage, destination)
     monkeypatch.setattr(_state.jobs, '_replace_state_file', replace)
-    monkeypatch.setattr(_state.time, 'sleep', sleeps.append)
+    monkeypatch.setattr(durable_state.time, 'sleep', sleeps.append)
     _state.atomic_json(target, {'value': 'new'}, replace=True)
     assert _state.read_json(target) == {'value': 'new'}
     assert len(attempts) == 3 and len(set(attempts)) == 1
@@ -40,7 +41,7 @@ def test_exhausted_sharing_retry_preserves_the_original_and_cleans_only_its_stag
         failure.winerror = 32
         raise failure
     monkeypatch.setattr(_state.jobs, '_replace_state_file', fail)
-    monkeypatch.setattr(_state.time, 'sleep', sleeps.append)
+    monkeypatch.setattr(durable_state.time, 'sleep', sleeps.append)
     with pytest.raises(PermissionError):
         _state.atomic_json(target, {'value': 'new'}, replace=True)
     assert len(calls) == 7 and len(set(calls)) == 1
@@ -57,7 +58,7 @@ def test_unrelated_publication_error_has_no_retry_or_destination_removal(tmp_pat
         calls.append(stage)
         raise PermissionError('Synthetic unrelated denial')
     monkeypatch.setattr(_state.jobs, '_replace_state_file', fail)
-    monkeypatch.setattr(_state.time, 'sleep', lambda seconds: pytest.fail('Unrelated denial was retried.'))
+    monkeypatch.setattr(durable_state.time, 'sleep', lambda seconds: pytest.fail('Unrelated denial was retried.'))
     with pytest.raises(PermissionError):
         _state.atomic_json(target, {'value': 'new'}, replace=True)
     assert len(calls) == 1 and target.read_bytes() == original

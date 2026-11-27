@@ -2,7 +2,7 @@
   "schema": 1,
   "component": "Preserved publication, canonical recovery, progress settings, native manifests and headless admission",
   "authoring_status": "NOT_RUN",
-  "derivation": "Retain the exact prior132 cases; add39 passive-provider recovery,9 headless admission,32 canonical progress preference and20 unchanged canonical manifest cases. Retain all232 and add27 observed-write, publication and settings-dialog conflict cases.",
+  "derivation": "Retain the exact prior132 cases; add39 passive-provider recovery,9 headless admission,32 canonical progress preference and20 unchanged canonical manifest cases. Retain all232 and add27 observed-write, publication and settings-dialog conflict cases. Retain all259; restore7 canonical generic-state publication cases, protect6 existing resource-state cases through the shared retry owner, and add7 actual-child FFmpeg diagnostic boundary cases.",
   "failure_source_commit": "523aa40f9215569a276f0625d09fcc0fa84bb520",
   "failure_run_id": 45993629737,
   "tests": {
@@ -133,11 +133,33 @@
       "test_reopened_modal_ok_saves_only_the_newly_reviewed_observation": 1,
       "test_modal_ok_rejects_a_change_after_the_displayed_observation": 1,
       "test_invalid_observation_never_mutates_saved_settings": 6
+    },
+    "tests/storage/test_atomic_state_publication.py": {
+      "test_atomic_state_update_survives_reader_without_exposing_partial_bytes": 1,
+      "test_permanent_replace_denial_keeps_old_state_and_cleans_own_stage": 2,
+      "test_unrelated_publication_error_is_not_retried": 1,
+      "test_windows_retry_budget_reuses_one_complete_stage": 3
+    },
+    "tests/operations/test_state.py": {
+      "test_transient_windows_sharing_retries_the_same_flushed_stage": 3,
+      "test_exhausted_sharing_retry_preserves_the_original_and_cleans_only_its_stage": 1,
+      "test_unrelated_publication_error_has_no_retry_or_destination_removal": 1,
+      "test_create_only_policy_never_replaces_existing_or_linked_records": 1
+    },
+    "tests/audio/test_ffmpeg_process_boundaries.py": {
+      "test_fast_finished_child_cannot_bypass_final_diagnostic_budget": 2,
+      "test_exact_final_diagnostic_budget_still_returns_complete_output": 1,
+      "test_running_child_is_settled_before_diagnostic_overflow_returns": 1,
+      "test_cancel_before_spawn_does_not_start_a_child": 1,
+      "test_bounded_nonzero_child_remains_failure_with_its_diagnostic": 1,
+      "test_launch_failure_closes_only_the_owned_diagnostic_file": 1
     }
   },
-  "total_cases": 259,
+  "total_cases": 279,
   "canonical_provider_cases": 96,
   "canonical_preserved_cases": 37,
   "canonical_progress_cases": 59,
-  "headless_admission_cases": 9
+  "headless_admission_cases": 9,
+  "canonical_state_cases": 13,
+  "ffmpeg_process_boundary_cases": 7
 }

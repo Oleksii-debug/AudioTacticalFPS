@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "status": "CANONICAL_REGRESSION_SOURCE_REPAIR_NOT_RUN",
+  "canonical": {
+    "commit": "e3cf74c243d4ef930b526b5648ca9003c0900057",
+    "test": "tests/audio/test_audio_process.py",
+    "test_blob": "8a1cbc082a9fcb1cd1647e5b658c48a5810587db",
+    "required_behavior": "test_fast_stderr_overflow_is_detected_after_child_exit and final diagnostic check in audio/process.py"
+  },
+  "current": {
+    "base_commit": "c73547a9942f49842a9e69d0cd2bb29f0487257d",
+    "product": "src/carr_library/audio/ffmpeg.py",
+    "before_blob": "18f517b994cd96c876f0d3f57f484038de75cd86"
+  },
+  "issue": "Current run_ffmpeg checked diagnostic bytes only inside process.poll() is None. A child already exited at the first poll could emit more than 1 MiB and return success after a truncated read.",
+  "correction": "Repeat the existing os.fstat(log.fileno()).st_size > 1 MiB rejection after the child exits and cancellation is checked, before reading diagnostics or accepting either return code. Keep the current launch, polling, exception ordering and finally termination/wait behavior.",
+  "tests": {
+    "module": "tests.audio.test_ffmpeg_process_boundaries",
+    "cases": 7,
+    "functions": {
+      "test_fast_finished_child_cannot_bypass_final_diagnostic_budget": 2,
+      "test_exact_final_diagnostic_budget_still_returns_complete_output": 1,
+      "test_running_child_is_settled_before_diagnostic_overflow_returns": 1,
+      "test_cancel_before_spawn_does_not_start_a_child": 1,
+      "test_bounded_nonzero_child_remains_failure_with_its_diagnostic": 1,
+      "test_launch_failure_closes_only_the_owned_diagnostic_file": 1
+    },
+    "actual_child_contract": "Each launched boundary fixture uses the actual current Popen options and owned TemporaryFile, with test-only argv substitution for isolated Python -I -B code. A bounded child.wait before returning from the fast launcher makes EOF deterministic. Existing actual FFmpeg DSP measurements remain separate.",
+    "retained": [
+      "Exact 1 MiB accepted without truncation.",
+      "Both successful and failed fast children above 1 MiB rejected.",
+      "Running over-limit child settled before the runner returns.",
+      "Pre-spawn cancellation prevents process creation.",
+      "Under-limit nonzero exit remains failure with its diagnostic.",
+      "Launch failure preserves its original error and closes its owned log."
+    ]
+  },
+  "validation": {
+    "source_review": "Final path and existing cleanup inspected.",
+    "local_runtime": "UNAVAILABLE",
+    "post_repair_source": "NOT_RUN",
+    "post_repair_installed": "NOT_RUN",
+    "actual_ffmpeg_signal_test": "UNCHANGED_NOT_RERUN"
+  },
+  "limits": [
+    "The alternative canonical process supervisor is not imported.",
+    "This narrow correction does not claim configurable old AudioBudget timeout/disk semantics for the separate current FFmpeg runner.",
+    "These new synthetic process diagnostics do not claim audio quality, speech synthesis or physical output."
+  ]
+}

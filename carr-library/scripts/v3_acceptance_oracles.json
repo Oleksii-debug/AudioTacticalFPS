@@ -2545,6 +2545,78 @@
       "test_typed_asr_allowance_does_not_increase_generic_historical_limit_or_depth": 3,
       "test_explicit_whole_archive_budget_still_bounds_typed_streaming_declarations": 1,
       "test_implicit_v3_dispatch_remains_disjoint_from_current_reader_and_scoped_asr": 1
+    },
+    "tests.storage.test_atomic_state_publication": {
+      "test_atomic_state_update_survives_reader_without_exposing_partial_bytes": 1,
+      "test_permanent_replace_denial_keeps_old_state_and_cleans_own_stage": 2,
+      "test_unrelated_publication_error_is_not_retried": 1,
+      "test_windows_retry_budget_reuses_one_complete_stage": 3
+    },
+    "tests.operations.test_state": {
+      "test_transient_windows_sharing_retries_the_same_flushed_stage": 3,
+      "test_exhausted_sharing_retry_preserves_the_original_and_cleans_only_its_stage": 1,
+      "test_unrelated_publication_error_has_no_retry_or_destination_removal": 1,
+      "test_create_only_policy_never_replaces_existing_or_linked_records": 1
+    },
+    "tests.audio.test_ffmpeg_process_boundaries": {
+      "test_fast_finished_child_cannot_bypass_final_diagnostic_budget": 2,
+      "test_exact_final_diagnostic_budget_still_returns_complete_output": 1,
+      "test_running_child_is_settled_before_diagnostic_overflow_returns": 1,
+      "test_cancel_before_spawn_does_not_start_a_child": 1,
+      "test_bounded_nonzero_child_remains_failure_with_its_diagnostic": 1,
+      "test_launch_failure_closes_only_the_owned_diagnostic_file": 1
+    },
+    "tests.ui.test_productivity": {
+      "test_shortcut_normalization": 5,
+      "test_typing_system_and_malformed_keys_are_rejected": 17,
+      "test_conflict_check_is_atomic_and_explains_owner": 1,
+      "test_preferences_survive_reopen_and_conflict_keeps_old_file": 1,
+      "test_preferences_reject_duplicate_fields_and_untrusted_data": 1,
+      "test_preferences_atomic_write_failure_keeps_previous": 1,
+      "test_preferences_refuse_linked_target": 1,
+      "test_dynamic_menu_inventory_keeps_fixed_shortcut_and_nested_ids": 1,
+      "test_legacy_preferences_export_keeps_newer_external_file": 2,
+      "test_keyboard_reload_invalid_file_falls_back_without_erasing_it": 1,
+      "test_failed_keymap_persistence_does_not_change_active_keys": 1,
+      "test_save_routes_dirty_note_without_premature_success": 1,
+      "test_save_during_operation_keeps_draft_and_reports_no_success": 1,
+      "test_save_no_draft_is_honest_about_modal_editors": 1
+    },
+    "tests.ui.test_save_all": {
+      "test_coordinator_follows_native_parent_links_and_rejects_a_cycle": 1,
+      "test_many_clean_documents_do_not_exhaust_the_ui_stack": 1,
+      "test_many_synchronous_durable_saves_finish_once_without_recursion": 1,
+      "test_cancel_check_failure_releases_busy_and_retains_drafts": 1,
+      "test_async_completion_waits_for_durable_result_and_preserves_newer_edit": 1,
+      "test_failure_does_not_skip_other_drafts_or_claim_all_saved": 1,
+      "test_newly_opened_dirty_document_prevents_false_complete": 1,
+      "test_cancellation_after_one_completed_draft_reports_remaining": 1,
+      "test_unregister_is_lease_scoped_and_replacement_is_not_lost": 1,
+      "test_truthy_return_is_not_a_completed_save": 1,
+      "test_close_waits_for_successful_completion_and_rechecks_at_dispatch": 1,
+      "test_failed_save_cancels_pending_close_and_preserves_dirty_state": 1,
+      "test_edit_between_save_confirmation_and_close_dispatch_keeps_window_open": 1,
+      "test_late_save_completion_never_touches_a_destroyed_window": 1,
+      "test_late_close_dispatch_never_touches_a_destroyed_window": 1,
+      "test_close_validation_failure_is_visible_and_cannot_destroy_the_window": 1,
+      "test_forced_shutdown_is_not_falsely_claimed_to_be_delayed": 1
+    },
+    "tests.ui.test_save_actions_routes": {
+      "test_installation_adds_one_edit_menu_and_recovery_to_existing_save_owner": 1,
+      "test_new_commands_reuse_semantic_registry_without_text_key_overrides": 1,
+      "test_menu_events_read_current_focus_instead_of_captured_first_control": 1,
+      "test_edit_routes_only_the_explicit_native_action": 6,
+      "test_foreign_or_cyclic_focus_cannot_receive_main_window_edit": 3,
+      "test_readonly_native_selection_allows_copy_and_select_all": 2,
+      "test_readonly_native_selection_refuses_mutating_actions": 4,
+      "test_current_control_capability_refusal_keeps_its_text": 5,
+      "test_destroyed_native_control_cannot_retarget_another_window": 1,
+      "test_closing_host_never_invokes_a_text_or_recovery_action": 2,
+      "test_recovery_route_uses_the_current_existing_panel_without_saving": 1,
+      "test_recovery_without_selected_evidence_reports_actionable_status": 2,
+      "test_unknown_edit_action_cannot_gain_arbitrary_method_access": 3,
+      "test_adding_recovery_route_keeps_durable_save_all_waiting_for_confirmation": 1,
+      "test_reinstall_retains_existing_routes_and_coordinator_without_duplicate_menus": 1
     }
   },
   "installed": {
@@ -5022,6 +5094,78 @@
       "test_typed_asr_allowance_does_not_increase_generic_historical_limit_or_depth": 3,
       "test_explicit_whole_archive_budget_still_bounds_typed_streaming_declarations": 1,
       "test_implicit_v3_dispatch_remains_disjoint_from_current_reader_and_scoped_asr": 1
+    },
+    "tests.storage.test_atomic_state_publication": {
+      "test_atomic_state_update_survives_reader_without_exposing_partial_bytes": 1,
+      "test_permanent_replace_denial_keeps_old_state_and_cleans_own_stage": 2,
+      "test_unrelated_publication_error_is_not_retried": 1,
+      "test_windows_retry_budget_reuses_one_complete_stage": 3
+    },
+    "tests.operations.test_state": {
+      "test_transient_windows_sharing_retries_the_same_flushed_stage": 3,
+      "test_exhausted_sharing_retry_preserves_the_original_and_cleans_only_its_stage": 1,
+      "test_unrelated_publication_error_has_no_retry_or_destination_removal": 1,
+      "test_create_only_policy_never_replaces_existing_or_linked_records": 1
+    },
+    "tests.audio.test_ffmpeg_process_boundaries": {
+      "test_fast_finished_child_cannot_bypass_final_diagnostic_budget": 2,
+      "test_exact_final_diagnostic_budget_still_returns_complete_output": 1,
+      "test_running_child_is_settled_before_diagnostic_overflow_returns": 1,
+      "test_cancel_before_spawn_does_not_start_a_child": 1,
+      "test_bounded_nonzero_child_remains_failure_with_its_diagnostic": 1,
+      "test_launch_failure_closes_only_the_owned_diagnostic_file": 1
+    },
+    "tests.ui.test_productivity": {
+      "test_shortcut_normalization": 5,
+      "test_typing_system_and_malformed_keys_are_rejected": 17,
+      "test_conflict_check_is_atomic_and_explains_owner": 1,
+      "test_preferences_survive_reopen_and_conflict_keeps_old_file": 1,
+      "test_preferences_reject_duplicate_fields_and_untrusted_data": 1,
+      "test_preferences_atomic_write_failure_keeps_previous": 1,
+      "test_preferences_refuse_linked_target": 1,
+      "test_dynamic_menu_inventory_keeps_fixed_shortcut_and_nested_ids": 1,
+      "test_legacy_preferences_export_keeps_newer_external_file": 2,
+      "test_keyboard_reload_invalid_file_falls_back_without_erasing_it": 1,
+      "test_failed_keymap_persistence_does_not_change_active_keys": 1,
+      "test_save_routes_dirty_note_without_premature_success": 1,
+      "test_save_during_operation_keeps_draft_and_reports_no_success": 1,
+      "test_save_no_draft_is_honest_about_modal_editors": 1
+    },
+    "tests.ui.test_save_all": {
+      "test_coordinator_follows_native_parent_links_and_rejects_a_cycle": 1,
+      "test_many_clean_documents_do_not_exhaust_the_ui_stack": 1,
+      "test_many_synchronous_durable_saves_finish_once_without_recursion": 1,
+      "test_cancel_check_failure_releases_busy_and_retains_drafts": 1,
+      "test_async_completion_waits_for_durable_result_and_preserves_newer_edit": 1,
+      "test_failure_does_not_skip_other_drafts_or_claim_all_saved": 1,
+      "test_newly_opened_dirty_document_prevents_false_complete": 1,
+      "test_cancellation_after_one_completed_draft_reports_remaining": 1,
+      "test_unregister_is_lease_scoped_and_replacement_is_not_lost": 1,
+      "test_truthy_return_is_not_a_completed_save": 1,
+      "test_close_waits_for_successful_completion_and_rechecks_at_dispatch": 1,
+      "test_failed_save_cancels_pending_close_and_preserves_dirty_state": 1,
+      "test_edit_between_save_confirmation_and_close_dispatch_keeps_window_open": 1,
+      "test_late_save_completion_never_touches_a_destroyed_window": 1,
+      "test_late_close_dispatch_never_touches_a_destroyed_window": 1,
+      "test_close_validation_failure_is_visible_and_cannot_destroy_the_window": 1,
+      "test_forced_shutdown_is_not_falsely_claimed_to_be_delayed": 1
+    },
+    "tests.ui.test_save_actions_routes": {
+      "test_installation_adds_one_edit_menu_and_recovery_to_existing_save_owner": 1,
+      "test_new_commands_reuse_semantic_registry_without_text_key_overrides": 1,
+      "test_menu_events_read_current_focus_instead_of_captured_first_control": 1,
+      "test_edit_routes_only_the_explicit_native_action": 6,
+      "test_foreign_or_cyclic_focus_cannot_receive_main_window_edit": 3,
+      "test_readonly_native_selection_allows_copy_and_select_all": 2,
+      "test_readonly_native_selection_refuses_mutating_actions": 4,
+      "test_current_control_capability_refusal_keeps_its_text": 5,
+      "test_destroyed_native_control_cannot_retarget_another_window": 1,
+      "test_closing_host_never_invokes_a_text_or_recovery_action": 2,
+      "test_recovery_route_uses_the_current_existing_panel_without_saving": 1,
+      "test_recovery_without_selected_evidence_reports_actionable_status": 2,
+      "test_unknown_edit_action_cannot_gain_arbitrary_method_access": 3,
+      "test_adding_recovery_route_keeps_durable_save_all_waiting_for_confirmation": 1,
+      "test_reinstall_retains_existing_routes_and_coordinator_without_duplicate_menus": 1
     }
   },
   "native_trust": [
