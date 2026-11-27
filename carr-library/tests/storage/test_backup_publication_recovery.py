@@ -78,7 +78,7 @@ library_backup.create_backup(LibraryApp(sys.argv[1]),target)
     import carr_library.library_backup as backup_module
     source = Path(backup_module.__file__).resolve().parents[1]
     env = {**os.environ, 'PYTHONPATH': os.pathsep.join((str(source), str(source.parent)))}
-    child = subprocess.run([sys.executable, '-c', code, str(app.root), str(target)],
+    child = subprocess.run([sys.executable, '-B', '-c', code, str(app.root), str(target)],
                            env=env, capture_output=True, text=True, timeout=30)
     assert child.returncode == 74, (child.stdout, child.stderr)
     before = _files(target)
@@ -192,7 +192,7 @@ else:
     import carr_library.audio.managed as managed_module
     source = Path(managed_module.__file__).resolve().parents[2]
     env = {**os.environ, 'PYTHONPATH': os.pathsep.join((str(source), str(source.parent)))}
-    child = subprocess.run([sys.executable, '-c', code, str(app.root), document],
+    child = subprocess.run([sys.executable, '-B', '-c', code, str(app.root), document],
                            env=env, capture_output=True, text=True, timeout=30)
     assert child.returncode == 75, (child.stdout, child.stderr)
     saved, = (app.root / 'audio-projects').glob('*/studio/project.json')

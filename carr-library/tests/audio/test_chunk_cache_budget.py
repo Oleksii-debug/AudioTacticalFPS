@@ -113,7 +113,7 @@ jobs._sync_directory = lambda path: os._exit(17)
 jobs.publish_new(sys.argv[1], sys.argv[2])
 """
     environment = dict(os.environ, PYTHONPATH=str(Path(jobs.__file__).parents[2]))
-    result = subprocess.run([sys.executable, '-c', code, str(original), str(destination)],
+    result = subprocess.run([sys.executable, '-B', '-c', code, str(original), str(destination)],
                             env=environment, timeout=20, capture_output=True)
     assert result.returncode == 17, result.stderr.decode(errors='replace')
     assert destination.read_bytes() == b'complete data'

@@ -191,7 +191,7 @@ os._exit(19)
     environment = dict(os.environ)
     source = Path(__file__).resolve().parents[2] / 'src'
     environment['PYTHONPATH'] = os.pathsep.join((str(source), str(source.parent)))
-    result = subprocess.run([sys.executable, '-c', program, str(app.root),
+    result = subprocess.run([sys.executable, '-B', '-c', program, str(app.root),
                              row.anchor.identity.workspace, row.topic_id], env=environment,
                             capture_output=True, timeout=20)
     assert result.returncode == 19, result.stderr.decode()

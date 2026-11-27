@@ -313,7 +313,7 @@ os.link=interrupt
 if operation=='backup':create_backup(LibraryApp(root),target)
 else:restore_backup(source,target,digest)
 '''
-    result = subprocess.run([sys.executable, '-c', code, str(app.root), str(folder), str(destination), digest, operation],
+    result = subprocess.run([sys.executable, '-B', '-c', code, str(app.root), str(folder), str(destination), digest, operation],
         env={**os.environ, 'PYTHONPATH': os.pathsep.join(sys.path)}, capture_output=True, timeout=20)
     assert result.returncode == 73, result.stderr
     if operation == 'backup':
