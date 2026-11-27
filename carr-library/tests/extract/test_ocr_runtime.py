@@ -331,8 +331,11 @@ def test_portable_native_orientation_uses_existing_cli_without_wrapper(native_bu
             'Different authors may use the same expression.')
     # Pillow's embedded font has the same reviewed package identity on each
     # platform; the native OCR gate must not depend on a host-installed font.
-    font = ImageFont.load_default(size=48)
-    picture = Image.new('RGB', (1800, 1150), 'white')
+    # Provide enough independent character observations for OSD's unchanged
+    # confidence threshold; a short sample can legitimately stay uncertain.
+    text = '\n'.join([text] * 4)
+    font = ImageFont.load_default(size=42)
+    picture = Image.new('RGB', (2000, 2790), 'white')
     ImageDraw.Draw(picture).multiline_text((60, 60), text, fill='black', spacing=24, font=font)
     pdf = tmp_path / 'rotated.pdf'
     picture.rotate(90, expand=True).save(pdf, resolution=240)
