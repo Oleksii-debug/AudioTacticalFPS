@@ -173,7 +173,73 @@ jobs:
         if: ${{ !cancelled() && matrix.scope == 'book-source' && steps.install-runtime.outcome == 'success' && steps.installed-origin.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
         timeout-minutes: 12
         run: |
-          & $env:CARR_PYTHON scripts/ci_check.py --jobs 2 tests/studio/test_book_batch.py tests/studio/test_book_cli.py 2>&1 | Tee-Object 'ci-native-audio-diagnostic/book-source-tests.txt'
+          $diagnose = @'
+          import importlib.util
+          import pathlib
+          import sys
+
+          path = pathlib.Path('scripts/ci_check.py').resolve()
+          spec = importlib.util.spec_from_file_location('carr_book_diagnostic_ci_check', path)
+          runner = importlib.util.module_from_spec(spec)
+          sys.modules[spec.name] = runner
+          spec.loader.exec_module(runner)
+          assert runner.SUITE_TIMEOUT_SECONDS == 600
+          original = runner.PYTEST_CHILD
+          anchor = (
+              'class RejectExpectedFailures:\n'
+              '    seen = False\n'
+              '\n'
+              '    def pytest_runtest_logreport(self, report):\n'
+              "        if hasattr(report, 'wasxfail'):\n"
+              '            self.seen = True\n'
+          )
+          assert original.count(anchor) == 1, 'The reviewed strict pytest policy anchor changed.'
+          instrumented = r'''
+          import faulthandler as diagnostic_faulthandler
+          import hashlib as diagnostic_hashlib
+          import json as diagnostic_json
+          import threading as diagnostic_threading
+          diagnostic_faulthandler.enable(all_threads=True)
+          diagnostic_faulthandler.dump_traceback_later(90, repeat=True)
+          print('CARR_BOOK_CHILD ' + diagnostic_json.dumps({
+              'pid': os.getpid(), 'main_thread': hex(diagnostic_threading.get_ident()),
+              'suite': str(sys.argv[-1])[:768], 'stack_interval_seconds': 90,
+              'scope': 'diagnostic-only observation; strict runner and suite deadline unchanged'
+          }, ensure_ascii=True, allow_nan=False), flush=True)
+
+          class RejectExpectedFailures:
+              seen = False
+              _diagnostic_rows = 0
+
+              def _diagnostic_emit(self, event, nodeid, **fields):
+                  if self._diagnostic_rows >= 512:
+                      return
+                  self._diagnostic_rows += 1
+                  identity = str(nodeid)
+                  row = dict(event=event, pid=os.getpid(), nodeid=identity[:768],
+                             nodeid_sha256=diagnostic_hashlib.sha256(identity.encode('utf-8')).hexdigest())
+                  row.update(fields)
+                  print('CARR_BOOK_CASE ' + diagnostic_json.dumps(
+                      row, sort_keys=True, ensure_ascii=True, allow_nan=False), flush=True)
+
+              def pytest_runtest_logstart(self, nodeid, location):
+                  self._diagnostic_emit('start', nodeid)
+
+              def pytest_runtest_logreport(self, report):
+                  if hasattr(report, 'wasxfail'):
+                      self.seen = True
+                  self._diagnostic_emit(
+                      'report', report.nodeid, phase=str(report.when)[:16],
+                      outcome=str(report.outcome)[:16], duration_seconds=round(float(report.duration), 6))
+          '''
+          runner.PYTEST_CHILD = original.replace(anchor, instrumented, 1)
+          assert runner.PYTEST_CHILD.replace(instrumented, anchor, 1) == original
+          sys.argv = [str(path), '--jobs', '2',
+                      'tests/studio/test_book_batch.py', 'tests/studio/test_book_cli.py']
+          print('Diagnostic-only child case/stack observation; actual ci_check main follows.', flush=True)
+          raise SystemExit(runner.main())
+          '@
+          $diagnose | & $env:CARR_PYTHON -I -B - 2>&1 | Tee-Object 'ci-native-audio-diagnostic/book-source-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Preserve only diagnostic source and native text evidence
