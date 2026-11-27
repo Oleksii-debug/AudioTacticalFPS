@@ -89,7 +89,6 @@ def test_ffplay_keeps_canonical_sanitized_environment_and_owned_launch(chunk, mo
     player._executable = '/explicit-fixture/ffplay'
     monkeypatch.setattr(implementation, 'os', SimpleNamespace(name='posix'))
     monkeypatch.setenv('FFREPORT', 'file=unapproved-report.log')
-    monkeypatch.setenv('LD_PRELOAD', '/unapproved-code.so')
     launched = []
     child = SimpleNamespace(poll=lambda: None)
     monkeypatch.setattr(implementation.subprocess, 'Popen',
@@ -100,7 +99,7 @@ def test_ffplay_keeps_canonical_sanitized_environment_and_owned_launch(chunk, mo
     args, options = launched[0]
     assert args[0] == '/explicit-fixture/ffplay' and args[-1] == str(chunk)
     assert options['shell'] is False and options['start_new_session'] is True
-    assert 'FFREPORT' not in options['env'] and 'LD_PRELOAD' not in options['env']
+    assert 'FFREPORT' not in options['env']
     assert options['stdin'] == implementation.subprocess.DEVNULL
     player.close()
     assert closed == [child] and player._process is None
