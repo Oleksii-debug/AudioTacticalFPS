@@ -1,14 +1,41 @@
 """Actual installed wx, current publication producer and selected FFmpeg probe."""
 from argparse import ArgumentParser
+from dataclasses import asdict
+import importlib
 from hashlib import sha256
 import json
 import os
 from pathlib import Path
 import tempfile
+import sys
+from threading import Event, Thread
 from time import monotonic
 from types import SimpleNamespace
 import traceback
 import wave
+
+
+
+MODULES = (
+    'carr_library.reader.media_overlay', 'carr_library.reader.publication_state',
+    'carr_library.audio.playback_processing', 'carr_library.ui.media_overlay_dialog',
+    'carr_library.audio.recording_process', 'carr_library.audio.cleanup',
+    'carr_library.audio.jobs', 'carr_library.audio.publishing', 'carr_library.audio.daisy',
+    'carr_library.audio.player', 'carr_library.audio.playback', 'carr_library.library_backup',
+)
+
+
+def installed_identity():
+    if not sys.flags.isolated:
+        raise ValueError('Use the exact isolated installed Python with -I.')
+    prefix = Path(sys.prefix).resolve(strict=True)
+    result = {}
+    for name in MODULES:
+        path = Path(importlib.import_module(name).__file__).resolve(strict=True)
+        if not path.is_relative_to(prefix) or 'site-packages' not in {part.casefold() for part in path.parts}:
+            raise ValueError('A native publication-reader module escaped the installed application.')
+        result[name] = {'path': str(path), 'sha256': sha256(path.read_bytes()).hexdigest()}
+    return result
 
 
 def export_fixture_publications(project_dir, library_root, run_key, paths, *, ffmpeg):
@@ -26,13 +53,7 @@ def export_fixture_publications(project_dir, library_root, run_key, paths, *, ff
                          publisher='Synthetic publisher')
 
 
-def main():
-    parser = ArgumentParser(description=__doc__)
-    parser.add_argument('--native', action='store_true')
-    parser.parse_args()
-    if os.name != 'nt':
-        print(json.dumps({'status': 'NOT_RUN', 'reason': 'Native Windows required.', 'nvda': 'NOT_RUN'}))
-        return 77
+def run_native():
     import wx
     from carr_library.application import LibraryApp
     from carr_library.audio.ffmpeg import wav_info
@@ -129,7 +150,7 @@ def main():
                     document = window.session.document
                     info = wav_info(document.audio)
                     metrics[kind] = {'frames': info.frames, 'sample_rate': info.rate,
-                                     'pcm_sha256': sha256_file(document.audio),
+                                     'channels': info.channels, 'pcm_sha256': sha256_file(document.audio),
                                      'publication_sha256': document.publication_sha256}
                     check('exact full publication identity ' + kind,
                           document.publication_sha256 == original[kind])
@@ -170,6 +191,9 @@ def main():
                           and controlled._reader is not None and window.session._reader is not None)
                     check('recorded-reader source mapping is labelled estimated ' + kind,
                           window.session.source_time_accuracy == 'estimated_after_time_stretch')
+                    metrics[kind]['controlled_frames'] = controlled.audio_frames
+                    metrics[kind]['controlled_pcm_sha256'] = sha256_file(controlled.audio)
+                    metrics[kind]['source_time_accuracy'] = controlled.source_time_accuracy
                     state['controlled_pcm'] = controlled.audio
                     window.chapter.SetFocus()
                     state['phase'] = 'focus-' + kind
@@ -254,8 +278,57 @@ def main():
                 'native_controls': 'EXECUTED', 'physical_playback': 'NOT_RUN',
                 'nvda': 'NOT_RUN', 'word_alignment': 'NOT_CLAIMED',
                 'language_quality': 'NOT_CLAIMED', 'third_party_interoperability': 'NOT_RUN'}
-    print(json.dumps(evidence, ensure_ascii=False), flush=True)
-    return 0 if evidence['status'] == 'PASS' else 1
+    return evidence
+
+
+
+def main():
+    parser = ArgumentParser(description=__doc__)
+    parser.add_argument('--native', action='store_true')
+    args = parser.parse_args()
+    if os.name != 'nt' or not args.native:
+        print(json.dumps({'status': 'NOT_RUN', 'reason': 'Explicit native Windows execution is required.',
+                          'nvda': 'NOT_RUN'}))
+        return 77
+    settled = Event()
+    def watchdog():
+        if not settled.wait(180):
+            print(json.dumps({'status': 'FAIL', 'reason': 'Recorded-reader native probe exceeded 180 seconds.'}), flush=True)
+            os._exit(1)
+    Thread(target=watchdog, daemon=True).start()
+    native = None
+    try:
+        from carr_library.native_runtime import activate_bundled_runtime
+        from carr_library.audio.media_conversion import runtime_identity
+        from carr_library.audio.runtime import FFMPEG_WINDOWS_SHA256, FFMPEG_VERSION
+        native = activate_bundled_runtime()
+        origins = installed_identity()
+        runtime = runtime_identity(Path(os.environ['CARR_FFMPEG']).resolve(strict=True))
+        if runtime.sha256 != FFMPEG_WINDOWS_SHA256 or not runtime.version.startswith('ffmpeg version ' + FFMPEG_VERSION):
+            raise ValueError('The actual FFmpeg runtime differs from its reviewed byte/version pin.')
+        evidence = run_native()
+        if installed_identity() != origins:
+            raise ValueError('Installed reader implementations changed during native execution.')
+        if runtime_identity(Path(os.environ['CARR_FFMPEG']).resolve(strict=True)) != runtime:
+            raise ValueError('The actual FFmpeg runtime changed during native execution.')
+        if native is not None:
+            native.close()
+            native = None
+        evidence.update(installed_mode=True, isolated=True, module_origins=origins,
+                        actual_ffmpeg=asdict(runtime), source_commit=os.environ['GITHUB_SHA'])
+        print(json.dumps(evidence, ensure_ascii=False, sort_keys=True), flush=True)
+        return 0 if evidence['status'] == 'PASS' else 1
+    except BaseException as error:
+        print(''.join(traceback.format_exception(type(error), error, error.__traceback__))[-16000:], flush=True)
+        print(json.dumps({'status': 'FAIL', 'reason': type(error).__name__ + ': ' + str(error)[:4000],
+                          'nvda': 'NOT_RUN'}), flush=True)
+        return 1
+    finally:
+        try:
+            if native is not None:
+                native.close()
+        finally:
+            settled.set()
 
 
 if __name__ == '__main__':

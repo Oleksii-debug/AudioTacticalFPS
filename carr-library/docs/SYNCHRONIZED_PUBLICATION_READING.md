@@ -77,3 +77,31 @@ Physical audio, manual NVDA, independent third-party reader interoperability,
 word alignment and per-language listening quality require separate evidence.
 The retained player/WinMM implementation, current live speech controls, reviewed
 FFmpeg pin and integrated 56-pin dependency profile remain unchanged.
+
+
+## Exact qualification gate
+
+The focused workflow is .github/workflows/carr-media-overlay.yml, enabled for
+carr/media-overlay-* and carr/v3-acceptance-* candidates. It uses the unchanged
+reviewed integrated56 lock and selected pinned FFmpeg archive.
+
+| Required lane | Exact population |
+| --- | ---: |
+| Source functions and parameter multiplicities | 100 |
+| Isolated installed functions and parameter multiplicities | 100 |
+| Installed native reader checks | 45 |
+| Installed implementation origins in the native receipt | 12 |
+
+scripts/media_overlay_oracles.json declares the complete Counters. The shared
+audio_batch_acceptance harness retains its observed-bootstrap fixes and
+complete tracked-checkout/test/wheel identity checks. The reader adapter adds
+the exact native contract for both EPUB and DAISY: 8,000 stereo PCM frames at
+16,000 Hz, a 4,000-frame independent-control derivative, and byte identities
+measured from the actual synthetic outputs.
+
+Each source/installed child remains bounded at 1,200 seconds and each step at
+22 minutes. The native probe has a 180-second watchdog; the whole job is
+bounded at 75 minutes. Timeout, incomplete collection, changed counters,
+skips/XFAIL/XPASS, failed cleanup or altered source evidence is FAIL. Raw textual
+reports and bounded failure log tails remain available on every outcome.
+No private books, PCM payloads, models or executables are uploaded.
