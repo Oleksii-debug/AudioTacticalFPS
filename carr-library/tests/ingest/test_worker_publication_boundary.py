@@ -184,7 +184,8 @@ def test_changed_request_identity_cannot_authorize_reconciliation(tmp_path, chan
     else:
         changed['config']['dpi'] += 1
     worker._store(app.root, result['request_id'], changed)
-    assert worker._published_after_stop(app, initial, 0) is None
+    with pytest.raises(ValueError):
+        worker._reconcile_publication(app.root, initial['request_id'], initial['attempt'])
 
 
 def test_corrupted_retained_bytes_cannot_authorize_reconciliation(tmp_path):
@@ -197,10 +198,11 @@ def test_corrupted_retained_bytes_cannot_authorize_reconciliation(tmp_path):
     raw = bytearray(retained.read_bytes())
     raw[-1] ^= 1
     retained.write_bytes(raw)
-    assert worker._published_after_stop(app, initial, 0) is None
+    with pytest.raises(ValueError):
+        worker._reconcile_publication(app.root, initial['request_id'], initial['attempt'])
 
 
-@pytest.mark.parametrize('binding', ('job', 'configuration'))
+@pytest.mark.parametrize('binding', ('job', 'configuration', 'missing_job'))
 def test_pdf_reconciliation_requires_its_exact_saved_job_and_config(tmp_path, binding):
     app = LibraryApp(tmp_path / 'library')
     workspace = app.create_workspace('PDF request binding')
@@ -210,7 +212,10 @@ def test_pdf_reconciliation_requires_its_exact_saved_job_and_config(tmp_path, bi
     request = worker.load_request(app.root, result['request_id'])
     if binding == 'job':
         request['job'] = 'f' * 64
+    elif binding == 'missing_job':
+        request.pop('job')
     else:
         request['config']['dpi'] += 1
     worker._store(app.root, result['request_id'], request)
-    assert worker._published_after_stop(app, request, 0) is None
+    with pytest.raises(ValueError):
+        worker._reconcile_publication(app.root, request['request_id'], request['attempt'])

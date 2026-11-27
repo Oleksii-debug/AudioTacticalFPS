@@ -9,8 +9,8 @@ The independently retained manifest digest binds the database and every asset.
 Version 2 also identifies the exact schema, not just its numeric user_version.
 Format 4 unifies registered sidecars. Exact legacy formats 1/2 and the three
 previous format-3 layouts are read without rewriting the source backup.
-Database snapshots require an exact supported V3 or V4 schema. V3 databases
-are restored unchanged; opening the library performs the checked V4 upgrade.
+Database snapshots require an exact supported V3, V4 or V5 schema. Older databases
+are restored unchanged; opening the library performs the checked current upgrade.
 Restoration always creates a new data directory and never merges or overwrites.
 """
 from contextlib import closing
@@ -30,7 +30,7 @@ from .ingest.restore import RestoreError
 from .ingest.writer_guard import exclusive_writer
 from .data_paths import guard_data_directory
 from .durable_state import local_path
-from .storage.revisions import Storage
+from .storage.revisions import Storage, CURRENT_SCHEMA_VERSION
 from .storage.schema_identity import expected_schema_fingerprint, schema_fingerprint
 from . import backup_sidecars, pending_backup
 
@@ -130,13 +130,13 @@ def create_backup(app, destination, *, include_generated=False, max_bytes=None, 
         with TemporaryDirectory(prefix='.carr-library-backup-', dir=destination.parent) as tmp:
             stage = Path(tmp)
             snapshot = stage / DATABASE
-            with closing(Storage(app.database, schema_version=4)) as storage:
+            with closing(Storage(app.database, schema_version=CURRENT_SCHEMA_VERSION)) as storage:
                 storage.backup(snapshot)
             size = _plain(snapshot).st_size
             if not 0 < size <= MAX_DATABASE:
                 raise RestoreError('database exceeds backup size limit')
             _check_budget(size, max_bytes)
-            with closing(Storage(snapshot, schema_version=4)) as snapshot_storage:
+            with closing(Storage(snapshot, schema_version=CURRENT_SCHEMA_VERSION)) as snapshot_storage:
                 asset_budget = MAX_ASSET_BYTES if max_bytes is None else min(MAX_ASSET_BYTES, max_bytes - size)
                 entries = _copy_originals(snapshot_storage.db, app.assets, stage / ORIGINALS,
                                           max_bytes=asset_budget, cancelled=cancelled)
@@ -153,7 +153,7 @@ def create_backup(app, destination, *, include_generated=False, max_bytes=None, 
                     if include_generated else 0)) if max_bytes is None else max_bytes - total
                 sidecars = backup_sidecars.snapshot(snapshot_storage.db, app.root, stage,
                     max_bytes=state_budget, include_generated=include_generated, cancelled=cancelled)
-            manifest = dict(version=4, kind='carr-library', schema_version=4,
+            manifest = dict(version=4, kind='carr-library', schema_version=CURRENT_SCHEMA_VERSION,
                 schema_fingerprint=fingerprint,
                 database=dict(filename=DATABASE, size_bytes=size, sha256=hash_file(snapshot)),
                 assets=_asset_manifest(entries), sidecars=sidecars, generated_audio_included=include_generated)
@@ -212,7 +212,7 @@ def _read_manifest(directory, expected_manifest_sha256):
     inventory = backup_sidecars.normalize_manifest(manifest)
     backup_sidecars.check_namespace(directory, inventory)
     if (manifest['kind'] != 'carr-library'
-            or type(manifest['schema_version']) is not int or manifest['schema_version'] not in (3, 4)
+            or type(manifest['schema_version']) is not int or manifest['schema_version'] not in (3, 4, 5)
             or type(manifest['assets']) is not list or len(manifest['assets']) > MAX_ASSETS):
         raise RestoreError('unsupported library manifest')
     if manifest['version'] >= 2:

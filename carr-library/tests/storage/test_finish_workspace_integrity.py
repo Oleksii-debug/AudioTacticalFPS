@@ -26,7 +26,7 @@ def test_backup_refuses_missing_workspace_presentation(tmp_path):
         db.execute('DELETE FROM workspace_meta WHERE workspace=?', (workspace,))
         db.commit()
     assert app.workspaces(include_archived=True) == ()
-    with closing(Storage(app.database, schema_version=4)) as storage:
+    with closing(Storage(app.database)) as storage:
         with pytest.raises(ValueError, match='workspace'):
             storage.check()
     destination = tmp_path / 'backup'
