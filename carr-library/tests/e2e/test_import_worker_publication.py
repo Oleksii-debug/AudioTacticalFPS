@@ -105,7 +105,7 @@ LibraryApp._import_file = _replay
 def test_barrier_leaves_other_processes_unchanged(tmp_path, monkeypatch, arguments, expected):
     marker = tmp_path / 'worker-only'
     _barrier(monkeypatch, marker, boundary='after')
-    result = subprocess.run([sys.executable, *arguments], capture_output=True,
+    result = subprocess.run([sys.executable, '-B', *arguments], capture_output=True,
                             text=True, timeout=5, check=True)
     assert expected in result.stdout + result.stderr
     assert not marker.exists()
@@ -181,14 +181,19 @@ def test_competing_commit_after_kill_does_not_complete_stopped_request(
     planned = worker.prepare_request(app.root, workspace, source, _metadata(), Config())
     marker = tmp_path / 'before-commit'
     real_popen, real_stop = worker.subprocess.Popen, worker._stop
+    real_reconcile = worker._reconcile_publication
     _barrier(monkeypatch, marker, boundary='before')
-    competing = []
+    competing, stopped = [], []
 
-    def stop_then_publish(process):
+    def observed_stop(process):
         real_stop(process)
-        if marker.exists() and not competing:
-            # The cancelled child has released the writer lock. Complete a
-            # different import before its parent can reconcile the hint.
+        stopped.append(process)
+
+    def publish_before_reconciliation(root, request_id, attempt, **options):
+        if request_id == planned['request_id'] and marker.exists() and not competing:
+            # Interleave a distinct real publication only after native cleanup,
+            # immediately before the stopped request's receipt reconciliation.
+            assert stopped and all(process.poll() is not None for process in stopped)
             competing.append(None)
             with monkeypatch.context() as clean_launch:
                 clean_launch.setattr(worker.subprocess, 'Popen', real_popen)
@@ -198,15 +203,17 @@ def test_competing_commit_after_kill_does_not_complete_stopped_request(
                 else:
                     competing[0] = app._import_file(workspace, source, config=Config(), **_metadata())
             if competitor_kind == 'forged-sidecar':
-                stopped = worker.load_request(app.root, planned['request_id'])
+                stopped_record = worker.load_request(app.root, planned['request_id'])
                 other = worker.load_request(app.root, competing[0]['request_id'])
                 # A copied completion hint cannot transfer the ownership of a
                 # committed database receipt, even with the current attempt ID.
-                stopped['publication_candidate'] = dict(other['publication_candidate'],
-                                                       attempt=stopped['attempt'])
-                worker._store(app.root, planned['request_id'], stopped)
+                stopped_record['publication_candidate'] = dict(other['publication_candidate'],
+                                                              attempt=stopped_record['attempt'])
+                worker._store(app.root, planned['request_id'], stopped_record)
+        return real_reconcile(root, request_id, attempt, **options)
 
-    monkeypatch.setattr(worker, '_stop', stop_then_publish)
+    monkeypatch.setattr(worker, '_stop', observed_stop)
+    monkeypatch.setattr(worker, '_reconcile_publication', publish_before_reconciliation)
     result = worker.run_request(app.root, workspace, source, _metadata(), Config(),
                                 cancelled=marker.exists, timeout=15.0,
                                 request_id=planned['request_id'])
