@@ -292,14 +292,19 @@ def _run_native(arguments):
     def press(control):
         top = wx.GetTopLevelParent(control)
         parent = control.GetParent()
-        if isinstance(parent, wx.ScrolledWindow):
-            parent.ScrollChildIntoView(control)
+        # wx.ScrolledWindow reveals its focused child automatically. The
+        # ScrollChildIntoView helper belongs to wx.lib.scrolledpanel instead.
+        def visible():
+            return (not isinstance(parent, wx.ScrolledWindow)
+                    or parent.GetClientRect().Contains(control.GetRect()))
         top.Raise()
         user32.SetForegroundWindow(top.GetHandle())
         control.SetFocus()
-        pump(lambda: wx.Window.FindFocus() is control and user32.GetForegroundWindow() == top.GetHandle(),
-             'Playback control did not receive foreground focus.', timeout=10)
+        pump(lambda: wx.Window.FindFocus() is control
+             and user32.GetForegroundWindow() == top.GetHandle() and visible(),
+             'Playback control did not receive visible foreground focus.', timeout=10)
         check('native focus: ' + control.GetName(), wx.Window.FindFocus() is control)
+        check('focused playback control is visible: ' + control.GetName(), visible())
         check('native Space down: ' + control.GetName(), simulator.KeyDown(wx.WXK_SPACE))
         try:
             gui.Yield()
