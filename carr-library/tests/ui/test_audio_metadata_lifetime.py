@@ -215,3 +215,144 @@ def test_unrelated_child_destroy_does_not_close_the_metadata_owner(native_view):
     view.state.scenario = scenario
     ui.show_audio_metadata(view.session.frame)
     assert view.forbidden == []
+
+
+class _ProbeMetadataWindow:
+    def __init__(self, parent, *, title='Audio metadata and cover', close_error=False):
+        self.parent, self.title, self.close_error = parent, title, close_error
+        self.modal, self.closed, self.ended = True, 0, []
+        self.metadata_controller = SimpleNamespace(close=self.close)
+
+    def GetParent(self):
+        return self.parent
+
+    def GetTitle(self):
+        return self.title
+
+    def close(self):
+        self.closed += 1
+        if self.close_error:
+            raise RuntimeError('injected metadata controller close failure')
+
+    def IsModal(self):
+        return self.modal
+
+    def EndModal(self, result):
+        assert self.modal
+        self.ended.append(result)
+        self.modal = False
+
+
+def _metadata_probe_driver(frame, windows, parents, errors, *, release=lambda: None):
+    """Run the actual native probe's failure closures without claiming wx execution."""
+    import ast
+    import sys
+    import traceback
+
+    path = Path(__file__).resolve().parents[2] / 'scripts/windows_audio_metadata_smoke.py'
+    parsed = ast.parse(path.read_text(encoding='utf-8'))
+    names = {'metadata_dialog', 'owned_metadata_dialogs', 'abort', 'later', 'timeout'}
+    functions = [node for node in ast.walk(parsed)
+                 if isinstance(node, ast.FunctionDef) and node.name in names]
+    # The optional helper allows the same behavioral regression to run on the old probe.
+    required = names - {'owned_metadata_dialogs'}
+    assert required <= {node.name for node in functions}
+    assert len(functions) == len({node.name for node in functions})
+    factory = ast.parse(
+        'def bind():\n'
+        '    owner_loop = None\n'
+        '    return SimpleNamespace(metadata_dialog=metadata_dialog, abort=abort, '
+        'later=later, timeout=timeout)\n').body[0]
+    factory.body[1:1] = functions
+    scheduled, exits = [], []
+    loop = SimpleNamespace(ScheduleExit=exits.append)
+
+    def call_later(delay, callback):
+        timer = SimpleNamespace(delay=delay, callback=callback)
+        scheduled.append(timer)
+        return timer
+
+    environment = {
+        'SimpleNamespace': SimpleNamespace, 'frame': frame,
+        'gui': SimpleNamespace(GetMainLoop=lambda: loop), 'errors': errors,
+        'metadata_parents': parents, 'release': release, 'timers': [],
+        'traceback': traceback, 'sys': sys,
+        'wx': SimpleNamespace(Dialog=_ProbeMetadataWindow, ID_CANCEL=2,
+                              GetTopLevelWindows=lambda: list(windows), CallLater=call_later),
+    }
+    exec(compile(ast.fix_missing_locations(ast.Module(body=[factory], type_ignores=[])),
+                 str(path), 'exec'), environment)
+    driver = environment['bind']()
+    watchdogs = [node for node in ast.walk(parsed)
+                 if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+                 and node.func.id == 'later' and node.args
+                 and isinstance(node.args[0], ast.Name) and node.args[0].id == 'timeout']
+    assert len(watchdogs) == 1
+    watchdog = compile(ast.Expression(body=watchdogs[0]), str(path), 'eval')
+    driver.schedule_watchdog = lambda: eval(watchdog, {
+        **environment, 'later': driver.later, 'timeout': driver.timeout})
+    driver.scheduled, driver.exits = scheduled, exits
+    return driver
+
+
+def test_native_metadata_watchdog_still_unwinds_after_a_recorded_error(capsys):
+    frame = SimpleNamespace(cancel_event=Event())
+    parent = object()
+    window = _ProbeMetadataWindow(parent)
+    errors, ordinary = ['original native scenario failure'], []
+    driver = _metadata_probe_driver(frame, [window], [parent], errors)
+    driver.later(lambda: ordinary.append('must remain suppressed'))
+    driver.schedule_watchdog()
+    assert [timer.delay for timer in driver.scheduled] == [25, 120000]
+    for timer in driver.scheduled:
+        timer.callback()
+    assert ordinary == [] and frame.cancel_event.is_set()
+    assert window.closed == 1 and window.ended == [2] and not window.modal
+    assert driver.exits == [1]
+    assert errors[0] == 'original native scenario failure' and len(errors) == 2
+    assert 'TimeoutError' in errors[1] and '120-second budget' in errors[1]
+    assert 'NATIVE_METADATA_FAILURE:' in capsys.readouterr().err
+
+
+@pytest.mark.parametrize('close_failure', [False, True])
+def test_native_metadata_abort_unwinds_only_its_two_owned_modal_paths(close_failure):
+    frame = SimpleNamespace(cancel_event=Event())
+    parent, foreign_parent = object(), object()
+    direct = _ProbeMetadataWindow(frame, close_error=close_failure)
+    nested = _ProbeMetadataWindow(parent)
+    foreign = _ProbeMetadataWindow(foreign_parent)
+    other_title = _ProbeMetadataWindow(frame, title='Unrelated native dialog')
+    errors = ['first failure remains authoritative']
+    driver = _metadata_probe_driver(
+        frame, [direct, nested, foreign, other_title, object()], [parent], errors)
+    assert driver.metadata_dialog() is direct
+    driver.later(lambda: None).callback()  # Retain the real outer-loop object despite errors.
+    driver.abort()
+    assert frame.cancel_event.is_set()
+    assert direct.closed == nested.closed == 1
+    assert direct.ended == nested.ended == [2] and not direct.modal and not nested.modal
+    assert foreign.closed == other_title.closed == 0
+    assert foreign.modal and other_title.modal and foreign.ended == other_title.ended == []
+    assert driver.exits == [1] and errors[0] == 'first failure remains authoritative'
+    assert len(errors) == 1 + int(close_failure)
+    if close_failure:
+        assert 'injected metadata controller close failure' in errors[1]
+
+
+@pytest.mark.parametrize('failed_step', ['cancel', 'release'])
+def test_native_metadata_abort_continues_owned_cleanup_after_an_earlier_cleanup_error(failed_step):
+    def broken():
+        raise OSError('injected ' + failed_step + ' failure')
+
+    cancellation = Event()
+    frame = SimpleNamespace(cancel_event=(
+        SimpleNamespace(set=broken) if failed_step == 'cancel' else cancellation))
+    window = _ProbeMetadataWindow(frame)
+    errors = ['original failure']
+    driver = _metadata_probe_driver(
+        frame, [window], [], errors, release=broken if failed_step == 'release' else lambda: None)
+    driver.later(lambda: None).callback()
+    driver.abort()
+    assert window.closed == 1 and window.ended == [2] and not window.modal
+    assert driver.exits == [1] and errors[0] == 'original failure' and len(errors) == 2
+    assert 'injected ' + failed_step + ' failure' in errors[1]

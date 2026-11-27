@@ -186,6 +186,7 @@ def _run_native(arguments):
 
     frame, owner_loop = None, None
     timers, held = [], [None]
+    metadata_parents = []
     class ProbeApp(wx.App):
         def OnExceptionInMainLoop(self):
             errors.append(traceback.format_exc()); abort(); return False
@@ -210,31 +211,49 @@ def _run_native(arguments):
         return next((window for window in wx.GetTopLevelWindows() if isinstance(window, wx.Dialog)
                      and window.GetTitle() == 'Audio metadata and cover' and window.GetParent() is frame), None)
 
+    def owned_metadata_dialogs():
+        result = []
+        for window in wx.GetTopLevelWindows():
+            if not isinstance(window, wx.Dialog) or window.GetTitle() != 'Audio metadata and cover':
+                continue
+            parent = window.GetParent()
+            if ((frame is not None and parent is frame)
+                    or any(parent is owner for owner in metadata_parents)):
+                result.append(window)
+        return tuple(result)
+
     def abort():
         try:
-            if frame is not None:
-                frame.cancel_event.set()
+            try:
+                if frame is not None:
+                    frame.cancel_event.set()
+            except Exception:
+                errors.append(traceback.format_exc())
             try:
                 release()
             except Exception:
                 errors.append(traceback.format_exc())
-            dialog = metadata_dialog()
-            if dialog is not None:
-                dialog.metadata_controller.close()
-                if dialog.IsModal():
-                    dialog.EndModal(wx.ID_CANCEL)
+            for dialog in owned_metadata_dialogs():
+                try:
+                    try:
+                        dialog.metadata_controller.close()
+                    finally:
+                        if dialog and dialog.IsModal():
+                            dialog.EndModal(wx.ID_CANCEL)
+                except Exception:
+                    errors.append(traceback.format_exc())
         except Exception:
             errors.append(traceback.format_exc())
         finally:
             if owner_loop is not None:
                 owner_loop.ScheduleExit(1)
 
-    def later(callback, delay=25):
+    def later(callback, delay=25, *, after_failure=False):
         def invoke():
             nonlocal owner_loop
             if owner_loop is None:
                 owner_loop = gui.GetMainLoop()
-            if errors:
+            if errors and not after_failure:
                 return
             try:
                 callback()
@@ -447,6 +466,7 @@ def _run_native(arguments):
                     check('metadata lifetime starts without unrelated work', not frame.working)
                     if termination == 'native-parent':
                         native_parent = wx.Dialog(frame, title='Native metadata parent deletion')
+                        metadata_parents.append(native_parent)
                         native_parent.library = frame.library
                         native_parent.cancel_event = frame.cancel_event
                         native_parent.working = native_parent._closing = False
@@ -566,7 +586,7 @@ def _run_native(arguments):
         try:
             frame = DesktopFrame(library)
             gui.SetTopWindow(frame); frame.Show()
-            later(timeout, 120000)
+            later(timeout, 120000, after_failure=True)
             until(lambda: not frame.working, launch)
             gui.MainLoop()
             if errors:
