@@ -283,7 +283,7 @@ def capture_worker(python, code, request, *, root, timeout):
 
 
 def verify_network_namespace():
-    interfaces = sorted(path.name for path in Path("/sys/class/net").iterdir())
+    interfaces = sorted(name for _, name in socket.if_nameindex())
     if interfaces != ["lo"]:
         raise RuntimeError("Run this stage inside the reviewed empty Linux network namespace.")
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as connection:
