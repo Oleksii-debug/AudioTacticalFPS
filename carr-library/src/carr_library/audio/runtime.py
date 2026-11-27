@@ -17,6 +17,7 @@ from ..native_runtime import (_absolute, _directory, _entry, _plain, _read, _sha
 
 DIRECTORY = 'audio-runtime'
 MANIFEST = 'audio-runtime-manifest.json'
+LEGACY_LOCK = Path(__file__).with_name('legacy-runtime-lock.json')
 SOURCE_LOCK_SHA256 = '34992db6bd04f54e83a1ee3faa03c906b419f2c2289f8a86826106a71e163a86'
 MAX_FILES = 10000
 MAX_BYTES = 1536 * 1024**2
@@ -94,15 +95,61 @@ def verify_audio_runtime(runtime_dir, expected_manifest_sha256=None):
             'windows_execution': manifest['windows_execution']}
 
 
-def _bundle(root):
+def verify_compact_audio_runtime(runtime_dir, inventory):
+    """Validate the exact earlier private pack without inventing ffplay support."""
+    root = _absolute(runtime_dir)
+    _directory(root)
+    lock = _read(LEGACY_LOCK)
+    records = lock['output_files']
+    expected_names = set(records) | {'provenance.json'}
+    if set(inventory) != expected_names:
+        raise ValueError('Compact audio inventory differs from the reviewed private pack.')
+    provenance = root / 'provenance.json'
+    _plain(provenance)
+    if _sha(provenance) != _sha(LEGACY_LOCK):
+        raise ValueError('Compact audio provenance differs from the reviewed source lock.')
+    actual = set()
+    # Validate every directory before os.walk can descend into a junction.
+    for directory, folders, names in os.walk(root, followlinks=False):
+        for name in folders:
+            _plain(Path(directory) / name, directory=True)
+        for name in names:
+            path = Path(directory) / name
+            detail = _plain(path)
+            if detail.st_nlink != 1:
+                raise ValueError('Compact audio runtime files must not have external hard links.')
+            relative = path.relative_to(root).as_posix()
+            if relative not in expected_names:
+                raise ValueError('Unexpected compact audio runtime file.')
+            digest = _sha(path)
+            if digest != inventory[relative]:
+                raise ValueError('Compact audio bytes differ from the sealed installation.')
+            if relative in records:
+                record = records[relative]
+                if detail.st_size != record['size'] or digest != record['sha256']:
+                    raise ValueError('Compact audio bytes differ from the reviewed publisher files.')
+            actual.add(relative)
+    if actual != expected_names:
+        raise ValueError('Compact audio files are missing.')
+    for name in ('ffmpeg.exe', 'ffprobe.exe'):
+        _pe_x64(root / 'bin' / name)
+    return {name: {'size_bytes': records['bin/' + name]['size'],
+                   'sha256': records['bin/' + name]['sha256']}
+            for name in ('ffmpeg.exe', 'ffprobe.exe')}
+
+
+def _bundle(root, *, with_executables=False):
     root = _absolute(root)
     _directory(root)
-    if any(child.name.casefold() == DIRECTORY and child.name != DIRECTORY for child in root.iterdir()):
+    if any(child.name.casefold() in (DIRECTORY, 'audio') and child.name not in (DIRECTORY, 'audio')
+           for child in root.iterdir()):
         raise ValueError('Ambiguous audio runtime directory in the installation.')
     manifest_path, runtime = root / 'bundle-manifest.json', root / DIRECTORY
     has_runtime = os.path.lexists(runtime)
+    compact = root / 'audio'
+    has_compact = os.path.lexists(compact)
     if not os.path.lexists(manifest_path):
-        if has_runtime:
+        if has_runtime or has_compact:
             raise ValueError('Audio runtime has no enclosing installation manifest.')
         return None
     outer = _read(manifest_path)
@@ -113,17 +160,26 @@ def _bundle(root):
     included = outer.get('bundled_audio', False)
     if type(included) is not bool:
         raise ValueError('Invalid audio installation flag.')
-    inventory = {}
+    inventory, compact_inventory = {}, {}
     for name, checksum in outer['files'].items():
         _entry(name, checksum)
+        if name.casefold().startswith('audio/'):
+            if not name.startswith('audio/'):
+                raise ValueError('Ambiguous compact audio runtime path in the installation.')
+            compact_inventory[name.removeprefix('audio/')] = checksum
         if name.casefold().startswith(DIRECTORY + '/'):
             if not name.startswith(DIRECTORY + '/'):
                 raise ValueError('Ambiguous audio runtime path in the installation.')
             inventory[name.removeprefix(DIRECTORY + '/')] = checksum
+    if (has_runtime or inventory) and (has_compact or compact_inventory):
+        raise ValueError('The installation contains two competing audio runtime layouts.')
     if not included:
-        if has_runtime or inventory:
+        if has_runtime or inventory or has_compact or compact_inventory:
             raise ValueError('Unannounced audio runtime files are present in the installation.')
         return None
+    if has_compact or compact_inventory:
+        executables = verify_compact_audio_runtime(compact, compact_inventory)
+        return (compact, executables) if with_executables else compact
     if not has_runtime or MANIFEST not in inventory:
         raise ValueError('The declared audio runtime is missing.')
     report = verify_audio_runtime(runtime, expected_manifest_sha256=inventory[MANIFEST])
@@ -132,7 +188,7 @@ def _bundle(root):
     expected[MANIFEST] = report['manifest_sha256']
     if inventory != expected:
         raise ValueError('Audio runtime inventory differs from the enclosing installation.')
-    return runtime
+    return (runtime, report['executables']) if with_executables else runtime
 
 
 def discover_bundled_audio():
@@ -140,7 +196,8 @@ def discover_bundled_audio():
     for prefix in (sys.prefix, sys.base_prefix):
         path = _absolute(prefix)
         for root in (path, path.parent, path.parent.parent):
-            if os.path.lexists(root / 'bundle-manifest.json') or os.path.lexists(root / DIRECTORY):
+            if (os.path.lexists(root / 'bundle-manifest.json') or os.path.lexists(root / DIRECTORY)
+                    or os.path.lexists(root / 'audio')):
                 if root not in candidates:
                     candidates.append(root)
                 break
@@ -201,9 +258,10 @@ def activate_bundled_audio_runtime(bundle_root=None):
     root = _absolute(bundle_root) if bundle_root is not None else discover_bundled_audio()
     if root is None:
         return None
-    runtime = _bundle(root)
-    if runtime is None or sys.platform != 'win32':
+    verified = _bundle(root, with_executables=True)
+    if verified is None or sys.platform != 'win32':
         return None
+    runtime, executables = verified
     directory = runtime / 'bin'
     with _active_lock:
         if _active is not None:
@@ -213,10 +271,8 @@ def activate_bundled_audio_runtime(bundle_root=None):
         else:
             previous = os.environ.get('PATH')
             installed = str(directory) + (os.pathsep + previous if previous is not None else '')
-            inner = _read(runtime / MANIFEST)
             _active = {'directory': directory, 'previous': previous, 'installed': installed,
-                       'users': 1, 'executables': {name: inner['files']['bin/' + name]
-                       for name in ('ffmpeg.exe', 'ffprobe.exe', 'ffplay.exe')}}
+                       'users': 1, 'executables': executables}
             os.environ['PATH'] = installed
         return AudioRuntimeHandle(directory, _active['previous'], _active['installed'])
 
@@ -236,6 +292,8 @@ def resolve_active_audio_tool(name):
             return None
         directory = _active['directory']
         _directory(directory)
+        if executable not in _active['executables']:
+            raise ValueError('This installed audio pack does not include ' + executable + '. Install the complete reviewed audio pack.')
         path = directory / executable
         details = _plain(path)
         record = _active['executables'][executable]

@@ -12,7 +12,7 @@ import tempfile
 import time
 
 from .pinned_tessdata import MODELS, POLICY, stage_pinned_models
-from .ocr_runtime import OcrRuntimeError, discover_ocr_runtime
+from .ocr_runtime import OcrRuntimeError, discover_ocr_runtime, NON_READING_MODELS
 from .ocr_languages import model_ids, split_languages
 from .ocr_process import run_ocr
 
@@ -80,6 +80,8 @@ class Config:
         if type(self.orientation) is not bool:
             raise ValueError('orientation must be boolean')
         selected = model_ids(self.languages)
+        if NON_READING_MODELS.intersection(selected):
+            raise ValueError('Choose reading languages or scripts; special detectors are separate.')
         if self.model_policy not in ('default', POLICY):
             raise ValueError('unknown OCR model policy')
         if self.model_profile not in ('installed', 'fast', 'best'):
@@ -92,6 +94,8 @@ class Config:
         # Recognition has a smaller explicit budget than catalog inventory.
         # Auxiliary models and duplicate selectors cannot become text languages.
         split_languages(self.languages)
+        if len(self.languages) > 2048 or len(set(selected)) != len(selected):
+            raise ValueError('duplicate or oversized language selection')
         if not 72 <= self.dpi <= 400 or not 1 <= self.timeout <= 120 or not 1 <= self.max_pixels <= 20_000_000:
             raise ValueError('invalid resource limit')
 

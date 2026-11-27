@@ -215,6 +215,23 @@ def verify_launcher(launcher, evidence, source_commit):
                          release_status='unsigned-private-candidate', native_execution='NOT_RUN')
 
 
+def verify_dependency_closure(selected):
+    """Check the exact Windows dependency graph without invoking a resolver."""
+    environment = default_environment()
+    environment.update(os_name="nt", sys_platform="win32", platform_system="Windows",
+                       platform_machine="AMD64", python_version="3.11",
+                       python_full_version="3.11.0", implementation_name="cpython",
+                       platform_python_implementation="CPython", extra="")
+    for _path, _version, metadata in selected.values():
+        for raw in metadata.get_all("Requires-Dist", []):
+            req = Requirement(raw)
+            if req.marker and not req.marker.evaluate(environment):
+                continue
+            dependency = selected.get(canonicalize_name(req.name))
+            if req.url or dependency is None or dependency[1] not in req.specifier:
+                raise ValueError(f"unsatisfied Windows dependency: {req}")
+
+
 def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                  model_dir=None, model_manifest=None, sbom=None, source_commit=None, ocr_dir=None,
                  ocr_source_archive=None, audio_dir=None, launcher=None, launcher_evidence=None):
@@ -331,19 +348,7 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
 
     # Validate active Windows requirements from every wheel. Pip performs the
     # actual offline resolution again at install time; this is a build preflight.
-    environment = default_environment()
-    environment.update(os_name="nt", sys_platform="win32", platform_system="Windows",
-                       platform_machine="AMD64", python_version="3.11",
-                       python_full_version="3.11.0", implementation_name="cpython",
-                       platform_python_implementation="CPython", extra="")
-    for _path, _version, metadata in selected.values():
-        for raw in metadata.get_all("Requires-Dist", []):
-            req = Requirement(raw)
-            if req.marker and not req.marker.evaluate(environment):
-                continue
-            dependency = selected.get(canonicalize_name(req.name))
-            if req.url or dependency is None or dependency[1] not in req.specifier:
-                raise ValueError(f"unsatisfied Windows dependency: {req}")
+    verify_dependency_closure(selected)
 
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="carr-bundle-", dir=output.parent) as scratch:
@@ -421,6 +426,14 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
             shutil.copyfile(regular(HERE / name), staged / name)
         shutil.copyfile(HERE.parent / "docs" / "RUNNING.md", staged / "README.txt")
         shutil.copyfile(HERE.parent / "docs" / "START_UK.txt", staged / "START_UK.txt")
+        shutil.copyfile(HERE.parent / "docs" / "START_V3_UK.txt", staged / "START_V3_UK.txt")
+        guides = staged / "guides"
+        guides.mkdir()
+        for name in ("ACADEMIC_SEARCH.md", "ADVANCED_SEARCH.md", "ACADEMIC_LIBRARY.md",
+                     "ACADEMIC_WORKFLOWS.md", "CATALOG_TOOLS.md", "READING_DESK.md",
+                     "RESEARCH_NOTEBOOK.md", "EPUB_READING.md", "IMPORT_CENTER.md",
+                     "TRANSCRIPTION.md"):
+            shutil.copyfile(regular(HERE.parent / "docs" / name), guides / name)
         if sbom is not None:
             (staged / "runtime-sbom.cdx.json").write_bytes(sbom_bytes)
         if launcher_payload is not None:

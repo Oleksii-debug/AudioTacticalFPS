@@ -112,16 +112,21 @@ class _SearchBudget:
 
 class _CatalogPublisher:
     """Keep the existing ingest journal, with one atomic catalog publication."""
-    def __init__(self, storage, registration):
+    def __init__(self, storage, registration, *, root=None, request_id=None):
         self.storage, self.record = storage, registration
         self.db = storage.db
         self.review_records = lambda: ()
+        self.root, self.request_id = root, request_id
+        self.published_here = False
+        self.publication_result = None
 
     def publish_revision(self, workspace, edition, revision, asset, config, pages):
         if edition != self.record.edition_id or asset != self.record.manifest['sha256']:
             raise ValueError('Import identity changed.')
+        from .ingest.worker import publication_before, prepare_publication, confirm_publication
         with self.storage.transaction():
             LibraryApp._authorize(self.db, workspace)
+            before = publication_before(self.db, workspace, edition, revision, self.record.collections)
             register_batch(Catalog(self.db, workspace), (self.record,))
             self.storage.stage_revision(workspace, edition, revision, asset, config, pages)
             self.db.execute('INSERT INTO source_metadata '
@@ -142,6 +147,15 @@ class _CatalogPublisher:
             # Reject inconsistent candidates while this publication can still
             # roll back every catalog, source, review and search-index write.
             self.storage._check()
+            count = self.db.execute('SELECT count(*) FROM page WHERE revision=?', (revision,)).fetchone()[0]
+            result = self.publication_result or dict(state='complete', id=revision,
+                workspace=workspace, edition=edition, asset=asset, completed=count,
+                total=count, error=None, verified=self.record.manifest['mime'] == 'text/plain')
+            prepare_publication(self.root, self.request_id, self.db, revision, before, result)
+        # Set only after the catalog/source transaction committed. Replays must
+        # still pass their independent cancellation and membership checks.
+        self.published_here = True
+        confirm_publication(self.root, self.request_id)
 
     def check(self):
         return self.storage.check()
@@ -583,6 +597,79 @@ class LibraryApp:
             return confirm_review(self.root, workspace, request_id, reviewer,
                                   confirmed=confirmed, expected_checksum=expected_checksum)
 
+    def _reconcile_import_publication(self, request):
+        """Read-only terminal reconciliation; caller holds the writer guard.
+
+        Neither a request result nor a journal terminal flag proves publication.
+        The exact request, original, sealed pages, catalog authorization and
+        requested memberships must all agree, after the child has exited.
+        """
+        from .ingest.worker import validate_publication_document, publication_pages
+        intent = validate_publication_document(request)
+        if intent is None:
+            return None
+        before, result, metadata = intent['before'], intent['result'], request['metadata']
+        # A prior revision with no new requested membership is a replay, not
+        # evidence that this attempt crossed a commit boundary. Its explicit
+        # post-commit acknowledgment still needs all database checks below.
+        if (before['revision_existed'] and not before['missing_memberships']
+                and not intent['committed']):
+            return None
+        workspace, edition, revision = request['workspace'], metadata['edition_id'], intent['revision']
+        with self.read(workspace) as db:
+            published = db.execute('SELECT r.workspace,r.edition,r.asset,r.config,a.revision '
+                'FROM revision r JOIN sealed s ON s.revision=r.id LEFT JOIN active a '
+                'ON a.workspace=r.workspace AND a.edition=r.edition WHERE r.id=?', (revision,)).fetchone()
+            if published is None:
+                return None  # Prepared intent followed by rollback or pre-commit stop.
+            if (tuple(published[:3]) != (workspace, edition, request.get('asset_sha256'))
+                    or published[4] is None
+                    or (published[4] == revision) != (result['state'] == 'complete')
+                    or (result['state'] == 'superseded' and published[4] != before['active_revision'])
+                    or sha256(published[3].encode('utf-8')).hexdigest() != intent['config_sha256']
+                    or sha256(canonical([workspace, edition, published[2], published[3]])
+                              .encode('utf-8')).hexdigest() != revision):
+                raise ValueError('Sealed import publication identity or active revision changed.')
+            settings = json.loads(published[3])
+            if (not isinstance(settings, dict) or
+                    (settings.get('kind') == 'physical_page' and settings.get('config') != request['config'])):
+                raise ValueError('Import source or configuration changed.')
+            if publication_pages(db, revision) != (intent['page_count'], intent['pages_sha256']):
+                raise ValueError('Sealed import publication pages changed.')
+            original = self.assets.resolve(published[2])
+            manifest = db.execute('SELECT mime,size FROM catalog_asset WHERE digest=?',
+                                  (published[2],)).fetchone()
+            if (manifest is None or manifest[1] != original.stat().st_size
+                    or SUFFIXES.get(manifest[0]) != original.suffix):
+                raise ValueError('Import publication retained source manifest changed.')
+            expected_manifest = request.get('expected_manifest')
+            if expected_manifest is not None and expected_manifest != dict(
+                    sha256=published[2], mime=manifest[0], size=manifest[1]):
+                raise ValueError('Import publication differs from its planned source manifest.')
+            if result['verified'] != (manifest[0] == 'text/plain' and result['state'] == 'complete'):
+                raise ValueError('Import publication verification claim changed.')
+            actual = db.execute('SELECT e.work,e.asset,e.language,e.edition,e.volume,w.title '
+                'FROM catalog_edition e JOIN catalog_work w ON w.workspace=e.workspace AND w.id=e.work '
+                'WHERE e.workspace=? AND e.id=?', (workspace, edition)).fetchone()
+            expected = (metadata['work_id'], published[2], _metadata(metadata['language']),
+                        _metadata(metadata['edition']), _metadata(metadata['volume']),
+                        _metadata(metadata['title']) or Path(request['source']).stem)
+            authors = tuple(row[0] for row in db.execute('SELECT name FROM catalog_author '
+                'WHERE workspace=? AND work=? ORDER BY position', (workspace, metadata['work_id'])))
+            if actual is None or tuple(actual) != expected or authors != tuple(metadata['authors']):
+                raise ValueError('Import publication catalog registration changed.')
+            catalog = Catalog(db, workspace)
+            for collection in metadata['collections']:
+                catalog._active_collection(collection)
+                if db.execute('SELECT 1 FROM catalog_membership WHERE workspace=? '
+                        'AND collection=? AND edition=?', (workspace, collection, edition)).fetchone() is None:
+                    return None  # A replay's new membership was rolled back.
+            for key, expected_value in (('workspace', workspace), ('asset', published[2]),
+                                        ('total', intent['page_count'])):
+                if key in result and result[key] != expected_value:
+                    raise ValueError('Import publication result identity changed.')
+            return dict(result)
+
     def _import_file(self, workspace, path, *, title=None, authors=(), language=None,
                      edition=None, volume=None, collections=(), work_id=None,
                      edition_id=None, cancelled=lambda: False, config=None,
@@ -617,9 +704,10 @@ class LibraryApp:
                 for collection in collections:
                     Catalog(storage.db, workspace)._active_collection(collection)
                 retained = self.assets.retain(asset.data, asset.mime, asset.digest)
-                from .ingest.worker import RuntimeBoundIngest, load_reviews, record_progress
+                from .ingest.worker import (RuntimeBoundIngest, load_reviews, record_progress,
+                    publication_before, prepare_publication, confirm_publication)
                 record_progress(self.root, _request_id, asset_sha256=asset.digest)
-                publisher = _CatalogPublisher(storage, record)
+                publisher = _CatalogPublisher(storage, record, root=self.root, request_id=_request_id)
                 if asset.mime in EXTENDED_MIMES or asset.mime in (
                         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                         'application/epub+zip'):
@@ -645,6 +733,14 @@ class LibraryApp:
                         raise InterruptedError('Import cancelled.')
                     revision = sha256(canonical([workspace, record.edition_id, asset.digest, settings])
                                       .encode('utf-8')).hexdigest()
+                    record_progress(self.root, _request_id, job=revision)
+                    completion = {'state': 'complete', 'edition': record.edition_id, 'id': revision,
+                        'completed': len(extracted['records']), 'verified': False,
+                        'format': source_format, 'warnings': extracted['warnings'],
+                        'message': f'{source_format} imported as unverified logical segments; '
+                                   'printed pages are unknown. ' + (
+                                       FORMAT_BY_MIME[asset.mime].limitations if asset.mime in EXTENDED_MIMES else '')}
+                    publisher.publication_result = completion
                     prior = storage.db.execute('SELECT workspace,edition,asset,config FROM revision WHERE id=?',
                                                (revision,)).fetchone()
                     if prior is None:
@@ -661,16 +757,18 @@ class LibraryApp:
                                 'SELECT 1 FROM sealed WHERE revision=?', (revision,)).fetchone()):
                             raise ValueError(f'Published {source_format} import differs from retained source bytes.')
                         with storage.transaction():
+                            before = publication_before(storage.db, workspace, record.edition_id,
+                                                        revision, collections)
                             register_batch(Catalog(storage.db, workspace), (record,))
                             # Replays may add memberships; validate before exposing them.
                             storage._check()
+                            prepare_publication(self.root, _request_id, storage.db,
+                                                revision, before, completion)
+                            if cancelled():
+                                raise InterruptedError('Import registration cancelled before commit.')
+                        confirm_publication(self.root, _request_id)
                     publisher.check()
-                    return {'state': 'complete', 'edition': record.edition_id, 'id': revision,
-                            'completed': len(extracted['records']), 'verified': False,
-                            'format': source_format, 'warnings': extracted['warnings'],
-                            'message': f'{source_format} imported as unverified logical segments; '
-                                       'printed pages are unknown. ' + (
-                                           FORMAT_BY_MIME[asset.mime].limitations if asset.mime in EXTENDED_MIMES else '')}
+                    return completion
                 engine = RuntimeBoundIngest if asset.mime == 'application/pdf' else Ingest
                 extra = (dict(reviews=load_reviews(self.root, _request_id), review_asset=asset.data)
                          if asset.mime == 'application/pdf' else {})
@@ -689,7 +787,8 @@ class LibraryApp:
                         job = ingest.start(workspace, record.edition_id, self.assets_dir, retained.name, settings)
                     record_progress(self.root, _request_id, job=job)
                     result = ingest.run(workspace, job, self.assets_dir, retained.name, settings, cancelled=cancelled)
-                    if result['state'] in ('complete', 'superseded'):
+                    result['verified'] = asset.mime == 'text/plain' and result['state'] == 'complete'
+                    if result['state'] in ('complete', 'superseded') and not publisher.published_here:
                         if cancelled():
                             raise InterruptedError('Import cancelled before catalog registration.')
                         # Recovery validates the retained asset/configuration and
@@ -700,6 +799,9 @@ class LibraryApp:
                         # source was actually published. Never reactivate an old
                         # revision when current metadata has superseded it.
                         with storage.transaction():
+                            self._authorize(storage.db, workspace)
+                            before = publication_before(storage.db, workspace, record.edition_id,
+                                                        job, collections)
                             published = storage.db.execute(
                                 'SELECT r.workspace,r.edition,r.asset,a.revision FROM revision r '
                                 'JOIN sealed s ON s.revision=r.id LEFT JOIN active a '
@@ -713,16 +815,51 @@ class LibraryApp:
                                 raise ValueError('Completed import active revision changed.')
                             register_batch(Catalog(storage.db, workspace), (record,))
                             storage._check()
-                    result['verified'] = asset.mime == 'text/plain' and result['state'] == 'complete'
+                            prepare_publication(self.root, _request_id, storage.db, job, before, result)
+                            if cancelled():
+                                raise InterruptedError('Import registration cancelled before commit.')
+                        confirm_publication(self.root, _request_id)
                     return result
 
-    def import_files(self, workspace, paths, **metadata):
+    def import_files(self, workspace, paths, *, progress=None, **metadata):
+        """Import sequentially and report actual per-file outcomes.
+
+        Reporting is an optional observer, outside every import transaction.
+        It cannot change a committed result or cause a file to be retried.
+        A single file and unsized iterables stay indeterminate: file counts do
+        not measure page extraction, OCR, or elapsed time within one file.
+        """
+        total = None
+        if progress is not None:
+            try:
+                count = len(paths)
+                total = count if count > 1 else None
+            except Exception:
+                pass  # Do not consume an iterable merely to count it.
+
+        def report(completed):
+            nonlocal progress
+            if progress is not None:
+                try:
+                    progress(completed, total, 'Processing files')
+                except Exception:
+                    progress = None
+
+        cancelled = metadata.get('cancelled', lambda: False)
+        report(0)
         results = []
         for path in paths:
             try:
+                if cancelled():
+                    raise InterruptedError('Import cancelled before processing this file; remaining files were not attempted.')
                 results.append({'file': Path(path).name, **self.import_file(workspace, path, **metadata)})
+            except InterruptedError as exc:
+                results.append({'file': Path(path).name, 'state': 'cancelled', 'message': str(exc)})
             except (ValueError, OSError, sqlite3.Error, RuntimeError) as exc:
                 results.append({'file': Path(path).name, 'state': 'failed', 'message': str(exc)})
+            report(len(results))
+            if results[-1].get('state') == 'cancelled':
+                break
         return tuple(results)
 
     def add_text(self, workspace, title, text, **metadata):
@@ -1158,6 +1295,10 @@ class LibraryApp:
             load, metadata, _ = self._loaders(db, workspace, cancelled=budget.stopped)
             return SavedTopicQueries(SavedEvidenceStore(db, workspace, load, metadata)).run(
                 topic, identity, timeout=budget.remaining(), cancelled=budget.stopped)
+
+    def transcription(self, workspace):
+        from .transcription import TranscriptionService
+        return TranscriptionService(self, workspace)
 
     def backup(self, destination):
         from .library_backup import create_backup

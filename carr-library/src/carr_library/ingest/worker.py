@@ -93,6 +93,181 @@ def record_progress(root, request_id, **changes):
     _store(root, request_id, record)
 
 
+def request_identity(record):
+    """Hash only immutable admission fields, never a claimed terminal result."""
+    keys = {'version', 'request_id', 'data_dir', 'workspace', 'source', 'metadata', 'config'}
+    if (not isinstance(record, dict) or not keys <= set(record)
+            or type(record['version']) is not int or record['version'] != 1
+            or not isinstance(record['metadata'], dict) or set(record['metadata']) != FIELDS
+            or not isinstance(record['config'], dict)):
+        raise ValueError('Invalid persisted import request identity.')
+    identity = {key: record[key] for key in keys}
+    identity['expected_manifest'] = record.get('expected_manifest')
+    return sha256(canonical(identity).encode('utf-8')).hexdigest()
+
+
+def validate_publication_document(record):
+    """Validate optional request receipt fields without opening paths or a DB."""
+    if not isinstance(record, dict):
+        raise ValueError('Invalid persisted import request identity.')
+    attempt, intent = record.get('attempt_id'), record.get('publication')
+    if attempt is not None and (not isinstance(attempt, str)
+            or not re.fullmatch('[0-9a-f]{32}', attempt)):
+        raise ValueError('Invalid import worker attempt identity.')
+    if intent is None:
+        return None
+    keys = {'version', 'attempt_id', 'request_sha256', 'revision', 'config_sha256',
+            'page_count', 'pages_sha256', 'before', 'result', 'committed'}
+    if (not isinstance(intent, dict) or set(intent) != keys
+            or type(intent['version']) is not int or intent['version'] != 1
+            or type(intent['committed']) is not bool or attempt is None
+            or intent['attempt_id'] != attempt
+            or any(not isinstance(intent[key], str) or not re.fullmatch('[0-9a-f]{64}', intent[key])
+                   for key in ('request_sha256', 'revision', 'config_sha256', 'pages_sha256'))
+            or intent['request_sha256'] != request_identity(record)
+            or intent['revision'] != record.get('job')
+            or type(intent['page_count']) is not int or not 1 <= intent['page_count'] <= 1000):
+        raise ValueError('Import source or configuration changed; publication identity is invalid.')
+    before, result = intent['before'], intent['result']
+    metadata = record['metadata']
+    collections = metadata.get('collections')
+    if (not isinstance(collections, list) or len(collections) > 100
+            or any(not isinstance(value, str) or not value for value in collections)
+            or not isinstance(before, dict) or set(before) !=
+                {'revision_existed', 'active_revision', 'missing_memberships'}
+            or type(before['revision_existed']) is not bool
+            or (before['active_revision'] is not None and
+                (not isinstance(before['active_revision'], str) or not before['active_revision']
+                 or len(before['active_revision']) > 200))
+            or not isinstance(before['missing_memberships'], list)
+            or len(before['missing_memberships']) > 100
+            or any(not isinstance(value, str) for value in before['missing_memberships'])
+            or len(set(before['missing_memberships'])) != len(before['missing_memberships'])
+            or not set(before['missing_memberships']) <= set(collections)
+            or not isinstance(result, dict)
+            or not {'state', 'id', 'edition', 'completed', 'verified'} <= set(result)
+            or not set(result) <= {'state', 'id', 'edition', 'completed', 'verified',
+                'workspace', 'asset', 'total', 'error', 'format', 'warnings', 'message'}
+            or result.get('state') not in ('complete', 'superseded')
+            or result.get('id') != intent['revision']
+            or result.get('edition') != metadata['edition_id']
+            or type(result.get('completed')) is not int or result['completed'] != intent['page_count']
+            or type(result.get('verified')) is not bool
+            or ('total' in result and (type(result['total']) is not int or
+                                       result['total'] != intent['page_count']))
+            or result.get('error') is not None):
+        raise ValueError('Invalid request-bound publication pre-state or result.')
+    if len(canonical(intent).encode('utf-8')) > MAX_REQUEST:
+        raise ValueError('Import publication receipt exceeds its limit.')
+    return intent
+
+
+def publication_before(db, workspace, edition, revision, collections):
+    """Capture pre-state inside the existing catalog publication transaction."""
+    if not db.in_transaction:
+        raise ValueError('Import publication requires its existing transaction.')
+    active = db.execute('SELECT revision FROM active WHERE workspace=? AND edition=?',
+                        (workspace, edition)).fetchone()
+    return dict(revision_existed=db.execute('SELECT 1 FROM revision WHERE id=?',
+                                            (revision,)).fetchone() is not None,
+                active_revision=active[0] if active else None,
+                missing_memberships=[collection for collection in dict.fromkeys(collections)
+                    if db.execute('SELECT 1 FROM catalog_membership WHERE workspace=? '
+                                  'AND collection=? AND edition=?',
+                                  (workspace, collection, edition)).fetchone() is None])
+
+
+def publication_pages(db, revision):
+    """Bound immutable page contents without copying source text to the request."""
+    digest, count = sha256(), 0
+    for count, row in enumerate(db.execute(
+            'SELECT ordinal,physical,printed,verified,raw,digest FROM page '
+            'WHERE revision=? ORDER BY ordinal', (revision,)), 1):
+        if (count > 1000 or row[0] != count or not isinstance(row[4], str)
+                or sha256(row[4].encode('utf-8')).hexdigest() != row[5]):
+            raise ValueError('Import publication page integrity changed.')
+        digest.update((canonical([*row[:4], row[5]]) + '\n').encode('utf-8'))
+    if not count:
+        raise ValueError('Import publication has no source pages.')
+    return count, digest.hexdigest()
+
+
+def prepare_publication(root, request_id, db, revision, before, result):
+    """Persist request-bound intent before COMMIT; intent is never proof alone.
+
+    The parent verifies the sealed database, original bytes and registration
+    after the child has exited. This uses the existing private request and
+    journal; there is no second publication pipeline or catalog schema.
+    """
+    if request_id is None:
+        return
+    request = load_request(root, request_id)
+    attempt = request.get('attempt_id')
+    if not isinstance(attempt, str) or not re.fullmatch('[0-9a-f]{32}', attempt):
+        raise ValueError('Import publication has no admitted worker attempt.')
+    if not db.in_transaction:
+        raise ValueError('Import publication requires its existing transaction.')
+    published = db.execute('SELECT workspace,edition,asset,config FROM revision WHERE id=?',
+                           (revision,)).fetchone()
+    if (published is None or tuple(published[:3]) != (request['workspace'],
+            request['metadata']['edition_id'], request.get('asset_sha256'))
+            or request.get('job') != revision):
+        raise ValueError('Import publication differs from its admitted request.')
+    count, pages_digest = publication_pages(db, revision)
+    intent = dict(version=1, attempt_id=attempt, request_sha256=request_identity(request),
+                  revision=revision, config_sha256=sha256(published[3].encode('utf-8')).hexdigest(),
+                  page_count=count, pages_sha256=pages_digest, before=before,
+                  result=dict(result), committed=False)
+    record_progress(root, request_id, publication=intent)
+
+
+def confirm_publication(root, request_id):
+    """Acknowledge an already committed transaction, still subject to DB checks."""
+    if request_id is None:
+        return
+    request = load_request(root, request_id)
+    intent = request.get('publication')
+    if (not isinstance(intent, dict) or intent.get('attempt_id') != request.get('attempt_id')
+            or intent.get('request_sha256') != request_identity(request)):
+        raise ValueError('Import publication acknowledgment identity changed.')
+    record_progress(root, request_id, publication=dict(intent, committed=True))
+
+
+def _settle_request(root, request_id, identity, result=None):
+    """Resolve a fully stopped child under the same writer admission guard."""
+    from ..application import LibraryApp
+    from .writer_guard import exclusive_writer
+    app = LibraryApp(root)
+    with exclusive_writer(root, timeout=5):
+        request = load_request(root, request_id)
+        if request_identity(request) != identity:
+            raise ValueError('Import request identity changed while the worker ran.')
+        try:
+            committed = app._reconcile_import_publication(request)
+        except (ValueError, OSError, sqlite3.Error) as exc:
+            committed = None
+            result = dict(state='failed', message=str(exc)[:2000],
+                          worker_terminal_state=result.get('state') if result else None)
+        if committed is not None:
+            if result is None and isinstance(request.get('result'), dict):
+                # Reopening the completed request must retain why its original
+                # worker stopped, even though no new child was needed.
+                for key in ('worker_terminal_state', 'worker_message'):
+                    if key in request['result']:
+                        committed[key] = request['result'][key]
+            if result is not None and result.get('state') not in ('complete', 'superseded'):
+                committed.update(worker_terminal_state=result.get('state'),
+                                 worker_message=result.get('message', ''))
+            result = dict(committed, reconciled=True)
+        elif result is None:
+            return None
+        elif result.get('state') in ('complete', 'superseded'):
+            result = dict(state='failed', message='Import completion has no validated durable publication.')
+        result = dict(result, request_id=request_id, isolated=True)
+        record_progress(root, request_id, state=result.get('state', 'failed'), result=result)
+        return result
+
+
 class RuntimeBoundIngest(Ingest):
     """Bind PDF journal checkpoints to the existing extraction fingerprint."""
     def __init__(self, journal, storage, *, reviews=None, review_asset=None):
@@ -379,14 +554,18 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
         record = load_request(root, request_id)
         if record.get('workspace') != workspace:
             raise ValueError('Import request belongs to another library.')
-        if record.get('state') == 'complete' and isinstance(record.get('result'), dict):
-            return dict(record['result'], request_id=request_id, isolated=True)
-    record_progress(root, request_id, state='running')
+    identity = request_identity(record)
+    if record.get('publication') is not None:
+        recovered = _settle_request(root, request_id, identity)
+        if recovered is not None:
+            return recovered
+    record_progress(root, request_id, state='running', attempt_id=uuid4().hex,
+                    publication=None)
     result = _invoke({'data_dir': str(Path(root).resolve()), 'request_id': request_id,
                       'timeout': timeout}, timeout=timeout, cancelled=cancelled)
-    result = dict(result, request_id=request_id, isolated=True)
-    record_progress(root, request_id, state=result.get('state', 'failed'), result=result)
-    return result
+    # _invoke returns only after its process has exited or has been stopped and
+    # reaped. A timeout/cancel/lost stdout receipt cannot undo a durable commit.
+    return _settle_request(root, request_id, identity, result)
 
 
 def _invoke(message, *, timeout, cancelled=lambda: False):

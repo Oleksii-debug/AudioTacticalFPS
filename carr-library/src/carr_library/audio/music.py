@@ -89,12 +89,24 @@ def _choice(values, step):
     return expression
 
 
-def _procedural(spec, target, *, sample_rate, channels, cancelled, ffmpeg, ffprobe,
-                max_output_bytes, timeout_seconds):
-    frames = _frames(spec.duration_seconds, sample_rate)
-    estimate = _disk_budget(target, frames, sample_rate, channels, max_output_bytes)
+def _score_controls(spec):
+    """Read either published typed score without changing its serialized schema."""
+    if isinstance(spec, MusicSpec):
+        fade = min(1.5, spec.duration_seconds / 4)
+        return spec.duration_seconds, spec.tempo_bpm, .45, fade, fade
+    from .models import MusicSpec as RuntimeMusicSpec
+    if isinstance(spec, RuntimeMusicSpec):
+        return spec.duration, spec.tempo, spec.intensity, spec.fade_in, spec.fade_out
+    raise ValueError('Music requires a typed MusicSpec.')
+
+
+def _procedural_graph(spec, sample_rate, channels):
+    """One numeric oscillator graph shared by both public rendering interfaces."""
+    duration, tempo, intensity, fade_in, fade_out = _score_controls(spec)
+    frames = _frames(duration, sample_rate)
+    duration = frames / sample_rate
     root, notes, minor = _note_sequence(spec)
-    beat = 60 / spec.tempo_bpm
+    beat = 60 / tempo
     melody = _choice([_frequency(n) for n in notes], beat)
     bass = _choice([_frequency(root + n - 12) for n in (0, 5, 3 if minor else 4, 7)], beat * 4)
     third = 3 if minor else 4
@@ -106,12 +118,27 @@ def _procedural(spec, target, *, sample_rate, channels, cancelled, ffmpeg, ffpro
     lead = f'0.10*({envelope})*sin(2*PI*({melody})*t)'
     left = f'{lead}+{low}+{pad}'
     right = f'0.095*({envelope})*sin(2*PI*({melody})*t)+{low}+{pad}'
+    # The original director profile uses intensity .45. The typed runtime's
+    # explicit intensity remains effective without a second synthesizer.
+    scale = (.08 + .14 * intensity) / .143
+    left, right = f'{scale:.12g}*({left})', f'{scale:.12g}*({right})'
     expressions = left if channels == 1 else left + '|' + right
     source = f"aevalsrc=exprs='{expressions}':s={sample_rate}:c={'mono' if channels == 1 else 'stereo'}"
-    fade = min(1.5, spec.duration_seconds / 4)
-    filters = (f'atrim=end_sample={frames},afade=t=in:d={fade:.9f},'
-               f'afade=t=out:st={spec.duration_seconds-fade:.9f}:d={fade:.9f},'
-               'alimiter=limit=0.95:level=0:latency=1')
+    filters = [f'atrim=end_sample={frames}']
+    if fade_in:
+        filters.append(f'afade=t=in:d={min(fade_in, duration):.9f}')
+    if fade_out:
+        fade_out = min(fade_out, duration)
+        filters.append(f'afade=t=out:st={duration-fade_out:.9f}:d={fade_out:.9f}')
+    filters.extend(('alimiter=limit=0.95:level=0:latency=1',
+                    f'apad=whole_len={frames}', f'atrim=end_sample={frames}'))
+    return source, ','.join(filters), frames
+
+
+def _procedural(spec, target, *, sample_rate, channels, cancelled, ffmpeg, ffprobe,
+                max_output_bytes, timeout_seconds):
+    source, filters, frames = _procedural_graph(spec, sample_rate, channels)
+    estimate = _disk_budget(target, frames, sample_rate, channels, max_output_bytes)
     with tempfile.TemporaryDirectory(prefix='.carr-music-', dir=target.parent) as temp:
         staged = Path(temp) / ('instrumental' + target.suffix.lower())
         args = [*_ffmpeg_base(ffmpeg), '-f', 'lavfi', '-i', source,
@@ -382,7 +409,56 @@ def _midi_delta(value):
     return bytes(result)
 
 
-def export_midi(spec, output, *, cancelled=None, max_output_bytes=32*1024**2):
+def _write_midi_file(staged, spec, *, check, max_output_bytes):
+    """Write one shared symbolic score, holding at most a beat's events in RAM."""
+    duration, tempo, intensity, _, _ = _score_controls(spec)
+    root, melody, minor = _note_sequence(spec)
+    bass = [root+step-12 for step in (0, 5, 3 if minor else 4, 7)]
+    ticks = 480
+    # Check the explicit storage allowance before multiplying a caller's
+    # finite but potentially enormous duration into a tick count.
+    max_output_bytes = min(max_output_bytes, 0xFFFFFFFF)
+    if duration > (((max_output_bytes - 64) // 18 + 1) * 60 / tempo):
+        raise ValueError('Symbolic composition exceeds the selected MIDI storage budget.')
+    total_ticks = round(duration * tempo/60*ticks)
+    beats = math.ceil(total_ticks/ticks)
+    # SMF uses an unsigned 32-bit track length even when the enclosing job has
+    # a larger disk allowance. Check the actual complete file budget as well.
+    if beats*18 + 64 > max_output_bytes:
+        raise ValueError('Symbolic composition exceeds the selected MIDI storage budget.')
+    velocity = max(1, min(127, round(72 * (.08 + .14 * intensity) / .143)))
+    check()
+    with Path(staged).open('xb') as stream:
+        stream.write(b'MThd'+struct.pack('>IHHH',6,0,1,ticks))
+        stream.write(b'MTrk\0\0\0\0')
+        start = stream.tell()
+        stream.write(b'\0\xff\x51\x03'+round(60_000_000/tempo).to_bytes(3,'big'))
+        stream.write(b'\0\xff\x58\x04\x04\x02\x18\x08\0\xc0\x0b\0\xc1\x20')
+        previous = 0
+        for index in range(beats):
+            check()
+            begin, end = index*ticks, min(total_ticks,(index+1)*ticks)
+            notes = ((0,melody[index % len(melody)],velocity),
+                     (1,bass[(index//4)%len(bass)],max(1,velocity-17)))
+            for channel, pitch, level in notes:
+                stream.write(_midi_delta(begin-previous)+bytes((0x90+channel,pitch,level)))
+                previous = begin
+            release = min(end,begin+round(ticks*.85))
+            for channel,pitch,_ in notes:
+                stream.write(_midi_delta(release-previous)+bytes((0x80+channel,pitch,0)))
+                previous = release
+            if stream.tell() + 7 > max_output_bytes:
+                raise ValueError('Symbolic composition exceeded its MIDI file budget.')
+        stream.write(_midi_delta(total_ticks-previous)+b'\xff\x2f\0')
+        length = stream.tell()-start
+        stream.seek(start-4)
+        stream.write(struct.pack('>I',length))
+        stream.flush()
+        os.fsync(stream.fileno())
+    return total_ticks/ticks*60/tempo
+
+
+def _export_midi(spec, output, *, cancelled=None, max_output_bytes=32*1024**2):
     """Stream a symbolic motif as standard MIDI, keeping one beat in memory.
 
     Adapted from the bounded MIDI writer reviewed in project PR103 at fc84a791.
@@ -396,59 +472,20 @@ def export_midi(spec, output, *, cancelled=None, max_output_bytes=32*1024**2):
     if target.suffix.lower() not in ('.mid', '.midi'):
         raise ValueError('Choose a new .mid or .midi file for symbolic music.')
     check_cancelled(cancelled)
-    root, melody, minor = _note_sequence(spec)
-    bass = [root+step-12 for step in (0, 5, 3 if minor else 4, 7)]
-    ticks = 480
-    total_ticks = round(spec.duration_seconds * spec.tempo_bpm/60*ticks)
-    beats = math.ceil(total_ticks/ticks)
-    if beats*18 + 64 > max_output_bytes:
-        raise ValueError('Symbolic composition exceeds the selected MIDI storage budget.')
     with tempfile.TemporaryDirectory(prefix='.carr-midi-export-', dir=target.parent) as directory:
         staged = Path(directory)/'score.mid'
-        with staged.open('xb') as stream:
-            stream.write(b'MThd'+struct.pack('>IHHH',6,0,1,ticks))
-            stream.write(b'MTrk\0\0\0\0')
-            start = stream.tell()
-            stream.write(b'\0\xff\x51\x03'+round(60_000_000/spec.tempo_bpm).to_bytes(3,'big'))
-            stream.write(b'\0\xff\x58\x04\x04\x02\x18\x08\0\xc0\x0b\0\xc1\x20')
-            previous = 0
-            for index in range(beats):
-                check_cancelled(cancelled)
-                begin, end = index*ticks, min(total_ticks,(index+1)*ticks)
-                notes = ((0,melody[index % len(melody)],72),(1,bass[(index//4)%len(bass)],55))
-                for channel, pitch, velocity in notes:
-                    stream.write(_midi_delta(begin-previous)+bytes((0x90+channel,pitch,velocity)))
-                    previous = begin
-                release = min(end,begin+round(ticks*.85))
-                for channel,pitch,_ in notes:
-                    stream.write(_midi_delta(release-previous)+bytes((0x80+channel,pitch,0)))
-                    previous = release
-                if stream.tell() > max_output_bytes:
-                    raise ValueError('Symbolic composition exceeded its MIDI file budget.')
-            stream.write(_midi_delta(total_ticks-previous)+b'\xff\x2f\0')
-            length = stream.tell()-start
-            stream.seek(start-4)
-            stream.write(struct.pack('>I',length))
-            stream.flush()
-            os.fsync(stream.fileno())
+        duration = _write_midi_file(staged, spec, check=lambda: check_cancelled(cancelled),
+                                    max_output_bytes=max_output_bytes)
         checksum = file_sha256(staged,cancelled)
         check_cancelled(cancelled)
         os.link(staged,target)
-    return MidiResult(target,checksum,target.stat().st_size,total_ticks/ticks*60/spec.tempo_bpm,spec.tempo_bpm)
+    return MidiResult(target,checksum,target.stat().st_size,duration,spec.tempo_bpm)
 
 
-def render_sfx(name, output, *, duration_seconds=1, seed=0, sample_rate=24000, channels=2,
-               cancelled=None, ffmpeg=None, ffprobe=None, max_output_bytes=None, timeout_seconds=None):
-    """Generate a named procedural cue, clearly labelled as synthesized audio."""
-    if name not in ('door','click','chime','noise'):
-        raise ValueError('Supported procedural sound cues: door, click, chime and noise.')
-    if type(seed) is not int or not 0 <= seed <= 2**32-1:
-        raise ValueError('Sound cue seed must be a nonnegative 32-bit integer.')
-    _settings(sample_rate,channels)
+def _sfx_graph(name, duration_seconds, seed, sample_rate):
+    """The same bounded, numeric cue graph serves both runtime interfaces."""
     frames = _frames(duration_seconds,sample_rate)
     duration = frames/sample_rate
-    target = output_path(output)
-    estimate = _disk_budget(target,frames,sample_rate,channels,max_output_bytes)
     if name in ('noise','door'):
         color, amplitude = ('pink',.2) if name == 'noise' else ('brown',.6)
         source = f'anoisesrc=c={color}:r={sample_rate}:a={amplitude}:d={duration:.9f}:s={seed}'
@@ -461,6 +498,20 @@ def render_sfx(name, output, *, duration_seconds=1, seed=0, sample_rate=24000, c
             expression += '+.12*sin(2*PI*1320*t)*exp(-4*t)'
         source = f"aevalsrc=exprs='{expression}':s={sample_rate}:d={duration:.9f}"
     source += f',aformat=channel_layouts=stereo,alimiter=limit=.9:level=0:latency=1,apad=whole_len={frames},atrim=end_sample={frames}[out]'
+    return source, frames
+
+
+def _render_sfx(name, output, *, duration_seconds=1, seed=0, sample_rate=24000, channels=2,
+                cancelled=None, ffmpeg=None, ffprobe=None, max_output_bytes=None, timeout_seconds=None):
+    """Generate a named procedural cue, clearly labelled as synthesized audio."""
+    if name not in ('door','click','chime','noise'):
+        raise ValueError('Supported procedural sound cues: door, click, chime and noise.')
+    if type(seed) is not int or not 0 <= seed <= 2**32-1:
+        raise ValueError('Sound cue seed must be a nonnegative 32-bit integer.')
+    _settings(sample_rate,channels)
+    source, frames = _sfx_graph(name, duration_seconds, seed, sample_rate)
+    target = output_path(output)
+    estimate = _disk_budget(target,frames,sample_rate,channels,max_output_bytes)
     with tempfile.TemporaryDirectory(prefix='.carr-sfx-',dir=target.parent) as directory:
         staged = Path(directory)/('cue'+target.suffix.lower())
         run_process([*_ffmpeg_base(ffmpeg),'-filter_complex',source,'-map','[out]',
@@ -472,3 +523,34 @@ def render_sfx(name, output, *, duration_seconds=1, seed=0, sample_rate=24000, c
                              expected_frames=frames if target.suffix.lower() in ('.wav','.flac') else None,
                              metadata=dict(operation='procedural_sfx',sound=name,seed=seed,
                                            original_neural_generation=False,estimated_pcm_bytes=estimate))
+
+
+def export_midi(*args, **kwargs):
+    """Export MIDI using either the direct or project-confined runtime API.
+
+    Direct: ``export_midi(spec, output, ...) -> MidiResult``.
+    Runtime: ``export_midi(runtime, spec, output, ...) -> Path``.
+    Positional and named arguments retain the published interfaces.
+    """
+    from .dsp import AudioRuntime
+    if 'runtime' in kwargs or (args and isinstance(args[0], AudioRuntime)):
+        from .music_runtime import export_midi as runtime_export
+        return runtime_export(*args, **kwargs)
+    return _export_midi(*args, **kwargs)
+
+
+def render_sfx(*args, **kwargs):
+    """Render a procedural cue with the selected API's paths and budgets."""
+    from .dsp import AudioRuntime
+    if 'runtime' in kwargs or (args and isinstance(args[0], AudioRuntime)):
+        from .music_runtime import render_sfx as runtime_render
+        return runtime_render(*args, **kwargs)
+    return _render_sfx(*args, **kwargs)
+
+
+# The accepted project-runtime API uses a distinct, explicitly installed SDK
+# manifest for AudioCraft/ACE-Step. It never reinterprets a Transformers manifest
+# or changes which model engine a caller selected.
+from .music_runtime import (ACESTEP_REVISION, MUSICGEN_REVISION, configure_fluidsynth,
+                            configure_model, music_capabilities, probe_model,
+                            render_music, validate_model)

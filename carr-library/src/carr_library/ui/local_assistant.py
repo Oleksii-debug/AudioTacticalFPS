@@ -284,4 +284,15 @@ def install_local_assistant(frame):
     menu=wx.Menu()
     item=menu.Append(wx.ID_ANY,'&Local assistant...\tCtrl+Alt+A')
     frame.Bind(wx.EVT_MENU,lambda event:AssistantDialog(frame).show(),item)
+    saved = menu.Append(wx.ID_ANY, 'Saved tool plans and jobs...\tCtrl+Alt+J')
+    def show_saved(event):
+        if frame.working or getattr(frame, 'busy', False) or getattr(frame, '_closing', False):
+            frame.report('Wait for the current operation or choose Cancel current operation.')
+            return
+        from .assistant_dialog import show_assistant
+        try:
+            show_assistant(frame)
+        except Exception as exc:
+            frame.report('Saved tool plans could not open: ' + str(exc))
+    frame.Bind(wx.EVT_MENU, show_saved, saved)
     frame.menu_bar.Insert(max(0,frame.menu_bar.GetMenuCount()-1),menu,'&Tools')

@@ -1,0 +1,111 @@
+name: CARR V3 local studio and assistant
+
+on:
+  pull_request:
+    branches: [carr-library]
+    paths: ['carr-library/**', '.github/workflows/carr-v3.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-v3-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  native-studio:
+    runs-on: windows-2022
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Install exact application and native desktop dependencies
+        id: install-runtime
+        run: |
+          New-Item -ItemType Directory -Force 'ci-v3-results' | Out-Null
+          git rev-parse HEAD | Set-Content 'ci-v3-results/tested-commit.txt'
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-semantic-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5 et-xmlfile==2.0.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Prepare explicitly pinned private test audio runtime
+        id: audio-runtime
+        run: |
+          $audio = Join-Path $env:RUNNER_TEMP 'carr-v3-audio'
+          python packaging/prepare_windows_audio.py --output $audio --download | Tee-Object 'ci-v3-results/audio-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          "CARR_V3_AUDIO=$audio" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Real native SAPI, scene production, keyboard controls and restart
+        run: |
+          $python = (Get-Command python.exe).Source
+          $basePython = (& $python -I -c "import sys; print(sys._base_executable)").Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $programs = @($python, $basePython, (Get-Command node.exe).Source,
+            (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'),
+            (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe'),
+            (Join-Path $env:CARR_V3_AUDIO 'bin/ffmpeg.exe'),
+            (Join-Path $env:CARR_V3_AUDIO 'bin/ffprobe.exe')) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | ForEach-Object { [System.IO.Path]::GetFullPath($_) } | Sort-Object -Unique
+          $rulePrefix = 'CARR-v3-offline-' + [guid]::NewGuid().ToString('N')
+          $ruleNames = @()
+          $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
+          try {
+            Set-NetFirewallProfile -Profile Domain, Private, Public -Enabled True -ErrorAction Stop
+            foreach ($program in $programs) {
+              $ruleName = $rulePrefix + '-' + $ruleNames.Count
+              $ruleNames += $ruleName
+              New-NetFirewallRule -Name $ruleName -DisplayName $ruleName -Direction Outbound -Action Block -Profile Any -Program $program -Enabled True -ErrorAction Stop | Out-Null
+            }
+            $profiles = @(Get-NetFirewallProfile -ErrorAction Stop)
+            if (@($profiles | Where-Object { $_.Enabled -ne 'True' }).Count -ne 0) { throw 'Offline native checks require enabled firewall profiles.' }
+            $active = @(Get-NetFirewallRule -PolicyStore ActiveStore -Name $ruleNames -ErrorAction Stop)
+            if ($active.Count -ne $programs.Count -or @($active | Where-Object { $_.Enabled -ne 'True' -or $_.Direction -ne 'Outbound' -or $_.Action -ne 'Block' }).Count -ne 0) { throw 'Offline runtime rules are not active.' }
+            $filters = @($active | Get-NetFirewallApplicationFilter -ErrorAction Stop | Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })
+            if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Offline rules do not cover the selected runtime programs.' }
+            @{ status='PASS'; blocked_programs=$filters; scope='tested runtime executables, not a whole-machine network claim' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-v3-results/runtime-firewall.json'
+            & $python -I -B scripts/windows_v3_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-v3.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Actual native speech and production acceptance failed.' }
+          } finally {
+            foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
+            foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
+          }
+      - name: Require progress isolation and actual selected-voice rendering regressions
+        if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
+        run: |
+          python scripts/ci_check.py tests/speech/test_progress_speech.py tests/studio/test_production_cancellation_outcomes.py tests/ui/test_operation_progress.py tests/ui/test_progress_numeric_limits.py tests/ui/test_progress_job_review.py tests/ui/test_studio_progress_isolation.py tests/ui/test_progress_media_quiet.py tests/ui/test_progress_voice_actions.py tests/e2e/test_import_progress.py tests/storage/test_progress_preferences_backup.py 2>&1 | Tee-Object 'ci-v3-results/strict-operation-progress.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Validate local services, DSP, integrity and provider permission boundaries
+        if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
+        run: |
+          python -m pytest -q -o xfail_strict=true --import-mode=importlib tests/audio tests/speech tests/assistant tests/studio tests/academic_integration tests/conversion tests/language_qualification tests/ui/test_engine_settings_review.py tests/ui/test_operation_progress.py tests/ui/test_progress_job_review.py tests/ui/test_keyboard_settings.py tests/test_delivery_contract.py tests/storage/test_v3_state_backup.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_backup_v4_review.py tests/storage/test_composite_backup.py tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py tests/packaging/test_compact_audio_runtime.py tests/packaging/test_refresh_private_bundle_review.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -I -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-v3-results/v3-tests.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); assert cases and failed==skipped==0; print(json.dumps(dict(status='PASS',passed=len(cases),failed=failed,skipped=skipped)))" | Tee-Object 'ci-v3-results/v3-strict-summary.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Keep source and test evidence only
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-v3-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: carr-library/ci-v3-results/
+          retention-days: 7

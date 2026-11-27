@@ -54,18 +54,19 @@ def project(app):
     return store, second, director
 
 
-def test_legacy_shaped_library_keeps_v2_despite_manual_ingest_journal(library, tmp_path):
+def test_library_without_personal_sidecars_keeps_canonical_v4_journal_backup(library, tmp_path):
     app, _ = library
     assert (app.root / 'imports.sqlite').is_file()
     ProjectStore(app.root)  # Empty directories and locks are not personal state.
     backup = tmp_path / 'backup'
     create_backup(app, backup)
     manifest = json.loads((backup / 'manifest.json').read_text())
-    assert manifest['version'] == 2 and 'sidecars' not in manifest
+    assert manifest['version'] == 4 and 'sidecars' not in manifest
+    assert any(row['filename'] == 'imports.sqlite' for row in manifest['pending']['files'])
     assert not (backup / 'sidecars').exists()
 
 
-def test_full_v3_roundtrip_preserves_reading_revisions_drafts_profiles_and_plan(library, tmp_path):
+def test_full_v5_roundtrip_preserves_reading_revisions_drafts_profiles_and_plan(library, tmp_path):
     app, workspace = library
     location, bookmark = reading(app, workspace)
     store, saved, director = project(app)
@@ -87,7 +88,7 @@ def test_full_v3_roundtrip_preserves_reading_revisions_drafts_profiles_and_plan(
     backup = tmp_path / 'backup'
     checksum = create_backup(app, backup)
     manifest = json.loads((backup / 'manifest.json').read_text())
-    assert manifest['version'] == 3
+    assert manifest['version'] == 5
     paths = {row['path'] for row in manifest['sidecars']['files']}
     assert 'reading-state.json' in paths and 'connections.json' in paths
     assert 'imports.sqlite' not in paths
@@ -144,18 +145,20 @@ def test_pending_import_retained_original_and_root_binding_survive_restore(libra
     backup = tmp_path / 'backup'
     checksum = create_backup(app, backup)
     manifest = json.loads((backup / 'manifest.json').read_text())
-    files = {item['path'] for item in manifest['sidecars']['files']}
-    assert 'imports.sqlite' in files and f'pending-originals/{asset}.txt' in files
+    files = {item['filename'] for item in manifest['pending']['files']}
+    assert 'imports.sqlite' in files and f'originals/{asset}.txt' in files
+    assert 'sidecars' not in manifest  # No duplicate owner for import recovery.
     original.unlink()  # Resume must use the retained original, not this path.
     root = restore_backup(backup, tmp_path / 'restored', checksum)
     restored = LibraryApp(root)
     copied_request = load_request(root, request['request_id'])
     assert copied_request['data_dir'] == str(root)
-    assert copied_request['source'] == str(original)
+    retained_source = str(root / 'originals' / (asset + '.txt'))
+    assert copied_request['source'] == retained_source
     assert copied_request['workspace'] == workspace
     assert copied_request['metadata']['edition_id'] == row['edition_id']
     copied_batch = restored.import_batch(workspace, batch['batch_id'])
-    assert copied_batch['data_dir'] == str(root) and copied_batch['rows'][0]['source'] == str(original)
+    assert copied_batch['data_dir'] == str(root) and copied_batch['rows'][0]['source'] == retained_source
     assert restored.assets.resolve(asset).read_bytes() == payload
     completed = restored.resume_import(workspace, request['request_id'])
     assert completed['state'] == 'complete'
@@ -270,14 +273,14 @@ def test_accepted_asset_and_cache_bytes_are_checked_before_backup_publication(li
     (folder / 'cache' / (key + '.wav')).write_bytes(payload)
     atomic_json(folder / 'cache' / (key + '.json'), dict(key=key, sha256=checksum))
     backup = tmp_path / 'backup'
-    digest = create_backup(app, backup)
+    digest = create_backup(app, backup, include_generated=True)
     root = restore_backup(backup, tmp_path / 'restored', digest)
     restored = ProjectStore(root).path(saved.id)
     assert (restored / 'assets' / (checksum + '.wav')).read_bytes() == payload
     assert (restored / 'cache' / (key + '.wav')).read_bytes() == payload
     (folder / 'cache' / (key + '.wav')).write_bytes(b'corrupt')
     with pytest.raises(ValueError, match='chunk digest'):
-        create_backup(app, tmp_path / 'rejected-backup')
+        create_backup(app, tmp_path / 'rejected-backup', include_generated=True)
     assert not (tmp_path / 'rejected-backup').exists()
 
 

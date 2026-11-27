@@ -52,6 +52,17 @@ _PATHS = (
 )
 
 
+def pending_path(value):
+    """Paths owned exclusively by pending_backup in composite manifests."""
+    return value == 'imports.sqlite' or value.startswith((
+        'import-requests/', 'import-batches/', 'pending-originals/'))
+
+
+def _check(cancelled):
+    if cancelled():
+        raise InterruptedError('Application state backup or restore cancelled.')
+
+
 def _plain(path, *, directory=False):
     info = Path(path).lstat()
     valid = stat.S_ISDIR(info.st_mode) if directory else stat.S_ISREG(info.st_mode)
@@ -102,7 +113,8 @@ def _write_json(path, value):
         os.fsync(stream.fileno())
 
 
-def _copy(source, target, *, expected=None):
+def _copy(source, target, *, expected=None, cancelled=lambda: False):
+    _check(cancelled)
     before = _plain(source)
     if not 0 < before.st_size <= MAX_FILE_BYTES:
         raise RestoreError('sidecar file size limit')
@@ -114,6 +126,7 @@ def _copy(source, target, *, expected=None):
         if _identity(os.fstat(incoming.fileno())) != _identity(before):
             raise RestoreError('sidecar changed while opening')
         while block := incoming.read(min(1024**2, before.st_size + 1 - count)):
+            _check(cancelled)
             count += len(block)
             if count > before.st_size:
                 raise RestoreError('sidecar grew during snapshot')
@@ -129,7 +142,8 @@ def _copy(source, target, *, expected=None):
     return count, checksum
 
 
-def _file_record(path, relative):
+def _file_record(path, relative, *, cancelled=lambda: False):
+    _check(cancelled)
     before = _plain(path)
     if not 0 < before.st_size <= MAX_FILE_BYTES:
         raise RestoreError('sidecar file size limit')
@@ -138,6 +152,7 @@ def _file_record(path, relative):
         if _identity(os.fstat(stream.fileno())) != _identity(before):
             raise RestoreError('sidecar changed while opening')
         while block := stream.read(1024**2):
+            _check(cancelled)
             count += len(block)
             if count > before.st_size:
                 raise RestoreError('sidecar grew during verification')
@@ -155,13 +170,15 @@ def _ignored(parts):
     return temporary or (len(parts) >= 3 and parts[0] == 'projects' and parts[2].startswith('work-'))
 
 
-def _walk(root, *, exclude_temporary=False):
+def _walk(root, *, exclude_temporary=False, cancelled=lambda: False):
     """Never follow a directory link, including one in an excluded temp entry."""
     _plain(root, directory=True)
     pending, files, visited = [(root, ())], [], 0
     while pending:
+        _check(cancelled)
         parent, parts = pending.pop()
         for child in parent.iterdir():
+            _check(cancelled)
             visited += 1
             relative = (*parts, child.name)
             if visited > MAX_FILES * 3 or len(relative) > 7:
@@ -276,7 +293,7 @@ def _validate_json(relative, value, source_root):
         if type(value) is not dict or len(value) > 1000:
             raise RestoreError('invalid import review sidecar')
     elif relative.startswith('import-requests/'):
-        if (type(value) is not dict or value.get('version') != 1
+        if (type(value) is not dict or type(value.get('version')) is not int or value.get('version') != 1
                 or value.get('request_id') != PurePosixPath(relative).stem
                 or value.get('data_dir') != source_root
                 or type(value.get('metadata')) is not dict
@@ -284,6 +301,8 @@ def _validate_json(relative, value, source_root):
                 or not isinstance(value.get('workspace'), str)
                 or not isinstance(value.get('source'), str)):
             raise RestoreError('invalid import request identity')
+        from .ingest.worker import validate_publication_document
+        validate_publication_document(value)
     elif relative.startswith('studio/'):
         from .audio.projects import Project, ProjectStore
         parts = PurePosixPath(relative).parts
@@ -370,14 +389,15 @@ def _verify_sources(db, relative, value):
             _validate_source(db, source)
 
 
-def _verify_tree(stage, manifest, *, db):
+def _verify_tree(stage, manifest, *, db, cancelled=lambda: False):
     validate_manifest(manifest)
-    actual = dict(_walk(stage))
+    actual = dict(_walk(stage, cancelled=cancelled))
     if set(actual) != {row['path'] for row in manifest['files']}:
         raise RestoreError('sidecar tree differs from its manifest')
     for row in manifest['files']:
+        _check(cancelled)
         path = actual[row['path']]
-        if _file_record(path, row['path']) != row:
+        if _file_record(path, row['path'], cancelled=cancelled) != row:
             raise RestoreError('sidecar digest mismatch')
         if path.suffix == '.json':
             value = _read_json(path)
@@ -392,7 +412,7 @@ def _verify_tree(stage, manifest, *, db):
                     raise RestoreError('studio recovery draft has no matching saved project')
             if '/cache/' in row['path']:
                 paired = row['path'][:-5] + '.wav'
-                if paired in actual and value['sha256'] != _file_record(actual[paired], paired)['sha256']:
+                if paired in actual and value['sha256'] != _file_record(actual[paired], paired, cancelled=cancelled)['sha256']:
                     raise RestoreError('accepted studio chunk digest mismatch')
         elif row['path'] == 'imports.sqlite':
             _journal(path)
@@ -407,21 +427,30 @@ def _verify_tree(stage, manifest, *, db):
         raise RestoreError('import review has no matching request')
 
 
-def snapshot(app, stage, registered_assets, *, db):
+def snapshot(app, stage, registered_assets, *, db, include_pending=True,
+             include_generated=True, cancelled=lambda: False):
     """Return None for a legacy-shaped library; otherwise seal all accepted state."""
+    if type(include_pending) is not bool or type(include_generated) is not bool or not callable(cancelled):
+        raise ValueError('Invalid application sidecar snapshot options.')
+    _check(cancelled)
     root, target = app.root, stage / DIRECTORY
     selected = []
     for name in ('reading-state.json', 'connections.json', 'keybindings.json', 'ocr-language-presets.json'):
         path = root / name
         if os.path.lexists(path):
             selected.append((name, path))
-    for name in ('studio', 'assistant', 'import-requests', 'import-batches', 'provider-jobs'):
+    directories = ['studio', 'assistant', 'provider-jobs']
+    if include_pending:
+        directories.extend(('import-requests', 'import-batches'))
+    for name in directories:
         path = root / name
         if os.path.lexists(path):
             selected.extend((name + '/' + relative, item)
-                            for relative, item in _walk(path, exclude_temporary=True))
+                            for relative, item in _walk(path, exclude_temporary=True, cancelled=cancelled))
     for relative, path in selected:
         _path(relative)
+    if not include_generated:
+        selected = [(name, path) for name, path in selected if '/cache/' not in name]
     if len(selected) > MAX_FILES:
         raise RestoreError('sidecar snapshot file count limit')
     meaningful_imports = any(relative.startswith(('import-requests/', 'import-batches/'))
@@ -431,11 +460,12 @@ def snapshot(app, stage, registered_assets, *, db):
     target.mkdir(mode=0o700)
     total, records, pending = 0, [], set()
     for relative, source in sorted(selected):
+        _check(cancelled)
         size = _plain(source).st_size
         total += size
         if total > MAX_BYTES or len(records) >= MAX_FILES:
             raise RestoreError('sidecar snapshot resource limit')
-        size, checksum = _copy(source, target / relative)
+        size, checksum = _copy(source, target / relative, cancelled=cancelled)
         records.append(dict(path=relative, size_bytes=size, sha256=checksum))
         if relative.startswith('import-requests/') and '/reviews/' not in relative:
             value = _read_json(target / relative)
@@ -453,38 +483,46 @@ def snapshot(app, stage, registered_assets, *, db):
             with closing(sqlite3.connect(journal_copy)) as outgoing:
                 incoming.backup(outgoing)
         pending.update(_journal(journal_copy))
-        records.append(_file_record(journal_copy, 'imports.sqlite'))
+        records.append(_file_record(journal_copy, 'imports.sqlite', cancelled=cancelled))
     for digest in sorted(pending - set(registered_assets)):
+        _check(cancelled)
         source = app.assets.resolve(digest)
         total += _plain(source).st_size
         if total > MAX_BYTES or len(records) >= MAX_FILES:
             raise RestoreError('sidecar snapshot resource limit')
         relative = 'pending-originals/' + source.name
-        size, checksum = _copy(source, target / relative)
+        size, checksum = _copy(source, target / relative, cancelled=cancelled)
         records.append(dict(path=relative, size_bytes=size, sha256=checksum))
     manifest = dict(version=1, source_root=str(root), files=sorted(records, key=lambda row: row['path']))
-    _verify_tree(target, manifest, db=db)
+    _verify_tree(target, manifest, db=db, cancelled=cancelled)
     return manifest
 
 
-def restore(source, stage, manifest, destination, *, db):
+def restore(source, stage, manifest, destination, *, db, cancelled=lambda: False):
     """Verify source bytes, then apply only explicit restore-safe state changes."""
     validate_manifest(manifest)
-    if dict(_walk(source)).keys() != {row['path'] for row in manifest['files']}:
+    _check(cancelled)
+    if dict(_walk(source, cancelled=cancelled)).keys() != {row['path'] for row in manifest['files']}:
         raise RestoreError('sidecar tree differs from its manifest')
     target = stage / DIRECTORY
     target.mkdir(mode=0o700)
     for row in manifest['files']:
-        _copy(source / row['path'], target / row['path'], expected=row)
-    _verify_tree(target, manifest, db=db)
+        _copy(source / row['path'], target / row['path'], expected=row, cancelled=cancelled)
+    _verify_tree(target, manifest, db=db, cancelled=cancelled)
     rebound = []
     for row in manifest['files']:
+        _check(cancelled)
         relative, path = row['path'], target / row['path']
         changed = False
         if path.suffix == '.json':
             value = _read_json(path)
             if (relative.startswith('import-batches/') or
                     (relative.startswith('import-requests/') and '/reviews/' not in relative)):
+                if relative.startswith('import-requests/'):
+                    # _verify_tree already checked the original receipt hash.
+                    # Root/source rebinding requires a fresh import attempt.
+                    value.pop('publication', None)
+                    value.pop('attempt_id', None)
                 value['data_dir'] = str(destination)
                 changed = True
             elif relative == 'connections.json':
@@ -508,19 +546,20 @@ def restore(source, stage, manifest, destination, *, db):
                 changed = True
             if changed:
                 _write_json(path, value)
-        rebound.append(_file_record(path, relative) if changed else row)
+        rebound.append(_file_record(path, relative, cancelled=cancelled) if changed else row)
     updated = dict(version=1, source_root=str(destination), files=rebound)
-    _verify_tree(target, updated, db=db)
+    _verify_tree(target, updated, db=db, cancelled=cancelled)
     return updated
 
 
-def publish(stage, destination, manifest, *, backup):
+def publish(stage, destination, manifest, *, backup, cancelled=lambda: False):
     """Publish only an already validated stage into the caller's new directory."""
     base = destination / DIRECTORY if backup else destination
     if backup:
         base.mkdir(mode=0o700)
     projects = set()
     for row in manifest['files']:
+        _check(cancelled)
         relative = row['path']
         source = stage / DIRECTORY / relative
         target_relative = ('originals/' + PurePosixPath(relative).name
@@ -546,6 +585,7 @@ def publish(stage, destination, manifest, *, backup):
                     break
                 parent = parent.parent
         for directory in sorted(directories, key=lambda item: len(item.parts), reverse=True):
+            _check(cancelled)
             descriptor = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
             try:
                 os.fsync(descriptor)

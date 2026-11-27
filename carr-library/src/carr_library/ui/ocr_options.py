@@ -33,3 +33,9 @@ def choose_ocr_config(parent, paths):
         return Config()
     library = getattr(parent, 'library', None)
     return choose_model_config(parent, preset_root=getattr(library, 'root', None))
+
+
+def choose_installed_languages(parent):
+    """Compatibility entry point using the same ordered, installed-model picker."""
+    library = getattr(parent, 'library', None)
+    return choose_model_config(parent, preset_root=getattr(library, 'root', None))

@@ -733,6 +733,32 @@
           "value": "CPython 3.11 Windows x64"
         }
       ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "comtypes@1.5.0",
+      "name": "comtypes",
+      "version": "1.5.0",
+      "purl": "pkg:pypi/comtypes@1.5.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "c648ed3b243b1eb3b7cb893a873d1b35104ca1c8922061f4b1efafeb255bacb5"
+        }
+      ],
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
     }
   ],
   "dependencies": [
@@ -1009,7 +1035,8 @@
         "wxpython-47@4.2.4",
         "carr-academic-bibtexparser@2.1.0",
         "carr-academic-pylatexenc@2.11",
-        "carr-academic-quickjs-ng@0.18.0.2"
+        "carr-academic-quickjs-ng@0.18.0.2",
+        "comtypes@1.5.0"
       ]
     },
     {
@@ -1035,6 +1062,9 @@
     },
     {
       "ref": "carr-academic-quickjs-ng@0.18.0.2"
+    },
+    {
+      "ref": "comtypes@1.5.0"
     }
   ]
 }

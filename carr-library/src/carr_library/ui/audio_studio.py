@@ -623,6 +623,19 @@ def install_audio_studio(frame):
         except Exception as exc:
             frame.report('Local music settings could not be opened: '+str(exc))
     frame.Bind(wx.EVT_MENU,configure_music,music)
+    scenes = menu.Append(wx.ID_ANY, 'Scene projects and saved scene jobs...')
+    def open_scene_projects(event):
+        from .studio_dialog import show_studio as show_scene_studio
+        show_scene_studio(frame)
+    frame.Bind(wx.EVT_MENU, open_scene_projects, scenes)
+    registrations = menu.Append(wx.ID_ANY, 'Scene voice and music engines...')
+    def configure_scene_engines(event):
+        from .engine_settings import show_engine_settings
+        try:
+            show_engine_settings(frame)
+        except Exception as exc:
+            frame.report('Scene engine settings could not open: ' + str(exc))
+    frame.Bind(wx.EVT_MENU, configure_scene_engines, registrations)
     frame.menu_bar.Insert(max(0,frame.menu_bar.GetMenuCount()-1),menu,'Audio &Studio')
 
 

@@ -97,7 +97,11 @@ def candidate(tmp_path, monkeypatch):
     (package / 'packaging/wheel-notices').mkdir()
     (package / 'packaging/wheel-notices/SOURCES.json').write_text('[]', encoding='utf-8')
     (package / 'docs').mkdir()
-    for name in ('RUNNING.md', 'START_UK.txt'):
+    for name in ('RUNNING.md', 'START_UK.txt', 'START_V3_UK.txt',
+                 'ACADEMIC_SEARCH.md', 'ADVANCED_SEARCH.md', 'ACADEMIC_LIBRARY.md',
+                 'ACADEMIC_WORKFLOWS.md', 'CATALOG_TOOLS.md', 'READING_DESK.md',
+                 'RESEARCH_NOTEBOOK.md', 'EPUB_READING.md', 'IMPORT_CENTER.md',
+                 'TRANSCRIPTION.md'):
         (package / 'docs' / name).write_text('Synthetic packaging boundary fixture.\n', encoding='utf-8')
     (package / 'pyproject.toml').write_text('''[project]
 name = "universal-research-library"

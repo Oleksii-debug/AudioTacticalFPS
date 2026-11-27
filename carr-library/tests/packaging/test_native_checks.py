@@ -206,3 +206,36 @@ def test_invalid_manifest_rejected_before_native_imports(tmp_path, monkeypatch, 
     assert report['status'] == 'FAIL'
     assert report['failed_component'] == 'installation manifest'
     assert not events
+
+
+def test_private_refresh_provenance_preserves_native_checks(tmp_path, monkeypatch):
+    manifest = bundle(tmp_path)
+    manifest.update(bundled_audio=True, bundled_citation_runtime=False,
+                    use_scope='private-personal-installation',
+                    parent_source_commit='c' * 40, parent_manifest_sha256='d' * 64)
+    (tmp_path / 'bundle-manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+    controlled_imports(monkeypatch, [])
+    assert native_checks.check_native_dependencies(tmp_path)['status'] == 'PASS'
+
+
+@pytest.mark.parametrize(('key', 'value'), [
+    ('parent_source_commit', True), ('parent_manifest_sha256', 'invalid'),
+    ('use_scope', 'public-release'), ('bundled_citation_runtime', 1)])
+def test_private_refresh_provenance_is_strict_before_native_import(tmp_path, monkeypatch, key, value):
+    manifest = bundle(tmp_path)
+    manifest.update(bundled_citation_runtime=False, use_scope='private-personal-installation',
+                    parent_source_commit='c' * 40, parent_manifest_sha256='d' * 64)
+    manifest[key] = value
+    (tmp_path / 'bundle-manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+    events = []
+    controlled_imports(monkeypatch, events)
+    assert native_checks.check_native_dependencies(tmp_path)['status'] == 'FAIL'
+    assert events == []
+
+
+def test_partial_refresh_provenance_is_rejected(tmp_path):
+    manifest = bundle(tmp_path)
+    manifest['parent_source_commit'] = 'c' * 40
+    (tmp_path / 'bundle-manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+    with pytest.raises(ValueError, match='refresh provenance'):
+        native_checks._manifest(tmp_path)

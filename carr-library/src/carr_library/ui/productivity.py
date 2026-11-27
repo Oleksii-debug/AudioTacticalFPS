@@ -1,6 +1,8 @@
 """Native save and keyboard actions on the existing desktop."""
 from dataclasses import dataclass
 from pathlib import Path
+import json
+import os
 
 from ..keybindings import (Command, KeybindingStore, normalize_shortcut,
                            validate_bindings, read_preferences, encode_preferences)
@@ -63,6 +65,40 @@ def collect_commands(menu_bar):
     return tuple(result)
 
 
+def compatible_shortcuts(root, commands):
+    """Read the earlier strict schema without rewriting or dropping commands."""
+    from .keyboard_settings import _bytes, _path, _unique
+    raw = _bytes(_path(root))
+    if raw is None:
+        return {}
+    value = json.loads(raw, object_pairs_hook=_unique)
+    if (type(value) is not dict or set(value) != {'schema', 'overrides', 'originals'}
+            or type(value['schema']) is not int or value['schema'] != 1
+            or type(value['overrides']) is not dict or type(value['originals']) is not dict
+            or set(value['overrides']) != set(value['originals'])):
+        raise ValueError('Unsupported previous shortcut settings; the original file is retained.')
+    indexed = {command.identity.casefold(): command for command in commands}
+    aliases = {'file/save': 'file/save current changes',
+               'file/save all': 'file/save all changes', 'file/exit': 'library/exit',
+               'help/keyboard shortcuts': 'options/keyboard shortcuts',
+               'help/focus library and research topic': 'options/focus library and research topic',
+               'help/focus operation status': 'options/focus operation status'}
+    result = {}
+    for key, shortcut in value['overrides'].items():
+        command = indexed.get(key) or indexed.get(aliases.get(key, key))
+        if command is None:
+            raise ValueError('A saved command is unavailable: ' + str(key) + '. The original file is retained.')
+        original = value['originals'][key]
+        approved_old_defaults = {'help/current operation progress': 'Ctrl+Alt+P', 'file/save all': ''}
+        if original != command.shortcut and original != approved_old_defaults.get(key, object()):
+            raise ValueError('The saved command default changed; review the original shortcut settings.')
+        if command.identity in result:
+            raise ValueError('Two previous shortcut entries target the same command.')
+        result[command.identity] = shortcut
+    validate_bindings(commands, result)
+    return result
+
+
 class KeyboardActions:
     def __init__(self, frame, bindings, dialogs=None):
         self.frame, self.bindings = frame, tuple(bindings)
@@ -88,7 +124,14 @@ class KeyboardActions:
     def reload(self):
         self.notice = ''
         try:
-            self._apply(KeybindingStore(self.frame.library.root).load())
+            store = KeybindingStore(self.frame.library.root)
+            if os.path.lexists(store.path):
+                overrides = store.load()
+            else:
+                overrides = compatible_shortcuts(self.frame.library.root, self.commands)
+                if overrides:
+                    self.notice = 'Your previous shortcut preferences are active. Editing them saves the current format; the original file is retained.'
+            self._apply(overrides)
         except (OSError, ValueError) as exc:
             self._apply({})
             self.notice = f'Default keyboard shortcuts are active because saved preferences could not be used: {exc}'
@@ -189,15 +232,19 @@ def install_productivity_actions(frame):
     append(file_menu, '&Save current changes\tCtrl+S', lambda event: save_current(frame, event))
     append(file_menu, 'Save &all changes\tCtrl+Shift+S', lambda event: save_current(frame, event))
     frame.menu_bar.Insert(0, file_menu, '&File')
+    from .save_actions import install_research_recovery
+    install_research_recovery(frame, file_menu)
 
     # Add all commands before collecting defaults; closures resolve the action
     # object only when invoked after construction has completed.
     options = wx.Menu()
-    append(options, '&Keyboard shortcuts...', lambda event: keyboard.change(event))
+    append(options, '&Keyboard shortcuts...\tCtrl+Alt+K', lambda event: keyboard.change(event))
     append(options, '&List current keyboard shortcuts...', lambda event: keyboard.show_list(event))
     append(options, '&Restore default keyboard shortcuts...', lambda event: keyboard.reset(event))
     append(options, '&Export keyboard shortcuts...', lambda event: keyboard.transfer(save=True))
     append(options, '&Import keyboard shortcuts...', lambda event: keyboard.transfer(save=False))
+    append(options, 'Focus library and research topic\tCtrl+Alt+L', lambda event: frame.choice.SetFocus())
+    append(options, 'Focus operation status\tCtrl+Alt+S', lambda event: frame.status.SetFocus())
     frame.menu_bar.Append(options, '&Options')
     keyboard = KeyboardActions(frame, collect_commands(frame.menu_bar))
     frame.keyboard_actions = keyboard

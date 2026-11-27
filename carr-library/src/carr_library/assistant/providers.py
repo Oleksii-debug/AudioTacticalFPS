@@ -355,6 +355,7 @@ def _addresses(host, port, *, local, timeout, cancelled):
 class HTTPResult:
     content_type: str
     body: bytes
+    status: int = 200
 
 
 class HTTPTransport:
@@ -364,7 +365,10 @@ class HTTPTransport:
     for TLS and Host while connecting once to a validated IP; it never performs
     a second hostname lookup that could change the credential destination.
     """
-    def request(self, profile, path, payload, headers, *, maximum_bytes, timeout_seconds, cancelled=None):
+    def request(self, profile, path, payload, headers, *, maximum_bytes, timeout_seconds, cancelled=None,
+                method='POST'):
+        if method not in ('POST', 'GET') or (method == 'GET' and payload is not None):
+            raise ValueError('The provider transport permits POST or body-free GET only.')
         _cancel(cancelled)
         parts = urlsplit(profile.endpoint)
         host, port = parts.hostname, parts.port or (443 if parts.scheme == 'https' else 80)
@@ -401,7 +405,7 @@ class HTTPTransport:
             else:
                 connection.sock = raw_socket
             connection.auto_open = 0
-            connection.request('POST', path, payload, headers)
+            connection.request(method, path, payload, headers)
             response = connection.getresponse()
             if 300 <= response.status <= 399:
                 raise ProviderError('Provider redirect refused; credentials were not forwarded.')
@@ -409,7 +413,7 @@ class HTTPTransport:
                 raise ProviderError(f'The provider refused the request (HTTP {response.status}); review account and usage.')
             declared = response.getheader('Content-Length')
             if declared is not None and (not declared.isdecimal() or int(declared) > maximum_bytes):
-                raise ProviderError('Provider response exceeds its allowed size.')
+                raise ProviderError('Provider response exceeds the allowed byte budget.')
             if response.getheader('Content-Encoding', 'identity').lower() != 'identity':
                 raise ProviderError('Unexpected encoded provider response.')
             body = bytearray()
@@ -420,11 +424,11 @@ class HTTPTransport:
                     break
                 body.extend(chunk)
                 if len(body) > maximum_bytes:
-                    raise ProviderError('Provider response exceeds its allowed size.')
+                    raise ProviderError('Provider response exceeds the allowed byte budget.')
             if declared is not None and len(body) != int(declared):
                 raise ProviderError('Provider response was truncated.')
-            return HTTPResult(response.getheader('Content-Type', '')[:256].lower(), bytes(body))
-        except (OSError, http.client.HTTPException, ssl.SSLError):
+            return HTTPResult(response.getheader('Content-Type', '')[:256].lower(), bytes(body), response.status)
+        except (OSError, http.client.HTTPException, ssl.SSLError, UnicodeError):
             if interrupted:
                 raise interrupted[0] from None
             raise ProviderError('The provider connection failed; charge state may be uncertain. No automatic retry was made.') from None
@@ -543,6 +547,7 @@ class ProviderGateway:
                 validate_secret(secret)
                 if secret.encode() in payload:
                     raise ProviderError('The request body contains the configured API secret; transmission was refused.')
+                _reject_decoded_credential(body, secret.encode('utf-8'))
                 if profile.provider == 'elevenlabs':
                     headers['xi-api-key'] = secret
                 else:
@@ -555,8 +560,16 @@ class ProviderGateway:
                 payload, headers, maximum_bytes=maximum_bytes, timeout_seconds=timeout_seconds, cancelled=cancelled)
             if type(result) is not HTTPResult or type(result.body) is not bytes or len(result.body) > maximum_bytes:
                 raise ProviderError('Provider returned an invalid or oversized result.')
-            if secret is not None and secret.encode() in result.body:
-                raise ProviderError('Provider response contained credential material; it was discarded.')
+            if secret is not None:
+                if secret.encode('utf-8') in result.body:
+                    raise ProviderError('Provider response contained credential material; it was discarded.')
+                if result.content_type.startswith('application/json'):
+                    try:
+                        decoded = json.loads(result.body)
+                    except (ValueError, UnicodeError):
+                        pass
+                    else:
+                        _reject_decoded_credential(decoded, secret.encode('utf-8'))
             self._state(operation_id, 'received')
             return profile, result, request_hash
         except BaseException:
@@ -593,7 +606,10 @@ class ProviderGateway:
             raise ProviderError('Provider chat result is not JSON.')
         try:
             value = json.loads(result.body.decode('utf-8'))
-            content = value['choices'][0]['message']['content']
+            message = value['choices'][0]['message']
+            if type(message) is not dict or message.get('tool_calls'):
+                raise ValueError
+            content = message['content']
             usage = value.get('usage', {})
             if not isinstance(content, str) or len(content) > MAX_CHAT_BYTES or '\x00' in content:
                 raise ValueError
@@ -649,3 +665,10 @@ class ProviderGateway:
                 'frames':len(result.body)//2,'duration_seconds':len(result.body)/48000,
                 'profile_id':profile.id,'voice_id':profile.voice_id,'model':profile.model,
                 'operation_id':operation_id,'request_sha256':request_hash,'billed_microunits':None}
+
+
+# Canonical public provider API shares this module's sole HTTP/TLS transport.
+from .canonical_gateway import (
+    Authorization, Gateway, UsageLedger, money, _request,
+    _reject_decoded_credential, validate_usage_ledger_document,
+)

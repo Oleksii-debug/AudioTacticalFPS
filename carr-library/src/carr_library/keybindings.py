@@ -20,7 +20,7 @@ MAX_COMMANDS = 500
 _KEYS = frozenset(('Space', 'Enter', 'Home', 'End', 'PageUp', 'PageDown',
                   'Left', 'Right', 'Up', 'Down', 'Insert', 'Delete', 'Backspace'))
 _FORBIDDEN = frozenset(('Ctrl+A', 'Ctrl+C', 'Ctrl+V', 'Ctrl+X', 'Ctrl+Y', 'Ctrl+Z',
-                       'Alt+Tab', 'Alt+F4', 'Ctrl+Alt+Delete', 'Ctrl+Tab', 'Ctrl+Shift+Tab'))
+                       'Alt+Tab', 'Alt+F4', 'Ctrl+Alt+N', 'F10', 'Shift+F10', 'Ctrl+Alt+Delete', 'Ctrl+Tab', 'Ctrl+Shift+Tab'))
 
 
 def normalize_shortcut(value):
@@ -33,6 +33,8 @@ def normalize_shortcut(value):
     parts = [part.strip() for part in value.split('+')]
     if len(parts) > 4 or any(not part for part in parts):
         raise ValueError('Use a shortcut such as Ctrl+Shift+S, Alt+F8, or F6.')
+    if any(part.casefold().replace(' ', '') in ('insert', 'ins', 'capslock', 'caps', 'nvda') for part in parts):
+        raise ValueError('Insert and Caps Lock belong to screen-reader commands and cannot be assigned.')
     modifiers = []
     for part in parts[:-1]:
         modifier = {'ctrl': 'Ctrl', 'control': 'Ctrl', 'alt': 'Alt', 'shift': 'Shift'}.get(part.lower())

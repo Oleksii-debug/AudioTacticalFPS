@@ -489,7 +489,7 @@ class DesktopFrame(WorkspaceFrame):
         self.working = False
         self._closing = False
         super().__init__(None, library.list_scopes, self._bind)
-        self.SetTitle('Universal Research Library')
+        self.SetTitle('Resonance')
         self.SetMinSize((760, 650))
         self._menus()
         from .productivity import install_productivity_actions
@@ -571,6 +571,20 @@ class DesktopFrame(WorkspaceFrame):
         install_local_assistant(self)
         from .provider_settings import install_provider_settings
         install_provider_settings(self)
+        from .speech_dialog import install_speech_actions
+        from .language_matrix import install_language_actions
+        from .translation_dialog import install_translation_actions
+        from .document_conversion import install_conversion_actions
+        from .citation_formatting import install_citation_actions
+        from .operation_progress import install_operation_progress
+        install_speech_actions(self)
+        install_language_actions(self)
+        install_translation_actions(self)
+        install_conversion_actions(self)
+        install_citation_actions(self)
+        install_operation_progress(self)
+        from .transcription_dialog import install_transcription_actions
+        install_transcription_actions(self)
 
     def build_advanced_query(self, event=None):
         if self.working:
@@ -676,7 +690,8 @@ class DesktopFrame(WorkspaceFrame):
         self.status.SetValue(text)
         self.status.SetFocus()
 
-    def run_job(self, title, operation, done=None, failed=None):
+    def run_job(self, title, operation, done=None, failed=None, *, with_progress=False):
+        from concurrent.futures import CancelledError
         if self._closing:
             return
         if self.working:
@@ -689,11 +704,50 @@ class DesktopFrame(WorkspaceFrame):
         if self.book is not None:
             self.book.Disable()
         for i in range(self.menu_bar.GetMenuCount()):
-            self.menu_bar.EnableTop(i, False)
+            # Progress query, quiet-mode settings and keyboard help remain
+            # reachable while a long operation owns the editable controls.
+            label = self.menu_bar.GetMenuLabel(i)
+            self.menu_bar.EnableTop(i, label.replace('&', '').casefold() == 'help')
         self.report(title + '…')
+        progress = getattr(self, 'operation_progress', None)
+        progress_token, progress_error = None, None
+
+        def observe(callback):
+            nonlocal progress_error
+            try:
+                return callback()
+            except Exception as exc:
+                # An observer may fail after a durable commit. It must never
+                # trigger the business failure callback or cause a retry.
+                progress_error = exc
+
+        if progress is not None:
+            progress_token = observe(lambda: progress.start(title))
+
+        def report_progress(completed=None, total=None, phase=None):
+            if progress_token is not None and progress_error is None:
+                observe(lambda: progress.update(completed, total, phase, token=progress_token))
+
+        def finish_progress(outcome):
+            if progress_token is None:
+                return
+            if progress_error is None:
+                method, label = {
+                    'cancelled': ('cancel', 'cancelled'), 'paused': ('pause', 'needs attention'),
+                    'failed': ('fail', 'failed'), 'succeeded': ('succeed', 'complete')
+                }.get(outcome, (None, None))
+                if method is not None:
+                    observe(lambda: getattr(progress, method)(title + ': ' + label, token=progress_token))
+            observe(lambda: progress.finalize(token=progress_token))
+
+        def status_text():
+            status = getattr(self, 'status', None)
+            return observe(status.GetValue) if status is not None else None
+
         try:
-            future = self.executor.submit(operation)
+            future = self.executor.submit(lambda: operation(report_progress)) if with_progress else self.executor.submit(operation)
         except Exception as exc:
+            finish_progress('failed')
             self._finish_job_controls()
             self.report(f'{title}: could not start: {exc}')
             if failed is not None:
@@ -707,15 +761,40 @@ class DesktopFrame(WorkspaceFrame):
                 if self._closing:
                     return
                 self._finish_job_controls()
+                before = status_text()
                 try:
                     result = future.result()
-                    self.report(title + ': complete.')
+                    # Some callbacks validate or publish the final artifact.
+                    # Do not emit success until those steps have completed.
                     if done is not None:
                         done(result)
                 except Exception as exc:
+                    finish_progress('cancelled' if isinstance(exc, (InterruptedError, CancelledError)) else 'failed')
                     self.report(f'{title}: {exc}')
                     if failed is not None:
                         failed(exc)
+                    return
+                if self._closing:
+                    return
+                def classify():
+                    from .operation_progress import operation_outcome
+                    return operation_outcome(result)
+                outcome = observe(classify) or 'unavailable'
+                finish_progress(outcome)
+                # Preserve a callback's detailed report or a new job's status.
+                if not self.working and status_text() == before:
+                    label = {'succeeded': 'complete', 'paused': 'needs attention',
+                             'failed': 'failed', 'cancelled': 'cancelled',
+                             'unavailable': 'returned; see the operation results'}[outcome]
+                    warning = ' Progress reporting is unavailable.' if progress_error is not None else ''
+                    message = title + ': ' + label + '.' + warning
+                    status = getattr(self, 'status', None)
+                    if done is not None and status is not None:
+                        # Preserve PR117's callback-owned result focus. A
+                        # generic completion is visible without taking focus.
+                        observe(lambda: status.SetValue(message))
+                    else:
+                        self.report(message)
             wx.CallAfter(apply)
         future.add_done_callback(finish)
 
@@ -735,6 +814,8 @@ class DesktopFrame(WorkspaceFrame):
             self.open_selected()
 
     def _open_data_root(self,path):
+        if self.working:
+            raise RuntimeError('Wait for the current operation to finish or cancel it before changing library folders.')
         path = Path(path)
         if not (path / 'library.sqlite').is_file():
             raise ValueError('Choose an existing research-library data folder containing library.sqlite.')
@@ -745,6 +826,10 @@ class DesktopFrame(WorkspaceFrame):
             self.remember_data_dir(candidate.root)
         self._drop()
         self.library = candidate
+        if getattr(self, 'keyboard_settings', None) is not None:
+            self.keyboard_settings.reload()
+        if getattr(self, 'operation_progress', None) is not None:
+            self.operation_progress.reload_preferences()
         self.list_scopes = candidate.list_scopes
         keyboard = getattr(self, 'keyboard_actions', None)
         keyboard_notice = keyboard.reload() if keyboard is not None else ''
@@ -856,10 +941,12 @@ class DesktopFrame(WorkspaceFrame):
             return
         def done(rows):
             completed = sum(r['state'] == 'complete' for r in rows)
-            self.report(f'{completed} of {len(rows)} books imported. ' +
+            unattempted = max(0, len(paths) - len(rows))
+            self.report(f'{completed} of {len(paths)} selected books imported. ' +
                 ' '.join(f'{r["file"]}: {r["state"].replace("_", " ")}. ' +
                          (r.get('message') or r.get('error') or '')
                          for r in rows if r['state'] != 'complete') +
+                (f' {unattempted} remaining selected files were not attempted.' if unattempted else '') +
                 (' Choose Library, Review pending imported page to check quarantined OCR text.'
                  if any(r['state'] == 'quarantined' for r in rows) else ''))
             if self.book is not None:
@@ -869,8 +956,9 @@ class DesktopFrame(WorkspaceFrame):
                 report = '\n\n'.join(row_details(dict(file=row['file'], state=row['state'],
                     message=row.get('message', ''), result=row)) for row in rows)
                 show_text(self, 'Import details', report)
-        self.run_job('Importing books', lambda: self.library.import_files(workspace, paths,
-            cancelled=self.cancel_event.is_set,config=config), done)
+        library = self.library
+        self.run_job('Importing books', lambda progress: library.import_files(workspace, paths,
+            cancelled=self.cancel_event.is_set, config=config, progress=progress), done, with_progress=True)
 
     def add_text(self, event):
         try:
@@ -1174,6 +1262,8 @@ class DesktopFrame(WorkspaceFrame):
             'Ctrl+Shift+O opens contents, headings, chapter search and an extraction report for the selected EPUB.\n'
             'Ctrl+Shift+I resumes an interrupted import in the selected library.\n'
             'Ctrl+Alt+Q opens the advanced query builder with All, Any, Exclude and Nearby conditions.\n'
+            'Ctrl+Alt+G reports current operation progress; progress sound settings are in Help.\n'
+            'Ctrl+Alt+V opens the voice reader; Ctrl+Alt+R narrates the selected book or chapter.\n'
             'Ctrl+Alt+P opens Audio Studio. Write a script, assign local voices, save with Ctrl+S and generate with Ctrl+Enter.\n'
             'Audio Studio keeps accepted speech chunks; Resume continues after a pause or application restart.\n'
             'Ctrl+Shift+M edits the book selected in Books and Collections. Saved citations keep their original metadata.\n'

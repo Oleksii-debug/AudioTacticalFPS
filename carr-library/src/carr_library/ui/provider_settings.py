@@ -467,4 +467,15 @@ def install_provider_settings(frame):
             frame.report('Connection settings could not open: ' + str(exc))
     item = menu.Append(wx.ID_ANY, 'API and local model &connections...')
     frame.Bind(wx.EVT_MENU, show, item)
+    service_profiles = menu.Append(wx.ID_ANY, 'Translation and assistant service profiles...')
+    def show_services(event=None):
+        if frame.working or getattr(frame, 'busy', False) or getattr(frame, '_closing', False):
+            frame.report('Wait for the current operation or choose Cancel current operation.')
+            return
+        from .assistant_dialog import show_provider_settings
+        try:
+            show_provider_settings(frame)
+        except Exception as exc:
+            frame.report('Service profiles could not open: ' + str(exc))
+    frame.Bind(wx.EVT_MENU, show_services, service_profiles)
     frame.provider_settings_installed = True

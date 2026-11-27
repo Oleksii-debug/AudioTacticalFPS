@@ -26,7 +26,7 @@ def test_shortcut_normalization(value, expected):
 
 @pytest.mark.parametrize('value', ['S', 'Shift+S', 'Alt+F', 'Ctrl+Ctrl+O', 'Ctrl++S',
     'Ctrl+C', 'Ctrl+V', 'Ctrl+Z', 'Alt+F4', 'Ctrl+Alt+Delete', 'F25', 'Ctrl+Tab',
-    'Ctrl+Shift+Tab', 'Win+R', 'Ctrl+Enter;shutdown', True, 'Ctrl+É'])
+    'Ctrl+Shift+Tab', 'Win+R', 'Ctrl+Insert', 'Alt+Insert', 'Ctrl+Alt+N', 'F10', 'Shift+F10', 'CapsLock', 'Ctrl+Enter;shutdown', True, 'Ctrl+É'])
 def test_typing_system_and_malformed_keys_are_rejected(value):
     with pytest.raises(ValueError):
         normalize_shortcut(value)
@@ -163,3 +163,45 @@ def test_save_no_draft_is_honest_about_modal_editors():
     assert save_current(frame)
     assert 'already saved' in frame.report.call_args.args[0]
     assert 'editors' in frame.report.call_args.args[0]
+
+
+def legacy_keys(root, overrides, originals):
+    path = root / 'state' / 'ui' / 'shortcuts.json'
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps({'schema': 1, 'overrides': overrides, 'originals': originals}))
+    return path
+
+
+def test_previous_preferences_are_applied_without_rewriting_source(tmp_path):
+    path = legacy_keys(tmp_path, {'file/save': 'Ctrl+Alt+S'}, {'file/save': 'Ctrl+S'})
+    before = path.read_bytes()
+    action = keyboard(tmp_path)
+    assert 'previous shortcut preferences' in action.reload()
+    assert action.overrides == {'File/Save': 'Ctrl+Alt+S'}
+    assert path.read_bytes() == before
+    assert not (tmp_path / 'keybindings.json').exists()
+
+
+def test_unknown_previous_command_is_not_silently_discarded(tmp_path):
+    path = legacy_keys(tmp_path, {'missing/action': 'Ctrl+Alt+S'}, {'missing/action': ''})
+    before = path.read_bytes()
+    action = keyboard(tmp_path)
+    assert 'saved command is unavailable' in action.reload()
+    assert action.overrides == {}
+    assert path.read_bytes() == before
+
+
+def test_current_preferences_take_precedence_over_retained_previous_file(tmp_path):
+    legacy_keys(tmp_path, {'file/save': 'Ctrl+Alt+S'}, {'file/save': 'Ctrl+S'})
+    action = keyboard(tmp_path)
+    action.save({'File/Save': 'Ctrl+Alt+X'})
+    assert action.reload() == ''
+    assert action.overrides == {'File/Save': 'Ctrl+Alt+X'}
+
+
+def test_previous_conflict_does_not_erase_or_partially_apply_preferences(tmp_path):
+    path = legacy_keys(tmp_path, {'library/open': 'Ctrl+S'}, {'library/open': 'Ctrl+O'})
+    before = path.read_bytes()
+    action = keyboard(tmp_path)
+    assert 'already assigned' in action.reload()
+    assert action.overrides == {} and path.read_bytes() == before

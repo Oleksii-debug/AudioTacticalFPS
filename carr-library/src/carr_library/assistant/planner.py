@@ -169,3 +169,71 @@ def propose_local_plan(assistant, profile, goal, *, script='', language='en', ou
     if any(step.tool not in allowed for step in plan.steps):
         raise ValueError('The local model proposed a tool outside the currently selected workflow.')
     return plan
+
+
+# Published deterministic command API; local model proposals retain WorkflowPlan.
+from .models import Plan, Step, text
+
+
+HELP = '''Enter one command per line (English or Ukrainian), or a versioned JSON plan.
+Create library "History" / Створи бібліотеку "Історія"
+Import "C:/Books/source.txt" / Імпортуй "C:/Books/source.txt"
+Import folder "C:/Books" / Імпортуй папку "C:/Books"
+Search "railway transport" / Знайди "залізничний транспорт"
+List books / Покажи книги
+List libraries / Покажи бібліотеки
+Extract "EDITION_ID" as "reading.txt" / Експортуй текст "EDITION_ID" як "reading.txt"
+Backup "backup-name" / Резервна копія "backup-name"
+Produce audio: [script text] / Озвуч: [текст сценарію]
+Paths must be inside your selected input/output folders. No delete, shell or remote tools are available.'''
+
+
+def preview(value, scope):
+    text(value, 'assistant instruction', maximum=4 * 1024 * 1024)
+    if value.lstrip().startswith('{'):
+        return Plan.from_json(value, scope=scope)
+    steps = []
+    lines = value.strip().splitlines()
+    index = 0
+    while index < len(lines):
+        line = lines[index].strip()
+        index += 1
+        if not line:
+            continue
+        # The quoted payload is data. In particular, it is never re-parsed as commands.
+        patterns = (
+            (r'(?:create\s+(?:a\s+)?library|створи\s+бібліотеку)\s+"([^"]+)"\.?', 'library.create', 'name'),
+            (r'(?:import\s+folder|імпортуй\s+папку)\s+"([^"]+)"\.?', 'library.import_folder', 'path'),
+            (r'(?:import|імпортуй)\s+"([^"]+)"\.?', 'library.import', 'path'),
+            (r'(?:search(?:\s+for)?|знайди|пошук)\s+"([^"]+)"\.?', 'library.search', 'query'),
+            (r'(?:backup|резервна\s+копія)\s+"([^"]+)"\.?', 'library.backup', 'name'),
+        )
+        matched = False
+        for pattern, tool, key in patterns:
+            match = re.fullmatch(pattern, line, re.IGNORECASE)
+            if match:
+                steps.append(Step(tool, {key: match.group(1)}))
+                matched = True
+                break
+        if matched:
+            continue
+        if re.fullmatch(r'(?:list\s+(?:all\s+)?libraries|покажи\s+бібліотеки)\.?', line, re.IGNORECASE):
+            steps.append(Step('library.list'))
+            continue
+        if re.fullmatch(r'(?:list\s+books|покажи\s+книги)\.?', line, re.IGNORECASE):
+            steps.append(Step('library.catalog'))
+            continue
+        match = re.fullmatch(r'(?:extract|експортуй\s+текст)\s+"([^"]+)"\s+(?:as|як)\s+"([^"]+)"\.?', line, re.IGNORECASE)
+        if match:
+            steps.append(Step('library.extract', {'edition': match.group(1), 'name': match.group(2)}))
+            continue
+        match = re.match(r'(?:produce\s+audio|озвуч|створи\s+аудіо)\s*:\s*(.*)', line, re.IGNORECASE)
+        if match:
+            script = '\n'.join([match.group(1), *lines[index:]]).strip()
+            text(script, 'audio script', maximum=4 * 1024 * 1024)
+            steps.append(Step('audio.produce', {'text': script}))
+            break
+        raise ValueError(f'Command {index} is ambiguous or unsupported. Use the guided command examples; nothing has run.')
+    summary = '\n'.join(f'{i + 1}. {s.tool}: ' + json.dumps(s.arguments, ensure_ascii=False)
+                        for i, s in enumerate(steps))
+    return Plan(scope, tuple(steps), summary[:16384])

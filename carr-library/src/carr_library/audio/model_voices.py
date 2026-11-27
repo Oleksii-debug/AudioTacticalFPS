@@ -87,9 +87,17 @@ def _output(path):
     return path
 
 
-def _wave_info(path):
+def _output_budget(value):
+    if type(value) is not int or not 4096 <= value < 4_000_000_000:
+        raise ValueError('Select a speech output budget from 4096 to 3999999999 bytes.')
+    # The caller's allowance is always respected. This adapter also retains its
+    # existing per-segment ceiling; long projects are scheduled in chunks.
+    return min(value, MAX_PCM_BYTES + 4096)
+
+
+def _wave_info(path, *, max_output_bytes=MAX_PCM_BYTES + 4096):
     path = local_path(path)
-    if path.stat().st_size > MAX_PCM_BYTES + 4096:
+    if path.stat().st_size > _output_budget(max_output_bytes):
         raise ValueError('A speech segment exceeds the configured PCM budget.')
     with wave.open(str(path), 'rb') as audio:
         if (audio.getnchannels() not in (1, 2) or audio.getsampwidth() != 2 or
@@ -150,7 +158,7 @@ def _stop(process):
 
 
 def _run(command, *, data=b'', cancelled=lambda: False, timeout=300, env=None, cwd=None,
-         return_stderr=False):
+         return_stderr=False, output=None, max_output_bytes=MAX_PCM_BYTES + 4096):
     """Bound both logs and lifetime; text is stdin data, never shell source."""
     if cancelled():
         raise InterruptedError('Speech operation cancelled.')
@@ -169,9 +177,13 @@ def _run(command, *, data=b'', cancelled=lambda: False, timeout=300, env=None, c
                     raise TimeoutError('The local engine exceeded its selected per-segment time budget.')
                 if max(os.fstat(outgoing.fileno()).st_size, os.fstat(errors.fileno()).st_size) > MAX_LOG_BYTES:
                     raise RuntimeError('The local engine exceeded its diagnostic byte budget.')
+                if output is not None and Path(output).exists() and Path(output).stat().st_size > max_output_bytes:
+                    raise ValueError('The local engine exceeded the selected audio output budget.')
                 time.sleep(.03)
             if max(os.fstat(outgoing.fileno()).st_size, os.fstat(errors.fileno()).st_size) > MAX_LOG_BYTES:
                 raise RuntimeError('The local engine exceeded its diagnostic byte budget.')
+            if output is not None and Path(output).exists() and Path(output).stat().st_size > max_output_bytes:
+                raise ValueError('The local engine exceeded the selected audio output budget.')
             if cancelled():
                 raise InterruptedError('Local engine operation cancelled.')
             if process.returncode:
@@ -227,8 +239,9 @@ class PiperEngine:
                 'binary_sha256': digest_file(self.binary)}
 
     def synthesize(self, text, output, *, voice, language='en', rate=0, pitch=0, volume=1,
-                   cancelled=lambda: False):
+                   cancelled=lambda: False, max_output_bytes=MAX_PCM_BYTES + 4096):
         _request(text, language, rate, pitch, volume)
+        max_output_bytes = _output_budget(max_output_bytes)
         if '[[' in text or ']]' in text:
             raise EngineUnavailable('This Piper CLI interprets bracketed phonemes. Use another engine for literal bracketed source text.')
         self.cache_identity(voice)
@@ -244,8 +257,9 @@ class PiperEngine:
                        '--config', self.manifest.asset(self.config), '--output_file', temporary,
                        '--length_scale', format(2 ** (-rate / 10), '.8g'), '--volume', format(volume, '.8g')]
             _run(command, data=text.encode('utf-8'), timeout=self.timeout, cancelled=cancelled,
-                 env=offline_environment(), cwd=self.manifest.root)
-            _wave_info(temporary)
+                 env=offline_environment(), cwd=self.manifest.root,
+                 output=temporary, max_output_bytes=max_output_bytes)
+            _wave_info(temporary, max_output_bytes=max_output_bytes)
             if cancelled():
                 raise InterruptedError('Speech operation cancelled.')
             _publish(temporary, target)
@@ -368,8 +382,9 @@ class DordiaiVoicesEngine:
                 'protocol': 'nvda-worker-jsonl-pcm24k-v1'}
 
     def synthesize(self, text, output, *, voice, language='en', rate=0, pitch=0, volume=1,
-                   cancelled=lambda: False):
+                   cancelled=lambda: False, max_output_bytes=MAX_PCM_BYTES + 4096):
         _request(text, language, rate, pitch, volume)
+        max_output_bytes = _output_budget(max_output_bytes)
         self.cache_identity(voice)
         requested = language.lower().replace('_', '-')
         supported = self._profile_languages[voice]
@@ -402,14 +417,16 @@ class DordiaiVoicesEngine:
             request.update(wideLocale=True, reportLoading=True)
         with tempfile.TemporaryDirectory(prefix='.speech-', dir=target.parent) as staging:
             temporary = Path(staging) / 'speech.wav'
-            self._stream(command, request, temporary, cancelled)
-            _wave_info(temporary)
+            self._stream(command, request, temporary, cancelled, max_output_bytes=max_output_bytes)
+            _wave_info(temporary, max_output_bytes=max_output_bytes)
             if cancelled():
                 raise InterruptedError('Speech operation cancelled.')
             _publish(temporary, target)
         return target
 
-    def _stream(self, command, request, target, cancelled):
+    def _stream(self, command, request, target, cancelled, *,
+                max_output_bytes=MAX_PCM_BYTES + 4096):
+        max_output_bytes = _output_budget(max_output_bytes)
         if cancelled():
             raise InterruptedError('Speech operation cancelled.')
         replies = queue.Queue(maxsize=2)
@@ -500,7 +517,7 @@ class DordiaiVoicesEngine:
                         if not pcm or len(pcm) % 2:
                             raise ValueError('dordiai-voices PCM is empty or not sample-aligned.')
                         total += len(pcm)
-                        if total > MAX_PCM_BYTES:
+                        if total > MAX_PCM_BYTES or total + 44 > max_output_bytes:
                             raise ValueError('dordiai-voices segment exceeded the PCM byte budget.')
                         audio.writeframesraw(pcm)
                         if 'pcm' in row:

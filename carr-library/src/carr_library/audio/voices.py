@@ -168,7 +168,7 @@ def _executable(value, fallback):
 
 
 def _run(command, directory, *, timeout_seconds, cancelled=None,
-         allowed_returncodes=(0,), output=None):
+         allowed_returncodes=(0,), output=None, max_output_bytes=MAX_OUTPUT_BYTES):
     """Bound engine logs and time; private speech never enters public diagnostics."""
     _cancel(cancelled)
     log = directory / 'engine.log'
@@ -186,7 +186,7 @@ def _run(command, directory, *, timeout_seconds, cancelled=None,
                         raise TimeoutError('The local speech engine exceeded this utterance time budget.')
                     if log.stat().st_size > MAX_LOG_BYTES:
                         raise RuntimeError('The local speech engine exceeded its diagnostic budget.')
-                    if output is not None and output.exists() and output.stat().st_size > MAX_OUTPUT_BYTES:
+                    if output is not None and output.exists() and output.stat().st_size > max_output_bytes:
                         raise RuntimeError('The local speech engine exceeded this utterance storage budget.')
                     time.sleep(0.025)
                 _cancel(cancelled)
@@ -202,6 +202,8 @@ def _run(command, directory, *, timeout_seconds, cancelled=None,
                 raise RuntimeError(f'The local speech engine failed (exit {process.returncode}).')
     if log.stat().st_size > MAX_LOG_BYTES:
         raise RuntimeError('The local speech engine exceeded its diagnostic budget.')
+    if output is not None and output.exists() and output.stat().st_size > max_output_bytes:
+        raise RuntimeError('The local speech engine exceeded this utterance storage budget.')
     return log.read_text(encoding='utf-8', errors='replace')
 
 
@@ -473,6 +475,7 @@ class VoiceRegistry:
                 'model_manifests': model_identities,
                 'model_adapter_sha256': _digest(Path(__file__).with_name('model_voices.py')),
                 'model_validator_sha256': _digest(Path(__file__).with_name('voice_manifest.py')),
+                'registry_sha256': _digest(Path(__file__)),
                 'fingerprint_scope': 'executables, versions, helpers, installed identities, configured model manifests and verified assets'}
 
     def fingerprint(self):
@@ -480,14 +483,16 @@ class VoiceRegistry:
                                  sort_keys=True, separators=(',', ':')).encode('utf-8')).hexdigest()
 
     @staticmethod
-    def _sapi(host, directory, request, timeout_seconds, cancelled=None):
+    def _sapi(host, directory, request, timeout_seconds, cancelled=None,
+              max_output_bytes=MAX_OUTPUT_BYTES):
         helper = Path(__file__).with_name('sapi_helper.ps1').resolve(strict=True)
         request_path = directory / 'request.json'
         request_path.write_text(json.dumps(request, ensure_ascii=False), encoding='utf-8')
         _run([host, '-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'RemoteSigned',
               '-File', helper, '-Request', request_path], directory,
              timeout_seconds=timeout_seconds, cancelled=cancelled,
-             output=directory / 'speech.wav' if request['operation'] == 'synthesize' else None)
+             output=directory / 'speech.wav' if request['operation'] == 'synthesize' else None,
+             max_output_bytes=max_output_bytes)
         response = directory / 'result.json'
         if not response.is_file() or response.is_symlink() or response.stat().st_size > MAX_LOG_BYTES:
             raise RuntimeError('The Windows voice helper did not provide a bounded result.')
@@ -497,7 +502,7 @@ class VoiceRegistry:
         return reply
 
     def synthesize(self, text, output, *, voice_id, language=None, rate=1.0, volume=1.0,
-                   cancelled=None, timeout_seconds=300):
+                   cancelled=None, timeout_seconds=300, max_output_bytes=MAX_OUTPUT_BYTES):
         """Write an actual PCM WAV after validation; never replace an existing file."""
         if (not isinstance(text, str) or not text.strip() or len(text) > MAX_TEXT_CHARS
                 or '\x00' in text or any(0xD800 <= ord(ch) <= 0xDFFF for ch in text)):
@@ -505,6 +510,8 @@ class VoiceRegistry:
         rate = _number(rate, 0.5, 2.0, 'Relative speech rate')
         volume = _number(volume, 0, 1, 'Speech volume')
         timeout_seconds = _number(timeout_seconds, 0.1, 3600, 'Utterance time budget')
+        if type(max_output_bytes) is not int or not 4096 <= max_output_bytes <= MAX_OUTPUT_BYTES:
+            raise ValueError('Utterance storage budget must be between 4096 bytes and 512 MiB.')
         _cancel(cancelled)
         destination = _destination(output)
         voices = {voice.id: voice for voice in self.list_voices()}
@@ -522,7 +529,7 @@ class VoiceRegistry:
                 self._sapi(executable, directory, {'operation': 'synthesize', 'voice_id': key,
                     'text': text, 'rate': int(round(5 * math.log2(rate))),
                     'volume': int(round(volume * 100)), 'sample_rate': SAMPLE_RATE},
-                    timeout_seconds, cancelled)
+                    timeout_seconds, cancelled, max_output_bytes=max_output_bytes)
             elif engine in self._model_engines:
                 # The engine protocol uses a logarithmic rate scale. The public
                 # registry keeps one relative-rate API for every engine.
@@ -530,7 +537,7 @@ class VoiceRegistry:
                 model.timeout = timeout_seconds
                 model.synthesize(text, rendered, voice=key, language=language or voice.languages[0],
                     rate=10 * math.log2(rate), pitch=0, volume=volume,
-                    cancelled=lambda: bool(_cancel(cancelled)))
+                    cancelled=lambda: bool(_cancel(cancelled)), max_output_bytes=max_output_bytes)
             else:
                 # Only a fixed basename enters the filter. Authored text is file
                 # content, never a command, SSML, shell expansion or filtergraph.
@@ -549,10 +556,10 @@ class VoiceRegistry:
                 else:
                     raise RuntimeError('The selected voice has no validated local route.')
                 _run(command, directory, timeout_seconds=timeout_seconds,
-                     cancelled=cancelled, output=rendered)
+                     cancelled=cancelled, output=rendered, max_output_bytes=max_output_bytes)
             _cancel(cancelled)
             if (not rendered.is_file() or rendered.is_symlink()
-                    or not 44 <= rendered.stat().st_size <= MAX_OUTPUT_BYTES):
+                    or not 44 <= rendered.stat().st_size <= max_output_bytes):
                 raise RuntimeError('The local engine did not produce a bounded waveform.')
             try:
                 with wave.open(str(rendered), 'rb') as reader:

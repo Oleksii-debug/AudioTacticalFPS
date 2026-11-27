@@ -73,13 +73,16 @@ def verify(root, *, manifest_bytes=None):
             raise ValueError("unexpected or missing OCR runtime file")
     audio=root/'audio-runtime'
     has_audio=manifest.get('bundled_audio',False)
+    compact_audio = os.path.lexists(root / 'audio') or any(name.startswith('audio/') for name in files)
+    if compact_audio and (os.path.lexists(audio) or any(name.startswith('audio-runtime/') for name in files)):
+        raise ValueError('The installation contains two competing audio runtime layouts.')
     if (any(name.casefold().startswith('audio-runtime/') and not name.startswith('audio-runtime/') for name in files)
             or any(path.name.casefold()=='audio-runtime' and path.name!='audio-runtime' for path in root.iterdir())):
         raise ValueError('ambiguous audio runtime paths')
     expected_audio={name for name in files if name.startswith('audio-runtime/')}
     if type(has_audio) is not bool:
         raise ValueError('invalid audio runtime installation flag')
-    if has_audio:
+    if has_audio and not compact_audio:
         for directory,dirs,_names in os.walk(audio,followlinks=False):
             for name in dirs:
                 info=(Path(directory)/name).lstat()
@@ -114,6 +117,23 @@ def verify(root, *, manifest_bytes=None):
             raise ValueError("unexpected or missing native runtime file")
     elif os.path.lexists(native) or expected_native:
         raise ValueError("unannounced native runtime files")
+    for component, flag, required in (
+            ('audio', 'bundled_audio', {'audio/bin/ffmpeg.exe', 'audio/bin/ffprobe.exe', 'audio/LICENSE',
+                                      'audio/README.txt', 'audio/provenance.json'}),
+            ('citation-runtime', 'bundled_citation_runtime', {'citation-runtime/node.exe', 'citation-runtime/LICENSE'})):
+        included = manifest.get(flag, False)
+        if component == 'audio' and not compact_audio:
+            included = False
+        if type(included) is not bool:
+            raise ValueError('invalid optional runtime flag')
+        actual = {p.relative_to(root).as_posix() for p in (root / component).rglob('*') if p.is_file()}
+        expected_component = {p for p in files if p.startswith(component + '/')}
+        if included:
+            if (not required <= actual or actual != expected_component
+                    or component == 'audio' and actual != required):
+                raise ValueError('unexpected or missing ' + component + ' runtime file')
+        elif actual or expected_component:
+            raise ValueError('unannounced ' + component + ' runtime')
 
 
 def main():
@@ -162,7 +182,8 @@ def main():
     # An incomplete or interrupted install must never be treated as ready.
     # Exclusive creation is the final lifecycle step; never delete an old environment.
     (destination / ".installation-complete").touch(exist_ok=False)
-    print("Installation complete. Open ResearchLibrary.cmd. Research data has not been changed.")
+    entry = "ResearchLibrary.exe" if (root / "ResearchLibrary.exe").is_file() else "ResearchLibrary.cmd"
+    print("Installation complete. Open " + entry + ". Research data has not been changed.")
     return 0
 
 

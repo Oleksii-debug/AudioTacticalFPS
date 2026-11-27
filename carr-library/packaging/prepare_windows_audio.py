@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 from hashlib import sha256
 import json
 import os
@@ -25,6 +26,20 @@ sys.path.insert(0, str(HERE.parent / 'src'))
 from carr_library.audio.runtime import SOURCE_LOCK_SHA256, verify_audio_runtime
 from carr_library.native_runtime import _directory, _plain as _checked_plain
 MANIFEST = 'audio-runtime-manifest.json'
+# Preserve the reviewed four-file setup contract for existing callers. The
+# application bundle uses the complete, source-locked runtime below.
+_legacy_spec = importlib.util.spec_from_file_location(
+    'carr_private_audio_legacy', HERE / 'prepare_windows_audio_legacy.py')
+_legacy = importlib.util.module_from_spec(_legacy_spec)
+_legacy_spec.loader.exec_module(_legacy)
+REQUIRED_FILES = _legacy.REQUIRED_FILES
+urllib = _legacy.urllib
+_url = _legacy._url
+_publish_directory = _legacy._publish_directory
+regular = _legacy.regular
+local = _legacy.local
+_pe64 = _legacy._pe64
+
 MAX_FILES = 10000
 MAX_UNPACKED_BYTES = 1536 * 1024**2
 _DEVICE = re.compile(r'^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)', re.I)
@@ -38,7 +53,9 @@ def digest(path):
     return result.hexdigest()
 
 
-def load_lock():
+def load_lock(path=None):
+    if path is not None:
+        return _legacy.load_lock(path)
     if SOURCE_LOCK.is_symlink() or digest(SOURCE_LOCK) != SOURCE_LOCK_SHA256:
         raise ValueError('The reviewed audio runtime source lock changed.')
     return json.loads(SOURCE_LOCK.read_text(encoding='utf-8'))
@@ -151,7 +168,7 @@ def verify_runtime(directory, expected_manifest_sha256=None):
     return verify_audio_runtime(Path(directory).absolute(), expected_manifest_sha256)
 
 
-def prepare(archive, output):
+def _prepare_full(archive, output):
     lock = load_lock()
     archive = _plain(archive)
     target = Path(output).absolute()
@@ -228,19 +245,42 @@ def prepare(archive, output):
     return verify_runtime(target)
 
 
+def prepare(source, cache_or_output, output=None, *, download=False):
+    """Retain explicit two- and three-path setup contracts without conversion.
+
+    prepare(archive, output) prepares the complete application runtime.
+    prepare(lock, cache, output) preserves the compact compatibility lock.
+    Their manifest formats remain distinct.
+    """
+    if output is not None:
+        return _legacy.prepare(source, cache_or_output, output, download=download)
+    if download:
+        raise ValueError('Full-runtime archive preparation is offline; use --download for acquisition.')
+    return _prepare_full(source, cache_or_output)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    source = parser.add_mutually_exclusive_group(required=True)
+    source = parser.add_mutually_exclusive_group()
     source.add_argument('--archive', type=Path, help='Already downloaded exact full-build ZIP; no network access')
     source.add_argument('--download', action='store_true', help='Explicitly download only the exact pinned public runtime')
     parser.add_argument('--output', type=Path, required=True, help='New private runtime directory')
+    parser.add_argument('--cache', type=Path, help='Compatibility four-file runtime archive cache')
+    parser.add_argument('--lock', type=Path, help='Compatibility four-file runtime lock; requires --cache')
     args = parser.parse_args(argv)
-    if args.download:
+    if args.cache is not None or args.lock is not None:
+        if args.cache is None or args.archive is not None:
+            parser.error('--lock requires --cache; compatibility setup cannot use --archive')
+        lock = args.lock or HERE / 'windows-audio.lock.json'
+        result = prepare(lock, args.cache, args.output, download=args.download)
+    elif args.download:
         with tempfile.TemporaryDirectory(prefix='carr-audio-download-') as temp:
             archive = download_archive(Path(temp)/'ffmpeg.zip')
             result = prepare(archive, args.output)
-    else:
+    elif args.archive is not None:
         result = prepare(args.archive, args.output)
+    else:
+        parser.error('Choose --archive or --download for the complete application runtime')
     print(json.dumps(result, sort_keys=True, indent=2))
     return 0
 

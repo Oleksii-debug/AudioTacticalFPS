@@ -42,10 +42,47 @@ def validate_secret(secret):
     return secret
 
 
-def validate_reference(reference):
-    if not isinstance(reference, str) or not _REFERENCE.fullmatch(reference):
+def validate_profile_id(value):
+    if not isinstance(value, str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,80}', value):
+        raise ValueError('Invalid provider profile identity.')
+    return value
+
+
+def validate_reference(reference, profile_id=None):
+    if profile_id is not None:
+        validate_profile_id(profile_id)
+        if not isinstance(reference, str) or not re.fullmatch(
+                r'carr/provider/' + re.escape(profile_id) + r'/[0-9a-f]{32}', reference):
+            raise PermissionError('The credential reference belongs to another provider profile.')
+    elif not isinstance(reference, str) or not _REFERENCE.fullmatch(reference):
         raise ValueError('Invalid credential reference; reconnect this profile.')
     return reference
+
+
+def _legacy_secret(secret):
+    if (not isinstance(secret, str) or not secret
+            or any(ord(char) < 32 or ord(char) == 127 for char in secret)):
+        raise ValueError('Enter a nonempty credential without control characters.')
+    try:
+        raw = secret.encode('utf-8', errors='strict')
+    except UnicodeError:
+        raise ValueError('Enter a valid UTF-8 credential.') from None
+    if len(raw) > _MAX_BLOB:
+        raise ValueError('The credential exceeds the Windows vault size limit.')
+    return raw
+
+
+class _AvailabilityValue(int):
+    def __new__(cls, available):
+        return int.__new__(cls, bool(available))
+
+    def __call__(self):
+        return bool(self)
+
+
+class _Availability:
+    def __get__(self, instance, owner):
+        return _AvailabilityValue(os.name == 'nt' if instance is None else instance._api is not None)
 
 
 def _binding(profile_id, endpoint):
@@ -71,9 +108,8 @@ class WindowsCredentialVault:
             self._api.CredFree.argtypes = (C.c_void_p,)
             self._api.CredFree.restype = None
 
-    @property
-    def available(self):
-        return self._api is not None
+    # Both published callers are supported: vault.available and vault.available().
+    available = _Availability()
 
     def _require(self):
         if self._api is None:
@@ -129,9 +165,59 @@ class WindowsCredentialVault:
                     C.memset(pointer.contents.blob, 0, pointer.contents.size)
                 self._api.CredFree(pointer)
 
-    def delete(self, reference):
+    def put(self, profile_id, secret, *, reference=None):
+        profile_id = validate_profile_id(profile_id)
+        raw = _legacy_secret(secret)
+        reference = reference or ('carr/provider/' + profile_id + '/' + uuid4().hex)
+        validate_reference(reference, profile_id)
         self._require()
-        validate_reference(reference)
-        if not self._api.CredDeleteW(_PREFIX + reference[8:], 1, 0):
-            if C.get_last_error() != 1168:  # ERROR_NOT_FOUND: already disconnected.
+        buffer = (C.c_ubyte * len(raw)).from_buffer_copy(raw)
+        record = _Credential(type=1, target=reference,
+            comment='Research library provider credential', size=len(raw),
+            blob=buffer, persist=2, username=profile_id)
+        try:
+            if not self._api.CredWriteW(C.byref(record), 0):
+                raise CredentialUnavailable('The native credential vault could not save this key.')
+        finally:
+            C.memset(buffer, 0, len(buffer))
+        return reference
+
+    def get(self, profile_id, reference):
+        validate_reference(reference, profile_id)
+        self._require()
+        pointer = C.POINTER(_Credential)()
+        if not self._api.CredReadW(reference, 1, 0, C.byref(pointer)):
+            raise CredentialUnavailable('Reconnect this provider profile in Windows Credential Manager.')
+        try:
+            record = pointer.contents
+            if (record.type != 1 or record.target != reference or record.username != profile_id
+                    or not 0 < record.size <= _MAX_BLOB or not record.blob):
+                raise CredentialUnavailable('The provider credential is invalid.')
+            try:
+                secret = C.string_at(record.blob, record.size).decode('utf-8', errors='strict')
+                _legacy_secret(secret)
+                return secret
+            except (UnicodeError, ValueError):
+                raise CredentialUnavailable('The stored provider credential is invalid; reconnect the profile.') from None
+        finally:
+            if pointer:
+                if pointer.contents.blob and 0 < pointer.contents.size <= _MAX_BLOB:
+                    C.memset(pointer.contents.blob, 0, pointer.contents.size)
+                self._api.CredFree(pointer)
+
+    def delete(self, reference=None, legacy_reference=None, *, profile_id=None):
+        # Never guess or migrate a reference namespace during secret lookup.
+        if legacy_reference is not None:
+            if profile_id is not None:
+                raise ValueError('Choose one provider profile identity.')
+            profile_id, reference = reference, legacy_reference
+        if profile_id is not None:
+            validate_reference(reference, profile_id)
+            target = reference
+        else:
+            validate_reference(reference)
+            target = _PREFIX + reference[8:]
+        self._require()
+        if not self._api.CredDeleteW(target, 1, 0):
+            if C.get_last_error() != 1168:
                 raise CredentialUnavailable('The native credential vault could not remove this key.')
