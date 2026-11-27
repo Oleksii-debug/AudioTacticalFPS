@@ -442,3 +442,67 @@ def test_same_size_changed_bytes_are_rechecked_when_metadata_is_unchanged(tmp_pa
     with pytest.raises(ValueError, match='changed during backup'):
         snapshot_state(root, target, cancelled=mutate_after_copy)
     assert changed and (target / 'a.json').read_bytes() == b'old'
+
+@pytest.mark.parametrize('legacy', [False, True])
+def test_production_operation_identity_roundtrips_exact_receipt(tmp_path, legacy):
+    app = LibraryApp(tmp_path / 'data')
+    app.create_workspace('Synthetic recovery')
+    outputs = tmp_path / 'outputs'
+    outputs.mkdir()
+    service = ProductionService(app.root / 'state/studio', voices=InventoryOnly())
+    project = service.create('Narrator: Preserve the original options.', voice_ids=('test:inventory',))
+    job = service.submit(project, outputs, format='flac', stems=True)
+    receipt = service.jobs_root / job / 'job.json'
+    saved = service.get(job)
+    assert saved['status'] == 'pending'
+    assert len(saved['operation_sha256']) == 64
+    if legacy:
+        del saved['operation_sha256']
+        atomic_json(receipt, saved, replace=True)
+    raw = receipt.read_bytes()
+    relative = receipt.relative_to(app.root)
+    folder = tmp_path / 'backup'
+    digest = create_backup(app, folder)
+    assert (folder / relative).read_bytes() == raw
+    recovered = restore_backup(folder, tmp_path / 'restored', digest)
+    reopened = ProductionService(recovered / 'state/studio', voices=InventoryOnly())
+    restored = reopened.get(job)
+    assert restored['status'] == 'waiting-input' and restored['destination'] == ''
+    assert restored['format'] == saved['format'] and restored['stems'] is saved['stems']
+    assert restored['project'] == saved['project']
+    assert restored['artifacts'] == [] and restored['nodes'] == {}
+    assert restored['recovery']['requires_output_directory'] is True
+    if legacy:
+        assert 'operation_sha256' not in restored
+    else:
+        assert restored['operation_sha256'] == saved['operation_sha256']
+    with pytest.raises(ValueError, match='new output directory'):
+        reopened.run(job)
+    new_output = tmp_path / 'approved-restored-output'
+    new_output.mkdir()
+    reopened.relocate_restored_job(job, new_output)
+    assert Path(reopened.get(job)['destination']).parent == new_output
+    assert (folder / relative).read_bytes() == raw
+    assert receipt.read_bytes() == raw
+
+
+@pytest.mark.parametrize('change', [{'format': 'wav'}, {'stems': False},
+                                   {'operation_sha256': '0' * 64},
+                                   {'operation_sha256': None}])
+def test_production_operation_identity_rejects_invalid_backup(tmp_path, change):
+    app = LibraryApp(tmp_path / 'data')
+    app.create_workspace('Synthetic recovery')
+    outputs = tmp_path / 'outputs'
+    outputs.mkdir()
+    service = ProductionService(app.root / 'state/studio', voices=InventoryOnly())
+    project = service.create('Narrator: Preserve the original options.', voice_ids=('test:inventory',))
+    job = service.submit(project, outputs, format='flac', stems=True)
+    receipt = service.jobs_root / job / 'job.json'
+    saved = service.get(job)
+    atomic_json(receipt, {**saved, **change}, replace=True)
+    raw = receipt.read_bytes()
+    folder = tmp_path / 'backup'
+    with pytest.raises(ValueError, match='operation options changed|digest'):
+        create_backup(app, folder)
+    assert not folder.exists()
+    assert receipt.read_bytes() == raw

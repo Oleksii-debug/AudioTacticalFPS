@@ -16,7 +16,7 @@ import threading
 import time
 from uuid import uuid4
 
-from ..durable_state import atomic_bytes, atomic_json, digest_file, encode, local_path, read_json, state_lock
+from ..durable_state import atomic_bytes, atomic_json, digest_file, encode, local_path, read_json, regular, state_lock
 from .project import Project, ProjectStore, parse_script, _id
 
 ENGINE_SCHEMA = 'studio-local-dag-v1'
@@ -72,6 +72,27 @@ def _output_name(title):
     if not name or name.upper() in {'CON', 'PRN', 'AUX', 'NUL'}:
         name = 'production'
     return name
+
+
+def _production_output_name(title, job_id):
+    # A fixed-length digest of the entire case-sensitive operation ID avoids
+    # shared 12-character prefixes and keeps the old 83-character name bound.
+    return f'{_output_name(title)[:18]}-{sha256(job_id.encode("ascii")).hexdigest()}'
+
+
+def _operation_sha256(state):
+    # Bind immutable render options, independently of mutable progress and
+    # the project fingerprint (which intentionally describes only the project).
+    return sha256(encode({'job': state['id'], 'fingerprint': state['fingerprint'],
+                          'format': state['format'], 'stems': state['stems']})).hexdigest()
+
+
+def _owner_receipt(state):
+    owner = {'job': state['id'], 'fingerprint': state['fingerprint']}
+    # Preserve legacy receipts without inventing historical option evidence.
+    if 'operation_sha256' in state:
+        owner['operation_sha256'] = state['operation_sha256']
+    return owner
 
 
 class ProductionService:
@@ -288,9 +309,6 @@ class ProductionService:
         if any(not role.voice_id for role in project.roles if any(
                 line.role == role.id and line.text for scene in project.scenes for line in scene.lines)):
             raise ValueError('Assign an installed voice to every speaking role before rendering.')
-        available = {voice.id for voice in self.voices.voices()}
-        if any(role.voice_id not in available for role in project.roles if role.voice_id):
-            raise ValueError('A selected local voice is no longer available. Reassign the role.')
         destination = local_path(destination, exists=True)
         if not destination.is_dir():
             raise ValueError('Choose an existing local output directory.')
@@ -298,23 +316,63 @@ class ProductionService:
         if destination.is_relative_to(self.root):
             raise ValueError('Choose an output directory outside the private production state.')
         job_id = _id(operation_id) if operation_id else uuid4().hex
-        output = destination / f'{_output_name(project.title)}-{job_id[:12]}'
-        existing_path = self.jobs_root / job_id / 'job.json'
-        if existing_path.exists():
-            previous = self.get(job_id)
-            if (previous['fingerprint'] != project.fingerprint or previous['destination'] != str(output)
+        output = destination / _production_output_name(project.title, job_id)
+        legacy_output = destination / f'{_output_name(project.title)}-{job_id[:12]}'
+        directory = self.jobs_root / job_id
+        existing_path = directory / 'job.json'
+
+        def already_submitted():
+            try:
+                previous = self.get(job_id)
+            except FileNotFoundError:
+                return False
+            if (previous['fingerprint'] != project.fingerprint or previous['destination'] not in (str(output), str(legacy_output))
                     or previous['format'] != format or previous['stems'] != stems):
                 raise ValueError('This operation ID is already bound to a different production plan.')
+            return True
+
+        # A committed receipt is immutable in identity, even during rendering.
+        if already_submitted():
             return job_id
-        self.review_project_inputs(project)
-        self.projects.save(project)
-        state = {'schema': 1, 'id': job_id, 'status': 'pending', 'project': project.to_dict(),
-                 'fingerprint': project.fingerprint, 'destination': str(output), 'format': format,
-                 'stems': stems, 'nodes': {}, 'artifacts': [], 'progress': '',
-                 'created': time.time(), 'updated': time.time(), 'error': '', 'runtime': None}
-        directory = self.jobs_root / job_id
-        directory.mkdir()
-        atomic_json(directory / 'job.json', state)
+        # Use the existing per-job render lock. A crash before job.json is
+        # committed may leave its directory and an uncommitted temporary file.
+        with state_lock(directory, 'render'):
+            if already_submitted():
+                return job_id
+            for entry in directory.iterdir():
+                if entry.name != '.render.lock' and not entry.name.startswith('.pending-'):
+                    raise ValueError('Production job has recovery data but no receipt; review it before resubmitting.')
+                regular(entry)
+            # Never adopt another operation's output after a missing receipt.
+            for candidate in (output, legacy_output):
+                try:
+                    candidate.lstat()
+                except FileNotFoundError:
+                    continue
+                # A known different legacy operation may share the old short
+                # prefix. Its directory is never adopted, changed or deleted.
+                if candidate == legacy_output and candidate != output:
+                    try:
+                        owner = read_json(candidate / 'production-owner.json')
+                    except FileNotFoundError:
+                        owner = None
+                    if (isinstance(owner, dict) and isinstance(owner.get('job'), str)
+                            and owner['job'] != job_id and owner['job'][:12] == job_id[:12]):
+                        continue
+                raise FileExistsError('Production output already exists without a matching job receipt.')
+            # Voice availability is admission for a new job, not a condition
+            # for acknowledging an already committed submission receipt.
+            selected = {role.voice_id for role in project.roles if role.voice_id}
+            if selected and not selected.issubset({voice.id for voice in self.voices.voices()}):
+                raise ValueError('A selected local voice is no longer available. Reassign the role.')
+            self.review_project_inputs(project)
+            self.projects.save(project)
+            state = {'schema': 1, 'id': job_id, 'status': 'pending', 'project': project.to_dict(),
+                     'fingerprint': project.fingerprint, 'destination': str(output), 'format': format,
+                     'stems': stems, 'nodes': {}, 'artifacts': [], 'progress': '',
+                     'created': time.time(), 'updated': time.time(), 'error': '', 'runtime': None}
+            state['operation_sha256'] = _operation_sha256(state)
+            atomic_json(existing_path, state)
         return job_id
 
     def get(self, job_id):
@@ -324,6 +382,10 @@ class ProductionService:
         project = Project.from_dict(state['project'])
         if state.get('fingerprint') != project.fingerprint:
             raise ValueError('The saved production plan changed.')
+        if state.get('format') not in ('wav', 'flac', 'mp3', 'ogg', 'opus', 'm4a', 'm4b', 'aiff', 'wma') or type(state.get('stems')) is not bool:
+            raise ValueError('Invalid saved production options.')
+        if 'operation_sha256' in state and state['operation_sha256'] != _operation_sha256(state):
+            raise ValueError('The saved production operation options changed.')
         return state
 
     def jobs(self):
@@ -512,7 +574,7 @@ class ProductionService:
                 # canonical job and selected bytes before any render engine runs.
                 current = self.get(job_id)
                 if any(current.get(key) != state.get(key) for key in
-                       ('project', 'fingerprint', 'destination', 'format', 'stems')):
+                       ('project', 'fingerprint', 'destination', 'format', 'stems', 'operation_sha256')):
                     raise ValueError('The production plan or output destination changed while waiting.')
                 self._admission_broker(admission_cancelled)
                 local_path(Path(state['destination']).parent, exists=True)
@@ -643,7 +705,14 @@ class ProductionService:
             clip_timeline, clip_stems = [], {}
             offset = 0.0
             try:
-                voices = {voice.id: voice for voice in self.discover_voices(cancelled=stopping).voices()}
+                # Speech-free productions do not depend on voice discovery.
+                # Keep discovery inside this durable failure boundary.
+                required_voices = {roles[line.role].voice_id for scene in project.scenes
+                                   for line in scene.lines if line.text}
+                voices = ({voice.id: voice for voice in self.discover_voices(cancelled=stopping).voices()}
+                          if required_voices else {})
+                if not required_voices.issubset(voices):
+                    raise ValueError('A selected local voice is no longer available. Reassign the role.')
                 for scene_index, scene in enumerate(project.scenes, 1):
                     report(f'Scene {scene_index} of {len(project.scenes)}: {scene.title}')
                     clips, clip_roles, scene_lines, cursor = [], [], [], 0.0
@@ -796,11 +865,11 @@ class ProductionService:
                 output = local_path(state['destination'])
                 marker = output / 'production-owner.json'
                 if output.exists():
-                    if not marker.exists() or read_json(marker) != {'job': state['id'], 'fingerprint': state['fingerprint']}:
+                    if not marker.exists() or read_json(marker) != _owner_receipt(state):
                         raise FileExistsError('The output directory is occupied by another project.')
                 else:
                     output.mkdir(mode=0o700)
-                    atomic_json(marker, {'job': state['id'], 'fingerprint': state['fingerprint']})
+                    atomic_json(marker, _owner_receipt(state))
 
                 def publish(source, name):
                     check()
@@ -981,10 +1050,43 @@ class ProductionService:
         if cancelled():
             raise InterruptedError('Production output verification cancelled.')
         root = local_path(state['destination'], exists=True)
+        required = set()
+        if state['status'] == 'complete':
+            # A receipt with a shortened (or empty) artifact list must not
+            # turn a damaged production into a successful committed replay.
+            project = Project.from_dict(state['project'])
+            if read_json(root / 'production-owner.json') != _owner_receipt(state):
+                raise ValueError('The production output owner receipt changed.')
+            required = {'master.wav', 'script.vtt', 'script.srt', 'timeline.json', 'project.json'}
+            # Older completed receipts predate LRC. The current producer
+            # records its LRC convention; preserve that declared output.
+            if 'lrc_notice' in state.get('result', {}):
+                required.add('script.lrc')
+            if any(line.source_ref.startswith('carr-book-audio:')
+                   for scene in project.scenes for line in scene.lines):
+                required.add('book-source.json')
+            required.update(f'chapters/{index:04d}-{_output_name(scene.title)}.wav'
+                            for index, scene in enumerate(project.scenes, 1))
+            if state['format'] != 'wav':
+                required.add('audiobook.' + state['format'])
+            if state['stems']:
+                required.update('stems/' + role.id + '.wav' for role in project.roles)
+                if any(scene.music is not None for scene in project.scenes):
+                    required.add('stems/music.wav')
+                if project.schema >= 2:
+                    required.update('stems/clips/' + cue.role + '.wav'
+                                    for scene in project.scenes for cue in scene.cues)
+        seen = set()
         for artifact in state['artifacts']:
             path = local_path(artifact['path'], root=root, exists=True)
+            name = path.relative_to(root).as_posix()
+            if name in seen:
+                raise ValueError('Duplicate production artifact receipt.')
+            seen.add(name)
             if path.stat().st_size != artifact['size'] or digest_file(path, cancelled=cancelled) != artifact['sha256']:
                 raise ValueError('A rendered output is missing or its checksum changed.')
+        if required - seen:
+            raise ValueError('The completed production receipt is missing required artifacts.')
 
     def assistant_callback(self, arguments, output_directory, cancelled, progress):
         if set(arguments) - {'script', 'text', 'title', 'format', 'stems', 'voice_ids', 'operation_id'}:

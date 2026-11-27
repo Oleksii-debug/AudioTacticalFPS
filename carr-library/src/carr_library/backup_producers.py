@@ -91,9 +91,11 @@ def artifacts(values):
 
 def _studio_job(value, identity):
     from .studio.project import Project
+    from .studio.render import _operation_sha256
     fields(value, {'schema', 'id', 'status', 'project', 'fingerprint', 'destination',
                    'format', 'stems', 'nodes', 'artifacts', 'progress', 'created',
-                   'updated', 'error', 'runtime'}, {'result', 'resource_plan', 'recovery', 'total_disk_bytes'})
+                   'updated', 'error', 'runtime'}, {'result', 'resource_plan', 'recovery', 'total_disk_bytes',
+                                                   'operation_sha256'})
     if type(value['schema']) is not int or value['schema'] != 1 or value['id'] != identity:
         raise ValueError('Invalid production job identity.')
     project = Project.from_dict(value['project'])
@@ -105,6 +107,10 @@ def _studio_job(value, identity):
         raise ValueError('Invalid production output format.')
     if type(value['stems']) is not bool or type(value['nodes']) is not dict or len(value['nodes']) > 100000:
         raise ValueError('Invalid production options or nodes.')
+    if 'operation_sha256' in value:
+        digest(value['operation_sha256'])
+        if value['operation_sha256'] != _operation_sha256(value):
+            raise ValueError('Production operation options changed.')
     if 'recovery' in value:
         _studio_recovery(value['recovery'])
     if value['destination'] == '':

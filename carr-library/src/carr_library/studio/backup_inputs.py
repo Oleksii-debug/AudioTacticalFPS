@@ -192,6 +192,12 @@ def _waiting_job(value, original, rebound, *, retained):
                  progress=('Inputs restored. ' if retained else
                            'Older backup did not retain external inputs; reselect available originals. ')
                           + 'Choose a new output directory before rendering.', error='')
+    if 'operation_sha256' in value:
+        # Restore creates a passive job bound to its rebound retained inputs.
+        # The immutable backup keeps the original receipt; no prior output
+        # authority survives this explicit project/path transformation.
+        from .render import _operation_sha256
+        value['operation_sha256'] = _operation_sha256(value)
     value.pop('result', None)
     return value
 
