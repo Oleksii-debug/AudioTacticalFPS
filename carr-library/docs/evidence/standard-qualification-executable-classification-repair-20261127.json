@@ -1,0 +1,75 @@
+{
+  "schema": "carr.standard-qualification-executable-classification-repair.v1",
+  "status": "SOURCE_REVIEW_PENDING_RUNTIME_NOT_RUN",
+  "base_commit": "30673a5ee70a7d241c842a6577c5480260bfb8bf",
+  "observed": {
+    "run_id": 46071021445,
+    "job_id": 140747712577,
+    "source_commit": "30673a5ee70a7d241c842a6577c5480260bfb8bf",
+    "status": "FAIL",
+    "artifact": {
+      "run": 46071021445,
+      "commit": "30673a5ee70a7d241c842a6577c5480260bfb8bf",
+      "id": 15233464667,
+      "bytes": 1792291,
+      "sha256": "7a48bd866cb7189d4aec75642f6e6fc3a99631fcbab6bcd606a1e97082ce7125",
+      "kind": "standard-retained-library-child-diagnostic"
+    },
+    "child": {
+      "returncode": 1,
+      "bytes": 565,
+      "sha256": "04cc2a293948b00192f07c10ad9e43f78635f7461ed0070359fe5788442e08ce",
+      "manifest_sha256": "de49c271228925b7dfc48595e7d7017eae739f0ff453488a16563100f93722a8"
+    },
+    "exact_error_id": "CantActivateDocumentInPipeline",
+    "exact_boundary": "scripts/qualify_standard_library.ps1:80, first Invoke-Logged snapshot call: & $python @Arguments 2>&1 | Tee-Object -FilePath $Log",
+    "finding": "PowerShell classified the selected absolute installed python.exe as a document at the first snapshot command. The required-program preflight had returned, but the first Python snapshot and installed50 population had not run.",
+    "previous910_child_cause": "NOT_RETAINED; the later observed30673 cause is not relabeled as an independently captured910 cause."
+  },
+  "authoritative_sources": [
+    {
+      "url": "https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_command_precedence?view=powershell-5.1",
+      "repository": "MicrosoftDocs/PowerShell-Docs",
+      "path": "reference/5.1/Microsoft.PowerShell.Core/About/about_Command_Precedence.md",
+      "blob": "f4f47c2d42804d5791082aeb77fac97ba4ffa9c0",
+      "finding": "The5.1 documentation states that PATHEXT determines the extensions PowerShell treats as executable in the current session."
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_environment_variables?view=powershell-5.1",
+      "finding": "PATHEXT lists executable extensions; the change is confined to the new child process environment."
+    }
+  ],
+  "inference": "The current product host environment deliberately omits PATHEXT. The actual document-classification refusal and documented5.1 contract support supplying the sole required .EXE extension to this CI child. The native smoke must measure the actual old and fixed behavior; newer PowerShell source fallbacks are not transferred to5.1.",
+  "repair": [
+    "Factor only the existing qualification child environment into a packaging probe helper and set fixed PATHEXT='.EXE'.",
+    "Do not inherit ambient extension lists or add .COM/.BAT/.CMD/.PS1.",
+    "Leave the product WindowsStandardHost.environment, executable selection, current run_owned, arguments,1800s deadline and all existing output retention unchanged."
+  ],
+  "early_actual_probe": {
+    "path": "scripts/standard_qualification_shell_acceptance.py",
+    "required_checks": [
+      "absent-pathext-refuses-before-python",
+      "fixed-exe-runs-absolute-isolated-python-in-pipeline",
+      "ambient-extension-poison-cannot-change-fixed-environment"
+    ],
+    "cases": 3,
+    "implementation": "Use the actual fixed System32 WindowsPowerShell5.1 and current installed run_owned; execute the exact Invoke-Logged function read from the unchanged qualifier. All child argv and fixture source are fixed. The old case must refuse with the same error before a Python marker; both fixed cases must complete the selected isolated/no-bytecode Python and the Tee-Object pipeline. Raw bounded owner output and exact source/executable hashes are retained. PASS follows owned fixture cleanup.",
+    "runtime": "NOT_RUN"
+  },
+  "unchanged": {
+    "qualifier_powershell": true,
+    "qualifier_python": true,
+    "product_environment": true,
+    "source_regressions": 81,
+    "installed_regressions": 81,
+    "ordinary_install_checks": 6,
+    "maintenance_checks": 4,
+    "managed_upgrade_checks": 15,
+    "installed_library_cases": 50,
+    "offline_firewall_and_cleanup": true,
+    "complete_runtime_and_sealed_inventory": true,
+    "original_source": "91332206578b4d8dc779fec08c8d51a67962b0ff",
+    "maintenance_source": "3cefda9cc3be02a96d4e40b291645f1bfc1fcc6f"
+  },
+  "ordinary_successor": "NOT_RUN"
+}

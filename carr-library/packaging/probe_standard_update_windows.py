@@ -51,6 +51,14 @@ def module(path, name):
     return value
 
 
+def _qualification_environment(host, shell, git_executable):
+    # Windows PowerShell classifies the already selected absolute python.exe
+    # through PATHEXT even inside Invoke-Logged's pipeline. Admit only .EXE.
+    system = shell.parents[2]
+    return dict(host.environment(), CI='true', OS='Windows_NT', PATHEXT='.EXE',
+        PATH=os.pathsep.join((str(Path(git_executable).parent), str(system))))
+
+
 def build_inputs(path, source, setup_sha, manifest_sha, delivery, *, bundle=None):
     from carr_library.security._files import directory, json_value, read_bytes
     from carr_library.security.standard_windows import _file_digest
@@ -423,9 +431,7 @@ def inspect(args):
         if not git_executable:
             raise RuntimeError('The current B Git object database requires the installed CI Git executable.')
         shell = host._powershell()
-        system = shell.parents[2]
-        qualification_environment = dict(host.environment(), CI='true', OS='Windows_NT',
-            PATH=os.pathsep.join((str(Path(git_executable).parent), str(system))))
+        qualification_environment = _qualification_environment(host, shell, git_executable)
         code, library_output = run_owned([shell, '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',
             '-File', HERE.parent / 'scripts' / 'qualify_standard_library.ps1',
             '-CurrentGeneration', b_generation, '-SourceCommit', args.candidate_source,

@@ -126,6 +126,14 @@ jobs:
           & $env:CARR_PYTHON -I -B -X utf8 scripts/standard_system_helper_acceptance.py 2>&1 | Tee-Object 'ci-results/standard-system-helper-regressions.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Prove fixed PowerShell native classification before bundle work
+        timeout-minutes: 4
+        run: |
+          $sourceTree = (git rev-parse "$env:GITHUB_SHA^{tree}").Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/standard_qualification_shell_acceptance.py --source-commit $env:GITHUB_SHA --source-tree $sourceTree --output ci-results/standard-qualification-shell.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Prepare the verified OCR engine before its required source regression
         timeout-minutes: 10
         run: |
