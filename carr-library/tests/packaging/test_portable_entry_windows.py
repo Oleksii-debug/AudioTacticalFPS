@@ -52,6 +52,7 @@ def main(arguments=None):
 if __name__ == '__main__':
     mode, folder = sys.argv[1:3]
     root = pathlib.Path(folder)
+    write_json(root / 'guardian.json', {'pid': os.getpid()})
     if mode in ('before-assign', 'after-assign', 'failed-assign', 'wrong-job', 'wrong-lease',
                 'missing-receipt', 'wrong-receipt-owner'):
         original = windows_process._Job.assign
@@ -143,8 +144,8 @@ def owned_fixture(tmp_path):
     venv.EnvBuilder(with_pip=False).create(environment)
     executable = environment / 'Scripts/python.exe'
     site = Path(subprocess.check_output(
-        [str(executable), '-I', '-B', '-c', 'import sysconfig; print(sysconfig.get_path("purelib"))'],
-        text=True, timeout=30).strip())
+        [str(executable), '-I', '-B', '-X', 'utf8', '-c', 'import sysconfig; print(sysconfig.get_path("purelib"))'],
+        text=True, encoding='utf-8', timeout=30).strip())
     package = site / 'carr_library'
     (package / 'audio').mkdir(parents=True)
     # Synthetic CLI work; the admission, lease and Job implementations below
@@ -191,26 +192,65 @@ def kernel():
     api.WaitForSingleObject.argtypes, api.WaitForSingleObject.restype = (
         wintypes.HANDLE, wintypes.DWORD), wintypes.DWORD
     api.CloseHandle.argtypes, api.CloseHandle.restype = (wintypes.HANDLE,), wintypes.BOOL
+    api.TerminateProcess.argtypes, api.TerminateProcess.restype = (
+        wintypes.HANDLE, wintypes.UINT), wintypes.BOOL
     return api
 
 
-def process_handle(pid):
+def process_handle(pid, *, terminate=False):
     api = kernel()
-    handle = api.OpenProcess(0x00100000, False, pid)  # SYNCHRONIZE only
+    handle = api.OpenProcess(0x00100000 | (0x0001 if terminate else 0), False, pid)
     assert handle, 'The exact test child was unavailable before termination'
     return api, handle
 
 
+def launch_guardian(folder, *arguments, **keywords):
+    process = subprocess.Popen(*arguments, **keywords)
+    try:
+        # A Windows venv launcher PID can differ from the Python lifetime owner.
+        identity = json.loads(wait_file(folder / 'guardian.json', process).read_bytes())['pid']
+        process._carr_test_owner_pid = identity
+        process._carr_test_owner = process_handle(identity, terminate=True)
+        return process
+    except BaseException:
+        if process.poll() is None:
+            process.kill()
+        process.communicate(timeout=10)
+        raise
+
+
+def kill_guardian(process):
+    api, handle = process._carr_test_owner
+    assert api.WaitForSingleObject(handle, 0) == 258
+    assert api.TerminateProcess(handle, 99), ctypes.get_last_error()
+
+
+def assert_no_child_site(folder, process):
+    assert {path.name for path in folder.glob('site-*')} == {
+        'site-' + str(process._carr_test_owner_pid)}
+
+
 def stop(process):
-    if process.poll() is None:
-        process.kill()
-    process.communicate(timeout=10)
+    owner = getattr(process, '_carr_test_owner', None)
+    try:
+        if owner is not None:
+            api, handle = owner
+            if api.WaitForSingleObject(handle, 0) == 258:
+                assert api.TerminateProcess(handle, 99), ctypes.get_last_error()
+            assert api.WaitForSingleObject(handle, 10000) == 0
+        if process.poll() is None:
+            process.kill()
+        process.communicate(timeout=10)
+    finally:
+        if owner is not None:
+            owner[0].CloseHandle(owner[1])
+            process._carr_test_owner = None
 
 
 @pytest.mark.parametrize('phase', ['before-assign', 'after-assign'])
 def test_parent_death_before_admission_runs_no_site_or_application_code(owned_fixture, tmp_path, phase):
     root, executable = owned_fixture
-    parent = subprocess.Popen([str(executable), '-I', '-B', '-m', 'carr_library', phase, str(tmp_path)],
+    parent = launch_guardian(tmp_path, [str(executable), '-I', '-B', '-X', 'utf8', '-m', 'carr_library', phase, str(tmp_path)],
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                               env=dict(os.environ, CARR_PORTABLE_TEST_SITE_ROOT=str(tmp_path)))
     api = handle = None
@@ -220,12 +260,14 @@ def test_parent_death_before_admission_runs_no_site_or_application_code(owned_fi
         api, handle = process_handle(child)
         assert not (tmp_path / 'callback.json').exists()
         assert not (tmp_path / ('site-' + str(child))).exists()
-        parent.kill()
+        assert_no_child_site(tmp_path, parent)
+        kill_guardian(parent)
         parent.wait(timeout=10)
         assert api.WaitForSingleObject(handle, 10000) == 0
         assert not (tmp_path / 'callback.json').exists()
         assert not (tmp_path / 'grandchild-ready').exists()
         assert not (tmp_path / ('site-' + str(child))).exists()
+        assert_no_child_site(tmp_path, parent)
         with leases.installation_lease(portable_entry.control_root(root), exclusive=True):
             with pytest.raises(RuntimeError, match='did not confirm complete cleanup'):
                 portable_entry.require_clean_owners(root)
@@ -239,7 +281,7 @@ def test_parent_death_before_admission_runs_no_site_or_application_code(owned_fi
 
 def test_actual_assignment_failure_never_admits_application_work(owned_fixture, tmp_path):
     root, executable = owned_fixture
-    parent = subprocess.Popen([str(executable), '-I', '-B', '-m', 'carr_library',
+    parent = launch_guardian(tmp_path, [str(executable), '-I', '-B', '-X', 'utf8', '-m', 'carr_library',
                                'failed-assign', str(tmp_path)],
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                               env=dict(os.environ, CARR_PORTABLE_TEST_SITE_ROOT=str(tmp_path)))
@@ -249,6 +291,7 @@ def test_actual_assignment_failure_never_admits_application_work(owned_fixture, 
         child = json.loads(path.read_bytes())['pid']
         api, handle = process_handle(child)
         assert not (tmp_path / ('site-' + str(child))).exists()
+        assert_no_child_site(tmp_path, parent)
         (tmp_path / 'release-assignment').touch()
         _out, errors = parent.communicate(timeout=15)
         assert parent.returncode == 1
@@ -268,7 +311,7 @@ def test_actual_assignment_failure_never_admits_application_work(owned_fixture, 
 @pytest.mark.parametrize('proof', ['wrong-job', 'wrong-lease', 'missing-receipt', 'wrong-receipt-owner'])
 def test_native_admission_rejects_unrelated_job_lease_or_cleanup_receipt(owned_fixture, tmp_path, proof):
     root, executable = owned_fixture
-    parent = subprocess.Popen([str(executable), '-I', '-B', '-m', 'carr_library', proof, str(tmp_path)],
+    parent = launch_guardian(tmp_path, [str(executable), '-I', '-B', '-X', 'utf8', '-m', 'carr_library', proof, str(tmp_path)],
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                               env=dict(os.environ, CARR_PORTABLE_TEST_SITE_ROOT=str(tmp_path)))
     api = handle = None
@@ -284,6 +327,7 @@ def test_native_admission_rejects_unrelated_job_lease_or_cleanup_receipt(owned_f
         assert expected in errors
         assert api.WaitForSingleObject(handle, 5000) == 0
         assert not (tmp_path / ('site-' + str(child))).exists()
+        assert_no_child_site(tmp_path, parent)
         assert not (tmp_path / 'callback.json').exists()
         control = portable_entry.control_root(root)
         with leases.installation_lease(control, exclusive=True):
@@ -291,7 +335,7 @@ def test_native_admission_rejects_unrelated_job_lease_or_cleanup_receipt(owned_f
                 with pytest.raises(RuntimeError, match='did not confirm complete cleanup'):
                     portable_entry.require_clean_owners(root)
                 forged = control / ('owner-' + 'f' * 32 + '.json')
-                assert json.loads(forged.read_bytes())['owner_pid'] == parent.pid + 1
+                assert json.loads(forged.read_bytes())['owner_pid'] == parent._carr_test_owner_pid + 1
                 assert list(control.glob('owner-*.json')) == [forged]
                 # Delete only this test's known inert forged row; product
                 # cleanup must not delete any unrelated owner evidence.
@@ -310,7 +354,7 @@ def test_lease_and_job_cover_actual_descendants_until_application_shutdown(owned
     root, executable = owned_fixture
     unrelated = subprocess.Popen([str(executable), '-I', '-S', '-B', '-c',
                                   'import time; time.sleep(30)'])
-    parent = subprocess.Popen([str(executable), '-I', '-B', '-m', 'carr_library', 'work', str(tmp_path)],
+    parent = launch_guardian(tmp_path, [str(executable), '-I', '-B', '-X', 'utf8', '-m', 'carr_library', 'work', str(tmp_path)],
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                               env=dict(os.environ, CARR_PORTABLE_TEST_SITE_ROOT=str(tmp_path)))
     handles = []
@@ -324,7 +368,7 @@ def test_lease_and_job_cover_actual_descendants_until_application_shutdown(owned
             with leases.installation_lease(portable_entry.control_root(root), exclusive=True):
                 pytest.fail('Active owned work did not retain the installation lease')
         if finish == 'guardian-death':
-            parent.kill()
+            kill_guardian(parent)
         else:
             (tmp_path / 'release-parent').touch()
         parent.wait(timeout=15)
@@ -352,7 +396,7 @@ def test_private_admission_pipe_preserves_stdin_and_exact_cli_arguments(owned_fi
     _root, executable = owned_fixture
     arguments = ['текст із пробілами', '"quoted"', 'literal-$-and-semicolon;']
     answer = subprocess.run(
-        [str(executable), '-I', '-B', '-m', 'carr_library', 'stdin', str(tmp_path), *arguments],
+        [str(executable), '-I', '-B', '-X', 'utf8', '-m', 'carr_library', 'stdin', str(tmp_path), *arguments],
         input='Original stdin. Незмінний текст.\n'.encode(),
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=20,
         env=dict(os.environ, CARR_PORTABLE_TEST_SITE_ROOT=str(tmp_path)))
@@ -388,7 +432,7 @@ def test_compiled_launcher_obeys_same_portable_lease_before_python_start(owned_f
 def test_exclusive_activation_never_uses_direct_child_exit_as_tree_cleanup(
         owned_fixture, tmp_path, mode):
     root, executable = owned_fixture
-    parent = subprocess.Popen([str(executable), '-I', '-B', '-m', 'carr_library', mode, str(tmp_path)],
+    parent = launch_guardian(tmp_path, [str(executable), '-I', '-B', '-X', 'utf8', '-m', 'carr_library', mode, str(tmp_path)],
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                               env=dict(os.environ, CARR_PORTABLE_TEST_SITE_ROOT=str(tmp_path)))
     handles = []
@@ -440,7 +484,7 @@ def test_exclusive_activation_never_uses_direct_child_exit_as_tree_cleanup(
 
 def test_post_create_launch_failure_keeps_uncertain_owner_receipt(owned_fixture, tmp_path):
     root, executable = owned_fixture
-    parent = subprocess.Popen([str(executable), '-I', '-B', '-m', 'carr_library',
+    parent = launch_guardian(tmp_path, [str(executable), '-I', '-B', '-X', 'utf8', '-m', 'carr_library',
                                'failed-spawn', str(tmp_path)],
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                               env=dict(os.environ, CARR_PORTABLE_TEST_SITE_ROOT=str(tmp_path)))
@@ -450,6 +494,7 @@ def test_post_create_launch_failure_keeps_uncertain_owner_receipt(owned_fixture,
         api, handle = process_handle(child)
         assert api.WaitForSingleObject(handle, 0) == 258
         assert not (tmp_path / ('site-' + str(child))).exists()
+        assert_no_child_site(tmp_path, parent)
         (tmp_path / 'release-assignment').touch()
         _output, errors = parent.communicate(timeout=15)
         assert parent.returncode == 1
@@ -458,6 +503,7 @@ def test_post_create_launch_failure_keeps_uncertain_owner_receipt(owned_fixture,
         # never returned its handle, so production must retain uncertainty.
         assert api.WaitForSingleObject(handle, 10000) == 0
         assert not (tmp_path / ('site-' + str(child))).exists()
+        assert_no_child_site(tmp_path, parent)
         assert not (tmp_path / 'callback.json').exists()
         control = portable_entry.control_root(root)
         with leases.installation_lease(control, exclusive=True):

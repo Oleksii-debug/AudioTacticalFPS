@@ -32,6 +32,7 @@ from carr_library.security.handoff import _activation_owner
 
 mode, selected, folder = sys.argv[2:]
 program, root = pathlib.Path(selected), pathlib.Path(folder)
+(root / 'helper-owner-pid').write_text(str(os.getpid()), encoding='utf-8')
 
 def barrier(name, release):
     (root / name).write_text('ready', encoding='utf-8')
@@ -142,7 +143,11 @@ def test_activation_owner_never_confuses_direct_exit_with_descendant_cleanup(tmp
                                  stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                                  stderr=subprocess.DEVNULL, close_fds=True)
     kernel, handles = _kernel(), []
+    owner_handle = None
     try:
+        owner_pid = int(_ready(tmp_path / 'helper-owner-pid', owner).read_text(encoding='utf-8'))
+        owner_handle = kernel.OpenProcess(0x00100000 | 0x0001, False, owner_pid)
+        assert owner_handle, ctypes.get_last_error()
         value = json.loads(_ready(tmp_path / 'child-ready.json', owner).read_bytes())
         for key in ('direct', 'descendant'):
             handle = kernel.OpenProcess(0x00100000 | 0x0001, False, value[key])
@@ -168,9 +173,10 @@ def test_activation_owner_never_confuses_direct_exit_with_descendant_cleanup(tmp
             _ready(tmp_path / 'constructor-ready', owner)
             (tmp_path / 'release-constructor').touch()
         else:
-            owner.kill()
+            assert kernel.TerminateProcess(owner_handle, 99), ctypes.get_last_error()
         _output, errors = owner.communicate(timeout=15)
         assert unrelated.poll() is None
+        assert kernel.WaitForSingleObject(owner_handle, 0) == 0
         if mode == 'normal':
             assert owner.returncode == 0, errors.decode(errors='replace')
             # Do not wait for descendants before proving the return boundary.
@@ -193,10 +199,15 @@ def test_activation_owner_never_confuses_direct_exit_with_descendant_cleanup(tmp
                 with pytest.raises(RuntimeError, match='did not confirm complete cleanup'):
                     portable_entry.require_clean_owners(program, control)
             receipt, = control.glob('owner-*.json')
-            assert json.loads(receipt.read_bytes())['owner_pid'] == owner.pid
+            assert json.loads(receipt.read_bytes())['owner_pid'] == owner_pid
     finally:
         for name in ('release-worker', 'release-cleanup', 'release-constructor'):
             (tmp_path / name).touch()
+        if owner_handle is not None:
+            if kernel.WaitForSingleObject(owner_handle, 0) == 258:
+                kernel.TerminateProcess(owner_handle, 99)
+            assert kernel.WaitForSingleObject(owner_handle, 10000) == 0
+            kernel.CloseHandle(owner_handle)
         if owner.poll() is None:
             owner.kill()
         owner.communicate(timeout=10)
@@ -233,7 +244,7 @@ def test_activation_job_refused_stop_waits_for_actual_process_exit(tmp_path, fin
     kernel = _kernel()
     handle = int(child._handle)
     actual = job.api.kernel
-    observed = {'refused': [], 'waits': []}
+    observed = {'refused': [], 'waits': [], 'released': False}
 
     class Function:
         def __init__(self, call):
@@ -242,19 +253,18 @@ def test_activation_job_refused_stop_waits_for_actual_process_exit(tmp_path, fin
             return self.call(*arguments)
 
     def refused(value, exit_code):
-        assert value == handle
-        assert kernel.WaitForSingleObject(handle, 0) == 258
+        assert kernel.WaitForSingleObject(value, 0) == 258
         observed['refused'].append(value)
         ctypes.set_last_error(5)
         return 0
 
     def wait(value, milliseconds):
-        if value == handle and milliseconds:
-            assert observed['refused'] and 0 < milliseconds <= 5000
-            assert kernel.WaitForSingleObject(handle, 0) == 258
+        if milliseconds and kernel.WaitForSingleObject(value, 0) == 258:
+            assert value in observed['refused'] and 0 < milliseconds <= 5000
             with pytest.raises(PermissionError):
                 held.unlink()
-            if finish_on_wait:
+            if finish_on_wait and not observed['released']:
+                observed['released'] = True
                 child.stdin.write(b'x')
                 child.stdin.flush()
                 child.stdin.close()
@@ -275,7 +285,7 @@ def test_activation_job_refused_stop_waits_for_actual_process_exit(tmp_path, fin
         job.api = SimpleNamespace(kernel=Kernel(), error=job.api.error)
         if finish_on_wait:
             job.stop_and_wait(handle)
-            assert observed == {'refused': [handle], 'waits': [0]}
+            assert observed['refused'] and observed['waits'] == [0] and observed['released']
             assert kernel.WaitForSingleObject(handle, 0) == 0
             assert child.wait(timeout=5) == 0
             held.unlink()
@@ -284,7 +294,7 @@ def test_activation_job_refused_stop_waits_for_actual_process_exit(tmp_path, fin
             with pytest.raises(TimeoutError, match='remains unconfirmed.*WinError 5'):
                 job.stop_and_wait(handle)
             assert time.monotonic() - started < 8
-            assert observed == {'refused': [handle], 'waits': [258]}
+            assert observed['refused'] and observed['waits'] == [258] and not observed['released']
             assert kernel.WaitForSingleObject(handle, 0) == 258
             with pytest.raises(PermissionError):
                 held.unlink()
