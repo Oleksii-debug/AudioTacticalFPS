@@ -193,6 +193,12 @@ uses same-filesystem program-directory moves. Program, update workspace and
 research data must remain separate. The existing installer verifies the exact
 source/wheel receipt; it builds the new environment at its final path. Managed
 installations with their separate installer ownership receipt are rejected.
+This includes the current Inno layout: `install-layout-v1.txt` at the program
+root, `versions/<source>-N` generation directories and installer-generated
+`maintenance-setup.exe`. Verify, prepare, activate and health all refuse that
+ownership before verification or execution; incomplete/unknown ownership
+markers are never treated as permission for a portable update. The older
+`app` plus parent `managed-install.ini` layout remains refused as well.
 
 The transaction retains the previous installation and backup until health and
 protected build advancement succeed. Recovery never rolls back an already

@@ -205,8 +205,17 @@ class WindowsBundleAdapter:
 
     @staticmethod
     def _require_portable(root):
-        root = Path(root)
-        if root.name.casefold() == 'app' and os.path.lexists(root.parent / 'managed-install.ini'):
+        root = directory(root)
+        ownership = [root / 'install-layout-v1.txt', root / 'maintenance-setup.exe']
+        if root.name.casefold() == 'versions':
+            ownership.append(root.parent / 'install-layout-v1.txt')
+        if root.parent.name.casefold() == 'versions':
+            ownership.append(root.parent.parent / 'install-layout-v1.txt')
+        # Standard Inno generations and interrupted preparations retain their
+        # owner marker. An unreadable/unknown marker is not portable authority;
+        # neither is a repair executable whose root marker has disappeared.
+        if ((root.name.casefold() == 'app' and os.path.lexists(root.parent / 'managed-install.ini'))
+                or any(os.path.lexists(path) for path in ownership)):
             raise TrustError('This managed installation requires its reviewed setup/maintenance procedure. '
                              'A program-only update cannot replace installer ownership receipts.')
 
@@ -293,6 +302,7 @@ class WindowsBundleAdapter:
             raise TrustError('The offline installer did not complete. The installed application is unchanged.')
 
     def health(self, root, release):
+        self._require_portable(root)
         python = root / '.venv' / 'Scripts' / 'python.exe'
         file_info(python)
         self._verify_release(root, release)
