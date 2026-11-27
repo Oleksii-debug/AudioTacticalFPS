@@ -52,7 +52,7 @@ def test_csv_never_promotes_an_unverified_label_to_a_page_citation():
     result, = csv_rows([logical])
     assert result['logical_segment'] == '3' and result['physical_page'] == ''
     assert 'unpaginated' in json.loads(result['citation_json'])
-    assert 'PDF page' not in json.loads(result['citation_json'])
+    assert 'Physical page' not in json.loads(result['citation_json'])
 
 
 def test_csv_keeps_multpage_quotes_as_separate_exact_slices():
@@ -80,7 +80,7 @@ def test_bibtex_escapes_unbalanced_braces_commands_and_metadata_line_breaks():
     assert 'edition = {first line}' in result
     assert 'represented as spaces' in result
     assert row.quote not in result and row.note not in result
-    assert 'pages = ' not in result and 'PDF page 2; printed page ix' in result
+    assert 'pages = ' not in result and 'Physical page 2; printed page ix' in result
 
 
 def test_bibtex_uses_scoped_stable_keys_and_never_fabricates_logical_pages():

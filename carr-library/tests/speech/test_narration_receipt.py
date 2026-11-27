@@ -84,7 +84,7 @@ def test_receipt_roundtrip_preserves_pcm_and_unicode_identity(tmp_path, bound, c
     assert record['pcm']['sha256'] == hash_bytes(pcm)
     assert 'never authorizes a quotation' in receipt.describe_narration_receipt(record)
     if bound:
-        assert 'Captured snapshot PDF pages (2): 2, 4.' in receipt.describe_narration_receipt(record)
+        assert 'Captured snapshot Physical pages (2): 2, 4.' in receipt.describe_narration_receipt(record)
         assert 'indices 2 to 4' not in receipt.describe_narration_receipt(record)
         assert 'printed page labels are not attested' in receipt.describe_narration_receipt(record)
 
@@ -249,7 +249,7 @@ def test_description_distinguishes_snapshot_from_selection(tmp_path, span, expec
         SpeechSettings(), pcm_sha256=hash_bytes(pcm))
     description = receipt.describe_narration_receipt(
         receipt.read_narration_receipt(path, document=snapshot))
-    assert 'Captured snapshot PDF pages (2): 2, 4.' in description
+    assert 'Captured snapshot Physical pages (2): 2, 4.' in description
     assert 'not necessarily the narrated selection' in description
     assert expected in description
     assert 'never authorizes a quotation' in description
@@ -270,4 +270,5 @@ def test_description_bounds_long_logical_snapshot_without_inventing_range(tmp_pa
     assert 'Captured snapshot logical segments (20): 1, 3, 5, 7' in description
     assert 'and 4 more (listed in the receipt)' in description
     assert 'PDF pages' not in description
+    assert 'Physical pages' not in description
     assert 'indices 1 to 39' not in description

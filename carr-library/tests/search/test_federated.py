@@ -280,7 +280,7 @@ def test_real_pdf_preview_cannot_be_copied_or_saved_as_verified(research, tmp_pa
 
 
 @pytest.mark.parametrize('selection', [None, '', 'one', (), [], {}, [None], [True], [''],
-                                      [' '], ['a\x00b'], ['\ud800'], list(map(str, range(21)))])
+                                      [' '], ['a\x00b'], ['\ud800'], [f'library-{number:05d}-' + 'x' * 200 for number in range(4000)]])
 def test_invalid_or_implicit_selection_is_rejected_before_reads(research, selection, monkeypatch):
     app, *_ = research
     controller = FederatedSearch(app)
@@ -295,7 +295,7 @@ def test_invalid_or_implicit_selection_is_rejected_before_reads(research, select
 
 
 @pytest.mark.parametrize('options', [dict(limit_per_library=0), dict(limit_per_library=101),
-    dict(limit_per_library=True), dict(timeout=0), dict(timeout=61), dict(timeout=float('nan')),
+    dict(limit_per_library=True), dict(timeout=0), dict(timeout=86401), dict(timeout=float('nan')),
     dict(timeout=True), dict(cancelled=False), dict(on_status=False), dict(mode='all'),
     dict(result_mode='unbounded'), dict(collections='all'), dict(collections={'foreign': 'collection'}),
     dict(title='')])

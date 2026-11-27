@@ -1,0 +1,141 @@
+{
+  "schema": "resonance-closeout-gap-audit/1",
+  "status": "SOURCE_REVIEWED_NOT_EXECUTED",
+  "specifications": [
+    {
+      "path": "carr-library/docs/UNIVERSAL_SCOPE_V3_FINALIZATION.md",
+      "sha": "db8adbdc483a03c262885928c7ed214ca70bbaa7"
+    },
+    {
+      "path": "carr-library/docs/UNIVERSAL_SCOPE_V3_AUDIO_AGENT.md",
+      "sha": "d0b2761dd22b33233b311d4800230fb47f5d3d8b"
+    }
+  ],
+  "composition_map": "37a903e9258ba796db6fc6df7eacbd51092383b3",
+  "scheduler_manifest": "77a619d71686b010fba23ee7796cea4463f493eb",
+  "donor": {
+    "commit": "c8cbc5014905ed693b47cbfa40b480605a4bbdc9",
+    "tree": "3f423d980f8f7a813e08ad31744b0e7176307c34"
+  },
+  "findings": [
+    {
+      "priority": 1,
+      "requirement": "V3-07",
+      "gap": "Actual1k/10k/50k retained-book corpus benchmark harness and current corpus results.",
+      "already_present": "Bounded import scan continuation, larger source ingestion,500-edition/100-source-segment search windows and explicit continuations; existing benchmark measures1k/10k/50k embedding-cache rows only.",
+      "evidence": [
+        [
+          "scripts/benchmark_semantic_cache.py",
+          "898b05e37b5a50c018567e35c44ef71f1393535d"
+        ],
+        [
+          "docs/evidence/semantic-cache-scale.json",
+          "9d4897d6d72c2e024b735a5dde2beccf1ca9422b"
+        ],
+        [
+          "src/carr_library/search/paging.py",
+          "d73fa894e40f5b0697a8c99cafcb6402db8bbe1d"
+        ],
+        [
+          "docs/SEARCH_PAGING.md",
+          "78f3c3e2eb63f44e50fa3e04fd0d10dd9a42d0c9"
+        ]
+      ],
+      "donor": "c8 carries the exact same cache-only harness/evidence, not a corpus runner.",
+      "action": "Implement new bounded benchmark around actual LibraryApp import/search_page/ReadingDesk, reusing portable RSS and child/source-binding measurement techniques. Small real source/installed acceptance; full sizes explicitly executed later with recorded time/disk budgets. No app schema/queue/index rewrite.",
+      "qualification": "New harness and full corpora NOT_RUN; existing Linux cache evidence is separate historical component evidence."
+    },
+    {
+      "priority": 2,
+      "requirement": "V3-05/V3-13",
+      "gap": "Time-varying gain/pan/effect automation curves and complete editing workflow, rather than static ordered chains.",
+      "already_present": "Schema3 role/clip/scene/master typed effects, gain/pan/fades/trims, measured buses/masters/stems, presets and dry/effected preview. AudioRuntime.Track already supports pan/left/right/stereo routing.",
+      "evidence": [
+        [
+          "src/carr_library/studio/project.py",
+          "2e07521a9d35965397a09b94799173fc7b9b17f7"
+        ],
+        [
+          "src/carr_library/studio/render.py",
+          "496f0ff69c6b385672997fadeccd3f07b66daf40"
+        ],
+        [
+          "src/carr_library/audio/models.py",
+          "35694ae7cb9ad00e6a37ee11e18cdf60c6b2d7f6"
+        ],
+        [
+          "src/carr_library/studio/clips.py",
+          "756b2a22b2414d9e45b674b1cc2d6dfff20455cc"
+        ]
+      ],
+      "donor": "c8 Project1c293 and models085587 also expose static effects/routing, no automation envelope API. No ready envelope implementation found in the inspected donor paths.",
+      "action": "Potential later narrow typed time-parameter envelope extension using current FFmpeg/timeline and receipts; must preserve all schema1/2/3 hashes, source/restore authority and exact audio timing. Separate cut/split/join/undo UI remains incomplete: current editor offers add/edit/remove/move/duration/effect/preview.",
+      "qualification": "This is missing software, not merely a missing audio device. Physical monitoring/acoustics/NVDA remain independent qualification."
+    },
+    {
+      "priority": 3,
+      "requirement": "V3-20 translation workstation",
+      "gap": "Faithful rich-document layout/table/image/footnote translation and automatic cloud credential refresh.",
+      "already_present": "Source-bound Google Basic/Advanced and explicit loopback local translation; per-document/range batch; paragraph structure and HTML/JSON bilingual exports; resumable ordinary translation jobs and completed offline export.",
+      "evidence": [
+        [
+          "src/carr_library/assistant/translation_documents.py",
+          "340afdf70dd03f9ca51f3f61636c07f83017b458"
+        ],
+        [
+          "docs/translation_workstation.md",
+          "ce172579cef44df6cdf03a1f5ae60b5250e0510f"
+        ]
+      ],
+      "donor": "c8 translation_batch606ac/translation_sourceac212 use text/source context, not a layout-preserving translation service.",
+      "action": "A bounded selected-format translator would need an explicit retained-original structure mapping and reuse current gateway/approval/ledger. Do not call paragraph HTML full layout preservation or replace the current batch store with donor's separate schema.",
+      "qualification": "Live provider billing/model quality and local engine identity are external execution questions; formatted document glue and token-refresh adapter remain software work."
+    },
+    {
+      "priority": 4,
+      "requirement": "V3-08",
+      "gap": "Native Word live citation/bibliography editing bridge.",
+      "already_present": "Actual CSL, editable DOCX runs/bookmarks/native endnotes, embedded provenance and explicit offline regeneration to a fresh document.",
+      "evidence": [
+        [
+          "src/carr_library/academic_integration/documents.py",
+          "9aa3f5a402c2a8fad8db5fe7b66e62e870cc5b03"
+        ],
+        [
+          "docs/academic_integration.md",
+          "f0f49a723807132c40b424e5af0bb62167091e67"
+        ]
+      ],
+      "donor": "c8 documentsf451 explicitly states it is not a Word add-in and has no live field updates; no reviewed live bridge found in donor file inventory.",
+      "action": "A supported optional Word/Zotero bridge remains actual integration code. Reuse existing citation identities/source approval/regeneration; a Word-enabled test environment alone does not implement it.",
+      "qualification": "Software missing; Office/native keyboard integration would require separate actual execution after a bridge exists."
+    },
+    {
+      "priority": 5,
+      "requirement": "V3-21",
+      "gap": "Authorized voice-reference/profile create/import/version/export/revoke/delete workflow and reviewed corresponding owner-engine API.",
+      "already_present": "Public Dordiai discovery/capabilities and persistent selected-reference PCM stream/next/cancel/drop, managed reader voice preferences, private owner adapter/source review and synthetic interoperability.",
+      "evidence": [
+        [
+          "src/carr_library/integrations/dordiai_voices.py",
+          "22730d5b73670ba6525a0d68c76ab42ed2a49e8e"
+        ],
+        [
+          "docs/DORDIAI_VOICES_CONTRACT.md",
+          "7f50b8bb60a2e0aa4e0be39da9ae0da4025c151a"
+        ]
+      ],
+      "donor": "c8 older adapter13787 has no clone lifecycle RPC. PR127 voice_assets was identified as an unqualified candidate by the voice reviewer, not accepted owner API evidence.",
+      "action": "First bounded review of supplied private profile-management API and exact consent/asset contract; then add lifecycle glue around the existing registry if supported. No new training engine or invented create RPC.",
+      "qualification": "Owner source/assets are supplied/reviewed; do not label globally absent. Real authorized reference/model inference, multilingual similarity/rights and native acoustic evidence remain unqualified separately from missing CRUD/consent software."
+    }
+  ],
+  "not_dropped": [
+    "Application-only scheduled backup/watch now has scheduler77a with inactive restore/restart; no OS service or ChatGPT automation changes.",
+    "Recording Pause/Resume and explicit dry monitoring are code-present; source85 actually passed controls30,monitor21,backup20,UI28 per root, while native physical microphone/acoustics are separate.",
+    "Current playback queue/live controls, book batch, conversion batch, encrypted portable sync, DAISY/M4B/LRC/BRF, Studio3 and reader recovery remain in the composition; source presence does not establish final current-head qualification.",
+    "Hunspell remains independently assigned work and is not duplicated by this audit.",
+    "Canonical135 language-quality, signed distribution and real local model/long-form acoustic tests remain exact-input/runtime evidence requirements; they do not excuse the software gaps above."
+  ],
+  "limits": "Read-only source/path audit against the specified composition and donor. No complete donor adoption, new engine, source edits, test execution, model acquisition, private asset publication or ref mutation."
+}

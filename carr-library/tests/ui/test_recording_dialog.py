@@ -12,7 +12,8 @@ import pytest
 from carr_library.audio.models import AudioCancelled, AudioCleanupPending
 from carr_library.audio.recording import RecordingOptions
 from carr_library.application import LibraryApp
-from carr_library.progress import ProgressHub, bind_progress
+from carr_library.progress import ProgressHub, ProgressState, bind_progress, current_progress
+from carr_library.durable_state import local_path, regular
 from carr_library.speech.progress_speech import play_when_quiet
 
 
@@ -48,6 +49,8 @@ class Progress:
     def begin(self, title, **kwargs):
         if self.fail_on == 'begin': raise RuntimeError('Detached progress view')
         return ProgressHub().start(title)
+    def unregister_player(self, player, *, silence_confirmed=True):
+        self.events.append('player-released' if silence_confirmed else 'player-pending')
     def finish(self, task, state, message):
         if self.fail_on == 'finish': raise RuntimeError('Detached progress view')
         if state == 'succeeded':
@@ -81,7 +84,7 @@ def handlers(values):
     source = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/recording_dialog.py'
     module = ast.parse(source.read_text(encoding='utf-8'))
     window = next(node for node in module.body if isinstance(node, ast.FunctionDef) and node.name == 'show_recording')
-    names = {'scope_current', 'stopping', 'controls', 'release_holds', 'release_completed', 'release_when_stopped', 'poll_cleanup', 'display_record', 'show_records', 'run', 'refresh',
+    names = {'close_player', 'cleanup_player', 'request_cleanup', 'refresh_monitor', 'pause_recording', 'resume_recording', 'scope_current', 'stopping', 'controls', 'release_holds', 'release_completed', 'release_when_stopped', 'poll_cleanup', 'display_record', 'show_records', 'run', 'refresh',
              'start', 'preview', 'export', 'close', 'stop_recording', 'cancel_recording'}
     definitions = [node for node in window.body if isinstance(node, ast.FunctionDef) and node.name in names]
     assert {node.name for node in definitions} == names
@@ -89,7 +92,8 @@ def handlers(values):
     factory = ast.parse('def build(' + ', '.join(values) + '):\n    return {' + result + '}\n')
     factory.body[0].body[:0] = definitions + ast.parse('def detach():\n    nonlocal alive\n    alive = False\n').body
     namespace = {'RecordingOptions': RecordingOptions, 'AudioCancelled': AudioCancelled, 'AudioCleanupPending': AudioCleanupPending, 'time': time, 'threading': threading,
-                 'play_when_quiet': play_when_quiet, 'bind_progress': bind_progress}
+                 'play_when_quiet': play_when_quiet, 'bind_progress': bind_progress,
+                 'current_progress': current_progress, 'ProgressState': ProgressState, 'local_path': local_path, 'regular': regular}
     exec(compile(ast.fix_missing_locations(factory), str(source), 'exec'), namespace)
     return SimpleNamespace(**namespace['build'](**values))
 
@@ -104,15 +108,19 @@ def view(tmp_path):
     def capture(device_id, **kwargs):
         captures.append((device_id, kwargs))
         if kwargs['cancelled'](): raise AudioCancelled('User cancelled before capture')
+        kwargs['state_changed'](SimpleNamespace(state='recording'))
         kwargs['progress'](1.0)
         return result
-    service = SimpleNamespace(devices=Mock(return_value=(device,)), capture=capture,
+    service = SimpleNamespace(devices=Mock(return_value=(device,)), monitoring_outputs=Mock(return_value=()), capture=capture,
                               get=Mock(return_value=result), export=Mock(return_value={'path': 'exported.wav'}))
-    buttons = {name: Control() for name in ('refresh', 'start', 'stop', 'cancel', 'preview', 'use', 'export', 'stop_preview', 'close')}
+    buttons = {name: Control() for name in ('refresh', 'refresh_monitor', 'start', 'pause', 'resume', 'stop', 'cancel', 'preview', 'use', 'export', 'stop_preview', 'close')}
     library = LibraryApp(tmp_path / 'library')
     values = dict(busy=False, alive=True, closing=False, generation=0, active_future=None, devices=(), records=(), holds=[],
         cleanup_owner=None, cleanup_future=None, cleanup_retry=None, hold_guard=threading.RLock(),
-        frame=Mock(library=library, _closing=False), library=library, library_root=library.root,
+        player_guard=threading.RLock(), player_cleaned=False, cleanup_queued=False, unregister_cleanup=Mock(),
+        monitor_outputs=(), capture_phase='idle', paused=threading.Event(), monitoring=Control(False),
+        monitor_output=Control(selection=-1), library_identity=(library.root.stat().st_dev, library.root.stat().st_ino),
+        frame=Mock(library=library, _closing=False, cancel_event=threading.Event()), library=library, library_root=library.root,
         selected_result=None, controllers=(progress, parent), progress=progress, player=Mock(),
         executor=executor, service=service, cancelled=threading.Event(), stopped=threading.Event(),
         microphone=Control(selection=-1), title=Control('My recording'), minutes=Control(2),
@@ -301,7 +309,7 @@ def test_cleanup_retry_start_failure_keeps_existing_owner_and_quiet_holds(view, 
 
 
 
-@pytest.mark.parametrize('change', ['same-path-new-library', 'root-changed', 'frame-closing'])
+@pytest.mark.parametrize('change', ['same-path-new-library', 'root-changed', 'frame-closing', 'same-path-new-directory'])
 def test_queued_capture_loses_admission_when_its_exact_library_scope_changes(view, tmp_path, change):
     discovered(view)
     view.progress.ready = view.parent.ready = True
@@ -311,6 +319,11 @@ def test_queued_capture_loses_admission_when_its_exact_library_scope_changes(vie
         frame.library = LibraryApp(library.root)
     elif change == 'root-changed':
         library.root = tmp_path / 'another-root'
+    elif change == 'same-path-new-directory':
+        original = library.root
+        original.rename(tmp_path / 'retained-old-library')
+        LibraryApp(original)
+        assert frame.library is library and library.root == original
     else:
         frame._closing = True
     view.executor.finish()
@@ -396,3 +409,96 @@ def test_late_scope_change_keeps_uncertain_native_cleanup_visible_and_owned(view
     assert not view.progress.holds[0].closed
     owner.confirm()
     assert view.progress.holds[0].closed and view.parent.holds[0].closed
+
+
+def test_pause_and_resume_wait_for_actual_service_acknowledgment_and_keep_quiet_holds(view):
+    discovered(view)
+    view.progress.ready = view.parent.ready = True
+    actual = view.service.capture
+    def capture(identity, **options):
+        options['state_changed'](SimpleNamespace(state='recording'))
+        assert view.values['buttons']['pause'].enabled
+        view.handlers.pause_recording()
+        assert options['pause_requested']() and view.values['dialog'].capture_state == 'pausing'
+        assert not view.values['buttons']['resume'].enabled
+        view.handlers.resume_recording()
+        assert options['pause_requested'](), 'A UI flag cannot acknowledge producer shutdown.'
+        assert not any(hold.closed for hold in view.progress.holds + view.parent.holds)
+        options['state_changed'](SimpleNamespace(state='paused'))
+        assert view.values['buttons']['resume'].enabled
+        assert not options['cancelled']() and not options['stop_requested']()
+        view.handlers.resume_recording()
+        assert not options['pause_requested']() and view.values['dialog'].capture_state == 'opening'
+        assert not any(hold.closed for hold in view.progress.holds + view.parent.holds)
+        return actual(identity, **options)
+    view.service.capture = capture
+    view.handlers.start()
+    view.executor.finish()
+    assert all(hold.closed for hold in view.progress.holds + view.parent.holds)
+    assert view.values['status'].GetValue().startswith('Saved and verified.')
+
+
+def test_monitor_output_discovery_never_selects_or_opens_an_output(view):
+    output = SimpleNamespace(selectable=True, name='Explicit headphones', index=2)
+    view.service.monitoring_outputs.return_value = (output,)
+    view.handlers.refresh_monitor()
+    view.service.monitoring_outputs.assert_not_called()
+    assert view.captures == []
+    view.executor.finish()
+    assert view.values['monitor_output'].items == ['Explicit headphones; device 3']
+    assert view.values['monitor_output'].GetSelection() == -1
+    assert not view.values['monitoring'].GetValue()
+    view.values['player'].play.assert_not_called()
+
+
+def test_enabled_monitor_requires_explicit_output_before_any_capture_hold(view):
+    discovered(view)
+    view.values['monitoring'].SetValue(True)
+    view.handlers.start()
+    assert not view.executor.pending and not view.captures
+    assert not view.progress.holds and not view.parent.holds
+    assert 'Select a monitoring output explicitly' in view.values['status'].GetValue()
+
+
+def test_explicit_monitor_selection_is_passed_unchanged_to_same_capture(view):
+    output = SimpleNamespace(selectable=True, name='Explicit headphones', index=2)
+    view.service.monitoring_outputs.return_value = (output,)
+    view.handlers.refresh_monitor()
+    view.executor.finish()
+    view.values['monitor_output'].SetSelection(0)
+    view.values['monitoring'].SetValue(True)
+    discovered(view)
+    view.progress.ready = view.parent.ready = True
+    view.handlers.start()
+    view.executor.finish()
+    assert view.captures[0][1]['monitor_output'] is output
+
+
+def test_modal_player_cleanup_uses_borrowed_worker_and_is_idempotent(view):
+    view.handlers.request_cleanup()
+    assert len(view.executor.pending) == 1
+    view.values['player'].close.assert_not_called()
+    view.executor.finish()
+    view.values['player'].close.assert_called_once()
+    view.values['unregister_cleanup'].assert_called_once()
+    view.handlers.cleanup_player()
+    view.values['player'].close.assert_called_once()
+
+
+def test_failed_player_cleanup_keeps_registered_owner_for_explicit_host_retry(view):
+    view.values['player'].close.side_effect = OSError('native handle is still owned')
+    view.handlers.request_cleanup()
+    view.executor.finish()
+    view.values['unregister_cleanup'].assert_not_called()
+    view.values['player'].close.side_effect = None
+    view.handlers.cleanup_player()
+    view.values['unregister_cleanup'].assert_called_once()
+
+
+def test_failed_cleanup_submission_keeps_registered_owner(view):
+    view.executor.submit = Mock(side_effect=RuntimeError('host executor is shutting down'))
+    view.handlers.request_cleanup()
+    view.values['player'].close.assert_not_called()
+    view.values['unregister_cleanup'].assert_not_called()
+    view.handlers.cleanup_player()
+    view.values['unregister_cleanup'].assert_called_once()

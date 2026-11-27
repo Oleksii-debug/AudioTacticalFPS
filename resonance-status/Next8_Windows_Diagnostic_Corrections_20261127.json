@@ -1,0 +1,69 @@
+{
+  "schema": "carr-reviewed-source-slice/1",
+  "name": "Windows source85 diagnosed imports, observer lifetime and timed stack diagnostic",
+  "status": "DRAFT_NOT_RUN",
+  "observed": {
+    "commit": "8329a4832e811aaf8b28f292c264a02e5d38bfba",
+    "run": 46022851960,
+    "job": 140586631041,
+    "required_suites": 85,
+    "passed": 67,
+    "failed": 18,
+    "evidence_blob": "b86a56a4336133359914f1f31531c52a946799f9"
+  },
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/studio/book_cli.py",
+      "base": "cc9d716c52f82d2d96fbca27ab99d7fcc5ac0f2a",
+      "sha": "c0bec70998f06de20023c5fd9cc868bd75eba86a"
+    },
+    {
+      "path": "carr-library/tests/ingest/test_large_source_intake.py",
+      "base": "df8202f05f8446e6f447d2bce9b17893339bec72",
+      "sha": "e97c4d77f398349153ef7dd95b7bb57b2b0aa2a5"
+    },
+    {
+      "path": "carr-library/scripts/ci_check.py",
+      "base": "02c89435d1ebd070fb619ab12111242152662679",
+      "sha": "8a23ef36c2df93928b0aff3edd8b59a53c54684c"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_ci_check.py",
+      "base": "8b0ced0c5f2bdab5a59acbe7af4d0ed7a7205297",
+      "sha": "33d9b62c6aabeea518751aaef3cafb865ab7f919"
+    }
+  ],
+  "changes": [
+    "Book CLI uses existing research.export_file; all17 collection-blocked cases remain required.",
+    "Large-source fixture explicitly closes its SQLite checkpoint observer before deleting the original library; all6 cases/assertions unchanged.",
+    "Only Windows CPython3.11 scheduled diagnostics replace concurrent native C watchdog traversal with a Python-thread synchronous bounded faulthandler call holding GIL. Fatal fault handling remains enabled. The exact600/900 second outer deadlines, reviewed ASR override allowlist, tree cleanup, offline and strict verdict policies remain unchanged.",
+    "Three real subprocess regression methods added;29existing test methods byte-preserved."
+  ],
+  "required_validation": {
+    "ci_check": {
+      "whole_module": "tests/packaging/test_ci_check.py",
+      "expected_methods_static_not_collected": 32
+    },
+    "book_batch": {
+      "whole_module": "tests/studio/test_book_batch.py",
+      "expected_cases_static": 27,
+      "qualification": "Actual Windows rerun required; source guards and tests untouched. Timed-dump race matches the observed crash and primary sources but was not independently reproduced."
+    },
+    "book_cli": {
+      "whole_module": "tests/studio/test_book_cli.py",
+      "expected_cases_static": 17
+    },
+    "large_source": {
+      "whole_module": "tests/ingest/test_large_source_intake.py",
+      "expected_cases_static": 6
+    }
+  },
+  "primary_sources_retrieved_2026_11_27": [
+    "https://github.com/python/cpython/blob/v3.11.9/Modules/faulthandler.c",
+    "https://github.com/python/cpython/blob/v3.11.9/Python/fileutils.c",
+    "https://github.com/pytest-dev/pytest/blob/9.0.2/src/_pytest/faulthandler.py",
+    "https://github.com/python/cpython/issues/140815",
+    "https://github.com/pytest-dev/pytest/issues/7022"
+  ],
+  "no_ref_mutation": true
+}

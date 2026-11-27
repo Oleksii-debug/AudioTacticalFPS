@@ -2,7 +2,7 @@
 import json
 import threading
 
-from ..studio.book_audio import BookAudioService, SplitOptions, capture_plan, source_options, FORMATS, MODES
+from ..studio.book_audio import BookAudioService, BookPlan, SplitOptions, capture_plan, source_options, FORMATS, MODES
 from ..studio.project import Role
 
 HELP = (
@@ -36,7 +36,8 @@ def review_text(plan, review):
         'Edition: ' + source['source_anchor']['edition'],
         'Revision: ' + source['source_anchor']['revision'],
         'Retained original SHA-256: ' + source['source_anchor']['asset_sha256'],
-        'Voice: ' + plan.role.voice_id + '; ' + plan.role.language,
+        'Voice: ' + plan.role.voice_id + '; ' + plan.role.language + '; rate ' + str(plan.role.rate)
+            + '; volume ' + str(plan.role.volume),
         'Split: ' + plan.options.mode + '; format: ' + plan.format,
         'Output parent: ' + review.output_parent,
         'Review SHA-256: ' + review.fingerprint,
@@ -50,7 +51,9 @@ def review_text(plan, review):
     return '\n\n'.join(rows)
 
 
-def create_book_audio_dialog(frame, *, service=None, wx_module=None):
+def create_book_audio_dialog(frame, *, service=None, wx_module=None, edition_id=None,
+                             on_reviewed=None, initial_plan=None, initial_output='',
+                             owner_guard=lambda: None, owner_cancelled=lambda: False):
     if wx_module is None:
         import wx as wx_module
     wx = wx_module
@@ -62,6 +65,19 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None):
     service = service or BookAudioService(library, scope[0])
     if service.library is not library or service.workspace != scope[0]:
         raise ValueError('Use the book-audio service for the active library.')
+    service._check_scope()
+    owner_guard()
+    if owner_cancelled():
+        raise InterruptedError('The owning book review was closed.')
+    if on_reviewed is not None and not callable(on_reviewed):
+        raise TypeError('Use an explicit reviewed-book callback.')
+    if initial_plan is not None and (
+            not isinstance(initial_plan, BookPlan)
+            or (initial_plan.source['source_anchor']['workspace'],
+                initial_plan.source['source_topic']) != scope
+            or edition_id is not None and
+                initial_plan.source['source_anchor']['edition'] != edition_id):
+        raise ValueError('This saved plan belongs to another library/topic or book scope.')
     dialog = wx.Dialog(frame, title='Book audio — review split and render', size=(950, 800),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
     dialog.SetName('Book audio workspace')
@@ -99,9 +115,11 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None):
     ignore_case.SetSelection(0)
     names = field('Part &name template: index, book, part', value='{index:04d} - {book} - {part}')
     voice = field('Installed local &voice', wx.Choice, choices=[])
+    rate = field('Voice rate, -10 to 10', value='0')
+    volume = field('Voice volume, 0 to 100', value='100')
     formats = field('Audio &format', wx.Choice, choices=list(FORMATS))
     formats.SetSelection(0)
-    output = field('Reviewed &output folder')
+    output = field('Reviewed &output folder', value=str(initial_output))
     status = field('Book split preview and saved job status', proportion=1,
                    style=wx.TE_MULTILINE | wx.TE_READONLY, value=HELP)
     buttons = {}
@@ -110,40 +128,54 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None):
          ('folder', 'Choose &output folder'), ('preview', '&Preview split and names')],
         [('prepare', '&Prepare saved items'), ('run', '&Run or resume saved items'),
          ('pause', 'Pa&use'), ('saved', 'Saved &book plans'), ('help', '&Help'), ('close', '&Close')],
+        *([[('batch', '&Multiple books...')]] if on_reviewed is None else []),
     ]:
         row = wx.BoxSizer(wx.HORIZONTAL)
         for key, label in row_items:
+            if key == 'prepare' and on_reviewed is not None:
+                label = '&Use reviewed book'
             button = wx.Button(dialog, wx.ID_CANCEL if key == 'close' else wx.ID_ANY, label=label)
             button.SetName(label.replace('&', ''))
             buttons[key] = button
             row.Add(button, 0, wx.ALL, 4)
         layout.Add(row, 0, wx.EXPAND)
     dialog.SetSizer(layout)
-    plan_controls = (first, last, modes, characters, pattern, ignore_case, names, voice, formats)
+    plan_controls = (first, last, modes, characters, pattern, ignore_case, names, voice, formats,
+                     rate, volume)
 
     def can_present():
-        return (alive and not getattr(frame, '_closing', False)
-                and frame.library is library and frame.library.root == root
-                and getattr(frame, 'active', None) == scope)
+        if (not alive or getattr(frame, '_closing', False) or owner_cancelled()
+                or frame.library is not library or frame.library.root != root
+                or getattr(frame, 'active', None) != scope):
+            return False
+        try:
+            service._check_scope()
+            owner_guard()
+        except (OSError, ValueError, RuntimeError):
+            return False
+        return True
 
     def report(value):
         if can_present():
             status.ChangeValue(str(value))
 
     def guard():
-        if getattr(frame, '_closing', False):
+        if not alive or getattr(frame, '_closing', False) or owner_cancelled():
             raise InterruptedError('Book audio closed before this operation completed.')
         if frame.library is not library or frame.library.root != root or getattr(frame, 'active', None) != scope:
             raise ValueError('The active library or topic changed. Reopen Book audio in the original scope.')
+        service._check_scope()
+        owner_guard()
 
     def stopped():
         return (cancel.is_set() or frame.cancel_event.is_set() or not alive
-                or getattr(frame, '_closing', False))
+                or getattr(frame, '_closing', False) or owner_cancelled())
 
     def fields():
         return (first.GetValue(), last.GetValue(), modes.GetSelection(), characters.GetValue(),
                 pattern.GetValue(), ignore_case.GetSelection(), names.GetValue(),
-                voice.GetSelection(), formats.GetSelection(), output.GetValue(), selected_source)
+                voice.GetSelection(), formats.GetSelection(), output.GetValue(), selected_source,
+                rate.GetValue(), volume.GetValue())
 
     def controls():
         if not can_present():
@@ -157,6 +189,10 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None):
         buttons['prepare'].Enable(not busy and review is not None)
         buttons['run'].Enable(not busy and review is not None and review.prepared)
         buttons['voices'].Enable(not busy and not locked_plan)
+        if on_reviewed is not None:
+            buttons['run'].Enable(False)
+            buttons['saved'].Enable(False)
+            buttons['source'].Enable(not busy and not locked_plan)
 
     def invalidate(event=None):
         nonlocal plan, review, reviewed_fields
@@ -258,12 +294,15 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None):
         nonlocal plan, review, locked_plan, selected_source
         try:
             guard()
-            panel = frame.book.GetPage(1)
-            if not panel.ready or panel.workspace != scope[0]:
-                raise ValueError('Wait for Books and Collections to finish loading.')
-            edition = panel._selection()[2]
-            if edition not in panel.rows:
-                raise ValueError('Select an existing book in Books and Collections.')
+            if edition_id is not None:
+                edition = edition_id
+            else:
+                panel = frame.book.GetPage(1)
+                if not panel.ready or panel.workspace != scope[0]:
+                    raise ValueError('Wait for Books and Collections to finish loading.')
+                edition = panel._selection()[2]
+                if edition not in panel.rows:
+                    raise ValueError('Select an existing book in Books and Collections.')
         except Exception as exc:
             report(exc)
             return
@@ -272,6 +311,8 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None):
             selected_source = (edition, value['revision'])
             locked_plan, plan, review, reviewed_fields, voices = False, None, None, None, ()
             voice.SetItems([])
+            rate.ChangeValue('0')
+            volume.ChangeValue('100')
             first.ChangeValue('')
             last.ChangeValue('')
             source_status.ChangeValue(value['title'] + '; ' + str(len(value['positions'])) +
@@ -328,7 +369,15 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None):
                     raise ValueError('Choose an installed local voice, split and output format.')
                 options = SplitOptions(MODES[mode_index], int(snapshot[3]),
                                        snapshot[4], snapshot[5] == 1, snapshot[6])
-                role = Role('narrator', 'Narrator', voices[voice_index].id, voices[voice_index].language)
+                chosen = voices[voice_index]
+                selected_rate, selected_volume = int(snapshot[11]), int(snapshot[12])
+                language = chosen.language
+                capabilities = getattr(chosen, 'capabilities', ())
+                if (selected_rate != 0 and 'rate' not in capabilities
+                        or selected_volume != 100 and 'volume' not in capabilities):
+                    raise ValueError('This installed voice does not support the selected rate or volume.')
+                role = Role('narrator', 'Narrator', chosen.id, language,
+                            rate=selected_rate, volume=selected_volume)
                 start = int(snapshot[0]) if snapshot[0].strip() else None
                 end = int(snapshot[1]) if snapshot[1].strip() else None
                 edition, revision = selected_source
@@ -362,6 +411,28 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None):
     def prepare(event=None):
         try:
             candidate, approved = checked_review()
+            if on_reviewed is not None:
+                if wx.MessageBox('Use these exact %d parts, voice %s, format %s and output parent in the batch?\n%s\n\n'
+                        'No jobs or speech start now.' % (len(candidate.parts), candidate.role.voice_id,
+                                                         candidate.format, approved.output_parent),
+                        'Use reviewed book in batch', wx.YES_NO | wx.NO_DEFAULT, dialog) != wx.YES:
+                    return
+                current_plan, current_review = checked_review()
+                if current_plan is not candidate or current_review != approved:
+                    raise ValueError('The book review changed during confirmation. Preview it again.')
+                frozen = fields()
+                def confirm():
+                    current = service.review(candidate, approved.output_parent, cancelled=stopped, guard=guard)
+                    if current.fingerprint != approved.fingerprint:
+                        raise ValueError('This book review changed; preview it again.')
+                    return current
+                def retained(current):
+                    if fields() != frozen:
+                        raise ValueError('The book review changed before it could be captured. Preview it again.')
+                    on_reviewed(candidate, current)
+                    close()
+                begin('Checking the exact book review for the batch', confirm, retained)
+                return
             if wx.MessageBox('Save %d ordinary Studio jobs for local voice %s in:\n%s\n\n'
                     'No speech starts now. Review the displayed names before Run.' %
                     (len(candidate.parts), candidate.role.voice_id, approved.output_parent),
@@ -407,6 +478,34 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None):
               lambda: service.run(candidate.id, approved.output_parent, approval=approved.fingerprint,
                                   cancelled=stopped, guard=guard, progress=progress), complete)
 
+    def display_saved(selected_plan):
+        nonlocal plan, review, reviewed_fields, locked_plan, selected_source
+        guard()
+        if (not isinstance(selected_plan, BookPlan)
+                or (selected_plan.source['source_anchor']['workspace'],
+                    selected_plan.source['source_topic']) != scope):
+            raise ValueError('This saved plan belongs to another library/topic scope.')
+        plan, locked_plan = selected_plan, True
+        review, reviewed_fields = None, None
+        source = plan.source
+        selected_source = (source['source_anchor']['edition'], source['source_anchor']['revision'])
+        first.ChangeValue(str(source['source_anchor']['positions'][0]['ordinal']))
+        last.ChangeValue(str(source['source_anchor']['positions'][-1]['ordinal']))
+        modes.SetSelection(MODES.index(plan.options.mode))
+        characters.ChangeValue(str(plan.options.characters))
+        pattern.ChangeValue(plan.options.pattern)
+        ignore_case.SetSelection(int(plan.options.ignore_case))
+        names.ChangeValue(plan.options.name_template)
+        formats.SetSelection(FORMATS.index(plan.format))
+        voice.SetItems(['Saved local voice: ' + plan.role.voice_id])
+        voice.SetSelection(0)
+        rate.ChangeValue(str(plan.role.rate))
+        volume.ChangeValue(str(plan.role.volume))
+        source_status.ChangeValue(source['title'] + '; saved immutable plan ' + plan.id)
+        report('Saved voice: ' + plan.role.voice_id + '; split: ' + plan.options.mode +
+               '. Choose its original output folder, or a new folder after restore, then Preview.')
+        controls()
+
     def saved(event=None):
         def choose(values):
             nonlocal plan, review, reviewed_fields, locked_plan, selected_source
@@ -428,25 +527,22 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None):
                 return
             if not 0 <= index < len(values):
                 raise ValueError('Choose a saved book plan.')
-            plan, locked_plan = values[index], True
-            review, reviewed_fields = None, None
-            source = plan.source
-            selected_source = (source['source_anchor']['edition'], source['source_anchor']['revision'])
-            first.ChangeValue(str(source['source_anchor']['positions'][0]['ordinal']))
-            last.ChangeValue(str(source['source_anchor']['positions'][-1]['ordinal']))
-            modes.SetSelection(MODES.index(plan.options.mode))
-            characters.ChangeValue(str(plan.options.characters))
-            pattern.ChangeValue(plan.options.pattern)
-            ignore_case.SetSelection(int(plan.options.ignore_case))
-            names.ChangeValue(plan.options.name_template)
-            formats.SetSelection(FORMATS.index(plan.format))
-            voice.SetItems(['Saved local voice: ' + plan.role.voice_id])
-            voice.SetSelection(0)
-            source_status.ChangeValue(source['title'] + '; saved immutable plan ' + plan.id)
-            report('Saved voice: ' + plan.role.voice_id + '; split: ' + plan.options.mode +
-                   '. Choose its original output folder, or a new folder after restore, then Preview.')
-            controls()
+            display_saved(values[index])
         begin('Opening saved book reviews', lambda: service.saved(cancelled=stopped), choose)
+
+    def multiple(event=None):
+        try:
+            guard()
+            if busy or getattr(frame, 'working', False):
+                raise ValueError('Finish the current operation before choosing multiple books.')
+            from .book_batch_dialog import show_book_batch
+            show_book_batch(frame, service=service, owner_guard=guard,
+                            owner_cancelled=lambda: not can_present())
+            guard()
+            if can_present():
+                status.SetFocus()
+        except Exception as exc:
+            report(exc)
 
     def close(event=None):
         nonlocal alive
@@ -467,6 +563,8 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None):
                           ('pause', lambda event: cancel.set()),
                           ('help', lambda event: (report(HELP), status.SetFocus())), ('close', close)]:
         buttons[key].Bind(wx.EVT_BUTTON, callback)
+    if 'batch' in buttons:
+        buttons['batch'].Bind(wx.EVT_BUTTON, multiple)
     for widget in plan_controls + (output,):
         widget.Bind(wx.EVT_CHOICE if widget in (modes, ignore_case, voice, formats) else wx.EVT_TEXT, invalidate)
     def destroyed(event):
@@ -482,6 +580,10 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None):
     dialog.Bind(wx.EVT_WINDOW_DESTROY, destroyed)
     controls()
     source_status.SetFocus()
+    if initial_plan is not None:
+        display_saved(initial_plan)
+    elif edition_id is not None:
+        wx.CallAfter(load_source)
     return dialog, close
 
 

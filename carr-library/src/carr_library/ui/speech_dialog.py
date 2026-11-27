@@ -19,6 +19,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                        source_guard=lambda: None, recovery_slot='manual'):
     import wx
 
+    explicit_reader_text = bool(text)
+    reader_tabs = None
     library = getattr(parent, 'library', None)
     library_root = local_path(library.root, exists=True) if library is not None else None
     library_identity = None
@@ -111,9 +113,48 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     progress_voice = wx.Button(dialog, label='Use voice for progress...')
     progress_voice.SetName('Use selected local voice for progress')
     controls.Add(progress_voice, 0, wx.ALL, 6)
+    voice_preferences_button = wx.Button(dialog, label='Voice preferences...')
+    voice_preferences_button.SetName('Voice preferences')
+    controls.Add(voice_preferences_button, 0, wx.ALL, 6)
     layout.Add(controls, 0, wx.EXPAND)
-    editor = labelled('&Reading copy (editable; Ctrl+S saves)', wx.TextCtrl,
-                      value=text, style=wx.TE_MULTILINE | wx.TE_DONTWRAP, proportion=1)
+    if source_loader is None and recovery_slot == 'manual' and draft_store is not None:
+        try:
+            check_current()
+            from .reader_tabs import NativeReaderTabs
+            initial = ReaderResume(document, recovered.voice_id if recovered else '',
+                rate.GetValue(), volume.GetValue(),
+                recovered.cursor if recovered and recovered.document is document else 0,
+                recovered.audio_seconds if recovered and recovered.document is document else 0)
+            reader_tabs = NativeReaderTabs(dialog, library_root, initial,
+                                          explicit_text=explicit_reader_text, wx_module=wx)
+            active_tab = reader_tabs.current
+            document, recovered, draft_store = active_tab.resume.document, active_tab.resume, active_tab.store
+            text, editor = document.text, active_tab.editor
+            rate.SetValue(recovered.rate); volume.SetValue(recovered.volume)
+            layout.Add(wx.StaticText(dialog, label='Reading copies — Ctrl+Tab changes tab'),
+                       0, wx.LEFT | wx.TOP | wx.RIGHT, 6)
+            layout.Add(reader_tabs.notebook, 1, wx.EXPAND | wx.ALL, 6)
+            tab_row = wx.BoxSizer(wx.HORIZONTAL)
+            for button in reader_tabs.buttons.values():
+                tab_row.Add(button, 0, wx.ALL, 4)
+            layout.Add(tab_row, 0, wx.EXPAND)
+            if reader_tabs.token is not None:
+                recovery_notice += f'Recovered {len(reader_tabs.states)} independent reading tabs. '
+        except Exception as exc:
+            reader_tabs = None
+            draft_store = None
+            recovery_notice += f'Reading tabs could not be recovered: {exc}. Existing drafts were kept; use Save As. '
+    if reader_tabs is None:
+        editor = labelled('&Reading copy (editable; Ctrl+S saves)', wx.TextCtrl,
+                          value=text, style=wx.TE_MULTILINE | wx.TE_DONTWRAP, proportion=1)
+    # Retain a requested voice even while its engine is temporarily unavailable.
+    # This is passive reader state, never permission to activate a substitute.
+    remembered_voice_id = recovered.voice_id if recovered is not None else ''
+    from .reading_presentation import load_reading_presentation
+    presentation, presentation_store, presentation_notice = load_reading_presentation(
+        editor, library_root, wx)
+    recovery_notice += presentation_notice
+    dialog.reading_presentation = presentation
     navigation = wx.BoxSizer(wx.HORIZONTAL)
     navigation.Add(wx.StaticText(dialog, label='Navigation unit'), 0, wx.ALL | wx.ALIGN_CENTER_VERTICAL, 4)
     navigation_unit = wx.Choice(dialog, choices=['Word', 'Sentence', 'Paragraph'])
@@ -151,7 +192,10 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     read_clipboard_button = wx.Button(dialog, label='Read &clipboard once')
     dictionary = wx.Button(dialog, label='Pronunciation &dictionary...')
     find_button = wx.Button(dialog, label='Find and replace... (Ctrl+F)')
-    for control in (read_line, read_paragraph, read_clipboard_button, dictionary, find_button):
+    tools_button = wx.Button(dialog, label='Bookmarks and paragraph tools...')
+    appearance_button = wx.Button(dialog, label='Reading appearance...')
+    for control in (read_line, read_paragraph, read_clipboard_button, dictionary, find_button,
+                    tools_button, appearance_button):
         row.Add(control, 0, wx.ALL, 4)
     layout.Add(row, 0, wx.EXPAND)
     row = wx.BoxSizer(wx.HORIZONTAL)
@@ -197,6 +241,11 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         inspect_audio_button.Enable(not busy)
         dictionary.Enable(source_loaded and not busy)
         find_button.Enable(source_loaded and not busy)
+        tools_button.Enable(source_loaded and not busy)
+        appearance_button.Enable(source_loaded and presentation_store is not None and not busy)
+        voice_preferences_button.Enable(library_root is not None and not busy)
+        if reader_tabs is not None:
+            reader_tabs.set_busy(busy)
         playback_button.Enable(last_audio is not None and getattr(player, 'path', None) is not None and not busy)
         for control in (navigation_unit, previous_unit, current_unit, next_unit):
             control.Enable(source_loaded and not busy)
@@ -205,6 +254,84 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         if event is not None and current:
             report(f'{current.name}; {current.language}; {current.engine}. '
                    f'Controls: {", ".join(current.capabilities) or "voice defaults only"}. {current.timing}')
+
+    def choose_reading_appearance(event=None):
+        from .reading_presentation import show_reading_presentation
+        def guard():
+            check_current()
+            if busy or not source_loaded or presentation_store is None:
+                raise ValueError('The reader or library changed. Reopen reading appearance.')
+            presentation_store.guard()
+        try:
+            guard()
+            applied = show_reading_presentation(dialog, library_root=presentation_store.root,
+                presenter=presentation, guard=guard)
+            guard()
+            if applied:
+                report('Reading appearance saved for this library. Text, source and editing history are unchanged.')
+            editor.SetFocus()
+        except Exception as exc:
+            reader_tools_notice(str(exc), focus=True)
+
+    def reader_tools_notice(message, *, focus=False):
+        try:
+            check_current()
+        except Exception:
+            return
+        report(message, focus=focus)
+
+    def choose_reading_tools(event=None):
+        from .reading_tools import ReadingToolSnapshot, show_reading_tools
+        from ..speech.marks import split_paragraph, join_next_break
+        def guard():
+            if busy or not source_loaded or getattr(parent, '_closing', False):
+                raise ValueError('Wait for the current reader operation before editing bookmarks or paragraphs.')
+            playback_scope()
+        def capture():
+            guard()
+            sync_document()
+            return ReadingToolSnapshot.capture(document, caret_offset(editor))
+        def reviewed(snapshot):
+            current = capture()
+            if snapshot.document is not document or current.signature != snapshot.signature:
+                raise ValueError('The reading copy changed. Close and reopen these reading tools.')
+            return current
+        def mutate(action, value, snapshot):
+            reviewed(snapshot)
+            target = snapshot.cursor
+            if action == 'add':
+                document.add_bookmark(value, target)
+            elif action == 'remove':
+                document.remove_bookmark(value)
+            elif action in ('split', 'join'):
+                stop_for_reading_tab()
+                target = (split_paragraph(document, target) if action == 'split'
+                          else join_next_break(document, target))
+                editor.ChangeValue(document.text)
+                editor.SetInsertionPoint(native_cursor_position(editor, document.text, target))
+            else:
+                raise ValueError('Choose an available reading tool.')
+            sync_document()
+            save_recovery(force=True)
+        def goto(identity, snapshot):
+            reviewed(snapshot)
+            target = document.bookmark_position(identity)
+            editor.SetInsertionPoint(native_cursor_position(editor, document.text, target))
+            save_recovery(force=True)
+        try:
+            guard()
+            show_reading_tools(dialog, capture=capture, mutate=mutate, goto=goto, guard=guard)
+        except Exception as exc:
+            reader_tools_notice(str(exc), focus=True)
+        finally:
+            try:
+                guard()
+            except Exception:
+                pass
+            else:
+                capabilities()
+                editor.SetFocus()
+
 
     def run(work, on_done, *, on_error=None, on_finished=None):
         nonlocal busy
@@ -543,12 +670,12 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                     + ' This is a separate narration copy; it does not approve quotations. '
                     + recovery_notice)
             voice_choice.Set([f'{voice.name}; {voice.language}; {voice.engine}' for voice in voices])
+            if recovered is not None:
+                editor.SetInsertionPoint(native_caret_position(editor, recovered.cursor))
             if voices:
                 selected = next((i for i, voice in enumerate(voices)
-                                 if recovered is not None and voice.id == recovered.voice_id), 0)
+                                 if voice.id == remembered_voice_id), -1 if remembered_voice_id else 0)
                 voice_choice.SetSelection(selected)
-                if recovered is not None:
-                    editor.SetInsertionPoint(native_caret_position(editor, recovered.cursor))
                 report(recovery_notice + f'{len(voices)} installed voices available. Select text or press F6 to read. '
                        'Voice pitch, emotional delivery and word timing depend on the selected engine.')
             else:
@@ -559,6 +686,45 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             return discover_configured(), source
         run(load, loaded)
 
+    def voice_preferences(event=None):
+        from ..runtime_settings import load_voice_preferences
+        from ..language_qualification.catalog import canonical_language_tag
+        from .voice_preferences import show_voice_preferences
+        try:
+            playback_scope(source=False)
+            if library_root is None or busy:
+                raise ValueError('Open an idle reader in a library before editing voice preferences.')
+            index = voice_choice.GetSelection()
+            current = voices[index] if 0 <= index < len(voices) else None
+            try:
+                declared_language = canonical_language_tag(current.language, adapter_underscores=True) if current else ''
+            except ValueError:
+                declared_language = ''  # Favorites do not invent a language declaration.
+            selected = {'voice_id': current.id if current else remembered_voice_id,
+                        'language': declared_language,
+                        'rate': rate.GetValue(), 'volume': volume.GetValue()}
+            def apply_selection(value):
+                playback_scope(source=False)
+                if busy:
+                    raise ValueError('Wait for the active reader operation before selecting a voice.')
+                index = next((i for i, item in enumerate(voices) if item.id == value['voice_id']), None)
+                if index is None:
+                    raise ValueError('This voice is no longer available; reload installed voices.')
+                voice_choice.SetSelection(index)
+                rate.SetValue(value['rate'])
+                volume.SetValue(value['volume'])
+                capabilities()
+                save_recovery(force=True)
+            def opened(preferences):
+                playback_scope(source=False)
+                show_voice_preferences(dialog, state_root=library_root / 'state', voices=voices,
+                    preferences=preferences, selected=selected, execute=run,
+                    guard=lambda: playback_scope(source=False), apply_selection=apply_selection)
+            run(lambda: load_voice_preferences(library_root / 'state'), opened)
+        except Exception as exc:
+            reader_tools_notice(str(exc), focus=True)
+
+
     def sync_document():
         document.set_text(editor.GetValue())
         lineage = ('Retained-source locator recorded; quotation authority not granted. '
@@ -568,21 +734,26 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             + 'The reading copy is not quotation evidence. ' + recovery_notice)
 
     def save_recovery(event=None, *, force=False):
-        nonlocal last_recovery_signature
+        nonlocal last_recovery_signature, recovered, remembered_voice_id
         if not alive or draft_store is None or not source_loaded:
             return False
         check_current()
         sync_document()
         selected = voice_choice.GetSelection()
-        voice_id = voices[selected].id if 0 <= selected < len(voices) else ''
-        position = player.position_seconds if last_audio is not None else 0
+        voice_id = voices[selected].id if 0 <= selected < len(voices) else remembered_voice_id
+        position = (player.position_seconds if last_audio is not None else
+                    reader_tabs.saved_audio_position(document) if reader_tabs is not None else 0)
         cursor_offset = min(caret_offset(editor), len(document.text))
         signature = (document._signature(), voice_id, rate.GetValue(), volume.GetValue(), cursor_offset,
                      round(position, 1))
         if not force and signature == last_recovery_signature:
             return True
-        draft_store.save(ReaderResume(document, voice_id, rate.GetValue(), volume.GetValue(),
-                                     cursor_offset, position))
+        resume = ReaderResume(document, voice_id, rate.GetValue(), volume.GetValue(), cursor_offset, position)
+        if reader_tabs is not None:
+            reader_tabs.save_resume(resume, save_path=save_path)
+        else:
+            draft_store.save(resume)
+        recovered, remembered_voice_id = resume, voice_id
         last_recovery_signature = signature
         return True
 
@@ -995,6 +1166,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 if chooser.ShowModal() != wx.ID_OK:
                     return
                 source = Path(chooser.GetPath())
+            check_current()
             if source.suffix.lower() == '.json':
                 loaded = ReadingDocument.load(source)
                 selected = source
@@ -1005,6 +1177,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                     raise ValueError('Open one text chapter at a time, up to 8 MB.')
                 loaded = ReadingDocument(source.read_text(encoding='utf-8-sig'), title=source.stem, source_path=source)
                 selected = None
+            check_current()
             if source_loader is not None and (not source_loaded or loaded.source_anchor is None
                     or loaded.source_anchor != document.source_anchor):
                 raise ValueError('Open unrelated or unbound reading projects in the standalone voice reader.')
@@ -1065,17 +1238,90 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         except Exception as exc:
             report(str(exc), focus=True)
 
+    def confirm_current_close():
+        check_current()
+        sync_document()
+        if document.dirty and document.text:
+            reviewed = document
+            signature = document._signature()
+            answer = wx.MessageBox('Save the reading copy and its undo history before closing?',
+                                   'Unsaved reading copy', wx.YES_NO | wx.CANCEL | wx.ICON_QUESTION, dialog)
+            check_current()
+            sync_document()
+            if document is not reviewed or document._signature() != signature:
+                raise ValueError('The reading copy changed during confirmation. Review it before closing.')
+            if answer == wx.CANCEL or (answer == wx.YES and not save_project()):
+                return False
+        return True
+
     def closing(event):
         try:
-            sync_document()
-            if document.dirty and document.text:
-                answer = wx.MessageBox('Save the reading copy and its undo history before closing?',
-                                       'Unsaved reading copy', wx.YES_NO | wx.CANCEL | wx.ICON_QUESTION, dialog)
-                if answer == wx.CANCEL or (answer == wx.YES and not save_project()):
+            if reader_tabs is not None and busy:
+                # Stop is owned by the existing reader. Do not activate another
+                # tab for save prompts while a worker can still finish this one.
+                stop_audio()
+                reader_tools_notice('Stopping the active reader operation. Close again after it finishes to review all tabs.')
+                return
+            if reader_tabs is not None:
+                if not reader_tabs.confirm_all_close():
                     return
+            elif not confirm_current_close():
+                return
             dialog.EndModal(wx.ID_CANCEL)
         except Exception as exc:
-            report(f'The reading copy is still open. {exc}', focus=True)
+            reader_tools_notice(f'The reading copy is still open. {exc}', focus=True)
+
+    def capture_reading_tab():
+        check_current()
+        sync_document()
+        selected = voice_choice.GetSelection()
+        voice_id = voices[selected].id if 0 <= selected < len(voices) else remembered_voice_id
+        resume = ReaderResume(document, voice_id, rate.GetValue(), volume.GetValue(),
+            min(caret_offset(editor), len(document.text)),
+            player.position_seconds if last_audio is not None else
+            reader_tabs.saved_audio_position(document) if reader_tabs is not None else 0)
+        return resume, save_path
+
+    def stop_for_reading_tab():
+        nonlocal playback_generation, repeat_scheduled, last_audio, playback_refresh
+        playback_generation += 1
+        repeat_scheduled = None
+        cancel.set()
+        player.stop()  # A close failure must veto the tab change.
+        last_audio, playback_refresh = None, None
+        if progress is not None:
+            progress.refresh_audio_state()
+
+    def activate_reading_tab(state):
+        nonlocal document, editor, recovered, draft_store, save_path, last_recovery_signature
+        nonlocal remembered_voice_id
+        check_current()
+        document, editor, recovered = state.resume.document, state.editor, state.resume
+        remembered_voice_id = recovered.voice_id
+        draft_store, save_path, last_recovery_signature = state.store, state.save_path, None
+        rate.SetValue(recovered.rate); volume.SetValue(recovered.volume)
+        voice_choice.SetSelection(next((i for i, voice in enumerate(voices)
+                                       if voice.id == recovered.voice_id), -1))
+        presentation.control = editor
+        try:
+            presentation.apply(presentation.current)
+            editor.SetInsertionPoint(native_cursor_position(editor, document.text, recovered.cursor))
+        except Exception as exc:
+            report(f'Reading tab opened; its display or saved cursor could not be applied: {exc}')
+        sync_document()
+        capabilities()
+        editor.SetFocus()
+
+    def reading_tab_guard():
+        check_current()
+        if library_root is None:
+            raise ValueError('Open a library before changing reading tabs.')
+
+    if reader_tabs is not None:
+        reader_tabs.bind(capture=capture_reading_tab, activate=activate_reading_tab,
+            guard=reading_tab_guard, stop=stop_for_reading_tab, report=reader_tools_notice,
+            busy=lambda: busy, confirm_close=confirm_current_close)
+
 
     for control, handler in ((reload_button, reload), (progress_voice, select_progress_voice), (read, speak),
         (cursor, lambda event: speak(from_cursor=True)), (pause, pause_audio), (stop, stop_audio),
@@ -1088,7 +1334,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         (read_line, lambda event: speak(mode='line')),
         (read_paragraph, lambda event: speak(mode='paragraph')),
         (read_clipboard_button, read_clipboard), (dictionary, show_dictionary),
-        (find_button, find_replace),
+        (find_button, find_replace), (tools_button, choose_reading_tools),
+        (appearance_button, choose_reading_appearance), (voice_preferences_button, voice_preferences),
         (previous_unit, lambda event: navigate_unit(direction=-1)),
         (current_unit, navigate_unit), (next_unit, lambda event: navigate_unit(direction=1)),
         (read_unit, lambda event: navigate_unit(read_aloud=True))):
@@ -1111,6 +1358,9 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         'voice_reader.clipboard': (read_clipboard_button, read_clipboard),
         'voice_reader.dictionary': (dictionary, show_dictionary),
         'voice_reader.find': (find_button, find_replace),
+        'voice_reader.tools': (tools_button, choose_reading_tools),
+        'voice_reader.appearance': (appearance_button, choose_reading_appearance),
+        'voice_reader.voice_preferences': (voice_preferences_button, voice_preferences),
         'voice_reader.playback': (playback_button, show_playback),
         'voice_reader.inspect_audio': (inspect_audio_button, inspect_audio),
         'voice_reader.previous_unit': (previous_unit, lambda event: navigate_unit(direction=-1)),
@@ -1123,9 +1373,15 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         'voice_reader.commands': (commands, lambda event: keyboard.commands(event)),
         'voice_reader.settings': (keyboard_settings, lambda event: keyboard.settings(event)),
     }
+    if reader_tabs is not None:
+        for key, handler in (('new', reader_tabs.on_new), ('close', reader_tabs.on_close_tab),
+                             ('rename', reader_tabs.on_rename)):
+            command_view.command_buttons['voice_reader.tab_' + key] = (reader_tabs.buttons[key], handler)
     from .builtin_keyboard_commands import VOICE_READER_COMMANDS
     for command in VOICE_READER_COMMANDS:
-        command_view.command_buttons[command.command_id][0].SetName(command.label)
+        pair = command_view.command_buttons.get(command.command_id)
+        if pair is not None:
+            pair[0].SetName(command.label)
     def command_available(identity):
         pair = command_view.command_buttons.get(identity)
         return bool(pair and pair[0].IsEnabled() and (not busy or identity == 'voice_reader.stop'))
@@ -1140,22 +1396,35 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     from .save_all import SaveResult, coordinator_for
     coordinator = coordinator_for(parent)
     def unsaved():
+        check_current()
         sync_document()
+        if reader_tabs is not None:
+            return bool(document.dirty and document.text) or any(
+                state.resume.document.dirty and state.resume.document.text for state in reader_tabs.states)
         return bool(document.text) and document.dirty
     def save_registered(completed):
         if busy:
             completed(SaveResult(False, 'Speech is running; stop it before saving the reading copy.'))
+        elif reader_tabs is not None:
+            try:
+                completed(SaveResult(reader_tabs.save_all(save_project), 'Some reading tabs were not saved.'))
+            except Exception as exc:
+                completed(SaveResult(False, str(exc)))
         else:
             completed(SaveResult(bool(save_project()), 'The reading copy was not saved.'))
     unregister_save = (coordinator.register('reading.' + str(id(dialog)), 'Voice reading copy',
-                    dirty=unsaved, save=save_registered, focus=editor.SetFocus)
+                    dirty=unsaved, save=save_registered, focus=lambda: editor.SetFocus())
                   if coordinator is not None else lambda: None)
     def unregister():
         try:
             unregister_save()
         finally:
             keyboard.close()
+    detach_desktop = lambda: None
     try:
+        desktop = getattr(parent, 'desktop_integration', None)
+        if desktop is not None:
+            detach_desktop = desktop.attach_reader(dialog, pause, stop, lambda: alive)
         capabilities()
         reload()
         autosave_timer.Start(5000)
@@ -1165,8 +1434,11 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     finally:
         alive = False
         cancel.set()
+        if reader_tabs is not None:
+            reader_tabs.close()
         notices = []
-        for cleanup, label in ((unregister, 'Save coordinator'),
+        for cleanup, label in ((detach_desktop, 'Desktop playback controls'),
+                               (unregister, 'Save coordinator'),
                                (autosave_timer.Stop, 'Reading-draft timer'),
                                (playback_timer.Stop, 'Playback timer')):
             try:

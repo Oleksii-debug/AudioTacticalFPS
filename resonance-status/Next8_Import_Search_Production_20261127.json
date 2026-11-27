@@ -1,0 +1,271 @@
+{
+  "schema": "resonance-source-review/1",
+  "base_commit": "46d83c6639e56c0c98b511909b29473dd413306f",
+  "donor_commit": "c8cbc5014905ed693b47cbfa40b480605a4bbdc9",
+  "status": "DRAFT_SOURCE_NOT_RUN",
+  "notes": [
+    "Current receipt-only stopped-worker reconciliation and one-second bound preserved.",
+    "Large TXT/PDF, raster physical frames and scan continuation composed over current fail-closed backups.",
+    "Source search window and host/CLI continuation composed; tests/gates still being adapted.",
+    "Root and import-journal identity checks added; same-path existing NativeLock reused.",
+    "No refs, workflow changes, private artifacts or publication claims in this checkpoint."
+  ],
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/catalog/intake.py",
+      "sha": "2b193ea6b20ae032cc2ca4de15a64c986ebd1f16",
+      "previous_sha": "6e363c7501a9803551046a01cee0024bf117cdc1",
+      "donor_sha": "2b193ea6b20ae032cc2ca4de15a64c986ebd1f16",
+      "method": "pinned donor source",
+      "bytes": 16534
+    },
+    {
+      "path": "carr-library/src/carr_library/citations/pdf_review_attestation.py",
+      "sha": "ed743778b3454a168aa5b97fe0234e13daa68fa1",
+      "previous_sha": "3bfbcbf14544c81bc17942183726c5c5f17f506c",
+      "donor_sha": "ed743778b3454a168aa5b97fe0234e13daa68fa1",
+      "method": "pinned donor source",
+      "bytes": 5096
+    },
+    {
+      "path": "carr-library/src/carr_library/citations/text_attestation.py",
+      "sha": "ebf00c3594cc448657868ee322af3e663e594d58",
+      "previous_sha": "bcd966d4fdb0fc1eca4935e00559620cd3538a09",
+      "donor_sha": "ebf00c3594cc448657868ee322af3e663e594d58",
+      "method": "pinned donor source",
+      "bytes": 3511
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/document_formats.py",
+      "sha": "ad6ff25c379e8b08b4aafc443a934f9a948fa398",
+      "previous_sha": "3e788c31efd61c2a1fae06a0f2b6a8849649e346",
+      "donor_sha": "ad6ff25c379e8b08b4aafc443a934f9a948fa398",
+      "method": "pinned donor source",
+      "bytes": 16263
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/page_ocr.py",
+      "sha": "a1d8a04b3dc67ae5fdf834c4d366ad7f42024d7e",
+      "previous_sha": "b57a0c5754045e8a78a025ee7916c83c38bff772",
+      "donor_sha": "bfaea07f012d4651365c116278ff2a9af2550f87",
+      "method": "composed over candidate7",
+      "bytes": 17930
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/raster_pages.py",
+      "sha": "4f7604903df04e9174ee14420cca39c4161f912c",
+      "previous_sha": null,
+      "donor_sha": "4f7604903df04e9174ee14420cca39c4161f912c",
+      "method": "pinned donor source",
+      "bytes": 10534
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/runtime_identity.py",
+      "sha": "8d2b355ee2e95fcf4d2134d7d3143c26ab617365",
+      "previous_sha": "1a09f372be59f0921c98c641c884cc7463288179",
+      "donor_sha": "8d2b355ee2e95fcf4d2134d7d3143c26ab617365",
+      "method": "pinned donor source",
+      "bytes": 4822
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/asset_copy.py",
+      "sha": "81156333a3c357613da20af9484faa3892ab0ff9",
+      "previous_sha": "0e5df593a191b43983ad332a327d33151837709a",
+      "donor_sha": "81156333a3c357613da20af9484faa3892ab0ff9",
+      "method": "pinned donor source",
+      "bytes": 3992
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/batch_cli.py",
+      "sha": "97cfe10705ffa2368d5c2361481b341376ef8e03",
+      "previous_sha": null,
+      "donor_sha": "97cfe10705ffa2368d5c2361481b341376ef8e03",
+      "method": "pinned donor source",
+      "bytes": 4239
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/batch_pages.py",
+      "sha": "6c6c346ce6d5ad51a6cf4fbe5037ff2290369c0a",
+      "previous_sha": null,
+      "donor_sha": "6c6c346ce6d5ad51a6cf4fbe5037ff2290369c0a",
+      "method": "pinned donor source",
+      "bytes": 16991
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/batch_scan.py",
+      "sha": "74478a6cd7643b4ba730211234d7fd5bcbd03dc3",
+      "previous_sha": "d8ebb0149a4838b0b02157f5eca1b016e98d01be",
+      "donor_sha": "74478a6cd7643b4ba730211234d7fd5bcbd03dc3",
+      "method": "pinned donor source",
+      "bytes": 26608
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/batches.py",
+      "sha": "07cec2575e5e72e4b252afcd787a3e7ce7c4aa66",
+      "previous_sha": "f7f9aeb4d71fd88fca35d366da15af863aa83585",
+      "donor_sha": "1a31cc18c052c8153dd6780fa69860d7e4199612",
+      "method": "composed over candidate7",
+      "bytes": 22763
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/catalog_asset_copy.py",
+      "sha": "23f32ae91afbf154689c7f56a385f1c062f32f81",
+      "previous_sha": "2af8a72cba5ced234664d8cd38549a47f518aeef",
+      "donor_sha": "23f32ae91afbf154689c7f56a385f1c062f32f81",
+      "method": "pinned donor source",
+      "bytes": 5351
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/pipeline.py",
+      "sha": "8e13ac17b7da61af48ecfc68af60ba9897bbf553",
+      "previous_sha": "26a89507b7ba4dcb61a986753b17bd07a3a8591e",
+      "donor_sha": "8e13ac17b7da61af48ecfc68af60ba9897bbf553",
+      "method": "pinned donor source",
+      "bytes": 15809
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/retained_assets.py",
+      "sha": "acbaabd4b5661daadc83dfec6cda9394deb35ce3",
+      "previous_sha": "c0df95c1e062c7ac8891805354e95a1e00f07c57",
+      "donor_sha": "acbaabd4b5661daadc83dfec6cda9394deb35ce3",
+      "method": "pinned donor source",
+      "bytes": 11177
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/worker.py",
+      "sha": "8ab4334be7f7728de84839a6a35cfae5a1347830",
+      "previous_sha": "84d335322f141a154aa9c7c09706a33e81db194c",
+      "donor_sha": "c0630fbc6420d5af806fe1619ebf1cbb7f46c3cd",
+      "method": "composed over candidate7",
+      "bytes": 42012
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "sha": "edf34a6000cb47e7230b8fbcb726f21745b2f187",
+      "previous_sha": "0881a691ed0aa9311e5abf8a4faff35d22b35d67",
+      "donor_sha": "f98c914f608b6861bfc1830a3238039d4745dda5",
+      "method": "composed over candidate7",
+      "bytes": 20595
+    },
+    {
+      "path": "carr-library/src/carr_library/pending_backup.py",
+      "sha": "b0b56a25310375d41cfc1bbbc20ca76d7a854cb1",
+      "previous_sha": "7f28c080a0c8e88e81b09ad1a8560c485fedb806",
+      "donor_sha": "db2dc498a7d086b25f7671ee2d3442f0e4a566b0",
+      "method": "composed over candidate7",
+      "bytes": 56693
+    },
+    {
+      "path": "carr-library/src/carr_library/application.py",
+      "sha": "0015d8a21a707af4dadc299c80df6fe820a647c5",
+      "previous_sha": "99150cd3ebdf1e0b98aa17ce999faff0430bd4b6",
+      "donor_sha": "ce38ea23cab1c95af9bfa36202c5fa90bedd89e8",
+      "method": "composed over candidate7",
+      "bytes": 77375
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/import_center.py",
+      "sha": "505553ef6bf28eb073133ad1f4597a15930924f9",
+      "previous_sha": "5f2deb514b16478c10d7c88a85dd4e12f7a22736",
+      "donor_sha": "5fe000d3f8beab8f2b21e58b6f39f621119ed6bb",
+      "method": "composed over candidate7",
+      "bytes": 27807
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/publication.py",
+      "sha": "a2b8c3a1f4ce5be17567b8bcd8cda743d73e7fb5",
+      "previous_sha": "3d0e617cf794b95aa4d24e077c936023ddec1e4b",
+      "donor_sha": null,
+      "method": "composed over candidate7",
+      "bytes": 9905
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/source_review.py",
+      "sha": "4b798a282ded3e79b520496d125070149cd8bd0b",
+      "previous_sha": "c4490f9db1f167f500b23d864166a39650a6c0e7",
+      "donor_sha": "4b798a282ded3e79b520496d125070149cd8bd0b",
+      "method": "pinned donor source",
+      "bytes": 20256
+    },
+    {
+      "path": "carr-library/src/carr_library/citations/anchors.py",
+      "sha": "ea012622fcf4feebd61f8d44feba87d6900b232a",
+      "previous_sha": "4f98faed9fab652b12d0c6f0d7085ed7433a3057",
+      "donor_sha": "ea012622fcf4feebd61f8d44feba87d6900b232a",
+      "method": "pinned donor source",
+      "bytes": 7085
+    },
+    {
+      "path": "carr-library/src/carr_library/__main__.py",
+      "sha": "4b521d584fed29dfca88c96c8e2a906efb0dbcfb",
+      "previous_sha": "57abefcb708455484acd557354929e287a9b2633",
+      "donor_sha": "ec5cfab048ab4b82434a22b8707c4e46eda5104f",
+      "method": "composed over candidate7",
+      "bytes": 19501
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/federated_search.py",
+      "sha": "4c4e43c4842a2f3b309cc0d79eca20a171d54650",
+      "previous_sha": "f97d203213e0e52665043e3a71e427e8dd455cd4",
+      "donor_sha": "4c4e43c4842a2f3b309cc0d79eca20a171d54650",
+      "method": "pinned donor source",
+      "bytes": 42445
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/desktop_app.py",
+      "sha": "fdaed4b947d34efbfaa206eddd08ef40c4a91a95",
+      "previous_sha": "e967e673e3daf414fd8b03737394dcf83125bdb4",
+      "donor_sha": "3c2e7059c490367a44c748e087db4abc295a53e2",
+      "method": "composed over candidate7",
+      "bytes": 77213
+    },
+    {
+      "path": "carr-library/src/carr_library/search/paging.py",
+      "sha": "d73fa894e40f5b0697a8c99cafcb6402db8bbe1d",
+      "previous_sha": null,
+      "donor_sha": "d73fa894e40f5b0697a8c99cafcb6402db8bbe1d",
+      "method": "pinned donor source",
+      "bytes": 6398
+    },
+    {
+      "path": "carr-library/src/carr_library/search/federated.py",
+      "sha": "eda65ad7c7b2356ca832379324ca5d04d44b49ac",
+      "previous_sha": "da75665b561654ec2fd9776c6e0d8bd17f3b6c98",
+      "donor_sha": "eda65ad7c7b2356ca832379324ca5d04d44b49ac",
+      "method": "pinned donor source",
+      "bytes": 19157
+    },
+    {
+      "path": "carr-library/src/carr_library/search/literal.py",
+      "sha": "4f7b9c34bd161bf8d7918f6a09535c563d2c139d",
+      "previous_sha": "ce7af8cc3fc2f6ac73e4fb6edd382be46ca3474d",
+      "donor_sha": "4f7b9c34bd161bf8d7918f6a09535c563d2c139d",
+      "method": "pinned donor source",
+      "bytes": 15821
+    },
+    {
+      "path": "carr-library/src/carr_library/search/semantic_windows.py",
+      "sha": "e695d5407d8413879b75570d5a2e7d271c126017",
+      "previous_sha": "124d8132ad5a63d2b28c40400c03d0e08cc27488",
+      "donor_sha": "e695d5407d8413879b75570d5a2e7d271c126017",
+      "method": "pinned donor source",
+      "bytes": 10481
+    },
+    {
+      "path": "carr-library/src/carr_library/search/thematic.py",
+      "sha": "4c77e1912f23ec0c4e5b32ea1b7b86bfb2c9a399",
+      "previous_sha": "5a526259eb764b2f2a940d491802c4f903344487",
+      "donor_sha": "4c77e1912f23ec0c4e5b32ea1b7b86bfb2c9a399",
+      "method": "pinned donor source",
+      "bytes": 24260
+    },
+    {
+      "path": "carr-library/src/carr_library/semantic.py",
+      "sha": "19f7f5758613b94a37792ca2b3e4bb2f268468d8",
+      "previous_sha": "7e582dbfbbdc1bd6e670503785fcc798989fb70f",
+      "donor_sha": "19f7f5758613b94a37792ca2b3e4bb2f268468d8",
+      "method": "pinned donor source",
+      "bytes": 16320
+    }
+  ]
+}

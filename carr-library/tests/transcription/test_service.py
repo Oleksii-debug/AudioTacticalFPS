@@ -280,7 +280,8 @@ def test_retained_input_change_blocks_processing_without_touching_original(setup
 def test_edit_is_versioned_derivative_and_reading_does_not_require_runtime_trust(setup):
     service, runtime, profile, audio = setup
     created = job(setup)
-    result = service.run(created['id'])
+    result = service.run(created['id'], timeout=30)
+    assert result['status'] == 'complete', result
     source = result['sources'][0]['id']
     original = service.read_transcript(created['id'], source)
     edited = service.save_edit(created['id'], source, 'Відредагована похідна копія.')

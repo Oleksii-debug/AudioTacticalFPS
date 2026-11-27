@@ -30,7 +30,7 @@ def test_manual_import_search_citation_notes_export_and_reopen(app):
 
     hit, = app.search(workspace, 'railway history', collection=collection)
     assert hit.quote == 'Railway history' and hit.verified
-    assert 'Segment 1' in hit.citation and 'PDF page' not in hit.citation
+    assert 'Segment 1' in hit.citation and 'Physical page' not in hit.citation
     context = app.context(workspace, hit.ref, hit.revision)
     assert context.pages[0].raw_text == raw.split('\f')[0]
     assert app.copy(workspace, hit.ref, hit.revision, 'quote') == hit.quote
@@ -174,7 +174,7 @@ def test_docx_import_stays_unpaginated_and_unverified(app, tmp_path):
     result = app.import_file(workspace, source)
     assert result['state'] == 'complete' and result['verified'] is False
     hit, = app.search(workspace, 'railway')
-    assert not hit.verified and 'Segment' in hit.page and 'PDF page' not in hit.page
+    assert not hit.verified and 'Segment' in hit.page and 'Physical page' not in hit.page
     assert 'Synthetic railway source' in app.preview(workspace, hit.ref, hit.revision)
     with pytest.raises(ValueError):
         app.copy(workspace, hit.ref, hit.revision, 'quote')

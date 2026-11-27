@@ -56,6 +56,19 @@ def _name(index, source, extension):
     return f'{index + 1:03d}-{label}.{extension}'
 
 
+def _opened_identity(info):
+    """Compare descriptor/path metadata without Windows suffix-derived execute bits.
+
+    CPython adds synthetic execute bits to a named .exe/.com/.bat/.cmd stat.
+    A descriptor has no filename. All real file type, identity, link count,
+    size and write/create timestamps remain part of this comparison.
+    """
+    stamp = list(_stamp(info))
+    if os.name == 'nt':
+        stamp[2] &= ~0o111
+    return tuple(stamp)
+
+
 def _file_identity(path, maximum, check):
     """Read at most the captured size plus one; bind descriptor and live path."""
     check()
@@ -65,7 +78,8 @@ def _file_identity(path, maximum, check):
         raise ValueError('A selected file exceeds the reviewed byte allowance.')
     checksum, count = sha256(), 0
     with path.open('rb') as stream:
-        if _stamp(os.fstat(stream.fileno())) != _stamp(before):
+        opened = os.fstat(stream.fileno())
+        if _opened_identity(opened) != _opened_identity(before):
             raise ValueError('A selected file changed before verification.')
         while True:
             check()
@@ -76,7 +90,7 @@ def _file_identity(path, maximum, check):
             if count > before.st_size:
                 raise ValueError('A selected file grew during verification.')
             checksum.update(block)
-        if count != before.st_size or _stamp(os.fstat(stream.fileno())) != _stamp(before):
+        if count != before.st_size or _stamp(os.fstat(stream.fileno())) != _stamp(opened):
             raise ValueError('A selected file changed during verification.')
     check()
     if _stamp(regular(path)) != _stamp(before):

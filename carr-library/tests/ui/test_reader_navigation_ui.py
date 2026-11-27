@@ -51,6 +51,8 @@ def factory(state):
     editor, document = state.editor, state.document
     navigation_unit = SimpleNamespace(GetSelection=lambda: state.unit)
     draft_store = state.store
+    reader_tabs, recovered, save_path = None, None, None
+    remembered_voice_id = ''
     last_audio = None
     last_recovery_signature = None
     voices = ()

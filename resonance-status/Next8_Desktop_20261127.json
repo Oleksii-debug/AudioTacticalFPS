@@ -1,0 +1,333 @@
+{
+  "schema": "carr-reviewed-feature-slice/1",
+  "feature": "Explicit clipboard copy, opt-in tray/watch and native semantic global shortcuts",
+  "status": "DRAFT_NOT_RUN",
+  "base_head": "46d83c6639e56c0c98b511909b29473dd413306f",
+  "donor": {
+    "head": "c8cbc5014905ed693b47cbfa40b480605a4bbdc9",
+    "repository": "Oleksii-debug/AudioTacticalFPS",
+    "scope": "Reuse existing PR152 implementation, current native command manager and reader. Do not adopt unavailable donor assistant-player bridge."
+  },
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/desktop_preferences.py",
+      "sha": "2a7d1d315a081d5ddd92718f344eed41f4f26d33",
+      "base": null,
+      "donor_sha": "5e29698fab5826e7209b44799ff63d5d4677ec23",
+      "readback": "EXACT",
+      "execution": "NOT_RUN"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/desktop_integration.py",
+      "sha": "03f5a8876d03452145d251e0b7540d1083304b22",
+      "base": null,
+      "donor_sha": "dddb22ac3344a1693ca2b156cf3526d95808eafe",
+      "readback": "EXACT",
+      "execution": "NOT_RUN"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/desktop_settings.py",
+      "sha": "a30d58fa01ac6c412612042cad61504418751543",
+      "base": null,
+      "donor_sha": "a30d58fa01ac6c412612042cad61504418751543",
+      "readback": "EXACT",
+      "execution": "NOT_RUN"
+    },
+    {
+      "path": "carr-library/tests/storage/test_desktop_preferences.py",
+      "sha": "efddd6e66dddbfe86dfd8af8cbcbf491ca9e662c",
+      "base": null,
+      "donor_sha": "245c12c76497de25bffb60690a070c27c3a8d804",
+      "readback": "EXACT",
+      "execution": "NOT_RUN"
+    },
+    {
+      "path": "carr-library/tests/ui/test_desktop_integration.py",
+      "sha": "2c3525d3cd9ecc7cd1be566fbdebf446662fe271",
+      "base": null,
+      "donor_sha": "127d4b85f5620823b191dfadfceb46e2f2e8769f",
+      "readback": "EXACT",
+      "execution": "NOT_RUN"
+    },
+    {
+      "path": "carr-library/tests/ui/test_desktop_settings.py",
+      "sha": "4ac3d2101bbd3bfde52488d4c560c6c300beaa81",
+      "base": null,
+      "donor_sha": "4ac3d2101bbd3bfde52488d4c560c6c300beaa81",
+      "readback": "EXACT",
+      "execution": "NOT_RUN"
+    },
+    {
+      "path": "carr-library/tests/ui/test_desktop_host_lifecycle.py",
+      "sha": "b4b33b0239869d25d7940ffa724e9c92a671437c",
+      "base": null,
+      "donor_sha": null,
+      "readback": "EXACT",
+      "execution": "NOT_RUN"
+    },
+    {
+      "path": "carr-library/scripts/windows_desktop_integration_smoke.py",
+      "sha": "0cb5c0cc2e81d97a7e70d0847725e14123c0df3e",
+      "base": null,
+      "donor_sha": "4cec59976ed38679c4ca10676ddc38c9466e7778",
+      "readback": "EXACT",
+      "execution": "NOT_RUN"
+    },
+    {
+      "path": "carr-library/docs/DESKTOP_INTEGRATION.md",
+      "sha": "8f24f4b4c0f58ccdd85dc63768119eb38fe433d3",
+      "base": null,
+      "donor_sha": "9fed79faebe5d8137db1cae523f6e64ac0a01b16",
+      "readback": "EXACT",
+      "execution": "NOT_RUN"
+    },
+    {
+      "path": "carr-library/docs/CLIPBOARD_READING.md",
+      "sha": "8a1487bdf3c6d1d240037d11ca94323ea4b4aef8",
+      "base": null,
+      "donor_sha": "984c6ee9f6473dada3f84a033e5ca94b54523a27",
+      "readback": "EXACT",
+      "execution": "NOT_RUN"
+    }
+  ],
+  "shared_hooks": {
+    "sha": "89d9f2bad2655cda23d14f82bc36aea90ac5a736",
+    "hunks": 9,
+    "paths": [
+      "carr-library/src/carr_library/ui/desktop_app.py",
+      "carr-library/src/carr_library/ui/speech_dialog.py",
+      "carr-library/src/carr_library/backup_sidecars.py"
+    ],
+    "preimages": {
+      "carr-library/src/carr_library/ui/desktop_app.py": "fdaed4b947d34efbfaa206eddd08ef40c4a91a95",
+      "carr-library/src/carr_library/ui/speech_dialog.py": "ad1307145332c5845f738eb449c1499c2bde109f",
+      "carr-library/src/carr_library/backup_sidecars.py": "ba268ebe0da616dce392a14b0306fa83f5913e1b"
+    },
+    "policy": "Unique exact before/after hunks only. Compose beside root/scheduler/reader changes; never replace whole shared files. Root-change optional failure does not strand core catalog; normal close can veto unconfirmed native release, forced close continues existing worker cleanup. Reader attaches actual controls and detaches first inside existing lifetime."
+  },
+  "required_validation": {
+    "whole_suites": [
+      {
+        "path": "tests/storage/test_desktop_preferences.py",
+        "expected_cases_static": 22,
+        "functions": [
+          "test_missing_profile_is_inert_and_saved_choices_have_no_activation_fields",
+          "test_invalid_or_authorizing_preference_fields_are_refused",
+          "test_unknown_future_commands_are_valid_inert_data_not_runtime_admission",
+          "test_actual_compare_and_swap_does_not_overwrite_another_window",
+          "test_explicit_malformed_profile_repair_preserves_changed_bytes_and_refuses_hardlinks",
+          "test_actual_backup_restore_preserves_only_passive_choices",
+          "test_invalid_desktop_sidecar_cannot_complete_a_backup",
+          "test_empty_malformed_choices_can_only_be_repaired_by_explicit_save",
+          "test_same_path_library_replacement_refuses_old_store_without_new_files",
+          "test_visible_save_with_failed_directory_sync_requires_real_explicit_retry",
+          "test_later_competing_save_is_not_adopted_after_unconfirmed_visible_save",
+          "test_actual_preference_read_refuses_oversized_regular_file_without_rewriting",
+          "test_backup_validator_refuses_private_or_live_desktop_authority_fields"
+        ],
+        "status": "NOT_COLLECTED_NOT_RUN"
+      },
+      {
+        "path": "tests/ui/test_desktop_integration.py",
+        "expected_cases_static": 37,
+        "functions": [
+          "test_watch_is_inert_then_coalesces_exact_text_and_never_opens_or_persists_it",
+          "test_invalid_watch_input_clears_previous_pending_without_changing_source",
+          "test_closed_or_changed_scope_never_releases_a_pending_copy",
+          "test_hotkeys_require_explicit_enable_and_dispatch_semantic_identity_only",
+          "test_invalid_or_conflicting_global_assignments_do_not_register_any_native_key",
+          "test_unsupported_platform_is_visible_and_performs_no_registration",
+          "test_partial_native_registration_conflict_releases_only_owned_new_keys",
+          "test_unconfirmed_release_retains_exact_retry_ownership_without_dispatch",
+          "test_changed_local_assignment_and_reentrant_modal_event_cannot_dispatch_stale_action",
+          "test_controller_never_reads_on_open_or_after_close_and_clears_pending_before_root_change",
+          "test_watch_suspends_in_modals_and_jobs_then_requires_explicit_review",
+          "test_reader_global_controls_dispatch_exact_buttons_then_detach_before_native_destroy",
+          "test_new_scope_cannot_use_previous_readers_buttons",
+          "test_win32_adapter_requires_exact_window_and_retains_native_no_repeat",
+          "test_direct_native_destroy_cleans_only_the_actual_owner_and_drops_late_timer",
+          "test_tray_uses_semantic_actions_and_uncertain_removal_is_visible_and_retryable",
+          "test_scope_changed_inside_actual_clipboard_read_drops_text_without_retention",
+          "test_missing_scope_during_poll_discards_pending_without_another_read",
+          "test_passive_clipboard_notice_changes_status_without_moving_keyboard_focus",
+          "test_same_path_replacement_revokes_watch_and_reader_before_control_access",
+          "test_one_shot_clipboard_rechecks_root_after_native_read_before_opening",
+          "test_explicit_clipboard_is_unbound_and_does_not_start_watch_or_playback",
+          "test_failed_native_close_remains_strongly_owned_and_retries_without_dispatch",
+          "test_direct_destroy_retains_uncertain_tray_until_explicit_ui_thread_retry",
+          "test_tray_destroy_failure_retains_exact_removed_icon_for_one_retry",
+          "test_root_change_attempts_all_native_cleanup_and_never_admits_new_scope_on_failure",
+          "test_native_cleanup_from_other_thread_refuses_before_handle_access",
+          "test_actual_hotkey_dispatch_releases_admission_after_same_path_root_replacement"
+        ],
+        "status": "NOT_COLLECTED_NOT_RUN"
+      },
+      {
+        "path": "tests/ui/test_desktop_settings.py",
+        "expected_cases_static": 4,
+        "functions": [
+          "test_native_handler_saves_exact_choices_then_explicitly_enables_and_releases",
+          "test_invalid_assignment_and_unsaved_enable_leave_existing_file_and_keys_untouched",
+          "test_unknown_saved_assignment_can_be_removed_without_granting_it_runtime_authority",
+          "test_scope_change_and_late_callback_do_not_write_or_touch_destroyed_controls"
+        ],
+        "status": "NOT_COLLECTED_NOT_RUN"
+      },
+      {
+        "path": "tests/ui/test_desktop_host_lifecycle.py",
+        "expected_cases_static": 4,
+        "functions": [
+          "test_normal_host_close_releases_native_owner_before_real_worker_finalizers",
+          "test_unconfirmed_native_close_vetoes_without_stopping_worker_then_retries",
+          "test_forced_host_close_keeps_actual_worker_cleanup_after_native_refusal",
+          "test_optional_desktop_rebind_failure_does_not_leave_host_on_old_catalog"
+        ],
+        "status": "NOT_COLLECTED_NOT_RUN"
+      }
+    ],
+    "static_case_total": 67,
+    "source_and_installed": true,
+    "strict": "Zero failures/errors/skips/XFAIL/XPASS. Preserve all existing native keyboard/reading/settings/backup gates.",
+    "companions": [
+      {
+        "test": "tests/ui/test_desktop_settings.py",
+        "path": "tests/ui/test_desktop_integration.py",
+        "reason": "Adjacent native-control fixture imported by exact file path."
+      }
+    ],
+    "prerequisites": "Existing core dependencies only; portable tests use declared native stand-ins and actual filesystem/LibraryApp/DesktopExecutor. No network/device/audio runtime required. Host lifecycle tests find and compile the current installed desktop_app method definitions without importing wx.",
+    "installed_origins": [
+      "carr_library.desktop_preferences",
+      "carr_library.ui.desktop_app",
+      "carr_library.ui.desktop_integration",
+      "carr_library.ui.desktop_settings",
+      "carr_library.ui.speech_dialog",
+      "carr_library.ui.keyboard_settings",
+      "carr_library.ui.command_registry",
+      "carr_library.ui.worker_lifetime",
+      "carr_library.ui.worker_cleanup",
+      "carr_library.speech.session",
+      "carr_library.native_runtime",
+      "carr_library.backup_sidecars"
+    ],
+    "preserved_existing_suites": [
+      "tests/e2e/test_desktop_preferences.py",
+      "tests/ui/test_keyboard_manager.py",
+      "tests/ui/test_reader_command_dispatch.py",
+      "tests/ui/test_progress_job_review.py",
+      "tests/speech/test_reader_usability.py",
+      "tests/speech/test_session.py",
+      "tests/storage/test_backup_v4_sidecars.py",
+      "tests/ui/test_worker_lifetime.py"
+    ],
+    "native": {
+      "script": "scripts/windows_desktop_integration_smoke.py",
+      "command": "<installed-python> -I -B scripts/windows_desktop_integration_smoke.py --installed",
+      "status": "NOT_RUN",
+      "watchdog_seconds": 180,
+      "hard_deadline_includes_cleanup": true,
+      "essential_checks": [
+        "native Space",
+        "open actual Windows clipboard",
+        "write synthetic native clipboard text",
+        "native main window has an actual HWND",
+        "native tray available",
+        "native saved choices remain inactive",
+        "actual system tray icon installed",
+        "native global key explicitly active",
+        "native reader contains the exact admitted copy",
+        "global controls bind actual canonical reader buttons",
+        "native Ctrl+S explicitly saves only the admitted reading copy",
+        "explicit clipboard draft remains unbound to retained sources",
+        "native global Stop key down",
+        "held global key dispatches once without autorepeat",
+        "native global Stop key up",
+        "opening native desktop starts no clipboard observation or OS hotkeys",
+        "explicit Hide retains an actual tray icon",
+        "actual global Show key from another window",
+        "reserve real conflict key",
+        "conflict keeps dispatch off and no partial owned registrations",
+        "release real conflict key",
+        "watching never opened a reader or persisted its pending text",
+        "closed native reader detached its global controls",
+        "clipboard recovery is an independent exact reading derivative",
+        "manual draft and retained original survived clipboard reading",
+        "production reading never rewrote native clipboard",
+        "explicit clipboard action is registered by semantic identity",
+        "second reader detached before returning to desktop",
+        "one-shot clipboard keeps the prior watched copy and manual recovery exact",
+        "one-shot clipboard action never modifies the retained original",
+        "Stop watching discards in-memory source text",
+        "tray disable leaves the window reachable",
+        "actual native main window was destroyed",
+        "existing host owner finalizers completed without a retained failure",
+        "close owns all timer and native-key cleanup",
+        "closed owner actually released the OS key",
+        "probe releases the recovered key"
+      ],
+      "required_installed_checks": [
+        "sealed installed origin: carr_library.desktop_preferences",
+        "sealed installed origin: carr_library.ui.desktop_app",
+        "sealed installed origin: carr_library.ui.desktop_integration",
+        "sealed installed origin: carr_library.ui.desktop_settings",
+        "sealed installed origin: carr_library.ui.speech_dialog",
+        "sealed installed origin: carr_library.ui.keyboard_settings",
+        "sealed installed origin: carr_library.ui.command_registry",
+        "sealed installed origin: carr_library.ui.worker_lifetime",
+        "sealed installed origin: carr_library.ui.worker_cleanup",
+        "sealed installed origin: carr_library.speech.session",
+        "sealed installed origin: carr_library.native_runtime"
+      ],
+      "installed_modules": [
+        "carr_library.desktop_preferences",
+        "carr_library.ui.desktop_app",
+        "carr_library.ui.desktop_integration",
+        "carr_library.ui.desktop_settings",
+        "carr_library.ui.speech_dialog",
+        "carr_library.ui.keyboard_settings",
+        "carr_library.ui.command_registry",
+        "carr_library.ui.worker_lifetime",
+        "carr_library.ui.worker_cleanup",
+        "carr_library.speech.session",
+        "carr_library.native_runtime"
+      ],
+      "fields": {
+        "status": "PASS",
+        "native_windows": "EXECUTED",
+        "speech_audio": "NOT_RUN",
+        "nvda": "NOT_RUN"
+      },
+      "requirements": "Actual interactive Windows tray/global keys/clipboard and wx native controls. No MCI/output-device or TTS synthesis prerequisite; missing native prerequisites fail rather than skip/mock. Preserve existing actual audio probes separately. Compare all 11 installed source SHA256 values against exact checkout sources; require all 37 static essential labels plus 11 origin labels.",
+      "interpretation": "Synthetic clipboard/source text, actual host, native shortcuts from an independent Win32 foreground window, competing OS registration, two actual reader copies and Ctrl+S, held-key no-repeat, current real Stop handler, native HWND invalidation and owner finalizer cleanup. Does not qualify speech acoustics, physical devices or manual NVDA."
+    }
+  },
+  "contracts": {
+    "authority": "Watch and OS registration begin disabled; each enable is explicit. Root object/directory identity and active selection bind watched text/current reader, with a post-native-read check. A saved file never enables observation or global keys.",
+    "publication": "8 KiB typed passive preferences, same current bounded reader and atomic publisher, exact raw compare-and-swap. Visible-but-unconfirmed directory sync reports typed error and updates observed token only for an explicit real retry.",
+    "backup": "Only exact root desktop-preferences.json is captured/validated. Clipboard text, watch state, native handles and registration authority are rejected/not saved. No new standalone state namespace.",
+    "ownership": "Same UI loop/native menu registry; no worker/player/queue replacement. Native release failures retain exact owner and can be retried on original UI thread. Forced Destroy revokes authority and retains unresolved ownership. Existing serial worker finalizers still run.",
+    "user_flow": "Voice Read clipboard opens independent recovery slot without speaking. Optional watcher holds latest snapshot in memory, no automatic readout/persistence/history/focus movement. Actual Pause/Stop buttons preserve existing reader guards.",
+    "automations": "No external ChatGPT automation has been read or modified."
+  },
+  "review": {
+    "status": "Awaiting final bounded independent review; exact donor/source/API readback reviewed locally in orchestration only.",
+    "python_parse": "NOT_RUN",
+    "yaml_powershell": "NOT_APPLICABLE_NO_WORKFLOW_EDITS",
+    "tests": "NOT_RUN",
+    "native": "NOT_RUN"
+  },
+  "guide_copy_additions": [
+    "DESKTOP_INTEGRATION.md",
+    "CLIPBOARD_READING.md"
+  ],
+  "official_references": {
+    "retrieved": "2026-11-27",
+    "urls": [
+      "https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-registerhotkey",
+      "https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-unregisterhotkey",
+      "https://docs.wxpython.org/wx.adv.TaskBarIcon.html",
+      "https://docs.wxpython.org/wx.WindowDestroyEvent.html",
+      "https://github.com/wxWidgets/wxWidgets/blob/v3.2.8/src/msw/window.cpp"
+    ]
+  }
+}

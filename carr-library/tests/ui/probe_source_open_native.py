@@ -8,6 +8,8 @@ This is not Windows/NVDA acceptance, and it launches no external viewer.
 """
 from hashlib import sha256
 import json
+import os
+import threading
 from pathlib import Path
 import platform
 from runpy import run_path
@@ -169,17 +171,22 @@ def main():
             helper['run_native_federated_smoke'](frame, completed, failed)
 
         def timed_out():
-            failures.append('Native probe exceeded 45 seconds.')
+            failures.append('Native source and search probe exceeded its 130-second UI deadline.')
+            frame.cancel_event.set()
             gui.ExitMainLoop()
 
-        timeout = wx.CallLater(45000, timed_out)
+        timeout = wx.CallLater(130000, timed_out)
         later(begin_search, milliseconds=80)
         try:
             gui.MainLoop()
         finally:
             timeout.Stop()
             wx.LaunchDefaultApplication = original_viewer
+            frame.cancel_event.set()
+            frame._closing = True
             frame.executor.shutdown(wait=True, cancel_futures=True)
+            if frame.executor.cleanup_failures:
+                failures.append('Original desktop worker retained an unclosed resource owner.')
             if frame:
                 frame.Destroy()
                 gui.ProcessPendingEvents()
@@ -193,5 +200,14 @@ def main():
     return 0
 
 
+def _hard_deadline():
+    print(json.dumps({'status': 'FAIL', 'errors': ['Native source/search process exceeded 180 seconds including cleanup.'],
+                      'windows_nvda': 'NOT_RUN'}), flush=True)
+    os._exit(124)
+
+
 if __name__ == '__main__':
+    watchdog = threading.Timer(180, _hard_deadline)
+    watchdog.daemon = True
+    watchdog.start()
     raise SystemExit(main())

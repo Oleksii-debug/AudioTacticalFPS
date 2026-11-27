@@ -619,7 +619,7 @@ def test_terminal_only_status_policy_keeps_real_child_checkpoint_progress(setup,
     b'{"state":"done","done":-1,"failed":0,"total":1}',
     b'{"state":"done","done":1,"failed":0,"total":1,"done":0}',
     b' ' * (256 * 1024 + 1),
-])
+], ids=['invalid-terminal-state', 'duplicate-done-field', 'over-limit-status'])
 def test_terminal_status_retains_strict_schema_and_exact_budget(tmp_path, payload):
     path = tmp_path / 'job_status.json'
     path.write_bytes(payload)

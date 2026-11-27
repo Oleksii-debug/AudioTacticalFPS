@@ -286,7 +286,7 @@ def describe_narration_receipt(record):
     source = 'No retained-library source anchor.'
     if anchor is not None:
         positions = anchor['positions']
-        kind = 'PDF pages' if positions[0]['kind'] == 'physical_page' else 'logical segments'
+        kind = 'Physical pages' if positions[0]['kind'] == 'physical_page' else 'logical segments'
         indices = ', '.join(str(row['index']) for row in positions[:16])
         if len(positions) > 16:
             indices += f', and {len(positions) - 16} more (listed in the receipt)'

@@ -306,6 +306,11 @@ def is_cache_directory(name):
     return _canonical.is_cache_directory(name)
 
 
+def is_cache_file(name):
+    """Only the canonical producer's explicitly optional recognition cache."""
+    return _canonical.is_cache_file(name)
+
+
 def validate_raw(db, name, raw):
     """Schema-dispatch only; external runtime paths remain inert references."""
     if _canonical.owned(name):

@@ -62,7 +62,10 @@ def test_plain_text_keeps_literal_backslashes_unicode_and_logical_lines():
 
 
 @pytest.mark.parametrize('value', ['', '  ', 'a\0b', 'a\tb', 'a\fb', 'a\x85b',
-                                     '\ud800', 'x' * 100001, 'x\n' * 4096])
+                                     '\ud800', 'x' * 100001, 'x\n' * 4096],
+                         ids=['empty', 'whitespace', 'nul', 'tab', 'form-feed',
+                              'next-line', 'unpaired-surrogate', 'too-many-characters',
+                              'too-many-lines'])
 def test_input_limits_refuse_unreviewed_layout_and_invalid_text(value):
     with pytest.raises((ValueError, UnicodeError)):
         liblouis.selected_text(value)

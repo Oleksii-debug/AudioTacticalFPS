@@ -1,0 +1,385 @@
+{
+  "schema": "resonance-import-search-validation-draft/1",
+  "base": "46d83c6639e56c0c98b511909b29473dd413306f",
+  "production_manifest": "dfbe455300173548893a45f11f7079bdbc217d7a",
+  "execution": "NOT_RUN",
+  "notes": [
+    "All existing test assertions preserved; latest Physical page/frame labels and scan/paging coverage are additive.",
+    "Large-source tests use the existing immutable publication receipt and actual one-second reconciliation.",
+    "Raster OCR suite requires actual runtime; no skip qualifies it.",
+    "Desktop handler fixture adds only source paging context."
+  ],
+  "files": [
+    {
+      "path": "carr-library/tests/catalog/test_streaming_intake.py",
+      "sha": "84fe7a923a0871aa20f9d3d1739d73dfe808371d",
+      "base": null,
+      "donor": "84fe7a923a0871aa20f9d3d1739d73dfe808371d",
+      "characters": 7832
+    },
+    {
+      "path": "carr-library/tests/citations/test_anchors.py",
+      "sha": "ca2801e12af9f07b863baf269c356bb7638948ba",
+      "base": "62230cccd3a585c8b9b80e7b6ef7309d0619fcf2",
+      "donor": "ca2801e12af9f07b863baf269c356bb7638948ba",
+      "characters": 7514
+    },
+    {
+      "path": "carr-library/tests/citations/test_authorized_action.py",
+      "sha": "90eb318db98945e7d77076213fd8fa0c12656c58",
+      "base": "d9ba33d00e0eb340633153d1d6565b3afed5c65f",
+      "donor": "90eb318db98945e7d77076213fd8fa0c12656c58",
+      "characters": 6334
+    },
+    {
+      "path": "carr-library/tests/citations/test_finish_label_integrity.py",
+      "sha": "07205bf102818161b4a138b24e5ba45f4fd94a0b",
+      "base": "7728a0223e7d8f3cf8b9a1d6ccb24f0864959e9d",
+      "donor": "07205bf102818161b4a138b24e5ba45f4fd94a0b",
+      "characters": 4774
+    },
+    {
+      "path": "carr-library/tests/citations/test_historical.py",
+      "sha": "e624caf98a04803762ffd01381c1f84670964fc4",
+      "base": "212758add81e2771ff9cbcfc64da0eaa99c9530e",
+      "donor": "e624caf98a04803762ffd01381c1f84670964fc4",
+      "characters": 4532
+    },
+    {
+      "path": "carr-library/tests/citations/test_printed_label_attestation.py",
+      "sha": "1ee6b8ea29271d3bbca692f9e202577d94cef14d",
+      "base": "a67225286fad93add3106441f1cb7dfe855d7c8a",
+      "donor": "1ee6b8ea29271d3bbca692f9e202577d94cef14d",
+      "characters": 6244
+    },
+    {
+      "path": "carr-library/tests/citations/test_span_approval_integration.py",
+      "sha": "afd9e2ba6ae60ba19da4d33809e4d7b080fcc982",
+      "base": "3b80df5b31640da66e72ab3272b5fa49cc879e5c",
+      "donor": "afd9e2ba6ae60ba19da4d33809e4d7b080fcc982",
+      "characters": 7056
+    },
+    {
+      "path": "carr-library/tests/e2e/test_application.py",
+      "sha": "5de1dfe13b352c2d429d785e5d84c0a583b7ea37",
+      "base": "e390fd526c31e8ddd5fa088f1fc43fdc8d661ac5",
+      "donor": "5de1dfe13b352c2d429d785e5d84c0a583b7ea37",
+      "characters": 10047
+    },
+    {
+      "path": "carr-library/tests/e2e/test_extended_document_workflows.py",
+      "sha": "1a17b57b9b581d57e43d3bc77e5dc73d32f02b1e",
+      "base": "1e74957ac863b86d97b69243a102607aee45ab7e",
+      "donor": "6412324b744fed99ac9f5128d560bf447fbca1a3",
+      "characters": 26185
+    },
+    {
+      "path": "carr-library/tests/e2e/test_raster_import.py",
+      "sha": "02643f21a3f1c31be1ad523b50d33730eedaa8ae",
+      "base": null,
+      "donor": "02643f21a3f1c31be1ad523b50d33730eedaa8ae",
+      "characters": 14102
+    },
+    {
+      "path": "carr-library/tests/e2e/test_raster_ocr_native.py",
+      "sha": "d56f21cf140d89e09bf11416812697e0b3cbdb81",
+      "base": null,
+      "donor": "4952d7cf624cf8561bf14414be62cc2bffd84bde",
+      "characters": 4351
+    },
+    {
+      "path": "carr-library/tests/e2e/test_retained_source_search_integrity.py",
+      "sha": "e76900b55329bc139e0f9fe478627877df8cd2dd",
+      "base": "42f31c2ae40dd0818d7f3d1bd512fd680e7db5b8",
+      "donor": "e76900b55329bc139e0f9fe478627877df8cd2dd",
+      "characters": 5855
+    },
+    {
+      "path": "carr-library/tests/extract/test_raster_pages.py",
+      "sha": "b2a5667899d06ade0a516033705cdadfa746399f",
+      "base": null,
+      "donor": "b2a5667899d06ade0a516033705cdadfa746399f",
+      "characters": 10397
+    },
+    {
+      "path": "carr-library/tests/ingest/test_batch_continuation.py",
+      "sha": "769a45db03ff9a1ef6edd0f5c3daa7848b83a4a7",
+      "base": null,
+      "donor": "769a45db03ff9a1ef6edd0f5c3daa7848b83a4a7",
+      "characters": 17733
+    },
+    {
+      "path": "carr-library/tests/ingest/test_batch_continuation_cli.py",
+      "sha": "ee0a44037e2b18b27bbfac1369507ae50b834907",
+      "base": null,
+      "donor": "ee0a44037e2b18b27bbfac1369507ae50b834907",
+      "characters": 6598
+    },
+    {
+      "path": "carr-library/tests/reader/test_academic_documents.py",
+      "sha": "a1ef7c56b9ba8a450e404eec586d0adad0911bc7",
+      "base": "0bcf74f53cdad98d719c384218938110117c2e1a",
+      "donor": "a1ef7c56b9ba8a450e404eec586d0adad0911bc7",
+      "characters": 14084
+    },
+    {
+      "path": "carr-library/tests/reader/test_anchored_export.py",
+      "sha": "a20ebc4a3ffc6ff732cfb71301fe3a922be61a22",
+      "base": "0066c2465fd373402312c8638e8540e383e70e90",
+      "donor": "a20ebc4a3ffc6ff732cfb71301fe3a922be61a22",
+      "characters": 3591
+    },
+    {
+      "path": "carr-library/tests/reader/test_bibliographic_locators.py",
+      "sha": "157b2668902aab78f9735d12d1ee0195075b6c3b",
+      "base": "8cf2b75e6fff91e39884615e4c0f5ebae4ccf335",
+      "donor": "157b2668902aab78f9735d12d1ee0195075b6c3b",
+      "characters": 2830
+    },
+    {
+      "path": "carr-library/tests/reader/test_context.py",
+      "sha": "a911791aea6897b0954c142763f266b87f14fe93",
+      "base": "ea4b636af2c7104c42992acf80486d9a5b3710bb",
+      "donor": "a911791aea6897b0954c142763f266b87f14fe93",
+      "characters": 3994
+    },
+    {
+      "path": "carr-library/tests/reader/test_evidence_export.py",
+      "sha": "f366ec36bf218ec5f885d5142d58b4806a2cf1e6",
+      "base": "2c2edd02d07f87c10746d9e934edacbde54f9c9d",
+      "donor": "f366ec36bf218ec5f885d5142d58b4806a2cf1e6",
+      "characters": 4292
+    },
+    {
+      "path": "carr-library/tests/reader/test_finish_export_formats.py",
+      "sha": "93c3612f6d9c2b0299c7e299712b05fd2325924d",
+      "base": "3c228c0b91829ade3f87ec4d8c0579e3e267fe17",
+      "donor": "93c3612f6d9c2b0299c7e299712b05fd2325924d",
+      "characters": 6782
+    },
+    {
+      "path": "carr-library/tests/reader/test_historical_reader_integration.py",
+      "sha": "9d8307409a7e0ea8cf1856d28c16930f61f7e33d",
+      "base": "8ddeba0ee9625dc3fe394810fc7f8a391e564b10",
+      "donor": "9d8307409a7e0ea8cf1856d28c16930f61f7e33d",
+      "characters": 6975
+    },
+    {
+      "path": "carr-library/tests/reader/test_reading_desk.py",
+      "sha": "6353bf195c671dcb49e1bda33dcecc9c6376d246",
+      "base": "a5fb0ad59712fc3dade02aeac3cb051ef01d63f4",
+      "donor": "6353bf195c671dcb49e1bda33dcecc9c6376d246",
+      "characters": 13650
+    },
+    {
+      "path": "carr-library/tests/reader/test_saved_span_compatibility.py",
+      "sha": "15da926d0d11796b24e756b5d4dc82d4ca870e8d",
+      "base": "12ed41cf62293dcea68c98f8e7266951a698b0b0",
+      "donor": "15da926d0d11796b24e756b5d4dc82d4ca870e8d",
+      "characters": 10649
+    },
+    {
+      "path": "carr-library/tests/reader/test_span_snapshot.py",
+      "sha": "643bfcc5675ff22068fcf9376fac412dd8f7b410",
+      "base": "35352ecf6cd2b8be4c122c171dc0f7f52a86a475",
+      "donor": "643bfcc5675ff22068fcf9376fac412dd8f7b410",
+      "characters": 5106
+    },
+    {
+      "path": "carr-library/tests/reader/test_topic_literature_matrix.py",
+      "sha": "1c145b57dee05cad0314f1f71bac2556948911fe",
+      "base": "fc2a595924c0ce76ac408912084b270d6437f732",
+      "donor": "1c145b57dee05cad0314f1f71bac2556948911fe",
+      "characters": 16034
+    },
+    {
+      "path": "carr-library/tests/research/test_outline_export.py",
+      "sha": "82f37bdcecb544a8fbb4b11189e9c4afd5d2e879",
+      "base": "c76c8fb3499c629c4efa215cf1ff224e428a0fb0",
+      "donor": "82f37bdcecb544a8fbb4b11189e9c4afd5d2e879",
+      "characters": 13965
+    },
+    {
+      "path": "carr-library/tests/search/test_federated_epub.py",
+      "sha": "9c5acf3c96ed537e0c0f64b73d1bc9edbdf5b0e3",
+      "base": "4ac3d1dd68e0b00a0720272c2fe8222bfc99afac",
+      "donor": "9c5acf3c96ed537e0c0f64b73d1bc9edbdf5b0e3",
+      "characters": 5149
+    },
+    {
+      "path": "carr-library/tests/search/test_literal_readonly.py",
+      "sha": "f609a2c6a1658b974e883e959b0af00a62123601",
+      "base": "545665899e3d70acc70912ad4e15619b7fb67896",
+      "donor": "f609a2c6a1658b974e883e959b0af00a62123601",
+      "characters": 3714
+    },
+    {
+      "path": "carr-library/tests/search/test_thematic_budget.py",
+      "sha": "f18b338b34fdf273fa09e66ac7e9cdad690a465a",
+      "base": "da2b7429c25fc68ac267da3d0704b0c188d422a9",
+      "donor": "f18b338b34fdf273fa09e66ac7e9cdad690a465a",
+      "characters": 2678
+    },
+    {
+      "path": "carr-library/tests/storage/test_complete_pending_backup.py",
+      "sha": "36fe4b61a3a61351fecc1a88016c1e1db32275d5",
+      "base": "1fa4bf33b17eed0e31ec80bb2abac410f8a49ee2",
+      "donor": "4c04f814b1a0428e1a0a3d0a92dc7bd381341669",
+      "characters": 5171
+    },
+    {
+      "path": "carr-library/tests/storage/test_pending_backup.py",
+      "sha": "6de7ad58d8225f4850379142a27ba73dd455bda4",
+      "base": "43726b8d45293bfc0d1534360c218b87d3dd3e70",
+      "donor": "8f280779c1d832ee0bf44413468befef489f7f4c",
+      "characters": 24370
+    },
+    {
+      "path": "carr-library/tests/ui/native_document_formats_smoke.py",
+      "sha": "82f31e5ba0528351a805a62826549d3cdd469a22",
+      "base": "6e997f37ce6dc8b25a47171bca73f21e2e1ddf17",
+      "donor": "82f31e5ba0528351a805a62826549d3cdd469a22",
+      "characters": 14242
+    },
+    {
+      "path": "carr-library/tests/ui/native_evidence_pages_smoke.py",
+      "sha": "7dbeee840364d72bb2c80e92461070acc1512fe7",
+      "base": "b27e9998350a053f56a7dd19e5c43c855bb78240",
+      "donor": "7dbeee840364d72bb2c80e92461070acc1512fe7",
+      "characters": 14301
+    },
+    {
+      "path": "carr-library/tests/ui/probe_page_context_dialog.py",
+      "sha": "c9d983650fa8f5552e7492d9651ef72880c12095",
+      "base": "779bd9cc7a3467ea733887ef199a31ded2634410",
+      "donor": "c9d983650fa8f5552e7492d9651ef72880c12095",
+      "characters": 4501
+    },
+    {
+      "path": "carr-library/tests/ui/test_desktop_handlers.py",
+      "sha": "ea0ddfd02283671854f265817392cb0f8f3c68bf",
+      "base": "b96e0f4d7aa2c870ea3f2db5079933fce5a1d1ec",
+      "donor": "f5d88199dbdbea765cf3bfb83df2086e9058796c",
+      "characters": 37601
+    },
+    {
+      "path": "carr-library/tests/ui/test_federated_labels.py",
+      "sha": "1a21395275e9f60b472701e10f9d53f4b4a81af0",
+      "base": "d17c390e775a71c1bb7e87cc0e094524c78f52fa",
+      "donor": "1a21395275e9f60b472701e10f9d53f4b4a81af0",
+      "characters": 9113
+    },
+    {
+      "path": "carr-library/tests/ui/test_import_center.py",
+      "sha": "18ffd2adffe4d68ab4a0d7e3ff6b9fb00c7d5486",
+      "base": "0c8a185217bbc7ad87080182dec980d19b3b7ed2",
+      "donor": "5c51e48bf599ed2668efcf9b3c95675f7bea3bfc",
+      "characters": 23497
+    },
+    {
+      "path": "carr-library/tests/ui/test_source_open_handler.py",
+      "sha": "051ab1cce4ecff4d4f6b0ba4258fa1ed4363dee8",
+      "base": "51a6b47bec77e6f70fca013c13abb1c26d751e48",
+      "donor": "051ab1cce4ecff4d4f6b0ba4258fa1ed4363dee8",
+      "characters": 9227
+    },
+    {
+      "path": "carr-library/tests/ui/test_source_review.py",
+      "sha": "2e6457e0c37c79ea5a5ba3d8e3d816792ad9adf5",
+      "base": "bfa870256a687f9a7df7e23ff2a5aa3b0fdad019",
+      "donor": "2e6457e0c37c79ea5a5ba3d8e3d816792ad9adf5",
+      "characters": 22726
+    },
+    {
+      "path": "carr-library/tests/e2e/test_research_search_cli.py",
+      "sha": "cbbb9b639c515ff3be1c9be833b61331a0225f97",
+      "base": "e350d392243964151fc5d2beceb49b010ab65952",
+      "donor": "cbbb9b639c515ff3be1c9be833b61331a0225f97",
+      "characters": 9614
+    },
+    {
+      "path": "carr-library/tests/search/test_federated.py",
+      "sha": "cd706c3d117aea902c544acec1851e283296d858",
+      "base": "6538ec637c5a6f6e781bfbe57a5bf37378d23149",
+      "donor": "cd706c3d117aea902c544acec1851e283296d858",
+      "characters": 16357
+    },
+    {
+      "path": "carr-library/tests/ui/federated_native_smoke.py",
+      "sha": "ae2cbc8badd3af7efff5935a5277a0092a385c15",
+      "base": "7820aa877f814fbe4ab58ef492e21dcaf0870804",
+      "donor": "ae2cbc8badd3af7efff5935a5277a0092a385c15",
+      "characters": 20260
+    },
+    {
+      "path": "carr-library/tests/ui/test_federated_search.py",
+      "sha": "7a39f30588c7d47a3291695990a581a7a23a4d0a",
+      "base": "919ad77c201aa51c20bc2ab1004779f9a0289261",
+      "donor": "7a39f30588c7d47a3291695990a581a7a23a4d0a",
+      "characters": 45104
+    },
+    {
+      "path": "carr-library/tests/search/test_search_paging.py",
+      "sha": "809e9433d5a1f1f098c0e21518cbce540e230dcc",
+      "base": null,
+      "donor": "809e9433d5a1f1f098c0e21518cbce540e230dcc",
+      "characters": 9618
+    },
+    {
+      "path": "carr-library/tests/ingest/test_scan_root_binding.py",
+      "sha": "293d80c45fbfbf0de0232b2247e93528d0ccfc50",
+      "base": null,
+      "donor": null,
+      "characters": 4614
+    },
+    {
+      "path": "carr-library/tests/ingest/large_source_fixtures.py",
+      "sha": "7d59170c1d372d9b1bbdfa672dfd2d80021a26df",
+      "base": null,
+      "donor": "864d513aa906ed5cdc99a5f8ef6229fd911650ee",
+      "characters": 7874
+    },
+    {
+      "path": "carr-library/tests/ingest/test_large_source_intake.py",
+      "sha": "df8202f05f8446e6f447d2bce9b17893339bec72",
+      "base": null,
+      "donor": "b5c04fe1e564497990e732c70b3b065487569c6c",
+      "characters": 15237
+    },
+    {
+      "path": "carr-library/scripts/windows_import_scan_smoke.py",
+      "sha": "13253de34686dfb95d49939a7312ed40da295f1e",
+      "base": null,
+      "donor": "13253de34686dfb95d49939a7312ed40da295f1e",
+      "characters": 14076
+    },
+    {
+      "path": "carr-library/docs/IMPORT_SCAN_CONTINUATION.md",
+      "sha": "beba2baef5421f3fe0d731e5a4fff41c8372fb76",
+      "base": null,
+      "donor": "beba2baef5421f3fe0d731e5a4fff41c8372fb76",
+      "characters": 6880
+    },
+    {
+      "path": "carr-library/docs/LARGE_SOURCE_INTAKE.md",
+      "sha": "0ff1fb385050ec52bf5c7567099c7afb022b8f27",
+      "base": null,
+      "donor": "f4ace43ef40a7b9b35979621ea6b2cc0cec33a13",
+      "characters": 4762
+    },
+    {
+      "path": "carr-library/docs/SEARCH_PAGING.md",
+      "sha": "78f3c3e2eb63f44e50fa3e04fd0d10dd9a42d0c9",
+      "base": null,
+      "donor": "78f3c3e2eb63f44e50fa3e04fd0d10dd9a42d0c9",
+      "characters": 5383
+    },
+    {
+      "path": "carr-library/docs/DOCUMENT_FORMATS_V3.md",
+      "sha": "b47293e2926e433ce98dd7998cf5fb7bbd72ab65",
+      "base": "0373f66fa6c61b8544c783e3d6ce037f2f03bc27",
+      "donor": "b47293e2926e433ce98dd7998cf5fb7bbd72ab65",
+      "characters": 12492
+    }
+  ]
+}

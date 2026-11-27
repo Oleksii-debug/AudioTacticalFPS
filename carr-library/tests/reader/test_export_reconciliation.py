@@ -171,17 +171,22 @@ def test_replaced_existing_destination_not_opened(publication, monkeypatch, phas
             replace_destination()
         monkeypatch.setattr(e.os, 'fsync', competing_writer)
 
-    opened = []
-    real_open = os.open
+    opened, native_queries = [], []
+    real_open, real_native = os.open, e._windows_change_time
     def observe(path, *args, **kwargs):
         if changed and Path(path) == target:
             opened.append(path)
         return real_open(path, *args, **kwargs)
+    def native_metadata(path):
+        if changed and Path(path) == target:
+            native_queries.append(path)
+        return real_native(path)
     monkeypatch.setattr(e.os, 'open', observe)
+    monkeypatch.setattr(e, '_windows_change_time', native_metadata)
     with pytest.raises(ValueError, match='destination changed'):
         publish(approval=approval)
     assert changed
-    assert not opened
+    assert not opened and not native_queries
     assert target.read_bytes() == unrelated
     assert not list(target.parent.glob('.research-export-*'))
 

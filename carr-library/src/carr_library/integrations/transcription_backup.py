@@ -50,6 +50,12 @@ def is_cache_directory(name):
     return bool(match and match[3] == 'logs/cache')
 
 
+def is_cache_file(name):
+    """Recognize the same optional current/history cache subtree as capture."""
+    match = WORKER.fullmatch(name)
+    return bool(match and CACHE.fullmatch(match[3]))
+
+
 def ignored(name):
     if not name.startswith(PREFIX):
         return False
