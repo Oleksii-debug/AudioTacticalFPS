@@ -294,11 +294,15 @@ def _diagnose_public_chm(source, stage, monkeypatch):
                     failures.append(observed)
                     emit({'event': 'member-failure', **observed})
                 checked.append(observed)
+                emit({'event': 'member-validation', **{key: observed[key] for key in
+                    ('member', 'bytes', 'sha256', 'status')}})
         complete = True
     finally:
         emit({'event': 'publisher-html-census', 'complete': complete,
             'declared_html_members': len(rows), 'checked_html_members': len(checked),
-            'failed_members': len(failures), 'members': checked,
+            'failed_members': len(failures),
+            'member_inventory_sha256': sha256(json.dumps(checked, ensure_ascii=True,
+                sort_keys=True, separators=(',', ':')).encode('utf-8')).hexdigest(),
             'seconds_budget': 45})
     if failures:
         raise ValueError('Pinned public CHM HTML census found ' + str(len(failures)) + ' parser failures.')
