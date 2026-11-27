@@ -9,10 +9,11 @@ import urllib.parse
 import urllib.request
 import zipfile
 REPOSITORY = "Oleksii-debug/AudioTacticalFPS"
-RUN = 46031920263
-HEAD = "94ecfdd48c65d03f0b29abee9000fd4e2a1610ee"
-ARTIFACTS = (
-    (15222511230, "1b8d4313d87515f4d7900870c6d974d97acdab50b407877145f2f63bba068bde"),
+SOURCES = (
+    (46031920263, "94ecfdd48c65d03f0b29abee9000fd4e2a1610ee", 15222511230,
+     "1b8d4313d87515f4d7900870c6d974d97acdab50b407877145f2f63bba068bde"),
+    (46048596823, "142de6b6028cc86f9a5bf70c42e60adc40f96b77", 15225545937,
+     "37b5be532c41622c85bade0028b83f5c56bc6da41886c3484ea205cb88d04269"),
 )
 class SafeRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
@@ -40,24 +41,23 @@ def emit(text):
     accepted = str(text)[:remaining]
     print(accepted, flush=True)
     remaining -= len(accepted) + 1
-for identity, digest in ARTIFACTS:
+for run, head, identity, digest in SOURCES:
     endpoint = "https://api.github.com/repos/" + REPOSITORY + "/actions/artifacts/" + str(identity)
     metadata = json.loads(fetch(endpoint, 128 * 1024))
-    if (metadata["id"] != identity or metadata["workflow_run"]["id"] != RUN
-            or metadata["workflow_run"]["head_sha"] != HEAD
+    if (metadata["id"] != identity or metadata["workflow_run"]["id"] != run
+            or metadata["workflow_run"]["head_sha"] != head
             or metadata.get("expired") or metadata["digest"] != "sha256:" + digest):
         raise ValueError("Artifact identity changed")
     raw = fetch(endpoint + "/zip", 2 * 1024 * 1024)
     if hashlib.sha256(raw).hexdigest() != digest:
         raise ValueError("Artifact digest mismatch")
     emit(json.dumps({"artifact": identity, "name": metadata["name"], "sha256": digest,
-                     "source_head": HEAD, "scope": "existing failure evidence; no tests executed"}))
+                    "source_head": head, "scope": "existing public failure evidence; no tests executed"}))
     with zipfile.ZipFile(io.BytesIO(raw)) as archive:
         entries = archive.infolist()
         if len(entries) > 2000 or sum(x.file_size for x in entries) > 128 * 1024 * 1024:
             raise ValueError("Evidence archive exceeds reviewed bound")
         emit("FILES " + json.dumps([(x.filename, x.file_size) for x in entries if not x.is_dir()])[:10000])
-        entries.sort(key=lambda entry: (0 if "required" in entry.filename.lower() or "full-runtime" in entry.filename.lower() else 1, entry.filename))
         for entry in entries:
             name = entry.filename
             path = PurePosixPath(name)
@@ -67,39 +67,24 @@ for identity, digest in ARTIFACTS:
             if entry.is_dir() or path.suffix.lower() not in (".txt", ".log", ".json", ".xml"):
                 continue
             content = archive.read(entry).decode("utf-8-sig", errors="replace")
-            if path.suffix.lower() == ".json":
-                emit("JSON " + name + "\n" + content[:18000])
-                continue
             lines = content.splitlines()
-            summary = [line for line in lines if re.search(
-                r"(?:^|[.])FAIL: tests/|^Required suites complete:|^FAILED tests/|^ERROR tests/", line)]
-            emit("ALL_VERDICTS " + name + "\n" + "\n".join(line[:650] for line in summary)[:36000])
-            markers = [i for i, line in enumerate(lines) if re.search(
-                r"^(?:FAILED |ERROR |FAIL: |Required suites complete:)|"
-                r"Traceback \(most recent call last\)|"
-                r"^(?:AssertionError|AttributeError|NameError|RuntimeError|TypeError|ValueError|ImportError|PermissionError|FileNotFoundError):|"
-                r"^E\s+|={3,} (?:FAILURES|ERRORS|short test summary)", line)]
-            if not markers:
+            if identity == 15225545937:
+                if "reading-production" in name:
+                    emit("CURRENT_WINDOWS_SOURCE_VERDICTS " + name + "\n" + "\n".join(
+                        line[:800] for line in lines if re.search(
+                        r"PASS: tests/|FAIL: tests/|Required suites complete:|TIMEOUT|TimeoutExpired|ERROR tests/|FAILED tests/", line))[:22000])
+                    emit("CURRENT_WINDOWS_SOURCE_TAIL " + name + "\n" + content[-70000:])
+                elif "book-audio" in name and path.suffix.lower() == ".json":
+                    emit("CURRENT_BOOK_RECEIPT " + name + "\n" + content[:18000])
                 continue
-            emit("TEXT " + name + "\n" + "\n".join(lines[i][:1000] for i in markers)[:14000])
+            terms = ("test_stopped_child_reports_verified_fresh_commit", "after-commit")
+            hits = [i for i, line in enumerate(lines) if any(term in line for term in terms)]
+            if not hits:
+                continue
             chosen = set()
-            for index in markers:
-                if lines[index].startswith(("FAIL: ", "Required suites complete:")):
-                    continue
-                chosen.update(range(max(0, index - 12), min(len(lines), index + 7)))
-            emit("CONTEXT " + name + "\n" + "\n".join(
-                str(i + 1) + ": " + lines[i][:1000] for i in sorted(chosen))[:5000])
-for job in ():
-    endpoint = "https://api.github.com/repos/" + REPOSITORY + "/actions/jobs/" + str(job)
-    metadata = json.loads(fetch(endpoint, 512 * 1024))
-    if metadata["run_id"] != RUN or metadata["head_sha"] != HEAD:
-        raise ValueError("Prior job identity differs")
-    raw = fetch(endpoint + "/logs", 48 * 1024 * 1024).decode("utf-8-sig", errors="replace")
-    lines = raw.splitlines()
-    selected = set()
-    for index, line in enumerate(lines):
-        if re.search(r"clipboard|ModuleNotFoundError|ImportError|unrecognized arguments|can't open file", line, re.I):
-            selected.update(range(max(0, index - 6), min(len(lines), index + 12)))
-    emit("NATIVE_JOB_CONTEXT " + str(job) + "\n" + "\n".join(lines[i][:1800] for i in sorted(selected))[:26000])
+            for index in hits:
+                chosen.update(range(max(0, index - 45), min(len(lines), index + 95)))
+            emit("IMPORT_COMMIT_FAILURE_CONTEXT " + name + "\n" + "\n".join(
+                str(i + 1) + ": " + lines[i][:1200] for i in sorted(chosen))[:65000])
 emit(json.dumps({"summary_complete": True, "remaining_output_budget": remaining,
-                 "source_run": RUN, "source_head": HEAD, "qualification": "diagnostic only"}))
+                 "qualification": "diagnostic only; immutable prior source heads"}))
