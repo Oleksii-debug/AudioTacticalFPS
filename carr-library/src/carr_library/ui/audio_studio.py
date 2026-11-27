@@ -844,6 +844,7 @@ class AudioStudioDialog:
         queue_buttons = wx.WrapSizer(wx.HORIZONTAL)
         for label, handler in (('Record microphone or manage retakes', self.record_microphone),
                                ('Add WAV recordings', self.add_recordings), ('Clear playlist', self.clear_playlist),
+                               ('Saved playback queue...', self.saved_playback_queue),
                                ('Play selected recording', self.play_selected), ('Previous recording', self.previous_recording),
                                ('Next recording', self.next_recording)):
             self._button(playback_page, queue_buttons, label, handler)
@@ -1906,6 +1907,21 @@ class AudioStudioDialog:
                                   'The reading text remains unchanged.', focus=True)
             show_recording(self.parent, window_parent=self.dialog, project_id=cue_project,
                            on_selected=selected, selection_label=label, ffmpeg=self.controller.ffmpeg)
+        except Exception as exc:
+            self._error(exc)
+
+    def saved_playback_queue(self, event=None):
+        if self.closed or self.busy:
+            return
+        try:
+            from .playback_queue import show_playback_queue
+            library = self.parent.library
+            if self.controller.private_root != Path(library.root).absolute():
+                raise ValueError('Open the saved queue from the current library.')
+            selected = self.playback.playlist
+            self.playback.stop()
+            show_playback_queue(self.parent, initial_paths=selected)
+            self.refresh_playback()
         except Exception as exc:
             self._error(exc)
 
