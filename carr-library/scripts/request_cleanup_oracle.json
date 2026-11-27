@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "component": "Owned parser request cleanup and speech flush cancellation",
+  "authoring_status": "NOT_RUN",
+  "derivation": "Preserves all 55 observed case-start multiplicities from run45993629737, plus three boundary regressions. Actual Windows source and isolated installed JUnit Counters remain mandatory.",
+  "failure_source_commit": "523aa40f9215569a276f0625d09fcc0fa84bb520",
+  "failure_run_id": 45993629737,
+  "tests": {
+    "tests/e2e/test_import_worker_publication.py": {
+      "test_barrier_leaves_other_processes_unchanged": 2,
+      "test_stopped_child_reports_verified_fresh_commit": 9,
+      "test_stopped_child_before_commit_never_reports_completion": 6,
+      "test_competing_commit_after_kill_does_not_complete_stopped_request": 9,
+      "test_cancelled_replay_cannot_claim_preexisting_publication": 1,
+      "test_replay_preserves_original_receipt_and_sql_replacement_is_rejected": 1,
+      "test_recovery_rechecks_candidate_source_and_authorization": 3,
+      "test_resumed_attempt_cannot_reuse_old_candidate_when_cancelled_before_launch": 1,
+      "test_docx_publication_keeps_existing_logical_record_capacity": 1,
+      "test_recovered_commit_with_pending_extraction_journal_survives_backup": 1
+    },
+    "tests/ingest/test_worker_owned_family.py": {
+      "test_parser_owner_settles_descendant_after_leader_exit": 2,
+      "test_parser_request_handle_is_read_only": 1
+    },
+    "tests/e2e/test_streamed_source_import.py": {
+      "test_explicit_streamed_import_uses_real_worker_receipt_and_independent_quote": 1,
+      "test_whole_original_proof_is_rechecked_after_same_size_late_change": 1,
+      "test_real_worker_cancellation_can_resume_from_owned_bytes_after_source_is_deleted": 1,
+      "test_profile_is_frozen_in_the_supervising_attempt": 1,
+      "test_actual_over_64_mib_source_imports_without_the_legacy_byte_api": 1,
+      "test_pdf_and_streamed_request_allowances_remain_separate": 1,
+      "test_sealed_profile_lookup_preserves_bounded_pdf_and_rejects_bare_large_text": 1
+    },
+    "tests/audio/test_publication_fsync.py": {
+      "test_cancellation_during_final_flush_does_not_publish": 4,
+      "test_late_cancellation_cannot_reverse_actual_move": 4,
+      "test_directory_flush_cancellation_preserves_unpublished_complete_stage": 1,
+      "test_real_pcm_silence_cannot_publish_after_final_flush_cancellation": 1,
+      "test_flush_failure_still_preserves_stage_and_prevents_publication": 1
+    },
+    "tests/ingest/test_request_cleanup.py": {
+      "test_owned_request_waits_for_native_read_handle_release": 1,
+      "test_request_access_error_remains_visible_and_preserves_owned_bytes": 1,
+      "test_constructor_failure_closes_request_before_directory_cleanup": 1
+    }
+  },
+  "total_cases": 58
+}

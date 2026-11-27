@@ -789,6 +789,31 @@ def _execute_request(root, workspace, record, request_id, *, admission, timeout,
     return result
 
 
+@contextmanager
+def _request_directory():
+    """Keep a private request alive until its native file handles release it.
+
+    The owned process family and our streams settle before this outer context.
+    Windows can still report a sharing violation at the first directory cleanup
+    attempt. Retry that exact owned temporary directory for a bounded interval;
+    access, path and other failures remain visible.
+    """
+    directory = TemporaryDirectory(prefix='carr-worker-request-')
+    try:
+        yield directory.name
+    finally:
+        deadline = time.monotonic() + 5
+        while True:
+            try:
+                directory.cleanup()
+                break
+            except OSError as exc:
+                if (os.name != 'nt' or getattr(exc, 'winerror', None) not in (32, 33)
+                        or time.monotonic() >= deadline):
+                    raise
+                time.sleep(min(.02, max(0, deadline - time.monotonic())))
+
+
 def _invoke(message, *, timeout, cancelled=lambda: False, on_started=None):
     """One process supervisor for import and render operations."""
     from ..audio.engines import _start_process
@@ -801,7 +826,7 @@ def _invoke(message, *, timeout, cancelled=lambda: False, on_started=None):
     with ExitStack() as owned:
         # Reopen the bounded request with actual read-only native rights.
         # Every stream outlives the owned family, including constructor failure.
-        temporary = owned.enter_context(TemporaryDirectory(prefix='carr-worker-request-'))
+        temporary = owned.enter_context(_request_directory())
         request_path = Path(temporary) / 'request.json'
         with request_path.open('xb') as destination:
             destination.write(payload)

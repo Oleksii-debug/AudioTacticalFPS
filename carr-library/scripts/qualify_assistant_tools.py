@@ -87,6 +87,13 @@ def run(command, cwd, environment, output, label, *, timeout):
         result = subprocess.run(command, cwd=cwd, env=environment, stdout=stdout, stderr=stderr,
                                 timeout=timeout, check=False)
     if result.returncode:
+        for suffix in ('stdout', 'stderr'):
+            path = output / (label + '.' + suffix + '.txt')
+            with path.open('rb') as stream:
+                stream.seek(max(0, path.stat().st_size - 65536))
+                tail = stream.read(65536).decode('utf-8', errors='replace')
+            print(label + ' ' + suffix + ' (bounded failure output):', flush=True)
+            print(tail, flush=True)
         raise RuntimeError(label + ' failed with exit status ' + str(result.returncode))
 
 

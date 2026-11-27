@@ -96,9 +96,9 @@ jobs:
           if (-not (Test-Path -LiteralPath $dll -PathType Leaf)) { throw 'Exact native Hunspell DLL is missing.' }
           $normalizer = Join-Path $work 'Підготовка тексту'
           $dictionary = Join-Path $work 'Словник Hunspell'
-          & $python -I -B packaging/prepare_reading_tools.py --wheelhouse $wheels --output $normalizer --reviewed-assets | Set-Content ci-results/reading-preparation-normalizer-build.json
+          & $python -I -B -X utf8 packaging/prepare_reading_tools.py --wheelhouse $wheels --output $normalizer --reviewed-assets | Set-Content ci-results/reading-preparation-normalizer-build.json
           if ($LASTEXITCODE -ne 0) { throw 'Optional number library pack failed verification.' }
-          & $python -I -B packaging/prepare_reading_tools.py --hunspell-dll $dll --hunspell-source $source --output $dictionary --reviewed-assets | Set-Content ci-results/reading-preparation-hunspell-build.json
+          & $python -I -B -X utf8 packaging/prepare_reading_tools.py --hunspell-dll $dll --hunspell-source $source --output $dictionary --reviewed-assets | Set-Content ci-results/reading-preparation-hunspell-build.json
           if ($LASTEXITCODE -ne 0) { throw 'Native Hunspell fixture pack failed verification.' }
           Copy-Item -LiteralPath (Join-Path $normalizer 'manifest.json') -Destination ci-results/reading-preparation-normalizer-manifest.json
           Copy-Item -LiteralPath (Join-Path $dictionary 'manifest.json') -Destination ci-results/reading-preparation-hunspell-manifest.json

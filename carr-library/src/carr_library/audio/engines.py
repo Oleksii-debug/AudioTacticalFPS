@@ -166,12 +166,15 @@ def _wave_info(path, *, cancelled=lambda: False):
 
 def _publish(source, target, *, cancelled=lambda: False):
     """Same-filesystem atomic publication that cannot replace another file."""
-    from .jobs import publish_noreplace
+    from .jobs import RenderCancelled, publish_noreplace
     target = _output(target)
     _cancelled(cancelled)
     # The voice worker owns this private stage; moving it also avoids a
     # hardlink alias if the application exits before temporary cleanup.
-    publish_noreplace(source, target)
+    try:
+        publish_noreplace(source, target, cancelled=cancelled)
+    except RenderCancelled as exc:
+        raise InterruptedError('Speech operation cancelled before publication.') from exc
 
 
 def _start_process(command, **options):
