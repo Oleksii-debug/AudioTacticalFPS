@@ -3,7 +3,7 @@ from pathlib import Path
 import threading
 
 
-def show_transcription(frame):
+def show_transcription(frame, *, selected_job=None):
     import wx
     if getattr(frame, 'working', False) or getattr(frame, '_closing', False):
         frame.report('Finish or cancel the current operation before opening transcription.')
@@ -12,7 +12,10 @@ def show_transcription(frame):
     if active is None:
         frame.report('Select an active library before opening transcription.')
         return
-    service = frame.library.transcription(active[0])
+    library, library_root = frame.library, Path(frame.library.root)
+    service = library.transcription(active[0])
+    if selected_job is not None:
+        service.get(selected_job)  # Existing scope and identity; no worker launch.
     dialog = wx.Dialog(frame, title='Транскрипція — локальний Whisper', size=(900, 850),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
     layout = wx.BoxSizer(wx.VERTICAL)
@@ -135,14 +138,19 @@ def show_transcription(frame):
         jobs.SetItems([f"{item['title']} — {item['status']} ({item['done']}/{len(item['sources'])})" for item in rows])
         if rows:
             ids = [item['id'] for item in rows]
-            jobs.SetSelection(ids.index(select) if select in ids else 0)
+            if select is not None and select not in ids:
+                raise ValueError('The selected saved transcription no longer exists in this library.')
+            jobs.SetSelection(ids.index(select) if select is not None else 0)
+        elif select is not None:
+            raise ValueError('The selected saved transcription no longer exists in this library.')
         load_job()
     def begin(label, operation, complete, *, allow_dirty=False):
         nonlocal busy
         if busy or (not allow_dirty and not can_replace()):
             return
-        if getattr(frame, 'working', False) or getattr(frame, '_closing', False):
-            report('Спочатку завершіть поточну операцію програми.')
+        if (getattr(frame, 'working', False) or getattr(frame, '_closing', False)
+                or frame.library is not library or Path(library.root) != library_root):
+            report('Спочатку завершіть поточну операцію або знову відкрийте поточну бібліотеку.')
             return
         busy = True
         cancel.clear()
@@ -151,7 +159,7 @@ def show_transcription(frame):
             nonlocal busy
             busy = False
             controls()
-            if alive:
+            if alive and frame.library is library and Path(library.root) == library_root:
                 try:
                     complete(result)
                 except (ValueError, OSError, RuntimeError) as exc:
@@ -165,7 +173,9 @@ def show_transcription(frame):
             busy = False
             controls()
     def cancelled():
-        return cancel.is_set() or frame.cancel_event.is_set()
+        return (not alive or cancel.is_set() or frame.cancel_event.is_set()
+                or getattr(frame, '_closing', False) or frame.library is not library
+                or Path(library.root) != library_root)
     def configure(event):
         try:
             from ..transcription import PROTOCOLS
@@ -348,7 +358,7 @@ def show_transcription(frame):
     text.Bind(wx.EVT_TEXT, changed)
     dialog.Bind(wx.EVT_CLOSE, close)
     try:
-        refresh()
+        refresh(selected_job)
         controls()
         jobs.SetFocus()
         dialog.ShowModal()

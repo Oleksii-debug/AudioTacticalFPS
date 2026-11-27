@@ -624,6 +624,8 @@ class DesktopFrame(WorkspaceFrame):
         install_portable_sync_actions(self)
         from .trust_status import install_trust_actions
         install_trust_actions(self)
+        from .operations_dialog import install_operations_actions
+        install_operations_actions(self)
         from .keyboard_settings import install_keyboard_settings
         install_keyboard_settings(self)
         from .progress_panel import install_progress_panel

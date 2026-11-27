@@ -27,6 +27,8 @@ MAX_PRIMARY_BYTES = 32 * 1024**3
 
 
 def limit(name):
+    if name == 'state/operations/resources.json':
+        return 32768
     if match := RECORDING.fullmatch(name):
         return 2 * 1024**3 if match[2] == 'wav' else 32 * 1024 * 1024
     if MANAGED_INPUT.fullmatch(name):
@@ -185,13 +187,13 @@ def _studio_job(value, identity):
     from .studio.project import Project
     fields(value, {'schema', 'id', 'status', 'project', 'fingerprint', 'destination',
                    'format', 'stems', 'nodes', 'artifacts', 'progress', 'created',
-                   'updated', 'error', 'runtime'}, {'result', 'total_disk_bytes', 'origin', 'recovery'})
+                   'updated', 'error', 'runtime'}, {'result', 'total_disk_bytes', 'origin', 'recovery', 'resource_plan'})
     if type(value['schema']) is not int or value['schema'] != 1 or value['id'] != identity:
         raise ValueError('Invalid production job identity.')
     project = Project.from_dict(value['project'])
     if value['fingerprint'] != project.fingerprint:
         raise ValueError('Production project fingerprint changed.')
-    if value['status'] not in ('pending', 'running', 'paused', 'cancelled', 'failed', 'complete'):
+    if value['status'] not in ('pending', 'queued', 'attention', 'running', 'paused', 'cancelled', 'failed', 'complete'):
         raise ValueError('Invalid production status.')
     if value['format'] not in ('wav', 'flac', 'mp3', 'ogg', 'opus', 'm4a', 'm4b', 'aiff', 'wma'):
         raise ValueError('Invalid production output format.')
@@ -214,6 +216,8 @@ def _studio_job(value, identity):
         raise ValueError('Invalid runtime inventory.')
     if 'total_disk_bytes' in value:
         number(value['total_disk_bytes'], 1024**2, 2**63 - 1, integer=True)
+    if 'resource_plan' in value:
+        _resource_plan(value['resource_plan'])
     if project.schema == 2:
         _origin(value.get('origin'))
     elif 'origin' in value:
@@ -233,7 +237,7 @@ def _studio_job(value, identity):
             fields(previous, {'origin', 'destination', 'status', 'nodes', 'artifacts', 'runtime', 'result'})
             _origin(previous['origin'])
             path(previous['destination'])
-            if previous['status'] not in ('pending', 'running', 'paused', 'cancelled', 'failed', 'complete'):
+            if previous['status'] not in ('pending', 'queued', 'attention', 'running', 'paused', 'cancelled', 'failed', 'complete'):
                 raise ValueError('Invalid historical production status.')
             if type(previous['nodes']) is not dict or len(previous['nodes']) > 100000:
                 raise ValueError('Invalid historical production nodes.')
@@ -247,6 +251,26 @@ def _studio_job(value, identity):
         if (value['result']['project'] != project.id or value['result']['revision'] != project.revision
                 or value['result']['source_sha256'] != sha256(project.original_script.encode()).hexdigest()):
             raise ValueError('Production result belongs to another project.')
+
+
+def _resource_plan(value):
+    """Passive estimates only; never resolve recorded disk/source paths."""
+    from .operations.models import ResourceRequest
+    fields(value, {'schema', 'request', 'source_sha256', 'estimated_duration',
+                   'cpu_basis', 'memory_basis', 'disk_basis', 'enforcement'})
+    if type(value['schema']) is not int or value['schema'] != 1:
+        raise ValueError('Invalid recorded resource plan schema.')
+    request = ResourceRequest.from_dict(value['request'])
+    for selected, _ in request.disks:
+        path(str(selected))
+    if type(value['source_sha256']) is not dict or len(value['source_sha256']) > 100000:
+        raise ValueError('Invalid resource source identity inventory.')
+    for selected, checksum in value['source_sha256'].items():
+        path(selected)
+        digest(checksum)
+    number(value['estimated_duration'])
+    for name in ('cpu_basis', 'memory_basis', 'disk_basis', 'enforcement'):
+        text(value[name], 8192)
 
 
 def _origin(value):
@@ -540,7 +564,13 @@ def _translation_job(value, identity):
 
 
 def validate(db, name, value):
-    if match := RECORDING.fullmatch(name):
+    if name == 'state/operations/resources.json':
+        from .operations.models import ResourceLimits
+        fields(value, {'schema', 'limits'})
+        if value['schema'] != 'carr-resource-policy/1':
+            raise ValueError('Invalid shared resource policy schema.')
+        ResourceLimits.from_dict(value['limits'])
+    elif match := RECORDING.fullmatch(name):
         if match[2] != 'json':
             raise ValueError('Recording WAV needs the streaming media adapter.')
         from .audio.recording import validate_recording_receipt

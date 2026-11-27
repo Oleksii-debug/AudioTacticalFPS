@@ -3,7 +3,7 @@
 This is process isolation with time/resource limits, not an OS security sandbox.
 The existing ingest journal remains the only extraction/checkpoint pipeline.
 """
-from contextlib import closing, contextmanager, redirect_stdout
+from contextlib import ExitStack, closing, contextmanager, redirect_stdout
 from dataclasses import asdict
 from hashlib import sha256
 import json
@@ -538,6 +538,35 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
             raise ValueError('Import request belongs to another library.')
         if record.get('state') == 'complete' and isinstance(record.get('result'), dict):
             return dict(record['result'], request_id=request_id, isolated=True)
+    if record.get('attempt') is not None or record.get('publication_candidate') is not None:
+        # Explicit resume invalidates only a prior process hint before waiting.
+        # A fresh queued request gains no execution attempt until admission.
+        record = dict(record, state='pending', attempt=uuid4().hex,
+                      publication_candidate=None)
+        record.pop('result', None)
+        _store(root, request_id, record)
+    from ..operations import ResourceBroker, ResourceRequest, ResourceCancelled, ResourceError, ResourceTimeout
+    with ExitStack() as reservations:
+        try:
+            broker = ResourceBroker.for_app(root, cancelled=cancelled)
+            request = ResourceRequest(cpu_slots=1, memory_bytes=3 * 1024**3,
+                disk_bytes=512 * 1024**2, disk_path=Path(root))
+            lease = reservations.enter_context(broker.reserve(request,
+                operation_id='import:' + request_id, cancelled=cancelled,
+                timeout=min(60.0, timeout)))
+        except ResourceError as exc:
+            state = ('cancelled' if isinstance(exc, ResourceCancelled)
+                     else 'timed_out' if isinstance(exc, ResourceTimeout) else 'failed')
+            result = dict(state=state, message=str(exc), request_id=request_id, isolated=True)
+            record_progress(root, request_id, state=state, result=result)
+            return result
+        # Recovery and journal publication stay inside the same reservation.
+        # A later lease cleanup error cannot rewrite an already committed job.
+        return _run_admitted_request(root, workspace, record, request_id=request_id,
+                                     timeout=timeout, cancelled=lease.cancelled)
+
+
+def _run_admitted_request(root, workspace, record, *, request_id, timeout, cancelled):
     attempt = uuid4().hex
     record_progress(root, request_id, state='running', attempt=attempt, publication_candidate=None)
     result = _invoke({'data_dir': str(Path(root).resolve()), 'request_id': request_id,

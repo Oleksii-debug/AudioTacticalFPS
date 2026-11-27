@@ -107,6 +107,7 @@ packages = [
   "carr_library.speech",
   "carr_library.studio",
   "carr_library.sync",
+  "carr_library.operations",
   "carr_library.security",
   "carr_library.assistant",
   "carr_library.conversion",
