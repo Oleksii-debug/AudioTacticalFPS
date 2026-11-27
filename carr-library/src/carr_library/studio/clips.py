@@ -6,7 +6,7 @@ from pathlib import Path
 import shutil
 from uuid import uuid4
 
-from ..audio.models import AudioBudget, AudioCancelled
+from ..audio.models import AudioBudget, AudioCancelled, finite
 from ..audio.process import publish_file
 from ..durable_state import local_path, regular, state_lock
 from .backup_inputs import _checked_digest, _stamp
@@ -18,14 +18,24 @@ class ClipEditor:
     """Retain the exact selected bytes; edits only change project instructions."""
     def __init__(self, library_root, *, service=None):
         self.service = service or ProductionService(Path(library_root) / 'state' / 'studio')
+        self._owns_service, self._closed = service is None, False
+        self._clipboard = None
+        self._undo, self._redo = [], []
+        self._history_head = None
 
     def create(self, title='Audio clips'):
+        if self._closed:
+            raise ValueError('This clip editor is closed.')
         project = Project(uuid4().hex, title, (),
             (Scene('scene-1', 'Audio clips', (), minimum_duration=1),),
             original_script='[Scene: Audio clips]\n[Duration: 1]', schema=2)
         return self.service.projects.save(project)
 
     def _current(self, project):
+        if not isinstance(project, Project):
+            raise ValueError('Choose an existing saved clip project.')
+        if self._closed:
+            raise ValueError('This clip editor is closed.')
         current = self.service.projects.load(project.id)
         if current.fingerprint != project.fingerprint:
             raise ValueError('Project changed since it was opened. Reload before editing clips.')
@@ -41,10 +51,12 @@ class ClipEditor:
     def _save(self, project, scene):
         updated = replace(project, schema=2, revision=project.revision + 1,
             scenes=tuple(scene if old.id == scene.id else old for old in project.scenes))
-        return self.service.projects.save(updated, expected_revision=project.revision)
+        return self._publish(project, updated)
 
     def retain(self, selected, *, expected_sha256=None, cancelled=lambda: False, progress=None):
         """Make a verified private copy, without granting access to its neighbours."""
+        if self._closed:
+            raise ValueError('This clip editor is closed.')
         source = local_path(selected, exists=True)
         before = regular(source)
         if not 0 < before.st_size <= 8 * 1024**3:
@@ -122,6 +134,7 @@ class ClipEditor:
             raise ValueError('Clip trim or duration exceeds its retained original audio.')
         if max(cue.fade_in, cue.fade_out) > selected:
             raise ValueError('Clip fade exceeds its selected audio.')
+        return info
 
     def edit(self, project, scene_id, clip_id, *, cancelled=lambda: False, **settings):
         allowed = {'start', 'gain_db', 'pan', 'role', 'trim_start', 'duration', 'fade_in', 'fade_out', 'title'}
@@ -181,7 +194,7 @@ class ClipEditor:
         }
         updated = replace(project, schema=2, revision=project.revision + 1,
                           scenes=tuple(replacements.get(scene.id, scene) for scene in project.scenes))
-        return self.service.projects.save(updated, expected_revision=project.revision)
+        return self._publish(project, updated)
 
     def preview(self, project, scene_id, clip_id, *, cancelled=lambda: False):
         from ..audio.models import Track
@@ -198,3 +211,145 @@ class ClipEditor:
             fade_in=cue.fade_in, fade_out=cue.fade_out),), output,
             sample_rate=project.sample_rate, cancelled=cancelled)
         return output
+
+
+    def _publish(self, before, after):
+        """One canonical revision; history records only a successful publication."""
+        saved = self.service.projects.save(after, expected_revision=before.revision,
+                                          expected_fingerprint=before.fingerprint)
+        if self._history_head != (before.id, before.fingerprint):
+            self._undo.clear()
+        self._redo.clear()
+        self._undo.append((before, saved))
+        del self._undo[:-32]
+        self._history_head = saved.id, saved.fingerprint
+        return saved
+
+    @staticmethod
+    def _selected(scene, clip_id):
+        cue = next((item for item in scene.cues if item.id == clip_id), None)
+        if cue is None:
+            raise ValueError('Select an existing clip in this scene.')
+        return cue
+
+    @staticmethod
+    def _cancel(cancelled):
+        if cancelled():
+            raise AudioCancelled('Clip edit cancelled before project publication.')
+
+    def copy(self, project, scene_id, clip_id, *, cancelled=lambda: False):
+        """An editor-local clipboard contains verified retained media, not commands."""
+        project = self._current(project)
+        cue = self._selected(self._scene(project, scene_id), clip_id)
+        self._cancel(cancelled)
+        source = self.service._cue_source(cue)
+        retained = source if source.parent == self.service.inputs else self.retain(source, cancelled=cancelled)
+        copied = replace(cue, path=str(retained))
+        self._validate_selection(copied, cancelled=cancelled)
+        self._current(project)
+        self._cancel(cancelled)
+        self._clipboard = copied
+        return copied
+
+    def cut(self, project, scene_id, clip_id, *, cancelled=lambda: False):
+        self.copy(project, scene_id, clip_id, cancelled=cancelled)
+        self._cancel(cancelled)
+        return self.remove(project, scene_id, clip_id)
+
+    def paste(self, project, scene_id, *, start=None, cancelled=lambda: False):
+        project = self._current(project)
+        scene = self._scene(project, scene_id)
+        if self._clipboard is None:
+            raise ValueError('Copy or cut a clip in this editor before pasting.')
+        if len(scene.cues) >= AudioBudget().max_inputs - 2:
+            raise ValueError('This scene has reached its simultaneous audio input allowance.')
+        copied = self._clipboard
+        cue = replace(copied, id=uuid4().hex,
+                      start=copied.start if start is None else start)
+        self._validate_selection(cue, cancelled=cancelled)
+        self._cancel(cancelled)
+        return self._save(project, replace(scene, cues=(*scene.cues, cue)))
+
+    def split(self, project, scene_id, clip_id, seconds, *, cancelled=lambda: False):
+        """Split instructions at an output sample; original bytes remain shared."""
+        project = self._current(project)
+        scene = self._scene(project, scene_id)
+        cue = self._selected(scene, clip_id)
+        if len(scene.cues) >= AudioBudget().max_inputs - 2:
+            raise ValueError('This scene has reached its simultaneous audio input allowance.')
+        info = self._validate_selection(cue, cancelled=cancelled)
+        duration = info.duration - cue.trim_start if cue.duration is None else cue.duration
+        position = round(finite(seconds, 'Clip split position', .000001) * project.sample_rate) / project.sample_rate
+        if not 0 < position < duration:
+            raise ValueError('Choose a split strictly inside the selected clip.')
+        if position < cue.fade_in or duration - position < cue.fade_out:
+            raise ValueError('Choose a split outside the existing fade windows, or adjust the fades first.')
+        left = replace(cue, duration=position, fade_out=0)
+        right = replace(cue, id=uuid4().hex, start=cue.start + position,
+                        trim_start=cue.trim_start + position, duration=duration - position,
+                        fade_in=0, title=(cue.title[:503] + ' — part 2') if cue.title else '')
+        self._cancel(cancelled)
+        cues = []
+        for item in scene.cues:
+            cues.extend((left, right) if item.id == cue.id else (item,))
+        return self._save(project, replace(scene, cues=tuple(cues)))
+
+    def join(self, project, scene_id, first_id, second_id, *, cancelled=lambda: False):
+        """Join contiguous cuts of the same source without a new render or mix."""
+        project = self._current(project)
+        scene = self._scene(project, scene_id)
+        if first_id == second_id:
+            raise ValueError('Choose two different clips to join.')
+        selected = (self._selected(scene, first_id), self._selected(scene, second_id))
+        left, right = sorted(selected, key=lambda item: (item.start, item.id))
+        first = self._validate_selection(left, cancelled=cancelled)
+        second = self._validate_selection(right, cancelled=cancelled)
+        left_length = first.duration - left.trim_start if left.duration is None else left.duration
+        right_length = second.duration - right.trim_start if right.duration is None else right.duration
+        if (left.path != right.path or left.role != right.role or left.gain_db != right.gain_db
+                or left.pan != right.pan or left.fade_out != 0 or right.fade_in != 0
+                or abs(right.start - left.start - left_length) > 1e-9
+                or abs(right.trim_start - left.trim_start - left_length) > 1e-9):
+            raise ValueError('Join requires adjacent cuts of the same original, matching track/gain/pan, '
+                             'and no fade at their shared boundary.')
+        joined = replace(left, duration=left_length + right_length, fade_out=right.fade_out)
+        self._cancel(cancelled)
+        cues = tuple(joined if item.id == left.id else item for item in scene.cues if item.id != right.id)
+        return self._save(project, replace(scene, cues=cues))
+
+    def history(self, project, *, forward=False, cancelled=lambda: False):
+        """Undo/redo this editor's latest 32 edits through new durable revisions."""
+        if type(forward) is not bool:
+            raise ValueError('Choose undo or redo explicitly.')
+        project = self._current(project)
+        if self._history_head != (project.id, project.fingerprint):
+            raise ValueError('The project changed outside this editing history. Reload and review it.')
+        stack, opposite = (self._redo, self._undo) if forward else (self._undo, self._redo)
+        if not stack:
+            raise ValueError('No clip edit is available to redo.' if forward else 'No clip edit is available to undo.')
+        change = stack[-1]
+        snapshot = change[1] if forward else change[0]
+        existing = {cue for scene in project.scenes for cue in scene.cues}
+        for scene in snapshot.scenes:
+            for cue in scene.cues:
+                self._cancel(cancelled)
+                if cue not in existing:
+                    self._validate_selection(cue, cancelled=cancelled)
+        self._cancel(cancelled)
+        restored = replace(snapshot, schema=2, revision=project.revision + 1)
+        saved = self.service.projects.save(restored, expected_revision=project.revision,
+                                          expected_fingerprint=project.fingerprint)
+        stack.pop()
+        opposite.append(change)
+        self._history_head = saved.id, saved.fingerprint
+        return saved
+
+    def close(self):
+        if self._closed:
+            return
+        if self._owns_service:
+            self.service.close()
+        self._closed = True
+        self._clipboard = None
+        self._undo.clear()
+        self._redo.clear()

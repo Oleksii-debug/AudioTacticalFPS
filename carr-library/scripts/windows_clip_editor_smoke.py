@@ -1,6 +1,7 @@
 """Installed native clip controls plus real FFmpeg rendering of synthetic PCM.
 
-Only the file-picker result is supplied by the probe. Real Windows keyboard
+The file-picker result is supplied; numeric and choice dialogs stay native.
+Real Windows keyboard
 events activate buttons; a real wx event loop handles background completion.
 Physical recording devices, native file pickers and NVDA are separate gates.
 """
@@ -88,6 +89,34 @@ def main():
             check('Space key up: ' + control.GetName(), simulator.KeyUp(wx.WXK_SPACE))
         gui.Yield()
 
+
+    def answer_native_dialog(title, value):
+        """Enter test data into the real modal dialog, then use its native OK."""
+        deadline = monotonic() + 8
+        def answer():
+            try:
+                matching = [window for window in wx.GetTopLevelWindows()
+                            if window.IsShown() and window.GetTitle() == title]
+                if not matching:
+                    if monotonic() >= deadline:
+                        raise TimeoutError('The expected native clip dialog did not open: ' + title)
+                    wx.CallLater(20, answer)
+                    return
+                popup, = matching
+                if isinstance(popup, wx.TextEntryDialog):
+                    popup.SetValue(str(value))
+                elif isinstance(popup, wx.SingleChoiceDialog):
+                    popup.SetSelection(value)
+                else:
+                    raise AssertionError('Unexpected native clip dialog type')
+                button = wx.Window.FindWindowById(wx.ID_OK, popup)
+                check('actual native clip review button: ' + title, isinstance(button, wx.Button))
+                press(button)
+            except Exception:
+                errors.append(traceback.format_exc())
+                gui.ExitMainLoop()
+        wx.CallLater(20, answer)
+
     check('real wx Windows controls', wx.Platform == '__WXMSW__')
     for module in (ui, clips):
         check('installed module: ' + module.__name__,
@@ -156,6 +185,40 @@ def main():
                         check('actual left-only timeline and one-second duration', count == 24000
                               and channels == 2 and max(map(abs, samples[1::2])) == 0
                               and max(map(abs, samples[::2])) > 1000)
+
+                    press(dialog.buttons['copy'])
+                    pump(lambda: not frame.working and not dialog.pending, 'Copying verified clip')
+                    check('native copy preserves the saved project', dialog.project == edited)
+                    answer_native_dialog('Split at an output sample', '.375')
+                    press(dialog.buttons['split'])
+                    pump(lambda: not frame.working and not dialog.pending, 'Splitting native clip')
+                    check('native split preserves retained source and measured cuts',
+                          len(dialog.project.scenes[0].cues) == 2
+                          and {item.path for item in dialog.project.scenes[0].cues} == {cue.path}
+                          and [item.duration for item in dialog.project.scenes[0].cues] == [.375, .375])
+                    answer_native_dialog('Join adjacent clips', 0)
+                    press(dialog.buttons['join'])
+                    pump(lambda: not frame.working and not dialog.pending, 'Joining native cuts')
+                    check('native join restores the original instructions', dialog.project.scenes[0].cues == (cue,))
+                    press(dialog.buttons['undo'])
+                    pump(lambda: not frame.working and not dialog.pending, 'Undoing native join')
+                    check('native undo restores both cuts', len(dialog.project.scenes[0].cues) == 2)
+                    press(dialog.buttons['redo'])
+                    pump(lambda: not frame.working and not dialog.pending, 'Redoing native join')
+                    check('native redo restores the joined clip', dialog.project.scenes[0].cues == (cue,))
+                    answer_native_dialog('Paste copied clip', '1.25')
+                    press(dialog.buttons['paste'])
+                    pump(lambda: not frame.working and not dialog.pending, 'Pasting native clip')
+                    check('native paste creates a distinct clip at the reviewed position',
+                          len(dialog.project.scenes[0].cues) == 2
+                          and dialog.project.scenes[0].cues[1].start == 1.25
+                          and dialog.project.scenes[0].cues[1].id != cue.id)
+                    press(dialog.buttons['cut'])
+                    pump(lambda: not frame.working and not dialog.pending, 'Cutting pasted clip')
+                    check('native cut keeps original bytes and the remaining clip',
+                          dialog.project.scenes[0].cues == (cue,)
+                          and sha256(retained.read_bytes()).hexdigest() == original)
+                    edited = dialog.project
                     newer = editor.scene_duration(edited, edited.scenes[0].id, 2)
                     dialog.fields['pan'].ChangeValue('1')
                     press(dialog.buttons['save'])

@@ -287,3 +287,158 @@ def test_actual_recording_receipt_becomes_an_editable_managed_clip(editor, tmp_p
     preview = editor.preview(project, project.scenes[0].id, clip.id)
     channels, rate = pcm(preview)
     assert len(channels[0]) == round(.5 * rate) and rms(channels[0]) > 100
+
+
+def test_split_and_join_preserve_actual_pcm_timeline_and_original(editor, tmp_path):
+    selected = audio(tmp_path / 'split original.wav')
+    original = selected.read_bytes()
+    project = editor.create('Exact cuts')
+    scene_id = project.scenes[0].id
+    project = editor.add(project, scene_id, selected, trim_start=.5, duration=1, start=.25, pan=-1, gain_db=0)
+    cue = project.scenes[0].cues[0]
+
+    def rendered(value, name):
+        output = tmp_path / name
+        output.mkdir()
+        result = editor.service.run(editor.service.submit(value, output))
+        with wave.open(str(Path(result['destination']) / 'master.wav'), 'rb') as stream:
+            count = stream.getnframes()
+            return stream.getframerate(), stream.getnchannels(), count, sha256(stream.readframes(count)).hexdigest()
+
+    before = rendered(project, 'whole')
+    divided = editor.split(project, scene_id, cue.id, .5)
+    left, right = divided.scenes[0].cues
+    assert (left.id, left.duration, right.start, right.trim_start, right.duration) == (cue.id, .5, .75, 1, .5)
+    assert left.path == right.path == cue.path and left.id != right.id
+    assert rendered(divided, 'split') == before
+    joined = editor.join(divided, scene_id, right.id, left.id)
+    assert joined.scenes[0].cues == (cue,)
+    assert rendered(joined, 'joined') == before
+    assert selected.read_bytes() == Path(cue.path).read_bytes() == original
+
+
+def test_cut_paste_and_history_publish_revisions_without_losing_originals(editor, tmp_path):
+    selected = audio(tmp_path / 'clipboard source.wav')
+    project = editor.create()
+    scene_id = project.scenes[0].id
+    project = editor.add(project, scene_id, selected, trim_start=.5, duration=.5, pan=1, role='microphone')
+    original = project.scenes[0].cues[0]
+    copied = editor.copy(project, scene_id, original.id)
+    assert copied == original and editor.service.projects.load(project.id) == project
+    cut = editor.cut(project, scene_id, original.id)
+    assert not cut.scenes[0].cues and Path(original.path).exists()
+    pasted = editor.paste(cut, scene_id, start=.75)
+    pasted_cue, = pasted.scenes[0].cues
+    assert pasted_cue.id != original.id and pasted_cue.path == original.path and pasted_cue.start == .75
+    undone_paste = editor.history(pasted)
+    assert not undone_paste.scenes[0].cues
+    undone_cut = editor.history(undone_paste)
+    assert undone_cut.scenes == project.scenes and undone_cut.original_script == project.original_script
+    redone_cut = editor.history(undone_cut, forward=True)
+    redone_paste = editor.history(redone_cut, forward=True)
+    assert redone_paste.scenes == pasted.scenes
+    assert redone_paste.revision == pasted.revision + 4
+    assert Path(original.path).read_bytes() == selected.read_bytes()
+    versions = tuple((editor.service.projects.directory(project.id) / 'revisions').glob('*.json'))
+    assert len(versions) == redone_paste.revision - 1
+
+
+@pytest.mark.parametrize('position', [0, -1, 1, 2, True, float('nan'), .1, .9])
+def test_invalid_or_fade_crossing_split_never_changes_the_project(editor, tmp_path, position):
+    project = editor.create()
+    scene_id = project.scenes[0].id
+    project = editor.add(project, scene_id, audio(tmp_path / 'source.wav'),
+                         duration=1, fade_in=.2, fade_out=.2)
+    cue = project.scenes[0].cues[0]
+    with pytest.raises((ValueError, TypeError)):
+        editor.split(project, scene_id, cue.id, position)
+    assert editor.service.projects.load(project.id) == project
+
+
+@pytest.mark.parametrize('change', [{'start': .6}, {'trim_start': .6}, {'pan': 1},
+                                     {'gain_db': -3}, {'fade_in': .1}, {'role': 'music'}])
+def test_join_rejects_noncontiguous_or_different_processing(editor, tmp_path, change):
+    project = editor.create()
+    scene_id = project.scenes[0].id
+    project = editor.add(project, scene_id, audio(tmp_path / 'source.wav'), duration=1)
+    project = editor.split(project, scene_id, project.scenes[0].cues[0].id, .5)
+    left, right = project.scenes[0].cues
+    changed = editor.edit(project, scene_id, right.id, **change)
+    with pytest.raises(ValueError, match='adjacent cuts'):
+        editor.join(changed, scene_id, left.id, right.id)
+    assert editor.service.projects.load(project.id) == changed
+
+
+@pytest.mark.parametrize('operation', ['copy', 'cut', 'paste', 'split', 'history'])
+def test_cancelled_clip_commands_do_not_publish_another_revision(editor, tmp_path, operation):
+    project = editor.create()
+    scene_id = project.scenes[0].id
+    project = editor.add(project, scene_id, audio(tmp_path / 'source.wav'), duration=1)
+    cue = project.scenes[0].cues[0]
+    editor.copy(project, scene_id, cue.id)
+    calls = {
+        'copy': lambda: editor.copy(project, scene_id, cue.id, cancelled=lambda: True),
+        'cut': lambda: editor.cut(project, scene_id, cue.id, cancelled=lambda: True),
+        'paste': lambda: editor.paste(project, scene_id, cancelled=lambda: True),
+        'split': lambda: editor.split(project, scene_id, cue.id, .5, cancelled=lambda: True),
+        'history': lambda: editor.history(project, cancelled=lambda: True),
+    }
+    with pytest.raises(AudioCancelled):
+        calls[operation]()
+    assert editor.service.projects.load(project.id) == project
+    assert not list(editor.service.inputs.glob('.pending-*'))
+
+
+def test_paste_rechecks_copied_media_before_publication(editor, tmp_path):
+    project = editor.create()
+    scene_id = project.scenes[0].id
+    project = editor.add(project, scene_id, audio(tmp_path / 'source.wav'))
+    cue = project.scenes[0].cues[0]
+    editor.copy(project, scene_id, cue.id)
+    Path(cue.path).write_bytes(b'changed after copy')
+    with pytest.raises(ValueError, match='content identity'):
+        editor.paste(project, scene_id)
+    assert editor.service.projects.load(project.id) == project
+
+
+def test_clip_publication_rejects_same_revision_content_race(editor, tmp_path, monkeypatch):
+    project = editor.create()
+    scene = project.scenes[0]
+    real_save = editor.service.projects.save
+    changed = replace(project, title='Concurrent change at the same revision')
+    path = editor.service.projects.directory(project.id) / 'project.json'
+
+    def competing_save(candidate, **kwargs):
+        path.write_bytes(encode(changed.to_dict()))
+        return real_save(candidate, **kwargs)
+
+    monkeypatch.setattr(editor.service.projects, 'save', competing_save)
+    with pytest.raises(ValueError, match='content changed'):
+        editor.scene_duration(project, scene.id, 2)
+    assert editor.service.projects.load(project.id) == changed
+
+
+def test_undo_refuses_external_edits_and_new_edit_discards_redo(editor, tmp_path):
+    project = editor.create()
+    scene_id = project.scenes[0].id
+    first = editor.scene_duration(project, scene_id, 2)
+    second = editor.scene_duration(first, scene_id, 3)
+    undone = editor.history(second)
+    third = editor.scene_duration(undone, scene_id, 4)
+    with pytest.raises(ValueError, match='redo'):
+        editor.history(third, forward=True)
+    external = replace(third, revision=third.revision + 1, title='External edit')
+    editor.service.projects.save(external, expected_revision=third.revision)
+    with pytest.raises(ValueError, match='outside this editing history'):
+        editor.history(external)
+    assert editor.service.projects.load(project.id) == external
+
+
+def test_editor_close_preserves_a_borrowed_service_and_closes_its_own(tmp_path, editor):
+    editor.close()
+    assert not editor.service._closed.is_set()
+    owned = ClipEditor(tmp_path / 'owned')
+    owned.close()
+    assert owned.service._closed.is_set()
+    with pytest.raises(ValueError, match='closed'):
+        owned.create()
