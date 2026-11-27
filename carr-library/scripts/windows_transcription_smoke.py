@@ -26,6 +26,8 @@ v5_spec = importlib.util.spec_from_file_location('transcription_v5_protocol_fixt
 v5_fixture = importlib.util.module_from_spec(v5_spec)
 v5_spec.loader.exec_module(v5_fixture)
 desktop = wx.App(False)
+# Keep the real outer event loop alive until the observed frame is destroyed.
+desktop.SetExitOnFrameDelete(False)
 with TemporaryDirectory(prefix='transcription-native-') as temporary:
     root = Path(temporary).resolve()
     library = LibraryApp(root / 'library')
@@ -75,6 +77,7 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
     def observe_destroy(event):
         if event.GetEventObject() is frame:
             destroyed.append(True)
+            wx.CallAfter(desktop.ExitMainLoop)
         event.Skip()
     frame.Bind(wx.EVT_WINDOW_DESTROY, observe_destroy)
     failures, state = [], {'phase': 0, 'finished': False, 'job': None}
@@ -263,23 +266,39 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
             if dialog is not None:
                 dialog.EndModal(wx.ID_CANCEL)
 
+    closing_watchdogs = []
+
+    def open_dialog():
+        try:
+            assert desktop.IsMainLoopRunning(), 'Native transcription requires the real outer event loop.'
+            show_transcription(frame)
+        except BaseException:
+            failures.append(traceback.format_exc())
+        finally:
+            try:
+                frame.cancel_event.set()
+                frame.executor.shutdown(wait=True, cancel_futures=True)
+                # Use the actual close hook: tray, trust polling, progress and shared
+                # cleanup owners must stop before temporary library removal.
+                frame.working = False
+                frame.Close()
+            except BaseException:
+                failures.append(traceback.format_exc())
+            finally:
+                # Top-level destruction is deferred to idle. Let the same outer
+                # loop observe it, retaining the existing five-second limit.
+                closing_watchdogs.append(wx.CallLater(5000, desktop.ExitMainLoop))
+
     wx.CallLater(50, drive)
+    wx.CallAfter(open_dialog)
     try:
-        show_transcription(frame)
+        desktop.MainLoop()
         if failures:
             raise AssertionError('\n'.join(failures))
         assert state['finished'], 'Native dialog exited before acceptance.'
     finally:
-        frame.cancel_event.set()
-        frame.executor.shutdown(wait=True, cancel_futures=True)
-        # Use the actual close hook: tray, trust polling, progress and shared
-        # cleanup owners must be stopped before temporary library removal.
-        frame.working = False
-        frame.Close()
-        deadline = time.monotonic() + 5
-        while not destroyed and time.monotonic() < deadline:
-            desktop.Yield()
-            time.sleep(.01)
+        for watchdog in closing_watchdogs:
+            watchdog.Stop()
         assert destroyed, 'The real desktop window did not complete destruction.'
 print(json.dumps({'status': 'PASS', 'checks': [
     'actual named wx controls', 'shared background operation',

@@ -529,7 +529,9 @@ class TranscriptionService:
     def list_runtimes(self):
         """Return passive named declarations without following external paths."""
         self._authorize()
-        root = self._profiles_root()
+        # The library exists before any transcription state or profile is saved.
+        # Validate that fixed descendant without creating it during passive listing.
+        root = local_path(self.root / 'profiles', root=self.app.root)
         if not root.exists():
             return ()
         regular(root, directory=True)

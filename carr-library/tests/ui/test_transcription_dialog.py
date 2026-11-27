@@ -786,3 +786,31 @@ def test_copy_requires_explicit_trusted_same_protocol_profile_without_running(vi
     assert view.current_job['id'] == 'job-two' and view.current_job['status'] == 'ready'
     assert view.current_job['settings'] == job['settings'] and not view.current_job['artifacts']
     assert 'no inference has run' in view.status.GetValue()
+
+
+def test_fresh_library_refresh_adopts_empty_profiles_without_runtime_or_state(view, tmp_path, monkeypatch):
+    from carr_library.application import LibraryApp
+    import carr_library.transcription as transcription
+    app = LibraryApp(tmp_path / 'fresh-real-library')
+    workspace = app.create_workspace('Fresh transcription controls')
+    service = app.transcription(workspace)
+    view.frame.library, view.frame.active = app, (workspace, None)
+    view.configure(view.frame, TranscriptionController(app, workspace, service=service))
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('An empty profile refresh inspected or started a runtime.')
+
+    monkeypatch.setattr(transcription, 'inspect_python', forbidden)
+    monkeypatch.setattr(transcription, 'inspect_models', forbidden)
+    monkeypatch.setattr(transcription, 'run_process', forbidden)
+    assert not service.root.exists()
+    view.refresh()
+    assert view.pending and view.frame.working
+    assert finish(view) == {'profiles': (), 'jobs': ()}
+    assert not view.pending and not view.frame.working
+    assert view.profiles == view.job_rows == ()
+    assert view.runtime.items == view.jobs.items == []
+    assert view.runtime.GetSelection() == -1
+    assert view.current_job is None and not view.trust.GetValue()
+    assert '0 registered runtimes; 0 saved jobs.' in view.status.value
+    assert not service.root.exists()

@@ -167,3 +167,42 @@ def test_idle_controls_persist_without_starting_a_worker(tmp_path):
     assert peer.service.continue_job(identity)['status'] == 'ready'
     assert peer.service.get(identity)['status'] == 'ready'
     assert not (peer.service._path(identity) / 'job_status.json').exists()
+
+
+@pytest.mark.parametrize('existing', ['none', 'state', 'profiles'])
+def test_fresh_runtime_inventory_stays_empty_without_creating_state(tmp_path, monkeypatch, existing):
+    import carr_library.transcription as transcription
+    app = LibraryApp(tmp_path / 'fresh-library')
+    workspace = app.create_workspace('Fresh runtime inventory')
+    service = app.transcription(workspace)
+    if existing == 'state':
+        service.root.mkdir(parents=True)
+    elif existing == 'profiles':
+        (service.root / 'profiles').mkdir(parents=True)
+    before = tuple(sorted(service.root.rglob('*'))) if service.root.exists() else None
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('Passive profile listing inspected or started a runtime.')
+
+    monkeypatch.setattr(transcription, 'inspect_python', forbidden)
+    monkeypatch.setattr(transcription, 'inspect_models', forbidden)
+    monkeypatch.setattr(transcription, 'run_process', forbidden)
+    assert service.list_runtimes() == ()
+    assert service.list() == ()
+    after = tuple(sorted(service.root.rglob('*'))) if service.root.exists() else None
+    assert after == before
+    assert not (service.root / 'engine.json').exists()
+
+
+@pytest.mark.parametrize('collision', ['state', 'profiles'])
+def test_passive_runtime_inventory_rechecks_non_directory_state(tmp_path, collision):
+    app = LibraryApp(tmp_path / 'fresh-library')
+    workspace = app.create_workspace('Profile path boundary')
+    service = app.transcription(workspace)
+    target = service.root if collision == 'state' else service.root / 'profiles'
+    target.parent.mkdir(parents=True, exist_ok=True)
+    original = b'Owner data is not a profile directory.'
+    target.write_bytes(original)
+    with pytest.raises(ValueError, match='regular local files'):
+        service.list_runtimes()
+    assert target.read_bytes() == original
