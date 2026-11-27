@@ -57,8 +57,9 @@ def _file_state(info):
             info.st_size, info.st_mtime_ns, info.st_ctime_ns)
 
 
-def _read(path):
+def _read(path, *, maximum=MAX_BYTES):
     _check_path(path, regular=True)
+    limit_label = '64 KiB' if maximum == MAX_BYTES else '128 KiB'
     try:
         before = path.lstat()
         descriptor = os.open(path, os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0)
@@ -68,15 +69,15 @@ def _read(path):
     with os.fdopen(descriptor, 'rb') as stream:
         metadata = os.fstat(stream.fileno())
         if (not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1
-                or metadata.st_size > MAX_BYTES):
-            raise KeymapError('The keyboard settings file is invalid or exceeds 64 KiB.')
+                or metadata.st_size > maximum):
+            raise KeymapError('The keyboard settings file is invalid or exceeds ' + limit_label + '.')
         if _file_state(before) != _file_state(metadata):
             raise KeymapChangedError('Keyboard settings changed while opening them. Try again.')
-        raw = stream.read(MAX_BYTES + 1)
+        raw = stream.read(maximum + 1)
         after = os.fstat(stream.fileno())
     _check_path(path, regular=True)
-    if len(raw) > MAX_BYTES:
-        raise KeymapError('The keyboard settings file exceeds 64 KiB.')
+    if len(raw) > maximum:
+        raise KeymapError('The keyboard settings file exceeds ' + limit_label + '.')
     try:
         current = path.lstat()
     except FileNotFoundError as exc:
@@ -127,10 +128,36 @@ def validate_keymap(raw):
     return _decode(raw)
 
 
+def _decode_legacy(raw):
+    """Read the earlier menu-path profile without changing or granting commands."""
+    if raw is None:
+        return None
+    try:
+        value = json.loads(raw.decode('utf-8'), object_pairs_hook=_no_duplicates)
+    except (UnicodeError, ValueError, RecursionError) as exc:
+        raise KeymapError('The earlier shortcut profile is not valid UTF-8 JSON.') from exc
+    if (type(value) is not dict or set(value) != {'schema', 'overrides', 'originals'}
+            or type(value['schema']) is not int or value['schema'] != 1
+            or type(value['overrides']) is not dict or type(value['originals']) is not dict
+            or len(value['overrides']) > MAX_COMMANDS
+            or set(value['overrides']) != set(value['originals'])):
+        raise KeymapError('The earlier shortcut profile has an unsupported schema.')
+    for action in value['overrides']:
+        if (not isinstance(action, str) or not action or len(action) > 2048
+                or any(ord(character) < 32 for character in action)):
+            raise KeymapError('The earlier shortcut profile has an invalid menu identity.')
+        # A legacy shortcut unavailable to this command registry is never
+        # silently substituted. The original file remains available for review.
+        for field in ('overrides', 'originals'):
+            value[field][action] = normalize_shortcut(value[field][action])
+    return value
+
+
 class KeymapStore:
     def __init__(self, path):
         self.path = Path(path).absolute()
         self._observed = _UNOBSERVED
+        self._legacy_observed = None
 
     def load(self):
         """Read without modifying any file; malformed settings remain intact.
@@ -138,6 +165,7 @@ class KeymapStore:
         Command availability and contextual conflicts are checked separately by
         CommandRegistry.validate, after all installed commands are registered.
         """
+        self._legacy_observed = None
         try:
             raw = _read(self.path)
             # Even malformed, bounded JSON has an observed identity: an
@@ -146,6 +174,28 @@ class KeymapStore:
             return {} if raw is None else validate_keymap(raw)
         except OSError as exc:
             raise KeymapError(f'Keyboard settings could not be read: {exc}') from exc
+
+    def load_legacy(self):
+        """Offer an older profile only when no semantic keymap was loaded.
+
+        Mapping old menu paths to stable IDs belongs to the current native
+        command manager. Reading and later saving never alter the legacy file.
+        """
+        if self._observed is not None:
+            return None
+        path = self.path.parent / 'state' / 'ui' / 'shortcuts.json'
+        raw = _read(path, maximum=128 * 1024)
+        if raw is None:
+            return None
+        self._legacy_observed = path, _digest(raw)
+        return _decode_legacy(raw)
+
+    def _check_legacy(self):
+        if self._legacy_observed is not None:
+            path, expected = self._legacy_observed
+            if _digest(_read(path, maximum=128 * 1024)) != expected:
+                raise KeymapChangedError('The earlier shortcut profile changed. '
+                                         'Reload it before saving the reviewed migration.')
 
     def save(self, overrides, registry):
         """Validate the complete map before replacing the previous file.
@@ -168,6 +218,7 @@ class KeymapStore:
             with FileLock(lock_path, timeout=5, mode=0o600):
                 _check_path(self.path, regular=True)
                 current = _read(self.path)
+                self._check_legacy()
                 if self._observed is not _UNOBSERVED and _digest(current) != self._observed:
                     raise KeymapChangedError('Keyboard settings changed in another window. '
                                              'Reload them before saving your changes.')
@@ -180,8 +231,10 @@ class KeymapStore:
                 if _digest(_read(self.path)) != _digest(current):
                     raise KeymapChangedError('Keyboard settings changed before saving. '
                                              'Reload them before saving your changes.')
+                self._check_legacy()
                 os.replace(temporary, self.path)
                 self._observed = _digest(raw)
+                self._legacy_observed = None
                 # Directory fsync is not supported by every Windows filesystem.
                 # The file itself was flushed before the atomic replacement.
                 if hasattr(os, 'O_DIRECTORY'):
