@@ -224,10 +224,122 @@ def run_native_operations(frame, directory):
     finally:
         native_parent.Destroy()
         wx.YieldIfNeeded()
+    # Exercise the public modal footer, including the interval where
+    # ShowModal has returned but wx has not delivered EVT_WINDOW_DESTROY yet.
+    from carr_library.ui import operations_dialog as operations_ui
+
+    def modal_destroy_case(kind):
+        assert not frame.working
+        owner = wx.Dialog(frame, title='Tasks modal ' + kind + ' destruction')
+        initial_factory = operations_ui.create_operations_dialog
+        observed = {'destroy_calls': 0, 'destroy_events': [], 'requested': False}
+        entered = threading.Event()
+        case_errors, timers = [], []
+        stopped = False
+        current = None
+        controller = None
+        end = time.monotonic() + 30
+
+        def blocked_initializer(library, cancelled):
+            entered.set()
+            while not cancelled():
+                time.sleep(.01)
+            raise InterruptedError('Actual modal task view was destroyed.')
+
+        def finish_on_error(message):
+            case_errors.append(message)
+            if controller is not None:
+                controller.dispose()
+            if current and not current.IsBeingDeleted() and current.IsModal():
+                current.EndModal(wx.ID_CANCEL)
+
+        def request_destroy():
+            if stopped:
+                return
+            try:
+                assert time.monotonic() < end, 'The actual modal initializer did not start.'
+                if not entered.is_set():
+                    timers.append(wx.CallLater(25, request_destroy))
+                    return
+                assert current.IsModal() and controller.busy and frame.working
+                observed['requested'] = True
+                if kind == 'owner':
+                    current.Destroy()
+                else:
+                    owner.Destroy()
+            except BaseException:
+                finish_on_error(traceback.format_exc())
+
+        def factory(host):
+            nonlocal current, controller
+            current = initial_factory(owner, controller_factory=lambda _parent, **options:
+                OperationsController(host, service_factory=blocked_initializer, **options))
+            controller = current.controller
+            identity = current.GetId()
+            actual_destroy = current.Destroy
+
+            def tracked_destroy():
+                observed['destroy_calls'] += 1
+                return actual_destroy()
+
+            def destroyed_event(event):
+                if event.GetId() == identity:
+                    observed['destroy_events'].append(True)
+                event.Skip()
+
+            current.Destroy = tracked_destroy
+            current.Bind(wx.EVT_WINDOW_DESTROY, destroyed_event)
+            timers.append(wx.CallLater(25, request_destroy))
+            return current
+
+        operations_ui.create_operations_dialog = factory
+        timers.append(wx.CallLater(30000, finish_on_error,
+                                  'Timed out in the actual Tasks modal destruction probe.'))
+        try:
+            operations_ui.show_operations(frame)
+            assert controller is not None and controller.closed
+            assert controller.cancelled() and controller._token is None
+            frame.executor.submit(lambda: None).result(timeout=10)
+
+            deletion_loop = wx.GUIEventLoop()
+            finish_deadline = time.monotonic() + 10
+            def settled():
+                if not current and not frame.working:
+                    deletion_loop.Exit()
+                elif time.monotonic() >= finish_deadline:
+                    case_errors.append('Native Tasks destruction or its host callback did not finish.')
+                    deletion_loop.Exit()
+                else:
+                    timers.append(wx.CallLater(25, settled))
+            wx.CallAfter(settled)
+            deletion_loop.Run()
+            assert not case_errors, '\n'.join(case_errors)
+            assert observed['requested'] and entered.is_set()
+            assert observed['destroy_calls'] == (1 if kind == 'owner' else 0), dict(observed)
+            assert observed['destroy_events'] == [True] and not current, dict(observed)
+            assert not frame.working
+        finally:
+            stopped = True
+            operations_ui.create_operations_dialog = initial_factory
+            for timer in timers:
+                timer.Stop()
+            if controller is not None:
+                controller.dispose()
+            if current and not current.IsBeingDeleted():
+                current.Destroy()
+            if owner and not owner.IsBeingDeleted():
+                owner.Destroy()
+            wx.YieldIfNeeded()
+        return dict(observed)
+
+    state['modal_owner'] = modal_destroy_case('owner')
+    state['modal_parent'] = modal_destroy_case('parent')
     return {'status': 'PASS', 'host_executor_initialization': 'PASS',
             'native_close_during_initialization': 'PASS',
             'named_controls_and_policy_save': 'PASS', 'native_destruction': 'PASS',
             'native_parent_destruction': 'PASS',
+            'native_modal_owner_destruction': state['modal_owner'],
+            'native_modal_parent_destruction': state['modal_parent'],
             'manual_nvda': 'NOT_RUN', 'measured_hardware_capacity': 'NOT_RUN'}
 
 
