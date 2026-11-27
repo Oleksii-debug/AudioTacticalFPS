@@ -56,7 +56,7 @@ def test_saved_studio_keys_survive_startup_and_late_real_manager_registration(tm
         CommandSpec('audio.prepare_book', 'Prepare selected book for narration...', 'main', ''),
     )
     registry = CommandRegistry((*builtin_commands(), *specs))
-    saved = {'audio.studio': 'Ctrl+Shift+A', 'audio.prepare_book': 'Ctrl+Alt+Shift+B'}
+    saved = {'audio.studio': 'Ctrl+Alt+Shift+A', 'audio.prepare_book': 'Ctrl+Alt+Shift+B'}
     path = tmp_path / 'keyboard-shortcuts.json'
     KeymapStore(path).save(saved, registry)
     original = path.read_bytes()
@@ -72,7 +72,7 @@ def test_saved_studio_keys_survive_startup_and_late_real_manager_registration(tm
     assert manager.load_notice == ''
     assert path.read_bytes() == original
     assert manager.available('audio.studio') and manager.available('audio.prepare_book')
-    assert manager.bindings['audio.studio'].item.GetItemLabel().endswith('\tCtrl+Shift+A')
+    assert manager.bindings['audio.studio'].item.GetItemLabel().endswith('\tCtrl+Alt+Shift+A')
     assert manager.bindings['audio.prepare_book'].item.GetItemLabel().endswith('\tCtrl+Alt+Shift+B')
     manager.refresh()
     assert manager.overrides == saved
@@ -83,7 +83,7 @@ def test_studio_semantic_binding_survives_caption_and_native_menu_id_changes(tmp
     first = frame_with_menu(tmp_path, monkeypatch)
     install_audio_studio_actions(first)
     manager = install_keyboard_settings(first)
-    manager.apply_overrides({'audio.studio': 'Ctrl+Shift+A'})
+    manager.apply_overrides({'audio.studio': 'Ctrl+Alt+Shift+A'})
     original = manager.store.path.read_bytes()
     original_id = manager.bindings['audio.studio'].item.GetId()
 
@@ -94,7 +94,7 @@ def test_studio_semantic_binding_survives_caption_and_native_menu_id_changes(tmp
         'Local performance workspace\tCtrl+Alt+A')
     restored = install_keyboard_settings(reopened)
     assert restored.bindings['audio.studio'].item.GetId() != original_id
-    assert restored.overrides == {'audio.studio': 'Ctrl+Shift+A'}
+    assert restored.overrides == {'audio.studio': 'Ctrl+Alt+Shift+A'}
     assert restored.bindings['audio.studio'].item.GetItemLabel() == (
-        'Local performance workspace\tCtrl+Shift+A')
+        'Local performance workspace\tCtrl+Alt+Shift+A')
     assert restored.store.path.read_bytes() == original

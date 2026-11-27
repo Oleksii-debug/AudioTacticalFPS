@@ -3112,6 +3112,13 @@
       "test_explicit_key_reaches_existing_isolated_ace_protocol_without_model_weights": 2,
       "test_explicit_musicgen_key_is_parent_request_data_without_an_inference_claim": 1,
       "test_selected_key_survives_current_managed_project_and_typed_full_backup": 1
+    },
+    "tests.conversion.test_office_stage_races": {
+      "test_native_removed_profile_entry_does_not_abort_the_remaining_stage_census": 2,
+      "test_valueerror_for_a_still_existing_stage_entry_is_never_treated_as_disappearance": 2,
+      "test_permission_failure_during_missing_entry_confirmation_remains_a_failure": 1,
+      "test_missing_native_entry_cannot_hide_lost_or_replaced_private_stage_root": 2,
+      "test_disappearance_after_observed_policy_violation_cannot_make_stage_valid": 3
     }
   },
   "installed": {
@@ -6001,6 +6008,13 @@
       "test_explicit_key_reaches_existing_isolated_ace_protocol_without_model_weights": 2,
       "test_explicit_musicgen_key_is_parent_request_data_without_an_inference_claim": 1,
       "test_selected_key_survives_current_managed_project_and_typed_full_backup": 1
+    },
+    "tests.conversion.test_office_stage_races": {
+      "test_native_removed_profile_entry_does_not_abort_the_remaining_stage_census": 2,
+      "test_valueerror_for_a_still_existing_stage_entry_is_never_treated_as_disappearance": 2,
+      "test_permission_failure_during_missing_entry_confirmation_remains_a_failure": 1,
+      "test_missing_native_entry_cannot_hide_lost_or_replaced_private_stage_root": 2,
+      "test_disappearance_after_observed_policy_violation_cannot_make_stage_valid": 3
     }
   },
   "native_trust": [

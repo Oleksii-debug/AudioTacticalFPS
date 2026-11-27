@@ -517,6 +517,10 @@ def _seal_completed_speech(cache, key, source, *, provenance):
     seconds after the first observed cancellation at its bounded I/O checks.
     It never starts an engine or permits the next processing step.
     """
+    # A returned private engine output must not be an alias of foreign bytes.
+    # Refuse it before temporarily deferring cancellation or creating a receipt.
+    if regular_file(source).st_nlink != 1:
+        raise ValueError('Returned speech output must be an independent unaliased file.')
     requested = cache.cancelled
     deadline = None
 

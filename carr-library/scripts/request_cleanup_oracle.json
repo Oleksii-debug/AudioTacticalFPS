@@ -2,7 +2,7 @@
   "schema": 1,
   "component": "Preserved publication, canonical recovery, progress settings, native manifests and headless admission",
   "authoring_status": "NOT_RUN",
-  "derivation": "Retain the exact prior132 cases; add39 passive-provider recovery,9 headless admission,32 canonical progress preference and20 unchanged canonical manifest cases. Retain all232 and add27 observed-write, publication and settings-dialog conflict cases. Retain all259; restore7 canonical generic-state publication cases, protect6 existing resource-state cases through the shared retry owner, and add7 actual-child FFmpeg diagnostic boundary cases. Retain279 and restore21 canonical numeric-progress and count-boundary cases. Retain300; add41 explicit-TXT source/receipt/worker boundaries and4 current Studio semantic-keymap cases. Retain345 and add9 parent-owned Office native/publication workspace, resource, identity and argv boundaries. Retain354 and restore4 canonical OCR manifest snapshot, rehashed malformed JSON and oversize checksum regressions on the current installer. Retain358; add10 current completed-speech checkpoint/stop/identity cases and15 direct canonical owned-process and measured FFmpeg signal regressions. Retain383; restore3 exact canonical completed-DOCX source/result/missing-source boundaries and1 actual current-worker check using the exact canonical complete PPTX fixture. Retain387; restore34 fixed Windows SAPI compatibility-host admission cases and3 canonical late keyboard registration/live-warning contracts. Retain424 and select the complete60-case current Studio module, including52 retained cases and8 detached/stale/typed-completion cases. Retain484 and select the complete66-case current desktop handler module, including the restored active-job folder binding and exact selected-file cancellation totals. Retain550; include the complete16-case fixed standard helper population, retaining13 OS/private-file guards and adding3 fixed COM launch/data/failed-response boundaries. Retain566; add23 current typed music key/mood, measured procedural PCM/MIDI, source-bound cache, synthetic selected-adapter and passive full-backup cases. Retain589; include the complete53-case current SAPI worker contract module, retaining48 cases and5 owned Windows family/retained-cleanup boundaries.",
+  "derivation": "Retain the exact prior132 cases; add39 passive-provider recovery,9 headless admission,32 canonical progress preference and20 unchanged canonical manifest cases. Retain all232 and add27 observed-write, publication and settings-dialog conflict cases. Retain all259; restore7 canonical generic-state publication cases, protect6 existing resource-state cases through the shared retry owner, and add7 actual-child FFmpeg diagnostic boundary cases. Retain279 and restore21 canonical numeric-progress and count-boundary cases. Retain300; add41 explicit-TXT source/receipt/worker boundaries and4 current Studio semantic-keymap cases. Retain345 and add9 parent-owned Office native/publication workspace, resource, identity and argv boundaries. Retain354 and restore4 canonical OCR manifest snapshot, rehashed malformed JSON and oversize checksum regressions on the current installer. Retain358; add10 current completed-speech checkpoint/stop/identity cases and15 direct canonical owned-process and measured FFmpeg signal regressions. Retain383; restore3 exact canonical completed-DOCX source/result/missing-source boundaries and1 actual current-worker check using the exact canonical complete PPTX fixture. Retain387; restore34 fixed Windows SAPI compatibility-host admission cases and3 canonical late keyboard registration/live-warning contracts. Retain424 and select the complete60-case current Studio module, including52 retained cases and8 detached/stale/typed-completion cases. Retain484 and select the complete66-case current desktop handler module, including the restored active-job folder binding and exact selected-file cancellation totals. Retain550; include the complete16-case fixed standard helper population, retaining13 OS/private-file guards and adding3 fixed COM launch/data/failed-response boundaries. Retain566; add23 current typed music key/mood, measured procedural PCM/MIDI, source-bound cache, synthetic selected-adapter and passive full-backup cases. Retain589; include the complete53-case current SAPI worker contract module, retaining48 cases and5 owned Windows family/retained-cleanup boundaries. Retain642; add10 actual transient Office staging census cases, including disappearing directories/parents, existing and unreadable path refusals, replaced staging roots and observed quota/alias/depth violations after disappearance.",
   "failure_source_commit": "523aa40f9215569a276f0625d09fcc0fa84bb520",
   "failure_run_id": 45993629737,
   "tests": {
@@ -368,9 +368,16 @@
       "test_native_engine_stop_waits_for_existing_job_accounting": 1,
       "test_native_engine_cancel_retains_streams_until_pending_cleanup_settles": 3,
       "test_native_engine_success_cannot_return_before_pending_cleanup_settles": 1
+    },
+    "tests/conversion/test_office_stage_races.py": {
+      "test_native_removed_profile_entry_does_not_abort_the_remaining_stage_census": 2,
+      "test_valueerror_for_a_still_existing_stage_entry_is_never_treated_as_disappearance": 2,
+      "test_permission_failure_during_missing_entry_confirmation_remains_a_failure": 1,
+      "test_missing_native_entry_cannot_hide_lost_or_replaced_private_stage_root": 2,
+      "test_disappearance_after_observed_policy_violation_cannot_make_stage_valid": 3
     }
   },
-  "total_cases": 642,
+  "total_cases": 652,
   "canonical_provider_cases": 96,
   "canonical_preserved_cases": 37,
   "canonical_progress_cases": 59,
@@ -393,5 +400,6 @@
   "desktop_boundary_cases": 66,
   "standard_system_helper_cases": 16,
   "music_control_cases": 23,
-  "current_native_sapi_portable_cases": 53
+  "current_native_sapi_portable_cases": 53,
+  "office_transient_stage_cases": 10
 }
