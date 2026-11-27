@@ -3,7 +3,7 @@ from pathlib import Path
 import threading
 
 
-def show_transcription(frame):
+def show_transcription(frame, *, selected_job=None):
     import wx
     if getattr(frame, 'working', False) or getattr(frame, '_closing', False):
         frame.report('Finish or cancel the current operation before opening transcription.')
@@ -133,8 +133,10 @@ def show_transcription(frame):
         nonlocal rows
         rows = list(service.list())
         jobs.SetItems([f"{item['title']} — {item['status']} ({item['done']}/{len(item['sources'])})" for item in rows])
+        ids = [item['id'] for item in rows]
+        if select is not None and select not in ids:
+            raise ValueError('The selected saved transcription is no longer available in this library.')
         if rows:
-            ids = [item['id'] for item in rows]
             jobs.SetSelection(ids.index(select) if select in ids else 0)
         load_job()
     def begin(label, operation, complete, *, allow_dirty=False):
@@ -341,7 +343,7 @@ def show_transcription(frame):
     text.Bind(wx.EVT_TEXT, changed)
     dialog.Bind(wx.EVT_CLOSE, close)
     try:
-        refresh()
+        refresh(selected_job)
         controls()
         jobs.SetFocus()
         dialog.ShowModal()

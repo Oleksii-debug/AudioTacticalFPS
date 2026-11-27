@@ -524,3 +524,19 @@ prepared package does not establish permission for public binary distribution.
 ## DAISY 2.02 from completed Studio productions
 
 Audio Studio → Publish DAISY 2.02 opens the existing publication dialog with DAISY selected. Choose a completed job, supply publisher metadata and a new ZIP path. The Studio CLI adds publish-daisy; publications and verify-publication share the same durable receipts as EPUB. See STUDIO_DAISY_PUBLISHING.md for the measured-text contract, recovery, pinned structural checks and native-reader limits. Existing EPUB commands and saved keyboard identities remain valid.
+
+
+## Saved tasks and local resource allowances
+
+Open **Tools → Tasks and resources** to inspect saved Studio, assistant, import,
+translation and transcription checkpoints or edit the local CPU, memory, disk
+and GPU allowances. The view labels stored completion and declared reservations;
+open the original workflow to verify results or resume. A selected transcription
+opens in its original active library and starts no recognition. Existing Studio
+and assistant pause/cancel requests retain their normal acknowledgement rules.
+
+The same view is available through `python -m carr_library operations --data-dir
+<folder> list`; use `resources` to inspect allowances and
+`configure-resources <policy.json>` for an explicit policy file. No Run command
+or automatic provider call is added. See [runtime_resources.md](runtime_resources.md)
+for shared admission, policy backup, workspace filtering and qualification limits.

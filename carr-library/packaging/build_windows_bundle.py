@@ -364,7 +364,7 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                      "DOCUMENT_FORMATS_V3.md", "DOCUMENT_EXTRACTOR_REUSE.md",
                      "ACADEMIC_ACQUISITION.md", "TRANSCRIPTION.md", "TRUSTED_CLIENT.md",
                      "STUDIO_CLIP_EDITING.md", "MICROPHONE_RECORDING.md", "STUDIO_EPUB_PUBLISHING.md",
-                     "STUDIO_DAISY_PUBLISHING.md", "PRONUNCIATION_REVIEW.md", "AUDIOBOOK_CHAPTERS.md", "translation_workstation.md"):
+                     "STUDIO_DAISY_PUBLISHING.md", "PRONUNCIATION_REVIEW.md", "AUDIOBOOK_CHAPTERS.md", "runtime_resources.md", "translation_workstation.md"):
             shutil.copyfile(regular(HERE.parent / "docs" / name), guides / name)
         if sbom is not None:
             (staged / "runtime-sbom.cdx.json").write_bytes(sbom_bytes)

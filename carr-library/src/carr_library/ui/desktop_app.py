@@ -617,6 +617,8 @@ class DesktopFrame(WorkspaceFrame):
         install_command_palette(self)
         from .trust_status import install_trust_actions
         install_trust_actions(self)
+        from .operations_dialog import install_operations_actions
+        install_operations_actions(self)
         install_keyboard_settings(self)
 
     def build_advanced_query(self, event=None):
@@ -1285,6 +1287,9 @@ class DesktopFrame(WorkspaceFrame):
             'Ctrl+Shift+P opens Help, Find a command: filter by name, menu path or current shortcut. '
             'Tab moves to results; Enter runs the selected available command; Escape returns without running it.\n'
             'Help, Keyboard shortcuts changes these application keys. A saved choice keeps priority over a newly added default.\n'
+            'Tools, Tasks and resources shows existing job checkpoints and local resource allowances.\n'
+            'Pause or cancel is offered only when the owning service supports it. Transcription opens its original library workstation.\n'
+            'Allowances coordinate declared local work; the displayed values are not measured CPU or memory use.\n'
             'Ctrl+Alt+M compares saved sources in the active topic. Academic also exports filtered outlines, reviews RIS fields, and checks the catalog.\n'
 
             'Ctrl+N creates a library. Ctrl+I imports books. Ctrl+Shift+N adds original text.\n'

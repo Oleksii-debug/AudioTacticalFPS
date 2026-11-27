@@ -142,6 +142,12 @@ jobs:
             tests/speech/test_pronunciation_handlers.py tests/speech/test_pronunciation_reader_hook.py \
             tests/studio/test_pronunciation.py tests/studio/test_pronunciation_dialog.py tests/studio/test_pronunciation_render.py \
             tests/audio/test_audiobook.py tests/studio/test_audiobook_publication.py \
+            tests/speech/test_navigation.py tests/ui/test_reader_navigation.py \
+            tests/operations/test_facade.py tests/operations/test_import_admission.py \
+            tests/operations/test_production_admission.py tests/operations/test_resources.py \
+            tests/operations/test_transcription_admission.py tests/ui/test_operations_dialog.py \
+            tests/ui/test_operations_policy.py tests/e2e/test_operations_cli.py \
+            tests/operations/test_resources_posix.py \
             tests/storage/test_state_replacement.py \
             tests/packaging/test_refresh_private_bundle_review.py \
             tests/packaging/test_windows_bundle.py tests/packaging/test_prepare_publication_tools.py 2>&1 | tee ci-production-results/offline.txt
