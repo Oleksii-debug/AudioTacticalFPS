@@ -1,0 +1,54 @@
+name: Profile actual Windows transcription service
+on:
+  push:
+    branches: [carr/asr-service-review-20261127]
+    paths: ['carr-library/**', '.github/workflows/carr-asr-service-review.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: asr-service-review-${{ github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: carr-library
+        shell: pwsh
+    env:
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install current code and declared tests
+        run: python -m pip install ".[test]"
+      - name: Profile the actual retained-result and readback failures
+        timeout-minutes: 10
+        run: |
+          New-Item -ItemType Directory -Force 'ci-asr-service' | Out-Null
+          python -m cProfile -o ci-asr-service/service.prof -m pytest -vv -o addopts= -o faulthandler_timeout=60 --tb=short tests/transcription/test_service.py::test_rebind_preserves_accepted_artifact_and_its_original_profile tests/transcription/test_service.py::test_edit_is_versioned_derivative_and_reading_does_not_require_runtime_trust 2>&1 | Tee-Object 'ci-asr-service/results.txt'
+          $result = $LASTEXITCODE
+          python -c "import pstats; pstats.Stats('ci-asr-service/service.prof').strip_dirs().sort_stats('cumulative').print_stats(45)" 2>&1 | Tee-Object 'ci-asr-service/profile.txt'
+          exit $result
+      - name: Record exact source identity
+        if: always()
+        run: |
+          git rev-parse HEAD | Out-File 'ci-asr-service/commit.txt'
+          python -m pip freeze | Out-File 'ci-asr-service/packages.txt'
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: asr-service-review-${{ github.sha }}
+          path: |
+            carr-library/ci-asr-service/*.txt
+          if-no-files-found: error
