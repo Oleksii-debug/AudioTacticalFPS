@@ -1,0 +1,69 @@
+{
+  "schema": "carr-standard-managed-health-repair/1",
+  "authoring_status": "SOURCE_REVIEW_REQUIRED",
+  "base_commit": "9e4406b380927d6d0b69d28fca2a533953dad854",
+  "base_tree": "6ab4fbd43d1cf6aecbd54aa875eec9451e335343",
+  "observed_failure": {
+    "source_commit": "2d1a4bd89b3c8d63d55848f129e38489e2ea4157",
+    "run_id": 46061428962,
+    "job_id": 140716369082,
+    "artifact_id": 15229972246,
+    "artifact_bytes": 1697192,
+    "artifact_sha256": "3e2f5f9ab7011612950c0196849edcd6ae89f8d78616c86c389fd897eeb78af9",
+    "call_path": [
+      "StandardUpdateTransaction.apply",
+      "WindowsStandardHost.health",
+      "WindowsBundleAdapter._verify_release",
+      "WindowsBundleAdapter._require_portable"
+    ],
+    "actual_error": "This managed installation requires its reviewed setup/maintenance procedure. A program-only update cannot replace installer ownership receipts.",
+    "managed_upgrade": "FAIL",
+    "rollback_completion": "NOT_VERIFIED_BY_THIS_SOURCE_RECORD"
+  },
+  "repair": [
+    "Extract the unchanged bounded manifest/source/exact-wheel receipt checks into one private read-only payload verifier.",
+    "Retain every portable layout ownership refusal before shared verification, activation, update and recovery.",
+    "Standard health validates the standard snapshot, verifies current native activation equality, validates the exact source/manifest payload and executes the same three owned isolated health commands.",
+    "Revalidate cancellation, rejected-generation status and exact native activation after child completion."
+  ],
+  "tests": {
+    "module": "tests/security/test_standard_health.py",
+    "cases": 30,
+    "functions": {
+      "test_standard_health_verifies_managed_payload_and_runs_fixed_commands": 2,
+      "test_portable_release_verifier_still_refuses_managed_ownership": 2,
+      "test_standard_health_rejects_signed_source_mismatch_before_commands": 1,
+      "test_standard_health_rejects_changed_activation_before_commands": 5,
+      "test_standard_health_rejects_foreign_snapshot_before_commands": 4,
+      "test_standard_health_keeps_real_payload_and_installation_checks": 3,
+      "test_standard_health_rechecks_activation_after_child_completion": 2,
+      "test_standard_health_preserves_optional_exact_source_receipt_checks": 5,
+      "test_standard_health_stops_at_each_failed_health_command": 3,
+      "test_standard_health_keeps_rejected_generation_unlaunchable": 1,
+      "test_standard_health_cancellation_never_reports_success": 2
+    },
+    "process_results": "SYNTHETIC_ONLY; the existing independent native standard gate executes the actual three commands",
+    "actual_files_and_current_validators": true,
+    "portable_ownership_existing_cases": 35,
+    "system_helper_existing_cases": 16,
+    "standalone_source_cases": 81,
+    "standalone_installed_cases": 81,
+    "full_selected_source_cases": 5713,
+    "full_selected_installed_cases": 5385,
+    "source": "NOT_RUN",
+    "installed": "NOT_RUN",
+    "native": "NOT_RUN"
+  },
+  "unchanged": [
+    "No allow_managed bypass or removal of _require_portable.",
+    "No new update/installer authority, ownership receipt, transfer policy or automatic network.",
+    "Same standard installer original O, maintenance A, candidate B provenance and15 native upgrade checks.",
+    "Same full existing regression oracle and native checks; only30 new cases added to each protected mode."
+  ],
+  "limits": {
+    "manual_nvda": "NOT_RUN",
+    "production_authority": "NOT_CONFIGURED",
+    "authenticode": "NOT_RUN",
+    "full_platform": "NOT_QUALIFIED"
+  }
+}

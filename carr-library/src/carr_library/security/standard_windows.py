@@ -24,7 +24,7 @@ from ..audio.recording_process import _Accounting, _stop_owned
 from ..audio.cleanup import pending_cleanup
 from ..installation_lease import installation_lease
 from ._files import TrustError, atomic_write, directory, file_info, json_bytes, read_bytes, sync_directory
-from .installation import WindowsBundleAdapter
+from .installation import _verify_release_payload
 from .standard_state import MAX_STATE, PENDING, PROTOCOL, generation_name, read_pending
 
 REGISTRY = r'Software\Microsoft\Windows\CurrentVersion\Uninstall\Resonance.StandardInstall_is1'
@@ -209,7 +209,6 @@ class WindowsStandardHost:
         if type(timeout) not in (int, float) or not 1 <= timeout <= 3600:
             raise TrustError('Invalid standard installation deadline.')
         self.verify_bundle, self.validate_manifest, self.timeout = verify_bundle, validate_manifest, timeout
-        self.health_adapter = WindowsBundleAdapter(verify_bundle, timeout=min(timeout, 1800))
 
     @staticmethod
     def environment():
@@ -373,10 +372,22 @@ class WindowsStandardHost:
         return code
 
     def health(self, root, snapshot, release, *, cancelled=lambda: False):
+        from .updates import _cancel
+        _cancel(cancelled)
+        root = directory(root)
+        snapshot = validate_snapshot(snapshot, root)
         generation = directory(root.joinpath(*snapshot['generation'].split('/')))
         if os.path.lexists(generation / 'standard-update-rejected.json'):
             return False
-        self.health_adapter._verify_release(generation, release)
+        # The standard layout owns registration, shortcut, setup and the exact
+        # current generation. Portable replacement never receives this authority.
+        if self.snapshot(root) != snapshot:
+            raise TrustError('The standard activation changed before its health check.')
+        raw = _verify_release_payload(generation, release, self.verify_bundle)
+        if sha256(raw).hexdigest() != snapshot['manifest_sha256']:
+            raise TrustError('The standard generation manifest changed before its health check.')
+        self.validate_manifest(raw, release.source_commit)
+        _cancel(cancelled)
         file_info(generation / '.venv' / '.installation-complete')
         python = generation / '.venv' / 'Scripts' / 'python.exe'
         file_info(python)
@@ -384,10 +395,16 @@ class WindowsStandardHost:
                 ['-m', 'carr_library.native_checks', '--bundle-root', str(generation)],
                 ['-m', 'carr_library', '--self-test'],
                 ['-c', "from importlib.metadata import version; import sys; sys.exit(version('universal-research-library') != sys.argv[1])", release.version]):
+            _cancel(cancelled)
             code, _ = run_owned([python, '-I', '-B', '-X', 'utf8', *arguments],
                 cwd=generation, environment=self.environment(), timeout=min(180, self.timeout), cancelled=cancelled)
             if code:
                 return False
+        _cancel(cancelled)
+        if os.path.lexists(generation / 'standard-update-rejected.json'):
+            return False
+        if self.snapshot(root) != snapshot:
+            raise TrustError('The standard activation changed during its health check.')
         return True
 
     def verify_previous(self, root, snapshot):

@@ -3215,6 +3215,19 @@
       "test_installed_metadata_cannot_change_the_pcm_sample_rate": 1,
       "test_discovery_and_render_cannot_select_different_worker_files": 1,
       "test_actual_io_thread_settlement_retains_the_same_cleanup_owner": 2
+    },
+    "tests.security.test_standard_health": {
+      "test_standard_health_verifies_managed_payload_and_runs_fixed_commands": 2,
+      "test_portable_release_verifier_still_refuses_managed_ownership": 2,
+      "test_standard_health_rejects_signed_source_mismatch_before_commands": 1,
+      "test_standard_health_rejects_changed_activation_before_commands": 5,
+      "test_standard_health_rejects_foreign_snapshot_before_commands": 4,
+      "test_standard_health_keeps_real_payload_and_installation_checks": 3,
+      "test_standard_health_rechecks_activation_after_child_completion": 2,
+      "test_standard_health_preserves_optional_exact_source_receipt_checks": 5,
+      "test_standard_health_stops_at_each_failed_health_command": 3,
+      "test_standard_health_keeps_rejected_generation_unlaunchable": 1,
+      "test_standard_health_cancellation_never_reports_success": 2
     }
   },
   "installed": {
@@ -6207,6 +6220,19 @@
       "test_installed_metadata_cannot_change_the_pcm_sample_rate": 1,
       "test_discovery_and_render_cannot_select_different_worker_files": 1,
       "test_actual_io_thread_settlement_retains_the_same_cleanup_owner": 2
+    },
+    "tests.security.test_standard_health": {
+      "test_standard_health_verifies_managed_payload_and_runs_fixed_commands": 2,
+      "test_portable_release_verifier_still_refuses_managed_ownership": 2,
+      "test_standard_health_rejects_signed_source_mismatch_before_commands": 1,
+      "test_standard_health_rejects_changed_activation_before_commands": 5,
+      "test_standard_health_rejects_foreign_snapshot_before_commands": 4,
+      "test_standard_health_keeps_real_payload_and_installation_checks": 3,
+      "test_standard_health_rechecks_activation_after_child_completion": 2,
+      "test_standard_health_preserves_optional_exact_source_receipt_checks": 5,
+      "test_standard_health_stops_at_each_failed_health_command": 3,
+      "test_standard_health_keeps_rejected_generation_unlaunchable": 1,
+      "test_standard_health_cancellation_never_reports_success": 2
     }
   },
   "native_trust": [

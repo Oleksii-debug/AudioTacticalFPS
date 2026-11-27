@@ -205,6 +205,40 @@ def _owned_process(command, *, cwd, env, timeout):
         _stop(process)
 
 
+def _verify_release_payload(root, release, verify_bundle):
+    """Read-only payload checks shared by independently owned update paths.
+
+    This verifies bytes and release identity; it grants no installation or
+    activation authority. Each caller first enforces its own layout and owner.
+    """
+    root = directory(root)
+    # Bind the trusted verifier to the same bounded manifest snapshot whose
+    # source identity we compare with the authenticated TUF target metadata.
+    raw = read_bytes(root / 'bundle-manifest.json', 16 * 1024**2)
+    manifest = json_value(raw, maximum=16 * 1024**2)
+    if type(manifest) is not dict or manifest.get('source_commit') != release.source_commit:
+        raise TrustError('The bundle source commit differs from the signed release.')
+    verify_bundle(root, manifest_bytes=raw)
+    # The refresh producer also includes its existing exact-wheel receipt.
+    # Standard bundles need no additional provenance schema here.
+    proof_path = root / 'application-source.json'
+    files = manifest['files']
+    if os.path.lexists(proof_path) or 'application-source.json' in files:
+        proof_raw = read_bytes(proof_path, 16384)
+        if hashlib.sha256(proof_raw).hexdigest() != files.get('application-source.json'):
+            raise TrustError('The application source receipt is outside the verified inventory.')
+        proof = json_value(proof_raw, maximum=16384)
+        wheels = [digest for name, digest in files.items()
+                  if name.startswith('wheelhouse/universal_research_library-') and name.endswith('.whl')]
+        if (type(proof) is not dict or proof.get('source_commit') != release.source_commit
+                or proof.get('project_name') != 'universal-research-library'
+                or proof.get('project_version') != release.version
+                or len(wheels) != 1 or proof.get('wheel_sha256') != wheels[0]):
+            raise TrustError('The application source receipt differs from the signed release or wheel.')
+
+    return raw
+
+
 class WindowsBundleAdapter:
     """Use the installed, reviewed packaging verifier and signed bundle installer.
 
@@ -236,29 +270,7 @@ class WindowsBundleAdapter:
 
     def _verify_release(self, root, release):
         self._require_portable(root)
-        # Bind the trusted verifier to the same bounded manifest snapshot whose
-        # source identity we compare with the authenticated TUF target metadata.
-        raw = read_bytes(root / 'bundle-manifest.json', 16 * 1024**2)
-        manifest = json_value(raw, maximum=16 * 1024**2)
-        if type(manifest) is not dict or manifest.get('source_commit') != release.source_commit:
-            raise TrustError('The bundle source commit differs from the signed release.')
-        self.verify_bundle(root, manifest_bytes=raw)
-        # The refresh producer also includes its existing exact-wheel receipt.
-        # Standard bundles need no additional provenance schema here.
-        proof_path = root / 'application-source.json'
-        files = manifest['files']
-        if os.path.lexists(proof_path) or 'application-source.json' in files:
-            proof_raw = read_bytes(proof_path, 16384)
-            if hashlib.sha256(proof_raw).hexdigest() != files.get('application-source.json'):
-                raise TrustError('The application source receipt is outside the verified inventory.')
-            proof = json_value(proof_raw, maximum=16384)
-            wheels = [digest for name, digest in files.items()
-                      if name.startswith('wheelhouse/universal_research_library-') and name.endswith('.whl')]
-            if (type(proof) is not dict or proof.get('source_commit') != release.source_commit
-                    or proof.get('project_name') != 'universal-research-library'
-                    or proof.get('project_version') != release.version
-                    or len(wheels) != 1 or proof.get('wheel_sha256') != wheels[0]):
-                raise TrustError('The application source receipt differs from the signed release or wheel.')
+        return _verify_release_payload(root, release, self.verify_bundle)
 
     @staticmethod
     def _environment():

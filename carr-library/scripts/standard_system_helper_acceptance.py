@@ -1,4 +1,4 @@
-"""Run the same narrow Windows helper regressions from source and installation."""
+"""Require exact system-helper, portable ownership and managed-health regressions."""
 from collections import Counter
 from hashlib import sha256
 import json
@@ -8,13 +8,17 @@ import sys
 import xml.etree.ElementTree as ET
 
 PROJECT = Path(__file__).resolve().parents[1]
-SELECTOR = 'tests/security/test_standard_system_helper.py'
-MODULE = 'tests.security.test_standard_system_helper'
+SELECTORS = ('tests/security/test_standard_system_helper.py',
+             'tests/security/test_installation.py',
+             'tests/security/test_standard_health.py')
+MODULES = tuple(path[:-3].replace('/', '.') for path in SELECTORS)
+TOTAL = 81
 BOOTSTRAP = r"""
 from hashlib import sha256
 import importlib,json,pathlib,sys
 project=pathlib.Path(sys.argv[1]).resolve()
 mode,report=sys.argv[2:4]
+selectors=sys.argv[4:]
 if mode=='source':
     sys.path.insert(0,str(project/'src'))
 import carr_library
@@ -24,7 +28,8 @@ if mode=='source':
 else:
     assert package.is_relative_to(pathlib.Path(sys.prefix).resolve()), package
     assert not package.is_relative_to(project/'src'), package
-names=('carr_library.security.standard_windows','carr_library.security._files')
+names=('carr_library.security.standard_windows','carr_library.security.installation',
+       'carr_library.security.standard_installation','carr_library.security._files')
 expected={}
 for name in names:
     module=importlib.import_module(name)
@@ -35,7 +40,7 @@ for name in names:
     assert sha256(path.read_bytes()).hexdigest()==expected[name], name
 import pytest
 status=pytest.main(['-q','--import-mode=importlib','-p','no:cacheprovider',
-    '-o','pythonpath=','--junitxml='+report,'tests/security/test_standard_system_helper.py'])
+    '-o','pythonpath=','--junitxml='+report,*selectors])
 for name,digest in expected.items():
     path=pathlib.Path(sys.modules[name].__file__).resolve()
     assert path.is_relative_to(package), (name,path,package)
@@ -52,28 +57,39 @@ def main():
     results = PROJECT / 'ci-results'
     results.mkdir(exist_ok=True)
     oracle = json.loads((PROJECT / 'scripts/v3_acceptance_oracles.json').read_text(encoding='utf-8'))
-    expected = Counter(oracle['source'][MODULE])
-    if expected != Counter(oracle['installed'][MODULE]) or sum(expected.values()) != 16:
-        raise AssertionError('The exact protected helper oracle changed.')
+    expected = Counter({(module, name): count for module in MODULES
+                        for name, count in oracle['source'][module].items()})
+    installed_expected = Counter({(module, name): count for module in MODULES
+                                  for name, count in oracle['installed'][module].items()})
+    if expected != installed_expected or sum(expected.values()) != TOTAL:
+        raise AssertionError('The exact protected helper and ownership oracles changed.')
     source = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=PROJECT, text=True).strip()
     tree = subprocess.check_output(['git', 'rev-parse', 'HEAD^{tree}'], cwd=PROJECT, text=True).strip()
     observed = {}
     for mode in ('source', 'installed'):
         report = results / ('standard-system-helper-' + mode + '.xml')
         process = subprocess.run([sys.executable, '-I', '-B', '-X', 'utf8', '-c',
-            BOOTSTRAP, str(PROJECT), mode, str(report)], cwd=PROJECT, timeout=180, check=False)
+            BOOTSTRAP, str(PROJECT), mode, str(report), *SELECTORS], cwd=PROJECT, timeout=300, check=False)
         if process.returncode:
             raise RuntimeError('The exact ' + mode + ' helper regression process failed.')
         root = ET.parse(report).getroot()
         cases = list(root.iter('testcase'))
-        actual = Counter(case.attrib['name'].split('[', 1)[0] for case in cases)
-        if (actual != expected or len(cases) != 16
+        actual = Counter((case.attrib['classname'], case.attrib['name'].split('[', 1)[0])
+                         for case in cases)
+        if (actual != expected or len(cases) != TOTAL
                 or any(list(root.iter(tag)) for tag in ('failure', 'error', 'skipped'))):
             raise AssertionError('A helper regression is missing, failed or skipped: ' + mode)
         observed[mode] = {'passed': len(cases), 'failed': 0, 'skipped': 0,
-            'functions': dict(actual), 'junit_sha256': sha256(report.read_bytes()).hexdigest()}
-    value = {'schema': 'carr-system-helper-regressions/1', 'status': 'PASS',
+            'functions': {module + '::' + name: count for (module, name), count in actual.items()},
+            'junit_sha256': sha256(report.read_bytes()).hexdigest()}
+    value = {'schema': 'carr-system-helper-regressions/2', 'status': 'PASS',
         'source_commit': source, 'source_tree': tree, 'results': observed,
+        'scope': 'fixed-system-helper-plus-portable-ownership-and-managed-payload-health',
+        'test_source_sha256': {path: sha256((PROJECT / path).read_bytes()).hexdigest()
+                               for path in SELECTORS},
+        'qualification_sha256': sha256(Path(__file__).read_bytes()).hexdigest(),
+        'oracle_sha256': sha256((PROJECT / 'scripts/v3_acceptance_oracles.json').read_bytes()).hexdigest(),
+        'native_health_commands': 'SYNTHETIC_RESULTS_IN_PORTABLE_REGRESSIONS',
         'native_activation': 'NOT_RUN_BY_THIS_GATE', 'private_file_policy': 'UNCHANGED_SINGLE_LINK'}
     raw = json.dumps(value, sort_keys=True, indent=2) + '\n'
     (results / 'standard-system-helper-regressions.json').write_text(raw, encoding='utf-8')
