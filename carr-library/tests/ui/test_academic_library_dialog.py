@@ -589,7 +589,11 @@ def test_academic_export_hashes_and_renders_only_in_existing_worker_and_confirms
         assert get_ident() != main_thread
         return capture(*args, **kwargs)
 
-    monkeypatch.setattr(module, 'capture_export_destination', observe)
+    # The fixture compiles the unchanged nested class with a copied globals map.
+    # Instrument the map the running handler actually resolves, retaining its
+    # real worker and UI callback delivery.
+    monkeypatch.setitem(window.on_export.__func__.__globals__,
+                        'capture_export_destination', observe)
     native_handlers.wx.MessageBox.side_effect = lambda *args: (
         native_handlers.wx.YES if get_ident() == main_thread else pytest.fail('Confirmation left the UI thread'))
     window.on_export()

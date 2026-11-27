@@ -166,11 +166,22 @@ def test_cancel_cleans_staging_after_real_worker_finishes(publication, tmp_path,
     assert folders and not any(folder.exists() for folder in folders)
 
 
-def test_decode_respects_total_capture_and_pcm_budget(publication):
+def test_decode_respects_total_capture_and_pcm_budget(publication, monkeypatch):
+    from zipfile import ZipFile
+    from carr_library.audio import AudioRuntime
     root, path, _ = publication
-    with pytest.raises(ValueError, match='budget'):
+    with ZipFile(path) as archive:
+        unpacked = sum(member.file_size for member in archive.infolist())
+        captured = path.stat().st_size + archive.getinfo('EPUB/audio/master.mp3').file_size
+    # Both the compressed capture and the verified expanded graph must fit.
+    # The remaining byte cannot accommodate the actual decoded PCM, so the
+    # rejection exercises the playback staging guard, not ZIP size validation.
+    maximum = max(4096, unpacked, captured) + 1
+    monkeypatch.setattr(AudioRuntime, 'convert',
+                        lambda *a, **k: pytest.fail('Over-budget playback reached the decoder.'))
+    with pytest.raises(ValueError, match='Decoded PCM and captured EPUB.*budget'):
         prepare_overlay(path, library_root=root,
-                        budget=AudioBudget(max_output_bytes=max(4096, path.stat().st_size + 100)))
+                        budget=AudioBudget(max_output_bytes=maximum))
 
 
 def test_unknown_epub_graph_is_rejected_before_audio_runtime(publication, tmp_path, monkeypatch):

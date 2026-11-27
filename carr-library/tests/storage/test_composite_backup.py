@@ -300,7 +300,7 @@ def test_historical_sidecar_v3_pending_source_still_resumes(mixed, tmp_path):
         remove_component(backup, manifest, component)
     manifest.pop('generated_audio_included')
     manifest['version'] = 3
-    with closing(Storage(backup / 'library.sqlite', schema_version=4)) as storage:
+    with closing(Storage(backup / 'library.sqlite')) as storage:
         manifest['sidecars'] = backup_sidecars.snapshot(app, backup,
             {asset['sha256'] for asset in manifest['assets']}, db=storage.db)
     assert any(row['path'].startswith('pending-originals/') for row in manifest['sidecars']['files'])

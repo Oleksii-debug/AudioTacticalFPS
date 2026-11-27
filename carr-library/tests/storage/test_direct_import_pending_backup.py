@@ -230,7 +230,7 @@ def test_resealed_component_cannot_retarget_an_unpublished_direct_job(tmp_path, 
     request = _stopped(app, workspace, _source(tmp_path, '.html'), monkeypatch)
     backup = tmp_path / 'component'
     backup.mkdir()
-    with exclusive_writer(app.root), closing(Storage(app.database, schema_version=4)) as storage:
+    with exclusive_writer(app.root), closing(Storage(app.database)) as storage:
         storage.backup(backup / 'library.sqlite')
         manifest = snapshot_pending(app, backup / 'pending')
     name = 'import-requests/' + request['request_id'] + '.json'

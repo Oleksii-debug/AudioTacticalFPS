@@ -143,7 +143,9 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
             ('document_conversion', 'install_conversion_actions'),
             ('citation_formatting', 'install_citation_actions'),
             ('operation_progress', 'install_operation_progress'),
-            ('transcription_dialog', 'install_transcription_actions')):
+            ('transcription_dialog', 'install_transcription_actions'),
+            ('command_palette', 'install_command_palette'),
+            ('diagnostics_dialog', 'install_diagnostics')):
         callback = Mock()
         additional.append(callback)
         monkeypatch.setitem(sys.modules, 'carr_library.ui.' + module,

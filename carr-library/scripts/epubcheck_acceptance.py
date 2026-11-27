@@ -73,7 +73,7 @@ def inspect(archive, java, lock_path, *, require_installed=False):
     from carr_library.audio.runtime import activate_bundled_audio_runtime, discover_bundled_audio
     audio_handle = activate_bundled_audio_runtime()
     from carr_library.studio import publishing
-    from carr_library.studio.clips import ClipEditor
+    from carr_library.studio.project import Cue, Project as SceneProject, Scene
     from carr_library.studio.render import ProductionService
 
     if require_installed and 'site-packages' not in {
@@ -135,18 +135,23 @@ def inspect(archive, java, lock_path, *, require_installed=False):
             result = validate(java, jar, publication, root / (name + '.json'))
             assert result['sha256'] == receipt['artifact']['sha256']
             results.append(result)
-        clip = root / 'synthetic-clip.wav'
+        retained_inputs = library / 'state' / 'studio' / 'conformance-inputs'
+        retained_inputs.mkdir()
+        clip = retained_inputs / 'synthetic-clip.wav'
         SyntheticTones().synthesize('', 'synthetic-tone', clip, settings=None, cancelled=lambda: False)
-        editor = ClipEditor(library, service=service)
-        audio_project = editor.create('Untranscribed retained audio')
-        audio_project = editor.add(audio_project, audio_project.scenes[0].id, clip,
-                                   role='music', start=.1, duration=.2)
+        # Use the accepted typed cue API and an explicit local input root.
+        # The retained synthetic clip has no text or inferred transcript.
+        audio_service = ProductionService(service.root, voices=SyntheticTones(),
+                                          input_roots=(retained_inputs,))
+        audio_project = SceneProject('epubcheck-audio-only', 'Untranscribed retained audio', (),
+            (Scene('retained-audio', 'Retained audio', (),
+                   cues=(Cue('synthetic-clip', str(clip), role='music', start=.1),)),))
         output = root / 'audio-only'
         output.mkdir()
-        identity = service.submit(audio_project, output, stems=False)
-        assert service.run(identity)['status'] == 'complete'
+        identity = audio_service.submit(audio_project, output, stems=False)
+        assert audio_service.run(identity)['status'] == 'complete'
         publication = root / 'audio-only.epub'
-        publisher.export_epub(identity, publication)
+        publishing.PublicationService(audio_service).export_epub(identity, publication)
         assert all(row['kind'] == 'audio-interval'
                    for row in publishing.inspect_epub(publication)['intervals'])
         results.append(validate(java, jar, publication, root / 'audio-only.json'))

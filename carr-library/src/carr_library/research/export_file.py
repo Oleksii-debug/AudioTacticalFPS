@@ -210,8 +210,17 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
 
     check_cancelled()
     requested, private = _export_paths(path, private_root)
-    target, parent_identity, previous = _destination(
-        requested, private, check_cancelled, require_absent=require_absent)
+    captured_absent = type(approval) is ExportDestination and approval.require_absent
+    try:
+        target, parent_identity, previous = _destination(
+            requested, private, check_cancelled,
+            require_absent=require_absent or captured_absent)
+    except FileExistsError as exc:
+        if captured_absent:
+            # A new occupant invalidates the captured selection. Preserve the
+            # approval contract without reading the unapproved file's bytes.
+            raise ValueError('The export destination changed. Choose the destination again.') from exc
+        raise
     # An ordinary replacement approval cannot authorize a competing file that
     # did not exist when this write began, including for legacy callers.
     require_absent = require_absent or previous is None

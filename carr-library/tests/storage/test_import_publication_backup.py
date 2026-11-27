@@ -54,7 +54,7 @@ def test_legacy_sidecar_reader_also_clears_validated_execution_receipt(completed
     stage.mkdir()
     target = tmp_path / 'restore-stage'
     target.mkdir()
-    with closing(Storage(app.database, schema_version=4)) as storage:
+    with closing(Storage(app.database)) as storage:
         manifest = backup_sidecars.snapshot(app, stage, {request['asset_sha256']}, db=storage.db)
         restored = backup_sidecars.restore(stage / 'sidecars', target, manifest,
             tmp_path / 'new-root', db=storage.db)

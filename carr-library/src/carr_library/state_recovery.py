@@ -74,16 +74,26 @@ def _publication_path(path):
             and path.suffix == '.json')
 
 
+def _dispatch_path(relative):
+    """Classify Windows aliases without renaming any retained state file.
+
+    State manifests already reject case-folded duplicates. Use that same
+    portable identity for typed recovery, while reads/writes keep the original
+    spelling and all historical record values remain untouched.
+    """
+    return PurePosixPath(relative.casefold())
+
+
 def _prepared(relative, value):
     """Return a modified typed record, or None for unchanged opaque state."""
-    path = PurePosixPath(relative)
+    path = _dispatch_path(relative)
     if _publication_path(path):
         from .studio.publishing import validate_publication_document
         validate_publication_document(value)
         _job_identity(value, path)
         return {**value, 'restore_requires_output': True}
     if type(value) is not dict:
-        if (path == PurePosixPath('transcription/engine.json')
+        if (path in (PurePosixPath('transcription/engine.json'), PurePosixPath('audio/engines.json'))
                 or len(path.parts) == 5 and path.parts[0] == 'transcription'
                 and path.parts[2] == 'jobs' and path.name == 'job.json'):
             raise ValueError('Invalid typed transcription recovery object.')
@@ -102,9 +112,10 @@ def _prepared(relative, value):
         # Preserve original input roots, hashes and receipts. New execution
         # requires explicit review; completed text and exports remain readable.
         return {**value, 'restore_requires_review': True}
-    if path == PurePosixPath('audio/engines.json') and schema == 1:
+    if path == PurePosixPath('audio/engines.json'):
         fields = {'schema', 'ffmpeg', 'ffprobe', 'piper', 'voice_helpers', 'music_models', 'fluidsynth'}
-        if (type(schema) is not int or set(value) not in (fields, fields | {'restore_requires_revalidation'})
+        if (type(schema) is not int or schema != 1
+                or set(value) not in (fields, fields | {'restore_requires_revalidation'})
                 or type(value.get('restore_requires_revalidation', False)) is not bool
                 or any(not isinstance(value[key], list) or len(value[key]) > 100
                        for key in ('piper', 'voice_helpers', 'music_models'))):
@@ -115,7 +126,7 @@ def _prepared(relative, value):
     if schema == 'carr-provider-profile/1' and path.suffixes[-2:] == ['.profile', '.json']:
         from .assistant.profiles import ProviderProfile
         profile = ProviderProfile(**{key: item for key, item in value.items() if key != 'schema'})
-        if path.name != profile.id + '.profile.json':
+        if path.name != (profile.id + '.profile.json').casefold():
             raise ValueError('Restored provider profile identity differs from its filename.')
         return {**value, 'credential_ref': None, 'enabled': False}
     if schema == 'carr-provider-usage/1' and path.name.endswith('.usage.json'):
@@ -155,22 +166,24 @@ def validate_state_documents(root, entries, *, cancelled=lambda: False, restored
     for entry in entries:
         if cancelled():
             raise InterruptedError('Application state verification cancelled.')
-        if not entry['filename'].endswith('.json'):
+        relative = _dispatch_path(entry['filename'])
+        if relative.suffix != '.json':
             continue
         path = root / entry['filename']
         # Opaque state can contain larger JSON exports. Known application JSON
         # uses the bounded durable-state contract; no arbitrary file is executed.
         if entry['size_bytes'] > 32 * 1024 * 1024:
-            if (entry['filename'].startswith(('assistant/', 'translation/', 'providers/',
+            if (relative.as_posix().startswith(('assistant/', 'translation/', 'providers/',
                                               'studio/jobs/', 'studio/publications/', 'speech/', 'transcription/'))
-                    or entry['filename'].endswith(('.profile.json', '.usage.json'))):
+                    or relative.name.endswith(('.profile.json', '.usage.json'))
+                    or relative == PurePosixPath('audio/engines.json')):
                 raise ValueError('Typed application state exceeds its recovery JSON budget.')
             continue
         try:
             value = read_json(path)
         except (UnicodeError, json.JSONDecodeError):
-            relative = PurePosixPath(entry['filename'])
-            if (_publication_path(relative) or relative == PurePosixPath('transcription/engine.json')
+            if (_publication_path(relative)
+                    or relative in (PurePosixPath('transcription/engine.json'), PurePosixPath('audio/engines.json'))
                     or len(relative.parts) == 5 and relative.parts[0] == 'transcription'
                     and relative.parts[2] == 'jobs' and relative.name == 'job.json'):
                 raise ValueError('Invalid typed transcription recovery JSON.') from None

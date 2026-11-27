@@ -34,7 +34,8 @@ from .research.saved_topic_query import SavedTopicQueries
 from .research.anchored_export import export_saved
 from .research.topic_tree import TopicTree
 from .search import literal, thematic
-from .storage.revisions import Storage, Page, _schema_signature, _expected_signature
+from .storage.revisions import (Storage, Page, CURRENT_SCHEMA_VERSION,
+                                _schema_signature, _expected_signature)
 from .data_paths import guard_data_directory
 from .extract.document_formats import EXTENDED_MIMES, FORMAT_BY_MIME, ISOLATED_SUFFIXES
 
@@ -180,7 +181,7 @@ class LibraryApp:
         self._selections = {}
         with exclusive_writer(self.root):
             self._check_database_paths()
-            with closing(Storage(self.database, schema_version=4)) as storage:
+            with closing(Storage(self.database, schema_version=CURRENT_SCHEMA_VERSION)) as storage:
                 storage.check()
         if semantic_ranker is not None:
             from .semantic import OfflineSemanticRanker
@@ -215,7 +216,8 @@ class LibraryApp:
                 db.execute('PRAGMA recursive_triggers=ON')
                 db.execute('PRAGMA query_only=ON')
                 db.execute('BEGIN')
-                if db.execute('PRAGMA user_version').fetchone()[0] != 4 or _schema_signature(db) != _expected_signature(4):
+                if (db.execute('PRAGMA user_version').fetchone()[0] != CURRENT_SCHEMA_VERSION
+                        or _schema_signature(db) != _expected_signature(CURRENT_SCHEMA_VERSION)):
                     raise ValueError('The library schema has changed.')
                 if workspace is not None:
                     self._authorize(db, workspace)
@@ -231,7 +233,7 @@ class LibraryApp:
     def write(self, workspace=None):
         with exclusive_writer(self.root):
             self._check_database_paths()
-            with closing(Storage(self.database, schema_version=4)) as storage:
+            with closing(Storage(self.database, schema_version=CURRENT_SCHEMA_VERSION)) as storage:
                 with storage.transaction():
                     if workspace is not None:
                         self._authorize(storage.db, workspace)
@@ -437,7 +439,7 @@ class LibraryApp:
         with exclusive_writer(self.root):
             check_cancelled()
             self._check_database_paths()
-            with closing(Storage(self.database, schema_version=4)) as storage:
+            with closing(Storage(self.database, schema_version=CURRENT_SCHEMA_VERSION)) as storage:
                 with storage.transaction():
                     db = storage.db
                     self._authorize(db, workspace)
@@ -610,10 +612,11 @@ class LibraryApp:
         The exact request, original, sealed pages, catalog authorization and
         requested memberships must all agree, after the child has exited.
         """
-        from .ingest.worker import validate_publication_document, publication_pages
+        from .ingest.worker import (validate_publication_document, publication_pages,
+                                    validate_committed_publication, reconcile_legacy_publication)
         intent = validate_publication_document(request)
         if intent is None:
-            return None
+            return reconcile_legacy_publication(self, request)
         before, result, metadata = intent['before'], intent['result'], request['metadata']
         # A prior revision with no new requested membership is a replay, not
         # evidence that this attempt crossed a commit boundary. Its explicit
@@ -623,6 +626,8 @@ class LibraryApp:
             return None
         workspace, edition, revision = request['workspace'], metadata['edition_id'], intent['revision']
         with self.read(workspace) as db:
+            if validate_committed_publication(db, request) is None:
+                return None
             published = db.execute('SELECT r.workspace,r.edition,r.asset,r.config,a.revision '
                 'FROM revision r JOIN sealed s ON s.revision=r.id LEFT JOIN active a '
                 'ON a.workspace=r.workspace AND a.edition=r.edition WHERE r.id=?', (revision,)).fetchone()
@@ -705,7 +710,7 @@ class LibraryApp:
             edition, volume, tuple(collections))
         with exclusive_writer(self.root):
             self._check_database_paths()
-            with closing(Storage(self.database, schema_version=4)) as storage:
+            with closing(Storage(self.database, schema_version=CURRENT_SCHEMA_VERSION)) as storage:
                 self._authorize(storage.db, workspace)
                 for collection in collections:
                     Catalog(storage.db, workspace)._active_collection(collection)

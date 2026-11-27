@@ -118,13 +118,22 @@ def test_model_inventory_checks_reparse_metadata_before_any_descent(tmp_path, mo
     from types import SimpleNamespace
     from carr_library.audio import music_runtime
     calls = []
+    redirected = tmp_path / 'redirected-directory'
+    redirected.mkdir()
+    real_lstat = Path.lstat
+    def lstat(path, *args, **kwargs):
+        info = real_lstat(path, *args, **kwargs)
+        if path == redirected:
+            calls.append(('lstat', str(path)))
+            assert stat.S_ISDIR(info.st_mode)
+            return SimpleNamespace(st_mode=info.st_mode,
+                                   st_file_attributes=getattr(info, 'st_file_attributes', 0) | 0x400,
+                                   st_nlink=info.st_nlink, st_size=info.st_size)
+        return info
     class Entry:
-        path = str(tmp_path / 'redirected-directory')
+        path = str(redirected)
         def stat(self, *, follow_symlinks):
-            calls.append(('stat', follow_symlinks))
-            assert follow_symlinks is False
-            return SimpleNamespace(st_mode=stat.S_IFDIR, st_file_attributes=0x400,
-                                   st_nlink=1, st_size=0)
+            raise AssertionError('Read fresh Path.lstat metadata, not a cached DirEntry stat.')
         def is_dir(self, *args, **kwargs):
             raise AssertionError('Do not follow an entry to classify a possible junction.')
     class Listing:
@@ -136,7 +145,8 @@ def test_model_inventory_checks_reparse_metadata_before_any_descent(tmp_path, mo
         assert Path(directory) == tmp_path
         calls.append(('scan', str(directory)))
         return Listing()
+    monkeypatch.setattr(Path, 'lstat', lstat)
     monkeypatch.setattr(music_runtime.os, 'scandir', scan)
     with pytest.raises(ValueError, match='reparse'):
         list(music_runtime._plain_model_files(tmp_path))
-    assert calls == [('scan', str(tmp_path)), ('stat', False)]
+    assert calls == [('scan', str(tmp_path)), ('lstat', str(redirected))]

@@ -41,7 +41,7 @@ _HASH = re.compile(r'[0-9a-f]{64}\Z')
 _REQUEST_REQUIRED = {'version', 'request_id', 'data_dir', 'workspace', 'source',
                      'metadata', 'config', 'state'}
 _REQUEST_OPTIONAL = {'asset_sha256', 'job', 'expected_manifest', 'result',
-                     'attempt_id', 'publication'}
+                     'attempt_id', 'publication', 'attempt', 'publication_candidate'}
 _JOB_STATES = {'pending', 'cancelled', 'failed', 'quarantined', 'complete', 'superseded', 'conflict'}
 _REQUEST_STATES = _JOB_STATES | {'running', 'timed_out'}
 _SCHEMA = '''
@@ -205,7 +205,7 @@ def _catalog(path):
         db.execute('PRAGMA query_only=ON')
         db.execute('BEGIN')
         version = db.execute('PRAGMA user_version').fetchone()[0]
-        if version not in (3, 4) or schema_fingerprint(db) != expected_schema_fingerprint(version):
+        if version not in (3, 4, 5, 6) or schema_fingerprint(db) != expected_schema_fingerprint(version):
             raise ValueError('Pending imports require the canonical catalog schema.')
     except BaseException:
         db.close()
@@ -283,8 +283,10 @@ def _request(record, request_id, data_dir, db):
         raise ValueError('Pending request source identity changed.')
     _result(record.get('result'), record['workspace'], record['metadata']['edition_id'], db,
             complete=record['state'] == 'complete')
-    from .ingest.worker import validate_publication_document
+    from .ingest.worker import (validate_publication_document,
+                                validate_publication_candidate_document)
     validate_publication_document(record)
+    validate_publication_candidate_document(record)
 
 
 def _batch(record, batch_id, data_dir, db):
@@ -959,6 +961,8 @@ def restore_pending(source, stage, new_root, metadata, *, cancelled=lambda: Fals
                 # An execution receipt from another data root never authorizes
                 # publication or replay in the newly restored library.
                 request.pop('publication', None)
+                request.pop('attempt', None)
+                request.pop('publication_candidate', None)
                 request.pop('attempt_id', None)
                 request['data_dir'] = str(new_root)
                 request['source'] = str(new_root / 'originals' / assets[binding['asset_sha256']]['filename'])

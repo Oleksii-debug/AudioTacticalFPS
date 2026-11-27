@@ -27,9 +27,11 @@ def test_create_only_export_publishes_exact_bytes_without_staging_residue(export
     assert not list(target.parent.glob('.research-export-*'))
 
 
-def test_create_only_export_rejects_existing_file_without_touching_it(export):
+def test_create_only_export_rejects_existing_file_without_touching_it(export, monkeypatch):
     target, _, publish = export
     target.write_bytes(b'Previous work must survive')
+    monkeypatch.setattr(export_file, '_content_state',
+                        lambda *a, **k: pytest.fail('Create-only export read the occupied target.'))
     with pytest.raises(FileExistsError):
         publish(require_absent=True)
     assert target.read_bytes() == b'Previous work must survive'
@@ -41,9 +43,9 @@ def test_file_created_after_final_destination_check_is_never_replaced(export, mo
     inspect = export_file._destination
     checks = 0
 
-    def competing_writer(*args):
+    def competing_writer(*args, **kwargs):
         nonlocal checks
-        state = inspect(*args)
+        state = inspect(*args, **kwargs)
         checks += 1
         if checks == 2:
             # A real file appears after the writer's last destination snapshot,
@@ -201,9 +203,9 @@ def test_captured_absence_forces_atomic_no_clobber_even_without_policy_flag(expo
     inspect = export_file._destination
     checks = 0
 
-    def create_after_final_check(*args):
+    def create_after_final_check(*args, **kwargs):
         nonlocal checks
-        state = inspect(*args)
+        state = inspect(*args, **kwargs)
         checks += 1
         if checks == 2:
             target.write_bytes(b'Late writer at the publication boundary')
@@ -223,4 +225,21 @@ def test_destination_approval_cannot_be_reused_for_another_path(export):
     with pytest.raises(ValueError, match='destination changed'):
         publish(approval=approval)
     assert not target.exists()
+    assert not list(target.parent.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize('explicit_policy', (False, True))
+def test_captured_absence_rejects_new_occupant_before_content_access(export, monkeypatch, explicit_policy):
+    target, _, publish = export
+    approval = export_file.capture_export_destination(target,
+        private_root=target.parent / 'private')
+    changed = b'Newer work created after the destination was selected'
+    target.write_bytes(changed)
+    monkeypatch.setattr(export_file, '_content_state',
+                        lambda *a, **k: pytest.fail('The old approval read a new occupant.'))
+
+    with pytest.raises(ValueError, match='destination changed'):
+        publish(approval=approval, require_absent=explicit_policy)
+
+    assert target.read_bytes() == changed
     assert not list(target.parent.glob('.research-export-*'))
