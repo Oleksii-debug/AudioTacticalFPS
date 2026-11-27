@@ -4,6 +4,7 @@ from dataclasses import replace
 import json
 from pathlib import Path
 import threading
+from uuid import uuid4
 
 from ..durable_state import atomic_json, atomic_bytes, read_json
 from ..studio.project import Project, parse_script
@@ -426,7 +427,7 @@ def show_studio(frame):
             detail.Destroy()
 
     def render(event=None):
-        nonlocal current_job
+        nonlocal current_job, draft_dirty, saved_signature
         if busy:
             return
         try:
@@ -439,7 +440,9 @@ def show_studio(frame):
                 raise ValueError('The saved job has unsupported output settings.')
             changed_options = previous is not None and (previous['format'], previous['stems']) != (chosen_format, chosen_stems)
             if previous is None or changed_options:
-                message = ('Output settings changed. Choose a folder for a NEW production job; the previous job is retained.'
+                snapshot = Project.from_dict(previous['project']) if changed_options else None
+                message = ('Output settings changed. Choose a folder for a NEW production job from the saved revision. '
+                           'A historical revision is copied to a separate project; the previous job and project are retained.'
                            if changed_options else 'Choose the parent folder for new audio outputs')
                 chooser = wx.DirDialog(dialog, message)
                 try:
@@ -449,11 +452,22 @@ def show_studio(frame):
                             stems.SetValue(previous['stems'])
                             report('New output cancelled. Previous job and its output settings retained.', True)
                         return
-                    project = save()
-                    if project is None:
-                        return
+                    if snapshot is None:
+                        project = save()
+                        if project is None:
+                            return
+                    else:
+                        # Output options alone must not reparse a saved script or
+                        # adopt the voices/cues of a newer editable revision.
+                        latest = service.projects.load(snapshot.id)
+                        project = (snapshot if latest.to_dict() == snapshot.to_dict() else
+                                   replace(snapshot, id=uuid4().hex, revision=1))
                     current_job = service.submit(project, Path(chooser.GetPath()),
                         format=chosen_format, stems=chosen_stems)
+                    if snapshot is not None:
+                        controller.project = project
+                        draft_dirty = True
+                        saved_signature = (editor.GetValue(), title.GetValue(), selected_voices())
                 finally:
                     chooser.Destroy()
         except Exception as exc:
