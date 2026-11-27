@@ -330,6 +330,8 @@ class DesktopEvidencePanel(EvidencePanel):
 
     def save_note(self, event=None, *, completed=None):
         """Acknowledge a save only after its transaction and UI baseline finish."""
+        if completed is not None and not callable(completed):
+            raise ValueError('Save completion must be callable.')
         notified = False
 
         def finish(saved, message=''):
@@ -403,7 +405,11 @@ class DesktopEvidencePanel(EvidencePanel):
             finally:
                 finish(False, message)
 
-        started = self.frame.run_job('Saving research note', save, done, failed)
+        try:
+            started = self.frame.run_job('Saving research note', save, done, failed)
+        except Exception as error:
+            failed(error)
+            return False
         if started is False:
             finish(False, 'The note save could not start; the draft is retained.')
         return started is not False

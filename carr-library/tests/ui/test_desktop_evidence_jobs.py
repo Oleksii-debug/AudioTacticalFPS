@@ -298,3 +298,32 @@ def test_save_requested_after_closing_never_starts_a_worker(evidence):
     assert not current.save_note(completed=replies.append)
     assert len(replies) == 1 and not replies[0].saved
     current.frame.run_job.assert_not_called()
+
+
+@pytest.mark.parametrize('reported', [False, True], ids=['start-rejected', 'already-reported'])
+def test_synchronous_note_submission_failure_settles_once_and_retains_draft(evidence, reported):
+    current, app, _ = evidence
+    current.note.SetValue('Keep this unsubmitted draft')
+    error = RuntimeError('The native worker handoff could not start')
+    def reject(title, operation, done, failed):
+        if reported:
+            failed(error)
+        raise error
+    current.frame.run_job.side_effect = reject
+    replies = []
+    assert current.save_note(completed=replies.append) is False
+    assert len(replies) == 1 and replies[0].saved is False
+    assert current.note.GetValue() == 'Keep this unsubmitted draft' and current._dirty()
+    assert app.evidence(current.workspace, current.topic)[0].note == 'Saved note'
+
+
+def test_invalid_note_completion_is_rejected_before_recovery_or_submission(evidence):
+    current, app, _ = evidence
+    current.note.SetValue('Unsubmitted editor text')
+    current._capture_recovery = Mock(side_effect=AssertionError('No recovery mutation'))
+    with pytest.raises(ValueError, match='completion must be callable'):
+        current.save_note(completed=object())
+    current._capture_recovery.assert_not_called()
+    current.frame.run_job.assert_not_called()
+    assert app.evidence(current.workspace, current.topic)[0].note == 'Saved note'
+    assert current.note.GetValue() == 'Unsubmitted editor text'

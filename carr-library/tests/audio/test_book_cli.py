@@ -145,3 +145,19 @@ def test_isolated_process_capture_and_reopen_exact_order(library, tmp_path):
     assert [row['plan'] for row in json.loads(reopened.stdout)['books']] == [
         row['id'] for row in result['books']]
     assert not (library[0].root / 'audio-projects').exists()
+
+
+@pytest.mark.parametrize('channel', ['stdout', 'stderr'])
+def test_unicode_json_survives_actual_legacy_windows_pipe_encoding(monkeypatch, channel):
+    from io import BytesIO, TextIOWrapper
+    payload = {'title': 'Україна 日本語 🎧', 'path': 'каталог/книга.wav',
+               'nested': ['é', 'العربية'], 'message': 'Збережено без втрати тексту'}
+    output = BytesIO()
+    stream = TextIOWrapper(output, encoding='cp1252', errors='strict', newline='\n')
+    with monkeypatch.context() as patch:
+        patch.setattr(cli.sys, channel, stream)
+        cli._write(payload, stream=stream if channel == 'stderr' else None)
+    encoded = output.getvalue()
+    assert encoded.isascii()
+    assert json.loads(encoded.decode('ascii')) == payload
+    stream.detach()

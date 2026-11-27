@@ -1,7 +1,7 @@
 """Real local Git commits and wheel archives for source/artifact identity."""
 import base64
 import csv
-from hashlib import sha256
+from hashlib import sha1, sha256
 import importlib.util
 import io
 import os
@@ -104,6 +104,8 @@ def test_exact_historical_commit_verified_independently_of_checkout_head(source,
     evidence = verifier.verify_application_wheel(candidate, repo, first)
 
     assert evidence['source_commit'] == first
+    assert evidence['source_tree'] == git(repo, 'rev-parse', first + '^{tree}')
+    assert evidence['source_tree'] != git(repo, 'rev-parse', second + '^{tree}')
     assert evidence['wheel_sha256'] == sha256(candidate.read_bytes()).hexdigest()
     assert evidence['required_runtime_files'] == 2
     assert evidence['payload_files'] == 3
@@ -158,8 +160,12 @@ def test_undeclared_payload_rejected_despite_complete_record(source, tmp_path, e
 def test_path_alias_and_bytecode_rejected(source, tmp_path, extra):
     repo, first, _, payload = source
     payload[extra] = b'not safe payload\n'
+    candidate = wheel(tmp_path, payload)
+    with ZipFile(candidate) as archive:
+        assert extra in {info.orig_filename for info in archive.infolist()}, (
+            'The malicious raw ZIP name must survive fixture construction.')
     with pytest.raises(ValueError, match='path|bytecode'):
-        verifier.verify_application_wheel(wheel(tmp_path, payload), repo, first)
+        verifier.verify_application_wheel(candidate, repo, first)
 
 
 def test_duplicate_zip_member_rejected(source, tmp_path):
@@ -317,3 +323,52 @@ def test_actual_sdist_keeps_ci_helpers_and_runtime_without_private_payloads(tmp_
             for destination, source_name in admitted.items():
                 assert archive.read(destination) == (project / source_name.removeprefix('carr-library/')).read_bytes()
             assert not excluded.intersection(archive.namelist())
+
+
+def _git_blob_identity(raw):
+    return sha1(b'blob ' + str(len(raw)).encode('ascii') + b'\0' + raw).hexdigest()
+
+
+def test_development_version_matches_package_and_build_metadata():
+    import carr_library
+    from packaging.version import Version
+    project = tomllib.loads((ROOT / 'pyproject.toml').read_text(encoding='utf-8'))
+    version = project['project']['version']
+    assert version == carr_library.__version__ == '0.2.0.dev3'
+    assert Version(version).is_devrelease
+    assert Version(version) > Version('0.2.0.dev2')
+
+
+@pytest.mark.parametrize('prefix,count,original_blob', [
+    ('windows', 17, '35ea070d13a7d9ed4b097215a5b02353e742711a'),
+    ('windows-semantic', 53, 'd899c6fffe7452412ef05e42f1f840c47e4cfa99'),
+], ids=['base-17', 'semantic-53'])
+def test_development_sbom_relabels_only_root_identity_and_document_revision(
+        prefix, count, original_blob):
+    import json
+    import carr_library
+    path = ROOT / 'packaging' / (prefix + '-sbom.cdx.json')
+    raw = path.read_bytes()
+    document = json.loads(raw)
+    root = document['metadata']['component']
+    assert document['version'] == 4
+    assert root['version'] == carr_library.__version__
+    assert root['bom-ref'] == 'universal-research-library-runtime-1@' + carr_library.__version__
+    assert len(document['components']) == count
+    assert sum(row['ref'] == root['bom-ref'] for row in document['dependencies']) == 1
+    assert raw.count(carr_library.__version__.encode()) == 3
+    # The entire prior dependency inventory, hashes, licenses, graph, serial
+    # number and original generation timestamp remain exact. Only the root
+    # association and document revision are changed; no uv rerun is implied.
+    original = raw.replace(carr_library.__version__.encode(), b'0.2.0.dev1')
+    original = original.replace(b'  "version": 4,\n', b'  "version": 3,\n', 1)
+    assert _git_blob_identity(original) == original_blob
+
+
+@pytest.mark.parametrize('relative,original_blob', [
+    ('windows-cp311.lock', '5e906b9500636d4e580609b50af7c486de8058a0'),
+    ('windows-semantic-cp311.lock', '3d2103dff105fd1acbfba5459aaa87225c2c53e1'),
+    ('audio-runtime/source-lock.json', '53ab236497ca4644713a86714317198853ac9e17'),
+], ids=['base-17-lock', 'semantic-53-lock', 'full-ffmpeg-9.1'])
+def test_development_version_preserves_exact_runtime_input_pins(relative, original_blob):
+    assert _git_blob_identity((ROOT / 'packaging' / relative).read_bytes()) == original_blob

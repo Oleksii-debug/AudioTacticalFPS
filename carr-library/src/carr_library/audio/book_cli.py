@@ -19,7 +19,9 @@ from .models import Role
 
 
 def _write(value, *, stream=None):
-    print(json.dumps(value, ensure_ascii=False, allow_nan=False, indent=2),
+    # JSON escapes preserve Unicode values even through a legacy Windows pipe.
+    # Isolated Python ignores PYTHONUTF8 and may otherwise select a local codec.
+    print(json.dumps(value, ensure_ascii=True, allow_nan=False, indent=2),
           file=sys.stdout if stream is None else stream, flush=True)
 
 

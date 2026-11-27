@@ -158,8 +158,8 @@ class BookAudioService:
         marker = directory / 'complete.json'
         if not optional_present(marker):
             return None
-        request = ResourceRequest(cpu_slots=1, memory_bytes=64 * 1024**2,
-                                  disk_bytes=0, disk_path=audio)
+        # Read-only completion verification reserves CPU and memory, not new disk.
+        request = ResourceRequest(cpu_slots=1, memory_bytes=64 * 1024**2)
         with broker.reserve(request, operation_id='studio-verify:' + plan.job_id(index),
                             cancelled=cancelled, timeout=60) as lease:
             _check(lease.cancelled, source_guard)

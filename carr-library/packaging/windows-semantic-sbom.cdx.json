@@ -1,7 +1,7 @@
 {
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "version": 3,
+  "version": 4,
   "serialNumber": "urn:uuid:088bfc82-2a87-4b12-9b37-57ca494d21b7",
   "metadata": {
     "timestamp": "2026-11-27T00:30:52.722541Z",
@@ -14,9 +14,9 @@
     ],
     "component": {
       "type": "library",
-      "bom-ref": "universal-research-library-runtime-1@0.2.0.dev1",
+      "bom-ref": "universal-research-library-runtime-1@0.2.0.dev3",
       "name": "universal-research-library-runtime",
-      "version": "0.2.0.dev1",
+      "version": "0.2.0.dev3",
       "properties": [
         {
           "name": "uv:package:is_project_root",
@@ -1038,7 +1038,7 @@
       ]
     },
     {
-      "ref": "universal-research-library-runtime-1@0.2.0.dev1",
+      "ref": "universal-research-library-runtime-1@0.2.0.dev3",
       "dependsOn": [
         "annotated-doc-2@0.0.7",
         "annotated-types-3@0.8.0",

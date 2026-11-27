@@ -90,7 +90,8 @@ def test_actual_pcm_parts_exact_concatenation_original_unchanged_and_offline_rec
             reconstructed.append(raw[len(header):])
         assert b''.join(reconstructed) == pcm(master)
         original_book = json.loads(archive.read('source/book-plan.json'))
-        assert original_book == plan.to_dict()
+        # JSON uses arrays for the current immutable tuple-based effect values.
+        assert original_book == json.loads(json.dumps(plan.to_dict(), allow_nan=False))
     assert master.read_bytes() == original
     verified = books.verify_duration(plan.id, 1, receipt['id'])
     assert verified == receipt
