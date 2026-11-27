@@ -64,9 +64,21 @@ def self_test():
 
 def main(argv=None):
     arguments = list(sys.argv[1:] if argv is None else argv)
+    if len(arguments) == 3 and arguments[0] == '--carr-sapi-native-worker':
+        from .speech.sapi_native_worker import main as native_main
+        return native_main(arguments[1:])
+    if arguments[:1] == ['translation']:
+        from .assistant.translation_cli import main as translation_main
+        return translation_main(arguments[1:])
     if arguments and arguments[0] in ('studio', 'assistant'):
         from .studio.cli import main as studio_main, assistant_main
         return (studio_main if arguments[0] == 'studio' else assistant_main)(arguments[1:])
+    if arguments[:1] == ['transcription']:
+        from .transcription_cli import main as transcription_main
+        return transcription_main(arguments[1:])
+    if arguments[:1] == ['operations']:
+        from .operations_cli import main as operations_main
+        return operations_main(arguments[1:])
     from . import __version__
     parser = argparse.ArgumentParser(description='Resonance offline research library and audio workspace')
     parser.add_argument('--version', action='version', version=__version__)
