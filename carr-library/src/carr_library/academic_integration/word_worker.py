@@ -106,14 +106,15 @@ def run_protocol(directory, request_digest, *, backend_factory=None):
         require(fingerprint(backend.capture()) == fingerprint(capture),
                 'Word changed at the mutation boundary; inspect again.')
         check()
-        require(time.monotonic() < grant_deadline, 'The final source attestation expired.')
+        if time.monotonic() >= grant_deadline:
+            raise TimeoutError('The final source attestation expired.')
         publish('begun.json', {'schema': 'resonance-word-begun/1',
                               'session': session, 'proposal_sha256': proposal_sha})
         begun = True
         def first_write():
             check()
-            require(time.monotonic() < grant_deadline,
-                    'The final source attestation expired before the first document change.')
+            if time.monotonic() >= grant_deadline:
+                raise TimeoutError('The final source attestation expired before the first document change.')
 
         receipt = backend.apply(proposal, capture, check=check, first_write=first_write)
         # No cancellation/source callback after a fully observed native result.

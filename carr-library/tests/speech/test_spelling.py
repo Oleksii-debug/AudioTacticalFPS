@@ -484,3 +484,38 @@ def test_stage_delete_failure_keeps_cleanup_owner_and_lease_until_confirmed(prof
     assert len(failures) == 1 and isinstance(failures[0], AudioCleanupPending)
     assert failures[0].cleanup_owner.quiescent
     assert not retained['stage'].exists() and ResourceBroker.for_app(root).snapshot()['leases'] == []
+
+
+def test_review_only_hashing_holds_real_cpu_memory_lease_without_a_disk_reservation(tmp_path, monkeypatch):
+    from carr_library.operations import ResourceBroker
+
+    (tmp_path / 'state').mkdir()
+    paths = [tmp_path / name for name in ('not-executable.bin', 'fixture.aff', 'fixture.dic')]
+    contents = (b'not executable code', b'SET UTF-8\n', b'2\nhello\nworld\n')
+    for path, content in zip(paths, contents):
+        path.write_bytes(content)
+    original = spelling._review_file
+    observed = []
+
+    def inspect(path, role, cancelled):
+        leases = ResourceBroker.for_app(tmp_path).snapshot()['leases']
+        assert len(leases) == 1 and leases[0]['operation_id'].startswith('spelling:')
+        request = leases[0]['request']
+        assert request['cpu_slots'] == 1 and request['memory_bytes'] == 1024**3
+        assert request['disk_bytes'] == 0 and request['disk_path'] is None
+        assert request['additional_disks'] == []
+        observed.append(role)
+        return original(path, role, cancelled)
+
+    monkeypatch.setattr(spelling, '_review_file', inspect)
+    monkeypatch.setattr(spelling, 'run_process',
+        lambda *args, **kwargs: pytest.fail('Hash-only review executed native code.'))
+    monkeypatch.setattr(spelling, 'TemporaryDirectory',
+        lambda *args, **kwargs: pytest.fail('Hash-only review created a native staging directory.'))
+    result = spelling.review_hunspell(*paths, language='synthetic',
+        provenance='Original inert test bytes', state_root=tmp_path / 'state')
+    assert observed == ['library', 'affix', 'dictionary']
+    assert tuple(getattr(result, name).sha256 for name in observed) == tuple(
+        sha256(content).hexdigest() for content in contents)
+    assert [path.read_bytes() for path in paths] == list(contents)
+    assert ResourceBroker.for_app(tmp_path).snapshot()['leases'] == []

@@ -34,7 +34,11 @@ def cli(root, *arguments):
     if 'site-packages' in {part.casefold() for part in package.parts}:
         environment.pop('PYTHONPATH', None)
     else:
-        environment['PYTHONPATH'] = str(package.parent)
+        # Source bootstrap is a sibling of src, not a carr_library subpackage.
+        # Select both exact checkout roots; installed invocation stays isolated.
+        checkout = package.parent.parent
+        assert (checkout / 'bootstrap' / 'vendor' / 'cairn_extractors' / 'hasher.py').is_file()
+        environment['PYTHONPATH'] = os.pathsep.join((str(package.parent), str(checkout)))
     return subprocess.run([sys.executable, '-B', '-m', 'carr_library', 'studio',
                            '--data-dir', str(root), *map(str, arguments)],
                           cwd=root.parent, env=environment, capture_output=True,

@@ -17,19 +17,38 @@ from ..research.export_file import capture_export_destination
 from .translation_documents import DocumentTranslationController
 
 
-def show_translation_layout(frame):
+def show_translation_layout(frame, *, document_format='docx'):
+    if document_format not in ('docx', 'epub'):
+        raise ValueError('Choose a supported retained document format.')
     import wx
+    capture, review_source, prepare_source, export_source, order_jobs = (
+        capture_layout, review_layout, prepare_layout, export_layout, order_layout_jobs)
+    notice = NOTICE
+    if document_format == 'epub':
+        from ..assistant import translation_epub_layout as epub
+        capture, review_source, prepare_source, export_source, order_jobs = (
+            epub.capture_layout, epub.review_layout, epub.prepare_layout, epub.export_layout,
+            epub.order_layout_jobs)
+        notice = epub.NOTICE
+    def label_for_format(value):
+        if document_format == 'docx':
+            return value
+        return value.replace('larger DOCX', 'complete EPUB').replace('DOCX', 'EPUB').replace(
+            '.docx', '.epub').replace('Word document', 'EPUB publication')
     controller = DocumentTranslationController(frame)
     service = controller.service
     profiles = tuple(p for p in controller.profiles.list() if p.enabled and
         p.adapter in ('google-translation-v2', 'google-translation-v3', 'libretranslate-local'))
-    dialog = wx.Dialog(frame, title='Translate retained DOCX with layout', size=(920, 820),
+    dialog = wx.Dialog(frame, title=label_for_format('Translate retained DOCX with layout'), size=(920, 820),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
-    dialog.SetName('Formatted DOCX translation workstation')
+    dialog.SetName(label_for_format('Formatted DOCX translation workstation'))
     panel = wx.BoxSizer(wx.VERTICAL)
     captured, reviewed, saved_ids = None, None, []
 
     def field(label, factory=wx.TextCtrl, proportion=0, **kwargs):
+        label = label_for_format(label)
+        if type(kwargs.get('value')) is str:
+            kwargs['value'] = label_for_format(kwargs['value'])
         panel.Add(wx.StaticText(dialog, label=label), 0, wx.ALL, 4)
         control = factory(dialog, **kwargs)
         control.SetName(label)
@@ -50,7 +69,7 @@ def show_translation_layout(frame):
         value='Explicitly choose one retained DOCX from the current catalog page. '
               'Up to 2,048 nonempty paragraphs and 2,000,000 source characters. Larger bodies use one source-bound job with exact paragraph partitions.')
     status = field('Formatted translation status and limitations', proportion=1,
-        style=wx.TE_MULTILINE | wx.TE_READONLY, value=NOTICE)
+        style=wx.TE_MULTILINE | wx.TE_READONLY, value=notice)
     buttons, row = {}, wx.WrapSizer(wx.HORIZONTAL)
     for key, label in (
         ('choose', '&Choose retained DOCX'), ('languages', 'Fetch DOCX &languages'),
@@ -58,6 +77,7 @@ def show_translation_layout(frame):
         ('saved', 'Choose saved &paragraph jobs'), ('run', '&Run / resume DOCX jobs'),
         ('export', '&Export new translated DOCX'), ('stop', '&Stop after current request'),
         ('close', '&Close formatted translation')):
+        label = label_for_format(label)
         button = wx.Button(dialog, label=label)
         button.SetName(label.replace('&', ''))
         button.Bind(wx.EVT_BUTTON, lambda event, action=key: dispatch(action))
@@ -109,7 +129,7 @@ def show_translation_layout(frame):
             except Exception as error:
                 failed(error)
             controls()
-        controller.start(title, operation, done, failed, accept_committed=committed)
+        controller.start(label_for_format(title), operation, done, failed, accept_committed=committed)
         controls()
 
     def account():
@@ -121,7 +141,7 @@ def show_translation_layout(frame):
 
     def values():
         if captured is None:
-            raise ValueError('Choose the retained DOCX source first.')
+            raise ValueError(label_for_format('Choose the retained DOCX source first.'))
         return (account(), captured, source.GetValue().strip(), target.GetValue().strip(),
                 budget.GetValue(), glossary.GetValue().strip() or None,
                 rate.GetValue().strip() or None)
@@ -130,12 +150,12 @@ def show_translation_layout(frame):
         controller.guard()
         catalog = frame.book.GetPage(1) if frame.book is not None else None
         if catalog is None or not catalog.ready or catalog.workspace != controller.active[0]:
-            raise ValueError('Refresh Books and Collections before selecting the retained DOCX.')
+            raise ValueError(label_for_format('Refresh Books and Collections before selecting the retained DOCX.'))
         rows = tuple(catalog.rows.values())
         if not rows:
             raise ValueError('No retained editions are visible on the current catalog page.')
-        chooser = wx.SingleChoiceDialog(dialog, 'Choose one retained DOCX. Unsupported rich constructs '
-            'are rejected before any document text is sent.', 'Choose retained DOCX',
+        chooser = wx.SingleChoiceDialog(dialog, label_for_format('Choose one retained DOCX. Unsupported rich constructs '
+            'are rejected before any document text is sent.'), label_for_format('Choose retained DOCX'),
             [(item.title or 'Untitled') + '; ' + item.edition_id for item in rows])
         try:
             if chooser.ShowModal() != wx.ID_OK:
@@ -150,7 +170,7 @@ def show_translation_layout(frame):
         if catalog.rows.get(item.edition_id) != item:
             raise ValueError('The displayed catalog selection changed; select it again.')
         def work():
-            return capture_layout(controller.library, controller.active[0], item.edition_id,
+            return capture(controller.library, controller.active[0], item.edition_id,
                 topic=controller.active[1], cancelled=controller.stopped, guard=controller.guard)
         def accepted(value):
             nonlocal captured, reviewed
@@ -163,8 +183,8 @@ def show_translation_layout(frame):
     def languages():
         p = account()
         if wx.MessageBox('Contact this exact ' + ('local service' if p.local else 'Google account')
-            + ' for its declared languages? No DOCX text or document is sent.\n' + p.endpoint,
-            'Approve DOCX language discovery', wx.YES_NO | wx.NO_DEFAULT, dialog) != wx.YES:
+            + label_for_format(' for its declared languages? No DOCX text or document is sent.\n') + p.endpoint,
+            label_for_format('Approve DOCX language discovery'), wx.YES_NO | wx.NO_DEFAULT, dialog) != wx.YES:
             return
         controller.profile_guard(p)
         identity = uuid4().hex
@@ -190,20 +210,20 @@ def show_translation_layout(frame):
             reviewed = value
             report(value)
         launch('Reviewing retained DOCX paragraphs, limitations and budget',
-            lambda: review_layout(service, p, document, first, last, bound,
+            lambda: review_source(service, p, document, first, last, bound,
                 glossary=terminology, rate_per_million=price, cancelled=controller.stopped,
                 guard=lambda: controller.profile_guard(p)), accepted)
 
     def prepare():
         if reviewed is None:
-            raise ValueError('Preview this exact DOCX, settings and budget before saving jobs.')
+            raise ValueError(label_for_format('Preview this exact DOCX, settings and budget before saving jobs.'))
         p, document, first, last, bound, terminology, price = values()
         approved = reviewed['review_sha256']
-        if wx.MessageBox('Save the exact reviewed DOCX paragraph jobs and approved budget?\n'
+        if wx.MessageBox(label_for_format('Save the exact reviewed DOCX paragraph jobs and approved budget?\n')
             + json.dumps(reviewed, ensure_ascii=False, indent=2)
             + '\nOnly source paragraph text is eligible for the selected translator. '
               'Run/resume is a separate explicit action. Original files remain unchanged.',
-            'Approve formatted DOCX translation', wx.YES_NO | wx.NO_DEFAULT, dialog) != wx.YES:
+            label_for_format('Approve formatted DOCX translation'), wx.YES_NO | wx.NO_DEFAULT, dialog) != wx.YES:
             return
         controller.profile_guard(p)
         def accepted(value):
@@ -211,14 +231,14 @@ def show_translation_layout(frame):
             refresh_selection()
             report(value)
         launch('Saving approved DOCX paragraph jobs',
-            lambda: prepare_layout(service, p, document, first, last, bound,
+            lambda: prepare_source(service, p, document, first, last, bound,
                 approved_review=approved, glossary=terminology, rate_per_million=price,
                 cancelled=controller.stopped, guard=lambda: controller.profile_guard(p)), accepted)
 
     def choose_saved():
         document = captured
         if document is None:
-            raise ValueError('Reopen the retained DOCX before selecting its saved paragraph jobs.')
+            raise ValueError(label_for_format('Reopen the retained DOCX before selecting its saved paragraph jobs.'))
         def work():
             controller.guard()
             candidates = []
@@ -240,13 +260,13 @@ def show_translation_layout(frame):
         def accepted(rows):
             controller.guard()
             if not rows:
-                report('No matching source-bound paragraph jobs are saved for this exact DOCX revision.')
+                report(label_for_format('No matching source-bound paragraph jobs are saved for this exact DOCX revision.'))
                 return
             chooser = wx.MultiChoiceDialog(dialog,
-                ('Select the one complete saved partition job for this larger DOCX.'
+                (label_for_format('Select the one complete saved partition job for this larger DOCX.')
                  if document.source_partition is not None else
                  'Explicitly select one saved job per paragraph with the same profile and language settings.'),
-                'Saved DOCX paragraph jobs',
+                label_for_format('Saved DOCX paragraph jobs'),
                 ['Position ' + str(item['source_binding']['anchor']['positions'][0]['ordinal'])
                  + '; ' + item['status'] + '; ' + item['source_language'] + ' → '
                  + item['target_language'] + '; ' + item['profile']['name'] + '; ' + item['id']
@@ -267,7 +287,7 @@ def show_translation_layout(frame):
                 refresh_selection()
                 report({'selected_jobs': list(value), 'provider_calls_started': False})
             launch('Checking saved DOCX paragraph source identities',
-                lambda: order_layout_jobs(service, document, identities,
+                lambda: order_jobs(service, document, identities,
                     cancelled=controller.stopped, guard=controller.guard), selected_jobs)
         launch('Reading saved DOCX paragraph jobs', work, accepted)
 
@@ -279,7 +299,7 @@ def show_translation_layout(frame):
             if tracker is not None:
                 tracker.update(completed=done, total=total, phase=phase)
         def work():
-            ordered = order_layout_jobs(service, document, identities,
+            ordered = order_jobs(service, document, identities,
                                         cancelled=controller.stopped, guard=controller.guard)
             return run_documents(service, ordered, cancelled=controller.stopped,
                                  guard=controller.guard, progress=progress)
@@ -289,8 +309,8 @@ def show_translation_layout(frame):
         document, identities = captured, tuple(saved_ids)
         if document is None or not identities:
             raise ValueError('Choose the retained source and its completed saved paragraph jobs.')
-        chooser = wx.FileDialog(dialog, 'Export a NEW translated DOCX',
-            wildcard='Word document (*.docx)|*.docx', style=wx.FD_SAVE)
+        chooser = wx.FileDialog(dialog, label_for_format('Export a NEW translated DOCX'),
+            wildcard=label_for_format('Word document (*.docx)|*.docx'), style=wx.FD_SAVE)
         try:
             if chooser.ShowModal() != wx.ID_OK:
                 return
@@ -301,11 +321,11 @@ def show_translation_layout(frame):
         approval = capture_export_destination(destination, private_root=controller.root,
                                                cancelled=lambda: controller.guard() or False)
         if approval.state is not None:
-            raise FileExistsError('Choose a new DOCX filename; existing files are not replaced.')
+            raise FileExistsError(label_for_format('Choose a new DOCX filename; existing files are not replaced.'))
         def work():
-            ordered = order_layout_jobs(service, document, identities,
+            ordered = order_jobs(service, document, identities,
                                         cancelled=controller.stopped, guard=controller.guard)
-            return export_layout(service, document, ordered, destination, approval=approval,
+            return export_source(service, document, ordered, destination, approval=approval,
                                  cancelled=controller.stopped, guard=controller.guard)
         launch('Exporting a new verified translated DOCX', work, report, committed=True)
 
@@ -338,3 +358,7 @@ def show_translation_layout(frame):
     finally:
         controller.close()
         dialog.Destroy()
+
+
+def show_epub_translation(frame):
+    return show_translation_layout(frame, document_format='epub')

@@ -38,6 +38,29 @@ def test_strict_json_refuses_ambiguous_or_unencodable_records(raw):
         model.parse_json(raw)
 
 
+
+@pytest.mark.parametrize('value', [
+    {'\ud800': 'visible'},
+    {'nested': [{'text': '\udfff'}]},
+], ids=['surrogate-key', 'nested-surrogate'])
+def test_strict_json_rejects_surrogates_in_keys_and_nested_values(value):
+    with pytest.raises(ValueError):
+        model.canonical(value)
+    raw = json.dumps(value, ensure_ascii=True).encode('ascii')
+    with pytest.raises(ValueError):
+        model.parse_json(raw)
+
+
+def test_unicode_record_preserves_canonical_bytes_and_valid_non_bmp_text():
+    raw = b'{"\\ud83d\\ude00":{"nested":["\\u041a\\u0438\\u0457\\u0432","\\ud83d\\ude03"]}}'
+    value = model.parse_json(raw)
+    assert value == {'😀': {'nested': ['Київ', '😃']}}
+    expected = json.dumps(value, ensure_ascii=True, sort_keys=True,
+                          separators=(',', ':'), allow_nan=False).encode('ascii')
+    assert model.canonical(value) == expected
+    assert model.parse_json(expected) == value
+
+
 @pytest.mark.parametrize('change', [
     lambda c: c['document'].__setitem__('pid', True),
     lambda c: c['document'].__setitem__('text', 'bad\0text'),

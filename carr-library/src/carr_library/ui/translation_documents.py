@@ -163,6 +163,7 @@ def show_translation_documents(frame):
         ('preview', '&Preview document batch'), ('prepare', 'Approve and &save jobs'),
         ('run', '&Run / resume saved jobs'), ('saved', 'Choose saved &document jobs'),
         ('export', '&Export saved documents'), ('layout', 'Translate DOCX with &layout'),
+        ('layout-epub', 'Translate EPUB with la&yout'),
         ('pause', 'Pa&use'), ('close', '&Close')):
         button = wx.Button(dialog, label=label)
         button.SetName(label.replace('&', ''))
@@ -393,6 +394,12 @@ def show_translation_documents(frame):
         show_translation_layout(frame)
         controller.guard()
 
+    def formatted_epub():
+        from .translation_layout import show_epub_translation
+        controller.guard()
+        show_epub_translation(frame)
+        controller.guard()
+
     def close():
         controller.close()
         dialog.EndModal(wx.ID_CLOSE)
@@ -404,6 +411,7 @@ def show_translation_documents(frame):
                 raise ValueError('Finish or pause the active document operation first.')
             {'add': add, 'remove': remove, 'languages': languages, 'preview': preview,
              'prepare': prepare, 'run': run, 'saved': choose_saved, 'export': export, 'layout': formatted,
+             'layout-epub': formatted_epub,
              'pause': controller.cancel.set, 'close': close}[key]()
             controls()
         except Exception as error:

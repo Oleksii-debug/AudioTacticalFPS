@@ -136,8 +136,16 @@ def test_larger_docx_uses_one_job_with_exact_paragraph_and_separator_receipts(bo
     assert result['status'] == 'complete' and len(result['jobs']) == 65
     assert len({row['id'] for row in result['jobs']}) == 1
     original, translated = Document(BytesIO(raw)), Document(target)
-    assert [paragraph.text for paragraph in translated.paragraphs] == [
-        'DERIVED: ' + paragraph.text + ' &' for paragraph in original.paragraphs]
+    # This is the existing LibreTranslate format=text fixture, whose response
+    # deliberately contains the literal entity string. It is already plaintext;
+    # a second HTML unescape would corrupt the accepted output/receipt binding.
+    expected = ['DERIVED: ' + paragraph.text + ' &amp;' for paragraph in original.paragraphs]
+    assert [paragraph.text for paragraph in translated.paragraphs] == expected
+    completed_job = bound.service.get(identities[0])
+    assert [receipt['text'] for chunk, receipt in zip(completed_job['chunks'], completed_job['receipts'])
+            if chunk.strip()] == expected
+    assert [row['translation_sha256'] for row in result['jobs']] == [
+        sha256(value.encode('utf-8')).hexdigest() for value in expected]
     assert all(len(row['receipt_indices']) == 1 for row in result['jobs'])
     assert source.read_bytes() == raw
 

@@ -245,19 +245,24 @@ def _source_cancel(desk, base):
     return stopped
 
 
-def _snapshot(library, desk, cancelled):
+def _snapshot(library, desk, cancelled, *, mime=_DOCX):
     check_cancelled(cancelled)
     path = library.assets.resolve(desk.identity.asset_sha256, cancelled=cancelled)
     asset = source_snapshot(path.parent, path.name, cancelled=cancelled)
-    if (not isinstance(asset, AssetSnapshot) or asset.mime != _DOCX
+    if (not isinstance(asset, AssetSnapshot) or asset.mime != mime
             or asset.digest != desk.identity.asset_sha256 or not 0 < asset.size <= MAX_ARCHIVE):
         raise ValueError('Choose the retained ordinary DOCX original for this source revision.')
     check_cancelled(cancelled)
     return asset
 
 
-def _command(request, digest, timeout):
-    from . import translation_layout_worker
+def _command(request, digest, timeout, *, kind='docx'):
+    if kind == 'docx':
+        from . import translation_layout_worker
+    elif kind == 'epub':
+        from . import translation_epub_layout_worker as translation_layout_worker
+    else:
+        raise ValueError('Choose a supported retained format.')
     package_root = Path(__file__).resolve().parents[2]
     roots = [str(package_root)]
     if (package_root.parent / 'bootstrap/vendor/cairn_extractors/hasher.py').is_file():
@@ -265,7 +270,7 @@ def _command(request, digest, timeout):
     bootstrap = (
         "import json,runpy,sys; roots=json.loads(sys.argv.pop(1)); "
         "sys.path[:0]=roots; runpy.run_module("
-        "'carr_library.assistant.translation_layout_worker',run_name='__main__')")
+        + repr(translation_layout_worker.__name__) + ",run_name='__main__')")
     executable = sys.executable
     environment = {key: value for key, value in os.environ.items()
                    if key.upper() not in ('PYTHONEXECUTABLE', '__PYVENV_LAUNCHER__')}
@@ -280,8 +285,31 @@ def _command(request, digest, timeout):
             str(Path(translation_layout_worker.__file__).resolve()), str(timeout)], environment
 
 
+def _changed_members(value, kind):
+    if kind == 'docx':
+        return value == ['word/document.xml']
+    if type(value) is not list or not 1 <= len(value) <= 1001:
+        return False
+    from pathlib import PurePosixPath
+    if any(type(name) is not str or not name or name.startswith('/') or '\\' in name
+           or ':' in name or str(PurePosixPath(name)) != name
+           or any(part in ('.', '..') for part in PurePosixPath(name).parts) for name in value):
+        return False
+    return len(set(value)) == len(value)
+
+
 def _invoke(library, desk, *, action, replacements=None, cancelled=lambda: False,
-            broker=None, timeout=120):
+            broker=None, timeout=120, kind='docx', target_language=None):
+    if kind == 'docx':
+        mapping_validator, notice, mime = _mapping, NOTICE, _DOCX
+        if target_language is not None:
+            raise ValueError('The DOCX worker does not reinterpret language metadata.')
+    elif kind == 'epub':
+        from .translation_epub_layout import _mapping as mapping_validator
+        from .translation_epub_layout_worker import NOTICE as notice
+        mime = 'application/epub+zip'
+    else:
+        raise ValueError('Choose a supported retained format.')
     if type(timeout) not in (int, float) or not 1 <= timeout <= 120:
         raise ValueError('Choose a formatted-document deadline between 1 and 120 seconds.')
     check_cancelled(cancelled)
@@ -300,8 +328,8 @@ def _invoke(library, desk, *, action, replacements=None, cancelled=lambda: False
                 return bool(cancelled()) or lease.cancelled()
             lease.checkpoint()
             check_cancelled(stopped)
-            asset = _snapshot(library, desk, stopped)
-            directory = Path(tempfile.mkdtemp(prefix='.docx-layout-', dir=runtime))
+            asset = _snapshot(library, desk, stopped, mime=mime)
+            directory = Path(tempfile.mkdtemp(prefix='.' + kind + '-layout-', dir=runtime))
             info = regular(directory, directory=True)
             expected = (info.st_dev, info.st_ino)
             def remove():
@@ -312,15 +340,17 @@ def _invoke(library, desk, *, action, replacements=None, cancelled=lambda: False
                     raise RuntimeError('The private formatting directory changed; cleanup requires review.')
                 shutil.rmtree(directory)
             cleanup = remove
-            copy_snapshot(asset, directory / 'source.docx', cancelled=stopped)
-            payload = {'schema': 'carr-docx-layout-request/1', 'action': action,
+            copy_snapshot(asset, directory / ('source.' + kind), cancelled=stopped)
+            payload = {'schema': 'carr-' + kind + '-layout-request/1', 'action': action,
                        'source_sha256': asset.digest, 'replacements': replacements}
+            if kind == 'epub':
+                payload['target_language'] = target_language
             raw = encode(payload)
             if len(raw) > MAX_REQUEST:
                 raise ValueError('The formatting request exceeds its bounded IPC budget.')
             request_path = directory / 'request.json'
             atomic_json(request_path, payload)
-            args, environment = _command(request_path, _hash(raw), timeout)
+            args, environment = _command(request_path, _hash(raw), timeout, kind=kind)
             try:
                 result = run_process(args, env=environment, cwd=directory,
                     budget=AudioBudget(timeout=timeout, max_output_bytes=256 * 1024**2,
@@ -342,27 +372,27 @@ def _invoke(library, desk, *, action, replacements=None, cancelled=lambda: False
                     message = 'The DOCX format worker refused the source or could not complete safely.'
                 raise ValueError(message)
             if json.loads(result.stdout.decode('utf-8', 'strict')) != {
-                    'schema': 'carr-docx-layout-worker/1', 'status': 'complete'}:
+                    'schema': 'carr-' + kind + '-layout-worker/1', 'status': 'complete'}:
                 raise ValueError('The DOCX worker returned an invalid completion record.')
             response = read_json(directory / 'response.json', maximum=MAX_REPLY)
-            _snapshot(library, desk, stopped)
+            _snapshot(library, desk, stopped, mime=mime)
             if action == 'describe':
-                value = _mapping(response)
+                value = mapping_validator(response)
                 if value['source_sha256'] != asset.digest or value['source_size'] != asset.size:
                     raise ValueError('The DOCX worker described another source.')
                 return value
-            output = source_snapshot(directory, 'output.docx', cancelled=stopped)
-            if (not isinstance(output, AssetSnapshot) or output.mime != _DOCX
+            output = source_snapshot(directory, 'output.' + kind, cancelled=stopped)
+            if (not isinstance(output, AssetSnapshot) or output.mime != mime
                     or type(response) is not dict
                     or set(response) != {'schema', 'source_sha256', 'output_sha256', 'output_bytes',
                         'changed_members', 'preserved_members', 'paragraphs', 'quotation_authority', 'notice', 'mapping_sha256'}
-                    or response['schema'] != 'carr-docx-layout-output/1'
+                    or response['schema'] != 'carr-' + kind + '-layout-output/1'
                     or response['source_sha256'] != asset.digest or response['output_sha256'] != output.digest
                     or type(response['mapping_sha256']) is not str or len(response['mapping_sha256']) != 64
                     or any(c not in '0123456789abcdef' for c in response['mapping_sha256'])
                     or response['output_bytes'] != output.size or type(response['output_bytes']) is not int
-                    or response['changed_members'] != ['word/document.xml']
-                    or response['quotation_authority'] is not False or response['notice'] != NOTICE
+                    or not _changed_members(response['changed_members'], kind)
+                    or response['quotation_authority'] is not False or response['notice'] != notice
                     or type(response['paragraphs']) is not int or response['paragraphs'] != len(replacements)
                     or type(response['preserved_members']) is not dict
                     or len(response['preserved_members']) > 10000

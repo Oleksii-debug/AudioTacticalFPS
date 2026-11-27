@@ -607,7 +607,9 @@ def test_terminal_only_status_policy_keeps_real_child_checkpoint_progress(setup,
     monkeypatch.setattr(module, '_LIVE_STATUS_SNAPSHOTS', False)
     monkeypatch.setattr(module, 'run_process', actual_child)
     monkeypatch.setattr(module, '_worker_status', status_after_exit)
-    result = service.run(state['id'], progress=observe)
+    # This tests live checkpoint delivery and terminal-only mutable status,
+    # while retaining real runtime hashing and process ownership throughout.
+    result = service.run(state['id'], progress=observe, timeout=30)
     assert result['status'] == 'complete', result
     assert reads and not any(live for _, live in reads)
     assert any(live and event['done'] == 1 for event, live in updates)

@@ -134,7 +134,7 @@ def _admission(state_root, *, cancelled, guard, timeout, disk_bytes):
     check()
     broker = ResourceBroker.for_app(library, cancelled=check)
     request = ResourceRequest(cpu_slots=1, memory_bytes=1024**3,
-        disk_bytes=disk_bytes, disk_path=temporary_root)
+        disk_bytes=disk_bytes, disk_path=temporary_root if disk_bytes else None)
     try:
         with broker.reserve(request, operation_id='spelling:' + uuid4().hex,
                             cancelled=check, timeout=min(60, timeout),

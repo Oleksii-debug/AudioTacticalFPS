@@ -105,7 +105,13 @@ def narration_preset():
 
 
 def _n(value):
-    return format(float(value), '.12g')
+    # Keep the existing twelve significant digits, but duration options such
+    # as atrim/afade require ordinary decimal notation, including one sample.
+    rendered = format(float(value), '.12g')
+    if 'e' in rendered.lower():
+        from decimal import Decimal
+        return format(Decimal(rendered), 'f')
+    return rendered
 
 
 def _linear(db):

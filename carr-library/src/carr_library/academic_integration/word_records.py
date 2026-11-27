@@ -76,11 +76,26 @@ def digest(value, label='Word digest'):
     return value
 
 
+def _check_unicode(value):
+    # ASCII transport escaping must not turn an unencodable string into an
+    # admitted record. Check object keys and nested values before serialization.
+    if isinstance(value, str):
+        value.encode('utf-8')
+    elif isinstance(value, dict):
+        for key, item in value.items():
+            _check_unicode(key)
+            _check_unicode(item)
+    elif isinstance(value, (list, tuple)):
+        for item in value:
+            _check_unicode(item)
+
+
 def canonical(value):
     try:
+        _check_unicode(value)
         raw = json.dumps(value, ensure_ascii=True, sort_keys=True, separators=(',', ':'),
                          allow_nan=False).encode('ascii')
-    except (TypeError, ValueError, RecursionError) as error:
+    except (TypeError, ValueError, UnicodeError, RecursionError) as error:
         raise ValueError('The Word record is not bounded plain JSON.') from error
     require(len(raw) <= MAX_BYTES, 'The Word record exceeds its byte allowance.')
     return raw

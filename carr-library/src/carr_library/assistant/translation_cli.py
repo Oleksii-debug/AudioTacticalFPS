@@ -141,13 +141,14 @@ def main(argv=None):
     action = sub.add_parser('documents-export', help='Export explicit completed source jobs into new child directories')
     action.add_argument('jobs', nargs='+')
     action.add_argument('--parent', type=Path, required=True)
-    for name in ('docx-preview', 'docx-submit', 'docx-run', 'docx-export'):
+    for name in ('docx-preview', 'docx-submit', 'docx-run', 'docx-export',
+                 'epub-preview', 'epub-submit', 'epub-run', 'epub-export'):
         action = sub.add_parser(name,
-            help='Retained DOCX paragraphs/simple tables through existing jobs; explicit layout limitations')
+            help='Retained DOCX or EPUB text/layout mapping through existing jobs; explicit rich-format limits')
         action.add_argument('--workspace', required=True)
         action.add_argument('--edition', required=True)
         action.add_argument('--topic')
-        if name in ('docx-preview', 'docx-submit'):
+        if name.endswith(('-preview', '-submit')):
             action.add_argument('--profile', required=True)
             action.add_argument('--source', default='auto')
             action.add_argument('--target', required=True)
@@ -156,12 +157,13 @@ def main(argv=None):
             action.add_argument('--glossary')
         else:
             action.add_argument('jobs', nargs='+', help='Explicit existing paragraph job IDs; no automatic substitution')
-        if name == 'docx-submit':
+        if name.endswith('-submit'):
             action.add_argument('--review-sha256', required=True)
             action.add_argument('--approve-remote', action='store_true')
             action.add_argument('--approve-local', action='store_true')
-        if name == 'docx-export':
-            action.add_argument('--output', type=Path, required=True, help='NEW .docx file outside the private library')
+        if name.endswith('-export'):
+            action.add_argument('--output', type=Path, required=True,
+                                help='NEW .' + name.split('-')[0] + ' file outside the private library')
     args = parser.parse_args(argv)
     stop = threading.Event()
     previous = None
@@ -237,17 +239,22 @@ def main(argv=None):
                 result = prepare_documents(service, p, selected, args.source, args.target, args.budget,
                     approved_review=args.review_sha256, glossary=args.glossary, rate_per_million=args.rate_per_million,
                     cancelled=stop.is_set, guard=current)
-        elif args.command.startswith('docx-'):
-            from .translation_layout import (
-                capture_layout, review_layout, prepare_layout, order_layout_jobs, export_layout)
+        elif args.command.startswith(('docx-', 'epub-')):
+            document_format, action = args.command.split('-', 1)
+            if document_format == 'docx':
+                from .translation_layout import (
+                    capture_layout, review_layout, prepare_layout, order_layout_jobs, export_layout)
+            else:
+                from .translation_epub_layout import (
+                    capture_layout, review_layout, prepare_layout, order_layout_jobs, export_layout)
             previous = signal.signal(signal.SIGINT, lambda *unused: stop.set())
             selected = capture_layout(library, args.workspace, args.edition, topic=args.topic,
                                       cancelled=stop.is_set)
-            if args.command in ('docx-preview', 'docx-submit'):
+            if action in ('preview', 'submit'):
                 p = store.get(args.profile)
                 def current():
                     _require_current_account(store, p)
-                if args.command == 'docx-preview':
+                if action == 'preview':
                     result = review_layout(service, p, selected, args.source, args.target, args.budget,
                         glossary=args.glossary, rate_per_million=args.rate_per_million,
                         cancelled=stop.is_set, guard=current)
@@ -258,7 +265,7 @@ def main(argv=None):
                         rate_per_million=args.rate_per_million, cancelled=stop.is_set, guard=current)
             else:
                 identities = order_layout_jobs(service, selected, args.jobs, cancelled=stop.is_set)
-                if args.command == 'docx-run':
+                if action == 'run':
                     from .translation_documents import run_documents
                     result = run_documents(service, identities, cancelled=stop.is_set,
                         progress=lambda done, total, phase: print(phase, file=sys.stderr, flush=True))
@@ -267,7 +274,7 @@ def main(argv=None):
                     approval = capture_export_destination(args.output, private_root=library.root,
                                                           cancelled=stop.is_set)
                     if approval.state is not None:
-                        raise FileExistsError('Choose a new DOCX filename; existing files are not replaced.')
+                        raise FileExistsError('Choose a new ' + document_format.upper() + ' filename; existing files are not replaced.')
                     result = export_layout(service, selected, identities, args.output,
                                            approval=approval, cancelled=stop.is_set)
         elif args.command in ('documents-run', 'documents-export'):

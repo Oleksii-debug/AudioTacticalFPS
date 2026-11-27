@@ -2,6 +2,7 @@
 import json
 import importlib.util
 from contextlib import contextmanager
+from dataclasses import replace
 import os
 from pathlib import Path
 import threading
@@ -208,6 +209,9 @@ def test_export_failure_preserves_recognition_and_retry_needs_no_second_inferenc
 
 def test_changed_profile_does_not_relabel_an_old_unaccepted_checkpoint(setup, monkeypatch):
     service, runtime, profile, audio = setup
+    # Verify identity/reuse through real run + resume, not a five-second SLA.
+    # Checkpoint admission hashes the real reviewed Python support inventory.
+    monkeypatch.setattr(service, 'budget', replace(service.budget, timeout=30))
     created = job(setup, settings={'output_srt': True})
     original = module.atomic_bytes
     def failing(path, payload, **kw):
@@ -216,7 +220,8 @@ def test_changed_profile_does_not_relabel_an_old_unaccepted_checkpoint(setup, mo
         return original(path, payload, **kw)
     monkeypatch.setattr(module, 'atomic_bytes', failing)
     failed = service.run(created['id'])
-    assert failed['status'] == 'failed' and not failed['results']
+    assert failed['status'] == 'failed' and not failed['results'], failed
+    assert 'Synthetic export failure after recognition.' in failed['error']
     assert starts(runtime) == 1
     # A support-file change need not change the worker's reported launcher or
     # installed-distribution identity, as with a Windows base-runtime update.

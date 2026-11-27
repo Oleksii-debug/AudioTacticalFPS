@@ -39,7 +39,7 @@ def source(tmp_path, monkeypatch):
     row = controller.create(dict(title='Source methods', authors=('Smith, Jane',), year='2020',
                                  publisher='Example Press', notes='NEVER_SEND_PERSONAL_NOTE'))
     workbench = BibliographyWorkbench(controller)
-    snapshot = controller.export(row.id, format='csl-json', include_notes=False)
+    snapshot = controller.export(identity=row.id, format='csl-json', include_notes=False)
     preview = StylePreview(workspace, row.id, sha256(snapshot.encode('utf-8')).hexdigest(),
                            'apa', 'en-US', 'family-given', ('Source methods',), None)
     monkeypatch.setattr(bridge, 'IS_WINDOWS', True)  # Protocol fixture; never an Office availability assertion.

@@ -1,4 +1,4 @@
-name: CARR next9 Word, partitioned DOCX and Google renewal preflight
+name: CARR next9 corrected workstation and format preflight
 
 on:
   push:
@@ -42,12 +42,13 @@ jobs:
           python-version: '3.11'
           architecture: x64
       - name: Prepare existing pinned headless dependencies and Ubuntu codec
+        id: dependencies
         timeout-minutes: 8
         run: |
           set -euo pipefail
           mkdir ci-next9-results
           sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends ffmpeg
+          sudo apt-get install --yes --no-install-recommends ffmpeg iproute2 util-linux
           python -B -m pip install --only-binary=:all: --require-hashes -r packaging/linux-sync-core-cp311.lock -r packaging/trusted-client.lock -r packaging/windows-sync-test-cp311.lock
           python -B -m pip check
           python -I -B - <<'PY' | tee ci-next9-results/runtime.json
@@ -76,6 +77,7 @@ jobs:
           print(json.dumps(result, indent=2))
           PY
       - name: Compile every current Python application and verification source
+        id: syntax
         timeout-minutes: 2
         run: |
           set -euo pipefail
@@ -135,7 +137,6 @@ jobs:
             tests/assistant/test_google_oauth.py \
             tests/ui/test_google_oauth.py \
             tests/assistant/test_translation_v3.py \
-            tests/assistant/test_providers.py \
             tests/ui/test_profile_project_exports.py \
             tests/storage/test_backup_translation.py \
             tests/citations/test_csl.py \
@@ -144,6 +145,13 @@ jobs:
             tests/academic_integration/test_formatting.py \
             tests/academic_integration/test_regeneration.py \
             tests/academic_integration/test_citation_ui.py \
+            tests/assistant/test_translation_epub_layout.py \
+            tests/ui/test_translation_epub_layout.py \
+            tests/assistant/test_translation_epub_cli.py \
+            tests/speech/test_spelling.py \
+            tests/speech/test_spelling_handlers.py \
+            tests/speech/test_spelling_reader_hook.py \
+            tests/packaging/test_hunspell_build.py \
             2>&1 | tee ci-next9-results/source-contracts.txt
           python -I -B - <<'PY'
           from hashlib import sha256
@@ -163,7 +171,7 @@ jobs:
               'tests/ui/test_translation_layout.py': 23,
               'tests/assistant/test_translation_layout_cli.py': 5,
               'tests/speech/test_narration_receipt.py': 79,
-              'tests/academic_integration/test_word_records.py': 47,
+              'tests/academic_integration/test_word_records.py': 50,
               'tests/academic_integration/test_word_bridge.py': 20,
               'tests/academic_integration/test_word_worker.py': 17,
               'tests/ui/test_word_citations.py': 17,
@@ -171,13 +179,107 @@ jobs:
               'tests/ui/test_save_all.py': 24,
               'tests/assistant/test_google_oauth.py': 49,
               'tests/ui/test_google_oauth.py': 15,
+              'tests/assistant/test_translation_epub_layout.py': 31,
+              'tests/ui/test_translation_epub_layout.py': 6,
+              'tests/assistant/test_translation_epub_cli.py': 5,
+              'tests/speech/test_spelling.py': 55,
+              'tests/speech/test_spelling_handlers.py': 20,
+              'tests/speech/test_spelling_reader_hook.py': 9,
+              'tests/packaging/test_hunspell_build.py': 31,
           }
           for name, count in expected.items():
               assert lines.count(f'PASS: {name}: junit_passed={count}, failed=0, skipped=0, pytest_exit=0') == 1, name
           result = {'status': 'PASS', 'expected_new_whole_suites': expected,
-                    'all_whole_suites': 43, 'strict_fail_skip_xfail_xpass_policy': True,
+                    'all_whole_suites': 49, 'strict_fail_skip_xfail_xpass_policy': True,
                     'log_sha256': sha256(raw).hexdigest(), 'qualification': 'Exact source only'}
           (root / 'source-summary.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
+          PY
+      - name: Require all provider cases inside an isolated loopback-only network
+        if: ${{ !cancelled() && steps.dependencies.conclusion == 'success' && steps.syntax.conclusion == 'success' }}
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+          parent_namespace="$(readlink /proc/self/ns/net)"
+          selected_python="$(command -v python)"
+          sudo unshare --net -- "$selected_python" -I -B - "$parent_namespace" <<'PY' 2>&1 | tee ci-next9-results/provider-loopback.txt
+          from collections import Counter
+          from hashlib import sha256
+          import importlib, json, os, shutil, socket, subprocess, sys
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          root = Path.cwd().resolve(strict=True)
+          namespace = os.readlink('/proc/self/ns/net')
+          assert len(sys.argv) == 2 and namespace != sys.argv[1], 'Network namespace was not isolated.'
+          ip = shutil.which('ip')
+          assert ip is not None
+          subprocess.run([ip, 'link', 'set', 'lo', 'up'], check=True, timeout=10)
+          interfaces = json.loads(subprocess.check_output([ip, '-j', 'link', 'show'], text=True, timeout=10))
+          assert {row['ifname'] for row in interfaces} == {'lo'}, interfaces
+          for version in ('-4', '-6'):
+              routes = json.loads(subprocess.check_output([ip, version, '-j', 'route', 'show', 'table', 'all'], text=True, timeout=10))
+              assert all(row.get('dev') == 'lo' for row in routes), routes
+          with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as outside:
+              outside.settimeout(.25)
+              assert outside.connect_ex(('192.0.2.1', 9)) != 0, 'The isolated namespace has an external route.'
+          os.environ.update(PYTEST_DISABLE_PLUGIN_AUTOLOAD='1', PYTEST_ADDOPTS='',
+              PYTHONDONTWRITEBYTECODE='1', HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1',
+              DO_NOT_TRACK='1')
+          for key in ('PYTEST_PLUGINS', 'PYTHONPATH'):
+              os.environ.pop(key, None)
+          sys.path[:0] = [str(root / 'src'), str(root)]
+          selected_test = root / 'tests/assistant/test_providers.py'
+          test_sha = sha256(selected_test.read_bytes()).hexdigest()
+          names = ('carr_library.assistant.providers', 'carr_library.assistant.profiles',
+                   'carr_library.assistant.google_oauth', 'carr_library.assistant.credentials',
+                   'carr_library.assistant.models', 'carr_library.assistant.llm')
+          def origins():
+              result = {}
+              for name in names:
+                  module = importlib.import_module(name)
+                  path = Path(module.__file__).resolve(strict=True)
+                  expected = root / 'src' / Path(*name.split('.')).with_suffix('.py')
+                  assert path == expected.resolve(strict=True), name
+                  result[name] = sha256(path.read_bytes()).hexdigest()
+              return result
+          before = origins()
+          import pytest
+          class Strict:
+              expected_failure = False
+              collected = ()
+              def pytest_collection_modifyitems(self, items):
+                  self.collected = tuple(item.name for item in items)
+                  if len(items) != 28 or any(Path(item.path).resolve() != selected_test for item in items):
+                      raise pytest.UsageError('The complete exact 28-case provider suite is required.')
+              def pytest_runtest_logreport(self, report):
+                  if hasattr(report, 'wasxfail'):
+                      self.expected_failure = True
+          policy = Strict()
+          xml = root / 'ci-next9-results/provider-loopback.xml'
+          code = pytest.main(['-v', '-rA', '-c', os.devnull,
+              '--rootdir=' + str(root), '--confcutdir=' + str(root),
+              '--import-mode=importlib', '-o', 'addopts=', '-o', 'pythonpath=',
+              '-o', 'xfail_strict=true', '-o', 'faulthandler_timeout=120',
+              '--junitxml=' + str(xml), str(selected_test)], plugins=[policy])
+          after = origins()
+          assert before == after and sha256(selected_test.read_bytes()).hexdigest() == test_sha
+          cases = list(ET.parse(xml).iter('testcase')) if xml.is_file() else []
+          valid = (int(code) == 0 and not policy.expected_failure and len(cases) == 28
+              and Counter(case.get('name') for case in cases) == Counter(policy.collected)
+              and all(case.get('classname', '').rsplit('.', 1)[-1] == 'test_providers'
+                  and not any(case.find(tag) is not None for tag in ('failure', 'error', 'skipped'))
+                  for case in cases))
+          result = {'status': 'PASS' if valid else 'FAIL', 'cases': len(cases),
+              'pytest_exit': int(code), 'xfail_or_xpass': policy.expected_failure,
+              'namespace': namespace, 'parent_namespace': sys.argv[1], 'interfaces': ['lo'],
+              'external_route': 'ABSENT', 'source_origins': after, 'test_sha256': test_sha,
+              'junit_sha256': sha256(xml.read_bytes()).hexdigest() if xml.is_file() else None,
+              'qualification': 'Whole source suite, real synthetic loopback HTTP; no external API or installed-package claim'}
+          (root / 'ci-next9-results/provider-loopback.json').write_text(
+              json.dumps(result, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps(result, indent=2), flush=True)
+          if not valid:
+              raise SystemExit(1)
+          print('PASS: tests/assistant/test_providers.py: junit_passed=28, failed=0, skipped=0, pytest_exit=0')
           PY
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: ${{ always() }}

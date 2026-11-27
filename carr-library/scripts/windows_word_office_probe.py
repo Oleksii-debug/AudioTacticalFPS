@@ -79,7 +79,7 @@ def main():
             authors=('Smith, Jane',), year='2020', publisher='Example Press'))
         workbench = BibliographyWorkbench(controller)
         preview = workbench.preview(identity=reference.id, style=options.style, name_mode='family-given')
-        original = controller.export(reference.id, format='csl-json', include_notes=False)
+        original = controller.export(identity=reference.id, format='csl-json', include_notes=False)
         service = WordBridge(workbench, preview)
         first = service.run(timeout=45)
         current = first.capture
@@ -150,7 +150,7 @@ def main():
               final.status == 'INSPECTED' and final.capture['document']['outside_main_sha256'] == outside
               and fingerprint(final.capture['metadata']) == bibliography.receipt['metadata_sha256'])
         check('the source library and all native resource reservations remain unchanged or released',
-              controller.export(reference.id, format='csl-json', include_notes=False) == original
+              controller.export(identity=reference.id, format='csl-json', include_notes=False) == original
               and ResourceBroker.for_app(app.root).snapshot()['leases'] == [])
     check('application module bytes remain unchanged after actual Office work', origins() == before)
     report = {'status': 'PASS', 'actual_word': 'EXECUTED', 'checks': checks, 'installed_modules': before,

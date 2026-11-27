@@ -76,12 +76,13 @@ def main():
     simulator = wx.UIActionSimulator()
     check('native Windows wx', wx.Platform == '__WXMSW__')
     user32 = ctypes.WinDLL('user32', use_last_error=True)
+    user32.IsWindow.argtypes, user32.IsWindow.restype = [wintypes.HWND], wintypes.BOOL
     user32.SetForegroundWindow.argtypes, user32.SetForegroundWindow.restype = [wintypes.HWND], wintypes.BOOL
     user32.GetForegroundWindow.argtypes, user32.GetForegroundWindow.restype = [], wintypes.HWND
-    def pump(predicate, label, timeout=35):
+    def pump(predicate, label, timeout=35, *, cleanup=False):
         until = monotonic() + timeout
         while not predicate():
-            if errors:
+            if errors and not cleanup:
                 raise RuntimeError(errors[-1])
             if monotonic() > until:
                 raise TimeoutError(label)
@@ -326,16 +327,19 @@ def main():
         finally:
             try:
                 if frame is not None:
+                    handle, executor = frame.GetHandle(), frame.executor
                     frame.cancel_event.set()
-                    frame._closing = True
                     try:
-                        frame.executor.shutdown(wait=True, cancel_futures=True)
-                        check('host shutdown retains no failed cleanup owner', not frame.executor.cleanup_failures)
+                        # Exercise the real host owner order, including its
+                        # schedules/tray hooks before executor finalization.
+                        frame.Close(force=True)
+                        pump(lambda: not user32.IsWindow(handle),
+                             'Actual host Close did not release its native owners.',
+                             cleanup=True)
                     finally:
-                        try:
-                            frame.progress_panel.close()
-                        finally:
-                            frame.Destroy()
+                        executor.shutdown(wait=True, cancel_futures=True)
+                    check('host shutdown retains no failed cleanup owner',
+                          not user32.IsWindow(handle) and not executor.cleanup_failures)
                 app.Yield()
             finally:
                 (http.client.HTTPConnection, wx.MessageBox, wx.SingleChoiceDialog, wx.FileDialog,

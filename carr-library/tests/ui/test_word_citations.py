@@ -90,7 +90,7 @@ def form(tmp_path, monkeypatch):
     controller = AcademicController(library, workspace)
     row = controller.create(dict(title='Reviewed source', authors=('Smith, Jane',), year='2020'))
     workbench = BibliographyWorkbench(controller)
-    snapshot = controller.export(row.id, format='csl-json', include_notes=False)
+    snapshot = controller.export(identity=row.id, format='csl-json', include_notes=False)
     preview = StylePreview(workspace, row.id, sha256(snapshot.encode('utf-8')).hexdigest(),
                            'apa', 'en-US', 'literal', ('Reviewed source',), None)
     owner = N(current=True)

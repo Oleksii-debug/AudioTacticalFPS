@@ -2,10 +2,12 @@
 
 This is the finite validation contract for the optional bridge to an already-open
 Microsoft Word document. It supplements [the user guide](WORD_BRIDGE.md).
-All newly composed source, tests and scripts were checkpointed with exact Git
-blob readback. **Parser, pytest and native execution are NOT_RUN at this handoff.**
-The local executor was unavailable. Static review and an unchanged source hash
-must never be reported as an actual Windows, Office, visual-layout or NVDA pass.
+Source, tests and scripts are checkpointed with exact Git blob readback.
+The first portable preflight executed on Linux; its failures and the corresponding
+corrections are recorded below. **The corrected source and all native/Office
+execution remain NOT_RUN until their exact candidate executes.** The local
+executor is unavailable. Static review and an unchanged source hash must never
+be reported as an actual Windows, Office, visual-layout or NVDA pass.
 
 ## Required portable source and installed suites
 
@@ -17,11 +19,11 @@ a voice, an audio device or an audio-engine download.
 
 | Whole module | Static expected cases | Main evidence |
 |---|---:|---|
-| `tests/academic_integration/test_word_records.py` | 47 | Exact passive records, full sequence/source/metadata binding, real canonical CSL for APA/IEEE/Chicago, locator evidence, rich text, foreign-range refusal. |
+| `tests/academic_integration/test_word_records.py` | 50 | Exact passive records, full sequence/source/metadata binding, real canonical CSL for APA/IEEE/Chicago, locator evidence, rich text, foreign-range refusal. |
 | `tests/academic_integration/test_word_bridge.py` | 20 | Real LibraryApp, CSL processor, broker and owned child; approval/source/Word changes; completed versus uncertain; actual pending-child and staging lifetime; deferred interruption after native quiescence. |
 | `tests/academic_integration/test_word_worker.py` | 17 | Actual fixed protocol children and finite deadlines; production native admission with explicit doubles; active/foreign undo protection; first-write grant expiry; aggregate capture bound; native offsets instead of Python display offsets. |
 | `tests/ui/test_word_citations.py` | 17 | Actual dialog factory with controlled wx and a real borrowed serial worker; explicit default-No approval, stale modal/queued scope, close, late completion, actual workbench hook. |
-| **Total** | **101** | Counts are decorator enumeration only, not collected or executed results. |
+| **Total** | **104** | The original 101 cases were collected in the first preflight; three added Unicode cases are statically enumerated. The corrected 104-case union has not executed. |
 
 The adjacent companion
 `tests/academic_integration/word_fixtures.py` is required. Keep the
@@ -35,6 +37,33 @@ Retain every pre-existing bibliography, CSL, citation, DOCX export, document
 regeneration and UI/export test. These new modules add a new bridge and do not
 replace those contracts. No dependency pins change: the existing comtypes
 1.5.0 and canonical citation dependencies remain in the reviewed closure.
+
+
+## First portable preflight and correction
+
+[Run 46042518081, job 140653551461](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46042518081/job/140653551461)
+checked out exact source `1fc5fb4cc4bf412568d76c3175a64c89326c1150`
+on Linux/Python 3.11.18. Its four Word suites collected 101 cases: 62 passed,
+two failed, and 37 had setup errors; none were skipped. This is a failed
+portable source result, with no Word or Windows qualification.
+
+The corrected candidate retains every assertion. Both source fixtures and
+both native scripts now call the existing keyword-only
+`AcademicController.export(identity=...)` API. Record serialization rejects
+unpaired Unicode surrogates in keys and nested values before the unchanged
+ASCII transport encoding; three additional cases also preserve valid
+supplementary Unicode. The two final source-grant expiry checks raise
+`TimeoutError`, matching the existing `expired` failure category while
+retaining their positions, the five-second grant and the real slow-child
+no-mutation assertion.
+
+The complete preflight artifact is
+[15221073460](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46042518081/artifacts/15221073460),
+99,056 bytes, SHA-256
+`f18f3e975ecda141588fddd13cd18567a9d5e3e37c830e336628423d739419dc`.
+The whole 43-suite run had 1,336 passed and 53 failures/errors with zero skips;
+only the four Word suites are described here. A passing predecessor or static
+review does not qualify the corrected candidate.
 
 ## Required Windows native host and protocol probe
 
@@ -68,7 +97,7 @@ Acceptance requires all of the following in the actual report:
 | `synthetic_word_protocol` | `PASS` |
 | `owned_child_cleanup` | `PASS` |
 | `owned_child_invocations` | Exactly 3 |
-| `checks` | Every one of the 23 distinct names below; no duplicates or missing phase |
+| `checks` | Every one of the 24 distinct names below; no duplicates or missing phase |
 | `installed_modules` | The 20 exact module origins below, with installed locations and matching checked-out bytes before and after |
 | `actual_word` | `NOT_RUN` |
 | `manual_nvda` | `NOT_RUN` |
@@ -82,9 +111,12 @@ all private Job handles closed, temporary transport absent and shared leases
 released before a successful report. A real native default-No question and
 explicit Yes are required; directly calling the dialog decision is insufficient.
 
+Failure cleanup also has an actual nested-native control: the probe answers only its own process/title/owner-checked MessageBox with No, leaves suspended parents intact, then closes one captured active modal loop on a later event turn. A failed probe never reports these cleanup controls as successful Office execution.
+
 ### Required native check names
 
 - all twenty Word host and protocol module bytes match their requested origins
+- failure cleanup answers owned Word confirmation No before closing only its active modal
 - every invoked Word action is enabled in its actual native state
 - native Word application confirmation starts on No
 - actual current DesktopFrame owns the selected library and one worker

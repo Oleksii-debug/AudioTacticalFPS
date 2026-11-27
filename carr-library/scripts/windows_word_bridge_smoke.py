@@ -33,6 +33,8 @@ ORIGINS = (
     'carr_library.durable_state', 'carr_library.native_runtime',
 )
 
+QUESTION_TITLE = 'Apply reviewed Word change'
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -58,6 +60,8 @@ def main():
     installed = Path(os.environ.get('CARR_PROGRAM_DIR') or sysconfig.get_path('purelib')).resolve(strict=True)
     checks, errors, children, stages, observations, threads = [], [], [], [], [], []
     gui_thread = threading.get_ident()
+    modal_loops = []
+    unwind_pending = False
     def check(name, condition):
         if not condition:
             raise AssertionError(name)
@@ -89,8 +93,7 @@ def main():
         def OnExceptionInMainLoop(self):
             errors.append(traceback.format_exc())
             unwind()
-            self.ExitMainLoop()
-            return False
+            return True  # Preserve failure; unwind the active owned modal first.
     app = App(False)
     app.SetAssertMode(wx.APP_ASSERT_EXCEPTION)
     app.SetExitOnFrameDelete(False)
@@ -102,10 +105,63 @@ def main():
     user.FindWindowW.argtypes, user.FindWindowW.restype = [wintypes.LPCWSTR, wintypes.LPCWSTR], wintypes.HWND
     user.GetFocus.argtypes, user.GetFocus.restype = [], wintypes.HWND
     user.GetDlgCtrlID.argtypes, user.GetDlgCtrlID.restype = [wintypes.HWND], ctypes.c_int
+    user.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
+    user.GetWindowThreadProcessId.restype = wintypes.DWORD
+    user.GetWindow.argtypes, user.GetWindow.restype = [wintypes.HWND, wintypes.UINT], wintypes.HWND
+    user.GetDlgItem.argtypes, user.GetDlgItem.restype = [wintypes.HWND, ctypes.c_int], wintypes.HWND
+    user.PostMessageW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
+    user.PostMessageW.restype = wintypes.BOOL
+    def own_modal(window):
+        loop = wx.EventLoopBase.GetActive()
+        if loop is None or not loop.IsRunning() or loop.IsMain():
+            raise AssertionError('The owned Word modal has no running native event loop.')
+        modal_loops.append((window, window.GetHandle(), loop))
+
+    def dismiss_owned_question():
+        # Native MessageBox is not a wx.Dialog. Only this process's exact title
+        # and an owner chain rooted in one of our live modal windows may be closed.
+        handle = user.FindWindowW(None, QUESTION_TITLE)
+        if not handle:
+            return False
+        process = wintypes.DWORD()
+        user.GetWindowThreadProcessId(handle, ctypes.byref(process))
+        owners = {native for window, native, _ in modal_loops if window and user.IsWindow(native)}
+        parent = user.GetWindow(handle, 4)  # GW_OWNER
+        for _ in range(16):
+            if not parent or parent in owners:
+                break
+            parent = user.GetWindow(parent, 4)
+        no_button = user.GetDlgItem(handle, 7)  # IDNO, never affirmative cleanup.
+        if process.value != os.getpid() or parent not in owners or not no_button:
+            raise AssertionError('Refusing to dismiss a confirmation not owned by this probe.')
+        if not user.PostMessageW(handle, 0x0111, 7, no_button):  # WM_COMMAND
+            raise OSError(ctypes.get_last_error(), 'Could not queue owned native No cleanup.')
+        return True
+
     def unwind():
-        for window in reversed(wx.GetTopLevelWindows()):
-            if isinstance(window, wx.Dialog) and window.IsModal():
-                window.EndModal(wx.ID_CANCEL)
+        nonlocal unwind_pending
+        if unwind_pending:
+            return
+        unwind_pending = True
+
+        def close_active():
+            nonlocal unwind_pending
+            unwind_pending = False
+            try:
+                if dismiss_owned_question():
+                    return
+                for window, handle, loop in reversed(modal_loops):
+                    if window and user.IsWindow(handle) and window.IsModal() and loop.IsRunning():
+                        window.EndModal(wx.ID_CANCEL)
+                        return
+                active = wx.EventLoopBase.GetActive()
+                if errors and active is not None and active.IsMain():
+                    active.ScheduleExit(1)
+            except Exception:
+                errors.append(traceback.format_exc())
+                # Do not close an unowned native question or destroy its parent.
+                # The finite watchdog remains active until cleanup is confirmed.
+        wx.CallAfter(close_active)
     def pump(predicate, message, timeout=35, *, cleanup=False):
         deadline = time.monotonic() + timeout
         while not predicate():
@@ -130,7 +186,7 @@ def main():
         settle()
     def answer(yes):
         try:
-            title = 'Apply reviewed Word change'
+            title = QUESTION_TITLE
             pump(lambda: bool(user.FindWindowW(None, title)), 'The native Word confirmation did not open.')
             handle = user.FindWindowW(None, title)
             user.SetForegroundWindow(handle)
@@ -160,7 +216,7 @@ def main():
             controller = AcademicController(library, workspace)
             reference = controller.create(dict(title='Native citation source', authors=('Smith, Jane',),
                 year='2020', notes='PRIVATE_NOTE_MUST_NOT_ENTER_WORD'))
-            original_source = controller.export(reference.id, format='csl-json', include_notes=False)
+            original_source = controller.export(identity=reference.id, format='csl-json', include_notes=False)
             frame = DesktopFrame(library)
             frame.active = workspace, None
             host_executor, handle = frame.executor, frame.GetHandle()
@@ -193,6 +249,7 @@ def main():
                          'The actual workbench Word button did not open its dialog.')
                     word = next(w for w in wx.GetTopLevelWindows()
                         if isinstance(w, wx.Dialog) and w.IsModal() and w.GetTitle() == 'Already-open Word document')
+                    own_modal(word)
                     check('opening Word review launches no child or document mutation', not children)
                     check('Word operation and preview controls have distinct accessible names',
                           len({c.GetName() for c in (word.inspect, word.preview_button, word.apply_button,
@@ -266,6 +323,30 @@ def main():
                     def styles_driver():
                         try:
                             pump(lambda: styles.IsModal(), 'The CSL workbench did not open.')
+                            own_modal(styles)
+                            fixture = wx.Dialog(styles, title='Native Word failure cleanup fixture')
+                            refused = []
+                            def failure_driver():
+                                try:
+                                    own_modal(fixture)
+                                    wx.CallLater(60, unwind)
+                                    refused.append(wx.MessageBox('Synthetic cleanup only; no Word operation is authorized.',
+                                        QUESTION_TITLE, wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, fixture))
+                                    if refused != [wx.NO] or not fixture.IsModal() or not styles.IsModal():
+                                        raise AssertionError('Word question cleanup touched its suspended parent.')
+                                    unwind()
+                                except Exception:
+                                    errors.append(traceback.format_exc()); unwind()
+                            try:
+                                wx.CallLater(60, failure_driver)
+                                if fixture.ShowModal() != wx.ID_CANCEL:
+                                    raise AssertionError('The owned Word failure fixture did not unwind through Cancel.')
+                                check('failure cleanup answers owned Word confirmation No before closing only its active modal',
+                                      refused == [wx.NO] and styles.IsModal() and not children)
+                            finally:
+                                fixture.Destroy()
+                            if errors:
+                                raise RuntimeError('\n'.join(errors))
                             press(styles.generate)
                             pump(lambda: styles.pending is None and styles.preview is not None,
                                  'The existing CSL preview did not complete.', timeout=50)
@@ -286,7 +367,7 @@ def main():
                     check('all Word protocol work uses the existing single off-main worker',
                           len(threads) == 3 and len(set(threads)) == 1 and gui_thread not in threads)
                     check('bibliographic source bytes remain exact after every native action',
-                          controller.export(reference.id, format='csl-json', include_notes=False) == original_source)
+                          controller.export(identity=reference.id, format='csl-json', include_notes=False) == original_source)
                     frame.Close()
                     pump(lambda: not user.IsWindow(handle), 'The actual DesktopFrame close path did not finish.')
                     host_executor.shutdown(wait=True, cancel_futures=True)
@@ -320,7 +401,7 @@ def main():
           origins() == before and sha256(fixture.read_bytes()).hexdigest() == fixture_hash)
     report = {'status': 'PASS', 'checks': checks, 'installed_modules': before,
         'actual_native_ui': 'PASS', 'actual_csl': 'PASS', 'synthetic_word_protocol': 'PASS',
-        'owned_child_cleanup': 'PASS', 'owned_child_invocations': len(children),
+        'owned_child_cleanup': 'PASS', 'native_failure_cleanup': 'PASS', 'owned_child_invocations': len(children),
         'actual_word': 'NOT_RUN', 'manual_nvda': 'NOT_RUN', 'office_document_quality': 'NOT_RUN',
         'synthetic_companion_sha256': fixture_hash}
     if options.output is not None:
