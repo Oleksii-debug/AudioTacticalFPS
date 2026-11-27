@@ -364,7 +364,7 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                      "COMMAND_PALETTE.md", "OCR_LANGUAGE_MANAGER.md", "OCR_MODEL_MANAGER.md",
                      "ACADEMIC_ACQUISITION.md", "AUDIO_STUDIO_V3.md", "AUDIO_RUNTIME.md",
                      "ACCESSIBLE_PROGRESS.md", "CANONICAL_LANGUAGE_CATALOG.md",
-                     "DOCUMENT_FORMATS_V3.md", "V3_BIBLIOGRAPHY.md",
+                     "DOCUMENT_FORMATS_V3.md", "V3_BIBLIOGRAPHY.md", "LOCAL_ASSISTANT.md",
                      "UPSTREAM_CSL.md", "UPSTREAM_BIBTEX.md"):
             shutil.copyfile(regular(HERE.parent / "docs" / name), guides / name)
         if sbom is not None:

@@ -16,7 +16,7 @@ import subprocess
 import sys
 import tempfile
 
-from .ocr_languages import model_ids
+from .ocr_languages import is_model_id, model_ids
 from .ocr_runtime import OcrRuntimeError
 
 _MAX_MODEL = 256 * 1024 * 1024
@@ -163,23 +163,35 @@ def _bound_command(runtime, argv):
 
 
 def normalize_ocr_query_output(data, directory):
-    """Map only the real engine's validated relative header to its source."""
-    if directory is None:
+    """Bind a relative header and canonicalize native Windows script IDs.
+
+    Tesseract enumerates nested models through filesystem::path::string(),
+    which uses backslashes on Windows. Normalize only valid script-model rows
+    from a language report; user selections retain their strict slash syntax.
+    """
+    if directory is None and sys.platform != 'win32':
         return data
-    cwd = directory
     report = data.decode('utf-8')
     match = re.search(r'^List of available languages in "([^"\r\n]+)"', report, re.MULTILINE)
     if match is None:
-        raise OcrRuntimeError('The OCR engine did not report its model directory.')
-    reported = Path(match[1])
-    resolved = reported if reported.is_absolute() else cwd / reported
-    try:
-        same = resolved.samefile(directory)
-    except OSError:
-        same = False
-    if not same:
-        raise OcrRuntimeError('The OCR engine reported a different model directory.')
-    report = report[:match.start(1)] + str(directory) + report[match.end(1):]
+        if directory is not None:
+            raise OcrRuntimeError('The OCR engine did not report its model directory.')
+        return data
+    if directory is not None:
+        reported = Path(match[1])
+        resolved = reported if reported.is_absolute() else directory / reported
+        try:
+            same = resolved.samefile(directory)
+        except OSError:
+            same = False
+        if not same:
+            raise OcrRuntimeError('The OCR engine reported a different model directory.')
+        report = report[:match.start(1)] + str(directory) + report[match.end(1):]
+    if sys.platform == 'win32':
+        def script_row(match):
+            candidate = match[0].replace('\\', '/', 1)
+            return candidate if is_model_id(candidate) else match[0]
+        report = re.sub(r'^script\\[^\r\n]+', script_row, report, flags=re.MULTILINE)
     return report.encode('utf-8')
 
 
@@ -219,7 +231,11 @@ def run_ocr(runtime, argv, *, remaining):
     """
     command = _bound_command(runtime, argv)
     if sys.platform != 'win32' or all(arg.isascii() for arg in command[1:]):
-        return _execute(command, runtime.root, remaining)
+        result = _execute(command, runtime.root, remaining)
+        if sys.platform == 'win32' and '--list-langs' in command:
+            return subprocess.CompletedProcess(result.args, result.returncode,
+                normalize_ocr_query_output(result.stdout, None), result.stderr)
+        return result
     model_option = _option(command, '--tessdata-dir')
     model_directory = (_directory(Path(runtime.root or Path.cwd()) / Path(model_option[2]))
                        if model_option else None)

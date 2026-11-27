@@ -453,3 +453,80 @@ def test_relative_unicode_model_directory_uses_the_original_child_cwd(tmp_path, 
         remaining=lambda: 1)
     assert len(calls) == 1 and calls[0][1] == models
     assert (models / calls[0][0][1]).samefile(source)
+
+
+@pytest.mark.parametrize('folder', ['models', 'Українські моделі'])
+def test_windows_native_script_rows_are_canonical_for_ascii_and_unicode_queries(tmp_path, monkeypatch, folder):
+    from types import SimpleNamespace
+    from carr_library.extract import ocr_process, ocr_languages
+    from carr_library.ui.ocr_selection import parse_installed_models
+    directory = tmp_path / folder
+    directory.mkdir()
+    runtime = OcrRuntime('selected-engine', tessdata=directory, root=tmp_path)
+    monkeypatch.setattr(ocr_process, 'sys', SimpleNamespace(platform='win32'))
+    calls = []
+
+    def execute(command, cwd, remaining):
+        calls.append((command, cwd))
+        assert remaining() == 3
+        if str(directory).isascii():
+            assert cwd == tmp_path
+            assert command == ['selected-engine', '--tessdata-dir', str(directory), '--list-langs']
+            header = str(directory)
+        else:
+            assert cwd == directory
+            assert command == ['selected-engine', '--tessdata-dir', '.', '--list-langs']
+            header = './'
+        # std::filesystem::path::string() emits a native separator on Windows.
+        raw = (f'List of available languages in "{header}" (4):\r\n'
+               'eng\r\nLatin\r\nscript\\Latin\r\nosd\r\n').encode('utf-8')
+        return subprocess.CompletedProcess(command, 0, raw, b'')
+
+    monkeypatch.setattr(ocr_process, '_execute', execute)
+    result = run_ocr(runtime, [runtime.executable, '--list-langs'], remaining=lambda: 3)
+    assert len(calls) == 1
+    assert result.stdout.endswith(b'eng\r\nLatin\r\nscript/Latin\r\nosd\r\n')
+    assert str(directory) in result.stdout.decode('utf-8')
+    assert ocr_languages.parse_language_report(result.stdout.decode('utf-8')) == (
+        'eng', 'Latin', 'script/Latin', 'osd')
+    assert parse_installed_models(result.stdout, expected_directory=directory) == (
+        'eng', 'Latin', 'script/Latin', 'osd')
+    with pytest.raises(ValueError):
+        ocr_languages.model_ids(r'script\Latin')
+
+
+@pytest.mark.parametrize('row', [
+    r'script\..\eng', r'script\\Latin', r'script\Latin\eng', r'script\Latin/eng',
+    r'other\Latin', r'Script\Latin', r'script\CON', r'script\Latin.traineddata',
+])
+def test_windows_native_inventory_does_not_repair_unsafe_or_unrelated_paths(monkeypatch, row):
+    from types import SimpleNamespace
+    from carr_library.extract import ocr_process, ocr_languages
+    from carr_library.ui.ocr_selection import parse_installed_models
+    monkeypatch.setattr(ocr_process, 'sys', SimpleNamespace(platform='win32'))
+    raw = ('List of available languages in "selected models" (2):\r\neng\r\n'
+           + row + '\r\n').encode('utf-8')
+    normalized = ocr_process.normalize_ocr_query_output(raw, None)
+    assert normalized == raw
+    with pytest.raises(ValueError):
+        ocr_languages.parse_language_report(normalized.decode('utf-8'))
+    with pytest.raises(ValueError):
+        parse_installed_models(normalized)
+
+
+def test_non_windows_inventory_retains_strict_model_separator(monkeypatch):
+    from types import SimpleNamespace
+    from carr_library.extract import ocr_process, ocr_languages
+    monkeypatch.setattr(ocr_process, 'sys', SimpleNamespace(platform='linux'))
+    raw = b'List of available languages in "selected models" (1):\nscript\\Latin\n'
+    assert ocr_process.normalize_ocr_query_output(raw, None) == raw
+    with pytest.raises(ValueError):
+        ocr_languages.parse_language_report(raw.decode('utf-8'))
+
+
+def test_windows_non_inventory_output_is_never_rewritten(monkeypatch):
+    from types import SimpleNamespace
+    from carr_library.extract import ocr_process
+    monkeypatch.setattr(ocr_process, 'sys', SimpleNamespace(platform='win32'))
+    raw = b'tesseract 5.5.4\r\nscript\\Latin\r\n'
+    assert ocr_process.normalize_ocr_query_output(raw, None) == raw

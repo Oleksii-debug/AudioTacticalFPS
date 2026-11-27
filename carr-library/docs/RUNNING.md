@@ -456,3 +456,8 @@ are retained in `native-runtime/licenses` and `native-runtime/provenance`.
 Microsoft DLL bytes are not
 included in the source repository. The private-install permission for this
 prepared package does not establish permission for public binary distribution.
+
+
+## Guided local assistant
+
+Open **Tools → Local assistant** (**Ctrl+Alt+J**) to preview and run scoped local library and audio tasks. Choose input/output folders and whole-job budgets before running. Restored jobs retain readable history and require new permission review before unfinished steps can run. See **docs/LOCAL_ASSISTANT.md** for commands, narration language selection and complete-backup behavior. This guided tool runner does not yet provide a general-language LLM.

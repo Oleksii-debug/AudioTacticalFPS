@@ -350,7 +350,16 @@ jobs:
             'tests/reader/test_export_no_clobber.py',
               'tests/reader/test_export_publication_boundary.py',
             'tests/audio/test_input_asset_backup.py',
-            'tests/audio/test_reading_copy_backup.py'
+            'tests/audio/test_reading_copy_backup.py',
+            'tests/assistant/test_local_assistant.py',
+            'tests/assistant/test_audio_bridge.py',
+            'tests/assistant/test_backup_receipt.py',
+            'tests/assistant/test_budget_resume.py',
+            'tests/assistant/test_complete_recovery.py',
+            'tests/storage/test_assistant_restored_history.py',
+            'tests/storage/test_backup_operation_budget.py',
+            'tests/audio/test_narration_plan.py',
+            'tests/packaging/test_native_fresh_launcher.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py --jobs 2 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -562,7 +571,9 @@ jobs:
           $filters = @($active | Get-NetFirewallApplicationFilter -ErrorAction Stop | Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })
           if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Offline execution rules do not cover the intended programs.' }
           @{ status='PASS'; profiles_enabled=@($profiles.Name); outbound_blocked_programs=$filters; phase='installation, native desktop, multilingual inference and scanned-source research' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-results/full-bundle-firewall.json'
-          & $bundledPython -I -B (Join-Path $bundle 'install_windows.py') 2>&1 | Tee-Object 'ci-results/core-bundle-install.txt'
+          # The actual no-argument EXE performs first installation and opens its GUI.
+          # This leaves the verified environment ready for the following installed checks.
+          & $env:CARR_PYTHON -I -B packaging/native-launcher/probe_fresh_windows.py --bundle-root $bundle --report 'ci-results/full-bundle-first-launch.json' --timeout 600
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -m carr_library --self-test | Tee-Object 'ci-results/core-bundle-self-test.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -596,6 +607,8 @@ jobs:
           & $installedPython -I -B tests/ui/native_document_formats_smoke.py --native 2>&1 | Tee-Object 'ci-results/full-bundle-document-formats.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_citation_styles_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-citation-styles.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/windows_assistant_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-assistant-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON -I -B packaging/native-launcher/probe_installed_windows.py --bundle-root $bundle --report 'ci-results/full-bundle-native-launcher.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -695,6 +708,14 @@ jobs:
               'tests/reader/test_export_publication_boundary.py',
               'tests/audio/test_input_asset_backup.py',
               'tests/audio/test_reading_copy_backup.py',
+              'tests/assistant/test_local_assistant.py',
+              'tests/assistant/test_audio_bridge.py',
+              'tests/assistant/test_backup_receipt.py',
+              'tests/assistant/test_budget_resume.py',
+              'tests/assistant/test_complete_recovery.py',
+              'tests/storage/test_assistant_restored_history.py',
+              'tests/storage/test_backup_operation_budget.py',
+              'tests/audio/test_narration_plan.py',
           ]
           # Preserve option/value pairs and run overlapping required suites once.
           arguments = sys.argv[2:]

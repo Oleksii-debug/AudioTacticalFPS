@@ -44,6 +44,10 @@ def test_inventory_parser_rejects_different_bound_model_directory():
 
 
 def runtime_program(monkeypatch, tmp_path, program):
+    # This executable is a Python inventory fixture, not the installed OCR
+    # engine. Host model bindings must not become Python command-line options.
+    monkeypatch.delenv('CARR_OCR_DIR', raising=False)
+    monkeypatch.delenv('TESSDATA_PREFIX', raising=False)
     runtime = SimpleNamespace(executable=sys.executable, root=tmp_path, tessdata=tmp_path,
         command=Mock(side_effect=lambda arguments: [sys.executable, '-c', program]),
         assert_unchanged=Mock())
