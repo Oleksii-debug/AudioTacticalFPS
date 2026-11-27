@@ -3,6 +3,7 @@
 The scheduler models loop ownership and failed input delivery explicitly. The
 real probes still have to prove native dispatch and durable product outcomes.
 """
+import ast
 import heapq
 from pathlib import Path
 import runpy
@@ -225,3 +226,97 @@ def test_native_key_release_failure_is_not_a_successful_probe(harness):
         native.press(ord('J'), 6)
     assert runtime.held is None
     assert runtime.loop is None
+
+
+def _settings_session_contract():
+    """Execute the probe's actual callback against wxMSW's modal lifetime.
+
+    wxWidgets 3.2.8 EndModal sets the return code and hides the dialog, while
+    IsModal stays true until ShowModal unwinds. This is a finite reproduction
+    of that callback contract, not a substitute for the real-key Windows run.
+    """
+    from carr_library.ui.keyboard_settings import KeyboardSettingsDialog
+
+    source = Path(__file__).with_name('native_keyboard_settings_smoke.py')
+    session = next(node for node in ast.walk(ast.parse(source.read_text(encoding='utf-8')))
+                   if isinstance(node, ast.FunctionDef) and node.name == 'settings_session')
+    wrapper = ast.parse('def make_session():\n    settings = None\n    return settings\n')
+    wrapper.body[0].body[1:] = [session, ast.Return(ast.Name('settings_session', ast.Load()))]
+    pending, dialogs = [], []
+    wx = SimpleNamespace(ID_OK=5100, ID_CANCEL=5101, TextCtrl=Window, CallAfter=pending.append)
+
+    class Modal:
+        def __init__(self):
+            self.modal = self.shown = self.destroyed = False
+            self.return_code = 0
+            self.end_calls = []
+
+        def ShowModal(self):
+            self.modal = self.shown = True
+            try:
+                pending.pop(0)()
+                assert not self.shown, 'The callback left the dialog open.'
+                return self.return_code
+            finally:
+                self.modal = False
+
+        def EndModal(self, result):
+            assert self.modal
+            self.end_calls.append(result)
+            self.return_code, self.shown = result, False
+
+        def IsModal(self):
+            return self.modal
+
+        def IsShown(self):
+            return self.shown
+
+        def Destroy(self):
+            self.destroyed = True
+
+    class Settings:
+        show = KeyboardSettingsDialog.show
+
+        def __init__(self, frame, manager):
+            self.wx, self.dialog = wx, Modal()
+            self.shortcut = Window(Runtime(), 'shortcut')
+            self.context = SimpleNamespace(GetName=lambda: 'Command context')
+            self.rows = []
+            self.search = SimpleNamespace(SetValue=lambda value: self.rows.append(
+                SimpleNamespace(command_id='probe.keyboard_action')))
+            dialogs.append(self.dialog)
+
+    def check(name, condition):
+        assert condition, name
+
+    namespace = dict(KeyboardSettingsDialog=Settings, frame=None, manager=None, wx=wx,
+        check=check, test_caption='Synthetic keyboard action', test_id='probe.keyboard_action',
+        pump=lambda predicate: predicate(), healthy=lambda: None)
+    exec(compile(ast.fix_missing_locations(wrapper), str(source), 'exec'), namespace)
+    return namespace['make_session'](), dialogs, wx
+
+
+@pytest.mark.parametrize('accepted', [True, False], ids=['save', 'cancel'])
+def test_native_settings_cleanup_preserves_result_before_modal_loop_unwinds(accepted):
+    session, dialogs, wx = _settings_session_contract()
+    result = wx.ID_OK if accepted else wx.ID_CANCEL
+
+    def delivered_native_action(settings):
+        settings.dialog.EndModal(result)
+        assert settings.dialog.IsModal() and not settings.dialog.IsShown()
+
+    assert session(delivered_native_action) is accepted
+    assert dialogs[0].end_calls == [result]
+    assert dialogs[0].destroyed
+
+
+def test_native_settings_callback_failure_closes_open_dialog_and_remains_failure():
+    session, dialogs, wx = _settings_session_contract()
+
+    def failed_action(settings):
+        raise RuntimeError('native fixture failed')
+
+    with pytest.raises(RuntimeError, match='native fixture failed'):
+        session(failed_action)
+    assert dialogs[0].end_calls == [wx.ID_CANCEL]
+    assert dialogs[0].destroyed

@@ -278,7 +278,12 @@ def run_native():
                 view = state['view']
                 assert view.controller.job_id == state['job_id'] and view.run.IsEnabled(), view.status.GetValue()
                 assert 'Saved plan loaded' in view.status.GetValue()
-                assert view.input_root.GetValue() == str(inputs) and view.output_root.GetValue() == str(outputs)
+                for control, selected, bound in (
+                    (view.input_root, inputs, view.controller.plan.input_root),
+                    (view.output_root, outputs, view.controller.plan.output_root),
+                ):
+                    assert control.GetValue() == bound
+                    assert Path(bound).samefile(selected)
                 assert not view.backup_permission.GetValue()
                 assert 'Completed steps: 1/4' in view.results.GetValue()
                 assert len(library.browse(workspace)) == 2 and len(library.topics(workspace)) == 1
