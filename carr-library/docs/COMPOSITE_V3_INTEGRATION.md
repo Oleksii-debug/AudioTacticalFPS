@@ -1,8 +1,8 @@
 # Resonance composite V3 integration
 
 This candidate reconciles the accepted platform source at
-184dd83d43f285ce27b6f351e82fee0bbaf19323 with the reviewed integration
-checkpoint b54b89703d3318f101a68646e27ff054f3a5c5c5. The current
+c9cdacd93dd57e8644889761a44b01b59c4fda20 with the reviewed integration
+lineage recorded in PR127. The current
 UNIVERSAL_SCOPE_V3_FINALIZATION.md remains authoritative. This record is not
 full-platform acceptance or distribution clearance.
 
@@ -94,6 +94,43 @@ acceptance items.
 These additions were prepared during an executor interruption. Their earlier
 peer results do not establish this composite's execution. The new exact-head
 source, native and installed Windows gates are required before qualification.
+
+## Canonical publication and follow-up qualification
+
+The latest canonical V5 import-publication receipts are preserved. Catalog
+schema V6 adds immutable request/attempt registration receipts in the same
+existing import transaction, so a committed new catalog membership on an
+already sealed revision can be recovered without attributing a competing
+worker's commit to this request. Historical schemas 3, 4 and 5 migrate through
+the checked storage path; the new registration table starts empty. Original
+revision and quotation identities are unchanged. Restored pending work drops
+previous execution and publication authority before explicit review.
+
+The unpublished integration tree `e9e24f053190c6ad888862ffd74e2ef3a326e2d4`
+was exercised locally on Python 3.12/Linux:
+
+- 117 migration, music-path, desktop-extension, speech-backup and diagnostic
+  cases passed without skips.
+- 193 export, academic/bibliography, citation and publication-backup cases
+  passed without skips.
+- 119 publication, replay, pending and direct-format cases passed; three
+  DOCX recovery cases exposed missing fields in the public completion result.
+  Adding the existing asset, workspace and total values fixed those three;
+  their exact targeted rerun passed.
+- 69 actual synthetic-worker transcription protocol cases passed without skips,
+  including detached observers and propagation of a real publication refusal.
+- The independent earlier reader/publisher gate and actual EPUBCheck 5.3.0
+  runs are recorded separately. Four generated packages passed with no errors
+  or warnings; the deliberately invalid MIME package was rejected.
+
+The Windows predecessor `21b3c984` passed both launcher toolchains and the
+dedicated transcription workflow. Broader execution exposed fixture and
+shared-export regressions, so that commit is not an application delivery
+candidate. The repairs preserve native/installed/offline gates, add the
+canonical installed recovery checks, and retain individual strict suite
+verdicts. The source inventory now includes 221 modules. Local results,
+different-head results and interrupted runs never replace the complete
+successor Windows result and its retained tested wheel.
 
 ## Packaging
 

@@ -31,10 +31,13 @@ firewall rules. Its evidence explicitly labels manual NVDA as NOT_RUN.
 
 ## Additions awaiting the composite execution gate
 
-The next integrated candidate also contains the following completed source
-changes. Their author and independent source reviews are recorded separately
-from execution. The executor interruption prevented the later portable tests;
-the exact successor Windows workflows must establish their results.
+The integrated candidate contains the following source changes. Portable
+follow-up gates now cover the export, storage migration, publication recovery
+and reader/publisher repairs; exact results and the three corrected DOCX cases
+are recorded in COMPOSITE_V3_INTEGRATION.md. The predecessor passed native
+launcher and dedicated transcription checks but failed aggregate Windows
+gates. Only the complete successor Windows result can qualify its application
+wheel for delivery.
 
 | Area | Prepared implementation | Remaining acceptance |
 | --- | --- | --- |
@@ -43,7 +46,7 @@ the exact successor Windows workflows must establish their results.
 | Synchronized reading | Bounded verified-publication reader, chapter/utterance navigation and seek, explicit playback through existing FFmpeg/WavePlayer | Composite reader/controller/native tests; actual audio-device listening and manual NVDA separately |
 | Workflow productivity | Palette using current menu/shortcut registry; named typed plans and reuse with fresh scope/preview; allowlisted diagnostics preview and exact export | Composite source/native tests; human accessibility acceptance separately |
 | Export responsiveness | Bibliography, academic references, import reports and keyboard preferences capture destination bytes on existing background jobs, then confirm on the UI thread | Cancellation, stale scope, replacement race and native regressions |
-| Direct-import recovery | Completed DOCX/EPUB/extended imports validate their sealed revisions; interrupted direct jobs reuse the existing isolated verifier | Real-child backup/restore/resume and cancellation regressions |
+| Direct-import recovery | Canonical publication receipts and schema V6 request registrations attest the same import transaction; completed DOCX/EPUB/extended imports validate sealed revisions; interrupted direct jobs reuse the existing isolated verifier | Real-child backup/restore/resume, competing-publication and cancellation regressions; latest canonical installed recovery gate retained |
 
 The synchronized reader accepts the application's verified publication graph,
 not arbitrary EPUBs. Its existing PCM player requires RIFF32-compatible audio;

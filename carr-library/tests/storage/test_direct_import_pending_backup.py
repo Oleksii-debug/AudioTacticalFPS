@@ -85,7 +85,7 @@ def _stopped(app, workspace, source, monkeypatch):
 def _mutate(path, change):
     value = json.loads(path.read_bytes())
     change(value)
-    path.write_text(canonical(value) + '\n', encoding='utf-8')
+    path.write_bytes((canonical(value) + '\n').encode('utf-8'))
 
 
 @pytest.mark.parametrize('suffix,state', [

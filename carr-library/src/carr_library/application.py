@@ -746,6 +746,7 @@ class LibraryApp:
                                       .encode('utf-8')).hexdigest()
                     record_progress(self.root, _request_id, job=revision)
                     completion = {'state': 'complete', 'edition': record.edition_id, 'id': revision,
+                        'asset': asset.digest, 'workspace': workspace, 'total': len(extracted['records']),
                         'completed': len(extracted['records']), 'verified': False,
                         'format': source_format, 'warnings': extracted['warnings'],
                         'message': f'{source_format} imported as unverified logical segments; '
