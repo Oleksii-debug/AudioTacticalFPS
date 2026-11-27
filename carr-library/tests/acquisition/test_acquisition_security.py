@@ -222,14 +222,14 @@ def test_same_provider_metadata_redirect_remains_available():
     redirected = 'https://api.crossref.org/works/10.1234%2Fnormalized'
     payload = b'{"title":"Synthetic redirected record"}'
     boundary = Boundary(Response(b'', status=302, headers={'Location': redirected}), Response(payload))
-    assert boundary.transport(consent(approved_hosts=(HOST, 'api.unpaywall.org')))(request()) == payload
+    assert boundary.transport(consent(approved_hosts=(HOST, 'api.openalex.org')))(request()) == payload
     assert [row[0] for row in boundary.opens] == [URL, redirected]
 
 
 def test_request_host_narrowing_does_not_grant_initial_provider_consent():
     boundary = Boundary()
     with pytest.raises(DENIED):
-        boundary.transport(consent(approved_hosts=('api.unpaywall.org',)))(request())
+        boundary.transport(consent(approved_hosts=('api.openalex.org',)))(request())
     assert not boundary.resolutions and not boundary.opens
 
 
@@ -442,7 +442,7 @@ elif mode == 'wrong_size':
 elif mode == 'foreign_url':
     info['url'] = 'https://unapproved.invalid/changed.pdf'
 elif mode == 'selected_other_provider':
-    info['url'] = 'https://api.unpaywall.org/v2/10.1234%2Fsynthetic'
+    info['url'] = 'https://api.openalex.org/works/doi:10.1234%2Fsynthetic'
 elif mode == 'stderr':
     print('private-email@example.invalid secret-token', file=sys.stderr)
 print(json.dumps(dict(ok=True, info=info, requests=job.get('spent_requests', 0) + 1)))
@@ -484,7 +484,7 @@ def assert_child_finished_and_clean(state):
 @pytest.mark.parametrize('mode', ('success', 'selected_other_provider'))
 def test_isolated_metadata_worker_receives_and_cannot_expand_one_provider_scope(isolated_child, mode):
     isolated_child.mode = mode
-    permission = consent(approved_hosts=(HOST, 'api.unpaywall.org'))
+    permission = consent(approved_hosts=(HOST, 'api.openalex.org'))
     transport = SafeTransport(permission)
     if mode == 'success':
         assert transport(request()) == b'{"title":"Synthetic record"}'
@@ -492,7 +492,7 @@ def test_isolated_metadata_worker_receives_and_cannot_expand_one_provider_scope(
         with pytest.raises(DENIED):
             transport(request())
     assert json.loads(isolated_child.started.read_text()) == {'approved_hosts': [HOST]}
-    assert permission.approved_hosts == (HOST, 'api.unpaywall.org')
+    assert permission.approved_hosts == (HOST, 'api.openalex.org')
     assert_child_finished_and_clean(isolated_child)
 
 

@@ -116,7 +116,7 @@ def main(argv=None):
     from .acquisition.cli import add_arguments, validate_arguments
     add_arguments(parser, research)
     parser.add_argument('--workspace', action='append', dest='workspaces',
-                        help='Library ID for --search; repeat to include another library')
+                        help='Library ID for search or identifier lookup; only search accepts multiple libraries')
     parser.add_argument('--search-mode', choices=('phrase', 'word', 'terms', 'thematic', 'semantic', 'advanced'),
                         default='phrase', help='Retrieval method for --search')
     parser.add_argument('--result-mode', choices=('short', 'thematic'), default='short',
@@ -131,9 +131,10 @@ def main(argv=None):
                         help='Nonnegative result offset for All words or Advanced searches')
     args = parser.parse_args(argv)
     validate_arguments(parser, args)
+    identifier_lookup = args.lookup_doi is not None or args.lookup_isbn is not None
     ocr_operation = (args.list_ocr_models or args.install_ocr_models is not None
                      or args.verify_ocr_models is not None)
-    if ocr_operation and any((args.document_formats, args.lookup_doi is not None, args.list_libraries, args.search is not None, args.self_test,
+    if ocr_operation and any((args.document_formats, identifier_lookup, args.list_libraries, args.search is not None, args.self_test,
                               args.backup, args.restore)):
         parser.error('Choose one OCR model, library, search, self-test, backup or restore operation.')
     if (args.ocr_model or args.ocr_all_models) and not args.install_ocr_models:
@@ -147,12 +148,12 @@ def main(argv=None):
     if args.ocr_profile and not ocr_operation:
         parser.error('--ocr-profile requires an OCR model operation.')
     args.ocr_profile = args.ocr_profile or 'fast'
-    if (args.document_formats or args.list_libraries or args.search is not None or args.lookup_doi is not None) and (args.self_test or args.backup or args.restore):
-        parser.error('Choose one operation: desktop, self-test, backup, restore, document formats, list libraries, search, or DOI lookup.')
+    if (args.document_formats or args.list_libraries or args.search is not None or identifier_lookup) and (args.self_test or args.backup or args.restore):
+        parser.error('Choose one operation: desktop, self-test, backup, restore, document formats, list libraries, search, DOI lookup, or ISBN lookup.')
     if args.search is not None and not args.workspaces:
         parser.error('--search requires at least one --workspace; use --list-libraries to find its ID.')
-    if args.workspaces and args.search is None and args.lookup_doi is None:
-        parser.error('--workspace is used with --search or --lookup-doi.')
+    if args.workspaces and args.search is None and not identifier_lookup:
+        parser.error('--workspace is used with --search, --lookup-doi or --lookup-isbn.')
     if args.offset_per_library and args.search is None:
         parser.error('--offset-per-library is only used with --search.')
     native_handle = None
@@ -222,7 +223,7 @@ def main(argv=None):
                 model_notice = f'Local semantic model unavailable: {exc}. Literal and thematic keyword search remain available.'
         app = LibraryApp(args.data_dir, semantic_ranker=ranker)
         app.semantic_notice = ' '.join(filter(None, (location_notice, model_notice)))
-        if args.lookup_doi is not None:
+        if identifier_lookup:
             from .acquisition.cli import run
             return run(app, args)
         if args.list_libraries:

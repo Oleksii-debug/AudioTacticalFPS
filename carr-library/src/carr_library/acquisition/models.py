@@ -11,14 +11,18 @@ import re
 import unicodedata
 from urllib.parse import parse_qsl, unquote, urlsplit
 
-from ..research.academic_library import normalize_doi as _catalog_doi
+from ..research.academic_library import (normalize_doi as _catalog_doi,
+                                       normalize_isbn as _catalog_isbn)
 
 
-PROVIDERS = ('crossref', 'unpaywall', 'europe_pmc')
+DOI_PROVIDERS = ('crossref', 'unpaywall', 'europe_pmc', 'openalex')
+PROVIDERS = (*DOI_PROVIDERS, 'openlibrary')
 PROVIDER_HOSTS = {
     'crossref': 'api.crossref.org',
     'unpaywall': 'api.unpaywall.org',
     'europe_pmc': 'www.ebi.ac.uk',
+    'openalex': 'api.openalex.org',
+    'openlibrary': 'openlibrary.org',
 }
 MAX_RESPONSE_BYTES = 2 * 1024 * 1024
 MAX_TEXT = 4000
@@ -138,15 +142,19 @@ class ProviderRequest:
                 or not isinstance(self.query, tuple) or len(self.query) > 4):
             raise ValueError('Invalid provider request.')
         path = parts.path
-        prefix = {'crossref': '/works/', 'unpaywall': '/v2/'}.get(self.provider)
+        prefix = {'crossref': '/works/', 'unpaywall': '/v2/',
+                  'openalex': '/works/doi:'}.get(self.provider)
         if prefix:
             if not path.startswith(prefix):
                 raise ValueError('Invalid provider endpoint.')
             normalize_doi(unquote(path[len(prefix):], errors='strict'))
-        elif path != '/europepmc/webservices/rest/search':
+        elif path != {'europe_pmc': '/europepmc/webservices/rest/search',
+                      'openlibrary': '/api/books'}[self.provider]:
             raise ValueError('Invalid provider endpoint.')
         allowed = {'crossref': {'mailto'}, 'unpaywall': {'email'},
-                   'europe_pmc': {'query', 'format', 'resultType', 'pageSize'}}[self.provider]
+                   'europe_pmc': {'query', 'format', 'resultType', 'pageSize'},
+                   'openalex': set(),
+                   'openlibrary': {'bibkeys', 'format', 'jscmd'}}[self.provider]
         seen = set()
         for pair in self.query:
             if (not isinstance(pair, tuple) or len(pair) != 2
@@ -154,6 +162,15 @@ class ProviderRequest:
                 raise ValueError('Invalid provider query.')
             seen.add(pair[0])
             text_value(pair[1], 'Provider query', MAX_URL)
+        if self.provider == 'openlibrary':
+            query = dict(self.query)
+            identifier = query.get('bibkeys', '')
+            if (seen != allowed or query.get('format') != 'json'
+                    or query.get('jscmd') != 'data' or not identifier.startswith('ISBN:')):
+                raise ValueError('Invalid exact ISBN metadata request.')
+            isbn = identifier[5:]
+            if not isbn or _catalog_isbn(isbn) != isbn:
+                raise ValueError('The ISBN request must use one canonical ISBN.')
 
 
 @dataclass(frozen=True)
@@ -177,6 +194,8 @@ class AccessLocation:
             text_value(getattr(self, name), name)
         if self.reported_open_access is not None and type(self.reported_open_access) is not bool:
             raise ValueError('An open-access claim must be true, false or unknown.')
+        if self.provider == 'openlibrary' and self.reported_open_access is True:
+            raise ValueError('Open Library preview or borrowing links do not grant open-access download permission.')
 
     @property
     def id(self):
@@ -214,7 +233,10 @@ class MetadataPreview:
 
     def __post_init__(self):
         _provider(self.provider)
-        if normalize_doi(self.doi) != self.doi:
+        if self.provider == 'openlibrary':
+            if self.doi != '':
+                raise ValueError('An Open Library preview is identified by ISBN, not an inferred DOI.')
+        elif normalize_doi(self.doi) != self.doi:
             raise ValueError('The preview DOI must use the catalog canonical form.')
         for name in ('title', 'container_title', 'publisher', 'volume', 'issue', 'pages', 'language'):
             text_value(getattr(self, name), name)
@@ -224,6 +246,9 @@ class MetadataPreview:
             raise ValueError('Unsupported bibliographic item type.')
         _tuple_text(self.authors, 'Authors', MAX_AUTHORS)
         _tuple_text(self.isbn, 'ISBNs', 100, 100)
+        if self.provider == 'openlibrary' and (not self.isbn or any(
+                not value or _catalog_isbn(value) != value for value in self.isbn)):
+            raise ValueError('An Open Library preview requires canonical checksum-valid ISBNs.')
         _tuple_text(self.warnings, 'Warnings', 300)
         safe_source_url(self.source_url, optional=True)
         if (not isinstance(self.locations, tuple) or len(self.locations) > MAX_LOCATIONS
