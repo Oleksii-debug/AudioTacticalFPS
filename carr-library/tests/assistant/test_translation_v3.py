@@ -800,30 +800,23 @@ def test_pasted_advanced_limit_retains_accepted_prefix_before_another_paid_call(
     assert len(transport['calls']) == 12
 
 
-def test_maximum_pasted_advanced_source_reserves_existing_serialization_limits(tmp_path, transport):
+@pytest.mark.parametrize('source_character', ['\U0001f642', '\x02'], ids=['four-byte-utf8', 'six-byte-json'])
+def test_maximum_pasted_advanced_source_reserves_existing_serialization_limits(tmp_path, transport, source_character):
     from carr_library.assistant.state import MAX_CHECKPOINT_BYTES
     from carr_library.speech.reading import MAX_PROJECT_BYTES
     service, p, _ = ready(tmp_path, transport)
-    original = '\U0001f642' * 2_000_000
+    original = source_character * 2_000_000
     identity, _ = submit(service, p, original, glossary=GLOSSARY)
     assert service.jobs.path(identity).stat().st_size <= MAX_CHECKPOINT_BYTES
     reading = ReadingDocument(original, title='Translation')
-    reading.replace(0, len(reading.text), '\x02' * 2_000_000,
+    reading.replace(0, len(reading.text), '\x03' * 2_000_000,
                     label='Machine translation derivative; not a source quotation')
     target = tmp_path / 'maximum-pasted.reading.json'
     reading.save(target)
     assert target.stat().st_size <= MAX_PROJECT_BYTES
     restored = ReadingDocument.load(target)
     assert restored.source_text == original and restored.source_anchor is None
-    assert len(restored.text) == 2_000_000
+    assert len(restored.text) == 2_000_000 and restored.can_undo
+    assert restored.undo() and restored.text == original
     assert len(transport['calls']) == 1  # Discovery only; no billable request.
 
-
-def test_pasted_advanced_rejects_predictable_escaped_project_overflow_before_job_or_transfer(tmp_path, transport):
-    service, p, _ = ready(tmp_path, transport)
-    # Valid pasted/provider text can require six JSON bytes per character.
-    # Two retained source copies plus one bounded translation would exceed
-    # the actual existing 32 MiB ReadingDocument format before any paid call.
-    with pytest.raises(ValueError, match='reading-project space'):
-        submit(service, p, '\x02' * 2_000_000, glossary=GLOSSARY)
-    assert not service.jobs.identities() and len(transport['calls']) == 1
