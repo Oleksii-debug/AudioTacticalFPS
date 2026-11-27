@@ -17,6 +17,7 @@ from carr_library.application import LibraryApp
 from carr_library.durable_state import read_json, atomic_json
 from carr_library.library_backup import restore_backup
 from carr_library.transcription import TranscriptionService, settings
+from carr_library.ui.operation_progress import ProgressTracker, operation_outcome
 
 
 SYNTHETIC_WORKER = r'''
@@ -457,3 +458,74 @@ def test_progress_observer_failure_preserves_real_child_or_receipt_failure(prepa
     assert result == service.get(identity) and result['status'] == 'failed'
     assert error in result['last_error']
     assert 'observer' not in result['last_error'] and result['artifacts'] == []
+
+
+def test_stop_keeps_worker_counts_monotonic_and_unverified_results_distinct(prepared, tmp_path):
+    _, _, service, original, configure = prepared
+    configure('cancel-after-first')
+    second = tmp_path / 'second-progress-boundary.wav'
+    second.write_bytes(b'Second purpose-written protocol input; no acoustic inference.')
+    identity = service.submit([original, second])
+    path = service._path(identity)
+    tracker = ProgressTracker()
+    tracker.start('Recognizing retained inputs', 2)
+    calls, events, observer_errors = [], [], []
+
+    def progress(completed, total, phase):
+        calls.append((completed, total, phase))
+        try:
+            events.append(tracker.update(completed, total, phase))
+        except Exception as exc:
+            observer_errors.append(str(exc))
+            raise
+
+    def cancelled():
+        status = path / 'job_status.json'
+        return (any(done == 1 for done, _, _ in calls) and status.exists()
+                and read_json(status).get('done') == 1)
+
+    result = service.run(identity, timeout=30, cancelled=cancelled, progress=progress)
+    durable, worker = service.get(identity), read_json(path / 'job_status.json')
+    assert result == durable and durable['status'] == 'stopped'
+    assert durable['done'] == 0 and durable['receipts'] == [] and durable['artifacts'] == []
+    assert worker['state'] == 'stopped' and worker['done'] == 1
+    saved = list((path / 'receipts').glob('*.result.json'))
+    assert len(saved) == 1 and read_json(saved[0])['run_id'] == worker['run_id']
+    assert len(list((path / 'results').rglob('*.*'))) == 6
+    assert len(list((path / 'input').iterdir())) == 2
+    measured = [done for done, total, _ in calls]
+    assert measured and max(measured) == 1 and all(total == 2 for _, total, _ in calls)
+    assert measured == sorted(measured), f'Progress regressed: {calls!r}; {observer_errors!r}'
+    assert calls[-1] == (1, 2, 'stopped')
+    assert observer_errors == []
+    assert operation_outcome(result) == 'cancelled'
+    assert all(event.percent < 100 for event in events)
+    assert tracker.transition('cancelled', 'Stopped; saved files await verification').percent < 100
+
+
+def test_partial_progress_requires_verified_resume_before_host_success(prepared, tmp_path):
+    _, _, service, original, configure = prepared
+    configure('partial')
+    second = tmp_path / 'second-partial-progress.wav'
+    second.write_bytes(b'Second synthetic retained input for partial and resume.')
+    identity = service.submit([original, second])
+    tracker, events = ProgressTracker(), []
+    tracker.start('Recognizing retained inputs', 2)
+
+    def progress(completed, total, phase):
+        events.append(tracker.update(completed, total, phase))
+
+    partial = service.run(identity, timeout=30, progress=progress)
+    assert partial['status'] == 'partial' and partial['done'] == 1
+    assert operation_outcome(partial) == 'paused'
+    assert events and all(event.percent < 100 for event in events)
+    assert tracker.transition(operation_outcome(partial), 'Review remaining input').percent < 100
+
+    configure('complete')
+    tracker.start('Resuming retained inputs', 2)
+    completed = service.run(identity, timeout=30, progress=progress)
+    assert completed['status'] == 'completed' and completed['done'] == 2
+    assert operation_outcome(completed) == 'succeeded'
+    assert all(event.percent < 100 for event in events)
+    assert tracker.event.percent == 99
+    assert tracker.transition(operation_outcome(completed), 'Host accepted all results').percent == 100

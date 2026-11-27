@@ -462,12 +462,17 @@ class TranscriptionService:
                 'PYTHONUTF8': '1', 'PYTHONDONTWRITEBYTECODE': '1',
                 'OMP_NUM_THREADS': '2', 'OPENBLAS_NUM_THREADS': '2'})
             stop_at, notice_at = None, 0.0
-            observer_available = progress is not None
+            reported_done, observer_available = 0, progress is not None
             def notify(done, total, phase):
-                nonlocal observer_available
+                nonlocal reported_done, observer_available
+                # Worker-reported files are distinct from verified job.done.
+                # Stop defers receipt verification and must not rewind measured
+                # progress or promote saved files into accepted exports.
+                if type(done) is int and 0 <= done <= len(job['sources']):
+                    reported_done = max(reported_done, done)
                 if observer_available:
                     try:
-                        progress(done, total, phase)
+                        progress(reported_done, total, phase)
                     except Exception:
                         # A detached UI must not kill the worker or reverse a
                         # durable result. Disable only this optional observer.
