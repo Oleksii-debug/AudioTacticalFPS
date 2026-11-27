@@ -217,7 +217,7 @@ jobs:
         id: publication-audio-runtime
         run: |
           $audio = Join-Path $env:RUNNER_TEMP 'carr-v3-publication-audio'
-          python packaging/prepare_windows_audio.py --cache (Join-Path $env:RUNNER_TEMP 'carr-audio-cache') --output $audio --download | Tee-Object 'ci-v3-results/audio-runtime.json'
+          python packaging/prepare_windows_audio.py --cache (Join-Path $env:RUNNER_TEMP 'carr-audio-cache') --output $audio --download | Tee-Object 'ci-v3-results/publication-audio-runtime.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "CARR_V3_PUBLICATION_AUDIO=$audio" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
       - name: Prepare the pinned EPUB3.3 conformance checker
@@ -296,7 +296,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $publicationPrograms = @($python, $basePython, $env:CARR_EPUBCHECK_JAVA,
             (Join-Path $env:CARR_V3_PUBLICATION_AUDIO 'bin/ffmpeg.exe'),
-            (Join-Path $env:CARR_V3_PUBLICATION_AUDIO 'bin/ffprobe.exe')) | ForEach-Object {
+            (Join-Path $env:CARR_V3_PUBLICATION_AUDIO 'bin/ffprobe.exe'),
+            (Join-Path $env:CARR_V3_AUDIO 'bin/ffmpeg.exe'),
+            (Join-Path $env:CARR_V3_AUDIO 'bin/ffprobe.exe'),
+            (Join-Path $env:CARR_V3_AUDIO 'bin/ffplay.exe')) | ForEach-Object {
             if (!(Test-Path -LiteralPath $_ -PathType Leaf)) { throw 'A required publication runtime executable is missing.' }
             [System.IO.Path]::GetFullPath($_)
           } | Sort-Object -Unique

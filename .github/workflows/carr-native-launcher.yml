@@ -7,6 +7,9 @@ on:
     branches: [carr-library]
     paths:
       - carr-library/packaging/native-launcher/**
+      - carr-library/packaging/build_windows_bundle.py
+      - carr-library/src/carr_library/__main__.py
+      - carr-library/src/carr_library/ui/desktop_app.py
       - .github/workflows/carr-native-launcher.yml
   workflow_dispatch:
 
