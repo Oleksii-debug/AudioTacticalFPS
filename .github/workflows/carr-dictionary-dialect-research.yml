@@ -1,0 +1,92 @@
+name: Authored dictionary dialect observations
+on:
+  push:
+    branches: [carr/dictionary-dialect-research-20261127]
+    paths: ['carr-library/**', '.github/workflows/carr-dictionary-dialect-research.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: dictionary-dialect-research-${{ github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: carr-library
+        shell: pwsh
+    env:
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install the current bounded process owner
+        run: python -m pip install ".[test]"
+      - name: Capture only the explicitly selected publisher text executable
+        run: |
+          New-Item -ItemType Directory -Force 'ci-dictionary-dialect' | Out-Null
+          $private = Join-Path $env:RUNNER_TEMP 'carr-authored-dictionary-dialect'
+          python -I -B scripts/observe_pronunciation_dialects.py prepare --root $private 2>&1 | Tee-Object 'ci-dictionary-dialect/selection.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_DICTIONARY_RESEARCH_ROOT=$private" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Observe only authored text and rules with runtime egress denied
+        timeout-minutes: 8
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $python = (Get-Command python.exe).Source
+          $base = (& $python -I -B -c "import sys; print(sys._base_executable)").Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $tool = Join-Path $env:CARR_DICTIONARY_RESEARCH_ROOT 'blb2txt.exe'
+          $selection = Get-Content -Raw -LiteralPath (Join-Path $env:CARR_DICTIONARY_RESEARCH_ROOT 'selected.json') | ConvertFrom-Json
+          if ((Get-FileHash -LiteralPath $tool -Algorithm SHA256).Hash.ToLowerInvariant() -cne $selection.executable_sha256) { throw 'The captured publisher executable changed.' }
+          $programs = @($python, $base, $tool, (Get-Process -Id $PID).Path,
+              (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'),
+              (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe')) |
+            Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
+            ForEach-Object { [System.IO.Path]::GetFullPath($_) } | Sort-Object -Unique
+          $prefix = 'CARR-dictionary-research-' + [guid]::NewGuid().ToString('N')
+          $rules = @()
+          $before = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
+          try {
+            Set-NetFirewallProfile -Profile Domain, Private, Public -Enabled True -ErrorAction Stop
+            foreach ($program in $programs) {
+              $name = $prefix + '-' + $rules.Count
+              $rules += $name
+              New-NetFirewallRule -Name $name -DisplayName $name -Direction Outbound -Action Block -Profile Any -Program $program -Enabled True -ErrorAction Stop | Out-Null
+            }
+            $profiles = @(Get-NetFirewallProfile -ErrorAction Stop)
+            $active = @(Get-NetFirewallRule -PolicyStore ActiveStore -Name $rules -ErrorAction Stop)
+            if (@($profiles | Where-Object { $_.Enabled -ne 'True' }).Count -ne 0 -or $active.Count -ne $programs.Count -or @($active | Where-Object { $_.Enabled -ne 'True' -or $_.Direction -ne 'Outbound' -or $_.Action -ne 'Block' }).Count -ne 0) { throw 'The exact research executable rules are not enforced.' }
+            $filters = @($active | Get-NetFirewallApplicationFilter -ErrorAction Stop | Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })
+            if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Research coverage differs from the selected executables.' }
+            @{ status='PASS'; blocked_programs=$filters; scope='selected research executables only' } |
+              ConvertTo-Json -Depth 3 | Set-Content -Encoding utf8 'ci-dictionary-dialect/firewall.json'
+            & $python -I -B -X utf8 scripts/observe_pronunciation_dialects.py run --root $env:CARR_DICTIONARY_RESEARCH_ROOT --report 'ci-dictionary-dialect/observations.json' 2>&1 | Tee-Object 'ci-dictionary-dialect/observations.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Bounded native authored dictionary observations failed.' }
+            if ((Get-FileHash -LiteralPath $tool -Algorithm SHA256).Hash.ToLowerInvariant() -cne $selection.executable_sha256) { throw 'The selected publisher executable changed during observations.' }
+          } finally {
+            foreach ($name in $rules) { Remove-NetFirewallRule -Name $name -ErrorAction SilentlyContinue }
+            foreach ($profile in $before) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
+          }
+      - name: Retain exact source and package identity
+        if: always()
+        run: |
+          New-Item -ItemType Directory -Force 'ci-dictionary-dialect' | Out-Null
+          git rev-parse HEAD | Out-File 'ci-dictionary-dialect/commit.txt'
+          python -m pip freeze | Out-File 'ci-dictionary-dialect/packages.txt'
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: dictionary-dialect-research-${{ github.sha }}
+          path: carr-library/ci-dictionary-dialect
+          if-no-files-found: error
