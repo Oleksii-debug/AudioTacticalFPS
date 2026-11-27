@@ -21,7 +21,9 @@ It does not contact a package index and does not require administrator access.
 The smaller wheel-only variant requires CPython 3.11 through the Windows `py`
 launcher. Its manifest identifies whether Python is included.
 
-After installation, open `ResearchLibrary.cmd`. The terminal stays visible if
+After installation, open the verified `ResearchLibrary.exe` included in the
+complete package. `ResearchLibrary.cmd` remains a supported launcher and is the
+entry point for packages without the native EXE. Its terminal stays visible if
 startup fails, so a screen reader can read the error. Installation and
 `CheckInstallation.cmd` verify that native desktop and document components can
 load before reporting success, then run the synthetic application self-test.
@@ -46,6 +48,13 @@ independent review before the complete book is published for searching and
 quotation. OCR does not establish printed page numbers. No language download
 is needed. See `packaging/OCR_RUNTIME.md` in the source distribution for the
 review and runtime verification details.
+
+The included models serve local search and OCR. Whisper recognition weights and
+third-party voice or music models are separate. **Library → Transcription: local
+audio and video...** connects the supplied compatible Whisper worker after you
+select its local Python runtime, worker and complete model folder. It does not
+download those components. See [Local transcription](TRANSCRIPTION.md) for setup,
+retained execution evidence and the remaining installed Windows acceptance limits.
 
 The default data location is `%LOCALAPPDATA%\Universal Research Library`.
 The portable launcher identifies its program folder. The application rejects
@@ -167,7 +176,7 @@ already imported book. **Open linked document** opens a checked viewing copy;
 changes in an external viewer do not modify the retained original. Standalone
 references do not fabricate document text or allow source quotation.
 
-Import RIS or CSL JSON files through a preview. Select the records to keep;
+Import RIS, BibTeX or CSL JSON files through a preview. Select the records to keep;
 possible duplicates and unsupported fields are reported before import. Selected
 records are saved in one transaction. DOI and ISBN comparisons and conservative
 title/author/year matches identify possible duplicates for review. Records are
@@ -177,8 +186,12 @@ Export the selected reference or all active references as RIS, BibTeX, CSL JSON,
 CSV or text. Bibliographic exports omit personal notes by default. Include notes
 only when you deliberately choose that option. The plain bibliography is a
 readable reference list, not a certified APA, MLA or Chicago citation style.
-BibTeX import and online DOI lookup are not part of this version. Entering a DOI
-or URL does not send a network request or download an attachment.
+For CSL styles and editable Word output, use **Academic → Format bibliography
+and citations**. **Academic → Preview DOI metadata (opt-in)** makes only the
+explicitly permitted metadata request and returns proposals for review; it does
+not automatically import a reference or download a paper. Entering a DOI or URL
+alone does not send a network request. See [Academic integration](academic_integration.md)
+for supported styles, runtime requirements, Word-regeneration limits and DOI consent.
 
 Version 0.2 opens the exact supported version-three library layout through a
 transactional upgrade. Existing source documents and citations are preserved.

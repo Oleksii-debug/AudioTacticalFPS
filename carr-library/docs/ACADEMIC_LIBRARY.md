@@ -26,7 +26,7 @@ quotation, source review or verified printed-page label.
   separately from conservative title/author/year suggestions. ISBN-10 and its
   equivalent ISBN-13 compare together. Different libraries remain separate.
   Nothing is automatically merged, deleted, replaced or linked to a source.
-- Preview RIS or CSL JSON, review warnings and duplicate suggestions, select
+- Preview RIS, BibTeX or CSL JSON, review warnings and duplicate suggestions, select
   records, and import the selected batch atomically. Duplicate status is checked
   again at commit. Skipping duplicates is an explicit caller option.
 - Export selected references or all active references as RIS, BibTeX, CSL JSON,
@@ -41,7 +41,11 @@ link does not update catalog metadata, historical source metadata, retained
 files, extracted text or saved evidence. Those remain governed by the original
 source-verification workflows.
 
-All operations are local. Import does not fetch DOI metadata, resolve URLs,
+Catalog editing, bibliography import and export are local. The separate
+**Academic → Preview DOI metadata (opt-in)** command requires explicit network
+permission and returns metadata proposals without automatic import or paper
+downloads; see [Academic integration](academic_integration.md#doi-metadata-preview).
+Bibliography import does not fetch DOI metadata, resolve URLs,
 download full texts or open attachment paths. Explicit URLs accept HTTP/HTTPS
 without embedded credentials; storing a URL does not access it. DOI registrants
 and ISBNs use ASCII digits; ISBN checksums are verified. Identifier normalization
@@ -86,9 +90,16 @@ date, identifiers and common bibliographic fields. Structured names become
 display names with a preview warning; export represents them as literal names
 without guessing name components. More precise publication dates are imported
 as their year, with a warning. Unsupported item types become `other` with an
-explicit warning. This is a documented interchange subset, not a CSL style
-processor or an automated APA/Chicago formatter. BibTeX import and word-processor
-plugins are not included in this implementation.
+explicit warning. This catalog interchange profile retains the supported fields
+and reports conversions for review.
+
+BibTeX import uses the pinned local parser. Citation keys and unsupported fields
+remain in private reference notes; bibliography import never opens attachment
+paths or URLs. **Academic → Format bibliography and citations** provides the
+separate CSL formatter and editable Word export. It does not install a Word
+add-in or update fields in a running Word document. See
+[Academic integration](academic_integration.md) for styles, runtime requirements,
+source checks and regeneration limits.
 
 ## Persistence and service contract
 
