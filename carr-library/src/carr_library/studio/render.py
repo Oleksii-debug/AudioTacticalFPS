@@ -212,9 +212,6 @@ class ProductionService:
         if any(not role.voice_id for role in project.roles if any(
                 line.role == role.id and line.text for scene in project.scenes for line in scene.lines)):
             raise ValueError('Assign an installed voice to every speaking role before rendering.')
-        available = {voice.id for voice in self.voices.voices()}
-        if any(role.voice_id not in available for role in project.roles if role.voice_id):
-            raise ValueError('A selected local voice is no longer available. Reassign the role.')
         destination = local_path(destination, exists=True)
         if not destination.is_dir():
             raise ValueError('Choose an existing local output directory.')
@@ -266,6 +263,11 @@ class ProductionService:
                             and owner['job'] != job_id and owner['job'][:12] == job_id[:12]):
                         continue
                 raise FileExistsError('Production output already exists without a matching job receipt.')
+            # Voice availability is admission for a new job, not a condition
+            # for acknowledging an already committed submission receipt.
+            available = {voice.id for voice in self.voices.voices()}
+            if any(role.voice_id not in available for role in project.roles if role.voice_id):
+                raise ValueError('A selected local voice is no longer available. Reassign the role.')
             self.projects.save(project)
             state = {'schema': 1, 'id': job_id, 'status': 'pending', 'project': project.to_dict(),
                      'fingerprint': project.fingerprint, 'destination': str(output), 'format': format,
