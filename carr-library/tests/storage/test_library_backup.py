@@ -490,7 +490,7 @@ def test_invalid_media_suppression_preference_is_rejected_by_typed_backup(popula
     folder, target = tmp_path / 'invalid-progress-backup', tmp_path / 'invalid-progress-restored'
     if where == 'source':
         (app.root / FILENAME).write_bytes(malformed)
-        with pytest.raises(ValueError, match='preferences'):
+        with pytest.raises(ValueError, match=r'^suppress_during_media must be true or false\.$'):
             create_backup(app, folder)
         assert not folder.exists()
         assert (app.root / FILENAME).read_bytes() == malformed
@@ -505,6 +505,6 @@ def test_invalid_media_suppression_preference_is_rejected_by_typed_backup(popula
         row.update(size_bytes=len(malformed), sha256=sha256(malformed).hexdigest())
         _json(manifest_path, manifest)
         digest = sha256(manifest_path.read_bytes()).hexdigest()
-        with pytest.raises(ValueError, match='preferences'):
+        with pytest.raises(ValueError, match=r'^suppress_during_media must be true or false\.$'):
             restore_backup(folder, target, digest)
         assert not target.exists()

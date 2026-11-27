@@ -109,14 +109,17 @@ the current composition.
 
 | Workflow | Observed result | Current correction or limit |
 | --- | --- | --- |
+| Main integration, run 45938490473, job 140307099075 | All 227 suites completed: 224 suites passed, three failed; 5,724 passing cases and six failures, zero skips | Four failures were the already corrected backup-phase and bounded diagnostic fixtures; two more preference fixtures now require the exact typed-field rejection |
 | Keyboard/recovery, run 45938490473, job 140307099400 | 270 strict source cases; installed Main 35, Reader 23, evidence draft 15 and Save All 27 checks passed; native measured progress passed | Exact checkpoint PASS; includes the disposed-owner timer regression |
 | Audio, run 45938490502 | 687 passing cases, four failures, seven explicit platform/runtime skips and 22 subtests; native 16 checks and 1/3/10-hour synthetic PCM processing passed | Two backup guard fixtures now cover both copy and final verification; two mutation fixtures read WAV metadata before opening the writer |
 | Bibliography, run 45938490505 | All 28 suites completed within the deadline; 1,016 passing and two failing cases, zero skips; native citation 108 checks passed | The two real replay-race fixtures now open the current database schema instead of requesting historical schema 4 |
 | Snapshot, run 45938490533 | 301 source and 154 isolated installed cases passed; native confirmation exposed no UIA buttons and failed | The bounded production TaskDialog fallback requires a new Windows result |
 
-The main integration job was still running when this source checkpoint was
-written. No full-workflow PASS is inferred from its successful earlier steps.
-The new composition requires its own exact-head runs; the preceding results are
+The main job also passed the 42-case native OCR runtime suite, all 108 language
+cases, all 39 V5-profile and 35 current-host cases, and all 42 workspace backup
+cases. The held-status tests exercised actual child publication on Windows.
+The six strict-source failures prevented its downstream installed acceptance.
+The new composition requires its own exact-head runs; preceding results are
 retained as defect evidence, not transferred acceptance.
 
 ## Exact preceding CBA Windows result
