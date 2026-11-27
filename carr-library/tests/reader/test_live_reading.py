@@ -474,6 +474,7 @@ def test_queued_discovery_is_visible_before_worker_and_survives_page_acceptance(
         reader.discover_voices()
     assert reader.status() == pending, 'Rejected work changed the active operation state.'
     dialog = object.__new__(ReadingDialog)
+    dialog.closed = False
     dialog.live = SimpleNamespace(core=reader, stop=reader.stop)
     dialog._stop_live()
     assert not reader._cancel.is_set(), 'Source acceptance cancelled queued discovery.'

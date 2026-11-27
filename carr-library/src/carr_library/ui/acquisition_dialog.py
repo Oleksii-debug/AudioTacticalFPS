@@ -109,6 +109,8 @@ class AcquisitionDialog(wx.Dialog):
     def __init__(self, frame, workspace, collections=(), *, collection=None,
                  selected_metadata=None, selected_panel=None, selected_selection=None):
         super().__init__(frame, title='Find a source by DOI or ISBN', size=(820, 720))
+        self._native_id = self.GetId()
+        self._destroy_requested = False
         self.frame, self.library, self.workspace = frame, frame.library, workspace
         self.host_scope = getattr(frame, 'active', None)
         self.selected_metadata, self.selected_panel = selected_metadata, selected_panel
@@ -246,6 +248,7 @@ class AcquisitionDialog(wx.Dialog):
         self.SetMinSize((680, 600))
         self.SetEscapeId(wx.ID_CANCEL)
         self.Bind(wx.EVT_CLOSE, self.on_close)
+        self.Bind(wx.EVT_WINDOW_DESTROY, self.on_destroy)
         self._enabled()
         self.doi.SetFocus()
 
@@ -258,7 +261,7 @@ class AcquisitionDialog(wx.Dialog):
             return False
 
     def _same_selected_book(self):
-        if self.selected_metadata is None:
+        if self._closed or self.selected_metadata is None:
             return False
         if self.selected_panel is None:
             return True
@@ -282,6 +285,8 @@ class AcquisitionDialog(wx.Dialog):
             return False
 
     def _enabled(self):
+        if self._closed:
+            return
         idle = not self.pending and not self._closed
         for control in (self.identifier_kind, self.doi, self.collection, self.sources):
             control.Enable(idle)
@@ -302,10 +307,14 @@ class AcquisitionDialog(wx.Dialog):
         self.close_button.Enable(not self._closed)
 
     def _message(self, message):
+        if self._closed:
+            return
         self.status.SetValue(message)
         self.status.SetFocus()
 
     def _clear_preview(self):
+        if self._closed:
+            return
         self.preview = None
         self.metadata_preview.SetValue('')
         self.sources.Set([])
@@ -320,6 +329,8 @@ class AcquisitionDialog(wx.Dialog):
         return ('doi', 'isbn')[index]
 
     def on_identifier_kind_changed(self, event=None):
+        if self._closed:
+            return
         try:
             kind = self._selected_kind()
         except ValueError as exc:
@@ -356,6 +367,8 @@ class AcquisitionDialog(wx.Dialog):
         self.Layout()
 
     def on_request_changed(self, event=None):
+        if self._closed:
+            return
         self._generation += 1
         self._clear_preview()
         if self.pending:
@@ -363,6 +376,8 @@ class AcquisitionDialog(wx.Dialog):
         self._enabled()
 
     def on_online_changed(self, event=None):
+        if self._closed:
+            return
         self._online_allowed = bool(self.online.GetValue())
         if not self._online_allowed and self.pending and self._network_job:
             self.cancel_operation()
@@ -371,10 +386,14 @@ class AcquisitionDialog(wx.Dialog):
         self._enabled()
 
     def on_destination_scope_changed(self, event=None):
+        if self._closed:
+            return
         if self.pending:
             self.frame.cancel_event.set()
 
     def on_rights_changed(self, event=None):
+        if self._closed:
+            return
         if self.pending and not self.rights.GetValue():
             self.frame.cancel_event.set()
         self._enabled()
@@ -388,6 +407,8 @@ class AcquisitionDialog(wx.Dialog):
         return None
 
     def on_source_changed(self, event=None):
+        if self._closed:
+            return
         self.rights.SetValue(False)
         if self.pending:
             self.frame.cancel_event.set()
@@ -459,10 +480,13 @@ class AcquisitionDialog(wx.Dialog):
                     complete(result)
                 except Exception as exc:
                     self._message(f'{title} could not be displayed: {exc}')
+            if self._closed:
+                return
             self._enabled()
             if self._close_when_idle:
                 self._closed = True
-                self.EndModal(wx.ID_CANCEL)
+                if self:
+                    self.EndModal(wx.ID_CANCEL)
 
         try:
             self.frame.run_job(title, work, lambda value: finish(result=value),
@@ -568,9 +592,15 @@ class AcquisitionDialog(wx.Dialog):
             dialog = wx.MessageDialog(self, message, f'Apply {kind.upper()} metadata',
                                       style=wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION)
             try:
-                approved = dialog.ShowModal() == wx.ID_YES
+                answer = dialog.ShowModal()
+                if self._closed or not self or not dialog:
+                    return False
+                approved = answer == wx.ID_YES
             finally:
-                dialog.Destroy()
+                if dialog:
+                    dialog.Destroy()
+            if self._closed or not self:
+                return False
             if not approved:
                 self.status.SetValue('Metadata update cancelled. The book was not changed.')
                 self.apply_button.SetFocus()
@@ -592,23 +622,33 @@ class AcquisitionDialog(wx.Dialog):
             applied, mutation=True)
 
     def _choose_destination(self):
+        if self._closed:
+            return None
         folder = wx.DirDialog(self, 'Choose the parent folder for a new source download folder',
                               style=wx.DD_DIR_MUST_EXIST)
         try:
-            if folder.ShowModal() != wx.ID_OK:
+            answer = folder.ShowModal()
+            if self._closed or not self or not folder or answer != wx.ID_OK:
                 return None
             parent = Path(folder.GetPath())
         finally:
-            folder.Destroy()
+            if folder:
+                folder.Destroy()
+        if self._closed or not self:
+            return None
         name_dialog = wx.TextEntryDialog(self,
             'Name of a new folder inside the selected parent. Existing folders are never overwritten.',
             'New source download folder', value='doi-source-' + uuid4().hex[:8])
         try:
-            if name_dialog.ShowModal() != wx.ID_OK:
+            answer = name_dialog.ShowModal()
+            if self._closed or not self or not name_dialog or answer != wx.ID_OK:
                 return None
             name = name_dialog.GetValue()
         finally:
-            name_dialog.Destroy()
+            if name_dialog:
+                name_dialog.Destroy()
+        if self._closed or not self:
+            return None
         if (not name.strip() or name in ('.', '..') or len(name) > 120 or
                 any(character in name for character in '<>:"/\\|?*\x00') or
                 any(ord(character) < 32 for character in name) or name.endswith(('.', ' '))):
@@ -635,6 +675,8 @@ class AcquisitionDialog(wx.Dialog):
                 raise ValueError('Choose the current library or an active collection for the import.')
             collection = self.collection_ids[selection]
             destination = self._choose_destination()
+            if self._closed or not self:
+                return False
             if destination is None:
                 self.status.SetValue('Download cancelled. No source was requested or imported.')
                 self.download_button.SetFocus()
@@ -660,19 +702,27 @@ class AcquisitionDialog(wx.Dialog):
             acquired, network=True, mutation=True)
 
     def cancel_operation(self, event=None):
+        if self._closed:
+            return
         if self.pending:
             self.frame.cancel_event.set()
             self._message('Cancellation requested. Waiting for the current operation to stop.')
 
     def close(self, event=None):
+        if self._closed:
+            return
         if self.pending:
             self._close_when_idle = True
             self.cancel_operation()
             return
         self._closed = True
-        self.EndModal(wx.ID_CANCEL)
+        if self:
+            self.EndModal(wx.ID_CANCEL)
 
     def on_close(self, event):
+        if self._closed:
+            event.Skip()
+            return
         if self.pending and event.CanVeto():
             event.Veto()
             self.close()
@@ -681,9 +731,26 @@ class AcquisitionDialog(wx.Dialog):
         event.Skip()
 
     def dispose(self):
+        if getattr(self, '_closed', False):
+            return
+        # Pure Python cancellation is observed by this request's worker. Native
+        # parent deletion must not cancel a later unrelated host operation.
         self._closed = True
-        if self.pending:
-            self.frame.cancel_event.set()
+        self._request = getattr(self, '_request', 0) + 1
+        self._generation = getattr(self, '_generation', 0) + 1
+
+    def on_destroy(self, event):
+        if event.GetId() == self._native_id:
+            self._destroy_requested = True
+            self.dispose()
+        event.Skip()
+
+    def Destroy(self):
+        self.dispose()
+        if getattr(self, '_destroy_requested', False) or not self:
+            return False
+        self._destroy_requested = True
+        return super().Destroy()
 
 
 def show_acquisition_dialog(frame):
@@ -710,17 +777,19 @@ def show_acquisition_dialog(frame):
                                    selected_metadata=current, selected_panel=panel,
                                    selected_selection=selection)
         dialog.ShowModal()
-        if dialog.changed and dialog._current_scope() and not frame.working and frame.book is not None:
+        if dialog and frame and dialog.changed and dialog._current_scope() and not frame.working and frame.book is not None:
             catalog = frame.book.GetPage(1)
             if catalog.workspace == workspace:
                 catalog.refresh(selection=selection)
     except Exception as exc:
-        frame.report(f'Identifier lookup could not be completed: {exc}')
+        if frame and not getattr(frame, '_closing', False):
+            frame.report(f'Identifier lookup could not be completed: {exc}')
     finally:
         if dialog is not None:
             dialog.dispose()
-            dialog.Destroy()
-        if library is not None and frame.library is library and not frame.working and not getattr(frame, '_closing', False):
+            if dialog:
+                dialog.Destroy()
+        if frame and library is not None and frame.library is library and not frame.working and not getattr(frame, '_closing', False):
             try:
                 if _workspace(frame) == workspace:
                     frame.status.SetFocus()

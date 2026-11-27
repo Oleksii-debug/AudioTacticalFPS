@@ -368,8 +368,16 @@ raise AssertionError('The actual audiobook publication boundary was not reached.
         assert not target.exists()
     else:
         assert target.stat().st_nlink == 2 and os.path.samefile(staged, target)
-        assert len(inspect_chapters(fresh, target)['chapters']) == len(chapters)
         before = target.read_bytes()
+        # Ordinary source admission must still reject a crash residual with
+        # two names. Inspect an explicit single-link copy of those exact bytes;
+        # this neither adopts a completion receipt nor cleans either old name.
+        with pytest.raises(ValueError, match='without links'):
+            inspect_chapters(fresh, target)
+        inspected = root / 'explicit-inspection-copy.m4b'
+        inspected.write_bytes(before)
+        assert inspected.stat().st_nlink == 1 and inspected.read_bytes() == before
+        assert len(inspect_chapters(fresh, inspected)['chapters']) == len(chapters)
         with pytest.raises(FileExistsError):
             fresh.audiobook(source, target, title='Cannot replace', chapters=chapters)
         assert target.read_bytes() == before and os.path.samefile(staged, target)

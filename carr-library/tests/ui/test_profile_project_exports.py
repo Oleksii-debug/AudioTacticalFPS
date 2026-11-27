@@ -107,7 +107,7 @@ def export_case(request, tmp_path, monkeypatch):
         monkeypatch.setattr(Project, 'to_dict', serialize)
         h.save = lambda: h.controller.save(h.project.original_script, h.project.title, ('voice-a',))
         h.invoke = handler(studio_dialog, 'show_studio', 'save_as',
-            {**common, 'controller': h.controller, 'save': h.save,
+            {**common, 'controller': h.controller, 'save': h.save, 'alive': True,
              'report': lambda text, focus=False: h.reports.append((text, focus))})
     h.private_before = {path: path.read_bytes() for path in app.root.rglob('*.json')}
     return h
@@ -247,6 +247,40 @@ def test_library_switch_during_modal_does_not_export_old_store(export_case, tmp_
         h.question.Destroy.assert_called_once()
     else:
         h.wx.MessageDialog.assert_not_called()
+
+
+@pytest.mark.parametrize('export_case', ['studio'], indirect=True)
+@pytest.mark.parametrize('boundary', ['before', 'picker', 'confirmation'])
+def test_studio_owner_shutdown_never_serializes_or_replaces_export(export_case, boundary):
+    h = export_case
+    original = b'Keep the existing independently saved project export'
+    h.target.write_bytes(original)
+
+    def stop_owner():
+        # This is the real save_as closure's lifecycle flag, initialized by
+        # show_studio and cleared by its existing owner disposal path.
+        h.invoke.__globals__['alive'] = False
+
+    if boundary == 'before':
+        stop_owner()
+    elif boundary == 'picker':
+        h.after_choice = stop_owner
+    else:
+        h.after_question = stop_owner
+    h.invoke(None)
+    assert h.serialized == 0 and h.target.read_bytes() == original
+    assert {path: path.read_bytes() for path in h.private_before} == h.private_before
+    assert not messages(h)
+    assert not list(h.target.parent.glob('.research-export-*'))
+    if boundary == 'before':
+        h.wx.FileDialog.assert_not_called()
+    else:
+        h.picker.Destroy.assert_called_once()
+    if boundary in ('before', 'picker'):
+        h.picker.GetPath.assert_not_called()
+        h.wx.MessageDialog.assert_not_called()
+    else:
+        h.question.Destroy.assert_called_once()
 
 
 @pytest.mark.parametrize('export_case', ['profiles'], indirect=True)

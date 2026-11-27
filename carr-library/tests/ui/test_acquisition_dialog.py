@@ -30,6 +30,10 @@ class Control:
         self.pages = []
         self.modal_result = None
         self.options = kwargs
+    def __bool__(self): return not self.destroyed
+    def GetId(self):
+        assert not self.destroyed, 'Deleted owner ID was queried.'
+        return id(self)
     def Bind(self, event, callback): self.bindings[event] = callback
     def SetName(self, name): self.name = name
     def SetLabel(self, label): self.label = label
@@ -70,7 +74,7 @@ def module(tmp_path):
             'LEFT', 'RIGHT', 'TOP', 'BOTTOM', 'ALIGN_RIGHT', 'TE_MULTILINE',
             'TE_READONLY', 'ID_CANCEL', 'ID_OK', 'ID_YES', 'ID_NO', 'YES_NO',
             'NO_DEFAULT', 'ICON_QUESTION', 'EVT_BUTTON', 'EVT_CLOSE',
-            'EVT_CHOICE', 'EVT_TEXT', 'EVT_CHECKBOX', 'DD_DIR_MUST_EXIST')):
+            'EVT_CHOICE', 'EVT_TEXT', 'EVT_CHECKBOX', 'DD_DIR_MUST_EXIST', 'EVT_WINDOW_DESTROY')):
         setattr(wx, name, 1 << index)
     wx.callbacks = []
     wx.CallAfter = lambda callback: wx.callbacks.append(callback)
@@ -1047,4 +1051,174 @@ def native_dialog_async_lookup_focus_and_close(tmp_path, identifier_kind):
         host.executor.shutdown(wait=True, cancel_futures=True)
         form.Destroy()
         host.Destroy()
+        app.ProcessPendingEvents()
+
+
+def native_dialog_destroy_pending_lookup(tmp_path, termination):
+    """Real direct/parent native deletion while an actual worker is pending."""
+    import wx
+    ui = Path(carr_library.__file__).resolve().parent / 'ui'
+    module = _load(ui / 'acquisition_dialog.py', 'carr_library.ui._acquisition_native_lifetime')
+    app = wx.GetApp() or wx.App(False)
+    app.SetExitOnFrameDelete(False)
+    library = Library(tmp_path)
+    entered, release, returned, delivered = (threading.Event() for _ in range(4))
+    failures, destroyed, forbidden, posted = [], [], [], []
+    finished = False
+    deadline = time.monotonic() + 10
+
+    def fail(error):
+        failures.append(error)
+        release.set()
+        app.ExitMainLoop()
+
+    def later(callback):
+        def guarded():
+            if finished or failures:
+                return
+            try:
+                if time.monotonic() >= deadline:
+                    raise TimeoutError('Native acquisition lifetime exceeded ten seconds: ' + termination)
+                callback()
+            except BaseException as exc:
+                fail(exc)
+        wx.CallLater(10, guarded)
+
+    def until(predicate, complete):
+        def poll():
+            if predicate():
+                complete()
+            else:
+                later(poll)
+        later(poll)
+
+    def hold_lookup():
+        entered.set()
+        if not release.wait(8):
+            raise TimeoutError('The native acquisition fixture did not release its worker.')
+    library.hook = hold_lookup
+
+    class NativeHost(wx.Frame):
+        def __init__(self):
+            super().__init__(None, title='Pending acquisition lifetime probe')
+            self.library, self.active, self.book = library, ('a', None), None
+            self.working = self.busy = self._closing = False
+            self.cancel_event = threading.Event()
+            self.executor = ThreadPoolExecutor(max_workers=1)
+            self.status = wx.TextCtrl(self)
+            self.future = None
+        def _workspace(self): return self.active[0]
+        def report(self, value): self.status.SetValue(value)
+        def run_job(self, title, operation, done, failed):
+            self.cancel_event.clear()
+            self.working = self.busy = True
+            def completed(future):
+                returned.set()
+                def apply():
+                    try:
+                        self.working = self.busy = False
+                        try: value = future.result()
+                        except Exception as exc: failed(exc)
+                        else: done(value)
+                    except BaseException as exc:
+                        fail(exc)
+                    finally:
+                        delivered.set()
+                posted.append('actual worker callback')
+                wx.CallAfter(apply)
+            self.future = self.executor.submit(operation)
+            self.future.add_done_callback(completed)
+
+    host = NativeHost()
+    form = module.AcquisitionDialog(host, 'a')
+    owner_id = form.GetId()
+    controls = {name: value for name, value in vars(form).items() if isinstance(value, wx.Window)}
+    provider_controls = dict(form.providers)
+
+    class DeletedControl:
+        def __init__(self, name): self.name = name
+        def __getattr__(self, operation):
+            forbidden.append(self.name + '.' + operation)
+            raise RuntimeError('A late acquisition callback accessed a deleted native control.')
+
+    def watch(event):
+        if event.GetId() == owner_id:
+            destroyed.append({'id': event.GetId(), 'original_wrapper': event.GetEventObject() is form})
+        event.Skip()
+    form.Bind(wx.EVT_WINDOW_DESTROY, watch)
+
+    def completed():
+        assert host.future.done() and returned.is_set() and delivered.is_set()
+        assert posted == ['actual worker callback'] and forbidden == []
+        assert len(destroyed) == 1 and not form and form._closed
+        assert form.preview is None and not host.cancel_event.is_set()
+        assert form.Destroy() is False
+        assert [call[0] for call in library.calls] == ['lookup']
+        assert library.calls[0][3]['cancelled']()
+        assert not library.scope_app.browse('a')
+        app.ExitMainLoop()
+
+    def removed():
+        assert form._closed and not host.cancel_event.is_set()
+        # Native deletion is already proven. Record any later access even if
+        # production would catch a wx deleted-object exception internally.
+        for name in controls:
+            setattr(form, name, DeletedControl(name))
+        form.providers = {name: DeletedControl(name) for name in provider_controls}
+        release.set()
+        until(lambda: returned.is_set() and delivered.is_set(), completed)
+
+    def remove_owner():
+        assert app.GetMainLoop() is not None
+        if termination == 'direct':
+            form.Destroy()
+            assert form._closed, 'Direct Destroy must detach before deferred native deletion.'
+        elif termination == 'native-parent':
+            host.DestroyChildren()
+        else:
+            raise AssertionError('Unknown native acquisition lifetime scenario.')
+        until(lambda: not form and len(destroyed) == 1, removed)
+
+    def worker_entered():
+        child = wx.Panel(form)
+        child.Destroy()
+        def child_removed():
+            assert not form._closed and not destroyed
+            assert not library.calls[0][3]['cancelled']()
+            later(remove_owner)
+        until(lambda: not child, child_removed)
+
+    def begin():
+        assert app.GetMainLoop() is not None
+        assert not form.online.GetValue() and library.calls == []
+        form.doi.SetValue('10.1234/reading')
+        form.online.SetValue(True)
+        form.on_online_changed()
+        event = wx.CommandEvent(wx.EVT_BUTTON.typeId, form.lookup_button.GetId())
+        event.SetEventObject(form.lookup_button)
+        form.lookup_button.GetEventHandler().ProcessEvent(event)
+        assert form.pending
+        until(entered.is_set, worker_entered)
+
+    watchdog = wx.CallLater(10500, lambda: fail(TimeoutError('Native acquisition loop did not complete.')))
+    try:
+        host.Show()
+        form.Show()
+        later(begin)
+        app.MainLoop()
+        if failures:
+            raise failures[0]
+        assert delivered.is_set() and len(destroyed) == 1 and not form
+        return dict(termination=termination, native_events=destroyed,
+                    actual_worker_completion=True, actual_queued_callback=True,
+                    unrelated_host_cancellation=False, forbidden_native_accesses=forbidden)
+    finally:
+        finished = True
+        watchdog.Stop()
+        release.set()
+        host.executor.shutdown(wait=True, cancel_futures=True)
+        if form:
+            form.Destroy()
+        if host:
+            host.Destroy()
         app.ProcessPendingEvents()

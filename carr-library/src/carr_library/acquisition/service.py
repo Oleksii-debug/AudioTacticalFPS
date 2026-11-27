@@ -13,7 +13,7 @@ import os
 from pathlib import Path
 import sqlite3
 import stat
-from tempfile import TemporaryDirectory
+from tempfile import TemporaryDirectory, gettempdir
 from threading import Lock, RLock
 from time import monotonic
 from urllib.parse import quote, urlsplit
@@ -21,6 +21,8 @@ from uuid import uuid4
 
 from ..catalog.membership import Catalog
 from ..data_paths import guard_data_directory
+from ..durable_state import regular, sync_directory as _sync_directory
+from ..operations import ResourceBroker, ResourceRequest
 from ..research.academic_library import AcademicLibrary, normalize_doi, normalize_isbn, _isbn_key
 from . import providers as provider_api
 from .models import MetadataPreview, DOI_PROVIDERS
@@ -75,34 +77,78 @@ def _write_json(path, value):
         os.fsync(stream.fileno())
 
 
-def _sync_directory(path):
-    if os.name != 'nt':
-        descriptor = os.open(path, os.O_RDONLY | getattr(os, 'O_DIRECTORY', 0))
-        try:
-            os.fsync(descriptor)
-        finally:
-            os.close(descriptor)
+def _identity(path):
+    value = Path(path).lstat()
+    if stat.S_ISLNK(value.st_mode) or getattr(value, 'st_file_attributes', 0) & 0x400:
+        raise ValueError('The acquisition destination changed.')
+    return value.st_dev, value.st_ino
+
+
+def _unlink_owned(path, identity):
+    """A failed attempt cannot remove another writer's replacement."""
+    try:
+        if _identity(path) != identity:
+            return False
+        path.unlink()
+        return True
+    except (FileNotFoundError, OSError, ValueError):
+        return False
+
+
+def _attest(path, expected_digest, expected_size, cancelled):
+    """Bounded, cancellable read of the exact newly acquired regular file."""
+    if (type(expected_size) is not int or not 0 < expected_size <= MAX_DOWNLOAD_BYTES
+            or not isinstance(expected_digest, str) or len(expected_digest) != 64):
+        raise ValueError('The downloaded file has an invalid size or digest.')
+    before = regular(path)
+    if before.st_size != expected_size:
+        raise ValueError('The acquired file size changed.')
+    digest = sha256()
+    with path.open('rb') as stream:
+        opened = os.fstat(stream.fileno())
+        if (opened.st_dev, opened.st_ino) != (before.st_dev, before.st_ino):
+            raise ValueError('The acquired file changed before validation.')
+        remaining = expected_size
+        while remaining:
+            _cancel(cancelled)
+            block = stream.read(min(65536, remaining))
+            if not block:
+                raise ValueError('The acquired file ended before its declared size.')
+            digest.update(block)
+            remaining -= len(block)
+        _cancel(cancelled)
+        if stream.read(1):
+            raise ValueError('The acquired file exceeds its declared size.')
+    after = regular(path)
+    state = lambda value: (value.st_dev, value.st_ino, value.st_size,
+                           value.st_mtime_ns, value.st_ctime_ns)
+    if state(before) != state(after) or digest.hexdigest() != expected_digest:
+        raise ValueError('The acquired file changed or failed its content digest.')
+    return before.st_dev, before.st_ino
 
 
 def _publish_file(source, target, cancelled):
-    """Exclusive publication, also on local filesystems without hard links."""
+    """Existing create-only pair publication, including FAT/exFAT fallback."""
+    source_identity = _identity(source)
     try:
         os.link(source, target)
-        return
+        return source_identity
     except OSError as exc:
-        if isinstance(exc, FileExistsError) or not (
-            exc.errno in {errno.EPERM, errno.EXDEV, errno.ENOSYS,
-                          getattr(errno, 'EOPNOTSUPP', errno.ENOSYS)}
-            or getattr(exc, 'winerror', None) in (1, 50, 1314)
-        ):
+        if isinstance(exc, FileExistsError):
             raise
-    # FAT/exFAT does not provide hard links. The new destination folder remains
-    # marked incomplete until every exclusive file is fully flushed. No rename
-    # or replace can overwrite a pre-existing name in this fallback.
-    created = False
+        # Some filesystem failures arrive after the link was committed. Only
+        # the exact source inode may establish that this is our publication.
+        if os.path.lexists(target) and _identity(target) == source_identity:
+            return source_identity
+        if not (exc.errno in {errno.EPERM, errno.EXDEV, errno.ENOSYS,
+                              getattr(errno, 'EOPNOTSUPP', errno.ENOSYS)}
+                or getattr(exc, 'winerror', None) in (1, 50, 1314)):
+            raise
+    identity = None
     try:
         with target.open('xb') as output:
-            created = True
+            value = os.fstat(output.fileno())
+            identity = value.st_dev, value.st_ino
             with source.open('rb') as stream:
                 while True:
                     _cancel(cancelled)
@@ -113,10 +159,29 @@ def _publish_file(source, target, cancelled):
             _cancel(cancelled)
             output.flush()
             os.fsync(output.fileno())
+        return identity
     except BaseException:
-        if created:
-            target.unlink(missing_ok=True)
+        if identity is not None:
+            _unlink_owned(target, identity)
         raise
+
+
+def _rollback(target, directory_identity, marker, marker_identity, owned):
+    """Keep an incomplete marker if any foreign or uncertain file remains."""
+    try:
+        if _identity(target) != directory_identity:
+            return
+        for path, identity in reversed(owned):
+            _unlink_owned(path, identity)
+        with os.scandir(target) as entries:
+            for entry in entries:
+                if entry.name != marker.name:
+                    return
+        if marker_identity is not None and not _unlink_owned(marker, marker_identity):
+            return
+        target.rmdir()
+    except (OSError, ValueError):
+        pass
 
 
 def _destination(value, library_root):
@@ -142,10 +207,11 @@ def _destination(value, library_root):
 
 class AcquisitionService:
     """An in-memory capability/cache plus durable existing reference/import APIs."""
-    def __init__(self, app, *, transport_factory=SafeTransport, clock=monotonic):
+    def __init__(self, app, *, transport_factory=SafeTransport, clock=monotonic, resource_broker=None):
         self.app = app
         self.transport_factory = transport_factory
         self.clock = clock
+        self._resource_broker = resource_broker
         self._previews = {}
         self._cache = {}
         self._lock = RLock()
@@ -353,59 +419,109 @@ class AcquisitionService:
         host = urlsplit(source.url).hostname
         validate_https_url(source.url, (host,))
         target = _destination(destination, self.app.root)
-        transport = self.transport_factory(NetworkConsent(True, 'download', (host,),
-            max_bytes=MAX_DOWNLOAD_BYTES, timeout=120.0))
         receipt = self._provenance(preview)
         receipt.update(source_provider=source.provider, source_url=source.url,
             landing_url=source.landing_url, provider_license=source.license,
             provider_version=source.version, provider_reports_open_access=True,
             user_confirmed_right_to_obtain=True, rights_do_not_imply_redistribution=True,
             acquired_utc=_utc(), title=preview.metadata.title, authors=preview.metadata.authors)
+        notices = []
         owned = []
-        with TemporaryDirectory(prefix='.carr-acquire-', dir=target.parent) as temporary:
-            staging = Path(temporary)
-            with (staging / 'document.pdf').open('xb') as stream:
-                info = transport.download(source.url, stream, cancelled=cancelled)
-                stream.flush()
-                os.fsync(stream.fileno())
-            receipt.update(final_url=info.url, sha256=info.sha256, bytes=info.size,
-                           content_type=info.content_type)
-            _write_json(staging / 'provenance.json', receipt)
-            self._scope(workspace, cancelled, collection)
-            _destination(target, self.app.root)
-            target.mkdir(mode=0o700)  # Exclusive reservation; never replace a directory.
+        committed = False
+        marker = target / '.acquisition-incomplete'
+        directory_identity = marker_identity = None
+        broker = self._resource_broker or ResourceBroker.for_app(self.app.root, cancelled=cancelled)
+        request = ResourceRequest(cpu_slots=1, memory_bytes=128 * 1024 * 1024,
+            disk_path=target.parent, disk_bytes=2 * (MAX_DOWNLOAD_BYTES + 4 * 1024 * 1024),
+            additional_disks=((Path(gettempdir()), MAX_DOWNLOAD_BYTES),))
+        # The isolated network worker uses the ordinary temporary filesystem;
+        # staging and the selected destination use the chosen parent filesystem.
+        # This is declared cooperative admission, not a system RAM/network cap.
+        with broker.reserve(request, operation_id='acquisition:download:' + uuid4().hex,
+                cancelled=cancelled, timeout=60, run_timeout=180) as lease:
+            temporary = TemporaryDirectory(prefix='.carr-acquire-', dir=target.parent)
+            staging = Path(temporary.name)
+            failure = None
             try:
-                marker = target / '.acquisition-incomplete'
-                marker.write_text('Incomplete acquisition; do not import.\n', encoding='utf-8')
-                owned.append(marker)
-                for name in ('document.pdf', 'provenance.json'):
-                    _cancel(cancelled)
-                    output = target / name
-                    # Hard-link publication fails if anyone created this name.
-                    _publish_file(staging / name, output, cancelled)
-                    owned.append(output)
-                self._scope(workspace, cancelled, collection)
+                transport = self.transport_factory(NetworkConsent(True, 'download', (host,),
+                    max_bytes=MAX_DOWNLOAD_BYTES, timeout=120.0))
+                with (staging / 'document.pdf').open('xb') as stream:
+                    info = transport.download(source.url, stream, cancelled=lease.cancelled)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                _attest(staging / 'document.pdf', info.sha256, info.size, lease.cancelled)
+                receipt.update(final_url=info.url, sha256=info.sha256, bytes=info.size,
+                               content_type=info.content_type)
+                _write_json(staging / 'provenance.json', receipt)
+                provenance = (staging / 'provenance.json').read_bytes()
+                receipt_digest = sha256(provenance).hexdigest()
+                self._scope(workspace, lease.cancelled, collection)
+                _destination(target, self.app.root)
+                target.mkdir(mode=0o700)
+                directory_identity = _identity(target)
+                with marker.open('x', encoding='utf-8') as stream:
+                    stream.write('Incomplete acquisition; do not import.\n')
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                    value = os.fstat(stream.fileno())
+                    marker_identity = value.st_dev, value.st_ino
                 _sync_directory(target)
-                # Completion must not be published while staging aliases can
-                # still modify the visible files after a crash/restart.
+                for name in ('document.pdf', 'provenance.json'):
+                    lease.checkpoint()
+                    output = target / name
+                    identity = _publish_file(staging / name, output, lease.cancelled)
+                    owned.append((output, identity))
+                self._scope(workspace, lease.cancelled, collection)
+                _sync_directory(target)
                 for name in ('document.pdf', 'provenance.json'):
                     (staging / name).unlink()
                 _sync_directory(staging)
-                marker.unlink()
-                owned.remove(marker)
-                _sync_directory(target)
-                _sync_directory(target.parent)
-            except BaseException:
-                for output in reversed(owned):
-                    try:
-                        output.unlink()
-                    except OSError:
-                        pass
+                expected = ((target / 'document.pdf', info.sha256, info.size),
+                            (target / 'provenance.json', receipt_digest, len(provenance)))
+                for (output, digest, size), (owned_path, identity) in zip(expected, owned):
+                    if output != owned_path or _attest(output, digest, size, lease.cancelled) != identity:
+                        raise ValueError('The acquisition publication changed before completion.')
+                # Native ownership failures are still pre-completion failures.
+                # The metadata-only cleanup flag is truthful after release.
+                lease.release()
+                if lease.cleanup_pending:
+                    notices.append('The shared resource reservation was released; stale lease metadata awaits cleanup.')
+                self._scope(workspace, cancelled, collection)
+                if _identity(target) != directory_identity or _identity(marker) != marker_identity:
+                    raise ValueError('The acquisition destination changed before completion.')
                 try:
-                    target.rmdir()
+                    marker.unlink()
                 except OSError:
-                    pass
+                    # An interrupted unlink can still have removed the marker.
+                    # Adopt only our exact verified pair, never a foreign file.
+                    if os.path.lexists(marker) or any(_identity(path) != identity for path, identity in owned):
+                        raise
+                    committed = True
+                    notices.append('Completion was published, but removing its marker reported a filesystem error.')
+                else:
+                    committed = True
+                for directory in (target, target.parent):
+                    try:
+                        _sync_directory(directory)
+                    except OSError:
+                        notices.append('The PDF and provenance are saved; directory durability confirmation needs attention.')
+            except BaseException as exc:
+                failure = exc
+                if not committed and directory_identity is not None:
+                    _rollback(target, directory_identity, marker, marker_identity, owned)
                 raise
+            finally:
+                try:
+                    temporary.cleanup()
+                except OSError as exc:
+                    if committed:
+                        notices.append('The PDF and provenance are saved; temporary-folder cleanup is pending. Do not download again.')
+                    elif failure is not None:
+                        failure.add_note('Acquisition staging cleanup is also pending: ' + str(exc))
+                    else:
+                        raise
+        def completion(message):
+            return message + (' ' + ' '.join(dict.fromkeys(notices)) if notices else '')
         path, receipt_path = target / 'document.pdf', target / 'provenance.json'
         # Download publication and source import are deliberately separate. A
         # failed/quarantined import retains the verified PDF and its receipt so
@@ -458,11 +574,11 @@ class AcquisitionService:
                 if changes:
                     reference = store.update(current.id, expected=current, **changes)
             return AcquisitionResult(path, receipt_path, reference.id, edition_id,
-                                     state, message, info.sha256)
+                                     state, completion(message), info.sha256)
         except (ValueError, OSError, RuntimeError, sqlite3.Error):
             return AcquisitionResult(path, receipt_path, None, None, 'downloaded',
-                'The PDF and provenance were saved, but import or reference linking did not finish. '
-                'Use Import Center to review or retry this local file; no redownload is needed.', info.sha256)
+                completion('The PDF and provenance were saved, but import or reference linking did not finish. '
+                'Use Import Center to review or retry this local file; no redownload is needed.'), info.sha256)
 
 
 _SERVICE_LOCK = Lock()

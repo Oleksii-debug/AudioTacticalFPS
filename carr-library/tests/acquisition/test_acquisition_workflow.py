@@ -384,8 +384,14 @@ def test_download_publication_on_filesystem_without_hardlinks(sample, tmp_path, 
     from carr_library.acquisition import service
     app, workspace, transfers = sample
     preview = lookup(app, workspace, oa=True)
-    def unsupported(*args, **kwargs):
-        raise OSError(errno.EOPNOTSUPP, 'Synthetic filesystem has no hard links')
+    actual_link, fallback = service.os.link, []
+    def unsupported(source, destination, *args, **kwargs):
+        # Only the selected download filesystem lacks hard links. The private
+        # library/coordinator retains its existing native filesystem contract.
+        if Path(destination).parent == tmp_path / 'portable-destination':
+            fallback.append(Path(destination).name)
+            raise OSError(errno.EOPNOTSUPP, 'Synthetic download filesystem has no hard links')
+        return actual_link(source, destination, *args, **kwargs)
     monkeypatch.setattr(service.os, 'link', unsupported)
     # RetainedAssets has a separate filesystem contract, so this case verifies
     # completed download publication and its truthful import-recovery result.
@@ -393,6 +399,7 @@ def test_download_publication_on_filesystem_without_hardlinks(sample, tmp_path, 
     result = app.acquire_doi_source(workspace, preview, 0, tmp_path / 'portable-destination',
         online_allowed=True, rights_confirmed=True)
     assert result.state == 'quarantined'
+    assert fallback == ['document.pdf', 'provenance.json']
     assert result.sha256 == sha256(result.path.read_bytes()).hexdigest()
     assert result.receipt_path.is_file() and result.path.stat().st_nlink == 1
     assert not (result.path.parent / '.acquisition-incomplete').exists()

@@ -34,7 +34,10 @@ quotations remain separate.
 All controls are native named text fields, checkboxes, choices, buttons and tabs.
 No mouse, waveform, web login or embedded browser is required. Status and error
 text remain focusable. Cancel stops work; closing an active dialog requests
-cancellation and waits for the worker to return. Screen-reader acceptance must
+cancellation and waits for the worker to return. Direct or parent-driven native
+window destruction detaches that dialog's pending request immediately. Its late
+worker callbacks do not access deleted controls or cancel an unrelated host job.
+Screen-reader acceptance must
 be recorded on a real Windows/NVDA installation separately from automated tests.
 
 ## What is available
@@ -98,9 +101,24 @@ declared response size are checked, reads are chunked, and originals are never
 overwritten. Only approved source-host redirects are followed; a publisher moving
 to a different CDN needs a fresh supported source, not a silently expanded grant.
 
+After explicit download consent, the existing shared resource policy admits one
+CPU slot and a declared 128 MiB working-memory reservation. The request accounts
+for staging and final files on the chosen filesystem and the isolated transfer's
+bounded temporary file on the ordinary temporary filesystem. Admission waits are
+cancellable, with a 60-second admission bound and a 180-second leased operation
+bound. The network transfer keeps its separate 120-second deadline. These are
+cooperative declarations, not system-wide RAM or network caps. The download lease
+is released before publication completes; later PDF import uses its existing
+import/resource contract. A denied policy prevents download and staging.
+
 Download publication uses exclusive new-folder reservation, an incomplete marker,
-file hashes and durable writes. A failed or cancelled download leaves no completed
-document. Once a verified download is saved, an import/quarantine/reference-link
+file hashes and durable writes. Both final files are verified, temporary hardlink
+aliases are removed, and resource ownership is released before removing the
+completion marker. A pre-completion failure only rolls back files still owned by
+that attempt. A file replaced by another writer is preserved, with the remaining
+incomplete folder available for review. Once the completion marker is removed,
+a directory-sync or temporary-cleanup error is reported as a saved-output warning
+and never deletes the committed pair. Once a verified download is saved, an import/quarantine/reference-link
 failure is reported as a **partial result** with the PDF and receipt retained.
 Retry that local file through Import Center; it need not be downloaded again.
 On a crash, a remaining `.acquisition-incomplete` marks a folder that must not be

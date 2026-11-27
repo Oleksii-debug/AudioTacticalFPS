@@ -321,6 +321,7 @@ def test_initial_source_acceptance_keeps_async_voice_inventory_alive(monkeypatch
     owner.core.busy = True
     owner.core.view = LiveStatus(sequence=1, state='discovering')
     dialog = object.__new__(source_ui.ReadingDialog)
+    dialog.closed = False
     dialog.live = owner
     accepted = []
     dialog.controller = SimpleNamespace(check=lambda: None, accept=accepted.append, save_warning='')
