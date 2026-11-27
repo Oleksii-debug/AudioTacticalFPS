@@ -190,7 +190,8 @@ def _parse_rules(value):
 
 
 def open_narration_editor(parent, store, project, *, expected_digest=None, draft_digest=None,
-                          guard=lambda: None, dialogs=None, on_ready=None, studio_factory=None):
+                          guard=lambda: None, dialogs=None, on_ready=None, studio_factory=None,
+                          appearance_factory=None, pacing_factory=None):
     """Open one reading-copy editor; source provenance is always readable.
 
     The caller guards the captured workspace/source, not the current global
@@ -231,6 +232,7 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
     state = {'closed': False, 'refreshing': False, 'last_autosaved': None, 'text_dirty': False,
              'close_after_preview': False, 'preview_snapshot': None,
              'pronunciation_language': '', 'pronunciation_voice': ''}
+    appearance = None
     timer = wx.Timer(dialog)
     coordinator = coordinator_for(parent) or SaveCoordinator()
     dialog._save_coordinator = coordinator
@@ -580,6 +582,58 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
         finally:
             picker.Destroy()
 
+    def pace_reading_copy(event=None):
+        if state['closed'] or preview.busy:
+            return
+        timer.Stop()
+        try:
+            capture()
+            controller.guard()
+            from .live_reading import native_offset, selected_source_offsets, _normalized
+            from .paced_reading import show_paced_reader
+            source = controller.pending_text
+            selection = selected_source_offsets(editor, source)
+            initial_native = editor.GetSelection()
+
+            def current():
+                if state['closed']:
+                    raise ValueError('The reading editor is closed.')
+                controller.guard()
+                if _normalized(editor.GetValue()) != _normalized(controller.pending_text):
+                    raise ValueError('The visible reading copy changed. Reopen paced reading.')
+                return controller.pending_text
+
+            def highlight(first, last):
+                if current() != source:
+                    raise ValueError('The source text changed. Reopen paced reading.')
+                editor.SetSelection(native_offset(editor, source, first),
+                                    native_offset(editor, source, last))
+
+            def restore():
+                if current() != source:
+                    raise ValueError('The source text changed. The current selection was kept.')
+                editor.SetSelection(*initial_native)
+
+            (pacing_factory or show_paced_reader)(dialog, store.root, source, selection,
+                current_text=current, highlight=highlight, restore_selection=restore,
+                guard=controller.guard)
+        except Exception as exc:
+            say(str(exc), focus=False)
+        finally:
+            if not state['closed']:
+                timer.StartOnce(1200)
+
+    def review_appearance(event=None):
+        if state['closed'] or preview.busy or appearance is None:
+            return
+        timer.Stop()
+        try:
+            controller.guard()
+            appearance.show()
+        finally:
+            if not state['closed']:
+                timer.StartOnce(1200)
+
     def close(event=None):
         if state['closed']:
             return
@@ -644,11 +698,13 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
         ('Save all open drafts', save_all_open), ('Import dictionary...', import_dictionary),
         ('Export dictionary...', export_dictionary), ('Read current copy aloud...', read_aloud),
         ('Prepare selected text and spell-check...', prepare_reading),
+        ('Reader appearance...', review_appearance), ('Paced reading...', pace_reading_copy),
         ('Cancel preview', cancel_preview), ('C&lose', close),
     )
     ids, native_buttons = [], []
     for label, handler in actions:
         button = wx.Button(dialog, label=label)
+        button.SetName(label.replace('&', ''))
         button.Bind(wx.EVT_BUTTON, handler)
         buttons.Add(button, 0, wx.ALL, 4)
         ids.append(button.GetId())
@@ -674,6 +730,14 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
         save=lambda completed: save(completed=completed, focus=False), focus=editor.SetFocus)
     try:
         guard()
+        from .reader_appearance import ReaderAppearance
+        appearance = (appearance_factory or ReaderAppearance)(
+            dialog, editor, store.root, guard=controller.guard,
+            additional_controls=(original,), alive=lambda: not state['closed'],
+            report=lambda message: say(message, focus=False), wx_module=wx)
+        dialog._reader_appearance = appearance
+        if appearance.notice:
+            say(appearance.notice, focus=False)
         if on_ready is not None:
             controls = dict(editor=editor, original=original, origin=origin, status=status,
                             save=native_buttons[0], save_as=native_buttons[1],
@@ -682,11 +746,14 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
                             save_all=native_buttons[12], cancel_preview=native_buttons[-2],
                             import_dictionary=native_buttons[13], export_dictionary=native_buttons[14],
                             live_reading=native_buttons[15], preparation=native_buttons[16],
+                            appearance=native_buttons[17], paced_reading=native_buttons[18],
                             close=native_buttons[-1])
             wx.CallAfter(on_ready, dialog, controller, controls)
         dialog.ShowModal()
     finally:
         state['closed'] = True
+        if appearance is not None:
+            appearance.close()
         preview.dispose()
         unregister()
         timer.Stop()

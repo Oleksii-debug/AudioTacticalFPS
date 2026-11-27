@@ -54,6 +54,10 @@ from .reader.reading_state import (
     FILENAME as READING_STATE, MAX_BYTES as MAX_READING_STATE, ReadingState,
     ReadingLocation, _decode as _decode_reading_state, _file_identity,
 )
+from .reader.appearance import (
+    FILENAME as READER_APPEARANCE, MAX_APPEARANCE_BYTES,
+    validate_appearance, snapshot_guard as _appearance_guard,
+)
 from .reader.live_speech import (
     FILENAME as LIVE_READING_STATE, MAX_STATE_BYTES as MAX_LIVE_READING_STATE,
     decode_positions as decode_speech_positions, saved_locations as saved_speech_locations,
@@ -102,6 +106,7 @@ MAX_SIDECAR_JSON_BYTES = 64 * 1024**2
 MAX_AUDIO_PROJECTS = 1000
 _PROJECT_ID = re.compile(r'[0-9a-f]{32}')
 _SIMPLE_SIDECARS = {
+    READER_APPEARANCE: (MAX_APPEARANCE_BYTES, validate_appearance),
     LIVE_READING_STATE: (MAX_LIVE_READING_STATE, decode_speech_positions),
     KEYBINDINGS: (MAX_KEYBINDINGS, decode_preferences),
     'keyboard-shortcuts.json': (MAX_KEYMAP_BYTES, validate_keymap),
@@ -158,7 +163,7 @@ def _snapshot_readers(root, *, cancelled=lambda: False):
     sidecars.update(snapshot_narration_files(root))
     sidecars.update(snapshot_import_files(root, cancelled=cancelled))
     for name, (maximum, validate) in _SIMPLE_SIDECARS.items():
-        raw = _optional_sidecar(Path(root) / name, maximum)
+        raw = _optional_sidecar(local_path(Path(root) / name, root=root), maximum)
         if raw is not None:
             validate(raw)
             sidecars[name] = raw
@@ -550,6 +555,7 @@ def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES, *, cancelled=lambda: Fal
         stack.enter_context(_resource_policy_guard(root, cancelled=cancelled))
         if _resource_policy_files(root, cancelled=cancelled) != resource_policy:
             raise RestoreError('Resource allowances changed before backup; retry after the update.')
+        stack.enter_context(_appearance_guard(root))
         keymap_lock = root / 'keyboard-shortcuts.json.lock'
         _regular_if_present(keymap_lock, empty=True)
         try:
