@@ -156,3 +156,59 @@ def test_oversized_utterance_container_is_rejected_before_pcm_inspection(tmp_pat
                             settings=runtime.SpeechSettings(max_output_bytes=4096))
     assert not target.exists()
     assert not list(tmp_path.glob('.speech-*'))
+
+
+@pytest.mark.parametrize('change', ['none', 'foreign-workspace', 'stale-revision',
+                                    'forged-asset', 'archived-topic'])
+def test_reopened_narration_source_publication(tmp_path, registry, change):
+    from carr_library.application import LibraryApp
+    from carr_library.reader.reading_desk import ReadingDesk
+    from carr_library.speech import ReadingDocument
+    from carr_library.speech.source import read_source_range, attest_saved_narration_copy
+
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Original source')
+    foreign = app.create_workspace('Other source')
+    topic = app.create_topic(workspace, 'Narration')
+    original = 'Exact оригінал. Žltý e\u0301.\nSecond line.'
+    imported = app.add_text(workspace, 'Synthetic source', original)
+    app.add_text(foreign, 'Synthetic source', original)
+    desk = ReadingDesk(app, workspace, imported['edition'], topic=topic)
+    document = read_source_range(desk, 1, 1).reading_document()
+    document.replace(0, 5, 'Edited')
+    saved = tmp_path / 'copy.reading.json'
+    document.save(saved)
+    reopened = ReadingDocument.load(saved)
+    assert reopened.text != reopened.source_text
+    if change == 'forged-asset':
+        payload = reopened.to_dict()
+        payload['source_anchor']['asset_sha256'] = '0' * 64
+        reopened = ReadingDocument.from_dict(payload)
+    snapshot = reopened.to_dict()
+    target = tmp_path / 'narration.wav'
+
+    def reauthorize(staged):
+        assert staged.is_file() and not target.exists()
+        if change == 'stale-revision':
+            app.update_metadata(workspace, imported['edition'], title='New source metadata')
+        elif change == 'archived-topic':
+            with app.topic_transaction(workspace) as tree:
+                tree.archive(topic)
+        attest_saved_narration_copy(app, reopened,
+            foreign if change == 'foreign-workspace' else workspace,
+            topic=topic)
+
+    if change == 'none':
+        result = registry.synthesize(reopened.text, 'publication-fixture', target,
+                                     before_publish=reauthorize)
+        assert target.is_file() and result.sha256 == sha256(target.read_bytes()).hexdigest()
+    else:
+        with pytest.raises(ValueError):
+            registry.synthesize(reopened.text, 'publication-fixture', target,
+                                before_publish=reauthorize)
+        assert not target.exists()
+    assert reopened.to_dict() == snapshot
+    assert reopened.source_anchor['quotation_authority'] is False
+    assert ReadingDocument.load(saved).source_text == original
+    assert app.assets.resolve(imported['asset']).read_bytes() == original.encode('utf-8')
+    assert not list(tmp_path.glob('.speech-*'))
