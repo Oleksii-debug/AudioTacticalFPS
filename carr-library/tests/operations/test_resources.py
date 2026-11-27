@@ -455,3 +455,75 @@ def test_lock_leaf_disappears_inside_local_path(tmp_path, monkeypatch, phase):
     finally:
         if lock is not None:
             lock.release()
+
+
+@pytest.mark.parametrize('phase', ['construction', 'acquisition'])
+@pytest.mark.parametrize('boundary', ['local_path', 'direct'])
+def test_unheld_lock_can_observe_zero_links_during_release(tmp_path, monkeypatch, phase, boundary):
+    """Reproduce the observed regular zero-link stat at either unheld check."""
+    from carr_library import durable_state
+    from carr_library.operations import _locks
+    path = tmp_path / 'released-zero-links.lock'
+    lock = _locks.NativeLock(path) if phase == 'acquisition' else None
+    path.write_bytes(b'')
+    module = durable_state if boundary == 'local_path' else _locks
+    original = module.regular
+    lstat = Path.lstat
+    observed = []
+
+    def released_stat(candidate, *args, **kwargs):
+        value = lstat(candidate, *args, **kwargs)
+        if candidate == path and not observed:
+            path.unlink()
+            observed.append(True)
+            return SimpleNamespace(st_mode=value.st_mode, st_nlink=0,
+                                   st_file_attributes=getattr(value, 'st_file_attributes', 0))
+        return value
+
+    def checked(candidate, **kwargs):
+        if Path(candidate) == path and not observed:
+            with monkeypatch.context() as scoped:
+                scoped.setattr(Path, 'lstat', released_stat)
+                return original(candidate, **kwargs)
+        return original(candidate, **kwargs)
+
+    peer = None
+    try:
+        with monkeypatch.context() as scoped:
+            scoped.setattr(module, 'regular', checked)
+            if lock is None:
+                lock = _locks.NativeLock(path)
+            assert lock.acquire()
+        assert observed == [True] and lock.held
+        peer = _locks.NativeLock(path)
+        assert not peer.acquire()
+        lock.release()
+        assert peer.acquire()
+    finally:
+        if peer is not None:
+            peer.release()
+        if lock is not None:
+            lock.release()
+
+
+def test_zero_link_stat_remains_invalid_for_general_state(tmp_path, monkeypatch):
+    from carr_library import durable_state
+    path = tmp_path / 'state.json'
+    path.write_bytes(b'{}')
+    original = Path.lstat
+
+    def stale(candidate, *args, **kwargs):
+        value = original(candidate, *args, **kwargs)
+        if candidate == path:
+            return SimpleNamespace(st_mode=value.st_mode, st_nlink=0,
+                                   st_file_attributes=getattr(value, 'st_file_attributes', 0))
+        return value
+
+    with monkeypatch.context() as scoped:
+        scoped.setattr(Path, 'lstat', stale)
+        with pytest.raises(durable_state.UnlinkedRegularFile) as exc:
+            durable_state.regular(path)
+        assert isinstance(exc.value, ValueError) and exc.value.path == path
+        with pytest.raises(ValueError):
+            durable_state.local_path(path)
+    assert path.read_bytes() == b'{}'

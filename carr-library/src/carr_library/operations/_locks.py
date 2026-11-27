@@ -7,7 +7,7 @@ import threading
 import weakref
 
 from filelock import FileLock, Timeout, UnixFileLock, WindowsFileLock
-from ..durable_state import local_path, regular
+from ..durable_state import UnlinkedRegularFile, local_path, regular
 from .models import ResourceStateError
 
 
@@ -41,8 +41,10 @@ def _checked_lock_path(value):
     # access failures, or removal of the resource directory itself.
     try:
         path = local_path(value)
-    except FileNotFoundError:
+    except (FileNotFoundError, UnlinkedRegularFile) as exc:
         candidate = Path(value).absolute()
+        if isinstance(exc, UnlinkedRegularFile) and exc.path != candidate:
+            raise
         parent = local_path(candidate.parent, exists=True)
         regular(parent, directory=True)
         path = parent / candidate.name
@@ -50,7 +52,9 @@ def _checked_lock_path(value):
     regular(parent, directory=True)
     try:
         regular(path)
-    except FileNotFoundError:
+    except (FileNotFoundError, UnlinkedRegularFile) as exc:
+        if isinstance(exc, UnlinkedRegularFile) and exc.path != path:
+            raise
         regular(parent, directory=True)
     return path
 
