@@ -9,6 +9,7 @@ from pathlib import Path
 import re
 import stat
 
+from ..backup_files import optional_present
 from .state import read_bytes, regular
 from .validation import validate_state_document
 
@@ -45,7 +46,7 @@ def state_paths(root, *, cancelled=lambda: False):
     folder = root
     for part in DIRECTORY.split('/'):
         folder = folder / part
-        if not os.path.lexists(folder):
+        if not optional_present(folder):
             return ()
         _directory(folder)
     paths, jobs, controls, total, entries = [], set(), set(), 0, 0

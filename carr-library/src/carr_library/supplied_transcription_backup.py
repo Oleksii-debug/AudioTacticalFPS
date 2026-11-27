@@ -15,6 +15,7 @@ import re
 import stat
 import unicodedata
 
+from .backup_files import optional_present
 from .audio.jobs import checked_directory, project_lock, read_json, regular_file
 from .audio.model_manifest import _read_json_snapshot, digest_file, local_path
 from .transcription_receipt import (PROTOCOL, OUTPUT_SETTINGS_KEYS, DEFAULT_SETTINGS,
@@ -220,7 +221,7 @@ def _definition(job):
 
 def _jobs(root, *, cancelled=lambda: False):
     folder = Path(root) / DIRECTORY
-    if not os.path.lexists(folder):
+    if not optional_present(folder):
         return ()
     _plain(folder, directory=True)
     jobs = []
@@ -431,7 +432,7 @@ def state_paths(root, *, cancelled=lambda: False):
 def snapshot_guard(root):
     """Caller holds the app writer. The standalone worker lock is mandatory."""
     folder = Path(root) / DIRECTORY
-    if not os.path.lexists(folder):
+    if not optional_present(folder):
         yield
         return
     with project_lock(folder), ExitStack() as stack:

@@ -11,7 +11,7 @@ from pathlib import Path, PurePosixPath
 import re
 from types import SimpleNamespace
 
-from .backup_files import local_path, portable_relative, regular
+from .backup_files import local_path, portable_relative, regular, optional_present
 from .durable_state import read_json, state_lock
 from .transcription import (TranscriptionService, MAX_SOURCE_BYTES, MAX_TEXT_BYTES, MEDIA_SUFFIXES,
                             RECEIPTS_PROTOCOL, V5_PROTOCOL, V5_SOURCES, V5_PROVENANCE,
@@ -98,7 +98,7 @@ def _inventory(root, cancelled):
     folder = root
     for part in DIRECTORY.split('/'):
         folder = folder / part
-        if not os.path.lexists(folder):
+        if not optional_present(folder):
             return (), (), ()
         local_path(folder, root=root, exists=True)
         regular(folder, directory=True)
@@ -145,7 +145,7 @@ def snapshot_guard(root):
     """Borrow the caller's application writer; lock only this typed producer."""
     root = Path(root)
     directory = root / DIRECTORY
-    if not os.path.lexists(directory):
+    if not optional_present(directory):
         yield
         return
     local_path(directory, root=root, exists=True)

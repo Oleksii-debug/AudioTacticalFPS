@@ -6,6 +6,7 @@ from pathlib import Path
 import re
 import time
 
+from ..backup_files import optional_present
 from ._state import local_path, regular
 from .models import ResourceLimits, ResourceStateError
 
@@ -64,7 +65,7 @@ def state_paths(root, *, cancelled=lambda: False):
     root = local_path(root, exists=True)
     directory = root / 'state' / 'operations'
     _check(cancelled)
-    if not os.path.lexists(directory):
+    if not optional_present(directory):
         return ()
     local_path(directory, root=root, exists=True)
     regular(directory, directory=True)

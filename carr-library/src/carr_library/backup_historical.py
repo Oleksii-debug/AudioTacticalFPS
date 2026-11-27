@@ -11,7 +11,7 @@ import os
 from pathlib import Path
 import re
 
-from .backup_files import local_path, regular, sync_directory
+from .backup_files import local_path, regular, sync_directory, optional_present
 from .backup_legacy_state import validate_state, verify_state, _inventory, _stamp
 from .ingest.bundle import _unique_object
 
@@ -71,7 +71,7 @@ def _manifest(path, digest):
 
 def state_paths(root, *, cancelled=lambda: False):
     base = Path(root) / DIRECTORY
-    if not os.path.lexists(base):
+    if not optional_present(base):
         return ()
     local_path(base, exists=True)
     regular(base, directory=True)

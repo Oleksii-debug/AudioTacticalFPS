@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 import re
 
-from .backup_files import local_path, regular
+from .backup_files import local_path, regular, optional_present
 from .durable_state import read_json, state_lock
 from .audio.recording import RecordingService, RecordingOptions, validate_recording_receipt
 
@@ -36,7 +36,7 @@ def state_limit(value):
 def state_paths(library_root, *, cancelled=lambda: False):
     library = Path(library_root)
     directory = library / DIRECTORY
-    if not os.path.lexists(directory):
+    if not optional_present(directory):
         return ()
     directory = local_path(directory, root=library, exists=True)
     regular(directory, directory=True)
@@ -68,7 +68,7 @@ def state_paths(library_root, *, cancelled=lambda: False):
 @contextmanager
 def snapshot_guard(library_root):
     directory = Path(library_root) / DIRECTORY
-    if not os.path.lexists(directory):
+    if not optional_present(directory):
         yield
         return
     regular(local_path(directory, root=library_root, exists=True), directory=True)

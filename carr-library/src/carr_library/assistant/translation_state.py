@@ -11,6 +11,7 @@ import os
 from pathlib import Path, PureWindowsPath
 import re
 
+from ..backup_files import optional_present
 from .models import canonical, local_path, text
 from .state import (atomic_json, now, read_bytes, read_json, regular,
                     snapshot_job_guard, state_write_guard, _job_guard)
@@ -283,7 +284,7 @@ def state_paths(root, *, cancelled=lambda: False):
     folder = root
     for part in DIRECTORY.split('/'):
         folder = folder / part
-        if not os.path.lexists(folder):
+        if not optional_present(folder):
             return ()
         local_path(folder)
         if not folder.is_dir():
@@ -315,7 +316,7 @@ def state_paths(root, *, cancelled=lambda: False):
 def snapshot_guard(root):
     """Caller already holds app writer; never reacquire it from a backup."""
     directory = Path(root) / DIRECTORY
-    if not os.path.lexists(directory):
+    if not optional_present(directory):
         yield
         return
     local_path(directory)
