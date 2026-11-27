@@ -1,145 +1,193 @@
-"""Local music contracts and actual optional FluidSynth synthesis evidence."""
+"""Actual local composition, MIDI interchange and model installation gates."""
+from array import array
 from dataclasses import replace
 import hashlib
 import json
+import math
 from pathlib import Path
-import socket
+import shutil
+import sys
+import wave
 
 import pytest
 
-from carr_library.audio import AudioCancelled
-from carr_library.audio.music import MusicRequest, _manifest, available_music_engines, music_engine_fingerprint, render_music
+from carr_library.audio import (AudioCancelled, AudioRuntime, AudioUnavailable,
+                               LocalModelConfig, MusicSpec)
+from carr_library.audio.music import MUSICGEN_REVISION, validate_model
 
 
-def manifest(tmp_path, **updates):
-    model = tmp_path / 'model'
-    model.mkdir()
-    config = model / 'config.json'
-    config.write_text('{"model_type":"musicgen"}')
-    weights = model / 'model.safetensors'
-    weights.write_bytes(b'synthetic contract fixture, never represented as inference weights')
-    value = {'schema': 1, 'engine': 'musicgen', 'license': 'CC-BY-NC-4.0',
-             'revision': '1' * 40, 'source': 'https://huggingface.co/facebook/musicgen-small',
-             'files': {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in (config, weights)}}
-    value.update(updates)
-    path = tmp_path / 'approved.json'
-    path.write_text(json.dumps(value))
-    return model, path, hashlib.sha256(path.read_bytes()).hexdigest()
+HAS_FFMPEG = bool(shutil.which('ffmpeg') and shutil.which('ffprobe'))
+requires_ffmpeg = pytest.mark.skipif(not HAS_FFMPEG, reason='Actual local FFmpeg and ffprobe are required.')
 
 
-def test_optional_musicgen_reports_missing_assets_without_network(tmp_path, monkeypatch):
-    def deny(*args, **kwargs):
-        pytest.fail('No music operation may attempt a network call.')
-    monkeypatch.setattr(socket, 'create_connection', deny)
-    with pytest.raises(RuntimeError, match='local model bundle'):
-        render_music(MusicRequest('quiet instrumental', 2), tmp_path / 'missing.wav')
-    assert not (tmp_path / 'missing.wav').exists()
+def pcm(path):
+    with wave.open(str(path), 'rb') as stream:
+        assert stream.getsampwidth() == 2
+        values = array('h')
+        values.frombytes(stream.readframes(stream.getnframes()))
+        if sys.byteorder != 'little':
+            values.byteswap()
+        return values, stream.getframerate(), stream.getnchannels()
 
 
-def test_musicgen_per_inference_window_is_explicit(tmp_path):
-    with pytest.raises(ValueError, match='checkpointed chunks'):
-        render_music(MusicRequest('long original score', 36000), tmp_path / 'long.wav')
+@requires_ffmpeg
+def test_real_local_instrumental_is_non_silent_reproducible_and_seeded(tmp_path):
+    runtime = AudioRuntime(tmp_path)
+    spec = MusicSpec(duration=4, mood='suspense', tempo=100, seed=42)
+    first = runtime.render_music(spec, 'first.wav')
+    second = runtime.render_music(spec, 'second.wav')
+    changed = runtime.render_music(replace(spec, seed=43), 'changed.wav')
+    assert first.sha256 == second.sha256 and changed.sha256 != first.sha256
+    values, rate, channels = pcm(first.path)
+    assert (rate, channels, len(values)) == (24000, 2, 4 * 24000 * 2)
+    assert max(map(abs, values)) > 3000
+    assert max(map(abs, values)) < 30000
+    assert values[0] == values[1] == 0
+    assert max(map(abs, values[-100:])) < 30  # measured fade to silence
+    assert runtime.measure(first.path).integrated_lufs is not None
 
 
-def test_manifest_requires_independent_pin(tmp_path):
-    model, path, digest = manifest(tmp_path)
-    with pytest.raises(ValueError, match='independently recorded'):
-        _manifest(model, path, None)
-    with pytest.raises(ValueError, match='checksum'):
-        _manifest(model, path, '0' * 64)
-    files, actual = _manifest(model, path, digest)
-    assert actual == digest
-    assert set(files) == {'config.json', 'model.safetensors'}
+@requires_ffmpeg
+@pytest.mark.parametrize('mood', ['calm', 'suspense', 'hopeful', 'sad', 'energetic'])
+def test_all_documented_local_music_moods_render_actual_pcm(tmp_path, mood):
+    runtime = AudioRuntime(tmp_path)
+    result = runtime.render_music(MusicSpec(duration=1, mood=mood, key='F#', seed=7), 'music.wav')
+    values, _, _ = pcm(result.path)
+    assert result.frames == 24000
+    assert math.sqrt(sum(value * value for value in values) / len(values)) > 500
 
 
-@pytest.mark.parametrize('filename', ['../unsafe.safetensors', '/unsafe.safetensors',
-                                     'sub/../unsafe.safetensors', 'model.bin', 'model.py', 'model.pkl'])
-def test_untrusted_model_inventory_paths_and_pickle_rejected(tmp_path, filename):
-    model, path, _ = manifest(tmp_path)
-    value = json.loads(path.read_text())
-    value['files'][filename] = '0' * 64
-    path.write_text(json.dumps(value))
-    with pytest.raises(ValueError):
-        _manifest(model, path, hashlib.sha256(path.read_bytes()).hexdigest())
+@requires_ffmpeg
+@pytest.mark.parametrize('name', ['door', 'click', 'chime', 'noise'])
+def test_procedural_sound_cues_produce_real_pcm_and_exact_duration(tmp_path, name):
+    runtime = AudioRuntime(tmp_path)
+    result = runtime.render_sound(name, name + '.wav', duration=.75, seed=123)
+    values, _, _ = pcm(result.path)
+    assert result.frames == 18000
+    assert max(map(abs, values)) > 500
+    assert max(map(abs, values)) < 30000
 
 
-def test_musicgen_license_is_explicit(tmp_path):
-    model, path, digest = manifest(tmp_path, license='unreviewed')
-    with pytest.raises(ValueError, match='license'):
-        _manifest(model, path, digest)
-    with pytest.raises(ValueError, match='noncommercial'):
-        MusicRequest('music', 2, usage='commercial')
-
-
-def test_changed_model_bytes_rejected_before_import_or_execution(tmp_path, monkeypatch):
-    model, path, digest = manifest(tmp_path)
-    (model / 'model.safetensors').write_bytes(b'changed')
-    monkeypatch.setattr('carr_library.audio.music.available_music_engines',
-                        lambda: {'musicgen': {'runtime_available': True}})
-    with pytest.raises(ValueError, match='approved SHA256'):
-        render_music(MusicRequest('private instrumental', 2), tmp_path / 'bad.wav',
-                     model_dir=model, manifest_path=path, expected_manifest_sha256=digest)
-    assert not (tmp_path / 'bad.wav').exists()
-
-
-def test_fluidsynth_requires_soundfont_rights_and_hash(tmp_path):
-    request = MusicRequest('piano pattern', 2, engine='fluidsynth')
-    with pytest.raises(ValueError, match='license'):
-        render_music(request, tmp_path / 'bad.wav')
-    with pytest.raises(ValueError, match='SHA256'):
-        render_music(request, tmp_path / 'bad.wav', soundfont=tmp_path / 'font.sf2', soundfont_license='GPL-2.0-only')
-
-
-def test_cancelled_music_does_not_publish(tmp_path):
-    with pytest.raises(AudioCancelled):
-        render_music(MusicRequest('music', 2), tmp_path / 'no.wav', cancelled=lambda: True)
-    assert not (tmp_path / 'no.wav').exists()
-
-
-def test_discovery_does_not_claim_asset_acceptance():
-    status = available_music_engines()
-    assert status['musicgen']['requires'].startswith('Pinned local')
-    assert 'no prose interpretation' in status['fluidsynth']['generation']
-
-
-def test_musicgen_fingerprint_tracks_request_manifest_and_runtime(tmp_path, monkeypatch):
-    model, path, digest = manifest(tmp_path)
-    request = MusicRequest('soft music', 2)
-    kwargs = dict(model_dir=model, manifest_path=path, expected_manifest_sha256=digest)
-    monkeypatch.setattr('importlib.metadata.version', lambda name: 'test-runtime-1')
-    original = music_engine_fingerprint(request, **kwargs)
-    assert original == music_engine_fingerprint(request, **kwargs)
-    assert original != music_engine_fingerprint(replace(request, seed=1), **kwargs)
-    monkeypatch.setattr('importlib.metadata.version', lambda name: 'different-runtime-1')
-    assert original != music_engine_fingerprint(request, **kwargs)
-
-
-def test_actual_fluidsynth_if_installed_or_truthful_unavailability(tmp_path):
-    # Windows standalone packages do not implicitly include third-party
-    # SoundFonts. Either assert the exact unavailable state or run real synthesis
-    # when the deliberately selected local test asset exists. No skip/xfail.
-    font = Path('/usr/share/sounds/sf2/TimGM6mb.sf2')
-    status = available_music_engines()
-    if not status['fluidsynth']['runtime_available'] or not font.is_file():
-        request = MusicRequest('piano pattern', 2, engine='fluidsynth')
-        with pytest.raises((ValueError, RuntimeError, FileNotFoundError)):
-            render_music(request, tmp_path / 'unavailable.wav', soundfont=font,
-                         soundfont_sha256='0' * 64, soundfont_license='GPL-2.0-only')
-        return
-    digest = hashlib.sha256(font.read_bytes()).hexdigest()
-    request = MusicRequest('deterministic minor piano pattern', 3, engine='fluidsynth', seed=19, tempo=100)
-    assert len(music_engine_fingerprint(request, soundfont=font, soundfont_sha256=digest,
-                                       soundfont_license='GPL-2.0-only')) == 64
-    report = render_music(request, tmp_path / 'actual.wav', soundfont=font,
-                          soundfont_sha256=digest, soundfont_license='GPL-2.0-only',
-                          allowed_roots=[tmp_path, font.parent])
-    assert report.frames == 72000
-    assert report.sample_rate == 24000
-    assert report.channels == 2
-    assert report.duration_seconds == 3
-    assert .005 < report.peak < .95
-    assert report.source_sha256 == (digest,)
-    assert hashlib.sha256(font.read_bytes()).hexdigest() == digest
+@requires_ffmpeg
+def test_midi_export_contains_tempo_instruments_notes_and_exact_end(tmp_path):
+    runtime = AudioRuntime(tmp_path)
+    spec = MusicSpec(duration=4, tempo=120, seed=10)
+    path = runtime.export_midi(spec, 'композиція.mid')
+    data = path.read_bytes()
+    assert data.startswith(b'MThd\x00\x00\x00\x06\x00\x00\x00\x01\x01\xe0MTrk')
+    assert int.from_bytes(data[18:22], 'big') == len(data) - 22
+    assert b'\xff\x51\x03\x07\xa1\x20' in data  # 120 BPM
+    assert b'\xc0\x0b' in data and b'\xc1\x20' in data
+    assert b'\x90' in data and b'\x80' in data and data.endswith(b'\xff\x2f\x00')
     with pytest.raises(FileExistsError):
-        render_music(request, report.path, soundfont=font,
-                     soundfont_sha256=digest, soundfont_license='GPL-2.0-only')
+        runtime.export_midi(spec, path)
+
+
+@requires_ffmpeg
+def test_music_cancel_never_publishes_and_unknown_sounds_never_execute(tmp_path):
+    runtime = AudioRuntime(tmp_path)
+    with pytest.raises(AudioCancelled):
+        runtime.render_music(MusicSpec(duration=2), 'never.wav', cancelled=lambda: True)
+    with pytest.raises(ValueError, match='Supported'):
+        runtime.render_sound('amovie=http://private', 'never.wav')
+    with pytest.raises(AudioCancelled):
+        runtime.export_midi(MusicSpec(duration=20), 'never.mid', cancelled=lambda: True)
+    assert not list(tmp_path.iterdir())
+
+
+@requires_ffmpeg
+@pytest.mark.parametrize('engine', ['midi', 'musicgen', 'ace-step'])
+def test_optional_music_engines_never_download_or_silently_fall_back(tmp_path, engine):
+    runtime = AudioRuntime(tmp_path)
+    with pytest.raises(AudioUnavailable):
+        runtime.render_music(MusicSpec(duration=2, engine=engine), 'never.wav')
+    assert not (tmp_path / 'never.wav').exists()
+    assert not next(item for item in runtime.music_capabilities() if item['engine'] == engine)['available']
+
+
+def model_fixture(tmp_path):
+    root = tmp_path / 'weights'
+    root.mkdir()
+    # Synthetic manifest-validation fixtures only: never inference weights.
+    files = {'state_dict.bin': b'synthetic state', 'compression_state_dict.bin': b'synthetic compression'}
+    for name, value in files.items():
+        (root / name).write_bytes(value)
+    data = {'schema': 1, 'engine': 'musicgen', 'code_revision': MUSICGEN_REVISION,
+            'weights_license': 'CC-BY-NC-4.0', 'noncommercial_only': True,
+            'output_rights_notice': 'Synthetic manifest fixture; no actual model or rights assertion.',
+            'files': {name: hashlib.sha256(value).hexdigest() for name, value in files.items()}}
+    manifest = tmp_path / 'reviewed-manifest.json'
+    manifest.write_text(json.dumps(data), encoding='utf-8')
+    return LocalModelConfig('musicgen', Path(sys.executable).resolve(), root, manifest), data
+
+
+def test_model_manifest_uses_exact_complete_file_hashes(tmp_path):
+    config, data = model_fixture(tmp_path)
+    assert validate_model(config)['engine'] == 'musicgen'
+    (config.directory / 'state_dict.bin').write_bytes(b'changed model')
+    with pytest.raises(ValueError, match='SHA256'):
+        validate_model(config)
+
+
+def test_model_inventory_rejects_additional_unreviewed_assets(tmp_path):
+    config, data = model_fixture(tmp_path)
+    (config.directory / 'unreviewed.py').write_text('raise SystemExit(9)', encoding='utf-8')
+    with pytest.raises(ValueError, match='inventory'):
+        validate_model(config)
+
+
+def test_musicgen_noncommercial_profile_is_enforced(tmp_path):
+    config, data = model_fixture(tmp_path)
+    with pytest.raises(ValueError, match='noncommercial'):
+        validate_model(replace(config, private_noncommercial=False))
+    data['weights_license'] = 'unreviewed'
+    config.manifest.write_text(json.dumps(data), encoding='utf-8')
+    with pytest.raises(ValueError, match='noncommercial'):
+        validate_model(config)
+
+
+def test_model_revision_and_output_rights_are_required(tmp_path):
+    config, data = model_fixture(tmp_path)
+    data['code_revision'] = 'latest'
+    config.manifest.write_text(json.dumps(data), encoding='utf-8')
+    with pytest.raises(ValueError, match='revision'):
+        validate_model(config)
+    data['code_revision'] = MUSICGEN_REVISION
+    data.pop('output_rights_notice')
+    config.manifest.write_text(json.dumps(data), encoding='utf-8')
+    with pytest.raises(ValueError, match='rights'):
+        validate_model(config)
+
+
+def test_neural_chunk_budget_is_distinct_from_project_duration():
+    # A long project is legal. Runtime neural chunks have explicit independent
+    # engine/resource budgets and are scheduled by the persistent director.
+    assert MusicSpec(duration=10 * 3600, engine='musicgen').duration == 36000
+    with pytest.raises(ValueError):
+        MusicSpec(duration=float('inf'))
+    with pytest.raises(ValueError):
+        MusicSpec(duration=1, tempo='120;http://private')
+
+
+def test_model_verification_is_cancellable(tmp_path):
+    config, data = model_fixture(tmp_path)
+    with pytest.raises(AudioCancelled):
+        validate_model(config, cancelled=lambda: True)
+
+
+@requires_ffmpeg
+def test_configured_model_assets_are_not_claimed_as_verified_inference(tmp_path):
+    config, data = model_fixture(tmp_path)
+    runtime = AudioRuntime(tmp_path)
+    runtime.configure_music_model(config)
+    state = next(row for row in runtime.music_capabilities() if row['engine'] == 'musicgen')
+    assert state['configured'] and state['assets_verified']
+    assert state['runtime_probed'] is False
+    assert state['runtime_code_verified'] is False
+    assert state['inference_tested'] is False
+    assert state['available'] is False
+    with pytest.raises(AudioUnavailable, match='runtime_code_files'):
+        runtime.probe_music_model('musicgen')
+    with pytest.raises(AudioUnavailable, match='runtime_code_files'):
+        runtime.render_music(MusicSpec(duration=1, engine='musicgen'), 'never.wav')
+    assert not (tmp_path / 'never.wav').exists()

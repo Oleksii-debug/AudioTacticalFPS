@@ -164,11 +164,12 @@ def location_text(page):
 class ReadingDialog:
     """Modal native reader with a cancellable worker and no late UI callbacks."""
 
-    def __init__(self, parent, desk, state, guard):
+    def __init__(self, parent, desk, state, guard, *, live_factory=None):
         import wx
 
         self.wx, self.parent = wx, parent
-        self.dialog = wx.Dialog(parent, title='Read book — ' + desk.title, size=(880, 700))
+        self.dialog = wx.Dialog(parent, title='Read book — ' + desk.title, size=(1020, 900),
+                                style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
         self.dialogs = NativeDialogs()
         self.cancelled = threading.Event()
         # Native source validation must observe this dialog's cancel action,
@@ -189,35 +190,31 @@ class ReadingDialog:
         self.text = wx.TextCtrl(self.dialog, style=wx.TE_READONLY | wx.TE_MULTILINE)
         self.text.SetName('Full source page or text segment')
         layout.Add(self.text, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
+        from .live_reading import attach_source_controls
+        self.live = (attach_source_controls(self, layout, core_factory=live_factory)
+                     if live_factory is not None else attach_source_controls(self, layout))
         navigation = wx.WrapSizer(wx.HORIZONTAL)
         self._button(navigation, 'Previous source location', lambda _: self.navigate(-1),
-                     command_id='reader.previous')
+                     wx.ACCEL_CTRL, wx.WXK_PAGEUP)
         self._button(navigation, 'Next source location', lambda _: self.navigate(1),
-                     command_id='reader.next')
-        self._button(navigation, 'Go to reading position...', self.go_to, command_id='reader.goto')
-        self._button(navigation, 'Start at first source location', lambda _: self.go_first(),
-                     command_id='reader.first')
+                     wx.ACCEL_CTRL, wx.WXK_PAGEDOWN)
+        self._button(navigation, 'Go to reading position...', self.go_to, wx.ACCEL_CTRL, ord('G'))
+        self._button(navigation, 'Start at first source location', lambda _: self.go_first())
         layout.Add(navigation, 0, wx.EXPAND | wx.ALL, 4)
         history = wx.BoxSizer(wx.HORIZONTAL)
         self._button(history, 'Back in reading session', lambda _: self.history(-1),
-                     command_id='reader.back')
+                     wx.ACCEL_ALT, wx.WXK_LEFT)
         self._button(history, 'Forward in reading session', lambda _: self.history(1),
-                     command_id='reader.forward')
+                     wx.ACCEL_ALT, wx.WXK_RIGHT)
         self._button(history, 'Where am I?', self.where,
-                     command_id='reader.where')
+                     wx.ACCEL_CTRL | wx.ACCEL_SHIFT, ord('L'))
         layout.Add(history, 0, wx.EXPAND | wx.ALL, 4)
         bookmarks = wx.BoxSizer(wx.HORIZONTAL)
         self._button(bookmarks, 'Add named page bookmark...', self.add_bookmark,
-                     command_id='reader.bookmark_add')
+                     wx.ACCEL_CTRL, ord('B'))
         self._button(bookmarks, 'Manage page bookmarks...', self.manage_bookmarks,
-                     command_id='reader.bookmarks')
-        self._button(bookmarks, 'Create editable reading copy...', self.edit_reading_copy,
-                     command_id='reader.edit_copy')
-        self._button(bookmarks, 'Reader keyboard guide', self.help, command_id='reader.help')
-        self._button(bookmarks, 'Find a reader command...', lambda event: self.keyboard.commands(event),
-                     command_id='reader.commands')
-        self._button(bookmarks, 'Reader keyboard shortcuts...', lambda event: self.keyboard.settings(event),
-                     command_id='reader.settings')
+                     wx.ACCEL_CTRL | wx.ACCEL_SHIFT, ord('B'))
+        self._button(bookmarks, 'Reader keyboard guide', self.help, wx.ACCEL_NORMAL, wx.WXK_F1)
         layout.Add(bookmarks, 0, wx.EXPAND | wx.ALL, 4)
         self.status = wx.TextCtrl(self.dialog, style=wx.TE_READONLY | wx.TE_MULTILINE)
         self.status.SetName('Reading operation status')
@@ -234,20 +231,18 @@ class ReadingDialog:
         layout.Add(footer, 0, wx.ALIGN_RIGHT)
         self.dialog.SetSizer(layout)
         self.dialog.SetEscapeId(wx.ID_CANCEL)
-        from .reading_shortcuts import ReaderKeyboardAdapter
-        self.keyboard = ReaderKeyboardAdapter(self, getattr(parent, 'keyboard_commands', None))
+        from .live_reading import bind_live_shortcuts
+        bind_live_shortcuts(self.dialog, self.live, self.accelerators)
         self.dialog.Bind(wx.EVT_CLOSE, self.close)
 
-    def _button(self, sizer, label, handler, modifier=None, key=None, *, command_id=None):
+    def _button(self, sizer, label, handler, modifier=None, key=None):
         wx = self.wx
         button = wx.Button(self.dialog, label=label)
         button.SetName(label)
         button.Bind(wx.EVT_BUTTON, handler)
         sizer.Add(button, 0, wx.ALL, 3)
         self.buttons.append(button)
-        if command_id is not None:
-            self.command_buttons[command_id] = (button, handler)
-        elif modifier is not None:
+        if modifier is not None:
             identifier = wx.NewIdRef()
             self._accelerator_ids.append(identifier)
             self.dialog.Bind(wx.EVT_MENU, handler, id=int(identifier))
@@ -257,18 +252,6 @@ class ReadingDialog:
     def _error(self, error):
         self.status.ChangeValue(str(error))
         self.status.SetFocus()
-
-    def edit_reading_copy(self, event=None):
-        def opened(page):
-            from ..reader.narration import NarrationStore, new_project
-            from .narration_editor import open_narration_editor
-            store = NarrationStore(self.controller.desk.library.root)
-            project = new_project(page.raw_text,
-                title=f'{page.title} — {page.locator.display()}'[:200], source_location=page.location)
-            open_narration_editor(self.dialog, store, project, guard=self.controller.check)
-            self.controller.check()
-            self.text.SetFocus()
-        self._run('Preparing editable reading copy', self.controller.where, opened)
 
     def _run(self, title, operation, done):
         if self.closed:
@@ -312,7 +295,13 @@ class ReadingDialog:
             self.cancel.Disable()
             self._error(exc)
 
-    def _page(self, navigation):
+    def _stop_live(self):
+        if hasattr(self, 'live') and self.live.core.status().state != 'discovering':
+            self.live.stop()
+
+    def _page(self, navigation, *, focus=True, from_live=False):
+        if not from_live:
+            self._stop_live()
         self.controller.check()
         page = navigation.page
         self.text.ChangeValue(page.raw_text)
@@ -321,19 +310,21 @@ class ReadingDialog:
         # Only this UI-thread acceptance can change resume/history. A worker
         # completed after cancellation or close never reaches this point.
         self.controller.accept(navigation)
-        help_shortcut = self.keyboard.shortcut('reader.help') if hasattr(self, 'keyboard') else 'F1'
         self.status.ChangeValue(self.controller.save_warning or
-            ('Source location loaded. Page-level resume saved. '
-             + (f'Use {help_shortcut} for reader shortcuts.' if help_shortcut else 'Choose Reader keyboard guide for shortcuts.')))
-        self.text.SetFocus()
+            'Source location loaded. Page-level resume saved. Use F1 for reader shortcuts.')
+        if focus:
+            self.text.SetFocus()
 
     def navigate(self, direction):
+        self._stop_live()
         self._run('Opening source location', lambda: self.controller.move(direction), self._page)
 
     def go_first(self):
+        self._stop_live()
         self._run('Opening first source location', lambda: self.controller.go(1), self._page)
 
     def history(self, direction):
+        self._stop_live()
         self._run('Returning to reading location', lambda: self.controller.history_move(direction), self._page)
 
     def go_to(self, event=None):
@@ -350,6 +341,7 @@ class ReadingDialog:
             if not value.strip().isascii() or not value.strip().isdecimal():
                 raise ValueError('Enter a whole-number reading position.')
             position = int(value.strip())
+            self._stop_live()
             self._run('Opening reading position', lambda: self.controller.go(position), self._page)
         except Exception as exc:
             self._error(exc)
@@ -383,9 +375,7 @@ class ReadingDialog:
     def manage_bookmarks(self, event=None):
         def choose(rows):
             if not rows:
-                shortcut = self.keyboard.shortcut('reader.bookmark_add') if hasattr(self, 'keyboard') else 'Ctrl+B'
-                self._message('This book has no page bookmarks yet. '
-                              + (f'Use {shortcut} to add one.' if shortcut else 'Choose Add named page bookmark.'))
+                self._message('This book has no page bookmarks yet. Use Ctrl+B to add one.')
                 return
             labels = [f'{item.label}; {item.location.kind.replace("_", " ")} '
                       f'{item.location.index}; source revision {item.location.revision[:12]}' for item in rows]
@@ -423,18 +413,29 @@ class ReadingDialog:
     def help(self, event=None):
         if self.busy:
             return
-        shortcuts = (self.keyboard.guide() if hasattr(self, 'keyboard') else
-                     'Use the named reader buttons for navigation and bookmarks.')
         self.dialogs.show(self.dialog, 'Reader keyboard guide',
             'Tab and Shift+Tab move among named native controls.\n'
             'The full source text is read-only; use your usual screen-reader text navigation.\n'
-            + shortcuts + '\n'
+            'Ctrl+PageDown: next source page or text segment.\n'
+            'Ctrl+PageUp: previous source page or text segment.\n'
+            'Ctrl+G: go to a reading position in source order.\n'
+            'Alt+Left and Alt+Right: back and forward in this reading session.\n'
+            'Ctrl+B: add a named page bookmark.\n'
+            'Ctrl+Shift+B: open, rename or delete page bookmarks.\n'
+            'Ctrl+Shift+L: focus the current source location and verification status.\n'
+            'Choose a discovered local voice explicitly before reading aloud.\n'
+            'F6: read the current text; F9: read from the text cursor.\n'
+            'Ctrl+Shift+F6: read the selected text only.\n'
+            'F7: pause or resume; F8: stop voice reading.\n'
+            'Ctrl+Shift+F8: resume the saved source chunk; Ctrl+Alt+F8: voice status.\n'
+            'Automatic continuation is off until you select its checkbox.\n'
             'Escape: close this reader and return to the library.\n\n'
             'Resume and bookmarks save the current source page or text segment, not the NVDA cursor. '
             'Unknown printed pagination remains unknown. Unverified extracted text remains unverified. '
             'Reading and bookmarks do not approve quotations.\n\n'
             'Reading, Export reading positions and bookmarks saves a separate JSON backup. '
-            'Back up all libraries also preserves reading positions, bookmarks and saved reading copies.')
+            'Voice resume saves an exact source chunk, not word timing or a screen-reader cursor. '
+            'The complete library backup includes supported source reading positions.')
         self.text.SetFocus()
 
     def close(self, event=None):
@@ -442,8 +443,8 @@ class ReadingDialog:
             return
         self.closed = True
         self.cancelled.set()
-        if hasattr(self, 'keyboard'):
-            self.keyboard.close()
+        if hasattr(self, 'live'):
+            self.live.close()
         self.executor.shutdown(wait=False, cancel_futures=True)
         if self.dialog.IsModal():
             self.dialog.EndModal(self.wx.ID_CANCEL)
@@ -451,6 +452,7 @@ class ReadingDialog:
     def show(self):
         try:
             self._run('Resuming source reading', self.controller.start, self._page)
+            self.live.discover()
             self.dialog.ShowModal()
         finally:
             self.close()

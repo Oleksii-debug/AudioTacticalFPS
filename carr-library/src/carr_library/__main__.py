@@ -63,16 +63,21 @@ def self_test():
 
 
 def main(argv=None):
-    argv = list(sys.argv[1:] if argv is None else argv)
-    if argv and argv[0] in ('studio', 'agent'):
-        if argv[0] == 'studio':
-            from .studio.cli import main as command
-        else:
-            from .agent.cli import main as command
-        return command(argv[1:])
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if arguments[:1] == ['--carr-doi-metadata-worker'] and len(arguments) in (1, 3):
+        from .academic_integration.doi import _worker_main
+        return _worker_main(arguments[1:])
+    if len(arguments) == 3 and arguments[0] == '--carr-sapi-native-worker':
+        from .speech.sapi_native_worker import main as native_main
+        return native_main(arguments[1:])
+    if arguments and arguments[0] in ('studio', 'assistant'):
+        from .studio.cli import main as studio_main, assistant_main
+        return (studio_main if arguments[0] == 'studio' else assistant_main)(arguments[1:])
+    if arguments[:1] == ['transcribe']:
+        from .transcription_cli import main as transcription_main
+        return transcription_main(arguments[1:])
     from . import __version__
-    parser = argparse.ArgumentParser(description='Offline Universal Research Library',
-        epilog='Use research-library studio --help for local speech/audio projects, or research-library agent --help for scoped tool plans.')
+    parser = argparse.ArgumentParser(description='Resonance offline research library and audio workspace')
     parser.add_argument('--version', action='version', version=__version__)
     parser.add_argument('--data-dir', type=Path, help='Private persistent data directory')
     parser.add_argument('--self-test', action='store_true', help='Check an isolated synthetic library and exit')
@@ -100,16 +105,14 @@ def main(argv=None):
                         help='Filter --list-ocr-models by language, script or model identifier')
     research = parser.add_mutually_exclusive_group()
     research.add_argument('--document-formats', action='store_true',
-                          help='Print supported import formats and fidelity limits without opening a library')
+                          help='Show supported source formats and extraction limits')
     research.add_argument('--list-libraries', action='store_true',
                           help='Print active library names and stable IDs as JSON, without opening the desktop')
     research.add_argument('--search', metavar='TEXT',
                           help='Search explicitly selected libraries and print source excerpts as JSON')
-    from .acquisition.cli import add_arguments, validate_arguments
-    add_arguments(parser, research)
     parser.add_argument('--workspace', action='append', dest='workspaces',
                         help='Library ID for --search; repeat to include another library')
-    parser.add_argument('--search-mode', choices=('phrase', 'word', 'terms', 'thematic', 'semantic', 'advanced'),
+    parser.add_argument('--search-mode', choices=('phrase', 'word', 'terms', 'thematic', 'semantic'),
                         default='phrase', help='Retrieval method for --search')
     parser.add_argument('--result-mode', choices=('short', 'thematic'), default='short',
                         help='Short quotations or contiguous thematic excerpts')
@@ -120,10 +123,9 @@ def main(argv=None):
     parser.add_argument('--limit-per-library', type=int, default=20,
                         help='Maximum results from each selected library, 1 to 100')
     args = parser.parse_args(argv)
-    validate_arguments(parser, args)
     ocr_operation = (args.list_ocr_models or args.install_ocr_models is not None
                      or args.verify_ocr_models is not None)
-    if ocr_operation and any((args.document_formats, args.lookup_doi is not None, args.list_libraries, args.search is not None, args.self_test,
+    if ocr_operation and any((args.document_formats, args.list_libraries, args.search is not None, args.self_test,
                               args.backup, args.restore)):
         parser.error('Choose one OCR model, library, search, self-test, backup or restore operation.')
     if (args.ocr_model or args.ocr_all_models) and not args.install_ocr_models:
@@ -137,12 +139,12 @@ def main(argv=None):
     if args.ocr_profile and not ocr_operation:
         parser.error('--ocr-profile requires an OCR model operation.')
     args.ocr_profile = args.ocr_profile or 'fast'
-    if (args.document_formats or args.list_libraries or args.search is not None or args.lookup_doi is not None) and (args.self_test or args.backup or args.restore):
-        parser.error('Choose one operation: desktop, self-test, backup, restore, document formats, DOI lookup, list libraries, or search.')
+    if (args.document_formats or args.list_libraries or args.search is not None) and (args.self_test or args.backup or args.restore):
+        parser.error('Choose one operation: desktop, self-test, backup, restore, list libraries, or search.')
     if args.search is not None and not args.workspaces:
         parser.error('--search requires at least one --workspace; use --list-libraries to find its ID.')
-    if args.workspaces and args.search is None and args.lookup_doi is None:
-        parser.error('--workspace is used with --search or --lookup-doi.')
+    if args.workspaces and args.search is None:
+        parser.error('--workspace is only used with --search.')
     native_handle = None
     try:
         if args.document_formats:
@@ -210,9 +212,6 @@ def main(argv=None):
                 model_notice = f'Local semantic model unavailable: {exc}. Literal and thematic keyword search remain available.'
         app = LibraryApp(args.data_dir, semantic_ranker=ranker)
         app.semantic_notice = ' '.join(filter(None, (location_notice, model_notice)))
-        if args.lookup_doi is not None:
-            from .acquisition.cli import run
-            return run(app, args)
         if args.list_libraries:
             print(json.dumps([asdict(row) for row in app.workspaces()], ensure_ascii=False, indent=2))
             return 0

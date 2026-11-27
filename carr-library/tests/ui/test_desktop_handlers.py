@@ -19,7 +19,6 @@ from carr_library.research.anchored_export import SavedEvidence
 from carr_library.research.topic_search import TopicHit
 from carr_library.ui.search_model import Hit, SearchModel
 from carr_library.ui.scope_bindings import ScopeServices, scope_labels
-from carr_library.extract.document_formats import file_dialog_wildcard, supported_formats_text
 
 
 class BaseFrame:
@@ -46,7 +45,6 @@ def classes():
     env = dict(wx=wx,WorkspaceFrame=BaseFrame,PagedSearchPanel=object,Hit=Hit,
                __name__='carr_library.ui._handler_probe',__package__='carr_library.ui',
                format_citation=format_citation,Path=Path,LibraryApp=Mock(),
-               file_dialog_wildcard=file_dialog_wildcard,supported_formats_text=supported_formats_text,
                contextmanager=contextmanager,TopicTree=TopicTree,open_context=open_context,
                ScopeServices=ScopeServices,scope_labels=scope_labels,active_collections=active_collections,
                text_dialog=Mock(return_value='Reviewer'),show_text=Mock(),show_page_context=Mock(),metadata_dialog=Mock())
@@ -130,16 +128,21 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     ebook = Mock()
     monkeypatch.setitem(sys.modules, 'carr_library.ui.ebook_reader',
                         SimpleNamespace(install_ebook_reader=ebook))
-    comparison, studio, providers, productivity, keyboard = Mock(), Mock(), Mock(), Mock(), Mock()
-    monkeypatch.setitem(sys.modules, 'carr_library.ui.academic_tools',
-                        SimpleNamespace(install_research_comparison_actions=comparison))
-    monkeypatch.setitem(sys.modules, 'carr_library.ui.studio_actions',
-                        SimpleNamespace(install_studio_actions=studio))
-    monkeypatch.setitem(sys.modules, 'carr_library.ui.provider_dialog',
-                        SimpleNamespace(install_provider_actions=providers))
-
-    monkeypatch.setitem(sys.modules, 'carr_library.ui.productivity', SimpleNamespace(install_productivity_actions=productivity))
-    monkeypatch.setitem(sys.modules, 'carr_library.ui.keyboard_settings', SimpleNamespace(install_keyboard_settings=keyboard))
+    new_installers = []
+    for module, installer in [('speech_dialog', 'install_speech_actions'),
+                              ('language_matrix', 'install_language_actions'),
+                              ('translation_dialog', 'install_translation_actions'),
+                              ('studio_dialog', 'install_studio_actions'),
+                              ('assistant_dialog', 'install_assistant_actions'),
+                              ('document_conversion', 'install_conversion_actions'),
+                              ('keyboard_settings', 'install_keyboard_settings'),
+                              ('citation_formatting', 'install_citation_actions'),
+                              ('operation_progress', 'install_operation_progress'),
+                              ('save_actions', 'install_save_actions')]:
+        callback = Mock()
+        new_installers.append(callback)
+        monkeypatch.setitem(sys.modules, 'carr_library.ui.' + module,
+                            SimpleNamespace(**{installer: callback}))
 
     value._menus()
 
@@ -150,7 +153,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     assert 'Import Center: files, folders and queues' in labels
     for handler in (value.import_center, value.open_academic_library, value.export_topic):
         assert any(call.args[1] == handler for call in value.Bind.call_args_list)
-    for installer in (*installers.values(), ebook, comparison, studio, providers, productivity, keyboard):
+    for installer in (*installers.values(), ebook, *new_installers):
         installer.assert_called_once_with(value)
     value.help(None)
     guide = env['show_text'].call_args.args[2]
@@ -472,8 +475,7 @@ def test_cancelled_recognition_choice_imports_nothing(classes,monkeypatch):
     dialog.ShowModal.return_value = wx.ID_OK
     dialog.GetPaths.return_value = ['book.pdf']
     wx.FileDialog = Mock(return_value=dialog)
-    from carr_library.ui import ocr_options
-    monkeypatch.setattr('carr_library.ui.ocr_selection.choose_model_config', Mock(return_value=None))
+    wx.SingleChoiceDialog.return_value.ShowModal.return_value = 0
     f.import_books(None)
     f.run_job.assert_not_called()
     f.library.import_files.assert_not_called()

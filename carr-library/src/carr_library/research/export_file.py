@@ -79,7 +79,7 @@ def _destination(path, private_root):
     return target, _identity(parent.stat()), state
 
 
-def write_export(path, content, *, private_root, cancelled=lambda: False, require_absent=False):
+def write_export(path, content, *, private_root, cancelled=lambda: False):
     """Atomically write exact UTF-8 text to an explicitly selected destination.
 
     A normal existing file may be replaced after caller-side confirmation.
@@ -90,11 +90,10 @@ def write_export(path, content, *, private_root, cancelled=lambda: False, requir
     """
     if not isinstance(content, str):
         raise ValueError('Text export required.')
-    _write_payload(path, content.encode('utf-8'), private_root=private_root,
-                   cancelled=cancelled, require_absent=require_absent)
+    _write_payload(path, content.encode('utf-8'), private_root=private_root, cancelled=cancelled)
 
 
-def write_binary_export(path, content, *, private_root, cancelled=lambda: False, require_absent=False):
+def write_binary_export(path, content, *, private_root, cancelled=lambda: False):
     """Atomically publish a rendered document using the text export safeguards.
 
     The payload must be immutable bytes. As for ``write_export``, the caller
@@ -103,15 +102,12 @@ def write_binary_export(path, content, *, private_root, cancelled=lambda: False,
     """
     if not isinstance(content, bytes):
         raise ValueError('Binary document export required.')
-    _write_payload(path, content, private_root=private_root,
-                   cancelled=cancelled, require_absent=require_absent)
+    _write_payload(path, content, private_root=private_root, cancelled=cancelled)
 
 
-def _write_payload(path, payload, *, private_root, cancelled, require_absent=False):
+def _write_payload(path, payload, *, private_root, cancelled):
     if not callable(cancelled):
         raise ValueError('An export cancellation callback is required.')
-    if type(require_absent) is not bool:
-        raise ValueError('The export replacement policy must be boolean.')
 
     def check_cancelled():
         if cancelled():
@@ -126,8 +122,6 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
     _filename(requested.name)
     private = Path(private_root).absolute()
     target, parent_identity, previous = _destination(requested, private)
-    if require_absent and previous is not None:
-        raise FileExistsError('The export destination already exists; replacement was not authorized.')
     temporary = None
     try:
         check_cancelled()
@@ -144,13 +138,7 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
                 current != previous):
             raise ValueError('The export destination changed. Choose the destination again.')
         check_cancelled()
-        if require_absent:
-            # This is atomic even if a file appears after the preceding check.
-            # A filesystem lacking hard links fails without replacing anything.
-            os.link(temporary, target, follow_symlinks=False)
-            os.unlink(temporary)
-        else:
-            os.replace(temporary, target)
+        os.replace(temporary, target)
         temporary = None
     finally:
         if temporary is not None:

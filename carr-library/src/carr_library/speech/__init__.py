@@ -1,20 +1,15 @@
-"""Local, explicitly selected speech engines and immutable reading derivatives."""
+"""Local speech and source-preserving editable reading copies.
 
-from .local import (
-    MAX_TEXT_CHARACTERS, RenderCancelled, SpeechError, SpeechRequest, SpeechResult,
-    SpeechUnavailable, Voice, discover_voices, engine_fingerprint, render_speech,
-)
-from .preparation import (
-    NarrationDerivative, Pronunciation, ReadingEdit, ReadingSpan,
-    apply_reading_edits, prepare_reading,
-)
-from .player import LocalPlayer, PlayerError, PlayerUnavailable
+Importing this package does not enumerate voices, start playback, load a model,
+or access the network. Discovery and synthesis are explicit actions.
+"""
+from .runtime import (EspeakProvider, FliteProvider, LocalHelperProvider, PiperProvider,
+                      NativeSapiProvider, SapiProvider, SpeechResult, SpeechSettings, Voice, VoiceRegistry,
+                      split_utterances, synthesize)
+from .reading import (PronunciationRule, ReadingDocument, SourceSpan,
+                      export_dictionary, import_dictionary)
 
-__all__ = [
-    "MAX_TEXT_CHARACTERS", "RenderCancelled", "SpeechError", "SpeechRequest",
-    "SpeechResult", "SpeechUnavailable", "Voice", "discover_voices",
-    "engine_fingerprint", "render_speech", "NarrationDerivative",
-    "Pronunciation", "ReadingEdit", "ReadingSpan", "apply_reading_edits",
-    "prepare_reading",
-    "LocalPlayer", "PlayerError", "PlayerUnavailable",
-]
+__all__ = ['Voice', 'VoiceRegistry', 'SpeechSettings', 'SpeechResult', 'synthesize',
+           'split_utterances', 'EspeakProvider', 'FliteProvider', 'PiperProvider',
+           'SapiProvider', 'NativeSapiProvider', 'LocalHelperProvider', 'ReadingDocument', 'SourceSpan',
+           'PronunciationRule', 'export_dictionary', 'import_dictionary']

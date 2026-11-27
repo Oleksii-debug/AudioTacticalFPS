@@ -82,7 +82,7 @@ def run_native(source=None):
         reader.dialog.Raise()
 
         def click(label):
-            control = next(button for button in reader.buttons if button.GetName() == label)
+            control = next(button for button in reader.buttons if button.GetLabel() == label)
             event = wx.CommandEvent(wx.EVT_BUTTON.typeId, control.GetId())
             event.SetEventObject(control)
             check('native button event: ' + label, control.GetEventHandler().ProcessEvent(event))

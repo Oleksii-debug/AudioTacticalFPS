@@ -10,8 +10,8 @@ import tempfile
 import time
 
 from .pinned_tessdata import POLICY, stage_pinned_models
-from . import ocr_languages, ocr_runtime
 from .ocr_languages import model_ids
+from . import ocr_runtime
 from .ocr_process import run_ocr
 
 
@@ -96,8 +96,6 @@ def runtime_identity(config):
             models = {}
             for lang in selected:
                 remaining()
-                if not ocr_languages.valid_model_code(lang):
-                    raise IdentityError('invalid model name')
                 models[lang] = _hash(Path(match[1]) / (lang + '.traineddata'), remaining=remaining)
         if before != _hash(exe, remaining=remaining):
             raise IdentityError('OCR executable changed during fingerprint')

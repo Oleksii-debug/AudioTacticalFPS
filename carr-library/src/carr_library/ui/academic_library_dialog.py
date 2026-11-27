@@ -606,7 +606,6 @@ def create_academic_dialog(parent, controller, *, executor=None):
                 ('duplicates', 'Find &duplicates', self.on_duplicates),
                 ('statistics', 'Reading &overview', self.on_statistics),
                 ('document', 'Open linked &document', self.on_document),
-                ('styles', 'Citation &styles', self.on_styles),
             ):
                 button = wx.Button(self, label=caption)
                 button.Bind(wx.EVT_BUTTON, handler)
@@ -897,8 +896,8 @@ def create_academic_dialog(parent, controller, *, executor=None):
                 report(self.status, f'Bibliography not copied: {exc}')
 
         def on_import(self, event=None):
-            chooser = wx.FileDialog(self, 'Choose a RIS, BibTeX or CSL JSON bibliography',
-                                   wildcard='Bibliography (*.ris;*.bib;*.json)|*.ris;*.bib;*.json|RIS (*.ris)|*.ris|BibTeX (*.bib)|*.bib|CSL JSON (*.json)|*.json',
+            chooser = wx.FileDialog(self, 'Choose a RIS or CSL JSON bibliography',
+                                   wildcard='Bibliography (*.ris;*.json)|*.ris;*.json|RIS (*.ris)|*.ris|CSL JSON (*.json)|*.json',
                                    style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
             try:
                 if chooser.ShowModal() != wx.ID_OK:
@@ -907,9 +906,9 @@ def create_academic_dialog(parent, controller, *, executor=None):
             finally:
                 chooser.Destroy()
             try:
-                format = {'.ris': 'ris', '.bib': 'bibtex', '.json': 'csl-json'}.get(path.suffix.lower())
+                format = {'.ris': 'ris', '.json': 'csl-json'}.get(path.suffix.lower())
                 if format is None:
-                    raise ValueError('Choose a .ris, .bib or .json bibliography file.')
+                    raise ValueError('Choose a .ris or .json bibliography file.')
                 with path.open('rb') as stream:
                     data = stream.read(MAX_IMPORT_BYTES + 1)
                 if len(data) > MAX_IMPORT_BYTES:
@@ -928,24 +927,6 @@ def create_academic_dialog(parent, controller, *, executor=None):
                     dialog.Destroy()
             except Exception as exc:
                 report(self.status, f'Bibliography import not completed: {exc}')
-
-        def on_styles(self, event=None):
-            dialog = None
-            try:
-                from .citation_styles_dialog import create_citation_styles_dialog
-                try:
-                    identity = self.selected().id
-                except ValueError:
-                    identity = None
-                dialog = create_citation_styles_dialog(self, self.controller,
-                    selected_identity=identity, executor=self.executor)
-                dialog.ShowModal()
-                self.references.SetFocus()
-            except Exception as exc:
-                report(self.status, f'Citation styles could not be opened: {exc}')
-            finally:
-                if dialog is not None:
-                    dialog.Destroy()
 
         def _export_options(self):
             dialog = wx.Dialog(self, title='Export bibliography', size=(560, 320))

@@ -1,8 +1,21 @@
-# Universal Research Library
+# Резонанс / Resonance
 
-An offline research desktop for multiple libraries, authors and languages. Carr
-is an optional collection. All project changes stay in `carr-library/`; the
-unrelated repository's `main` branch is unchanged.
+
+Resonance is an accessible Windows platform by Sceneria Innovative Technologies
+for reading and scientific research, translation, speech and voice cloning,
+transcription, music creation and audio production. These are the intended
+platform capabilities; the implemented and qualified subset is tracked separately.
+
+Start with the [current technical specification and architecture](docs/UNIVERSAL_SCOPE_V3_FINALIZATION.md),
+[reuse decisions](docs/REUSE_DECISIONS_V2.md), [acceptance](docs/acceptance.md) and
+[worker instructions](automation/COMMON.md). The internal package and existing
+launch filenames are retained for compatibility. Carr is an optional collection.
+The canonical product branch is carr-library; preserve main and unrelated projects.
+
+The library workflows below describe the canonical implementation at the time
+of this review. Audio/agent and other additions in open integrated candidates
+require their own exact-head installed-build acceptance before being called released.
+The owner-supplied transcription implementation is [under reviewed integration](docs/TRANSCRIPTION_INTEGRATION_REVIEW.md).
 
 ## Run the desktop
 
@@ -69,19 +82,6 @@ instructions.
   matrix with exact quotations and separate notes through **Library tools**.
   Its bibliography exports use the same catalog service as the Bibliography
   menu. See [catalog tools](docs/CATALOG_TOOLS.md).
-- Build grouped Boolean and NEAR source queries with the native advanced query
-  builder, preserving the existing multi-library Search Center and its scope checks.
-- Create saved narration or speaker-labelled dialogue, assign installed local
-  voices, place roles left/center/right, render actual local audio and resume
-  verified chunks. Typed scenes add prepared sounds and optional local music cues.
-  See [Audio Studio](docs/AUDIO_STUDIO.md).
-- Convert audio, mix tracks with typed FFmpeg effects, generate symbolic music
-  through a selected FluidSynth/SoundFont installation, and measure output loudness.
-  The optional MusicGen adapter requires separately reviewed local runtime/weights
-  and the private noncommercial profile; actual inference is a separate gate.
-- Back up audio projects with script history and verified audio, and execute
-  approved local library/audio tool plans with durable receipts. Optional API
-  profiles store keys in the OS vault; LOCAL_ONLY remains the default.
 
 TXT quotation text is independently checked against retained original bytes.
 PDF extraction and OCR require explicit independent review before being treated
@@ -92,9 +92,7 @@ score never approves a quotation.
 
 ## Candidate status and verification
 
-Version `0.3.0.dev1` is an integrated development candidate for the expanded V3
-scope, not a declaration that every V3 feature or device/model gate is complete.
-The assembled services and installed
+This is an integrated development candidate. The assembled services and installed
 Python package have real end-to-end tests, including offline local model
 inference, citation preservation, workspace isolation and backup recovery.
 The native Windows workflow also exercises installation, desktop controls, local
@@ -119,8 +117,6 @@ python scripts/ci_check.py tests bootstrap docs/contracts/probes
 The adapters reuse SQLite/FTS5, pypdf, PDFium, Tesseract, python-docx, FastEmbed,
 ONNX Runtime and the already imported licensed components. Exact upstream
 notices and model/dependency pins are preserved with the source and distribution.
-See [research scope](docs/UNIVERSAL_SCOPE_V2.md),
-[expanded reading/audio/agent scope V3](docs/UNIVERSAL_SCOPE_V3_AUDIO_AGENT.md),
-[acceptance](docs/acceptance.md),
+See [scope and architecture](docs/UNIVERSAL_SCOPE_V3_FINALIZATION.md), [acceptance](docs/acceptance.md),
 [packaging](packaging/README.md), and
 [the control issue](https://github.com/Oleksii-debug/AudioTacticalFPS/issues/1).

@@ -40,35 +40,6 @@ def test_full_source_reading_resume_and_session_history(source):
     assert app._selections == {}
 
 
-def test_reading_copy_preparation_is_background_and_preserves_exact_source(source, monkeypatch):
-    from unittest.mock import Mock
-    from carr_library.ui.reading_desk import ReadingDialog
-    from carr_library.ui import narration_editor
-    app, workspace, book, desk, raw = source
-    controller = ReaderController(desk, ReadingState(app.root))
-    controller.start()
-    dialog = object.__new__(ReadingDialog)
-    dialog.controller = controller
-    dialog.dialog, dialog.text = Mock(), Mock()
-    dialog._run = Mock()
-    opened = Mock()
-    monkeypatch.setattr(narration_editor, 'open_narration_editor', opened)
-    dialog.edit_reading_copy()
-    opened.assert_not_called()
-    title, prepare, finish = dialog._run.call_args.args
-    assert title == 'Preparing editable reading copy'
-    page = prepare()
-    page = replace(page, metadata=replace(page.metadata, title='A' * 400))
-    finish(page)
-    project = opened.call_args.args[2]
-    assert len(project.title) == 200
-    assert project.original_text == raw.split('\f')[0]
-    assert project.source_location == controller.current.location
-    assert project.current_text == project.original_text
-    assert app.assets.resolve(book['asset']).read_bytes().decode('utf-8') == raw
-    dialog.text.SetFocus.assert_called_once()
-
-
 def test_history_forward_tail_is_replaced_after_new_navigation(source):
     app, _, _, desk, _ = source
     reader = ReaderController(desk, ReadingState(app.root))

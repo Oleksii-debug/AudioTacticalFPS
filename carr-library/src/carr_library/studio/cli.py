@@ -1,96 +1,130 @@
-"""Keyboard and automation entrypoints for the same local desktop studio."""
+"""Headless entry points share the exact native project's local production service."""
 import argparse
 from dataclasses import asdict
 import json
 from pathlib import Path
 import sys
 
-from .models import load_project, narration_project
-from .store import ProjectStore
+from ..durable_state import read_json
+from .project import Project, parse_script
+from .render import ProductionService, json_safe
+
+
+def data_directory(selected):
+    if selected:
+        return Path(selected)
+    from platformdirs import user_data_path
+    from ..preferences import selected_directory
+    return selected_directory() or user_data_path('Universal Research Library', appauthor=False, roaming=False)
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(prog='research-library studio', description='Local speech, durable audio projects and resumable rendering')
-    commands = parser.add_subparsers(dest='command', required=True)
-    commands.add_parser('voices', help='List actually installed local voices as JSON')
-    commands.add_parser('engines', help='Inspect optional local music runtime availability')
-    new = commands.add_parser('new', help='Save a faithful narration project from a UTF-8 text file')
-    new.add_argument('--text-file', required=True, type=Path)
-    new.add_argument('--voice', required=True)
-    new.add_argument('--title', default='Narration')
-    new.add_argument('--language')
-    new.add_argument('--project-dir', required=True, type=Path)
-    render = commands.add_parser('render', help='Render or resume the saved project; optional --plan loads a new revision')
-    render.add_argument('--project-dir', required=True, type=Path)
-    render.add_argument('--plan', type=Path)
-    render.add_argument('--asset-root', type=Path)
-    render.add_argument('--allow-audio-root', action='append', type=Path, default=[])
-    status = commands.add_parser('status', help='Read durable render job states')
-    status.add_argument('--project-dir', required=True, type=Path)
-    show = commands.add_parser('plan', help='Print the current saved project and exact revision')
-    show.add_argument('--project-dir', required=True, type=Path)
-    backup = commands.add_parser('backup', help='Create a verified, consistent project snapshot in a new folder')
-    backup.add_argument('--project-dir', required=True, type=Path)
-    backup.add_argument('--output', required=True, type=Path)
-    backup.add_argument('--without-audio', action='store_true', help='Preserve scripts and history; regenerate audio after restoration')
-    restore = commands.add_parser('restore', help='Verify a backup and restore into a new project folder')
-    restore.add_argument('--backup-dir', required=True, type=Path)
-    restore.add_argument('--project-dir', required=True, type=Path)
-    restore.add_argument('--manifest-sha256', required=True, help='Independent digest printed when the backup was created')
-    convert = commands.add_parser('convert', help='Convert a selected local audio file into a new output')
-    convert.add_argument('source', type=Path)
-    convert.add_argument('output', type=Path)
-    convert.add_argument('--sample-rate', type=int, default=24000)
-    convert.add_argument('--channels', type=int, choices=(1, 2), default=2)
+    parser = argparse.ArgumentParser(description='Local reading and audio production; no remote fallback')
+    parser.add_argument('--data-dir', type=Path)
+    parser.add_argument('--input-root', action='append', type=Path, default=[], help='Explicit local cue folder; repeat if needed')
+    operations = parser.add_subparsers(dest='operation', required=True)
+    operations.add_parser('voices', help='List actually installed local voices')
+    operations.add_parser('jobs', help='List saved resumable production jobs')
+    operations.add_parser('projects', help='List saved projects')
+    operations.add_parser('capabilities', help='Inspect the actual installed audio runtime')
+    render = operations.add_parser('render', help='Produce actual WAV master, chapters, stems and subtitles')
+    source = render.add_mutually_exclusive_group(required=True)
+    source.add_argument('--script', type=Path, help='UTF-8 script file')
+    source.add_argument('--project', type=Path, help='Versioned JSON project with chosen voices')
+    render.add_argument('--title', default='Audio production')
+    render.add_argument('--voice', action='append', default=[], help='Installed voice ID; repeated voices rotate through roles')
+    render.add_argument('--output', type=Path, required=True, help='Existing parent folder; a new project subfolder is created')
+    render.add_argument('--format', default='wav', choices=('wav','flac','mp3','ogg','opus','m4a','m4b','aiff','wma'))
+    render.add_argument('--no-stems', action='store_true')
+    resume = operations.add_parser('resume', help='Resume a saved interrupted job, retaining successful chunks')
+    resume.add_argument('job_id')
     args = parser.parse_args(argv)
     try:
-        if args.command == 'voices':
-            from ..speech import discover_voices
-            result = [asdict(v) for v in discover_voices()]
-        elif args.command == 'engines':
-            from ..audio.music import available_music_engines
-            result = available_music_engines()
-        elif args.command == 'convert':
-            from ..audio import FFmpegAudio
-            engine = FFmpegAudio(allowed_roots=(args.source.parent, args.output.parent))
-            result = asdict(engine.convert(args.source, args.output, sample_rate=args.sample_rate, channels=args.channels))
-        elif args.command == 'restore':
-            from .backup import restore_project
-            store = restore_project(args.backup_dir, args.project_dir,
-                                    expected_manifest_sha256=args.manifest_sha256)
-            result = {'project_dir': str(store.root), 'revision': store.load().revision,
-                      'verified_manifest_sha256': args.manifest_sha256}
+        from ..application import LibraryApp
+        app = LibraryApp(data_directory(args.data_dir))
+        service = ProductionService(app.root / 'state' / 'studio', input_roots=args.input_root)
+        if args.operation == 'voices':
+            result = [json_safe(asdict(voice)) for voice in service.voices.voices()]
+        elif args.operation == 'projects':
+            result = [project.to_dict() for project in service.projects.list()]
+        elif args.operation == 'jobs':
+            result = [{'id': job['id'], 'title': job['project']['title'], 'status': job['status'],
+                       'progress': job['progress'], 'destination': job['destination']} for job in service.jobs()]
+        elif args.operation == 'capabilities':
+            runtime = service._runtime()
+            result = {'audio': runtime.capabilities(), 'music': runtime.music_capabilities()}
         else:
-            store = ProjectStore(args.project_dir)
-            if args.command == 'new':
-                if args.text_file.stat().st_size > 64 * 1024**2:
-                    raise ValueError('Use chaptered JSON for source text over the configured 64 MiB editor budget.')
-                project = narration_project(args.text_file.read_text(encoding='utf-8-sig'), args.voice,
-                    title=args.title, language=args.language)
-                result = {'revision': store.save(project), 'project_dir': str(store.root)}
-            elif args.command == 'status':
-                result = store.jobs()
-            elif args.command == 'plan':
-                project = store.load()
-                result = {'revision': project.revision, 'project': project.to_dict()}
-            elif args.command == 'backup':
-                from .backup import backup_project
-                digest = backup_project(store, args.output, include_audio=not args.without_audio)
-                result = {'backup_dir': str(args.output.absolute()), 'manifest_sha256': digest,
-                          'include_audio': not args.without_audio,
-                          'restore_note': 'Keep this digest separately. Restore requires it before accepting any backup bytes.'}
+            if args.operation == 'render':
+                if args.project:
+                    project = Project.from_dict(read_json(args.project))
+                else:
+                    if args.script.stat().st_size > 16 * 1024**2:
+                        raise ValueError('Script exceeds the project text budget; split by chapters.')
+                    project = parse_script(args.script.read_text(encoding='utf-8-sig'), title=args.title,
+                                           voice_ids=args.voice)
+                identity = service.submit(project, args.output, format=args.format, stems=not args.no_stems)
             else:
-                from .director import Director
-                project = load_project(args.plan) if args.plan else store.load()
-                result = Director(store).render(project,
-                    asset_root=args.asset_root or (args.plan.parent if args.plan else store.root),
-                    allowed_audio_roots=args.allow_audio_root,
-                    progress=lambda value: print(value['message'], file=sys.stderr, flush=True))
-        print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
+                identity = args.job_id
+            print('Production job: ' + identity, file=sys.stderr, flush=True)
+            job = service.run(identity, progress=lambda text: print(text, file=sys.stderr, flush=True))
+            result = {'id': job['id'], 'status': job['status'], 'destination': job['destination'],
+                      'artifacts': job['artifacts'], 'result': job['result']}
+        print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
         return 0
     except KeyboardInterrupt:
-        print('Studio paused. Completed chunks are retained; rerun render to resume.', file=sys.stderr)
+        print('Production interrupted. Resume its saved job ID to reuse completed chunks.', file=sys.stderr)
         return 130
-    except (OSError, ValueError, RuntimeError) as exc:
-        print(f'Audio Studio: {exc}', file=sys.stderr)
+    except (ValueError, OSError, RuntimeError) as exc:
+        print('Audio Studio: ' + str(exc), file=sys.stderr)
         return 1
+
+
+def assistant_main(argv=None):
+    parser = argparse.ArgumentParser(description='Scoped local assistant; preview first, explicit --run executes')
+    parser.add_argument('--data-dir', type=Path)
+    parser.add_argument('--instructions', type=Path)
+    parser.add_argument('--workspace')
+    parser.add_argument('--input-root', action='append', type=Path, default=[])
+    parser.add_argument('--output-root', type=Path)
+    parser.add_argument('--allow-create', action='store_true')
+    parser.add_argument('--allow-full-backup', action='store_true')
+    parser.add_argument('--run', action='store_true')
+    parser.add_argument('--resume')
+    args = parser.parse_args(argv)
+    if bool(args.instructions) == bool(args.resume):
+        parser.error('Choose an instruction file or a saved job ID to resume.')
+    try:
+        from ..application import LibraryApp
+        from ..assistant import AssistantService, Scope
+        app = LibraryApp(data_directory(args.data_dir))
+        production = ProductionService(app.root / 'state' / 'studio', input_roots=args.input_root)
+        service = AssistantService(app, production=production.assistant_callback)
+        if args.resume:
+            if not args.run:
+                result = asdict(service.get(args.resume))
+            else:
+                result = asdict(service.resume(args.resume))
+        else:
+            if args.instructions.stat().st_size > 4 * 1024**2:
+                raise ValueError('Instruction file exceeds its budget.')
+            scope = Scope(args.workspace, tuple(args.input_root), args.output_root,
+                          allow_create=args.allow_create, allow_full_backup=args.allow_full_backup)
+            plan = service.preview(args.instructions.read_text(encoding='utf-8-sig'), scope)
+            result = plan.to_dict()
+            if args.run:
+                identity = service.submit(plan)
+                print('Assistant job: ' + identity, file=sys.stderr, flush=True)
+                result = asdict(service.run(identity,
+                    progress=lambda complete, total, text: print(f'{complete}/{total}: {text}', file=sys.stderr, flush=True)))
+        print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
+        return 0
+    except KeyboardInterrupt:
+        print('Assistant interrupted. Resume the saved job to continue.', file=sys.stderr)
+        return 130
+    except (ValueError, OSError, RuntimeError) as exc:
+        print('Local assistant: ' + str(exc), file=sys.stderr)
+        return 1
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

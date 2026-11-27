@@ -63,6 +63,74 @@ def test_base_native_extensions_are_loaded_without_optional_engines(tmp_path, mo
     assert report['semantic']['status'] == report['ocr']['status'] == 'NOT_INCLUDED'
 
 
+def _native_manifest(tmp_path, monkeypatch):
+    import hashlib
+    from carr_library import native_launcher
+    payload = b'Controlled native identity fixture; never executed.'
+    monkeypatch.setattr(native_launcher, 'LAUNCHER_BYTES', len(payload))
+    monkeypatch.setattr(native_launcher, 'LAUNCHER_SHA256', hashlib.sha256(payload).hexdigest())
+    manifest = bundle(tmp_path)
+    manifest['native_launcher'] = native_launcher.identity_record()
+    manifest['files']['ResearchLibrary.exe'] = native_launcher.LAUNCHER_SHA256
+    (tmp_path / 'ResearchLibrary.exe').write_bytes(payload)
+    return manifest
+
+
+def test_native_entry_hash_is_checked_without_executing_it(tmp_path, monkeypatch):
+    manifest = _native_manifest(tmp_path, monkeypatch)
+    (tmp_path / 'bundle-manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+    events = []
+    controlled_imports(monkeypatch, events)
+    report = native_checks.check_native_dependencies(tmp_path)
+    assert report['status'] == 'PASS'
+    assert report['source_commit'] == 'a' * 40
+    assert report['native_launcher'] == {
+        'status': 'PASS', 'sha256': manifest['files']['ResearchLibrary.exe'],
+        'authenticode_signed': False, 'execution': 'NOT_RUN', 'windows_nvda': 'NOT_RUN'}
+    assert report['checks'][0] == 'native launch entry identity'
+    (tmp_path / 'ResearchLibrary.exe').unlink()
+    events.clear()
+    report = native_checks.check_native_dependencies(tmp_path)
+    assert report['status'] == report['native_launcher']['status'] == 'FAIL'
+    assert report['failed_component'] == 'native launch entry identity'
+    assert not events
+
+
+@pytest.mark.parametrize('damage', ['missing_identity', 'missing_file', 'null_identity',
+                                   'boolean_schema', 'claim_signature', 'claim_gui',
+                                   'different_hash', 'extra_field', 'missing_python', 'missing_source'])
+def test_native_identity_cannot_claim_unverified_acceptance(tmp_path, monkeypatch, damage):
+    manifest = _native_manifest(tmp_path, monkeypatch)
+    identity = manifest['native_launcher']
+    if damage == 'missing_identity':
+        del manifest['native_launcher']
+    elif damage == 'missing_file':
+        del manifest['files']['ResearchLibrary.exe']
+    elif damage == 'null_identity':
+        manifest['native_launcher'] = None
+    elif damage == 'boolean_schema':
+        identity['schema'] = True
+    elif damage == 'claim_signature':
+        identity['authenticode_signed'] = True
+    elif damage == 'claim_gui':
+        identity['gui_verified'] = True
+    elif damage == 'different_hash':
+        identity['sha256'] = manifest['files']['ResearchLibrary.exe'] = 'f' * 64
+    elif damage == 'extra_field':
+        identity['approved_by_filename'] = True
+    elif damage == 'missing_python':
+        manifest['bundled_python'] = False
+    elif damage == 'missing_source':
+        del manifest['source_commit']
+    (tmp_path / 'bundle-manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+    events = []
+    controlled_imports(monkeypatch, events)
+    report = native_checks.check_native_dependencies(tmp_path)
+    assert report['status'] == 'FAIL'
+    assert report['failed_component'] == 'installation manifest'
+    assert not events
+
+
 @pytest.mark.parametrize('failure', [None, 'pypdfium2.raw'])
 def test_loader_handle_survives_imports_and_closes_on_success_or_failure(
         tmp_path, monkeypatch, failure):

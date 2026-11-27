@@ -1,9 +1,8 @@
 """Local application services composed from the reviewed CARR components.
 
 Every public operation opens a fresh workspace-authorized transaction. Originals,
-historical quotations and mutable research notes remain separate. Optional DOI
-acquisition requires both HYBRID policy and per-operation consent; all other core
-services remain local. Model installation is an explicit build-time operation.
+historical quotations and mutable research notes remain separate. No network is
+used by this module; model installation is an explicit build-time operation.
 """
 from contextlib import closing, contextmanager
 from dataclasses import dataclass
@@ -162,16 +161,11 @@ class LibraryApp:
         self.assets_dir.mkdir(mode=0o700, exist_ok=True)
         self.assets = RetainedAssets(self.assets_dir)
         self.semantic_ranker = semantic_ranker
-        self.semantic_cache = None
         self._selections = {}
         with exclusive_writer(self.root):
             self._check_database_paths()
             with closing(Storage(self.database, schema_version=4)) as storage:
                 storage.check()
-        if semantic_ranker is not None:
-            from .semantic import OfflineSemanticRanker
-            if isinstance(semantic_ranker, OfflineSemanticRanker):
-                self.semantic_cache = semantic_ranker.cache_for(self.root)
 
     def _check_database_paths(self):
         for path in (self.database, self.root / 'imports.sqlite'):
@@ -340,31 +334,6 @@ class LibraryApp:
         with self.read(workspace) as db:
             return get_edition(Catalog(db, workspace), edition_id)
 
-    def lookup_doi(self, workspace, doi, *, online_allowed=False, providers=('crossref',),
-                   unpaywall_email='', cancelled=lambda: False):
-        """Preview exact DOI metadata; never transmit source text or research notes."""
-        from .acquisition.service import service_for
-        return service_for(self).lookup(workspace, doi, online_allowed=online_allowed,
-            providers=providers, unpaywall_email=unpaywall_email, cancelled=cancelled)
-
-    def save_doi_reference(self, workspace, preview, *, cancelled=lambda: False):
-        from .acquisition.service import service_for
-        return service_for(self).save_reference(workspace, preview, cancelled=cancelled)
-
-    def apply_doi_metadata(self, workspace, edition_id, preview, *, expected_metadata,
-                           cancelled=lambda: False):
-        from .acquisition.service import service_for
-        return service_for(self).apply_metadata(workspace, edition_id, preview,
-            expected_metadata=expected_metadata, cancelled=cancelled)
-
-    def acquire_doi_source(self, workspace, preview, source_index, destination, *,
-                           online_allowed=False, rights_confirmed=False, collection=None,
-                           cancelled=lambda: False):
-        from .acquisition.service import service_for
-        return service_for(self).acquire(workspace, preview, source_index, destination,
-            online_allowed=online_allowed, rights_confirmed=rights_confirmed,
-            collection=collection, cancelled=cancelled)
-
     def catalog_report(self, workspace, *, collection=None, cancelled=lambda: False):
         """Inspect catalog completeness without granting source verification."""
         from .catalog.catalog_reports import catalog_report
@@ -393,8 +362,7 @@ class LibraryApp:
                                         collection=collection, cancelled=budget.stopped)
 
     def update_metadata(self, workspace, edition_id, *, title, authors=(),
-                        language=None, edition=None, volume=None, expected_metadata=None,
-                        selected_fields=None, cancelled=lambda: False):
+                        language=None, edition=None, volume=None, expected_metadata=None):
         """Publish a metadata revision without changing any original source bytes.
 
         Already saved evidence keeps the previous metadata and source revision.
@@ -403,42 +371,14 @@ class LibraryApp:
         new citation snapshots when those fields change. Edition-specific fields
         change only on the selected edition. An optional prior EditionView guards
         interactive edits against overwriting a concurrently changed catalog.
-        Partial imports must supply both selected_fields and expected_metadata.
-        Unselected values are retained exactly from the locked current catalog;
-        only explicitly selected values receive the usual edit validation.
         """
-        def check_cancelled():
-            if cancelled():
-                raise InterruptedError('Metadata update cancelled; no catalog changes were committed.')
-
-        check_cancelled()
-        allowed_fields = frozenset(('title', 'authors', 'language', 'edition', 'volume'))
-        if selected_fields is None:
-            fields = allowed_fields
-        else:
-            if (not isinstance(selected_fields, (tuple, list, set, frozenset))
-                    or not selected_fields
-                    or any(not isinstance(field, str) for field in selected_fields)
-                    or expected_metadata is None):
-                raise ValueError('A partial metadata edit requires selected fields and the reviewed metadata.')
-            fields = frozenset(selected_fields)
-            if not fields <= allowed_fields:
-                raise ValueError('Select only supported metadata fields.')
-        if 'title' in fields:
-            title = _name(title)
-        if 'authors' in fields:
-            if not isinstance(authors, (tuple, list)) or len(authors) > 100:
-                raise ValueError('authors must be a list or tuple of at most 100 names.')
-            authors = tuple(_name(name) for name in authors)
-        if 'language' in fields:
-            language = _metadata(language)
-        if 'edition' in fields:
-            edition = _metadata(edition)
-        if 'volume' in fields:
-            volume = _metadata(volume)
+        title = _name(title)
+        if not isinstance(authors, (tuple, list)) or len(authors) > 100:
+            raise ValueError('authors must be a list or tuple of at most 100 names.')
+        authors = tuple(_name(name) for name in authors)
+        language, edition, volume = map(_metadata, (language, edition, volume))
         revision = uuid4().hex
         with exclusive_writer(self.root):
-            check_cancelled()
             self._check_database_paths()
             with closing(Storage(self.database, schema_version=4)) as storage:
                 with storage.transaction():
@@ -447,12 +387,6 @@ class LibraryApp:
                     current = get_edition(Catalog(db, workspace), edition_id)
                     if expected_metadata is not None and current != expected_metadata:
                         raise ValueError('Book metadata changed. Refresh the catalog before editing again.')
-                    if selected_fields is not None:
-                        title = title if 'title' in fields else current.title
-                        authors = authors if 'authors' in fields else current.authors
-                        language = language if 'language' in fields else current.language
-                        edition = edition if 'edition' in fields else current.edition
-                        volume = volume if 'volume' in fields else current.volume
                     row = db.execute('SELECT e.work,e.asset,a.revision,r.config FROM catalog_edition e '
                         'JOIN active a ON a.workspace=e.workspace AND a.edition=e.id '
                         'JOIN revision r ON r.id=a.revision WHERE e.workspace=? AND e.id=?',
@@ -474,7 +408,6 @@ class LibraryApp:
                     db.execute('UPDATE catalog_edition SET language=?,edition=?,volume=? WHERE workspace=? AND id=?',
                         (language, edition, volume, workspace, edition_id))
                     for affected_row in affected:
-                        check_cancelled()
                         eid, asset, previous, config, previous_label, previous_volume = affected_row
                         source_pages = tuple(db.execute(
                             'SELECT * FROM page WHERE revision=? ORDER BY ordinal', (previous,)))
@@ -491,7 +424,6 @@ class LibraryApp:
                         db.execute('INSERT INTO source_metadata VALUES(?,?,?,?,?,?,?)',
                             (workspace, eid, next_revision, '; '.join(authors) or None,
                              title, next_volume, next_label))
-                    check_cancelled()
         return revision
 
     def rename_collection(self, workspace, collection, name):
@@ -729,6 +661,7 @@ class LibraryApp:
                         # source was actually published. Never reactivate an old
                         # revision when current metadata has superseded it.
                         with storage.transaction():
+                            self._authorize(storage.db, workspace)
                             published = storage.db.execute(
                                 'SELECT r.workspace,r.edition,r.asset,a.revision FROM revision r '
                                 'JOIN sealed s ON s.revision=r.id LEFT JOIN active a '
@@ -742,6 +675,8 @@ class LibraryApp:
                                 raise ValueError('Completed import active revision changed.')
                             register_batch(Catalog(storage.db, workspace), (record,))
                             storage._check()
+                            if cancelled():
+                                raise InterruptedError('Import registration cancelled before commit.')
                     result['verified'] = asset.mime == 'text/plain' and result['state'] == 'complete'
                     return result
 
@@ -885,7 +820,7 @@ class LibraryApp:
                author=None, language=None, edition=None, limit=100, timeout=60.0,
                cancelled=lambda: False, authorized_topic=None, on_status=None,
                result_mode=None):
-        if mode not in ('word', 'phrase', 'terms', 'thematic', 'semantic', 'advanced'):
+        if mode not in ('word', 'phrase', 'terms', 'thematic', 'semantic'):
             raise ValueError('Unknown search mode.')
         if result_mode not in (None, 'short', 'thematic'):
             raise ValueError('Choose Short quotations or Thematic excerpts.')
@@ -912,7 +847,7 @@ class LibraryApp:
                     from .semantic import search_snapshot
                     hits = search_snapshot(db, workspace, allowed, query, self.semantic_ranker,
                                            limit=limit, timeout=budget.remaining(), cancelled=budget.stopped,
-                                           on_status=on_status, cache=self.semantic_cache)
+                                           on_status=on_status)
                 else:
                     if mode == 'semantic' and on_status is not None:
                         on_status('Local model unavailable; keyword search used.')
@@ -1188,7 +1123,7 @@ class LibraryApp:
             return SavedTopicQueries(SavedEvidenceStore(db, workspace, load, metadata)).run(
                 topic, identity, timeout=budget.remaining(), cancelled=budget.stopped)
 
-    def backup(self, destination, *, authorized_workspaces=None):
+    def backup(self, destination):
         from .library_backup import create_backup
-        return create_backup(self, destination, authorized_workspaces=authorized_workspaces)
+        return create_backup(self, destination)
 

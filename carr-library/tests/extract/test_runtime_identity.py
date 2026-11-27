@@ -85,10 +85,11 @@ def test_resource_limit(tmp_path):
         ri._hash(p, limit=4)
 
 
-def test_model_identifier_rules_are_bound_to_resume_identity(source_fixture):
+@pytest.mark.parametrize('module', ['ocr_languages.py', 'ocr_process.py'])
+def test_model_identifier_rules_are_bound_to_resume_identity(source_fixture, module):
     with patch.object(ri.shutil, 'which', return_value=None):
         before = ri.runtime_identity(Settings())
-        (source_fixture / 'ocr_languages.py').write_bytes(b'changed model identifier rules')
+        (source_fixture / module).write_bytes(b'changed OCR execution or model identifier rules')
         assert before != ri.runtime_identity(Settings())
 
 

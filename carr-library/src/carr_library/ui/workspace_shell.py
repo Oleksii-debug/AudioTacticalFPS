@@ -15,7 +15,7 @@ from .scope_bindings import ScopeServices, bind_scope_services, scope_labels
 
 class WorkspaceFrame(wx.Frame):
     def __init__(self, parent, list_scopes, bind_scope):
-        super().__init__(parent, title='Research Library', size=(900, 700))
+        super().__init__(parent, title='Resonance', size=(900, 700))
         self.list_scopes, self.bind_scope = list_scopes, bind_scope
         self.active = self.book = self.evidence = None
         self.scopes = []
@@ -43,15 +43,9 @@ class WorkspaceFrame(wx.Frame):
         return p is not None and p.displayed is not None and p.note.GetValue() != p.displayed.note
 
     def _confirm(self):
-        if not self._dirty():
-            return True
-        confirmed = wx.MessageBox(
+        return not self._dirty() or wx.MessageBox(
             'Discard the unsaved research note?', 'Unsaved note',
             wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, self) == wx.YES
-        if not confirmed:
-            return False
-        discard = getattr(self.evidence, 'discard_recovery', None)
-        return discard() if callable(discard) else True
 
     def _restore_note_focus(self):
         # A dirty note can belong to a hidden page. Reveal that exact page

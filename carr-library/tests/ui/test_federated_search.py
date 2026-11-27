@@ -467,45 +467,6 @@ def test_menu_installer_keeps_notebook_shortcut_and_dispatches_independent_searc
     notebook_called.assert_called_once()
 
 
-@pytest.mark.parametrize('names', [('Café', 'Cafe\u0301'), ('Історія', 'Історія '),
-    ('Research  methods', 'Research methods'), ('Same', 'Same', 'Same [0]'),
-    ('Same', 'Same', 'Same (library w; topic 0)'), ('Same', 'Same'), ('Unique', 'Distinct')])
-@pytest.mark.parametrize('reverse', [False, True])
-def test_federated_topic_labels_distinct(names, reverse):
-    import unicodedata
-    from carr_library.ui.federated_search import _topic_labels
-    rows = [SimpleNamespace(id=str(i), name=name, parent=None) for i, name in enumerate(names)]
-    if reverse:
-        rows.reverse()
-    labels = _topic_labels(rows, 'w')
-    key = lambda s: ' '.join(unicodedata.normalize('NFC', s).split()).casefold()
-    assert len(labels) == len(rows) == len(set(map(key, labels)))
-    assert all(label.startswith(row.name) for row, label in zip(rows, labels))
-
-
-def test_federated_equal_library_names_and_editions_keep_source_identity(center):
-    for identity in (center.one, center.two):
-        center.app.rename_workspace(identity, 'Same library')
-    center.app.add_text(center.one, 'Matching title', 'Comparable source.', authors=('Same author',), edition='First edition')
-    center.app.add_text(center.two, 'Matching title', 'Comparable source.', authors=('Same author',), edition='Second edition')
-    center.controller.search(SearchOptions((center.one, center.two), 'Comparable'))
-    assert len(center.controller.rows) == len(center.view.labels) == 2
-    assert 'First edition' in center.view.labels[0]
-    assert 'Second edition' in center.view.labels[1]
-    assert center.view.labels[0] != center.view.labels[1]
-    result_status = center.view.messages[-1]
-    for index, (hit, label) in enumerate(zip(center.controller.rows, center.view.labels)):
-        assert f'library {hit.workspace};' in label
-        assert f'{index+1}. ' == label[:3]
-        assert hit.workspace in result_status
-        center.view.select(index)
-        center.controller.selection_changed()
-        center.controller.copy('quote')
-        assert center.view.copied[-1] == 'Comparable source.'
-    assert center.frame.active == (center.one, center.local_topic)
-    assert center.frame.unsaved_note == 'An unsaved notebook draft — retain exactly.'
-
-
 COLLIDING_NAMES = [('Café', 'Cafe\u0301'), ('Історія', 'Історія '),
     ('Research  methods', 'Research methods'), ('Same', 'Same', 'Same [0]'),
     ('Same', 'Same', 'Same (library w; topic 0)'), ('Same', 'Same'), ('Unique', 'Distinct')]

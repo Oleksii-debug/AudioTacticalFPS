@@ -1,5 +1,8 @@
-"""Local, non-destructive audio processing through an installed FFmpeg build."""
+"""Offline audio rendering, typed studio controls and optional local music."""
+from .models import (AudioBudget, AudioCancelled, AudioError, AudioInfo, AudioUnavailable,
+                     Effect, LocalModelConfig, LoudnessInfo, MusicSpec, Track)
+from .dsp import AudioRuntime, effect_controls, narration_preset
 
-from .ffmpeg import AudioCancelled, AudioReport, Effect, FFmpegAudio, LoudnessReport, Track
-
-__all__ = ['AudioCancelled', 'AudioReport', 'Effect', 'FFmpegAudio', 'LoudnessReport', 'Track']
+__all__ = ['AudioRuntime', 'AudioBudget', 'AudioCancelled', 'AudioError', 'AudioInfo',
+           'AudioUnavailable', 'Effect', 'Track', 'MusicSpec', 'LocalModelConfig',
+           'LoudnessInfo', 'effect_controls', 'narration_preset']

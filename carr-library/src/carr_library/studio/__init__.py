@@ -1,5 +1,4 @@
-"""Local narration plans, durable render jobs and explicit source derivatives."""
-from .models import Budget, Clip, Line, MusicCue, PlanError, Project, Role, Scene, load_project, narration_project
-from .store import ProjectStore
+"""Local script-to-audio projects, durable scene renders and exact output manifests."""
+from .project import Project, Role, Scene, Line, Music, Cue, parse_script, ProjectStore
 
-__all__ = ['Budget', 'Clip', 'Line', 'MusicCue', 'PlanError', 'Project', 'ProjectStore', 'Role', 'Scene', 'load_project', 'narration_project']
+__all__ = ['Project', 'Role', 'Scene', 'Line', 'Music', 'Cue', 'parse_script', 'ProjectStore']
