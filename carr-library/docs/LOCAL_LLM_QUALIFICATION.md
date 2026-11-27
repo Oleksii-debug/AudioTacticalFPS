@@ -34,6 +34,14 @@ permission refusals, cancellation and no-send assertions are unchanged.
 
 ## Acceptance
 
+The synthetic instructions all include the same short output-type reminder:
+raw JSON, a string schema identifier, a string summary and an array of steps.
+It supplies no expected tool or argument. This narrowly qualified prompt style
+is recorded verbatim in each response record; it is not a general instruction-
+following score. A previous run without this reminder produced fenced JSON with
+an incorrectly nested schema and was correctly rejected by the product parser.
+
+
 The probe requires actual English and Ukrainian model proposals to pass the
 existing argument and scope validation. Separate actual model responses must be
 refused when they request unapproved library creation or an input outside the
