@@ -167,18 +167,51 @@ def capture_backup_receipt(directory, manifest_sha256, *, max_bytes, max_files,
                 if checksum != manifest_sha256:
                     raise ValueError('The backup manifest differs from the producer receipt.')
             add('file', relative, count, checksum)
-            observed[child] = (False, _stamp(before_file))
+            observed[child] = (False, _stamp(before_file), checksum)
         if _stamp(_plain(path, directory=True)) != _stamp(before):
             raise ValueError('The backup directory changed during verification.')
-        observed[path] = (True, _stamp(before))
+        observed[path] = (True, _stamp(before), tuple(sorted(names)))
 
     walk(root, 0)
     # Re-attest earlier entries after later files have been scanned. Directory
     # timestamps alone do not reveal in-place edits to an already hashed file.
-    for path, (is_directory, stamp) in observed.items():
+    for path, (is_directory, stamp, expected) in observed.items():
         check()
-        if _stamp(_plain(path, directory=is_directory)) != stamp:
-            raise ValueError('The backup tree changed during verification.')
+        try:
+            if _stamp(_plain(path, directory=is_directory)) != stamp:
+                raise ValueError('The backup tree changed during verification.')
+            if is_directory:
+                names = []
+                with os.scandir(path) as entries:
+                    for entry in entries:
+                        check()
+                        if len(names) >= len(expected):
+                            raise ValueError('The backup tree changed during verification.')
+                        names.append(entry.name)
+                if tuple(sorted(names)) != expected:
+                    raise ValueError('The backup tree changed during verification.')
+                continue
+            # Windows can retain a timestamp across rapid same-size writes.
+            # A second bounded content check must therefore attest bytes too.
+            digest, count = sha256(), 0
+            flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
+            fd = os.open(path, flags)
+            with os.fdopen(fd, 'rb') as stream:
+                if _stamp(os.fstat(stream.fileno())) != stamp:
+                    raise ValueError('The backup tree changed during verification.')
+                while block := stream.read(1024 * 1024):
+                    check()
+                    count += len(block)
+                    if count > stamp[3]:
+                        raise ValueError('The backup tree changed during verification.')
+                    digest.update(block)
+                if _stamp(os.fstat(stream.fileno())) != stamp:
+                    raise ValueError('The backup tree changed during verification.')
+            if (count != stamp[3] or digest.hexdigest() != expected
+                    or _stamp(_plain(path)) != stamp):
+                raise ValueError('The backup tree changed during verification.')
+        except OSError:
+            raise ValueError('The backup tree changed during verification.') from None
     check()
     if not found_manifest:
         raise ValueError('A completed backup manifest is required.')

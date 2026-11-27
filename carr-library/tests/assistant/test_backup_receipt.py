@@ -153,3 +153,33 @@ def test_receipt_rejects_change_after_earlier_file_scan(tmp_path, monkeypatch, o
         else:
             receipt.verify_backup_receipt(root, old, **budget)
     assert changed
+
+
+@pytest.mark.parametrize('kind', ['file', 'directory'])
+def test_receipt_rechecks_names_after_an_earlier_directory_scan(tmp_path, monkeypatch, kind):
+    from carr_library.assistant import backup_receipt as receipt
+
+    root, digest = backup(tmp_path)
+    (root / 'z-last.txt').write_bytes(b'last')
+    parent = root / 'originals'
+    before = parent.stat()
+    plain = receipt._plain
+    changed = []
+
+    def hook(path, *, directory=False):
+        if path == root / 'z-last.txt' and not changed:
+            added = parent / 'added-after-scan'
+            if kind == 'file':
+                added.write_bytes(b'new unobserved bytes')
+            else:
+                added.mkdir()
+            # On Windows a directory's ctime denotes creation and can remain
+            # unchanged; preserving mtime must not hide a new child name.
+            os.utime(parent, ns=(before.st_atime_ns, before.st_mtime_ns))
+            changed.append(True)
+        return plain(path, directory=directory)
+
+    monkeypatch.setattr(receipt, '_plain', hook)
+    with pytest.raises(ValueError, match='changed during verification'):
+        capture(root, digest)
+    assert changed
