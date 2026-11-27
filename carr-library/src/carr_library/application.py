@@ -578,7 +578,9 @@ class LibraryApp:
                     Catalog(storage.db, workspace)._active_collection(collection)
                 retained = self.assets.retain(asset.data, asset.mime, asset.digest)
                 from .ingest.worker import RuntimeBoundIngest, load_reviews, record_progress
-                record_progress(self.root, _request_id, asset_sha256=asset.digest)
+                record_progress(self.root, _request_id, asset_sha256=asset.digest,
+                    publication_watermark=storage.db.execute(
+                        'SELECT coalesce(max(rowid),0) FROM revision').fetchone()[0])
                 publisher = _CatalogPublisher(storage, record)
                 if asset.mime in ('application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                                   'application/epub+zip'):

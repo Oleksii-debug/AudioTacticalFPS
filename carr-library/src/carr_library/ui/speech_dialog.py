@@ -299,6 +299,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     def save_project(event=None, *, choose=False):
         nonlocal save_path
         try:
+            source_guard()
             sync_document()
             if not choose and save_path is None and draft_store is not None:
                 save_recovery(force=True)
@@ -315,6 +316,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                     selected = Path(chooser.GetPath())
             else:
                 selected = save_path
+            # A modal chooser can outlive the source's current authorization.
+            source_guard()
             document.save(selected)
             save_path = selected
             save_recovery(force=True)

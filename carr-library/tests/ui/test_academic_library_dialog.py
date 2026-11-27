@@ -158,6 +158,27 @@ def test_export_uses_existing_destination_guard(controller, tmp_path):
     assert private.read_text() == 'Existing private file'
 
 
+@pytest.mark.parametrize('existing', [False, True])
+def test_bibliography_preserves_newer_destination_during_render(
+        controller, tmp_path, monkeypatch, existing):
+    target = tmp_path / 'bibliography.txt'
+    if existing:
+        target.write_bytes(b'Explicitly selected old bibliography.')
+    render = controller.export
+    newer = b'Independent work saved while bibliography renders.'
+
+    def render_and_change(**options):
+        value = render(**options)
+        target.write_bytes(newer)
+        return value
+
+    monkeypatch.setattr(controller, 'export', render_and_change)
+    with pytest.raises(ValueError, match='destination changed'):
+        controller.export_to(target)
+    assert target.read_bytes() == newer
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
 def test_reference_pages_have_distinct_labels_and_all_active_export(controller):
     with controller.library.write(controller.workspace) as db:
         service = AcademicLibrary(db, controller.workspace)

@@ -8,7 +8,8 @@ from pathlib import Path
 
 import wx
 
-from ..research.export_file import write_export
+from ..research.export_file import write_export, export_completion
+from .research_actions import NativeDialogs
 
 
 REPORT_MAX_CHARACTERS = 500_000
@@ -244,12 +245,17 @@ class LibraryToolsDialog(wx.Dialog):
             self._collection = collection
             dialog = wx.FileDialog(self, f'Export {name}', defaultFile=f'{kind}{extension}',
                 wildcard=f'{name} (*{extension})|*{extension}',
-                style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+                style=wx.FD_SAVE)
             if dialog.ShowModal() != wx.ID_OK:
                 self.status.SetValue('Export cancelled. No file was written.')
                 button.SetFocus()
                 return False
             path = Path(dialog.GetPath())
+            approval = NativeDialogs().approve_export(self, path, private_root=self.private_root, wx_module=wx)
+            if approval is None:
+                self.status.SetValue('Export cancelled. No file was written.')
+                button.SetFocus()
+                return False
         except Exception as exc:
             self._message(f'Export was not started: {exc}')
             return False
@@ -272,13 +278,13 @@ class LibraryToolsDialog(wx.Dialog):
                                                      format=format, cancelled=cancelled)
             if cancelled():
                 raise TimeoutError('Export cancelled; the destination was not changed.')
-            write_export(path, value, private_root=self.private_root, cancelled=cancelled)
-            return path
+            return write_export(path, value, private_root=self.private_root,
+                                cancelled=cancelled, approval=approval)
 
-        def exported(destination):
+        def exported(receipt):
             detail = ('Verified quotations and research notes are in separate columns.' if kind == 'review-matrix'
                       else 'This file contains source metadata; it does not include saved quotations or notes.')
-            self._message(f'{name} exported to {destination}.\n{detail}')
+            self._message(export_completion(f'{name} exported to {receipt.path}.\n{detail}', receipt))
 
         return self._start(f'Exporting {name}', collection, publish, exported)
 

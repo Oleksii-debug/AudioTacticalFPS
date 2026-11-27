@@ -9,7 +9,7 @@ from pathlib import Path
 
 from ..catalog.insights import analyze_catalog, display_value, format_checklist, format_overview, report_collections
 from ..catalog.membership import Catalog
-from ..research.export_file import write_export
+from ..research.export_file import write_export, export_completion
 from ..research.topic_tree import TopicTree
 from .research_actions import NativeDialogs
 
@@ -33,7 +33,7 @@ class InsightsDialogs(NativeDialogs):
         _, _, extension, wildcard = next(row for row in FORMATS if row[0] == format)
         dialog = wx.FileDialog(parent, 'Save source comparison matrix',
             defaultFile='source-comparison-matrix.' + extension, wildcard=wildcard,
-            style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+            style=wx.FD_SAVE)
         try:
             if dialog.ShowModal() != wx.ID_OK:
                 return None
@@ -73,6 +73,7 @@ class _Report:
 class _ExportReceipt:
     path: Path
     format: str
+    cleanup_warning: str | None = None
 
 
 class CatalogInsightsActions:
@@ -234,6 +235,10 @@ class CatalogInsightsActions:
             path = Path(path)
             self._idle()
             self._authorize(scope, collection)
+            approval = self.dialogs.approve_export(self.frame, path, private_root=scope.library.root)
+            if approval is None:
+                self._cancel(scope)
+                return
 
             def operation():
                 from ..research.literature_matrix import render_literature_matrix
@@ -244,24 +249,26 @@ class CatalogInsightsActions:
                 # Recheck authorization and cancellation immediately before
                 # atomic publication. No reads of frame.library occur here.
                 self._authorize(scope, collection, cancellable=True)
-                write_export(path, text, private_root=scope.library.root,
-                             cancelled=scope.cancel_event.is_set)
+                receipt = write_export(path, text, private_root=scope.library.root,
+                                       cancelled=scope.cancel_event.is_set, approval=approval)
                 # Once publication succeeds, cancellation cannot undo it. A
                 # receipt lets the callback describe that outcome truthfully.
-                return _ExportReceipt(path, format)
+                return _ExportReceipt(path, format, getattr(receipt, 'cleanup_warning', None))
 
             def done(result):
-                if result != _ExportReceipt(path, format):
+                if not isinstance(result, _ExportReceipt) or (result.path, result.format) != (path, format):
                     raise ValueError('The export result does not match its requested destination.')
                 try:
                     self._authorize(scope, collection, cancellable=True)
                 except Exception:
                     if not getattr(self.frame, '_closing', False):
-                        self.frame.report('The matrix file was saved before cancellation or a library change '
-                                          'was detected. Reopen the command to make a current report.')
+                        self.frame.report(export_completion(
+                            'The matrix file was saved before cancellation or a library change '
+                            'was detected. Reopen the command to make a current report.', result))
                     return
-                self.frame.report('Source comparison matrix saved to ' + display_value(str(path))
-                                  + '. Quotations and notes are not included.')
+                self.frame.report(export_completion(
+                    'Source comparison matrix saved to ' + display_value(str(path))
+                    + '. Quotations and notes are not included.', result))
 
             self.frame.run_job('Exporting source comparison matrix', operation, done,
                                lambda error: self._failed(title, error))

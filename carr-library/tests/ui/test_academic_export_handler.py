@@ -17,6 +17,7 @@ from carr_library import application
 from carr_library.application import LibraryApp
 from carr_library.research import export_file
 from carr_library.research.export_file import write_binary_export, write_export
+from carr_library.ui.research_actions import NativeDialogs
 
 
 FORMATS = [(5, 'docx', '.docx'), (6, 'html', '.html')]
@@ -48,14 +49,14 @@ def harness(research, monkeypatch):
     def create(destination, index, *, cancel_dialog=False):
         h = SimpleNamespace(library=research.app, active=(research.workspace, research.topic),
                             cancel_event=Event(), reports=[], jobs=[], dialogs=[],
-                            after_render=lambda: None)
+                            after_render=lambda: None, after_dialog=lambda: None)
         h.report = h.reports.append
         h._topic = Mock(side_effect=lambda: h.active)
         h.run_job = lambda *args: h.jobs.append(args)
         wx = SimpleNamespace(ID_OK=100, ID_CANCEL=101, YES=102, NO=103,
                              FD_SAVE=1, FD_OVERWRITE_PROMPT=2,
                              YES_NO=4, NO_DEFAULT=8, ICON_QUESTION=16)
-        wx.MessageBox = Mock(return_value=wx.NO)
+        wx.MessageBox = Mock(return_value=wx.YES)
 
         class FileDialog:
             def __init__(self, *args, **kwargs):
@@ -76,6 +77,7 @@ def harness(research, monkeypatch):
 
             def Destroy(self):
                 self.destroyed = True
+                h.after_dialog()
 
         wx.FileDialog = FileDialog
         h.wx = wx
@@ -95,7 +97,9 @@ def harness(research, monkeypatch):
         method = next(node for node in frame.body
                       if isinstance(node, ast.FunctionDef) and node.name == 'export_topic')
         namespace = {'Path': Path, 'wx': wx, 'write_export': write_export,
-                     'write_binary_export': write_binary_export}
+                     'write_binary_export': write_binary_export,
+                     'NativeDialogs': NativeDialogs,
+                     'export_completion': export_file.export_completion}
         exec(compile(ast.Module(body=[method], type_ignores=[]), str(source), 'exec'), namespace)
         h.invoke = lambda: namespace['export_topic'](h, None)
 
@@ -120,6 +124,28 @@ def payload_bytes(format):
 
 
 @pytest.mark.parametrize('index,format,suffix', FORMATS)
+@pytest.mark.parametrize('when', ['queued', 'rendering'])
+@pytest.mark.parametrize('existing', [False, True])
+def test_chosen_destination_cannot_replace_a_newer_file(
+        harness, tmp_path, index, format, suffix, when, existing):
+    target = tmp_path / ('selected' + suffix)
+    if existing:
+        target.write_bytes(b'Explicitly selected previous export.')
+    h = harness(target, index)
+    h.invoke()
+    assert len(h.jobs) == 1
+    newer = b'Independent work saved after choosing the destination.'
+    if when == 'queued':
+        target.write_bytes(newer)
+    else:
+        h.after_render = lambda: target.write_bytes(newer)
+    h.run()
+    assert target.read_bytes() == newer
+    assert len(h.reports) == 1 and 'destination changed' in h.reports[0]
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize('index,format,suffix', FORMATS)
 def test_document_filter_appends_its_suffix_and_publishes_exact_payload(
         harness, research, tmp_path, index, format, suffix):
     requested = tmp_path / 'research-topic'
@@ -130,7 +156,7 @@ def test_document_filter_appends_its_suffix_and_publishes_exact_payload(
     assert len(h.jobs) == 1 and not target.exists()
     dialog, = h.dialogs
     assert dialog.destroyed and dialog.options['defaultFile'] == 'research-topic'
-    assert dialog.options['style'] & h.wx.FD_OVERWRITE_PROMPT
+    assert not dialog.options['style'] & h.wx.FD_OVERWRITE_PROMPT
     assert dialog.options['wildcard'].split('|')[index * 2 + 1] == '*' + suffix
     h.wx.MessageBox.assert_not_called()
     h.run()
@@ -200,15 +226,47 @@ def test_invalid_filter_index_does_not_select_another_format(harness, tmp_path, 
 
 
 @pytest.mark.parametrize('index,format,suffix', FORMATS)
-def test_existing_uppercase_suffix_is_kept_and_uses_native_overwrite_prompt(
+def test_existing_uppercase_suffix_is_kept_and_confirmed_once_after_capture(
         harness, tmp_path, index, format, suffix):
     target = tmp_path / ('Existing' + suffix.upper())
-    target.write_bytes(b'Native file dialog accepted replacement of this exact path.')
+    target.write_bytes(b'Explicit replacement confirmation applies to this exact path.')
     h = harness(target, index)
     h.invoke()
-    h.wx.MessageBox.assert_not_called()
+    h.wx.MessageBox.assert_called_once()
     h.run()
     assert target.read_bytes() == payload_bytes(format)
+
+
+@pytest.mark.parametrize('index,format,suffix', FORMATS)
+def test_file_appearing_when_picker_closes_requires_explicit_confirmation(
+        harness, tmp_path, index, format, suffix):
+    target = tmp_path / ('selected' + suffix)
+    newer = b'Independent work saved while the picker closes.'
+    h = harness(target, index)
+    h.after_dialog = lambda: target.write_bytes(newer)
+    h.wx.MessageBox.return_value = h.wx.NO
+    h.invoke()
+    h.wx.MessageBox.assert_called_once()
+    assert not h.jobs and not h.reports
+    assert target.read_bytes() == newer
+    h.backend.assert_not_called()
+
+
+@pytest.mark.parametrize('index,format,suffix', FORMATS)
+def test_file_changed_during_explicit_confirmation_is_preserved(
+        harness, tmp_path, index, format, suffix):
+    target = tmp_path / ('selected' + suffix)
+    target.write_bytes(b'Original selected export.')
+    newer = b'Independent work saved during replacement confirmation.'
+    h = harness(target, index)
+    def confirm(*args):
+        target.write_bytes(newer)
+        return h.wx.YES
+    h.wx.MessageBox.side_effect = confirm
+    h.invoke()
+    h.run()
+    assert target.read_bytes() == newer
+    assert len(h.reports) == 1 and 'destination changed' in h.reports[0]
 
 
 @pytest.mark.parametrize('index,format,suffix', FORMATS)
@@ -292,7 +350,7 @@ def test_new_document_cannot_be_written_inside_private_library(
     original = research.original.read_bytes()
     h = harness(target, index)
     h.invoke()
-    h.run()
+    assert not h.jobs
     assert not target.exists()
     assert research.app.database.read_bytes() == database
     assert research.original.read_bytes() == original

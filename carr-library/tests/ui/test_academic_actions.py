@@ -71,13 +71,15 @@ def module():
     names = ('VERTICAL', 'HORIZONTAL', 'EXPAND', 'ALL', 'LEFT', 'RIGHT', 'TOP', 'BOTTOM',
              'ALIGN_RIGHT', 'TE_MULTILINE', 'TE_READONLY', 'VSCROLL', 'TAB_TRAVERSAL',
              'ID_SAVE', 'ID_CANCEL', 'ID_OK', 'EVT_BUTTON', 'EVT_CLOSE', 'FD_OPEN',
-             'FD_FILE_MUST_EXIST', 'FD_SAVE', 'FD_OVERWRITE_PROMPT')
+             'FD_FILE_MUST_EXIST', 'FD_SAVE', 'FD_OVERWRITE_PROMPT',
+             'YES', 'NO', 'YES_NO', 'NO_DEFAULT', 'ICON_QUESTION')
     for number, name in enumerate(names):
         setattr(wx, name, 1 << number)
     wx.callbacks = []
     wx.CallAfter = wx.callbacks.append
     wx.FileDialog = Mock(side_effect=AssertionError('Unexpected file dialog'))
     wx.SingleChoiceDialog = Mock(side_effect=AssertionError('Unexpected choice dialog'))
+    wx.MessageBox = Mock(return_value=wx.YES)
     root = Path(__file__).resolve().parents[2] / 'src/carr_library/ui'
 
     def load(name, path):
@@ -418,8 +420,9 @@ def test_export_keeps_original_private_root_even_if_active_library_changes(
     other_root = tmp_path / 'another-library'
     other_root.mkdir()
     frame.library = SimpleNamespace(root=other_root)
-    with pytest.raises(ValueError, match='outside the private library'):
-        finish(frame)
+    # The original private boundary now rejects before work is queued.
+    assert not frame.jobs
+    assert len(frame.reports) == 1 and 'outside the private library' in frame.reports[0]
     assert destination.read_bytes() == b'Original library bytes'
 
 

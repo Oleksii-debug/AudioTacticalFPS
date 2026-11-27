@@ -290,21 +290,28 @@ class ImportCenterActions:
 
     def save_report(self, event=None):
         import wx
-        from ..research.export_file import write_export
+        from ..research.export_file import write_export, export_completion
+        from .research_actions import NativeDialogs
         try:
             self._bound()
             if self.batch is None:
                 raise ValueError('Select a saved import batch first.')
             batch = self.library.import_batch(self.workspace, self.batch['batch_id'])
             dialog = wx.FileDialog(self, 'Save import report', defaultFile='Import-report.txt',
-                wildcard='Text report (*.txt)|*.txt', style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+                wildcard='Text report (*.txt)|*.txt', style=wx.FD_SAVE)
             try:
                 path = dialog.GetPath() if dialog.ShowModal() == wx.ID_OK else None
             finally:
                 dialog.Destroy()
             if path:
-                write_export(path, batch_report(batch), private_root=self.library.root)
-                self.report('Import report saved.')
+                self._bound()
+                approval = NativeDialogs().approve_export(self, path, private_root=self.library.root, wx_module=wx)
+                if approval is None:
+                    return
+                self._bound()
+                receipt = write_export(path, batch_report(batch), private_root=self.library.root,
+                                       approval=approval)
+                self.report(export_completion('Import report saved.', receipt))
         except Exception as exc:
             self.report(str(exc))
 
