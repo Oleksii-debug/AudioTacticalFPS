@@ -72,17 +72,7 @@ wanted = {
     "standard-installer/negative-build.json",
     "standard-installer/native.json",
     "standard-installer/proof.json",
-    "standard-installer/native-probe.log",
-    "standard-installer/install-setup.log",
-    "standard-installer/install-process.log",
-    "standard-installer/failed-bootstrap-setup.log",
-    "standard-installer/failed-bootstrap-process.log",
-    "standard-installer/repair-setup.log",
-    "standard-installer/repair-process.log",
-    "standard-installer/uninstall-setup.log",
-    "standard-installer/uninstall-process.log",
-    "standard-installer/blocked-uninstall-setup.log",
-    "standard-installer/blocked-uninstall-process.log"
+    "standard-installer/native-probe.log"
 }
 for pin in ARTIFACTS:
     base = 'https://api.github.com/repos/' + REPOSITORY + '/actions/artifacts/' + str(pin['id'])
@@ -104,10 +94,12 @@ for pin in ARTIFACTS:
             raise ValueError('Ambiguous or oversized artifact inventory.')
         if any(len(name) > 4096 for name in names):
             raise ValueError('Artifact member name exceeds the diagnostic bound.')
-        inventory = json.dumps({'total_members': len(names), 'names': names}, ensure_ascii=True)
+        inventory = json.dumps({'total_members': len(names), 'names': names,
+            'sizes': {member.filename: member.file_size for member in members}}, ensure_ascii=True)
         if len(inventory.encode('utf-8')) > 1024 * 1024:
             raise ValueError('Artifact inventory exceeds the diagnostic output bound.')
-        selected = [name for name in names if name in wanted]
+        selected = sorted((name for name in names if name in wanted),
+            key=lambda name: (not name.startswith('standard-update/'), name))
         print('INVENTORY', inventory, flush=True)
         print('SELECTION', json.dumps({'selected': selected,
               'absent_fixed_paths': sorted(wanted.difference(names))}), flush=True)
