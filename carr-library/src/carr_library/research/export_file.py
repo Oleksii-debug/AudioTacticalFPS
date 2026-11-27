@@ -187,13 +187,22 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
                 current != previous):
             raise ValueError('The export destination changed. Choose the destination again.')
         check_cancelled()
-        if require_absent:
-            # Unlike replace(), creating a hard link fails atomically if any
-            # file appeared after the last check. Both paths are on the same
-            # filesystem. If that filesystem lacks this operation, fail without
-            # weakening the caller's explicit no-replacement policy.
+        if require_absent and os.name == 'nt':
+            # Windows rename fails if the destination exists. The single
+            # same-directory move avoids the link/unlink crash window.
+            os.rename(temporary, target)
+        elif require_absent:
+            # POSIX rename can overwrite. Preserve atomic no-clobber via
+            # hard-link publication; never fall back to unconditional replace.
             os.link(temporary, target, follow_symlinks=False)
-            os.unlink(temporary)
+            published_stage, temporary = temporary, None
+            try:
+                published_stage.unlink()
+            except OSError:
+                try:
+                    published_stage.unlink(missing_ok=True)
+                except OSError as exc:
+                    raise OSError('Export was published, but its temporary link could not be removed.') from exc
         else:
             os.replace(temporary, target)
         temporary = None

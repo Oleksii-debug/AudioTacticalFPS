@@ -260,10 +260,21 @@ def run_native(source=None, timeout=120):
             before = keymap.read_bytes()
 
             def cancel(dialog):
-                dialog.shortcut.SetValue('Ctrl+Alt+J')
+                # Extension commands can reserve a formerly unused shortcut.
+                # Validate against the live complete registry and unmanaged menus.
+                for candidate in ('Ctrl+Alt+J', 'Ctrl+Alt+Shift+Q',
+                                  'Ctrl+Alt+Shift+W', 'Ctrl+Alt+Shift+E'):
+                    try:
+                        draft_key = manager.validate({**dialog.draft, test_id: candidate})[test_id]
+                    except ValueError:
+                        continue
+                    break
+                else:
+                    raise AssertionError('No free native shortcut is available for the cancel draft.')
+                dialog.shortcut.SetValue(draft_key)
                 activate(button(dialog.dialog, caption='Assign shortcut'))
                 check('cancel probe has an unapplied native settings draft',
-                      dialog.draft[test_id] == 'Ctrl+Alt+J' and manager.shortcut(test_id) == 'Ctrl+Shift+K')
+                      dialog.draft[test_id] == draft_key and manager.shortcut(test_id) == 'Ctrl+Shift+K')
                 press(wx.WXK_ESCAPE)
 
             check('actual Escape cancels the native settings dialog', not settings_session(cancel))
