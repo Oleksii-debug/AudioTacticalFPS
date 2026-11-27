@@ -15,6 +15,8 @@ import math
 import os
 from pathlib import Path
 import queue
+import struct
+import sys
 import re
 import shutil
 import signal
@@ -317,6 +319,9 @@ try {
 
 
 class SAPI5Engine:
+    """Explicit compatibility host; ordinary discovery uses native COM below."""
+    voice_controls = ('rate', 'volume')
+
     def __init__(self, powershell=None, *, engine_id='sapi5', timeout=300):
         if powershell is None:
             if os.name != 'nt':
@@ -368,7 +373,7 @@ class SAPI5Engine:
                     raise EngineUnavailable('SAPI 5 returned ambiguous default voices.')
                 default = key
             voices.append(Voice(key, row['name'], (row['language'],), self.id,
-                                revision=row['version']))
+                                controls=self.voice_controls, revision=row['version']))
         self._records, self._default = records, default
         return tuple(voices)
 
@@ -389,8 +394,12 @@ class SAPI5Engine:
                 'version': row['version'], 'binary_sha256': digest_file(self.binary, cancelled=cancelled)}
 
     def synthesize(self, text, output, *, voice, language='en', rate=0, pitch=0, volume=1,
-                   cancelled=lambda: False):
+                   punctuation=False, cancelled=lambda: False):
         _request(text, language, rate, pitch, volume)
+        if type(punctuation) is not bool:
+            raise ValueError('Punctuation reading must be boolean.')
+        if punctuation and 'punctuation' not in self.voice_controls:
+            raise EngineUnavailable('This compatibility voice has no punctuation control.')
         if pitch != 0:
             raise EngineUnavailable('This SAPI 5 adapter has no native pitch control; use an audio effect.')
         if rate != int(rate):
@@ -400,9 +409,11 @@ class SAPI5Engine:
             raise EngineUnavailable('The selected SAPI 5 voice does not advertise this language; select a matching voice.')
         with tempfile.TemporaryDirectory(prefix='.speech-', dir=target.parent) as staging:
             temporary = Path(staging) / 'speech.wav'
-            result = self._call({'operation': 'speak', 'voice': row['name'], 'voice_id': row['id'], 'text': text,
-                                 'output': str(temporary), 'rate': int(rate),
-                                 'volume': round(volume * 100)}, cancelled=cancelled)
+            request = {'operation': 'speak', 'voice': row['name'], 'voice_id': row['id'], 'text': text,
+                       'output': str(temporary), 'rate': int(rate), 'volume': round(volume * 100)}
+            if punctuation:
+                request['punctuation'] = True
+            result = self._call(request, cancelled=cancelled)
             response = _sapi_json(result)
             if (not isinstance(response, dict) or set(response) != {'complete', 'voice_id'}
                     or response.get('complete') is not True or response.get('voice_id') != row['id']):
@@ -414,11 +425,138 @@ class SAPI5Engine:
         return target
 
 
+def _native_com_version():
+    # Metadata lookup is passive: COM is imported only by the isolated worker.
+    from importlib.metadata import PackageNotFoundError, version
+    try:
+        actual = version('pywin32')
+    except PackageNotFoundError:
+        raise EngineUnavailable('Native SAPI needs the packaged pywin32 312 Windows dependency.') from None
+    if actual != '312':
+        raise EngineUnavailable('Native SAPI requires the reviewed pywin32 312 dependency.')
+    return actual
+
+
+class NativeSAPI5Engine(SAPI5Engine):
+    """Current SAPI voice API through one fixed, owned native COM worker.
+
+    System.Speech VoiceInfo.Id is the registry-token leaf, not the full COM
+    token. The worker returns that exact leaf, keeping existing sapi5 hashes.
+    A full token/name pair is separately rechecked on every rendering request.
+    """
+    voice_controls = ('rate', 'volume', 'punctuation')
+    protocol = 'carr-sapi-native/1'
+
+    def __init__(self, *, timeout=300):
+        if os.name != 'nt':
+            raise EngineUnavailable('Native SAPI 5 requires Windows and installed local voices.')
+        self.binary = _binary(Path(sys.executable).resolve(strict=True))
+        self.id, self.timeout = 'sapi5', _timeout(timeout)
+        self._records, self._default = {}, None
+        self.architecture = str(struct.calcsize('P') * 8)
+
+    def cache_identity(self, voice, *, cancelled=lambda: False):
+        identity = super().cache_identity(voice, cancelled=cancelled)
+        row = self._record(voice, cancelled=cancelled)
+        helper = Path(__file__).with_name('sapi_native_worker.py')
+        return {**identity, 'native_protocol': self.protocol, 'native_architecture': self.architecture,
+                'native_worker_sha256': digest_file(helper, cancelled=cancelled),
+                'com_client': 'pywin32', 'com_client_version': _native_com_version(),
+                'native_token_sha256': hashlib.sha256(row['token'].encode('utf-8')).hexdigest()}
+
+    def _call(self, request, *, cancelled=lambda: False):
+        from .jobs import file_identity, regular_file, verified_reader
+        _cancelled(cancelled)
+        client_version = _native_com_version()
+        parent = Path(request['output']).parent if request['operation'] == 'speak' else None
+        helper = _binary(Path(__file__).with_name('sapi_native_worker.py'))
+        helper_identity = file_identity(regular_file(helper))
+        with tempfile.TemporaryDirectory(prefix='.native-sapi-', dir=parent) as temporary:
+            temporary = Path(temporary).resolve()
+            source, reply, pcm = (temporary / name for name in ('request.json', 'reply.json', 'speech.wav'))
+            if request['operation'] == 'voices':
+                payload = {'version': 1, 'operation': 'voices'}
+            elif request['operation'] == 'speak':
+                rows = [row for row in self._records.values() if row['id'] == request['voice_id']]
+                if len(rows) != 1:
+                    raise EngineUnavailable('Refresh and select an unambiguous installed SAPI voice.')
+                row = rows[0]
+                payload = dict(version=1, operation='render', token=row['token'], id=row['id'],
+                               name=row['name'], text=request['text'], output=str(pcm),
+                               rate=request['rate'], volume=request['volume'],
+                               punctuation=request.get('punctuation', False))
+            else:
+                raise ValueError('Unsupported native SAPI operation.')
+            raw = json.dumps(payload, ensure_ascii=False, allow_nan=False).encode('utf-8')
+            if len(raw) > 128_000:
+                raise ValueError('The native SAPI request exceeds its byte budget.')
+            with source.open('xb') as stream:
+                stream.write(raw)
+                stream.flush()
+                os.fsync(stream.fileno())
+            command = ([self.binary, '--carr-sapi-native-worker', source, reply]
+                       if getattr(sys, 'frozen', False) else
+                       [self.binary, '-I', '-B', '-X', 'utf8', helper, source, reply])
+            failure = None
+            with verified_reader(helper, expected_identity=helper_identity):
+                try:
+                    _run(command, cancelled=cancelled, timeout=min(self.timeout, 30) if parent is None else self.timeout,
+                         env=offline_environment(), cwd=temporary, output=pcm if parent is not None else reply)
+                except EngineUnavailable as exc:
+                    failure = exc
+                _cancelled(cancelled)
+                try:
+                    info = regular_file(reply)
+                except OSError:
+                    if failure is not None:
+                        raise failure
+                    raise EngineUnavailable('Native SAPI did not return a response.') from None
+                if not 0 < info.st_size <= 2_000_000:
+                    raise EngineUnavailable('Native SAPI returned an oversized or empty response.')
+                with verified_reader(reply, expected_identity=file_identity(info)) as stream:
+                    result = _sapi_json(stream.read(2_000_001))
+            if (not isinstance(result, dict) or type(result.get('version')) is not int or result['version'] != 1):
+                raise EngineUnavailable('Native SAPI returned an invalid protocol response.')
+            if failure is not None or result.get('status') == 'failed':
+                phases = {'validating-request', 'loading-com-client', 'creating-speaker', 'enumerating-voices',
+                          'selecting-voice', 'creating-audio-stream', 'opening-audio-stream',
+                          'synthesizing', 'closing-audio-stream'}
+                phase = result.get('phase')
+                phase = phase if phase in phases else 'native operation'
+                code = result.get('hresult')
+                diagnostic = f' (HRESULT 0x{code:08X})' if type(code) is int and 0 <= code <= 0xffffffff else ''
+                raise EngineUnavailable('Native SAPI failed during ' + phase + diagnostic + '.') from None
+            identity = {'version': 1, 'architecture': self.architecture, 'adapter': 'native-pywin32',
+                        'client_version': client_version}
+            if any(result.get(key) != value for key, value in identity.items()):
+                raise EngineUnavailable('Native SAPI replied from a different host or COM client.')
+            if parent is None:
+                if set(result) != set(identity) | {'voices'} or not isinstance(result['voices'], list):
+                    raise EngineUnavailable('Native SAPI returned an invalid voice inventory.')
+                for row in result['voices']:
+                    if (not isinstance(row, dict) or set(row) != {'id', 'token', 'name', 'language', 'version', 'default'}
+                            or not isinstance(row['token'], str) or not 1 <= len(row['token']) <= 4096
+                            or any(ord(char) < 32 for char in row['token'])
+                            or row['token'].rsplit('\\', 1)[-1] != row['id']):
+                        raise EngineUnavailable('Native SAPI returned an invalid token binding.')
+                return json.dumps(result['voices'], ensure_ascii=False, allow_nan=False).encode('utf-8')
+            if (set(result) != set(identity) | {'status', 'token', 'id', 'name'}
+                    or result['status'] != 'rendered'
+                    or any(result[key] != payload[key] for key in ('token', 'id', 'name'))):
+                raise EngineUnavailable('Native SAPI did not confirm the selected installed voice.')
+            _wave_info(pcm, cancelled=cancelled)
+            _publish(pcm, request['output'], cancelled=cancelled)
+            return json.dumps({'complete': True, 'voice_id': payload['id']}).encode('utf-8')
+
+
 class ESpeakEngine:
-    """Optional installed eSpeak NG CLI; text is UTF-8 stdin, without SSML."""
+    """Optional installed eSpeak/eSpeak NG CLI; literal UTF-8 stdin."""
     id = 'espeak-ng'
 
-    def __init__(self, executable, *, timeout=300):
+    def __init__(self, executable, *, timeout=300, engine_id='espeak-ng'):
+        if engine_id not in ('espeak-ng', 'espeak'):
+            raise ValueError('Choose an installed eSpeak or eSpeak NG engine.')
+        self.id = engine_id
         self.binary, self.timeout = _binary(executable), _timeout(timeout)
         self._voices = {}
 
@@ -436,7 +574,8 @@ class ESpeakEngine:
             if key in voices:
                 continue
             record = Voice(key, name.replace('_', ' '), (language,), self.id,
-                           controls=('rate', 'pitch', 'volume'), license='Installed eSpeak NG; GPL-3.0-or-later')
+                           controls=('rate', 'pitch', 'volume', 'punctuation'),
+                           license='Installed eSpeak; engine and voice-specific terms apply')
             voices[key] = record
         _cancelled(cancelled)
         self._voices = voices
@@ -454,8 +593,10 @@ class ESpeakEngine:
                 'binary_sha256': digest_file(self.binary, cancelled=cancelled)}
 
     def synthesize(self, text, output, *, voice, language='en', rate=0, pitch=0, volume=1,
-                   cancelled=lambda: False):
+                   punctuation=False, cancelled=lambda: False):
         _request(text, language, rate, pitch, volume)
+        if type(punctuation) is not bool:
+            raise ValueError('Punctuation reading must be boolean.')
         self.cache_identity(voice, cancelled=cancelled)
         if language.lower().replace('_', '-').split('-')[0] not in {
                 value.lower().replace('_', '-').split('-')[0] for value in self._voices[voice].languages}:
@@ -466,6 +607,8 @@ class ESpeakEngine:
             command = [self.binary, '-v', voice.split(':', 1)[1], '-s', str(round(175 * 2 ** (rate / 10))),
                        '-p', str(round(50 + pitch * 3)), '-a', str(round(100 * volume)),
                        '-b', '1', '-w', str(temporary), '--stdin']
+            if punctuation:
+                command.append('--punct')
             _run(command, data=text.encode('utf-8'), timeout=self.timeout,
                  cancelled=cancelled, env=offline_environment(), output=temporary)
             _wave_info(temporary, cancelled=cancelled)
@@ -899,28 +1042,45 @@ class VoiceRegistry:
         return _invoke(self._engine(voice).cache_identity, voice, cancelled=cancelled)
 
     def synthesize(self, text, output, *, voice, language='en', rate=0, pitch=0, volume=1,
-                   cancelled=lambda: False):
+                   punctuation=False, cancelled=lambda: False):
         _cancelled(cancelled)
         _request(text, language, rate, pitch, volume)
+        if type(punctuation) is not bool:
+            raise ValueError('Punctuation reading must be boolean.')
+        options = {}
+        if punctuation:
+            selected = next((item for item in self.voices(cancelled=cancelled) if item.id == voice), None)
+            if selected is None or 'punctuation' not in selected.controls:
+                raise EngineUnavailable('The selected local voice does not support punctuation reading.')
+            options['punctuation'] = True
         return self._engine(voice).synthesize(text, output, voice=voice, language=language, rate=rate,
-                                             pitch=pitch, volume=volume, cancelled=cancelled)
+                                             pitch=pitch, volume=volume, cancelled=cancelled, **options)
 
 
-def default_registry(*, dordiai_manifest=None, piper_executable=None, piper_manifest=None, ffmpeg=None):
+def default_registry(*, dordiai_manifest=None, piper_executable=None, piper_manifest=None, ffmpeg=None,
+                     include_powershell=False):
+    if type(include_powershell) is not bool:
+        raise ValueError('PowerShell compatibility discovery requires an explicit boolean choice.')
     engines, notices = [], []
     if os.name == 'nt':
-        root = Path(os.environ.get('SystemRoot', r'C:\Windows'))
-        for identity, directory in (('sapi5', 'System32'), ('sapi5-32', 'SysWOW64')):
-            binary = root / directory / 'WindowsPowerShell/v1.0/powershell.exe'
+        engines.append(NativeSAPI5Engine())
+        if include_powershell:
+            # Preserve explicit 32-bit-only compatibility without silently
+            # replacing the native sapi5 owner or rebinding saved voice IDs.
+            root = Path(os.environ.get('SystemRoot', r'C:\Windows'))
+            binary = root / 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe'
             if binary.is_file():
-                engines.append(SAPI5Engine(binary, engine_id=identity))
+                engines.append(SAPI5Engine(binary, engine_id='sapi5-32'))
     else:
         notices.append({'engine': 'sapi5', 'available': False, 'reason': 'SAPI 5 requires Windows.'})
     espeak = shutil.which('espeak-ng')
+    espeak_id = 'espeak-ng'
+    if not espeak:
+        espeak, espeak_id = shutil.which('espeak'), 'espeak'
     if espeak:
-        engines.append(ESpeakEngine(Path(espeak).resolve()))
+        engines.append(ESpeakEngine(Path(espeak).resolve(), engine_id=espeak_id))
     else:
-        notices.append({'engine': 'espeak-ng', 'available': False, 'reason': 'eSpeak NG is not installed.'})
+        notices.append({'engine': 'espeak-ng', 'available': False, 'reason': 'eSpeak NG/eSpeak is not installed.'})
     selected_ffmpeg = ffmpeg or shutil.which('ffmpeg')
     if selected_ffmpeg:
         engines.append(FliteEngine(Path(selected_ffmpeg).resolve()))

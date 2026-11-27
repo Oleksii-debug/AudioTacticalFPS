@@ -35,7 +35,7 @@ license-files = [
 ]
 
 [project.optional-dependencies]
-desktop = ["wxPython==4.2.4"]
+desktop = ["wxPython==4.2.4", "pywin32==312; sys_platform == 'win32'"]
 sync = ["cryptography==50.0.2"]
 word = ["pywin32==312; sys_platform == 'win32'"]
 trust = [
