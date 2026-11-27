@@ -1,6 +1,6 @@
 """Confirmation captures real destination state before the native modal answer.
 
-The dialog is controlled headlessly; filesystem inspection and publication are
+The native question is controlled headlessly; filesystem inspection and publication are
 real. Native keyboard and accessibility evidence belong to the Windows probe.
 """
 import sys
@@ -23,11 +23,11 @@ def paths(tmp_path):
 @pytest.fixture
 def native(monkeypatch):
     wx = SimpleNamespace(YES_NO=1, NO_DEFAULT=2, ICON_QUESTION=4,
-                         ID_YES=10, ID_NO=11, ID_CANCEL=12)
-    dialog = Mock()
-    wx.MessageDialog = Mock(return_value=dialog)
+                         YES=10, NO=11, CANCEL=12)
+    question = Mock()
+    wx.MessageBox = question
     monkeypatch.setitem(sys.modules, 'wx', wx)
-    return wx, dialog
+    return wx, question
 
 
 def test_absent_destination_needs_no_native_import_and_remains_no_clobber(paths, monkeypatch):
@@ -41,46 +41,46 @@ def test_absent_destination_needs_no_native_import_and_remains_no_clobber(paths,
     assert target.read_bytes() == b'Competing new file'
 
 
-@pytest.mark.parametrize('answer', ['ID_NO', 'ID_CANCEL'])
+@pytest.mark.parametrize('answer', ['NO', 'CANCEL'])
 def test_declined_or_cancelled_confirmation_never_grants_approval(paths, native, answer):
     private, target = paths
     target.write_bytes(b'Existing work')
-    wx, dialog = native
-    dialog.ShowModal.return_value = getattr(wx, answer)
+    wx, question = native
+    question.return_value = getattr(wx, answer)
     parent = object()
     assert confirm_export_destination(parent, target, private_root=private,
                                       title='Replace bibliography') is None
-    owner, message, caption, style = wx.MessageDialog.call_args.args
+    message, caption, style, owner = wx.MessageBox.call_args.args
     assert owner is parent and target.name in message and caption == 'Replace bibliography'
     assert style == wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION
-    dialog.Destroy.assert_called_once()
+    question.assert_called_once()
     assert target.read_bytes() == b'Existing work'
 
 
 def test_yes_is_bound_to_state_before_question_not_after_it(paths, native):
     private, target = paths
     target.write_bytes(b'Originally selected work')
-    wx, dialog = native
+    wx, question = native
 
-    def answer_after_competing_save():
+    def answer_after_competing_save(*args, **kwargs):
         target.write_bytes(b'Newer work saved during the question')
-        return wx.ID_YES
+        return wx.YES
 
-    dialog.ShowModal.side_effect = answer_after_competing_save
+    question.side_effect = answer_after_competing_save
     approval = confirm_export_destination(object(), target, private_root=private)
     assert not approval.require_absent
     with pytest.raises(ValueError, match='destination changed'):
         write_export(target, 'Stale replacement', private_root=private, approval=approval)
-    dialog.Destroy.assert_called_once()
+    question.assert_called_once()
     assert target.read_bytes() == b'Newer work saved during the question'
 
 
-def test_modal_failure_disposes_question_and_preserves_file(paths, native):
+def test_native_question_failure_preserves_file(paths, native):
     private, target = paths
     target.write_bytes(b'Existing work')
-    _, dialog = native
-    dialog.ShowModal.side_effect = RuntimeError('Native modal failure')
+    _, question = native
+    question.side_effect = RuntimeError('Native modal failure')
     with pytest.raises(RuntimeError, match='Native modal failure'):
         confirm_export_destination(object(), target, private_root=private)
-    dialog.Destroy.assert_called_once()
+    question.assert_called_once()
     assert target.read_bytes() == b'Existing work'

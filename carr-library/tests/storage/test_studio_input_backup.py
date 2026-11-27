@@ -84,6 +84,7 @@ def test_real_render_backup_delete_original_state_restore_and_render_again(tmp_p
     first_job = service.submit(first_project, original_output, stems=False,
                                operation_id='completed-first-revision')
     complete = service.run(first_job)
+    assert complete['total_disk_bytes'] == service.total_disk_bytes
     expected_master = Path(complete['destination'], 'master.wav').read_bytes()
     current = replace(first_project, revision=2,
         scenes=(replace(first_project.scenes[0],
@@ -236,6 +237,9 @@ def historical_v4(backup, *, forged_review=None, uppercase_job=False):
     manifest['state'] = [item for item in manifest['state'] if item not in omitted]
     for item in omitted:
         (backup / 'state' / item['filename']).unlink()
+    # The old writer created parents only for retained files. Removing all
+    # inputs from this fixture must also remove their now-undeclared directory.
+    (backup / 'state/studio/inputs').rmdir()
     if forged_review is not None:
         raw = encode(forged_review)
         (backup / 'state' / REVIEW).write_bytes(raw)
@@ -434,6 +438,9 @@ def test_legacy_v4_without_studio_receipt_remains_readable(backed_up, tmp_path):
     manifest['state'] = [item for item in manifest['state'] if item not in omitted]
     for item in omitted:
         (backup / 'state' / item['filename']).unlink()
+    # The old writer created parents only for retained files. Removing all
+    # inputs from this fixture must also remove their now-undeclared directory.
+    (backup / 'state/studio/inputs').rmdir()
     raw = encode(manifest)
     (backup / 'manifest.json').write_bytes(raw)
     restored = restore_backup(backup, tmp_path / 'restored', sha256(raw).hexdigest())
@@ -443,6 +450,30 @@ def test_legacy_v4_without_studio_receipt_remains_readable(backed_up, tmp_path):
     assert legacy_job['status'] == 'waiting-input' and legacy_job['destination'] == ''
     assert legacy_job['recovery']['inputs_retained'] is False
     assert legacy_job['recovery']['requires_output_directory'] is True
+
+
+@pytest.mark.parametrize('budget', [True, 1.5, 1024**2 - 1, 2**63])
+def test_typed_studio_rejects_invalid_saved_disk_budget(backed_up, tmp_path, budget):
+    app, _source, _project, _backup, _digest = backed_up
+    path = app.root / 'state/studio/jobs/restorable-job/job.json'
+    job = read_json(path)
+    job['total_disk_bytes'] = budget
+    atomic_json(path, job, replace=True)
+    target = tmp_path / 'invalid-disk-budget'
+    with pytest.raises(ValueError, match='invalid backup sidecar'):
+        create_backup(app, target)
+    assert not target.exists()
+    assert read_json(path) == job
+
+
+def test_historical_archive_still_rejects_an_undeclared_input_directory(backed_up, tmp_path):
+    _app, _source, _project, backup, _digest = backed_up
+    digest = historical_v4(backup)
+    (backup / 'state/studio/inputs').mkdir()
+    target = tmp_path / 'undeclared-directory'
+    with pytest.raises(ValueError, match='unexpected files'):
+        restore_backup(backup, target, digest)
+    assert not target.exists()
 
 
 def test_invalid_typed_project_fails_before_backup_publication(tmp_path):

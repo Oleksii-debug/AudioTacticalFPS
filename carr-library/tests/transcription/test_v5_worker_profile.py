@@ -385,14 +385,36 @@ def test_v5_stop_preserves_cache_and_resume_inputs_then_completes(v5, tmp_path):
 
 
 def test_v5_completed_results_restore_and_remain_readable_without_engine(v5, tmp_path):
-    app, workspace, service, _, runtime, _ = v5
-    identity, result = run(v5)
+    app, workspace, service, source, runtime, models = v5
+    # This archive contains actual producer paths, not fixture instrumentation.
+    # Rebind the synthetic worker before submit so its verified identity remains
+    # exact. Other protocol scenarios keep their existing diagnostic fixtures.
+    worker = runtime / 'worker.py'
+    code = worker.read_text(encoding='utf-8')
+    for original, replacement in (
+            ("history_path = job / 'fixture-runs.json'",
+             "history_path = job / 'runtime-home' / 'fixture-runs.json'"),
+            ("cache = job / 'logs' / 'cache_v5'",
+             "cache = job / 'logs' / 'cache_v5' / 'aa'"),
+            ("'synthetic-retained.txt'", "('a' * 64 + '.txt')")):
+        assert code.count(original) == 1
+        code = code.replace(original, replacement)
+    worker.write_text(code, encoding='utf-8')
+    service.configure(Path(sys.executable).resolve(), worker, models, protocol=PROTOCOL)
+    # The worker's default success scenario needs no root fixture-mode.json.
+    identity = service.submit([source])
+    result = service.run(identity, timeout=10)
     assert result['status'] == 'completed', result['last_error']
+    assert read_json(service._path(identity) / 'runtime-home/fixture-runs.json')
+    cache = service._path(identity) / 'logs/cache_v5/aa' / ('a' * 64 + '.txt')
+    assert cache.read_text() == 'Synthetic cache; no inference.'
     checksum = app.backup(tmp_path / 'backup')
     for name in ('worker.py','local_models.py','transcript_features.py'):
         (runtime / name).unlink()
     restore_backup(tmp_path / 'backup', tmp_path / 'restored', expected_manifest_sha256=checksum)
     recovered = LibraryApp(tmp_path / 'restored').transcription(workspace)
+    assert not (recovered._path(identity) / 'runtime-home').exists()
+    assert (recovered._path(identity) / cache.relative_to(service._path(identity))).read_bytes() == cache.read_bytes()
     assert recovered.text(identity, result['sources'][0]['filename']) == 'Synthetic V5 fixture.\n'
     assert recovered.run(identity, timeout=10)['status'] == 'completed'
     recovered.export(identity, tmp_path / 'restored-export')

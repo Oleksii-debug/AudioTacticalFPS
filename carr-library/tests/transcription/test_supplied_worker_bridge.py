@@ -570,17 +570,21 @@ def test_edit_rechecks_workspace_after_receipt_verification(prepared, monkeypatc
     original_edit = saved_edit.read_bytes()
     original_job = (directory / 'job.json').read_bytes()
     original_media = original.read_bytes()
-    verify = service.verify
+    # save_edit already owns the job lock and delegates to this real verifier.
+    verify = service._verify_result
+    verified_calls = []
 
     def archive_after_verification(*args, **kwargs):
         verified = verify(*args, **kwargs)
+        verified_calls.append(verified['id'])
         app.archive_workspace(workspace)
         return verified
 
-    monkeypatch.setattr(service, 'verify', archive_after_verification)
+    monkeypatch.setattr(service, '_verify_result', archive_after_verification)
     with pytest.raises(ValueError, match='archived'):
         service.save_edit(identity, source, 'Must not be published after archival.')
 
+    assert verified_calls == [identity]
     assert list((directory / 'edits').iterdir()) == [saved_edit]
     assert saved_edit.read_bytes() == original_edit
     assert (directory / 'job.json').read_bytes() == original_job

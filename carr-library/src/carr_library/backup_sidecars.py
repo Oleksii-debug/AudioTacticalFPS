@@ -322,7 +322,7 @@ def validate_sidecar(db, name, raw):
             if project.id != match[1] or (match[2] is not None and
                     (project.revision != int(match[2]) or project.fingerprint != match[3])):
                 raise ValueError('Audio project disagrees with its stored identity or revision.')
-    except (UnicodeError, ValueError, TypeError, KeyError, RecursionError) as exc:
+    except (UnicodeError, ValueError, TypeError, KeyError, RecursionError, OverflowError) as exc:
         raise RestoreError('invalid backup sidecar ' + name + ': ' + str(exc)) from exc
 
 

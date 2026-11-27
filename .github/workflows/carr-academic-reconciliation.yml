@@ -1,7 +1,7 @@
 name: CARR academic reconciliation acceptance
 on:
   push:
-    branches: [carr/academic-search-20261126, carr/verified-platform-union-5900]
+    branches: [carr/academic-search-20261126, carr/verified-platform-union-5900, carr/verified-platform-qualification-5900]
     paths:
       - carr-library/**
       - .github/workflows/carr-academic-reconciliation.yml
@@ -49,6 +49,14 @@ jobs:
           python -m compileall -q src bootstrap tests scripts packaging
           python scripts/ci_check.py --jobs 3 \
             tests/research/test_academic_library.py \
+            tests/research/test_bibtex_import.py \
+            tests/academic_integration/test_formatting.py \
+            tests/academic_integration/test_documents.py \
+            tests/academic_integration/test_regeneration.py \
+            tests/academic_integration/test_end_to_end.py \
+            tests/academic_integration/test_citation_ui.py \
+            tests/ui/test_export_destination.py \
+            tests/ui/test_profile_project_exports.py \
             tests/reader/test_export_reconciliation.py \
             tests/e2e/test_search_operation_budget.py \
             tests/e2e/test_catalog_insights_workflow.py \
@@ -85,6 +93,9 @@ jobs:
             tests/storage/test_studio_input_backup.py \
             tests/storage/test_backup_primary_producers.py \
             tests/assistant/test_library_transcription.py \
+            tests/transcription/test_supplied_worker_bridge.py \
+            tests/transcription/test_v5_worker_profile.py \
+            tests/transcription/test_runtime_interpreter.py \
             tests/extract/test_special_ocr_models.py \
             tests/packaging/test_ci_check.py
       # This source-only job supplements the complete native Windows/bundle gate.

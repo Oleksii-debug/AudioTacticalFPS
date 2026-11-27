@@ -184,6 +184,8 @@ def test_shared_assistant_asr_backup_keeps_child_but_not_relocated_plan_authorit
     if state == 'complete':
         assert native.verify(child_id)['done'] == 1
         assert intent['transcription_export']
+        if child['protocol'] == 'whisper-v5-manifest-v1':
+            assert [row['attempt'] for row in child['effective_runs']] == ['original']
     else:
         assert 'transcription_export' not in intent
         assert child['receipts'] == []  # Stopped cache is not accepted output.
@@ -221,6 +223,36 @@ def test_shared_assistant_asr_backup_keeps_child_but_not_relocated_plan_authorit
     assert ({path.relative_to(outputs): path.read_bytes()
              for path in destination.rglob('*') if path.is_file()}
             if destination.exists() else {}) == exported
+
+    if state == 'complete' and child['protocol'] == 'whisper-v5-manifest-v1':
+        # Preserve the real worker's named attempt, and reject a resealed
+        # checkpoint with a number, boolean or unregistered label.
+        relative = (native._path(child_id).relative_to(app.root) / 'job.json').as_posix()
+        raw = (folder / relative).read_bytes()
+        for index, invalid in enumerate((1, True, 'unregistered')):
+            damaged = json.loads(raw)
+            damaged['effective_runs'][0]['attempt'] = invalid
+            checksum = _resign(folder, relative, json.dumps(damaged).encode())
+            rejected = tmp_path / ('invalid-attempt-' + str(index))
+            with pytest.raises(ValueError, match='attempt label'):
+                restore_backup(folder, rejected, checksum)
+            assert not rejected.exists()
+        assert native.get(child_id) == child
+        assert recovered.get(child_id) == child
+
+
+def test_receipt_protocol_cannot_claim_v5_attempt_labels(retained, tmp_path):
+    app, _workspace, service, identity, _source, _policy = retained
+    path = service._path(identity) / 'job.json'
+    job = json.loads(path.read_bytes())
+    job['effective_runs'] = [{'source': job['sources'][0]['filename'],
+                              'attempt': 'original', 'settings': job['settings']}]
+    path.write_bytes(json.dumps(job).encode())
+    target = tmp_path / 'wrong-protocol-attempt'
+    with pytest.raises(ValueError, match='attempt label'):
+        create_backup(app, target)
+    assert not target.exists()
+    assert json.loads(path.read_bytes()) == job
 
 
 @pytest.mark.parametrize('relative', [
