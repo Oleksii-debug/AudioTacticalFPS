@@ -20,7 +20,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        family: [calibre, djvu, chm]
+        # The explicitly named diagnostics branch measures only the failed CHM
+        # publisher fixture; normal qualification branches retain all families.
+        family: ${{ fromJSON(contains(github.ref_name, 'chm-diagnostics') && '["chm"]' || '["calibre","djvu","chm"]') }}
     defaults:
       run:
         shell: pwsh
