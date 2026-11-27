@@ -83,15 +83,18 @@ def _unique(pairs):
     return value
 
 
-def _validated_source_anchor(value, text):
-    """Validate a retained-source locator as data, not as quotation authority.
+def _validated_source_anchor(value, text=None, *, source_characters=None):
+    """Validate retained-source shape; with text, also verify its exact slices.
 
-    The library still must authorize and resolve each ReadingLocation. A portable
-    file may be edited externally; this checks its internal structure and exact
-    snapshot slices, not the truth of its claimed library identity.
+    Shape-only callers inspect inert derivative receipts, not source authority.
+    The library still must authorize and resolve each ReadingLocation.
     """
     from ..reader.reading_state import ReadingLocation
 
+    if text is not None:
+        source_characters = len(text)
+    if type(source_characters) is not int or not 0 <= source_characters <= 2_000_000:
+        raise ValueError('Invalid reading-copy source length.')
     if (type(value) is not dict or set(value) != {'workspace', 'edition', 'revision',
             'asset_sha256', 'positions', 'quotation_authority'}
             or value['quotation_authority'] is not False
@@ -104,7 +107,7 @@ def _validated_source_anchor(value, text):
                 'start', 'end', 'text_sha256', 'text_verified_at_capture'}
                 or type(row['ordinal']) is not int or not 1 <= row['ordinal'] <= 10000
                 or type(row['start']) is not int or type(row['end']) is not int
-                or not 0 <= row['start'] <= row['end'] <= len(text)
+                or not 0 <= row['start'] <= row['end'] <= source_characters
                 or type(row['text_verified_at_capture']) is not bool):
             raise ValueError('Invalid reading-copy source position.')
         ReadingLocation(value['workspace'], value['edition'], value['revision'],
@@ -115,12 +118,13 @@ def _validated_source_anchor(value, text):
         elif (row['ordinal'] != previous['ordinal'] + 1
               or row['kind'] != previous['kind'] or row['index'] <= previous['index']
               or row['start'] != previous['end'] + 2
-              or text[previous['end']:row['start']] != '\n\n'):
+              or (text is not None and text[previous['end']:row['start']] != '\n\n')):
             raise ValueError('Invalid source position order or narration separator.')
-        if sha256(text[row['start']:row['end']].encode('utf-8')).hexdigest() != row['text_sha256']:
+        if (text is not None and sha256(text[row['start']:row['end']].encode('utf-8')).hexdigest()
+                != row['text_sha256']):
             raise ValueError('Reading-copy source position checksum mismatch.')
         previous = row
-    if previous['end'] != len(text):
+    if previous['end'] != source_characters:
         raise ValueError('Unmapped text follows the last source position.')
     return deepcopy(value)
 

@@ -463,6 +463,18 @@ def test_saved_wav_rechecks_source_before_publication(reader_ui, changed):
             assert future.exception() is None
             with wave.open(str(destination), 'rb') as result:
                 assert result.getnframes() > 0
+            from carr_library.speech.narration_receipt import read_narration_receipt
+            record = read_narration_receipt(destination, document=e.source.reading_document())
+            assert record['narration']['source_anchor'] == e.source.reading_document().source_anchor
+            assert record['narration']['quotation_authority'] is False
+            e.paths.append(destination)
+            inspector = next(c for c in e.controls if c.name == 'Inspect saved WAV provenance'
+                             and not c.destroyed)
+            inspector.handlers['button'](None)
+            assert e.complete().exception() is None
+            status = next(c for c in e.controls if c.name == 'Speech and save status'
+                          and not c.destroyed)
+            assert 'PCM and receipt checksums match' in status.GetValue()
         assert not list(e.tmp_path.glob('.speech-*'))
     reader_ui.run(scenario)
 

@@ -84,6 +84,7 @@ VOICE_READER_COMMANDS = (
     CommandSpec('voice_reader.current_unit', 'Select current text unit', 'voice_reader'),
     CommandSpec('voice_reader.next_unit', 'Next text unit', 'voice_reader'),
     CommandSpec('voice_reader.read_unit', 'Read current text unit', 'voice_reader'),
+    CommandSpec('voice_reader.inspect_audio', 'Inspect saved WAV provenance', 'voice_reader'),
     CommandSpec('voice_reader.pause', 'Pause or resume speech', 'voice_reader', 'F7'),
     CommandSpec('voice_reader.stop', 'Stop speech operation', 'voice_reader', 'F8'),
     CommandSpec('voice_reader.save', 'Save reading copy', 'voice_reader', 'Ctrl+S'),

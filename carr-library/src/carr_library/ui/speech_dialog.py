@@ -143,6 +143,9 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         row.Add(control, 0, wx.ALL, 4)
     layout.Add(row, 0, wx.EXPAND)
     row = wx.WrapSizer(wx.HORIZONTAL)
+    inspect_audio_button = wx.Button(dialog, label='Inspect saved WAV provenance')
+    inspect_audio_button.SetName('Inspect saved WAV provenance')
+    row.Add(inspect_audio_button, 0, wx.ALL, 4)
     read_line = wx.Button(dialog, label='Read current &line')
     read_paragraph = wx.Button(dialog, label='Read current para&graph')
     read_clipboard_button = wx.Button(dialog, label='Read &clipboard once')
@@ -191,6 +194,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             volume.SetValue(100)
         for button in (read, cursor, read_line, read_paragraph, read_clipboard_button, export_audio):
             button.Enable(bool(current) and not busy)
+        inspect_audio_button.Enable(not busy)
         dictionary.Enable(source_loaded and not busy)
         find_button.Enable(source_loaded and not busy)
         playback_button.Enable(last_audio is not None and getattr(player, 'path', None) is not None and not busy)
@@ -711,8 +715,21 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             check_current()
             if registry is None or not voices:
                 raise ValueError('Choose an installed local voice first.')
-            content = text_value(content if content is not None else selected_text(from_cursor, mode=mode),
-                                 'Text to read')
+            narration = None
+            if destination is not None:
+                if content is not None or from_cursor or mode != 'selection':
+                    raise ValueError('Save WAV uses an explicit selection or the complete reading copy.')
+                from ..speech.narration_receipt import capture_narration
+                sync_document()
+                if editor.GetStringSelection():
+                    start, end = native_selection(editor, document.text)
+                else:
+                    start, end = 0, len(document.text)
+                content = text_value(document.text[start:end], 'Text to read')
+                narration = capture_narration(document, start, end)
+            else:
+                content = text_value(content if content is not None else selected_text(from_cursor, mode=mode),
+                                     'Text to read')
             selected = voice_choice.GetSelection()
             if not 0 <= selected < len(voices):
                 raise ValueError('Choose an installed local voice first.')
@@ -737,7 +754,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                     start_playback(playing)
                 else:
                     report(f'WAV saved: {result.path}. Duration {result.duration_seconds:.1f} seconds; '
-                           f'{result.sample_rate} Hz; {result.channels} channels.', focus=True)
+                           f'{result.sample_rate} Hz; {result.channels} channels. '
+                           'Narration provenance is embedded; this is not quotation evidence.', focus=True)
             report(('Rendering an explicit clipboard snapshot; it is not part of this reading copy. '
                     if mode == 'clipboard' else 'Rendering locally. Original text is unchanged. ')
                    + 'F8 cancels.')
@@ -780,7 +798,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                         raise ValueError('The reading copy changed during WAV export.')
 
                 run(lambda: registry.synthesize(content, voice.id, output,
-                    settings=settings, cancelled=cancel.is_set, before_publish=attest_source), rendered)
+                    settings=settings, cancelled=cancel.is_set, before_publish=attest_source,
+                    narration=narration), rendered)
             else:
                 run(lambda: registry.synthesize(content, voice.id, output,
                                                 settings=settings, cancelled=cancel.is_set), rendered)
@@ -859,10 +878,27 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             report(str(exc), focus=True)
 
     def save_audio(event=None):
-        with wx.FileDialog(dialog, 'Save narrated PCM WAV', wildcard='PCM WAV (*.wav)|*.wav',
-                           style=wx.FD_SAVE) as chooser:
+        with wx.FileDialog(dialog, 'Save narrated PCM WAV with provenance',
+                           wildcard='PCM WAV (*.wav)|*.wav', style=wx.FD_SAVE) as chooser:
             if chooser.ShowModal() == wx.ID_OK:
                 speak(destination=Path(chooser.GetPath()))
+
+    def inspect_audio(event=None):
+        try:
+            if busy or not alive:
+                return
+            check_current()
+            with wx.FileDialog(dialog, 'Inspect local WAV narration provenance',
+                    wildcard='PCM WAV (*.wav)|*.wav', style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as chooser:
+                if chooser.ShowModal() != wx.ID_OK:
+                    return
+                path = Path(chooser.GetPath())
+            check_current()
+            from ..speech.narration_receipt import read_narration_receipt, describe_narration_receipt
+            run(lambda: read_narration_receipt(path, cancelled=cancel.is_set),
+                lambda record: report(describe_narration_receipt(record), focus=True))
+        except Exception as exc:
+            report(str(exc), focus=True)
 
     def pause_audio(event=None):
         nonlocal playback_generation, repeat_scheduled
@@ -1043,7 +1079,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
 
     for control, handler in ((reload_button, reload), (progress_voice, select_progress_voice), (read, speak),
         (cursor, lambda event: speak(from_cursor=True)), (pause, pause_audio), (stop, stop_audio),
-        (export_audio, save_audio), (save_button, save_project),
+        (export_audio, save_audio), (inspect_audio_button, inspect_audio),
+        (save_button, save_project),
         (save_as, lambda event: save_project(choose=True)), (open_button, open_project),
         (undo, history), (redo, lambda event: history(forward=True)),
         (original, compare), (seek, seek_audio), (playback_button, show_playback),
@@ -1075,6 +1112,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         'voice_reader.dictionary': (dictionary, show_dictionary),
         'voice_reader.find': (find_button, find_replace),
         'voice_reader.playback': (playback_button, show_playback),
+        'voice_reader.inspect_audio': (inspect_audio_button, inspect_audio),
         'voice_reader.previous_unit': (previous_unit, lambda event: navigate_unit(direction=-1)),
         'voice_reader.current_unit': (current_unit, navigate_unit),
         'voice_reader.next_unit': (next_unit, lambda event: navigate_unit(direction=1)),

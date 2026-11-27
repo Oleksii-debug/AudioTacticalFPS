@@ -84,6 +84,30 @@ shortcuts without taking native editing or screen-reader keys. Saved voice-reade
 carets use Unicode text offsets and restore through observed native text ranges.
 This is separate from the Reading Desk's page-level resume described above.
 
+### Portable narration provenance
+
+**Save WAV** writes an explicitly selected reading-copy range (or the complete
+copy) as PCM with one bounded trailing RIFF provenance chunk. The receipt and
+audio are staged and published together using the existing no-clobber writer.
+It records the exact Unicode range, reading-project and text hashes, retained
+source anchor (when present), voice identity hash, available runtime fingerprint,
+settings and measured PCM hash/geometry. It embeds neither source text nor a
+source filesystem path. Source identifiers travel with the WAV: review them
+before sharing a local export. A portable source locator is not an authority
+to open another workspace; reopened bound copies must pass retained-source
+authorization before export.
+
+Use **Inspect saved WAV provenance** in the voice reader (Tab or the shared
+command finder). Inspection is local, read-only, cancellable and does not
+play audio or resolve another workspace. It reports missing or damaged
+provenance rather than inventing pages. A receipt checksum is not a signature,
+acoustic attestation, source approval or quotation permission. A caller with
+the saved reading project can also compare its exact snapshot through the
+existing receipt reader. Legacy PCM without the chunk remains readable;
+third-party converters may remove the chunk. Such a file is not verified
+provenance. Exported WAVs remain user-owned external files, not managed
+library backup inputs.
+
 ## Finding and navigating a reading copy
 
 Choose **Word**, **Sentence** or **Paragraph** in **Navigation unit**, then use
