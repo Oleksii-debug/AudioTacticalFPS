@@ -1,0 +1,48 @@
+{
+  "schema": "carr-reviewed-change-manifest/1",
+  "title": "Bounded public selected-runtime acquisition diagnostics",
+  "status": "STATIC_ACCEPTED_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base_commit": "e7636ca3f9e6b7474145f6e1799bd19a135a3250",
+  "base_tree": "a82f252b37db7ba244ba2cc25246a31dc78085d4",
+  "files": [
+    {
+      "path": "carr-library/scripts/prepare_selected_conversion_runtime.py",
+      "before": "e659599241a3d973a160b223b1d108b99feda7c7",
+      "after": "de90870ad234b0a3e329b9748d05485a231f0bfd"
+    },
+    {
+      "path": ".github/workflows/carr-next15-conversion.yml",
+      "before": "791430237558ef1ae715f8f61d56789b3253a9a2",
+      "after": "01dfc5101843cab075d9fd2faa8c3496d21983c1"
+    }
+  ],
+  "actual_failure_evidence": "3a22533a1173e3ce67f68d755ae30617b19890ca",
+  "change": "Instrument only download() with one bounded ASCII JSON stderr record on exit. Fields are pinned input identifier, elapsed seconds, actual response bytes read including a block refused at the unchanged deadline, final hostname only, outcome and exception type.",
+  "privacy": "No URL path/query, request/response headers, body, exception message, credentials, account token or local path is included.",
+  "preserved": [
+    "All original download statements and order reconstruct byte-for-byte after removing the wrapper and three observation statements.",
+    "All code outside download() is unchanged.",
+    "The fixed seven public inputs, URLs, hashes and selected native-runtime versions are unchanged.",
+    "The total 600-second acquisition deadline, 30-second request timeout, one-GiB combined download cap and per-input byte bounds are unchanged.",
+    "The original hash verification, no-existing-target test and final rename occur before PASS is reported.",
+    "Original transfer exceptions are re-raised unchanged; diagnostic write exceptions cannot replace their outcome.",
+    "Normal stdout and final acquisition receipt schema/content are unchanged.",
+    "No retry, mirror, cache, network-authority change or additional fetch is introduced.",
+    "The workflow differs only in two exact preparer Git-blob pins; reversing them reconstructs the full old workflow.",
+    "Source/installed five whole suites remain 209/209 with 29,49,19,17,95 cases; all native14/whole34/GUI30 obligations and limits remain unchanged."
+  ],
+  "verification": {
+    "exact_blob_readbacks": true,
+    "reverse_body_and_workflow_audits": true,
+    "independent_peer": {
+      "agent": "/root/locate_project",
+      "verdict": "ACCEPTED_STATIC_NOT_RUN",
+      "scope": "Exact download-body preservation, redaction and diagnostic-error lifetime"
+    },
+    "execution": "NOT_RUN",
+    "new_tests": "None: reversible diagnostic-only instrumentation; existing entire strict route remains required.",
+    "branch_or_run_changes": "NONE"
+  },
+  "artifact_scope": "Public-safe source and CI evidence only. No downloaded runtime, document or user data."
+}

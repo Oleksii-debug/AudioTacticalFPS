@@ -50,39 +50,68 @@ def snapshot(path, maximum):
 
 
 def download(item, target, remaining, deadline):
-    limit = min(item.get('maximum_bytes', item.get('bytes', 0)), remaining)
-    require(type(limit) is int and 0 < limit <= MAXIMUM_DOWNLOAD, 'Invalid download budget.')
-    require(urllib.parse.urlsplit(item['url']).scheme == 'https', 'Only pinned public HTTPS is allowed.')
-    partial = target.with_suffix(target.suffix + '.partial')
-    digest = sha256()
-    # No caller headers, account token or proxy credential is forwarded.
-    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
-    count = 0
-    with opener.open(urllib.request.Request(item['url'], headers={
-            'User-Agent': 'CARR-public-converter-qualification/1'}), timeout=30) as response:
-        require(urllib.parse.urlsplit(response.geturl()).scheme == 'https', 'Insecure runtime redirect.')
-        length = response.headers.get('Content-Length')
-        if length is not None:
-            require(length.isdecimal() and int(length) <= limit, 'Oversized runtime response.')
-        with partial.open('xb') as output:
-            while block := response.read(min(1024 * 1024, limit - count + 1)):
-                require(time.monotonic() < deadline, 'Public acquisition exceeded its total deadline.')
-                count += len(block)
-                require(count <= limit, 'Public download exceeded its declared bound.')
-                digest.update(block)
-                output.write(block)
-    require(count > 0 and ('bytes' not in item or count == item['bytes']),
-            'Public input has a different exact byte count.')
-    if 'sha256' in item:
-        require(digest.hexdigest() == item['sha256'], 'Public runtime archive hash differs.')
-    else:
-        raw = partial.read_bytes()
-        require(sha1(b'blob ' + str(len(raw)).encode('ascii') + b'\0' + raw).hexdigest()
-                == item['git_blob_sha1'], 'Public fixture/notice Git blob differs.')
-    # Target does not exist in this fresh owned directory.
-    require(not target.exists(), 'Public input target already exists.')
-    partial.rename(target)
-    return {'bytes': count, 'sha256': digest.hexdigest()}
+    started = time.monotonic()
+    read_bytes, final_hostname = 0, None
+    outcome, exception_type = 'FAIL', None
+    try:
+        limit = min(item.get('maximum_bytes', item.get('bytes', 0)), remaining)
+        require(type(limit) is int and 0 < limit <= MAXIMUM_DOWNLOAD, 'Invalid download budget.')
+        require(urllib.parse.urlsplit(item['url']).scheme == 'https', 'Only pinned public HTTPS is allowed.')
+        partial = target.with_suffix(target.suffix + '.partial')
+        digest = sha256()
+        # No caller headers, account token or proxy credential is forwarded.
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        count = 0
+        with opener.open(urllib.request.Request(item['url'], headers={
+                'User-Agent': 'CARR-public-converter-qualification/1'}), timeout=30) as response:
+            final_hostname = urllib.parse.urlsplit(response.geturl()).hostname
+            require(urllib.parse.urlsplit(response.geturl()).scheme == 'https', 'Insecure runtime redirect.')
+            length = response.headers.get('Content-Length')
+            if length is not None:
+                require(length.isdecimal() and int(length) <= limit, 'Oversized runtime response.')
+            with partial.open('xb') as output:
+                while block := response.read(min(1024 * 1024, limit - count + 1)):
+                    read_bytes += len(block)
+                    require(time.monotonic() < deadline, 'Public acquisition exceeded its total deadline.')
+                    count += len(block)
+                    require(count <= limit, 'Public download exceeded its declared bound.')
+                    digest.update(block)
+                    output.write(block)
+        require(count > 0 and ('bytes' not in item or count == item['bytes']),
+                'Public input has a different exact byte count.')
+        if 'sha256' in item:
+            require(digest.hexdigest() == item['sha256'], 'Public runtime archive hash differs.')
+        else:
+            raw = partial.read_bytes()
+            require(sha1(b'blob ' + str(len(raw)).encode('ascii') + b'\0' + raw).hexdigest()
+                    == item['git_blob_sha1'], 'Public fixture/notice Git blob differs.')
+        # Target does not exist in this fresh owned directory.
+        require(not target.exists(), 'Public input target already exists.')
+        partial.rename(target)
+        outcome = 'PASS'
+        return {'bytes': count, 'sha256': digest.hexdigest()}
+    except BaseException as error:
+        exception_type = type(error).__name__[:64]
+        raise
+    finally:
+        # Diagnostic only: no URL path/query, headers, body or exception text.
+        # Keep both normal stdout and the final acquisition receipt unchanged.
+        try:
+            input_id = item.get('filename', item.get('name'))
+            value = {
+                'schema': 'carr-public-acquisition-diagnostic/1',
+                'input_id': input_id[:128] if type(input_id) is str else '<invalid>',
+                'elapsed_seconds': round(max(0.0, time.monotonic() - started), 6),
+                'read_bytes': read_bytes,
+                'final_hostname': final_hostname[:253] if final_hostname else None,
+                'outcome': outcome,
+                'exception_type': exception_type,
+            }
+            print('CARR_PUBLIC_ACQUISITION ' + json.dumps(value, ensure_ascii=True, sort_keys=True),
+                  file=sys.stderr, flush=True)
+        except Exception:
+            # A diagnostic write must not replace the original transfer outcome.
+            pass
 
 
 def inventory(root):

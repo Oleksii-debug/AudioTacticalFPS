@@ -377,6 +377,7 @@ def main():
             check('installed reader output module: ' + module.__name__,
                   'site-packages' in [part.casefold() for part in loaded.parts])
             source_identity[module.__name__] = sha256(loaded.read_bytes()).hexdigest()
+        audio_diagnostics('before-output-device-admission')
         outputs = playback_devices.output_devices()
         check('actual Windows output inventory stays within its bound',
               len(outputs) <= playback_devices.MAX_DEVICES)

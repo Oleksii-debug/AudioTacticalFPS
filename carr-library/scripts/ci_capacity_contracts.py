@@ -28,7 +28,7 @@ SUITES = {
     'tests/storage/test_complete_pending_backup.py': 4,
     'tests/storage/test_backup_pending_common4.py': 27,
     'tests/storage/test_backup_schema_identity.py': 36,
-    'tests/ui/test_native_backup_capacity_driver.py': 6,
+    'tests/ui/test_native_backup_capacity_driver.py': 11,
 }
 PINS = {
     'scripts/benchmark_library_scale.py': '652833b7e0672cb62db2293f53187fe97fcd8669',
@@ -43,8 +43,8 @@ PINS = {
     'tests/storage/test_complete_pending_backup.py': '36fe4b61a3a61351fecc1a88016c1e1db32275d5',
     'tests/storage/test_backup_pending_common4.py': '20707e52c7a9220df5213668138db552ef74d2b9',
     'tests/storage/test_backup_schema_identity.py': 'ebed1d823de241c639877dd747de9aa4ce2085ed',
-    'tests/ui/test_native_backup_capacity_driver.py': '1d8e7ec4a91edb7f6abaffe4b69422007b666697',
-    'scripts/windows_backup_capacity_smoke.py': '3f633a875f8232d4c0cce5cdf40e47d9064f9987',
+    'tests/ui/test_native_backup_capacity_driver.py': 'a1b0af9bc556c1159794d8b0cdbf3399fbc64dd0',
+    'scripts/windows_backup_capacity_smoke.py': '50397caa3170495a562a2220a80d4a00eb36ab9a',
     'scripts/ci_check.py': '6ad3055cfcd7c6a1b1af8544ae462c5d51adb473',
     'packaging/source_wheel.py': '478de248451d59a44b35784eb808fb2974f0af67',
     'src/carr_library/backup_capacity.py': '1fd11ab8d3a2be5434e32bdcba65447c55730ad7',

@@ -1,0 +1,125 @@
+{
+  "schema": "carr-selected-conversion-actual-evidence/1",
+  "captured_at_utc": "2026-11-27T23:23:00Z",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_commit": "fe2e7ea7099d78c43d67be3203d740fd8dcbe3bb",
+  "source_tree": "6c51b6577878fdfa04942ad543099886eaa43bb0",
+  "run_id": 46077776292,
+  "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46077776292",
+  "jobs": [
+    {
+      "id": 140769440870,
+      "platform": "ubuntu-24.04",
+      "outcome": "SUCCESS",
+      "source_and_installed": {
+        "all_children_reaped": true,
+        "inputs_unchanged": true,
+        "installed_passed": 209,
+        "source_commit": "fe2e7ea7099d78c43d67be3203d740fd8dcbe3bb",
+        "source_passed": 209,
+        "source_tree": "6c51b6577878fdfa04942ad543099886eaa43bb0",
+        "status": "PASS"
+      }
+    },
+    {
+      "id": 140769440555,
+      "platform": "windows-2022",
+      "outcome": "FAILURE",
+      "source_and_installed": {
+        "all_children_reaped": true,
+        "inputs_unchanged": true,
+        "installed_passed": 209,
+        "source_commit": "fe2e7ea7099d78c43d67be3203d740fd8dcbe3bb",
+        "source_passed": 209,
+        "source_tree": "6c51b6577878fdfa04942ad543099886eaa43bb0",
+        "status": "PASS"
+      },
+      "failed_step": "Acquire only exact public runtime archives and fixture notices",
+      "source_lines": [
+        "2026-11-27T23:10:13.9413675Z VERIFIED public qualification input calibre-64bit-9.19.0.msi",
+        "2026-11-27T23:20:14.2811775Z Traceback (most recent call last):",
+        "2026-11-27T23:20:14.2819666Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\prepare_selected_conversion_runtime.py\", line 250, in <module>",
+        "2026-11-27T23:20:14.2844311Z     main()",
+        "2026-11-27T23:20:14.2852905Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\prepare_selected_conversion_runtime.py\", line 210, in main",
+        "2026-11-27T23:20:14.2860771Z     row = download(item, downloads / name, remaining, deadline)",
+        "2026-11-27T23:20:14.2868578Z           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+        "2026-11-27T23:20:14.2876715Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\prepare_selected_conversion_runtime.py\", line 69, in download",
+        "2026-11-27T23:20:14.2887581Z     require(time.monotonic() < deadline, 'Public acquisition exceeded its total deadline.')",
+        "2026-11-27T23:20:14.2895088Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\prepare_selected_conversion_runtime.py\", line 29, in require",
+        "2026-11-27T23:20:14.2902106Z     raise ValueError(message)",
+        "2026-11-27T23:20:14.2909728Z ValueError: Public acquisition exceeded its total deadline.",
+        "2026-11-27T23:20:14.4268384Z Exception: D:\\a\\_temp\\81836756-7619-4e90-80f9-963301ffb31a.ps1:7"
+      ],
+      "established_failure": "The unchanged acquisition helper's total 600-second transfer deadline was exceeded before runtime preparation/native phases.",
+      "verified_acquisition": [
+        {
+          "name": "calibre-64bit-9.19.0.msi",
+          "log_timestamp": "2026-11-27T23:10:13.9413675Z"
+        }
+      ],
+      "inference": {
+        "current_input": "LibreOffice_26.8.3_Win_x86-64.msi",
+        "basis": "The fixed loop downloads Calibre, LibreOffice, Pandoc, then four fixtures. It prints VERIFIED only after each exact digest check; the log contains only the first VERIFIED line before the next download() deadline exception.",
+        "transfer_bytes_or_mirror": "NOT_RECORDED",
+        "cause_of_slow_transfer": "NOT_ESTABLISHED"
+      },
+      "native_phases": {
+        "formats_source": "NOT_RUN",
+        "formats_installed": "NOT_RUN",
+        "old_whole34_source": "NOT_RUN",
+        "old_whole34_installed": "NOT_RUN",
+        "gui_source": "NOT_RUN",
+        "gui_installed": "NOT_RUN"
+      },
+      "owned_cleanup_and_closed_report_upload": "SUCCESS"
+    }
+  ],
+  "suites": [
+    [
+      "tests/conversion/test_selected_conversion.py",
+      29
+    ],
+    [
+      "tests/conversion/test_calibre_admission.py",
+      49
+    ],
+    [
+      "tests/conversion/test_office_admission.py",
+      19
+    ],
+    [
+      "tests/ui/test_document_conversion.py",
+      17
+    ],
+    [
+      "tests/extract/test_document_formats_xml.py",
+      95
+    ]
+  ],
+  "helper_git_blob": "6f6afea73ae3ff24a7d5b1f84c334f29f69f4ba7",
+  "workflow_git_blob": "590873a86e4b4c42fb60e4ad6d35cc1067f1ab21",
+  "acquisition_helper_git_blob": "bfe7c95d27e57859aa458a18caaa5d47dba5a7fb",
+  "acquisition_lock_git_blob": "c5822c7ff56d5139da911ea153a8fdcd626d70dd",
+  "artifacts": [
+    {
+      "id": 15237436715,
+      "name": "selected-conversion-ubuntu-24.04-fe2e7ea7099d78c43d67be3203d740fd8dcbe3bb-1",
+      "size_in_bytes": 35860,
+      "sha256": "41b6268b14294541cbb6d5c33e4fae029834fea8ab6652b7ff165e7420e0148a",
+      "head_sha": "fe2e7ea7099d78c43d67be3203d740fd8dcbe3bb"
+    },
+    {
+      "id": 15236799344,
+      "name": "selected-conversion-windows-2022-fe2e7ea7099d78c43d67be3203d740fd8dcbe3bb-1",
+      "size_in_bytes": 37322,
+      "sha256": "70a60f4cf631881f68a1e7f7c0bc5ebac46990c3e269e13195696ff5431398fd",
+      "head_sha": "fe2e7ea7099d78c43d67be3203d740fd8dcbe3bb"
+    }
+  ],
+  "qualification_limits": [
+    "209 source and 209 isolated installed tests passed on both recorded operating systems at this exact head.",
+    "No actual selected runtime conversion, whole old 34-case runtime suite or Windows GUI qualification occurred in this run.",
+    "No budget, source hash, network policy, test assertion or branch was changed while collecting this evidence.",
+    "The separate e763 integration run is not inferred from this head."
+  ]
+}

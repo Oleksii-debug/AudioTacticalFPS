@@ -542,6 +542,64 @@ def main(argv=None):
         return state
 
     outcomes = {}
+    extraction_state = {'started': 0, 'returned': 0, 'error': None}
+    actual_host_job = None
+
+    def observe_native(**values):
+        try:
+            print('DIAG: actual native conversion ' + json.dumps(values, ensure_ascii=True),
+                  file=sys.stderr, flush=True)
+        except Exception:
+            pass  # Optional diagnostics cannot change an actual call or result.
+
+    def error_text(error):
+        try:
+            return type(error).__name__ + ': ' + str(error)[:4096]
+        except Exception:
+            return type(error).__name__
+
+    def conversion_state():
+        try:
+            return {
+                'working': bool(frame.working),
+                'status': frame.status.GetValue()[:4096],
+                'extract': dict(extraction_state),
+                'worker_admissions': [
+                    {'title': row['title'], 'admitted': row.get('future') is not None,
+                     'done': row['future'].done() if row.get('future') is not None else None,
+                     'error': row.get('error')}
+                    for row in worker_calls[-16:]],
+                'completed_conversions': len(conversion_calls),
+                'native_children': len(native_children),
+            }
+        except Exception as error:
+            return {'diagnostic_error_type': type(error).__name__}
+
+    def observed_host_job(*values, **options):
+        title = values[0] if values else options.get('title')
+        row = {'title': title[:128] if type(title) is str else '<unknown>', 'future': None}
+        worker_calls.append(row)
+        try:
+            result = actual_host_job(*values, **options)
+        except BaseException as error:
+            row['error'] = error_text(error)
+            observe_native(event='host-admission-error', error=row['error'])
+            raise
+        row['future'] = result
+        observe_native(event='host-admission-returned', title=row['title'], admitted=result is not None)
+        return result
+
+    def cleanup_check(name, condition):
+        try:
+            check(name, condition())
+        except Exception:
+            detail = traceback.format_exc()
+            errors.append(detail)
+            print('FAIL: native conversion cleanup assertion\n' + detail,
+                  file=sys.stderr, flush=True)
+            return False
+        return True
+
     actual_job, actual_extract = windows_job.JobProcess, ConversionService.extract
     actual_close_after = worker_cleanup.close_after_worker
     actual_verified_read = selected_module.read_result
@@ -553,10 +611,20 @@ def main(argv=None):
         return child
 
     def observed_extract(service, *values, **options):
-        if threading.get_ident() == ui_thread:
-            raise AssertionError('Native document conversion ran on the UI thread.')
-        result = actual_extract(service, *values, **options)
+        extraction_state['started'] += 1
+        observe_native(event='extract-entered')
+        try:
+            if threading.get_ident() == ui_thread:
+                raise AssertionError('Native document conversion ran on the UI thread.')
+            result = actual_extract(service, *values, **options)
+        except BaseException as error:
+            extraction_state['error'] = error_text(error)
+            observe_native(event='extract-error', error=extraction_state['error'],
+                           traceback=traceback.format_exc(limit=8)[:8192])
+            raise
         conversion_calls.append(result)
+        extraction_state['returned'] += 1
+        observe_native(event='extract-returned', completed=len(conversion_calls))
         return result
 
     def observed_verified_read(*values, **options):
@@ -598,6 +666,7 @@ def main(argv=None):
             library.add_text(workspace, 'Existing original', original_text)
             ProgressPreferenceStore(library.root / 'progress-preferences.json').save(ProgressPreferences(muted=True))
             frame = desktop_app.DesktopFrame(library)
+            actual_host_job = frame.run_job
             host_handle, host_executor, host_cancel = frame.GetHandle(), frame.executor, frame.cancel_event
             frame.Show()
             gui.SetTopWindow(frame)
@@ -630,9 +699,15 @@ def main(argv=None):
                     selected = dispatch_picker(source, outputs, cancel_runtime=True)
                     check('cancelling the selected runtime picker admits no conversion or output',
                           len(selected) == 2 and not conversion_calls and not list(outputs.iterdir()))
-                    dispatch_picker(source, outputs)
-                    pump(lambda: getattr(frame, 'conversion_results_dialog', None) is not None and not frame.working,
-                         'Actual Pandoc conversion did not return its native result window.', timeout=50)
+                    picked = dispatch_picker(source, outputs)
+                    observe_native(event='explicit-conversion-dispatched', pickers=picked[:4],
+                                   state=conversion_state())
+                    try:
+                        pump(lambda: getattr(frame, 'conversion_results_dialog', None) is not None and not frame.working,
+                             'Actual Pandoc conversion did not return its native result window.', timeout=50)
+                    except BaseException:
+                        observe_native(event='result-window-wait-failed', state=conversion_state())
+                        raise
                     result_dialog = frame.conversion_results_dialog
                     check('actual existing menu converts RTF with the selected native Pandoc',
                           len(conversion_calls) == 1
@@ -708,6 +783,7 @@ def main(argv=None):
                         unwind()
 
             with patch.object(windows_job, 'JobProcess', side_effect=observed_job), \
+                 patch.object(frame, 'run_job', new=observed_host_job), \
                  patch.object(ConversionService, 'extract', new=observed_extract), \
                  patch.object(library, 'import_files', side_effect=observed_import), \
                  patch.object(worker_cleanup, 'close_after_worker', side_effect=observed_reader_cleanup), \
@@ -750,18 +826,23 @@ def main(argv=None):
                                     future.result(timeout=20)
                                 finally:
                                     executor.shutdown(wait=True, cancel_futures=False)
-                    check('native host Close drains the shared worker and retained finalizers',
-                          not user32.IsWindow(host_handle) and not host_executor.cleanup_failures)
-                    check('actual reader finalizers release their existing worker owners',
-                          len(reader_finalizers) == 1 and all(future.done() for _, future in reader_finalizers)
-                          and not getattr(frame, '_reader_playback_retained', []))
-                    check('actual converter private Job and child are closed before any fallback',
-                          len(native_children) == 1
-                          and all(child.poll() is not None and child._job is None for child in native_children))
-                    check('current conversion resource leases and staging are empty after cleanup',
-                          not ResourceBroker.for_app(library.root).snapshot()['leases']
-                          and not any(path.name.startswith('.pending-conversion-') for path in outputs.rglob('*')))
-                    outcomes['native_host_cleanup'] = 'PASS'
+                    # Evaluate every original cleanup obligation, retaining an
+                    # earlier operation failure before any secondary assertion.
+                    cleanup = [
+                        cleanup_check('native host Close drains the shared worker and retained finalizers',
+                          lambda: not user32.IsWindow(host_handle) and not host_executor.cleanup_failures),
+                        cleanup_check('actual reader finalizers release their existing worker owners',
+                          lambda: len(reader_finalizers) == 1 and all(future.done() for _, future in reader_finalizers)
+                          and not getattr(frame, '_reader_playback_retained', [])),
+                        cleanup_check('actual converter private Job and child are closed before any fallback',
+                          lambda: len(native_children) == 1
+                          and all(child.poll() is not None and child._job is None for child in native_children)),
+                        cleanup_check('current conversion resource leases and staging are empty after cleanup',
+                          lambda: not ResourceBroker.for_app(library.root).snapshot()['leases']
+                          and not any(path.name.startswith('.pending-conversion-') for path in outputs.rglob('*'))),
+                    ]
+                    if all(cleanup):
+                        outcomes['native_host_cleanup'] = 'PASS'
             for name, actual in installed_paths.items():
                 if (sha256(actual.read_bytes()).hexdigest() != origins[name]
                         or origins[name] != sha256((source_root / Path(*name.split('.')).with_suffix('.py')).read_bytes()).hexdigest()):

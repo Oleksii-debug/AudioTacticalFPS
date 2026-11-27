@@ -288,7 +288,9 @@ jobs:
             'tests/ui/test_native_backup_capacity_driver.py',
             'tests/ui/test_native_studio_book_choices.py',
             'tests/ui/test_native_book_publication_driver.py',
-            'tests/search/test_paged_candidate_work.py'
+            'tests/search/test_paged_candidate_work.py',
+            'tests/audio/test_live_metadata_retry.py',
+            'tests/ui/test_native_conversion_diagnostics.py'
           )
           & $env:CARR_COMPLETION_PYTHON scripts/ci_check.py --jobs 3 @completionSuites 2>&1 | Tee-Object 'ci-completion-results/source-regressions.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -393,7 +395,7 @@ jobs:
             'tests/ui/test_backup_capacity.py' = 17
             'tests/storage/test_crash_backup.py' = 5
             'tests/studio/test_book_effects.py' = 14
-            'tests/studio/test_measured_audio.py' = 34
+            'tests/studio/test_measured_audio.py' = 36
             'tests/studio/test_measured_pcm.py' = 19
             'tests/studio/test_book_measured_cli.py' = 9
             'tests/ui/test_book_effects.py' = 5
@@ -405,10 +407,12 @@ jobs:
             'tests/ui/test_document_conversion.py' = 17
             'tests/extract/test_document_formats_xml.py' = 95
             'tests/transcription/test_native_profiles_fixture.py' = 2
-            'tests/ui/test_native_backup_capacity_driver.py' = 6
+            'tests/ui/test_native_backup_capacity_driver.py' = 11
             'tests/ui/test_native_studio_book_choices.py' = 14
             'tests/ui/test_native_book_publication_driver.py' = 8
             'tests/search/test_paged_candidate_work.py' = 30
+            'tests/audio/test_live_metadata_retry.py' = 12
+            'tests/ui/test_native_conversion_diagnostics.py' = 10
           }
           foreach ($entry in $reviewedCompletionExpected.GetEnumerator()) {
             $pattern = '^PASS: ' + [regex]::Escape($entry.Key) + ': junit_passed=' + $entry.Value + ', failed=0, skipped=0, pytest_exit=0$'
@@ -3776,7 +3780,9 @@ jobs:
             'tests/ui/test_native_backup_capacity_driver.py',
             'tests/ui/test_native_studio_book_choices.py',
             'tests/ui/test_native_book_publication_driver.py',
-            'tests/search/test_paged_candidate_work.py'
+            'tests/search/test_paged_candidate_work.py',
+            'tests/audio/test_live_metadata_retry.py',
+            'tests/ui/test_native_conversion_diagnostics.py'
           )
           $previousPath = $env:PATH
           $previousOcr = $env:CARR_OCR_DIR
@@ -3960,7 +3966,7 @@ jobs:
               'tests/ui/test_backup_capacity.py' = 17
               'tests/storage/test_crash_backup.py' = 5
               'tests/studio/test_book_effects.py' = 14
-              'tests/studio/test_measured_audio.py' = 34
+              'tests/studio/test_measured_audio.py' = 36
               'tests/studio/test_measured_pcm.py' = 19
               'tests/studio/test_book_measured_cli.py' = 9
               'tests/ui/test_book_effects.py' = 5
@@ -3972,10 +3978,12 @@ jobs:
               'tests/ui/test_document_conversion.py' = 17
               'tests/extract/test_document_formats_xml.py' = 95
               'tests/transcription/test_native_profiles_fixture.py' = 2
-              'tests/ui/test_native_backup_capacity_driver.py' = 6
+              'tests/ui/test_native_backup_capacity_driver.py' = 11
               'tests/ui/test_native_studio_book_choices.py' = 14
               'tests/ui/test_native_book_publication_driver.py' = 8
               'tests/search/test_paged_candidate_work.py' = 30
+              'tests/audio/test_live_metadata_retry.py' = 12
+              'tests/ui/test_native_conversion_diagnostics.py' = 10
             }
             foreach ($entry in $completedFeatureCounts.GetEnumerator()) {
               $pattern = '^PASS: ' + [regex]::Escape($entry.Key) + ': junit_passed=' + $entry.Value + ', failed=0, skipped=0, pytest_exit=0$'

@@ -1,0 +1,264 @@
+{
+  "schema": "resonance-actual-asr-linux-evidence/1",
+  "created_utc": "2026-11-27 23:58:52 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "e7636ca3f9e6b7474145f6e1799bd19a135a3250",
+  "tree": "a82f252b37db7ba244ba2cc25246a31dc78085d4",
+  "run": 46079552467,
+  "job": 140775120292,
+  "job_conclusion": "success",
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46079552467/job/140775120292",
+  "source": {
+    "whole_suites": 17,
+    "passed": 514,
+    "failed": 0,
+    "skipped": 0,
+    "rows": [
+      {
+        "suite": "tests/transcription/test_supplied_worker_bridge.py",
+        "passed": 62,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/transcription/test_v5_worker_profile.py",
+        "passed": 41,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/transcription/test_runtime_interpreter.py",
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/operations/test_transcription_admission.py",
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/assistant/test_supplied_transcription.py",
+        "passed": 32,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/ui/test_progress_job_review.py",
+        "passed": 48,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/transcription/test_protocol_fixture.py",
+        "passed": 9,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/transcription/test_service.py",
+        "passed": 28,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/transcription/test_admission_boundaries.py",
+        "passed": 40,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/transcription/test_runtime_admission.py",
+        "passed": 13,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/transcription/test_restore.py",
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/storage/test_transcription_backup.py",
+        "passed": 143,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/ui/test_transcription_dialog.py",
+        "passed": 40,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/e2e/test_transcription_cli.py",
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/transcription/test_unified_authority.py",
+        "passed": 24,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/transcription/test_export_publication.py",
+        "passed": 14,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/transcription/test_native_profiles_fixture.py",
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      }
+    ],
+    "terminal": "Required suites complete: 17; passed=17; failed=0"
+  },
+  "installed": {
+    "status": "PASS",
+    "source_commit": "e7636ca3f9e6b7474145f6e1799bd19a135a3250",
+    "source_tree": "a82f252b37db7ba244ba2cc25246a31dc78085d4",
+    "passed": 514,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "expected_failures": false,
+    "suite_counts": {
+      "tests/transcription/test_supplied_worker_bridge.py": 62,
+      "tests/transcription/test_v5_worker_profile.py": 41,
+      "tests/transcription/test_runtime_interpreter.py": 3,
+      "tests/operations/test_transcription_admission.py": 10,
+      "tests/assistant/test_supplied_transcription.py": 32,
+      "tests/ui/test_progress_job_review.py": 48,
+      "tests/transcription/test_protocol_fixture.py": 9,
+      "tests/transcription/test_service.py": 28,
+      "tests/transcription/test_admission_boundaries.py": 40,
+      "tests/transcription/test_runtime_admission.py": 13,
+      "tests/transcription/test_restore.py": 1,
+      "tests/storage/test_transcription_backup.py": 143,
+      "tests/ui/test_transcription_dialog.py": 40,
+      "tests/e2e/test_transcription_cli.py": 4,
+      "tests/transcription/test_unified_authority.py": 24,
+      "tests/transcription/test_export_publication.py": 14,
+      "tests/transcription/test_native_profiles_fixture.py": 2
+    },
+    "required_suite_counts": {
+      "tests/transcription/test_service.py": 28,
+      "tests/transcription/test_admission_boundaries.py": 40,
+      "tests/transcription/test_protocol_fixture.py": 9,
+      "tests/storage/test_transcription_backup.py": 143,
+      "tests/transcription/test_native_profiles_fixture.py": 2
+    },
+    "origins": {
+      "carr_library.integrations.transcription_values": {
+        "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/integrations/transcription_values.py",
+        "sha256": "8194ef0d852c2e1ab059cba3f9c4a79b30e9f8e27f67c652a0efc0e3f9aeab93"
+      },
+      "carr_library.integrations.transcription_runtime": {
+        "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/integrations/transcription_runtime.py",
+        "sha256": "6ed7c95f6b25a3e76a7a14e08f8564850e43ef6091799a38a2a2ba35e0b0bb6e"
+      },
+      "carr_library.integrations.transcription_scope": {
+        "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/integrations/transcription_scope.py",
+        "sha256": "d4b262c8f5eb0d9bdf611a3ff01685ef7ad5c6acf9ee13fc7e67b7796ddf697e"
+      },
+      "carr_library.integrations.transcription_backup": {
+        "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/integrations/transcription_backup.py",
+        "sha256": "597b136dce426c16b176362fcc1bf1a74096d19386635a9bb865d30a6bcb8f71"
+      },
+      "carr_library.integrations.transcription_protocol": {
+        "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/integrations/transcription_protocol.py",
+        "sha256": "42fb1c28bff2dee7df143160b3ffa3d88736a818b3b8868720a29b97d6e6d102"
+      },
+      "carr_library.transcription": {
+        "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/transcription.py",
+        "sha256": "bacb08d3999bb7268e66209c927a4e950ce2a988cd0086b8f742624a89cd63a5"
+      },
+      "carr_library.backup_transcription": {
+        "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/backup_transcription.py",
+        "sha256": "ab5ebb982524404c902f1e798050569340bb13400d3f8949810a41ebcc925578"
+      },
+      "carr_library.state_backup": {
+        "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/state_backup.py",
+        "sha256": "85d23df41fa9ef1526202204ee2602437b7ef0bc29e89c3da48521ffa9f3c868"
+      },
+      "carr_library.backup_sidecars": {
+        "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/backup_sidecars.py",
+        "sha256": "b7604d449e862d8c779dbfe7d8bc745ca8411f480658a30f77063b43eb2bc66c"
+      },
+      "carr_library.library_backup": {
+        "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/library_backup.py",
+        "sha256": "711a6078476297c06423ebef5ef253e564f5d8d170448433ff77f693c38a70c7"
+      },
+      "carr_library.ui.transcription_runtime_dialog": {
+        "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ui/transcription_runtime_dialog.py",
+        "sha256": "85039cd064e6a16b420cbdbeb276eb3d6a8c4897f0d2f4156cadb563516f9cbc"
+      },
+      "carr_library.ui.transcription_dialog": {
+        "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ui/transcription_dialog.py",
+        "sha256": "9a88ac9bb96891330e88e91c6da4c866637d821fffcd86dd09faad1dc996e848"
+      },
+      "carr_library.transcription_cli": {
+        "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/transcription_cli.py",
+        "sha256": "3bf641fb564ba667ccbad9c6bb55acdbe46f1403e5dda8b2879514fbca7858c2"
+      },
+      "carr_library.integrations.transcription_exports": {
+        "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/integrations/transcription_exports.py",
+        "sha256": "771769b569b421e9dce377e48714f1303eb5705e477250c7edd1aeb2c6fc28f8"
+      }
+    },
+    "fixture_sha256": {
+      "tests/transcription/fixture_runtime.py": "9b7c287d706d6eacb6e7354a546df649f27f05ad489b8616b3389c81613dca61",
+      "tests/transcription/fixtures/protocol_worker.py": "4e023787e035c5a9e46f5422fa7233506dcdb6d382f6b3542e11e72de9cf1ada"
+    },
+    "acoustic_inference": "NOT_RUN",
+    "manual_NVDA": "NOT_RUN"
+  },
+  "new_stop_barrier_fixture": {
+    "path": "tests/transcription/test_native_profiles_fixture.py",
+    "source": 2,
+    "installed": 2,
+    "functions": [
+      "test_actual_stop_barrier_waits_past_old_hold_and_resume_starts_only_unfinished_source",
+      "test_actual_stop_barrier_expires_without_silent_second_source_or_complete_status"
+    ]
+  },
+  "artifact": {
+    "id": 15238751435,
+    "name": "carr-asr-ubuntu-24.04-e7636ca3f9e6b7474145f6e1799bd19a135a3250-1",
+    "bytes": 31983,
+    "sha256": "ae3373cf77d83aa0fd496f76405d5d99191c4b60815f0455385f86e19a70e443",
+    "archive_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15238751435/zip",
+    "metadata_digest_matches_printed_upload_digest": true,
+    "archive_contents_independently_downloaded": false
+  },
+  "limits": [
+    "Exact Linux source and isolated installed tests only.",
+    "Windows/native actual runtime profile gate remains separate and was still running when this evidence was captured.",
+    "Acoustic inference, manual NVDA, full bundle, owner candidate assembly and release are not qualified by this result.",
+    "No result transfers to unexecuted new gate/source compositions."
+  ],
+  "evidence_method": "Completed current-head job API, non-echoed stdout after command-group removal, exact strict terminal rows, installed JSON and artifact metadata/upload digest reconciliation."
+}

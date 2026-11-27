@@ -475,3 +475,42 @@ def test_initial_cancellation_has_no_new_lock_plan_or_publication(rendered):
     after = {path.relative_to(r.e.app.root).as_posix(): (path.read_bytes(), path.stat().st_mtime_ns)
              for path in r.e.app.root.rglob('*') if path.is_file()}
     assert after == before and not r.output.exists()
+
+
+@pytest.mark.parametrize('change_requested_route', [False, True])
+def test_measured_review_binds_original_route_and_resolved_target_separately(rendered, change_requested_route):
+    r = rendered
+    route = r.output.parent / 'selected-route'
+    route.mkdir()
+    selected = route / '..' / r.output.name
+    assert selected.resolve() == r.output.resolve()
+    assert str(selected.absolute()) != str(r.output.resolve())
+    calls = tuple(r.e.voices.received)
+    before = {row['path']: (sha256(Path(row['path']).read_bytes()).hexdigest(),
+                            Path(row['path']).stat().st_mtime_ns)
+              for row in r.state['artifacts']}
+    candidate = r.e.service.review_duration(r.plan.id, 1, selected, maximum_ms=70)
+    assert candidate['requested'] == str(selected.absolute())
+    assert candidate['output'] == str(r.output.resolve())
+    assert not r.output.exists() and not r.publisher.publications()
+    target = r.output.resolve() if change_requested_route else selected
+    if change_requested_route:
+        # Equal resolved targets do not authorize changing the reviewed route.
+        with pytest.raises(ValueError, match='ranges, names, source or output changed'):
+            r.e.service.publish_duration(r.plan.id, 1, target, maximum_ms=70,
+                                         approval=candidate['approval_sha256'])
+        assert not r.output.exists() and not r.publisher.publications()
+    else:
+        receipt = r.e.service.publish_duration(r.plan.id, 1, target, maximum_ms=70,
+                                               approval=candidate['approval_sha256'])
+        assert receipt['status'] == 'complete' and receipt['output'] == str(r.output.resolve())
+        manifest = measured_audio.inspect(r.output)
+        assert encode(manifest['content']) == encode(candidate['content'])
+        assert manifest['source'] == receipt['source'] == candidate['content']['source']
+        assert r.publisher.verify(receipt['id']) == receipt
+    assert tuple(r.e.voices.received) == calls
+    assert r.e.production.get(r.plan.job_id(1)) == r.state
+    assert before == {path: (sha256(Path(path).read_bytes()).hexdigest(),
+                             Path(path).stat().st_mtime_ns) for path in before}
+    assert not r.e.production.broker.snapshot()['leases']
+    assert not list(r.output.parent.glob('.pending-measured*'))

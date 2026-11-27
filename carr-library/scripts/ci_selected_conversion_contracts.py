@@ -23,6 +23,9 @@ SUITES = {
     "tests/conversion/test_office_admission.py": 19,
     "tests/ui/test_document_conversion.py": 17,
     "tests/extract/test_document_formats_xml.py": 95,
+    "tests/audio/test_audio_process.py": 23,
+    "tests/audio/test_live_metadata_retry.py": 12,
+    "tests/ui/test_native_conversion_diagnostics.py": 10,
 }
 PINS = {
     "src/carr_library/conversion/_selected_files.py": "2b8030e3c437b0b3a4ccb6d8bce8d67b6b68ebf4",
@@ -40,17 +43,22 @@ PINS = {
     "tests/conversion/test_office_admission.py": "b60d2784e25df42d29f486396010393865a2aa1b",
     "tests/ui/test_document_conversion.py": "a92b5e20180462812634dda50266a61df8b9d4e3",
     "tests/conversion/test_conversion.py": "db3884363c51654c7d16ef2c5d2e82d0e714b411",
-    "src/carr_library/extract/document_formats_xml.py": "a09bc00a438e14ee631978498884961e8e396f00",
-    "tests/extract/test_document_formats_xml.py": "c7328eb9c810e179bd6b9fa9759d1a48fd2767ae",
+    "src/carr_library/extract/document_formats_xml.py": "238207043c10273984fe2244153f5cf965bc9ade",
+    "tests/extract/test_document_formats_xml.py": "b0f7d6b4d4a190da18c96f08e71f8400f3a2cdc4",
     "scripts/ci_check.py": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473",
     "packaging/source_wheel.py": "478de248451d59a44b35784eb808fb2974f0af67",
     "scripts/selected_conversion_fixture_support.py": "ff9cb600f0ddf9b10479e92d401a0ddd88e4aa1b",
-    "scripts/selected_conversion_acceptance.py": "574a297765039cd765c1b352a6a9d8f27ca6b3be",
+    "scripts/selected_conversion_acceptance.py": "b4c60707e1554df514cd954afa89c0c7dc099713",
     "scripts/translation_loopback_check.py": "6859d406a595e806b78de12969ad681757e34f71",
     "packaging/windows-document-converters.lock.json": "c5822c7ff56d5139da911ea153a8fdcd626d70dd",
     "tests/conversion/fixtures/ordered_slides.pptx": "58b0d7cce78a50883ed4bcf1e73cbbcc40675d44",
+    "src/carr_library/audio/process.py": "014c47d5297a937a8bf6061420dd009206863669",
+    "tests/audio/test_audio_process.py": "af58a03f5e5f84d7a4014089d6213511c4e4e13c",
+    "tests/audio/test_live_metadata_retry.py": "bae4ed3b64c9dbd85776fa189c18d91e1119a009",
+    "tests/ui/test_native_conversion_diagnostics.py": "dc523d350e151eaa6c6d94a63752abf38a37a497",
+    "scripts/windows_document_conversion_smoke.py": "4b67819886d4324a616bce8dff13251fec2370f0",
 }
-COMPANIONS = ()
+COMPANIONS = ("scripts/windows_document_conversion_smoke.py",)
 MODULES = (
     "carr_library.conversion._selected_files",
     "carr_library.conversion.calibre",
@@ -212,10 +220,10 @@ def main():
     ci = load('conversion_existing_ci_check', ROOT / 'scripts/ci_check.py')
     proof_module = load('conversion_existing_source_wheel', ROOT / 'packaging/source_wheel.py')
     source_log = evidence / 'source-contracts.txt'
-    # Three two-suite waves retain each 600 s suite plus the existing 30 s
-    # tree cleanup and report retries; 2000 s leaves finite orchestration room.
+    # Four two-suite waves retain each 600 s suite plus the existing 30 s
+    # tree cleanup and report retries; 2700 s leaves finite orchestration room.
     code = child([sys.executable, '-B', str(ROOT / 'scripts/ci_check.py'),
-                  '--jobs', '2', *SUITES], source_log, cwd=ROOT, ci=ci, timeout=2000)
+                  '--jobs', '2', *SUITES], source_log, cwd=ROOT, ci=ci, timeout=2700)
     lines = source_log.read_text(encoding='utf-8').splitlines()
     expected = [f'PASS: {suite}: junit_passed={count}, failed=0, skipped=0, pytest_exit=0'
                 for suite, count in SUITES.items()]

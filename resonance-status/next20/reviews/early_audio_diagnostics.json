@@ -1,0 +1,72 @@
+{
+  "schema": "resonance-source-handoff/1",
+  "title": "Read-only Windows audio evidence before stable output admission",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "base_head": "e7636ca3f9e6b7474145f6e1799bd19a135a3250",
+  "base_tree": "a82f252b37db7ba244ba2cc25246a31dc78085d4",
+  "files": [
+    {
+      "path": "carr-library/scripts/windows_reader_player_smoke.py",
+      "before": "f6a1804be5e77eb53f5f4c6aac23ff2137706e7c",
+      "sha": "6ea74ad9b55c572a91b0f200f2c8c11e074528b0",
+      "change": "Add the existing audio_diagnostics('before-output-device-admission') immediately before output_devices()."
+    }
+  ],
+  "evidence": {
+    "audit_blob": "0b002ab0190dddfa02565055116b7bd99363629f",
+    "actual_failing_head": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3",
+    "run": 46074881860,
+    "job": 140761348364,
+    "observed": "AudioEndpointBuilder and Audiosrv report Running; reader then refuses no selectable stable-interface output before its old diagnostic placement.",
+    "not_established": [
+      "Raw device count equals zero.",
+      "Absence of physical hardware.",
+      "A specific permission/driver/privacy cause.",
+      "Endpoint discovery had settled, or its delay caused the refusal."
+    ]
+  },
+  "unchanged_dependencies": [
+    {
+      "path": "carr-library/scripts/windows_audio_diagnostics.py",
+      "sha": "d1b9c64a6c822342c09af79954a93db30ccd1385"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/playback_devices.py",
+      "sha": "3f675bccbfeea8f0b0977d814e123b435bb7f0ca"
+    },
+    {
+      "path": "carr-library/scripts/prepare_windows_audio.ps1",
+      "sha": "3e3398e62d49403a81a29c6a3de18636b38866d5"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/_wave_output.py",
+      "sha": "67c3ec2d0fa1e785615b49e659506f5887606348"
+    }
+  ],
+  "preserved": {
+    "whole_probe_watchdog_seconds": 75,
+    "stable_interface_required": true,
+    "required_device_refusal": true,
+    "all_old_native_checks": true,
+    "all_old_playback_assertions": true,
+    "cleanup": true,
+    "production_source": true,
+    "service_driver_policy_privacy_behavior": true,
+    "no_sleep_or_retry": true,
+    "no_new_mmdevice_framework": true
+  },
+  "validation": {
+    "exact_additive_reconstruction": true,
+    "blob_readback_exact": true,
+    "peer": {
+      "reviewer": "canonical_regression",
+      "status": "ACCEPTED_STATIC_NOT_RUN",
+      "scope": "Exact one-line delta and existing helper's read-only native API calls; unchanged refusal/playback/watchdog/cleanup."
+    },
+    "execution": "NOT_RUN",
+    "source_tests_added": 0,
+    "gate_count_changes": 0,
+    "device_or_hardware_qualification": "NOT_ESTABLISHED"
+  },
+  "refs_changed": false
+}

@@ -295,8 +295,11 @@ def test_odf_unsupported_visibility_changes_and_dynamic_fields_require_review(ma
 
 def test_odf_style_hidden_text_is_not_silently_imported():
     styles = f'<office:document-styles xmlns:office="{O}" xmlns:style="{ODF}style:1.0" xmlns:text="{T}"><office:styles><style:style><style:text-properties text:display="none"/></style:style></office:styles></office:document-styles>'
-    with pytest.raises(ValueError, match='Hidden'):
+    with pytest.raises(ValueError, match='Hidden') as failure:
         extract_xml_document(odf('.odt', styles=styles), '.odt')
+    assert str(failure.value) == (
+        'Hidden document text requires review. '
+        '[part=styles.xml; element=style:text-properties; condition=text:display]')
 
 
 @pytest.mark.parametrize('separator', ['s', 'tab', 'line-break'])

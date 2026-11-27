@@ -1,0 +1,380 @@
+{
+  "schema": "resonance-final-source-original-regressions/1",
+  "source_commit": "79ef756d08667919d9a7c4367305aca5dfdaf6c9",
+  "source_tree": "4c3d7513de3c98dc8452e8c2a345c7e2b2381a2a",
+  "run_id": 46081148451,
+  "results": [
+    {
+      "job_id": 140780169121,
+      "platform": "ubuntu-24.04",
+      "whole_suites": 41,
+      "passed": 1079,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "strict_verdicts": [
+        {
+          "path": "tests/extract/test_docx_rich.py",
+          "passed": 55,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/assistant/test_translation_rich_docx.py",
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/ui/test_translation_rich_docx.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/assistant/test_translation_rich_docx_cli.py",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/extract/test_docx_ordered.py",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/extract/test_docx_omitted_content.py",
+          "passed": 20,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/extract/test_docx_hidden_styles.py",
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/ingest/test_application_atomic_docx_gate.py",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/assistant/test_translation_partition.py",
+          "passed": 26,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/assistant/test_translation_layout.py",
+          "passed": 33,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/ui/test_translation_layout.py",
+          "passed": 23,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/assistant/test_translation_layout_cli.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/storage/test_backup_translation.py",
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/assistant/test_translation_epub_layout.py",
+          "passed": 31,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/ui/test_translation_epub_layout.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/assistant/test_translation_epub_cli.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/studio/test_clip_copy.py",
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/studio/test_clip_copy_dialog.py",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/studio/test_clip_operations.py",
+          "passed": 59,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/studio/test_project_history.py",
+          "passed": 29,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/studio/test_clip_history_dialog.py",
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/studio/test_clip_editing.py",
+          "passed": 20,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/studio/test_clip_dialog.py",
+          "passed": 45,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/studio/test_clip_restoration.py",
+          "passed": 24,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/studio/test_clip_cli.py",
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/catalog/test_streaming_intake.py",
+          "passed": 16,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/ingest/test_import_replay_identity.py",
+          "passed": 24,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/studio/test_book_batch.py",
+          "passed": 29,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/studio/test_book_cli.py",
+          "passed": 18,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/studio/test_book_audio.py",
+          "passed": 46,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/ui/test_desktop_handlers.py",
+          "passed": 60,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/ui/test_progress_voice_actions.py",
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/ui/test_engine_settings_lifetime.py",
+          "passed": 33,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/assistant/test_translation.py",
+          "passed": 168,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/assistant/test_translation_local.py",
+          "passed": 39,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/assistant/test_translation_documents.py",
+          "passed": 20,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/ui/test_translation_documents.py",
+          "passed": 29,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/ingest/test_terminal_replay_registration.py",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/ingest/test_txt_replay_registration.py",
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/ingest/test_import_publication_point.py",
+          "passed": 2,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/speech/test_spelling.py",
+          "passed": 55,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        }
+      ],
+      "final_summary": [
+        "2026-11-27T23:48:22.2951018Z Required suites complete: 41; passed=41; failed=0"
+      ],
+      "artifact": {
+        "id": 15238252373,
+        "name": "next9-final-source-contracts-79ef756d08667919d9a7c4367305aca5dfdaf6c9-1",
+        "bytes": 76171,
+        "sha256": "b2b7ad97a1a3f5e6886079b6e0ab9888a51c12f1e7110a0c48d4d1474c4e94fa"
+      },
+      "status": "PASS"
+    },
+    {
+      "job_id": 140780169151,
+      "platform": "windows-2022",
+      "whole_suites": 5,
+      "passed": 59,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "strict_verdicts": [
+        {
+          "path": "tests/catalog/test_streaming_intake.py",
+          "passed": 16,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/ingest/test_import_replay_identity.py",
+          "passed": 24,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/ingest/test_terminal_replay_registration.py",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/ingest/test_txt_replay_registration.py",
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "path": "tests/ingest/test_import_publication_point.py",
+          "passed": 2,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        }
+      ],
+      "final_summary": [
+        "2026-11-27T23:48:51.7347012Z Required suites complete: 5; passed=5; failed=0\r"
+      ],
+      "artifact": {
+        "id": 15238930318,
+        "name": "next9-windows-intake-79ef756d08667919d9a7c4367305aca5dfdaf6c9-1",
+        "bytes": 2831,
+        "sha256": "e44794c1c47da35a40789cec43e54e12ca0cfd1f72a11aa23763eb8362e1753b"
+      },
+      "status": "PASS"
+    }
+  ],
+  "scope": [
+    "These are the two preserved original source jobs, separately from focused Linux450 and Windows449.",
+    "Actual Windows source file-sharing/intake contracts passed; no installed, Windows11, NVDA, output-device or microphone claim.",
+    "Linux41 suites cover rich/ordered/hidden DOCX, translation layouts, clip/history/editing, streaming intake and existing Book/UI workflows.",
+    "Results are extracted from completed strict JUnit-verifying job logs; artifact metadata and upload digests are reconciled. Artifact ZIP members were not downloaded or inspected here.",
+    "No result transfers to later source changes or performance profiles."
+  ],
+  "recorded_utc": "2026-11-27T23:50:31Z"
+}

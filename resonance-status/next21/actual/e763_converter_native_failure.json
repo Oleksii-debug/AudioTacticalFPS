@@ -1,0 +1,297 @@
+{
+  "schema": "carr-selected-conversion-actual-evidence/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_commit": "e7636ca3f9e6b7474145f6e1799bd19a135a3250",
+  "source_tree": "a82f252b37db7ba244ba2cc25246a31dc78085d4",
+  "run_id": 46079552487,
+  "windows_job_id": 140775089427,
+  "observed_result": "FAILURE",
+  "portable": {
+    "all_children_reaped": true,
+    "inputs_unchanged": true,
+    "installed_passed": 209,
+    "source_commit": "e7636ca3f9e6b7474145f6e1799bd19a135a3250",
+    "source_passed": 209,
+    "source_tree": "a82f252b37db7ba244ba2cc25246a31dc78085d4",
+    "status": "PASS"
+  },
+  "acquisition": {
+    "status": "PASS",
+    "inputs": {
+      "calibre-64bit-9.19.0.msi": {
+        "bytes": 291713024,
+        "sha256": "241193d5045bdcbc3e7ec000c22ede0b5da1fd2e91e83fa0b17f0e1f67174480"
+      },
+      "LibreOffice_26.8.3_Win_x86-64.msi": {
+        "bytes": 376311808,
+        "sha256": "0e6918c273eabbdbbd800ee0dacbbf130a14c13c2e4cec861b06dd59e015bf94"
+      },
+      "pandoc-3.14-windows-x86_64.zip": {
+        "bytes": 43614099,
+        "sha256": "0144b96e8c7b023fd382ec5ef5bdc475e873f1019d6fa72502492df2c9a94a3b"
+      },
+      "putty.chm": {
+        "bytes": 271652,
+        "sha256": "317147468e9876d0465b3f1457b948e43911f3e713011d574fd325fab304ef34"
+      },
+      "putty.chm.LICENCE": {
+        "bytes": 1338,
+        "sha256": "5d44b6a254a82b188d16ac3000d3d4600bd48fe52cd4f1e3365bdfde7a0537cf"
+      },
+      "djvulibre-book-en.djvu": {
+        "bytes": 428566,
+        "sha256": "64dfdc4e7dc75f0b1be50e25b21a1c725136fc144a5beb9003ea74b8c1495933"
+      },
+      "djvulibre-COPYING": {
+        "bytes": 18092,
+        "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643"
+      }
+    },
+    "actual_version_scope": "Pinned Calibre9.19.0 / LibreOffice26.8.3.1 / Pandoc3.14"
+  },
+  "phase_reports": [
+    {
+      "line": 1395,
+      "status": "FAIL",
+      "phase": "formats",
+      "mode": "source",
+      "actual_owned_jobs": 12,
+      "all_owned_jobs_closed": "PASS",
+      "error_type": "PermissionError",
+      "error": "[WinError 5] Access is denied.: 'C:\\\\Users\\\\runneradmin\\\\AppData\\\\Local\\\\Temp\\\\carr-selected-native-vr_av9hs\\\\reading-2\\\\.pending-conversion-5g1yd76l\\\\work\\\\libreoffice-profile\\\\.lock'",
+      "old_child_origin_count": 0,
+      "source_origins_before_count": 22,
+      "source_origins_after_count": 0
+    },
+    {
+      "line": 1564,
+      "status": "PASS",
+      "phase": "old-suite",
+      "mode": "source",
+      "actual_owned_jobs": 1,
+      "all_owned_jobs_closed": "PASS",
+      "old_whole_conversion_suite": "PASS",
+      "old_cases": 34,
+      "old_test_sha256": {
+        "tests\\conversion\\test_conversion.py": "04784cb293dbbd966365fb1be7142263d95ab9b25874380e8b7b2300e8cac21f",
+        "tests\\conversion\\fixtures\\ordered_slides.pptx": "305eb17f2df8f4b572ff78bb548f28a950518292e836651b0ca0d76f97c4370f"
+      },
+      "old_junit_sha256": "01ea58d06e2a20394a3d64fbb8f69d70ac41710ba369f046c7d3ba40e75513a6",
+      "old_child_receipt_sha256": "34545cf1ea90e4607024a8a6716881d46c31d425a92727997fddf7b47706c9a4",
+      "old_child_origin_count": 5,
+      "source_origins_before_count": 22,
+      "source_origins_after_count": 22,
+      "actual_loopback_denial": "PASS",
+      "owned_temporary_cleanup": "PASS"
+    },
+    {
+      "line": 1585,
+      "status": "FAIL",
+      "phase": "formats",
+      "mode": "installed",
+      "actual_owned_jobs": 13,
+      "all_owned_jobs_closed": "PASS",
+      "error_type": "AudioError",
+      "error": "Local audio worker failed (exit 1): ValueError: Hidden document text requires review.",
+      "old_child_origin_count": 0,
+      "source_origins_before_count": 22,
+      "source_origins_after_count": 0
+    },
+    {
+      "line": 1754,
+      "status": "PASS",
+      "phase": "old-suite",
+      "mode": "installed",
+      "actual_owned_jobs": 1,
+      "all_owned_jobs_closed": "PASS",
+      "old_whole_conversion_suite": "PASS",
+      "old_cases": 34,
+      "old_test_sha256": {
+        "tests\\conversion\\test_conversion.py": "04784cb293dbbd966365fb1be7142263d95ab9b25874380e8b7b2300e8cac21f",
+        "tests\\conversion\\fixtures\\ordered_slides.pptx": "305eb17f2df8f4b572ff78bb548f28a950518292e836651b0ca0d76f97c4370f"
+      },
+      "old_junit_sha256": "e08229d0d1fb16eed6fcc7c1dbe0ab766a168779299a16e36deb6dab3b34b832",
+      "old_child_receipt_sha256": "4608b87c8474a278ca675a5fc951416ad42a11d098478e19b9b34e097d964f5f",
+      "old_child_origin_count": 5,
+      "source_origins_before_count": 22,
+      "source_origins_after_count": 22,
+      "actual_loopback_denial": "PASS",
+      "owned_temporary_cleanup": "PASS"
+    }
+  ],
+  "observed_format_prefix": {
+    "source": [
+      ".doc"
+    ],
+    "installed": [
+      ".doc",
+      ".ppt"
+    ],
+    "complete_14_format_qualification": "NOT_PASSED"
+  },
+  "gui": {
+    "source": "FAIL_TIMEOUT_WAITING_FOR_RESULT_WINDOW",
+    "installed": "FAIL_TIMEOUT_WAITING_FOR_RESULT_WINDOW",
+    "observed_timeout_seconds": 50,
+    "native_owned_taskdialog_and_source_runtime_cancel": "PASS",
+    "actual_host_close_and_shared_worker_drain": "PASS",
+    "later_reader_owner_assertion": "FAIL_READER_NOT_CREATED",
+    "all_30_checks": "NOT_PASSED"
+  },
+  "native_stdout_observations": [
+    "2026-11-27T23:27:43.2380986Z PASS: tests/conversion/test_selected_conversion.py: junit_passed=29, failed=0, skipped=0, pytest_exit=0",
+    "2026-11-27T23:27:43.2381662Z PASS: tests/conversion/test_calibre_admission.py: junit_passed=49, failed=0, skipped=0, pytest_exit=0",
+    "2026-11-27T23:27:43.2382333Z PASS: tests/conversion/test_office_admission.py: junit_passed=19, failed=0, skipped=0, pytest_exit=0",
+    "2026-11-27T23:27:43.2382991Z PASS: tests/ui/test_document_conversion.py: junit_passed=17, failed=0, skipped=0, pytest_exit=0",
+    "2026-11-27T23:27:43.2383613Z PASS: tests/extract/test_document_formats_xml.py: junit_passed=95, failed=0, skipped=0, pytest_exit=0",
+    "2026-11-27T23:29:36.0667480Z         Write-Host ('REQUIRED SELECTED CONVERSION FAILED [' + $name + ']: ' + $_.Exception.Message)",
+    "2026-11-27T23:29:36.0677991Z       Write-Host ('REQUIRED SELECTED CONVERSION FAILED [' + $name + ']: ' + $_.Exception.Message)",
+    "2026-11-27T23:30:32.0771154Z PASS actual selected format .doc",
+    "2026-11-27T23:30:44.2370395Z REQUIRED SELECTED CONVERSION FAILED [formats-source]: Actual formats-source conversion proof failed.",
+    "2026-11-27T23:31:03.9405485Z REQUIRED SELECTED CONVERSION FAILED [old-suite-source]: Actual old-suite-source conversion proof failed.",
+    "2026-11-27T23:31:49.3773060Z PASS actual selected format .doc",
+    "2026-11-27T23:32:02.6673358Z PASS actual selected format .ppt",
+    "2026-11-27T23:32:15.2434035Z REQUIRED SELECTED CONVERSION FAILED [formats-installed]: Actual formats-installed conversion proof failed.",
+    "2026-11-27T23:32:34.3394508Z REQUIRED SELECTED CONVERSION FAILED [old-suite-installed]: Actual old-suite-installed conversion proof failed.",
+    "2026-11-27T23:32:36.7000594Z PASS: all selected source or installed module identities are exact",
+    "2026-11-27T23:32:36.7002471Z PASS: real native Windows controls",
+    "2026-11-27T23:32:37.5542932Z PASS: existing host worker and workspace own the conversion path",
+    "2026-11-27T23:32:37.5544688Z PASS: conversion reuses its actual registered command identifier",
+    "2026-11-27T23:32:37.7173505Z PASS: native failure answers owned No before closing only the active inner modal",
+    "2026-11-27T23:32:37.7298085Z PASS: cancelling the source picker admits no conversion or output",
+    "2026-11-27T23:32:37.7322417Z PASS: cancelling the selected runtime picker admits no conversion or output",
+    "2026-11-27T23:33:27.7643576Z PASS: native host Close drains the shared worker and retained finalizers",
+    "2026-11-27T23:33:27.9145914Z REQUIRED SELECTED CONVERSION FAILED [gui-source]: Actual gui-source control proof failed.",
+    "2026-11-27T23:33:29.9583955Z PASS: all selected source or installed module identities are exact",
+    "2026-11-27T23:33:29.9585233Z PASS: real native Windows controls",
+    "2026-11-27T23:33:30.4865303Z PASS: existing host worker and workspace own the conversion path",
+    "2026-11-27T23:33:30.4866119Z PASS: conversion reuses its actual registered command identifier",
+    "2026-11-27T23:33:30.5833478Z PASS: native failure answers owned No before closing only the active inner modal",
+    "2026-11-27T23:33:30.5932988Z PASS: cancelling the source picker admits no conversion or output",
+    "2026-11-27T23:33:30.5956942Z PASS: cancelling the selected runtime picker admits no conversion or output",
+    "2026-11-27T23:34:20.6475919Z PASS: native host Close drains the shared worker and retained finalizers",
+    "2026-11-27T23:34:20.7928663Z REQUIRED SELECTED CONVERSION FAILED [gui-installed]: Actual gui-installed control proof failed."
+  ],
+  "failure_contexts": [
+    [
+      "2026-11-27T23:30:44.1334911Z Traceback (most recent call last):",
+      "2026-11-27T23:30:44.1364140Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\selected_conversion_acceptance.py\", line 267, in main",
+      "2026-11-27T23:30:44.1368876Z     (formats if args.phase == 'formats' else old_suite)(args, fixture, report, children)",
+      "2026-11-27T23:30:44.1373331Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\selected_conversion_acceptance.py\", line 57, in formats",
+      "2026-11-27T23:30:44.1376962Z     result = service.extract(source, 'reading.txt')",
+      "2026-11-27T23:30:44.1380765Z              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+      "2026-11-27T23:30:44.1384703Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\conversion\\service.py\", line 224, in extract",
+      "2026-11-27T23:30:44.1388552Z     return extract_selected(self, source, output, cancelled=cancelled)",
+      "2026-11-27T23:30:44.1396473Z            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+      "2026-11-27T23:30:44.1399823Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\conversion\\selected.py\", line 262, in extract_selected",
+      "2026-11-27T23:30:44.1402944Z     run_process(command, cwd=work, env=environment, cancelled=admitted,",
+      "2026-11-27T23:30:44.1406697Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\audio\\process.py\", line 258, in run_process",
+      "2026-11-27T23:30:44.1426723Z     check()",
+      "2026-11-27T23:30:44.1433682Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\audio\\process.py\", line 228, in check",
+      "2026-11-27T23:30:44.1440857Z     info = _live_file_info(path) if live_files else path.lstat()",
+      "2026-11-27T23:30:44.1446600Z            ^^^^^^^^^^^^^^^^^^^^^",
+      "2026-11-27T23:30:44.1450850Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\audio\\process.py\", line 73, in _live_file_info",
+      "2026-11-27T23:30:44.1454075Z     return _windows_metadata_query()(path)",
+      "2026-11-27T23:30:44.1457410Z            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+      "2026-11-27T23:30:44.1461083Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\audio\\process.py\", line 61, in observe",
+      "2026-11-27T23:30:44.1463989Z     raise error",
+      "2026-11-27T23:30:44.1467803Z PermissionError: [WinError 5] Access is denied.: 'C:\\\\Users\\\\runneradmin\\\\AppData\\\\Local\\\\Temp\\\\carr-selected-native-vr_av9hs\\\\reading-2\\\\.pending-conversion-5g1yd76l\\\\work\\\\libreoffice-profile\\\\.lock'"
+    ],
+    [
+      "2026-11-27T23:31:03.9075695Z Traceback (most recent call last):",
+      "2026-11-27T23:31:03.9076390Z   File \"<stdin>\", line 101, in <module>",
+      "2026-11-27T23:31:03.9076718Z AssertionError",
+      "2026-11-27T23:31:03.9405485Z REQUIRED SELECTED CONVERSION FAILED [old-suite-source]: Actual old-suite-source conversion proof failed."
+    ],
+    [
+      "2026-11-27T23:32:15.1369952Z Traceback (most recent call last):",
+      "2026-11-27T23:32:15.1375394Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\selected_conversion_acceptance.py\", line 267, in main",
+      "2026-11-27T23:32:15.1378911Z     (formats if args.phase == 'formats' else old_suite)(args, fixture, report, children)",
+      "2026-11-27T23:32:15.1382905Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\selected_conversion_acceptance.py\", line 57, in formats",
+      "2026-11-27T23:32:15.1386159Z     result = service.extract(source, 'reading.txt')",
+      "2026-11-27T23:32:15.1389541Z              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+      "2026-11-27T23:32:15.1393548Z   File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\conversion\\service.py\", line 224, in extract",
+      "2026-11-27T23:32:15.1401001Z     return extract_selected(self, source, output, cancelled=cancelled)",
+      "2026-11-27T23:32:15.1404526Z            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+      "2026-11-27T23:32:15.1409233Z   File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\conversion\\selected.py\", line 262, in extract_selected",
+      "2026-11-27T23:32:15.1414724Z     run_process(command, cwd=work, env=environment, cancelled=admitted,",
+      "2026-11-27T23:32:15.1425346Z   File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\audio\\process.py\", line 271, in run_process",
+      "2026-11-27T23:32:15.1426716Z     raise AudioError(f'Local audio worker failed (exit {process.returncode}): {message.strip()}')",
+      "2026-11-27T23:32:15.1428099Z carr_library.audio.models.AudioError: Local audio worker failed (exit 1): ValueError: Hidden document text requires review."
+    ],
+    [
+      "2026-11-27T23:32:34.3074420Z Traceback (most recent call last):",
+      "2026-11-27T23:32:34.3078289Z   File \"<stdin>\", line 101, in <module>",
+      "2026-11-27T23:32:34.3078685Z AssertionError",
+      "2026-11-27T23:32:34.3394508Z REQUIRED SELECTED CONVERSION FAILED [old-suite-installed]: Actual old-suite-installed conversion proof failed."
+    ],
+    [
+      "2026-11-27T23:33:27.7336900Z FAIL: native conversion callback",
+      "2026-11-27T23:33:27.7342977Z Traceback (most recent call last):",
+      "2026-11-27T23:33:27.7348265Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_document_conversion_smoke.py\", line 634, in run_steps",
+      "2026-11-27T23:33:27.7355152Z     pump(lambda: getattr(frame, 'conversion_results_dialog', None) is not None and not frame.working,",
+      "2026-11-27T23:33:27.7359269Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_document_conversion_smoke.py\", line 271, in pump",
+      "2026-11-27T23:33:27.7362806Z     raise TimeoutError(message)",
+      "2026-11-27T23:33:27.7365946Z TimeoutError: Actual Pandoc conversion did not return its native result window.",
+      "2026-11-27T23:33:27.7368779Z ",
+      "2026-11-27T23:33:27.7643576Z PASS: native host Close drains the shared worker and retained finalizers",
+      "2026-11-27T23:33:27.7665517Z Traceback (most recent call last):",
+      "2026-11-27T23:33:27.7671242Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_document_conversion_smoke.py\", line 814, in <module>",
+      "2026-11-27T23:33:27.7675546Z     raise SystemExit(main())",
+      "2026-11-27T23:33:27.7681275Z                      ^^^^^^",
+      "2026-11-27T23:33:27.7686319Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_document_conversion_smoke.py\", line 755, in main",
+      "2026-11-27T23:33:27.7689320Z     check('actual reader finalizers release their existing worker owners',",
+      "2026-11-27T23:33:27.7695065Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_document_conversion_smoke.py\", line 93, in check",
+      "2026-11-27T23:33:27.7699839Z     raise AssertionError(name)",
+      "2026-11-27T23:33:27.7705349Z AssertionError: actual reader finalizers release their existing worker owners"
+    ],
+    [
+      "2026-11-27T23:34:20.6127530Z FAIL: native conversion callback",
+      "2026-11-27T23:34:20.6129431Z Traceback (most recent call last):",
+      "2026-11-27T23:34:20.6136830Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_document_conversion_smoke.py\", line 634, in run_steps",
+      "2026-11-27T23:34:20.6145007Z     pump(lambda: getattr(frame, 'conversion_results_dialog', None) is not None and not frame.working,",
+      "2026-11-27T23:34:20.6150704Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_document_conversion_smoke.py\", line 271, in pump",
+      "2026-11-27T23:34:20.6152002Z     raise TimeoutError(message)",
+      "2026-11-27T23:34:20.6157336Z TimeoutError: Actual Pandoc conversion did not return its native result window.",
+      "2026-11-27T23:34:20.6158845Z ",
+      "2026-11-27T23:34:20.6475919Z PASS: native host Close drains the shared worker and retained finalizers",
+      "2026-11-27T23:34:20.6501283Z Traceback (most recent call last):",
+      "2026-11-27T23:34:20.6506074Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_document_conversion_smoke.py\", line 814, in <module>",
+      "2026-11-27T23:34:20.6508376Z     raise SystemExit(main())",
+      "2026-11-27T23:34:20.6513336Z                      ^^^^^^",
+      "2026-11-27T23:34:20.6517073Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_document_conversion_smoke.py\", line 755, in main",
+      "2026-11-27T23:34:20.6522175Z     check('actual reader finalizers release their existing worker owners',",
+      "2026-11-27T23:34:20.6525957Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_document_conversion_smoke.py\", line 93, in check",
+      "2026-11-27T23:34:20.6529622Z     raise AssertionError(name)",
+      "2026-11-27T23:34:20.6533583Z AssertionError: actual reader finalizers release their existing worker owners"
+    ]
+  ],
+  "artifacts": [
+    {
+      "id": 15238280576,
+      "name": "selected-conversion-windows-2022-e7636ca3f9e6b7474145f6e1799bd19a135a3250-1",
+      "bytes": 88920,
+      "sha256": "3bc8ffc7c6cf95d7bc57971d9cd5f4302245b042c4c3577ffe3f1cee62d8103e",
+      "head": "e7636ca3f9e6b7474145f6e1799bd19a135a3250"
+    },
+    {
+      "id": 15236331955,
+      "name": "selected-conversion-ubuntu-24.04-e7636ca3f9e6b7474145f6e1799bd19a135a3250-1",
+      "bytes": 35863,
+      "sha256": "ea5608306e54dc46fdedfa6a3b5e7d8660cb2ffb8516bcab0b2127d83dd4033d",
+      "head": "e7636ca3f9e6b7474145f6e1799bd19a135a3250"
+    }
+  ],
+  "diagnosis": {
+    "old_suite_outer_verifier": "Confirmed Windows str(relative_path) backslashes disagree with exact POSIX wire keys required by outer verifier. Actual34 tests/JUnit and acceptance report PASS in both modes; isolated as_posix correction is b4c60707e1554df514cd954afa89c0c7dc099713, NOT_RUN.",
+    "live_profile_lock": "Actual GetFileAttributesExW returnedWinError5 while parent monitored the live private LibreOffice .lock. Delete-pending vs sharing/ACL is not established; no ignore/exclusion or global source change authorized by this evidence.",
+    "spreadsheet_visibility": "Existing canonical ODF hidden-text guard rejected generated .xls reading intermediate. Exact rejected element/attribute not recorded; no relaxed visibility semantics inferred.",
+    "gui": "Actual Pandoc result window not observed within unchanged50s in either mode. Locate is investigating dispatch/outcome; no success claim or budget increase."
+  },
+  "qualification_limits": [
+    "209 source and209 isolatedinstalled portable cases passed on both recordedOS, with separate Linux evidencef8e4e.",
+    "Native full six-phase gate remainsFAIL; portable success is not actual14-format orGUI qualification.",
+    "All required assertions, download/worker budgets and source identities remain inforce.",
+    "No refs or runs altered in collecting these results."
+  ]
+}

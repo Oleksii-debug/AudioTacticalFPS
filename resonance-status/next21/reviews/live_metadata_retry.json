@@ -1,0 +1,51 @@
+{
+  "schema": "resonance-live-file-metadata-retry/1",
+  "status": "PEER_REVIEWED_NOT_RUN",
+  "base_commit": "79ef756d08667919d9a7c4367305aca5dfdaf6c9",
+  "actual_failure_evidence": "018044edf278981c9bd2cbbaa2d66c6ae294b631",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/audio/process.py",
+      "preimage": "71ee75c41ce4b57ace15fbb735e507bd2592409b",
+      "sha": "014c47d5297a937a8bf6061420dd009206863669"
+    },
+    {
+      "path": "carr-library/tests/audio/test_live_metadata_retry.py",
+      "preimage": null,
+      "sha": "bae4ed3b64c9dbd85776fa189c18d91e1119a009"
+    }
+  ],
+  "observed": "On exact e763 Windows, native conversion encountered PermissionError WinError5 in GetFileAttributesExW while observing a live private LibreOffice profile .lock. Actual pending-deletion versus ACL or another cause was not established.",
+  "change": "The live run_process walker permits at most ten10ms rechecks only for PermissionError with exact native winerror5. Every attempt polls the real child; after exit it uses fresh final lstat. Each retry rechecks the existing cancel, graceful-stop, diagnostic-byte and time controls.",
+  "preserved": [
+    "Win32 metadata binding and its immediate native errors unchanged.",
+    "No directory-enumeration size fallback, accepted stale result, ignored or excluded path, permission mutation or retry of strict final validation.",
+    "A successful fresh type/size observation is still mandatory; FileNotFoundError uses the existing disappearing-path behavior.",
+    "Persistent or foreign access errors propagate through existing owned child and retained cleanup.",
+    "All reparse/device, staging-count, output bytes, disk reserve, final check and publication rules unchanged.",
+    "Original source reconstructs byte exactly after reversing only the control factoring and live retry block."
+  ],
+  "new_whole_suite": {
+    "path": "tests/audio/test_live_metadata_retry.py",
+    "cases": 12,
+    "functions": 8,
+    "old_suite_unchanged": "tests/audio/test_audio_process.py",
+    "old_suite_blob": "af58a03f5e5f84d7a4014089d6213511c4e4e13c",
+    "old_suite_cases": 23
+  },
+  "coverage": [
+    "Fresh recovery, disappearing lock and freshly observed disk overflow.",
+    "Persistent denial has exactly11 failed metadata attempts and a reaped child.",
+    "Other native codes or no native code fail immediately.",
+    "Cancellation and the existing total time budget interrupt retries.",
+    "Child exit changes the next attempt to fresh final lstat; final denial is never retried.",
+    "Actual Win32 shared handle plus DeleteFile is exercised on Windows; POSIX exercises real open-file unlink without a skip. Neither new native behavior nor suite success has run yet."
+  ],
+  "peer_review": "Progress independently reviewed exact code and12-case enumeration and accepted STATIC_NOT_RUN.",
+  "primary_references": [
+    "https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfileattributesexw",
+    "https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-deletefilew",
+    "https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew"
+  ],
+  "delivery": "Source/tests are prepared as immutable blobs. Exact helper/workflow pin composition and actual source/installed/native execution remain required. No ref, PR, canonical or release change is implied."
+}

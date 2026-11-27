@@ -1,0 +1,295 @@
+{
+  "schema": "resonance-selected-conversion-validation/2",
+  "created_utc": "2026-11-27 23:51:09 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "status": "STATIC_NOT_RUN",
+  "base_commit": "e7636ca3f9e6b7474145f6e1799bd19a135a3250",
+  "compatible_source_head": "79ef756d08667919d9a7c4367305aca5dfdaf6c9",
+  "subject": "Compose exact selected-conversion254 source/installed gates with observed-failure corrections and bounded diagnostics",
+  "files": [
+    {
+      "path": "carr-library/scripts/ci_selected_conversion_contracts.py",
+      "before": "4f9ef7774a1e8eaab254223181df7d3ddb9d3a26",
+      "after": "cd41df858e39ef0d8397a531a62780f43533e900"
+    },
+    {
+      "path": ".github/workflows/carr-next15-conversion.yml",
+      "before": "791430237558ef1ae715f8f61d56789b3253a9a2",
+      "composition_base": "01dfc5101843cab075d9fd2faa8c3496d21983c1",
+      "after": "28418b5d618cf805c997b4bab467ca52e7758a2a"
+    },
+    {
+      "path": "carr-library/scripts/prepare_selected_conversion_runtime.py",
+      "before": "e659599241a3d973a160b223b1d108b99feda7c7",
+      "after": "de90870ad234b0a3e329b9748d05485a231f0bfd"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/process.py",
+      "before": "71ee75c41ce4b57ace15fbb735e507bd2592409b",
+      "after": "014c47d5297a937a8bf6061420dd009206863669"
+    },
+    {
+      "path": "carr-library/tests/audio/test_live_metadata_retry.py",
+      "before": null,
+      "after": "bae4ed3b64c9dbd85776fa189c18d91e1119a009"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/document_formats_xml.py",
+      "before": "a09bc00a438e14ee631978498884961e8e396f00",
+      "after": "238207043c10273984fe2244153f5cf965bc9ade"
+    },
+    {
+      "path": "carr-library/tests/extract/test_document_formats_xml.py",
+      "before": "c7328eb9c810e179bd6b9fa9759d1a48fd2767ae",
+      "after": "b0f7d6b4d4a190da18c96f08e71f8400f3a2cdc4"
+    },
+    {
+      "path": "carr-library/scripts/selected_conversion_acceptance.py",
+      "before": "574a297765039cd765c1b352a6a9d8f27ca6b3be",
+      "after": "b4c60707e1554df514cd954afa89c0c7dc099713"
+    },
+    {
+      "path": "carr-library/scripts/windows_document_conversion_smoke.py",
+      "before": "c976addba03264d8ebd4dc19bf7c8795560a9a1a",
+      "after": "4b67819886d4324a616bce8dff13251fec2370f0"
+    },
+    {
+      "path": "carr-library/tests/ui/test_native_conversion_diagnostics.py",
+      "before": null,
+      "after": "dc523d350e151eaa6c6d94a63752abf38a37a497"
+    }
+  ],
+  "component_manifests": {
+    "acquisition_diagnostic": "aafb194c462d8eae6888de7e2386c1da429c80af",
+    "live_metadata_retry": "fdba1d7ee7679f57b18d2859e7592880c0d99d6f",
+    "odf_refusal_diagnostic": "cb24431f58bc20fc2ca13192090d2efb588e17b9",
+    "old_suite_wire_paths": "45342ce6f49638b7bc9120ad7b0acbaccd3bb220",
+    "gui_observer_and_cleanup": "7f967be4bf625d9f55cddef3920762b0772b5d67"
+  },
+  "composition": {
+    "helper_preimage": "4f9ef7774a1e8eaab254223181df7d3ddb9d3a26",
+    "workflow_published_preimage": "791430237558ef1ae715f8f61d56789b3253a9a2",
+    "workflow_pending_preimage": "01dfc5101843cab075d9fd2faa8c3496d21983c1",
+    "pending_workflow_meaning": "Exact published workflow plus the two accepted preparer de908 pins from acquisition diagnostic; this final complete workflow includes that change.",
+    "changed_paths": 10,
+    "existing_audio_process_suite_unchanged": "af58a03f5e5f84d7a4014089d6213511c4e4e13c",
+    "helper_reverse_exact": true,
+    "workflow_reverse_to_pending_exact": true,
+    "installed_child_byte_identical": true,
+    "ci_check_pin_unchanged": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473",
+    "fixed_pins": {
+      "src/carr_library/conversion/_selected_files.py": "2b8030e3c437b0b3a4ccb6d8bce8d67b6b68ebf4",
+      "src/carr_library/conversion/calibre.py": "917146418b06b28ac927c9a5cccbe90e9e86426c",
+      "src/carr_library/conversion/office.py": "e3d6f71b063b0640dc248304e74e0480a9f56090",
+      "src/carr_library/conversion/selected_adapters.py": "51ed8d7076ab9a5f4168aeaba8f2365e18ce588a",
+      "src/carr_library/conversion/selected_worker.py": "f1ec36e0c1a3a2e482a85087874b82f28c9b8673",
+      "src/carr_library/conversion/selected.py": "cfc956106d320c43a3cd5b78c58eed3e3dc64de6",
+      "src/carr_library/conversion/models.py": "fc087b6acd2284b08f5384c986a9c1233a5fda5c",
+      "src/carr_library/conversion/worker.py": "722d3c7b61717890dc242d8113d0617714d53a67",
+      "src/carr_library/conversion/service.py": "5a50e9e1c28517e7851d0d67a39df4b5bae172ab",
+      "src/carr_library/ui/document_conversion.py": "83a48872bd07a0e4611ee68b1a59155fe4468239",
+      "tests/conversion/test_selected_conversion.py": "ef810691b6474a45ba4fbd4c0992918cc07ded10",
+      "tests/conversion/test_calibre_admission.py": "bdea0804017e54a38d6036ca137feb778fea2e97",
+      "tests/conversion/test_office_admission.py": "b60d2784e25df42d29f486396010393865a2aa1b",
+      "tests/ui/test_document_conversion.py": "a92b5e20180462812634dda50266a61df8b9d4e3",
+      "tests/conversion/test_conversion.py": "db3884363c51654c7d16ef2c5d2e82d0e714b411",
+      "src/carr_library/extract/document_formats_xml.py": "238207043c10273984fe2244153f5cf965bc9ade",
+      "tests/extract/test_document_formats_xml.py": "b0f7d6b4d4a190da18c96f08e71f8400f3a2cdc4",
+      "scripts/ci_check.py": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473",
+      "packaging/source_wheel.py": "478de248451d59a44b35784eb808fb2974f0af67",
+      "scripts/selected_conversion_fixture_support.py": "ff9cb600f0ddf9b10479e92d401a0ddd88e4aa1b",
+      "scripts/selected_conversion_acceptance.py": "b4c60707e1554df514cd954afa89c0c7dc099713",
+      "scripts/translation_loopback_check.py": "6859d406a595e806b78de12969ad681757e34f71",
+      "packaging/windows-document-converters.lock.json": "c5822c7ff56d5139da911ea153a8fdcd626d70dd",
+      "tests/conversion/fixtures/ordered_slides.pptx": "58b0d7cce78a50883ed4bcf1e73cbbcc40675d44",
+      "src/carr_library/audio/process.py": "014c47d5297a937a8bf6061420dd009206863669",
+      "tests/audio/test_audio_process.py": "af58a03f5e5f84d7a4014089d6213511c4e4e13c",
+      "tests/audio/test_live_metadata_retry.py": "bae4ed3b64c9dbd85776fa189c18d91e1119a009",
+      "tests/ui/test_native_conversion_diagnostics.py": "dc523d350e151eaa6c6d94a63752abf38a37a497",
+      "scripts/windows_document_conversion_smoke.py": "4b67819886d4324a616bce8dff13251fec2370f0"
+    },
+    "origin_count": 19,
+    "origins_and_payload_checks_unchanged": true,
+    "companions": [
+      "scripts/windows_document_conversion_smoke.py"
+    ],
+    "helper_chars": 16669,
+    "workflow_chars": 48980
+  },
+  "gates": {
+    "whole_suites": [
+      {
+        "path": "tests/conversion/test_selected_conversion.py",
+        "git_blob": "ef810691b6474a45ba4fbd4c0992918cc07ded10",
+        "cases": 29
+      },
+      {
+        "path": "tests/conversion/test_calibre_admission.py",
+        "git_blob": "bdea0804017e54a38d6036ca137feb778fea2e97",
+        "cases": 49
+      },
+      {
+        "path": "tests/conversion/test_office_admission.py",
+        "git_blob": "b60d2784e25df42d29f486396010393865a2aa1b",
+        "cases": 19
+      },
+      {
+        "path": "tests/ui/test_document_conversion.py",
+        "git_blob": "a92b5e20180462812634dda50266a61df8b9d4e3",
+        "cases": 17
+      },
+      {
+        "path": "tests/extract/test_document_formats_xml.py",
+        "git_blob": "b0f7d6b4d4a190da18c96f08e71f8400f3a2cdc4",
+        "cases": 95
+      },
+      {
+        "path": "tests/audio/test_audio_process.py",
+        "git_blob": "af58a03f5e5f84d7a4014089d6213511c4e4e13c",
+        "cases": 23
+      },
+      {
+        "path": "tests/audio/test_live_metadata_retry.py",
+        "git_blob": "bae4ed3b64c9dbd85776fa189c18d91e1119a009",
+        "cases": 12
+      },
+      {
+        "path": "tests/ui/test_native_conversion_diagnostics.py",
+        "git_blob": "dc523d350e151eaa6c6d94a63752abf38a37a497",
+        "cases": 10
+      }
+    ],
+    "source_passed_required": 254,
+    "installed_passed_required": 254,
+    "whole_count": 8,
+    "case_counts": "Statically enumerated, not new runtime collection. All existing209 cases remain selected unchanged; the additional unchanged process suite has23, the new retry suite12, and the new native-observer portable suite10.",
+    "function_inventory": {
+      "tests/audio/test_audio_process.py": [
+        "test_fast_stdout_overflow_is_detected_after_child_exit",
+        "test_fast_stderr_overflow_is_detected_after_child_exit",
+        "test_real_timeout_terminates_worker_promptly",
+        "test_cancel_before_spawn_prevents_side_effect",
+        "test_output_disk_budget_is_enforced_even_on_fast_exit",
+        "test_all_worker_staging_files_count_against_disk_budget",
+        "test_staging_entry_count_is_bounded",
+        "test_nonzero_exit_is_not_success",
+        "test_progress_is_streamed_to_caller_without_waiting_for_full_buffer",
+        "test_executable_must_be_resolved_and_no_shell_is_accepted",
+        "test_publication_does_not_overwrite_or_publish_on_cancellation",
+        "test_audio_publication_flushes_a_writable_handle",
+        "test_windows_watch_never_lstats_live_status_but_checks_it_fresh_after_exit",
+        "test_windows_cached_watch_detects_actual_growth_while_child_keeps_file_open",
+        "test_windows_cached_watch_preserves_staging_budgets",
+        "test_windows_metadata_query_uses_full_width_size_and_fixed_win32_layout",
+        "test_windows_metadata_query_propagates_native_errors_without_cached_fallback",
+        "test_windows_live_metadata_still_rejects_reparse_and_device_output",
+        "test_unconfirmed_ordinary_child_stop_retains_streams_until_owned_cleanup"
+      ],
+      "tests/audio/test_live_metadata_retry.py": [
+        "test_live_refusal_requires_a_new_size_observation",
+        "test_persistent_live_denial_remains_a_failure_and_reaps_child",
+        "test_other_metadata_denials_are_not_retried",
+        "test_cancellation_interrupts_metadata_retry",
+        "test_existing_time_budget_interrupts_metadata_retry",
+        "test_child_exit_during_live_refusal_uses_fresh_final_lstat",
+        "test_final_lstat_denial_is_never_retried",
+        "test_real_open_file_deletion_is_observed_without_cached_fallback"
+      ],
+      "tests/ui/test_native_conversion_diagnostics.py": [
+        "test_native_conversion_observer_forwards_actual_host_call_and_admission",
+        "test_native_conversion_observer_returns_exact_result_on_actual_worker",
+        "test_native_conversion_observer_preserves_original_worker_error_and_bounds_diagnostic",
+        "test_native_conversion_observer_preserves_original_admission_error",
+        "test_native_conversion_cleanup_retains_primary_failure_and_checks_remaining_owners",
+        "test_native_conversion_optional_diagnostic_cannot_replace_actual_admission",
+        "test_native_conversion_cleanup_predicate_failure_cannot_mask_primary_or_stop_later_checks"
+      ]
+    },
+    "per_suite_seconds": 600,
+    "source_runner_jobs": 2,
+    "source_runner_seconds": 2700,
+    "source_envelope_derivation": "Four two-suite waves preserve each600s suite plus existing30s cleanup and finite orchestration/report room.",
+    "build_seconds": 300,
+    "install_seconds": 180,
+    "pip_check_seconds": 60,
+    "portable_step_minutes": 150,
+    "linux_job_minutes": 180,
+    "windows_job_minutes": 330,
+    "native_step_minutes": 100,
+    "acquisition_step_minutes": 35,
+    "native_phases": [
+      {
+        "mode": "source",
+        "phase": "formats",
+        "required_formats": 14,
+        "origins": 22
+      },
+      {
+        "mode": "installed",
+        "phase": "formats",
+        "required_formats": 14,
+        "origins": 22
+      },
+      {
+        "mode": "source",
+        "phase": "old-whole-suite",
+        "cases": 34,
+        "origins": 22,
+        "child_origin_receipt": true
+      },
+      {
+        "mode": "installed",
+        "phase": "old-whole-suite",
+        "cases": 34,
+        "origins": 22,
+        "child_origin_receipt": true
+      },
+      {
+        "mode": "source",
+        "phase": "GUI",
+        "checks": 30,
+        "origins": 30
+      },
+      {
+        "mode": "installed",
+        "phase": "GUI",
+        "checks": 30,
+        "origins": 30
+      }
+    ],
+    "native_six_phase_aggregation_unchanged": true,
+    "gui_result_wait_seconds": 50,
+    "gui_cleanup_watchdog_seconds": 180,
+    "native_runtime_phase_seconds": 1200,
+    "old_whole_native_suite_seconds": 600,
+    "preserved": [
+      "Exact current Git head and source blob pins.",
+      "Verified source-wheel proof, all installed payload bytes and19 origins before/after, isolated children, no source injection.",
+      "Exact whole collection/JUnit counts, no skips, XFAIL, XPASS or expected-failure acceptance.",
+      "All six native phases and their existing report fields and exact source/installed origins.",
+      "Seven official runtime inputs, hashes/limits, selected-runtime ownership and per-program external-range firewall/profile readback and cleanup.",
+      "Closed report-only artifact retention, no acquired converters, source fixture documents, audio, model or private payload uploads."
+    ]
+  },
+  "actual_before": {
+    "head": "e7636ca3f9e6b7474145f6e1799bd19a135a3250",
+    "run_id": 46079552487,
+    "windows_job_id": 140775089427,
+    "evidence": "018044edf278981c9bd2cbbaa2d66c6ae294b631",
+    "portable": "209 source and209 installed passed on both platforms.",
+    "native": "Required six-phase native aggregation failed. Old34 passed internally in both modes, but outer path-key verification refused Windows separators. Native source formats stopped on live .lock WinError5; installed formats stopped on strict XLS-derived ODF hidden-content refusal; both GUI modes timed out before a result window.",
+    "no_qualification_transfer": true
+  },
+  "review": {
+    "components": "Each component is independently peer-reviewed STATIC_NOT_RUN in its referenced manifest.",
+    "helper_and_workflow": "Exact reverse audits complete; bounded peer requested from progress_completion.",
+    "execution": "No Python compilation, YAML/PowerShell parse, new254 test run, converter-format rerun, GUI rerun or performance result is claimed by this composition."
+  },
+  "limits": [
+    "The XLS change only adds a bounded closed-vocabulary refusal diagnostic; it does not relax visibility rules or establish the actual hidden element.",
+    "The GUI change observes the unchanged real dispatch and preserves the primary failure; it does not establish or fix a Pandoc product cause.",
+    "The live WinError5 cause is not proven to be pending deletion; bounded retry still requires a fresh accepted metadata observation and retains failure/cancellation/cleanup.",
+    "Existing conversion remains explicitly selected LIMITED reading-copy support, with ordinary TXT admission and external original/report retention.",
+    "No ref, workflow dispatch, cancellation, merge, release or runtime acquisition is performed by this handoff."
+  ]
+}

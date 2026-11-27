@@ -199,8 +199,8 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
     threads = []
     last_progress = None
 
-    def check():
-        nonlocal last_progress, stopped_at
+    def check_control():
+        nonlocal stopped_at
         if cancelled():
             raise AudioCancelled('Audio operation cancelled; incomplete output discarded.')
         if (stop_requested is not None and stopped_at is None
@@ -219,13 +219,32 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
             raise AudioError('Audio worker exceeded its diagnostic output budget.')
         if time.monotonic() - started > budget.timeout:
             raise AudioError('Audio worker exceeded its time allowance; completed chunks remain reusable.')
+
+    def check():
+        nonlocal last_progress
+        check_control()
         total, count = 0, 0
         live_files = _USE_WINDOWS_LIVE_FILE_STATS and process.poll() is None
         pending = list(watched)
         while pending:
             path = pending.pop()
             try:
-                info = _live_file_info(path) if live_files else path.lstat()
+                for attempt in range(11):
+                    query_live = live_files and process.poll() is None
+                    try:
+                        info = _live_file_info(path) if query_live else path.lstat()
+                        break
+                    except PermissionError as error:
+                        # Windows can transiently deny metadata while a live
+                        # writer retires a file. Never accept cached size/type,
+                        # skip an inaccessible path, or retry final validation.
+                        if (not query_live or getattr(error, 'winerror', None) != 5
+                                or attempt == 10):
+                            raise
+                        check_control()
+                        if process.poll() is None:
+                            time.sleep(.01)
+                        check_control()
             except FileNotFoundError:
                 continue
             if stat.S_ISLNK(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400:

@@ -156,3 +156,113 @@ def test_native_capacity_cancel_does_not_select_or_accept_any_allowance():
     assert driver.keys == [(2, 32)] and not driver.dialog.IsModal()
     assert driver.dialog.GetSelection() == driver.dialog.lists[0].GetSelection() == 0
     assert driver.state['choice'] and not driver.state['selection_key']
+
+
+def checksum_driver(*, text_count=1, typed_text=None, input_succeeds=True, cached=''):
+    # Reuse the exact scoped main -> command -> visit extraction above.
+    driver = chooser_driver(selected=0)
+    scope = driver.visit.__globals__
+    wx, frame = scope['wx'], scope['frame']
+    clock, focus, typed = [1.0], [None], []
+    checksum = 'a123456789bcdef0' * 4
+
+    class TextCtrl:
+        def __init__(self):
+            self.value = ''
+
+        def SetFocus(self):
+            focus[0] = self
+
+        def GetValue(self):
+            return self.value
+
+    class TextEntry(wx.Dialog):
+        def __init__(self):
+            self.modal, self.cached = True, cached
+            self.controls = [TextCtrl() for _ in range(text_count)]
+
+        def GetTitle(self):
+            return 'Verify backup'
+
+        def GetValue(self):
+            # wxWidgets3.2.8 copies the control to m_value in the OK handler.
+            return self.cached
+
+        def Raise(self):
+            pass
+
+        def FindWindowById(self, identity):
+            return identity
+
+    dialog = TextEntry()
+    def native_text(value):
+        assert type(value) is bytes
+        typed.append(value)
+        if input_succeeds:
+            dialog.controls[0].value = value.decode('ascii') if typed_text is None else typed_text
+        return input_succeeds
+
+    def press(control, key=32):
+        assert control == wx.ID_OK
+        driver.keys.append((control, key))
+        dialog.cached = dialog.controls[0].GetValue()
+        dialog.modal = False
+
+    wx.TextEntryDialog, wx.TextCtrl = TextEntry, TextCtrl
+    wx.GetTopLevelWindows = lambda: [dialog]
+    wx.Window = SimpleNamespace(FindFocus=lambda: focus[0])
+    scope.update(
+        checksum=checksum, expected_result='Restore complete',
+        monotonic=lambda: clock[0], descendants=lambda window: iter(window.controls),
+        press=press, simulator=SimpleNamespace(Text=native_text),
+        user32=SimpleNamespace(
+            SetForegroundWindow=lambda handle: True,
+            GetForegroundWindow=lambda: dialog.GetHandle(),
+            IsWindow=lambda handle: handle == dialog.GetHandle()),
+        modal_loops=[(dialog, dialog.GetHandle(), wx.EventLoopBase.GetActive())])
+    driver.state['choice'] = True
+    return SimpleNamespace(visit=driver.visit, dialog=dialog, state=driver.state,
+                           keys=driver.keys, callbacks=driver.callbacks, checks=driver.checks,
+                           typed=typed, clock=clock, checksum=checksum)
+
+
+def test_native_backup_checksum_observes_live_text_before_modal_value_is_committed():
+    driver = checksum_driver()
+    driver.visit()
+    assert driver.typed == [driver.checksum.encode('ascii')]
+    assert driver.dialog.controls[0].GetValue() == driver.checksum
+    assert driver.dialog.GetValue() == '' and driver.dialog.IsModal()
+    assert driver.state['text_input'] and not driver.state['text'] and not driver.keys
+    driver.callbacks.pop(0)()
+    assert not driver.dialog.IsModal() and driver.state['text']
+    assert driver.dialog.GetValue() == driver.checksum and driver.keys == [(1, 32)]
+    assert driver.checks == ['native checksum entry preserves the exact retained manifest identity']
+
+
+def test_native_backup_checksum_rejects_wrong_live_text_even_if_cached_value_matches():
+    expected = 'a123456789bcdef0' * 4
+    driver = checksum_driver(typed_text='b' * 64, cached=expected)
+    driver.visit()
+    assert driver.dialog.GetValue() == expected
+    assert driver.dialog.controls[0].GetValue() != expected
+    driver.clock[0] = 7.0
+    with pytest.raises(AssertionError, match='Native checksum does not equal'):
+        driver.callbacks.pop(0)()
+    assert driver.dialog.IsModal() and not driver.state['text'] and not driver.keys
+
+
+@pytest.mark.parametrize('text_count', [0, 2])
+def test_native_backup_checksum_refuses_missing_or_ambiguous_live_control(text_count):
+    driver = checksum_driver(text_count=text_count)
+    with pytest.raises(AssertionError, match='no unique text control'):
+        driver.visit()
+    assert not driver.typed and not driver.keys and driver.dialog.IsModal()
+
+
+def test_native_backup_checksum_never_accepts_failed_native_keyboard_input():
+    driver = checksum_driver(input_succeeds=False)
+    with pytest.raises(AssertionError, match='Native checksum input failed'):
+        driver.visit()
+    assert driver.typed == [driver.checksum.encode('ascii')]
+    assert not driver.state['text_input'] and not driver.state['text']
+    assert not driver.keys and driver.dialog.GetValue() == '' and driver.dialog.IsModal()

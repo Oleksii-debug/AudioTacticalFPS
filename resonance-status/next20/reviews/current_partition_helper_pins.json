@@ -1,0 +1,31 @@
+{
+  "schema": "resonance-current-partition-helper-pin/1",
+  "status": "STATIC_REVIEWED_NOT_RUN",
+  "base": "79ef756d08667919d9a7c4367305aca5dfdaf6c9",
+  "files": [
+    {
+      "path": ".github/workflows/carr-next13-partition.yml",
+      "preimage": "038571f82a18114882c58ad3fb6b0fba19346f85",
+      "sha": "ed41540248769489f5a01ca9c00771162d3b2a88"
+    }
+  ],
+  "changes": "Exactly two source pins8a23→6ad in the existing before/after fourteen-entry dictionaries. All other thirteen entries in each dictionary match this exact tree.",
+  "scope": "This workflow checks out the current github.sha; it is not a historical artifact inspector. Refresh the reviewed additive shared helper dependency without changing its unchanged PYTEST_CHILD or any26-case suite requirement.",
+  "preserved": {
+    "whole_cases_each_os": 26,
+    "platforms": [
+      "ubuntu-24.04",
+      "windows-2022"
+    ],
+    "job_minutes": 35,
+    "original_predicates": true,
+    "source_before_after": true,
+    "artifact_policy": true
+  },
+  "review": {
+    "root": "All22 workflows inspected for the old changed application/literal/benchmark/diagnostic helper pins; this inactive dedicated workflow was the sole remaining ci8a binding.",
+    "peer": "Progress exact old/new reconstruction accepted STATIC_NOT_RUN; both dictionaries retain14 entries and all other13 values byte-identical."
+  },
+  "runtime": "NOT_RUN on this source; prior26+26 results remain attached only to the prior exact heads.",
+  "refs_changed": false
+}

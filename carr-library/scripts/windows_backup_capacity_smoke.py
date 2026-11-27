@@ -456,13 +456,15 @@ def main(argv=None):
                                 raise AssertionError('Native checksum input failed.')
                             state['text_input'] = True
                             break
-                        if dialog.GetValue() != checksum:
+                        # wxTextEntryDialog caches GetValue until its OK handler.
+                        # Observe the actual keyboard-filled control before accepting.
+                        if readers[0].GetValue() != checksum:
                             if monotonic() >= text_until:
                                 raise AssertionError('Native checksum does not equal the retained receipt.')
                             break
                         state['text'] = True
                         check('native checksum entry preserves the exact retained manifest identity',
-                              dialog.GetValue() == checksum)
+                              readers[0].GetValue() == checksum)
                         press(dialog.FindWindowById(wx.ID_OK))
                         break
                     if dialog.GetTitle() == expected_result and not state['result']:
@@ -562,7 +564,8 @@ def main(argv=None):
             def observed_restore(source, destination, *args, **options):
                 check('actual restore executes on the shared worker', threading.get_ident() != ui_thread)
                 result = actual_restore(source, destination, *args, **options)
-                restore_calls.append((options.get('capacity_profile'), Path(result)))
+                restore_calls.append((options.get('capacity_profile'), Path(result),
+                                      options.get('expected_manifest_sha256')))
                 return result
 
             def run_steps():
@@ -593,7 +596,8 @@ def main(argv=None):
                         folders=(backup_calls[1][1], restored_parent), checksum=backup_calls[1][2])
                     check('explicit large restore reaches the same canonical fresh-destination API',
                           len(restore_calls) == 1 and restore_calls[0][0] == LARGE_SOURCE_PROFILE
-                          and restore_calls[0][1].parent == restored_parent)
+                          and restore_calls[0][1].parent == restored_parent
+                          and restore_calls[0][2] == backup_calls[1][2])
                     recovered = LibraryApp(restore_calls[0][1])
                     check('real restored library preserves both retained originals and search',
                           len(recovered.search(workspace, 'Railway capacity')) == 2

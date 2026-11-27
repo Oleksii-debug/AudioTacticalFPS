@@ -20,7 +20,7 @@ import xml.etree.ElementTree as ET
 ROOT = Path(__file__).resolve().parents[1]
 SUITES = {
     "tests/studio/test_book_effects.py": 14,
-    "tests/studio/test_measured_audio.py": 34,
+    "tests/studio/test_measured_audio.py": 36,
     "tests/studio/test_measured_pcm.py": 19,
     "tests/studio/test_book_measured_cli.py": 9,
     "tests/ui/test_book_effects.py": 5,
@@ -30,12 +30,12 @@ SUITES = {
 PINS = {
     "src/carr_library/studio/book_audio.py": "d1e54a397ea5ad22737f34aa1c7160e56759f2bb",
     "src/carr_library/studio/measured_audio.py": "3e4227b536a5a40edde371c829f44bd20f28685f",
-    "src/carr_library/studio/publishing.py": "fb44f78ddc87d6c220d82f14784711c91ba76472",
+    "src/carr_library/studio/publishing.py": "bf9a653f5baa37e452430658b1043b9a9019d90a",
     "src/carr_library/ui/book_audio_dialog.py": "0d89734850a1a1954ff0ca8312e4f6575b6c3b30",
     "src/carr_library/ui/book_duration_dialog.py": "0f9daced19fca2bf4fd60cf91f96a493d07cdb75",
     "src/carr_library/studio/book_cli.py": "38a26a21e314a8872b01393edd1801fb5e3ea273",
     "tests/studio/test_book_effects.py": "76453a8a97571696f494258425191236e76205b0",
-    "tests/studio/test_measured_audio.py": "cf6d9eb7e9344836285e4575edcc4095c10767fa",
+    "tests/studio/test_measured_audio.py": "717ad80542669ecf0543ea6d971f3e7f2e849444",
     "tests/studio/test_measured_pcm.py": "a8cb8ecfc05508ef33a6b8a0e2f123cc197a6ae0",
     "tests/studio/test_book_measured_cli.py": "07d107d1c10eb341f43cfcd8a0823ba1f93554cb",
     "tests/ui/test_book_effects.py": "12a47c7a05879eeaeab7047dd7eddac17dbf9cdb",
@@ -64,7 +64,7 @@ PINS = {
     "src/carr_library/runtime_settings.py": "269814e94549fdff700027afa450686a4a15f81b",
     "src/carr_library/operations/broker.py": "107e1a600bb4bdf0f3edb7735ee5fcdb68d9fb36",
     "src/carr_library/audio/dsp.py": "f7833b5f600e3a822a3fa2f2068661c922576230",
-    "src/carr_library/audio/process.py": "71ee75c41ce4b57ace15fbb735e507bd2592409b",
+    "src/carr_library/audio/process.py": "014c47d5297a937a8bf6061420dd009206863669",
     "src/carr_library/ui/desktop_app.py": "85c0991f744bd521ca247a0e15da93aa585ea30d",
     "src/carr_library/ui/effects_dialog.py": "d48b985ccb38b5a48123bc2a2c39afb2b2f452e4",
     "src/carr_library/audio/effect_presets.py": "8ad8b5730b60fa6531904f83360232e7a697e834",

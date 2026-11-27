@@ -1,0 +1,489 @@
+{
+  "schema": "resonance-read-only-audio-admission-audit/1",
+  "status": "READ_ONLY_AUDIT_OF_EXISTING_SOURCE_AND_ACTUAL_LOGS",
+  "audited_current_head": "e7636ca3f9e6b7474145f6e1799bd19a135a3250",
+  "actual_main_observation": {
+    "head": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3",
+    "run_id": 46074881860,
+    "job_id": 140761348364,
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46074881860/job/140761348364",
+    "service_report_time": "2026-11-27T22:34:01.1734098Z",
+    "service_report": {
+      "schema": "carr-windows-audio-service-preparation/1",
+      "purpose": "Prerequisite preparation; actual native MCI acceptance remains required",
+      "prepared": true,
+      "services": [
+        {
+          "name": "AudioEndpointBuilder",
+          "requested_prepare": true,
+          "actions": [
+            "Existing service started"
+          ],
+          "before_state": "Stopped",
+          "before_start_type": "Manual",
+          "after_state": "Running",
+          "after_start_type": "Manual"
+        },
+        {
+          "name": "Audiosrv",
+          "requested_prepare": true,
+          "actions": [
+            "Existing service started"
+          ],
+          "before_state": "Stopped",
+          "before_start_type": "Manual",
+          "after_state": "Running",
+          "after_start_type": "Manual"
+        }
+      ],
+      "device_installation": "NOT_PERFORMED",
+      "playback_evidence": "NOT_RUN"
+    },
+    "output_admission_refusal": [
+      {
+        "line": 6124,
+        "time": "2026-11-27T22:34:01.7875820Z",
+        "text": "PASS: installed reader output module: carr_library.speech.player"
+      },
+      {
+        "line": 6125,
+        "time": "2026-11-27T22:34:01.7877667Z",
+        "text": "PASS: installed reader output module: carr_library.speech.playback_devices"
+      },
+      {
+        "line": 6126,
+        "time": "2026-11-27T22:34:01.7878640Z",
+        "text": "PASS: installed reader output module: carr_library.speech.listening"
+      },
+      {
+        "line": 6127,
+        "time": "2026-11-27T22:34:01.7879341Z",
+        "text": "PASS: installed reader output module: carr_library.audio.dsp"
+      },
+      {
+        "line": 6128,
+        "time": "2026-11-27T22:34:01.7883938Z",
+        "text": "PASS: installed reader output module: carr_library.ui.reader_playback"
+      },
+      {
+        "line": 6129,
+        "time": "2026-11-27T22:34:01.8210588Z",
+        "text": "PASS: actual Windows output inventory stays within its bound"
+      },
+      {
+        "line": 6130,
+        "time": "2026-11-27T22:34:01.8283501Z",
+        "text": "Traceback (most recent call last):"
+      },
+      {
+        "line": 6131,
+        "time": "2026-11-27T22:34:01.8288403Z",
+        "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_player_smoke.py\", line 499, in <module>"
+      },
+      {
+        "line": 6132,
+        "time": "2026-11-27T22:34:01.8545573Z",
+        "text": "    raise SystemExit(main())"
+      },
+      {
+        "line": 6133,
+        "time": "2026-11-27T22:34:01.8549456Z",
+        "text": "                     ^^^^^^"
+      },
+      {
+        "line": 6134,
+        "time": "2026-11-27T22:34:01.8556276Z",
+        "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_player_smoke.py\", line 385, in main"
+      },
+      {
+        "line": 6135,
+        "time": "2026-11-27T22:34:01.8559896Z",
+        "text": "    raise RuntimeError('Actual output-device qualification requires an identifiable Windows output.')"
+      },
+      {
+        "line": 6136,
+        "time": "2026-11-27T22:34:01.8563609Z",
+        "text": "RuntimeError: Actual output-device qualification requires an identifiable Windows output."
+      },
+      {
+        "line": 6137,
+        "time": "2026-11-27T22:34:01.8725891Z",
+        "text": "REQUIRED NATIVE BLOCK FAILED [reader-player]: Actual installed native reader playback failed."
+      }
+    ],
+    "interpretation": "Both installed services were started from Stopped/Manual to Running/Manual before this reader attempt. The reader then found no selectable nonempty stable interface. Its raw WinMM device count, capability results and complete MMDevice endpoint inventory were not emitted at this failing boundary.",
+    "not_established": [
+      "Raw waveOutGetNumDevs was zero at this boundary.",
+      "No physical audio hardware existed.",
+      "The running-service report proves endpoint availability or successful playback.",
+      "A particular privacy/permission/driver/root cause explains the failure.",
+      "All audio endpoints had completed asynchronous appearance approximately 0.65 seconds after the service Running report.",
+      "Endpoint readiness delay caused this refusal; no observation establishes that explanation."
+    ],
+    "timing_limit": "The report-to-refusal interval is approximately 0.65 seconds. Running is a service state, not proof that endpoint discovery has settled; readiness delay remains an unmeasured possibility, not an attributed cause."
+  },
+  "current_sources": [
+    {
+      "path": "carr-library/scripts/windows_reader_player_smoke.py",
+      "sha": "f6a1804be5e77eb53f5f4c6aac23ff2137706e7c",
+      "role": "Existing detailed snapshot is called only immediately before canonical MCI playback and after MCI-open error; require-output-device rejects earlier."
+    },
+    {
+      "path": "carr-library/scripts/windows_audio_diagnostics.py",
+      "sha": "d1b9c64a6c822342c09af79954a93db30ccd1385",
+      "role": "Read-only QueryServiceStatusEx; raw waveOut count; up to32 capability rows and target-format queries; six mapper queries; no stream/buffer/playback; zero explicitly means no enumeration OR query error."
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/playback_devices.py",
+      "sha": "3f675bccbfeea8f0b0977d814e123b435bb7f0ca",
+      "role": "Twice-enumerated current WinMM caps/interface inventory; selectable is bool(interface); nonempty stable identity remains required."
+    },
+    {
+      "path": "carr-library/scripts/prepare_windows_audio.ps1",
+      "sha": "3e3398e62d49403a81a29c6a3de18636b38866d5",
+      "role": "Existing main workflow prerequisite, invoked with -Prepare; unchanged by this work. Actual observed start types stayed Manual."
+    }
+  ],
+  "interface_contract_review": {
+    "device_id": "The implementation casts the enumerated integer device ID to c_void_p as required for waveOutMessage system-intercepted queries.",
+    "parameters": "DWORD_PTR parameters are c_size_t; the interface-size output is c_uint32 (ULONG); returned byte length governs the UTF-16 buffer.",
+    "empty_interface": "A successful size query can return zero for a device without an interface. This remains nonselectable under the existing strict policy.",
+    "obvious_mapping_error": "Not found in this bounded source/API comparison; not a native qualification."
+  },
+  "separate_historical_endpoint_evaluation": {
+    "head": "05594e86f12f012fff0ded2b93646eab1658e7d5",
+    "run_id": 46028171421,
+    "job_id": 140604848747,
+    "workflow": {
+      "path": ".github/workflows/carr-capture-format-diagnostic.yml",
+      "sha": "2e8124571783dbc26ab43d072789182a13c8855a"
+    },
+    "helper": {
+      "path": "carr-library/scripts/ci_audio_endpoint.py",
+      "sha": "3cbcaeb6a5c0c728a599a2096abf1ebb1f498890"
+    },
+    "scope": "Separate one-off signed-driver evaluation environment; not the ordinary main environment. This audit only read its source/log and did not run it.",
+    "report_status": "DIAGNOSED",
+    "native_outputs": [
+      {
+        "index": 0,
+        "name": "Speakers (VB-Audio Virtual Cabl",
+        "interface_sha256": "b313ba6058a4c28a401e507ab3c5cd598b67866db97e5d2321589deefbc07996"
+      },
+      {
+        "index": 1,
+        "name": "CABLE In 16 Ch (VB-Audio Virtua",
+        "interface_sha256": "b313ba6058a4c28a401e507ab3c5cd598b67866db97e5d2321589deefbc07996"
+      }
+    ],
+    "selected_device": {
+      "id": "8f949452065c10e0d0d56e08e4222e6d84626a190d81ce236aca384a002c8ca0",
+      "name": "CABLE Output (VB-Audio Virtual Cable)",
+      "alternative": "@device_cm_{33D9A762-90C8-11D0-BD43-00A0C911CE86}\\wave_{33EF9889-46D7-4963-A3BF-4BD4D54768A6}"
+    },
+    "native_wave_input_trials": [
+      {
+        "rate": 44100,
+        "channels": 1,
+        "bits": 16,
+        "operation": "query",
+        "direct": false,
+        "result": 0,
+        "error": "The specified command was carried out."
+      },
+      {
+        "rate": 44100,
+        "channels": 1,
+        "bits": 16,
+        "operation": "query",
+        "direct": true,
+        "result": 0,
+        "error": "The specified command was carried out."
+      },
+      {
+        "rate": 44100,
+        "channels": 1,
+        "bits": 16,
+        "operation": "open-without-buffers",
+        "direct": false,
+        "result": 1,
+        "error": "Undefined external error."
+      },
+      {
+        "rate": 44100,
+        "channels": 2,
+        "bits": 16,
+        "operation": "query",
+        "direct": false,
+        "result": 0,
+        "error": "The specified command was carried out."
+      },
+      {
+        "rate": 44100,
+        "channels": 2,
+        "bits": 16,
+        "operation": "query",
+        "direct": true,
+        "result": 0,
+        "error": "The specified command was carried out."
+      },
+      {
+        "rate": 44100,
+        "channels": 2,
+        "bits": 16,
+        "operation": "open-without-buffers",
+        "direct": false,
+        "result": 1,
+        "error": "Undefined external error."
+      },
+      {
+        "rate": 48000,
+        "channels": 1,
+        "bits": 16,
+        "operation": "query",
+        "direct": false,
+        "result": 0,
+        "error": "The specified command was carried out."
+      },
+      {
+        "rate": 48000,
+        "channels": 1,
+        "bits": 16,
+        "operation": "query",
+        "direct": true,
+        "result": 0,
+        "error": "The specified command was carried out."
+      },
+      {
+        "rate": 48000,
+        "channels": 1,
+        "bits": 16,
+        "operation": "open-without-buffers",
+        "direct": false,
+        "result": 1,
+        "error": "Undefined external error."
+      },
+      {
+        "rate": 48000,
+        "channels": 2,
+        "bits": 16,
+        "operation": "query",
+        "direct": false,
+        "result": 0,
+        "error": "The specified command was carried out."
+      },
+      {
+        "rate": 48000,
+        "channels": 2,
+        "bits": 16,
+        "operation": "query",
+        "direct": true,
+        "result": 0,
+        "error": "The specified command was carried out."
+      },
+      {
+        "rate": 48000,
+        "channels": 2,
+        "bits": 16,
+        "operation": "open-without-buffers",
+        "direct": false,
+        "result": 1,
+        "error": "Undefined external error."
+      }
+    ],
+    "selected_capture_wasapi": {
+      "scope": "exact selected native input only",
+      "capture_started": false,
+      "buffers_requested": false,
+      "shared_mode": true,
+      "property_changes": false,
+      "device_fallback": false,
+      "calls": [
+        {
+          "operation": "waveIn.endpoint.before.size",
+          "mmresult": 0
+        },
+        {
+          "operation": "waveIn.endpoint.before.value",
+          "mmresult": 0
+        },
+        {
+          "operation": "CoCreateInstance.IMMDeviceEnumerator",
+          "hresult": "0x00000000"
+        },
+        {
+          "operation": "IMMDeviceEnumerator.GetDevice",
+          "hresult": "0x00000000"
+        },
+        {
+          "operation": "IMMDevice.GetState.before",
+          "hresult": "0x00000000"
+        },
+        {
+          "operation": "QueryInterface.IMMEndpoint",
+          "hresult": "0x00000000"
+        },
+        {
+          "operation": "IMMEndpoint.GetDataFlow",
+          "hresult": "0x00000000"
+        },
+        {
+          "operation": "IMMDevice.Activate.IAudioClient",
+          "hresult": "0x00000000"
+        },
+        {
+          "operation": "IAudioClient.GetDevicePeriod",
+          "hresult": "0x00000000"
+        },
+        {
+          "operation": "IAudioClient.GetMixFormat",
+          "hresult": "0x00000000"
+        },
+        {
+          "operation": "waveIn.endpoint.pre_initialize.size",
+          "mmresult": 0
+        },
+        {
+          "operation": "waveIn.endpoint.pre_initialize.value",
+          "mmresult": 0
+        },
+        {
+          "operation": "IAudioClient.Initialize.shared",
+          "hresult": "0x80070005"
+        },
+        {
+          "operation": "IMMDevice.GetState.after",
+          "hresult": "0x00000000"
+        },
+        {
+          "operation": "waveIn.endpoint.after.size",
+          "mmresult": 0
+        },
+        {
+          "operation": "waveIn.endpoint.after.value",
+          "mmresult": 0
+        }
+      ],
+      "endpoint_id": "{0.0.1.00000000}.{33ef9889-46d7-4963-a3bf-4bd4d54768a6}",
+      "state_before": 1,
+      "data_flow": 1,
+      "device_period_100ns": {
+        "default": 100000,
+        "minimum": 30000
+      },
+      "mix_format": {
+        "tag": 65534,
+        "channels": 2,
+        "rate": 48000,
+        "bits": 32,
+        "block_align": 8,
+        "average_bytes_per_second": 384000,
+        "extra_bytes": 22
+      },
+      "stream_initialized": false,
+      "state_after": 1,
+      "endpoint_unchanged": true
+    },
+    "directshow_summary": [
+      {
+        "kind": "current",
+        "index": null,
+        "rate": 44100,
+        "channels": 2,
+        "bits": 16,
+        "set_result": "0x80004005"
+      },
+      {
+        "kind": "advertised",
+        "index": 0,
+        "rate": 44100,
+        "channels": 2,
+        "bits": 16,
+        "set_result": "0x80004005"
+      },
+      {
+        "kind": "advertised",
+        "index": 1,
+        "rate": 44100,
+        "channels": 2,
+        "bits": 16,
+        "set_result": "0x80004005"
+      },
+      {
+        "kind": "advertised",
+        "index": 2,
+        "rate": 44100,
+        "channels": 1,
+        "bits": 16,
+        "set_result": "0x80004005"
+      },
+      {
+        "kind": "advertised",
+        "index": 19,
+        "rate": 48000,
+        "channels": 2,
+        "bits": 16,
+        "set_result": "0x80004005"
+      },
+      {
+        "kind": "advertised",
+        "index": 20,
+        "rate": 48000,
+        "channels": 1,
+        "bits": 16,
+        "set_result": "0x80004005"
+      }
+    ],
+    "service_inventory_limit": "Workflow wrote audio-services.json, but its raw before/after fields were not printed in this fetched log and the artifact ZIP was not inspected here.",
+    "artifact_metadata": [
+      {
+        "id": 15219613596,
+        "name": "carr-capture-format-05594e86f12f012fff0ded2b93646eab1658e7d5-1",
+        "size_in_bytes": 6764,
+        "digest": "sha256:e8bbbdc28e9fb3dab3f3f7ede39888e86fda1e4918c53536fa8bccfa43bcfd69",
+        "zip_contents_inspected": false
+      }
+    ],
+    "limitations": "Two actual virtual outputs and an active capture endpoint with Initialize.shared=0x80070005 describe this separate driver-evaluation session only; not a playback/capture/physical/human-listening PASS and not proof about main raw output count."
+  },
+  "reviewed_next_step": {
+    "source_successor": "6ea74ad9b55c572a91b0f200f2c8c11e074528b0",
+    "change": "Call the existing bounded audio_diagnostics('before-output-device-admission') immediately before output_devices in the reader probe.",
+    "unchanged": [
+      "Original required-device refusal and stable identity policy",
+      "Existing75-second whole-probe watchdog",
+      "All native check names and playback/monitoring/physical/acoustic requirements",
+      "All service/driver/privacy behavior",
+      "All production source"
+    ],
+    "runtime": "NOT_RUN",
+    "peer": {
+      "reviewer": "canonical_regression",
+      "verdict": "ACCEPTED_STATIC_NOT_RUN",
+      "scope": "Exact one-line insertion; existing read-only QUERY_STATUS/WinMM caps/WAVE_FORMAT_QUERY helper, unchanged 75-second watchdog, required stable-output refusal, native labels/playback/final report/cleanup."
+    },
+    "test_change": "None: existing actual required native gate remains, with all check names and counts unchanged."
+  },
+  "primary_sources": [
+    {
+      "url": "https://learn.microsoft.com/en-us/windows/win32/api/mmeapi/nf-mmeapi-waveoutgetnumdevs",
+      "claim": "Zero means no devices OR an error."
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/windows/win32/api/mmeapi/nf-mmeapi-waveoutmessage",
+      "claim": "Use the device-ID cast, pointer-sized message parameters, byte-sized Unicode interface buffer; no-interface response is valid."
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/audio/drv-querydeviceinterfacesize",
+      "claim": "ULONG size in bytes, includes terminator, can be zero for no interface; retain MMRESULT."
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/windows/win32/api/mmdeviceapi/nf-mmdeviceapi-immdeviceenumerator-enumaudioendpoints",
+      "claim": "Enumerates render/capture endpoint collections by state and returns HRESULT; all-state mask includes disabled/not-present/unplugged."
+    }
+  ],
+  "environment_actions_performed_by_this_audit": "NONE",
+  "refs_changed": false,
+  "supersedes_draft_evidence_sha": "60e0243523ea5f03a57934c20e2c34e824016c48",
+  "next_step_scope": "Only the existing snapshot is moved into the previously uncovered admission boundary by one additional call. No sleep/retry, new MMDevice framework, driver, service, policy or privacy changes are added."
+}

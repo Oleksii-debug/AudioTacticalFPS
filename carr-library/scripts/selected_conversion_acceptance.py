@@ -144,7 +144,7 @@ def old_suite(args, fixture, report, children):
     from carr_library.operations import ResourceBroker, ResourceRequest
     original = args.source_root.parent / 'tests/conversion/test_conversion.py'
     companion = original.parent / 'fixtures/ordered_slides.pptx'
-    expected = {str(path.relative_to(args.source_root.parent)): sha256(path.read_bytes()).hexdigest()
+    expected = {path.relative_to(args.source_root.parent).as_posix(): sha256(path.read_bytes()).hexdigest()
                 for path in (original, companion)}
     with TemporaryDirectory(prefix='carr-old-conversion-gate-') as temporary:
         root = Path(temporary)
@@ -155,7 +155,7 @@ def old_suite(args, fixture, report, children):
         shutil.copyfile(original, test)
         shutil.copyfile(companion, target_companion)
         for path in (test, target_companion):
-            if sha256(path.read_bytes()).hexdigest() != expected[str(path.relative_to(root))]:
+            if sha256(path.read_bytes()).hexdigest() != expected[path.relative_to(root).as_posix()]:
                 raise AssertionError('The old whole conversion suite or binary fixture changed during staging.')
         library = LibraryApp(root / 'admission')
         broker = ResourceBroker.for_app(library.root)

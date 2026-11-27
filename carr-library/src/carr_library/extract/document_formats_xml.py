@@ -263,7 +263,20 @@ def _check_odf_visibility(root, budget):
         if (element.get(TEXT + 'display') in ('none', 'false')
                 or element.get(FO + 'visibility') in ('hidden', 'collapse')
                 or element.get(STYLE + 'display') == 'false'):
-            raise ValueError('Hidden document text requires review.')
+            # Fixed diagnostic vocabulary: never include document text, URLs,
+            # arbitrary XML names, attribute values or filesystem paths.
+            part = {OFFICE + 'document-content': 'content.xml',
+                    OFFICE + 'document-styles': 'styles.xml'}.get(root.tag, 'other')
+            names = {STYLE + name: 'style:' + name for name in (
+                'header', 'header-first', 'header-left', 'footer', 'footer-first',
+                'footer-left', 'text-properties', 'paragraph-properties', 'table-properties')}
+            names.update({TEXT + 'p': 'text:p', TEXT + 'span': 'text:span'})
+            kind = names.get(element.tag, 'other')
+            condition = ('text:display' if element.get(TEXT + 'display') in ('none', 'false')
+                         else 'fo:visibility' if element.get(FO + 'visibility') in ('hidden', 'collapse')
+                         else 'style:display')
+            raise ValueError('Hidden document text requires review. '
+                             f'[part={part}; element={kind}; condition={condition}]')
 
 
 def _odf_text(element, budget):
