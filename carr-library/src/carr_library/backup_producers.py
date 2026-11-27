@@ -493,7 +493,7 @@ def validate_collection(db, stage, entries, *, cancelled):
         match = TRANSLATION.fullmatch(name)
         if match is None or match[2]:
             continue
-        job = read_json(Path(stage) / name, maximum=limit(name))
+        job = read_json(Path(stage) / name)
         accepted = [row for row in job['receipts'] if row['request_sha256'] is not None]
         if not accepted:
             continue
@@ -503,7 +503,7 @@ def validate_collection(db, stage, entries, *, cancelled):
         candidates = [item for item in names if item in inventory]
         if len(candidates) != 1:
             raise ValueError('Translation has no unique retained usage evidence.')
-        usage = read_json(Path(stage) / candidates[0], maximum=limit(candidates[0]))
+        usage = read_json(Path(stage) / candidates[0])
         if (usage['authorization'] != sha256(canonical(job['authorization']).encode()).hexdigest()
                 or usage['currency'] != approval.currency):
             raise ValueError('Translation authority differs from its retained usage evidence.')
