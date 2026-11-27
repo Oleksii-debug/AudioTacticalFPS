@@ -151,7 +151,7 @@ class OperationProgress:
             self.text = label
         self.preferences, self.load_notice = self._load()
         self.notice = self.load_notice
-        self.notifications = notifications or NotificationWorker(self.preferences)
+        self.notifications = notifications or NotificationWorker(self.preferences, library_root=self.root)
         self.notifications.configure(self.preferences)
         self._applied_preferences = self.preferences
         self.gauge.SetName('Current operation progress; measured work or total unknown')
@@ -247,6 +247,9 @@ class OperationProgress:
         self.notifications.set_registry(None)
         self.library = self.frame.library
         self.root = Path(self.library.root)
+        bind_root = getattr(self.notifications, 'set_library_root', None)
+        if callable(bind_root):
+            bind_root(self.root)
         # A player or quarantined native handle may still own this hub's media
         # guard. Keep the authority and hide only the previous library's events.
         self._prior_scope_ids = {row.operation_id for row in self.hub.snapshot()}
@@ -675,8 +678,9 @@ def show_progress_settings(presenter):
     layout.Add(status, 0, wx.EXPAND | wx.ALL, 5)
     layout.Add(dialog.CreateButtonSizer(wx.OK | wx.CANCEL), 0, wx.EXPAND | wx.ALL, 8)
     dialog.SetSizer(layout)
-    scope, active, futures = presenter.library, [True], []
-    alive = lambda: active[0] and not presenter.closed and presenter.library is scope
+    scope, selected_root, active, futures = presenter.library, presenter.root, [True], []
+    alive = lambda: (active[0] and not presenter.closed and presenter.scope_current
+                     and presenter.library is scope and presenter.root == selected_root)
     def failure(exc):
         if alive():
             choose.Enable()
@@ -685,13 +689,17 @@ def show_progress_settings(presenter):
         choose.Disable()
         status.SetLabel('Discovering existing local voices; no downloads or provider requests.')
         def discover(cancelled):
-            current = configured_registry()
+            if cancelled():
+                raise InterruptedError('Progress voice selection stopped.')
+            current = configured_registry(selected_root)
             rows = [voice for voice in current.voices(cancelled=cancelled)
                     if voice.available and 'volume' in voice.controls
                     and any(language.lower().replace('_', '-').split('-')[0] in _LANGUAGES
                             for language in voice.languages)]
             return current, rows
         def loaded(value):
+            if not alive():
+                return
             current, rows = value
             choose.Enable()
             if not rows:
@@ -706,6 +714,8 @@ def show_progress_settings(presenter):
                 voice = rows[selector.GetSelection()]
             finally:
                 selector.Destroy()
+            if not alive():
+                return
             languages = tuple(language for language in _LANGUAGES
                               if language in {item.lower().replace('_', '-').split('-')[0] for item in voice.languages})
             language_selector = wx.SingleChoiceDialog(dialog, 'Choose the language of progress notices.',
@@ -717,6 +727,8 @@ def show_progress_settings(presenter):
                 language = languages[language_selector.GetSelection()]
             finally:
                 language_selector.Destroy()
+            if not alive():
+                return
             choose.Disable()
             status.SetLabel('Checking the selected voice and local runtime identity.')
             def verified(fingerprint):
