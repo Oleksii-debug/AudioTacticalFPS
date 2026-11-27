@@ -94,7 +94,7 @@ def independent_reading_desk(desk):
 def canonical_copy_probe(wx, library, desk, discover, render):
     """Exercise the real canonical dialog, draft format and shared controller."""
     from carr_library.reader.live_reading import LiveReader
-    from carr_library.speech.session import ReaderDraftStore
+    from carr_library.speech.session import ReaderDraftStore, open_source_draft
     from carr_library.speech.source import read_source_range
     from carr_library.ui.live_reading import native_cursor_position
     from carr_library.ui.speech_dialog import show_speech_reader
@@ -153,9 +153,22 @@ def canonical_copy_probe(wx, library, desk, discover, render):
             elif context['stage'] == 2 and view.state == 'complete' and not live.core.busy:
                 command = wx.CommandEvent(wx.EVT_MENU.typeId, ui['save_command_id'])
                 context['dialog'].GetEventHandler().ProcessEvent(command)
-                recovered = ReaderDraftStore(library.root, slot=slot).load()
+                # Source loading moves recovery into its exact identity slot.
+                # The original caller slot remains an unchanged legacy lookup.
+                source = read_source_range(desk, 1, 1)
+                legacy_store = ReaderDraftStore(library.root, slot=slot)
+                source_store = legacy_store.for_source(source)
+                recovered = source_store.load()
                 assert recovered is not None and recovered.source_locations == (desk.page(1).location,)
+                assert source_store.key != legacy_store.key and legacy_store.load() is None
                 assert recovered.document.source_text == original and recovered.document.text == document.text
+                # A fresh reader must discover the same durable copy through
+                # the normal resolver, without any modal recovery choice.
+                reopened, selected_store, detached = open_source_draft(
+                    source, ReaderDraftStore(library.root, slot=slot), choose=lambda: None)
+                assert not detached and selected_store.key == source_store.key
+                assert reopened.document.to_dict() == recovered.document.to_dict()
+                assert reopened.source_locations == recovered.source_locations
                 assert recovered.audio_seconds == 0 and recovered.document.undo()
                 assert recovered.document.text == original
                 assert all(not path.exists() for path in fixture.opened)

@@ -115,14 +115,22 @@ def test_late_error_cannot_adopt_foreign_or_modified_publication(tmp_path, monke
                                                               envelopes, decrypt, change):
     source, target, invoke = operation(tmp_path, envelopes, decrypt)
     original = getattr(os, 'rename' if os.name == 'nt' else 'link')
+    original_rename = os.rename
     observed = []
 
     def changed_publication(*args, **kwargs):
         original(*args, **kwargs)
         before = target.read_bytes()
         if change == 'foreign_equal_bytes':
-            target.rename(tmp_path / 'owned-original')
+            owned = tmp_path / 'owned-original'
+            owned_stat = target.stat()
+            # Path.rename delegates to the patched os.rename on Windows.
+            # Move the actual owned file without recursively entering this hook.
+            original_rename(target, owned)
             target.write_bytes(before)
+            foreign_stat = target.stat()
+            assert (foreign_stat.st_dev, foreign_stat.st_ino) != (owned_stat.st_dev, owned_stat.st_ino)
+            assert owned.read_bytes() == target.read_bytes() == before
         else:
             with target.open('r+b') as stream:
                 stream.write(bytes((before[0] ^ 1,)))

@@ -123,7 +123,10 @@ def native_menus(tmp_path, monkeypatch):
             if not hasattr(frame, node.attr):
                 setattr(frame, node.attr, lambda event=None: None)
     env = dict(wx=wx, __name__='carr_library.ui._native_menu_contract', __package__='carr_library.ui')
-    for node in tree.body:
+    # Installed Windows suites may already have imported an installer with
+    # real wx. Include imports inside _menus, so every actual installer uses
+    # this fixture's event binders even when its module is already cached.
+    for node in [*tree.body, *ast.walk(builder)]:
         if isinstance(node, ast.ImportFrom) and node.level == 1:
             for alias in node.names:
                 if alias.name.startswith('install_'):
@@ -159,7 +162,8 @@ def test_actual_desktop_installers_retain_every_native_command_across_wrapper_re
     published = actions['audio studio/publish synchronized epub3']
     assert 'EPUB3 / DAISY' in published.title
     assert published.menu_id in native_menus.bindings
-    assert all(row.menu_id in native_menus.bindings for row in commands)
+    assert all(row.menu_id in native_menus.bindings for row in commands), [
+        row.action for row in commands if row.menu_id not in native_menus.bindings]
     effective_shortcuts(commands, {})  # All actual unchanged defaults coexist.
     assert not native_menus.notices
     controller = frame.keyboard_settings
