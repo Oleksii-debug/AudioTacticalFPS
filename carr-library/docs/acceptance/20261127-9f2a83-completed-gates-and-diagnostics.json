@@ -1,0 +1,584 @@
+{
+  "schema": "resonance-acceptance-evidence/1",
+  "scope": "Historical exact-head execution checkpoint; later candidates require their own complete workflow results.",
+  "source": {
+    "commit": "9f2a838aa4914451bd7a3643361ff66c19268674",
+    "tree": "6fcfb60cdc6dd3ab01055da1600fda45661befae",
+    "pull_request": 152,
+    "prior_candidate": "64aadb94c1d01929c949763fb0d0ed04d372c5d5"
+  },
+  "observed_at_utc": "2026-11-27T22:34:33Z",
+  "conclusion": "INCOMPLETE_WITH_CONFIRMED_FAILURES",
+  "interpretation": {
+    "overlapping_selections_are_not_unique_tests": true,
+    "missing_reports_are_not_passes": true,
+    "source_review_is_not_runtime_acceptance": true,
+    "component_diagnostics_are_not_composed_head_acceptance": true
+  },
+  "completed_jobs": {
+    "reading_source": {
+      "job": 140745671561,
+      "status": "PASS",
+      "suites": 12,
+      "passed": 244,
+      "failed": 0,
+      "skipped": 0
+    },
+    "reading_native": {
+      "job": 140745671955,
+      "status": "PASS",
+      "checks": 55,
+      "root_log_read": true
+    },
+    "templates_source": {
+      "job": 140745672147,
+      "status": "PASS",
+      "suites": 9,
+      "passed": 182,
+      "failed": 0,
+      "skipped": 0,
+      "extra_identity_checks": 12
+    },
+    "templates_native": {
+      "job": 140745671924,
+      "status": "PASS",
+      "checks": [
+        20,
+        40
+      ],
+      "root_log_read": true
+    },
+    "launcher_msvc": {
+      "job": 140745671740,
+      "status": "PASS",
+      "checks": 9,
+      "root_log_read": true
+    },
+    "ocr": {
+      "job": 140745672768,
+      "status": "PASS",
+      "suites": 8,
+      "passed": 133,
+      "failed": 0,
+      "skipped": 0,
+      "root_log_read": true
+    },
+    "launcher_zig": {
+      "job": 140745672149,
+      "status": "PASS",
+      "checks": 9,
+      "root_log_read": true
+    },
+    "asr_linux": {
+      "job": 140745687012,
+      "status": "PASS",
+      "suites": 16,
+      "passed": 734,
+      "failed": 0,
+      "skipped": 0,
+      "root_log_read": true
+    },
+    "quick": {
+      "job": 140745671842,
+      "status": "PASS",
+      "suites": 102,
+      "passed": 2432,
+      "failed": 0,
+      "skipped": 0,
+      "root_log_read": true
+    },
+    "production": {
+      "job": 140745672495,
+      "status": "PASS",
+      "suites": 109,
+      "passed": 2113,
+      "failed": 0,
+      "skipped": 0,
+      "direct_passed": 987,
+      "direct_deselected": 1,
+      "root_log_read": true
+    },
+    "keyboard": {
+      "job": 140747399401,
+      "status": "PASS",
+      "suites": 7,
+      "passed": 255,
+      "failed": 0,
+      "skipped": 0,
+      "native_checks": 91,
+      "root_log_read": true
+    },
+    "lifetime": {
+      "job": 140745653759,
+      "status": "PASS",
+      "passed": 277,
+      "subtests": 37,
+      "source_native": 26,
+      "installed_native": 26,
+      "launcher": 9,
+      "root_log_read": true
+    },
+    "reconciled": {
+      "job": 140745672752,
+      "status": "PASS",
+      "suites": 95,
+      "passed": 3218,
+      "failed": 0,
+      "skipped": 0,
+      "root_log_read": true
+    },
+    "asr_windows": {
+      "job": 140745686783,
+      "status": "PASS",
+      "suites": 16,
+      "passed": 733,
+      "failed": 0,
+      "skipped": 0,
+      "native_handle_barriers": 6,
+      "native_asr": 15,
+      "installed_incremental": 31,
+      "root_log_read": true
+    },
+    "bibliography": {
+      "job": 140745672365,
+      "status": "PASS",
+      "suites": 29,
+      "passed": 1252,
+      "failed": 0,
+      "skipped": 0,
+      "installed_checks": 69,
+      "root_log_read": true
+    }
+  },
+  "v3": {
+    "job": 140745728942,
+    "run": 46070392377,
+    "head": "9f2a838aa4914451bd7a3643361ff66c19268674",
+    "conclusion": "failure",
+    "completed_at": "2026-11-27T21:58:25Z",
+    "earlier_strict": {
+      "suites": 28,
+      "passed": 463,
+      "failed": 0,
+      "skipped": 0
+    },
+    "canonical": {
+      "expected": 139,
+      "finished": 103,
+      "passed": 2304,
+      "failed": 0,
+      "skipped": 0,
+      "missing": [
+        "tests/studio/test_book_batch.py",
+        "tests/studio/test_book_cli.py",
+        "tests/storage/test_backup_incremental.py",
+        "tests/ui/test_backup_incremental_dialog.py",
+        "tests/speech/test_clipboard_reader.py",
+        "tests/ui/test_desktop_integration.py",
+        "tests/ui/test_desktop_settings.py",
+        "tests/storage/test_desktop_preferences.py",
+        "tests/speech/test_playback_devices.py",
+        "tests/speech/test_spelling.py",
+        "tests/speech/test_spelling_handlers.py",
+        "tests/speech/test_spelling_reader_hook.py",
+        "tests/packaging/test_hunspell_build.py",
+        "tests/ui/test_native_reading_presentation_driver.py",
+        "tests/studio/test_pronunciation.py",
+        "tests/studio/test_pronunciation_dialog.py",
+        "tests/studio/test_pronunciation_render.py",
+        "tests/audio/test_audiobook.py",
+        "tests/audio/test_effect_presets.py",
+        "tests/studio/test_audiobook_publication.py",
+        "tests/speech/test_navigation.py",
+        "tests/ui/test_reader_navigation.py",
+        "tests/speech/test_find_replace.py",
+        "tests/speech/test_find_replace_reader_hook.py",
+        "tests/speech/test_player_transport.py",
+        "tests/ui/test_find_replace_dialog.py",
+        "tests/operations/test_facade.py",
+        "tests/operations/test_import_admission.py",
+        "tests/operations/test_production_admission.py",
+        "tests/operations/test_resources.py",
+        "tests/operations/test_transcription_admission.py",
+        "tests/ui/test_operations_dialog.py",
+        "tests/ui/test_operations_policy.py",
+        "tests/e2e/test_operations_cli.py",
+        "tests/storage/test_state_replacement.py",
+        "tests/reader/test_export_reconciliation.py"
+      ],
+      "region_start": 413602,
+      "region_end": 525033
+    },
+    "progress": {
+      "suites": 14,
+      "passed": 280,
+      "failed": 0,
+      "skipped": 0
+    },
+    "provider": {
+      "passed": 289,
+      "real_provider_calls": "NOT_RUN"
+    },
+    "installed_recovery": {
+      "passed": 809,
+      "failed": 0,
+      "skipped": 0,
+      "origins": 15
+    },
+    "canonical_unattributed_failure_progress_mark": "21:56:16 rawinterleavedF no finishedJUnitfailure attribution; two activeunreportedBookbatch/CLI suites; focusedrunpending",
+    "artifact": {
+      "id": 15233432740,
+      "bytes": 53869,
+      "sha256": "3ef707b7d829f9ee9d14ae9e4cc689928e1549e4b405aa9058c734264acb8787"
+    }
+  },
+  "integrated_windows": {
+    "run": 46070392319,
+    "job": 140747399144,
+    "source_phase": {
+      "step": 56,
+      "started_at": "2026-11-27T21:45:23Z",
+      "status": "IN_PROGRESS",
+      "last_root_read": "2026-11-27T22:21:59Z",
+      "passed": null,
+      "failed": null,
+      "last_independent_read": "2026-11-27T22:34:00Z",
+      "configured_step_minutes": 35,
+      "interpretation": "API still reports IN_PROGRESS beyond the configured step deadline. No source-suite completion reports are available; neither coverage nor a responsible suite/teardown cause is inferred."
+    },
+    "native_import_center": {
+      "status": "PASS",
+      "native_controls": "PASS",
+      "planned_import_search_reopen": "PASS",
+      "nvda": "NOT_RUN"
+    },
+    "metadata": {
+      "status": "PASS",
+      "checks": 137,
+      "installed_origins": 9,
+      "member": "native-audio-metadata.txt",
+      "member_sha256": "950b693296efeca4bf93e4cf141dfc474334f49096bca9dfb922998e31155e62"
+    },
+    "recording": {
+      "status": "FAIL",
+      "functional_pass_checks": 55,
+      "primary_failure": "Native recording owners did not finish closing.",
+      "secondary_failure": "wrapped C/C++ object of type DesktopFrame has been deleted",
+      "member": "native-windows_recording_smoke.py.txt",
+      "member_sha256": "f55d67d91bea18b0a33e0fa863f65cf0f66354b0f0dd3df4069bd031453e426e",
+      "interpretation": "The wrapper-identity observer missed actual native destruction; correction requires real native event identity plus separately dead original wrapper."
+    },
+    "book": {
+      "status": "FAIL",
+      "guard_seconds": 90,
+      "callback_stage": "UNKNOWN",
+      "primary_failure": "Native multi-book review/Run did not finish.",
+      "member": "installed-native-v3.txt",
+      "member_sha256": "28d728f8d9bda804bd1bbacc4707eeaefa29c538d31a5fb212d6df0f541b6a26",
+      "interpretation": "Absence of the earlier canonical-path assertion does not establish that it ran or passed."
+    },
+    "source_wheel": {
+      "payload_files": 429,
+      "project_name": "universal-research-library",
+      "project_version": "0.2.0.dev2",
+      "required_runtime_files": 356,
+      "source_commit": "9f2a838aa4914451bd7a3643361ff66c19268674",
+      "source_tree": "6fcfb60cdc6dd3ab01055da1600fda45661befae",
+      "status": "PASS",
+      "wheel_sha256": "239f9c04364c492ee1076c9558f798862ceca56a3ad3c3d9c882cd62dfe1b74f"
+    },
+    "source_runtime_parity": {
+      "status": "PASS",
+      "runtime_dependencies": {
+        "defusedxml": "0.7.1",
+        "annotated-doc": "0.0.7",
+        "annotated-types": "0.8.0",
+        "anyio": "4.16.0",
+        "certifi": "2026.11.20",
+        "charset-normalizer": "3.5.3",
+        "colorama": "0.4.6",
+        "fastembed": "0.9.1",
+        "filelock": "3.29.0",
+        "flatbuffers": "25.12.19",
+        "fsspec": "2026.9.0",
+        "h11": "0.16.0",
+        "hf-xet": "1.8.0",
+        "httpcore": "1.0.9",
+        "httpx": "0.28.1",
+        "huggingface-hub": "1.16.1",
+        "idna": "3.20",
+        "loguru": "0.7.3",
+        "lxml": "6.1.3",
+        "markdown-it-py": "4.3.0",
+        "mdurl": "0.1.2",
+        "mmh3": "5.3.1",
+        "numpy": "2.3.5",
+        "onnxruntime": "1.32.0",
+        "packaging": "26.4",
+        "pillow": "13.0.0",
+        "platformdirs": "4.10.0",
+        "protobuf": "7.36.2",
+        "py-rust-stemmers": "0.1.8",
+        "pydantic": "2.14.4",
+        "pydantic-core": "2.50.5",
+        "pygments": "2.21.0",
+        "pypdf": "7.1.1",
+        "pypdfium2": "5.13.0",
+        "python-docx": "1.2.0",
+        "pyyaml": "6.0.4",
+        "requests": "2.34.2",
+        "rich": "15.0.0",
+        "shellingham": "1.5.4",
+        "tokenizers": "0.23.3",
+        "tqdm": "4.70.1",
+        "typer": "0.29.3",
+        "typing-extensions": "4.16.0",
+        "typing-inspection": "0.4.5",
+        "urllib3": "2.8.0",
+        "win32-setctime": "1.2.1",
+        "wxpython": "4.2.4",
+        "bibtexparser": "2.1.0",
+        "pylatexenc": "2.11",
+        "quickjs-ng": "0.18.0.2",
+        "comtypes": "1.5.0",
+        "cryptography": "50.0.2",
+        "cffi": "2.1.1",
+        "tuf": "7.0.1",
+        "securesystemslib": "1.6.0",
+        "pycparser": "3.12",
+        "py3langid": "0.4.0"
+      },
+      "sbom": "MATCHES_FULL_LOCK",
+      "declared_model": "EXACT_REVIEWED_BYTES"
+    },
+    "full_bundle_sbom": {
+      "status": "PASS",
+      "runtime_sbom": "EXACT_SOURCE_BYTES",
+      "sealed_sha256": "2268cb51b252d8bd7ed05510c0bd71464142b2a96ba2edc98925b943312856ac"
+    }
+  },
+  "phase_recovery": {
+    "reader_commit": "74e78b577841b127ef6ddc36fb3889a29737cd72",
+    "run": 46072577042,
+    "job": 140752752698,
+    "status": "PASS",
+    "archive": {
+      "artifact_verified": true,
+      "artifact_id": 15233905193,
+      "source_run": 46070392319,
+      "source_head": "9f2a838aa4914451bd7a3643361ff66c19268674",
+      "archive_bytes": 60882,
+      "archive_sha256": "bc5b3dab9577b77642abd3626b0efc5cca2b47047e08064cc7691ac9a576b2bd",
+      "text_members": 67,
+      "text_bytes": 262951,
+      "scope": "readback of saved public diagnostics; no application execution"
+    },
+    "verified_members": 66,
+    "total_members": 67,
+    "excluded_members": [
+      {
+        "member": "local-transport.xml",
+        "expected_sha": "0cb399f51cc9922c9542f6525747083eab97ef6bbe4ce2e23832a6b65bb31385",
+        "actual_sha": "86af1e29ef742b003d50b0c6dda9b02e55e48a8c2e6d41b6d5def4a77948eff8",
+        "expected_length": 12472,
+        "actual_length": 12453
+      }
+    ]
+  },
+  "prepared_corrections": {
+    "recording": {
+      "commit": "c217183cacdf89bc870fbc6670ecec99dc753854",
+      "source_review": "ROOT_AND_QA_APPROVE",
+      "runtime": "PASS_ON_ISOLATED_925_COMPONENT_ONLY: 25 source cases and 57 native checks"
+    },
+    "book": {
+      "commit": "ed4d967a259a326e46d1cacdc87d5819af84a163",
+      "diagnostic_parent": "1ad45c6483447805685c0979861a7c260bd24e56",
+      "source_review": "ROOT_AND_QA_APPROVE",
+      "runtime": "29 source controls PASS_ON_925; native Book 90-second guard still FAIL"
+    },
+    "startup_guide": {
+      "commit": "549b83fac3a7adb617c2f662332798e282715874",
+      "source_review": "ROOT_AND_SPEC_APPROVE"
+    },
+    "related_native_probes": {
+      "commit": "1f4d53dddc25b582026a36d4cd56b330e4ddeebd",
+      "source_review": "ROOT_AND_SPEC_APPROVE",
+      "runtime": "NOT_RUN",
+      "affected": [
+        "audio_player",
+        "desktop_integration",
+        "operations"
+      ]
+    },
+    "product_owner_filters": {
+      "commit": "edb85a98afe00f4efaaae66188de7697182e9252",
+      "source_review": "ROOT_AND_QA_APPROVE",
+      "runtime": "NOT_RUN",
+      "affected": [
+        "reading_narration",
+        "academic_editor",
+        "academic_library",
+        "federated_search"
+      ]
+    },
+    "source_scheduling": {
+      "commit": "499d6eeeddad4d3de6114fe6bf3a5efcc94f00a0",
+      "source_review": "ROOT_AND_SPEC_APPROVE",
+      "runtime": "NOT_RUN",
+      "canonical_suites": 139,
+      "independent_source_shards": [
+        70,
+        69
+      ],
+      "unchanged_native_body": true,
+      "unchanged_broad_source_command": true
+    },
+    "renderer_cadence": {
+      "commit": "5adc38203317456a511d3e8f6eb6c0b14b97868d",
+      "source_review": "ROOT_AND_SPEC_APPROVE",
+      "runtime": "NOT_RUN_AT_SNAPSHOT",
+      "scope": "The 0.2-second ordinary accounting interval begins after successful traversal. Forced scans, per-entry cancellation, source verification and publication reservation stay intact."
+    },
+    "desktop_integration": {
+      "commit": "f03ac373ab2eba5d329e42e820b161fabaf42123",
+      "source_review": "ROOT_AND_QA_APPROVE",
+      "runtime": "NOT_RUN_AT_SNAPSHOT",
+      "scope": "Use the captured native ID and verified current Destroy-event HWND proxy; independently attempt each owned cleanup, retain failed resources and errors for retry; actual native direct-Destroy acceptance is required."
+    }
+  },
+  "qualification_limits": [
+    "Hosted Windows 2022 native execution does not establish human Windows 11 or NVDA acceptance.",
+    "Synthetic inputs and captured PCM do not establish physical device or listening quality.",
+    "Private model assets, model rights, model quality and per-feature language qualification remain separate.",
+    "Source/runtime integrity and hashes do not establish publisher identity, signing or distribution clearance.",
+    "Configured input bounds do not establish measured large-corpus capacity."
+  ],
+  "isolated_diagnostic": {
+    "commit": "925658a422405b20746ddd4bf1bb0153940e64cd",
+    "tree": "63291525be8f9badd0d570367d0446645fe7cf21",
+    "branch": "carr/native-audio-diagnostic-20261127",
+    "activated_at": "2026-11-27T22:10:57Z",
+    "root_review": "SOURCE_APPROVE",
+    "independent": "Pending SOURCE_APPROVE",
+    "status": "COMPLETED_FAILURE",
+    "ordinary_head_unchanged": true,
+    "run": 46075030197,
+    "jobs": {
+      "native": 140760645065,
+      "source": 140760644741
+    },
+    "native": {
+      "job": 140760645065,
+      "conclusion": "failure",
+      "completed_at": "2026-11-27T22:17:29Z",
+      "root_full_log_read": true,
+      "source_cases": 54,
+      "source_suites": [
+        {
+          "file": "test_recording_dialog.py",
+          "passed": 25
+        },
+        {
+          "file": "test_book_batch_dialog.py",
+          "passed": 29
+        }
+      ],
+      "installed_python_files": 341,
+      "recording_checks": 57,
+      "book": {
+        "stage": "rendered",
+        "elapsed_seconds": 90,
+        "desktop_working": true,
+        "run_approvals": 1,
+        "first_result_verified": false,
+        "selected_books": 2,
+        "batch_status": "Book 2/2: Native second batch book. master assembly: rendering local audio",
+        "worker_stack": "durable_state.read_json ->book_batch.stopped ->book_audio externalcancel ->render.admission_cancelled ->broker.cancelled ->render.requested_stop ->render._retained_bytes ->capacity ->stopping/check ->publish/run",
+        "cause": "UNPROVEN: actual worker still in bounded inventory/cancel checks at deadline; Pending investigating"
+      },
+      "artifact": {
+        "id": 15234514530,
+        "bytes": 22174,
+        "sha256": "eb6b441714df647797a53c035917fc83c49cc924f6ad34ebb5e5ef4740686dba"
+      }
+    },
+    "source": {
+      "job": 140760644741,
+      "conclusion": "failure",
+      "completed_at": "2026-11-27T22:22:54Z",
+      "root_full_log_read": true,
+      "cli": {
+        "expected": 13,
+        "finished": 13,
+        "passed": 11,
+        "failed": 2,
+        "skipped": 0,
+        "pytest_seconds": 329.54,
+        "failures": [
+          {
+            "test": "test_actual_cli_preview_prepare_run_status_and_verified_resume",
+            "error": "subprocess.TimeoutExpired",
+            "child_deadline_seconds": 90,
+            "case_seconds": 92.475789
+          },
+          {
+            "test": "test_actual_cli_restore_prepares_new_outputs_without_old_external_review",
+            "error": "subprocess.TimeoutExpired",
+            "child_deadline_seconds": 90,
+            "case_seconds": 93.830953
+          }
+        ],
+        "actual_duration_publication_receipt_case": {
+          "status": "PASS",
+          "seconds": 130.163312
+        }
+      },
+      "batch": {
+        "expected": 17,
+        "completed_case_call_records": 10,
+        "completed_case_passes": 10,
+        "completed_junit": null,
+        "status": "INCOMPLETE_FATAL_NATIVE_EXCEPTION",
+        "active_case": "test_pause_between_books_retains_verified_first_book_and_resume_does_not_duplicate",
+        "actual_two_book_render_resume_seconds": 128.823951,
+        "active_pause_seconds": 129.486181,
+        "active_cancel_seconds": 113.848321,
+        "fatal": "Windows fatal exception: access violation",
+        "fatal_at": "2026-11-27T22:22:54.248601Z",
+        "actual_suite_timeout": false,
+        "stack_scope": "Current observed Python path: durable JSON controls, source attestation and guarded publication; no core or native C stack available."
+      },
+      "diagnostic_instrumentation": {
+        "periodic_c_stack_dump_seconds": 90,
+        "fatal_after_child_header_seconds": 540.236,
+        "interpretation": "Failure coincides with the sixth asynchronous diagnostic timer interval. Instrumentation is a possible cause, not a proven attribution. The successor replaces only the periodic observer with bounded owned Python frame references."
+      },
+      "artifact": {
+        "id": 15235020903,
+        "bytes": 24928,
+        "sha256": "aa2cf4ff1c336fc78e608ca0b9192fa311e3fae0715a26c290f9ac3c07d7c591"
+      }
+    },
+    "successor": {
+      "commit": "9f5e9e214e9a0df8c599069222e225c21f964564",
+      "tree": "03a326eb524f905c7ddd200311dbfc8b9a77e915",
+      "run": 46077443673,
+      "status_at_snapshot": "QUEUED",
+      "root_and_independent_review": "SOURCE_APPROVE",
+      "changes": "Only two approved cadence source/test blobs and diagnostic workflow sampling/selector changes.",
+      "strict_runner_and_deadlines": "UNCHANGED",
+      "ordinary_head_unchanged": true
+    }
+  },
+  "prepared_source_union": {
+    "commit": "4ba611e1396d024c7047ff0b6f790067a61877ab",
+    "tree": "6d2a193c696bbcfcdc4096a2a45ae71cc72b6a9b",
+    "changed_paths": 24,
+    "modified": 21,
+    "added": 3,
+    "unchanged_from_9f": 1320,
+    "source_execution": "NOT_RUN_AT_SNAPSHOT",
+    "diagnostic_workflows_imported": false
+  }
+}

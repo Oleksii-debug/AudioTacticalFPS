@@ -609,3 +609,78 @@ inventory is not per-feature language quality; bounded fixtures are not
 large-corpus capacity; hosted Windows native controls are not human
 Windows11/NVDA or device/listening acceptance; checksums are not publisher
 signing or distribution approval.
+
+## Reviewed 9f execution and native-lifetime completion correction
+
+The exact [9f checkpoint](acceptance/20261127-9f2a83-completed-gates-and-diagnostics.json) binds the completed gates to commit
+`9f2a838aa4914451bd7a3643361ff66c19268674` and tree
+`6fcfb60cdc6dd3ab01055da1600fda45661befae`. Fifteen jobs completed successfully.
+Quick/production/reconciled selections passed 2432/2113/3218 cases in
+102/109/95 suites respectively; those overlapping selections are not summed.
+The actual ASR Windows source/native checks, Import Center and all 137 metadata
+checks closed their earlier observed failures. Reading, templates, bibliography,
+keyboard, lifetime, OCR and both compiled launchers retain their exact results.
+
+V3's canonical phase completed 103 of 139 final suite reports, with 2304 passes
+and zero failures in those completed reports, before the 12-minute phase limit.
+Thirty-six reports were absent. The 14 progress suites completed all 280 cases
+without a failure or skip, closing the earlier fixture failures. Earlier strict,
+provider and installed-recovery gates completed 463, 289 and 809 passes within
+their respective scopes. Skipped later native/broad stages remain unqualified.
+
+The integrated Windows source phase remained in progress in both normal run
+and latest-jobs APIs at 22:34 UTC, after starting at 21:45:23 UTC. Its configured
+step limit is 35 minutes; the whole job limit is 120 minutes. The saved earlier
+phase artifact has no source-phase results. No responsible suite, runner teardown
+cause or completed coverage is inferred from elapsed time alone.
+
+The exact 9f phase artifact was read through a separate bounded read-only reader:
+66 of 67 text members matched their declared SHA-256 and lengths; one changed XML
+member is excluded. Recording completed 55 functional checks but its old observer
+missed native destruction because the event used a different Python wrapper.
+The separately corrected 925 diagnostic completed all 57 native recording checks
+and 25 recording plus 29 Book UI source cases. Both the captured native event ID
+and independently dead original wrapper passed.
+
+The instrumented Book scenario did pass canonical destination/volume review and
+receive explicit Run approval. At the 90-second guard it was still rendering
+book 2 of 2. Its worker stack showed repeated durable cancellation, retained-file
+accounting and guarded publication. The focused CLI suite completed 11 passes and
+two 90-second child timeouts. Batch emitted ten completed passing call records,
+then a Windows access violation while its next case was active; it produced no
+final JUnit report. The fatal event coincided with the sixth periodic diagnostic
+C-stack timer. That coincidence and the observed Python stack do not prove a
+product defect or a diagnostic cause. The next diagnostic uses bounded normal
+Python frame sampling through an owned output descriptor, leaving the actual
+strict runner and all deadlines unchanged.
+
+### Exact reviewed successor components
+
+| Source component | Concrete correction | Required execution boundary |
+| --- | --- | --- |
+| `c217183cacdf89bc870fbc6670ecec99dc753854` | Capture recording owner ID before binding; observe the real matching native event and separately dead original wrapper. Retain worker-closure checks. | 25 source controls and 57 native checks passed on the exact isolated 925 composition; ordinary successor remains separate. |
+| `ed4d967a259a326e46d1cacdc87d5819af84a163` over `1ad45c6483447805685c0979861a7c260bd24e56` | Correct V3 frame/bootstrap observers and retain bounded Book stage/approval/live-status diagnostics. | All 29 Book UI controls passed on 925; actual Book completion still failed its original guard. |
+| `1f4d53dddc25b582026a36d4cd56b330e4ddeebd` | Apply captured-owner plus dead-wrapper observation to player, desktop and operations native probes; keep original assertions and deadlines. | Source approval only at this checkpoint; actual probes must run on the successor. |
+| `edb85a98afe00f4efaaae66188de7697182e9252` | Recognize genuine owner destruction for reading narration, academic editor/library and federated search; revoke late-result authority and preserve committed data. | Existing assertions remain, with real held/queued-work controls; successor execution required. |
+| `f03ac373ab2eba5d329e42e820b161fabaf42123` | Use only the verified current Destroy-event proxy for native hotkey/unbind operations; attempt every owned cleanup, preserve errors and resources for retry. | Adds actual direct-Destroy native checks for timer, tray and reacquisition of the same global key by another window. |
+| `5adc38203317456a511d3e8f6eb6c0b14b97868d` | Begin the ordinary disk-accounting quiet interval after successful traversal. | Seven actual-file/durable-control cases retain all forced accounting, fresh stop, source-integrity and publication boundaries. Timing benefit requires actual execution. |
+| `499d6eeeddad4d3de6114fe6bf3a5efcc94f00a0` | Preserve all 139 canonical suites in independent required 70/69 partitions and move the exact broad command to its own required job. | Eighteen manifest/partition refusal controls; strict 600-second suites, 12-minute canonical phases and 45-minute jobs remain. The remaining native job body is exact. |
+| `549b83fac3a7adb617c2f662332798e282715874` | Clarify implemented ASR review/resume, raster limits and private-model/signing requirements in the Ukrainian startup guide. | Documentation only; no new capability or qualification claim. |
+
+The reviewed ordinary source union is
+`4ba611e1396d024c7047ff0b6f790067a61877ab`, tree
+`6d2a193c696bbcfcdc4096a2a45ae71cc72b6a9b`. Root and an independent reviewer
+read all 24 final changed bodies and compared all 1344 file identities/modes:
+21 modified, three added, 1320 unrelated 9f blobs retained, no deletions or mode
+changes. The f03 desktop probe/test bodies supersede the earlier versions.
+The full component ancestry returns to 9f without importing diagnostic
+`925658a4`, `db0a84f5` or any diagnostic workflow.
+
+At this historical evidence snapshot the exact cadence diagnostic
+`9f5e9e214e9a0df8c599069222e225c21f964564`,
+[run46077443673](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46077443673),
+is queued. Source approval and isolated results are not the ordinary assembled
+head's acceptance. The complete successor must pass its own required gates;
+the current execution outcome remains in PR152. All previously stated private
+asset, model/language quality, corpus capacity, human Windows11/NVDA,
+physical-device/listening and signed-distribution qualifications remain separate.
