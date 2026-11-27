@@ -382,12 +382,14 @@ class StudioOptionControl:
 
 def studio_output_fixture():
     N = SimpleNamespace
-    rows, calls, reports, decisions, prompts, saves = [], [], [], [], [], []
+    rows, calls, reports, decisions, prompts, saves, entries = [], [], [], [], [], [], []
     project = N(id='p', original_script='test', title='Test')
 
     class Dialog:
         def __init__(self, *args):
             prompts.append(args[1])
+            if len(args) > 3:
+                entries.extend(args[3])
         def ShowModal(self):
             return decisions.pop(0) if decisions else 1
         def GetPath(self):
@@ -423,7 +425,7 @@ def studio_output_fixture():
                title=StudioOptionControl('Test'), controls=lambda: None,
                run=lambda op, done, **kw: done(op(lambda _: None)),
                rows=rows, calls=calls, reports=reports, decisions=decisions,
-               prompts=prompts, saves=saves)
+               prompts=prompts, saves=saves, entries=entries)
     path = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/studio_dialog.py'
     source = path.read_text(encoding='utf-8')
     methods = source[source.index('    def render(event=None):'):
@@ -496,3 +498,15 @@ def test_studio_invalid_saved_output_settings_fail_closed():
     f.rows[0]['format'] = 'unknown'
     f.jobs()
     assert 'unsupported output settings' in f.reports[-1][0]
+
+
+def test_studio_distinct_job_labels_include_durable_options_and_identity():
+    f = studio_output_fixture()
+    f.render()
+    f.format_choice.SetSelection(1)
+    f.stems.SetValue(False)
+    f.render()
+    f.jobs()
+    assert len(f.entries) == 2 and len(set(f.entries)) == 2
+    assert 'wav; separate stems: Yes; job 0' in f.entries[0]
+    assert 'flac; separate stems: No; job 1' in f.entries[1]

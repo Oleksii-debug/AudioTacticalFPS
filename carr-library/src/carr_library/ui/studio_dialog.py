@@ -373,7 +373,9 @@ def show_studio(frame):
         try:
             rows = service.jobs()
             chooser = wx.SingleChoiceDialog(dialog, 'Select a saved job to inspect, resume, or replay.', 'Production jobs',
-                [f'{row["project"]["title"]}; {row["status"]}; {row["progress"]}' for row in rows])
+                [f'{row["project"]["title"]}; {row["status"]}; {row["progress"]}; '
+                 f'{row["format"]}; separate stems: {"Yes" if row["stems"] else "No"}; job {row["id"]}'
+                 for row in rows])
             try:
                 if chooser.ShowModal() != wx.ID_OK:
                     return

@@ -318,7 +318,10 @@ def main():
                 class SelectedJob(original_dialogs['SingleChoiceDialog']):
                     def __init__(self, parent, message, caption, entries, *args, **kwargs):
                         super().__init__(parent, message, caption, entries, *args, **kwargs)
-                        self.SetSelection(next(i for i, job in enumerate(service.jobs()) if job['id'] == row['id']))
+                        index = next(i for i, job in enumerate(service.jobs()) if job['id'] == row['id'])
+                        assert len(set(entries)) == len(entries)
+                        assert 'flac; separate stems: Yes; job ' + row['id'] in entries[index]
+                        self.SetSelection(index)
                     def ShowModal(self):
                         return wx.ID_OK
                 wx.SingleChoiceDialog = SelectedJob
