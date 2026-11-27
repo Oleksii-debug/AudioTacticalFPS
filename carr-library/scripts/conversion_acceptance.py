@@ -33,6 +33,33 @@ EXPECTED = {
 }
 
 
+OFFICE_PORTABLE = {
+    "tests.conversion.test_office_selection": {
+        "test_selected_inventory_checks_fixed_installed_filter_without_executing": 1,
+        "test_queued_selection_refuses_new_authority_before_worker": 3,
+        "test_snapshot_rechecks_earlier_component_after_last_hash": 1,
+        "test_worker_admission_refuses_changed_or_incomplete_inventory": 5,
+        "test_fixed_adapter_rejects_false_format_before_runtime_admission": 5,
+        "test_expired_deadline_never_spawns_a_native_process": 1,
+        "test_native_launch_keeps_existing_owner_and_scrubs_unselected_configuration": 1,
+        "test_staging_budget_and_lookup_failures_cannot_report_complete": 4,
+        "test_profile_is_per_operation_and_disables_active_content_and_external_updates": 1,
+        "test_private_phase_survives_failure_without_publishing_source_or_native_logs": 3,
+        "test_progress_refuses_untrusted_marker_content_and_aliased_marker": 1,
+        "test_gui_launcher_is_not_silently_promoted_to_unselected_console": 1,
+        "test_selected_console_manifest_binds_both_launchers_before_native_work": 1
+    },
+    "tests.conversion.test_office_stage_races": {
+        "test_native_removed_profile_entry_does_not_abort_the_remaining_stage_census": 2,
+        "test_valueerror_for_a_still_existing_stage_entry_is_never_treated_as_disappearance": 2,
+        "test_permission_failure_during_missing_entry_confirmation_remains_a_failure": 1,
+        "test_missing_native_entry_cannot_hide_lost_or_replaced_private_stage_root": 2,
+        "test_disappearance_after_observed_policy_violation_cannot_make_stage_valid": 3,
+        "test_reappeared_owned_descendant_does_not_turn_a_missing_snapshot_into_a_live_entry_refusal": 2
+    }
+}
+
+
 def digest(path):
     with path.open('rb') as stream:
         return __import__('hashlib').file_digest(stream, 'sha256').hexdigest()
@@ -203,7 +230,9 @@ def main():
         if tree != args.source_tree:
             raise ValueError('The declared source tree differs from its actual commit.')
         report['installed_identity'] = installed_identity(args.wheel)
-        fixture_files = (*selectors, 'tests/conversion/native_diagnostics.py')
+        portable_selectors = (tuple(name.replace('.', '/') + '.py' for name in OFFICE_PORTABLE)
+                              if args.family == 'office' else ())
+        fixture_files = (*selectors, *portable_selectors, 'tests/conversion/native_diagnostics.py')
         report['selected_test_sha256'] = {name: digest(checkout / name) for name in fixture_files}
         report['harness_sha256'] = digest(Path(__file__))
         if args.family == 'selected':
@@ -217,11 +246,39 @@ def main():
         report['runtime_files'] = {name: inventory(root) for name, root in roots.items()}
         # Keep initial byte evidence even if a required native case fails.
         (output / 'before-execution.json').write_text(json.dumps(report, sort_keys=True), encoding='utf-8')
+        if args.family == 'office':
+            portable_output = output / 'portable-office'
+            portable_output.mkdir()
+            report['portable_office'] = dict(source='NOT_RUN', installed='NOT_RUN', required_cases=40)
+            report['portable_office']['source'] = run_population(
+                'source', checkout, portable_output, OFFICE_PORTABLE)
+            report['portable_office']['installed'] = run_population(
+                'installed', checkout, portable_output, OFFICE_PORTABLE)
         report['source'] = run_population('source', checkout, output, expected_functions)
         report['installed'] = run_population('installed', checkout, output, expected_functions)
         if installed_identity(args.wheel) != report['installed_identity']:
             raise ValueError('Installed source changed during native qualification.')
-        if any(inventory(root) != report['runtime_files'][name] for name, root in roots.items()):
+        runtime_changes = {}
+        for name, root in roots.items():
+            before, after = report['runtime_files'][name], inventory(root)
+            if before != after:
+                added = sorted(set(after) - set(before))
+                removed = sorted(set(before) - set(after))
+                changed = sorted(key for key in set(before) & set(after)
+                                 if before[key] != after[key])
+                def details(names):
+                    return [dict(path=key, before=before.get(key), after=after.get(key))
+                            for key in names[:64]]
+                runtime_changes[name] = dict(
+                    before_files=len(before), after_files=len(after),
+                    after_inventory_sha256=sha256(json.dumps(after, sort_keys=True,
+                        separators=(',', ':')).encode('utf-8')).hexdigest(),
+                    added_count=len(added), removed_count=len(removed), changed_count=len(changed),
+                    added=details(added), removed=details(removed), changed=details(changed),
+                    diagnostic_rows_per_kind_limit=64)
+        report['runtime_inventory_changes'] = runtime_changes
+        if runtime_changes:
+            print('RUNTIME_INVENTORY_CHANGE ' + json.dumps(runtime_changes, sort_keys=True), flush=True)
             raise ValueError('Selected runtime bytes changed during native qualification.')
         if {name: digest(checkout / name) for name in fixture_files} != report['selected_test_sha256']:
             raise ValueError('Native fixture source changed during qualification.')

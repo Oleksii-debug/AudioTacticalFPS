@@ -18,7 +18,7 @@ import time
 
 from defusedxml import ElementTree
 
-from ..audio.jobs import checked_directory, file_identity, regular_file, verified_reader
+from ..audio.jobs import checked_directory, file_identity, filename_component, regular_file, verified_reader
 from ..extract.document_formats import extract_document
 from .models import ConversionError, ConversionUnavailable
 
@@ -240,16 +240,46 @@ def _missing_transient_entry(path):
     return False
 
 
+
+def _stage_info(root, path, root_identity, *, directory):
+    """Keep native missing-path errors distinct from a rejected live entry."""
+    path = Path(path)
+    try:
+        path.relative_to(root)
+        for name in path.parts[1:]:
+            filename_component(name)
+    except ValueError as error:
+        raise ConversionError('Selected LibreOffice staging has an unsafe path.') from error
+    for candidate in (*reversed(path.parents), path):
+        try:
+            info = candidate.lstat()
+        except FileNotFoundError as error:
+            if candidate == root or candidate in root.parents:
+                raise ConversionError('Private LibreOffice staging root disappeared.') from error
+            raise
+        expected_directory = candidate != path or directory
+        if (stat.S_ISLNK(info.st_mode)
+                or getattr(info, 'st_file_attributes', 0) & 0x400
+                or (expected_directory and not stat.S_ISDIR(info.st_mode))
+                or (not expected_directory and not stat.S_ISREG(info.st_mode))):
+            raise ConversionError('Selected LibreOffice staging contains an unsafe directory or file.')
+        if candidate == root and (info.st_dev, info.st_ino) != root_identity:
+            raise ConversionError('Private LibreOffice staging was replaced.')
+    return info
+
+
 def _stage_usage(stage, maximum, deadline):
     """Bound profile, intermediates and transient files without following links."""
     from .adapters import _remaining
     root = checked_directory(stage)
     before = root.stat()
+    root_identity = (before.st_dev, before.st_ino)
     pending, count, size = [(root, 0)], 0, 0
     while pending:
         directory, depth = pending.pop()
         _remaining(deadline)
         try:
+            _stage_info(root, directory, root_identity, directory=True)
             with os.scandir(directory) as entries:
                 for entry in entries:
                     _remaining(deadline)
@@ -261,9 +291,10 @@ def _stage_usage(stage, maximum, deadline):
                         if stat.S_ISDIR(info.st_mode):
                             if depth >= 16:
                                 raise ConversionError('Selected LibreOffice staging exceeds its depth budget.')
-                            pending.append((checked_directory(entry.path), depth + 1))
+                            _stage_info(root, entry.path, root_identity, directory=True)
+                            pending.append((Path(entry.path), depth + 1))
                         else:
-                            info = regular_file(entry.path)
+                            info = _stage_info(root, entry.path, root_identity, directory=False)
                             if info.st_nlink != 1:
                                 raise ConversionError('Selected LibreOffice staging contains an aliased file.')
                             size += info.st_size
@@ -296,7 +327,8 @@ def _run(args, stage, deadline, *, output=None, output_limit=0, stage_limit=PROF
         str(Path(environment.get('SYSTEMROOT', 'C:/Windows')) / 'System32')))
         if os.name == 'nt' else os.defpath)
     environment.update(TMPDIR=str(stage), TEMP=str(stage), TMP=str(stage),
-                       SAL_USE_VCLPLUGIN='svp', SAL_DISABLE_OPENCL='1', MAX_CONCURRENCY='1')
+                       SAL_USE_VCLPLUGIN='svp', SAL_DISABLE_OPENCL='1', MAX_CONCURRENCY='1',
+                       PYTHONDONTWRITEBYTECODE='1')
     with TemporaryFile() as stdout, TemporaryFile() as stderr:
         _remaining(deadline)
         _stage_usage(stage, stage_limit, deadline)

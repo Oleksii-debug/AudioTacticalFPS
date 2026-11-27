@@ -129,6 +129,9 @@ def test_expired_deadline_never_spawns_a_native_process(tmp_path, monkeypatch):
 def test_native_launch_keeps_existing_owner_and_scrubs_unselected_configuration(tmp_path, monkeypatch):
     observed = {}
     monkeypatch.setenv('PYTHONPATH', 'foreign')
+    monkeypatch.setenv('PYTHONHOME', 'foreign')
+    monkeypatch.setenv('PYTHONPYCACHEPREFIX', 'foreign')
+    monkeypatch.setenv('PYTHONDONTWRITEBYTECODE', '')
     monkeypatch.setenv('LD_PRELOAD', 'foreign')
     monkeypatch.setenv('http_proxy', 'foreign')
     monkeypatch.setenv('PATH', 'foreign')
@@ -143,7 +146,9 @@ def test_native_launch_keeps_existing_owner_and_scrubs_unselected_configuration(
     raw, warnings = office._run([tmp_path / 'soffice', '--version'], tmp_path, time.monotonic() + 5)
     assert raw == b'LibreOffice 25.2\n' and warnings is False
     assert observed['shell'] is False and observed['start_new_session'] is False and observed['settled']
-    assert set(observed['env']).isdisjoint({'PYTHONPATH', 'LD_PRELOAD', 'http_proxy'})
+    assert set(observed['env']).isdisjoint({
+        'PYTHONPATH', 'PYTHONHOME', 'PYTHONPYCACHEPREFIX', 'LD_PRELOAD', 'http_proxy'})
+    assert observed['env']['PYTHONDONTWRITEBYTECODE'] == '1'
     assert observed['env']['PATH'] != 'foreign' and observed['env']['MAX_CONCURRENCY'] == '1'
     assert observed['env']['TMPDIR'] == str(tmp_path)
 

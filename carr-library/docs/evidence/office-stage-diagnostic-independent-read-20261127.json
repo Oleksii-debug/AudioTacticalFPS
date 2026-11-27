@@ -1,0 +1,295 @@
+{
+  "schema": "carr.office-stage-diagnostic-independent-read.v1",
+  "status": "DIAGNOSTIC_OBSERVED_ORDINARY_FAILURE_RETAINED",
+  "date": "2026-11-27",
+  "independent_reader": {
+    "source_commit": "d56439f09e4535b0153d20ba9a2fe1ca586106b2",
+    "tree": "3a769891360fb161feb3219b7a1e80ad1542629f",
+    "run_id": 46063546910,
+    "job_id": 140723304281,
+    "result": "SUCCESS",
+    "method": "Fixed artifact run/head/id/size/digest were verified; bounded ZIP/JSON/XML parsing only, no importing or executing archived code."
+  },
+  "artifacts": [
+    {
+      "run": 46060211492,
+      "commit": "d7295d13a096c0148559657f7b9d64b865051875",
+      "id": 15229151573,
+      "sha256": "da544989064e156981ced212e675ac1d6e27f89692032ad092b9aad5ef67b235",
+      "bytes": 4584550,
+      "kind": "office-ordinary-transient-path-failure",
+      "name": "carr-converters-office-d7295d13a096c0148559657f7b9d64b865051875"
+    },
+    {
+      "run": 46062054170,
+      "commit": "74e0520ee04f0d7fa3ed62dfc84227b2c9ad0643",
+      "id": 15230120040,
+      "sha256": "9de380ca8a134a8f5fb95ba7f9bee067dfd7773fc619f9ec2904288669490ab3",
+      "bytes": 5707984,
+      "kind": "office-single-xls-path-diagnostic-only-success",
+      "name": "carr-converters-office-74e0520ee04f0d7fa3ed62dfc84227b2c9ad0643"
+    }
+  ],
+  "raw_members": [
+    {
+      "name": "converter-gate.json",
+      "bytes": 3545027,
+      "sha256": "c03686e8b3dd54721775e6ec2412f406cdcb747535874fdf98ceff6beac83d35",
+      "artifact": 15229151573
+    },
+    {
+      "name": "before-execution.json",
+      "bytes": 2879603,
+      "sha256": "9515a2e712aab8bf35149fff5d622255e4a35386495f672edbc7868ef1dde4d1",
+      "artifact": 15229151573
+    },
+    {
+      "name": "publisher-identities.json",
+      "bytes": 874,
+      "sha256": "7aa2caaecb1f9e1d34747e9f6cf209a799903583d17d6bd742787b7d7eae5af1",
+      "artifact": 15229151573
+    },
+    {
+      "name": "source-junit.xml",
+      "bytes": 11738,
+      "sha256": "9d315129f1f8fb7c872986b12ede2b08303ca66ff59a5a440f7fc91dc41515d7",
+      "artifact": 15229151573
+    },
+    {
+      "name": "source-origins.json",
+      "bytes": 418,
+      "sha256": "23d7bb5d3294fd2585f2ae2c3eed60a77d05e9c93908d99b0ccd2243a9d265ce",
+      "artifact": 15229151573
+    },
+    {
+      "name": "source-provenance.json",
+      "bytes": 466,
+      "sha256": "7d680c75634076cdc2e993588d06742faa3f7c9e7d78f351c11b36c28fbfcc3f",
+      "artifact": 15229151573
+    },
+    {
+      "name": "source-pytest.txt",
+      "bytes": 13929,
+      "sha256": "830a3158d332f9436242cdf6ce5f9b78c1881be56c4f1b5638ee3f844f221dea",
+      "artifact": 15229151573
+    },
+    {
+      "name": "before-execution.json",
+      "bytes": 2879603,
+      "sha256": "b754aa05f982abef96b7290095a61138260b5cdcba0d690536083ee212612602",
+      "artifact": 15230120040
+    },
+    {
+      "name": "converter-gate.json",
+      "bytes": 3547036,
+      "sha256": "4d98458854c9bac3b35eb3da015c34ca91cdb9a999dd0d21a4692df97441921d",
+      "artifact": 15230120040
+    },
+    {
+      "name": "installed-junit.xml",
+      "bytes": 1334,
+      "sha256": "dc4b554c0cdb35a306481ce331f03674940cf4e993e69f7897bc3fb4816db44e",
+      "artifact": 15230120040
+    },
+    {
+      "name": "installed-origins.json",
+      "bytes": 464,
+      "sha256": "e1eef58b64453d735ecc18ab2c9d46b2f3e56c5572976ce681c0e99c40314a29",
+      "artifact": 15230120040
+    },
+    {
+      "name": "installed-pytest.txt",
+      "bytes": 2758,
+      "sha256": "7681edcf3c352a0cf247fcab2d4ce60f062711530c6c3fa56b54ed5be33ee7d2",
+      "artifact": 15230120040
+    },
+    {
+      "name": "publisher-identities.json",
+      "bytes": 874,
+      "sha256": "d1a45b7c7db3410f633fd4a3bcbbc69af9072b4b1ee2587a0915bc2ce8c6aa70",
+      "artifact": 15230120040
+    },
+    {
+      "name": "source-junit.xml",
+      "bytes": 1334,
+      "sha256": "755f70524df6c3c99a6b03e334057284b682a75384433a32609226d808ebd600",
+      "artifact": 15230120040
+    },
+    {
+      "name": "source-origins.json",
+      "bytes": 418,
+      "sha256": "23d7bb5d3294fd2585f2ae2c3eed60a77d05e9c93908d99b0ccd2243a9d265ce",
+      "artifact": 15230120040
+    },
+    {
+      "name": "source-provenance.json",
+      "bytes": 472,
+      "sha256": "d6be4bb787d515f7cf6708de3c8815a006a9f8d082e2f90c874d2baaf367ac11",
+      "artifact": 15230120040
+    },
+    {
+      "name": "source-pytest.txt",
+      "bytes": 2755,
+      "sha256": "b57676d9871921c8b444fcd4970b8bb725bcda7738700a65c1e8db4f5205a6a6",
+      "artifact": 15230120040
+    }
+  ],
+  "junit": [
+    {
+      "artifact": 15229151573,
+      "file": "source-junit.xml",
+      "cases": 7,
+      "failures": 1,
+      "errors": 0,
+      "skips": 0,
+      "function_counter": {
+        "tests.conversion.test_office_native::test_real_selected_legacy_filter_retains_original_and_exact_provenance": 5,
+        "tests.conversion.test_office_native::test_selected_office_cancellation_settles_family_before_private_profile_cleanup": 1,
+        "tests.conversion.test_office_native::test_selected_office_text_budget_keeps_destination_empty": 1
+      }
+    },
+    {
+      "artifact": 15230120040,
+      "file": "installed-junit.xml",
+      "cases": 7,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0,
+      "function_counter": {
+        "tests.conversion.test_office_native::test_real_selected_legacy_filter_retains_original_and_exact_provenance": 5,
+        "tests.conversion.test_office_native::test_selected_office_cancellation_settles_family_before_private_profile_cleanup": 1,
+        "tests.conversion.test_office_native::test_selected_office_text_budget_keeps_destination_empty": 1
+      }
+    },
+    {
+      "artifact": 15230120040,
+      "file": "source-junit.xml",
+      "cases": 7,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0,
+      "function_counter": {
+        "tests.conversion.test_office_native::test_real_selected_legacy_filter_retains_original_and_exact_provenance": 5,
+        "tests.conversion.test_office_native::test_selected_office_cancellation_settles_family_before_private_profile_cleanup": 1,
+        "tests.conversion.test_office_native::test_selected_office_text_budget_keeps_destination_empty": 1
+      }
+    }
+  ],
+  "ordinary_failure": {
+    "source_commit": "d7295d13a096c0148559657f7b9d64b865051875",
+    "source_tree": "34a03c0de567fd652b383d7e63d4d77a4e49ab05",
+    "gate_status": "FAIL",
+    "source_passed": 6,
+    "source_failed": 1,
+    "installed": "NOT_RUN",
+    "error": "source optional-converter pytest failed: 1",
+    "failed_case": "test_real_selected_legacy_filter_retains_original_and_exact_provenance[xls]",
+    "note": "The final gate retains its initial source='NOT_RUN' placeholder because run_population raised before assignment. Raw JUnit, not that placeholder, proves six passes and one failure.",
+    "observed_worker_failure": "LibreOffice last observed phase: native-conversion-start. ValueError: The project directory does not exist."
+  },
+  "diagnostic_success": {
+    "source_commit": "74e0520ee04f0d7fa3ed62dfc84227b2c9ad0643",
+    "source_tree": "2c2985880f7d1aa5256e4571c40bdf00426f18a6",
+    "gate_status": "PASS",
+    "source_cases": 7,
+    "installed_cases": 7,
+    "raw_function_counter": {
+      "tests.conversion.test_office_native::test_real_selected_legacy_filter_retains_original_and_exact_provenance": 5,
+      "tests.conversion.test_office_native::test_selected_office_cancellation_settles_family_before_private_profile_cleanup": 1,
+      "tests.conversion.test_office_native::test_selected_office_text_budget_keeps_destination_empty": 1
+    },
+    "harness_sha256": "0cf1c42f9fdb2aff8dfccba4c423c5f6455f46ad730fd3a729f320b5dafb644e",
+    "selected_test_sha256": {
+      "tests/conversion/native_diagnostics.py": "576e377cf63b568b8acbf5b6d2c2432da50aa6500babdfebbe61028bc49f46e2",
+      "tests/conversion/test_office_native.py": "1109c1da659193f5291e4ada03aa183f51d6b991021650bad1c848e3eb0bfea7"
+    },
+    "installed_identity": {
+      "files": {
+        "canonical_sha256": "b9f7172c4ec2870cadede9d377844b423bdfbfc8aa7e6fabd7a6890eca185205",
+        "entries": 371
+      },
+      "isolated": true,
+      "module_origins": {
+        "bootstrap": "D:\\a\\_temp\\carr-converters-46062054170-1-office\\installed\\Lib\\site-packages\\bootstrap\\__init__.py",
+        "carr_library": "D:\\a\\_temp\\carr-converters-46062054170-1-office\\installed\\Lib\\site-packages\\carr_library\\__init__.py"
+      },
+      "prefix": "D:\\a\\_temp\\carr-converters-46062054170-1-office\\installed",
+      "wheel_sha256": "40e7ab6ba006e00a47711a70ee00d7dd967e97d1e845ae651361342eb59dd31a"
+    },
+    "wheel_source": {
+      "payload_files": 440,
+      "project_name": "universal-research-library",
+      "project_version": "0.2.0.dev2",
+      "required_runtime_files": 371,
+      "source_commit": "74e0520ee04f0d7fa3ed62dfc84227b2c9ad0643",
+      "source_tree": "2c2985880f7d1aa5256e4571c40bdf00426f18a6",
+      "wheel_sha256": "40e7ab6ba006e00a47711a70ee00d7dd967e97d1e845ae651361342eb59dd31a"
+    },
+    "origins": {
+      "source": {
+        "isolated": false,
+        "module_origins": {
+          "bootstrap": {
+            "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\bootstrap\\__init__.py",
+            "sha256": "a90e8b1d37413ef4fbc54cdbea7f67a8c2a09ac01ed8cee54e5b9c47fe8fc930"
+          },
+          "carr_library": {
+            "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\__init__.py",
+            "sha256": "93ac58ea85ec030da93ad5ae63430cb23c3ba24627931f5d40b3f8ba37ce9c7a"
+          }
+        }
+      },
+      "installed": {
+        "isolated": true,
+        "module_origins": {
+          "bootstrap": {
+            "path": "D:\\a\\_temp\\carr-converters-46062054170-1-office\\installed\\Lib\\site-packages\\bootstrap\\__init__.py",
+            "sha256": "a90e8b1d37413ef4fbc54cdbea7f67a8c2a09ac01ed8cee54e5b9c47fe8fc930"
+          },
+          "carr_library": {
+            "path": "D:\\a\\_temp\\carr-converters-46062054170-1-office\\installed\\Lib\\site-packages\\carr_library\\__init__.py",
+            "sha256": "93ac58ea85ec030da93ad5ae63430cb23c3ba24627931f5d40b3f8ba37ce9c7a"
+          }
+        }
+      }
+    },
+    "publisher": {
+      "artifacts": {
+        "libreoffice": {
+          "bytes": 373121024,
+          "path": "D:\\a\\_temp\\carr-converters-46062054170-1-office\\optional\\LibreOffice_26.2.7_Win_x86-64.msi",
+          "publisher_identity": "PASS",
+          "publisher_metadata_sha256": "76e413ff0720f0f4c8b02d1b8af9ddaaf1f0f2e617d6a24a58a9587807f64625",
+          "publisher_url": "https://download.documentfoundation.org/libreoffice/stable/26.2.7/win/x86_64/LibreOffice_26.2.7_Win_x86-64.msi.meta4",
+          "sha256": "480fecf759fc6393bd614fbf43753eb95a8198fc1a065d41b727e3b664cd1e59",
+          "version": "26.2.7"
+        }
+      },
+      "libreoffice_msi": "D:\\a\\_temp\\carr-converters-46062054170-1-office\\optional\\LibreOffice_26.2.7_Win_x86-64.msi",
+      "lock_sha256": "8d0beef0e02dfbcfb5f270b122d42895ed46355ab5c7fb48ef5effee3d292cf2",
+      "native_execution": "NOT_RUN",
+      "schema": 1,
+      "status": "PASS"
+    },
+    "initial_runtime_inventory": {
+      "libreoffice": {
+        "canonical_sha256": "37fc2726ac6736268c7363fda526dbe33d365b7d086ca0e43300f7f311f70693",
+        "entries": 19487
+      }
+    },
+    "final_live_inventory_changes": {}
+  },
+  "conclusions": [
+    "The no-bytecode candidate completed all seven cases in each mode and its full live runtime comparison during the diagnostic run; the selected LibreOffice installation remained 19,487 files.",
+    "The transient guard failure did not recur, so the diagnostic produced no failing path observation and does not establish its cause.",
+    "The unchanged after-inventory comparison is enforced by the exact source-hash-bound helper. The final gate carries the initial inventory plus an empty change map, not a separate raw after-inventory snapshot.",
+    "The ordinary d729 source failure remains FAIL; a diagnostic success does not replace ordinary qualification or close the intermittent directory-guard issue."
+  ],
+  "qualification": {
+    "ordinary_success": false,
+    "diagnostic_only": true,
+    "manual_nvda": false,
+    "real_user_corpus": false,
+    "printed_page_fidelity": false
+  }
+}

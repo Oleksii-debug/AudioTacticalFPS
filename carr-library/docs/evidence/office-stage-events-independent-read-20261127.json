@@ -1,0 +1,1694 @@
+{
+  "schema": "carr.office-stage-events-independent-read.v1",
+  "status": "OBSERVED_DIAGNOSTIC_ONLY",
+  "date": "2026-11-27",
+  "execution": {
+    "source_commit": "ed90ab81b85893b893e441d2fe12ec4fe2d33133",
+    "source_tree": "fbcc98326f65be8f85abefcb5f0a933ccd4788fd",
+    "run_id": 46063451376,
+    "job_id": 140722988163,
+    "status": "PASS",
+    "native_source_cases": 7,
+    "native_installed_cases": 7,
+    "fixed_xls_conversions_per_mode": 4
+  },
+  "reader": {
+    "source_commit": "de6dd333861dfb63094b8d4cfdb7bf607ace17e1",
+    "tree": "0b37d4fd91d8cdfa1075c87ac6d149b74d4d29e1",
+    "run_id": 46064462775,
+    "job_id": 140726317359,
+    "status": "SUCCESS",
+    "method": "Pinned metadata and archive digest/size, inert bounded ZIP/JSON/XML read; no archived code execution."
+  },
+  "artifacts": [
+    {
+      "run": 46063451376,
+      "commit": "ed90ab81b85893b893e441d2fe12ec4fe2d33133",
+      "id": 15230765620,
+      "sha256": "912fe0dfd52cd26500d3b02552db605350c543c146e5b57e9fb2d2e571844dad",
+      "bytes": 5720404,
+      "kind": "office-fixed-four-xls-event-diagnostic-only",
+      "name": "carr-converters-office-ed90ab81b85893b893e441d2fe12ec4fe2d33133"
+    }
+  ],
+  "raw_members": [
+    {
+      "name": "before-execution.json",
+      "bytes": 2879603,
+      "sha256": "d67d4cc0968291afa89018518f727979eaa4294b288c71c3cdc2c067815d8d34",
+      "artifact": 15230765620
+    },
+    {
+      "name": "converter-gate.json",
+      "bytes": 3547036,
+      "sha256": "5418d01b9837fe051b68f1934032eff3a5ecc580aeca3b97379c51c58d6c50ed",
+      "artifact": 15230765620
+    },
+    {
+      "name": "installed-junit.xml",
+      "bytes": 1334,
+      "sha256": "5d8f05f27789ea9556f91dfc9d33a1f41240b9a95ae2a0c3b78dd98e28c16e1b",
+      "artifact": 15230765620
+    },
+    {
+      "name": "installed-origins.json",
+      "bytes": 464,
+      "sha256": "d9c2ad87b165c28c8ec8650fe546df2f2dc55c5822b5d60d03c9a8333861ae97",
+      "artifact": 15230765620
+    },
+    {
+      "name": "installed-pytest.txt",
+      "bytes": 2758,
+      "sha256": "fb8fa4ea83b26dec8a15c3db4c4154d09094bc713e3b7941bc9629c92f6897f3",
+      "artifact": 15230765620
+    },
+    {
+      "name": "publisher-identities.json",
+      "bytes": 874,
+      "sha256": "f83b512fa0cb2ed3be4691292bd89e3329ac26ccf81ab0e6ab4bb1041f26d26f",
+      "artifact": 15230765620
+    },
+    {
+      "name": "source-junit.xml",
+      "bytes": 1334,
+      "sha256": "62af016b47353754fe7503532a39631465077e971f81d97ba08e5a6fd900ed7a",
+      "artifact": 15230765620
+    },
+    {
+      "name": "source-origins.json",
+      "bytes": 418,
+      "sha256": "23d7bb5d3294fd2585f2ae2c3eed60a77d05e9c93908d99b0ccd2243a9d265ce",
+      "artifact": 15230765620
+    },
+    {
+      "name": "source-pytest.txt",
+      "bytes": 2755,
+      "sha256": "0d73f034fd640a862a000b59cd8c783737ab4b49b5fb278b9a490d35f89c26e2",
+      "artifact": 15230765620
+    },
+    {
+      "name": "source-provenance.json",
+      "bytes": 469,
+      "sha256": "a72a7c4e1d6026c3e62a3c9e5fdaaa4e1eba9f91c1fbeec2545d089a2a3d651a",
+      "artifact": 15230765620
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-0.json",
+      "bytes": 834,
+      "sha256": "16b5f8eb2fdd762ac65698a2ae3d1879be8f97a7288696b32767250e97cb49bb",
+      "artifact": 15230765620
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-1.json",
+      "bytes": 589,
+      "sha256": "3af5035fc70f12cc115ea3c3684127406a1746fe8f90b4e961de943d2d8fbb5a",
+      "artifact": 15230765620
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-10.json",
+      "bytes": 574,
+      "sha256": "480841a73b9d3d276c173b7f439bc28248eb07d69d9e00c105bd832c0672657a",
+      "artifact": 15230765620
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-11.json",
+      "bytes": 616,
+      "sha256": "6ca5d4d78eca79c8627308eddc50a267f1286a4bf7520c90993aa21035719f96",
+      "artifact": 15230765620
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-12.json",
+      "bytes": 574,
+      "sha256": "03e19accaf53706f9366b571ac9d06690c943c1333fb2e8ff44f2a58a5e809ce",
+      "artifact": 15230765620
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-13.json",
+      "bytes": 616,
+      "sha256": "1b22eb829443d613ca299130c39c574ec562c7e52ce7dff9dad087cfc85e73ac",
+      "artifact": 15230765620
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-14.json",
+      "bytes": 574,
+      "sha256": "8c39833dcf4ca3cdce3e4c5465ec3b01e20c3d5687dfc7fce74d0ebaeb4cb184",
+      "artifact": 15230765620
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-15.json",
+      "bytes": 616,
+      "sha256": "c47916be99ea3c58695b38e3af7332ff93cea0add616a67d03bf626636a9139f",
+      "artifact": 15230765620
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-16.json",
+      "bytes": 574,
+      "sha256": "0c30cef43bfc1876687d5cd772e7e40bb01445f75a428dc01eb12a07bbbb68d8",
+      "artifact": 15230765620
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-18.json",
+      "bytes": 574,
+      "sha256": "0b693318c56023fea03cc1174267f6b99ae12c1797f4e117dc4477f16985bf2b",
+      "artifact": 15230765620
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-17.json",
+      "bytes": 616,
+      "sha256": "f125db86bb4fc23dce34afa2b6c1ec5e3314821c2c6d4880f6ca264a620cc9a4",
+      "artifact": 15230765620
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-2.json",
+      "bytes": 631,
+      "sha256": "27bfefa10cd08aad29a41377bf7c18fd8f44cb2c76c1dce47b4f630d8f25cc7e",
+      "artifact": 15230765620
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-19.json",
+      "bytes": 616,
+      "sha256": "6dfc1b8a5690115b02d0c5424ac6ea929e6a19c6ca704bb95a8038bd15fdfbbe",
+      "artifact": 15230765620
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-20.json",
+      "bytes": 574,
+      "sha256": "be769fc89b8ec747896998bd460ec7ca1629c9e0d4f70ec32475c050aad4ac72",
+      "artifact": 15230765620
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-21.json",
+      "bytes": 616,
+      "sha256": "a9842490324bbce219c6e5439264cf6c83f70554450c8bf2271fe1d7eda17846",
+      "artifact": 15230765620
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-3.json",
+      "bytes": 589,
+      "sha256": "9cc6cf88517e4d5b9e4335d32fd19f4b847ff6475798d429210a32916e6b3e8d",
+      "artifact": 15230765620
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-4.json",
+      "bytes": 631,
+      "sha256": "c0f1a68c1c9b1ba23f5d042c2784514e5d1d83bc15ea8bd610de3be2f54323ca",
+      "artifact": 15230765620
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-5.json",
+      "bytes": 691,
+      "sha256": "29de027283d2e4a7dd223f29fb1bceed158474c0316173b357ca65bd7ee74149",
+      "artifact": 15230765620
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-6.json",
+      "bytes": 574,
+      "sha256": "a62412af54421a740a8412c96addee114036b013505201e8a45c07968466bee4",
+      "artifact": 15230765620
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-7.json",
+      "bytes": 616,
+      "sha256": "182cb2eed95deb9b946e569839b6a304a44893fa178d718bf94ed69670822daf",
+      "artifact": 15230765620
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-8.json",
+      "bytes": 574,
+      "sha256": "39786d548c3fe73ea12b43d2364796b3f26c85e825503e94d1a4da3f6c71123f",
+      "artifact": 15230765620
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-9.json",
+      "bytes": 616,
+      "sha256": "56c249aa8bd4130c758b5c177369784cd253c6b76bc19a826b1796160f9c39d2",
+      "artifact": 15230765620
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-4952-0.json",
+      "bytes": 835,
+      "sha256": "b5ebfbd52c63072c4e923ea1efce820672d947e1806f13cd2820870e3f84fd05",
+      "artifact": 15230765620
+    }
+  ],
+  "junit": [
+    {
+      "artifact": 15230765620,
+      "file": "installed-junit.xml",
+      "cases": 7,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0,
+      "function_counter": {
+        "tests.conversion.test_office_native::test_real_selected_legacy_filter_retains_original_and_exact_provenance": 5,
+        "tests.conversion.test_office_native::test_selected_office_cancellation_settles_family_before_private_profile_cleanup": 1,
+        "tests.conversion.test_office_native::test_selected_office_text_budget_keeps_destination_empty": 1
+      }
+    },
+    {
+      "artifact": 15230765620,
+      "file": "source-junit.xml",
+      "cases": 7,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0,
+      "function_counter": {
+        "tests.conversion.test_office_native::test_real_selected_legacy_filter_retains_original_and_exact_provenance": 5,
+        "tests.conversion.test_office_native::test_selected_office_cancellation_settles_family_before_private_profile_cleanup": 1,
+        "tests.conversion.test_office_native::test_selected_office_text_budget_keeps_destination_empty": 1
+      }
+    }
+  ],
+  "summary": {
+    "records": 23,
+    "guard_records": 13,
+    "classifier_true": 10,
+    "classifier_false": 0,
+    "operations": {
+      "regular_file": 2,
+      "checked_directory": 21
+    },
+    "roots_stable": true,
+    "direct_file_not_found_guard_records": 3,
+    "functions": [
+      "_stage_usage:266",
+      "_run:314",
+      "office_records:405",
+      "_stage_usage:264"
+    ],
+    "modes": [
+      "source"
+    ]
+  },
+  "events": [
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-0.json",
+      "data": {
+        "argument": "libreoffice-profile/user/registrymodifications.xcu~RF43fd4.TMP",
+        "calls": [
+          {
+            "count": 21,
+            "depth": 2,
+            "function": "_stage_usage",
+            "line": 266,
+            "size": 8623
+          },
+          {
+            "function": "_run",
+            "line": 314
+          },
+          {
+            "function": "office_records",
+            "line": 405
+          }
+        ],
+        "checked": "libreoffice-profile/user/registrymodifications.xcu~RF43fd4.TMP",
+        "error": "[WinError 2] The system cannot find the file specified: 'C:\\\\Users\\\\runneradmin\\\\AppData\\\\Local\\\\Temp\\\\carr-office-ihhy0au3\\\\libreoffice-profile\\\\user\\\\registry",
+        "initial_root": [
+          ".",
+          16895,
+          1,
+          16,
+          2695480082,
+          14918173766346468
+        ],
+        "missing_classifier": "not-called",
+        "operation": "regular_file",
+        "paths": [
+          [
+            ".",
+            16895,
+            1,
+            16,
+            2695480082,
+            14918173766346468
+          ],
+          [
+            "libreoffice-profile/user",
+            16895,
+            1,
+            16,
+            2695480082,
+            2814749767788271
+          ],
+          [
+            "libreoffice-profile/user/registrymodifications.xcu~RF43fd4.TMP",
+            "FileNotFoundError",
+            2,
+            2
+          ]
+        ]
+      }
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-1.json",
+      "data": {
+        "argument": "lu29125y4t.tmp/lu29125y62.tmp",
+        "calls": [
+          {
+            "count": 56,
+            "depth": 1,
+            "function": "_stage_usage",
+            "line": 264,
+            "size": 5756
+          },
+          {
+            "function": "_run",
+            "line": 314
+          },
+          {
+            "function": "office_records",
+            "line": 405
+          }
+        ],
+        "checked": "lu29125y4t.tmp/lu29125y62.tmp",
+        "error": "The project directory does not exist.",
+        "initial_root": [
+          ".",
+          16895,
+          1,
+          16,
+          2695480082,
+          14918173766346468
+        ],
+        "missing_classifier": "not-called",
+        "operation": "checked_directory",
+        "paths": [
+          [
+            ".",
+            16895,
+            1,
+            16,
+            2695480082,
+            14918173766346468
+          ],
+          [
+            "lu29125y4t.tmp",
+            16895,
+            1,
+            16,
+            2695480082,
+            5348024558184208
+          ],
+          [
+            "lu29125y4t.tmp/lu29125y62.tmp",
+            "FileNotFoundError",
+            2,
+            2
+          ]
+        ]
+      }
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-10.json",
+      "data": {
+        "argument": "lu29125y4t.tmp/lu29125y67.tmp",
+        "calls": [
+          {
+            "count": 61,
+            "depth": 1,
+            "function": "_stage_usage",
+            "line": 264,
+            "size": 5756
+          },
+          {
+            "function": "_run",
+            "line": 314
+          },
+          {
+            "function": "office_records",
+            "line": 405
+          }
+        ],
+        "checked": "lu29125y4t.tmp/lu29125y67.tmp",
+        "error": "The project directory does not exist.",
+        "initial_root": [
+          ".",
+          16895,
+          1,
+          16,
+          2695480082,
+          14918173766346468
+        ],
+        "missing_classifier": "not-called",
+        "operation": "checked_directory",
+        "paths": [
+          [
+            ".",
+            16895,
+            1,
+            16,
+            2695480082,
+            14918173766346468
+          ],
+          [
+            "lu29125y4t.tmp",
+            "FileNotFoundError",
+            2,
+            2
+          ],
+          [
+            "lu29125y4t.tmp/lu29125y67.tmp",
+            "FileNotFoundError",
+            2,
+            3
+          ]
+        ]
+      }
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-11.json",
+      "data": {
+        "argument": "lu29125y4t.tmp/lu29125y67.tmp",
+        "calls": [
+          {
+            "count": 61,
+            "depth": 1,
+            "function": "_stage_usage",
+            "line": 264,
+            "size": 5756
+          },
+          {
+            "function": "_run",
+            "line": 314
+          },
+          {
+            "function": "office_records",
+            "line": 405
+          }
+        ],
+        "checked": "lu29125y4t.tmp/lu29125y67.tmp",
+        "classifier_path": "lu29125y4t.tmp/lu29125y67.tmp",
+        "error": "The project directory does not exist.",
+        "initial_root": [
+          ".",
+          16895,
+          1,
+          16,
+          2695480082,
+          14918173766346468
+        ],
+        "missing_classifier": true,
+        "operation": "checked_directory",
+        "paths": [
+          [
+            ".",
+            16895,
+            1,
+            16,
+            2695480082,
+            14918173766346468
+          ],
+          [
+            "lu29125y4t.tmp",
+            "FileNotFoundError",
+            2,
+            2
+          ],
+          [
+            "lu29125y4t.tmp/lu29125y67.tmp",
+            "FileNotFoundError",
+            2,
+            3
+          ]
+        ]
+      }
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-12.json",
+      "data": {
+        "argument": "lu29125y4t.tmp/lu29125y68.tmp",
+        "calls": [
+          {
+            "count": 62,
+            "depth": 1,
+            "function": "_stage_usage",
+            "line": 264,
+            "size": 5756
+          },
+          {
+            "function": "_run",
+            "line": 314
+          },
+          {
+            "function": "office_records",
+            "line": 405
+          }
+        ],
+        "checked": "lu29125y4t.tmp/lu29125y68.tmp",
+        "error": "The project directory does not exist.",
+        "initial_root": [
+          ".",
+          16895,
+          1,
+          16,
+          2695480082,
+          14918173766346468
+        ],
+        "missing_classifier": "not-called",
+        "operation": "checked_directory",
+        "paths": [
+          [
+            ".",
+            16895,
+            1,
+            16,
+            2695480082,
+            14918173766346468
+          ],
+          [
+            "lu29125y4t.tmp",
+            "FileNotFoundError",
+            2,
+            2
+          ],
+          [
+            "lu29125y4t.tmp/lu29125y68.tmp",
+            "FileNotFoundError",
+            2,
+            3
+          ]
+        ]
+      }
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-13.json",
+      "data": {
+        "argument": "lu29125y4t.tmp/lu29125y68.tmp",
+        "calls": [
+          {
+            "count": 62,
+            "depth": 1,
+            "function": "_stage_usage",
+            "line": 264,
+            "size": 5756
+          },
+          {
+            "function": "_run",
+            "line": 314
+          },
+          {
+            "function": "office_records",
+            "line": 405
+          }
+        ],
+        "checked": "lu29125y4t.tmp/lu29125y68.tmp",
+        "classifier_path": "lu29125y4t.tmp/lu29125y68.tmp",
+        "error": "The project directory does not exist.",
+        "initial_root": [
+          ".",
+          16895,
+          1,
+          16,
+          2695480082,
+          14918173766346468
+        ],
+        "missing_classifier": true,
+        "operation": "checked_directory",
+        "paths": [
+          [
+            ".",
+            16895,
+            1,
+            16,
+            2695480082,
+            14918173766346468
+          ],
+          [
+            "lu29125y4t.tmp",
+            "FileNotFoundError",
+            2,
+            2
+          ],
+          [
+            "lu29125y4t.tmp/lu29125y68.tmp",
+            "FileNotFoundError",
+            2,
+            3
+          ]
+        ]
+      }
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-14.json",
+      "data": {
+        "argument": "lu29125y4t.tmp/lu29125y69.tmp",
+        "calls": [
+          {
+            "count": 63,
+            "depth": 1,
+            "function": "_stage_usage",
+            "line": 264,
+            "size": 5756
+          },
+          {
+            "function": "_run",
+            "line": 314
+          },
+          {
+            "function": "office_records",
+            "line": 405
+          }
+        ],
+        "checked": "lu29125y4t.tmp/lu29125y69.tmp",
+        "error": "The project directory does not exist.",
+        "initial_root": [
+          ".",
+          16895,
+          1,
+          16,
+          2695480082,
+          14918173766346468
+        ],
+        "missing_classifier": "not-called",
+        "operation": "checked_directory",
+        "paths": [
+          [
+            ".",
+            16895,
+            1,
+            16,
+            2695480082,
+            14918173766346468
+          ],
+          [
+            "lu29125y4t.tmp",
+            "FileNotFoundError",
+            2,
+            2
+          ],
+          [
+            "lu29125y4t.tmp/lu29125y69.tmp",
+            "FileNotFoundError",
+            2,
+            3
+          ]
+        ]
+      }
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-15.json",
+      "data": {
+        "argument": "lu29125y4t.tmp/lu29125y69.tmp",
+        "calls": [
+          {
+            "count": 63,
+            "depth": 1,
+            "function": "_stage_usage",
+            "line": 264,
+            "size": 5756
+          },
+          {
+            "function": "_run",
+            "line": 314
+          },
+          {
+            "function": "office_records",
+            "line": 405
+          }
+        ],
+        "checked": "lu29125y4t.tmp/lu29125y69.tmp",
+        "classifier_path": "lu29125y4t.tmp/lu29125y69.tmp",
+        "error": "The project directory does not exist.",
+        "initial_root": [
+          ".",
+          16895,
+          1,
+          16,
+          2695480082,
+          14918173766346468
+        ],
+        "missing_classifier": true,
+        "operation": "checked_directory",
+        "paths": [
+          [
+            ".",
+            16895,
+            1,
+            16,
+            2695480082,
+            14918173766346468
+          ],
+          [
+            "lu29125y4t.tmp",
+            "FileNotFoundError",
+            2,
+            2
+          ],
+          [
+            "lu29125y4t.tmp/lu29125y69.tmp",
+            "FileNotFoundError",
+            2,
+            3
+          ]
+        ]
+      }
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-16.json",
+      "data": {
+        "argument": "lu29125y4t.tmp/lu29125y6a.tmp",
+        "calls": [
+          {
+            "count": 64,
+            "depth": 1,
+            "function": "_stage_usage",
+            "line": 264,
+            "size": 5756
+          },
+          {
+            "function": "_run",
+            "line": 314
+          },
+          {
+            "function": "office_records",
+            "line": 405
+          }
+        ],
+        "checked": "lu29125y4t.tmp/lu29125y6a.tmp",
+        "error": "The project directory does not exist.",
+        "initial_root": [
+          ".",
+          16895,
+          1,
+          16,
+          2695480082,
+          14918173766346468
+        ],
+        "missing_classifier": "not-called",
+        "operation": "checked_directory",
+        "paths": [
+          [
+            ".",
+            16895,
+            1,
+            16,
+            2695480082,
+            14918173766346468
+          ],
+          [
+            "lu29125y4t.tmp",
+            "FileNotFoundError",
+            2,
+            2
+          ],
+          [
+            "lu29125y4t.tmp/lu29125y6a.tmp",
+            "FileNotFoundError",
+            2,
+            3
+          ]
+        ]
+      }
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-18.json",
+      "data": {
+        "argument": "lu29125y4t.tmp/lu29125y6b.tmp",
+        "calls": [
+          {
+            "count": 65,
+            "depth": 1,
+            "function": "_stage_usage",
+            "line": 264,
+            "size": 5756
+          },
+          {
+            "function": "_run",
+            "line": 314
+          },
+          {
+            "function": "office_records",
+            "line": 405
+          }
+        ],
+        "checked": "lu29125y4t.tmp/lu29125y6b.tmp",
+        "error": "The project directory does not exist.",
+        "initial_root": [
+          ".",
+          16895,
+          1,
+          16,
+          2695480082,
+          14918173766346468
+        ],
+        "missing_classifier": "not-called",
+        "operation": "checked_directory",
+        "paths": [
+          [
+            ".",
+            16895,
+            1,
+            16,
+            2695480082,
+            14918173766346468
+          ],
+          [
+            "lu29125y4t.tmp",
+            "FileNotFoundError",
+            2,
+            2
+          ],
+          [
+            "lu29125y4t.tmp/lu29125y6b.tmp",
+            "FileNotFoundError",
+            2,
+            3
+          ]
+        ]
+      }
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-17.json",
+      "data": {
+        "argument": "lu29125y4t.tmp/lu29125y6a.tmp",
+        "calls": [
+          {
+            "count": 64,
+            "depth": 1,
+            "function": "_stage_usage",
+            "line": 264,
+            "size": 5756
+          },
+          {
+            "function": "_run",
+            "line": 314
+          },
+          {
+            "function": "office_records",
+            "line": 405
+          }
+        ],
+        "checked": "lu29125y4t.tmp/lu29125y6a.tmp",
+        "classifier_path": "lu29125y4t.tmp/lu29125y6a.tmp",
+        "error": "The project directory does not exist.",
+        "initial_root": [
+          ".",
+          16895,
+          1,
+          16,
+          2695480082,
+          14918173766346468
+        ],
+        "missing_classifier": true,
+        "operation": "checked_directory",
+        "paths": [
+          [
+            ".",
+            16895,
+            1,
+            16,
+            2695480082,
+            14918173766346468
+          ],
+          [
+            "lu29125y4t.tmp",
+            "FileNotFoundError",
+            2,
+            2
+          ],
+          [
+            "lu29125y4t.tmp/lu29125y6a.tmp",
+            "FileNotFoundError",
+            2,
+            3
+          ]
+        ]
+      }
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-2.json",
+      "data": {
+        "argument": "lu29125y4t.tmp/lu29125y62.tmp",
+        "calls": [
+          {
+            "count": 56,
+            "depth": 1,
+            "function": "_stage_usage",
+            "line": 264,
+            "size": 5756
+          },
+          {
+            "function": "_run",
+            "line": 314
+          },
+          {
+            "function": "office_records",
+            "line": 405
+          }
+        ],
+        "checked": "lu29125y4t.tmp/lu29125y62.tmp",
+        "classifier_path": "lu29125y4t.tmp/lu29125y62.tmp",
+        "error": "The project directory does not exist.",
+        "initial_root": [
+          ".",
+          16895,
+          1,
+          16,
+          2695480082,
+          14918173766346468
+        ],
+        "missing_classifier": true,
+        "operation": "checked_directory",
+        "paths": [
+          [
+            ".",
+            16895,
+            1,
+            16,
+            2695480082,
+            14918173766346468
+          ],
+          [
+            "lu29125y4t.tmp",
+            16895,
+            1,
+            16,
+            2695480082,
+            5348024558184208
+          ],
+          [
+            "lu29125y4t.tmp/lu29125y62.tmp",
+            "FileNotFoundError",
+            2,
+            2
+          ]
+        ]
+      }
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-19.json",
+      "data": {
+        "argument": "lu29125y4t.tmp/lu29125y6b.tmp",
+        "calls": [
+          {
+            "count": 65,
+            "depth": 1,
+            "function": "_stage_usage",
+            "line": 264,
+            "size": 5756
+          },
+          {
+            "function": "_run",
+            "line": 314
+          },
+          {
+            "function": "office_records",
+            "line": 405
+          }
+        ],
+        "checked": "lu29125y4t.tmp/lu29125y6b.tmp",
+        "classifier_path": "lu29125y4t.tmp/lu29125y6b.tmp",
+        "error": "The project directory does not exist.",
+        "initial_root": [
+          ".",
+          16895,
+          1,
+          16,
+          2695480082,
+          14918173766346468
+        ],
+        "missing_classifier": true,
+        "operation": "checked_directory",
+        "paths": [
+          [
+            ".",
+            16895,
+            1,
+            16,
+            2695480082,
+            14918173766346468
+          ],
+          [
+            "lu29125y4t.tmp",
+            "FileNotFoundError",
+            2,
+            2
+          ],
+          [
+            "lu29125y4t.tmp/lu29125y6b.tmp",
+            "FileNotFoundError",
+            2,
+            3
+          ]
+        ]
+      }
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-20.json",
+      "data": {
+        "argument": "lu29125y4t.tmp/lu29125y6c.tmp",
+        "calls": [
+          {
+            "count": 66,
+            "depth": 1,
+            "function": "_stage_usage",
+            "line": 264,
+            "size": 5756
+          },
+          {
+            "function": "_run",
+            "line": 314
+          },
+          {
+            "function": "office_records",
+            "line": 405
+          }
+        ],
+        "checked": "lu29125y4t.tmp/lu29125y6c.tmp",
+        "error": "The project directory does not exist.",
+        "initial_root": [
+          ".",
+          16895,
+          1,
+          16,
+          2695480082,
+          14918173766346468
+        ],
+        "missing_classifier": "not-called",
+        "operation": "checked_directory",
+        "paths": [
+          [
+            ".",
+            16895,
+            1,
+            16,
+            2695480082,
+            14918173766346468
+          ],
+          [
+            "lu29125y4t.tmp",
+            "FileNotFoundError",
+            2,
+            2
+          ],
+          [
+            "lu29125y4t.tmp/lu29125y6c.tmp",
+            "FileNotFoundError",
+            2,
+            3
+          ]
+        ]
+      }
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-21.json",
+      "data": {
+        "argument": "lu29125y4t.tmp/lu29125y6c.tmp",
+        "calls": [
+          {
+            "count": 66,
+            "depth": 1,
+            "function": "_stage_usage",
+            "line": 264,
+            "size": 5756
+          },
+          {
+            "function": "_run",
+            "line": 314
+          },
+          {
+            "function": "office_records",
+            "line": 405
+          }
+        ],
+        "checked": "lu29125y4t.tmp/lu29125y6c.tmp",
+        "classifier_path": "lu29125y4t.tmp/lu29125y6c.tmp",
+        "error": "The project directory does not exist.",
+        "initial_root": [
+          ".",
+          16895,
+          1,
+          16,
+          2695480082,
+          14918173766346468
+        ],
+        "missing_classifier": true,
+        "operation": "checked_directory",
+        "paths": [
+          [
+            ".",
+            16895,
+            1,
+            16,
+            2695480082,
+            14918173766346468
+          ],
+          [
+            "lu29125y4t.tmp",
+            "FileNotFoundError",
+            2,
+            2
+          ],
+          [
+            "lu29125y4t.tmp/lu29125y6c.tmp",
+            "FileNotFoundError",
+            2,
+            3
+          ]
+        ]
+      }
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-3.json",
+      "data": {
+        "argument": "lu29125y4t.tmp/lu29125y63.tmp",
+        "calls": [
+          {
+            "count": 57,
+            "depth": 1,
+            "function": "_stage_usage",
+            "line": 264,
+            "size": 5756
+          },
+          {
+            "function": "_run",
+            "line": 314
+          },
+          {
+            "function": "office_records",
+            "line": 405
+          }
+        ],
+        "checked": "lu29125y4t.tmp/lu29125y63.tmp",
+        "error": "The project directory does not exist.",
+        "initial_root": [
+          ".",
+          16895,
+          1,
+          16,
+          2695480082,
+          14918173766346468
+        ],
+        "missing_classifier": "not-called",
+        "operation": "checked_directory",
+        "paths": [
+          [
+            ".",
+            16895,
+            1,
+            16,
+            2695480082,
+            14918173766346468
+          ],
+          [
+            "lu29125y4t.tmp",
+            16895,
+            1,
+            16,
+            2695480082,
+            5348024558184208
+          ],
+          [
+            "lu29125y4t.tmp/lu29125y63.tmp",
+            "FileNotFoundError",
+            2,
+            2
+          ]
+        ]
+      }
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-4.json",
+      "data": {
+        "argument": "lu29125y4t.tmp/lu29125y63.tmp",
+        "calls": [
+          {
+            "count": 57,
+            "depth": 1,
+            "function": "_stage_usage",
+            "line": 264,
+            "size": 5756
+          },
+          {
+            "function": "_run",
+            "line": 314
+          },
+          {
+            "function": "office_records",
+            "line": 405
+          }
+        ],
+        "checked": "lu29125y4t.tmp/lu29125y63.tmp",
+        "classifier_path": "lu29125y4t.tmp/lu29125y63.tmp",
+        "error": "The project directory does not exist.",
+        "initial_root": [
+          ".",
+          16895,
+          1,
+          16,
+          2695480082,
+          14918173766346468
+        ],
+        "missing_classifier": true,
+        "operation": "checked_directory",
+        "paths": [
+          [
+            ".",
+            16895,
+            1,
+            16,
+            2695480082,
+            14918173766346468
+          ],
+          [
+            "lu29125y4t.tmp",
+            16895,
+            1,
+            16,
+            2695480082,
+            5348024558184208
+          ],
+          [
+            "lu29125y4t.tmp/lu29125y63.tmp",
+            "FileNotFoundError",
+            2,
+            2
+          ]
+        ]
+      }
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-5.json",
+      "data": {
+        "argument": "lu29125y4t.tmp/lu29125y64.tmp",
+        "calls": [
+          {
+            "count": 58,
+            "depth": 1,
+            "function": "_stage_usage",
+            "line": 264,
+            "size": 5756
+          },
+          {
+            "function": "_run",
+            "line": 314
+          },
+          {
+            "function": "office_records",
+            "line": 405
+          }
+        ],
+        "checked": "lu29125y4t.tmp/lu29125y64.tmp",
+        "error": "[WinError 2] The system cannot find the file specified: 'C:\\\\Users\\\\runneradmin\\\\AppData\\\\Local\\\\Temp\\\\carr-office-ihhy0au3\\\\lu29125y4t.tmp'",
+        "initial_root": [
+          ".",
+          16895,
+          1,
+          16,
+          2695480082,
+          14918173766346468
+        ],
+        "missing_classifier": "not-called",
+        "operation": "checked_directory",
+        "paths": [
+          [
+            ".",
+            16895,
+            1,
+            16,
+            2695480082,
+            14918173766346468
+          ],
+          [
+            "lu29125y4t.tmp",
+            "FileNotFoundError",
+            2,
+            2
+          ],
+          [
+            "lu29125y4t.tmp/lu29125y64.tmp",
+            "FileNotFoundError",
+            2,
+            3
+          ]
+        ]
+      }
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-6.json",
+      "data": {
+        "argument": "lu29125y4t.tmp/lu29125y65.tmp",
+        "calls": [
+          {
+            "count": 59,
+            "depth": 1,
+            "function": "_stage_usage",
+            "line": 264,
+            "size": 5756
+          },
+          {
+            "function": "_run",
+            "line": 314
+          },
+          {
+            "function": "office_records",
+            "line": 405
+          }
+        ],
+        "checked": "lu29125y4t.tmp/lu29125y65.tmp",
+        "error": "The project directory does not exist.",
+        "initial_root": [
+          ".",
+          16895,
+          1,
+          16,
+          2695480082,
+          14918173766346468
+        ],
+        "missing_classifier": "not-called",
+        "operation": "checked_directory",
+        "paths": [
+          [
+            ".",
+            16895,
+            1,
+            16,
+            2695480082,
+            14918173766346468
+          ],
+          [
+            "lu29125y4t.tmp",
+            "FileNotFoundError",
+            2,
+            2
+          ],
+          [
+            "lu29125y4t.tmp/lu29125y65.tmp",
+            "FileNotFoundError",
+            2,
+            3
+          ]
+        ]
+      }
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-7.json",
+      "data": {
+        "argument": "lu29125y4t.tmp/lu29125y65.tmp",
+        "calls": [
+          {
+            "count": 59,
+            "depth": 1,
+            "function": "_stage_usage",
+            "line": 264,
+            "size": 5756
+          },
+          {
+            "function": "_run",
+            "line": 314
+          },
+          {
+            "function": "office_records",
+            "line": 405
+          }
+        ],
+        "checked": "lu29125y4t.tmp/lu29125y65.tmp",
+        "classifier_path": "lu29125y4t.tmp/lu29125y65.tmp",
+        "error": "The project directory does not exist.",
+        "initial_root": [
+          ".",
+          16895,
+          1,
+          16,
+          2695480082,
+          14918173766346468
+        ],
+        "missing_classifier": true,
+        "operation": "checked_directory",
+        "paths": [
+          [
+            ".",
+            16895,
+            1,
+            16,
+            2695480082,
+            14918173766346468
+          ],
+          [
+            "lu29125y4t.tmp",
+            "FileNotFoundError",
+            2,
+            2
+          ],
+          [
+            "lu29125y4t.tmp/lu29125y65.tmp",
+            "FileNotFoundError",
+            2,
+            3
+          ]
+        ]
+      }
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-8.json",
+      "data": {
+        "argument": "lu29125y4t.tmp/lu29125y66.tmp",
+        "calls": [
+          {
+            "count": 60,
+            "depth": 1,
+            "function": "_stage_usage",
+            "line": 264,
+            "size": 5756
+          },
+          {
+            "function": "_run",
+            "line": 314
+          },
+          {
+            "function": "office_records",
+            "line": 405
+          }
+        ],
+        "checked": "lu29125y4t.tmp/lu29125y66.tmp",
+        "error": "The project directory does not exist.",
+        "initial_root": [
+          ".",
+          16895,
+          1,
+          16,
+          2695480082,
+          14918173766346468
+        ],
+        "missing_classifier": "not-called",
+        "operation": "checked_directory",
+        "paths": [
+          [
+            ".",
+            16895,
+            1,
+            16,
+            2695480082,
+            14918173766346468
+          ],
+          [
+            "lu29125y4t.tmp",
+            "FileNotFoundError",
+            2,
+            2
+          ],
+          [
+            "lu29125y4t.tmp/lu29125y66.tmp",
+            "FileNotFoundError",
+            2,
+            3
+          ]
+        ]
+      }
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-2880-9.json",
+      "data": {
+        "argument": "lu29125y4t.tmp/lu29125y66.tmp",
+        "calls": [
+          {
+            "count": 60,
+            "depth": 1,
+            "function": "_stage_usage",
+            "line": 264,
+            "size": 5756
+          },
+          {
+            "function": "_run",
+            "line": 314
+          },
+          {
+            "function": "office_records",
+            "line": 405
+          }
+        ],
+        "checked": "lu29125y4t.tmp/lu29125y66.tmp",
+        "classifier_path": "lu29125y4t.tmp/lu29125y66.tmp",
+        "error": "The project directory does not exist.",
+        "initial_root": [
+          ".",
+          16895,
+          1,
+          16,
+          2695480082,
+          14918173766346468
+        ],
+        "missing_classifier": true,
+        "operation": "checked_directory",
+        "paths": [
+          [
+            ".",
+            16895,
+            1,
+            16,
+            2695480082,
+            14918173766346468
+          ],
+          [
+            "lu29125y4t.tmp",
+            "FileNotFoundError",
+            2,
+            2
+          ],
+          [
+            "lu29125y4t.tmp/lu29125y66.tmp",
+            "FileNotFoundError",
+            2,
+            3
+          ]
+        ]
+      }
+    },
+    {
+      "name": "source-tmp/test_real_selected_legacy_filt2/office-stage-events/event-4952-0.json",
+      "data": {
+        "argument": "libreoffice-profile/user/registrymodifications.xcu~RF42557.TMP",
+        "calls": [
+          {
+            "count": 23,
+            "depth": 2,
+            "function": "_stage_usage",
+            "line": 266,
+            "size": 20002
+          },
+          {
+            "function": "_run",
+            "line": 314
+          },
+          {
+            "function": "office_records",
+            "line": 405
+          }
+        ],
+        "checked": "libreoffice-profile/user/registrymodifications.xcu~RF42557.TMP",
+        "error": "[WinError 2] The system cannot find the file specified: 'C:\\\\Users\\\\runneradmin\\\\AppData\\\\Local\\\\Temp\\\\carr-office-jruzr82y\\\\libreoffice-profile\\\\user\\\\registry",
+        "initial_root": [
+          ".",
+          16895,
+          1,
+          16,
+          2695480082,
+          14636698789635812
+        ],
+        "missing_classifier": "not-called",
+        "operation": "regular_file",
+        "paths": [
+          [
+            ".",
+            16895,
+            1,
+            16,
+            2695480082,
+            14636698789635812
+          ],
+          [
+            "libreoffice-profile/user",
+            16895,
+            1,
+            16,
+            2695480082,
+            2533274791077615
+          ],
+          [
+            "libreoffice-profile/user/registrymodifications.xcu~RF42557.TMP",
+            "FileNotFoundError",
+            2,
+            2
+          ]
+        ]
+      }
+    }
+  ],
+  "source_binding": {
+    "harness_sha256": "0cf1c42f9fdb2aff8dfccba4c423c5f6455f46ad730fd3a729f320b5dafb644e",
+    "selected_test_sha256": {
+      "tests/conversion/native_diagnostics.py": "576e377cf63b568b8acbf5b6d2c2432da50aa6500babdfebbe61028bc49f46e2",
+      "tests/conversion/test_office_native.py": "5734a89e46bea38c77eb87341617c400be2f48106fca11e0a900faaabc1bdd7a"
+    },
+    "installed_identity": {
+      "files": {
+        "canonical_sha256": "b9f7172c4ec2870cadede9d377844b423bdfbfc8aa7e6fabd7a6890eca185205",
+        "entries": 371
+      },
+      "isolated": true,
+      "module_origins": {
+        "bootstrap": "D:\\a\\_temp\\carr-converters-46063451376-1-office\\installed\\Lib\\site-packages\\bootstrap\\__init__.py",
+        "carr_library": "D:\\a\\_temp\\carr-converters-46063451376-1-office\\installed\\Lib\\site-packages\\carr_library\\__init__.py"
+      },
+      "prefix": "D:\\a\\_temp\\carr-converters-46063451376-1-office\\installed",
+      "wheel_sha256": "36e3dbde335bee80e4d69cb0716773d8f64f740add8e29601a3bba71a3a95003"
+    },
+    "wheel_source": {
+      "payload_files": 440,
+      "project_name": "universal-research-library",
+      "project_version": "0.2.0.dev2",
+      "required_runtime_files": 371,
+      "source_commit": "ed90ab81b85893b893e441d2fe12ec4fe2d33133",
+      "source_tree": "fbcc98326f65be8f85abefcb5f0a933ccd4788fd",
+      "wheel_sha256": "36e3dbde335bee80e4d69cb0716773d8f64f740add8e29601a3bba71a3a95003"
+    },
+    "source_origins": {
+      "isolated": false,
+      "module_origins": {
+        "bootstrap": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\bootstrap\\__init__.py",
+          "sha256": "a90e8b1d37413ef4fbc54cdbea7f67a8c2a09ac01ed8cee54e5b9c47fe8fc930"
+        },
+        "carr_library": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\__init__.py",
+          "sha256": "93ac58ea85ec030da93ad5ae63430cb23c3ba24627931f5d40b3f8ba37ce9c7a"
+        }
+      }
+    },
+    "installed_origins": {
+      "isolated": true,
+      "module_origins": {
+        "bootstrap": {
+          "path": "D:\\a\\_temp\\carr-converters-46063451376-1-office\\installed\\Lib\\site-packages\\bootstrap\\__init__.py",
+          "sha256": "a90e8b1d37413ef4fbc54cdbea7f67a8c2a09ac01ed8cee54e5b9c47fe8fc930"
+        },
+        "carr_library": {
+          "path": "D:\\a\\_temp\\carr-converters-46063451376-1-office\\installed\\Lib\\site-packages\\carr_library\\__init__.py",
+          "sha256": "93ac58ea85ec030da93ad5ae63430cb23c3ba24627931f5d40b3f8ba37ce9c7a"
+        }
+      }
+    }
+  },
+  "runtime": {
+    "initial": {
+      "libreoffice": {
+        "canonical_sha256": "3f7cdab4c070a2843d4e0e28be42b578f4f36bc69bf11ea35baf5fec0c7c7565",
+        "entries": 19487
+      }
+    },
+    "live_change_map": {}
+  },
+  "disposition": [
+    "Ten observed ValueError directory misses came from the current stage census on owned lu*.tmp descendants. Each retained classifier observation is True; the generic error was handled by the existing missing-entry logic.",
+    "Three additional guard observations are direct FileNotFoundError outcomes: one temporary directory and two registrymodifications.xcu temporary files.",
+    "Every retained private-root metadata record matches its initial root identity. No root replacement, alias or classifier=False outcome was observed in these records.",
+    "This finite run confirms the owned-descendant guard source path. It does not identify the unrecorded exact failing path in the earlier d729 ordinary run or prove a reappearance event occurred there.",
+    "The ordinary source repair uses a deterministic real-filesystem regression for the ambiguous remove/recreate timing and remains subject to new source/installed portable checks plus fresh ordinary seven/seven native qualification."
+  ],
+  "limits": [
+    "No ordinary qualification is claimed from this diagnostic.",
+    "Only retained bounded events are described; absence of an installed event record is not a claim that no transient OS event occurred.",
+    "The final gate retains the initial inventory and an empty live-change map, not a separately persisted raw after-inventory."
+  ]
+}
