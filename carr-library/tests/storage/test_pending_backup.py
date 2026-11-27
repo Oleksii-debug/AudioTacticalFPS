@@ -464,6 +464,6 @@ def test_completed_request_cannot_retarget_another_sealed_original(app, tmp_path
     _refresh_file(metadata, component, name)
     binding = next(value for value in metadata['sources'] if value['filename'] == name)
     binding['asset_sha256'] = second['asset_sha256']
-    with pytest.raises(ValueError, match='sealed publication'):
+    with pytest.raises(ValueError, match='publication candidate has a foreign source or journal identity'):
         _restore(backup, metadata, tmp_path)
     assert not (tmp_path / 'restored').exists()
