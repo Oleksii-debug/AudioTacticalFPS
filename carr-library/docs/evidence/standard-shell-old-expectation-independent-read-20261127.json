@@ -1,0 +1,376 @@
+{
+  "schema": "carr.standard-shell-old-expectation-independent-read.v1",
+  "status": "OBSERVED_FAILURE_INDEPENDENTLY_READ",
+  "observed": {
+    "source_commit": "a0f5057cae5647722298df95a6e8bf2d7f055a66",
+    "source_tree": "1959e85fdff2537e548da54213f3c209006fb29b",
+    "run_id": 46076104179,
+    "job_id": 140764075066,
+    "conclusion": "failure",
+    "completed_at": "2026-11-27T22:45:27Z",
+    "decoded_job_text_utf8_sha256": "2f607d1eeb49822e0cb339fb07c9f8579b3d2ab366ab0bd9f72be920d953d8d8",
+    "failure": {
+      "path": "scripts/standard_qualification_shell_acceptance.py",
+      "line": 142,
+      "exception": "AssertionError",
+      "message": "The fixed executable classification did not complete its real pipeline."
+    }
+  },
+  "independent_reader": {
+    "source_commit": "afec0e88bfcc75c53b8f6af27704cf6c92f1cb43",
+    "source_tree": "00acf105cbee061880f70a8adadfe59901135d1d",
+    "run_id": 46078734320,
+    "job_id": 140772484206,
+    "status": "SUCCESS",
+    "decoded_job_text_utf8_sha256": "9e70cc9938ebfd4aedffe899360ee28a89e3d684809034945dbe11a058f8452d",
+    "helper_blob": "c33f3b4730ae0b767f6905a00c671237c59f8967",
+    "workflow_blob": "8eea8c1f56144c0f00a0591410970528a2c90b44",
+    "execution": "Fixed artifact metadata and archive SHA verified; bounded ZIP members read as inert JSON/XML/text. No extraction, importing, or executing archive content.",
+    "archive_limits": {
+      "compressed_bytes": 8388608,
+      "expanded_bytes": 536870912,
+      "member_bytes": 4194304,
+      "entries": 10000
+    },
+    "source_peer_review": "GO by independent native-composition reviewer; only fixed pins and four exact shell basenames differ from prior reader."
+  },
+  "artifact": {
+    "run": 46076104179,
+    "commit": "a0f5057cae5647722298df95a6e8bf2d7f055a66",
+    "id": 15235918863,
+    "bytes": 64120,
+    "sha256": "381cc8bf853a0afbeaf3f36c6158c80bdaa971b119cebd652ea1d24723910cff",
+    "kind": "standard-native-classification-old-expectation-failure",
+    "name": "carr-standard-native-a0f5057cae5647722298df95a6e8bf2d7f055a66-1"
+  },
+  "member_names": [
+    "full-lock-source-inventory.json",
+    "installed-packages.json",
+    "native-runtime.json",
+    "source-syntax-preflight.json",
+    "standard-qualification-shell-absent.log",
+    "standard-qualification-shell-fixed.log",
+    "standard-system-helper-installed.xml",
+    "standard-system-helper-regressions.json",
+    "standard-system-helper-regressions.txt",
+    "standard-system-helper-source.xml",
+    "tested-commit.txt",
+    "tested-tree.txt",
+    "word-runtime-abi.json"
+  ],
+  "selected_members": [
+    {
+      "artifact": 15235918863,
+      "name": "full-lock-source-inventory.json",
+      "bytes": 1257,
+      "sha256": "0e4a68351c9deeb252a89277e03951998c452762cc204a1af899eeb00201f8cc"
+    },
+    {
+      "artifact": 15235918863,
+      "name": "native-runtime.json",
+      "bytes": 201,
+      "sha256": "64281eeb3711297f6bd32a6778396ab3ad7ff4ea689a9a34c070916f16b0d182"
+    },
+    {
+      "artifact": 15235918863,
+      "name": "standard-qualification-shell-absent.log",
+      "bytes": 494,
+      "sha256": "1933e58b5da9ef53872f9dcc2bd47348940ac42eb62d3ea51069c220194041c3"
+    },
+    {
+      "artifact": 15235918863,
+      "name": "standard-qualification-shell-fixed.log",
+      "bytes": 235,
+      "sha256": "4b91d1710ca4f301ab86cbe4bfc8462615111f79c06687a03695acc804b2f92e"
+    },
+    {
+      "artifact": 15235918863,
+      "name": "standard-system-helper-installed.xml",
+      "bytes": 12621,
+      "sha256": "93e6242cad69de72fc4b34764b436d08c2c20c1b24738076a927edfa5201fc81"
+    },
+    {
+      "artifact": 15235918863,
+      "name": "standard-system-helper-regressions.json",
+      "bytes": 9614,
+      "sha256": "22e3025bdfeb780cdb09cc070fb4e21151ab139d5edcd27bb3a157e4418d78cc"
+    },
+    {
+      "artifact": 15235918863,
+      "name": "standard-system-helper-regressions.txt",
+      "bytes": 11126,
+      "sha256": "308b0b35189bfbe0a5689b35947e5692aa47a7e76a7022ab19b4919faf04aa02"
+    },
+    {
+      "artifact": 15235918863,
+      "name": "standard-system-helper-source.xml",
+      "bytes": 12621,
+      "sha256": "bcb8b504e0d692d6a35d0746379222435a574fa54f5eaeb53379daace2e5e5c7"
+    },
+    {
+      "artifact": 15235918863,
+      "name": "tested-commit.txt",
+      "bytes": 42,
+      "sha256": "51d77ef3ecbd99fa978e6e424adf283bee6b01e34066d7766d29e1f0acc40540"
+    },
+    {
+      "artifact": 15235918863,
+      "name": "tested-tree.txt",
+      "bytes": 42,
+      "sha256": "d6dde9f261ff974af6460c94e0f7d8aa8dd1ff807abc6c84e42f872199886b95"
+    }
+  ],
+  "raw_junit": [
+    {
+      "artifact": 15235918863,
+      "file": "standard-system-helper-installed.xml",
+      "cases": 81,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0,
+      "function_counter": {
+        "tests.security.test_installation::test_active_work_refuses_update_before_any_stage_or_backup": 1,
+        "tests.security.test_installation::test_aliased_parent_directories_are_refused_even_when_signed": 1,
+        "tests.security.test_installation::test_budget_and_link_members_rejected": 1,
+        "tests.security.test_installation::test_changed_package_and_redirected_recovery_paths_are_rejected": 1,
+        "tests.security.test_installation::test_crash_after_protected_commit_finalizes_b_instead_of_rolling_back": 1,
+        "tests.security.test_installation::test_even_signed_archive_cannot_escape_staging": 8,
+        "tests.security.test_installation::test_failed_health_restores_a_and_keeps_checked_backup": 1,
+        "tests.security.test_installation::test_failed_preupdate_backup_never_activates_candidate": 1,
+        "tests.security.test_installation::test_forged_zip_directory_count_is_bounded_before_zipinfo_allocation": 1,
+        "tests.security.test_installation::test_plain_checksum_cannot_masquerade_as_a_tuf_verified_package": 1,
+        "tests.security.test_installation::test_portable_adapter_refuses_managed_slots_before_verifier_or_process": 8,
+        "tests.security.test_installation::test_portable_named_slot_without_managed_marker_keeps_existing_real_verifier": 2,
+        "tests.security.test_installation::test_portable_transaction_refuses_managed_slot_before_stage_backup_or_activation": 4,
+        "tests.security.test_installation::test_process_death_between_renames_recovers_a_without_touching_data": 2,
+        "tests.security.test_installation::test_protected_store_failure_rolls_back_without_losing_data": 1,
+        "tests.security.test_installation::test_signed_a_to_b_real_stage_backup_activation_and_checked_restore_preserve_library": 1,
+        "tests.security.test_standard_health::test_portable_release_verifier_still_refuses_managed_ownership": 2,
+        "tests.security.test_standard_health::test_standard_health_cancellation_never_reports_success": 2,
+        "tests.security.test_standard_health::test_standard_health_keeps_real_payload_and_installation_checks": 3,
+        "tests.security.test_standard_health::test_standard_health_keeps_rejected_generation_unlaunchable": 1,
+        "tests.security.test_standard_health::test_standard_health_preserves_optional_exact_source_receipt_checks": 5,
+        "tests.security.test_standard_health::test_standard_health_rechecks_activation_after_child_completion": 2,
+        "tests.security.test_standard_health::test_standard_health_rejects_changed_activation_before_commands": 5,
+        "tests.security.test_standard_health::test_standard_health_rejects_foreign_snapshot_before_commands": 4,
+        "tests.security.test_standard_health::test_standard_health_rejects_signed_source_mismatch_before_commands": 1,
+        "tests.security.test_standard_health::test_standard_health_stops_at_each_failed_health_command": 3,
+        "tests.security.test_standard_health::test_standard_health_verifies_managed_payload_and_runs_fixed_commands": 2,
+        "tests.security.test_standard_system_helper::test_fixed_os_helper_accepts_servicing_hardlinks_without_environment_selection": 3,
+        "tests.security.test_standard_system_helper::test_hardlinked_private_files_remain_refused_before_any_content_read": 1,
+        "tests.security.test_standard_system_helper::test_redirected_system_helper_parent_is_refused": 1,
+        "tests.security.test_standard_system_helper::test_shortcut_helper_failure_never_admits_its_untrusted_target": 2,
+        "tests.security.test_standard_system_helper::test_shortcut_target_keeps_path_as_data_and_uses_the_same_bounded_fixed_host": 1,
+        "tests.security.test_standard_system_helper::test_system_api_failure_does_not_fall_back_to_environment_or_path": 1,
+        "tests.security.test_standard_system_helper::test_system_helper_rejects_nonregular_or_redirected_leaf": 4,
+        "tests.security.test_standard_system_helper::test_unavailable_or_truncated_system_directory_never_reaches_a_file": 3
+      }
+    },
+    {
+      "artifact": 15235918863,
+      "file": "standard-system-helper-source.xml",
+      "cases": 81,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0,
+      "function_counter": {
+        "tests.security.test_installation::test_active_work_refuses_update_before_any_stage_or_backup": 1,
+        "tests.security.test_installation::test_aliased_parent_directories_are_refused_even_when_signed": 1,
+        "tests.security.test_installation::test_budget_and_link_members_rejected": 1,
+        "tests.security.test_installation::test_changed_package_and_redirected_recovery_paths_are_rejected": 1,
+        "tests.security.test_installation::test_crash_after_protected_commit_finalizes_b_instead_of_rolling_back": 1,
+        "tests.security.test_installation::test_even_signed_archive_cannot_escape_staging": 8,
+        "tests.security.test_installation::test_failed_health_restores_a_and_keeps_checked_backup": 1,
+        "tests.security.test_installation::test_failed_preupdate_backup_never_activates_candidate": 1,
+        "tests.security.test_installation::test_forged_zip_directory_count_is_bounded_before_zipinfo_allocation": 1,
+        "tests.security.test_installation::test_plain_checksum_cannot_masquerade_as_a_tuf_verified_package": 1,
+        "tests.security.test_installation::test_portable_adapter_refuses_managed_slots_before_verifier_or_process": 8,
+        "tests.security.test_installation::test_portable_named_slot_without_managed_marker_keeps_existing_real_verifier": 2,
+        "tests.security.test_installation::test_portable_transaction_refuses_managed_slot_before_stage_backup_or_activation": 4,
+        "tests.security.test_installation::test_process_death_between_renames_recovers_a_without_touching_data": 2,
+        "tests.security.test_installation::test_protected_store_failure_rolls_back_without_losing_data": 1,
+        "tests.security.test_installation::test_signed_a_to_b_real_stage_backup_activation_and_checked_restore_preserve_library": 1,
+        "tests.security.test_standard_health::test_portable_release_verifier_still_refuses_managed_ownership": 2,
+        "tests.security.test_standard_health::test_standard_health_cancellation_never_reports_success": 2,
+        "tests.security.test_standard_health::test_standard_health_keeps_real_payload_and_installation_checks": 3,
+        "tests.security.test_standard_health::test_standard_health_keeps_rejected_generation_unlaunchable": 1,
+        "tests.security.test_standard_health::test_standard_health_preserves_optional_exact_source_receipt_checks": 5,
+        "tests.security.test_standard_health::test_standard_health_rechecks_activation_after_child_completion": 2,
+        "tests.security.test_standard_health::test_standard_health_rejects_changed_activation_before_commands": 5,
+        "tests.security.test_standard_health::test_standard_health_rejects_foreign_snapshot_before_commands": 4,
+        "tests.security.test_standard_health::test_standard_health_rejects_signed_source_mismatch_before_commands": 1,
+        "tests.security.test_standard_health::test_standard_health_stops_at_each_failed_health_command": 3,
+        "tests.security.test_standard_health::test_standard_health_verifies_managed_payload_and_runs_fixed_commands": 2,
+        "tests.security.test_standard_system_helper::test_fixed_os_helper_accepts_servicing_hardlinks_without_environment_selection": 3,
+        "tests.security.test_standard_system_helper::test_hardlinked_private_files_remain_refused_before_any_content_read": 1,
+        "tests.security.test_standard_system_helper::test_redirected_system_helper_parent_is_refused": 1,
+        "tests.security.test_standard_system_helper::test_shortcut_helper_failure_never_admits_its_untrusted_target": 2,
+        "tests.security.test_standard_system_helper::test_shortcut_target_keeps_path_as_data_and_uses_the_same_bounded_fixed_host": 1,
+        "tests.security.test_standard_system_helper::test_system_api_failure_does_not_fall_back_to_environment_or_path": 1,
+        "tests.security.test_standard_system_helper::test_system_helper_rejects_nonregular_or_redirected_leaf": 4,
+        "tests.security.test_standard_system_helper::test_unavailable_or_truncated_system_directory_never_reaches_a_file": 3
+      }
+    }
+  ],
+  "regression_receipt": {
+    "native_activation": "NOT_RUN_BY_THIS_GATE",
+    "native_health_commands": "SYNTHETIC_RESULTS_IN_PORTABLE_REGRESSIONS",
+    "oracle_sha256": "413b0bee4faee75011b9ec97b3dd6fcf21fa903cf828d150a91a3220fad7de9a",
+    "private_file_policy": "UNCHANGED_SINGLE_LINK",
+    "qualification_sha256": "0e7bfab0aeae0b817ed4b408c3e4561e9787aef932ef2394c9f90a65696c982a",
+    "results": {
+      "installed": {
+        "failed": 0,
+        "functions": {
+          "tests.security.test_installation::test_active_work_refuses_update_before_any_stage_or_backup": 1,
+          "tests.security.test_installation::test_aliased_parent_directories_are_refused_even_when_signed": 1,
+          "tests.security.test_installation::test_budget_and_link_members_rejected": 1,
+          "tests.security.test_installation::test_changed_package_and_redirected_recovery_paths_are_rejected": 1,
+          "tests.security.test_installation::test_crash_after_protected_commit_finalizes_b_instead_of_rolling_back": 1,
+          "tests.security.test_installation::test_even_signed_archive_cannot_escape_staging": 8,
+          "tests.security.test_installation::test_failed_health_restores_a_and_keeps_checked_backup": 1,
+          "tests.security.test_installation::test_failed_preupdate_backup_never_activates_candidate": 1,
+          "tests.security.test_installation::test_forged_zip_directory_count_is_bounded_before_zipinfo_allocation": 1,
+          "tests.security.test_installation::test_plain_checksum_cannot_masquerade_as_a_tuf_verified_package": 1,
+          "tests.security.test_installation::test_portable_adapter_refuses_managed_slots_before_verifier_or_process": 8,
+          "tests.security.test_installation::test_portable_named_slot_without_managed_marker_keeps_existing_real_verifier": 2,
+          "tests.security.test_installation::test_portable_transaction_refuses_managed_slot_before_stage_backup_or_activation": 4,
+          "tests.security.test_installation::test_process_death_between_renames_recovers_a_without_touching_data": 2,
+          "tests.security.test_installation::test_protected_store_failure_rolls_back_without_losing_data": 1,
+          "tests.security.test_installation::test_signed_a_to_b_real_stage_backup_activation_and_checked_restore_preserve_library": 1,
+          "tests.security.test_standard_health::test_portable_release_verifier_still_refuses_managed_ownership": 2,
+          "tests.security.test_standard_health::test_standard_health_cancellation_never_reports_success": 2,
+          "tests.security.test_standard_health::test_standard_health_keeps_real_payload_and_installation_checks": 3,
+          "tests.security.test_standard_health::test_standard_health_keeps_rejected_generation_unlaunchable": 1,
+          "tests.security.test_standard_health::test_standard_health_preserves_optional_exact_source_receipt_checks": 5,
+          "tests.security.test_standard_health::test_standard_health_rechecks_activation_after_child_completion": 2,
+          "tests.security.test_standard_health::test_standard_health_rejects_changed_activation_before_commands": 5,
+          "tests.security.test_standard_health::test_standard_health_rejects_foreign_snapshot_before_commands": 4,
+          "tests.security.test_standard_health::test_standard_health_rejects_signed_source_mismatch_before_commands": 1,
+          "tests.security.test_standard_health::test_standard_health_stops_at_each_failed_health_command": 3,
+          "tests.security.test_standard_health::test_standard_health_verifies_managed_payload_and_runs_fixed_commands": 2,
+          "tests.security.test_standard_system_helper::test_fixed_os_helper_accepts_servicing_hardlinks_without_environment_selection": 3,
+          "tests.security.test_standard_system_helper::test_hardlinked_private_files_remain_refused_before_any_content_read": 1,
+          "tests.security.test_standard_system_helper::test_redirected_system_helper_parent_is_refused": 1,
+          "tests.security.test_standard_system_helper::test_shortcut_helper_failure_never_admits_its_untrusted_target": 2,
+          "tests.security.test_standard_system_helper::test_shortcut_target_keeps_path_as_data_and_uses_the_same_bounded_fixed_host": 1,
+          "tests.security.test_standard_system_helper::test_system_api_failure_does_not_fall_back_to_environment_or_path": 1,
+          "tests.security.test_standard_system_helper::test_system_helper_rejects_nonregular_or_redirected_leaf": 4,
+          "tests.security.test_standard_system_helper::test_unavailable_or_truncated_system_directory_never_reaches_a_file": 3
+        },
+        "junit_sha256": "93e6242cad69de72fc4b34764b436d08c2c20c1b24738076a927edfa5201fc81",
+        "passed": 81,
+        "skipped": 0
+      },
+      "source": {
+        "failed": 0,
+        "functions": {
+          "tests.security.test_installation::test_active_work_refuses_update_before_any_stage_or_backup": 1,
+          "tests.security.test_installation::test_aliased_parent_directories_are_refused_even_when_signed": 1,
+          "tests.security.test_installation::test_budget_and_link_members_rejected": 1,
+          "tests.security.test_installation::test_changed_package_and_redirected_recovery_paths_are_rejected": 1,
+          "tests.security.test_installation::test_crash_after_protected_commit_finalizes_b_instead_of_rolling_back": 1,
+          "tests.security.test_installation::test_even_signed_archive_cannot_escape_staging": 8,
+          "tests.security.test_installation::test_failed_health_restores_a_and_keeps_checked_backup": 1,
+          "tests.security.test_installation::test_failed_preupdate_backup_never_activates_candidate": 1,
+          "tests.security.test_installation::test_forged_zip_directory_count_is_bounded_before_zipinfo_allocation": 1,
+          "tests.security.test_installation::test_plain_checksum_cannot_masquerade_as_a_tuf_verified_package": 1,
+          "tests.security.test_installation::test_portable_adapter_refuses_managed_slots_before_verifier_or_process": 8,
+          "tests.security.test_installation::test_portable_named_slot_without_managed_marker_keeps_existing_real_verifier": 2,
+          "tests.security.test_installation::test_portable_transaction_refuses_managed_slot_before_stage_backup_or_activation": 4,
+          "tests.security.test_installation::test_process_death_between_renames_recovers_a_without_touching_data": 2,
+          "tests.security.test_installation::test_protected_store_failure_rolls_back_without_losing_data": 1,
+          "tests.security.test_installation::test_signed_a_to_b_real_stage_backup_activation_and_checked_restore_preserve_library": 1,
+          "tests.security.test_standard_health::test_portable_release_verifier_still_refuses_managed_ownership": 2,
+          "tests.security.test_standard_health::test_standard_health_cancellation_never_reports_success": 2,
+          "tests.security.test_standard_health::test_standard_health_keeps_real_payload_and_installation_checks": 3,
+          "tests.security.test_standard_health::test_standard_health_keeps_rejected_generation_unlaunchable": 1,
+          "tests.security.test_standard_health::test_standard_health_preserves_optional_exact_source_receipt_checks": 5,
+          "tests.security.test_standard_health::test_standard_health_rechecks_activation_after_child_completion": 2,
+          "tests.security.test_standard_health::test_standard_health_rejects_changed_activation_before_commands": 5,
+          "tests.security.test_standard_health::test_standard_health_rejects_foreign_snapshot_before_commands": 4,
+          "tests.security.test_standard_health::test_standard_health_rejects_signed_source_mismatch_before_commands": 1,
+          "tests.security.test_standard_health::test_standard_health_stops_at_each_failed_health_command": 3,
+          "tests.security.test_standard_health::test_standard_health_verifies_managed_payload_and_runs_fixed_commands": 2,
+          "tests.security.test_standard_system_helper::test_fixed_os_helper_accepts_servicing_hardlinks_without_environment_selection": 3,
+          "tests.security.test_standard_system_helper::test_hardlinked_private_files_remain_refused_before_any_content_read": 1,
+          "tests.security.test_standard_system_helper::test_redirected_system_helper_parent_is_refused": 1,
+          "tests.security.test_standard_system_helper::test_shortcut_helper_failure_never_admits_its_untrusted_target": 2,
+          "tests.security.test_standard_system_helper::test_shortcut_target_keeps_path_as_data_and_uses_the_same_bounded_fixed_host": 1,
+          "tests.security.test_standard_system_helper::test_system_api_failure_does_not_fall_back_to_environment_or_path": 1,
+          "tests.security.test_standard_system_helper::test_system_helper_rejects_nonregular_or_redirected_leaf": 4,
+          "tests.security.test_standard_system_helper::test_unavailable_or_truncated_system_directory_never_reaches_a_file": 3
+        },
+        "junit_sha256": "bcb8b504e0d692d6a35d0746379222435a574fa54f5eaeb53379daace2e5e5c7",
+        "passed": 81,
+        "skipped": 0
+      }
+    },
+    "schema": "carr-system-helper-regressions/2",
+    "scope": "fixed-system-helper-plus-portable-ownership-and-managed-payload-health",
+    "source_commit": "a0f5057cae5647722298df95a6e8bf2d7f055a66",
+    "source_tree": "1959e85fdff2537e548da54213f3c209006fb29b",
+    "status": "PASS",
+    "test_source_sha256": {
+      "tests/security/test_installation.py": "67c22fe7e3228b1d27ff84478a617b60e426a001f85ccb873e14154db79e8803",
+      "tests/security/test_standard_health.py": "bff968b074e9aa1ac0162f6ace52aa9e4e09958b5b57656d5ded5907bcccd400",
+      "tests/security/test_standard_system_helper.py": "9eee44b564b0f5a509fe565073ddef424ce82f2f078ee8083e062bfa4dc03be4"
+    }
+  },
+  "observed_shell": {
+    "absent": {
+      "version": "5.1.20348.5773",
+      "pathext": ".CPL",
+      "error_id": "CantActivateDocumentInPipeline",
+      "raw_member": "standard-qualification-shell-absent.log"
+    },
+    "fixed": {
+      "version": "5.1.20348.5773",
+      "pathext": ".EXE;.CPL",
+      "child_marker": {
+        "isolated": true,
+        "no_bytecode": true,
+        "os": "nt",
+        "pid": 4520,
+        "python": "D:\\a\\_temp\\carr-windows-python\\Scripts\\python.exe",
+        "status": "PASS"
+      },
+      "raw_member": "standard-qualification-shell-fixed.log"
+    },
+    "returncodes": "The failed smoke did not publish its final structured observations; no unrecorded raw child returncode is asserted."
+  },
+  "diagnosis": {
+    "old_smoke_blob": "22c3290bf3d6e583b2f45268ffdf363957a2fd8f",
+    "old_smoke_utf8_sha256": "950e71b956eafcf82c644a00c2569ec09453b9c648b850e2a030375bb90c3a86",
+    "old_fixed_expectation": ".EXE",
+    "actual_fixed_shell_value": ".EXE;.CPL",
+    "conclusion": "The retained fixed-mode log reaches the selected isolated Windows Python and prints its PASS marker. The actual .EXE;.CPL value is sufficient to fail the old exact .EXE assertion. The test expectation is incorrect; this observation does not create a completed three-case receipt.",
+    "already_reviewed_successor": "5d09d9a8677d15587d9965a9f25ce40184e55f34",
+    "successor_smoke_blob": "ec240ce21e39f261a09bf4403179be894c548e8d",
+    "supplied_environment_unchanged": ".EXE",
+    "successor_runtime": "NOT_ASSERTED_BY_THIS_FAILURE_RECORD"
+  },
+  "scope": {
+    "source_regressions": {
+      "passed": 81,
+      "failed": 0,
+      "skipped": 0,
+      "exact_counter_verified": true
+    },
+    "installed_regressions": {
+      "passed": 81,
+      "failed": 0,
+      "skipped": 0,
+      "exact_counter_verified": true
+    },
+    "early_three_case_receipt": "NOT_EMITTED",
+    "poisoned_mode": "NOT_REACHED",
+    "ordinary_install6": "NOT_RUN",
+    "maintenance4": "NOT_RUN",
+    "managed_upgrade15": "NOT_RUN",
+    "installed_library50": "NOT_RUN",
+    "new_product_change": "NONE",
+    "manual_nvda": "NOT_RUN",
+    "real_corpus_quality": "NOT_RUN"
+  }
+}
