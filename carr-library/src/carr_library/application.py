@@ -607,6 +607,16 @@ class LibraryApp:
         return ImportBatchStore(self).plan(workspace, paths, collections=collections,
             recursive=recursive, config=config, cancelled=cancelled)
 
+    def plan_import_page(self, workspace, paths, **options):
+        """Review and save one bounded page without starting any import."""
+        from .ingest.batches import ImportBatchStore
+        return ImportBatchStore(self).plan_page(workspace, paths, **options)
+
+    def continue_import_scan(self, workspace, batch_id, **options):
+        """Explicitly append/recover the next saved page of an import scan."""
+        from .ingest.batches import ImportBatchStore
+        return ImportBatchStore(self).continue_plan(workspace, batch_id, **options)
+
     def import_batches(self, workspace):
         from .ingest.batches import ImportBatchStore
         return ImportBatchStore(self).list(workspace)

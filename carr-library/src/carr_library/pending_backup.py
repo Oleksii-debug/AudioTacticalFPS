@@ -25,6 +25,8 @@ from .durable_state import local_path, regular, sync_directory
 from .extract.page_ocr import Config
 from .ingest.batch_scan import planned_snapshot
 from .ingest.batches import MAX_BATCH, MAX_BATCHES, MAX_ROWS, STATES, _BATCH_KEYS, _ROW_KEYS
+from .ingest.batch_pages import (batch_shape, validate_scan_metadata, validate_scan_relations,
+                                 reference as scan_reference)
 from .ingest.pipeline import canonical, digest
 from .ingest.retained_assets import SUFFIXES
 from .ingest.worker import FIELDS, MAX_REQUEST, MAX_REVIEWS
@@ -309,8 +311,7 @@ def _request(record, request_id, data_dir, db):
 
 
 def _batch(record, batch_id, data_dir, db):
-    if (not isinstance(record, dict) or set(record) != _BATCH_KEYS
-            or type(record['version']) is not int or record['version'] != 1
+    if (not batch_shape(record, _BATCH_KEYS)
             or record['batch_id'] != batch_id or not _id(batch_id) or record['data_dir'] != data_dir
             or record['state'] not in ('queued', 'running', 'paused', 'attention', 'complete')
             or type(record['recursive']) is not bool
@@ -361,6 +362,8 @@ def _batch(record, batch_id, data_dir, db):
                     'SELECT 1 FROM catalog_edition WHERE workspace=? AND asset=?',
                     (record['workspace'], row['manifest']['sha256'])).fetchone() is None:
                 raise ValueError('Pending duplicate belongs to another workspace.')
+        elif record['version'] == 2 and scan_reference(duplicate) is not None:
+            pass  # The exact earlier page/row/scope is checked in _relations.
         elif sources.get(duplicate) != row['manifest']:
             raise ValueError('Pending duplicate no longer identifies its planned source.')
     counts = dict.fromkeys(STATES, 0)
@@ -368,6 +371,7 @@ def _batch(record, batch_id, data_dir, db):
     if (type(record['total']) is not int or record['total'] != len(record['rows'])
             or record['counts'] != counts or any(type(v) is not int for v in record['counts'].values())):
         raise ValueError('Pending batch summary differs from its rows.')
+    validate_scan_metadata(record)
 
 
 def _journal_schema(db):
@@ -532,6 +536,7 @@ def _records(root, data_dir, db, names):
 
 
 def _relations(requests, batches, reviews, jobs, journal):
+    validate_scan_relations(batches)
     for request in requests.values():
         if 'job' in request:
             job = jobs.get(request['job'])
@@ -862,6 +867,10 @@ def restore_pending(source, stage, new_root, metadata, *, cancelled=lambda: Fals
                 _write(stage / 'import-requests' / (request_id + '.json'), (canonical(request) + '\n').encode('utf-8'))
             for batch_id, batch in batches.items():
                 batch['data_dir'] = str(new_root)
+                if batch['version'] == 2:
+                    # Retained page rows can be explicitly imported. A restored
+                    # lexical cursor cannot grant fresh external-folder reads.
+                    batch['scan']['review_required'] = True
                 rebased = {}
                 for row in batch['rows']:
                     if row['manifest'] is None:

@@ -26,6 +26,7 @@ from ..extract.page_ocr import Config
 from ..extract.document_formats import MIME_SUFFIXES
 from .pipeline import canonical
 from .worker import load_request, prepare_request
+from .batch_pages import batch_shape, validate_scan_metadata, referenced_row
 
 
 MAX_BATCH = 16 * 1024 * 1024
@@ -102,8 +103,7 @@ class ImportBatchStore:
                 catalog._active_collection(collection)
 
     def _validate(self, record, batch_id):
-        if (not isinstance(record, dict) or set(record) != _BATCH_KEYS
-                or type(record['version']) is not int or record['version'] != 1
+        if (not batch_shape(record, _BATCH_KEYS)
                 or record['batch_id'] != batch_id or record['data_dir'] != str(self.root)
                 or not _text(record['workspace'], 200, empty=False)
                 or not _text(record['created'], 64, empty=False)
@@ -152,6 +152,7 @@ class ImportBatchStore:
                 or any(type(value) is not int for value in record['counts'].values())
                 or record['counts'] != counts):
             raise ValueError('Import batch summary differs from its rows.')
+        validate_scan_metadata(record)
         return record
 
     def _load(self, batch_id):
@@ -185,6 +186,9 @@ class ImportBatchStore:
             state = 'attention'
         else:
             state = 'complete'
+        if (record['version'] == 2 and not record['rows']
+                and not record['scan']['cursor']['complete']):
+            state = 'paused'
         record['state'] = state
 
     def _store(self, record, *, create=False, paused=False):
@@ -245,6 +249,16 @@ class ImportBatchStore:
             self._store(record, create=True, paused=bool(cancelled()))
         return _copy(record)
 
+    def plan_page(self, workspace, paths, **options):
+        """Save one reviewed page; traversal continues only on explicit request."""
+        from .batch_pages import plan_page
+        return plan_page(self, workspace, paths, **options)
+
+    def continue_plan(self, workspace, batch_id, **options):
+        """Append/recover the deterministic next ordinary batch without imports."""
+        from .batch_pages import continue_plan
+        return continue_plan(self, workspace, batch_id, **options)
+
     def get(self, workspace, batch_id):
         self._authorize(workspace)
         record = self._load(batch_id)
@@ -301,8 +315,15 @@ class ImportBatchStore:
             record = self._load(path.stem)
             if record['workspace'] == workspace:
                 record = self._reconcile(record)
-                rows.append({key: record[key] for key in
-                             ('batch_id', 'created', 'updated', 'state', 'counts', 'total')})
+                summary = {key: record[key] for key in
+                           ('batch_id', 'created', 'updated', 'state', 'counts', 'total')}
+                if record['version'] == 2:
+                    scan = record['scan']
+                    summary['scan'] = {key: scan[key] for key in
+                                      ('session_id', 'page', 'next', 'review_required', 'classification_complete')}
+                    summary['scan']['complete'] = scan['cursor']['complete']
+                    summary['scan']['planned'] = scan['cursor']['planned']
+                rows.append(summary)
         return tuple(sorted(rows, key=lambda row: (row['created'], row['batch_id']), reverse=True))
 
     def set_row(self, workspace, batch_id, row_id, *, included):
@@ -317,8 +338,9 @@ class ImportBatchStore:
                 raise ValueError('Unknown import batch row.')
             alternate = (included and row['state'] == 'duplicate'
                 and row['duplicate_of'] is not None and not row['duplicate_of'].startswith('existing:')
-                and any(other['source'] == row['duplicate_of'] and other['manifest'] == row['manifest']
-                        for other in record['rows']))
+                and (any(other['source'] == row['duplicate_of'] and other['manifest'] == row['manifest']
+                         for other in record['rows'])
+                     or referenced_row(self, record, row['duplicate_of'], row['manifest'])))
             if ((row['state'] not in ('queued', 'excluded') and not alternate)
                     or row['result'] is not None):
                 raise ValueError('Only imports that have never started can be selected or excluded.')
