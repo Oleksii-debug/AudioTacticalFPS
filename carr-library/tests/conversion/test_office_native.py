@@ -55,7 +55,8 @@ def legacy_office(tmp_path, kind, text):
         '--headless', '--nologo', '--norestore', '--convert-to', kind + ':' + filter_name,
         '--outdir', str(stage), str(original)], stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=40, check=True,
-        env=dict(os.environ, SAL_USE_VCLPLUGIN='svp', SAL_DISABLE_OPENCL='1', MAX_CONCURRENCY='1'))
+        env=dict(os.environ, SAL_USE_VCLPLUGIN='svp', SAL_DISABLE_OPENCL='1', MAX_CONCURRENCY='1',
+                 PYTHONDONTWRITEBYTECODE='1'))
     generated = stage / ('synthetic.' + kind)
     assert generated.is_file(), result.stdout.decode('utf-8', 'replace')[:2000]
     assert generated.read_bytes().startswith(bytes.fromhex('d0cf11e0a1b11ae1'))

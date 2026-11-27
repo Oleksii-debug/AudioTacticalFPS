@@ -296,7 +296,8 @@ def _run(args, stage, deadline, *, output=None, output_limit=0, stage_limit=PROF
         str(Path(environment.get('SYSTEMROOT', 'C:/Windows')) / 'System32')))
         if os.name == 'nt' else os.defpath)
     environment.update(TMPDIR=str(stage), TEMP=str(stage), TMP=str(stage),
-                       SAL_USE_VCLPLUGIN='svp', SAL_DISABLE_OPENCL='1', MAX_CONCURRENCY='1')
+                       SAL_USE_VCLPLUGIN='svp', SAL_DISABLE_OPENCL='1', MAX_CONCURRENCY='1',
+                       PYTHONDONTWRITEBYTECODE='1')
     with TemporaryFile() as stdout, TemporaryFile() as stderr:
         _remaining(deadline)
         _stage_usage(stage, stage_limit, deadline)
