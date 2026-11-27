@@ -463,7 +463,7 @@ class ReadingDialog:
             'Unknown printed pagination remains unknown. Unverified extracted text remains unverified. '
             'Reading and bookmarks do not approve quotations.\n\n'
             'Reading, Export reading positions and bookmarks saves a separate JSON backup. '
-            'The existing library backup does not yet include this reader state.')
+            'Complete library backups include validated reader bookmarks, positions and live-reading cursors.')
         self.text.SetFocus()
 
     def close(self, event=None):

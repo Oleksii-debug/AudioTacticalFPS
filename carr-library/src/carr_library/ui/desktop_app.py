@@ -34,6 +34,7 @@ from .academic_actions import install_academic_actions
 from .notebook_search import search_saved_research
 from .academic_tools import install_academic_actions as install_academic_comparison_actions
 from .reading_desk import install_reading_desk_actions
+from .media_overlay_dialog import install_media_overlay_actions
 from .catalog_insights_actions import install_catalog_insights_actions
 from .ebook_actions import install_ebook_actions
 from .federated_search import install_federated_search_actions
@@ -641,6 +642,7 @@ class DesktopFrame(WorkspaceFrame):
         install_academic_actions(self)
         install_academic_comparison_actions(self)
         install_reading_desk_actions(self)
+        install_media_overlay_actions(self)
         from .ebook_reader import install_ebook_reader
         install_ebook_reader(self)
         install_ebook_actions(self)
