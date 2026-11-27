@@ -10,7 +10,13 @@ def chooser_driver(*, selected=1, cancel=False, move_selection=True,
                    list_count=1, initial_live=0):
     script = Path(__file__).resolve().parents[2] / 'scripts/windows_backup_capacity_smoke.py'
     tree = ast.parse(script.read_text(encoding='utf-8'), filename=str(script))
-    functions = [node for node in ast.walk(tree)
+    main = [node for node in tree.body
+            if isinstance(node, ast.FunctionDef) and node.name == 'main']
+    assert len(main) == 1
+    commands = [node for node in main[0].body
+                if isinstance(node, ast.FunctionDef) and node.name == 'command']
+    assert len(commands) == 1
+    functions = [node for node in commands[0].body
                  if isinstance(node, ast.FunctionDef) and node.name == 'visit']
     assert len(functions) == 1
     visit = functions[0]

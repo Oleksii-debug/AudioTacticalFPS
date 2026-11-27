@@ -43,7 +43,7 @@ PINS = {
     'tests/storage/test_complete_pending_backup.py': '36fe4b61a3a61351fecc1a88016c1e1db32275d5',
     'tests/storage/test_backup_pending_common4.py': '20707e52c7a9220df5213668138db552ef74d2b9',
     'tests/storage/test_backup_schema_identity.py': 'ebed1d823de241c639877dd747de9aa4ce2085ed',
-    'tests/ui/test_native_backup_capacity_driver.py': 'a1f05ecf49e2eba8d8d2ba3a980221d0e44cd32c',
+    'tests/ui/test_native_backup_capacity_driver.py': '1d8e7ec4a91edb7f6abaffe4b69422007b666697',
     'scripts/windows_backup_capacity_smoke.py': '3f633a875f8232d4c0cce5cdf40e47d9064f9987',
     'scripts/ci_check.py': '6ad3055cfcd7c6a1b1af8544ae462c5d51adb473',
     'packaging/source_wheel.py': '478de248451d59a44b35784eb808fb2974f0af67',
