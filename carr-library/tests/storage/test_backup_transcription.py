@@ -450,18 +450,27 @@ def test_actual_v5_cache_is_optional_but_all_receipts_and_manifests_restore(
     revision = service.save_edit(identity, source, 'Separate retained edit.')
     expected = {name: raw for name, raw in _files(app.root).items()
                 if not backup_transcription.is_cache_file(name)}
-    real_open = Path.open
+    real_open, real_descriptor_open = Path.open, os.open
     def forbid_cache_read(self, *args, **kwargs):
         if self.is_relative_to(cache) or self.is_relative_to(other_cache):
             raise AssertionError('An optional recognition-cache payload was opened.')
         return real_open(self, *args, **kwargs)
-    monkeypatch.setattr(Path, 'open', forbid_cache_read)
-    with pytest.raises(ValueError, match='Optional transcription cache inclusion is not supported'):
-        app.backup(tmp_path / 'unsupported-cache-inclusion', include_generated=True)
-    assert not (tmp_path / 'unsupported-cache-inclusion').exists()
+    def forbid_cache_descriptor(path, *args, **kwargs):
+        candidate = Path(os.fsdecode(path))
+        if candidate.is_relative_to(cache) or candidate.is_relative_to(other_cache):
+            raise AssertionError('An optional recognition-cache descriptor was opened.')
+        return real_descriptor_open(path, *args, **kwargs)
+    # Guard both actual payload readers during backup, then release the guards
+    # before shutil.rmtree may legitimately open directories for cleanup.
+    with monkeypatch.context() as reads:
+        reads.setattr(Path, 'open', forbid_cache_read)
+        reads.setattr(os, 'open', forbid_cache_descriptor)
+        with pytest.raises(ValueError, match='Optional transcription cache inclusion is not supported'):
+            app.backup(tmp_path / 'unsupported-cache-inclusion', include_generated=True)
+        assert not (tmp_path / 'unsupported-cache-inclusion').exists()
 
-    backup = tmp_path / 'cache-omitted'
-    checksum = app.backup(backup)
+        backup = tmp_path / 'cache-omitted'
+        checksum = app.backup(backup)
     manifest = read_json(backup / 'manifest.json')
     assert manifest['generated_audio_included'] is False
     names = {row['filename'] for row in manifest['sidecars']}
@@ -525,17 +534,24 @@ def test_actual_restore_rejects_optional_cache_manifest_before_payload_reads(
     else:
         manifest['generated_audio_included'] = flag
     checksum = _resign(backup, manifest)
-    real_open = Path.open
+    real_open, real_descriptor_open = Path.open, os.open
     def forbidden(self, *args, **kwargs):
         if self.is_relative_to(backup) and self != backup / 'manifest.json':
             raise AssertionError('Restore opened payload bytes before refusing the cache declaration.')
         return real_open(self, *args, **kwargs)
-    monkeypatch.setattr(Path, 'open', forbidden)
+    def forbidden_descriptor(path, *args, **kwargs):
+        candidate = Path(os.fsdecode(path))
+        if candidate.is_relative_to(backup) and candidate != backup / 'manifest.json':
+            raise AssertionError('Restore opened a payload descriptor before refusing the cache declaration.')
+        return real_descriptor_open(path, *args, **kwargs)
     message = ('Optional transcription cache inclusion is not supported' if flag is True
                else 'Transcription cache requires explicit manifest inclusion')
     destination = tmp_path / 'never-published'
-    with pytest.raises(ValueError, match=message):
-        restore_backup(backup, destination, expected_manifest_sha256=checksum)
+    with monkeypatch.context() as reads:
+        reads.setattr(Path, 'open', forbidden)
+        reads.setattr(os, 'open', forbidden_descriptor)
+        with pytest.raises(ValueError, match=message):
+            restore_backup(backup, destination, expected_manifest_sha256=checksum)
     assert not destination.exists()
     with real_open(payload, 'rb') as stream:
         assert stream.read() == raw
