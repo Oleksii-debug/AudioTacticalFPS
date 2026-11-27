@@ -29,6 +29,7 @@ PROTOCOL = 'carr-asr-v43-hardened-1'
 # Reviewed external v43 worker. Its source and models are not distributed here.
 REVIEWED_WORKER_SHA256 = frozenset({
     '5379b889b8019c7ad9f427a7bc8db268dccd747469abc72db4f3001f9f82306c',
+    '9161e42e148a8653c590e2af91825be07d52128bc4506b1c1048097721108bf8',
 })
 MAX_INPUT_FILES = 128
 MAX_INPUT_BYTES = 2 * 1024**3

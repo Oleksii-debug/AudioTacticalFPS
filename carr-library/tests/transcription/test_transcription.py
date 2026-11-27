@@ -64,6 +64,9 @@ for index, name in enumerate(config['files']):
         if fmt=='vtt': body=b'WEBVTT\n\n00:00:00.000 --> 00:00:01.000\nSynthetic fixture\n'
         if fmt=='json': body=json.dumps({'text':'Synthetic fixture','segments':[]}).encode()
         name='output-'+str(index)+'.'+fmt
+        if MODE=='nested-output':
+            name='Мова.українська/Розділ.'+str(index)+'/запис.частина.1.'+fmt
+            (results/name).parent.mkdir(parents=True, exist_ok=True)
         (results/name).write_bytes(body)
         artifacts.append({'path':name,'format':fmt,'bytes':len(body),'sha256':hashlib.sha256(body).hexdigest()})
     records.append({'source':source,'cache_key':hashlib.sha256(str(index).encode()).hexdigest(),
@@ -499,3 +502,56 @@ def test_saved_output_verification_and_reading_accept_shared_cancellation(servic
     with pytest.raises(InterruptedError):
         service.read_transcript(identity, item['path'], cancelled=lambda: True)
     assert service.get(identity)['state'] == 'succeeded'
+
+
+def test_nested_same_basename_outputs_keep_receipt_and_revision_identity(service, source, engine, tmp_path):
+    """Exercise the public consumer with nested receipts from a real synthetic child."""
+    second = tmp_path / 'second.wav'
+    second.write_bytes(b'distinct synthetic input; no acoustic recognition')
+    original_inputs = [source.read_bytes(), second.read_bytes()]
+    identity = service.submit([source, second])
+    result = service.run(identity, engine=engine('nested-output'))
+    assert result['state'] == 'succeeded'
+    assert result['receipt']['done'] == result['receipt']['total'] == 2
+
+    # A new service must validate the saved complete graph without flattening
+    # equal leaf names in different Unicode and dotted directory names.
+    reopened = TranscriptionService(service.directory)
+    saved = reopened.get(identity)
+    assert saved['receipt'] == result['receipt']
+    assert [row['source']['sha256'] for row in saved['receipt']['files']] == [
+        sha256(raw).hexdigest() for raw in original_inputs]
+    artifacts = saved['receipt']['artifacts']
+    assert len(artifacts) == 8
+    root = reopened.jobs / identity
+    original_outputs = {item['path']: (root / item['path']).read_bytes() for item in artifacts}
+    for item in artifacts:
+        assert len(original_outputs[item['path']]) == item['bytes']
+        assert sha256(original_outputs[item['path']]).hexdigest() == item['sha256']
+    first = 'results/Мова.українська/Розділ.0/запис.частина.1.txt'
+    second_name = 'results/Мова.українська/Розділ.1/запис.частина.1.txt'
+    assert reopened.read_transcript(identity, first) == 'Synthetic transcript 0\n'
+    assert reopened.read_transcript(identity, second_name) == 'Synthetic transcript 1\n'
+    revision = reopened.revise(identity, first, 'Окрема похідна версія.')
+    wrong_target = tmp_path / 'wrong-owner.txt'
+    with pytest.raises(ValueError, match='exact original transcript'):
+        reopened.export(identity, second_name, wrong_target, revision_id=revision['id'])
+    assert not wrong_target.exists()
+    target = reopened.export(identity, first, tmp_path / 'reviewed.txt', revision_id=revision['id'])
+    assert target.read_text(encoding='utf-8') == 'Окрема похідна версія.'
+    with pytest.raises(FileExistsError):
+        reopened.export(identity, second_name, target)
+    assert target.read_text(encoding='utf-8') == 'Окрема похідна версія.'
+    assert all((root / name).read_bytes() == raw for name, raw in original_outputs.items())
+    assert [source.read_bytes(), second.read_bytes()] == original_inputs
+
+    # Equal length and a valid nested path cannot substitute for the exact
+    # accepted bytes on subsequent display, export or journal reload.
+    (root / first).write_bytes(b'x' * len(original_outputs[first]))
+    with pytest.raises(ValueError, match='receipt'):
+        reopened.read_transcript(identity, first)
+    with pytest.raises(ValueError, match='receipt'):
+        reopened.export(identity, first, tmp_path / 'tampered.txt')
+    assert not (tmp_path / 'tampered.txt').exists()
+    with pytest.raises(ValueError, match='receipt'):
+        reopened.get(identity)
