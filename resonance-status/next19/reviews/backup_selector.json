@@ -1,0 +1,82 @@
+{
+  "schema": "carr.reviewed-source-delta/1",
+  "status": "STATIC_NOT_RUN",
+  "base_commit": "115cb66458b5f4748fb478fe1c573498c6b4ad30",
+  "base_tree": "cb4a7d0ac2dde204aaefaa7a64b72fd7fc19ea83",
+  "also_composes_on": "e7636ca3f9e6b7474145f6e1799bd19a135a3250",
+  "purpose": "Select the actual backup chooser closure by exact enclosing function instead of global function-name search.",
+  "files": [
+    {
+      "path": "carr-library/tests/ui/test_native_backup_capacity_driver.py",
+      "before": "a1f05ecf49e2eba8d8d2ba3a980221d0e44cd32c",
+      "after": "1d8e7ec4a91edb7f6abaffe4b69422007b666697"
+    }
+  ],
+  "actual_evidence": {
+    "run_id": 46078597979,
+    "linux_job_id": 140772051711,
+    "source_head": "115cb66458b5f4748fb478fe1c573498c6b4ad30",
+    "old_whole_suites": 10,
+    "old_cases_passed": 178,
+    "new_driver_passed": 0,
+    "new_driver_failed": 6,
+    "installed": "NOT_RUN",
+    "native": "NOT_RUN",
+    "cause": "Global ast.walk finds both native_question_button.visit and main.command.visit; len(functions) is 2 before any chooser behavior executes."
+  },
+  "selector": {
+    "native_companion": "carr-library/scripts/windows_backup_capacity_smoke.py",
+    "native_blob": "3f633a875f8232d4c0cce5cdf40e47d9064f9987",
+    "path": [
+      "Module.body: main",
+      "main.body: command",
+      "command.body: visit"
+    ],
+    "uniqueness": "Exactly one direct child is required at each level.",
+    "test_bodies": "All six case bodies byte-identical."
+  },
+  "contract": {
+    "driver_cases": 6,
+    "driver_functions": 5,
+    "whole_suites_each": 11,
+    "cases_each": 184,
+    "source_and_isolated_installed": "REQUIRED",
+    "native_required": 44,
+    "native_origins": 12,
+    "all_budgets": "UNCHANGED"
+  },
+  "optional_pin_only_deltas": {
+    "composition_instruction": "Root owns concurrent benchmark changes. These are separate pin-only examples; reapply only the named hash replacements onto the current composed helper/workflows, never replace a newer full file.",
+    "files": [
+      {
+        "path": "carr-library/scripts/ci_capacity_contracts.py",
+        "before": "ecf829419c172d681e2bb00e57fe67674282e0f7",
+        "after": "f45c657110ed6f8be2f64218ab243a5429e20f8d",
+        "change": "Exactly one test blob pin."
+      },
+      {
+        "path": ".github/workflows/carr-next9-capacity.yml",
+        "before": "1facf53b5ae14492c96d7ab2328c284031a556c1",
+        "after": "1697593492fa250404d28e80015e90145b44a710",
+        "change": "Exactly two helper blob pins."
+      },
+      {
+        "path": ".github/workflows/carr-next11-capacity-repair.yml",
+        "before": "f2fc47da07dab2b61d9f24d13be46984f199fcf4",
+        "after": "f611f849b5eb4270687eebd65845bffba2cc83b7",
+        "change": "Exactly two helper blob pins."
+      }
+    ]
+  },
+  "related_selector_audit": {
+    "Book8": "All actual selected unwind/observe_publication/observed_publish_duration definitions are unique in fe4d7f64686da37557e3913805f8d27a4a130724.",
+    "Studio14": "All actual selected live_book_selections/drive/abort and choose_original_history definitions are unique in their current companions.",
+    "additional_edits": "NONE"
+  },
+  "peer": {
+    "reviewer": "progress_completion",
+    "verdict": "ACCEPTED_STATIC_NOT_RUN",
+    "scope": "Exact native nesting, unchanged six cases, one helper pin; independently checked current Book8 and Studio14 selector names."
+  },
+  "readback": "All four successor blobs fetched and byte-compared. No product changes or refs moved."
+}

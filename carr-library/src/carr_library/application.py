@@ -967,7 +967,8 @@ class LibraryApp:
     def search(self, workspace, query, *, mode='phrase', collection=None, title=None,
                author=None, language=None, edition=None, limit=100, timeout=60.0,
                cancelled=lambda: False, authorized_topic=None, on_status=None,
-               result_mode=None, offset=0, _source_page=None, _page_info=None):
+               result_mode=None, offset=0, _source_page=None, _page_info=None,
+               _candidate_work=None):
         if mode not in ('word', 'phrase', 'terms', 'thematic', 'semantic', 'advanced'):
             raise ValueError('Unknown search mode.')
         if result_mode not in (None, 'short', 'thematic'):
@@ -1025,7 +1026,8 @@ class LibraryApp:
             else:
                 hits = literal.search(db, workspace, query, edition_ids=tuple(allowed),
                                       mode=mode, limit=limit, offset=offset,
-                                      timeout=budget.remaining(), cancelled=budget.stopped, **source_options)
+                                      timeout=budget.remaining(), cancelled=budget.stopped,
+                                      _candidate_work=_candidate_work, **source_options)
             # Catalog selection, active source selection, and metadata materialization
             # all share this read transaction. No cached edition filters cross snapshots.
             loader, metadata, attestor = self._loaders(db, workspace, cancelled=budget.stopped)
@@ -1092,35 +1094,46 @@ class LibraryApp:
         """
         from copy import copy
         from .search.paging import SearchPage
-        if any(key in options for key in ('_source_page', '_page_info')):
+        if any(key in options for key in ('_source_page', '_page_info', '_candidate_work')):
             raise ValueError('Internal source-page receivers cannot be supplied.')
         budget = _SearchBudget(timeout, cancelled)
         budget.check()
         working = copy(self)
         working._selections = {}
-        info = {}
-        results = working.search(workspace, query, limit=limit, offset=offset,
-            timeout=budget.remaining(), cancelled=budget.stopped,
-            _source_page=cursor, _page_info=info, **options)
-        window = info['window']
-        more = False
-        if info['raw_hits'] == limit:
-            probe = copy(working)
-            probe._selections = {}
-            probe_info = {}
-            found = probe.search(workspace, query, limit=1, offset=offset + limit,
+        # Only candidate computation crosses these two reads. The original
+        # fresh-snapshot lookahead, identity comparison and hidden-result
+        # materialization/attestation below remain unchanged.
+        candidates = (literal._CandidateWork() if options.get('mode', 'phrase')
+                      in ('word', 'phrase', 'terms', 'advanced') else None)
+        try:
+            info = {}
+            results = working.search(workspace, query, limit=limit, offset=offset,
                 timeout=budget.remaining(), cancelled=budget.stopped,
-                _source_page=cursor, _page_info=probe_info, **options)
-            if probe_info['window'].identity != window.identity:
-                raise ValueError('The source window changed during result lookahead. Restart search.')
-            more = bool(found)
+                _source_page=cursor, _page_info=info, _candidate_work=candidates, **options)
+            window = info['window']
+            more = False
+            if info['raw_hits'] == limit:
+                probe = copy(working)
+                probe._selections = {}
+                probe_info = {}
+                found = probe.search(workspace, query, limit=1, offset=offset + limit,
+                    timeout=budget.remaining(), cancelled=budget.stopped,
+                    _source_page=cursor, _page_info=probe_info, _candidate_work=candidates, **options)
+                if probe_info['window'].identity != window.identity:
+                    raise ValueError('The source window changed during result lookahead. Restart search.')
+                more = bool(found)
+            completed = SearchPage(tuple(results), window.cursor, window.next_cursor, more,
+                                   offset, len(window.page_ids), len(window.editions),
+                                   window.characters, window.identity)
+        finally:
+            if candidates is not None:
+                candidates.close()
+        # Failed lookahead or candidate cleanup still cannot publish handles.
         budget.check()
         self._selections.update(working._selections)
         while len(self._selections) > 2000:
             del self._selections[next(iter(self._selections))]
-        return SearchPage(tuple(results), window.cursor, window.next_cursor, more,
-                          offset, len(window.page_ids), len(window.editions),
-                          window.characters, window.identity)
+        return completed
 
     def _anchor(self, db, workspace, ref, revision, *, cancelled=lambda: False):
         selected, identity, locator, raw, metadata = self._selected(

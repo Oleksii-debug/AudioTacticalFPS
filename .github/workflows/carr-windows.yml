@@ -287,7 +287,8 @@ jobs:
             'tests/transcription/test_native_profiles_fixture.py',
             'tests/ui/test_native_backup_capacity_driver.py',
             'tests/ui/test_native_studio_book_choices.py',
-            'tests/ui/test_native_book_publication_driver.py'
+            'tests/ui/test_native_book_publication_driver.py',
+            'tests/search/test_paged_candidate_work.py'
           )
           & $env:CARR_COMPLETION_PYTHON scripts/ci_check.py --jobs 3 @completionSuites 2>&1 | Tee-Object 'ci-completion-results/source-regressions.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -407,6 +408,7 @@ jobs:
             'tests/ui/test_native_backup_capacity_driver.py' = 6
             'tests/ui/test_native_studio_book_choices.py' = 14
             'tests/ui/test_native_book_publication_driver.py' = 8
+            'tests/search/test_paged_candidate_work.py' = 30
           }
           foreach ($entry in $reviewedCompletionExpected.GetEnumerator()) {
             $pattern = '^PASS: ' + [regex]::Escape($entry.Key) + ': junit_passed=' + $entry.Value + ', failed=0, skipped=0, pytest_exit=0$'
@@ -3773,7 +3775,8 @@ jobs:
             'tests/transcription/test_native_profiles_fixture.py',
             'tests/ui/test_native_backup_capacity_driver.py',
             'tests/ui/test_native_studio_book_choices.py',
-            'tests/ui/test_native_book_publication_driver.py'
+            'tests/ui/test_native_book_publication_driver.py',
+            'tests/search/test_paged_candidate_work.py'
           )
           $previousPath = $env:PATH
           $previousOcr = $env:CARR_OCR_DIR
@@ -3972,6 +3975,7 @@ jobs:
               'tests/ui/test_native_backup_capacity_driver.py' = 6
               'tests/ui/test_native_studio_book_choices.py' = 14
               'tests/ui/test_native_book_publication_driver.py' = 8
+              'tests/search/test_paged_candidate_work.py' = 30
             }
             foreach ($entry in $completedFeatureCounts.GetEnumerator()) {
               $pattern = '^PASS: ' + [regex]::Escape($entry.Key) + ': junit_passed=' + $entry.Value + ', failed=0, skipped=0, pytest_exit=0$'

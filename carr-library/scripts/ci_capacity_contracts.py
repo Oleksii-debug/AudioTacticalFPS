@@ -31,7 +31,7 @@ SUITES = {
     'tests/ui/test_native_backup_capacity_driver.py': 6,
 }
 PINS = {
-    'scripts/benchmark_library_scale.py': '74d8f3669444a7ae28df49c0c1f9636578a8cde7',
+    'scripts/benchmark_library_scale.py': '652833b7e0672cb62db2293f53187fe97fcd8669',
     'scripts/benchmark_semantic_cache.py': '898b05e37b5a50c018567e35c44ef71f1393535d',
     'tests/packaging/test_library_scale_benchmark.py': 'd4bd24dafe5dbc4c0bcd856ab0ff416f9f1f5411',
     'tests/packaging/test_library_capacity_measurement.py': 'a4677e149a71c76832896902db936b232f0f246e',
@@ -43,12 +43,12 @@ PINS = {
     'tests/storage/test_complete_pending_backup.py': '36fe4b61a3a61351fecc1a88016c1e1db32275d5',
     'tests/storage/test_backup_pending_common4.py': '20707e52c7a9220df5213668138db552ef74d2b9',
     'tests/storage/test_backup_schema_identity.py': 'ebed1d823de241c639877dd747de9aa4ce2085ed',
-    'tests/ui/test_native_backup_capacity_driver.py': 'a1f05ecf49e2eba8d8d2ba3a980221d0e44cd32c',
+    'tests/ui/test_native_backup_capacity_driver.py': '1d8e7ec4a91edb7f6abaffe4b69422007b666697',
     'scripts/windows_backup_capacity_smoke.py': '3f633a875f8232d4c0cce5cdf40e47d9064f9987',
     'scripts/ci_check.py': '6ad3055cfcd7c6a1b1af8544ae462c5d51adb473',
     'packaging/source_wheel.py': '478de248451d59a44b35784eb808fb2974f0af67',
     'src/carr_library/backup_capacity.py': '1fd11ab8d3a2be5434e32bdcba65447c55730ad7',
-    'src/carr_library/application.py': '4544453f62a96993a2f05ed1522a563649289715',
+    'src/carr_library/application.py': '82af31743ca5cc6557477f6492c08b912751f4a4',
     'src/carr_library/__main__.py': '99b3c98d5f60cfa6ba1074d74c32acc14250fd16',
     'src/carr_library/library_backup.py': 'd36d2ab93043bff46048bb6146769a1a19f29db8',
     'src/carr_library/pending_backup.py': 'b2c3fc3a52e9d2fef5c019196ef239381c519fc7',
@@ -247,8 +247,8 @@ def main():
         wrapper.write_text(INSTALLED_CHILD, encoding='utf-8')
         contract = work / 'child-contract.json'
         modules = list(benchmark.MODULES + benchmark.CAPACITY_MODULES)
-        require(len(modules) == len(set(modules)) == 20,
-                'The explicit backup-profile harness requires all 20 installed origins.')
+        require(len(modules) == len(set(modules)) == 21,
+                'The explicit backup-profile harness requires all 21 installed origins.')
         write(contract, dict(pytest_child=ci.PYTEST_CHILD, modules=modules))
         installed = []
         for number, (suite, expected_count) in enumerate(SUITES.items(), 1):

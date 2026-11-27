@@ -55,7 +55,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Existing pinned capacity dependencies failed.' }
           & python -I -B -m pip check
           if ($LASTEXITCODE -ne 0) { throw 'Capacity dependencies are inconsistent.' }
-          & python -I -B -c "from hashlib import sha1; from pathlib import Path; p=Path('scripts/ci_capacity_contracts.py'); raw=p.read_bytes(); assert sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()=='ecf829419c172d681e2bb00e57fe67674282e0f7'; compile(raw,str(p),'exec')"
+          & python -I -B -c "from hashlib import sha1; from pathlib import Path; p=Path('scripts/ci_capacity_contracts.py'); raw=p.read_bytes(); assert sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()=='f367299bdfc55c6af6a409c020b437fd1bd1c416'; compile(raw,str(p),'exec')"
           if ($LASTEXITCODE -ne 0) { throw 'Capacity verifier source or syntax differs.' }
       - name: Require all 184 source and 184 isolated installed cases
         timeout-minutes: 170
@@ -115,7 +115,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Existing pinned capacity dependencies failed.' }
           & python -I -B -m pip check
           if ($LASTEXITCODE -ne 0) { throw 'Capacity dependencies are inconsistent.' }
-          & python -I -B -c "from hashlib import sha1; from pathlib import Path; p=Path('scripts/ci_capacity_contracts.py'); raw=p.read_bytes(); assert sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()=='ecf829419c172d681e2bb00e57fe67674282e0f7'; compile(raw,str(p),'exec')"
+          & python -I -B -c "from hashlib import sha1; from pathlib import Path; p=Path('scripts/ci_capacity_contracts.py'); raw=p.read_bytes(); assert sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()=='f367299bdfc55c6af6a409c020b437fd1bd1c416'; compile(raw,str(p),'exec')"
           if ($LASTEXITCODE -ne 0) { throw 'Capacity verifier source or syntax differs.' }
       - name: Require all 184 source and 184 isolated installed cases
         timeout-minutes: 170
@@ -386,10 +386,10 @@ jobs:
           import json, os
           from pathlib import Path
           pins = {
-            'scripts/benchmark_library_scale.py':'74d8f3669444a7ae28df49c0c1f9636578a8cde7',
+            'scripts/benchmark_library_scale.py':'652833b7e0672cb62db2293f53187fe97fcd8669',
             'scripts/benchmark_semantic_cache.py':'898b05e37b5a50c018567e35c44ef71f1393535d',
             'src/carr_library/backup_capacity.py':'1fd11ab8d3a2be5434e32bdcba65447c55730ad7',
-            'src/carr_library/application.py':'4544453f62a96993a2f05ed1522a563649289715',
+            'src/carr_library/application.py':'82af31743ca5cc6557477f6492c08b912751f4a4',
             'src/carr_library/library_backup.py':'d36d2ab93043bff46048bb6146769a1a19f29db8',
             'src/carr_library/pending_backup.py':'b2c3fc3a52e9d2fef5c019196ef239381c519fc7',
             'src/carr_library/backup_sidecars.py':'5c2ec87913e8ad252dce9aa8cff7ccc22dca3525',
@@ -410,7 +410,7 @@ jobs:
               construction='retained-fixture',public_samples=12,result_page_size=37,repeats=9,
               phase_timeout=3600,max_disk_bytes=25769803776,min_free_bytes=1073741824,
               complete_backup=True,backup_capacity_profile=os.environ['CARR_BACKUP_CAPACITY_PROFILE'],
-              required_origin_count=20,
+              required_origin_count=21,
               import_throughput='NOT_MEASURED_BY_FIXTURE_CONSTRUCTION',
               large_backup='EXPLICIT_SELECTED_ALLOWANCE; actual backup, verify and restore must pass',
               baseline_source_commit='97e386c27e2a1a8ed92ca1de50fa903cdca4ba4d',
@@ -469,7 +469,7 @@ jobs:
               assert report['capacity'] == {'construction':'retained-fixture','public_samples':12,
                   'complete_backup':True,'backup_capacity_profile':'large-source-v1'}
               assert profile['complete_backup'] is True and profile['backup_capacity_profile'] == 'large-source-v1'
-              assert len(report['origins']) == profile['required_origin_count'] == 20
+              assert len(report['origins']) == profile['required_origin_count'] == 21
               assert report['harness_sha256'] == profile['inputs']['scripts/benchmark_library_scale.py']['sha256']
               for case in report['cases']:
                   assert case['requested_books'] == count

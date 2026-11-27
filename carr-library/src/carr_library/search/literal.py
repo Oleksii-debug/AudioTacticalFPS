@@ -157,8 +157,100 @@ def _spans(folded, starts, ends, needle, check=lambda: None):
         yield starts[i], ends[j]
 
 
+class _CandidateWork:
+    """Temporary candidate computation shared by one public paged search.
+
+    This object grants no source authority. Every use follows a new complete
+    scoped-row read and SHA check, and requires exact equality of all row
+    fields. The caller still owns each fresh catalog/source transaction and
+    every retained-source/attestation check. Nothing survives the public call.
+    """
+    _MAX_MAP_CHARACTERS = 32 * 1024
+    _MAX_MAP_PAGE_CHARACTERS = 2048
+
+    def __init__(self):
+        self._index = None
+        self._rows = None
+        self._maps = {}
+        self._map_characters = 0
+        self._closed = False
+
+    def __enter__(self):
+        if self._closed:
+            raise ValueError('Literal candidate work is already closed.')
+        return self
+
+    def __exit__(self, *_):
+        self.close()
+
+    def _discard(self):
+        if self._index is not None:
+            self._index.close()
+            self._index = None
+        self._rows = None
+        self._maps.clear()
+        self._map_characters = 0
+
+    def close(self):
+        self._closed = True
+        self._discard()
+
+    def _bind(self, rows, stopped, check):
+        from .paging import MAX_SOURCE_PAGES
+        if self._closed:
+            raise ValueError('Literal candidate work is already closed.')
+        check()
+        # Shared work is admitted only for the existing <=100-page source
+        # window. Normalization maps have a separate much smaller ceiling.
+        if (len(rows) > MAX_SOURCE_PAGES
+                or sum(len(row[9]) for row in rows) > MAX_CHARS):
+            raise ValueError('Literal candidate work exceeds its source window.')
+        snapshot = tuple(rows)
+        if self._rows != snapshot:
+            self._discard()
+            index = sqlite3.connect(':memory:')
+            try:
+                index.set_progress_handler(lambda: int(stopped()), 1000)
+                index.execute("CREATE VIRTUAL TABLE scoped USING fts5(text, tokenize='trigram case_sensitive 1')")
+                for number, row in enumerate(snapshot, 1):
+                    check()
+                    index.execute('INSERT INTO scoped(rowid,text) VALUES(?,?)',
+                                  (number, _fold(row[9])))
+                check()
+            except BaseException:
+                index.close()
+                raise
+            self._index, self._rows = index, snapshot
+        # A previous snapshot's deadline/cancellation closure is never reused.
+        self._index.set_progress_handler(lambda: int(stopped()), 1000)
+        check()
+        return self._index
+
+    def _normalization(self, rowid, raw, check):
+        check()
+        if (self._closed or self._rows is None or not 1 <= rowid <= len(self._rows)
+                or self._rows[rowid - 1][9] != raw):
+            raise ValueError('Literal candidate source changed.')
+        if rowid in self._maps:
+            return self._maps[rowid]
+        value = _mapped(raw, check)
+        check()
+        # Large-page maps are deliberately not retained. At most 100 short
+        # maps and 32 Ki source characters live until this one call closes.
+        if (len(raw) <= self._MAX_MAP_PAGE_CHARACTERS
+                and self._map_characters + len(raw) <= self._MAX_MAP_CHARACTERS):
+            self._maps[rowid] = value
+            self._map_characters += len(raw)
+        return value
+
+    def _detach_callback(self):
+        if self._index is not None:
+            self._index.set_progress_handler(None, 0)
+
+
 def search(db, workspace, query, *, mode='phrase', edition_ids=None,
-           limit=50, offset=0, timeout=5.0, cancelled=lambda: False, page_ids=None):
+           limit=50, offset=0, timeout=5.0, cancelled=lambda: False, page_ids=None,
+           _candidate_work=None):
     """One active workspace only; edition_ids is the catalog-resolved filter.
 
     phrase: literal punctuation and whitespace-equivalent contiguous phrase;
@@ -183,6 +275,10 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
             and 1 <= limit <= 100
             and offset >= 0 and 0 < timeout <= MAX_TIMEOUT_SECONDS):
         raise ValueError('invalid search budget')
+    if (_candidate_work is not None
+            and (not isinstance(_candidate_work, _CandidateWork)
+                 or _candidate_work._closed or page_ids is None)):
+        raise ValueError('Shared literal work requires a bounded source window.')
     q = _fold(query).strip()
     if not q:
         return []
@@ -234,12 +330,13 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
     sql = ('SELECT id,workspace,edition,revision,asset,ordinal,physical,printed,'
            'verified,raw,digest FROM active_page WHERE ' + where +
            ' ORDER BY edition,ordinal,id')
-    index = sqlite3.connect(':memory:')
+    index = None if _candidate_work is not None else sqlite3.connect(':memory:')
     rows, result = [], []
     size = seen = 0
     try:
-        index.set_progress_handler(lambda: int(stopped()), 1000)
-        index.execute("CREATE VIRTUAL TABLE scoped USING fts5(text, tokenize='trigram case_sensitive 1')")
+        if index is not None:
+            index.set_progress_handler(lambda: int(stopped()), 1000)
+            index.execute("CREATE VIRTUAL TABLE scoped USING fts5(text, tokenize='trigram case_sensitive 1')")
         for row in db.execute(sql, params):
             check()
             if row[1] != workspace:
@@ -252,8 +349,11 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
             if sha256(raw.encode('utf-8')).hexdigest() != row[10]:
                 raise ValueError('raw page digest mismatch')
             rows.append(tuple(row))
-            index.execute('INSERT INTO scoped(rowid,text) VALUES(?,?)', (len(rows), _fold(raw)))
+            if _candidate_work is None:
+                index.execute('INSERT INTO scoped(rowid,text) VALUES(?,?)', (len(rows), _fold(raw)))
         check()
+        if _candidate_work is not None:
+            index = _candidate_work._bind(rows, stopped, check)
         # Trigram cannot match strings shorter than three code points. Fall back
         # to the scoped row list, then verify all literal needles against raw.
         candidate = next((n for n in needles if len(n) >= 3), None)
@@ -266,7 +366,8 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
         for rowid in hits:
             check()
             page_id, ws, edition, revision, asset, ordinal, physical, printed, verified, raw, digest = rows[rowid-1]
-            folded, starts, ends = _mapped(raw, check)
+            folded, starts, ends = (_candidate_work._normalization(rowid, raw, check)
+                                   if _candidate_work is not None else _mapped(raw, check))
             check()
             if advanced is not None:
                 match = advanced.match(raw, folded, starts, ends, check=check)
@@ -301,7 +402,10 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
             raise TimeoutError('literal search cancelled or timed out') from exc
         raise
     finally:
-        index.close()
+        if _candidate_work is not None:
+            _candidate_work._detach_callback()
+        elif index is not None:
+            index.close()
 
 
 def search_file(path, workspace, query, *, timeout=5.0,

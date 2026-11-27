@@ -315,7 +315,7 @@ def test_book_plan_legacy_role_wire_stays_stable_and_effects_need_separate_revie
     assert serialized['role'] == old_role and 'effects' not in serialized['role']
     assert BookPlan.from_dict(json.loads(encode(serialized))).fingerprint == plan.fingerprint
     assert plan.fingerprint == sha256(encode({**serialized, 'role': old_role})).hexdigest()
-    with pytest.raises(ValueError, match='separate reviewed effect contract'):
+    with pytest.raises(ValueError, match=r'^Reviewed role effects require Book plan schema 2; unchanged narration retains schema 1\.$'):
         replace(plan, role=replace(role, effects=(Effect('gain', gain_db=-3),)))
     service = ProductionService(app.root / 'state/studio', voices=VoiceRegistry([]))
     editor = ClipEditor(app.root, service=service)

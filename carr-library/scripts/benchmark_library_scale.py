@@ -38,6 +38,7 @@ MAX_SOURCE_BYTES = 8 * 1024 * 1024
 MAX_JSON = 8 * 1024 * 1024
 MODULES = (
     'bootstrap', 'carr_library.application', 'carr_library.search.paging',
+    'carr_library.search.literal',
     'carr_library.reader.reading_desk', 'carr_library.catalog.read_views',
     'carr_library.storage.revisions', 'carr_library.durable_state',
 )
@@ -930,7 +931,10 @@ def _query(app, workspace, spec, budget, **options):
         cancelled=budget.stopped, **options)
 
 
-def traverse(app, metadata, spec, budget):
+def traverse(app, metadata, spec, budget, *, progress=None):
+    progress = progress if progress is not None else {}
+    progress.update(operation='full-result-traversal', completed_requests=0,
+                    verified_results=0, completed_source_windows=0, copied_result_samples=0)
     expected = spec['books'] * spec['segments_per_book']
     seen = bytearray(expected)
     cursor = None
@@ -974,12 +978,15 @@ def traverse(app, metadata, spec, budget):
                 require(app.copy(metadata['workspace'], row.ref, row.revision, 'quote',
                                  cancelled=budget.stopped) == QUERY, 'Source-bound quote differs.')
                 copies += 1
+            progress.update(completed_requests=requests, verified_results=count,
+                            copied_result_samples=copies)
             if not page.has_more_results:
                 break
             require(bool(page.results), 'Result continuation returned an empty page.')
             cursor = page.cursor
             offset += spec['result_page_size']
         windows += 1
+        progress['completed_source_windows'] = windows
         cursor = page.next_source_cursor
         if cursor is None:
             break
@@ -1054,16 +1061,19 @@ def measure_corpus(directory, spec, *, restart=False, cancelled=lambda: False, p
     require(metadata.get('schema') == SCHEMA and metadata.get('spec') == spec, 'Corpus configuration changed.')
     budget = Budget(directory, spec, cancelled=cancelled)
     progress = progress if progress is not None else {}
-    progress.update({'phase': 'restart' if restart else 'measure'})
+    progress.update(phase='restart' if restart else 'measure', operation='startup')
     budget.check()
     started = perf_counter()
     app = LibraryApp(directory / 'library')
     startup = perf_counter() - started
+    progress['operation'] = 'initial-integrity'
     integrity_started = perf_counter()
     verified = verify_corpus(app, metadata, spec, budget)
     require(verified['corpus_sha256'] == metadata['corpus_sha256'], 'Saved corpus digest differs.')
     integrity_seconds = perf_counter() - integrity_started
+    progress['operation'] = 'initial-database-digest'
     database_before = file_hash(app.database, maximum=spec['max_disk_bytes'], check=budget.check)
+    progress.update(operation='latency-samples', completed_latency_samples=0)
     first_times, late_times = array('d'), array('d')
     for _ in range(spec['repeats']):
         began = perf_counter()
@@ -1075,21 +1085,27 @@ def measure_corpus(directory, spec, *, restart=False, cancelled=lambda: False, p
         late_times.append(perf_counter() - began)
         require(late.results and all(row.edition_id == edition_id(spec['books'] - 1)
                                     for row in late.results), 'Late-edition scoped search differs.')
+        progress['completed_latency_samples'] += 1
     result = {'status': 'PASS', 'phase': 'restart' if restart else 'measure', **verified,
               'startup_seconds': startup, 'initial_integrity_seconds': integrity_seconds,
-              'first_result_page': samples(first_times), 'late_edition_first_page': samples(late_times),
-              'reading': reader_samples(app, metadata, spec, budget),
-              'cancellation': cancellation_probe(app, metadata, spec, budget)}
+              'first_result_page': samples(first_times), 'late_edition_first_page': samples(late_times)}
+    progress['operation'] = 'reader-samples'
+    result['reading'] = reader_samples(app, metadata, spec, budget)
+    progress['operation'] = 'cancellation-probe'
+    result['cancellation'] = cancellation_probe(app, metadata, spec, budget)
     if not restart:
-        result['full_traversal'] = traverse(app, metadata, spec, budget)
+        result['full_traversal'] = traverse(app, metadata, spec, budget, progress=progress)
     else:
         result['full_traversal'] = {'status': 'NOT_REPEATED', 'reason': 'Full traversal belongs to the previous measured process.'}
+    progress['operation'] = 'final-integrity'
     final_integrity_started = perf_counter()
     final = verify_corpus(app, metadata, spec, budget)
     result['final_integrity_seconds'] = perf_counter() - final_integrity_started
     require(final == verified, 'Corpus bytes or identity changed during read measurements.')
+    progress['operation'] = 'final-database-digest'
     require(file_hash(app.database, maximum=spec['max_disk_bytes'], check=budget.check) == database_before,
             'Read-only measurement changed the canonical database.')
+    progress['operation'] = 'final-disk-check'
     result.update(database_unchanged=True, disk=budget.disk(),
                   elapsed_seconds=perf_counter() - started)
     return result
@@ -1140,7 +1156,7 @@ def child_main(config_path, expected_digest, phase, case_dir):
                 'Measurement code changed during measurement.')
     except (InterruptedError, TimeoutError, KeyboardInterrupt) as exc:
         result = {'status': 'PARTIAL', 'phase': phase, 'progress': progress,
-                  'reason': type(exc).__name__}
+                  'reason': type(exc).__name__, 'diagnostic': str(exc)[:512]}
     except Exception as exc:
         result = {'status': 'FAIL', 'phase': phase, 'progress': progress,
                   'reason': type(exc).__name__, 'diagnostic': str(exc)[:2000]}

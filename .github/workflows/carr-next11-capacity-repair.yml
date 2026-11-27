@@ -57,7 +57,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Existing pinned capacity dependencies failed.' }
           & python -I -B -m pip check
           if ($LASTEXITCODE -ne 0) { throw 'Capacity dependencies are inconsistent.' }
-          & python -I -B -c "from hashlib import sha1; from pathlib import Path; p=Path('scripts/ci_capacity_contracts.py'); raw=p.read_bytes(); assert sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()=='ecf829419c172d681e2bb00e57fe67674282e0f7'; compile(raw,str(p),'exec')"
+          & python -I -B -c "from hashlib import sha1; from pathlib import Path; p=Path('scripts/ci_capacity_contracts.py'); raw=p.read_bytes(); assert sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()=='f367299bdfc55c6af6a409c020b437fd1bd1c416'; compile(raw,str(p),'exec')"
           if ($LASTEXITCODE -ne 0) { throw 'Capacity verifier source or syntax differs.' }
       - name: Require all 184 source and 184 isolated installed cases
         timeout-minutes: 170
@@ -117,7 +117,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Existing pinned capacity dependencies failed.' }
           & python -I -B -m pip check
           if ($LASTEXITCODE -ne 0) { throw 'Capacity dependencies are inconsistent.' }
-          & python -I -B -c "from hashlib import sha1; from pathlib import Path; p=Path('scripts/ci_capacity_contracts.py'); raw=p.read_bytes(); assert sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()=='ecf829419c172d681e2bb00e57fe67674282e0f7'; compile(raw,str(p),'exec')"
+          & python -I -B -c "from hashlib import sha1; from pathlib import Path; p=Path('scripts/ci_capacity_contracts.py'); raw=p.read_bytes(); assert sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()=='f367299bdfc55c6af6a409c020b437fd1bd1c416'; compile(raw,str(p),'exec')"
           if ($LASTEXITCODE -ne 0) { throw 'Capacity verifier source or syntax differs.' }
       - name: Require all 184 source and 184 isolated installed cases
         timeout-minutes: 170

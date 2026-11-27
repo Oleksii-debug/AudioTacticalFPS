@@ -51,7 +51,7 @@ PINS = {
     "packaging/trusted-client.lock": "6c4b48ac09572dc259d62d0d801057ab47c04583",
     "packaging/windows-sync-test-cp311.lock": "e3f6eda5976e867abe7267c04e0b867b1fd16f7a",
     "src/carr_library/native_runtime.py": "50ca93914325753f7d9cb91f1bc4f48fc9ae230f",
-    "src/carr_library/application.py": "4544453f62a96993a2f05ed1522a563649289715",
+    "src/carr_library/application.py": "82af31743ca5cc6557477f6492c08b912751f4a4",
     "src/carr_library/backup_book_audio.py": "4fd92f122d2907c0530fee912c18b45457748682",
     "src/carr_library/library_backup.py": "d36d2ab93043bff46048bb6146769a1a19f29db8",
     "src/carr_library/backup_producers.py": "90b0f4c9165225a0f1cf2e293ae6743de2a5fb1d",

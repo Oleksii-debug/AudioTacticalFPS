@@ -1,0 +1,235 @@
+{
+  "schema": "resonance-paged-candidate-required-gates/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base": {
+    "commit": "e7636ca3f9e6b7474145f6e1799bd19a135a3250",
+    "tree": "a82f252b37db7ba244ba2cc25246a31dc78085d4"
+  },
+  "dependency_manifests": [
+    "a6c40da056d70ce9e065681fefe2f4072c62795e"
+  ],
+  "files": [
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "preimage": "c77d99ead8e771da909985bd500a37749f128477",
+      "sha": "0d7eb204d92c12ff3dd9ee98c3c529580d019e37"
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "preimage": "abb023c66f8f04fb7f48356551662dd98faaa4fd",
+      "sha": "ba1e074bef27b7e4d9217521f1d409a95be9e742"
+    },
+    {
+      "path": "carr-library/scripts/check_installed_bundle.py",
+      "preimage": "5d9ff9b20f7710236dc481c87ab790cbf75bb9e0",
+      "sha": "14c04e7a5b4431da9787548f0da705a2bf34666a"
+    },
+    {
+      "path": ".github/workflows/carr-next9-final-source.yml",
+      "preimage": "795d1eda51fc87de9427b88555eaf0690f551c9b",
+      "sha": "8d9e7b1c94907ce298c3931cf584585ca69538e9"
+    }
+  ],
+  "new_required_whole_suite": {
+    "path": "tests/search/test_paged_candidate_work.py",
+    "whole_cases": 30,
+    "functions": [
+      "test_actual_page37_keeps_two_fresh_reads_and_hidden_attestation_with_one_candidate_index",
+      "test_actual_lookahead_still_reauthenticates_retained_bytes_before_handle_publication",
+      "test_fresh_lookahead_does_not_reuse_schema_or_workspace_authority",
+      "test_current_collection_change_still_rejects_the_changed_window",
+      "test_real_sql_cancellation_in_the_second_snapshot_closes_work_and_preserves_previous_handles",
+      "test_candidate_cleanup_finishes_before_any_new_public_handles",
+      "test_shared_and_independent_actual_sqlite_search_have_identical_unicode_raw_spans",
+      "test_complete_fresh_sql_row_changes_rebuild_candidate_work_without_stale_results",
+      "test_damaged_unmatched_row_cannot_hide_behind_a_matching_retained_index",
+      "test_reused_index_drops_old_deadline_callback_and_obeys_the_new_one",
+      "test_normalization_retention_is_bounded_and_large_pages_are_not_cached",
+      "test_public_source_page_cannot_accept_a_caller_supplied_internal_receiver",
+      "test_closed_candidate_work_cannot_be_reopened_as_a_later_search"
+    ],
+    "companions": [],
+    "status": "NOT_COLLECTED_NOT_RUN",
+    "source_blob": "ea166160975d395f11e41f99bf102686c7d9f6a9"
+  },
+  "existing_required_guards": [
+    {
+      "path": "tests/search/test_search_paging.py",
+      "cases": 27
+    },
+    {
+      "path": "tests/search/test_search_query_work.py",
+      "cases": 17
+    },
+    {
+      "path": "tests/search/test_literal_integrity.py",
+      "cases": 6
+    },
+    {
+      "path": "tests/search/test_literal_readonly.py",
+      "cases": 6
+    },
+    {
+      "path": "tests/e2e/test_retained_source_search_integrity.py",
+      "cases": 11
+    }
+  ],
+  "existing_source_origins_retained": [
+    "carr_library.application",
+    "carr_library.search.literal",
+    "carr_library.search.paging",
+    "carr_library.catalog.read_views",
+    "carr_library.citations.text_attestation"
+  ],
+  "full_gates": {
+    "main_fast_suite_array": {
+      "before": 140,
+      "after": 141
+    },
+    "main_source_suite_array": {
+      "before": 456,
+      "after": 457
+    },
+    "main_installed_additive_suite_array": {
+      "before": 300,
+      "after": 301
+    },
+    "v3_publication_source_command": {
+      "before": 177,
+      "after": 178
+    },
+    "v3_publication_installed_suite_array": {
+      "before": 156,
+      "after": 157
+    },
+    "every_old_reviewed_feature_entry": "UNCHANGED",
+    "new_case_count": 30,
+    "new_required_functions": [
+      "test_actual_page37_keeps_two_fresh_reads_and_hidden_attestation_with_one_candidate_index",
+      "test_actual_lookahead_still_reauthenticates_retained_bytes_before_handle_publication",
+      "test_fresh_lookahead_does_not_reuse_schema_or_workspace_authority",
+      "test_current_collection_change_still_rejects_the_changed_window",
+      "test_real_sql_cancellation_in_the_second_snapshot_closes_work_and_preserves_previous_handles",
+      "test_candidate_cleanup_finishes_before_any_new_public_handles",
+      "test_shared_and_independent_actual_sqlite_search_have_identical_unicode_raw_spans",
+      "test_complete_fresh_sql_row_changes_rebuild_candidate_work_without_stale_results",
+      "test_damaged_unmatched_row_cannot_hide_behind_a_matching_retained_index",
+      "test_reused_index_drops_old_deadline_callback_and_obeys_the_new_one",
+      "test_normalization_retention_is_bounded_and_large_pages_are_not_cached",
+      "test_public_source_page_cannot_accept_a_caller_supplied_internal_receiver",
+      "test_closed_candidate_work_cannot_be_reopened_as_a_later_search"
+    ],
+    "native_blocks": "BYTE_IDENTICAL",
+    "source_installed_origin_guards": "UNCHANGED_AND_ALREADY_COVER_BOTH_CHANGED_MODULES",
+    "per_child_timeout_seconds": {
+      "default": 600,
+      "reviewed_asr_admission_only": 900
+    },
+    "outer_envelopes": "UNCHANGED",
+    "strict_classification_and_junit_policies": "UNCHANGED",
+    "main_owner_public_input_and_assembly_boundary": "UNCHANGED",
+    "final_seals_and_failure_aggregates": "UNCHANGED"
+  },
+  "source_diagnostic": {
+    "path": ".github/workflows/carr-next9-final-source.yml",
+    "original_first_three_jobs": "BYTE_IDENTICAL_TO_795d1eda",
+    "focused_linux": {
+      "whole_suites_before": 33,
+      "whole_suites_after": 34,
+      "cases_before": 420,
+      "cases_after": 450
+    },
+    "focused_windows": {
+      "whole_suites_before": 32,
+      "whole_suites_after": 33,
+      "cases_before": 419,
+      "cases_after": 449
+    },
+    "four_before_after_expected_maps": "Every old entry retained; only new whole30 suite appended.",
+    "command_lists": "Both actual ci_check lists append the same whole suite.",
+    "current_head_pin_audit": {
+      "source_tree_entries": 1651,
+      "old_linux_pins": 46,
+      "old_windows_pins": 45,
+      "only_preexisting_stale_pin": {
+        "path": "scripts/ci_check.py",
+        "before": "8a23ef36c2df93928b0aff3edd8b59a53c54684c",
+        "after": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473"
+      }
+    },
+    "new_core_pins": {
+      "application": "82af31743ca5cc6557477f6492c08b912751f4a4",
+      "literal": "9aa66aeca878f6ab195cb1898fc9e3213a35bd88",
+      "test": "ea166160975d395f11e41f99bf102686c7d9f6a9"
+    },
+    "final_pin_audit": [
+      {
+        "count": 48,
+        "mismatches": []
+      },
+      {
+        "count": 47,
+        "mismatches": []
+      }
+    ],
+    "source_before_after": "UNCHANGED strict snapshot/hash check; existing authority set deduplicates literal.",
+    "codec_requirement": "UNCHANGED actual FFmpeg/FFprobe; Windows external pinned preparation retained.",
+    "policies_envelopes_and_artifact_scope": "UNCHANGED"
+  },
+  "static_checks": {
+    "check": [
+      {
+        "key": "main",
+        "characters": 402278,
+        "added_paths": [
+          "tests/search/test_paged_candidate_work.py"
+        ],
+        "old_paths_retained": true,
+        "old_names_retained": true
+      },
+      {
+        "key": "v3",
+        "characters": 430720,
+        "added_paths": [
+          "tests/search/test_paged_candidate_work.py"
+        ],
+        "old_paths_retained": true,
+        "old_names_retained": true
+      },
+      {
+        "key": "installed",
+        "characters": 157264,
+        "added_paths": [
+          "tests/search/test_paged_candidate_work.py"
+        ],
+        "old_paths_retained": true,
+        "old_names_retained": true
+      },
+      {
+        "key": "source_workflow",
+        "characters": 66065,
+        "added_paths": [
+          "tests/search/test_paged_candidate_work.py"
+        ],
+        "old_paths_retained": true,
+        "old_names_retained": true
+      }
+    ],
+    "sizes": {
+      "main": 402281,
+      "v3": 430720,
+      "source_workflow": 66065
+    },
+    "original_first_three_jobs_byte_identical": true,
+    "source_pin_updates": 2,
+    "focused_expected_maps": 4
+  },
+  "independent_reviews": {
+    "canonical": "Accepted 0d7eb204/ba1e074/14c04e7: exact suite30/13 functions, old maps/origins/native/policies/envelopes retained.",
+    "locate": "Accepted 8d9e7b1c over795d: original3 jobs exact; only four expected maps/two pins maps/two actual suite commands; 34/450 Linux and33/449 Windows.",
+    "qualification": "STATIC_NOT_RUN only. No YAML/PowerShell/native/runtime or performance acceptance is inferred."
+  },
+  "existing_actual_evidence": "5f32671325f9bc9eb65ea8ec2734088f5601017d records superseded6e95 results only; none transfers to these changed gates/source.",
+  "refs_changed": false
+}

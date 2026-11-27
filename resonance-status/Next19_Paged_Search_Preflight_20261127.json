@@ -1,0 +1,324 @@
+{
+  "schema": "resonance-paged-search-preflight-composition/1",
+  "status": "STATIC_REVIEWED_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base_commit": "e7636ca3f9e6b7474145f6e1799bd19a135a3250",
+  "base_tree": "a82f252b37db7ba244ba2cc25246a31dc78085d4",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/search/literal.py",
+      "preimage": "4f7b9c34bd161bf8d7918f6a09535c563d2c139d",
+      "sha": "9aa66aeca878f6ab195cb1898fc9e3213a35bd88"
+    },
+    {
+      "path": "carr-library/src/carr_library/application.py",
+      "preimage": "4544453f62a96993a2f05ed1522a563649289715",
+      "sha": "82af31743ca5cc6557477f6492c08b912751f4a4"
+    },
+    {
+      "path": "carr-library/tests/search/test_paged_candidate_work.py",
+      "preimage": null,
+      "sha": "ea166160975d395f11e41f99bf102686c7d9f6a9"
+    },
+    {
+      "path": "carr-library/docs/SEARCH_PAGED_CANDIDATE_WORK.md",
+      "preimage": null,
+      "sha": "5a1bf556b82100cc8a13aac823dbace6e343d706"
+    },
+    {
+      "path": "carr-library/tests/studio/test_project_effects.py",
+      "preimage": "dc9c8bb6a0e9004594a16af2d692fc26825a6efe",
+      "sha": "ed90ccf67a6d086fc56081ff8feb4b0be595d524"
+    },
+    {
+      "path": "carr-library/tests/ui/test_native_backup_capacity_driver.py",
+      "preimage": "a1f05ecf49e2eba8d8d2ba3a980221d0e44cd32c",
+      "sha": "1d8e7ec4a91edb7f6abaffe4b69422007b666697"
+    },
+    {
+      "path": "carr-library/scripts/benchmark_library_scale.py",
+      "preimage": "74d8f3669444a7ae28df49c0c1f9636578a8cde7",
+      "sha": "652833b7e0672cb62db2293f53187fe97fcd8669"
+    },
+    {
+      "path": "carr-library/scripts/ci_capacity_contracts.py",
+      "preimage": "ecf829419c172d681e2bb00e57fe67674282e0f7",
+      "sha": "f367299bdfc55c6af6a409c020b437fd1bd1c416"
+    },
+    {
+      "path": ".github/workflows/carr-next9-capacity.yml",
+      "preimage": "1facf53b5ae14492c96d7ab2328c284031a556c1",
+      "sha": "b9a05871fa6dc6b9e951799da8201b8660b9410a"
+    },
+    {
+      "path": ".github/workflows/carr-next11-capacity-repair.yml",
+      "preimage": "f2fc47da07dab2b61d9f24d13be46984f199fcf4",
+      "sha": "d5dd53c0874cf4d701bc248cefc26d9ac6e353e8"
+    },
+    {
+      "path": "carr-library/scripts/ci_book_measured_contracts.py",
+      "preimage": "ca2a659632d93d913d2fe8b5fc6113af98ffa63e",
+      "sha": "42383f649ca2d3d5c682cc036f1b5540c12c28aa"
+    },
+    {
+      "path": ".github/workflows/carr-next12-book.yml",
+      "preimage": "33cc07c7aab7865b756ff69abf38f6078f41fae3",
+      "sha": "ad6d08e68e0bd6df219f80453b2f1ec6e986e70e"
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "preimage": "c77d99ead8e771da909985bd500a37749f128477",
+      "sha": "0d7eb204d92c12ff3dd9ee98c3c529580d019e37"
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "preimage": "abb023c66f8f04fb7f48356551662dd98faaa4fd",
+      "sha": "ba1e074bef27b7e4d9217521f1d409a95be9e742"
+    },
+    {
+      "path": "carr-library/scripts/check_installed_bundle.py",
+      "preimage": "5d9ff9b20f7710236dc481c87ab790cbf75bb9e0",
+      "sha": "14c04e7a5b4431da9787548f0da705a2bf34666a"
+    },
+    {
+      "path": ".github/workflows/carr-next9-final-source.yml",
+      "preimage": "795d1eda51fc87de9427b88555eaf0690f551c9b",
+      "sha": "8d9e7b1c94907ce298c3931cf584585ca69538e9"
+    }
+  ],
+  "ordered_preimages": [
+    {
+      "manifest": "performance",
+      "path": "carr-library/src/carr_library/search/literal.py",
+      "preimage": "4f7b9c34bd161bf8d7918f6a09535c563d2c139d",
+      "sha": "9aa66aeca878f6ab195cb1898fc9e3213a35bd88"
+    },
+    {
+      "manifest": "performance",
+      "path": "carr-library/src/carr_library/application.py",
+      "preimage": "4544453f62a96993a2f05ed1522a563649289715",
+      "sha": "82af31743ca5cc6557477f6492c08b912751f4a4"
+    },
+    {
+      "manifest": "performance",
+      "path": "carr-library/tests/search/test_paged_candidate_work.py",
+      "preimage": null,
+      "sha": "ea166160975d395f11e41f99bf102686c7d9f6a9"
+    },
+    {
+      "manifest": "performance",
+      "path": "carr-library/docs/SEARCH_PAGED_CANDIDATE_WORK.md",
+      "preimage": null,
+      "sha": "5a1bf556b82100cc8a13aac823dbace6e343d706"
+    },
+    {
+      "manifest": "effects",
+      "path": "carr-library/tests/studio/test_project_effects.py",
+      "preimage": "dc9c8bb6a0e9004594a16af2d692fc26825a6efe",
+      "sha": "ed90ccf67a6d086fc56081ff8feb4b0be595d524"
+    },
+    {
+      "manifest": "backup-selector",
+      "path": "carr-library/tests/ui/test_native_backup_capacity_driver.py",
+      "preimage": "a1f05ecf49e2eba8d8d2ba3a980221d0e44cd32c",
+      "sha": "1d8e7ec4a91edb7f6abaffe4b69422007b666697"
+    },
+    {
+      "manifest": "diagnostics",
+      "path": "carr-library/scripts/benchmark_library_scale.py",
+      "preimage": "74d8f3669444a7ae28df49c0c1f9636578a8cde7",
+      "sha": "652833b7e0672cb62db2293f53187fe97fcd8669"
+    },
+    {
+      "manifest": "diagnostics",
+      "path": "carr-library/scripts/ci_capacity_contracts.py",
+      "preimage": "ecf829419c172d681e2bb00e57fe67674282e0f7",
+      "sha": "e13fda43d6f00ffc670257f849cc4249209558d7"
+    },
+    {
+      "manifest": "diagnostics",
+      "path": ".github/workflows/carr-next9-capacity.yml",
+      "preimage": "1facf53b5ae14492c96d7ab2328c284031a556c1",
+      "sha": "6dff3f3c5a8fb93868930ad08481906a8355639e"
+    },
+    {
+      "manifest": "diagnostics",
+      "path": ".github/workflows/carr-next11-capacity-repair.yml",
+      "preimage": "f2fc47da07dab2b61d9f24d13be46984f199fcf4",
+      "sha": "1badeb7b8933737721e57cea0f44a4f95e41c409"
+    },
+    {
+      "manifest": "application-pins",
+      "path": "carr-library/scripts/ci_capacity_contracts.py",
+      "preimage": "e13fda43d6f00ffc670257f849cc4249209558d7",
+      "sha": "f367299bdfc55c6af6a409c020b437fd1bd1c416"
+    },
+    {
+      "manifest": "application-pins",
+      "path": "carr-library/scripts/ci_book_measured_contracts.py",
+      "preimage": "ca2a659632d93d913d2fe8b5fc6113af98ffa63e",
+      "sha": "42383f649ca2d3d5c682cc036f1b5540c12c28aa"
+    },
+    {
+      "manifest": "application-pins",
+      "path": ".github/workflows/carr-next9-capacity.yml",
+      "preimage": "6dff3f3c5a8fb93868930ad08481906a8355639e",
+      "sha": "b9a05871fa6dc6b9e951799da8201b8660b9410a"
+    },
+    {
+      "manifest": "application-pins",
+      "path": ".github/workflows/carr-next11-capacity-repair.yml",
+      "preimage": "1badeb7b8933737721e57cea0f44a4f95e41c409",
+      "sha": "d5dd53c0874cf4d701bc248cefc26d9ac6e353e8"
+    },
+    {
+      "manifest": "application-pins",
+      "path": ".github/workflows/carr-next12-book.yml",
+      "preimage": "33cc07c7aab7865b756ff69abf38f6078f41fae3",
+      "sha": "ad6d08e68e0bd6df219f80453b2f1ec6e986e70e"
+    },
+    {
+      "manifest": "gates",
+      "path": ".github/workflows/carr-windows.yml",
+      "preimage": "c77d99ead8e771da909985bd500a37749f128477",
+      "sha": "0d7eb204d92c12ff3dd9ee98c3c529580d019e37"
+    },
+    {
+      "manifest": "gates",
+      "path": ".github/workflows/carr-v3.yml",
+      "preimage": "abb023c66f8f04fb7f48356551662dd98faaa4fd",
+      "sha": "ba1e074bef27b7e4d9217521f1d409a95be9e742"
+    },
+    {
+      "manifest": "gates",
+      "path": "carr-library/scripts/check_installed_bundle.py",
+      "preimage": "5d9ff9b20f7710236dc481c87ab790cbf75bb9e0",
+      "sha": "14c04e7a5b4431da9787548f0da705a2bf34666a"
+    },
+    {
+      "manifest": "gates",
+      "path": ".github/workflows/carr-next9-final-source.yml",
+      "preimage": "795d1eda51fc87de9427b88555eaf0690f551c9b",
+      "sha": "8d9e7b1c94907ce298c3931cf584585ca69538e9"
+    }
+  ],
+  "evidence": [
+    {
+      "path": "resonance-status/next19/reviews/paged_candidate_work.json",
+      "sha": "a6c40da056d70ce9e065681fefe2f4072c62795e"
+    },
+    {
+      "path": "resonance-status/next19/reviews/paged_candidate_gate_union.json",
+      "sha": "fa4a26b5714e56a78f65de999ad1c7a4a673672e"
+    },
+    {
+      "path": "resonance-status/next19/reviews/bounded_capacity_diagnostics.json",
+      "sha": "5ea8d3832b85adbedecda0096b3e38d8259fe272"
+    },
+    {
+      "path": "resonance-status/next19/reviews/backup_selector.json",
+      "sha": "34530d63b60273872b54e1f9397ce89157b4390d"
+    },
+    {
+      "path": "resonance-status/next19/reviews/legacy_effects_schema_assertion.json",
+      "sha": "2f4bdc7b870afa9833bf8b22b7481e818892f50c"
+    },
+    {
+      "path": "resonance-status/next19/reviews/composed_application_pins.json",
+      "sha": "fddf3419a0953e3bf89ee1036bf09c838210a8c8"
+    },
+    {
+      "path": "resonance-status/next19/actual/verified_capacity_four_profiles.json",
+      "sha": "a632d4ef5f71b4c8d5364ef8c33e12128cadab6a"
+    },
+    {
+      "path": "resonance-status/next19/actual/verified_capacity_four_profiles_summary.json",
+      "sha": "317971359e6be78a9e885625e2b905c9b9c6334d"
+    },
+    {
+      "path": "resonance-status/next19/actual/completed_and_superseded_6e95.json",
+      "sha": "5f32671325f9bc9eb65ea8ec2734088f5601017d"
+    },
+    {
+      "path": "resonance-status/next19/actual/capacity_115cb_selector_failure.json",
+      "sha": "dc035efcf2deb5b00e2d7b6cd3fc4674baeffa2b"
+    },
+    {
+      "path": "resonance-status/next19/actual/conversion_linux_e763.json",
+      "sha": "f8e4e4714e481c05495a8f30e5ebc61e6e3cbeb1"
+    }
+  ],
+  "purpose": "Run the existing full source preflight for the scoped temporary candidate-work optimization before launching the same declared large-capacity workloads. Keep the current PR full/native/owner runs on e763 undisturbed.",
+  "source_review": {
+    "preimages": "All19 ordered deltas and16 final source paths match exact predecessors.",
+    "literal_and_application": "Progress accepted both fresh-read/current-authority and owned-lifetime seams; root independently reviewed the exact diff.",
+    "new_tests": "Locate accepted all30 actual SQLite/retained-source/Unicode/cancellation/cleanup cases and13 functions; execution remains NOT_RUN.",
+    "full_gates": "Canonical accepted additive30 and all13 names in main/V3/installed.",
+    "source_workflow": "Locate accepted the unchanged original three jobs and additive focused Linux34/450 and Windows33/449 jobs.",
+    "diagnostics": "Locate accepted the exact stage/counter/partial diagnostic delta and literal21 origin inventory without query or PASS-result changes.",
+    "pins": "Locate accepted both final diagnostics/selector composition and final application pin-only refresh. All92 helper pins match this exact tree; no stale changed preimage remains in the composed gates."
+  },
+  "contracts": {
+    "main_fast_source_whole": 141,
+    "main_full_source_whole": 457,
+    "main_additive_installed_suites": 301,
+    "v3_source_whole": 178,
+    "v3_installed_suites": 157,
+    "focused_linux": {
+      "whole": 34,
+      "cases": 450
+    },
+    "focused_windows": {
+      "whole": 33,
+      "cases": 449
+    },
+    "new_paged_candidate_whole": 30,
+    "book": {
+      "source": 106,
+      "installed": 106,
+      "native": 77,
+      "origins": 18
+    },
+    "capacity": {
+      "source": 184,
+      "installed": 184,
+      "benchmark_origins": 21,
+      "native": 44,
+      "native_origins": 12
+    }
+  },
+  "measurement": {
+    "profiles": [
+      [
+        1000,
+        20
+      ],
+      [
+        10000,
+        20
+      ],
+      [
+        50000,
+        20
+      ],
+      [
+        50000,
+        40
+      ]
+    ],
+    "result_page_size": 37,
+    "phase_timeout_seconds": 3600,
+    "public_samples": 12,
+    "complete_backup": true,
+    "optimization_measured": false
+  },
+  "preserved_evidence": {
+    "original_50k20": "All five phases PASS at original C3; full1M traversal3508.494986 seconds,30000 requests,10000 windows, exact no-loss/no-duplicates.",
+    "original_50k40": "Built2M; measure PARTIAL3600.3658 seconds. Later phases NOT_RUN; no substage was retained by the old harness.",
+    "capacity115cb": "BothOS178 source PASS plus six selector failures before driver behavior; installed/native NOT_RUN. Corrected narrow79931 execution remains separate.",
+    "conversion_e763": "Linux209 source plus209 installed actual PASS; native Windows qualification remains separate.",
+    "owner": "6e95 full bundle was superseded before owner steps, so OWNER_NOT_REACHED. This does not establish an assembly failure or candidate success."
+  },
+  "runtime": "No source, installed, native, benchmark, performance or release PASS is transferred to this composition. Run the unchanged required source gates, then the same measured profiles only after exact preflight passes.",
+  "authority": "No canonical merge, release, other contributor ref, automation, or public binary distribution. The existing full PR stays e763 until a deliberate later update."
+}
