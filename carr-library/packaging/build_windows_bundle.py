@@ -253,9 +253,9 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
         source_root = str(HERE.parent / "src")
         if source_root not in sys.path:
             sys.path.insert(0, source_root)
-        from carr_library.audio.runtime import verify_runtime as verify_audio_runtime, ARCHIVE_MEMBERS
+        from carr_library.audio.runtime import verify_runtime as verify_audio_runtime, runtime_inventory
         audio_dir = Path(audio_dir)
-        verify_audio_runtime(audio_dir)
+        audio_files = runtime_inventory(audio_dir)
     if (launcher is None) != (launcher_evidence is None):
         raise ValueError("supply both native launcher and its build evidence")
     if launcher is not None:
@@ -346,8 +346,12 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
         if audio_dir is not None:
             destination = staged / "audio-runtime"
             destination.mkdir()
-            for name in (*ARCHIVE_MEMBERS, "ffmpeg-runtime.json"):
-                shutil.copyfile(regular(audio_dir / name), destination / name)
+            for name, expected in audio_files.items():
+                target = destination / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(regular(audio_dir / name), target)
+                if sha256(target) != expected:
+                    raise ValueError("Audio runtime integrity changed during bundle assembly")
             verify_audio_runtime(destination)
         for name in ("install_windows.py", "Install.cmd", "ResearchLibrary.cmd", "CheckInstallation.cmd"):
             shutil.copyfile(regular(HERE / name), staged / name)

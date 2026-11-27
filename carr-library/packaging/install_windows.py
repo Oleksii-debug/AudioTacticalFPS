@@ -98,10 +98,42 @@ def verify(root, *, manifest_bytes=None):
     if type(included_audio) is not bool:
         raise ValueError("invalid audio runtime installation flag")
     if included_audio:
-        required_audio = {"audio-runtime/" + name for name in (
-            "ffmpeg.exe", "FFmpeg-LICENSE.txt", "FFmpeg-README.txt", "ffmpeg-runtime.json")}
-        if expected_audio != required_audio or {"audio-runtime/" + p.name for p in audio.iterdir()} != required_audio:
-            raise ValueError("unexpected or missing audio runtime file")
+        shared = any(os.path.lexists(audio / name) for name in
+                     ("audio-manifest.json", "bin", "provenance/source-lock.json"))
+        if shared:
+            # Bootstrap uses only stdlib before the reviewed wheel is installed.
+            # The installed audio_runtime verifier separately binds the exact
+            # source lock, every native byte and rights-review profile.
+            visited_audio = 0
+            for directory, dirs, _names in os.walk(audio, followlinks=False):
+                visited_audio += len(dirs) + len(_names)
+                if visited_audio > 4096:
+                    raise ValueError("audio runtime inventory exceeds its bounded size")
+                for name in dirs:
+                    info = (Path(directory) / name).lstat()
+                    if (not stat.S_ISDIR(info.st_mode)
+                            or getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
+                        raise ValueError("linked audio runtime directories are not supported")
+            actual_audio = {p.relative_to(root).as_posix() for p in audio.rglob("*") if p.is_file()}
+            required_audio = {"audio-runtime/" + name for name in (
+                "audio-manifest.json", "provenance/source-lock.json",
+                "bin/ffmpeg.exe", "bin/ffprobe.exe", "bin/ffplay.exe")}
+            if not required_audio.issubset(actual_audio) or actual_audio != expected_audio:
+                raise ValueError("unexpected or missing shared audio runtime file")
+            if not 0 < (audio / "audio-manifest.json").stat().st_size <= 8 * 1024 * 1024:
+                raise ValueError("audio runtime manifest exceeds its bounded size")
+            inner = json.loads((audio / "audio-manifest.json").read_text(encoding="utf-8"))
+            if (type(inner) is not dict or type(inner.get("schema")) is not int
+                    or inner["schema"] != 1 or type(inner.get("files")) is not dict
+                    or {"audio-runtime/" + name: digest for name, digest in inner["files"].items()}
+                    != {name: files[name] for name in expected_audio
+                        if name != "audio-runtime/audio-manifest.json"}):
+                raise ValueError("shared audio runtime manifest differs from the installation inventory")
+        else:
+            required_audio = {"audio-runtime/" + name for name in (
+                "ffmpeg.exe", "FFmpeg-LICENSE.txt", "FFmpeg-README.txt", "ffmpeg-runtime.json")}
+            if expected_audio != required_audio or {"audio-runtime/" + p.name for p in audio.iterdir()} != required_audio:
+                raise ValueError("unexpected or missing audio runtime file")
     elif os.path.lexists(audio) or expected_audio:
         raise ValueError("unannounced audio runtime files")
     included_launcher = manifest.get("bundled_native_launcher", False)

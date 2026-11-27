@@ -84,9 +84,30 @@ def _unique(pairs):
     return value
 
 
+def _shared_layout(root: Path) -> bool:
+    """Select the reviewed shared layout by its markers, never by user flags."""
+    return any(os.path.lexists(root / name) for name in
+               ("audio-manifest.json", "bin", "provenance/source-lock.json"))
+
+
+def runtime_inventory(directory: str | os.PathLike) -> dict[str, str]:
+    """Return a verified copy inventory for either supported installation layout."""
+    root = trusted_directory(Path(directory))
+    if _shared_layout(root):
+        from ..audio_runtime import MANIFEST, _inspect_audio_runtime
+        report, files = _inspect_audio_runtime(root)
+        return dict(files, **{MANIFEST: report["manifest_sha256"]})
+    verify_runtime(root)
+    return {name: file_sha256(root / name)
+            for name in (*ARCHIVE_MEMBERS, "ffmpeg-runtime.json")}
+
+
 def verify_runtime(directory: str | os.PathLike) -> dict:
     """Verify the manifest and exact reviewed bytes before executing a bundle."""
     root = trusted_directory(Path(directory))
+    if _shared_layout(root):
+        from ..audio_runtime import verify_audio_runtime
+        return verify_audio_runtime(root)
     manifest_path = root / "ffmpeg-runtime.json"
     regular_file(manifest_path)
     if manifest_path.stat().st_size > 1024 * 1024:
@@ -113,6 +134,10 @@ def verify_bundle_audio(bundle_root: str | os.PathLike) -> Path | None:
     """Bind the optional runtime to its enclosing sealed installation inventory."""
     bundle = trusted_directory(Path(bundle_root))
     root = bundle / "audio-runtime"
+    if _shared_layout(root):
+        from ..audio_runtime import bundled_audio_tools
+        tools = bundled_audio_tools(bundle)
+        return Path(tools["ffmpeg"]) if tools is not None else None
     manifest_path = bundle / "bundle-manifest.json"
     if not os.path.lexists(manifest_path):
         if os.path.lexists(root):
