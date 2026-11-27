@@ -53,6 +53,9 @@ def bundle(tmp_path, monkeypatch):
             z.writestr('upstream/' + name, raw)
     lock = {'schema': 1, 'package_id': runtime.PACKAGE_ID, 'target': 'Windows x64',
             'version': 'synthetic-only', 'executables': runtime.TOOLS,
+            'use_scope': 'private-owner-local-installation',
+            'review': {'public_distribution_clearance': False,
+                       'third_party_complete_source_bundle': False},
             'archive': {'root': 'upstream', 'size': archive.stat().st_size,
                         'sha256': digest(archive.read_bytes())},
             'archive_files': {name: {'size': len(raw), 'sha256': digest(raw)} for name, raw in payload.items()},
@@ -80,6 +83,9 @@ def test_prepared_complete_payload_has_exact_tools_and_unchanged_notice(bundle):
     assert runtime.bundled_audio_tools(root) == report['tools']
     assert (output / 'README.txt').read_bytes() == b'Untouched synthetic notice.\n'
     assert report['native_execution'] == 'NOT_RUN'
+    assert report['use_scope'] == 'private-owner-local-installation'
+    assert report['public_distribution_clearance'] is False
+    assert report['third_party_complete_source_bundle'] is False
     assert set(report['tools']) == {'ffmpeg', 'ffprobe', 'ffplay'}
 
 
@@ -299,3 +305,30 @@ def test_untrusted_lock_is_hash_rejected_before_json_is_parsed(bundle):
     lock_path.write_bytes(b'this is not JSON')
     with pytest.raises(ValueError, match='reviewed package'):
         runtime._source_lock(lock_path)
+
+
+@pytest.mark.parametrize('change', ['missing_review', 'missing_flag', 'true', 'numeric', 'string', 'public_scope'])
+def test_even_rehashed_lock_cannot_promote_unreviewed_distribution_profile(bundle, monkeypatch, change):
+    _, output, *_ = bundle
+    lock_path = output / 'provenance/source-lock.json'
+    lock = json.loads(lock_path.read_text(encoding='utf-8'))
+    if change == 'missing_review':
+        del lock['review']
+    elif change == 'missing_flag':
+        del lock['review']['third_party_complete_source_bundle']
+    elif change == 'public_scope':
+        lock['use_scope'] = 'public'
+    else:
+        lock['review']['public_distribution_clearance'] = {'true': True, 'numeric': 0, 'string': 'false'}[change]
+    raw = encode(lock)
+    lock_path.write_bytes(raw)
+    monkeypatch.setattr(runtime, 'SOURCE_LOCK_SHA256', digest(raw))
+    with pytest.raises(ValueError, match='distribution review'):
+        runtime._source_lock(lock_path)
+
+
+def test_committed_audio_lock_remains_explicitly_uncleared():
+    lock, _ = runtime._source_lock(PREPARE.parent / 'audio-runtime/source-lock.json')
+    assert lock['review']['public_distribution_clearance'] is False
+    assert lock['review']['third_party_complete_source_bundle'] is False
+    assert lock['use_scope'] == 'private-owner-local-installation'

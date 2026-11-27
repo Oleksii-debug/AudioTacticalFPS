@@ -67,6 +67,9 @@ def inputs(tmp_path, monkeypatch):
     payload['LICENSE.txt'] = b'Synthetic-only license fixture.\n'
     lock = {'schema': 1, 'package_id': runtime.PACKAGE_ID, 'target': 'Windows x64',
             'version': 'synthetic-test-only', 'executables': runtime.TOOLS,
+            'use_scope': 'private-owner-local-installation',
+            'review': {'public_distribution_clearance': False,
+                       'third_party_complete_source_bundle': False},
             'archive_files': {name: {'size': len(raw), 'sha256': digest(raw)} for name, raw in payload.items()},
             'extra_files': {}}
     raw = encode(lock)
@@ -100,6 +103,9 @@ def test_attach_preserves_exact_source_and_every_sealed_byte_without_collecting_
         assert (output / name).read_bytes() == (bundle / name).read_bytes()
     assert runtime.bundled_audio_tools(output) == report['audio_runtime']['tools']
     assert report['native_windows_execution'] == report['audio_runtime']['native_execution'] == 'NOT_RUN'
+    assert report['audio_runtime']['use_scope'] == 'private-owner-local-installation'
+    assert report['audio_runtime']['public_distribution_clearance'] is False
+    assert report['audio_runtime']['third_party_complete_source_bundle'] is False
     helper._installer().verify(output)
 
 
