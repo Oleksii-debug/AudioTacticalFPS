@@ -79,6 +79,7 @@ jobs:
           import carr_library.speech.runtime, carr_library.acquisition.providers
           import carr_library.speech.session
           import carr_library.extract.ocr_runtime
+          import carr_library.transcription.runtime
           import carr_library.storage.revisions, carr_library.storage.schema_identity
           import pytest
           checkout = pathlib.Path.cwd().resolve()
@@ -87,7 +88,7 @@ jobs:
                    'carr_library.speech.reading', 'carr_library.speech.source', 'carr_library.ui.speech_dialog',
                    'carr_library.speech.runtime', 'carr_library.acquisition.providers',
                    'carr_library.speech.session',
-                   'carr_library.extract.ocr_runtime',
+                   'carr_library.extract.ocr_runtime', 'carr_library.transcription.runtime',
                    'carr_library.storage.revisions', 'carr_library.storage.schema_identity')
           def installed_origins():
               origins = {name: str(pathlib.Path(sys.modules[name].__file__).resolve()) for name in names}
@@ -103,6 +104,15 @@ jobs:
           report = pathlib.Path('ci-v3-results/installed-recovery.xml')
           suites = ['tests/storage/test_v3_state_backup.py',
                     'tests/storage/test_asr_additional_profile.py',
+                    'tests/transcription/test_runtime_inventory.py::test_missing_recorded_payload_rejected',
+                    'tests/transcription/test_runtime_inventory.py::test_record_mutated_after_parse_rejected',
+                    'tests/transcription/test_runtime_inventory.py::test_missing_generated_bytecode_is_explicitly_excluded',
+                    'tests/transcription/test_runtime_inventory.py::test_real_isolated_python_reads_existing_modified_bytecode',
+                    'tests/transcription/test_runtime_inventory.py::test_reviewed_runtime_fingerprint_changes_for_unrecorded_bytecode',
+                    'tests/transcription/test_runtime_inventory.py::test_metadata_mutated_after_parse_rejected',
+                    'tests/transcription/test_runtime_inventory.py::test_real_sourceless_recorded_import_identity',
+                    'tests/transcription/test_runtime_inventory.py::test_explicit_nonbytecode_cache_payload_is_bound',
+                    'tests/transcription/test_runtime_inventory.py::test_absent_explicit_nonbytecode_cache_record_rejected',
                     'tests/storage/test_transcription_backup.py::test_combined_asr_and_production_backup_preserves_operation_and_export',
                     'tests/storage/test_state_backup_portability.py::test_portable_manifest_rejects_collisions',
                     'tests/storage/test_state_backup_portability.py::test_portable_manifest_allows_distinct_siblings',
@@ -134,11 +144,17 @@ jobs:
           required_ocr = {'test_unreadable_directory_rejects_entire_inventory', 'test_empty_directory_inventory_has_a_bound', 'test_directory_inventory_checks_budget_between_entries'}
           ocr_cases = [c.get('name') for c in cases if c.get('classname', '').rsplit('.', 1)[-1] == 'test_ocr_runtime']
           ocr_exact = len(ocr_cases) == len(required_ocr) and set(ocr_cases) == required_ocr
-          ok = status == 0 and passed > 0 and failed == skipped == 0 and not policy.seen and portable_complete and ocr_exact
+          asr_required = {"test_missing_recorded_payload_rejected":2,"test_record_mutated_after_parse_rejected":1,"test_missing_generated_bytecode_is_explicitly_excluded":1,"test_real_isolated_python_reads_existing_modified_bytecode":1,"test_reviewed_runtime_fingerprint_changes_for_unrecorded_bytecode":1,"test_metadata_mutated_after_parse_rejected":3,"test_real_sourceless_recorded_import_identity":2,"test_explicit_nonbytecode_cache_payload_is_bound":3,"test_absent_explicit_nonbytecode_cache_record_rejected":3}
+          asr_cases = [c.get('name', '') for c in cases if c.get('classname', '').rsplit('.', 1)[-1] == 'test_runtime_inventory']
+          asr_counts = {name: sum(case.split('[', 1)[0] == name for case in asr_cases) for name in asr_required}
+          asr_exact = asr_counts == asr_required and len(asr_cases) == sum(asr_required.values()) and len(set(asr_cases)) == len(asr_cases)
+          ok = status == 0 and passed > 0 and failed == skipped == 0 and not policy.seen and portable_complete and ocr_exact and asr_exact
           result = dict(status='PASS' if ok else 'FAIL', passed=passed, failed=failed,
                         skipped=skipped, pytest_exit=int(status), expected_failures=policy.seen,
                         origins=installed_origins(), ocr_inventory_cases=sorted(ocr_cases),
-                        ocr_inventory_exact=ocr_exact, manual_nvda='NOT_RUN')
+                        ocr_inventory_exact=ocr_exact, asr_inventory_exact=asr_exact,
+                        asr_inventory_cases=sorted(asr_cases), asr_inventory_counts=asr_counts,
+                        manual_nvda='NOT_RUN')
           pathlib.Path('ci-v3-results/installed-recovery.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
           print(json.dumps(result), flush=True)
           raise SystemExit(0 if ok else 1)
