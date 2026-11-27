@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "kind": "observed-chm-worker-fixture-repair",
+  "failed_commit": "d21997ca4e9bbefdc97016b26ccc9f9a96e3b4a2",
+  "run_id": 46041755431,
+  "job_id": 140650935641,
+  "platform": "Ubuntu 24.04 / CPython 3.11.18",
+  "observed": {
+    "source_cases": 134,
+    "passed": 133,
+    "failed": 1,
+    "installed": "NOT_RUN by this Linux job",
+    "native_chm": "NOT_RUN by this Linux job"
+  },
+  "artifact": {
+    "id": 15221169644,
+    "bytes": 872583,
+    "sha256": "eda1b72db67d8e977ff2e1152ea44756b2fd5ad536045e76e88814351930576b",
+    "independent_zip_read": "NOT_RUN"
+  },
+  "exact_failure": [
+    "2026-11-27T17:54:18.6703587Z E       KeyError: 'text_sha256'",
+    "2026-11-27T17:54:18.6703872Z tests/conversion/test_chm_html_recovery.py:180: KeyError",
+    "2026-11-27T17:54:18.6714748Z FAILED tests/conversion/test_chm_html_recovery.py::test_existing_conversion_worker_keeps_raw_and_recovered_member_identities - KeyError: 'text_sha256'",
+    "2026-11-27T17:54:18.6715285Z ======================== 1 failed, 133 passed in 3.26s ========================="
+  ],
+  "diagnosis": "The test called conversion.worker.convert_request directly, but expected three fields that only the parent ConversionService provenance report adds. The worker's actual existing details schema has source size/hash, engine, separator, segments and warnings; its return carries complete/text_bytes/records.",
+  "repair": [
+    "Keep the same 34 recovery tests and all 221 portable legacy cases.",
+    "Assert the actual closed worker reply/details schema, exact reading order/byte count, unchanged snapshotted original, per-segment text hashes, unverified logical/printed positions, and distinct raw/recovered member SHA256.",
+    "Do not alter worker/product schemas or any recovery acceptance boundary."
+  ],
+  "repaired_execution": {
+    "source": "NOT_RUN",
+    "installed": "NOT_RUN",
+    "native": "NOT_RUN"
+  }
+}
