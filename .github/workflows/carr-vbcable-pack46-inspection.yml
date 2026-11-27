@@ -1,0 +1,173 @@
+name: CARR VB-CABLE Pack46 inspection only
+
+# A separate disposable diagnostic branch. This is not an application gate.
+on:
+  push:
+    branches: ['carr/ci-audio-endpoint-inspection-*']
+    paths:
+      - diagnostics/ci_audio/**
+      - .github/workflows/carr-vbcable-pack46-inspection.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vbcable-pack46-inspection-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  inspect:
+    name: Inspect vendor bytes and signatures; never install
+    if: startsWith(github.ref, 'refs/heads/carr/ci-audio-endpoint-inspection-')
+    runs-on: windows-2022
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /diagnostics/ci_audio/
+            /.github/workflows/carr-vbcable-pack46-inspection.yml
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.11'
+
+      - name: Validate only the exact diagnostic source
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ((git rev-parse HEAD).Trim() -ne $env:GITHUB_SHA) {
+            throw 'Diagnostic checkout does not match the event.'
+          }
+          python -I -B -c "from pathlib import Path; p=Path('diagnostics/ci_audio/inspect_vbcable_pack46.py'); compile(p.read_bytes(),str(p),'exec',dont_inherit=True)"
+          if ($LASTEXITCODE -ne 0) { throw 'Diagnostic Python syntax failed.' }
+          $tokens = $null
+          $parseErrors = $null
+          $helper = (Resolve-Path 'diagnostics/ci_audio/inspect_windows_signatures.ps1').Path
+          [void][System.Management.Automation.Language.Parser]::ParseFile($helper, [ref]$tokens, [ref]$parseErrors)
+          if (@($parseErrors).Count -ne 0) {
+            $parseErrors | ForEach-Object { Write-Output $_.Message }
+            throw 'Read-only metadata helper syntax failed.'
+          }
+
+      - name: Download exact vendor Pack46 and inspect without vendor execution
+        id: inspection
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $suffix = "$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          $report = Join-Path $env:RUNNER_TEMP "vbcable-pack46-reports-$suffix"
+          $work = Join-Path $env:RUNNER_TEMP "vbcable-pack46-work-$suffix"
+          python -I -B diagnostics/ci_audio/inspect_vbcable_pack46.py --report-dir $report --work-dir $work
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Inspection incomplete; retain the bounded diagnostic report.'
+          }
+
+      - name: Remove only this run's owned disposable package directory
+        if: always()
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $suffix = "$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          $work = Join-Path $env:RUNNER_TEMP "vbcable-pack46-work-$suffix"
+          if (Test-Path -LiteralPath $work) {
+            $item = Get-Item -LiteralPath $work -Force
+            if (-not $item.PSIsContainer -or
+                ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+              throw 'Unexpected disposable work path; no deletion attempted.'
+            }
+            $ownerPath = Join-Path $work '.inspection-owner.json'
+            $ownerItem = Get-Item -LiteralPath $ownerPath -Force
+            if ($ownerItem.PSIsContainer -or $ownerItem.Length -gt 4096 -or
+                ($ownerItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+              throw 'Invalid work ownership record; no deletion attempted.'
+            }
+            $owner = Get-Content -LiteralPath $ownerPath -Raw -Encoding utf8 | ConvertFrom-Json
+            if ($owner.schema -ne 'resonance-vbcable-inspection-owner/1' -or
+                $owner.run_id -ne $env:GITHUB_RUN_ID -or
+                $owner.run_attempt -ne $env:GITHUB_RUN_ATTEMPT -or
+                $owner.source_commit -ne $env:GITHUB_SHA) {
+              throw 'Work ownership differs; no deletion attempted.'
+            }
+            Remove-Item -LiteralPath $work -Recurse -Force
+          }
+
+      - name: Admit only bounded JSON and text diagnostics for retention
+        id: text_artifacts
+        if: always()
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $suffix = "$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          $report = Join-Path $env:RUNNER_TEMP "vbcable-pack46-reports-$suffix"
+          $root = Get-Item -LiteralPath $report -Force
+          if (-not $root.PSIsContainer -or
+              ($root.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+            throw 'Invalid report directory.'
+          }
+          $files = @(Get-ChildItem -LiteralPath $report -Force)
+          $expected = @('inspection.json', 'SUMMARY.txt')
+          if ($files.Count -ne 2) { throw 'Unexpected artifact member count.' }
+          $total = 0L
+          $strictUtf8 = [Text.UTF8Encoding]::new($false, $true)
+          foreach ($file in $files) {
+            if ($file.PSIsContainer -or $file.Name -cnotin $expected -or
+                ($file.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+              throw 'A non-text/unexpected artifact member was refused.'
+            }
+            $total += $file.Length
+            if ($total -gt 34MB) { throw 'Diagnostic artifact bound exceeded.' }
+            [void]$strictUtf8.GetString([IO.File]::ReadAllBytes($file.FullName))
+            Write-Output "$($file.Name) SHA256=$((Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash)"
+          }
+          $record = Get-Content -LiteralPath (Join-Path $report 'inspection.json') -Raw -Encoding utf8 | ConvertFrom-Json
+          if ($record.schema -ne 'resonance-vbcable-pack46-inspection/1' -or
+              $record.source_commit -ne $env:GITHUB_SHA) {
+            throw 'Diagnostic report binding differs.'
+          }
+          if ($record.qualification.vendor_executable_or_driver_execution -ne 'NOT_RUN' -or
+              $record.qualification.installation_approval -ne 'NOT_APPROVED') {
+            throw 'This workflow cannot produce installation or audio approval.'
+          }
+          Get-Content -LiteralPath (Join-Path $report 'SUMMARY.txt') -Raw -Encoding utf8 |
+            Out-File -LiteralPath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+
+      - name: Expose bounded text findings for read-only review
+        if: always() && steps.text_artifacts.outcome == 'success'
+        run: |
+          $findings = @'
+          import json, os
+          from pathlib import Path
+          report = Path(os.environ['RUNNER_TEMP']) / ('vbcable-pack46-reports-' + os.environ['GITHUB_RUN_ID'] + '-' + os.environ['GITHUB_RUN_ATTEMPT']) / 'inspection.json'
+          if report.stat().st_size > 32 * 1024 * 1024:
+              raise ValueError('Bounded diagnostic report exceeded its admitted size.')
+          record = json.loads(report.read_text(encoding='utf-8'))
+          keys = ('schema', 'source_commit', 'inspection_status', 'archive', 'members', 'inf', 'package_documents', 'official_documents', 'windows', 'signtool_os_target', 'verification_summary', 'reviewed_vendor_contract', 'qualification', 'temporary_payload_cleanup', 'error', 'cleanup_error_type')
+          view = {key: record[key] for key in keys if key in record}
+          view['verification'] = [{**{key: value for key, value in row.items() if key not in ('stdout', 'stderr')}, 'stdout_tail': row.get('stdout', '')[-2048:], 'stderr_tail': row.get('stderr', '')[-2048:]} for row in record.get('verification', [])]
+          view['console_notes'] = 'Signature output tails limited to2048 characters each; the two retained text files remain the complete diagnostic evidence.'
+          output = json.dumps(view, ensure_ascii=True, sort_keys=True, indent=2)
+          if len(output.encode('utf-8')) > 512 * 1024:
+              raise ValueError('Console findings exceeded the separate512KiB limit; use the retained text report.')
+          print(output, flush=True)
+          '@
+          $findings | python -I -B -
+          if ($LASTEXITCODE -ne 0) { throw 'Bounded console review could not be completed.' }
+
+      - name: Retain inspection findings only; never vendor package binaries
+        if: always() && steps.text_artifacts.outcome == 'success'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: vbcable-pack46-inspection-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/vbcable-pack46-reports-${{ github.run_id }}-${{ github.run_attempt }}/inspection.json
+            ${{ runner.temp }}/vbcable-pack46-reports-${{ github.run_id }}-${{ github.run_attempt }}/SUMMARY.txt
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6

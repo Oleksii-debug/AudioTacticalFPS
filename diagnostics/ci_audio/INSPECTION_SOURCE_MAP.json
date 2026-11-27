@@ -1,0 +1,106 @@
+{
+  "schema": "resonance-vbcable-pack46-inspection-handoff/1",
+  "status": "DRAFT_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "application_reference_for_runner_and_action_versions": "ed74d168c81a21e68bbe1673a729181dfef96ee4",
+  "purpose": "Dedicated inspection-only Windows CI; no application source, assertion, gate, dependency or ref changes.",
+  "precursor_plan_blob": "b26b714f3d0023982a60ff14e973a896200f9713",
+  "files": [
+    {
+      "path": "diagnostics/ci_audio/inspect_vbcable_pack46.py",
+      "before": null,
+      "sha": "0c406eb8fcb3797c28be4ffec32342483b7b12ec"
+    },
+    {
+      "path": "diagnostics/ci_audio/inspect_windows_signatures.ps1",
+      "before": null,
+      "sha": "7e0d4ee3a84643ec910a19fff6528bcbdbb5869b"
+    },
+    {
+      "path": ".github/workflows/carr-vbcable-pack46-inspection.yml",
+      "before": null,
+      "sha": "a36b456dcb5ea500249b17d1ff21093c0e8ff830",
+      "lineage": [
+        "7fc1e03f800391ddad5a916d2708de09113b3beb"
+      ]
+    },
+    {
+      "path": "diagnostics/ci_audio/VBCABLE_PACK46_INSPECTION.md",
+      "before": null,
+      "sha": "2688e8d75fa5dcadcfd5511bce65971508b6a6ed"
+    }
+  ],
+  "acquisition": {
+    "url": "https://download.vb-audio.com/Download_CABLE/VBCABLE_Driver_Pack46.zip",
+    "source": "https://vb-audio.com/Cable/index.htm",
+    "reviewed_date": "2026-11-27",
+    "sha256": null,
+    "size": null,
+    "reason": "First authorized inspection must measure actual vendor bytes; no mirror hash or fabricated pin."
+  },
+  "workflow": {
+    "runner": "windows-2022",
+    "push_branch_pattern": "carr/ci-audio-endpoint-inspection-*",
+    "manual_dispatch": "same diagnostic branch prefix only",
+    "job_timeout_minutes": 20,
+    "inspection_deadline_seconds": 600,
+    "permissions": {
+      "contents": "read"
+    },
+    "retention_days": 7,
+    "console_review": "Only admitted JSON fields, with signature stdout/stderr tails2048characters each and separate512KiB console cap. Source diagnostics remain two bounded text artifacts. No execution or trust changes."
+  },
+  "scope": {
+    "vendor_execution": "NOT_RUN_AND_NOT_IMPLEMENTED",
+    "driver_installation_or_loading": "NOT_RUN_AND_NOT_IMPLEMENTED",
+    "service_or_certificate_or_code_integrity_changes": "NOT_IMPLEMENTED",
+    "binary_artifact_upload": "FORBIDDEN_BY_EXACT_TEXT_ALLOWLIST",
+    "app_source_imports_or_tests": "NONE",
+    "subprocesses": "Only own read-only PowerShell helper and already installed valid Microsoft Corporation-signed SDK SignTool verify.",
+    "signature_methods": [
+      "Get-AuthenticodeSignature for EXE/CAT/INF/SYS",
+      "setup embedded verify /pa /all /v /o actual-Server",
+      "CAT/SYS embedded verify /kp /all /v /o actual-Server",
+      "every CAT against every INF/SYS verify /kp /v /o actual-Server /c exact-catalog"
+    ],
+    "qualification": "Completed inspection is findings requiring review; never installation approval, HLK/product-support proof, endpoint/MCI or application PASS."
+  },
+  "retained_artifacts": [
+    "inspection.json",
+    "SUMMARY.txt"
+  ],
+  "bounds": {
+    "archive_bytes": 16777216,
+    "members": 256,
+    "member_bytes": 33554432,
+    "expanded_bytes": 67108864,
+    "signature_files": 64,
+    "verifications": 128,
+    "member_text_bytes": 1048576,
+    "report_bytes": 33554432,
+    "path_depth": 16,
+    "namespace_entries": 1024
+  },
+  "verification": {
+    "readback": "All four cloud blobs byte-exact",
+    "python_parse": "NOT_RUN",
+    "powershell_parse": "NOT_RUN",
+    "workflow_execution": "NOT_RUN",
+    "archive_download": "NOT_RUN",
+    "signatures": "NOT_RUN",
+    "independent_static_review": "STATIC_ACCEPTED by progress_completion for exact Python0c406eb8, PS7e0d4ee3, workflow7fc1e03f: fixed read-only process set, acquisition, Server/catalog verification, ownership cleanup and exact text artifact allowlist reviewed; no concrete blocker. Actual parse/execution still NOT_RUN.",
+    "root_review": "Read acquisition/extraction, fixed subprocess set, signature metadata/matrix, cleanup and allowlisted artifacts. Added a read-only bounded console view because local artifact extraction is currently unavailable."
+  },
+  "source_references": [
+    "https://vb-audio.com/Cable/index.htm",
+    "https://vb-audio.com/Services/licensing.htm",
+    "https://shop.vb-audio.com/en/content/3-Terms-of-use",
+    "https://vb-audio.com/Cable/VBCABLE_ReferenceManual.pdf",
+    "https://learn.microsoft.com/en-us/windows/win32/seccrypto/signtool",
+    "https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/signtool",
+    "https://learn.microsoft.com/en-us/windows-hardware/drivers/dashboard/driver-signing-offerings",
+    "https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.security/get-authenticodesignature"
+  ],
+  "followup": "Root reviews/publishes a separate diagnostic branch. After actual evidence, separately assess legitimate licensing, Server/HLK support, vendor installation switches and reboot. No install phase is implemented.",
+  "supersedes_manifest": "500bbd0428a057a98fe22db7e09c3e652db6affe"
+}
