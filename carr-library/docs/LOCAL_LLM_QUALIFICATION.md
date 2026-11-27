@@ -20,11 +20,17 @@ planner, engine, gateway, downloader, or automatic execution path.
   Acquisition has explicit byte/time limits and no automatic retries.
 
 The selected runtime uses two CPU threads, one slot, a 2,048-token context and a
-256-token prediction cap. Thinking is disabled using the model's template
-parameter. A generic JSON-object grammar constrains syntax; it does not choose
-tools, arguments, permissions or expected answers. The service binds only to
-loopback and uses the runtime's offline option. This does not establish an
-operating-system network sandbox.
+256-token prediction cap. Thinking is disabled with the pinned runtime's
+`--reasoning off` option. No generation grammar supplies expected answers or
+forces plan syntax; the unchanged product JSON, argument and scope validators
+decide acceptance. The service binds only to loopback and uses the runtime's
+offline option. This does not establish an operating-system network sandbox.
+
+An initial actual run loaded the model but failed before generation: this
+runtime's global `--json-schema` grammar rejected the Qwen chat generation
+prefix. The probe therefore omits that optional grammar. The exact native
+failure remains in the isolated workflow history; proposal acceptance,
+permission refusals, cancellation and no-send assertions are unchanged.
 
 ## Acceptance
 

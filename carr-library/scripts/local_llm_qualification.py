@@ -153,7 +153,7 @@ def main():
                         'No native Windows or installed-package qualification', 'No OS network-denial test'],
         'runtime_options': {'cpu_threads': 2, 'context_tokens': 2048, 'prediction_tokens': 256,
                             'slots': 1, 'offline_option': True, 'thinking': False,
-                            'grammar': 'JSON-object syntax only; tools and values are not forced',
+                            'grammar': 'none; the unchanged product JSON and permission validators decide acceptance',
                             'wall_watchdog_seconds': 240, 'address_space_limit_bytes': 3 * 1024**3},
     }
     native = None
@@ -191,8 +191,7 @@ def main():
             '--ctx-size', '2048', '--parallel', '1', '--n-predict', '256',
             '--batch-size', '256', '--ubatch-size', '128', '--threads-http', '2',
             '--no-webui', '--no-ui-mcp-proxy', '--no-context-shift',
-            '--chat-template-kwargs', '{"enable_thinking":false}',
-            '--json-schema', '{"type":"object"}', '--temp', '0.7', '--top-p', '0.8',
+            '--reasoning', 'off', '--temp', '0.7', '--top-p', '0.8',
             '--top-k', '20', '--min-p', '0', '--presence-penalty', '1.5', '--seed', '1701']
         report['actual_command'] = command
         sys.path[:0] = [str(PRODUCT / 'src'), str(PRODUCT)]
