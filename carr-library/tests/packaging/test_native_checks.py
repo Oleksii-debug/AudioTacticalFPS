@@ -111,6 +111,43 @@ def test_native_runtime_flag_is_delegated_to_canonical_loader(tmp_path, monkeypa
     assert events[1] == ('activate_bundled_runtime', str(tmp_path))
 
 
+@pytest.mark.parametrize('flag', ['bundled_audio', 'bundled_encryption', 'bundled_launcher'])
+def test_complete_profile_flags_are_typed_without_initializing_absent_components(tmp_path, monkeypatch, flag):
+    manifest = bundle(tmp_path)
+    manifest[flag] = False
+    path = tmp_path / 'bundle-manifest.json'
+    path.write_text(json.dumps(manifest), encoding='utf-8')
+    events = []
+    controlled_imports(monkeypatch, events)
+    assert native_checks.check_native_dependencies(tmp_path)['status'] == 'PASS'
+    assert not any('cryptography' in str(event) or 'audio.runtime' in str(event) for event in events)
+    manifest[flag] = 'false'
+    path.write_text(json.dumps(manifest), encoding='utf-8')
+    events.clear()
+    assert native_checks.check_native_dependencies(tmp_path)['status'] == 'FAIL'
+    assert not events
+
+
+def test_declared_audio_requires_verified_handle_before_any_executable(tmp_path, monkeypatch):
+    manifest = bundle(tmp_path)
+    manifest['bundled_audio'] = True
+    (tmp_path / 'bundle-manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+    events = []
+    controlled_imports(monkeypatch, events)
+    previous = native_checks.import_module
+
+    def load(name):
+        if name == 'carr_library.audio.runtime':
+            return SimpleNamespace(activate_bundled_audio_runtime=lambda **kwargs: None)
+        return previous(name)
+
+    monkeypatch.setattr(native_checks, 'import_module', load)
+    report = native_checks.check_native_dependencies(tmp_path)
+    assert report['status'] == report['audio']['status'] == 'FAIL'
+    assert report['failed_component'] == 'bundled audio runtime'
+    assert 'subprocess' not in events
+
+
 def test_optional_semantic_uses_shared_policy_before_tokenizers(tmp_path, monkeypatch):
     bundle(tmp_path, model=True)
     events = []

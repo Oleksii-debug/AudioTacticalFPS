@@ -13,7 +13,7 @@ import time
 
 from .pinned_tessdata import MODELS, POLICY, stage_pinned_models
 from .ocr_runtime import OcrRuntimeError, discover_ocr_runtime
-from .ocr_languages import model_ids
+from .ocr_languages import model_ids, split_languages
 
 
 _MAX_OCR_OUTPUT_BYTES = 16 * 1024 * 1024
@@ -88,6 +88,7 @@ class Config:
         if self.model_policy == POLICY:
             if len(set(selected)) != len(selected) or any(lang not in MODELS for lang in selected):
                 raise ValueError('unsupported pinned OCR language')
+        split_languages(self.languages)
         if not 72 <= self.dpi <= 400 or not 1 <= self.timeout <= 120 or not 1 <= self.max_pixels <= 20_000_000:
             raise ValueError('invalid resource limit')
 

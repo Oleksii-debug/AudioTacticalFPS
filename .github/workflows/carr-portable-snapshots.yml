@@ -1,0 +1,108 @@
+name: CARR Windows portable snapshots
+
+on:
+  pull_request:
+    branches: [carr-library]
+    paths:
+      - carr-library/**
+      - .github/workflows/carr-portable-snapshots.yml
+  push:
+    branches: [carr/v3-product-finish-20261126]
+    paths:
+      - carr-library/**
+      - .github/workflows/carr-portable-snapshots.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-portable-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  portable-snapshots:
+    name: Windows x64 / real encrypted snapshots and native controls
+    runs-on: windows-2022
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      ORT_DISABLE_TELEMETRY: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - name: Check out the exact source head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Set up Windows CPython 3.11
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Install hash-pinned core, encryption and test tools
+        run: |
+          $environment = Join-Path $env:RUNNER_TEMP 'carr-snapshot-python'
+          python -m venv $environment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $environment 'Scripts/python.exe'
+          "CARR_SYNC_PYTHON=$python" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          New-Item -ItemType Directory -Force 'ci-sync' | Out-Null
+          git rev-parse HEAD | Set-Content 'ci-sync/tested-commit.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock -r packaging/windows-sync-cp311.lock -r packaging/windows-sync-test-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip list --format=json | Set-Content 'ci-sync/dependencies.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build and verify the actual source wheel, then install it
+        run: |
+          $wheelDirectory = Join-Path $env:RUNNER_TEMP 'carr-snapshot-wheel'
+          & $env:CARR_SYNC_PYTHON -m pip wheel --no-deps --no-build-isolation --wheel-dir $wheelDirectory .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $wheels = @(Get-ChildItem $wheelDirectory -Filter '*.whl')
+          if ($wheels.Count -ne 1) { throw 'Expected exactly one application wheel.' }
+          $env:CARR_SYNC_WHEEL = $wheels[0].FullName
+          $env:CARR_SYNC_COMMIT = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_SYNC_PYTHON -I -c "import json,os,runpy; from pathlib import Path; verify=runpy.run_path('packaging/source_wheel.py')['verify_application_wheel']; print(json.dumps(verify(Path(os.environ['CARR_SYNC_WHEEL']),Path('..').resolve(),os.environ['CARR_SYNC_COMMIT'])))" | Tee-Object 'ci-sync/source-wheel.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_SYNC_PYTHON -m pip install --no-deps $env:CARR_SYNC_WHEEL
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_SYNC_PYTHON -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Run strict offline source regressions
+        run: |
+          & $env:CARR_SYNC_PYTHON scripts/ci_check.py tests/sync tests/ui/test_portable_sync.py tests/ui/test_desktop_handlers.py 2>&1 | Tee-Object 'ci-sync/source-tests.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Exercise plain and encrypted native desktop actions
+        timeout-minutes: 5
+        run: |
+          & $env:CARR_SYNC_PYTHON -I -B tests/ui/probe_portable_sync_native.py --native 2>&1 | Tee-Object 'ci-sync/native-plain.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_SYNC_PYTHON -I -B tests/ui/probe_portable_sync_native.py --native --encrypted 2>&1 | Tee-Object 'ci-sync/native-encrypted.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify the installed wheel outside the source checkout
+        run: |
+          & $env:CARR_SYNC_PYTHON -I scripts/installed_sync_probe.py 2>&1 | Tee-Object 'ci-sync/installed-tests.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Retain synthetic verification reports only
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-portable-verification-${{ github.run_id }}
+          path: |
+            carr-library/ci-sync/*.txt
+            carr-library/ci-sync/*.json
+          if-no-files-found: error
+          retention-days: 14

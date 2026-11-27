@@ -30,6 +30,20 @@ def verify(root, *, manifest_bytes=None):
                 "CheckInstallation.cmd", "README.txt"}
     if not expected.issubset(files) or not any(p.startswith("wheelhouse/") for p in files):
         raise ValueError("incomplete installation bundle")
+    launcher_files = {'ResearchLibrary.exe', 'launcher-build.json'}
+    launcher = manifest.get('bundled_launcher', False)
+    if type(launcher) is not bool:
+        raise ValueError('invalid native launcher flag')
+    if launcher:
+        if not manifest.get('bundled_python') or not launcher_files <= files.keys():
+            raise ValueError('incomplete native launcher bundle')
+    elif any(name in files or os.path.lexists(root / name) for name in launcher_files):
+        raise ValueError('unannounced native launcher files')
+    encryption = manifest.get('bundled_encryption', False)
+    if type(encryption) is not bool:
+        raise ValueError('invalid encrypted backup runtime flag')
+    if encryption and not any(name.startswith('wheelhouse/cryptography-') for name in files):
+        raise ValueError('encrypted backup runtime is missing from the wheel inventory')
     for name, digest in files.items():
         relative = PurePosixPath(name)
         if (relative.is_absolute() or ".." in relative.parts or "\\" in name
@@ -71,6 +85,28 @@ def verify(root, *, manifest_bytes=None):
                 or "ocr/tessdata/eng.traineddata" not in actual
                 or actual != {p for p in files if p.startswith("ocr/")}):
             raise ValueError("unexpected or missing OCR runtime file")
+    audio=root/'audio-runtime'
+    has_audio=manifest.get('bundled_audio',False)
+    if (any(name.casefold().startswith('audio-runtime/') and not name.startswith('audio-runtime/') for name in files)
+            or any(path.name.casefold()=='audio-runtime' and path.name!='audio-runtime' for path in root.iterdir())):
+        raise ValueError('ambiguous audio runtime paths')
+    expected_audio={name for name in files if name.startswith('audio-runtime/')}
+    if type(has_audio) is not bool:
+        raise ValueError('invalid audio runtime installation flag')
+    if has_audio:
+        for directory,dirs,_names in os.walk(audio,followlinks=False):
+            for name in dirs:
+                info=(Path(directory)/name).lstat()
+                if not stat.S_ISDIR(info.st_mode) or getattr(info,'st_file_attributes',0)&0x400:
+                    raise ValueError('linked audio runtime directories are not supported')
+        actual={path.relative_to(root).as_posix() for path in audio.rglob('*') if path.is_file()}
+        required={'audio-runtime/audio-runtime-manifest.json','audio-runtime/bin/ffmpeg.exe','audio-runtime/bin/ffprobe.exe',
+                  'audio-runtime/bin/ffplay.exe','audio-runtime/LICENSE',
+                  'audio-runtime/carr-provenance/source-lock.json','audio-runtime/carr-provenance/README.txt'}
+        if not required.issubset(actual) or actual!=expected_audio:
+            raise ValueError('unexpected or missing audio runtime file')
+    elif os.path.lexists(audio) or expected_audio:
+        raise ValueError('unannounced audio runtime files')
     native = root / "native-runtime"
     included = manifest.get("bundled_native_runtime", False)
     expected_native = {p for p in files if p.startswith("native-runtime/")}
@@ -140,7 +176,8 @@ def main():
     # An incomplete or interrupted install must never be treated as ready.
     # Exclusive creation is the final lifecycle step; never delete an old environment.
     (destination / ".installation-complete").touch(exist_ok=False)
-    print("Installation complete. Open ResearchLibrary.cmd. Research data has not been changed.")
+    entry = 'ResearchLibrary.exe' if (root / 'ResearchLibrary.exe').is_file() else 'ResearchLibrary.cmd'
+    print(f"Installation complete. Open {entry}. Research data has not been changed.")
     return 0
 
 

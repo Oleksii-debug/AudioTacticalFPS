@@ -14,7 +14,7 @@ from tempfile import TemporaryFile
 from threading import Event
 import time
 
-from ..extract.ocr_languages import model_ids
+from ..extract.ocr_languages import (model_ids, load_presets, store_preset, delete_preset)
 from ..extract.page_ocr import Config
 from ..extract.pinned_tessdata import MODELS, POLICY
 
@@ -163,7 +163,90 @@ def selected_config(profile, identifiers, available, *, orientation=False, initi
                    orientation=orientation, model_policy=policy)
 
 
-def _discover_with_dialog(parent):
+def _same_preset(root, expected):
+    if type(expected) is not dict or not isinstance(expected.get('name'), str):
+        raise ValueError('Choose a saved OCR preset.')
+    row = next((row for row in load_presets(root)
+                if row['name'].casefold() == expected['name'].casefold()), None)
+    if row != expected:
+        raise ValueError('The saved OCR preset changed or was deleted. Refresh the list and select it again.')
+    return row
+
+
+def verify_saved_preset(root, expected, *, initial=None, cancelled=lambda: False, timeout=30):
+    """Fresh local checks before applying intent; no installation or download.
+
+The shared store owns schema validation. Version 1 retains installed-model
+meaning, exact order and policy. Model availability is checked again here,
+including managed selected bytes and OSD, not inferred from a cached list.
+"""
+    if type(timeout) not in (int, float) or not 0 < timeout <= 120:
+        raise ValueError('Invalid saved OCR preset verification timeout.')
+    deadline = time.monotonic() + timeout
+
+    def remaining():
+        if cancelled():
+            raise InterruptedError('Saved OCR preset verification cancelled.')
+        seconds = deadline - time.monotonic()
+        if seconds <= 0:
+            raise TimeoutError('Saved OCR preset verification timed out; current choices are unchanged.')
+        return seconds
+
+    remaining()
+    row = _same_preset(root, expected)
+    candidate = replace(initial or Config(), languages=row['languages'], orientation=row['orientation'],
+                        model_policy=row['model_policy'], model_profile=row.get('model_profile', 'installed'))
+    if candidate.model_profile == 'installed':
+        available = discover_installed_models(cancelled=cancelled, timeout=min(10, remaining()))
+    else:
+        from ..extract.ocr_model_store import OcrModelStore
+        store = OcrModelStore()
+        available = store.available(candidate.model_profile)
+        remaining()
+        store.select(candidate.model_profile, candidate.languages, orientation=candidate.orientation,
+                     remaining=remaining)
+    result = selected_config(candidate.model_profile, model_ids(candidate.languages), available,
+                             orientation=candidate.orientation, initial=candidate)
+    selectable_models(candidate.model_profile, available, initial=result)
+    remaining()
+    _same_preset(root, row)
+    remaining()
+    return result, tuple(available)
+
+
+def _preset_scope(parent, root=None):
+    """Bind this dialog's preset writes to its original data folder and host."""
+    owners = []
+    for owner in (parent, getattr(parent, 'frame', None)):
+        library = getattr(owner, 'library', None)
+        if library is not None:
+            owners.append((owner, library, str(Path(library.root).absolute())))
+    if root is None and owners:
+        root = owners[0][2]
+    if root is None:
+        return None, lambda: True
+    root = Path(root).absolute()
+    try:
+        before = root.stat()
+    except OSError:
+        return root, lambda: False
+    identity = before.st_dev, before.st_ino
+
+    def current():
+        try:
+            now = root.stat()
+            return ((now.st_dev, now.st_ino) == identity
+                and all(getattr(owner, 'library', None) is library
+                        and str(Path(library.root).absolute()) == path
+                        and not getattr(owner, '_closing', False)
+                        and not getattr(owner, 'closed', False)
+                        for owner, library, path in owners))
+        except (OSError, ValueError, AttributeError):
+            return False
+    return root, current
+
+
+def _discover_with_dialog(parent, *, operation=None, status=None):
     import wx
 
     class InventoryDialog(wx.Dialog):
@@ -171,9 +254,10 @@ def _discover_with_dialog(parent):
             super().__init__(parent, title='Checking installed OCR models', size=(560, 190))
             self.cancelled = Event()
             self.closed = False
+            self.alive = True
             self.result = self.error = None
             layout = wx.BoxSizer(wx.VERTICAL)
-            self.status = wx.TextCtrl(self, value='Verifying the local OCR runtime and reading its model list…',
+            self.status = wx.TextCtrl(self, value=status or 'Verifying the local OCR runtime and reading its model list…',
                                       style=wx.TE_READONLY | wx.TE_MULTILINE)
             self.status.SetName('OCR model discovery status')
             layout.Add(self.status, 1, wx.EXPAND | wx.ALL, 8)
@@ -183,9 +267,10 @@ def _discover_with_dialog(parent):
             self.SetSizer(layout)
             self.SetEscapeId(wx.ID_CANCEL)
             self.Bind(wx.EVT_CLOSE, self.on_close)
+            self.Bind(wx.EVT_WINDOW_DESTROY, self.on_destroy)
             self.worker = ThreadPoolExecutor(max_workers=1, thread_name_prefix='carr-ocr-inventory')
             try:
-                future = self.worker.submit(discover_installed_models, cancelled=self.cancelled.is_set)
+                future = self.worker.submit(operation or discover_installed_models, cancelled=self.cancelled.is_set)
             except Exception:
                 self.closed = True
                 self.worker.shutdown(wait=False, cancel_futures=True)
@@ -210,6 +295,8 @@ def _discover_with_dialog(parent):
             self.EndModal(wx.ID_OK if self.result is not None else wx.ID_CANCEL)
 
         def request_cancel(self, event=None):
+            if self.closed or not self.alive:
+                return
             self.cancelled.set()
             self.cancel.Enable(False)
             self.status.SetValue('Cancellation requested. Waiting for the local check to stop.')
@@ -222,6 +309,15 @@ def _discover_with_dialog(parent):
                 self.closed = True
                 event.Skip()
 
+        def on_destroy(self, event):
+            if event.GetEventObject() is self:
+                self.alive = False
+                self.closed = True
+                self.cancelled.set()
+                if hasattr(self, 'worker'):
+                    self.worker.shutdown(wait=False, cancel_futures=True)
+            event.Skip()
+
     dialog = InventoryDialog()
     try:
         dialog.ShowModal()
@@ -232,21 +328,28 @@ def _discover_with_dialog(parent):
         dialog.closed = True
         dialog.cancelled.set()
         dialog.worker.shutdown(wait=False, cancel_futures=True)
-        dialog.Destroy()
+        if dialog.alive:
+            dialog.Destroy()
 
 
-def _choose_languages(parent, profile, available, initial):
+def _choose_languages(parent, profile, available, initial, *, preset_root=None):
     import wx
     rows = selectable_models(profile, available, initial=initial)
     if not rows:
         raise ValueError('No text-language or script models are available in this profile. '
                          'Use the offline OCR model manager to install models first.')
+    preset_root, scope_current = _preset_scope(parent, preset_root)
 
     class SelectionDialog(wx.Dialog):
         def __init__(self):
-            super().__init__(parent, title='OCR languages for this import', size=(720, 560),
+            super().__init__(parent, title='OCR languages for this import', size=(720, 650),
                              style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
             self.result = None
+            self.alive = True
+            self.rows, self.available, self.profile = rows, tuple(available), profile
+            self.config_base = initial
+            self.preset_rows = ()
+            self.Bind(wx.EVT_WINDOW_DESTROY, self.on_destroy)
             layout = wx.BoxSizer(wx.VERTICAL)
             hint = wx.StaticText(self, label='Check only the languages or scripts used in these scanned pages. '
                                  'Space selects or clears a model. Multiple selections enable mixed-language OCR; '
@@ -268,10 +371,23 @@ def _choose_languages(parent, profile, available, initial):
             self.orientation.SetValue(initial.orientation and 'osd' in available)
             self.orientation.Enable('osd' in available)
             layout.Add(self.orientation, 0, wx.ALL, 8)
-            self.status = wx.TextCtrl(self, value=(
-                f'Profile: {profile}. Orientation detection does not identify languages.' if 'osd' in available else
-                f'Profile: {profile}. Orientation detection is unavailable because osd is not installed.'),
-                style=wx.TE_READONLY | wx.TE_MULTILINE)
+            layout.Add(wx.StaticText(self, label='Saved OCR presets in this library data folder'),
+                       0, wx.LEFT | wx.RIGHT, 8)
+            self.presets = wx.Choice(self)
+            self.presets.SetName('Saved OCR presets with profile, language order and orientation')
+            layout.Add(self.presets, 0, wx.EXPAND | wx.ALL, 8)
+            preset_buttons = wx.BoxSizer(wx.HORIZONTAL)
+            self.preset_buttons = []
+            for label, handler in (('&Save preset...', self.save_preset),
+                                   ('&Load preset', self.load_preset), ('&Delete preset', self.remove_preset)):
+                button = wx.Button(self, label=label)
+                button.SetName(label.replace('&', ''))
+                button.Bind(wx.EVT_BUTTON, handler)
+                button.Enable(preset_root is not None)
+                self.preset_buttons.append(button)
+                preset_buttons.Add(button, 0, wx.ALL, 5)
+            layout.Add(preset_buttons, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 3)
+            self.status = wx.TextCtrl(self, value=self.profile_status(), style=wx.TE_READONLY | wx.TE_MULTILINE)
             self.status.SetName('OCR language selection status and errors')
             self.status.SetMinSize((-1, 56))
             layout.Add(self.status, 0, wx.EXPAND | wx.ALL, 8)
@@ -283,28 +399,165 @@ def _choose_languages(parent, profile, available, initial):
             buttons.Add(wx.Button(self, wx.ID_CANCEL, '&Cancel'), 0, wx.ALL, 8)
             layout.Add(buttons, 0, wx.ALIGN_RIGHT)
             self.SetSizer(layout)
-            self.SetMinSize((580, 420))
+            self.SetMinSize((580, 520))
             self.SetEscapeId(wx.ID_CANCEL)
+            self.refresh_presets()
             self.entries.SetFocus()
+
+        def on_destroy(self, event):
+            if event.GetEventObject() is self:
+                self.alive = False
+            event.Skip()
+
+        def profile_status(self):
+            return (f'Profile: {self.profile}. Orientation detection does not identify languages.'
+                    if 'osd' in self.available else
+                    f'Profile: {self.profile}. Orientation detection is unavailable because osd is not installed.')
+
+        def report(self, message, *, focus=True):
+            if self.alive:
+                self.status.SetValue(message)
+                if focus:
+                    self.status.SetFocus()
+
+        def require_scope(self):
+            if not self.alive or not scope_current():
+                raise ValueError('The library data folder changed. Reopen OCR model selection.')
+
+        def current_config(self):
+            self.require_scope()
+            checked = tuple(row[0] for index, row in enumerate(self.rows) if self.entries.IsChecked(index))
+            return selected_config(self.profile, checked, self.available,
+                orientation=self.orientation.GetValue(), initial=self.config_base)
+
+        def refresh_presets(self, name=None):
+            if not self.alive:
+                return
+            try:
+                self.require_scope()
+                self.preset_rows = load_presets(preset_root) if preset_root is not None else ()
+                self.presets.SetItems([f"{row['name']} — {row.get('model_profile', 'installed')} — "
+                    f"{row['languages']}; orientation {'on' if row['orientation'] else 'off'}"
+                    for row in self.preset_rows])
+                chosen = next((index for index, row in enumerate(self.preset_rows) if row['name'] == name),
+                              0 if self.preset_rows else -1)
+                self.presets.SetSelection(chosen)
+                if preset_root is None:
+                    self.report(self.profile_status() + ' Open a library data folder to save presets.', focus=False)
+            except (ValueError, OSError) as exc:
+                self.preset_rows = ()
+                self.presets.SetItems([])
+                self.report(self.profile_status() + ' Saved presets are unavailable and were retained unchanged: '
+                            + str(exc) + ' Manual model selection remains available.', focus=False)
+
+        def selected_preset(self):
+            self.require_scope()
+            if preset_root is None:
+                raise ValueError('Open a library data folder before using saved OCR presets.')
+            index = self.presets.GetSelection()
+            if not 0 <= index < len(self.preset_rows):
+                raise ValueError('Choose a saved OCR preset first.')
+            return _same_preset(preset_root, self.preset_rows[index])
+
+        def confirm(self, title, message):
+            question = wx.MessageDialog(self, message, title,
+                wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION)
+            try:
+                accepted = question.ShowModal() == wx.ID_YES
+                self.require_scope()
+                return accepted
+            finally:
+                if self.alive:
+                    question.Destroy()
+
+        def save_preset(self, event=None):
+            try:
+                if preset_root is None:
+                    raise ValueError('Open a library data folder before saving OCR presets.')
+                config = self.current_config()
+                prompt = wx.TextEntryDialog(self, 'Name this profile, ordered model selection and orientation setting.',
+                                            'Save OCR preset')
+                try:
+                    answer = prompt.ShowModal()
+                    name = prompt.GetValue().strip() if self.alive and answer == wx.ID_OK else None
+                finally:
+                    if self.alive:
+                        prompt.Destroy()
+                if name is None:
+                    return
+                self.require_scope()
+                try:
+                    store_preset(preset_root, name, config)
+                except FileExistsError:
+                    if not self.confirm('Replace OCR preset', 'Replace the saved OCR preset named ' + name + '?'):
+                        return
+                    store_preset(preset_root, name, config, replace=True)
+                self.refresh_presets(name)
+                self.report('Saved OCR preset ' + name + '. ' + self.profile_status())
+            except (ValueError, OSError) as exc:
+                self.report(str(exc))
+
+        def load_preset(self, event=None):
+            try:
+                row = self.selected_preset()
+                selected = dict(row)
+                base = self.config_base
+                result = _discover_with_dialog(self,
+                    operation=lambda *, cancelled: verify_saved_preset(preset_root, selected, initial=base,
+                        cancelled=lambda: cancelled() or not self.alive or not scope_current()),
+                    status='Checking the saved preset and its actual local model files. No models will be downloaded.')
+                if result is None:
+                    return
+                self.require_scope()
+                _same_preset(preset_root, selected)
+                config, found = result
+                prepared_rows = selectable_models(config.model_profile, found, initial=config)
+                # Only now replace the authoritative controls. Failed, stale or
+                # cancelled checks leave every current choice untouched.
+                self.rows, self.available, self.profile = prepared_rows, tuple(found), config.model_profile
+                self.config_base = config
+                self.entries.SetItems([item[1] for item in self.rows])
+                chosen = set(model_ids(config.languages))
+                for index, item in enumerate(self.rows):
+                    self.entries.Check(index, item[0] in chosen)
+                self.entries.SetSelection(0)
+                self.orientation.Enable('osd' in found)
+                self.orientation.SetValue(config.orientation)
+                self.report('Loaded ' + selected['name'] + '. ' + self.profile_status()
+                            + ' Review the model order, then use the selected models.', focus=False)
+                self.entries.SetFocus()
+            except (ValueError, OSError, RuntimeError, subprocess.SubprocessError) as exc:
+                self.report(str(exc))
+
+        def remove_preset(self, event=None):
+            try:
+                row = self.selected_preset()
+                if not self.confirm('Delete OCR preset', 'Delete the saved OCR preset named ' + row['name']
+                                    + '? Current model choices and installed files will be retained.'):
+                    return
+                _same_preset(preset_root, row)
+                delete_preset(preset_root, row['name'])
+                self.refresh_presets()
+                self.report('Deleted the saved preset. Current model choices and installed files are unchanged.')
+            except (ValueError, OSError) as exc:
+                self.report(str(exc))
 
         def accept(self, event=None):
             try:
-                checked = tuple(row[0] for index, row in enumerate(rows) if self.entries.IsChecked(index))
-                self.result = selected_config(profile, checked, available,
-                    orientation=self.orientation.GetValue(), initial=initial)
+                self.result = self.current_config()
                 self.EndModal(wx.ID_OK)
             except ValueError as exc:
-                self.status.SetValue(str(exc))
-                self.status.SetFocus()
+                self.report(str(exc))
 
     dialog = SelectionDialog()
     try:
         return dialog.result if dialog.ShowModal() == wx.ID_OK else None
     finally:
-        dialog.Destroy()
+        if dialog.alive:
+            dialog.Destroy()
 
 
-def choose_model_config(parent, *, initial=None):
+def choose_model_config(parent, *, initial=None, preset_root=None):
     """Choose a local profile and explicit languages; return None on cancellation."""
     import wx
     initial = initial or Config()
@@ -331,7 +584,7 @@ def choose_model_config(parent, *, initial=None):
         else:
             from ..extract.ocr_model_store import OcrModelStore
             available = OcrModelStore().available(profile)
-        return _choose_languages(parent, profile, available, initial)
+        return _choose_languages(parent, profile, available, initial, preset_root=preset_root)
     except OcrEngineMissingError as exc:
         if profile != 'installed':
             wx.MessageBox(str(exc), 'OCR model selection', wx.OK | wx.ICON_ERROR, parent)

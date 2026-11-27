@@ -3,8 +3,8 @@
 Locations bind the source, exact revision and page bytes. A reader must resolve
 them against the authorized library before showing a page. This module neither
 approves extracted text nor changes the research database. It stores a bounded
-JSON sidecar using the same cooperative writer lock as the library. Explicit
-workspace exports provide portable reading-state backups.
+JSON sidecar using the same cooperative writer lock as the library. Complete
+library backups and explicit workspace exports preserve this reading state.
 """
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
@@ -174,6 +174,25 @@ def _encode(positions, bookmarks, *, workspace=None):
     return text
 
 
+def snapshot_locations(raw):
+    """Validate prior snapshot bytes and return their exact saved locations.
+
+    Kept for callers of the initial reading-state backup API. Parsing does not
+    re-encode, migrate or resolve a location against the current revision.
+    """
+    if not isinstance(raw, bytes) or not 0 < len(raw) <= MAX_BYTES:
+        raise ValueError('Reading-state snapshot is empty or exceeds its size limit.')
+    try:
+        positions, bookmarks, _ = _decode(raw.decode('utf-8'))
+    except UnicodeError as exc:
+        raise ValueError('Reading state must be valid UTF-8.') from exc
+    locations = {row[0] for row in positions.values()} | {
+        bookmark.location for bookmark in bookmarks.values()}
+    return tuple(sorted(locations, key=lambda item: (
+        item.workspace, item.edition, item.revision, item.kind, item.index,
+        item.text_sha256, item.asset_sha256)))
+
+
 def _file_identity(info):
     return (info.st_dev, info.st_ino, info.st_mode, info.st_nlink,
             info.st_size, info.st_mtime_ns, info.st_ctime_ns)
@@ -192,12 +211,12 @@ class ReadingState:
         self.root = _private_root(root)
         self.path = self.root / FILENAME
 
-    def _read(self):
+    def _read_validated(self):
         _regular_if_present(self.path)
         try:
             before = self.path.lstat()
         except FileNotFoundError:
-            return {}, {}, None
+            return {}, {}, None, None
         if not 0 < before.st_size <= MAX_BYTES:
             raise ValueError('Reading-state file is empty or exceeds its size limit.')
         flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
@@ -214,7 +233,25 @@ class ReadingState:
         except UnicodeError as exc:
             raise ValueError('Reading state must be valid UTF-8. The existing file was kept.') from exc
         positions, bookmarks, _ = _decode(text)
-        return positions, bookmarks, _file_identity(before)
+        return positions, bookmarks, _file_identity(before), raw
+
+    def _read(self):
+        positions, bookmarks, identity, _ = self._read_validated()
+        return positions, bookmarks, identity
+
+    def snapshot(self):
+        """Return the exact validated UTF-8 bytes, or None when no state exists.
+
+        This read never creates or rewrites the file. A caller composing a
+        database backup must already hold the shared library writer lock so
+        that its SQLite snapshot and these locations describe one state.
+        Source bindings still need verification against that database snapshot.
+        """
+        return self._read_validated()[3]
+
+    def snapshot_bytes(self):
+        """Compatibility spelling for the original exact-byte snapshot API."""
+        return self.snapshot()
 
     def _publish(self, positions, bookmarks, previous, *, cancelled=lambda: False):
         _check_cancelled(cancelled)

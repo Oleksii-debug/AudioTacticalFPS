@@ -29,6 +29,7 @@ license-files = [
 ]
 
 [project.optional-dependencies]
+sync = ["cryptography==50.0.2"]
 desktop = ["wxPython==4.2.4"]
 semantic = [
   "fastembed==0.9.1",
@@ -65,6 +66,8 @@ Source = "https://github.com/Oleksii-debug/AudioTacticalFPS/tree/carr-library/ca
 include-package-data = true
 packages = [
   "carr_library",
+  "carr_library.audio",
+  "carr_library.acquisition",
   "carr_library.catalog",
   "carr_library.catalog._filetype",
   "carr_library.citations",
@@ -77,6 +80,7 @@ packages = [
   "carr_library.search._vendor",
   "carr_library.search._vendor.rifflux",
   "carr_library.storage",
+  "carr_library.sync",
   "carr_library.ui",
   "carr_library.ui._vendor",
   "carr_library.ui._vendor.wx_grid",

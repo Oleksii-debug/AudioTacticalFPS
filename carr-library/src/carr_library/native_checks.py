@@ -51,15 +51,17 @@ def _manifest(root):
     value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique_object)
     required = {'schema', 'target', 'bundled_python', 'bundled_model', 'bundled_ocr', 'files'}
     if (type(value) is not dict or not required <= value.keys()
-            or value.keys() - required - {'source_commit', 'bundled_native_runtime'}
+            or value.keys() - required - {'source_commit', 'bundled_native_runtime',
+                                         'bundled_audio', 'bundled_encryption', 'bundled_launcher'}
             or type(value['schema']) is not int or value['schema'] != 1
             or value['target'] != TARGET
             or any(type(value[name]) is not bool
                    for name in ('bundled_python', 'bundled_model', 'bundled_ocr'))
             or type(value['files']) is not dict or not 1 <= len(value['files']) <= MAX_FILES):
         raise ValueError('Unsupported installation manifest or optional-component flags.')
-    if ('bundled_native_runtime' in value and type(value['bundled_native_runtime']) is not bool):
-        raise ValueError('The bundled_native_runtime installation flag must be a boolean.')
+    for flag in ('bundled_native_runtime', 'bundled_audio', 'bundled_encryption', 'bundled_launcher'):
+        if flag in value and type(value[flag]) is not bool:
+            raise ValueError('The ' + flag + ' installation flag must be a boolean.')
     if ('source_commit' in value and (not isinstance(value['source_commit'], str)
             or not re.fullmatch('[0-9a-f]{40}', value['source_commit']))):
         raise ValueError('Invalid installation source commit.')
@@ -84,15 +86,18 @@ def check_native_dependencies(bundle_root):
     report = {'status': 'FAIL', 'platform': sys.platform, 'machine': platform.machine(),
               'python': platform.python_version(), 'windows_execution': 'NOT_RUN',
               'native_gui': 'NOT_RUN', 'windows_nvda': 'NOT_RUN', 'checks': [],
-              'semantic': {'status': 'NOT_INCLUDED'}, 'ocr': {'status': 'NOT_INCLUDED'}}
+              'semantic': {'status': 'NOT_INCLUDED'}, 'ocr': {'status': 'NOT_INCLUDED'},
+              'audio': {'status': 'NOT_INCLUDED'}, 'encryption': {'status': 'NOT_INCLUDED'}}
     component = 'installation manifest'
     _runtime_handle = None
+    _audio_handle = None
     try:
         root = Path(bundle_root).absolute()
         manifest = _manifest(root)
         report['bundle_target'] = manifest['target']
-        for name, flag in (('semantic', 'bundled_model'), ('ocr', 'bundled_ocr')):
-            if manifest[flag]:
+        for name, flag in (('semantic', 'bundled_model'), ('ocr', 'bundled_ocr'),
+                           ('audio', 'bundled_audio'), ('encryption', 'bundled_encryption')):
+            if manifest.get(flag, False):
                 report[name]['status'] = 'NOT_RUN'
         component = 'bundled native runtime'
         native_runtime = import_module('carr_library.native_runtime')
@@ -131,11 +136,47 @@ def check_native_dependencies(bundle_root):
                 raise RuntimeError('The canonical OCR installation check did not pass.')
             report['ocr'] = result
             report['checks'].append(component)
+        if manifest.get('bundled_audio', False):
+            component = 'bundled audio runtime'
+            report['audio']['status'] = 'FAIL'
+            audio = import_module('carr_library.audio.runtime')
+            _audio_handle = audio.activate_bundled_audio_runtime(bundle_root=root)
+            if _audio_handle is None:
+                raise RuntimeError('The declared private audio runtime is unavailable.')
+            runner = import_module('subprocess')
+            for name in ('ffmpeg', 'ffprobe'):
+                runner.run([audio.tool_path(name), '-version'], check=True,
+                           capture_output=True, timeout=20)
+            report['audio'] = {'status': 'PASS', 'sealed_runtime': 'VERIFIED',
+                               'ffmpeg_execution': 'PASS', 'ffprobe_execution': 'PASS',
+                               'audio_quality': 'NOT_RUN'}
+            report['checks'].append(component)
+        if manifest.get('bundled_encryption', False):
+            component = 'encrypted backup runtime'
+            report['encryption']['status'] = 'FAIL'
+            aead = import_module('cryptography.hazmat.primitives.ciphers.aead')
+            errors = import_module('cryptography.exceptions')
+            cipher = aead.AESGCM(os.urandom(32))
+            nonce, plain, aad = os.urandom(12), b'CARR synthetic installation check', b'private-backup'
+            ciphertext = cipher.encrypt(nonce, plain, aad)
+            if cipher.decrypt(nonce, ciphertext, aad) != plain:
+                raise RuntimeError('Authenticated encryption roundtrip failed.')
+            try:
+                cipher.decrypt(nonce, ciphertext[:-1] + bytes([ciphertext[-1] ^ 1]), aad)
+            except errors.InvalidTag:
+                pass
+            else:
+                raise RuntimeError('Authenticated encryption accepted changed bytes.')
+            report['encryption'] = {'status': 'PASS', 'aes256_gcm_roundtrip': 'PASS',
+                                    'changed_ciphertext_rejected': True}
+            report['checks'].append(component)
         report['status'] = 'PASS'
     except Exception as exc:
         report['failed_component'] = component
         report['error'] = f'{component}: {type(exc).__name__}: {exc}'
     finally:
+        if _audio_handle is not None:
+            _audio_handle.close()
         if _runtime_handle is not None:
             _runtime_handle.close()
     if sys.platform == 'win32':

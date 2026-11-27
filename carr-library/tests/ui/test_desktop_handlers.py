@@ -19,6 +19,7 @@ from carr_library.research.anchored_export import SavedEvidence
 from carr_library.research.topic_search import TopicHit
 from carr_library.ui.search_model import Hit, SearchModel
 from carr_library.ui.scope_bindings import ScopeServices, scope_labels
+from carr_library.extract.document_formats import file_dialog_wildcard, supported_formats_text
 
 
 class BaseFrame:
@@ -45,9 +46,11 @@ def classes():
     env = dict(wx=wx,WorkspaceFrame=BaseFrame,PagedSearchPanel=object,Hit=Hit,
                __name__='carr_library.ui._handler_probe',__package__='carr_library.ui',
                format_citation=format_citation,Path=Path,LibraryApp=Mock(),
+               file_dialog_wildcard=file_dialog_wildcard,supported_formats_text=supported_formats_text,
                contextmanager=contextmanager,TopicTree=TopicTree,open_context=open_context,
                ScopeServices=ScopeServices,scope_labels=scope_labels,active_collections=active_collections,
-               text_dialog=Mock(return_value='Reviewer'),show_text=Mock(),show_page_context=Mock(),metadata_dialog=Mock())
+               text_dialog=Mock(return_value='Reviewer'),show_text=Mock(),show_page_context=Mock(),metadata_dialog=Mock(),
+               show_acquisition_dialog=Mock())
     exec(compile(ast.Module(body=nodes,type_ignores=[]),str(source),'exec'),env)
     return env,queued
 
@@ -123,7 +126,9 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     installers = {name: Mock() for name in (
         'install_research_actions', 'install_source_review_actions', 'install_academic_actions',
         'install_reading_desk_actions', 'install_ebook_actions', 'install_catalog_insights_actions',
-        'install_federated_search_actions', 'install_query_manager_actions')}
+        'install_federated_search_actions', 'install_query_manager_actions',
+        'install_academic_comparison_actions', 'install_portable_sync_actions',
+        'install_audio_studio_actions', 'install_api_connection_actions')}
     env.update(installers)
     ebook = Mock()
     monkeypatch.setitem(sys.modules, 'carr_library.ui.ebook_reader',
@@ -135,17 +140,28 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     shortcuts = [label.split('\t', 1)[1].casefold() for label in labels if '\t' in label]
     assert len(shortcuts) == len(set(shortcuts))
     assert 'Academic library...\tCtrl+Shift+B' in labels
+    assert 'DOI lookup and open-access sources...' in labels
+    assert 'Document formats' in labels
     assert 'Import Center: files, folders and queues' in labels
     for handler in (value.import_center, value.open_academic_library, value.export_topic):
         assert any(call.args[1] == handler for call in value.Bind.call_args_list)
     for installer in (*installers.values(), ebook):
         installer.assert_called_once_with(value)
+    env['show_acquisition_dialog'].assert_not_called()
+    handlers = {call.args[2].title: call.args[1] for call in value.Bind.call_args_list
+                if call.args[0] == env['wx'].EVT_MENU}
+    handlers['Document formats'](None)
+    assert env['show_text'].call_args.args == (value, 'Document formats', supported_formats_text())
+    env['show_acquisition_dialog'].assert_not_called()
+    handlers['DOI lookup and open-access sources...'](None)
+    env['show_acquisition_dialog'].assert_called_once_with(value)
     value.help(None)
     guide = env['show_text'].call_args.args[2]
     assert 'Alt+A for Academic' in guide and 'Alt+B for Bibliography' in guide
     assert 'Library, Import Center' in guide
     assert 'Ctrl+Shift+B opens Import Center' not in guide
     assert 'Ctrl+Alt+F opens Research Search Center' in guide
+    assert 'Ctrl+Alt+Q opens the advanced query builder' in guide
     assert 'Ctrl+Shift+F searches saved quotations and notes' in guide
 
 
@@ -159,6 +175,125 @@ def test_repeated_enter_does_not_clear_an_active_search(classes):
     assert p._context_epoch == 1
     p.grid.refresh.assert_not_called()
     p.frame.run_job.assert_not_called()
+
+
+def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monkeypatch, tmp_path):
+    """Execute every installer; this headless protocol is not native wx proof."""
+    import importlib
+    from itertools import count
+    from carr_library.ui.productivity import install_productivity_actions
+
+    identifiers = count(1)
+
+    class Item:
+        def __init__(self, label):
+            self.label, self.identity = label, next(identifiers)
+        def IsSeparator(self):
+            return self.label is None
+        def GetId(self):
+            return self.identity
+        def GetItemLabel(self):
+            return self.label
+        def SetItemLabel(self, label):
+            self.label = label
+        def GetSubMenu(self):
+            return None
+
+    class Menu:
+        def __init__(self):
+            self.items = []
+        def Append(self, identity, label):
+            item = Item(label)
+            self.items.append(item)
+            return item
+        def AppendSeparator(self):
+            self.items.append(Item(None))
+        def GetMenuItems(self):
+            return tuple(self.items)
+        def Delete(self, identity):
+            self.items = [item for item in self.items if item.GetId() != identity]
+
+    class MenuBar:
+        def __init__(self):
+            self.menus = []
+        def Append(self, menu, label):
+            self.menus.append((label, menu))
+        def Insert(self, index, menu, label):
+            self.menus.insert(index, (label, menu))
+        def GetMenu(self, index):
+            return self.menus[index][1]
+        def GetMenuLabel(self, index):
+            return self.menus[index][0]
+        def GetMenuCount(self):
+            return len(self.menus)
+        def FindMenu(self, title):
+            return next((i for i, (label, _) in enumerate(self.menus)
+                         if label.replace('&', '') == title), -1)
+
+    env, _ = classes
+    wx = env['wx']
+    wx.Menu, wx.MenuBar, wx.Dialog, wx.Button = Menu, MenuBar, object, Mock(return_value=Mock())
+    wx.ID_ANY, wx.ALL, wx.EVT_MENU, wx.EVT_BUTTON = -1, 1, 'menu', 'button'
+    monkeypatch.setitem(sys.modules, 'wx', wx)
+    existing_modules = set(sys.modules)
+    try:
+        for name in ('research_actions', 'source_review', 'academic_actions',
+                     'reading_desk', 'ebook_actions', 'catalog_insights_actions',
+                     'federated_search', 'query_manager', 'academic_tools'):
+            module = importlib.import_module('carr_library.ui.' + name)
+            if hasattr(module, 'wx'):
+                monkeypatch.setattr(module, 'wx', wx)
+            original = 'install_academic_actions' if name == 'academic_tools' else 'install_' + name
+            alias = 'install_academic_comparison_actions' if name == 'academic_tools' else original
+            # Reading uses its full action suffix; other names already include it.
+            if name == 'reading_desk':
+                original = alias = 'install_reading_desk_actions'
+            elif name in ('source_review', 'federated_search', 'query_manager'):
+                original = alias = 'install_' + name + '_actions'
+            env[alias] = getattr(module, original)
+        # Audio/API work is assembled independently. When those hooks are in
+        # the real desktop, include their real installers in this same inventory.
+        menu_globals = env['DesktopFrame']._menus.__code__.co_names
+        for module_name, action_name in (
+                ('audio_studio', 'install_audio_studio_actions'),
+                ('api_connections', 'install_api_connection_actions'),
+                ('portable_sync', 'install_portable_sync_actions')):
+            if action_name in menu_globals:
+                module = importlib.import_module('carr_library.ui.' + module_name)
+                if hasattr(module, 'wx'):
+                    monkeypatch.setattr(module, 'wx', wx)
+                env[action_name] = getattr(module, action_name)
+        value = frame(classes)
+        value.library = SimpleNamespace(root=tmp_path)
+        value.host, value.layout = Mock(), Mock()
+        value.Bind, value.Unbind, value.SetMenuBar = Mock(), Mock(), Mock()
+        value.GetMenuBar = lambda: value.menu_bar
+        value._menus()
+        keyboard = install_productivity_actions(value)
+        bindings = {item.command.identity: item.command.shortcut for item in keyboard.bindings}
+        required = {
+            'File/Save current changes': 'Ctrl+S',
+            'File/Save all changes': 'Ctrl+Shift+S',
+            'Research/Build advanced query': 'Ctrl+Alt+Q',
+            'Research/Research Search Center': 'Ctrl+Alt+F',
+            'Academic/Compare sources in active topic': 'Ctrl+Alt+M',
+            'Academic/Academic library': 'Ctrl+Shift+B',
+            'Reading/Read selected book': 'Ctrl+R',
+            'Library/Read EPUB book': 'Ctrl+Shift+R',
+        }
+        assert all(bindings.get(name) == shortcut for name, shortcut in required.items())
+        assert 'File/Open saved reading copy' in bindings
+        assert 'Options/Keyboard shortcuts' in bindings
+        assert value.menu_bar.GetMenuLabel(0) == '&File'
+        shortcuts = [shortcut.casefold() for shortcut in bindings.values() if shortcut]
+        assert len(shortcuts) == len(set(shortcuts))
+        assert keyboard.notice == ''
+    finally:
+        # Native modules imported under this temporary headless wx adapter must
+        # not remain cached for later genuine native probes or other tests.
+        for name in set(sys.modules) - existing_modules:
+            if name.startswith('carr_library.ui.'):
+                sys.modules.pop(name, None)
 
 
 def test_async_result_cannot_repopulate_changed_scope(classes):
@@ -449,6 +584,7 @@ def test_scanned_pdf_import_reuses_canonical_recognition_config(classes,monkeypa
 
 
 def test_cancelled_recognition_choice_imports_nothing(classes,monkeypatch):
+    from carr_library.ui import ocr_options
     f = frame(classes)
     f.library = Mock()
     f._workspace = lambda:'a'
@@ -460,7 +596,7 @@ def test_cancelled_recognition_choice_imports_nothing(classes,monkeypatch):
     dialog.ShowModal.return_value = wx.ID_OK
     dialog.GetPaths.return_value = ['book.pdf']
     wx.FileDialog = Mock(return_value=dialog)
-    wx.SingleChoiceDialog.return_value.ShowModal.return_value = 0
+    monkeypatch.setattr('carr_library.ui.ocr_selection.choose_model_config', Mock(return_value=None))
     f.import_books(None)
     f.run_job.assert_not_called()
     f.library.import_files.assert_not_called()
@@ -741,4 +877,44 @@ def test_save_presentation_equivalent_topic_labels(classes, names, index):
     p.frame.library.save_hit.assert_called_once_with(
         'a', f'topic-{index}', 'hit', 'revision',
         authorized_topic=None, cancelled=p.frame.cancel_event.is_set)
+    chooser.return_value.Destroy.assert_called_once()
+
+@pytest.mark.parametrize('names', [
+    ('Café', 'Cafe\u0301'), ('Історія', 'Історія '),
+    ('Research  methods', 'Research methods'), ('Clinical\u00a0study', 'Clinical study'),
+    ('Research', 'research'), ('Fußnote', 'FUSSNOTE'),
+])
+def test_real_topic_save_labels_are_distinct_without_changing_names_or_routing(classes, tmp_path, names):
+    import unicodedata
+
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Topic choices')
+    with app.topic_transaction(workspace) as service:
+        for number, name in enumerate(names, 1):
+            service.create(f'topic-{number}', name)
+    topics = tuple(app.topics(workspace))
+    assert tuple(topic.name for topic in topics) == names
+    app.add_text(workspace, 'Original source', 'Exact historical railway passage.')
+    source, = app.search(workspace, 'railway passage')
+    hit = Hit(source.workspace, source.ref, source.revision, source.title, source.author,
+              source.edition, source.page, source.quote, source.citation)
+    p = panel(classes)
+    p.frame.library = p.bound_library = app
+    p.frame.active = workspace, None
+    p.bound_workspace = workspace
+    p.model.set_workspace(workspace)
+    p.selected = lambda: hit
+    chooser = classes[0]['wx'].SingleChoiceDialog
+    chooser.return_value.GetSelection.return_value = 1
+
+    p.save_selected(None)
+    labels = chooser.call_args.args[3]
+    assert len({' '.join(unicodedata.normalize('NFC', label).split()).casefold()
+                for label in labels}) == 2
+    assert all(label.startswith(topic.name) and f'topic {topic.id}' in label
+               for label, topic in zip(labels, topics))
+    saved = p.frame.run_job.call_args.args[1]()
+    assert [row.evidence_id for row in app.evidence(workspace, topics[1].id)] == [saved]
+    assert app.evidence(workspace, topics[0].id) == ()
+    assert tuple(app.topics(workspace)) == topics
     chooser.return_value.Destroy.assert_called_once()
