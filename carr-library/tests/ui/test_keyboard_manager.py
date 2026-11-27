@@ -6,6 +6,7 @@ tests exercise persistence failure, rejected imports and late module wiring.
 from pathlib import Path
 import sys
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
 
@@ -533,3 +534,71 @@ def test_late_profile_recovery_does_not_announce_a_stale_startup_warning(tmp_pat
     for callback in deferred:
         callback()
     assert frame.notices == []
+
+
+def export_form(manager, tmp_path):
+    private = tmp_path / 'private-keymaps'
+    private.mkdir()
+    manager.change_root(private)
+    destination = tmp_path / 'exported-keymap.json'
+    dialog = dialog_double(manager)
+    dialog.draft['library.import'] = 'Ctrl+K'
+    native = file_dialog_wx(destination)
+    native.FD_SAVE, native.FD_OVERWRITE_PROMPT = 8, 16
+    native.YES_NO, native.NO_DEFAULT, native.ICON_QUESTION = 32, 64, 128
+    native.YES, native.NO = 256, 512
+    native.MessageBox = Mock(return_value=native.YES)
+    dialog.wx = native
+    return dialog, destination
+
+
+@pytest.mark.parametrize('existing', [False, True])
+def test_keymap_export_preserves_other_work_written_during_validation(
+        manager, tmp_path, monkeypatch, existing):
+    dialog, destination = export_form(manager, tmp_path)
+    if existing:
+        destination.write_bytes(b'Previously approved export')
+    before = snapshot(manager)
+    validate = manager.validate
+    independent = b'Independent work saved while the draft was validated'
+
+    def validate_then_external_write(draft):
+        normalized = validate(draft)
+        destination.write_bytes(independent)
+        return normalized
+
+    monkeypatch.setattr(manager, 'validate', validate_then_external_write)
+    dialog.export_map()
+    assert destination.read_bytes() == independent
+    assert 'destination changed' in dialog.messages[-1]
+    assert dialog.wx.MessageBox.call_count == int(existing)
+    assert snapshot(manager) == before
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
+def test_declined_keymap_replacement_never_validates_or_writes(
+        manager, tmp_path, monkeypatch):
+    dialog, destination = export_form(manager, tmp_path)
+    destination.write_bytes(b'Keep existing keymap')
+    dialog.wx.MessageBox.return_value = dialog.wx.NO
+    validate = Mock(side_effect=AssertionError('Declined export must not validate or write'))
+    monkeypatch.setattr(manager, 'validate', validate)
+    dialog.export_map()
+    validate.assert_not_called()
+    assert destination.read_bytes() == b'Keep existing keymap'
+    assert 'cancelled' in dialog.messages[-1].lower()
+
+
+@pytest.mark.parametrize('existing', [False, True])
+def test_confirmed_keymap_export_keeps_the_live_shortcuts_unchanged(manager, tmp_path, existing):
+    import json
+
+    dialog, destination = export_form(manager, tmp_path)
+    if existing:
+        destination.write_bytes(b'Previously approved export')
+    before = snapshot(manager)
+    dialog.export_map()
+    assert json.loads(destination.read_text()) == {'version': 1, 'bindings': dialog.draft}
+    assert snapshot(manager) == before
+    assert dialog.wx.MessageBox.call_count == int(existing)
+    assert 'was exported' in dialog.messages[-1]

@@ -37,7 +37,7 @@ class ProgressPreferences:
             raise ProgressPreferenceError('Choose Off, Beep, Speech or Beep and Speech.')
         if (isinstance(self.interval_seconds, bool)
                 or not isinstance(self.interval_seconds, (int, float))
-                or not math.isfinite(self.interval_seconds) or not 1 <= self.interval_seconds <= 60):
+                or not 1 <= self.interval_seconds <= 60 or not math.isfinite(self.interval_seconds)):
             raise ProgressPreferenceError('The progress interval must be from 1 to 60 seconds.')
         if type(self.volume) is not int or not 0 <= self.volume <= 100:
             raise ProgressPreferenceError('Progress volume must be an integer from 0 to 100.')

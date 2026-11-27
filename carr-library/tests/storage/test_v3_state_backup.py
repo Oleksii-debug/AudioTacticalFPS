@@ -288,3 +288,55 @@ def test_legacy_backup_still_restores_without_state(tmp_path):
     restored = LibraryApp(restore_backup(backup, tmp_path / 'restored', digest))
     assert restored.search(workspace, 'Legacy')[0].quote == 'Legacy'
     assert not (restored.root / 'state').exists()
+
+
+def test_snapshot_rejects_same_metadata_content_change_before_publication(populated, tmp_path, monkeypatch):
+    """The current v4 producer must verify copied bytes, including valid metadata edits."""
+    from carr_library import backup_sidecars
+
+    app, *_ = populated
+    source = next(path for path in (app.root / 'state/providers').glob('*.json')
+                  if b'fixture-model' in path.read_bytes())
+    original = source.read_bytes()
+    replacement = original.replace(b'fixture-model', b'updated-model')
+    assert replacement != original and len(replacement) == len(original)
+    before = source.stat()
+    identity = backup_sidecars._identity
+    # Model Windows creation time while keeping actual identity, size and mtime.
+    monkeypatch.setattr(backup_sidecars, '_identity', lambda info: identity(info)[:-1] + (0,))
+    modified = False
+
+    def concurrent_writer():
+        nonlocal modified
+        copied = list(tmp_path.glob('.carr-library-backup-*/state/studio/projects/*/project.json'))
+        if copied and not modified:
+            modified = True
+            source.write_bytes(replacement)
+            os.utime(source, ns=(before.st_atime_ns, before.st_mtime_ns))
+        return False
+
+    destination = tmp_path / 'backup'
+    with pytest.raises((ValueError, OSError), match='digest changed|state changed'):
+        create_backup(app, destination, cancelled=concurrent_writer)
+    assert modified and source.read_bytes() == replacement
+    assert not destination.exists()
+
+
+def test_snapshot_revalidation_can_be_cancelled_before_publication(populated, tmp_path, monkeypatch):
+    from carr_library import backup_sidecars
+
+    app, *_ = populated
+    revalidating = []
+    stream_file = backup_sidecars._stream_file
+
+    def observe_revalidation(source, **options):
+        if options.get('expected') is not None:
+            revalidating.append(Path(source))
+        return stream_file(source, **options)
+
+    monkeypatch.setattr(backup_sidecars, '_stream_file', observe_revalidation)
+    destination = tmp_path / 'backup'
+    with pytest.raises(InterruptedError, match='cancelled'):
+        create_backup(app, destination, cancelled=lambda: bool(revalidating))
+    assert revalidating
+    assert not destination.exists()

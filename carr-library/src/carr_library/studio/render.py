@@ -198,7 +198,7 @@ class ProductionService:
 
     def run(self, job_id, *, cancelled=lambda: False, progress=None):
         self._check_open()
-        from ..audio import Track, MusicSpec, AudioError
+        from ..audio import Track, MusicSpec, AudioError, AudioCancelled
         from ..speech import SpeechSettings
         job_root = self.jobs_root / _id(job_id)
         with state_lock(job_root, 'render'):
@@ -532,8 +532,17 @@ class ProductionService:
                 self._save(state)
                 return state
             except BaseException as exc:
-                action = read_json(control).get('action') if control.exists() else None
-                state['status'] = 'cancelled' if action == 'cancel' else ('paused' if requested_stop() or isinstance(exc, InterruptedError) else 'failed')
+                # A stop request is not acknowledgement of cancellation. Keep
+                # a real render/publication error even if Pause arrived at the
+                # same time; only the runtimes' explicit interruption types can
+                # safely describe a resumable pause or cancellation.
+                state['status'] = 'failed'
+                if isinstance(exc, (InterruptedError, AudioCancelled)):
+                    try:
+                        action = read_json(control).get('action') if control.exists() else None
+                    except (ValueError, OSError):
+                        action = None
+                    state['status'] = 'cancelled' if action == 'cancel' else 'paused'
                 state['error'] = str(exc)[:2000]
                 self._save(state)
                 raise

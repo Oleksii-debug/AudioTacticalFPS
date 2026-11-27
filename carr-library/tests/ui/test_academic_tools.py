@@ -25,6 +25,18 @@ def research(tmp_path):
     return app, workspace, other, topic, child, evidence, child_evidence
 
 
+@pytest.fixture(autouse=True)
+def export_confirmation(monkeypatch):
+    from carr_library.ui import academic_tools
+    from carr_library.ui.export_destination import confirm_export_destination
+
+    native = SimpleNamespace(YES_NO=1, NO_DEFAULT=2, ICON_QUESTION=4, YES=8, NO=16)
+    native.MessageBox = Mock(return_value=native.YES)
+    monkeypatch.setattr(academic_tools, 'confirm_export_destination',
+        lambda *args, **kwargs: confirm_export_destination(*args, **kwargs, wx_module=native))
+    return native
+
+
 class Frame:
     def __init__(self, app, workspace, topic):
         self.library = app
@@ -131,8 +143,8 @@ def test_export_cannot_replace_private_database(research):
     frame, actions, _ = make_actions(research, save_path=research[0].database)
     before = research[0].database.read_bytes()
     actions.outline()
-    with pytest.raises(ValueError, match='private library'):
-        frame.complete()
+    assert not frame.jobs
+    assert 'private library' in frame.report.call_args.args[0]
     assert research[0].database.read_bytes() == before
     assert research[0].search(research[1], 'Exact original quotation.')
 
@@ -213,3 +225,35 @@ def test_declined_scope_change_does_not_replace_the_existing_note_editor(researc
     actions.open_evidence(AcademicScope(frame.library, *frame.active), selected)
     frame._open_workspace.assert_called_once_with(research[1], research[4])
     frame.evidence.refresh.assert_not_called()
+
+
+@pytest.mark.parametrize('kind', ['outline', 'matrix'])
+@pytest.mark.parametrize('existing', [False, True])
+def test_queued_academic_export_preserves_changed_destination(
+        research, tmp_path, kind, existing):
+    output = tmp_path / 'approved.md'
+    if existing:
+        output.write_bytes(b'Previously approved export')
+    frame, actions, _ = make_actions(research, save_path=output)
+    scope = AcademicScope(frame.library, *frame.active)
+    actions._export(scope, kind=kind, format='markdown',
+                    include_descendants=True, tag_filter=None)
+    assert len(frame.jobs) == 1
+    independent = b'Independent work saved while the export was queued'
+    output.write_bytes(independent)
+    with pytest.raises(ValueError, match='destination changed'):
+        frame.complete()
+    assert output.read_bytes() == independent
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
+def test_declined_academic_replacement_never_starts_render(
+        research, tmp_path, export_confirmation):
+    output = tmp_path / 'approved.md'
+    output.write_bytes(b'Keep existing work')
+    export_confirmation.MessageBox.return_value = export_confirmation.NO
+    frame, actions, _ = make_actions(research, save_path=output)
+    actions.outline()
+    assert not frame.jobs
+    assert output.read_bytes() == b'Keep existing work'
+    assert 'cancelled' in frame.report.call_args.args[0].lower()

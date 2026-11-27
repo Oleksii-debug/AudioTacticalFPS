@@ -308,6 +308,12 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
             shutil.copyfile(regular(native_launcher), destination)
             if sha256(destination) != NATIVE_LAUNCHER_SHA256:
                 raise ValueError("Native launcher changed during bundle assembly")
+        if source_evidence is not None:
+            # Retain the verifier's exact commit/tree/wheel binding inside the
+            # sealed payload, so installed acceptance can attest those same
+            # bytes. Use deterministic LF bytes on both build platforms.
+            (staged / "application-source.json").write_bytes(
+                (json.dumps(source_evidence, indent=2, sort_keys=True) + "\n").encode("utf-8"))
         files = {p.relative_to(staged).as_posix(): sha256(p)
                  for p in sorted(staged.rglob("*")) if p.is_file()}
         manifest = {"schema": 1, "target": TARGET, "bundled_python": python_archive is not None,

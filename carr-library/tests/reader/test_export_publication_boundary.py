@@ -57,7 +57,7 @@ payload = sys.argv[4]
 writer(sys.argv[1], payload.encode() if sys.argv[3] == '1' else payload,
        private_root=sys.argv[2], require_absent=True)
 '''
-    child = subprocess.run([sys.executable, '-c', code, str(target), str(private),
+    child = subprocess.run([sys.executable, '-B', '-c', code, str(target), str(private),
                             str(int(binary)), payload], capture_output=True, timeout=30)
     assert child.returncode == 74, child.stderr
     assert target.read_bytes() == payload.encode()

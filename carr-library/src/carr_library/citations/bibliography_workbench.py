@@ -14,7 +14,7 @@ import os
 from pathlib import Path, PureWindowsPath
 import stat
 
-from ..research.export_file import write_binary_export, write_export
+from ..research.export_file import capture_export_destination, write_binary_export, write_export
 
 
 NAME_MODES = (('literal', 'Keep author names exactly as entered'),
@@ -202,6 +202,8 @@ class BibliographyWorkbench:
         """Export exact content, optionally returning its publication receipt."""
         if type(return_receipt) is not bool:
             raise ValueError('The export receipt option must be boolean.')
+        if approval is None:
+            approval = capture_export_destination(destination, private_root=self.controller.library.root)
         snapshot = self.check(preview)
         if cancelled():
             raise TimeoutError('Bibliography export cancelled; no output was changed.')

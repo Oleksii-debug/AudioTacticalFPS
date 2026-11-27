@@ -196,7 +196,11 @@ def exercise_controls(root, wx, *, timeout=60):
                     trace_phase('run-reviewed-plan', reopened=reopened)
                     click(button(dialog, 'Run / resume'))
                     state['phase'] = 'running'
-                elif state['phase'] == 'running' and review.GetValue().startswith('complete:'):
+                # Saved jobs already display "complete:" before resume starts.
+                # Wait for the real completion callback to enable Run again;
+                # the old summary is not the resumed and reverified result.
+                elif (state['phase'] == 'running' and button(dialog, 'Run / resume').IsEnabled()
+                      and review.GetValue().startswith('complete:')):
                     trace_phase('verify-durable-completion', reopened=reopened)
                     assert '3 of 3 verified operations' in review.GetValue()
                     job, = observer.jobs()

@@ -31,7 +31,8 @@ def harness(*, saved=None, closed=False, reject_submit=False):
     factory.body.extend([run, ast.parse('return run').body[0]])
     tree = ast.fix_missing_locations(ast.Module(body=[factory], type_ignores=[]))
     namespace = dict(ProgressError=ProgressError, ProgressState=ProgressState,
-                     bind_progress=bind_progress, operation_outcome=operation_outcome)
+                     bind_progress=bind_progress, operation_outcome=operation_outcome,
+                     threading=SimpleNamespace(Event=Event))
     exec(compile(tree, str(Path(studio_dialog.__file__)), 'exec'), namespace)
     panel = object.__new__(NativeProgressPanel)
     panel.hub, panel.active_task = ProgressHub(), None
@@ -71,7 +72,7 @@ def test_studio_uses_durable_receipt_and_never_announces_partial_completion(stat
     assert env.dialog.working is False
 
 
-@pytest.mark.parametrize('status,expected', [('paused','paused'), ('failed','failed'), ('complete','succeeded')])
+@pytest.mark.parametrize('status,expected', [('paused','paused'), ('failed','failed'), ('complete','paused')])
 def test_interruption_uses_saved_job_outcome_including_late_cancel(status, expected):
     run, env = harness(saved={'status': status})
     def operation(measured):

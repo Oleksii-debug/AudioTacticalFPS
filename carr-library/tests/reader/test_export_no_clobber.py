@@ -204,7 +204,7 @@ def test_cli_without_overwrite_preserves_file_created_during_formatting(tmp_path
     result = main(['format', '--data-dir', str(app.root), '--workspace', workspace,
                    '--reference', reference.id, '--output', str(destination)])
     assert result == 1
-    assert 'exists' in capsys.readouterr().err
+    assert 'destination changed' in capsys.readouterr().err
     assert destination.read_bytes() == b'Created by another program during rendering'
     assert controller.get(reference.id) == reference
     assert not list(tmp_path.glob('.research-export-*'))

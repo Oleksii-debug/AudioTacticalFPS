@@ -750,24 +750,47 @@ class LibraryApp:
                     result['verified'] = asset.mime == 'text/plain' and result['state'] == 'complete'
                     return result
 
-    def import_files(self, workspace, paths, **metadata):
-        results = []
+    def import_files(self, workspace, paths, *, progress=None, **metadata):
+        """Import sequentially and report actual per-file outcomes.
+
+        Reporting is an optional observer, outside every import transaction.
+        It cannot change a committed result or cause a file to be retried.
+        A single file and unsized iterables stay indeterminate: file counts do
+        not measure page extraction, OCR, or elapsed time within one file.
+        """
+        total = None
+        if progress is not None:
+            try:
+                count = len(paths)
+                total = count if count > 1 else None
+            except Exception:
+                pass  # Do not consume an iterable merely to count it.
+
+        def report(completed):
+            nonlocal progress
+            if progress is not None:
+                try:
+                    progress(completed, total, 'Processing files')
+                except Exception:
+                    progress = None
+
         cancelled = metadata.get('cancelled', lambda: False)
         if not callable(cancelled):
             raise ValueError('An import cancellation callback is required.')
+        report(0)
+        results = []
         for path in paths:
-            if cancelled():
-                break
             try:
-                result = {'file': Path(path).name, **self.import_file(workspace, path, **metadata)}
-                results.append(result)
-                if result.get('state') == 'cancelled':
-                    break
+                if cancelled():
+                    raise InterruptedError('Import cancelled before processing this file; remaining files were not attempted.')
+                results.append({'file': Path(path).name, **self.import_file(workspace, path, **metadata)})
             except InterruptedError as exc:
                 results.append({'file': Path(path).name, 'state': 'cancelled', 'message': str(exc)})
-                break
             except (ValueError, OSError, sqlite3.Error, RuntimeError) as exc:
                 results.append({'file': Path(path).name, 'state': 'failed', 'message': str(exc)})
+            report(len(results))
+            if results[-1].get('state') == 'cancelled':
+                break
         return tuple(results)
 
     def add_text(self, workspace, title, text, **metadata):

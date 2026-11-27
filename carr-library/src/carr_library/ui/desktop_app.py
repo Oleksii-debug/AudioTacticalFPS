@@ -15,6 +15,7 @@ from ..extract.document_formats import file_dialog_wildcard, supported_formats_t
 from ..catalog.read_views import active_collections
 from ..citations.anchors import format_citation
 from ..research.export_file import write_export, write_binary_export
+from .export_destination import confirm_export_destination
 from ..reader.source_file import prepare_source_file, launch_source_file
 from ..research.saved_topic_query import SavedTopicQueries
 from ..research.topic_tree import TopicTree
@@ -695,7 +696,7 @@ class DesktopFrame(WorkspaceFrame):
             progress.request_cancel()
 
     def run_job(self, title, operation, done=None, failed=None, *, progress_total=None,
-                progress_unit='units'):
+                progress_unit='units', with_progress=False):
         if self._closing:
             return
         if self.working:
@@ -703,14 +704,17 @@ class DesktopFrame(WorkspaceFrame):
             return
         progress = getattr(self, 'progress_panel', None)
         task = None
-        if progress is not None:
+        progress_error = None
+
+        def observe(callback):
+            nonlocal progress_error
             try:
-                task = progress.begin(title, total=progress_total, unit=progress_unit)
+                return callback()
             except Exception as exc:
-                self.report(f'{title}: could not start: {exc}')
-                if failed is not None:
-                    failed(exc)
-                return
+                progress_error = exc
+
+        if progress is not None:
+            task = observe(lambda: progress.begin(title, total=progress_total, unit=progress_unit))
         self.working = self.busy = True
         self.cancel_event.clear()
         self.cancel_button.Enable()
@@ -718,7 +722,7 @@ class DesktopFrame(WorkspaceFrame):
         if self.book is not None:
             self.book.Disable()
         if progress is not None:
-            progress.set_busy(True)
+            observe(lambda: progress.set_busy(True))
         else:
             for i in range(self.menu_bar.GetMenuCount()):
                 self.menu_bar.EnableTop(i, False)
@@ -728,11 +732,14 @@ class DesktopFrame(WorkspaceFrame):
             if progress is None:
                 return
             try:
+                if progress_error is not None:
+                    raise progress_error
                 progress.finish(task, state, message)
             except Exception as error:
                 # Optional observation cannot reverse an already committed
                 # operation or invoke its failure handler after successful done.
-                result = {'succeeded': 'completed', 'failed': 'failed', 'cancelled': 'cancelled', 'paused': 'needs attention'}[state]
+                result = {'succeeded': 'completed', 'failed': 'failed', 'cancelled': 'cancelled',
+                          'paused': 'needs attention', 'unavailable': 'returned; see the operation results'}[state]
                 warning = f'{title}: {result}. Progress reporting is unavailable: {error}'
                 if task is not None:
                     try:
@@ -757,12 +764,19 @@ class DesktopFrame(WorkspaceFrame):
                     except Exception:
                         pass
 
+        def report_progress(completed=None, total=None, phase=None):
+            if task is not None and progress_error is None:
+                observe(lambda: task.update(completed=completed, total=total, phase=phase))
+
+        def operation_result():
+            return operation(report_progress) if with_progress else operation()
+
         def work():
             if task is None:
-                return operation()
+                return operation_result()
             from ..progress import bind_progress
             with bind_progress(task):
-                return operation()
+                return operation_result()
 
         try:
             future = self.executor.submit(work)
@@ -785,24 +799,27 @@ class DesktopFrame(WorkspaceFrame):
                     result = future.result()
                     cancellation_arrived = self.cancel_event.is_set()
                     from ..progress import operation_outcome
-                    outcome = operation_outcome(result)
                     status = getattr(self, 'status', None)
-                    before = status.GetValue() if status is not None else None
+                    before = observe(status.GetValue) if status is not None else None
                     # Result callbacks may still validate or publish an artifact
                     # and own the selected source control and detailed status.
                     if done is not None:
                         done(result)
                     if self._closing:
                         return
-                    if not self.working and (status is None or status.GetValue() == before):
+                    outcome = observe(lambda: operation_outcome(result)) or 'unavailable'
+                    if not self.working and (status is None or observe(status.GetValue) == before):
                         label = {'succeeded': 'complete', 'paused': 'needs attention',
-                                 'failed': 'failed', 'cancelled': 'cancelled'}[outcome]
+                                 'failed': 'failed', 'cancelled': 'cancelled',
+                                 'unavailable': 'returned; see the operation results'}[outcome]
                         summary = title + ': ' + label + '.'
+                        if progress_error is not None:
+                            summary += ' Progress reporting is unavailable.'
                         if done is not None and status is not None:
                             # The callback may focus a panel's detailed status,
                             # results or reader without changing frame.status.
                             # Keep that focus while recording the job summary.
-                            status.SetValue(summary)
+                            observe(lambda: status.SetValue(summary))
                         else:
                             self.report(summary)
                 except Exception as exc:
@@ -828,7 +845,10 @@ class DesktopFrame(WorkspaceFrame):
             self.book.Enable()
         progress = getattr(self, 'progress_panel', None)
         if progress is not None:
-            progress.set_busy(False)
+            try:
+                progress.set_busy(False)
+            except Exception:
+                pass  # A detached observer cannot suppress a durable result.
         else:
             for i in range(self.menu_bar.GetMenuCount()):
                 self.menu_bar.EnableTop(i, True)
@@ -841,7 +861,7 @@ class DesktopFrame(WorkspaceFrame):
 
     def _open_data_root(self,path):
         if self.working:
-            raise ValueError('Wait for the current operation before opening another library folder.')
+            raise RuntimeError('Wait for the current operation to finish or cancel it before changing library folders.')
         path = Path(path)
         if not (path / 'library.sqlite').is_file():
             raise ValueError('Choose an existing research-library data folder containing library.sqlite.')
@@ -965,10 +985,12 @@ class DesktopFrame(WorkspaceFrame):
             return
         def done(rows):
             completed = sum(r['state'] == 'complete' for r in rows)
-            self.report(f'{completed} of {len(rows)} books imported. ' +
+            unattempted = max(0, len(paths) - len(rows))
+            self.report(f'{completed} of {len(paths)} selected books imported. ' +
                 ' '.join(f'{r["file"]}: {r["state"].replace("_", " ")}. ' +
                          (r.get('message') or r.get('error') or '')
                          for r in rows if r['state'] != 'complete') +
+                (f' {unattempted} remaining selected files were not attempted.' if unattempted else '') +
                 (' Choose Library, Review pending imported page to check quarantined OCR text.'
                  if any(r['state'] == 'quarantined' for r in rows) else ''))
             if self.book is not None:
@@ -978,8 +1000,9 @@ class DesktopFrame(WorkspaceFrame):
                 report = '\n\n'.join(row_details(dict(file=row['file'], state=row['state'],
                     message=row.get('message', ''), result=row)) for row in rows)
                 show_text(self, 'Import details', report)
-        self.run_job('Importing books', lambda: self.library.import_files(workspace, paths,
-            cancelled=self.cancel_event.is_set,config=config), done)
+        library = self.library
+        self.run_job('Importing books', lambda measured: library.import_files(workspace, paths,
+            cancelled=self.cancel_event.is_set, config=config, progress=measured), done, with_progress=True)
 
     def add_text(self, event):
         try:
@@ -1116,7 +1139,7 @@ class DesktopFrame(WorkspaceFrame):
             extensions = ('.md', '.txt', '.ris', '.bib', '.csv', '.docx', '.html')
             dialog = wx.FileDialog(self, 'Export topic', defaultFile='research-topic',
                 wildcard='Markdown (*.md)|*.md|Plain text (*.txt)|*.txt|RIS (*.ris)|*.ris|BibTeX (*.bib)|*.bib|CSV (*.csv)|*.csv|Word document (*.docx)|*.docx|HTML document (*.html)|*.html',
-                style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+                style=wx.FD_SAVE)
             try:
                 if dialog.ShowModal() != wx.ID_OK:
                     return
@@ -1128,16 +1151,13 @@ class DesktopFrame(WorkspaceFrame):
             finally:
                 dialog.Destroy()
             if not path.suffix:
-                # Some native save dialogs append the filter's extension and
-                # others do not. Confirm the actual target if we append it.
                 path = path.with_suffix(extension)
-                if path.exists() and wx.MessageBox(
-                    f'Replace the existing export {path.name}?', 'Replace export',
-                    wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, self) != wx.YES:
-                    return
             elif format in ('docx', 'html') and path.suffix.lower() != extension:
                 raise ValueError(f'The selected format needs a {extension} filename. '
                                  'Export again with the matching filename or file type.')
+            approval = confirm_export_destination(self, path, private_root=library.root, wx_module=wx)
+            if approval is None:
+                return
 
             def selected_scope():
                 if self.library is not library or self.active != (workspace, topic):
@@ -1152,7 +1172,7 @@ class DesktopFrame(WorkspaceFrame):
                     raise TimeoutError('Export cancelled; the destination was not changed.')
                 writer = write_binary_export if format == 'docx' else write_export
                 writer(path,content,private_root=library.root,
-                       cancelled=self.cancel_event.is_set)
+                       cancelled=self.cancel_event.is_set, approval=approval)
 
             def done(result):
                 if format in ('ris','bibtex'):

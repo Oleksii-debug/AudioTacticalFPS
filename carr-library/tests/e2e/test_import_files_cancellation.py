@@ -12,7 +12,8 @@ def test_cancel_after_committed_text_leaves_next_original_unopened(tmp_path):
     second.write_text('Unattempted second railway source.', encoding='utf-8')
     results = app.import_files(workspace, [first, second],
                                cancelled=lambda: bool(app.browse(workspace)))
-    assert len(results) == 1 and results[0]['state'] == 'complete'
+    assert [row['state'] for row in results] == ['complete', 'cancelled']
+    assert results[1]['file'] == 'second.txt'
     assert len(list(app.assets_dir.iterdir())) == 1
     reopened = LibraryApp(app.root)
     assert len(reopened.browse(workspace)) == 1
@@ -25,7 +26,8 @@ def test_precancelled_selection_opens_no_source(tmp_path, monkeypatch):
     def forbidden(*args, **kwargs):
         raise AssertionError('A cancelled selection must not open another source.')
     monkeypatch.setattr(app, 'import_file', forbidden)
-    assert app.import_files(workspace, [tmp_path / 'one.txt'], cancelled=lambda: True) == ()
+    result, = app.import_files(workspace, [tmp_path / 'one.txt'], cancelled=lambda: True)
+    assert result['file'] == 'one.txt' and result['state'] == 'cancelled'
     assert list(app.assets_dir.iterdir()) == []
 
 

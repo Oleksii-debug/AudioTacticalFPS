@@ -4,7 +4,7 @@ The default is silent. Tone synthesis creates a short in-memory notification,
 never an output file or a renderer input. Only an explicitly injected approved
 local provider can speak; this module does not implement or acquire TTS.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from io import BytesIO
 import math
 import struct
@@ -98,6 +98,12 @@ class FeedbackPlanner:
         self._seen = {}
         self._last_emit = float('-inf')
 
+    def discard(self, snapshot):
+        """A quiet boundary consumes the current notice without replay later."""
+        if snapshot is not None:
+            with self._lock:
+                self._seen[snapshot.operation_id] = snapshot.revision, snapshot.state
+
     def plan(self, snapshot, preferences, *, active=True, media_busy=False):
         if not isinstance(snapshot, ProgressSnapshot) or not isinstance(preferences, ProgressPreferences):
             raise ValueError('A progress snapshot and validated preferences are required.')
@@ -177,6 +183,8 @@ class ProgressFeedback:
         self._closed = False
         self._playing = False
         self._generation = 0
+        self._operation_id = None
+        self._retired_providers = []
         self._last_error = ''
         if preferences.mode not in self.available_modes:
             self._last_error = 'This progress sound mode requires an available local tone or approved speech provider.'
@@ -197,9 +205,22 @@ class ProgressFeedback:
     def quiescent(self):
         """Recorder adapters can check that no notification is still playing."""
         with self._condition:
-            return not self._playing and self._pending is None
+            retained = []
+            for provider in self._retired_providers:
+                try:
+                    quiet = bool(getattr(provider, 'quiescent', True))
+                except Exception:
+                    quiet = False
+                if not quiet:
+                    retained.append(provider)
+            self._retired_providers = retained
+            try:
+                quiet = bool(getattr(self.speech_provider, 'quiescent', True))
+            except Exception:
+                quiet = False
+            return not self._playing and self._pending is None and quiet and not retained
 
-    def suspend(self):
+    def suspend(self, snapshot=None):
         """Drop queued feedback and request cancellation of approved speech.
 
         A tone already inside the OS playback call is bounded to 250 ms. A
@@ -209,7 +230,22 @@ class ProgressFeedback:
         with self._condition:
             self._generation += 1
             self._pending = None
+            self.planner.discard(snapshot)
             self._condition.notify_all()
+
+    def set_speech_provider(self, provider):
+        if provider is not None and not callable(getattr(provider, 'speak_progress', None)):
+            raise ValueError('Use an explicitly selected cancellable local progress voice.')
+        with self._condition:
+            previous = self.speech_provider
+            self._generation += 1
+            self._pending = None
+            self.speech_provider = provider
+            if previous is not None and previous is not provider:
+                self._retired_providers.append(previous)
+            self._last_error = ''
+            self._condition.notify_all()
+            return previous
 
     def set_preferences(self, preferences):
         if not isinstance(preferences, ProgressPreferences) or preferences.mode not in self.available_modes:
@@ -225,6 +261,11 @@ class ProgressFeedback:
         with self._condition:
             if self._closed or self.preferences.mode not in self.available_modes:
                 return None
+            if snapshot.operation_id != self._operation_id:
+                # A newer operation supersedes queued and active old notices.
+                self._operation_id = snapshot.operation_id
+                self._generation += 1
+                self._pending = None
             cue = self.planner.plan(snapshot, self.preferences, active=active, media_busy=media_busy)
             if cue is None:
                 # Quiet/mute/background changes also invalidate a queued cue.
@@ -234,7 +275,10 @@ class ProgressFeedback:
                     self._generation += 1
                     self._pending = None
                 return None
-            self._pending = cue, self._generation, self.preferences.volume
+            formatter = getattr(self.speech_provider, 'format_progress', None)
+            if cue.speech is not None and callable(formatter):
+                cue = replace(cue, speech=formatter(snapshot, kind=cue.kind))
+            self._pending = cue, self._generation, self.preferences.volume, self.speech_provider
             if self._worker is None:
                 self._worker = threading.Thread(target=self._run, name='progress-notifications', daemon=True)
                 self._worker.start()
@@ -251,7 +295,7 @@ class ProgressFeedback:
                 self._condition.wait_for(lambda: self._closed or self._pending is not None)
                 if self._closed:
                     return
-                cue, generation, volume = self._pending
+                cue, generation, volume, speech_provider = self._pending
                 self._pending = None
                 self._playing = True
             cancelled = lambda version=generation: self._cancelled(version)
@@ -265,7 +309,7 @@ class ProgressFeedback:
                             self._condition.wait_for(lambda: self._closed or generation != self._generation,
                                                      timeout=tone.gap_after_ms / 1000)
                 if cue.speech is not None and not cancelled():
-                    self.speech_provider.speak_progress(cue.speech, volume=volume, cancelled=cancelled)
+                    speech_provider.speak_progress(cue.speech, volume=volume, cancelled=cancelled)
             except Exception as exc:
                 with self._condition:
                     self._last_error = 'Progress notification unavailable: ' + str(exc)

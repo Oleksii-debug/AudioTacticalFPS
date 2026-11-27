@@ -273,7 +273,20 @@ package-dir = {"" = "src"}
         manifest = json.loads((self.output / 'bundle-manifest.json').read_text())
         self.assertEqual(manifest['source_commit'], release)
         self.assertEqual(manifest['source_tree'], tree)
+        proof_path = self.output / 'application-source.json'
+        proof_bytes = proof_path.read_bytes()
+        proof = json.loads(proof_bytes)
+        self.assertEqual(proof['source_commit'], release)
+        self.assertEqual(proof['source_tree'], tree)
+        self.assertEqual(proof['wheel_sha256'], builder.sha256(self.app))
+        self.assertEqual(proof['project_name'], 'universal-research-library')
+        self.assertEqual(manifest['files']['application-source.json'],
+                         hashlib.sha256(proof_bytes).hexdigest())
+        self.assertNotIn(b'\r', proof_bytes)
         installer.verify(self.output)
+        proof_path.write_bytes(proof_bytes.replace(release.encode(), b'0' * 40))
+        with self.assertRaisesRegex(ValueError, 'checksum'):
+            installer.verify(self.output)
 
     def test_application_replaced_after_source_verification_is_rejected(self):
         verified_digest = builder.sha256(self.app)

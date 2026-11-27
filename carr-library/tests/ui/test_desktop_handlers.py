@@ -467,8 +467,11 @@ def test_scanned_pdf_import_reuses_canonical_recognition_config(classes,monkeypa
     chooser.assert_called_once_with(f,['/sources/Scanned.PDF','/sources/notes.txt'])
     f.library.import_files.assert_not_called()
     _,import_files,complete = f.run_job.call_args.args
-    import_files()
+    progress = Mock()
+    assert f.run_job.call_args.kwargs['with_progress'] is True
+    import_files(progress)
     call = f.library.import_files.call_args
+    assert call.kwargs['progress'] is progress
     assert call.args == ('a',['/sources/Scanned.PDF','/sources/notes.txt'])
     config = call.kwargs['config']
     assert config is selected
@@ -514,7 +517,7 @@ def test_text_and_docx_import_reuse_helper_config_without_language_dialog(classe
     f.import_books(None)
     chooser.assert_called_once_with(f,['notes.txt','chapter.docx'])
     wx.SingleChoiceDialog.assert_not_called()
-    f.run_job.call_args.args[1]()
+    f.run_job.call_args.args[1](Mock())
     assert f.library.import_files.call_args.kwargs['config'] == Config()
 
 
@@ -630,6 +633,7 @@ def test_folder_switch_remembers_only_valid_opened_library(classes,tmp_path):
     f._drop,f.refresh_scopes = Mock(),Mock()
     f.scopes = []
     f.remember_data_dir = Mock()
+    f.keyboard_commands, f.progress_panel = Mock(), Mock()
     (tmp_path / 'library.sqlite').write_bytes(b'fixture')
     candidate = SimpleNamespace(root=tmp_path,list_scopes=Mock(return_value=()))
     classes[0]['LibraryApp'].return_value = candidate
@@ -637,6 +641,43 @@ def test_folder_switch_remembers_only_valid_opened_library(classes,tmp_path):
     assert f.library is candidate
     f.remember_data_dir.assert_called_once_with(tmp_path)
     f._drop.assert_called_once()
+    f.keyboard_commands.change_root.assert_called_once_with(tmp_path)
+    f.progress_panel.change_root.assert_called_once_with(tmp_path)
+
+
+def test_folder_switch_during_work_never_rebinds_current_job(classes,tmp_path):
+    f = frame(classes)
+    f.working = True
+    original = f.library = Mock()
+    f._confirm, f._drop, f.remember_data_dir = Mock(), Mock(), Mock()
+    with pytest.raises(RuntimeError, match='current operation'):
+        f._open_data_root(tmp_path)
+    assert f.library is original
+    f._confirm.assert_not_called()
+    f._drop.assert_not_called()
+    f.remember_data_dir.assert_not_called()
+
+
+def test_cancelled_import_summary_keeps_all_selected_files_in_the_total(classes, monkeypatch):
+    f = frame(classes)
+    f.library, f.run_job = Mock(), Mock()
+    f._workspace = lambda: 'library'
+    monkeypatch.setitem(sys.modules, 'carr_library.ui.ocr_options',
+                        SimpleNamespace(choose_ocr_config=lambda *args: object()))
+    wx = classes[0]['wx']
+    wx.FD_OPEN, wx.FD_FILE_MUST_EXIST, wx.FD_MULTIPLE = 1, 2, 4
+    chooser = Mock()
+    chooser.ShowModal.return_value = wx.ID_OK
+    chooser.GetPaths.return_value = ['first.txt', 'second.txt', 'third.txt']
+    wx.FileDialog = Mock(return_value=chooser)
+    f.import_books(None)
+    done = f.run_job.call_args.args[2]
+    done(({'file': 'first.txt', 'state': 'complete'},
+          {'file': 'second.txt', 'state': 'cancelled', 'message': 'Cancelled before processing.'}))
+    text = f.report.call_args.args[0]
+    assert '1 of 3 selected books imported' in text
+    assert '1 remaining selected files were not attempted' in text
+    assert 'second.txt: cancelled' in text
 
 
 def test_bound_services_recheck_topic_in_the_source_transaction(classes,tmp_path):
@@ -684,8 +725,11 @@ def test_import_uses_the_chosen_recognition_configuration(classes,monkeypatch):
     file_dialog.Destroy.assert_called_once()
     f.library.import_files.assert_not_called()
     _,import_files,complete = f.run_job.call_args.args
-    import_files()
+    progress = Mock()
+    assert f.run_job.call_args.kwargs['with_progress'] is True
+    import_files(progress)
     call = f.library.import_files.call_args
+    assert call.kwargs['progress'] is progress
     assert call.args == ('a',['/sources/Scanned.PDF','/sources/notes.txt'])
     assert call.kwargs['config'] is config
     assert call.kwargs['cancelled'] == f.cancel_event.is_set

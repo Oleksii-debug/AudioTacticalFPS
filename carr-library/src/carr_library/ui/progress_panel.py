@@ -55,10 +55,14 @@ class NativeProgressPanel:
         self.speech_provider = getattr(frame, 'progress_speech_provider', None)
         if not callable(getattr(self.speech_provider, 'speak_progress', None)):
             self.speech_provider = None
+        from ..speech.progress_speech import snapshot_speech_provider
+        self.speech_provider = snapshot_speech_provider(self.speech_provider)
         self.store = ProgressPreferenceStore(Path(frame.library.root) / 'progress-preferences.json')
         self.preferences = self._read_preferences()
         self.feedback = ProgressFeedback(self._effective_preferences(self.preferences),
                                          tone_sink=self.tone_sink, speech_provider=self.speech_provider)
+        from .progress_media import ProgressMedia
+        self.media = ProgressMedia(self)
 
         self.panel = wx.Panel(frame.host)
         self.panel.SetName('Operation progress')
@@ -134,6 +138,41 @@ class NativeProgressPanel:
                 modes.append(('Beep and speech', 'beep_speech'))
         return tuple(modes)
 
+    def set_speech_provider(self, provider, *, root=None):
+        """Authorize this session's local voice without enabling its sound."""
+        from ..durable_state import local_path
+        from ..speech.progress_speech import snapshot_speech_provider
+        if provider is not None:
+            current = local_path(self.frame.library.root, exists=True)
+            selected = root if root is not None else getattr(provider, 'library_root', None)
+            if (current != local_path(self.store.path.parent, exists=True)
+                    or selected is not None and local_path(selected, exists=True) != current):
+                raise ValueError('The library folder changed. Select its progress voice again.')
+            provider_root = getattr(provider, 'library_root', None)
+            if provider_root is not None and local_path(provider_root, exists=True) != current:
+                raise ValueError('This progress voice belongs to a different library.')
+        provider = snapshot_speech_provider(provider)
+        previous = self.feedback.set_speech_provider(provider)
+        self.speech_provider = provider
+        if previous is not None and previous is not provider:
+            close = getattr(previous, 'close', None)
+            if callable(close):
+                close()
+        self.feedback.set_preferences(self._effective_preferences(self.preferences))
+        self.refresh_audio_state()
+
+    def hold_audio(self, *, recording=False):
+        return self.media.hold_audio(recording=recording)
+
+    def register_player(self, player):
+        return self.media.register_player(player)
+
+    def unregister_player(self, player, *, silence_confirmed=True):
+        self.media.unregister_player(player, silence_confirmed=silence_confirmed)
+
+    def refresh_audio_state(self):
+        self.media.refresh()
+
     def begin(self, title, *, total=None, unit='units'):
         task = self.hub.start(title, total=total, unit=unit)
         self.active_task = task
@@ -187,6 +226,9 @@ class NativeProgressPanel:
     def refresh(self, event=None):
         if self.closed:
             return
+        media = getattr(self, 'media', None)
+        force_quiet, media_busy = media.flags() if media is not None else (
+            self._flag('progress_recording_active'), self._flag('progress_media_busy'))
         snapshot = self.active_task.snapshot() if self.active_task is not None else None
         if snapshot is None:
             description = 'No operation is running. Query current progress remains available while work runs.'
@@ -206,12 +248,12 @@ class NativeProgressPanel:
                 self._last_revision = identity
             # Recording can never opt into notification sound. Other media
             # respects the user's quiet-during-media preference.
-            if reporting_failed or self._flag('progress_recording_active'):
-                self.feedback.suspend()
+            if reporting_failed or force_quiet:
+                self.feedback.suspend(snapshot)
             else:
                 try:
                     self.feedback.update(snapshot, active=bool(self.frame.IsActive()),
-                                         media_busy=self._flag('progress_media_busy'))
+                                         media_busy=media_busy)
                 except Exception as error:
                     self.notice = 'Extra progress feedback is unavailable. ' + str(error)
         if indeterminate:
@@ -324,6 +366,8 @@ class NativeProgressPanel:
     def change_root(self, root):
         if getattr(self.frame, 'working', False):
             raise ValueError('Wait for the current operation before changing progress settings folders.')
+        self.feedback.suspend(self.active_task.snapshot() if self.active_task is not None else None)
+        self.set_speech_provider(None)
         self.store = ProgressPreferenceStore(Path(root) / 'progress-preferences.json')
         self.notice = ''
         self.preferences = self._read_preferences()
@@ -346,6 +390,10 @@ class NativeProgressPanel:
         self.closed = True
         self.timer.Stop()
         self.feedback.close()
+        close = getattr(self.speech_provider, 'close', None)
+        if callable(close):
+            close()
+        self.media.close()
 
 
 class ProgressSettingsDialog:

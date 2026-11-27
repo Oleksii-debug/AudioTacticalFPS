@@ -9,6 +9,7 @@ from ..durable_state import atomic_json, atomic_bytes, read_json
 from ..studio.project import Project, parse_script
 from ..studio.render import ProductionService
 from ..progress import ProgressError, ProgressState, bind_progress, operation_outcome
+from ..speech.progress_speech import activate_progress_voice, play_when_quiet
 
 SCRIPT_HELP = '''Write ordinary prose for one narrator, or use named speaking roles:
 Narrator [center]: The team enters the archive.
@@ -77,6 +78,7 @@ def show_studio(frame):
     voices, current_job, alive, busy = (), None, True, False
     draft_dirty = False
     saved_signature = None
+    owned_progress_voices = set()
 
     def field(label, factory=wx.TextCtrl, proportion=0, **kwargs):
         layout.Add(wx.StaticText(dialog, label=label), 0, wx.LEFT | wx.TOP, 6)
@@ -101,11 +103,14 @@ def show_studio(frame):
     for row in ((('save', '&Save (Ctrl+S)'), ('open', '&Open project'), ('saveas', 'Save &as (Ctrl+Shift+S)'),
                  ('roles', 'Edit &roles and voices'), ('help', '&Help')),
                 (('render', '&Render / resume (F6)'), ('pause', '&Pause (F8)'), ('jobs', 'Saved &jobs'),
-                 ('preview', 'Listen to &output'), ('close', '&Close'))):
+                 ('preview', 'Listen to &output'), ('close', '&Close')),
+                (('progress_voice', 'Use voice for progress...'),)):
         box = wx.BoxSizer(wx.HORIZONTAL)
         for identity, label in row:
             button = wx.Button(dialog, label=label)
             buttons[identity] = button
+            if identity == 'progress_voice':
+                button.SetName('Use selected local voice for progress')
             box.Add(button, 0, wx.ALL, 4)
         layout.Add(box, 0, wx.EXPAND)
     dialog.SetSizer(layout)
@@ -123,7 +128,13 @@ def show_studio(frame):
     dialog.report = lambda message: report(message, True)
     dialog.working = False
     parent_progress = getattr(frame, 'progress_panel', None)
-    dialog.progress_speech_provider = getattr(parent_progress, 'speech_provider', None)
+    selected_provider = getattr(parent_progress, 'speech_provider', None)
+    dialog.progress_speech_provider = None
+    if callable(getattr(selected_provider, 'copy_selection', None)):
+        try:
+            dialog.progress_speech_provider = selected_provider.copy_selection()
+        except (ValueError, OSError, RuntimeError) as exc:
+            report(f'Select a progress voice again: {exc}')
     dialog.progress_media_busy = lambda: (
         getattr(getattr(dialog, '_audio_player', None), 'state', 'stopped') == 'playing')
     progress = NativeProgressPanel(dialog)
@@ -147,6 +158,9 @@ def show_studio(frame):
             buttons[name].Enable(not busy)
         buttons['pause'].Enable(busy)
         buttons['preview'].Enable(not busy and current_job is not None)
+        selected = voice_choice.GetSelection()
+        buttons['progress_voice'].Enable(not busy and 0 <= selected < len(voices)
+                                          and 'volume' in voices[selected].capabilities)
         editor.Enable(not busy)
         title.Enable(not busy)
         voice_choice.Enable(not busy)
@@ -159,27 +173,62 @@ def show_studio(frame):
         dialog.working = True
         cancel.clear()
         controls()
-        task = progress.begin(phase)
+        task, observer_error = None, None
+        job_identity = current_job
+        finished = threading.Event()
+
+        def observe(callback):
+            nonlocal observer_error
+            try:
+                return callback()
+            except Exception as exc:
+                observer_error = exc
+
+        task = observe(lambda: progress.begin(phase))
 
         def measured(message):
+            if finished.is_set():
+                return
             description = ' '.join(str(message).split())[:512] or phase
-            # Phase receipts do not provide a measured overall total.
-            # Updates queued before cancellation must not resurrect a task.
-            if not cancel.is_set() and task.snapshot().state == ProgressState.RUNNING:
-                try:
-                    task.update(phase=description)
-                except ProgressError:
-                    if not cancel.is_set():
-                        raise
-            wx.CallAfter(report, description)
+            if task is not None and not cancel.is_set() and task.snapshot().state == ProgressState.RUNNING:
+                observe(lambda: task.update(phase=description))
+            def show_phase():
+                if alive and not finished.is_set():
+                    report(description)
+            observe(lambda: wx.CallAfter(show_phase))
 
         def execute():
+            if task is None:
+                return operation(measured) if with_progress else operation()
             with bind_progress(task):
                 return operation(measured) if with_progress else operation()
+
+        def finish_progress(outcome):
+            if observer_error is None:
+                observe(lambda: progress.finish(task, outcome, phase + ': ' + outcome))
+            if observer_error is not None:
+                warning = 'Work returned ' + outcome + '; progress feedback is unavailable: ' + str(observer_error)
+                observe(lambda: progress.reporting_unavailable(task, outcome, warning))
+
+        def failed_operation(exc, *, worker=False):
+            from carr_library.audio.models import AudioCancelled
+            interrupted = worker and isinstance(exc, (InterruptedError, AudioCancelled))
+            outcome = 'paused' if interrupted else 'failed'
+            if interrupted and with_progress and job_identity is not None:
+                try:
+                    saved = operation_outcome(service.get(job_identity))
+                    if saved in ('paused', 'cancelled', 'failed'):
+                        outcome = saved
+                except Exception:
+                    pass
+            finish_progress(outcome)
+            if alive:
+                report(str(exc), True)
 
         def finish(done):
             def apply():
                 nonlocal busy
+                finished.set()
                 busy = False
                 dialog.working = False
                 if alive:
@@ -187,42 +236,69 @@ def show_studio(frame):
                 try:
                     result = done.result()
                 except Exception as exc:
-                    outcome = 'paused' if isinstance(exc, InterruptedError) else 'failed'
-                    if with_progress and current_job is not None:
-                        try:
-                            outcome = operation_outcome(service.get(current_job))
-                        except (ValueError, OSError, RuntimeError):
-                            pass
-                    progress.finish(task, outcome, phase + ': ' + outcome)
-                    if alive:
-                        report(str(exc), True)
+                    failed_operation(exc, worker=True)
                     return
-                outcome = operation_outcome(result)
+                outcome = observe(lambda: operation_outcome(result))
                 try:
-                    # A paused/partial receipt must never announce completion.
-                    if alive and outcome == 'succeeded':
+                    if alive and outcome in ('succeeded', None):
                         complete(result)
                     elif alive:
                         report(phase + ': ' + outcome + '. Saved work is retained.', True)
-                    progress.finish(task, outcome, phase + ': ' + outcome)
                 except Exception as exc:
-                    progress.reporting_unavailable(task, outcome,
-                        'Work returned ' + outcome + '; progress display failed: ' + str(exc))
-                    if alive:
-                        report(str(exc), True)
+                    failed_operation(exc)
+                    return
+                finish_progress(outcome or 'unavailable')
             wx.CallAfter(apply)
 
         try:
             future = executor.submit(execute)
         except Exception as exc:
+            finished.set()
             busy = False
             dialog.working = False
-            controls()
-            progress.finish(task, 'failed', 'Could not start ' + phase)
-            report(str(exc), True)
+            if alive:
+                controls()
+            failed_operation(exc)
             return
         future.add_done_callback(finish)
         return future
+
+    def select_progress_voice(event=None):
+        selected = voice_choice.GetSelection()
+        if not 0 <= selected < len(voices):
+            return
+        root, voice_id = Path(dialog.library.root), voices[selected].id
+
+        def activate():
+            provider = activate_progress_voice(root, voice_id)
+            owned_progress_voices.add(provider)
+            return provider
+
+        def activated(provider):
+            try:
+                progress.set_speech_provider(provider, root=root)
+                owned_progress_voices.discard(provider)
+                if parent_progress is not None:
+                    copied = provider.copy_selection()
+                    try:
+                        parent_progress.set_speech_provider(copied, root=root)
+                    except Exception:
+                        copied.close()
+                        raise
+            except Exception:
+                provider.close()
+                raise
+            progress.settings()
+            if parent_progress is not None:
+                parent_progress.preferences = parent_progress.store.load()
+                parent_progress.feedback.set_preferences(
+                    parent_progress._effective_preferences(parent_progress.preferences))
+                parent_progress.mute.SetValue(parent_progress.preferences.muted)
+                parent_progress.refresh_audio_state()
+            report(f'Progress voice selected for this session: {provider.label}. '
+                   f'Sound mode: {progress.preferences.mode}.')
+
+        run(activate, activated, phase='Selecting a local progress voice')
 
     def save(event=None):
         nonlocal draft_dirty, saved_signature
@@ -408,8 +484,14 @@ def show_studio(frame):
             from ..speech.player import WavePlayer
             player = getattr(dialog, '_audio_player', None) or WavePlayer()
             dialog._audio_player = player
-            player.play(source)
-            report('Playing the rendered master. Close this dialog to stop playback.', True)
+            progress.register_player(player)
+            if parent_progress is not None:
+                parent_progress.register_player(player)
+            def playing():
+                player.play(source)
+                report('Playing the rendered master. Close this dialog to stop playback.', True)
+            play_when_quiet((progress, parent_progress), playing, schedule=wx.CallLater,
+                alive=lambda: alive, on_error=lambda exc: report(f'Playback did not start. {exc}', True))
         except Exception as exc:
             report(str(exc), True)
 
@@ -427,21 +509,37 @@ def show_studio(frame):
             service.request_pause(current_job)
         timer.Stop()
         if getattr(dialog, '_audio_player', None):
+            silence_confirmed = False
             try:
                 dialog._audio_player.close()
+                silence_confirmed = True
             except (OSError, RuntimeError) as exc:
                 report(f'Playback device reported a close error: {exc}')
+            for observer in (progress, parent_progress):
+                if observer is not None:
+                    try:
+                        observer.unregister_player(dialog._audio_player, silence_confirmed=silence_confirmed)
+                    except Exception as exc:
+                        report(f'Playback feedback could not be refreshed: {exc}')
         if busy:
             progress.request_cancel()
         progress.close()
         alive = False
         from .worker_cleanup import close_after_worker
-        close_after_worker(executor, service)
+        class StudioResources:
+            def close(self):
+                try:
+                    for provider in owned_progress_voices:
+                        provider.close()
+                finally:
+                    service.close()
+        close_after_worker(executor, StudioResources())
         dialog.EndModal(wx.ID_CLOSE)
 
     for name, callback in {'save': save, 'open': open_project, 'saveas': save_as, 'roles': edit_roles,
                            'render': render, 'pause': lambda event: cancel.set(), 'jobs': jobs,
-                           'preview': preview, 'help': help_text, 'close': close}.items():
+                           'preview': preview, 'help': help_text, 'close': close,
+                           'progress_voice': select_progress_voice}.items():
         buttons[name].Bind(wx.EVT_BUTTON, callback)
     bindings = []
     for modifiers, key, callback in [(wx.ACCEL_CTRL, ord('S'), save),
@@ -453,7 +551,10 @@ def show_studio(frame):
     dialog.SetAcceleratorTable(wx.AcceleratorTable(bindings))
     editor.Bind(wx.EVT_TEXT, changed)
     title.Bind(wx.EVT_TEXT, changed)
-    voice_choice.Bind(wx.EVT_CHOICE, changed)
+    def voice_changed(event):
+        changed(event)
+        controls()
+    voice_choice.Bind(wx.EVT_CHOICE, voice_changed)
     dialog.Bind(wx.EVT_CLOSE, close)
     timer = wx.Timer(dialog)
     dialog.Bind(wx.EVT_TIMER, autosave, timer)
@@ -481,6 +582,7 @@ def show_studio(frame):
                 report(f'Saved draft needs review: {exc}', True)
                 return
         draft_dirty = False
+        controls()
         if controller.project is not None and (editor.GetValue(), title.GetValue()) == (
                 controller.project.original_script, controller.project.title):
             saved_signature = (editor.GetValue(), title.GetValue(), selected_voices())

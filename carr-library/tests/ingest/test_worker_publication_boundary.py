@@ -152,18 +152,67 @@ def test_preexisting_replay_is_not_new_completion_after_cancel(tmp_path, monkeyp
     app = LibraryApp(tmp_path / 'library')
     workspace = app.create_workspace('Replay boundary')
     source = source_file(tmp_path, 'docx')
+    existing = app.create_collection(workspace, 'Existing membership')
+    requested = app.create_collection(workspace, 'Requested membership')
     work_id, edition_id = uuid4().hex, uuid4().hex
-    first = app.import_file(workspace, source, work_id=work_id, edition_id=edition_id)
+    first = app.import_file(workspace, source, work_id=work_id, edition_id=edition_id,
+                            collections=(existing,))
     assert first['state'] == 'complete'
     marker = tmp_path / 'replay-before-commit'
     publication_barrier(monkeypatch, marker, before=True)
     cancelled = app.import_file(workspace, source, work_id=work_id, edition_id=edition_id,
-                               cancelled=marker.exists, timeout=30)
+                               collections=(requested,), cancelled=marker.exists, timeout=30)
     assert marker.is_file(), cancelled
     assert cancelled['state'] == 'cancelled'
     assert 'recovered_publication' not in cancelled
+    assert app.browse(workspace, collection=requested) == ()
+    assert len(app.browse(workspace, collection=existing)) == 1
     with app.read(workspace) as db:
         assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+
+
+@pytest.mark.parametrize('conflict', ('language', 'authors', 'title', 'edition', 'volume', 'work', 'collections'))
+def test_another_requests_fresh_publication_cannot_hide_metadata_or_membership_failure(
+        tmp_path, monkeypatch, conflict):
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Concurrent request identities')
+    collection = app.create_collection(workspace, 'Required membership')
+    source = source_file(tmp_path, 'docx')
+    wanted = dict(title='Requested title', authors=('Research; Team',), language='uk',
+                  edition='Second', volume='II', collections=(collection,),
+                  work_id='shared-work', edition_id='shared-edition')
+    other = dict(wanted)
+    changes = dict(language='en', authors=('Research', 'Team'), title='Different title',
+                   edition='First', volume='I', work_id='other-work', collections=())
+    field = 'work_id' if conflict == 'work' else conflict
+    other[field] = changes[field]
+    marker = tmp_path / 'before-request-publication'
+    processes = publication_barrier(monkeypatch, marker, before=True)
+    original_popen = worker.subprocess.Popen
+    competing = []
+
+    def launch(command, *args, **kwargs):
+        if (isinstance(command, list) and '-c' in command
+                and "runpy.run_module('carr_library.ingest.worker'" in command[command.index('-c') + 1]):
+            assert not competing
+            # A genuine independent publication after the supervisor's watermark,
+            # before its actual child. No row/result is fabricated or retargeted.
+            competing.append(app._import_file(workspace, source, **other))
+            assert competing[0]['state'] == 'complete'
+        return original_popen(command, *args, **kwargs)
+
+    monkeypatch.setattr(worker.subprocess, 'Popen', launch)
+    result = app.import_file(workspace, source, **wanted, cancelled=marker.exists, timeout=30)
+    assert result['state'] == ('cancelled' if conflict == 'collections' else 'failed'), result
+    assert 'recovered_publication' not in result
+    assert len(processes) == 1 and processes[0].poll() is not None
+    with app.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+        assert tuple(db.execute('SELECT language,edition,volume FROM catalog_edition').fetchone()) == (
+            other['language'], other['edition'], other['volume'])
+        assert tuple(row[0] for row in db.execute('SELECT name FROM catalog_author ORDER BY position')) == other['authors']
+    if conflict == 'collections':
+        assert app.browse(workspace, collection=collection) == ()
 
 
 @pytest.mark.parametrize('change', ('scope', 'work', 'asset', 'configuration'))

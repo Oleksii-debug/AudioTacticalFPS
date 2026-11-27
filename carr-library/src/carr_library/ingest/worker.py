@@ -400,9 +400,11 @@ def _published_after_stop(app, initial, watermark):
         workspace, edition = request['workspace'], metadata['edition_id']
         with app.read(workspace) as db:
             rows = db.execute(
-                'SELECT r.id,r.config,a.revision AS active,e.work,c.mime,c.size '
+                'SELECT r.id,r.config,a.revision AS active,e.work,c.mime,c.size, '
+                'w.title,e.language,e.edition AS edition_label,e.volume '
                 'FROM revision r JOIN sealed s ON s.revision=r.id '
                 'JOIN catalog_edition e ON e.workspace=r.workspace AND e.id=r.edition AND e.asset=r.asset '
+                'JOIN catalog_work w ON w.workspace=e.workspace AND w.id=e.work '
                 'JOIN catalog_asset c ON c.digest=e.asset '
                 'LEFT JOIN active a ON a.workspace=r.workspace AND a.edition=r.edition '
                 'WHERE r.workspace=? AND r.edition=? AND r.asset=? AND r.rowid>? LIMIT 2',
@@ -447,6 +449,15 @@ def _published_after_stop(app, initial, watermark):
                 return None
             title = _metadata(metadata['title']) or Path(request['source']).stem
             authors = tuple(_metadata(value) for value in metadata['authors'])
+            # Citation display joins authors. Preserve their separate identities
+            # and all catalog fields before accepting a concurrent publication.
+            catalog_authors = tuple(author[0] for author in db.execute(
+                'SELECT name FROM catalog_author WHERE workspace=? AND work=? ORDER BY position',
+                (workspace, metadata['work_id'])))
+            if (row['title'] != title or catalog_authors != authors
+                    or (row['language'], row['edition_label'], row['volume']) != tuple(
+                        _metadata(metadata[field]) for field in ('language', 'edition', 'volume'))):
+                return None
             source_metadata = db.execute(
                 'SELECT author,title,volume,edition_label FROM source_metadata '
                 'WHERE workspace=? AND edition=? AND revision=?',
