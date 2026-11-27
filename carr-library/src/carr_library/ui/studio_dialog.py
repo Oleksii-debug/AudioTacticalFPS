@@ -716,9 +716,11 @@ def install_studio_actions(frame):
     import wx
     from .engine_settings import show_engine_settings
     from .studio_clips import show_clip_editor
+    from .publishing_dialog import show_publishing
     menu = wx.Menu()
     for title, handler in [('Script and audio production...\tCtrl+Alt+A', lambda e: show_studio(frame)),
                             ('Edit scene audio clips...', lambda e: show_clip_editor(frame)),
+                            ('Publish synchronized EPUB3...', lambda e: show_publishing(frame)),
                             ('Convert audio and apply effects...', lambda e: show_audio_conversion(frame)),
                             ('Local voice and music engines...', lambda e: show_engine_settings(frame))]:
         item = menu.Append(wx.ID_ANY, title)

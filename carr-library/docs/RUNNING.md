@@ -117,6 +117,25 @@ Center without another download. A metadata record never verifies quotations.
 [The acquisition guide](ACADEMIC_ACQUISITION.md) documents the provider choices,
 headless commands, privacy boundaries and recovery steps.
 
+## Retain audio clips, record a microphone and publish synchronized EPUB3
+
+**Audio Studio, Edit scene audio clips** retains the exact selected audio in the
+current library. Set its scene position, source trim, gain, pan and fades with
+keyboard controls; edits preserve the original file and use versioned projects.
+See [Scene audio editing](STUDIO_CLIP_EDITING.md).
+
+**Audio Studio, Record microphone and manage saved inputs** opens no microphone
+on launch. Refresh devices, explicitly select one, then choose Start. Stop
+finalizes a verified WAV; Cancel discards the unfinished capture. Saved recordings
+can become retained scene clips. The [microphone guide](MICROPHONE_RECORDING.md)
+separates the Windows capture controls from physical-device qualification.
+
+**Audio Studio, Publish synchronized EPUB3** packages a completed job with its
+original script, exact source hashes and measured line media overlays. Choose a
+new file outside the private library; existing files are never overwritten.
+[EPUB publication](STUDIO_EPUB_PUBLISHING.md) explains the CLI, recoverable receipts,
+explicit limits and remaining reader, speech-quality and assistive-technology checks.
+
 ## Open original sources and export research
 
 The **Bibliography** menu adds reviewed local RIS/CSL-JSON metadata intake and

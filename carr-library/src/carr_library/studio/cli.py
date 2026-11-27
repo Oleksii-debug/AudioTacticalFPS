@@ -27,6 +27,19 @@ def main(argv=None):
     operations.add_parser('jobs', help='List saved resumable production jobs')
     operations.add_parser('projects', help='List saved projects')
     operations.add_parser('capabilities', help='Inspect the actual installed audio runtime')
+    operations.add_parser('publications', help='List saved EPUB receipts; use verify-publication to check actual bytes')
+    publish = operations.add_parser('publish-epub', help='Export a completed Studio job as local EPUB3 with measured line overlays')
+    publish.add_argument('job_id')
+    publish.add_argument('--output', type=Path, required=True, help='New .epub file in an existing directory; never overwritten')
+    publish.add_argument('--language', default='und', help='Publication language tag, such as uk, en or und')
+    publish.add_argument('--creator', default='')
+    publish.add_argument('--max-bytes', type=int, default=32 * 1024**3, help='Source graph and publication staging byte limit')
+    publish.add_argument('--timeout', type=float, default=3600, help='Total export time budget in seconds')
+    verify = operations.add_parser('verify-publication', help='Verify a saved EPUB receipt or recover completed publication after interruption')
+    verify.add_argument('publication_id')
+    verify.add_argument('--file', type=Path, help='Explicit existing EPUB after relocation; must match the exact saved receipt')
+    verify.add_argument('--max-bytes', type=int, default=32 * 1024**3)
+    verify.add_argument('--timeout', type=float, default=3600)
     render = operations.add_parser('render', help='Produce actual WAV master, chapters, stems and subtitles')
     source = render.add_mutually_exclusive_group(required=True)
     source.add_argument('--script', type=Path, help='UTF-8 script file')
@@ -39,6 +52,7 @@ def main(argv=None):
     resume = operations.add_parser('resume', help='Resume a saved interrupted job, retaining successful chunks')
     resume.add_argument('job_id')
     args = parser.parse_args(argv)
+    service = None
     try:
         from ..application import LibraryApp
         app = LibraryApp(data_directory(args.data_dir))
@@ -53,6 +67,19 @@ def main(argv=None):
         elif args.operation == 'capabilities':
             runtime = service._runtime()
             result = {'audio': runtime.capabilities(), 'music': runtime.music_capabilities()}
+        elif args.operation in ('publish-epub', 'publications', 'verify-publication'):
+            from ..audio.models import AudioBudget
+            from .publishing import PublicationService
+            budget = (AudioBudget(timeout=args.timeout, max_output_bytes=args.max_bytes)
+                      if args.operation != 'publications' else None)
+            publisher = PublicationService(service, budget=budget)
+            if args.operation == 'publications':
+                result = publisher.publications()
+            elif args.operation == 'verify-publication':
+                result = publisher.verify(args.publication_id, output=args.file)
+            else:
+                result = publisher.export_epub(args.job_id, args.output, language=args.language, creator=args.creator,
+                    progress=lambda message: print(message, file=sys.stderr, flush=True))
         else:
             if args.operation == 'render':
                 if args.project:
@@ -72,11 +99,15 @@ def main(argv=None):
         print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
         return 0
     except KeyboardInterrupt:
-        print('Production interrupted. Resume its saved job ID to reuse completed chunks.', file=sys.stderr)
+        print('Operation interrupted. Completed files are retained. Resume a production job or verify its prepared publication receipt.',
+              file=sys.stderr)
         return 130
     except (ValueError, OSError, RuntimeError) as exc:
         print('Audio Studio: ' + str(exc), file=sys.stderr)
         return 1
+    finally:
+        if service is not None:
+            service.close()
 
 
 def assistant_main(argv=None):
