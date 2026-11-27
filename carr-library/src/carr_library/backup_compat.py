@@ -84,6 +84,8 @@ def sidecar_limit(name):
         return _model('extract.ocr_languages').MAX_PRESET_BYTES
     if name == 'progress-preferences.json':
         return _model('progress_preferences').MAX_BYTES
+    if name.casefold() == 'state/speech/reading-tabs.json':
+        return _model('speech.tabs').MAX_BYTES
     if name == 'state/audio/engines.json':
         return ENGINE_SETTINGS_BYTES
     if name == 'state/operations/resources.json':
@@ -305,6 +307,8 @@ def validate_sidecar(db, name, raw):
             _model('progress_preferences').validate_progress_preferences(raw)
         elif name == 'state/audio/engines.json':
             _validate_engine_settings(_json(raw))
+        elif name.casefold() == 'state/speech/reading-tabs.json':
+            _model('speech.tabs').ReadingTabs.from_dict(_json(raw))
         elif name == 'state/operations/resources.json':
             from .state_recovery import validate_resource_policy
             validate_resource_policy(_json(raw))
@@ -596,9 +600,14 @@ def check_namespace(directory, inventory, *, cancelled=lambda: False):
 def restore(db, source, stage, inventory, *, cancelled=lambda: False):
     """Verify exact canonical producers, then revoke authority in private state."""
     receipts = {}
+    # Capture the tiny passive index first. Its referenced histories are decoded
+    # only by the complete copied-collection verifier, after aggregate preflight.
+    tab_name = 'state/speech/reading-tabs.json'
+    entries = sorted(inventory.entries, key=lambda row: row['filename'].casefold() != tab_name)
+    deferred_drafts = set()
     for name in inventory.empty_roots:
         (stage / name).mkdir(mode=0o700, parents=True, exist_ok=True)
-    for entry in inventory.entries:
+    for entry in entries:
         _check_cancelled(cancelled)
         name = entry['filename']
         if backup_transcription.is_input(name) or recording_backup.is_audio(name):
@@ -617,8 +626,17 @@ def restore(db, source, stage, inventory, *, cancelled=lambda: False):
             empty = backup_transcription.allows_empty(name)
             _stream_file(source / name, destination=stage / name, expected=entry,
                          maximum=sidecar_limit(name), cancelled=cancelled, allow_empty=empty)
+            if name.casefold() in deferred_drafts:
+                continue
             raw = read_regular(stage / name, sidecar_limit(name), allow_empty=empty)
             validate_sidecar(db, name, raw)
+            if name.casefold() == tab_name:
+                from .state_recovery import _reading_tab_rows
+                index = _model('speech.tabs').ReadingTabs.from_dict(_json(raw))
+                state_inventory = {row['filename'][len('state/'):].casefold(): row
+                    for row in inventory.entries if row['filename'].startswith('state/')}
+                deferred_drafts = {'state/' + relative for relative, _ in
+                    _reading_tab_rows(index, state_inventory, cancelled=cancelled)}
             if name.startswith(backup_generated.PREFIX):
                 receipts[name] = _json(raw)
     backup_generated.validate_collection(inventory.entries, receipts)

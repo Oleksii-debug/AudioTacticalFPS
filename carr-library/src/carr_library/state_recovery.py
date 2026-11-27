@@ -197,15 +197,88 @@ def _prepared(relative, value):
     return None
 
 
+def _reading_tab_rows(index, inventory, *, cancelled):
+    """Preflight referenced byte totals before any retained history is replayed."""
+    from .speech import tabs
+    selected, total = [], 0
+    for tab in index.tabs:
+        if cancelled():
+            raise InterruptedError('Reading-tab backup verification cancelled.')
+        name = tab.filename.removeprefix('state/').casefold()
+        entry = inventory.get(name)
+        if entry is None:
+            raise ValueError('Reading-tab recovery references a missing retained draft.')
+        size = entry['size_bytes']
+        if type(size) is not int or size <= 0:
+            raise ValueError('Invalid retained reading-tab draft size.')
+        total += size
+        if total > tabs.MAX_TOTAL_DRAFT_BYTES:
+            raise ValueError('Reading tabs exceed their aggregate recovery byte budget.')
+        selected.append((name, entry))
+    return selected
+
+
+def _validate_reading_tabs(root, entries, *, cancelled):
+    """Validate passive membership against the exact copied state inventory.
+
+    Use the existing portable case identity without renaming any user file.
+    No ReaderDraftStore is constructed and no saved voice is activated.
+    """
+    from .speech import tabs
+    from .speech.session import ReaderDraftStore
+    from .durable_state import read_json_snapshot
+
+    index_name = tabs.NAME.removeprefix('state/').casefold()
+    inventory = {}
+    for entry in entries:
+        if cancelled():
+            raise InterruptedError('Reading-tab backup verification cancelled.')
+        name = entry['filename'].casefold()
+        if name in inventory:
+            raise ValueError('Ambiguous reading-tab state inventory.')
+        inventory[name] = entry
+    index_entry = inventory.get(index_name)
+    if index_entry is None:
+        return frozenset()
+    if (type(index_entry['size_bytes']) is not int
+            or not 0 < index_entry['size_bytes'] <= tabs.MAX_BYTES):
+        raise ValueError('Reading-tab membership exceeds its recovery byte budget.')
+    if cancelled():
+        raise InterruptedError('Reading-tab backup verification cancelled.')
+    value, _ = read_json_snapshot(root / index_entry['filename'],
+                                 max_bytes=index_entry['size_bytes'])
+    index = tabs.ReadingTabs.from_dict(value)
+    selected = _reading_tab_rows(index, inventory, cancelled=cancelled)
+    captured, characters = [], 0
+    for name, entry in selected:
+        if cancelled():
+            raise InterruptedError('Reading-tab backup verification cancelled.')
+        record, _ = read_json_snapshot(root / entry['filename'], max_bytes=entry['size_bytes'])
+        characters += tabs._history_characters(record)
+        if characters > tabs.MAX_RETAINED_CHARACTERS:
+            raise ValueError('Reading tabs exceed their aggregate retained-history budget.')
+        captured.append((name, record))
+    for _, record in captured:
+        if cancelled():
+            raise InterruptedError('Reading-tab backup verification cancelled.')
+        ReaderDraftStore.decode(record)
+    if cancelled():
+        raise InterruptedError('Reading-tab backup verification cancelled.')
+    return frozenset((index_name, *(name for name, _ in selected)))
+
+
 def validate_state_documents(root, entries, *, cancelled=lambda: False, restored=False):
     """Check typed state without touching model paths or external output files."""
     from . import recording_backup, backup_transcription
     entries = backup_transcription.validate_state(root, entries, cancelled=cancelled, restored=restored)
     recording_backup.validate_state_entries(entries, cancelled=cancelled)
+    validated_tabs = _validate_reading_tabs(root, entries, cancelled=cancelled)
     for entry in entries:
         if cancelled():
             raise InterruptedError('Application state verification cancelled.')
         relative = _dispatch_path(entry['filename'])
+        if relative.as_posix() in validated_tabs:
+            continue
         if relative == PurePosixPath('speech/presentation.json'):
             from .speech.presentation import MAX_BYTES
             if not 0 < entry['size_bytes'] <= MAX_BYTES:
