@@ -10,6 +10,7 @@ import shutil
 import sqlite3
 import subprocess
 import sys
+import time
 
 import pytest
 
@@ -41,9 +42,10 @@ def _metadata(collections=()):
                 work_id='source-work', edition_id='source-edition')
 
 
-def _barrier(monkeypatch, marker, *, boundary, exit_after=False):
+def _barrier(monkeypatch, marker, *, boundary, exit_after=False, wait_until_boundary=False):
     """Pause the real child before/after commit, without replacing its result."""
     popen = subprocess.Popen
+    original_stop = worker._stop
     code = f'''
 import os, time
 from pathlib import Path
@@ -93,7 +95,27 @@ LibraryApp._import_file = _replay
             return popen(command, **options)
         command[index] = ('import sys,runpy\nsys.path[:0]=sys.argv[1:]\n' + code
                           + "\nrunpy.run_module('carr_library.ingest.worker',run_name='__main__')")
-        return popen(command, **options)
+        process = popen(command, **options)
+        if wait_until_boundary:
+            # _invoke starts its unchanged timeout after Popen returns. These
+            # cases test stopping at a real SQL boundary, not cold PDF startup.
+            # Bound readiness separately without changing the supervisor clock.
+            try:
+                deadline = time.monotonic() + 15.0
+                while not marker.exists():
+                    if process.poll() is not None:
+                        raise AssertionError(
+                            f'Import child exited before the {boundary} barrier: {process.returncode}')
+                    if time.monotonic() >= deadline:
+                        raise AssertionError(f'Import child did not reach the {boundary} barrier.')
+                    time.sleep(.01)
+                assert process.poll() is None, 'The import child left its publication barrier.'
+            except BaseException:
+                # _invoke has not received this child yet, so cleanup belongs
+                # to the wrapper even when readiness or its own checks fail.
+                original_stop(process)
+                raise
+        return process
 
     monkeypatch.setattr(worker.subprocess, 'Popen', launch)
 
@@ -120,13 +142,16 @@ def test_stopped_child_reports_verified_fresh_commit(tmp_path, monkeypatch, kind
     source = _source(tmp_path, kind)
     original = source.read_bytes()
     marker = tmp_path / 'after-commit'
-    _barrier(monkeypatch, marker, boundary='after', exit_after=termination == 'crash')
+    _barrier(monkeypatch, marker, boundary='after', exit_after=termination == 'crash',
+             wait_until_boundary=termination == 'timeout')
     result = worker.run_request(app.root, workspace, source, _metadata((collection,)), Config(),
         cancelled=lambda: termination == 'cancel' and marker.exists(),
         timeout=3.0 if termination == 'timeout' else 15.0)
     assert marker.exists(), result
     assert result['state'] == 'complete', result
     assert result['publication_recovered'] is True
+    assert result['worker_state'] == {
+        'cancel': 'cancelled', 'crash': 'failed', 'timeout': 'timed_out'}[termination]
     assert result['verified'] is (kind == 'txt')
     record = worker.load_request(app.root, result['request_id'])
     assert record['state'] == 'complete' and record['result'] == result
@@ -155,7 +180,8 @@ def test_stopped_child_before_commit_never_reports_completion(tmp_path, monkeypa
     workspace = app.create_workspace('Rollback')
     source = _source(tmp_path, kind)
     marker = tmp_path / 'before-commit'
-    _barrier(monkeypatch, marker, boundary='before', exit_after=termination == 'crash')
+    _barrier(monkeypatch, marker, boundary='before', exit_after=termination == 'crash',
+             wait_until_boundary=termination == 'timeout')
     result = worker.run_request(app.root, workspace, source, _metadata(), Config(),
         cancelled=lambda: termination == 'cancel' and marker.exists(),
         timeout=3.0 if termination == 'timeout' else 15.0)

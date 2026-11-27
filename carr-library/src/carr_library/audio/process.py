@@ -15,9 +15,10 @@ import time
 from .models import AudioBudget, AudioCancelled, AudioError
 
 
-# Query live Windows metadata without opening the file. Directory enumeration
-# can report a stale size until the writer closes; opening the destination can
-# block the worker's atomic replacement. The final check still uses fresh lstat.
+# Query current Windows metadata without retaining a Python file handle.
+# Directory enumeration can report a stale size until the writer closes.
+# Native filters can still perform transient opens, so atomic producers need
+# bounded Windows publication. The final check still uses fresh lstat.
 _USE_WINDOWS_LIVE_FILE_STATS = os.name == 'nt'
 
 
@@ -30,7 +31,7 @@ class _FileObservation:
 
 @lru_cache(maxsize=1)
 def _windows_metadata_query():
-    """Bind a current, handle-free Win32 file metadata query once."""
+    """Bind the current Win32 file metadata query once."""
     import ctypes
 
     class FileAttributeData(ctypes.Structure):
@@ -255,5 +256,9 @@ def publish_file(staged, destination, *, cancelled=lambda: False):
     # Windows requires a writable descriptor to flush the completed staging file.
     with staged.open('r+b') as source:
         os.fsync(source.fileno())
+    # Flush may block long enough for the user to cancel. Check again at the
+    # last pre-commit boundary; after link succeeds, publication is committed.
+    if cancelled():
+        raise AudioCancelled('Audio operation cancelled before publication.')
     os.link(staged, destination, follow_symlinks=False)
     fsync_directory(destination.parent)

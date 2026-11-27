@@ -1,7 +1,7 @@
 name: Supplied transcription bridge acceptance
 on:
   push:
-    branches: [feature/supplied-transcription-20261127-137c, carr/resonance-final-20261127-137c]
+    branches: [feature/supplied-transcription-20261127-137c, carr/resonance-final-20261127-137c, carr/resonance-qualified-20261127-137c]
     paths: ['carr-library/**', '.github/workflows/carr-transcription-bridge.yml', '.github/workflows/carr-windows.yml']
   workflow_dispatch:
 permissions:
@@ -47,7 +47,7 @@ jobs:
       - name: Verify retained inputs, actual child protocol, recovery and CLI
         shell: pwsh
         run: |
-          python scripts/ci_check.py --jobs 2 tests/transcription/test_supplied_worker_bridge.py tests/transcription/test_v5_worker_profile.py tests/transcription/test_runtime_interpreter.py tests/storage/test_state_json_reader.py tests/storage/test_durable_state_publication.py tests/audio/test_audio_process.py tests/ui/test_progress_job_review.py
+          python scripts/ci_check.py --jobs 2 tests/transcription/test_supplied_worker_bridge.py tests/transcription/test_v5_worker_profile.py tests/transcription/test_runtime_interpreter.py tests/storage/test_state_json_reader.py tests/storage/test_durable_state_publication.py tests/audio/test_audio_process.py tests/audio/test_publication_fsync.py tests/ui/test_progress_job_review.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify portable backup, music identity and OCR inventory guards
         timeout-minutes: 3

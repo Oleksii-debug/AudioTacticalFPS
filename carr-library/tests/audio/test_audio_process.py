@@ -1,5 +1,6 @@
 """Real subprocess lifecycle and no-clobber publication regression tests."""
 from pathlib import Path
+import hashlib
 import os
 import stat
 import sys
@@ -136,8 +137,12 @@ def windows_watch_processes(monkeypatch):
 
 def test_windows_watch_never_lstats_live_status_but_checks_it_fresh_after_exit(
         tmp_path, monkeypatch, windows_watch_processes):
+    from carr_library import durable_state
     from carr_library.audio import process as runner
 
+    publisher = Path(durable_state.__file__).resolve()
+    publisher_root = publisher.parent.parent
+    publisher_hash = hashlib.sha256(publisher.read_bytes()).hexdigest()
     stage = tmp_path / 'worker'
     stage.mkdir()
     status, release = stage / 'job_status.json', tmp_path / 'release-worker'
@@ -169,8 +174,13 @@ def test_windows_watch_never_lstats_live_status_but_checks_it_fresh_after_exit(
         release.write_bytes(b'Continue the real synthetic worker.')
 
     code = f'''
-import os, time
+import hashlib, sys, time
 from pathlib import Path
+sys.path.insert(0, {str(publisher_root)!r})
+from carr_library import durable_state
+publisher = Path(durable_state.__file__).resolve()
+assert publisher == Path({str(publisher)!r})
+assert hashlib.sha256(publisher.read_bytes()).hexdigest() == {publisher_hash!r}
 root, release = Path({str(stage)!r}), Path({str(release)!r})
 status = root / 'job_status.json'
 status.write_bytes(b'initial')
@@ -181,9 +191,10 @@ while not release.exists():
         raise RuntimeError('The real parent did not observe worker progress.')
     time.sleep(.005)
 for index in range(50):
-    temporary = root / 'status.pending'
-    temporary.write_bytes(('generation-' + str(index)).encode('ascii'))
-    os.replace(temporary, status)
+    # Use the real bounded Windows publisher; native observers can briefly
+    # refuse one-shot replacement even without a Python reader of this file.
+    durable_state.atomic_bytes(status,
+        ('generation-' + str(index)).encode('ascii'), replace=True)
     time.sleep(.01)
 '''
     execute(code, watch=(stage,), progress=release_after_budget_check,

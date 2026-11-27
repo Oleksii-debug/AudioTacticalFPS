@@ -74,8 +74,8 @@ The launch uses isolated Python startup, the existing site-path bootstrap, a min
 
 ## Windows status and progress
 
-While a recognition child is alive, the Windows host leaves the worker's
-`job_status.json` closed. Windows can refuse replacing an open destination,
+While a recognition child is alive, the Windows host does not read the contents
+of its `job_status.json`. Windows can refuse replacing an open destination,
 including a reader that permits delete sharing. The host therefore shows
 indeterminate recognition progress and waits for its existing process supervisor
 to finish or terminate the child before opening and verifying the final status.
@@ -90,17 +90,32 @@ worker status or race a replacement of the verified output.
 
 The Windows resource monitor queries current size and attributes with
 `GetFileAttributesExW` while the child is alive. Directory enumeration sizes
-can remain stale while a writer keeps its file open. This query does not hold
-the worker's destination open; there is no cached-size or file-opening fallback.
+can remain stale while a writer keeps its file open. The monitor retains no
+Python handle to the worker's destination and has no cached-size or explicit
+file-opening fallback. Native filesystem filters can turn the metadata request
+into a transient open/query/close operation; this is not a guarantee that a
+one-shot worker replacement can never encounter a sharing/access refusal.
 Reparse and nonregular entries remain invalid, and the final check after child
 exit uses fresh `lstat`. Byte, file-count, timeout and cancellation budgets remain
 enforced. See the [Win32 API](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfileattributesexw)
 and [CPython's current-size discussion](https://bugs.python.org/issue41106#msg372763).
+Microsoft documents the native slow path under
+[FLT_POSTOP_DISALLOW_FSFILTER_IO](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nc-fltkernel-pflt_post_operation_callback).
 
-The private application-state publisher separately retries native Windows
-sharing/access refusals for at most half a second. A persistent refusal remains
-an error, and create-only publication is unchanged. The selected worker's
-source, `os.replace`, and recognition implementation are not patched.
+The existing application-state publisher retries native Windows errors 5, 32
+and 33 for at most half a second. A persistent refusal remains an error, and
+create-only publication is unchanged. Worker producers need an equally bounded
+publication policy around their closed temporary files. The public watcher
+regression uses the actual publisher with the parent package's exact import
+origin and source hash; its live-reader, fresh final validation and resource
+budget assertions remain mandatory. The earlier
+[one-shot diagnostic](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45953624408)
+retains its observed failure and does not identify the native handle holder.
+
+The host does not rewrite a selected worker or intercept its `os.replace` or
+recognition implementation. A reviewed private worker repair supplies its own
+bounded publisher. After changing worker bytes, reconnect it explicitly; the
+new identity must not silently reuse the old runtime configuration.
 
 These controls concern process, file and receipt integrity. They do not qualify
 a speech model, acoustic quality, diarization or Windows/NVDA accessibility.

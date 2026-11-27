@@ -5,7 +5,7 @@ on:
     branches: [carr-library]
     paths: ['carr-library/**', '.github/workflows/carr-v3.yml', '.github/workflows/carr-windows.yml']
   push:
-    branches: [carr/v3-academic-interchange-fe7760]
+    branches: [carr/v3-academic-interchange-fe7760, carr/resonance-qualified-20261127-137c]
     paths: ['carr-library/**', '.github/workflows/carr-v3.yml']
   workflow_dispatch:
 

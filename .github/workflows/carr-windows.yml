@@ -7,7 +7,7 @@ on:
       - carr-library/**
       - .github/workflows/carr-windows.yml
   push:
-    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/notebook-release-ascii-e021-20261126, carr/academic-search-20261126, carr/v3-academic-interchange-fe7760]
+    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/notebook-release-ascii-e021-20261126, carr/academic-search-20261126, carr/v3-academic-interchange-fe7760, carr/resonance-qualified-20261127-137c]
     paths:
       - carr-library/**
       - .github/workflows/carr-windows.yml
@@ -625,6 +625,7 @@ jobs:
               'tests/packaging/test_worker_bytecode.py',
               'tests/ui/test_save_actions.py',
               'tests/audio/test_audio_process.py',
+              'tests/audio/test_publication_fsync.py',
               'tests/storage/test_state_backup_portability.py::test_portable_manifest_rejects_collisions',
               'tests/storage/test_state_backup_portability.py::test_portable_manifest_allows_distinct_siblings',
               'tests/storage/test_state_backup_portability.py::test_portable_manifest_rejects_non_windows_names',
@@ -862,7 +863,8 @@ jobs:
             'tests/speech/test_session.py',
             'tests/packaging/test_worker_bytecode.py',
             'tests/ui/test_save_actions.py',
-            'tests/audio/test_audio_process.py'
+            'tests/audio/test_audio_process.py',
+            'tests/audio/test_publication_fsync.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
