@@ -83,7 +83,11 @@ logical CPU outside the heavy-work allowance when possible. The defaults of
 4 GiB declared RAM capacity, 16 GiB declared disk capacity and a 256 MiB free
 disk reserve are policy defaults, **not a hardware audit**. GPUs are disabled
 until explicitly configured. A worker's configured thread count must fit the
-selected policy; the broker does not silently rewrite engine settings. The
+selected policy; the broker does not silently rewrite engine settings. When
+Studio constructs a previously unconfigured default audio runtime, its default
+FFmpeg thread count is selected within the CPU allowance and recorded in the
+resource plan. Caller-supplied runtimes retain their exact requested count and
+are rejected if that count exceeds the selected allowance. The
 active reservation limit bounds runtime bookkeeping, not development workers,
 branches, PRs or repository coordination.
 
@@ -145,6 +149,52 @@ The admitted context surrounds native worker execution and cleanup. Completed
 node receipts and output verification are unchanged, so resource admission does
 not create a second production job or duplicate accepted audio on resume.
 
+## Canonical supplied-worker transcription
+
+The existing `audio.transcription.TranscriptionService` retains its canonical
+`state/transcription/<64-character-job-id>` requests, retained input snapshots,
+control files, receipts and private-runtime manifest checks. There is no additional
+ASR engine or job store. Each file needing work waits for shared admission before
+the existing isolated supplied worker starts. Verified completed files are reused
+without a new heavy-work reservation; completed-job resume still verifies its
+artifacts through the original service.
+
+The supplied worker's native thread count and model peak RAM are unmeasured by
+this integration. Its request therefore reserves the whole configured CPU/RAM
+allowance, a bounded per-file staging/output disk estimate, and configured whole
+`cuda:0` capacity when selected. This serializes participating heavy work without
+claiming that a model fits the declared RAM or VRAM. Unconfigured CUDA and
+inherited CUDA device remapping are rejected before launch. The existing
+runtime-specific lock remains in force.
+
+The saved job records the estimate and its basis. Pause/cancel while waiting uses
+the same control file as the transcription workstation and CLI. The lease covers
+worker execution and cleanup; completed receipts and atomic output publication
+remain authoritative. Source text, model files and interpreter files are not
+copied into the resource policy or dashboard.
+
+## Isolated import and OCR
+
+The existing isolated-import supervisor reserves resources around its native
+child invocation, after completed-result replay. It holds no database transaction
+while waiting or parsing. After admission it rechecks workspace authorization
+before launch, so archiving a workspace while its request waits cannot start
+newly unauthorized work.
+
+This boundary reserves the whole declared CPU/RAM pool because parser/OCR native
+thread and peak-memory use are unmeasured. Disk admission covers both the data
+volume and actual temporary-directory volume, using the saved image-pixel limit
+and bounded worker reply/log sizes. These are estimates; existing parser limits
+and process supervision remain in force. Resource cancellation, waiting timeout
+and rejection become the original structured import result/journal states,
+preserving request IDs and resumability. The V5 attempt identity, request
+fingerprint, committed-publication receipt and reconciliation after a stopped
+worker remain unchanged.
+
+Direct callers of standalone audio conversion, capture or other engines outside
+these three participating service boundaries are not automatically enrolled.
+The policy does not restrict ordinary reading or measure physical device capacity.
+
 ## Shared operation view
 
 ```python
@@ -180,10 +230,40 @@ external-provider approval can be checked. Imports/translation lacking durable
 cross-process stop controls remain view-only here. Corrupt checkpoints are
 represented as attention rows without leaking their contents.
 
+An injected broker or service must belong to the same data folder. The facade
+checks that identity at construction and again before reading or controlling a
+job; identical content-addressed IDs in a copied library cannot redirect controls.
+ASR rows read canonical checkpoint metadata and require a complete checkpoint's
+input/completion inventories to match. They do not hash every transcript merely
+to show a saved status. Opening the transcription workstation retains its own
+artifact verification.
+
 The view returns at most its explicit `limit` in stable kind/ID order and scans
 at most 10,000 checkpoints. It is a bounded dashboard, not a replacement large
 corpus job index. No capability is inferred from a format name or a stored
 completed status alone.
+
+## Native Tasks and resources
+
+The Tools menu opens a standard wx dialog with named Jobs and Resource allowances
+tabs, a saved-job list, status field, pause/cancel controls, local policy fields
+and an action to open a selected job in the existing transcription workstation.
+That action selects the saved job for inspection; it does not start inference.
+The local CLI remains available with `python -m carr_library operations --help`.
+
+Dialog construction performs no broker filesystem or lock work. Initialization,
+refresh, policy saves and controls use the desktop's existing background executor.
+Close remains responsive while initialization waits; it requests cancellation and
+closes after the worker request completes. A destruction request immediately
+detaches callbacks before wx's later native-deletion event. Child-control
+destruction does not detach the whole dialog.
+
+The desktop retains its single-worker coordination: during work already owned by
+that window, use that operation's current pause/cancel controls. The dashboard can
+inspect saved work and request supported controls for other cooperating
+application processes; it introduces no parallel executor. If a policy save commits
+and the following optional refresh is interrupted, the UI reports the saved
+policy and incomplete refresh separately.
 
 ## Evidence and remaining native checks
 
@@ -193,6 +273,22 @@ publication, corrupt live metadata, policy conflicts, filesystem/device/GPU
 admission contracts, POSIX fork inheritance, existing LibraryApp import and
 assistant journals, and actual FFmpeg studio output/reuse. GPU admission tests
 exercise declared capacity and exclusivity; they are not GPU inference tests.
+
+Additional tests use the actual canonical supplied-worker subprocess fixture
+for partial completion, same-store control/resume, completion-inventory
+consistency, resource-wait cancellation and cross-library rejection. Isolated
+import tests run real PDF children, including a workspace archived while queued.
+UI controller tests use a real thread pool and held native admission lock to
+prove foreground close dispatch during initialization. The actual POSIX fork
+case lives in `test_resources_posix.py`; strict Windows gates select the other
+supported files without silently passing or removing the fork check.
+
+`tests/ui/native_operations_smoke.py:run_native_operations(frame, directory)`
+is the separate native wx acceptance helper. It uses the provided installed frame
+and existing executor, dispatches actual named-control events, saves the same
+policy, and observes native destruction in a bounded GUI event loop. It contains
+no source-path override. PASS results require executing that helper; controller
+tests do not establish native Windows or manual NVDA success.
 
 The canonical existing studio suite still exercises real installed Flite speech,
 music, mix/stem export, pause/restart and corruption recovery. Linux evidence is
