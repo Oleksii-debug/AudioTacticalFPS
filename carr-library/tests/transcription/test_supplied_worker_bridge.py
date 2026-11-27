@@ -529,3 +529,63 @@ def test_partial_progress_requires_verified_resume_before_host_success(prepared,
     assert all(event.percent < 100 for event in events)
     assert tracker.event.percent == 99
     assert tracker.transition(operation_outcome(completed), 'Host accepted all results').percent == 100
+
+
+def test_final_partial_observer_failure_preserves_verified_receipt(prepared, tmp_path):
+    app, workspace, service, original, configure = prepared
+    configure('partial')
+    second = tmp_path / 'second-final-observer.wav'
+    second.write_bytes(b'Another synthetic retained source; no acoustic inference.')
+    originals = {source: source.read_bytes() for source in (original, second)}
+    identity = service.submit([original, second])
+    notices = []
+
+    def broken(done, total, phase):
+        if phase == 'partial':
+            notices.append((done, total, service.get(identity)))
+            raise RuntimeError('Synthetic display failure after partial publication')
+
+    result = service.run(identity, timeout=10, progress=broken)
+    reopened = LibraryApp(app.root).transcription(workspace)
+    assert result == reopened.get(identity) == reopened.verify(identity)
+    assert result['status'] == 'partial' and result['done'] == 1
+    assert notices == [(1, 2, result)]
+    assert len(result['receipts']) == 1 and len(result['artifacts']) == 6
+    assert operation_outcome(result) == 'paused'
+    assert 'display failure' not in result['last_error']
+    assert {source: source.read_bytes() for source in originals} == originals
+
+
+def test_actual_job_publication_error_propagates_after_observer_detaches(prepared, monkeypatch):
+    import carr_library.transcription as transcription
+
+    _, _, service, original, configure = prepared
+    configure('progress-wait')
+    identity = service.submit([original])
+    path = service._path(identity)
+    notices, attempted = [], []
+    publish = transcription.atomic_json
+
+    def broken(done, total, phase):
+        notices.append((done, total, phase))
+        (path / 'progress-observed').write_text('release actual synthetic worker')
+        raise RuntimeError('Synthetic detached observer')
+
+    def refused_publication(destination, value, **kwargs):
+        if Path(destination) == path / 'job.json' and value.get('status') == 'completed':
+            attempted.append(value.copy())
+            raise OSError('Synthetic durable job publication refusal')
+        return publish(destination, value, **kwargs)
+
+    monkeypatch.setattr(transcription, 'atomic_json', refused_publication)
+    with pytest.raises(OSError, match='durable job publication refusal'):
+        service.run(identity, timeout=10, progress=broken)
+
+    assert notices == [(0, 1, 'running')]
+    assert len(attempted) == 1 and attempted[0]['done'] == 1
+    assert len(attempted[0]['artifacts']) == 6
+    worker = read_json(path / 'job_status.json')
+    assert worker['result_state'] == 'completed' and worker['done'] == 1
+    saved = service.get(identity)
+    assert saved['status'] == 'running'
+    assert saved['receipts'] == [] and saved['artifacts'] == []
