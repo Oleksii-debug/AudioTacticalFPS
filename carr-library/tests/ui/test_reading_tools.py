@@ -154,7 +154,7 @@ def factory(state):
     body = factory.body[0].body
     body[next(i for i, n in enumerate(body) if isinstance(n, ast.FunctionDef) and n.name == 'placeholder')] = callback
     namespace = dict(__package__='carr_library.ui', native_cursor_position=native_cursor_position,
-                     native_insertion_offset=native_insertion_offset)
+                     native_insertion_offset=native_insertion_offset, ReaderResume=ReaderResume)
     exec(compile(ast.fix_missing_locations(factory), str(path), 'exec'), namespace)
     return namespace['factory'](state)
 
@@ -173,6 +173,7 @@ def test_actual_reader_hook_mutates_and_saves_only_the_reviewed_reading_copy(tmp
         else: options['mutate'](action, mark.id if mark else 'Native bookmark', reviewed)
     monkeypatch.setattr(reading_tools, 'show_reading_tools', show)
     reader_hook(state)()
+    assert not state.messages, state.messages
     saved = state.store.load()
     assert saved.document.to_dict() == doc.to_dict() and saved.voice_id == 'missing:exact'
     assert doc.source_text == original and doc.source_anchor is None

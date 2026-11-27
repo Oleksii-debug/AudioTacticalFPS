@@ -48,6 +48,8 @@ def factory(state):
     draft_store = state.store
     last_audio = None
     last_recovery_signature = None
+    recovered, remembered_voice_id = None, ''
+    reader_tabs, save_path = None, None
     voices = ()
     voice_choice = SimpleNamespace(GetSelection=lambda: -1)
     rate = SimpleNamespace(GetValue=lambda: 0)

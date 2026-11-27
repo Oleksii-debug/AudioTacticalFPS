@@ -74,7 +74,9 @@ def test_actual_pcm_parts_rejoin_exact_master_and_keep_approximate_whole_line_sc
     actual, cursor = [], 0
     with ZipFile(r.output) as archive:
         assert json.loads(archive.read('source/book-source.json')) == r.plan.provenance(1)
-        assert json.loads(archive.read('source/project.json')) == r.plan.project(1).to_dict()
+        original_project = (Path(r.state['destination']) / 'project.json').read_bytes()
+        assert archive.read('source/project.json') == original_project
+        assert encode(json.loads(original_project)) == encode(r.plan.project(1).to_dict())
         for part in manifest['content']['parts']:
             assert part['start_frame'] == cursor
             with wave.open(BytesIO(archive.read(part['name'])), 'rb') as audio:
