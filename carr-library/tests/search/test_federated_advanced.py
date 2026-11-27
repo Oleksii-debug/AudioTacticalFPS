@@ -13,7 +13,7 @@ from carr_library.citations.text_attestation import CONFIG as TEXT_CONFIG
 from carr_library.ingest.pipeline import canonical
 from carr_library.ingest.writer_guard import exclusive_writer
 from carr_library.search.federated import FederatedSearch
-from carr_library.storage.revisions import Page, Storage
+from carr_library.storage.revisions import CURRENT_SCHEMA_VERSION, Page, Storage
 
 
 def publish_capacity_source(app, workspace, source, pages, *, edition_id, work_id):
@@ -32,7 +32,7 @@ def publish_capacity_source(app, workspace, source, pages, *, edition_id, work_i
                       .encode('utf-8')).hexdigest()
     with exclusive_writer(app.root):
         app.assets.retain(asset.data, asset.mime, asset.digest)
-        with closing(Storage(app.database, schema_version=4)) as storage:
+        with closing(Storage(app.database, schema_version=CURRENT_SCHEMA_VERSION)) as storage:
             _CatalogPublisher(storage, record).publish_revision(workspace, edition_id,
                 revision, asset.digest, TEXT_CONFIG, tuple(Page(raw) for raw in pages))
             storage.check()

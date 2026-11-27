@@ -100,5 +100,6 @@ jobs:
             tests/assistant/test_complete_recovery.py \
             tests/assistant/test_backup_late_recovery.py \
             tests/storage/test_backup_operation_budget.py \
-            tests/e2e/test_provider_gateway.py
+            tests/e2e/test_provider_gateway.py \
+            tests/packaging/test_delivery_archive.py
       # This source-only job supplements the complete native Windows/bundle gate.
