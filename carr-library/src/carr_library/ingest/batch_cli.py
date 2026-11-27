@@ -19,7 +19,9 @@ def run(argv):
     plan.add_argument('paths', nargs='+', type=Path)
     plan.add_argument('--collection', action='append', default=[])
     plan.add_argument('--no-recursive', action='store_true')
-    plan.add_argument('--ocr-languages', default='eng')
+    plan.add_argument('--ocr-languages', default='eng', help='Explicit manual/bootstrap model pool, such as eng+ukr+slk')
+    plan.add_argument('--auto-ocr-languages', action='store_true',
+                      help='Use the pinned offline detector and bounded regional second-pass candidates')
     continuation = commands.add_parser('continue', help='Append or reopen the exact next saved page')
     continuation.add_argument('batch_id')
     for child in (plan, continuation):
@@ -47,7 +49,8 @@ def run(argv):
                           timeout=args.scan_seconds, max_bytes=args.page_bytes)
             if args.operation == 'plan':
                 result = store.plan_page(args.workspace, args.paths, collections=args.collection,
-                    recursive=not args.no_recursive, config=Config(languages=args.ocr_languages), **limits)
+                    recursive=not args.no_recursive, config=Config(languages=args.ocr_languages,
+                        automatic_languages=args.auto_ocr_languages), **limits)
             else:
                 result = store.continue_plan(args.workspace, args.batch_id, **limits)
         elif args.operation == 'list':

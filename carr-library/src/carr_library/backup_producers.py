@@ -23,6 +23,9 @@ SUBTITLE = re.compile(r'state/studio/jobs/(' + ID + r')/script\.(srt|vtt|lrc)\Z'
 
 
 def limit(name):
+    if name == 'state/audio-metadata/choices.json':
+        from .audio.metadata_review import MAX_BYTES
+        return MAX_BYTES
     if name == 'state/assistant/workflow-templates.json':
         from .assistant.templates import MAX_BYTES
         return MAX_BYTES
@@ -547,7 +550,10 @@ def validate_collection(db, stage, entries, *, cancelled):
 
 
 def validate(db, name, value):
-    if name == 'state/assistant/workflow-templates.json':
+    if name == 'state/audio-metadata/choices.json':
+        from .audio.metadata_review import validate_choices
+        validate_choices(value)
+    elif name == 'state/assistant/workflow-templates.json':
         from .assistant.templates import validate_catalog
         validate_catalog(value)
     elif READER.fullmatch(name):

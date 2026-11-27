@@ -142,13 +142,19 @@ def test_actual_library_import_and_resume_receipts_keep_their_outcome(desktop, t
         source.write_text('Exact retained manuscript for progress verification.')
     if scenario == 'resumed':
         from carr_library.extract.page_ocr import Config
-        from carr_library.ingest.worker import prepare_request, record_progress
+        from carr_library.ingest.worker import prepare_request, record_progress, load_request
         metadata = dict(title='Retained manuscript', authors=[], language=None,
                         edition=None, volume=None, collections=[])
         request = prepare_request(library.root, workspace, source, metadata, Config())
         stopped = library._import_file(workspace, source, **request['metadata'],
-            _request_id=request['request_id'], cancelled=lambda: True)
+            _request_id=request['request_id'],
+            # Stop only after the real retained input and durable job exist.
+            # Early intake cancellation correctly raises before any resume claim.
+            cancelled=lambda: bool(load_request(library.root, request['request_id']).get('job')))
         assert stopped['state'] == 'cancelled'
+        admitted = load_request(library.root, request['request_id'])
+        assert admitted['job'] == stopped['id']
+        assert library.assets.resolve(admitted['asset_sha256']).read_bytes() == source.read_bytes()
         record_progress(library.root, request['request_id'], state='cancelled', result=stopped)
         source.unlink()
         operation = lambda: library.resume_import(workspace, request['request_id'])

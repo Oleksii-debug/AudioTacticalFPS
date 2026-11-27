@@ -395,3 +395,45 @@ def test_current_native_picker_preserves_special_model_filter_and_mixed_selectio
     assert result.languages == 'eng+script/Latin'
     assert not result.orientation
     assert wx.dialogs[-1].destroyed
+
+
+def test_automatic_language_selection_requires_explicit_checkbox_and_manual_override(wx):
+    def choose(dialog):
+        assert not dialog.automatic.GetValue()
+        dialog.automatic.SetValue(True)
+        dialog.accept()
+    wx.on_show = choose
+    result = selection._choose_languages(None, 'installed', ('eng', 'ukr'), Config(languages='eng+ukr'))
+    assert result.automatic_languages is True and result.languages == 'eng+ukr'
+    assert wx.dialogs[-1].automatic.name.startswith('Automatic OCR language detection')
+    def manual(dialog):
+        assert dialog.automatic.GetValue() is True
+        dialog.automatic.SetValue(False)
+        dialog.accept()
+    wx.on_show = manual
+    selected = selection._choose_languages(None, 'installed', ('eng', 'ukr'), result)
+    assert selected.automatic_languages is False and selected.languages == result.languages
+
+
+def test_automatic_selection_cancellation_does_not_change_the_prior_frozen_config(wx):
+    initial = Config(languages='eng', automatic_languages=False)
+    def cancel(dialog):
+        dialog.automatic.SetValue(True)
+        dialog.EndModal(wx.ID_CANCEL)
+    wx.on_show = cancel
+    assert selection._choose_languages(None, 'installed', ('eng',), initial) is None
+    assert initial == Config(languages='eng', automatic_languages=False)
+
+
+def test_automatic_pool_limit_is_visible_and_never_accepts_invalid_native_selection(wx):
+    inventory = tuple('model' + str(index) for index in range(9))
+    def over_budget(dialog):
+        dialog.entries.checked = set(range(9))
+        dialog.automatic.SetValue(True)
+        dialog.accept()
+        assert dialog.modal_result is None
+        assert 'eight' in dialog.status.GetValue()
+        assert dialog.status.focused
+        dialog.EndModal(wx.ID_CANCEL)
+    wx.on_show = over_budget
+    assert selection._choose_languages(None, 'installed', inventory, Config(languages=inventory[0])) is None

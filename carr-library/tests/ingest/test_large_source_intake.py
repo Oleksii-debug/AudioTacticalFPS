@@ -20,6 +20,7 @@ from carr_library.extract.page_ocr import Config
 from carr_library.ingest import worker
 from carr_library.ingest.pipeline import Ingest
 from carr_library.library_backup import create_backup, restore_backup
+from carr_library.reader.source_file import prepare_source_file, launch_source_file
 
 helpers = runpy.run_path(str(Path(__file__).parent / 'large_source_fixtures.py'))
 write_large_text = helpers['write_large_text']
@@ -60,6 +61,56 @@ def checked_peak(path, processes):
     return observed
 
 
+def exact_original_view(app, workspace, hit, original, *, reusable=True):
+    """Real source bytes and native-handoff callback; never a whole-file read."""
+    selected = prepare_source_file(app, workspace, hit.ref, hit.revision)
+    retained = app.assets.resolve(original['sha256'])
+    assert selected.identity.asset_sha256 == original['sha256']
+    assert selected.path.stat().st_size == original['size'] > MAX_BYTES
+    assert selected.path.stat().st_nlink == retained.stat().st_nlink == 1
+    assert not selected.path.samefile(retained)
+    assert file_digest(selected.path) == file_digest(retained) == original['sha256']
+    if reusable:
+        assert prepare_source_file(app, workspace, hit.ref, hit.revision).path == selected.path
+    launched = []
+    def native_handoff(path):
+        observed = Path(path)
+        launched.append((observed, observed.stat().st_size, file_digest(observed)))
+        return True
+    launch_source_file(app, selected, native_handoff)
+    assert launched == [(selected.path, original['size'], original['sha256'])]
+    return selected
+
+
+def cancelled_large_copy_preserves_viewer_edits(app, workspace, hit, original, selected):
+    # Retain a real same-size edited viewing copy, not a mocked large-file stat.
+    with selected.path.open('r+b') as editor:
+        editor.write(b'Edited by external viewer.')
+    edited_digest = file_digest(selected.path)
+    assert selected.path.stat().st_size == original['size']
+    assert edited_digest != original['sha256']
+    observed = []
+    directory = selected.path.parent
+    def cancel_after_written_bytes():
+        for path in directory.iterdir():
+            if path == selected.path:
+                continue
+            size = path.stat().st_size
+            if 0 < size < original['size']:
+                observed.append((path, size))
+                return True
+        return False
+    with pytest.raises(InterruptedError, match='cancelled'):
+        prepare_source_file(app, workspace, hit.ref, hit.revision,
+                            cancelled=cancel_after_written_bytes)
+    assert observed and 0 < observed[0][1] < original['size']
+    assert tuple(directory.iterdir()) == (selected.path,)
+    assert file_digest(selected.path) == edited_digest
+    assert file_digest(app.assets.resolve(original['sha256'])) == original['sha256']
+    replacement = exact_original_view(app, workspace, hit, original, reusable=False)
+    assert replacement.path != selected.path and file_digest(selected.path) == edited_digest
+
+
 def test_large_txt_all_meaningful_bytes_publish_quote_and_restore_with_measured_worker(tmp_path, monkeypatch):
     original = write_large_text(tmp_path / 'Київ-original.txt')
     source = original['path']
@@ -78,6 +129,8 @@ def test_large_txt_all_meaningful_bytes_publish_quote_and_restore_with_measured_
     assert hit.verified and app.copy(workspace, hit.ref, hit.revision, 'quote') == 'Largeanchor000'
     retained = app.assets.resolve(original['sha256'])
     assert file_digest(retained) == original['sha256']
+    selected = exact_original_view(app, workspace, hit, original)
+    cancelled_large_copy_preserves_viewer_edits(app, workspace, hit, original, selected)
 
     backup = tmp_path / 'backup'
     checksum = create_backup(app, backup)
@@ -92,6 +145,9 @@ def test_large_txt_all_meaningful_bytes_publish_quote_and_restore_with_measured_
     assert file_digest(restored_original) == original['sha256']
     hit, = restored.search_page(workspace, 'Largeanchor000', timeout=120).results
     assert restored.copy(workspace, hit.ref, hit.revision, 'quote') == 'Largeanchor000'
+    # The external source and original library are gone; only restored retained
+    # bytes may authorize this new exact viewing copy and its native handoff.
+    exact_original_view(restored, workspace, hit, original)
     with restored_original.open('r+b') as stream:
         stream.write(b'Changed!')
     with pytest.raises(ValueError, match='digest|original|source'):
@@ -113,6 +169,12 @@ def test_real_128_mib_pdf_uses_original_stream_and_explicit_rendered_review(tmp_
     assert hit.verified is False
     with pytest.raises(ValueError, match='unverified'):
         app.copy(workspace, hit.ref, hit.revision, 'quote')
+    selected = exact_original_view(app, workspace, hit, original)
+    assert selected.mime == 'application/pdf' and selected.locator.index == 1
+    with app.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM source_page_review').fetchone()[0] == 0
+    with pytest.raises(ValueError, match='unverified'):
+        app.copy(workspace, hit.ref, hit.revision, 'quote')
     # Explicit synthetic review tests the real isolated PDFium render path.
     app.review_pdf_page(workspace, hit.ref, hit.revision, 'Synthetic source reviewer', confirmed=True)
     reviewed, = app.search_page(workspace, 'railway', timeout=120).results
@@ -126,6 +188,7 @@ def test_real_128_mib_pdf_uses_original_stream_and_explicit_rendered_review(tmp_
     assert file_digest(restored.assets.resolve(original['sha256'])) == original['sha256']
     reopened, = restored.search_page(workspace, 'railway', timeout=120).results
     assert reopened.verified and restored.copy(workspace, reopened.ref, reopened.revision, 'quote') == 'railway'
+    exact_original_view(restored, workspace, reopened, original)
 
 
 def test_large_partial_checkpoint_backup_restores_exact_job_after_originals_disappear(tmp_path):

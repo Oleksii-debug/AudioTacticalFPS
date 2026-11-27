@@ -22,6 +22,8 @@ HELP = (
     'Preview shows exact source revision, voice, part ranges and sanitized output folder names. '
     'Prepare saves immutable review metadata plus ordinary Studio jobs and starts no speech. '
     'Run is a separate explicit action. Resume verifies every completed artifact and reuses existing accepted nodes. '
+    'To add tags or local artwork to a completed MP3/M4A/M4B, use Audio Studio > Review audio metadata and cover. '
+    'Select the completed file there and save a separate reviewed copy; the Book job and its chapter receipts stay unchanged. '
     'The source and active scope are rechecked before work and publication. '
     'After restoring a backup, choose a new output folder, Prepare, and review the new names before Run.\n\n'
     'Limits: two million source characters and 256 parts. Duration estimates from text and linguistic sentence '

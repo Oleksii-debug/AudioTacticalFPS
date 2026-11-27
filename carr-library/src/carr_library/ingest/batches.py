@@ -26,6 +26,7 @@ from ..extract.page_ocr import Config
 from ..extract.document_formats import MIME_SUFFIXES
 from .pipeline import canonical
 from .worker import load_request, prepare_request
+from .batch_scan import planned_snapshot
 from .batch_pages import batch_shape, validate_scan_metadata, referenced_row
 
 
@@ -422,6 +423,30 @@ class ImportBatchStore:
                     continue
                 if row['state'] in ('failed', 'quarantined') and not retry_failed:
                     continue
+                if stop():
+                    break
+                # Reject a changed initial selection before starting a native
+                # parser. This is only preflight: the child still snapshots and
+                # compares the exact manifest again immediately before retain.
+                # An unfinished request with retained bytes resumes from that
+                # canonical original even if the former external path vanished.
+                if request.get('asset_sha256') is None:
+                    try:
+                        snapshot = planned_snapshot(row['source'], cancelled=stop)
+                        observed = snapshot.manifest()
+                        del snapshot
+                        if observed != row['manifest']:
+                            raise ValueError('Source changed after import planning; plan this file again.')
+                    except InterruptedError:
+                        stopped = True
+                        self._result(row, {'state': 'cancelled',
+                            'message': 'Import source review cancelled before starting a native worker.'})
+                        save(record)
+                        break
+                    except (ValueError, OSError, sqlite3.Error, RuntimeError) as exc:
+                        self._result(row, {'state': 'failed', 'message': str(exc)[:4000]})
+                        save(record)
+                        continue
                 if stop():
                     break
                 row['state'], row['message'] = 'running', ''

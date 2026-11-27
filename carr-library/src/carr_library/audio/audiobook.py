@@ -1,14 +1,17 @@
 """Measured M4B chapter publication through the existing local FFmpeg runtime."""
 from dataclasses import replace
 from fractions import Fraction
+from hashlib import sha256
 import json
+import os
+import stat
 from pathlib import Path
 import shutil
 from tempfile import TemporaryDirectory
 
 from .models import AudioCancelled, AudioError, finite, integer
 from .process import publish_file, run_process
-from ..durable_state import local_path
+from ..durable_state import local_path, regular
 
 
 MAX_CHAPTERS = 10_000
@@ -74,6 +77,49 @@ def inspect_chapters(runtime, path, *, cancelled=lambda: False):
         return value
     except (UnicodeError, ValueError, TypeError) as exc:
         raise AudioError('The rendered audiobook has invalid chapter metadata.') from exc
+
+
+def _owned_publication(staged, target, owner, parent_owner, checksum, maximum):
+    """Verify only this attempt's linked, already inspected container."""
+    local_path(staged.parent, exists=True)
+
+    def parent():
+        observed = regular(local_path(target.parent, exists=True), directory=True)
+        if (observed.st_dev, observed.st_ino) != (parent_owner.st_dev, parent_owner.st_ino):
+            raise AudioError('The audiobook output directory changed during publication.')
+
+    def validate(info):
+        if (not stat.S_ISREG(info.st_mode) or stat.S_ISLNK(info.st_mode)
+                or getattr(info, 'st_file_attributes', 0) & 0x400
+                or (info.st_dev, info.st_ino) != (owner.st_dev, owner.st_ino)
+                or info.st_size != owner.st_size or info.st_nlink != 2
+                or not 0 < info.st_size <= maximum):
+            raise AudioError('The M4B is not this attempt\'s atomically published file.')
+        return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns,
+                info.st_ctime_ns, info.st_nlink)
+
+    parent()
+    before = validate(target.lstat())
+    if validate(staged.lstat()) != before:
+        raise AudioError('The inspected M4B staging identity changed.')
+    flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
+    flags |= getattr(os, 'O_NONBLOCK', 0)
+    digest, count = sha256(), 0
+    with os.fdopen(os.open(target, flags), 'rb') as stream:
+        if validate(os.fstat(stream.fileno())) != before:
+            raise AudioError('The published M4B changed before verification.')
+        while block := stream.read(1024 * 1024):
+            count += len(block)
+            if count > owner.st_size:
+                raise AudioError('The published M4B grew during verification.')
+            digest.update(block)
+        parent()
+        local_path(staged.parent, exists=True)
+        if (validate(os.fstat(stream.fileno())) != before
+                or validate(target.lstat()) != before or validate(staged.lstat()) != before):
+            raise AudioError('The published M4B changed during verification.')
+    if count != owner.st_size or digest.hexdigest() != checksum:
+        raise AudioError('The published M4B differs from its inspected bytes.')
 
 
 def publish_m4b(runtime, source, output, *, chapters, title, sample_rate=24000,

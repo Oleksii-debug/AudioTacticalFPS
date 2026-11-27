@@ -28,6 +28,8 @@ jobs:
       CARR_TEST_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
       PYTHONUTF8: '1'
       PYTHONUNBUFFERED: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
       HF_HUB_OFFLINE: '1'
       HF_HUB_DISABLE_TELEMETRY: '1'
       TRANSFORMERS_OFFLINE: '1'
@@ -90,7 +92,7 @@ jobs:
             tests/extract/test_document_formats_text.py \
             tests/extract/test_document_formats_xml.py \
             tests/e2e/test_extended_document_workflows.py \
-            tests/extract/test_raster_pages.py tests/e2e/test_raster_import.py \
+            tests/extract/test_language_detection.py tests/extract/test_ocr_language_regions.py tests/storage/test_ocr_language_presets.py tests/ui/test_ocr_selection.py tests/audio/test_metadata.py tests/audio/test_metadata_cleanup_scope.py tests/audio/test_metadata_publication.py tests/audio/test_metadata_stream_hash.py tests/audio/test_metadata_review.py tests/ui/test_audio_metadata_dialog.py tests/ui/test_audio_metadata_lifetime.py tests/audio/test_audio_process.py tests/e2e/test_source_file.py tests/extract/test_raster_pages.py tests/e2e/test_raster_import.py \
             tests/acquisition/test_acquisition_cli.py \
             tests/acquisition/test_acquisition_security.py \
             tests/acquisition/test_acquisition_workflow.py \

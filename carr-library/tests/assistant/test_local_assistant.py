@@ -113,7 +113,7 @@ def test_actual_extract_preserves_unicode_and_authentication(environment):
     assert source.read_bytes() == raw.encode('utf-8')
     (outputs / 'reading.txt').write_text('tampered', encoding='utf-8')
     result = service.resume(identity)
-    assert result.status == 'failed' and 'changed' in result.message
+    assert result.status == 'failed' and 'declared receipt' in result.message
     assert (outputs / 'reading.txt').read_text() == 'tampered'
 
 

@@ -245,7 +245,7 @@ def _capture_lifetime(process):
 
 def run_process(args, *, budget=None, cancelled=lambda: False,
                 watch=(), progress=None, env=None, cwd=None,
-                stop_requested=None, allow_failure=False):
+                stop_requested=None, allow_failure=False, retain_cleanup=False):
     """Run an already constructed argument vector, never a shell expression.
 
     Progress callbacks receive rendered seconds from FFmpeg's progress stream.
@@ -256,6 +256,9 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
     request FFmpeg's fixed ``q`` command through an owned pipe to finalize PCM;
     cancellation still terminates and discards incomplete output. An unconfirmed
     capture cleanup is a distinct error, so its staging can be retained safely.
+    Reviewed metadata callers may opt into retain_cleanup: they must transfer
+    their staging and admission to AudioCleanupPending.cleanup_owner. Other
+    producers and the existing capture lifetime retain their current contract.
     """
     budget = budget or AudioBudget()
     if not isinstance(args, (tuple, list)) or not args:
@@ -266,8 +269,10 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
         raise ValueError('Audio worker must use a resolved executable.')
     if stop_requested is not None and not callable(stop_requested):
         raise ValueError('Graceful audio stop requires a callback.')
-    if type(allow_failure) is not bool:
-        raise ValueError('Diagnostic exit handling must be explicit.')
+    if type(allow_failure) is not bool or type(retain_cleanup) is not bool:
+        raise ValueError('Diagnostic exits and retained cleanup must be explicit.')
+    if retain_cleanup and stop_requested is not None:
+        raise ValueError('Retained metadata cleanup cannot replace capture lifetime ownership.')
     if cancelled():
         raise AudioCancelled('Audio operation cancelled before starting.')
     watched = tuple(Path(path) for path in watch)
@@ -403,24 +408,7 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
         return ProcessResult(bytes(buffers['stdout']), bytes(buffers['stderr']),
                              time.monotonic() - started, process.returncode, stopped_at is not None)
     finally:
-        try:
-            if os.name == 'nt' and release_lifetime is not None:
-                # Keep all Job members discoverable until their handles have
-                # been retained. Killing the wrapper first loses that boundary.
-                try:
-                    release_lifetime()
-                finally:
-                    try:
-                        _terminate(process)
-                    except BaseException as exc:
-                        raise CaptureCleanupError('The capture launcher did not acknowledge termination.') from exc
-            else:
-                try:
-                    _terminate(process)
-                finally:
-                    if release_lifetime is not None:
-                        release_lifetime()
-        finally:
+        def release_streams():
             if process.stdin is not None:
                 try:
                     process.stdin.close()
@@ -434,6 +422,44 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
             for pipe in (process.stdout, process.stderr):
                 if pipe not in reader_pipes:
                     pipe.close()
+
+        if retain_cleanup:
+            def cleanup_metadata_process():
+                _terminate(process)
+                for thread in threads:
+                    if thread.ident is not None:
+                        thread.join(timeout=2)
+                if any(thread.is_alive() for thread in threads if thread.ident is not None):
+                    raise AudioError('Metadata worker diagnostic shutdown is not yet confirmed.')
+                return True
+            try:
+                cleanup_metadata_process()
+            except Exception as exc:
+                from .cleanup import pending_cleanup
+                raise pending_cleanup(cleanup_metadata_process,
+                    message='Metadata worker cleanup is pending; its staging and resource reservation remain owned.',
+                    callbacks=(release_streams,)) from exc
+            release_streams()
+        else:
+            try:
+                if os.name == 'nt' and release_lifetime is not None:
+                    # Keep all Job members discoverable until their handles have
+                    # been retained. Killing the wrapper first loses that boundary.
+                    try:
+                        release_lifetime()
+                    finally:
+                        try:
+                            _terminate(process)
+                        except BaseException as exc:
+                            raise CaptureCleanupError('The capture launcher did not acknowledge termination.') from exc
+                else:
+                    try:
+                        _terminate(process)
+                    finally:
+                        if release_lifetime is not None:
+                            release_lifetime()
+            finally:
+                release_streams()
 
 
 def fsync_directory(path):

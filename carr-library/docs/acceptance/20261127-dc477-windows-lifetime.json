@@ -1,0 +1,113 @@
+{
+  "schema": "carr-exact-acceptance/1",
+  "recorded_utc": "2026-11-27 14:09:48 UTC",
+  "commit": "dc477add6db2fc0348637dd460d03b76d8e1c75f",
+  "tree": "098a1dbbe6ea60995145db3835d1dceb5eaa5027",
+  "run_id": 46002968496,
+  "job_id": 140528885432,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46002968496/job/140528885432",
+  "job_conclusion": "success",
+  "phases": [
+    {
+      "name": "actual_filesystem",
+      "passed": 262,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "native_source_lifetime",
+      "passed": 26,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "native_installed_lifetime",
+      "passed": 26,
+      "failed": 0,
+      "skipped": 0
+    }
+  ],
+  "source_identity": {
+    "commit": "dc477add6db2fc0348637dd460d03b76d8e1c75f",
+    "tree": "098a1dbbe6ea60995145db3835d1dceb5eaa5027",
+    "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+    "windows": "Windows-10-10.0.20348-SP0",
+    "modules": {
+      "carr_library.installation_lease": {
+        "origin": "D:\\a\\_temp\\carr-portable-component-python\\Lib\\site-packages\\carr_library\\installation_lease.py",
+        "sha256": "a6e24fd54e491f6bc5cad9da3e1e0394ce6d779becd0fc3e2ed116fd0e712d89"
+      },
+      "carr_library.portable_entry": {
+        "origin": "D:\\a\\_temp\\carr-portable-component-python\\Lib\\site-packages\\carr_library\\portable_entry.py",
+        "sha256": "ec7783b4b2888b4de86db8498c74027598cc3fc6ade20cbfcf6d60bd8469200e"
+      },
+      "carr_library.portable_bootstrap": {
+        "origin": "D:\\a\\_temp\\carr-portable-component-python\\Lib\\site-packages\\carr_library\\portable_bootstrap.py",
+        "sha256": "a1dbe4a5d2ddbace742e3baef84403f4e6f31dd36d3b52e4f01804a42316fd8a"
+      },
+      "carr_library.audio.windows_process": {
+        "origin": "D:\\a\\_temp\\carr-portable-component-python\\Lib\\site-packages\\carr_library\\audio\\windows_process.py",
+        "sha256": "9023febfbabfde08b50d499461d541f5b38095201dff221edb086ea4ebd04b4c"
+      },
+      "carr_library.security.installation": {
+        "origin": "D:\\a\\_temp\\carr-portable-component-python\\Lib\\site-packages\\carr_library\\security\\installation.py",
+        "sha256": "ff65d969051fd72d6342c1a5d5d071fb3834d63c7b5bdc72c3196a3728863837"
+      },
+      "carr_library.security.handoff": {
+        "origin": "D:\\a\\_temp\\carr-portable-component-python\\Lib\\site-packages\\carr_library\\security\\handoff.py",
+        "sha256": "0d7476982ec7eee685b5eaf8da439ea69caf54c7b987eda421d17617b25274bc"
+      },
+      "carr_library.local_audio_setup": {
+        "origin": "D:\\a\\_temp\\carr-portable-component-python\\Lib\\site-packages\\carr_library\\local_audio_setup.py",
+        "sha256": "aa8e52cdb004437313d64a1d02558ee68888db9adbd94b7ede149c79b4589e9f"
+      },
+      "carr_library.audio_runtime": {
+        "origin": "D:\\a\\_temp\\carr-portable-component-python\\Lib\\site-packages\\carr_library\\audio_runtime.py",
+        "sha256": "83d345830f456c06b47a685de7578288f3bf899ed2f2c526a2183604d59acf8b"
+      }
+    },
+    "scope": "synthetic local lifetime and preservation; no private release or production activation"
+  },
+  "runtime_results": [
+    {
+      "status": "PASS",
+      "passed": 262,
+      "skipped": 0,
+      "scope": "actual filesystem and original retained-data boundaries"
+    },
+    {
+      "status": "PASS",
+      "passed": 26,
+      "skipped": 0,
+      "windows": "actual Job, handles, files and exclusive leases"
+    },
+    {
+      "status": "PASS",
+      "passed": 26,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "expected_failures": false,
+      "origins": {
+        "carr_library": "D:\\a\\_temp\\carr-portable-component-python\\Lib\\site-packages\\carr_library\\__init__.py",
+        "carr_library.installation_lease": "D:\\a\\_temp\\carr-portable-component-python\\Lib\\site-packages\\carr_library\\installation_lease.py",
+        "carr_library.portable_entry": "D:\\a\\_temp\\carr-portable-component-python\\Lib\\site-packages\\carr_library\\portable_entry.py",
+        "carr_library.portable_bootstrap": "D:\\a\\_temp\\carr-portable-component-python\\Lib\\site-packages\\carr_library\\portable_bootstrap.py",
+        "carr_library.audio.windows_process": "D:\\a\\_temp\\carr-portable-component-python\\Lib\\site-packages\\carr_library\\audio\\windows_process.py",
+        "carr_library.security.installation": "D:\\a\\_temp\\carr-portable-component-python\\Lib\\site-packages\\carr_library\\security\\installation.py",
+        "carr_library.security.handoff": "D:\\a\\_temp\\carr-portable-component-python\\Lib\\site-packages\\carr_library\\security\\handoff.py"
+      }
+    }
+  ],
+  "claims": {
+    "actual_windows_job_handles_files_leases": "PASS",
+    "installed_module_origin_checks": "PASS",
+    "later_source_revisions": "NOT_RUN",
+    "human_windows11_nvda": "NOT_RUN",
+    "signing_and_distribution": "NOT_RUN"
+  },
+  "notes": [
+    "The source and installed lifetime phases overlap; counts are not unique-test coverage.",
+    "Historical evidence only. It does not qualify later metadata retention, raster intake, automatic OCR or template changes."
+  ]
+}

@@ -718,6 +718,9 @@ def test_equivalent_topic_labels_save_to_each_original_destination(center):
 @pytest.mark.parametrize('reverse', [False, True])
 def test_native_checklist_preserves_checked_library_identity_with_distinct_labels(center, monkeypatch, names, reverse):
     wx = MagicMock()
+    # Native text controls have independent values; one shared return_value
+    # incorrectly lets clearing a filter also clear the query and time budget.
+    wx.TextCtrl.side_effect = lambda *args, **kwargs: MagicMock()
     monkeypatch.setitem(sys.modules, 'wx', wx)
     rows = [SimpleNamespace(id=f'library-{index}', name=name)
             for index, name in enumerate(names)]
@@ -741,7 +744,7 @@ def test_native_checklist_preserves_checked_library_identity_with_distinct_label
     native._search()
     options, = native.controller.search.call_args.args
     assert options.workspaces == ('library-1',)
-    assert options.timeout == 300
+    assert options.query == 'history' and options.timeout == 300
 
 
 @pytest.mark.parametrize('names', [('Same', 'Same'), ('Café', 'Cafe\u0301'),

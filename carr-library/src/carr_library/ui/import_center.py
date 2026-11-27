@@ -287,7 +287,8 @@ class ImportCenterActions:
             self.custom_ocr_config = chosen
             orientation = 'on' if chosen.orientation else 'off'
             self.report(f'OCR settings for new plans: {profile}; {", ".join(identifiers)}. '
-                        f'Page orientation detection: {orientation}.')
+                        f'Page orientation detection: {orientation}. '
+                        f'Automatic language/region review: {"on" if chosen.automatic_languages else "off"}.')
         except Exception as exc:
             self.report(str(exc))
 
