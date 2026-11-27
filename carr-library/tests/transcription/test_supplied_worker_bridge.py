@@ -51,6 +51,12 @@ if MODE == 'network':
     socket.create_connection(('127.0.0.1', 9))
 if MODE == 'outside-write':
     (pathlib.Path(cfg['models_dir']) / 'forbidden.txt').write_text('not allowed')
+if MODE == 'status-outside-source':
+    os.replace(pathlib.Path(cfg['models_dir']) / 'guarded.json', job / 'job_status.json')
+if MODE == 'status-outside-target':
+    temp = job / 'status.tmp'
+    temp.write_text('Unapproved replacement.', encoding='utf-8')
+    os.replace(temp, pathlib.Path(cfg['models_dir']) / 'guarded.json')
 if MODE == 'child-command':
     subprocess.run([sys.executable, '-B', '-c', 'raise SystemExit(0)'], check=True)
 if MODE == 'timeout':
@@ -417,6 +423,22 @@ def test_actual_child_guards_fail_closed(prepared, mode):
     assert result['status'] == 'failed'
     assert result['artifacts'] == []
     assert not (original.parent / 'models' / 'forbidden.txt').exists()
+
+
+@pytest.mark.parametrize('mode', ['status-outside-source', 'status-outside-target'])
+def test_status_publication_keeps_actual_child_writes_inside_its_job(prepared, mode):
+    _, _, service, original, configure = prepared
+    guarded = original.parent / 'models' / 'guarded.json'
+    guarded.write_bytes(b'External state must remain unchanged.')
+    retained = original.read_bytes()
+    configure(mode)
+    identity = service.submit([original])
+    result = service.run(identity, timeout=10)
+    assert result['status'] == 'failed' and result['artifacts'] == []
+    assert 'Transcription writes must remain inside its private job' in result['last_error']
+    assert guarded.read_bytes() == b'External state must remain unchanged.'
+    assert original.read_bytes() == retained
+    assert read_json(service._path(identity) / 'job_status.json')['done'] == 0
 
 
 @pytest.mark.parametrize('mode', ['missing-output', 'metadata-mismatch', 'escape'])
