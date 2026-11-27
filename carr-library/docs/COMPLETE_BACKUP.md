@@ -230,9 +230,9 @@ from portable file/database regression tests.
 ## Typed local transcription and shared resource policy (conditional version 6)
 
 A library containing local transcription profiles/jobs or the saved cooperative
-resource policy uses complete-backup manifest version 6. A library without those
-files still writes the exact version-5 shape unless it contains preserved legacy
-state, which selects version 7. Readers accept only the supported exact schemas;
+resource policy uses complete-backup manifest version 6 when there is no preserved
+legacy component. A library without those files writes the exact version-5 shape.
+Preserved legacy state selects version 7 in either case. Readers accept only the supported exact schemas;
 unknown fields and versions fail closed.
 
 The version-6 transcription component streams retained original audio/video,
@@ -277,8 +277,8 @@ state inventory. The numeric version alone never selects compatibility.
 
 Legacy Studio, speech, assistant and translation state remains in
 preserved-state/files with a sealed review.json inventory. It is not installed
-as active current state. The restored folder displays a review notice before
-opening. Recorded engine paths, jobs, provider approvals and quotation authority
+as active current state. The desktop restore flow displays a review notice before
+offering to open the restored library. Recorded engine paths, jobs, provider approvals and quotation authority
 are not activated, and no external path is opened. These bytes may retain private
 text or old references from the original backup; preservation does not sanitize
 them. Semantic migration and resumability remain separate reviewed work.
