@@ -135,6 +135,7 @@ class Revision:
     text: str
     label: str
     created_at: str
+    preparation: object | None = None
 
     def __post_init__(self):
         if type(self.number) is not int or self.number < 0:
@@ -142,6 +143,10 @@ class Revision:
         _body(self.text)
         _text(self.label, 'revision label', limit=200)
         _timestamp(self.created_at)
+        if self.preparation is not None:
+            from .preparation import PreparationRecord
+            if type(self.preparation) is not PreparationRecord:
+                raise ValueError('A validated preparation provenance record is required.')
 
 
 @dataclass(frozen=True)
@@ -185,6 +190,11 @@ class NarrationProject:
             raise ValueError('The first reading-copy revision must preserve the original text.')
         if any(a.number >= b.number for a, b in zip(self.revisions, self.revisions[1:])):
             raise ValueError('Reading-copy revisions must have increasing identities.')
+        if self.revisions[0].preparation is not None:
+            raise ValueError('The immutable original cannot be a prepared derivative.')
+        for previous, current in zip(self.revisions, self.revisions[1:]):
+            if current.preparation is not None:
+                current.preparation.validate_revision(self.original_text, previous.text, current.text)
         if type(self.rules) is not tuple:
             raise ValueError('Use a validated pronunciation dictionary.')
         validate_pronunciation_rules(self.rules)
@@ -232,15 +242,29 @@ def new_project(original_text='', *, title='Reading copy', source_location=None,
                             (first,), 0, original_path=original_path, legacy_origin=legacy_origin)
 
 
-def revise(project, text, *, label='Edited reading text'):
+def revise(project, text, *, label='Edited reading text', preparation=None):
     _body(text)
     if text == project.current_text:
+        if preparation is not None:
+            raise ValueError('A preparation revision must describe an actual reading-text change.')
         return project
     history = project.revisions[:project.cursor + 1]
     if len(history) >= MAX_HISTORY:
         raise ValueError('The 50-revision undo budget is full. Export the reading text and start a new copy.')
-    next_revision = Revision(max(item.number for item in project.revisions) + 1, text, label, _now())
+    next_revision = Revision(max(item.number for item in project.revisions) + 1, text, label, _now(), preparation)
     return replace(project, revisions=history + (next_revision,), cursor=len(history))
+
+
+def apply_preparation(project, preview):
+    """Apply one explicitly accepted preview only to its unchanged reading input."""
+    from .preparation import PreparationPreview
+    if type(preview) is not PreparationPreview:
+        raise ValueError('Choose a validated reading-preparation preview.')
+    preview.record.validate_revision(project.original_text, project.current_text, preview.text)
+    context = dict(preview.record.settings)
+    label = ('Hunspell spelling' if preview.record.engine == 'hunspell' else
+             'Prepared ' + context['kind']) + ' (' + context['language'] + ')'
+    return revise(project, preview.text, label=label, preparation=preview.record)
 
 
 def undo(project):
@@ -530,6 +554,12 @@ def comparison_text(project):
         for kind, a, b, c, d in source_spans(project):
             lines.append(f'{kind.capitalize()}: original [{a}, {b}); reading copy [{c}, {d}).')
         lines.append('The derived range has no claim of exact source-word alignment.')
+    for revision in project.revisions[:project.cursor + 1]:
+        if revision.preparation is not None:
+            record = revision.preparation
+            lines.append(f'Prepared revision {revision.number}: {record.engine} {record.engine_version}; '
+                         f'context {dict(record.settings)}; manifest SHA256 {record.manifest_sha256}; '
+                         f'previous reading range [{record.start}, {record.end}).')
     return '\n'.join(lines)
 
 
@@ -537,9 +567,13 @@ def encode_project(project):
     if type(project) is not NarrationProject:
         raise ValueError('A validated reading project is required.')
     advanced = any(rule.voice_id or rule.regex or rule.ignore_case or rule.language_scope for rule in project.rules)
-    version = 4 if project.legacy_origin is not None else (3 if advanced else 2)
+    prepared = any(revision.preparation is not None for revision in project.revisions)
+    version = 5 if prepared else (4 if project.legacy_origin is not None else (3 if advanced else 2))
     value = dict(kind='carr-reading-copy', version=version, **asdict(project))
-    if project.legacy_origin is None:
+    if version < 5:
+        for revision in value['revisions']:
+            revision.pop('preparation')
+    if project.legacy_origin is None and version < 5:
         value.pop('legacy_origin')
     if version == 2:
         value['rules'] = [dict(written=rule.written, spoken=rule.spoken, language=rule.language)
@@ -557,29 +591,39 @@ def decode_project(raw):
         value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique)
         fields = {'kind', 'version', 'id', 'title', 'original_text', 'original_sha256',
                   'source_location', 'revisions', 'cursor', 'rules'}
-        if type(value) is dict and value.get('version') in (2, 3, 4):
+        if type(value) is dict and value.get('version') in (2, 3, 4, 5):
             fields.add('original_path')
-        if type(value) is dict and value.get('version') == 4:
+        if type(value) is dict and value.get('version') in (4, 5):
             fields.add('legacy_origin')
         if (type(value) is not dict or set(value) != fields or value['kind'] != 'carr-reading-copy'
-                or type(value['version']) is not int or value['version'] not in (1, 2, 3, 4)
+                or type(value['version']) is not int or value['version'] not in (1, 2, 3, 4, 5)
                 or type(value['revisions']) is not list or len(value['revisions']) > MAX_HISTORY
                 or type(value['rules']) is not list or len(value['rules']) > MAX_RULES):
             raise ValueError('Unsupported reading-project format.')
         location = None if value['source_location'] is None else _location(value['source_location'])
-        revisions = tuple(Revision(**row) for row in value['revisions'])
+        revision_fields = {'number', 'text', 'label', 'created_at'}
+        if value['version'] == 5:
+            revision_fields.add('preparation')
+        if any(type(row) is not dict or set(row) != revision_fields for row in value['revisions']):
+            raise ValueError('Reading revisions need the exact fields for their format version.')
+        if value['version'] == 5:
+            from .preparation import decode_preparation
+            revisions = tuple(Revision(**{**row, 'preparation': decode_preparation(row['preparation'])})
+                              for row in value['revisions'])
+        else:
+            revisions = tuple(Revision(**row) for row in value['revisions'])
         if value['version'] in (1, 2):
             if any(type(row) is not dict or not {'written', 'spoken'} <= row.keys()
                    or row.keys() - {'written', 'spoken', 'language'} for row in value['rules']):
                 raise ValueError('Legacy reading rules cannot contain unversioned pattern or scope fields.')
         elif any(type(row) is not dict or set(row) != {'written', 'spoken', 'language', 'voice_id',
                  'regex', 'ignore_case', 'language_scope'} for row in value['rules']):
-            raise ValueError('Version 3/4 reading rules require their complete scoped fields.')
+            raise ValueError('Version 3/4/5 reading rules require their complete scoped fields.')
         rules = tuple(PronunciationRule(**row) for row in value['rules'])
         return NarrationProject(value['id'], value['title'], value['original_text'], value['original_sha256'],
                                 location, revisions, value['cursor'], rules, value.get('original_path'),
                                 decode_origin(value['legacy_origin'], value['original_text'])
-                                if value['version'] == 4 else None)
+                                if value['version'] in (4, 5) and value['legacy_origin'] is not None else None)
     except (UnicodeError, TypeError, KeyError, RecursionError, ValueError) as exc:
         raise ValueError(f'The reading project is invalid; existing files were kept. {exc}') from exc
 

@@ -29,9 +29,16 @@ class PronunciationPreviewTask:
         self.generation = 0
 
     def start(self, text, rules, *, language='', voice_id='', timeout=1.0):
+        rules = tuple(rules)
+        return self.start_operation(lambda cancelled: pronunciation_preview(
+            text, rules, language=language, voice_id=voice_id, timeout=timeout, cancelled=cancelled))
+
+    def start_operation(self, operation):
+        """Reuse this owner for one explicitly selected preparation operation."""
+        if not callable(operation):
+            raise ValueError('A callable preview operation is required.')
         if self.closed or self.busy:
             raise ValueError('Finish or cancel the active pronunciation preview first.')
-        rules = tuple(rules)
         self.cancel.clear()
         self.busy = True
         self.generation += 1
@@ -39,8 +46,7 @@ class PronunciationPreviewTask:
         def work():
             result = error = None
             try:
-                result = pronunciation_preview(text, rules, language=language, voice_id=voice_id,
-                                               timeout=timeout, cancelled=self.cancel.is_set)
+                result = operation(self.cancel.is_set)
             except Exception as exc:
                 error = exc
             try:
@@ -118,6 +124,11 @@ class NarrationController:
 
     def apply(self, text, *, label):
         candidate = revise(self.candidate(), text, label=label)
+        self.project, self.pending_text = candidate, candidate.current_text
+
+    def apply_preparation(self, preview):
+        from ..reader.narration import apply_preparation
+        candidate = apply_preparation(self.candidate(), preview)
         self.project, self.pending_text = candidate, candidate.current_text
 
     def undo(self):
@@ -352,6 +363,35 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
             refresh()
             say(description + ' Applied to reading copy. Ctrl+S saves the project.')
             timer.StartOnce(1200)
+
+    def prepare_reading(event=None):
+        if preview.busy or state['closed']:
+            return
+        timer.Stop()
+        try:
+            from .live_reading import selected_source_offsets
+            from .narration_preparation import show_preparation
+            capture()
+            current = controller.candidate()
+            start, end = selected_source_offsets(editor, current.current_text)
+            selected, accepted_rule = show_preparation(dialog, current, start, end, guard=controller.guard)
+            controller.guard()
+            if selected is not None:
+                controller.apply_preparation(selected)
+                refresh()
+                say('Reviewed preparation applied as a new reading revision with exact tool provenance. '
+                    'Ctrl+S saves; Undo restores the earlier reading text.')
+            elif accepted_rule is not None:
+                controller.set_rules(controller.project.rules + (accepted_rule,))
+                say('Word accepted in this project for the selected language and voice scope. '
+                    'The original text and installed Hunspell dictionary are unchanged. Ctrl+S saves.')
+            else:
+                say('Preparation closed without changing the reading copy.')
+        except Exception as exc:
+            say(str(exc))
+        finally:
+            if not state['closed']:
+                timer.StartOnce(1200)
 
     def normalize(event=None):
         try:
@@ -603,6 +643,7 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
         ('&Export UTF-8 text', export), ('Save and open Audio S&tudio', open_audio_studio),
         ('Save all open drafts', save_all_open), ('Import dictionary...', import_dictionary),
         ('Export dictionary...', export_dictionary), ('Read current copy aloud...', read_aloud),
+        ('Prepare selected text and spell-check...', prepare_reading),
         ('Cancel preview', cancel_preview), ('C&lose', close),
     )
     ids, native_buttons = [], []
@@ -640,7 +681,7 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
                             compare=native_buttons[9], audio_studio=native_buttons[11],
                             save_all=native_buttons[12], cancel_preview=native_buttons[-2],
                             import_dictionary=native_buttons[13], export_dictionary=native_buttons[14],
-                            live_reading=native_buttons[15],
+                            live_reading=native_buttons[15], preparation=native_buttons[16],
                             close=native_buttons[-1])
             wx.CallAfter(on_ready, dialog, controller, controls)
         dialog.ShowModal()
