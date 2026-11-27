@@ -87,14 +87,33 @@ def _studio_job(value, identity):
     from .studio.project import Project
     fields(value, {'schema', 'id', 'status', 'project', 'fingerprint', 'destination',
                    'format', 'stems', 'nodes', 'artifacts', 'progress', 'created',
-                   'updated', 'error', 'runtime'}, {'result'})
+                   'updated', 'error', 'runtime'}, {'result', 'resource_plan', 'total_disk_bytes'})
     if type(value['schema']) is not int or value['schema'] != 1 or value['id'] != identity:
         raise ValueError('Invalid production job identity.')
     project = Project.from_dict(value['project'])
     if value['fingerprint'] != project.fingerprint:
         raise ValueError('Production project fingerprint changed.')
-    if value['status'] not in ('pending', 'running', 'paused', 'cancelled', 'failed', 'complete'):
+    if value['status'] not in ('pending', 'queued', 'running', 'paused', 'cancelled',
+                             'attention', 'failed', 'complete'):
         raise ValueError('Invalid production status.')
+    if 'total_disk_bytes' in value:
+        number(value['total_disk_bytes'], 1024**2, 2**63 - 1, integer=True)
+    if 'resource_plan' in value:
+        from .operations.models import ResourceRequest
+        plan = value['resource_plan']
+        fields(plan, {'schema', 'request', 'cpu_basis', 'memory_basis', 'disk_basis', 'enforcement'})
+        if type(plan['schema']) is not int or plan['schema'] != 1:
+            raise ValueError('Invalid production resource-plan schema.')
+        # A restored estimate is inert. Validate its typed bytes without
+        # opening external paths or creating a runtime coordinator; run()
+        # always recomputes admission from the current explicit policy.
+        ResourceRequest.from_dict(plan['request'])
+        if plan['request']['disk_path'] is not None:
+            path(plan['request']['disk_path'])
+        for directory, _ in plan['request']['additional_disks']:
+            path(directory)
+        for name in ('cpu_basis', 'memory_basis', 'disk_basis', 'enforcement'):
+            text(plan[name], 4096)
     if value['format'] not in ('wav', 'flac', 'mp3', 'ogg', 'opus', 'm4a', 'm4b', 'aiff', 'wma'):
         raise ValueError('Invalid production output format.')
     if type(value['stems']) is not bool or type(value['nodes']) is not dict or len(value['nodes']) > 100000:
@@ -259,12 +278,17 @@ def _usage(value):
 
 def _translation_languages(value, identity):
     from .assistant.models import canonical
+    from .assistant.profiles import google_v3_parent
     from .assistant.translation import ENDPOINT
     fields(value, {'schema', 'profile', 'endpoint', 'model', 'fetched_at', 'languages',
                    'languages_sha256', 'qualification'})
     if (value['schema'] != 'carr-translation-languages/1' or value['profile'] != identity
-            or value['endpoint'] != ENDPOINT or value['model'] != 'nmt'
             or value['qualification'] != 'provider-declared; not acoustic or translation-quality verification'):
+        raise ValueError('Invalid translation language inventory identity.')
+    advanced = value['model'] == 'general/nmt'
+    if advanced:
+        google_v3_parent(value['endpoint'])
+    elif value['endpoint'] != ENDPOINT or value['model'] != 'nmt':
         raise ValueError('Invalid translation language inventory identity.')
     text(value['fetched_at'], 128)
     rows = value['languages']
@@ -272,9 +296,11 @@ def _translation_languages(value, identity):
         raise ValueError('Invalid provider language inventory.')
     seen = set()
     for row in rows:
-        fields(row, {'language', 'name'})
+        fields(row, {'language', 'name', 'source', 'target'} if advanced else {'language', 'name'})
         _translation_language(row['language'])
-        text(row['name'], 1000)
+        text(row['name'], 512 if advanced else 1000, empty=advanced)
+        if advanced and (type(row['source']) is not bool or type(row['target']) is not bool):
+            raise ValueError('Invalid Advanced translation language direction.')
         if row['language'] in seen:
             raise ValueError('Duplicate translation language.')
         seen.add(row['language'])
@@ -290,12 +316,12 @@ def _translation_language(value, *, auto=False):
 
 def _translation_job(value, identity):
     from .assistant.models import canonical
-    from .assistant.profiles import ProviderProfile
+    from .assistant.profiles import ProviderProfile, google_v3_parent
     from .assistant.providers import Authorization, money, _request
-    from .assistant.translation import split_text
+    from .assistant.translation import split_text, translation_payload
     fields(value, {'schema', 'kind', 'id', 'created', 'updated', 'status', 'profile', 'title',
         'source_text', 'source_sha256', 'source_language', 'target_language', 'chunks', 'receipts',
-        'authorization', 'per_call_cost'})
+        'authorization', 'per_call_cost'}, {'glossary'})
     if (value['schema'] != 'carr-assistant-job/1' or value['kind'] != 'translation/1'
             or value['id'] != identity or value['status'] not in ('queued', 'running', 'paused', 'attention', 'complete')):
         raise ValueError('Invalid translation checkpoint identity or status.')
@@ -309,8 +335,11 @@ def _translation_job(value, identity):
     if type(value['chunks']) is not list or value['chunks'] != list(chunks):
         raise ValueError('Translation chunks no longer bind the original.')
     profile = ProviderProfile(**value['profile'])
-    if profile.adapter != 'google-translation-v2':
+    if profile.adapter not in ('google-translation-v2', 'google-translation-v3'):
         raise ValueError('Unsupported translation provider declaration.')
+    advanced = profile.adapter == 'google-translation-v3'
+    model = google_v3_parent(profile.endpoint) + '/models/' + profile.model if advanced else None
+    glossary = value.get('glossary')
     _translation_language(value['source_language'], auto=True)
     _translation_language(value['target_language'])
     if value['source_language'] == value['target_language']:
@@ -321,8 +350,7 @@ def _translation_job(value, identity):
         if not chunk.strip():
             by_chunk.append(None)
             continue
-        payload = {'q': chunk, 'target': value['target_language']}
-        if value['source_language'] != 'auto': payload['source'] = value['source_language']
+        payload = translation_payload(chunk, value['source_language'], value['target_language'], glossary)
         _, body, _ = _request(profile, 'translation.text', payload)
         checksum = sha256(canonical(body).encode()).hexdigest()
         expected.append(checksum)
@@ -339,7 +367,8 @@ def _translation_job(value, identity):
         raise ValueError('Invalid translation receipt inventory.')
     for index, row in enumerate(receipts):
         fields(row, {'index', 'source_sha256', 'text', 'translation_sha256', 'detected_source',
-                     'request_sha256', 'response_sha256'})
+                     'request_sha256', 'response_sha256'} |
+                    ({'reported_model', 'glossary_config'} if advanced and chunks[index].strip() else set()))
         if (type(row['index']) is not int or row['index'] != index
                 or row['source_sha256'] != sha256(chunks[index].encode()).hexdigest()
                 or row['request_sha256'] != by_chunk[index]):
@@ -351,6 +380,17 @@ def _translation_job(value, identity):
             _translation_language(row['detected_source'])
         if by_chunk[index] is not None:
             digest(row['response_sha256'])
+            if advanced:
+                if row['reported_model'] != model:
+                    raise ValueError('Advanced translation receipt model changed.')
+                if glossary is None:
+                    if row['glossary_config'] is not None:
+                        raise ValueError('Advanced translation receipt has an unapproved glossary.')
+                else:
+                    observed = row['glossary_config']
+                    fields(observed, {'glossary', 'ignoreCase'})
+                    if observed['glossary'] != glossary or observed['ignoreCase'] is not False:
+                        raise ValueError('Advanced translation receipt glossary changed.')
         elif row['response_sha256'] is not None or row['text'] != chunks[index]:
             raise ValueError('Whitespace-only translation receipt changed.')
     if value['status'] == 'complete' and len(receipts) != len(chunks):

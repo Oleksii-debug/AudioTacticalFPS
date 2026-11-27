@@ -113,9 +113,11 @@ def run_native(source, timeout):
 
                 class SelectedDestination:
                     def __init__(self, *args, **kwargs):
-                        check('picker defers confirmation to the captured destination',
+                        check('export uses a save picker before bound replacement approval',
                               bool(kwargs['style'] & wx.FD_SAVE)
                               and not bool(kwargs['style'] & wx.FD_OVERWRITE_PROMPT))
+                        check('save picker preserves the selected existing export',
+                              destination.is_file() and destination.read_bytes() == previous)
                     def ShowModal(self): return wx.ID_OK
                     def GetPath(self): return str(destination)
                     def Destroy(self): pass
