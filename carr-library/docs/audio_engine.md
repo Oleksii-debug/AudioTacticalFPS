@@ -1,5 +1,11 @@
 # Local audio runtime and verified studio controls
 
+For the current optional audio-runtime installation, source inventory and
+private owner setup, see [Audio runtime](AUDIO_RUNTIME.md). The transferable
+application archive contains no FFmpeg payload. The 9.1 preparation described
+below remains an explicit external test/runtime path; it is distinct from
+the canonical private 9.0.2 LGPL runtime pin.
+
 This module is the audio backend of the existing Universal Research Library. It
 does not introduce a second application. The persistent production director owns
 scene jobs, role mapping, retries, cache identity, subtitles and project state;

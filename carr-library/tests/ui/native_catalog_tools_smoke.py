@@ -137,27 +137,22 @@ def run_native(source, timeout):
                     def GetPath(self): return str(destination)
                     def Destroy(self): pass
 
-                class ReplacementAnswer:
-                    def __init__(self, parent, message, title, style):
-                        check('replacement question names the existing destination with default No',
-                              answer is not None and parent is dialog and destination.is_file()
-                              and destination.name in message and title.startswith('Replace ')
-                              and style == wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION)
-                        questions.append(True)
-
-                    def ShowModal(self):
-                        if change_while_confirming:
-                            destination.write_bytes(changed_export)
-                        return answer
-
-                    def Destroy(self): pass
+                def replacement_answer(message, title, style, parent):
+                    check('replacement question names the existing destination with default No',
+                          answer is not None and parent is dialog and destination.is_file()
+                          and destination.name in message and title.startswith('Replace ')
+                          and style == wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION)
+                    questions.append(True)
+                    if change_while_confirming:
+                        destination.write_bytes(changed_export)
+                    return answer
 
                 with patch.object(wx, 'FileDialog', SelectedDestination), \
-                        patch.object(wx, 'MessageDialog', ReplacementAnswer):
+                        patch.object(wx, 'MessageBox', replacement_answer):
                     command(button, wx.EVT_BUTTON)
                 check('only an existing destination needs a replacement answer',
                       len(questions) == int(before_bytes is not None))
-                if answer == wx.ID_NO:
+                if answer == wx.NO:
                     check('declined replacement starts no worker, rendering or write',
                           not dialog.pending and not frame.working
                           and len(render_calls) == before_render and len(write_calls) == before_write)
@@ -215,9 +210,9 @@ def run_native(source, timeout):
                     elif phase == 'all-report' and completed():
                         check('complete library report rendered', dialog.report.GetValue() == expected_all)
                         dialog.format.SetSelection(2)
-                        export(dialog.bibliography_button, destinations['bibliography'], answer=wx.ID_NO)
+                        export(dialog.bibliography_button, destinations['bibliography'], answer=wx.NO)
                         export(dialog.bibliography_button, destinations['bibliography'],
-                               answer=wx.ID_YES, change_while_confirming=True)
+                               answer=wx.YES, change_while_confirming=True)
                         state['phase'] = 'changed-destination'
                     elif phase == 'changed-destination' and not dialog.pending and not frame.working:
                         check('replacement rejects a destination changed during confirmation',
@@ -225,7 +220,7 @@ def run_native(source, timeout):
                               and destinations['bibliography'].read_bytes() == changed_export)
                         check('rejected publication leaves no staged export',
                               not list(folder.glob('.research-export-*')))
-                        export(dialog.bibliography_button, destinations['bibliography'], answer=wx.ID_YES)
+                        export(dialog.bibliography_button, destinations['bibliography'], answer=wx.YES)
                         state['phase'] = 'bibliography'
                     elif phase == 'bibliography' and completed():
                         rows = json.loads(destinations['bibliography'].read_text(encoding='utf-8'))

@@ -1,8 +1,9 @@
 """Local application services composed from the reviewed CARR components.
 
 Every public operation opens a fresh workspace-authorized transaction. Originals,
-historical quotations and mutable research notes remain separate. No network is
-used by this module; model installation is an explicit build-time operation.
+historical quotations and mutable research notes remain separate. Optional DOI
+acquisition uses separate, explicit per-operation consent; all other core
+services remain local. Model installation is an explicit build-time operation.
 """
 from contextlib import closing, contextmanager
 from dataclasses import dataclass
@@ -36,6 +37,7 @@ from .search import literal, thematic
 from .storage.revisions import (Storage, Page, CURRENT_SCHEMA_VERSION,
                                 _schema_signature, _expected_signature)
 from .data_paths import guard_data_directory
+from .extract.document_formats import EXTENDED_MIMES, FORMAT_BY_MIME, ISOLATED_SUFFIXES
 
 
 @dataclass(frozen=True)
@@ -165,11 +167,16 @@ class LibraryApp:
         self.assets_dir.mkdir(mode=0o700, exist_ok=True)
         self.assets = RetainedAssets(self.assets_dir)
         self.semantic_ranker = semantic_ranker
+        self.semantic_cache = None
         self._selections = {}
         with exclusive_writer(self.root):
             self._check_database_paths()
             with closing(Storage(self.database, schema_version=CURRENT_SCHEMA_VERSION)) as storage:
                 storage.check()
+        if semantic_ranker is not None:
+            from .semantic import OfflineSemanticRanker
+            if isinstance(semantic_ranker, OfflineSemanticRanker):
+                self.semantic_cache = semantic_ranker.cache_for(self.root)
 
     def _check_database_paths(self):
         for path in (self.database, self.root / 'imports.sqlite'):
@@ -339,6 +346,31 @@ class LibraryApp:
         with self.read(workspace) as db:
             return get_edition(Catalog(db, workspace), edition_id)
 
+    def lookup_doi(self, workspace, doi, *, online_allowed=False, providers=('crossref',),
+                   unpaywall_email='', cancelled=lambda: False):
+        """Preview exact DOI metadata; never transmit source text or research notes."""
+        from .acquisition.service import service_for
+        return service_for(self).lookup(workspace, doi, online_allowed=online_allowed,
+            providers=providers, unpaywall_email=unpaywall_email, cancelled=cancelled)
+
+    def save_doi_reference(self, workspace, preview, *, cancelled=lambda: False):
+        from .acquisition.service import service_for
+        return service_for(self).save_reference(workspace, preview, cancelled=cancelled)
+
+    def apply_doi_metadata(self, workspace, edition_id, preview, *, expected_metadata,
+                           cancelled=lambda: False):
+        from .acquisition.service import service_for
+        return service_for(self).apply_metadata(workspace, edition_id, preview,
+            expected_metadata=expected_metadata, cancelled=cancelled)
+
+    def acquire_doi_source(self, workspace, preview, source_index, destination, *,
+                           online_allowed=False, rights_confirmed=False, collection=None,
+                           cancelled=lambda: False):
+        from .acquisition.service import service_for
+        return service_for(self).acquire(workspace, preview, source_index, destination,
+            online_allowed=online_allowed, rights_confirmed=rights_confirmed,
+            collection=collection, cancelled=cancelled)
+
     def catalog_report(self, workspace, *, collection=None, cancelled=lambda: False):
         """Inspect catalog completeness without granting source verification."""
         from .catalog.catalog_reports import catalog_report
@@ -506,7 +538,7 @@ class LibraryApp:
     def import_file(self, workspace, path, *, title=None, authors=(), language=None,
                     edition=None, volume=None, collections=(), work_id=None,
                     edition_id=None, cancelled=lambda: False, config=None, timeout=120.0):
-        """Isolate PDF/DOCX/EPUB parsing; retain the exact TXT path inline."""
+        """Isolate document parsing; retain the exact strict UTF-8 TXT path inline."""
         from .extract.page_ocr import Config
         if not isinstance(authors, (tuple, list)) or len(authors) > 100:
             raise ValueError('invalid authors')
@@ -516,7 +548,7 @@ class LibraryApp:
         metadata = dict(title=title, authors=tuple(authors), language=language,
                         edition=edition, volume=volume, collections=tuple(collections),
                         work_id=work_id, edition_id=edition_id)
-        if path.suffix.casefold() in ('.pdf', '.docx', '.epub'):
+        if path.suffix.casefold() in ISOLATED_SUFFIXES:
             from .ingest.worker import run_request
             with self.read(workspace):
                 pass
@@ -630,21 +662,27 @@ class LibraryApp:
                 publisher = _CatalogPublisher(storage, record)
                 publisher.before_commit = lambda scope, revision: record_publication_candidate(
                     self.root, _request_id, storage.db, scope, revision)
-                if asset.mime in ('application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                                  'application/epub+zip'):
+                if asset.mime in EXTENDED_MIMES or asset.mime in (
+                        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                        'application/epub+zip'):
                     if asset.mime == 'application/epub+zip':
                         from .extract.epub_ordered import extract_epub
                         from .reader.ebook_contents import extraction_settings
                         extracted = extract_epub(asset.data)
                         source_format = 'EPUB'
                         settings = extraction_settings(extracted)
-                    else:
+                    elif asset.mime == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
                         from .extract.docx_ordered import extract_docx
                         extracted = extract_docx(asset.data)
                         source_format = 'DOCX'
                         # Preserve the original configuration and revision identities.
                         settings = canonical({'adapter': 'python-docx-ordered-v1', 'kind': 'logical_segment',
                                               'provenance': extracted['provenance']})
+                    else:
+                        from .extract.document_formats import extract_document, extraction_settings
+                        extracted = extract_document(asset.data, SUFFIXES[asset.mime], cancelled=cancelled)
+                        source_format = FORMAT_BY_MIME[asset.mime].name
+                        settings = canonical(extraction_settings(extracted, asset.mime))
                     if cancelled():
                         raise InterruptedError('Import cancelled.')
                     revision = sha256(canonical([workspace, record.edition_id, asset.digest, settings])
@@ -671,8 +709,10 @@ class LibraryApp:
                     publisher.check()
                     return {'state': 'complete', 'edition': record.edition_id, 'id': revision,
                             'completed': len(extracted['records']), 'verified': False,
+                            'format': source_format, 'warnings': extracted['warnings'],
                             'message': f'{source_format} imported as unverified logical segments; '
-                                       'printed pages are unknown.'}
+                                       'printed pages are unknown. ' + (
+                                           FORMAT_BY_MIME[asset.mime].limitations if asset.mime in EXTENDED_MIMES else '')}
                 engine = RuntimeBoundIngest if asset.mime == 'application/pdf' else Ingest
                 extra = (dict(reviews=load_reviews(self.root, _request_id), review_asset=asset.data)
                          if asset.mime == 'application/pdf' else {})
@@ -697,16 +737,16 @@ class LibraryApp:
                         # and its current authorized identity before returning.
                         with storage.transaction():
                             self._authorize(storage.db, workspace)
-                            published = storage.db.execute(
+                            current = storage.db.execute(
                                 'SELECT r.workspace,r.edition,r.asset,a.revision FROM revision r '
                                 'JOIN sealed s ON s.revision=r.id LEFT JOIN active a '
                                 'ON a.workspace=r.workspace AND a.edition=r.edition WHERE r.id=?',
                                 (job,)).fetchone()
-                            if (published is None or tuple(published[:3]) !=
+                            if (current is None or tuple(current[:3]) !=
                                     (workspace, record.edition_id, asset.digest)
-                                    or published[3] is None):
+                                    or current[3] is None):
                                 raise ValueError('Completed import is missing its sealed source revision.')
-                            if (published[3] == job) != (result['state'] == 'complete'):
+                            if (current[3] == job) != (result['state'] == 'complete'):
                                 raise ValueError('Completed import active revision changed.')
                             if not publisher.published_here:
                                 if cancelled():
@@ -749,6 +789,8 @@ class LibraryApp:
                     progress = None
 
         cancelled = metadata.get('cancelled', lambda: False)
+        if not callable(cancelled):
+            raise ValueError('An import cancellation callback is required.')
         report(0)
         results = []
         for path in paths:
@@ -927,7 +969,7 @@ class LibraryApp:
                     from .semantic import search_snapshot
                     hits = search_snapshot(db, workspace, allowed, query, self.semantic_ranker,
                                            limit=limit, timeout=budget.remaining(), cancelled=budget.stopped,
-                                           on_status=on_status)
+                                           on_status=on_status, cache=self.semantic_cache)
                 else:
                     if mode == 'semantic' and on_status is not None:
                         on_status('Local model unavailable; keyword search used.')
@@ -1208,7 +1250,8 @@ class LibraryApp:
         from .transcription import TranscriptionService
         return TranscriptionService(self, workspace)
 
-    def backup(self, destination):
+    def backup(self, destination, *, max_bytes=None, include_generated=False, cancelled=lambda: False):
         from .library_backup import create_backup
-        return create_backup(self, destination)
+        return create_backup(self, destination, max_bytes=max_bytes,
+                             include_generated=include_generated, cancelled=cancelled)
 

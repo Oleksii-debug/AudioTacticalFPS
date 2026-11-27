@@ -28,6 +28,9 @@ class ClipDialog(wx.Dialog):
         self.cancelled = threading.Event()
         self.destroyed = False
         self.editor = editor or ClipEditor(self.library_root)
+        self._owns_editor = editor is None
+        self._service_release_requested = False
+        self._worker_future = None
         self.projects = ()
         self.project = None
         self.pending = self.closing = self.closed = False
@@ -114,6 +117,19 @@ class ClipDialog(wx.Dialog):
         if isinstance(value, Path) and value.name.startswith('clip-preview-'):
             value.unlink(missing_ok=True)
 
+    def _release_service(self):
+        if not getattr(self, '_owns_editor', False) or self._service_release_requested:
+            return
+        self._service_release_requested = True
+        service = self.editor.service
+        future = self._worker_future
+        if future is not None and not future.done():
+            # The host owns the shared executor. A completion callback closes
+            # only this dialog's lazy voice registry after its worker exits.
+            future.add_done_callback(lambda completed: service.close())
+        else:
+            service.close()
+
     def _destroyed(self, event):
         if event.GetEventObject() is self and not self.destroyed:
             self.destroyed = True
@@ -126,6 +142,7 @@ class ClipDialog(wx.Dialog):
             if self.stop():
                 for path in self.previews:
                     self._discard_preview(path)
+            self._release_service()
         event.Skip()
 
     def message(self, text):
@@ -188,7 +205,8 @@ class ClipDialog(wx.Dialog):
             except AudioCancelled as exc:
                 raise InterruptedError(str(exc)) from exc
         try:
-            self.frame.run_job(title, work, lambda result: finish(result), lambda error: finish(error=error))
+            self._worker_future = self.frame.run_job(
+                title, work, lambda result: finish(result), lambda error: finish(error=error))
             if self.pending and not self.frame.working:
                 finish(error=RuntimeError('The operation could not start. Try again.'))
         except Exception as exc:
@@ -423,7 +441,7 @@ class ClipDialog(wx.Dialog):
                 if path not in self.previews:
                     self.previews.append(path)
                 self.player = self.player or WavePlayer()
-                progress = getattr(self.frame, 'operation_progress', None)
+                progress = getattr(self.frame, 'progress_panel', None)
                 if progress is not None:
                     progress.register_player(self.player)
                 generation = self.playback_generation
@@ -451,7 +469,7 @@ class ClipDialog(wx.Dialog):
             quiet = True
         except Exception as exc:
             self.message('Playback cleanup is still pending. Retry Stop playback before continuing. ' + str(exc))
-        progress = getattr(self.frame, 'operation_progress', None)
+        progress = getattr(self.frame, 'progress_panel', None)
         if progress is not None:
             try:
                 progress.unregister_player(self.player, silence_confirmed=quiet)
@@ -481,6 +499,7 @@ class ClipDialog(wx.Dialog):
         self.cancelled.set()
         for path in self.previews:
             self._discard_preview(path)
+        self._release_service()
         if self.IsModal():
             self.EndModal(wx.ID_CANCEL)
         else:

@@ -109,7 +109,7 @@ def inspect(archive, java, lock_path, *, require_installed=False,
         if require_installed and not Path(publishing.__file__).resolve().is_relative_to(bundle_root / '.venv'):
             raise RuntimeError('The publisher is outside the selected installed bundle.')
         manifest = json.loads((bundle_root / 'bundle-manifest.json').read_text(encoding='utf-8'))
-        if manifest.get('bundled_audio'):
+        if manifest.get('bundled_audio') and audio_directory is None:
             for name, executable in binaries.items():
                 relative = 'audio/bin/' + name + '.exe'
                 if (not executable.samefile(bundle_root / relative)
@@ -134,6 +134,10 @@ def inspect(archive, java, lock_path, *, require_installed=False,
                 raise RuntimeError('Pinned validator license notices are missing.')
         jar = tools / pin['jar']
         library = root / 'synthetic library'
+        from carr_library.runtime_settings import load_settings, save_settings
+        settings = load_settings(library / 'state')
+        settings.update(ffmpeg=str(binaries['ffmpeg']), ffprobe=str(binaries['ffprobe']))
+        save_settings(library / 'state', settings)
         service = ProductionService(library / 'state' / 'studio', voices=SyntheticTones(),
                                     input_roots=(root,))
         publisher = publishing.PublicationService(service)

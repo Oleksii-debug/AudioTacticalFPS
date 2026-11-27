@@ -20,12 +20,14 @@ class ClipEditor:
         self.service = service or ProductionService(Path(library_root) / 'state' / 'studio')
 
     def create(self, title='Audio clips'):
+        self.service._check_open()
         project = Project(uuid4().hex, title, (),
             (Scene('scene-1', 'Audio clips', (), minimum_duration=1),),
             original_script='[Scene: Audio clips]\n[Duration: 1]', schema=2)
         return self.service.projects.save(project)
 
     def _current(self, project):
+        self.service._check_open()
         current = self.service.projects.load(project.id)
         if current.fingerprint != project.fingerprint:
             raise ValueError('Project changed since it was opened. Reload before editing clips.')
@@ -58,6 +60,7 @@ class ClipEditor:
 
     def retain(self, selected, *, expected_sha256=None, cancelled=lambda: False, progress=None):
         """Make a verified private copy, without granting access to its neighbours."""
+        self.service._check_open()
         source = local_path(selected, exists=True)
         before = regular(source)
         if not 0 < before.st_size <= 8 * 1024**3:

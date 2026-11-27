@@ -276,7 +276,7 @@ def test_destroy_retains_uncertain_native_playback_owner_and_preview(dialog, tmp
     dialog.player = Mock()
     dialog.player.close.return_value = False
     progress = Mock()
-    dialog.frame.operation_progress = progress
+    dialog.frame.progress_panel = progress
     event = SimpleNamespace(GetEventObject=lambda: dialog, Skip=Mock())
     dialog._destroyed(event)
     assert dialog.closed and path.exists()
@@ -394,30 +394,36 @@ def test_studio_controller_cannot_replace_a_newer_clip_revision(tmp_path):
 def studio_scope_runner(frame):
     import carr_library
     from concurrent.futures import Future
-    from carr_library.ui.operation_progress import operation_outcome
+    from carr_library.progress import ProgressHub, ProgressState, bind_progress, operation_outcome
+    from carr_library.ui.progress_panel import NativeProgressPanel
     source = Path(carr_library.__file__).parent / 'ui/studio_dialog.py'
     parsed = ast.parse(source.read_text(encoding='utf-8'))
     window = next(node for node in parsed.body if isinstance(node, ast.FunctionDef) and node.name == 'show_studio')
     nodes = [next(node for node in window.body if isinstance(node, ast.FunctionDef) and node.name == name)
-             for name in ('scope_current', 'run')]
+             for name in ('scope_current', 'stopping', 'run')]
     factory = ast.parse("""
 def make(frame, executor, wx, progress, report, service):
     library = frame.library
     library_root = Path(library.root)
     alive, busy = True, False
     current_job = 'saved-job'
+    dialog = SimpleNamespace(working=False)
     cancel = threading.Event()
     controls = lambda: None
     return run
 """)
     factory.body[0].body[-1:-1] = nodes
-    environment = dict(Path=Path, threading=threading, operation_outcome=operation_outcome)
+    environment = dict(Path=Path, threading=threading, SimpleNamespace=SimpleNamespace,
+                       ProgressState=ProgressState, bind_progress=bind_progress, operation_outcome=operation_outcome)
     exec(compile(ast.fix_missing_locations(factory), str(source), 'exec'), environment)
     future, executor, report = Future(), Mock(), Mock()
     executor.submit.return_value = future
     callbacks = []
     wx = SimpleNamespace(CallAfter=lambda callback: callbacks.append(callback))
-    run = environment['make'](frame, executor, wx, Mock(), report, Mock())
+    progress = object.__new__(NativeProgressPanel)
+    progress.hub, progress.active_task, progress.feedback = ProgressHub(), None, Mock()
+    progress.refresh = Mock()
+    run = environment['make'](frame, executor, wx, progress, report, Mock())
     return SimpleNamespace(run=run, future=future, executor=executor, report=report, callbacks=callbacks)
 
 
@@ -517,3 +523,32 @@ def test_render_saved_project_cancelled_parent_picker_starts_no_work(dialog, tmp
     selected.service.submit.assert_not_called()
     selected.service.run.assert_not_called()
     assert not dialog.calls and not dialog.pending and dialog.player is None
+
+
+@pytest.mark.parametrize('ending', ['completed', 'cancelled-before-start'])
+def test_owned_service_release_waits_for_its_future_without_stopping_host_executor(dialog, ending):
+    from concurrent.futures import Future
+    future = Future()
+    dialog._owns_editor = True
+    dialog._service_release_requested = False
+    dialog._worker_future = future
+    dialog.editor = SimpleNamespace(service=SimpleNamespace(close=Mock()))
+    dialog.frame.executor = Mock()
+    dialog._release_service()
+    dialog.editor.service.close.assert_not_called()
+    dialog.frame.executor.shutdown.assert_not_called()
+    if ending == 'completed':
+        future.set_result({'status': 'complete'})
+    else:
+        assert future.cancel()
+    dialog.editor.service.close.assert_called_once_with()
+    dialog._release_service()
+    dialog.editor.service.close.assert_called_once_with()
+    dialog.frame.executor.shutdown.assert_not_called()
+
+
+def test_borrowed_clip_editor_service_is_not_closed_by_dialog(dialog):
+    dialog._owns_editor = False
+    dialog.editor = SimpleNamespace(service=SimpleNamespace(close=Mock()))
+    dialog._release_service()
+    dialog.editor.service.close.assert_not_called()

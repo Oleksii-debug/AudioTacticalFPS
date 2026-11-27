@@ -72,24 +72,15 @@ def module(monkeypatch):
     names = ('VERTICAL', 'HORIZONTAL', 'EXPAND', 'ALL', 'LEFT', 'RIGHT', 'TOP', 'BOTTOM',
              'ALIGN_RIGHT', 'TE_MULTILINE', 'TE_READONLY', 'VSCROLL', 'TAB_TRAVERSAL',
              'ID_SAVE', 'ID_CANCEL', 'ID_OK', 'EVT_BUTTON', 'EVT_CLOSE', 'FD_OPEN',
-             'FD_FILE_MUST_EXIST', 'FD_SAVE', 'FD_OVERWRITE_PROMPT', 'ID_YES', 'ID_NO',
-             'YES_NO', 'NO_DEFAULT', 'ICON_QUESTION')
+             'FD_FILE_MUST_EXIST', 'FD_SAVE', 'FD_OVERWRITE_PROMPT',
+             'YES_NO', 'NO_DEFAULT', 'ICON_QUESTION', 'YES', 'NO')
     for number, name in enumerate(names):
         setattr(wx, name, 1 << number)
     wx.callbacks = []
     wx.CallAfter = wx.callbacks.append
     wx.FileDialog = Mock(side_effect=AssertionError('Unexpected file dialog'))
     wx.SingleChoiceDialog = Mock(side_effect=AssertionError('Unexpected choice dialog'))
-    wx.overwrite_result, wx.overwrite_hook, wx.overwrites = wx.ID_YES, None, []
-    class MessageDialog(Control):
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args, **kwargs)
-            wx.overwrites.append(self)
-        def ShowModal(self):
-            if wx.overwrite_hook: wx.overwrite_hook()
-            return wx.overwrite_result
-    wx.MessageDialog = MessageDialog
-    # Follow the already imported package in both source and isolated wheel runs.
+    wx.MessageBox = Mock(return_value=wx.YES)
     root = Path(carr_library.__file__).resolve().parent / 'ui'
 
     def load(name, path):
@@ -506,9 +497,33 @@ def test_declining_overwrite_stops_before_render_and_queue(module, edition, tmp_
     destination = tmp_path / 'declined.txt'
     destination.write_bytes(b'Keep this work')
     choose(module, monkeypatch, path=destination)
-    module.wx.overwrite_result = module.wx.ID_NO
+    module.wx.MessageBox.return_value = module.wx.NO
     (module.export_bibliography if action == 'bibliography' else module.export_research_outline)(frame)
     assert not frame.jobs and destination.read_bytes() == b'Keep this work'
     library.export_bibliography.assert_not_called()
     library.export_outline.assert_not_called()
-    assert module.wx.overwrites[0].destroyed
+    module.wx.MessageBox.assert_called_once()
+
+
+@pytest.mark.parametrize('action', ['bibliography', 'outline'])
+def test_changed_destination_during_academic_render_is_preserved(
+        module, edition, tmp_path, monkeypatch, action):
+    frame, _, library = host(tmp_path, edition)
+    destination = tmp_path / 'selected.txt'
+    destination.write_bytes(b'Approved previous export')
+    choose(module, monkeypatch, path=destination)
+
+    def render(*args, **kwargs):
+        destination.write_bytes(b'Independent work saved during rendering')
+        return 'New export must not overwrite independent work'
+
+    if action == 'bibliography':
+        library.export_bibliography.side_effect = render
+        module.export_bibliography(frame)
+    else:
+        library.export_outline.side_effect = render
+        module.export_research_outline(frame)
+    with pytest.raises(ValueError, match='destination changed'):
+        finish(frame)
+    assert destination.read_bytes() == b'Independent work saved during rendering'
+    assert not list(tmp_path.glob('.research-export-*'))

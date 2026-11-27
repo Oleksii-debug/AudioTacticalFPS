@@ -1,22 +1,21 @@
-"""Bind a native overwrite answer to one inspected destination state."""
+"""Bind native overwrite confirmation to one inspected export destination."""
 from ..research.export_file import capture_export_destination
 
 
-def confirm_export_destination(parent, path, *, private_root, title='Replace export file'):
-    """Return the captured destination, or None when replacement is declined.
+def confirm_export_destination(parent, path, *, private_root, wx_module=None, title='Replace export'):
+    """Capture before confirmation, then carry the snapshot to the writer.
 
-    Call before rendering or queuing an export and pass this same snapshot to
-    the writer as ``approval``. This helper never renders or publishes content.
+    Save pickers select a path without their own overwrite prompt. This check
+    covers the final filename, including any suffix appended by the caller.
+    The writer rechecks this exact identity after queued work and rendering.
     """
     approval = capture_export_destination(path, private_root=private_root)
-    if approval.require_absent:
-        return approval
-    import wx
-
-    dialog = wx.MessageDialog(parent,
-        f'Replace the existing file {approval.target.name}?', title,
-        wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION)
-    try:
-        return approval if dialog.ShowModal() == wx.ID_YES else None
-    finally:
-        dialog.Destroy()
+    if not approval.require_absent:
+        if wx_module is None:
+            import wx as wx_module
+        if wx_module.MessageBox(
+                f'Replace the existing export {approval.target.name}?', title,
+                wx_module.YES_NO | wx_module.NO_DEFAULT | wx_module.ICON_QUESTION,
+                parent) != wx_module.YES:
+            return None
+    return approval

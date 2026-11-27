@@ -8,29 +8,20 @@ from unittest.mock import Mock
 
 import pytest
 
-from carr_library.ui.operation_progress import ProgressTracker, operation_outcome
+from carr_library.progress import ProgressHub, ProgressState, ProgressTask, bind_progress, operation_outcome
+from carr_library.ui.progress_panel import NativeProgressPanel
 
 
-class Progress:
+class Progress(NativeProgressPanel):
+    """The actual shared observer, with native refresh represented by snapshots."""
     def __init__(self):
-        self.tracker, self.history = ProgressTracker(), []
-    def start(self, phase):
-        event = self.tracker.start(phase)
-        self.history.append(event)
-        return event.token
-    def transition(self, state, phase, *, token):
-        event = self.tracker.transition(state, phase, token=token)
-        if event is not None:
-            self.history.append(event)
-    def succeed(self, phase, *, token): self.transition('succeeded', phase, token=token)
-    def fail(self, phase, *, token): self.transition('failed', phase, token=token)
-    def cancel(self, phase, *, token): self.transition('cancelled', phase, token=token)
-    def pause(self, phase, *, token): self.transition('paused', phase, token=token)
-    def update(self, completed, total, phase, *, token):
-        event = self.tracker.update(completed, total, phase, token=token)
-        if event is not None:
-            self.history.append(event)
-    def finalize(self, *, token): pass
+        self.hub, self.active_task, self.history = ProgressHub(), None, []
+        self.feedback, self.settings_button = Mock(), Mock()
+        self._busy_menus = self._busy_items = None
+        self.notice = ''
+    def refresh(self):
+        if self.active_task is not None:
+            self.history.append(self.active_task.snapshot())
 
 
 @pytest.fixture
@@ -43,10 +34,21 @@ def desktop():
     env = dict(__package__='carr_library.ui', wx=SimpleNamespace(CallAfter=queued.append))
     exec(compile(ast.Module(body=functions, type_ignores=[]), str(path), 'exec'), env)
     frame = SimpleNamespace(_closing=False, working=False, busy=False, cancel_event=threading.Event(),
-        choice=Mock(), book=Mock(), cancel_button=Mock(), executor=Mock(), operation_progress=Progress())
+        choice=Mock(), book=Mock(), cancel_button=Mock(), executor=Mock(), progress_panel=Progress())
     frame.menu_bar = Mock()
     frame.menu_bar.GetMenuCount.return_value = 2
     frame.menu_bar.GetMenuLabel.side_effect = lambda index: ('&Library', '&Help')[index]
+    menus = [Mock(), Mock()]
+    query = Mock()
+    query.IsSeparator.return_value = False
+    query.GetSubMenu.return_value = None
+    query.GetId.return_value = 42
+    menus[0].GetMenuItems.return_value = []
+    menus[1].GetMenuItems.return_value = [query]
+    frame.menu_bar.GetMenu.side_effect = menus.__getitem__
+    frame.menu_bar.IsEnabledTop.return_value = True
+    frame.GetMenuBar = lambda: frame.menu_bar
+    frame.progress_panel.frame, frame.progress_panel.query_item = frame, query
     text, reports = ['Ready'], []
     frame.status = SimpleNamespace(GetValue=lambda: text[0], SetValue=lambda value: text.__setitem__(0, value))
     def report(message):
@@ -80,13 +82,13 @@ def test_callback_publication_failure_never_announces_100_percent(desktop):
     future = Future()
     frame.executor.submit.return_value = future
     def publish(result):
-        assert frame.operation_progress.tracker.event.percent is None
+        assert frame.progress_panel.active_task.snapshot().percent is None
         raise OSError('Final publication did not commit')
     frame.run_job('Export', lambda: 'prepared data', publish)
     future.set_result('prepared data')
     queued.pop()()
-    assert frame.operation_progress.tracker.event.state == 'failed'
-    assert not any(event.percent == 100 for event in frame.operation_progress.history)
+    assert frame.progress_panel.active_task.snapshot().state == 'failed'
+    assert not any(event.percent == 100 for event in frame.progress_panel.history)
     assert 'Final publication did not commit' in reports[-1]
     assert not frame.working
 
@@ -101,8 +103,8 @@ def test_desktop_uses_aggregate_outcome_instead_of_success_for_every_return(desk
     frame.run_job('Import', lambda: result)
     future.set_result(result)
     queued.pop()()
-    assert frame.operation_progress.tracker.event.state == state
-    assert not any(event.percent == 100 for event in frame.operation_progress.history)
+    assert frame.progress_panel.active_task.snapshot().state == state
+    assert not any(event.percent == 100 for event in frame.progress_panel.history)
     assert not reports[-1].endswith(': complete.')
 
 
@@ -119,12 +121,12 @@ def test_success_preserves_callback_output_location_and_waits_for_it(desktop):
     future = Future()
     frame.executor.submit.return_value = future
     def published(result):
-        assert frame.operation_progress.tracker.event.state == 'running'
+        assert frame.progress_panel.active_task.snapshot().state == 'running'
         frame.report('Saved verified output to the selected private directory.')
     frame.run_job('Export', lambda: None, published)
     future.set_result(None)
     queued.pop()()
-    assert frame.operation_progress.tracker.event.percent == 100
+    assert frame.progress_panel.active_task.snapshot().percent == 100
     assert reports[-1] == 'Saved verified output to the selected private directory.'
 
 
@@ -181,7 +183,7 @@ def test_completion_summary_preserves_the_callback_focus_target(desktop, target_
     assert focused[-1] is target
     if target_name is not None:
         assert target.GetValue() == 'Readable source result'
-    assert frame.operation_progress.tracker.event.percent == 100
+    assert frame.progress_panel.active_task.snapshot().percent == 100
 
 
 def test_old_completion_does_not_overwrite_a_callback_started_job(desktop):
@@ -191,8 +193,8 @@ def test_old_completion_does_not_overwrite_a_callback_started_job(desktop):
     frame.run_job('Prepare', lambda: None, lambda value: frame.run_job('Render', lambda: None))
     first.set_result(None)
     queued.pop()()
-    assert frame.working and frame.operation_progress.tracker.event.phase == 'Render'
-    assert frame.operation_progress.tracker.event.state == 'running'
+    assert frame.working and frame.progress_panel.active_task.snapshot().title == 'Render'
+    assert frame.progress_panel.active_task.snapshot().state == 'running'
     assert reports[-1] == 'Render…'
 
 
@@ -214,15 +216,21 @@ def test_generic_completion_updates_notice_without_overriding_callback_focus(des
     assert focused[0] == 'result-grid'
     assert frame.status.GetValue() == 'Search: complete.'
     assert reports == ['Search…']
-    assert frame.operation_progress.tracker.event.state == 'succeeded'
+    assert frame.progress_panel.active_task.snapshot().state == 'succeeded'
 
 
-@pytest.mark.parametrize('observer', ['start', 'update', 'succeed', 'finalize'])
-def test_progress_observer_failure_cannot_reclassify_committed_work(desktop, observer):
+@pytest.mark.parametrize('observer', ['begin', 'update', 'finish', 'reporting_unavailable'])
+def test_progress_observer_failure_cannot_reclassify_committed_work(desktop, observer, monkeypatch):
     frame, queued, reports = desktop
     future, done, failed = Future(), Mock(), Mock()
     frame.executor.submit.return_value = future
-    setattr(frame.operation_progress, observer, Mock(side_effect=RuntimeError('Progress device unavailable')))
+    broken = Mock(side_effect=RuntimeError('Progress device unavailable'))
+    if observer == 'update':
+        monkeypatch.setattr(ProgressTask, 'update', broken)
+    else:
+        monkeypatch.setattr(frame.progress_panel, observer, broken)
+        if observer == 'reporting_unavailable':
+            monkeypatch.setattr(frame.progress_panel, 'finish', broken)
     def operation(report):
         report(1, 2, 'Importing files')
         return {'state': 'complete', 'destination': 'committed output'}
@@ -232,12 +240,12 @@ def test_progress_observer_failure_cannot_reclassify_committed_work(desktop, obs
     done.assert_called_once_with({'state': 'complete', 'destination': 'committed output'})
     failed.assert_not_called()
     assert not frame.working and not frame.busy
-    assert 'Progress reporting is unavailable' in frame.status.GetValue()
+    assert 'Progress reporting is unavailable' in (frame.progress_panel.notice + frame.status.GetValue())
     assert reports == ['Import…']
 
 
 def test_receipt_classifier_failure_preserves_successful_publication(desktop, monkeypatch):
-    import carr_library.ui.operation_progress as progress_module
+    import carr_library.progress as progress_module
     frame, queued, reports = desktop
     future, done, failed = Future(), Mock(), Mock()
     frame.executor.submit.return_value = future
@@ -248,9 +256,9 @@ def test_receipt_classifier_failure_preserves_successful_publication(desktop, mo
     done.assert_called_once_with('committed')
     failed.assert_not_called()
     assert not frame.working
-    assert 'Progress reporting is unavailable' in frame.status.GetValue()
+    assert 'Progress reporting is unavailable' in (frame.progress_panel.notice + frame.status.GetValue())
     assert reports == ['Export…']
-    assert not any(event.percent == 100 for event in frame.operation_progress.history)
+    assert not any(event.percent == 100 for event in frame.progress_panel.history)
 
 
 @pytest.mark.parametrize('worker_error', [InterruptedError('Worker cancelled'), OSError('Commit failed')],
@@ -259,21 +267,22 @@ def test_observer_failure_and_late_cancel_keep_the_real_business_error(desktop, 
     frame, queued, reports = desktop
     future, done, failed = Future(), Mock(), Mock()
     frame.executor.submit.return_value = future
-    frame.operation_progress.finalize = Mock(side_effect=RuntimeError('Closed progress control'))
+    frame.progress_panel.finish = Mock(side_effect=RuntimeError('Closed progress control'))
     frame.run_job('Export', lambda: None, done, failed)
     frame.cancel_event.set()
     future.set_exception(worker_error)
     queued.pop()()
     done.assert_not_called()
     failed.assert_called_once_with(worker_error)
-    assert frame.operation_progress.tracker.event.state == (
+    assert frame.progress_panel._reporting_failure[1] == (
         'cancelled' if isinstance(worker_error, InterruptedError) else 'failed')
+    assert frame.progress_panel.active_task.snapshot().percent != 100
     assert str(worker_error) in reports[-1] and not frame.working
 
 
 def test_executor_failure_still_unlocks_controls_when_progress_start_fails(desktop):
     frame, queued, _ = desktop
-    frame.operation_progress.start = Mock(side_effect=RuntimeError('Progress unavailable'))
+    frame.progress_panel.begin = Mock(side_effect=RuntimeError('Progress unavailable'))
     error, done, failed = RuntimeError('Executor unavailable'), Mock(), Mock()
     frame.executor.submit.side_effect = error
     frame.run_job('Export', lambda: None, done, failed)
@@ -295,9 +304,9 @@ def test_measurements_use_captured_token_and_late_updates_do_not_touch_next_job(
     first.set_result(frame.executor.submit.call_args.args[0]())
     queued.pop()()
     observers[0](2, 2, 'Old operation finished')
-    event = frame.operation_progress.tracker.event
-    assert event.state == 'running' and event.phase == 'Second'
-    assert event.percent is None and event.completed is None
+    event = frame.progress_panel.active_task.snapshot()
+    assert event.state == 'running' and event.title == 'Second'
+    assert event.percent is None and event.completed == 0
 
 
 @pytest.fixture
@@ -312,12 +321,16 @@ def make(progress, executor, wx, report, service):
     busy = False
     alive = True
     current_job = 'saved-production'
+    dialog = SimpleNamespace(working=False)
     cancel = threading.Event()
+    scope_current = lambda: alive
+    stopping = lambda: cancel.is_set() or not scope_current()
     controls = lambda: None
     return SimpleNamespace(run=run, cancel=cancel, is_busy=lambda: busy)
 ''')
     factory.body[0].body.insert(-1, run)
-    env = dict(threading=threading, SimpleNamespace=SimpleNamespace, operation_outcome=operation_outcome)
+    env = dict(threading=threading, SimpleNamespace=SimpleNamespace, operation_outcome=operation_outcome,
+               ProgressState=ProgressState, bind_progress=bind_progress)
     exec(compile(ast.fix_missing_locations(factory), str(path), 'exec'), env)
     queued, reports = [], []
     progress, executor, service = Progress(), Mock(), Mock()
@@ -334,19 +347,19 @@ def test_studio_reports_measured_phases_without_fabricated_percent_and_commits_b
     studio.executor.submit.return_value = future
     def operation(report):
         report('Mixing scene 2 of 3')
-        assert studio.progress.tracker.event.total is None
-        assert studio.progress.tracker.event.percent is None
+        assert studio.progress.active_task.snapshot().total is None
+        assert studio.progress.active_task.snapshot().percent is None
         return {'status': 'complete', 'destination': 'private output'}
     def complete(result):
-        assert studio.progress.tracker.event.state == 'running'
-        assert studio.progress.tracker.event.percent is None
+        assert studio.progress.active_task.snapshot().state == 'running'
+        assert studio.progress.active_task.snapshot().percent is None
         studio.reports.append('Verified and saved ' + result['destination'])
     studio.handler.run(operation, complete, phase='Rendering audio production', with_progress=True)
     future.set_result(studio.executor.submit.call_args.args[0]())
     while studio.queued:
         studio.queued.pop(0)()
-    assert studio.progress.tracker.event.state == 'succeeded'
-    assert studio.progress.tracker.event.percent == 100
+    assert studio.progress.active_task.snapshot().state == 'succeeded'
+    assert studio.progress.active_task.snapshot().percent == 100
     assert all(event.percent is None for event in studio.progress.history[:-1])
     assert studio.reports == ['Mixing scene 2 of 3', 'Verified and saved private output']
     assert not studio.handler.is_busy()
@@ -363,8 +376,11 @@ def test_studio_pause_cancel_and_failure_follow_saved_job_receipt_without_succes
     future.set_exception(exception)
     studio.queued.pop(0)()
     complete.assert_not_called()
-    studio.service.get.assert_called_once_with('saved-production')
-    assert studio.progress.tracker.event.state == state
+    if isinstance(exception, InterruptedError):
+        studio.service.get.assert_called_once_with('saved-production')
+    else:
+        studio.service.get.assert_not_called()
+    assert studio.progress.active_task.snapshot().state == state
     assert not any(event.percent == 100 for event in studio.progress.history)
     assert studio.reports == [str(exception)] and not studio.handler.is_busy()
 
@@ -378,7 +394,7 @@ def test_studio_final_publication_callback_failure_never_reaches_100_percent(stu
     studio.handler.run(lambda report: None, failed_publication, with_progress=True)
     future.set_result({'status': 'complete'})
     studio.queued.pop(0)()
-    assert studio.progress.tracker.event.state == 'failed'
+    assert studio.progress.active_task.snapshot().state == 'failed'
     assert not any(event.percent == 100 for event in studio.progress.history)
     assert studio.reports == ['Publication callback failed']
 
@@ -388,7 +404,7 @@ def test_studio_executor_start_failure_is_terminal_and_unlocks_controls(studio):
     complete = Mock()
     studio.handler.run(lambda: None, complete)
     complete.assert_not_called()
-    assert studio.progress.tracker.event.state == 'failed'
+    assert studio.progress.active_task.snapshot().state == 'failed'
     assert not studio.handler.is_busy() and not studio.queued
     assert studio.reports == ['Worker unavailable']
 
@@ -400,16 +416,24 @@ def test_reader_close_always_unregisters_playback_and_finishes_resource_cleanup(
     reader = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'show_speech_reader')
     cleanup = next(node.finalbody for node in reversed(reader.body) if isinstance(node, ast.Try) and node.finalbody)
     env = {name: Mock() for name in ('autosave_timer', 'cancel', 'player', 'progress', 'parent',
-                                      'executor', 'audio_files', 'dialog')}
+                                      'executor', 'audio_files', 'dialog', 'unregister')}
+    env.update(__package__='carr_library.ui', owned_registries=[], owned_progress_voices=[],
+               wx=SimpleNamespace(CallAfter=lambda callback: callback()))
     if device_failure:
         env['player'].close.side_effect = RuntimeError('Audio device disconnected')
     exec(compile(ast.Module(body=cleanup, type_ignores=[]), str(path), 'exec'), env)
     env['player'].close.assert_called_once_with()
     env['progress'].unregister_player.assert_called_once_with(env['player'], silence_confirmed=not device_failure)
-    env['executor'].shutdown.assert_called_once_with(wait=True, cancel_futures=True)
+    env['unregister'].assert_called_once_with()
+    env['executor'].shutdown.assert_called_once_with(wait=False, cancel_futures=False)
+    cleanup_owner = env['executor'].submit.call_args.args[0]
+    env['audio_files'].cleanup.assert_not_called()
+    cleanup_owner()
     if device_failure:
         env['audio_files'].cleanup.assert_not_called()
-        assert env['parent']._reader_playback_retained == [(env['player'], env['audio_files'])]
+        retained = env['parent']._reader_playback_retained
+        assert len(retained) == 1
+        assert retained[0][:3] == (env['player'], env['audio_files'], env['executor'])
     else:
         env['audio_files'].cleanup.assert_called_once_with()
     env['dialog'].Destroy.assert_called_once_with()
@@ -428,10 +452,11 @@ def make(autosave, cancel, service, timer, dialog, progress, parent_progress, re
     alive = True
     busy = True
     current_job = 'saved-production'
+    owned_progress_voices = set()
     return close
 ''')
     factory.body[0].body.insert(-1, close)
-    env = dict(wx=SimpleNamespace(ID_CLOSE=123))
+    env = dict(wx=SimpleNamespace(ID_CLOSE=123), __package__='carr_library.ui')
     exec(compile(ast.fix_missing_locations(factory), str(path), 'exec'), env)
     autosave, cancel, service, timer, dialog, progress, parent_progress, report, executor = [Mock() for _ in range(9)]
     if device_failure:
@@ -441,8 +466,12 @@ def make(autosave, cancel, service, timer, dialog, progress, parent_progress, re
     dialog._audio_player.close.assert_called_once_with()
     progress.unregister_player.assert_called_once_with(dialog._audio_player, silence_confirmed=not device_failure)
     parent_progress.unregister_player.assert_called_once_with(dialog._audio_player, silence_confirmed=not device_failure)
-    progress.pause.assert_called_once_with('Audio production paused; completed chunks retained')
+    progress.request_cancel.assert_called_once_with()
     progress.close.assert_called_once_with()
-    executor.shutdown.assert_called_once_with(wait=False, cancel_futures=True)
+    executor.shutdown.assert_called_once_with(wait=False, cancel_futures=False)
+    cleanup = executor.submit.call_args.args[0]
+    service.close.assert_not_called()
+    cleanup()
+    service.close.assert_called_once_with()
     dialog.EndModal.assert_called_once_with(123)
     assert report.call_count == int(device_failure)

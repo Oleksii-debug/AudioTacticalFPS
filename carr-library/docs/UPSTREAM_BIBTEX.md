@@ -53,8 +53,13 @@ in `@string` is accepted. No executable macro evaluation is involved.
 
 The upstream brace-aware coauthor splitter and strict name parser are reused.
 The adapter retains unstructured name order. Explicit BibTeX comma names are
+<<<<<<< HEAD
 shown as `Family, Given, Suffix` without assigning new name components.
 The low-level parser marks protected corporate names with braces, for example
+=======
+shown as `Family, Given, Suffix` to match the application's explicit name mode.
+Protected corporate names retain a surrounding brace marker, for example
+>>>>>>> 966e5ccf892243ead6942c635af5fbab47e72551
 `{Research and Development, Inc.}`. Protected punctuation inside a person name
 also receives this literal marker to prevent a comma from being mistaken for a
 suffix separator. A preview warning describes these transformations.
@@ -63,6 +68,7 @@ as brace-marked literal text with an explicit review warning. For example,
 `, Jr., John` remains `{, Jr., John}`; its suffix is never promoted to a given
 name and John is never promoted to a family name. This check occurs after
 text decoding, so an empty protected component such as `{}` cannot evade it.
+<<<<<<< HEAD
 
 The existing Academic Library selects the parser's `literal_names=True` mode,
 which omits parser-generated markers while preserving actual decoded braces.
@@ -77,6 +83,8 @@ review the entries and warnings, and explicitly import the selected records.
 The existing **Academic > Format bibliography and citations** workflow then formats those
 records with the same installed citeproc-js engine and DOCX exporter. No source
 book is imported and no attachment is opened by this metadata-only action.
+=======
+>>>>>>> 966e5ccf892243ead6942c635af5fbab47e72551
 An empty optional suffix is omitted only when both required personal-name
 components are present. Structurally invalid trailing-comma names fail the
 existing strict upstream parser. The original entry remains in provenance
@@ -145,8 +153,13 @@ metadata constraints may reject a field earlier than these parser budgets.
 Linux CPython 3.12 with the actual pinned distributions:
 
 ```text
+<<<<<<< HEAD
 python scripts/ci_check.py tests/research/test_bibtex_import.py
 95 passed, 0 failed, 0 skipped
+=======
+PYTHONPATH=src python -m pytest -q tests/research/test_bibtex_import.py
+57 passed
+>>>>>>> 966e5ccf892243ead6942c635af5fbab47e72551
 ```
 
 The cases exercise actual parser/decoder calls, accents and Unicode, name
@@ -154,6 +167,7 @@ grouping, strings/concatenation, conservative crossrefs, original-key retention,
 raw provenance, no file/network/process access, malformed/duplicate rejection,
 private-log suppression, memory/expansion limits, and disk-backed SQLite
 metadata persistence and workspace isolation across reopening. They include
+<<<<<<< HEAD
 source invariance and explicit note-export behavior. Dependency-depth limits
 apply equally to parent-first, child-first and interleaved string/cross-reference
 orders; cached resolutions retain their full longest dependency depth.
@@ -164,6 +178,9 @@ DOCX export/readback. Corporate names, incomplete names, Unicode and genuine
 literal braces survive without assigning guessed personal-name roles.
 The corresponding required path is
 `tests/academic_integration/test_end_to_end.py` (11 passing cases).
+=======
+source invariance and explicit note-export behavior.
+>>>>>>> 966e5ccf892243ead6942c635af5fbab47e72551
 
 These are functional parser/storage checks. Native Windows/NVDA acceptance,
 arbitrary BibLaTeX compatibility, and all CSL style combinations are separate

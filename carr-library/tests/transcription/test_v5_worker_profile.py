@@ -390,6 +390,15 @@ def test_v5_completed_results_restore_and_remain_readable_without_engine(v5, tmp
     app, workspace, service, _, runtime, _ = v5
     identity, result = run(v5)
     assert result['status'] == 'completed', result['last_error']
+    # Test-only orchestration files are not a registered application producer.
+    # The common backup must reject them, then retain every real protocol file.
+    with pytest.raises(ValueError, match='No validated backup adapter'):
+        app.backup(tmp_path / 'rejected-fixture-control')
+    assert not (tmp_path / 'rejected-fixture-control').exists()
+    for name in ('fixture-mode.json', 'fixture-runs.json'):
+        control = service._path(identity) / name
+        if control.exists():
+            control.unlink()
     checksum = app.backup(tmp_path / 'backup')
     for name in ('worker.py','local_models.py','transcript_features.py'):
         (runtime / name).unlink()

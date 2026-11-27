@@ -102,7 +102,7 @@ class AcademicController:
         if approval is None:
             approval = capture_export_destination(destination, private_root=self.library.root)
         content = self.export(identity=identity, format=format, include_notes=include_notes)
-        write_export(destination, content, private_root=self.library.root, approval=approval)
+        self.last_export_receipt = write_export(destination, content, private_root=self.library.root, approval=approval)
         return content
 
     def books(self):
@@ -611,6 +611,7 @@ def create_academic_dialog(parent, controller, *, executor=None):
                 ('duplicates', 'Find &duplicates', self.on_duplicates),
                 ('statistics', 'Reading &overview', self.on_statistics),
                 ('document', 'Open linked &document', self.on_document),
+                ('styles', 'Citation &styles', self.on_styles),
             ):
                 button = wx.Button(self, label=caption)
                 button.Bind(wx.EVT_BUTTON, handler)
@@ -933,6 +934,24 @@ def create_academic_dialog(parent, controller, *, executor=None):
             except Exception as exc:
                 report(self.status, f'Bibliography import not completed: {exc}')
 
+        def on_styles(self, event=None):
+            dialog = None
+            try:
+                from .citation_styles_dialog import create_citation_styles_dialog
+                try:
+                    identity = self.selected().id
+                except ValueError:
+                    identity = None
+                dialog = create_citation_styles_dialog(self, self.controller,
+                    selected_identity=identity, executor=self.executor)
+                dialog.ShowModal()
+                self.references.SetFocus()
+            except Exception as exc:
+                report(self.status, f'Citation styles could not be opened: {exc}')
+            finally:
+                if dialog is not None:
+                    dialog.Destroy()
+
         def _export_options(self):
             dialog = wx.Dialog(self, title='Export bibliography', size=(560, 320))
             try:
@@ -964,8 +983,10 @@ def create_academic_dialog(parent, controller, *, executor=None):
         def export_to(self, path, *, format='text', identity=None, include_notes=False, approval=None):
             content = self.controller.export_to(path, identity=identity, format=format,
                                                 include_notes=include_notes, approval=approval)
+            warning = getattr(self.controller.last_export_receipt, 'cleanup_warning', None)
             report(self.status, f'Bibliography exported to {path}. '
-                   + ('Personal notes were included.' if include_notes else 'Personal notes were not included.'))
+                   + ('Personal notes were included.' if include_notes else 'Personal notes were not included.')
+                   + ('\n' + warning if isinstance(warning, str) and warning else ''))
             return content
 
         def on_export(self, event=None):
@@ -991,7 +1012,7 @@ def create_academic_dialog(parent, controller, *, executor=None):
                 self.export_to(path, format=format, identity=identity,
                                include_notes=include_notes, approval=approval)
             except Exception as exc:
-                report(self.status, f'Bibliography not exported: {exc}')
+                report(self.status, f'Bibliography export: {exc}')
 
     return AcademicDialog()
 

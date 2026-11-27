@@ -1,7 +1,7 @@
 """Offline CSL formatting with the pinned, unmodified citeproc-js processor.
 
 Only CSL JSON and XML cross the fixed worker boundary. Neither metadata nor
-style XML is interpreted as JavaScript. Node is an explicit local dependency;
+style XML is interpreted as JavaScript. The canonical QuickJS runtime is used;
 this module never downloads an engine, a style, a locale or a reference.
 """
 from __future__ import annotations
@@ -14,21 +14,23 @@ import json
 import os
 from pathlib import Path
 import re
-import shutil
 import signal
 import subprocess
+import sys
 import tempfile
 import time
 from typing import Callable, Iterable, Mapping, Sequence
 
 from lxml import etree
 
-_ROOT = Path(__file__).resolve().parent
+from ..citations import csl as _csl
+
+_ROOT = _csl._ROOT
 _CSL = '{http://purl.org/net/xbiblio/csl}'
 _MAX_BYTES = 16_000_000
 _MAX_REFERENCES = 1000
 _MAX_CLUSTERS = 5000
-_LOCALES = ('en-US', 'uk-UA', 'sk-SK')
+_LOCALES = _csl.LOCALES
 _LABELS = frozenset(('page', 'chapter', 'section', 'paragraph', 'line', 'volume',
                      'issue', 'book', 'part', 'verse', 'column', 'folio',
                      'figure', 'note', 'sub-verbo', 'timestamp'))
@@ -140,10 +142,24 @@ class FormattedCitations:
 
 
 def _manifest() -> dict:
-    try:
-        return json.loads((_ROOT / 'UPSTREAM.json').read_text(encoding='utf-8'))
-    except (OSError, ValueError) as exc:
-        raise CitationError('The installed citation bundle is incomplete.') from exc
+    """Expose compatibility provenance from the one canonical resource set."""
+    manifest = json.loads((_ROOT / '_vendor_citeproc/UPSTREAM.json').read_text(encoding='utf-8'))
+    source = manifest['processor']
+    styles = []
+    for item in _csl.available_styles():
+        styles.append(dict(id='chicago-notes' if item.id == 'chicago-note' else item.id,
+            title=item.title, kind=item.kind, filename=item.filename,
+            sha256=_csl._HASHES['styles/' + item.filename],
+            source='https://github.com/' + manifest['styles']['repo'] + '/blob/'
+                   + manifest['styles']['revision'] + '/' + item.filename,
+            license=manifest['styles']['license']))
+    return dict(schema=1, processor=dict(name='citeproc-js',
+        version=_csl.PROCESSOR_REPORTED_VERSION, package_version=_csl.PROCESSOR_PACKAGE_VERSION,
+        revision=source['git_revision'], sha256=_csl._HASHES['_vendor_citeproc/citeproc.js'],
+        source=source['url'], license=source['license'], chosen_license='CPAL-1.0'),
+        styles=styles, locales={name: value for name, value in _csl._HASHES.items()
+                               if name.startswith('styles/locales-')},
+        attribution=_csl.ATTRIBUTION)
 
 
 def available_styles() -> tuple[StyleInfo, ...]:
@@ -328,42 +344,31 @@ def _xml(raw: bytes, *, style: bool) -> str:
         raise CitationError('CSL files must use UTF-8.') from exc
 
 
-def _assets(style: str, style_path: Path | str | None, locale: str) -> tuple[StyleInfo, str, dict]:
-    manifest = _manifest()
+def _assets(style: str, style_path: Path | str | None, locale: str):
     if locale not in _LOCALES:
-        raise CitationError('Choose an installed locale: en-US, uk-UA or sk-SK.')
+        raise CitationError('Choose an installed citation locale: ' + ', '.join(_LOCALES) + '.')
     if style_path is None:
-        entry = next((x for x in manifest['styles'] if x['id'] == style), None)
+        normalized = 'chicago-notes' if style == 'chicago-note' else style
+        entry = next((item for item in _manifest()['styles'] if item['id'] == normalized), None)
         if entry is None:
             raise CitationError('The selected CSL style is not installed.')
-        raw = (_ROOT / 'styles' / entry['filename']).read_bytes()
-        if sha256(raw).hexdigest() != entry['sha256']:
-            raise CitationError('The installed CSL style failed its integrity check.')
+        # Check the exact same captured resource that the canonical worker uses.
+        try:
+            _csl._resource('styles/' + entry['filename'])
+        except (ValueError, RuntimeError) as exc:
+            raise CitationError(str(exc)) from exc
         info = StyleInfo(**{key: entry[key] for key in StyleInfo.__dataclass_fields__})
-    else:
-        from carr_library.durable_state import local_path, regular
-        path = local_path(style_path, exists=True)
-        if regular(path).st_size > 1_000_000:
-            raise CitationError('The selected local style exceeds its size budget.')
-        raw = path.read_bytes()
-        _xml(raw, style=True)
-        node = etree.fromstring(raw, etree.XMLParser(resolve_entities=False, no_network=True))
-        title = node.findtext(_CSL + 'info/' + _CSL + 'title') or path.stem
-        kind = node.get('class', '')
-        if kind not in ('note', 'in-text'):
-            raise CitationError('The selected style needs a valid CSL citation class.')
-        info = StyleInfo('local-' + sha256(raw).hexdigest()[:16], title, kind,
-                         sha256(raw).hexdigest(), 'local:' + path.name,
-                         'User-installed; consult style rights metadata')
-    style_xml = _xml(raw, style=True)
-    locales = {}
-    for language in _LOCALES:
-        filename = f'locales-{language}.xml'
-        raw = (_ROOT / 'locales' / filename).read_bytes()
-        if sha256(raw).hexdigest() != manifest['locales'][filename]:
-            raise CitationError('An installed CSL locale failed its integrity check.')
-        locales[language] = _xml(raw, style=False)
-    return info, style_xml, locales
+        return info, ('chicago-note' if normalized == 'chicago-notes' else normalized), None
+    from ..citations.bibliography_workbench import load_style_file
+    try:
+        selected = load_style_file(style_path)
+        _xml(selected.source, style=True)
+    except (OSError, ValueError, RuntimeError) as exc:
+        raise CitationError(str(exc)) from exc
+    info = StyleInfo('local-' + selected.sha256[:16], selected.info.title, selected.info.kind,
+                     selected.sha256, 'local:' + Path(style_path).name,
+                     'User-installed; consult style rights metadata')
+    return info, None, selected.source.decode('utf-8')
 
 
 class _SafeHTML(HTMLParser):
@@ -420,11 +425,7 @@ def safe_markup(value: str) -> tuple[str, str]:
     return ''.join(parser.plain).strip(), ''.join(parser.parts).strip()
 
 
-def _node_binary(value: Path | str | None) -> str:
-    path = Path(value) if value else Path(shutil.which('node') or '')
-    if not str(path) or str(path) == '.' or not path.is_file():
-        raise CitationError('Local citation formatting requires an installed Node.js 18 or newer runtime.')
-    return str(path.resolve())
+
 
 
 def _run(payload: dict, *, node_path: Path | str | None, cancelled: Callable[[], bool] | None,
@@ -436,22 +437,40 @@ def _run(payload: dict, *, node_path: Path | str | None, cancelled: Callable[[],
     raw = json.dumps(payload, ensure_ascii=False, allow_nan=False, separators=(',', ':')).encode('utf-8')
     if len(raw) > _MAX_BYTES:
         raise CitationError('The combined CSL input exceeds its processing budget.')
-    binary = _node_binary(node_path)
+    if node_path is not None:
+        raise CitationError('Node.js overrides are no longer used; install the canonical QuickJS runtime.')
+    binary = sys.executable
+    package_root = Path(__file__).resolve().parents[2]
+    bootstrap = ("import sys; sys.path.insert(0,sys.argv[1]); "
+                 "from carr_library.academic_integration.formatting import _worker_main; _worker_main()")
     env = {k: v for k, v in os.environ.items() if k in (
         'SYSTEMROOT', 'SystemRoot', 'WINDIR', 'PATH', 'TEMP', 'TMP', 'TMPDIR',
         'LANG', 'LC_ALL', 'HOME', 'USERPROFILE')}
+    if (os.name == 'nt' and sys.prefix != sys.base_prefix
+            and getattr(sys, '_base_executable', None)
+            and os.path.normcase(sys._base_executable) != os.path.normcase(binary)):
+        env['__PYVENV_LAUNCHER__'] = binary
+        binary = sys._base_executable
+    # Additional dependency roots are captured from the actual loaded runtime,
+    # never from inherited PYTHONPATH, CWD, a document or a style.
+    try:
+        import quickjs
+    except ImportError as exc:
+        raise CitationError('The canonical QuickJS citation runtime is missing; repair the application.') from exc
+    dependency_root = Path(quickjs.__file__).resolve().parent.parent
+    bootstrap = bootstrap.replace('sys.path.insert(0,sys.argv[1]);',
+                                  'sys.path[:0]=sys.argv[1:];')
     with tempfile.TemporaryDirectory(prefix='carr-citations-') as directory:
         directory = Path(directory)
         (directory / 'input.json').write_bytes(raw)
         output_path, error_path = directory / 'output.json', directory / 'error.txt'
         with (directory / 'input.json').open('rb') as source, output_path.open('wb') as output, error_path.open('wb') as errors:
             try:
-                process = subprocess.Popen([binary, '--max-old-space-size=256', '--disable-proto=throw',
-                    str(_ROOT / 'csl_worker.cjs')], stdin=source, stdout=output, stderr=errors,
+                process = subprocess.Popen([binary, '-I', '-B', '-c', bootstrap, str(package_root), str(dependency_root)], stdin=source, stdout=output, stderr=errors,
                     cwd=directory, env=env, shell=False, start_new_session=os.name != 'nt',
                     creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0) if os.name == 'nt' else 0)
             except OSError as exc:
-                raise CitationError('The configured local Node.js runtime could not be started.') from exc
+                raise CitationError('The configured local citation runtime could not be started.') from exc
             deadline = time.monotonic() + timeout
             try:
                 while process.poll() is None:
@@ -500,9 +519,9 @@ def render_citations(csl_items: Sequence[Mapping], *, style: str = 'apa', locale
     if len(ids) != len(references):
         raise CitationError('Reference IDs must be unique.')
     clusters = _clusters(citations, ids)
-    info, style_xml, locales = _assets(style, style_path, locale)
-    payload = {'references': references, 'style_xml': style_xml, 'locale': locale,
-               'locales': locales, 'clusters': clusters}
+    info, selected_style, style_source = _assets(style, style_path, locale)
+    payload = {'references': references, 'style': selected_style, 'style_source': style_source,
+               'locale': locale, 'clusters': clusters, 'timeout': timeout}
     result = _run(payload, node_path=node_path, cancelled=cancelled, timeout=timeout)
     manifest = _manifest()
     if result.get('processor_version') != manifest['processor']['version']:
@@ -538,3 +557,23 @@ def render_citations(csl_items: Sequence[Mapping], *, style: str = 'apa', locale
     return FormattedCitations(info, locale, tuple(bibliography), tuple(rendered), warnings,
                               manifest['attribution'], json.dumps(interchange, ensure_ascii=False,
                                                                   sort_keys=True, allow_nan=False))
+
+
+def _worker_main():
+    """Fixed local transport to the canonical CSL processor; no second engine."""
+    payload = json.loads(sys.stdin.buffer.read(_MAX_BYTES + 1))
+    style = (_csl.load_custom_style(payload['style_source'])
+             if payload['style_source'] is not None else payload['style'])
+    clusters = payload['clusters']
+    result = _csl.render(payload['references'], style=style, locale=payload['locale'],
+        citations=[row['items'] for row in clusters], output='html',
+        note_indices=[row['note_index'] for row in clusters],
+        budget=_csl.RenderBudget(max_records=_MAX_REFERENCES, max_citations=_MAX_CLUSTERS,
+            max_input_bytes=_MAX_BYTES, max_output_bytes=_MAX_BYTES,
+            memory_bytes=256 * 1024 * 1024, cpu_seconds=payload['timeout']))
+    parameters = dict(result.bibliography_parameters)
+    parameters['entry_ids'] = result.entry_ids
+    output = dict(processor_version=result.processor_reported_version,
+        bibliography=result.entries, citations=result.citations,
+        parameters=parameters, warnings=result.warnings)
+    sys.stdout.write(json.dumps(output, ensure_ascii=True, allow_nan=False))

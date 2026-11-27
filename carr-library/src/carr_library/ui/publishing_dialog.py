@@ -141,9 +141,11 @@ def create_publishing_dialog(frame, *, wx_module=None):
                 service = PublicationService(self.production, budget=self.budget(),
                                              private_root=self.library_root)
                 def operation():
-                    token = frame.operation_progress.event.token
+                    from ..progress import current_progress
+                    task = current_progress()
                     def progress(message):
-                        frame.operation_progress.update(phase=message, token=token)
+                        if task is not None:
+                            task.update(phase=message)
                         wx.CallAfter(self.report, message)
                     return service.export_epub(identity, output, language=language, creator=creator,
                                                cancelled=self.stopping, progress=progress)

@@ -21,6 +21,7 @@ import time
 from uuid import uuid4
 
 from .pipeline import Ingest, canonical
+from ..extract.document_formats import MIME_SUFFIXES
 
 MAX_REQUEST = 64_000
 MAX_REPLY = 64_000
@@ -214,11 +215,12 @@ def record_publication_candidate(root, request_id, db, workspace, revision):
         attempt=attempt, revision=revision, **state))
 
 
-def _reconcile_publication(root, request_id, attempt, *, workspace, timeout=1.0):
+def _reconcile_publication(root, request_id, attempt, *, workspace, timeout=1.0, initial=None):
     """Recover this child's transaction receipt without replay or writable open."""
     from .publication import completed_request
 
-    return completed_request(root, workspace, request_id, attempt=attempt, timeout=timeout)
+    return completed_request(root, workspace, request_id, attempt=attempt, timeout=timeout,
+                             initial=initial)
 
 
 class RuntimeBoundIngest(Ingest):
@@ -452,9 +454,7 @@ def _request_record(root, workspace, source, metadata, config, request_id, expec
                 or set(expected_manifest) != {'sha256', 'mime', 'size'}
                 or not isinstance(expected_manifest['sha256'], str)
                 or not re.fullmatch('[0-9a-f]{64}', expected_manifest['sha256'])
-                or expected_manifest['mime'] not in (
-                    'text/plain', 'application/pdf', 'application/epub+zip',
-                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+                or expected_manifest['mime'] not in MIME_SUFFIXES
                 or type(expected_manifest['size']) is not int
                 or not 0 < expected_manifest['size'] <= MAX_BYTES):
             raise ValueError('Invalid planned source manifest.')
@@ -488,7 +488,7 @@ def prepare_request(root, workspace, source, metadata, config, *, request_id=Non
 
 def run_request(root, workspace, source, metadata, config, *, cancelled=lambda: False,
                 timeout=120.0, request_id=None):
-    """Execute a new or resumed PDF/DOCX/EPUB request without parsing in the caller."""
+    """Execute a new or resumed document request without parsing in the caller."""
     new = request_id is None
     request_id = request_id or uuid4().hex
     with request_lock(root, request_id):
@@ -549,7 +549,7 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
     if result.get('state') in ('cancelled', 'timed_out') or unreported_exit:
         try:
             committed = _reconcile_publication(root, request_id, attempt,
-                                               workspace=workspace, timeout=min(timeout, 1.0))
+                                               workspace=workspace, timeout=min(timeout, 1.0), initial=record)
         except (KeyError, TypeError, ValueError, OSError, sqlite3.Error) as error:
             from .writer_guard import WriterBusy
             details = _publication_error_details(error)
@@ -562,13 +562,14 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
                               'review or resume to check it.')
         else:
             if committed is not None:
-                result = committed
+                result = dict(committed, recovered_publication=True,
+                              worker_state=result['state'])
     result = dict(result, request_id=request_id, isolated=True)
     record_progress(root, request_id, state=result.get('state', 'failed'), result=result)
     return result
 
 
-def _invoke(message, *, timeout, cancelled=lambda: False):
+def _invoke(message, *, timeout, cancelled=lambda: False, on_started=None):
     """One process supervisor for import and render operations."""
     payload = canonical(message).encode('utf-8')
     if len(payload) > MAX_REQUEST:
@@ -610,6 +611,8 @@ def _invoke(message, *, timeout, cancelled=lambda: False):
                                            stdin=input_stream, stdout=output, stderr=errors,
                                            env=environment,
                                            **options)
+                if on_started is not None:
+                    on_started()
                 deadline = time.monotonic() + timeout
                 while process.poll() is None:
                     if cancelled():

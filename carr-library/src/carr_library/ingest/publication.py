@@ -45,7 +45,7 @@ def _read_database(path, expired, max_payload):
         db.close()
 
 
-def completed_request(root, workspace, request_id, *, attempt, timeout=1.0):
+def completed_request(root, workspace, request_id, *, attempt, timeout=1.0, initial=None):
     """Return this attempt's verified committed result, or None without a receipt.
 
     This runs only after the child is reaped. The library is opened read-only,
@@ -71,7 +71,7 @@ def completed_request(root, workspace, request_id, *, attempt, timeout=1.0):
 
     from ..application import LibraryApp
     from ..pending_backup import _entry, _request, MAX_PAYLOAD
-    from .worker import load_request, _publication_state
+    from .worker import load_request, _publication_state, _request_identity
 
     check()
     root = Path(root).resolve()
@@ -82,6 +82,8 @@ def completed_request(root, workspace, request_id, *, attempt, timeout=1.0):
         regular(root / 'import-requests', directory=True)
         record = load_request(root, request_id)
         check()
+        if initial is not None and _request_identity(record) != _request_identity(initial):
+            raise ValueError('Import request changed while its worker was running.')
         if record.get('workspace') != workspace:
             raise ValueError('Import publication workspace changed.')
         candidate = record.get('publication_candidate')
@@ -123,6 +125,39 @@ def completed_request(root, workspace, request_id, *, attempt, timeout=1.0):
             asset, mime, size = manifest['sha256'], manifest['mime'], manifest['size']
             if mime not in SUFFIXES or type(size) is not int or not 0 < size <= MAX_BYTES:
                 raise ValueError('Retained source manifest changed.')
+            # The immutable receipt binds these bytes, while this independent
+            # check binds the extraction configuration to the current request.
+            # Extended document formats use the same ordered-document adapter.
+            import json
+            from .pipeline import canonical
+            from ..extract.document_formats import FORMAT_BY_MIME
+            from hashlib import sha256
+            encoded = db.execute('SELECT config FROM revision WHERE id=?',
+                                 (candidate['revision'],)).fetchone()[0]
+            if not isinstance(encoded, str) or len(encoded.encode('utf-8')) > 4 * 1024 * 1024:
+                raise ValueError('Import publication configuration changed.')
+            settings = json.loads(encoded)
+            check()
+            if (not isinstance(settings, dict) or canonical(settings) != encoded
+                    or sha256(canonical([workspace, record['metadata']['edition_id'], asset, encoded])
+                              .encode('utf-8')).hexdigest() != candidate['revision']
+                    or record.get('job') not in (None, candidate['revision'])):
+                raise ValueError('Import publication configuration changed.')
+            if mime == 'application/pdf':
+                valid = (record.get('job') == candidate['revision']
+                         and settings.get('adapter') == 'page_ocr-v1'
+                         and settings.get('kind') == 'physical_page'
+                         and settings.get('config') == record['config'])
+            else:
+                adapter = ('strict-utf8-v1' if mime == 'text/plain' else
+                           'python-docx-ordered-v1' if mime == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' else
+                           'epub-spine-v1' if mime == 'application/epub+zip' else 'ordered-document-v1')
+                valid = (settings.get('adapter') == adapter
+                         and settings.get('kind') == 'logical_segment'
+                         and (mime not in FORMAT_BY_MIME
+                              or settings.get('format') == FORMAT_BY_MIME[mime].name))
+            if not valid:
+                raise ValueError('Import publication configuration changed.')
             retained = root / 'originals' / (asset + SUFFIXES[mime])
             regular(retained.parent, directory=True)
             if regular(retained).st_size != size:

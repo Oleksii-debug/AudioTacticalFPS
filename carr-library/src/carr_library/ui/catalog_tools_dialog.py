@@ -279,14 +279,16 @@ class LibraryToolsDialog(wx.Dialog):
                                                      format=format, cancelled=cancelled)
             if cancelled():
                 raise TimeoutError('Export cancelled; the destination was not changed.')
-            write_export(path, value, private_root=self.private_root, cancelled=cancelled,
+            receipt = write_export(path, value, private_root=self.private_root, cancelled=cancelled,
                          approval=approval)
-            return path
+            return receipt
 
-        def exported(destination):
+        def exported(receipt):
             detail = ('Verified quotations and research notes are in separate columns.' if kind == 'review-matrix'
                       else 'This file contains source metadata; it does not include saved quotations or notes.')
-            self._message(f'{name} exported to {destination}.\n{detail}')
+            warning = getattr(receipt, 'cleanup_warning', None)
+            self._message(f'{name} exported to {path}.\n{detail}'
+                + ('\n' + warning if isinstance(warning, str) and warning else ''))
 
         return self._start(f'Exporting {name}', collection, publish, exported)
 

@@ -2,7 +2,10 @@ name: CARR V3 local studio and assistant
 
 on:
   pull_request:
-    branches: [carr-library]
+    branches: [carr-library, carr/v3-integrated-studio-20261126]
+    paths: ['carr-library/**', '.github/workflows/carr-v3.yml']
+  push:
+    branches: [carr/v3-primary103-recovered-composition-20261126, carr/unified-publication-24-20261127, carr/resonance-final-integration-20261127-5a9e]
     paths: ['carr-library/**', '.github/workflows/carr-v3.yml']
   workflow_dispatch:
 
@@ -16,7 +19,7 @@ concurrency:
 jobs:
   native-studio:
     runs-on: windows-2022
-    timeout-minutes: 40
+    timeout-minutes: 50
     defaults:
       run:
         shell: pwsh
@@ -43,7 +46,7 @@ jobs:
           git rev-parse HEAD | Set-Content 'ci-v3-results/tested-commit.txt'
           python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5 et-xmlfile==2.0.0
+          python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pip install --no-deps .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -52,8 +55,6 @@ jobs:
       - name: Verify canonical citation and DOCX regeneration boundaries
         timeout-minutes: 5
         run: |
-          node --version | Tee-Object 'ci-v3-results/citation-node-version.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python scripts/ci_check.py tests/academic_integration/test_formatting.py tests/academic_integration/test_documents.py tests/academic_integration/test_regeneration.py tests/academic_integration/test_end_to_end.py tests/academic_integration/test_citation_ui.py tests/storage/test_durable_state_publication.py tests/ui/test_profile_project_exports.py 2>&1 | Tee-Object 'ci-v3-results/citation-regeneration.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Prepare the verified OCR engine before installed recovery acceptance
@@ -79,7 +80,7 @@ jobs:
           import carr_library, carr_library.state_backup, carr_library.ingest.worker
           import carr_library.application, carr_library.pending_backup, carr_library.library_backup
           import carr_library.speech.reading, carr_library.speech.source, carr_library.ui.speech_dialog
-          import carr_library.speech.runtime, carr_library.academic_integration.doi
+          import carr_library.speech.runtime, carr_library.acquisition.providers, carr_library.academic_integration.doi
           import carr_library.speech.session
           import carr_library.extract.ocr_runtime
           import carr_library.storage.revisions, carr_library.storage.schema_identity
@@ -94,7 +95,7 @@ jobs:
           names = ('carr_library', 'carr_library.state_backup', 'carr_library.ingest.worker',
                    'carr_library.application', 'carr_library.pending_backup', 'carr_library.library_backup',
                    'carr_library.speech.reading', 'carr_library.speech.source', 'carr_library.ui.speech_dialog',
-                   'carr_library.speech.runtime', 'carr_library.academic_integration.doi',
+                   'carr_library.speech.runtime', 'carr_library.acquisition.providers', 'carr_library.academic_integration.doi',
                    'carr_library.speech.session',
                    'carr_library.extract.ocr_runtime',
                    'carr_library.storage.revisions', 'carr_library.storage.schema_identity',
@@ -153,6 +154,8 @@ jobs:
           failed = sum(any(case.find(tag) is not None for tag in ('failure', 'error')) for case in cases)
           skipped = sum(case.find('skipped') is not None for case in cases)
           passed = len(cases) - failed - skipped
+          portable = [case for case in cases if 'test_state_backup_portability' in case.get('classname', '').split('.')]
+          portable_complete = len(portable) == 24 and len({case.get('name') for case in portable}) == 24
           required_ocr = {'test_unreadable_directory_rejects_entire_inventory', 'test_empty_directory_inventory_has_a_bound', 'test_directory_inventory_checks_budget_between_entries'}
           ocr_cases = [c.get('name') for c in cases if c.get('classname', '').rsplit('.', 1)[-1] == 'test_ocr_runtime']
           ocr_exact = len(ocr_cases) == len(required_ocr) and set(ocr_cases) == required_ocr
@@ -160,10 +163,11 @@ jobs:
           state_inventory_exact = required_state <= {c.get('name') for c in cases}
           clip_backup_cases = [c.get('name') for c in cases if c.get('classname', '').rsplit('.', 1)[-1] == 'test_state_clip_inputs']
           clip_backup_exact = len(clip_backup_cases) == len(set(clip_backup_cases)) == 17
-          ok = status == 0 and passed > 0 and failed == skipped == 0 and not policy.seen and ocr_exact and state_inventory_exact and clip_backup_exact
+          ok = status == 0 and passed > 0 and failed == skipped == 0 and not policy.seen and portable_complete and ocr_exact and state_inventory_exact and clip_backup_exact
           result = dict(status='PASS' if ok else 'FAIL', passed=passed, failed=failed,
                         skipped=skipped, pytest_exit=int(status), expected_failures=policy.seen,
-                        origins=installed_origins(), ocr_inventory_cases=sorted(ocr_cases),
+                        origins=installed_origins(), portable_complete=portable_complete, portable_cases=len(portable),
+                        ocr_inventory_cases=sorted(ocr_cases),
                         ocr_inventory_exact=ocr_exact, state_inventory_exact=state_inventory_exact,
                         clip_backup_exact=clip_backup_exact, clip_backup_cases=clip_backup_cases,
                         manual_nvda='NOT_RUN')
@@ -173,23 +177,41 @@ jobs:
           '@
           $previousPath = $env:PATH
           $previousOcr = $env:CARR_OCR_DIR
+          $previousTessdata = $env:TESSDATA_PREFIX
           try {
             $env:PATH = "$env:CARR_CI_OCR_DIR;$previousPath"
             $env:CARR_OCR_DIR = $env:CARR_CI_OCR_DIR
+            $env:TESSDATA_PREFIX = Join-Path $env:CARR_CI_OCR_DIR 'tessdata'
             $installedRecovery | python -I -B -X utf8 - 2>&1 | Tee-Object 'ci-v3-results/installed-recovery.txt'
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           } finally {
             $env:PATH = $previousPath
             $env:CARR_OCR_DIR = $previousOcr
+            $env:TESSDATA_PREFIX = $previousTessdata
           }
+      - name: Require reviewed local voice bridge and saved configuration checks
+        run: |
+          python scripts/ci_check.py tests/integrations/test_dordiai_voices.py tests/integrations/test_dordiai_speech.py tests/integrations/test_dordiai_settings.py tests/integrations/test_dordiai_convergence.py tests/integrations/test_dordiai_probe_cancellation.py tests/ui/test_studio_progress_results.py tests/ui/test_worker_cleanup.py 2>&1 | Tee-Object 'ci-v3-results/dordiai-tests.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Prepare explicitly pinned private test audio runtime
         id: audio-runtime
         run: |
           $audio = Join-Path $env:RUNNER_TEMP 'carr-v3-audio'
-          python packaging/prepare_windows_audio.py --cache (Join-Path $env:RUNNER_TEMP 'carr-audio-cache') --output $audio --download | Tee-Object 'ci-v3-results/audio-runtime.json'
+          $audioInputs = Join-Path $env:RUNNER_TEMP 'carr-audio-inputs'
+          python packaging/acquire_audio_runtime.py --output $audioInputs --download | Tee-Object 'ci-v3-results/audio-acquisition.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $audioLock = Get-Content packaging/audio-runtime/source-lock.json -Raw | ConvertFrom-Json
+          python packaging/prepare_audio_runtime.py --archive (Join-Path $audioInputs $audioLock.archive.name) --sources-dir $audioInputs --output $audio | Tee-Object 'ci-v3-results/audio-runtime.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           "CARR_V3_AUDIO=$audio" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Prepare explicit publication and recording test tools
+        id: publication-audio-runtime
+        run: |
+          $audio = Join-Path $env:RUNNER_TEMP 'carr-v3-publication-audio'
+          python packaging/prepare_windows_audio.py --cache (Join-Path $env:RUNNER_TEMP 'carr-audio-cache') --output $audio --download | Tee-Object 'ci-v3-results/audio-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_V3_PUBLICATION_AUDIO=$audio" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
       - name: Prepare the pinned EPUB3.3 conformance checker
         id: epubcheck-runtime
         timeout-minutes: 10
@@ -219,7 +241,7 @@ jobs:
           $python = (Get-Command python.exe).Source
           $basePython = (& $python -I -c "import sys; print(sys._base_executable)").Trim()
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $programs = @($python, $basePython, (Get-Command node.exe).Source,
+          $programs = @($python, $basePython,
             (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'),
             (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe'),
             (Join-Path $env:CARR_V3_AUDIO 'bin/ffmpeg.exe'),
@@ -255,7 +277,7 @@ jobs:
           python scripts/ci_check.py tests/studio/test_publishing.py tests/studio/test_publishing_cli.py tests/studio/test_publishing_handlers.py tests/packaging/test_prepare_windows_audio.py tests/audio/test_recording.py tests/audio/test_recording_cleanup.py tests/audio/test_recording_compatibility.py tests/audio/test_recording_export.py tests/ui/test_recording_dialog.py tests/audio/test_audio_process.py tests/audio/test_publication_fsync.py tests/audio/test_dsp.py tests/studio/test_production_cancellation_outcomes.py tests/speech/test_runtime.py tests/speech/test_python_helper.py tests/audio/test_windows_audio_ownership.py tests/studio/test_clip_editing.py tests/studio/test_clip_restoration.py tests/studio/test_clip_dialog.py tests/studio/test_clip_cli.py tests/storage/test_state_clip_inputs.py tests/studio/test_studio_controller.py 2>&1 | Tee-Object 'ci-v3-results/strict-publication.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify installed publication, recording, clips and EPUB3.3 without egress
-        if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.audio-runtime.outcome == 'success' && steps.epubcheck-runtime.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.audio-runtime.outcome == 'success' && steps.publication-audio-runtime.outcome == 'success' && steps.epubcheck-runtime.outcome == 'success' }}
         timeout-minutes: 10
         env:
           PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
@@ -265,8 +287,8 @@ jobs:
           $basePython = (& $python -I -c "import sys; print(sys._base_executable)").Trim()
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $publicationPrograms = @($python, $basePython, $env:CARR_EPUBCHECK_JAVA,
-            (Join-Path $env:CARR_V3_AUDIO 'bin/ffmpeg.exe'),
-            (Join-Path $env:CARR_V3_AUDIO 'bin/ffprobe.exe')) | ForEach-Object {
+            (Join-Path $env:CARR_V3_PUBLICATION_AUDIO 'bin/ffmpeg.exe'),
+            (Join-Path $env:CARR_V3_PUBLICATION_AUDIO 'bin/ffprobe.exe')) | ForEach-Object {
             if (!(Test-Path -LiteralPath $_ -PathType Leaf)) { throw 'A required publication runtime executable is missing.' }
             [System.IO.Path]::GetFullPath($_)
           } | Sort-Object -Unique
@@ -357,13 +379,13 @@ jobs:
           '@
             $installedPublication | & $python -I -B -X utf8 - 2>&1 | Tee-Object 'ci-v3-results/installed-publication.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Installed publication source, recovery or export guards failed.' }
-            & $python -I -B scripts/windows_recording_smoke.py --audio-directory $env:CARR_V3_AUDIO --audio-lock packaging/windows-audio.lock.json 2>&1 | Tee-Object 'ci-v3-results/native-recording.txt'
+            & $python -I -B scripts/windows_recording_smoke.py --audio-directory $env:CARR_V3_PUBLICATION_AUDIO --audio-lock packaging/windows-audio.lock.json 2>&1 | Tee-Object 'ci-v3-results/native-recording.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Actual installed native synthetic recording failed.' }
-            & $python -I -B scripts/windows_clip_editor_smoke.py --audio-directory $env:CARR_V3_AUDIO --audio-lock packaging/windows-audio.lock.json 2>&1 | Tee-Object 'ci-v3-results/native-clips.txt'
+            & $python -I -B scripts/windows_clip_editor_smoke.py --audio-directory $env:CARR_V3_PUBLICATION_AUDIO --audio-lock packaging/windows-audio.lock.json 2>&1 | Tee-Object 'ci-v3-results/native-clips.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Actual installed native portable clip editing failed.' }
-            & $python -I -B scripts/windows_publishing_smoke.py --audio-directory $env:CARR_V3_AUDIO --audio-lock packaging/windows-audio.lock.json 2>&1 | Tee-Object 'ci-v3-results/native-publishing.txt'
+            & $python -I -B scripts/windows_publishing_smoke.py --audio-directory $env:CARR_V3_PUBLICATION_AUDIO --audio-lock packaging/windows-audio.lock.json 2>&1 | Tee-Object 'ci-v3-results/native-publishing.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Actual installed native EPUB publication failed.' }
-            & $python -I -B scripts/epubcheck_acceptance.py --archive $env:CARR_EPUBCHECK_ARCHIVE --java $env:CARR_EPUBCHECK_JAVA --audio-directory $env:CARR_V3_AUDIO --audio-lock packaging/windows-audio.lock.json --report ci-v3-results/epubcheck-installed.json --require-installed 2>&1 | Tee-Object 'ci-v3-results/epubcheck-installed.txt'
+            & $python -I -B scripts/epubcheck_acceptance.py --archive $env:CARR_EPUBCHECK_ARCHIVE --java $env:CARR_EPUBCHECK_JAVA --audio-directory $env:CARR_V3_PUBLICATION_AUDIO --audio-lock packaging/windows-audio.lock.json --report ci-v3-results/epubcheck-installed.json --require-installed 2>&1 | Tee-Object 'ci-v3-results/epubcheck-installed.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Installed EPUB3.3 conformance or invalid-mimetype control failed.' }
           } finally {
             foreach ($ruleName in $publicationRules) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
@@ -372,7 +394,7 @@ jobs:
       - name: Require progress isolation and actual selected-voice rendering regressions
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
         run: |
-          python scripts/ci_check.py tests/speech/test_progress_speech.py tests/studio/test_production_cancellation_outcomes.py tests/ui/test_operation_progress.py tests/ui/test_progress_numeric_limits.py tests/ui/test_progress_job_review.py tests/ui/test_studio_progress_isolation.py tests/ui/test_progress_media_quiet.py tests/ui/test_progress_voice_actions.py tests/e2e/test_import_progress.py tests/storage/test_progress_preferences_backup.py 2>&1 | Tee-Object 'ci-v3-results/strict-operation-progress.txt'
+          python scripts/ci_check.py tests/progress/test_progress_contract.py tests/progress/test_progress_feedback.py tests/progress/test_progress_preferences.py tests/ui/test_progress_job_results.py tests/ui/test_progress_panel_state.py tests/e2e/test_import_progress.py tests/speech/test_progress_speech.py tests/studio/test_production_cancellation_outcomes.py tests/ui/test_progress_numeric_limits.py tests/ui/test_studio_progress_isolation.py tests/ui/test_progress_media_quiet.py tests/ui/test_progress_voice_actions.py tests/storage/test_progress_preferences_backup.py tests/progress/test_progress_media_integration.py tests/ui/test_progress_job_review.py tests/ui/test_operation_progress.py 2>&1 | Tee-Object 'ci-v3-results/strict-operation-progress.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Require Advanced translation permission and checkpoint regressions
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' }}
@@ -441,11 +463,8 @@ jobs:
             foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
           }
       - name: Validate local services, DSP, integrity and provider permission boundaries
-        if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
         run: |
-          node --version | Tee-Object 'ci-v3-results/citation-node-version.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python -m pytest -q --import-mode=importlib tests/audio tests/speech tests/assistant tests/studio tests/academic_integration tests/conversion tests/language_qualification tests/ui/test_operation_progress.py tests/ui/test_progress_job_review.py tests/ui/test_keyboard_settings.py tests/test_delivery_contract.py tests/storage/test_v3_state_backup.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_backup_v4_review.py tests/e2e/test_import_worker_publication.py tests/ingest/test_import_replay_identity.py tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py tests/packaging/test_worker_bytecode.py tests/packaging/test_refresh_private_bundle_review.py tests/ui/test_profile_project_exports.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
+          python -m pytest -q --import-mode=importlib tests/audio tests/speech tests/assistant tests/studio tests/storage/test_v3_state_backup.py tests/storage/test_state_snapshot_identity.py tests/language_qualification tests/conversion tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py tests/academic_integration tests/ui/test_operation_progress.py tests/ui/test_progress_job_review.py tests/ui/test_command_registry.py tests/ui/test_keyboard_manager.py tests/storage/test_keyboard_preferences.py tests/ui/test_reader_keymap_context.py tests/test_delivery_contract.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_backup_v4_review.py tests/e2e/test_import_worker_publication.py tests/ingest/test_import_replay_identity.py tests/packaging/test_worker_bytecode.py tests/packaging/test_refresh_private_bundle_review.py tests/ui/test_profile_project_exports.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Keep source and test evidence only
         if: always()

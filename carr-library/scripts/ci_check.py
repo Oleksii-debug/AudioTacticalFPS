@@ -4,6 +4,7 @@ Use only on a trusted synthetic test checkout, never on imported documents.
 """
 import argparse
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 import os
 from pathlib import Path
 import signal
@@ -11,6 +12,7 @@ import subprocess
 import sys
 import tempfile
 import traceback
+from time import sleep
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -101,6 +103,42 @@ raise SystemExit(status)
 """
 
 
+def _cleanup_report_directory(directory) -> None:
+    # Windows may still be releasing a terminated child's file handles.
+    # Retry only permission failures, briefly; persistent residue is a failure.
+    for attempt in range(5):
+        try:
+            directory.cleanup()
+            return
+        except PermissionError:
+            if attempt == 4:
+                raise
+            sleep(.05)
+
+
+@contextmanager
+def _report_directory(suite):
+    directory = tempfile.TemporaryDirectory(prefix='carr-ci-')
+    original_error = None
+    try:
+        yield directory.name
+    except BaseException as exc:
+        original_error = exc
+        raise
+    finally:
+        try:
+            _cleanup_report_directory(directory)
+        except OSError as exc:
+            if original_error is None:
+                raise
+            # Do not replace a suite timeout or other primary failure with a
+            # secondary cleanup exception; record both, with the suite name.
+            print(f'FAIL: {suite}: temporary report cleanup failed after '
+                  f'{type(original_error).__name__}: {type(exc).__name__}: {exc}; '
+                  f'directory={directory.name}', flush=True)
+            traceback.print_exception(type(exc), exc, exc.__traceback__, file=sys.stderr)
+
+
 def run_suite(suite: str) -> bool:
     path = (ROOT / suite).resolve()
     if not path.is_relative_to(ROOT) or not path.exists():
@@ -120,7 +158,7 @@ def run_suite(suite: str) -> bool:
     env['DO_NOT_TRACK'] = '1'
     phase = 'temporary directory setup'
     try:
-        with tempfile.TemporaryDirectory(prefix='carr-ci-') as tmp:
+        with _report_directory(suite) as tmp:
             report = Path(tmp) / 'junit.xml'
             phase = 'pytest process'
             returncode = _run_test_process([
@@ -137,18 +175,16 @@ def run_suite(suite: str) -> bool:
             passed = len(cases) - failed - skipped
             ok = returncode == 0 and passed > 0 and failed == skipped == 0
             phase = 'temporary directory cleanup'
-        # A valid report is not a successful suite until owned files are closed
-        # and its temporary directory has actually been removed.
+        # A passing child is not a completed suite until its temporary report
+        # and test data have also been cleaned up successfully.
         print(f'{"PASS" if ok else "FAIL"}: {suite}: junit_passed={passed}, failed={failed}, '
               f'skipped={skipped}, pytest_exit={returncode}', flush=True)
         return ok
     except (OSError, subprocess.TimeoutExpired, ET.ParseError) as exc:
         # Cleanup failures also remain failed required suites, rather than
         # escaping the aggregator and hiding other independently run verdicts.
-        print(f'FAIL: {suite}: required suite did not produce a valid report; '
+        print(f'FAIL: {suite}: required suite did not complete cleanly; '
               f'last phase={phase}; {type(exc).__name__}: {exc}', flush=True)
-        # Keep the original timeout/process failure if cleanup raises a second
-        # exception, including the concrete file and active Python stack.
         traceback.print_exception(type(exc), exc, exc.__traceback__, file=sys.stderr)
         return False
 

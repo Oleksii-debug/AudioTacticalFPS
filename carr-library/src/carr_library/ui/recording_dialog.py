@@ -7,7 +7,8 @@ from ..audio.models import AudioCancelled, AudioCleanupPending
 from ..audio.recording import RecordingOptions, RecordingService, unverified_recording_files
 from ..speech.player import WavePlayer
 from ..speech.progress_speech import play_when_quiet
-from .operation_progress import OperationProgress
+from ..progress import bind_progress
+from .progress_panel import NativeProgressPanel
 
 
 def show_recording(frame, *, on_selected=None):
@@ -43,11 +44,6 @@ def show_recording(frame, *, on_selected=None):
     details = field('Recording result and retained input path', wx.TextCtrl,
                     value='', style=wx.TE_MULTILINE | wx.TE_READONLY)
     status = field('Recording status', wx.TextCtrl, value='No microphone selected.', style=wx.TE_READONLY)
-    gauge = wx.Gauge(dialog, range=100)
-    gauge.SetName('Recording operation progress')
-    progress_label = wx.StaticText(dialog, label='Ready')
-    layout.Add(gauge, 0, wx.EXPAND | wx.ALL, 6)
-    layout.Add(progress_label, 0, wx.EXPAND | wx.ALL, 6)
     buttons = {}
     for row in ((('refresh', 'Refresh microphones'), ('start', 'Start recording'),
                  ('stop', 'Stop and save recording'), ('cancel', 'Cancel unfinished recording')),
@@ -67,9 +63,14 @@ def show_recording(frame, *, on_selected=None):
     dialog.SetEscapeId(buttons['close'].GetId())
     dialog.status = status
     dialog.report = lambda message: status.SetValue(message)
-    progress = OperationProgress(dialog, gauge, progress_label, wx_module=wx,
-                                 accessible_name='Recording operation progress')
-    parent_progress = getattr(frame, 'operation_progress', None)
+    dialog.host, dialog.layout, dialog.working = dialog, layout, False
+    parent_progress = getattr(frame, 'progress_panel', None)
+    progress = NativeProgressPanel(dialog)
+    if parent_progress is not None:
+        progress.hub = parent_progress.hub
+    progress.gauge.SetName('Recording operation progress')
+    progress.text.SetName('Recording current progress and phase')
+    progress.query_button.SetName('Query recording progress')
     controllers = tuple(item for item in (progress, parent_progress) if item is not None)
     service = RecordingService(library.root)
     player = WavePlayer()
@@ -91,6 +92,7 @@ def show_recording(frame, *, on_selected=None):
         return cancelled.is_set() or not scope_current()
 
     def controls():
+        dialog.working = busy
         available = not busy and scope_current()
         for control in (microphone, title, minutes, sample_rate, channels, saved):
             control.Enable(available)
@@ -110,7 +112,7 @@ def show_recording(frame, *, on_selected=None):
             try:
                 hold.close()
             except Exception as exc:
-                progress.reporting_error = 'Progress audio release needs attention: ' + str(exc)
+                progress.notice = 'Progress audio release needs attention: ' + str(exc)
 
     def release_completed(future):
         nonlocal cleanup_owner, cleanup_future
@@ -187,16 +189,22 @@ def show_recording(frame, *, on_selected=None):
             try:
                 return getattr(progress, method)(*args, **kwargs)
             except Exception as exc:
-                progress.reporting_error = 'Recording progress feedback is unavailable: ' + str(exc)
-        token = observe('start', phase)
+                progress.notice = 'Recording progress feedback is unavailable: ' + str(exc)
+        task = observe('begin', phase)
         def measured_progress(seconds):
-            if token is not None:
-                observe('update', seconds, None, f'Recorded {seconds:.1f} seconds', token=token)
+            if task is not None:
+                try:
+                    task.update(phase=f'Recorded {seconds:.1f} seconds')
+                except Exception as exc:
+                    progress.notice = 'Recording progress feedback is unavailable: ' + str(exc)
         status.SetValue(phase)
         def work():
             if stopping():
                 raise AudioCancelled('Recording operation stopped before execution.')
-            return operation(measured_progress) if measured else operation()
+            if task is None:
+                return operation(measured_progress) if measured else operation()
+            with bind_progress(task):
+                return operation(measured_progress) if measured else operation()
         try:
             future = executor.submit(work)
             active_future = future
@@ -214,8 +222,8 @@ def show_recording(frame, *, on_selected=None):
                     return
                 busy = False
                 if not scope_current():
-                    if token is not None:
-                        observe('cancel', 'The recording dialog no longer owns the active library.', token=token)
+                    if task is not None:
+                        observe('finish', task, 'cancelled', 'The recording dialog no longer owns the active library.')
                     busy = cleanup_owner is not None and not cleanup_owner.quiescent
                     status.SetValue('The active library changed or is closing. Any completed recording '
                                     'remains in its original library. Reopen this dialog before continuing.'
@@ -227,23 +235,23 @@ def show_recording(frame, *, on_selected=None):
                 try:
                     result = future.result()
                     complete(result)
-                    if token is not None:
-                        observe('succeed', phase + ': verified complete', token=token)
+                    if task is not None:
+                        observe('finish', task, 'succeeded', phase + ': verified complete')
                 except AudioCleanupPending as exc:
                     busy = not exc.cleanup_owner.quiescent
-                    if token is not None:
-                        observe('fail', 'Microphone cleanup needs confirmation', token=token)
+                    if task is not None:
+                        observe('finish', task, 'failed', 'Microphone cleanup needs confirmation')
                     status.SetValue('Microphone cleanup has not confirmed silence. Media remains muted. '
                                     'Stop retries cleanup; Close retains the cleanup owner in the background.')
                     if busy:
                         wx.CallLater(100, poll_cleanup)
                 except (AudioCancelled, InterruptedError):
-                    if token is not None:
-                        observe('cancel', 'Recording operation cancelled; unfinished audio discarded.', token=token)
+                    if task is not None:
+                        observe('finish', task, 'cancelled', 'Recording operation cancelled; unfinished audio discarded.')
                     status.SetValue('Cancelled. Previous saved recordings are preserved.')
                 except Exception as exc:
-                    if token is not None:
-                        observe('fail', 'Recording operation failed', token=token)
+                    if task is not None:
+                        observe('finish', task, 'failed', 'Recording operation failed')
                     status.SetValue(str(exc))
                 controls()
                 if closing and not busy:
@@ -486,3 +494,6 @@ def install_recording_actions(frame):
         raise RuntimeError('Install the shared Audio Studio menu before recording actions.')
     item = menu.Append(wx.ID_ANY, 'Record microphone and manage saved inputs...')
     frame.Bind(wx.EVT_MENU, lambda event: show_recording(frame), item)
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
+    register_menu_command(frame, CommandSpec('audio.recording', 'Record microphone and manage saved inputs'), item)

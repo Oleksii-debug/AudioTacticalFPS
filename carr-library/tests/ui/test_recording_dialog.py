@@ -12,6 +12,7 @@ import pytest
 from carr_library.audio.models import AudioCancelled, AudioCleanupPending
 from carr_library.audio.recording import RecordingOptions
 from carr_library.application import LibraryApp
+from carr_library.progress import ProgressHub, bind_progress
 from carr_library.speech.progress_speech import play_when_quiet
 
 
@@ -44,15 +45,20 @@ class Progress:
         hold = Hold()
         self.holds.append(hold)
         return hold
-    def start(self, *args, **kwargs):
-        if self.fail_on == 'start': raise RuntimeError('Detached progress view')
-        return 1
-    def update(self, *args, **kwargs): pass
-    def succeed(self, *args, **kwargs):
-        if self.fail_on == 'succeed': raise RuntimeError('Detached progress view')
-        self.events.append('completed')
-    def fail(self, *args, **kwargs): self.events.append('failed')
-    def cancel(self, *args, **kwargs): self.events.append('cancelled')
+    def begin(self, title, **kwargs):
+        if self.fail_on == 'begin': raise RuntimeError('Detached progress view')
+        return ProgressHub().start(title)
+    def finish(self, task, state, message):
+        if self.fail_on == 'finish': raise RuntimeError('Detached progress view')
+        if state == 'succeeded':
+            task.succeed(message=message)
+            self.events.append('completed')
+        elif state == 'cancelled':
+            task.cancelled(message)
+            self.events.append('cancelled')
+        else:
+            task.fail(message)
+            self.events.append('failed')
 
 
 class Executor:
@@ -83,7 +89,7 @@ def handlers(values):
     factory = ast.parse('def build(' + ', '.join(values) + '):\n    return {' + result + '}\n')
     factory.body[0].body[:0] = definitions + ast.parse('def detach():\n    nonlocal alive\n    alive = False\n').body
     namespace = {'RecordingOptions': RecordingOptions, 'AudioCancelled': AudioCancelled, 'AudioCleanupPending': AudioCleanupPending, 'time': time, 'threading': threading,
-                 'play_when_quiet': play_when_quiet}
+                 'play_when_quiet': play_when_quiet, 'bind_progress': bind_progress}
     exec(compile(ast.fix_missing_locations(factory), str(source), 'exec'), namespace)
     return SimpleNamespace(**namespace['build'](**values))
 
@@ -201,7 +207,7 @@ def test_exceptional_modal_exit_retains_audio_hold_until_capture_future_complete
     assert view.progress.holds[0].closed and view.parent.holds[0].closed
 
 
-@pytest.mark.parametrize('failure', ['start', 'succeed'])
+@pytest.mark.parametrize('failure', ['begin', 'finish'])
 def test_progress_observer_failure_cannot_turn_retained_recording_into_failed_work(view, failure):
     discovered(view)
     view.progress.ready = view.parent.ready = True
@@ -211,7 +217,7 @@ def test_progress_observer_failure_cannot_turn_retained_recording_into_failed_wo
     assert view.values['status'].value.startswith('Saved and verified.')
     assert view.values['saved'].items == ['My recording (2026-11-27T01:00:00)']
     assert len(view.captures) == 1 and view.progress.holds[0].closed
-    assert 'Detached progress view' in view.progress.reporting_error
+    assert 'Detached progress view' in view.progress.notice
 
 
 class PendingOwner:

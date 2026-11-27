@@ -72,13 +72,15 @@ def main():
             binary = Path(getattr(runtime, name)).resolve(strict=True)
             with binary.open('rb') as stream:
                 digest = file_digest(stream, 'sha256').hexdigest()
-            audio_proof[name] = {'path': str(binary), 'sha256': digest}
+            audio_proof[name] = {'path': str(binary), 'sha256': digest,
+                                 'binding': 'explicit selected directory and pinned lock'}
             selected = selected_audio / 'bin' / (name + '.exe')
             expected = audio_pin['output_files']['bin/' + name + '.exe']
             check('explicit selected audio executable: ' + name, binary.samefile(selected))
             check('pinned audio executable bytes: ' + name,
                   binary.stat().st_size == expected['size'] and digest == expected['sha256'])
-            if bundle and manifest.get('bundled_audio'):
+            if (bundle and manifest.get('bundled_audio')
+                    and selected_audio == (bundle / 'audio').resolve(strict=True)):
                 entry = 'audio/bin/' + name + '.exe'
                 check('exact bundled executable: ' + name, binary == (bundle / entry).resolve(strict=True))
                 check('sealed executable bytes: ' + name, digest == manifest['files'][entry])
@@ -98,6 +100,11 @@ def main():
                   'site-packages' in {part.casefold() for part in Path(ui.__file__).resolve().parts})
             check('real native Windows widgets', wx.Platform == '__WXMSW__')
             library = LibraryApp(root/'library')
+            from carr_library.runtime_settings import load_settings, save_settings
+            settings = load_settings(library.root / 'state')
+            settings.update(ffmpeg=str(selected_audio / 'bin' / 'ffmpeg.exe'),
+                            ffprobe=str(selected_audio / 'bin' / 'ffprobe.exe'))
+            save_settings(library.root / 'state', settings)
             service = ProductionService(library.root/'state'/'studio', voices=SyntheticTones())
             verify_audio(service._runtime())
             script = '[Scene: Original]\nNarrator: Preserve <source> & exact text.\n[Pause: 0.2]\nReader: The second line.'
@@ -120,7 +127,7 @@ def main():
                     press(dialog.buttons['export']); until(lambda: not dialog.busy)
                     check('native export completed with a durable receipt', target.exists() and len(dialog.receipts)==1
                           and 'saved and its bytes verified' in dialog.status.GetValue())
-                    check('shared progress completes only after publication verification',frame.operation_progress.event.state=='succeeded')
+                    check('shared progress completes only after publication verification',frame.progress_panel.active_task.snapshot().state=='succeeded')
                     check('native completion focuses readable publication status',wx.Window.FindFocus()==dialog.status)
                     provenance = inspect_epub(target)
                     check('exact script and measured line overlays are retained',provenance['original_script']==script

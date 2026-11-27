@@ -57,13 +57,15 @@ def main():
             binary = Path(getattr(runtime, name)).resolve(strict=True)
             with binary.open('rb') as stream:
                 digest = file_digest(stream, 'sha256').hexdigest()
-            audio_proof[name] = {'path': str(binary), 'sha256': digest}
+            audio_proof[name] = {'path': str(binary), 'sha256': digest,
+                                 'binding': 'explicit selected directory and pinned lock'}
             selected = selected_audio / 'bin' / (name + '.exe')
             expected = audio_pin['output_files']['bin/' + name + '.exe']
             check('explicit selected audio executable: ' + name, binary.samefile(selected))
             check('pinned audio executable bytes: ' + name,
                   binary.stat().st_size == expected['size'] and digest == expected['sha256'])
-            if bundle and manifest.get('bundled_audio'):
+            if (bundle and manifest.get('bundled_audio')
+                    and selected_audio == (bundle / 'audio').resolve(strict=True)):
                 entry = 'audio/bin/' + name + '.exe'
                 check('exact bundled executable: ' + name, binary == (bundle / entry).resolve(strict=True))
                 check('sealed executable bytes: ' + name, digest == manifest['files'][entry])

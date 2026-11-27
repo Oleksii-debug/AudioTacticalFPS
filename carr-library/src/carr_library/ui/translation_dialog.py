@@ -294,11 +294,11 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
                     guard_account(account)
                 remote_guard()
                 service.gateway = Gateway(root / 'provider', mode='APPROVED_REMOTE')
-                progress = getattr(frame, 'operation_progress', None)
-                token = progress.event.token if progress is not None else None
+                from ..progress import current_progress
+                progress = current_progress()
                 def advanced(done, total, phase):
                     if progress is not None:
-                        progress.update(done, total, phase, token=token)
+                        progress.update(completed=done, total=total, phase=phase)
                     wx.CallAfter(report, f'{done}/{total}: {phase}')
                 return service.resume(current_job, cancelled=stopped, progress=advanced, guard=remote_guard)
             begin('Translating approved selected text', translate,
@@ -448,7 +448,10 @@ def install_translation_actions(frame):
     if menu is None:
         raise RuntimeError('Install the shared Tools menu before translation actions.')
     identity = wx.NewIdRef()
-    menu.Append(identity, 'Translate selected te&xt...')
+    item = menu.Append(identity, 'Translate selected te&xt...')
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
+    register_menu_command(frame, CommandSpec('tools.translation', 'Translate selected text'), item)
     frame.Bind(wx.EVT_MENU, lambda event: show_translation(frame), id=int(identity))
 
     class BookTranslation:
@@ -473,6 +476,7 @@ def install_translation_actions(frame):
 
     actions = ReadingActions(frame, reader_factory=BookTranslation)
     identity = wx.NewIdRef()
-    menu.Append(identity, 'Translate selected &book or source range...')
+    item = menu.Append(identity, 'Translate selected &book or source range...')
+    register_menu_command(frame, CommandSpec('tools.translation_source', 'Translate selected book or source range'), item)
     frame.Bind(wx.EVT_MENU, actions.open_book, id=int(identity))
     frame.translation_reading_actions = actions

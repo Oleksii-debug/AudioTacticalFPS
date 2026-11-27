@@ -48,6 +48,7 @@ def export_using_dialog(research, destination, monkeypatch, *, format_index=1):
             pass
 
     monkeypatch.setattr(desktop_app.wx, 'FileDialog', FileDialog)
+<<<<<<< HEAD
 
     class MessageDialog:
         def __init__(self, parent, message, title, style):
@@ -61,6 +62,9 @@ def export_using_dialog(research, destination, monkeypatch, *, format_index=1):
             pass
 
     monkeypatch.setattr(desktop_app.wx, 'MessageDialog', MessageDialog)
+=======
+    monkeypatch.setattr(desktop_app.wx, 'MessageBox', lambda *args: desktop_app.wx.YES)
+>>>>>>> 966e5ccf892243ead6942c635af5fbab47e72551
     reports = []
 
     def run_job(title, operation, done=None, failed=None):

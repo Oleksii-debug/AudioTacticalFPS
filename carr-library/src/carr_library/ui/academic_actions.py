@@ -11,8 +11,8 @@ import wx
 
 from ..catalog.reference_exchange import preview_references
 from ..research.export_file import write_export
-from .catalog_metadata_dialog import MetadataDialog, metadata_values
 from .export_destination import confirm_export_destination
+from .catalog_metadata_dialog import MetadataDialog, metadata_values
 
 
 MAX_REFERENCE_BYTES = 4 * 1024 * 1024
@@ -307,16 +307,18 @@ def export_bibliography(frame):
                                                cancelled=frame.cancel_event.is_set)
             if frame.cancel_event.is_set():
                 raise InterruptedError('Export cancelled; the destination was not changed.')
-            write_export(path, text, private_root=library.root, cancelled=frame.cancel_event.is_set,
+            return write_export(path, text, private_root=library.root, cancelled=frame.cancel_event.is_set,
                          approval=approval)
 
         def done(result):
             if _current_scope(frame, library, workspace):
-                frame.report('Bibliography exported with known catalog metadata and separate editions.')
+                warning = getattr(result, 'cleanup_warning', None)
+                frame.report('Bibliography exported with known catalog metadata and separate editions.'
+                             + ('\n' + warning if isinstance(warning, str) and warning else ''))
 
         frame.run_job('Exporting bibliography', operation, done)
     except Exception as exc:
-        frame.report(f'Bibliography was not exported: {exc}')
+        frame.report(f'Bibliography export: {exc}')
 
 
 def export_research_outline(frame):
@@ -344,16 +346,18 @@ def export_research_outline(frame):
             text = library.export_outline(workspace, topic, cancelled=frame.cancel_event.is_set)
             if frame.cancel_event.is_set():
                 raise InterruptedError('Export cancelled; the destination was not changed.')
-            write_export(path, text, private_root=library.root, cancelled=frame.cancel_event.is_set,
+            return write_export(path, text, private_root=library.root, cancelled=frame.cancel_event.is_set,
                          approval=approval)
 
         def done(result):
             if frame.library is library and frame.active == (workspace, topic):
-                frame.report('Research outline exported with active subtopics, verified quotations and separate research notes.')
+                warning = getattr(result, 'cleanup_warning', None)
+                frame.report('Research outline exported with active subtopics, verified quotations and separate research notes.'
+                             + ('\n' + warning if isinstance(warning, str) and warning else ''))
 
         frame.run_job('Exporting verified research outline', operation, done)
     except Exception as exc:
-        frame.report(f'Research outline was not exported: {exc}')
+        frame.report(f'Research outline export: {exc}')
 
 
 def install_academic_actions(frame):

@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 from carr_library.application import LibraryApp
-from carr_library.ui.operation_progress import ProgressTracker
+from carr_library.progress import ProgressHub, bind_progress
 from carr_library.ui.publishing_dialog import create_publishing_dialog
 
 _spec = importlib.util.spec_from_file_location('publishing_handler_fixtures', Path(__file__).with_name('test_publishing.py'))
@@ -55,14 +55,15 @@ def desktop(source_job):
         setattr(wx, name, Widget)
     wx.BoxSizer = Sizer
     wx.CallAfter = lambda callback, *args: callback(*args)
-    progress = ProgressTracker()
+    progress = ProgressHub()
     frame = SimpleNamespace(library=library, cancel_event=Event(), working=False, _closing=False,
-                            operation_progress=progress, operations=[])
+                            progress_panel=progress, operations=[])
     def run_job(title, operation, done, failed):
         frame.working = True; frame.cancel_event.clear(); frame.operations.append(title)
-        progress.start(title)
+        task = progress.start(title)
         try:
-            done(operation())
+            with bind_progress(task):
+                done(operation())
         except Exception as exc:
             failed(exc)
         finally:
