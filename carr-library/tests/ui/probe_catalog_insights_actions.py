@@ -121,7 +121,11 @@ class Dialogs:
 class CatalogInsightsActionsTests(unittest.TestCase):
     def setUp(self):
         self.wx = SimpleNamespace(YES_NO=1, NO_DEFAULT=2, ICON_QUESTION=4, YES=8, NO=16)
-        self.wx.MessageBox = Mock(return_value=self.wx.YES)
+        self.approve_overwrite = True
+        def confirm_answer(*args, **kwargs):
+            assert threading.get_ident() == self.frame.main_thread
+            return self.wx.YES if self.approve_overwrite else self.wx.NO
+        self.wx.MessageBox = Mock(side_effect=confirm_answer)
         confirm = ui.confirm_export_destination
         native = patch.object(ui, 'confirm_export_destination',
             lambda *args, **kwargs: confirm(*args, **kwargs, wx_module=self.wx))
@@ -488,6 +492,35 @@ class CatalogInsightsActionsTests(unittest.TestCase):
         actions.overview()
         self.assertFalse(self.frame.origin.focused)
         self.assertEqual(self.frame.jobs, [])
+
+
+    def test_matrix_render_cannot_replace_competing_destination_bytes(self):
+        from carr_library.research import literature_matrix
+        original = literature_matrix.render_literature_matrix
+        def competing(*args, **kwargs):
+            value = original(*args, **kwargs)
+            self.destination.write_bytes(b'Newer independently saved matrix')
+            return value
+        for existing in (False, True):
+            with self.subTest(existing=existing):
+                self.destination.unlink(missing_ok=True)
+                if existing:
+                    self.destination.write_bytes(b'Previously approved matrix')
+                actions, _ = self.actions((0, 0))
+                with patch.object(literature_matrix, 'render_literature_matrix', competing):
+                    actions.export_matrix()
+                self.assertEqual(self.destination.read_bytes(), b'Newer independently saved matrix')
+                self.assertIn('destination changed', self.frame.messages[-1])
+                self.assertEqual(list(self.root.glob('.research-export-*')), [])
+
+    def test_matrix_overwrite_decline_prevents_worker_and_restores_focus(self):
+        self.destination.write_bytes(b'Keep existing matrix')
+        self.approve_overwrite = False
+        actions, _ = self.actions((0, 0))
+        actions.export_matrix()
+        self.assertEqual(self.frame.jobs, [])
+        self.assertEqual(self.destination.read_bytes(), b'Keep existing matrix')
+        self.assertTrue(self.frame.origin.focused)
 
 
 class MenuRegistrationTests(unittest.TestCase):
