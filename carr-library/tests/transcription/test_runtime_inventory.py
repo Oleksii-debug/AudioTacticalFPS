@@ -96,3 +96,46 @@ def test_profile_additional_identity_preserves_worker_checkpoint_dialect(root):
     after = module.inspect_runtime(executable, worker, model)
     assert before['runtime_distributions'] == after['runtime_distributions']
     assert before['fingerprint'] != after['fingerprint']
+
+
+@pytest.mark.parametrize('omitted', ('METADATA', 'RECORD'))
+def test_required_inventory_records(root, omitted):
+    base, site = root
+    _, info = install(site, 'tqdm')
+    record = info / 'RECORD'
+    record.write_text(''.join(line for line in record.read_text(encoding='utf-8').splitlines(keepends=True)
+                              if not line.startswith(f'{info.name}/{omitted},')), encoding='utf-8')
+    with pytest.raises(ValueError, match='omits METADATA or RECORD'):
+        module._runtime_inventory([base])
+
+
+def test_duplicate_absolute_alias(root):
+    base, site = root
+    payload, info = install(site, 'tqdm')
+    with (info / 'RECORD').open('a', encoding='utf-8') as stream:
+        stream.write(f'{payload.as_posix()},,\n')
+    with pytest.raises(ValueError, match='duplicate resolved installed-file records'):
+        module._runtime_inventory([base])
+
+
+def test_link_within_root(root):
+    base, site = root
+    payload, _ = install(site, 'tqdm')
+    target = site / 'other.py'
+    payload.rename(target)
+    try:
+        payload.symlink_to(target)
+    except OSError:
+        pytest.skip('No symlink permission')
+    with pytest.raises(ValueError, match='without links'):
+        module._runtime_inventory([base])
+
+
+def test_valid_absolute_record(root):
+    base, site = root
+    payload, info = install(site, 'tqdm')
+    (info / 'RECORD').write_text(
+        f'{payload.as_posix()},,\n{(info / "METADATA").as_posix()},,\n{(info / "RECORD").as_posix()},,\n',
+        encoding='utf-8')
+    inventory, _ = module._runtime_inventory([base])
+    assert inventory['tqdm']['file_count'] == 3
