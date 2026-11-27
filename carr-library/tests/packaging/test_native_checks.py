@@ -150,7 +150,7 @@ def test_bundled_ocr_reuses_canonical_check_and_restores_environment(
 @pytest.mark.parametrize('change', [
     'duplicate_key', 'boolean_schema', 'string_model_flag', 'missing_ocr_flag',
     'unknown_field', 'bad_commit', 'bad_hash', 'traversal', 'case_collision', 'bad_json',
-    'string_native_flag',
+    'string_native_flag', 'string_audio_flag', 'bad_tree', 'tree_without_commit',
 ])
 def test_invalid_manifest_rejected_before_native_imports(tmp_path, monkeypatch, change):
     manifest = bundle(tmp_path)
@@ -172,6 +172,13 @@ def test_invalid_manifest_rejected_before_native_imports(tmp_path, monkeypatch, 
         manifest['files']['readme.TXT'] = 'b' * 64
     elif change == 'string_native_flag':
         manifest['bundled_native_runtime'] = 'false'
+    elif change == 'string_audio_flag':
+        manifest['bundled_audio_runtime'] = 'false'
+    elif change == 'bad_tree':
+        manifest['source_tree'] = 'HEAD'
+    elif change == 'tree_without_commit':
+        manifest['source_tree'] = 'c' * 40
+        del manifest['source_commit']
     raw = json.dumps(manifest)
     if change == 'duplicate_key':
         raw = '{"bundled_model":true,' + raw[1:]
@@ -184,3 +191,20 @@ def test_invalid_manifest_rejected_before_native_imports(tmp_path, monkeypatch, 
     assert report['status'] == 'FAIL'
     assert report['failed_component'] == 'installation manifest'
     assert not events
+
+
+@pytest.mark.parametrize('audio', [False, True])
+def test_current_source_bound_bundle_manifest_reaches_native_checks(tmp_path, monkeypatch, audio):
+    # The build producer adds source_tree, then the native/audio supplements
+    # add their flags. This checks the reader contract, not audio execution.
+    manifest = bundle(tmp_path, model=True, ocr=True)
+    manifest.update(source_tree='c' * 40, bundled_native_runtime=True,
+                    bundled_audio_runtime=audio)
+    (tmp_path / 'bundle-manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+    events = []
+    controlled_imports(monkeypatch, events)
+    report = native_checks.check_native_dependencies(tmp_path)
+    assert report['status'] == 'PASS'
+    assert report['semantic']['status'] == report['ocr']['status'] == 'PASS'
+    assert 'carr_library.native_runtime' in events
+    assert native_checks._manifest(tmp_path) == manifest
