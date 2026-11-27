@@ -7,6 +7,7 @@ The source library, evidence note, test menu command, and keymap are synthetic.
 Missing display/wx prerequisites return NOT_RUN (77); NVDA is always NOT_RUN.
 """
 from argparse import ArgumentParser
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -164,6 +165,45 @@ def run_native(source=None, timeout=120):
                     and library.evidence(workspace, topic)[0].note == saved_note
                     and library.assets.resolve(imported['asset']).read_bytes() == original_bytes)
 
+        def preservation_diagnostic(stage, previous_keymap=None):
+            # Read every term independently: an earlier false comparison must
+            # not hide which boundary changed a later source or note value.
+            current_note = frame.evidence.note.GetValue()
+            current_saved = library.evidence(workspace, topic)[0].note
+            current_source = library.assets.resolve(imported['asset']).read_bytes()
+            current_keymap = keymap.read_bytes() if keymap.exists() else None
+            current_binding = manager.shortcut(test_id)
+            terms = {
+                'library_identity': frame.library is library,
+                'active_scope': frame.active == (workspace, topic),
+                'unsaved_note_unchanged': current_note == draft,
+                'unsaved_note_dirty': frame._dirty(),
+                'saved_note_unchanged': current_saved == saved_note,
+                'original_source_unchanged': current_source == original_bytes,
+            }
+            if previous_keymap is not None:
+                terms['keymap_bytes_unchanged'] = current_keymap == previous_keymap
+                terms['binding_unchanged'] = current_binding == 'Ctrl+Shift+K'
+            differences = []
+            if current_note != draft:
+                for index in range(max(len(current_note), len(draft))):
+                    expected = ord(draft[index]) if index < len(draft) else None
+                    actual = ord(current_note[index]) if index < len(current_note) else None
+                    if expected != actual:
+                        differences.append({'index': index, 'expected': expected, 'actual': actual})
+                        if len(differences) == 32:
+                            break
+            print(json.dumps({
+                'keyboard_preservation_diagnostic': stage, 'terms': terms,
+                'binding': current_binding, 'menu_enabled': action.IsEnabled(),
+                'handler_calls': len(calls), 'note_expected_length': len(draft),
+                'note_actual_length': len(current_note),
+                'note_expected_sha256': hashlib.sha256(draft.encode('utf-8')).hexdigest(),
+                'note_actual_sha256': hashlib.sha256(current_note.encode('utf-8')).hexdigest(),
+                'note_codepoint_differences': differences,
+                'keymap_sha256': hashlib.sha256(current_keymap).hexdigest() if current_keymap is not None else None,
+            }, sort_keys=True), flush=True)
+
         try:
             frame = DesktopFrame(library)
             frame._open_workspace(workspace, topic)
@@ -197,6 +237,7 @@ def run_native(source=None, timeout=120):
                 frame._restore_note_focus()
                 focus(frame.evidence.note)
                 press(ord(letter), wx.MOD_CONTROL | wx.MOD_SHIFT)
+                preservation_diagnostic('after-host-shortcut-Ctrl+Shift+' + letter)
 
             host_key('J')
             check('actual default shortcut dispatches the current native menu handler',
@@ -258,6 +299,7 @@ def run_native(source=None, timeout=120):
                   len(calls) == 2 and not manager.available(test_id))
             action.Enable(True)
             before = keymap.read_bytes()
+            preservation_diagnostic('before-cancel-settings', before)
 
             def cancel(dialog):
                 candidate = unused_draft_shortcut(manager, dialog.draft, test_id)
@@ -268,6 +310,7 @@ def run_native(source=None, timeout=120):
                 press(wx.WXK_ESCAPE)
 
             check('actual Escape cancels the native settings dialog', not settings_session(cancel))
+            preservation_diagnostic('after-cancel-settings', before)
             check('Cancel preserves saved bindings and the complete unsaved evidence note',
                   keymap.read_bytes() == before and manager.shortcut(test_id) == 'Ctrl+Shift+K' and preserved())
 
