@@ -560,9 +560,17 @@ def test_selected_runtime_changes_are_refused_before_child_launch(
 def test_legacy_resolved_interpreter_configuration_still_runs(prepared):
     _, _, service, original, _ = prepared
     config = read_json(service.root / 'engine.json')
-    config.pop('python_binding', None)
+    for key in ('python_binding', 'runtime_inventory', 'models_inventory',
+                'fingerprint', 'profile_id', 'execution_review_required'):
+        config.pop(key, None)
     atomic_json(service.root / 'engine.json', config, replace=True)
     identity = service.submit([original])
+    assert service.configuration()['python'] == config['python']
+    with pytest.raises(ValueError, match='[Rr]eview|legacy'):
+        service.run(identity, timeout=20)
+    # An older resolved-path selection remains readable and can be explicitly
+    # reviewed under the installed-file contract before its actual child runs.
+    service.configure(config['python'], config['worker'], config['models_dir'])
     result = service.run(identity, timeout=20)
     assert result['status'] == 'completed', result['last_error']
 

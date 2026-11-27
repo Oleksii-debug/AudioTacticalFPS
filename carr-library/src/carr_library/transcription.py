@@ -22,6 +22,17 @@ from .durable_state import (atomic_bytes, atomic_json, digest_file, local_path,
                             read_json, regular, state_lock, sync_directory)
 from .ingest.writer_guard import exclusive_writer
 from .state_backup import relative_name
+from .transcription_runtime import (fingerprint as _fingerprint, inspect_python,
+                                    inspect_models, validate_runtime, validate_models)
+
+class RuntimeReviewError(ValueError):
+    """A selected execution identity lost its explicit review."""
+
+
+def configuration_fingerprint(value):
+    return _fingerprint({key: item for key, item in value.items()
+                         if key not in ('fingerprint', 'profile_id', 'execution_review_required')})
+
 
 MAX_FILES = 64
 MAX_SOURCE_BYTES = 8 * 1024**3
@@ -443,9 +454,13 @@ class TranscriptionService:
         with self.app.read(self.workspace):
             pass
 
-    def configure(self, python, worker, models_dir, *, protocol=RECEIPTS_PROTOCOL):
+    def inspect_runtime(self, python, worker, models_dir, *, protocol=RECEIPTS_PROTOCOL,
+                        cancelled=lambda: False, progress=None):
+        """Read selected bytes without running the interpreter, worker or model."""
         self._authorize()
         protocol = _protocol(protocol)
+        if cancelled():
+            raise AudioCancelled('Runtime inspection was cancelled.')
         python, python_binding, python_sha256 = _python_runtime(python)
         worker = local_path(worker, exists=True)
         models_dir = local_path(models_dir, exists=True)
@@ -456,9 +471,9 @@ class TranscriptionService:
         if models_dir.is_relative_to(self.app.root):
             raise ValueError('Keep model/runtime assets outside the backed-up library data directory.')
         value = {'version': 1, 'protocol': protocol, 'python': str(python), 'worker': str(worker),
-                  'models_dir': str(models_dir), 'python_sha256': python_sha256,
-                  'python_binding': python_binding,
-                 'worker_sha256': digest_file(worker),
+                 'models_dir': str(models_dir), 'python_sha256': python_sha256,
+                 'python_binding': python_binding,
+                 'worker_sha256': _checked_digest(worker, regular(worker).st_size, cancelled),
                  'network': 'local-files-only; Python network calls denied',
                  'inference_qualified': False}
         if protocol == V5_PROTOCOL:
@@ -466,20 +481,127 @@ class TranscriptionService:
                 raise ValueError('The Whisper V5 profile requires worker.py beside its two reviewed helpers.')
             value['wrapper_sources_sha256'] = self._wrapper_sources(worker)
             value['retry_policy'] = 'At most 3 distinct attempts; same language/model, then beam=1 without previous text, then VAD disabled.'
-        with state_lock(self.root, 'engine'):
-            atomic_json(self.root / 'engine.json', value, replace=True)
+        value['runtime_inventory'] = inspect_python(python, cancelled=cancelled, progress=progress)
+        value['models_inventory'] = inspect_models(models_dir, cancelled=cancelled, progress=progress)
+        # Preserve the selected lexical executable/lstat binding as well as the
+        # canonical operational-base and installed-file inventories.
+        _, after_binding, after_hash = _python_runtime(python)
+        if after_binding != python_binding or after_hash != python_sha256:
+            raise RuntimeReviewError('The selected interpreter changed during runtime inspection.')
+        if _checked_digest(worker, regular(worker).st_size, cancelled) != value['worker_sha256']:
+            raise RuntimeReviewError('The selected worker changed during runtime inspection.')
+        if (protocol == V5_PROTOCOL
+                and self._wrapper_sources(worker) != value['wrapper_sources_sha256']):
+            raise RuntimeReviewError('A selected V5 wrapper changed during runtime inspection.')
+        if cancelled():
+            raise AudioCancelled('Runtime inspection was cancelled before completion.')
+        value['fingerprint'] = configuration_fingerprint(value)
+        value['execution_review_required'] = False
         return value
 
-    def configuration(self, *, verify=False):
+    def _profiles_root(self):
+        return local_path(self.root / 'profiles', root=self.root)
+
+    def _profile(self, identity):
         self._authorize()
-        path = self.root / 'engine.json'
-        if not path.exists():
-            raise ValueError('Configure the supplied local Whisper worker and offline models first.')
+        path = self._profiles_root() / (_identifier(identity) + '.json')
         value = read_json(path)
+        if (type(value) is not dict
+                or set(value) != {'schema', 'id', 'name', 'fingerprint', 'trusted', 'restored',
+                                  'qualification', 'configuration'}
+                or value.get('schema') != 'carr-transcription-profile/1'
+                or value.get('id') != identity or not isinstance(value.get('name'), str)
+                or not value['name'].strip() or len(value['name']) > 200
+                or type(value.get('trusted')) is not bool or type(value.get('restored')) is not bool
+                or value.get('qualification') != 'unqualified'
+                or type(value.get('configuration')) is not dict):
+            raise ValueError('Invalid saved transcription runtime profile.')
+        config = value['configuration']
+        if (value.get('fingerprint') != configuration_fingerprint(config)
+                or config.get('fingerprint') != value['fingerprint']
+                or identity != value['fingerprint'][:32]):
+            raise ValueError('The runtime profile no longer matches its reviewed files.')
+        validate_runtime(config['runtime_inventory'])
+        validate_models(config['models_inventory'])
+        _protocol(config.get('protocol'))
+        return value
+
+    def list_runtimes(self):
+        """Return passive named declarations without following external paths."""
+        self._authorize()
+        root = self._profiles_root()
+        if not root.exists():
+            return ()
+        regular(root, directory=True)
+        rows = []
+        for path in sorted(root.iterdir()):
+            if path.name == '.profiles.lock':
+                continue
+            if len(rows) >= 1024 or path.suffix != '.json':
+                raise ValueError('Invalid or excessive runtime profile inventory.')
+            rows.append(self._profile(path.stem))
+        return tuple(sorted(rows, key=lambda row: (row['name'].casefold(), row['id'])))
+
+    def _store_profile(self, name, inspected, *, trusted):
+        if not isinstance(name, str) or not name.strip() or len(name) > 200 or '\0' in name:
+            raise ValueError('Enter a runtime profile name of 1 to 200 characters.')
+        identity = inspected['fingerprint'][:32]
+        row = {'schema': 'carr-transcription-profile/1', 'id': identity, 'name': name.strip(),
+               'fingerprint': inspected['fingerprint'], 'trusted': trusted, 'restored': False,
+               'qualification': 'unqualified', 'configuration': inspected}
+        with state_lock(self.root, 'engine'):
+            with exclusive_writer(self.app.root):
+                self._authorize()
+                target = self._profiles_root() / (identity + '.json')
+                atomic_json(target, row, replace=target.exists())
+        return row
+
+    def register_runtime(self, name, python, worker, models_dir, *, protocol=RECEIPTS_PROTOCOL,
+                         owner_trusted=False, expected_fingerprint=None,
+                         cancelled=lambda: False, progress=None):
+        if type(owner_trusted) is not bool:
+            raise ValueError('Runtime trust must be an explicit owner decision.')
+        inspected = self.inspect_runtime(python, worker, models_dir, protocol=protocol,
+                                         cancelled=cancelled, progress=progress)
+        if ((owner_trusted or expected_fingerprint is not None)
+                and inspected['fingerprint'] != expected_fingerprint):
+            raise ValueError('Inspect and approve the exact current runtime fingerprint before registration.')
+        if cancelled():
+            raise AudioCancelled('Runtime registration was cancelled before publication.')
+        return self._store_profile(name, inspected, trusted=owner_trusted)
+
+    def configure(self, python, worker, models_dir, *, protocol=RECEIPTS_PROTOCOL,
+                  expected_fingerprint=None, cancelled=lambda: False, progress=None):
+        """Retain the existing explicit selection API and a named reviewed record."""
+        inspected = self.inspect_runtime(python, worker, models_dir, protocol=protocol,
+                                         cancelled=cancelled, progress=progress)
+        if expected_fingerprint is not None and inspected['fingerprint'] != expected_fingerprint:
+            raise ValueError('The inspected runtime changed before configuration.')
+        if cancelled():
+            raise AudioCancelled('Runtime configuration was cancelled before publication.')
+        row = self._store_profile('Selected local runtime', inspected, trusted=True)
+        value = {**inspected, 'profile_id': row['id']}
+        with state_lock(self.root, 'engine'):
+            with exclusive_writer(self.app.root):
+                self._authorize()
+                atomic_json(self.root / 'engine.json', value, replace=True)
+        return value
+
+    def configuration(self, *, verify=False, profile_id=None, cancelled=lambda: False, progress=None):
+        self._authorize()
+        profile = None
+        if profile_id is not None:
+            profile = self._profile(profile_id)
+            value = {**profile['configuration'], 'profile_id': profile_id}
+        else:
+            path = self.root / 'engine.json'
+            if not path.exists():
+                raise ValueError('Configure the supplied local Whisper worker and offline models first.')
+            value = read_json(path)
+            if isinstance(value, dict) and value.get('profile_id') is not None:
+                profile = self._profile(value['profile_id'])
         if not isinstance(value, dict) or value.get('version') != 1:
             raise ValueError('Unsupported transcription engine configuration.')
-        # Version-1 engine files written before profiles are unambiguously the
-        # existing receipt contract. Unknown explicit profiles never fall back.
         value['protocol'] = _protocol(value.get('protocol', RECEIPTS_PROTOCOL))
         if value['protocol'] == V5_PROTOCOL:
             hashes = value.get('wrapper_sources_sha256')
@@ -488,20 +610,41 @@ class TranscriptionService:
                     or hashes['worker.py'] != value.get('worker_sha256')):
                 raise ValueError('Whisper V5 requires all three reviewed source identities.')
         if verify:
-            if 'python_binding' in value:
-                _, binding, digest = _python_runtime(value['python'])
-                if binding != value['python_binding'] or digest != value['python_sha256']:
-                    raise ValueError('The configured transcription runtime changed; select and review it again.')
-            elif digest_file(local_path(value['python'], exists=True)) != value['python_sha256']:
-                # Earlier configurations stored an already resolved interpreter.
-                # Preserve their exact path/hash checks until explicit reselection.
-                raise ValueError('The configured transcription runtime changed; select and review it again.')
-            if digest_file(local_path(value['worker'], exists=True)) != value['worker_sha256']:
-                raise ValueError('The configured transcription runtime changed; select and review it again.')
-            regular(local_path(value['models_dir'], exists=True), directory=True)
-            if value['protocol'] == V5_PROTOCOL and self._wrapper_sources(Path(value['worker'])) != value['wrapper_sources_sha256']:
-                raise ValueError('A configured Whisper V5 helper changed; select and review it again.')
+            if (value.get('execution_review_required') is True
+                    or profile is not None and (not profile['trusted'] or profile['restored'])):
+                raise RuntimeReviewError('This restored runtime needs explicit local inspection and review before execution.')
+            if (not isinstance(value.get('runtime_inventory'), dict)
+                    or not isinstance(value.get('models_inventory'), dict)
+                    or value.get('fingerprint') != configuration_fingerprint(value)):
+                raise RuntimeReviewError('Review this legacy runtime again to bind its installed files before execution.')
+            if profile is not None and profile['fingerprint'] != value['fingerprint']:
+                raise RuntimeReviewError('The selected configuration differs from its reviewed named profile.')
+            try:
+                current = self.inspect_runtime(value['python'], value['worker'], value['models_dir'],
+                    protocol=value['protocol'], cancelled=cancelled, progress=progress)
+            except (AudioCancelled, InterruptedError):
+                raise
+            except (OSError, ValueError) as exc:
+                raise RuntimeReviewError('The configured runtime or model could not be verified; review it again.') from exc
+            if current['fingerprint'] != value['fingerprint']:
+                raise RuntimeReviewError('The configured runtime or model changed; select and review it again.')
         return value
+
+    def _verify_execution(self, expected, job, *, cancelled=lambda: False, progress=None):
+        self._authorize()
+        try:
+            current = self.configuration(verify=True, profile_id=job.get('runtime_profile_id'),
+                                         cancelled=cancelled, progress=progress)
+        except (AudioCancelled, InterruptedError):
+            raise
+        except (OSError, ValueError) as exc:
+            raise RuntimeReviewError('The selected execution identity could not be verified again.') from exc
+        if current != expected:
+            raise RuntimeReviewError('The selected runtime configuration changed during this attempt.')
+        if (job.get('runtime_profile_fingerprint') is not None
+                and current['fingerprint'] != job['runtime_profile_fingerprint']):
+            raise RuntimeReviewError('The job is bound to another reviewed runtime profile.')
+        return current
 
     @staticmethod
     def _wrapper_sources(worker):
@@ -514,7 +657,12 @@ class TranscriptionService:
             result[name] = _checked_digest(source, size, lambda: False)
         return result
 
-    def _selected_protocol(self, protocol):
+    def _selected_protocol(self, protocol, *, profile_id=None):
+        if profile_id is not None:
+            selected = self.configuration(profile_id=profile_id)['protocol']
+            if protocol is not None and _protocol(protocol) != selected:
+                raise ValueError('The requested protocol differs from the selected runtime profile.')
+            return selected
         if protocol is not None:
             return _protocol(protocol)
         if not os.path.lexists(self.root / 'engine.json'):
@@ -547,6 +695,25 @@ class TranscriptionService:
                     or not re.fullmatch(r'[a-f0-9]{64}', item.get('sha256', ''))):
                 raise ValueError('Invalid retained transcription source identity.')
             names.add(name)
+        pending_review = self._pending_review(identity)
+        if pending_review is not None and not (
+                value['status'] == 'failed' and value.get('recovery_review_required') is False):
+            value = {**value, 'status': 'running'}
+        if value['status'] == 'running':
+            try:
+                with state_lock(self._path(identity), 'transcribe'):
+                    current = read_json(self._path(identity) / 'job.json')
+                    if current.get('status') == 'running' or pending_review is not None:
+                        current.update(status='interrupted', recovery_review_required=True,
+                                       last_error='The prior runner ended without acknowledged closure. Confirm its external worker stopped.')
+                        self._save(self._path(identity), current)
+                        value = current
+            except RuntimeError:
+                pass  # A live runner still owns the exact job lock.
+        if self._rejection(self._path(identity), identity) is not None:
+            value = {**value, 'status': 'failed', 'done': 0, 'receipts': [], 'artifacts': [],
+                     'execution_review_required': True,
+                     'last_error': 'Rejected worker evidence is retained. Create a new reviewed job from its retained originals.'}
         return value
 
     def list(self):
@@ -564,16 +731,24 @@ class TranscriptionService:
         return tuple(sorted(result, key=lambda x: (x['created'], x['id']), reverse=True))
 
     def submit_folder(self, folder, *, title='Transcription', options=None, cancelled=lambda: False,
-                      protocol=None):
-        """Retain one explicitly selected folder through the shared bounded scanner."""
-        from .ingest.batch_scan import scan_paths
-        self._authorize()
-        protocol = self._selected_protocol(protocol)
-        settings(options, protocol=protocol)
-        if cancelled():
-            raise AudioCancelled('Transcription folder intake was cancelled.')
+                      protocol=None, profile_id=None, recursive=True):
+        """Keep legacy recursive folder intake on the same bounded scanner."""
         folder = local_path(folder, exists=True)
         regular(folder, directory=True)
+        return self.submit_sources([folder], recursive=recursive, title=title, options=options,
+            cancelled=cancelled, protocol=protocol, profile_id=profile_id, _source_root=folder)
+
+    def submit_sources(self, paths, *, recursive=False, title='Transcription', options=None,
+                       cancelled=lambda: False, protocol=None, profile_id=None, _source_root=None):
+        """Retain mixed explicit files/folders, with optional bounded recursion."""
+        from .ingest.batch_scan import scan_paths
+        self._authorize()
+        protocol = self._selected_protocol(protocol, profile_id=profile_id)
+        settings(options, protocol=protocol)
+        if type(recursive) is not bool:
+            raise ValueError('Choose an explicit recursion option.')
+        if cancelled():
+            raise AudioCancelled('Transcription folder intake was cancelled.')
         total = 0
         def media_manifest(path):
             nonlocal total
@@ -582,34 +757,43 @@ class TranscriptionService:
                 raise ValueError('A media file is empty or exceeds the transcription source budget.')
             total += size
             if total > MAX_BATCH_BYTES:
-                raise ValueError('The selected folder exceeds the transcription batch size budget.')
+                raise ValueError('The selected media exceed the transcription batch size budget.')
             return {'size': size, 'mime': 'application/octet-stream',
                     'sha256': _checked_digest(path, size, cancelled)}
         try:
-            rows = scan_paths([folder], cancelled=cancelled, supported=MEDIA_SUFFIXES,
+            rows = scan_paths(paths, recursive=recursive, cancelled=cancelled, supported=MEDIA_SUFFIXES,
                               file_manifest=media_manifest, max_files=MAX_FILES,
                               skip_unsupported=True)
         except InterruptedError as exc:
             raise AudioCancelled('Transcription folder intake was cancelled.') from exc
+        # The shared document scanner reports a deliberately unselected subfolder
+        # as a rejection. Only that exact, already checked recursion outcome is
+        # an exclusion here; link/identity/size/depth failures remain fatal.
+        rows = [dict(row, state='excluded-folder') if not recursive and row['state'] == 'rejected'
+                and row['message'] == 'Subfolder skipped because recursive scanning is off.'
+                else row for row in rows]
         rejected = next((row for row in rows if row['state'] == 'rejected'), None)
         if rejected is not None:
             raise ValueError('Folder intake stopped at ' + rejected['file'] + ': ' +
                              rejected['message'] + ' No transcription job was created.')
         accepted = [row for row in rows if row['state'] in ('queued', 'duplicate')]
         files = [row['source'] for row in accepted]
-        source_manifests = [{'size_bytes': row['manifest']['size'],
-                             'sha256': row['manifest']['sha256']} for row in accepted]
+        manifests = [{'size_bytes': row['manifest']['size'],
+                      'sha256': row['manifest']['sha256']} for row in accepted]
         excluded = sum(row['state'] == 'excluded' for row in rows)
         if not files:
             raise ValueError(f'No supported audio or video files were found; {excluded} unsupported files excluded.')
         identity = self.submit(files, title=title, options=options, cancelled=cancelled,
-                               source_root=folder, source_manifests=source_manifests, protocol=protocol)
-        return {'id': identity, 'files': len(files), 'excluded_files': excluded}
+            source_root=_source_root, source_manifests=manifests, protocol=protocol,
+            profile_id=profile_id)
+        return {'id': identity, 'files': len(files), 'excluded_files': excluded,
+                'excluded_folders': sum(row['state'] == 'excluded-folder' for row in rows)}
 
     def submit(self, files, *, title='Transcription', options=None, cancelled=lambda: False,
-               source_root=None, source_manifests=None, protocol=None):
+               source_root=None, source_manifests=None, protocol=None, profile_id=None, _source_labels=None):
         self._authorize()
-        protocol = self._selected_protocol(protocol)
+        protocol = self._selected_protocol(protocol, profile_id=profile_id)
+        profile = self._profile(profile_id) if profile_id is not None else None
         chosen = settings(options, protocol=protocol)
         files = tuple(files)
         if not 1 <= len(files) <= MAX_FILES:
@@ -626,6 +810,10 @@ class TranscriptionService:
                        or not isinstance(item['sha256'], str) or not re.fullmatch(r'[a-f0-9]{64}', item['sha256'])
                        for item in source_manifests)):
             raise ValueError('Invalid transcription source manifests.')
+        if _source_labels is not None and (
+                not isinstance(_source_labels, (tuple, list)) or len(_source_labels) != len(files)
+                or any(type(label) is not str or len(label) > 32768 or '\0' in label for label in _source_labels)):
+            raise ValueError('Invalid retained original labels.')
         identity = uuid4().hex
         with state_lock(self.jobs_root, 'submit'):
             pending = self.jobs_root / ('.pending-' + identity)
@@ -649,12 +837,17 @@ class TranscriptionService:
                     total += record['size_bytes']
                     original_name = (original.relative_to(source_root).as_posix()
                                      if source_root is not None else original.name)
+                    if _source_labels is not None:
+                        original_name = _source_labels[index]
                     sources.append({'filename': name, 'original_name': original_name, **record})
                 value = {'version': 1, 'id': identity, 'workspace': self.workspace,
                          'title': title.strip(), 'created': time.time(), 'updated': time.time(),
                          'status': 'ready', 'sources': sources, 'settings': chosen, 'protocol': protocol,
                          'done': 0, 'failed': 0, 'receipts': [], 'artifacts': [],
                          'run_context': None, 'last_error': ''}
+                if profile is not None:
+                    value.update(runtime_profile_id=profile['id'],
+                                 runtime_profile_fingerprint=profile['fingerprint'])
                 if cancelled():
                     raise AudioCancelled('Transcription input preparation was cancelled before publication.')
                 self._authorize()
@@ -665,6 +858,220 @@ class TranscriptionService:
                 if pending.exists():
                     shutil.rmtree(pending)
         return identity
+
+    def _control(self, identity):
+        path = self._path(identity) / 'control.json'
+        if not os.path.lexists(path):
+            return 'run'
+        if regular(path).st_size > 16384:
+            raise ValueError('Transcription control exceeds its byte budget.')
+        value = read_json(path)
+        if (type(value) is not dict or set(value) != {'version', 'job', 'workspace', 'action', 'revision'}
+                or type(value['version']) is not int or value['version'] != 1
+                or value['job'] != identity or value['workspace'] != self.workspace
+                or value['action'] not in ('run', 'pause', 'cancel')):
+            raise ValueError('Invalid durable transcription control.')
+        _identifier(value['revision'])
+        return value['action']
+
+    def _write_control(self, identity, action):
+        self._authorize()
+        value = {'version': 1, 'job': identity, 'workspace': self.workspace,
+                 'action': action, 'revision': uuid4().hex}
+        with state_lock(self._path(identity), 'control'):
+            with exclusive_writer(self.app.root):
+                self._authorize()
+                atomic_json(self._path(identity) / 'control.json', value, replace=True)
+
+    def _set_control(self, identity, action):
+        state = self.get(identity)
+        if self._rejection(self._path(identity), identity) is not None:
+            self._refuse_rejected(self._path(identity), identity)
+        if state['status'] == 'completed':
+            return state
+        self._write_control(identity, action)
+        try:
+            with state_lock(self._path(identity), 'transcribe'):
+                current = self.get(identity)
+                if current['status'] == 'completed':
+                    return current
+                if current['status'] in ('running', 'interrupted') or current.get('recovery_review_required'):
+                    return current
+                current['status'] = 'paused' if action == 'pause' else 'cancelled'
+                self._save(self._path(identity), current)
+                return current
+        except RuntimeError:
+            pass  # A live runner owns closure; the control write is already durable.
+        return {**state, 'status': 'pausing' if action == 'pause' else 'cancelling'}
+
+    def pause(self, identity):
+        return self._set_control(identity, 'pause')
+
+    def cancel(self, identity):
+        return self._set_control(identity, 'cancel')
+
+    def _review_path(self, identity):
+        # Outside the worker-writable job: its Python audit guard cannot delete
+        # the host's pre-publication uncertainty record.
+        return local_path(self.jobs_root.parent / 'reviews' / (_identifier(identity) + '.json'),
+                          root=self.root)
+
+    def _pending_review(self, identity):
+        path = self._review_path(identity)
+        if not os.path.lexists(path):
+            return None
+        if regular(path).st_size > 16384:
+            raise ValueError('Transcription execution review exceeds its byte budget.')
+        value = read_json(path)
+        if (type(value) is not dict
+                or set(value) != {'schema', 'job', 'workspace', 'attempt', 'configuration'}
+                or value['schema'] != 'carr-transcription-review/1'
+                or value['job'] != identity or value['workspace'] != self.workspace
+                or re.fullmatch('[a-f0-9]{64}', value.get('configuration', '')) is None):
+            raise ValueError('Invalid pending transcription execution review.')
+        _identifier(value['attempt'])
+        return value
+
+    def _begin_review(self, job, config):
+        value = {'schema': 'carr-transcription-review/1', 'job': job['id'],
+                 'workspace': self.workspace, 'attempt': uuid4().hex,
+                 'configuration': config['fingerprint']}
+        with exclusive_writer(self.app.root):
+            self._authorize()
+            atomic_json(self._review_path(job['id']), value)
+        return value
+
+    def _finish_review(self, owned):
+        path = self._review_path(owned['job'])
+        before = _stamp(regular(path))
+        if self._pending_review(owned['job']) != owned or _stamp(regular(path)) != before:
+            raise RuntimeReviewError('The host execution-review record changed; its uncertainty was retained.')
+        path.unlink()
+        sync_directory(path.parent)
+
+    def _rejection(self, path, identity):
+        target = path / 'rejected-execution.json'
+        if not os.path.lexists(target):
+            return None
+        if regular(target).st_size > 16384:
+            raise ValueError('Transcription rejection exceeds its byte budget.')
+        value = read_json(target)
+        if (type(value) is not dict
+                or set(value) != {'version', 'job', 'workspace', 'attempt', 'configuration', 'reason'}
+                or type(value['version']) is not int or value['version'] != 1
+                or value['job'] != identity or value['workspace'] != self.workspace
+                or type(value['reason']) is not str or not value['reason'] or len(value['reason']) > 3000
+                or re.fullmatch('[a-f0-9]{64}', value.get('configuration', '')) is None):
+            raise ValueError('Invalid rejected transcription execution record.')
+        _identifier(value['attempt'])
+        return value
+
+    def _refuse_rejected(self, path, identity):
+        if self._rejection(path, identity) is not None or self._pending_review(identity) is not None:
+            raise RuntimeReviewError('This worker workspace was rejected after runtime/model drift. '
+                                    'Its evidence is retained; create a new job from the retained originals.')
+
+    def _reject_execution(self, path, job, expected, error):
+        """Persist rejection before changing accepted state; no callback may clear it."""
+        if self._rejection(path, job['id']) is None:
+            value = {'version': 1, 'job': job['id'], 'workspace': self.workspace,
+                     'attempt': uuid4().hex, 'configuration': expected['fingerprint'],
+                     'reason': str(error)[:3000]}
+            with exclusive_writer(self.app.root):
+                self._authorize()
+                atomic_json(path / 'rejected-execution.json', value)
+        job.update(status='failed', done=0, failed=len(job['sources']), receipts=[], artifacts=[],
+                   execution_review_required=True,
+                   last_error='Runtime/model review was lost. Rejected worker files remain retained; '
+                              'returning old bytes does not authorize their reuse.')
+        self._save(path, job)
+
+    def continue_job(self, identity):
+        path = local_path(self._path(identity), exists=True)
+        with state_lock(path, 'transcribe'):
+            state = self.get(identity)
+            self._refuse_rejected(path, identity)
+            if state['status'] in ('running', 'interrupted') or state.get('recovery_review_required'):
+                raise RuntimeError('Confirm the prior external worker stopped before continuing this job.')
+            if state.get('execution_review_required'):
+                raise RuntimeReviewError('Review and rebind a local runtime before continuing this restored job.')
+            self._write_control(identity, 'run')
+            if state['status'] in ('paused', 'cancelled'):
+                state['status'] = 'ready' if state['run_context'] is None else 'stopped'
+                self._save(path, state)
+            return state
+
+    def acknowledge_interruption(self, identity, *, worker_stopped=False):
+        if worker_stopped is not True:
+            raise ValueError('Explicitly confirm that the prior external worker and its children stopped.')
+        path = local_path(self._path(identity), exists=True)
+        with state_lock(path, 'transcribe'):
+            state = self.get(identity)
+            if self._rejection(path, identity) is not None:
+                self._refuse_rejected(path, identity)
+            state['recovery_review_required'] = False
+            if self._pending_review(identity) is not None:
+                # A crash or failed rejection write cannot turn an incomplete
+                # final review into accepted results. Only a fresh job may run.
+                state.update(status='failed', done=0, failed=len(state['sources']),
+                             receipts=[], artifacts=[], execution_review_required=True,
+                             last_error='Execution review was interrupted. Copy retained originals into a new reviewed job.')
+            elif state['status'] in ('running', 'interrupted'):
+                state['status'] = 'stopped'
+            self._save(path, state)
+            return state
+
+    def rebind_runtime(self, identity, profile_id, *, cancelled=lambda: False, progress=None):
+        path = local_path(self._path(identity), exists=True)
+        with state_lock(path, 'transcribe'):
+            state = self.get(identity)
+            self._refuse_rejected(path, identity)
+            if state['status'] in ('running', 'interrupted') or state.get('recovery_review_required'):
+                raise RuntimeError('Confirm the interrupted external worker stopped before rebinding.')
+            config = self.configuration(verify=True, profile_id=profile_id,
+                                        cancelled=cancelled, progress=progress)
+            if config['protocol'] != state['protocol']:
+                raise ValueError('A saved job keeps its original worker protocol.')
+            context = state.get('run_context')
+            if context is not None:
+                if (context.get('worker_sha256') != config['worker_sha256']
+                        or context.get('model_content_fingerprint') != config['models_inventory']['content_fingerprint']
+                        or context.get('configuration_fingerprint') != config['fingerprint']):
+                    raise ValueError('A different or previously unsealed worker/model needs a new job; '
+                                     'existing recognition remains available.')
+            state.update(runtime_profile_id=profile_id,
+                         runtime_profile_fingerprint=config['fingerprint'],
+                         execution_review_required=False)
+            if cancelled():
+                raise AudioCancelled('Runtime rebind was cancelled before publication.')
+            with exclusive_writer(self.app.root):
+                self._authorize()
+                self._save(path, state)
+            return state
+
+    def copy_job(self, identity, *, profile_id=None, title=None, cancelled=lambda: False):
+        """Create reviewed new work from retained originals; never replay rejected cache."""
+        path = local_path(self._path(identity), exists=True)
+        with state_lock(path, 'transcribe'):
+            state = self.get(identity)
+            if state['status'] in ('running', 'interrupted') or state.get('recovery_review_required'):
+                raise RuntimeError('Confirm the prior external worker stopped before copying its retained inputs.')
+            self._sources(path, state, cancelled)
+            if profile_id is not None:
+                config = self.configuration(verify=True, profile_id=profile_id, cancelled=cancelled)
+                if config['protocol'] != state['protocol']:
+                    raise ValueError('The copied job requires the same explicitly supported protocol.')
+            files = [path / 'input' / row['filename'] for row in state['sources']]
+            manifests = [{'size_bytes': row['size_bytes'], 'sha256': row['sha256']} for row in state['sources']]
+            new_id = self.submit(files, title=title or state['title'], options=state['settings'],
+                protocol=state['protocol'], profile_id=profile_id, cancelled=cancelled,
+                source_root=path / 'input', source_manifests=manifests,
+                _source_labels=[row['original_name'] for row in state['sources']])
+            return self.get(new_id)
+
+    def resume(self, identity, *, cancelled=lambda: False, progress=None, timeout=86400):
+        self.continue_job(identity)
+        return self.run(identity, cancelled=cancelled, progress=progress, timeout=timeout)
 
     def _sources(self, path, job, cancelled):
         expected = {item['filename']: item for item in job['sources']}
@@ -721,9 +1128,15 @@ class TranscriptionService:
         context, requested = job['run_context'], job['run_context']['worker_settings']
         # Admission rebinds the actual installed files; later reading/restoring a
         # completed job uses its recorded identities and needs no old runtime.
-        current = self.configuration(verify=True)
-        if current != config or _v5_model(context['model_identity']['path'], cancelled) != context['model_identity']:
-            raise ValueError('The configured Whisper V5 runtime or local model changed during recognition.')
+        try:
+            current = self.configuration(verify=True, profile_id=job.get('runtime_profile_id'), cancelled=cancelled)
+            current_model = _v5_model(context['model_identity']['path'], cancelled)
+        except (AudioCancelled, InterruptedError):
+            raise
+        except (OSError, ValueError) as exc:
+            raise RuntimeReviewError('The V5 runtime/model could not be verified during admission.') from exc
+        if current != config or current_model != context['model_identity']:
+            raise RuntimeReviewError('The configured Whisper V5 runtime or local model changed during recognition.')
         for name, expected in context['source_identities'].items():
             if _v5_file(path / 'input' / name, cancelled) != expected:
                 raise ValueError('A retained source changed during Whisper V5 recognition.')
@@ -952,147 +1365,215 @@ class TranscriptionService:
         regular(path, directory=True)
         with state_lock(path, 'transcribe'):
             job = self.get(identity)
+            self._refuse_rejected(path, identity)
             if job['status'] == 'completed':
                 self.verify(identity, cancelled=cancelled)
                 return job
-            with self._resource_admission(path, job, cancelled, timeout) as (lease, worker_threads):
-                cancelled = lease.cancelled
-                config = self.configuration(verify=True)
-                if config['protocol'] != job['protocol']:
-                    raise ValueError('This saved job requires its original worker protocol; configure that profile before resuming.')
-                self._sources(path, job, cancelled)
-                for name in ('stop.flag', 'pause.flag', 'settings_live.json'):
-                    candidate = path / name
-                    if candidate.exists():
-                        regular(candidate)
-                        candidate.unlink()
-                prior = path / 'job_status.json'
-                if prior.exists():
-                    regular(prior)
-                    prior.unlink()
-                context = {'input_root': str((path / 'input').resolve()),
-                           'worker_sha256': config['worker_sha256'],
-                           'python_sha256': config['python_sha256']}
-                worker_settings, results_root = job['settings'], path / 'results'
-                if job['protocol'] == V5_PROTOCOL:
-                    model = local_path(config['models_dir'], exists=True)
-                    if not all((model / name).is_file() for name in ('model.bin', 'config.json', 'tokenizer.json')):
-                        model = local_path(model / job['settings']['model'], root=model, exists=True)
-                    model_identity = _v5_model(model, cancelled)
-                    host_run_id = uuid4().hex
-                    results_root = path / 'results' / 'runs' / host_run_id
-                    results_root.mkdir(parents=True, mode=0o700)
-                    worker_settings = _v5_settings(job['settings'], model_identity['path'])
-                    context.update(protocol=V5_PROTOCOL, host_run_id=host_run_id,
-                        wrapper_sources_sha256=config['wrapper_sources_sha256'], model_identity=model_identity,
-                        worker_settings=worker_settings,
-                        source_identities={row['filename']: _v5_file(path / 'input' / row['filename'], cancelled)
-                                           for row in job['sources']},
-                        result_directory=(results_root / 'Whisper_V5' / path.name).relative_to(path / 'results').as_posix())
-                job.update(status='running', done=0, failed=0, receipts=[], artifacts=[],
-                           run_context=context, last_error='')
+            if job['status'] in ('running', 'interrupted') or job.get('recovery_review_required'):
+                job.update(status='interrupted', recovery_review_required=True)
                 self._save(path, job)
-                for name in ('results', 'temporary', 'runtime-home'):
-                    (path / name).mkdir(exist_ok=True, mode=0o700)
-                atomic_json(path / 'job_config.json', {
-                    'job_name': job['title'], 'folders': [context['input_root']],
-                    'results_root': str(results_root), 'models_dir': config['models_dir'],
-                    'settings': worker_settings}, replace=True)
-                environment = {key: os.environ[key] for key in (
-                    'SystemRoot', 'SYSTEMROOT', 'WINDIR', 'COMSPEC', 'LANG', 'LC_ALL',
-                    'NUMBER_OF_PROCESSORS', 'PROCESSOR_ARCHITECTURE') if key in os.environ}
-                environment.update({
-                    'PATH': os.pathsep.join((str(Path(config['python']).parent), os.defpath)),
-                    'HOME': str(path / 'runtime-home'), 'USERPROFILE': str(path / 'runtime-home'),
-                    'TEMP': str(path / 'temporary'), 'TMP': str(path / 'temporary'),
-                    'TMPDIR': str(path / 'temporary'), 'HF_HOME': str(path / 'runtime-home'),
-                    'XDG_CACHE_HOME': str(path / 'runtime-home'),
-                    'HF_HUB_OFFLINE': '1', 'TRANSFORMERS_OFFLINE': '1',
-                    'HF_HUB_DISABLE_TELEMETRY': '1', 'DO_NOT_TRACK': '1',
-                    'PYTHONUTF8': '1', 'PYTHONDONTWRITEBYTECODE': '1',
-                    'OMP_NUM_THREADS': str(worker_threads), 'OPENBLAS_NUM_THREADS': str(worker_threads)})
-                stop_at, notice_at = None, 0.0
-                reported_done, observer_available = 0, progress is not None
-                def notify(done, total, phase):
-                    nonlocal reported_done, observer_available
-                    # Worker-reported files are distinct from verified job.done.
-                    # Stop defers receipt verification and must not rewind measured
-                    # progress or promote saved files into accepted exports.
-                    if type(done) is int and 0 <= done <= len(job['sources']):
-                        reported_done = max(reported_done, done)
-                    if observer_available:
-                        try:
-                            progress(reported_done, total, phase)
-                        except Exception:
-                            # A detached UI must not kill the worker or reverse a
-                            # durable result. Disable only this optional observer.
-                            observer_available = False
-                def poll():
-                    nonlocal stop_at, notice_at
-                    now = time.monotonic()
-                    if cancelled() and stop_at is None:
-                        atomic_bytes(path / 'stop.flag', b'stop\n', replace=True)
-                        stop_at = now
-                    if observer_available and now - notice_at >= .5 and prior.exists():
-                        notice_at = now
-                        try:
-                            current = read_json(prior)
-                            notify(current.get('done', 0), len(job['sources']),
-                                   str(current.get('state', 'running'))[:200])
-                        except (ValueError, OSError):
-                            pass
-                    return stop_at is not None and now - stop_at >= 3
-                failure = None
-                try:
-                    run_process([config['python'], '-I', '-S', '-B', '-X', 'utf8', '-c',
-                        _worker_bootstrap(),
-                        config['worker'], str(path), config['protocol']],
-                        cwd=path, env=environment, cancelled=poll, watch=(path,),
-                        budget=AudioBudget(timeout=timeout,
-                            max_output_bytes=(sum(x['size_bytes'] for x in job['sources'])
-                                + sum(sorted((x['size_bytes'] for x in job['sources']), reverse=True)[:job['settings']['parallel_files']])
-                                + 512 * 1024**2),
-                            max_staging_files=10000))
-                except (AudioError, OSError, ValueError, KeyboardInterrupt) as exc:
-                    failure = exc
-                # A stop must not trigger a second potentially multi-gigabyte read.
-                # Keep worker cache/receipts on disk for the next explicit resume;
-                # do not present these unverified files as completed exports yet.
-                if stop_at is not None or isinstance(failure, (AudioCancelled, KeyboardInterrupt)) or cancelled():
-                    job.update(status='stopped', done=0, failed=0, receipts=[], artifacts=[],
-                               last_error='Stopped. Saved worker results will be verified on the next resume.')
-                    self._save(path, job)
-                    notify(0, len(job['sources']), 'stopped')
-                    return job
-                try:
-                    status = read_json(prior) if prior.exists() else {}
+                raise RuntimeError('Confirm the prior external worker stopped before resuming this job.')
+            if job.get('execution_review_required'):
+                raise RuntimeReviewError('Review and rebind a local runtime before executing this restored job.')
+            caller_cancelled = cancelled
+            request_cancelled = lambda: caller_cancelled() or self._control(identity) != 'run'
+            try:
+                with self._resource_admission(path, job, request_cancelled, timeout) as (lease, worker_threads):
+                    cancelled = lease.cancelled
+                    config = self.configuration(verify=True, profile_id=job.get('runtime_profile_id'),
+                                                cancelled=cancelled)
+                    if (job.get('runtime_profile_fingerprint') is not None
+                            and config['fingerprint'] != job['runtime_profile_fingerprint']):
+                        raise RuntimeReviewError('This saved job is bound to another reviewed profile.')
+                    if config['protocol'] != job['protocol']:
+                        raise ValueError('This saved job requires its original worker protocol; configure that profile before resuming.')
+                    old_context = job.get('run_context')
+                    if old_context is not None and (
+                            old_context.get('configuration_fingerprint') is None
+                            or old_context.get('worker_sha256') == config['worker_sha256']
+                            and old_context.get('configuration_fingerprint') != config['fingerprint']):
+                        raise RuntimeReviewError('Changed installed-runtime review cannot reuse this raw worker cache. '
+                                                 'Copy retained originals into a new reviewed job.')
+                    self._sources(path, job, cancelled)
+                    for name in ('stop.flag', 'pause.flag', 'settings_live.json'):
+                        candidate = path / name
+                        if candidate.exists():
+                            regular(candidate)
+                            candidate.unlink()
+                    prior = path / 'job_status.json'
+                    if prior.exists():
+                        regular(prior)
+                        prior.unlink()
+                    context = {'input_root': str((path / 'input').resolve()),
+                               'worker_sha256': config['worker_sha256'],
+                               'python_sha256': config['python_sha256'],
+                               'configuration_fingerprint': config['fingerprint'],
+                               'model_content_fingerprint': config['models_inventory']['content_fingerprint']}
+                    worker_settings, results_root = job['settings'], path / 'results'
                     if job['protocol'] == V5_PROTOCOL:
-                        status = self._admit_v5(path, job, config, status, cancelled)
-                    receipts, artifacts = self._receipts(path, job, status, cancelled)
-                    complete = (failure is None and stop_at is None
-                                and status.get('result_state') == 'completed'
-                                and len(receipts) == len(job['sources'])
-                                and status.get('failed') == 0)
-                    job.update(done=len(receipts), failed=len(job['sources']) - len(receipts),
-                               receipts=receipts, artifacts=artifacts,
-                               status='completed' if complete else (
-                                   'stopped' if stop_at is not None or isinstance(failure, (AudioCancelled, KeyboardInterrupt))
-                                   else 'partial' if receipts else 'failed'),
-                               worker_run_id=status.get('run_id'))
-                    if not complete:
-                        job['last_error'] = str(failure or 'The worker did not complete every requested export.')[:3000]
-                except AudioCancelled:
-                    job.update(status='stopped', done=0, failed=0, receipts=[], artifacts=[],
-                               last_error='Verification stopped. Saved worker results remain available for resume.')
-                except (ValueError, OSError, KeyError, TypeError) as exc:
-                    job.update(status='stopped' if stop_at is not None else 'failed',
-                               last_error=str(failure or exc)[:3000])
+                        model = local_path(config['models_dir'], exists=True)
+                        if not all((model / name).is_file() for name in ('model.bin', 'config.json', 'tokenizer.json')):
+                            model = local_path(model / job['settings']['model'], root=model, exists=True)
+                        model_identity = _v5_model(model, cancelled)
+                        host_run_id = uuid4().hex
+                        results_root = path / 'results' / 'runs' / host_run_id
+                        results_root.mkdir(parents=True, mode=0o700)
+                        worker_settings = _v5_settings(job['settings'], model_identity['path'])
+                        context.update(protocol=V5_PROTOCOL, host_run_id=host_run_id,
+                            wrapper_sources_sha256=config['wrapper_sources_sha256'], model_identity=model_identity,
+                            worker_settings=worker_settings,
+                            source_identities={row['filename']: _v5_file(path / 'input' / row['filename'], cancelled)
+                                               for row in job['sources']},
+                            result_directory=(results_root / 'Whisper_V5' / path.name).relative_to(path / 'results').as_posix())
+                    owned_review = self._begin_review(job, config)
+                    job.update(status='running', done=0, failed=0, receipts=[], artifacts=[],
+                               run_context=context, last_error='')
+                    self._save(path, job)
+                    for name in ('results', 'temporary', 'runtime-home'):
+                        (path / name).mkdir(exist_ok=True, mode=0o700)
+                    atomic_json(path / 'job_config.json', {
+                        'job_name': job['title'], 'folders': [context['input_root']],
+                        'results_root': str(results_root), 'models_dir': config['models_dir'],
+                        'settings': worker_settings}, replace=True)
+                    environment = {key: os.environ[key] for key in (
+                        'SystemRoot', 'SYSTEMROOT', 'WINDIR', 'COMSPEC', 'LANG', 'LC_ALL',
+                        'NUMBER_OF_PROCESSORS', 'PROCESSOR_ARCHITECTURE') if key in os.environ}
+                    environment.update({
+                        'PATH': os.pathsep.join((str(Path(config['python']).parent), os.defpath)),
+                        'HOME': str(path / 'runtime-home'), 'USERPROFILE': str(path / 'runtime-home'),
+                        'TEMP': str(path / 'temporary'), 'TMP': str(path / 'temporary'),
+                        'TMPDIR': str(path / 'temporary'), 'HF_HOME': str(path / 'runtime-home'),
+                        'XDG_CACHE_HOME': str(path / 'runtime-home'),
+                        'HF_HUB_OFFLINE': '1', 'TRANSFORMERS_OFFLINE': '1',
+                        'HF_HUB_DISABLE_TELEMETRY': '1', 'DO_NOT_TRACK': '1',
+                        'PYTHONUTF8': '1', 'PYTHONDONTWRITEBYTECODE': '1',
+                        'OMP_NUM_THREADS': str(worker_threads), 'OPENBLAS_NUM_THREADS': str(worker_threads)})
+                    stop_at, notice_at = None, 0.0
+                    reported_done, observer_available = 0, progress is not None
+                    def notify(done, total, phase):
+                        nonlocal reported_done, observer_available
+                        # Worker-reported files are distinct from verified job.done.
+                        # Stop defers receipt verification and must not rewind measured
+                        # progress or promote saved files into accepted exports.
+                        if type(done) is int and 0 <= done <= len(job['sources']):
+                            reported_done = max(reported_done, done)
+                        if observer_available:
+                            try:
+                                progress(reported_done, total, phase)
+                            except Exception:
+                                # A detached UI must not kill the worker or reverse a
+                                # durable result. Disable only this optional observer.
+                                observer_available = False
+                    def poll():
+                        nonlocal stop_at, notice_at
+                        now = time.monotonic()
+                        if cancelled() and stop_at is None:
+                            atomic_bytes(path / 'stop.flag', b'stop\n', replace=True)
+                            stop_at = now
+                        if observer_available and now - notice_at >= .5 and prior.exists():
+                            notice_at = now
+                            try:
+                                current = read_json(prior)
+                                notify(current.get('done', 0), len(job['sources']),
+                                       str(current.get('state', 'running'))[:200])
+                            except (ValueError, OSError):
+                                pass
+                        return stop_at is not None and now - stop_at >= 3
+                    failure = None
+                    try:
+                        self._verify_execution(config, job, cancelled=cancelled)
+                        run_process([config['python'], '-I', '-S', '-B', '-X', 'utf8', '-c',
+                            _worker_bootstrap(),
+                            config['worker'], str(path), config['protocol']],
+                            cwd=path, env=environment, cancelled=poll, watch=(path,),
+                            budget=AudioBudget(timeout=timeout,
+                                max_output_bytes=(sum(x['size_bytes'] for x in job['sources'])
+                                    + sum(sorted((x['size_bytes'] for x in job['sources']), reverse=True)[:job['settings']['parallel_files']])
+                                    + 512 * 1024**2),
+                                max_staging_files=10000))
+                    except RuntimeReviewError as exc:
+                        self._reject_execution(path, job, config, exc)
+                        notify(0, len(job['sources']), 'failed')
+                        return job
+                    except (AudioError, OSError, ValueError, KeyboardInterrupt) as exc:
+                        failure = exc
+                    # A stop must not trigger a second potentially multi-gigabyte read.
+                    # Keep worker cache/receipts on disk for the next explicit resume;
+                    # do not present these unverified files as completed exports yet.
+                    if stop_at is not None or isinstance(failure, (AudioCancelled, KeyboardInterrupt)) or cancelled():
+                        requested = self._control(identity)
+                        stopped_status = 'paused' if requested == 'pause' else 'cancelled' if requested == 'cancel' else 'stopped'
+                        job.update(status=stopped_status, done=0, failed=0, receipts=[], artifacts=[],
+                                   last_error='Stopped. Saved worker results will be verified on the next explicit resume.')
+                        self._save(path, job)
+                        self._finish_review(owned_review)
+                        notify(0, len(job['sources']), job['status'])
+                        return job
+                    try:
+                        self._verify_execution(config, job, cancelled=cancelled)
+                        status = read_json(prior) if prior.exists() else {}
+                        if job['protocol'] == V5_PROTOCOL:
+                            status = self._admit_v5(path, job, config, status, cancelled)
+                        receipts, artifacts = self._receipts(path, job, status, cancelled)
+                        self._verify_execution(config, job, cancelled=cancelled)
+                        complete = (failure is None and stop_at is None
+                                    and status.get('result_state') == 'completed'
+                                    and len(receipts) == len(job['sources'])
+                                    and status.get('failed') == 0)
+                        job.update(done=len(receipts), failed=len(job['sources']) - len(receipts),
+                                   receipts=receipts, artifacts=artifacts,
+                                   status='completed' if complete else (
+                                       'stopped' if stop_at is not None or isinstance(failure, (AudioCancelled, KeyboardInterrupt))
+                                       else 'partial' if receipts else 'failed'),
+                                   worker_run_id=status.get('run_id'))
+                        if not complete:
+                            job['last_error'] = str(failure or 'The worker did not complete every requested export.')[:3000]
+                    except RuntimeReviewError as exc:
+                        self._reject_execution(path, job, config, exc)
+                        notify(0, len(job['sources']), 'failed')
+                        return job
+                    except (AudioCancelled, InterruptedError):
+                        job.update(status='stopped', done=0, failed=0, receipts=[], artifacts=[],
+                                   last_error='Verification stopped. Saved worker results remain available for resume.')
+                    except (ValueError, OSError, KeyError, TypeError) as exc:
+                        job.update(status='stopped' if stop_at is not None else 'failed',
+                                   last_error=str(failure or exc)[:3000])
+                    self._save(path, job)
+                    if job['status'] in ('completed', 'partial') and job['receipts']:
+                        try:
+                            # Finish the already-published candidate's bounded
+                            # review even if a late stop arrived. Only this verified
+                            # commit may retire the host veto; cancellation must
+                            # neither downgrade it nor hide runtime drift.
+                            self._verify_execution(config, job)
+                        except RuntimeReviewError as exc:
+                            self._reject_execution(path, job, config, exc)
+                    if self._rejection(path, identity) is None:
+                        self._finish_review(owned_review)
+                    notify(job['done'], len(job['sources']), job['status'])
+                    return job
+
+            except RuntimeReviewError as exc:
+                # A rejected pre-launch review must not leave old checkpoints
+                # eligible simply because their previous bytes later reappear.
+                if job.get('run_context') is not None:
+                    recorded = self.configuration(profile_id=job.get('runtime_profile_id'))
+                    if isinstance(recorded.get('fingerprint'), str):
+                        self._reject_execution(path, job, recorded, exc)
+                        return job
+                raise
+            except (AudioCancelled, InterruptedError):
+                requested = self._control(identity)
+                state = 'paused' if requested == 'pause' else 'cancelled' if requested == 'cancel' else 'stopped'
+                job.update(status=state,
+                           last_error='Stopped before execution or publication; retained data is unchanged.')
                 self._save(path, job)
-                notify(job['done'], len(job['sources']), job['status'])
                 return job
+
 
     def verify(self, identity, *, cancelled=lambda: False):
         path, job = self._path(identity), self.get(identity)
+        self._refuse_rejected(path, identity)
         status = read_json(path / ('host_status.json' if job['protocol'] == V5_PROTOCOL else 'job_status.json'))
         if status.get('run_id') != job.get('worker_run_id'):
             raise ValueError('The recognized transcript no longer belongs to the saved run.')
@@ -1154,11 +1635,15 @@ class TranscriptionService:
             result.append(value)
         return tuple(sorted(result, key=lambda x: (x['created'], x['id'])))
 
-    def export(self, identity, destination, *, cancelled=lambda: False):
+    def export(self, identity, destination, *, formats=None, cancelled=lambda: False):
         path = local_path(self._path(identity), exists=True)
         regular(path, directory=True)
         with state_lock(path, 'transcribe'):
             job = self.verify(identity, cancelled=cancelled)
+            selected = ('txt', 'srt', 'vtt', 'json') if formats is None else tuple(formats)
+            if (not selected or len(set(selected)) != len(selected)
+                    or any(value not in ('txt', 'srt', 'vtt', 'json') for value in selected)):
+                raise ValueError('Choose distinct TXT, SRT, VTT or JSON export formats.')
             destination = local_path(destination)
             if os.path.lexists(destination) or destination.is_relative_to(self.app.root):
                 raise ValueError('Choose a new export folder outside the library data directory.')
@@ -1169,6 +1654,8 @@ class TranscriptionService:
                 exported = []
                 edits = self.edits(identity)
                 for artifact in job['artifacts']:
+                    if artifact['format'].removeprefix('words.') not in selected:
+                        continue
                     relative = relative_name(artifact['path'])
                     record = _copy(path / 'results' / relative, temporary / relative,
                                    maximum=512 * 1024**2, cancelled=cancelled)
@@ -1181,7 +1668,7 @@ class TranscriptionService:
                 atomic_json(temporary / 'transcription-manifest.json', {
                     'version': 1, 'job': identity, 'title': job['title'],
                     'status': job['status'], 'protocol': job['protocol'], 'sources': job['sources'],
-                    'settings': job['settings'], 'artifacts': exported,
+                    'settings': job['settings'], 'export_formats': list(selected), 'artifacts': exported,
                     'effective_runs': job.get('effective_runs', []),
                     'edits': edits,
                     'notice': 'Machine transcription and separately labelled user edits; original media is retained in the private library.'})

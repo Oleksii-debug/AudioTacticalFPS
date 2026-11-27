@@ -18,7 +18,7 @@ from .transcription import (
     RECEIPTS_PROTOCOL, V5_PROTOCOL, V5_SOURCES, V5_PROVENANCE,
     RECOGNITION_KEYS, EXPORT_KEYS, V5_RECOGNITION_KEYS,
     settings, _identity, _bound, _v5_settings, _v5_attempts, _v5_digest,
-    _v5_timing, _word_subtitles,
+    _v5_timing, _word_subtitles, configuration_fingerprint,
 )
 
 PREFIX = 'state/transcription/'
@@ -31,7 +31,10 @@ _SOURCE = re.compile(r'[0-9]{3}-' + _ID + r'\.[a-z0-9]+\Z')
 _RECEIPT = re.compile(r'receipts/(' + _HEX + r')\.result\.json\Z')
 _EDIT = re.compile(r'edits/(' + _ID + r')\.json\Z')
 _V5_RESULT = re.compile(r'runs/(' + _ID + r')/Whisper_V5/(' + _ID + r')/(.+)\Z')
-_BASE = frozenset(('job.json', 'job_config.json', 'job_status.json', 'host_status.json'))
+_BASE = frozenset(('job.json', 'job_config.json', 'job_status.json', 'host_status.json',
+                   'control.json', 'rejected-execution.json'))
+_PROFILE = re.compile(PREFIX + r'profiles/(' + _ID + r')\.json\Z')
+_REVIEW = re.compile(PREFIX + r'(' + _HEX + r')/reviews/(' + _ID + r')\.json\Z')
 _FORMATS = ('words.srt', 'words.vtt', 'words.txt', 'txt', 'srt', 'vtt', 'json')
 
 
@@ -64,6 +67,10 @@ def _member(name):
         return None
     if name == PREFIX + 'engine.json':
         return ('engine', None, None, 'engine.json')
+    if profile := _PROFILE.fullmatch(name):
+        return ('profile', None, profile[1], name[len(PREFIX):])
+    if review := _REVIEW.fullmatch(name):
+        return ('review', review[1], review[2], 'execution-review.json')
     match = _JOB.fullmatch(name)
     if not match:
         return None
@@ -110,8 +117,10 @@ def limit(name):
     kind = member[0]
     if kind == 'input':
         return MAX_SOURCE_BYTES
-    if kind == 'engine':
-        return 1024 * 1024
+    if kind in ('engine', 'profile'):
+        return 32 * 1024**2
+    if kind in ('control.json', 'rejected-execution.json', 'review'):
+        return 16384
     if kind in ('job_status.json', 'host_status.json', 'job_config.json'):
         return 4 * 1024**2
     if kind == 'edit':
@@ -138,8 +147,10 @@ def ignored(name):
         return True
     if re.fullmatch(PREFIX + _HEX + r'/jobs/\.submit\.lock', name):
         return True
+    if name == PREFIX + 'profiles/.profiles.lock':
+        return True
     match = _JOB.fullmatch(name) if type(name) is str else None
-    return bool(match and match[3] in ('.transcribe.lock', 'stop.flag', 'pause.flag',
+    return bool(match and match[3] in ('.transcribe.lock', '.control.lock', 'stop.flag', 'pause.flag',
                                       'settings_live.json'))
 
 
@@ -165,7 +176,9 @@ def _stat_values(value):
 def _engine(value):
     fields(value, {'version', 'python', 'worker', 'models_dir', 'python_sha256',
                    'worker_sha256', 'network', 'inference_qualified'},
-           {'protocol', 'python_binding', 'wrapper_sources_sha256', 'retry_policy'})
+           {'protocol', 'python_binding', 'wrapper_sources_sha256', 'retry_policy',
+            'runtime_inventory', 'models_inventory', 'fingerprint', 'profile_id',
+            'execution_review_required'})
     if (type(value['version']) is not int or value['version'] != 1
             or value['network'] != 'local-files-only; Python network calls denied'
             or value['inference_qualified'] is not False):
@@ -189,6 +202,75 @@ def _engine(value):
         text(value.get('retry_policy'), 512)
     elif 'wrapper_sources_sha256' in value or 'retry_policy' in value:
         raise ValueError('A receipt-profile configuration contains V5-only fields.')
+
+    sealed = {'runtime_inventory', 'models_inventory', 'fingerprint'}
+    if sealed & value.keys():
+        if not sealed <= value.keys():
+            raise ValueError('An installed runtime seal is incomplete.')
+        from .transcription_runtime import validate_runtime, validate_models
+        runtime = validate_runtime(value['runtime_inventory'])
+        models = validate_models(value['models_inventory'])
+        if (not _same_path(runtime['python_executable'], value['python'])
+                or runtime['python_identity']['sha256'] != value['python_sha256']
+                or not _same_path(models['root'], value['models_dir'])
+                or value['fingerprint'] != configuration_fingerprint(value)):
+            raise ValueError('Runtime/model inventories disagree with the selected configuration.')
+        if ('python_binding' in value
+                and not _same_path(runtime['python_resolved'], value['python_binding']['resolved'])):
+            raise ValueError('The operational Python and selected executable binding disagree.')
+    if 'execution_review_required' in value and type(value['execution_review_required']) is not bool:
+        raise ValueError('Invalid restored execution review flag.')
+    if 'profile_id' in value:
+        if (not sealed <= value.keys() or type(value['profile_id']) is not str
+                or value['profile_id'] != value['fingerprint'][:32]):
+            raise ValueError('The selected profile identity differs from its runtime seal.')
+
+
+def _profile(value, identity):
+    fields(value, {'schema', 'id', 'name', 'fingerprint', 'trusted', 'restored',
+                   'qualification', 'configuration'})
+    if (value['schema'] != 'carr-transcription-profile/1' or value['id'] != identity
+            or type(value['trusted']) is not bool or type(value['restored']) is not bool
+            or value['qualification'] != 'unqualified'):
+        raise ValueError('Invalid passive named runtime profile.')
+    text(value['name'], 200)
+    digest(value['fingerprint'])
+    _engine(value['configuration'])
+    if (value['configuration'].get('fingerprint') != value['fingerprint']
+            or identity != value['fingerprint'][:32]
+            or 'profile_id' in value['configuration']):
+        raise ValueError('Named runtime profile changed its exact configuration.')
+
+
+def _control(value, identity, scope):
+    fields(value, {'version', 'job', 'workspace', 'action', 'revision'})
+    if (type(value['version']) is not int or value['version'] != 1 or value['job'] != identity
+            or type(value['workspace']) is not str
+            or sha256(value['workspace'].encode('utf-8')).hexdigest() != scope
+            or value['action'] not in ('run', 'pause', 'cancel')
+            or type(value['revision']) is not str or not re.fullmatch(_ID, value['revision'])):
+        raise ValueError('Invalid durable transcription control.')
+
+
+def _rejection(value, identity, scope):
+    fields(value, {'version', 'job', 'workspace', 'attempt', 'configuration', 'reason'})
+    if (type(value['version']) is not int or value['version'] != 1 or value['job'] != identity
+            or type(value['workspace']) is not str
+            or sha256(value['workspace'].encode('utf-8')).hexdigest() != scope
+            or type(value['attempt']) is not str or not re.fullmatch(_ID, value['attempt'])):
+        raise ValueError('Invalid rejected transcription execution identity.')
+    digest(value['configuration'])
+    text(value['reason'], 3000)
+
+
+def _review(value, identity, scope):
+    fields(value, {'schema', 'job', 'workspace', 'attempt', 'configuration'})
+    if (value['schema'] != 'carr-transcription-review/1' or value['job'] != identity
+            or type(value['workspace']) is not str
+            or sha256(value['workspace'].encode('utf-8')).hexdigest() != scope
+            or type(value['attempt']) is not str or not re.fullmatch(_ID, value['attempt'])):
+        raise ValueError('Invalid pending transcription execution review.')
+    digest(value['configuration'])
 
 
 def _wrappers(value):
@@ -251,10 +333,16 @@ def _context(value, job, scope):
     if value is None:
         return
     common = {'input_root', 'worker_sha256', 'python_sha256'}
+    review = {'configuration_fingerprint', 'model_content_fingerprint'}
+    if review & value.keys():
+        if not review <= value.keys():
+            raise ValueError('The recorded execution review is incomplete.')
+        for name in review:
+            digest(value[name])
     if job['protocol'] == V5_PROTOCOL:
         fields(value, common | {'protocol', 'host_run_id', 'wrapper_sources_sha256',
                                'model_identity', 'worker_settings', 'source_identities',
-                               'result_directory'}, {'manifest_sha256'})
+                               'result_directory'}, {'manifest_sha256'} | review)
         if value['protocol'] != V5_PROTOCOL or not re.fullmatch(_ID, value['host_run_id']):
             raise ValueError('Invalid Whisper host run.')
         _wrappers(value['wrapper_sources_sha256'])
@@ -277,7 +365,7 @@ def _context(value, job, scope):
         if 'manifest_sha256' in value:
             digest(value['manifest_sha256'])
     else:
-        fields(value, common)
+        fields(value, common, review)
     _input_root(value['input_root'], scope, job['id'])
     digest(value['worker_sha256'])
     digest(value['python_sha256'])
@@ -302,15 +390,28 @@ def _artifact(value, *, accepted=False):
 def _job(db, value, scope, identity):
     fields(value, {'version', 'id', 'workspace', 'title', 'created', 'updated', 'status',
                    'sources', 'settings', 'done', 'failed', 'receipts', 'artifacts',
-                   'run_context', 'last_error'}, {'protocol', 'worker_run_id', 'effective_runs'})
+                   'run_context', 'last_error'}, {'protocol', 'worker_run_id', 'effective_runs',
+                    'runtime_profile_id', 'runtime_profile_fingerprint',
+                    'execution_review_required', 'recovery_review_required'})
     if type(value['version']) is not int or value['version'] != 1 or value['id'] != identity:
         raise ValueError('Invalid transcription job identity.')
     _scope(db, value['workspace'], scope)
     text(value['title'], 200)
     for key in ('created', 'updated'):
         number(value[key])
-    if value['status'] not in ('ready', 'running', 'stopped', 'partial', 'failed', 'completed'):
+    if value['status'] not in ('ready', 'running', 'stopped', 'partial', 'failed', 'completed',
+                               'paused', 'cancelled', 'interrupted'):
         raise ValueError('Invalid retained transcription status.')
+    for key in ('execution_review_required', 'recovery_review_required'):
+        if key in value and type(value[key]) is not bool:
+            raise ValueError('Invalid transcription recovery review flag.')
+    bindings = {'runtime_profile_id', 'runtime_profile_fingerprint'}
+    if bindings & value.keys():
+        if not bindings <= value.keys():
+            raise ValueError('An explicitly bound runtime profile is incomplete.')
+        digest(value['runtime_profile_fingerprint'])
+        if value['runtime_profile_id'] != value['runtime_profile_fingerprint'][:32]:
+            raise ValueError('The job profile identity changed.')
     protocol = value.get('protocol', RECEIPTS_PROTOCOL)
     chosen = settings(value['settings'], protocol=protocol)
     if chosen != value['settings']:
@@ -533,6 +634,17 @@ def validate(db, name, raw):
     value = _json(raw)
     if kind == 'engine':
         _engine(value)
+    elif kind == 'profile':
+        _profile(value, identity)
+    elif kind == 'control.json':
+        _scope(db, value.get('workspace'), scope)
+        _control(value, identity, scope)
+    elif kind == 'rejected-execution.json':
+        _scope(db, value.get('workspace'), scope)
+        _rejection(value, identity, scope)
+    elif kind == 'review':
+        _scope(db, value.get('workspace'), scope)
+        _review(value, identity, scope)
     elif kind == 'job.json':
         _job(db, value, scope, identity)
     elif kind == 'receipt':
@@ -792,7 +904,7 @@ def _manifest_collection(job, tail, manifest, entry, members, values, receipts, 
 def validate_collection(db, stage, entries, *, cancelled):
     """Check a fully staged snapshot without replaying any execution authority."""
     _cancel(cancelled)
-    groups, total_media, total_metadata = {}, 0, 0
+    groups, profiles, engines, total_media, total_metadata = {}, {}, [], 0, 0
     for entry in entries:
         name = entry['filename']
         if not name.startswith(PREFIX):
@@ -812,13 +924,26 @@ def validate_collection(db, stage, entries, *, cancelled):
             total_metadata += entry['size_bytes']
         if total_media > MAX_MEDIA_BYTES or total_metadata > MAX_METADATA_BYTES:
             raise ValueError('Transcription backup exceeds its retained data budget.')
-        if kind == 'engine':
-            validate(db, name, _read(stage, entry, cancelled))
+        if kind in ('engine', 'profile'):
+            raw = _read(stage, entry, cancelled)
+            validate(db, name, raw)
+            value = _json(raw)
+            if kind == 'profile':
+                profiles[identity] = value
+                if len(profiles) > 1024:
+                    raise ValueError('Too many passive runtime profiles.')
+            else:
+                engines.append(value)
             continue
         members = groups.setdefault((scope, identity), {})
         if tail in members:
             raise ValueError('Duplicate transcription backup member.')
         members[tail] = entry
+    for engine in engines:
+        if 'profile_id' in engine:
+            profile = profiles.get(engine['profile_id'])
+            if profile is None or profile['fingerprint'] != engine['fingerprint']:
+                raise ValueError('The selected runtime lost its exact named declaration.')
     scopes = {}
     for scope, _ in groups:
         scopes[scope] = scopes.get(scope, 0) + 1
@@ -837,6 +962,10 @@ def validate_collection(db, stage, entries, *, cancelled):
                 validate(db, entry['filename'], raw)
                 values[tail] = _json(raw)
         job = _job(db, values['job.json'], scope, identity)
+        if 'runtime_profile_id' in job:
+            profile = profiles.get(job['runtime_profile_id'])
+            if profile is None or profile['fingerprint'] != job['runtime_profile_fingerprint']:
+                raise ValueError('A saved transcription job lost its named runtime declaration.')
         sources = {row['filename']: row for row in job['sources']}
         expected_inputs = {'input/' + name for name in sources}
         if {tail for tail in members if tail.startswith('input/')} != expected_inputs:
@@ -916,3 +1045,57 @@ def validate_collection(db, stage, entries, *, cancelled):
         if {tail for tail in members if tail.startswith('results/')} - assigned:
             raise ValueError('Unbound transcription worker results need a supported producer adapter.')
         _cancel(cancelled)
+
+
+def revoke_restored_execution(db, stage, entries, *, cancelled=lambda: False):
+    """Revoke execution only after the source snapshot was fully authenticated.
+
+    The parent restore publishes new checksums after this transformation. Recorded
+    selectors, model inventories, completed receipts, edits and worker evidence
+    remain passive data; no external path is resolved or opened here.
+    """
+    from .durable_state import atomic_json
+    stage = Path(stage)
+    pending = []
+    rejected, uncertain = set(), set()
+    for entry in entries:
+        _cancel(cancelled)
+        member = _member(entry['filename'])
+        if member is None:
+            continue
+        kind, scope, identity, tail = member
+        if kind not in ('engine', 'profile', 'job.json', 'control.json', 'rejected-execution.json', 'review'):
+            continue
+        raw = _read(stage, entry, cancelled)
+        validate(db, entry['filename'], raw)
+        value = _json(raw)
+        if kind == 'rejected-execution.json':
+            rejected.add((scope, identity))
+            continue
+        if kind == 'review':
+            # Retain this host-owned veto exactly. It grants neither a live
+            # process nor acceptance, and may represent a failed rejection write.
+            uncertain.add((scope, identity))
+            continue
+        pending.append((entry['filename'], kind, scope, identity, value))
+    for name, kind, scope, identity, value in pending:
+        _cancel(cancelled)
+        if kind == 'engine':
+            value['execution_review_required'] = True
+        elif kind == 'profile':
+            value.update(trusted=False, restored=True)
+        elif kind == 'control.json':
+            # Restored intent cannot silently start or keep running a worker.
+            value['action'] = 'pause'
+        else:
+            value['execution_review_required'] = True
+            if value['status'] in ('running', 'interrupted') or (scope, identity) in uncertain:
+                value.update(status='interrupted', recovery_review_required=True)
+            if (scope, identity) in rejected:
+                value.update(status='failed', done=0, failed=len(value['sources']),
+                             receipts=[], artifacts=[],
+                             last_error='Rejected worker evidence was restored without execution authority.')
+        validate(db, name, (json.dumps(value, ensure_ascii=False, sort_keys=True,
+                                      separators=(',', ':'), allow_nan=False) + '\n').encode('utf-8'))
+        atomic_json(stage / name, value, replace=True)
+    _cancel(cancelled)
