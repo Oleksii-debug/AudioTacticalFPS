@@ -67,6 +67,11 @@ jobs:
           '@
           $check | python -B - | Tee-Object ci-quickjs/origins.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Observe actual runtime phase and allocation without changing its limits
+        timeout-minutes: 3
+        run: |
+          python -B scripts/quickjs_profile_diagnostic.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Run every unchanged historical style oracle and all runtime boundaries
         timeout-minutes: 8
         run: |
