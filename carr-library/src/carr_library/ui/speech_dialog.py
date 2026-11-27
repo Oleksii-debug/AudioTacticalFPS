@@ -45,10 +45,14 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 document = recovered.document
                 text = document.text
                 recovery_notice = 'Recovered your saved reading draft and voice settings. '
-            if document.format_notice:
-                recovery_notice += document.format_notice
-                # The earlier dialect is imported in memory; retain its saved
-                # recovery bytes until the user explicitly writes a new copy.
+            if recovered is not None and recovered.document.format_notice and source_loader is None:
+                if document is recovered.document:
+                    recovery_notice += document.format_notice
+                else:
+                    recovery_notice += ('A pre-release reading draft was preserved separately. '
+                                        'Use Save As for this new reading copy. ')
+                # Explicitly supplied text must not autosave over a retained
+                # earlier-format draft that was not selected for this reader.
                 draft_store = None
     except (OSError, ValueError, RuntimeError) as exc:
         recovery_notice = f'Reading-draft recovery is unavailable: {exc}. Save As remains available. '

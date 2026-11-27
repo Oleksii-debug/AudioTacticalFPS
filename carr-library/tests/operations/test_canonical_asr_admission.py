@@ -9,10 +9,10 @@ import pytest
 
 from carr_library.application import LibraryApp
 from carr_library.audio import transcription as asr
-from carr_library.audio.models import AudioBudget, AudioCancelled
+from carr_library.audio.models import AudioBudget, AudioCancelled, AudioError
 from carr_library.durable_state import atomic_json, read_json
 from carr_library.operations import (OperationFacade, ResourceBroker, ResourceLimits,
-                                     ResourceRequest, ResourceStateError, ResourceUnavailable)
+                                     ResourceRequest, ResourceStateError, ResourceTimeout, ResourceUnavailable)
 from carr_library.ui.operations_dialog import OperationsController
 
 
@@ -150,15 +150,116 @@ def test_impossible_complete_inventory_is_attention_without_receipt_scan(tmp_pat
     assert len(rows) == 1 and rows[0].status == 'attention'
 
 
-def test_unconfigured_or_remapped_cuda_never_starts_a_synthetic_worker(tmp_path, installation, monkeypatch):
+@pytest.mark.parametrize('mapping', [None, ('CUDA_VISIBLE_DEVICES', '1'),
+                                    ('CUDA_DEVICE_ORDER', 'PCI_BUS_ID')])
+def test_cuda_requires_generic_policy_preserves_settings_and_does_not_infer_index(
+        tmp_path, installation, monkeypatch, mapping):
     app, broker, service = setup_service(tmp_path, installation)
-    identity = service.create([source_file(tmp_path, 'cuda', 'GPU admission fixture')],
-                              settings=asr.TranscriptionSettings(device='cuda', compute_type='float16'))
-    monkeypatch.setattr(asr, 'run_process', lambda *_args, **_kwargs: pytest.fail('Unadmitted GPU worker started'))
-    with pytest.raises(ResourceUnavailable, match='explicit resource capacity'):
+    if mapping is not None:
+        monkeypatch.setenv(*mapping)
+    settings = asr.TranscriptionSettings(device='cuda', compute_type='float16')
+    identity = service.create([source_file(tmp_path, 'cuda', 'GPU admission fixture')], settings=settings)
+    request = service._record(identity)['request']
+    observed, original = [], asr.run_process
+
+    def run(*args, **kwargs):
+        snapshot = broker.snapshot()
+        observed.append(snapshot)
+        assert snapshot['gpu_devices_reserved'] == ['cuda']
+        assert snapshot['exclusive_devices'] == ['accelerator:cuda']
+        config = read_json(Path(kwargs['cwd']) / 'job_config.json')
+        assert config['settings'] == settings.worker('small')
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(asr, 'run_process', run)
+    with pytest.raises(ResourceUnavailable, match='explicit shared resource capacity'):
         service.run(identity)
+    assert not observed and not broker.snapshot()['leases']
+    # A specific device policy cannot imply the generic worker's device index.
     broker.configure(replace(broker.limits, gpu_devices=(('cuda:0', 1024**3),)))
-    monkeypatch.setenv('CUDA_VISIBLE_DEVICES', '1')
-    with pytest.raises(ResourceUnavailable, match='remapping'):
+    with pytest.raises(ResourceUnavailable, match='explicit shared resource capacity'):
         service.run(identity)
-    assert broker.snapshot()['leases'] == []
+    assert not observed and service._record(identity)['request'] == request
+    broker.configure(replace(broker.limits, gpu_devices=(('cuda', 1024**3),)))
+    result = service.run(identity)
+    assert result['status'] == 'complete' and len(observed) == 1
+    assert result['request'] == request and not broker.snapshot()['leases']
+    assert 'no physical device index' in result['resource_plan']['gpu_basis']
+    # This executes the authored protocol child, never an inference engine/GPU.
+
+
+def test_completed_receipt_is_not_failed_by_resource_metadata_cleanup(tmp_path, installation, monkeypatch):
+    app, broker, service = setup_service(tmp_path, installation)
+    identity = service.create([source_file(tmp_path, 'cleanup', 'Synthetic local transcript')])
+    original_unlink = Path.unlink
+
+    def unlink(path, *args, **kwargs):
+        if path.parent == service.broker.leases_root and path.suffix == '.json':
+            raise OSError('Synthetic resource metadata cleanup failure')
+        return original_unlink(path, *args, **kwargs)
+
+    with monkeypatch.context() as scoped:
+        scoped.setattr(Path, 'unlink', unlink)
+        result = service.run(identity)
+    assert result['status'] == 'complete'
+    assert any('Resource reservation metadata cleanup' in notice for notice in result['notices'])
+    assert service.load(identity)['status'] == 'complete'
+    assert not service.broker.snapshot()['leases']
+
+
+def test_worker_error_survives_metadata_cleanup_failure(tmp_path, installation, monkeypatch):
+    app, broker, service = setup_service(tmp_path, installation)
+    identity = service.create([source_file(tmp_path, 'failure', 'fail')])
+    original = Path.unlink
+
+    def unlink(path, *args, **kwargs):
+        if path.parent == service.broker.leases_root and path.suffix == '.json':
+            raise OSError('Synthetic resource metadata cleanup failure')
+        return original(path, *args, **kwargs)
+
+    with monkeypatch.context() as scoped:
+        scoped.setattr(Path, 'unlink', unlink)
+        with pytest.raises(AudioError, match='did not finish'):
+            service.run(identity)
+    assert service.load(identity)['status'] == 'failed'
+    assert not list((service.root / identity).rglob('receipt.json'))
+    assert not service.broker.snapshot()['leases']
+
+
+def test_generic_cuda_pool_and_studio_device_share_actual_exclusive_token(tmp_path, installation, monkeypatch):
+    from carr_library.audio.models import AudioBudget
+    from carr_library.studio.project import Music
+    from carr_library.studio.render import ProductionService
+    app, broker, service = setup_service(tmp_path, installation)
+    for variable in ('CUDA_VISIBLE_DEVICES', 'CUDA_DEVICE_ORDER', 'HIP_VISIBLE_DEVICES', 'ROCR_VISIBLE_DEVICES'):
+        monkeypatch.delenv(variable, raising=False)
+    broker.configure(replace(broker.limits,
+        gpu_devices=(('cuda', 512 * 1024**2), ('cuda:0', 1024**3))))
+    settings = asr.TranscriptionSettings(device='cuda')
+    identity = service.create([source_file(tmp_path, 'cuda-shared', 'Generic accelerator fixture')], settings=settings)
+    record = service.load(identity)
+    asr_request, _ = service._resource_plan(record['request']['inputs'][0], record['request'], settings)
+    outputs = tmp_path / 'outputs'
+    outputs.mkdir()
+    studio = ProductionService(service.root.parent / 'studio', broker=broker)
+    project = studio.create('[Pause: 1]')
+    project = replace(project, revision=project.revision + 1,
+        scenes=(replace(project.scenes[0], music=Music(engine='musicgen')),))
+    studio_id = studio.submit(project, outputs)
+    runtime = SimpleNamespace(budget=AudioBudget(threads=1),
+        music_models={'musicgen': (SimpleNamespace(device='cuda'), {})})
+    studio_request, _ = studio._resource_plan(project, studio.get(studio_id), runtime)
+    assert asr_request.gpu_device == 'cuda' and studio_request.gpu_device == 'cuda:0'
+    assert asr_request.devices == studio_request.devices == ('accelerator:cuda',)
+    # Isolate device exclusion from the independently tested CPU/RAM/disk
+    # budgets. Without the actual adapters' shared token these pools differ.
+    asr_device = replace(asr_request, cpu_slots=0, memory_bytes=0, disk_bytes=0, disk_path=None)
+    studio_device = replace(studio_request, cpu_slots=0, memory_bytes=0, disk_bytes=0,
+                            disk_path=None, additional_disks=())
+    with broker.reserve(asr_device, operation_id='asr:' + identity, timeout=0):
+        with pytest.raises(ResourceTimeout, match='exclusive'):
+            with broker.reserve(studio_device, operation_id='studio:' + studio_id, timeout=0):
+                pytest.fail('Different CUDA pool names bypassed shared accelerator admission.')
+        assert len(broker.snapshot()['leases']) == 1
+    with broker.reserve(studio_device, operation_id='studio:' + studio_id, timeout=0):
+        assert broker.snapshot()['exclusive_devices'] == ['accelerator:cuda']

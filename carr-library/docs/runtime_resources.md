@@ -161,17 +161,37 @@ artifacts through the original service.
 
 The supplied worker's native thread count and model peak RAM are unmeasured by
 this integration. Its request therefore reserves the whole configured CPU/RAM
-allowance, a bounded per-file staging/output disk estimate, and configured whole
-`cuda:0` capacity when selected. This serializes participating heavy work without
-claiming that a model fits the declared RAM or VRAM. Unconfigured CUDA and
-inherited CUDA device remapping are rejected before launch. The existing
-runtime-specific lock remains in force.
+allowance, a bounded per-file staging/output disk estimate, and an explicitly
+configured generic CUDA pool when selected, for example `cuda=4096` in the native
+MiB field. The supplied runtime has no validated device-index capability, so this
+pool does not identify a physical card or measure VRAM. Studio retains its explicit
+`cuda:0` policy. Both adapters reserve the same exclusive `accelerator:cuda` token;
+different policy names cannot permit concurrent participating CUDA work. The
+recognition device/settings and inherited device mapping are not rewritten, and
+admission never switches CUDA requests to CPU. Unconfigured generic CUDA is
+rejected before launch. The existing runtime-specific lock remains in force.
 
 The saved job records the estimate and its basis. Pause/cancel while waiting uses
 the same control file as the transcription workstation and CLI. The lease covers
 worker execution and cleanup; completed receipts and atomic output publication
 remain authoritative. Source text, model files and interpreter files are not
 copied into the resource policy or dashboard.
+
+## Resource cleanup and saved policy
+
+If removal of disposable lease metadata or its directory sync fails after native
+work, the native lock still releases and the lease reports deferred cleanup.
+Completed supplied transcripts and Studio outputs retain successful completion
+with a cleanup notice. Changed lease identity and native-lock release failures
+remain errors. Later admission reaps unlocked records through the existing path.
+
+Only `state/operations/resources.json` is durable policy. The existing complete
+library backup snapshots and restores that committed state file. Live leases,
+coordinator state and their path binding remain under `runtime/resources` and
+are not restored as active reservations; this uses the existing backup format.
+The restore regression checks exact policy bytes and an independent new admission
+while the original broker still holds a live lease, with generated state both
+included and excluded.
 
 ## Isolated import and OCR
 

@@ -345,12 +345,12 @@ class TranscriptionService:
         limits = self._admission_broker(cancelled).limits
         if not limits.memory_bytes:
             raise ResourceUnavailable('Configure a positive declared memory allowance before transcription.')
-        device = 'cuda:0' if settings.device == 'cuda' else None
+        # The supplied runtime exposes a CUDA setting, not a validated physical
+        # device index. Reserve a generic pool and a shared accelerator token.
+        device = 'cuda' if settings.device == 'cuda' else None
         capacity = dict(limits.gpu_devices).get(device, 0) if device else 0
         if device and not capacity:
-            raise ResourceUnavailable('The selected CUDA device needs an explicit resource capacity before transcription.')
-        if device and any(os.environ.get(name) for name in ('CUDA_VISIBLE_DEVICES', 'CUDA_DEVICE_ORDER')):
-            raise ResourceUnavailable('Clear inherited CUDA device remapping before reserving the supplied worker GPU.')
+            raise ResourceUnavailable('The selected transcription CUDA pool needs an explicit shared resource capacity (cuda).')
         # The supplied worker owns its native thread/model configuration. Until
         # its peak is measured, one inference reserves the whole declared CPU
         # and RAM pool, plus the explicitly selected whole GPU capacity.
@@ -358,11 +358,12 @@ class TranscriptionService:
                    item['bytes'] + MAX_RESULT_BYTES * (2 * len(request['formats']) + 1) + 1024**2)
         resource = ResourceRequest(cpu_slots=limits.cpu_slots, memory_bytes=limits.memory_bytes,
             gpu_device=device, gpu_memory_bytes=capacity,
+            devices=('accelerator:cuda',) if device is not None else (),
             disk_path=self.root, disk_bytes=disk)
         return resource, {'schema': 1, 'request': resource.to_dict(),
             'cpu_memory_basis': 'whole configured CPU/RAM pool; supplied worker thread count and model peak are not measured',
             'disk_basis': 'retained input staging and bounded transcript copies; existing worker output budget remains in force',
-            'gpu_basis': 'whole explicitly configured cuda:0 capacity; no GPU inference or capacity measurement is inferred'}
+            'gpu_basis': 'whole explicitly configured generic CUDA pool; no physical device index or VRAM measurement is inferred'}
 
     def _directory(self, job_id):
         if not isinstance(job_id, str) or not re.fullmatch('[0-9a-f]{64}', job_id):
@@ -673,6 +674,8 @@ class TranscriptionService:
                                         prepared, python, runtime_root, model_root, lease.cancelled)
                             except ResourceCancelled as exc:
                                 raise AudioCancelled('Transcription stopped while waiting for shared resources.') from exc
+                            if lease.cleanup_pending:
+                                record.setdefault('notices', []).append('Resource reservation metadata cleanup is pending.')
                             if notice is not None:
                                 record.setdefault('cleanup_pending', []).append(notice)
                             receipt = self._receipt(directory, item, request, cancelled=stopped)

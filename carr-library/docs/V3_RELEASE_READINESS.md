@@ -14,7 +14,7 @@ unchanged until a verified migration; visible application titles use Resonance.
 | Library and OCR | Scoped originals, exact quotations, academic references, managed Fast/Best OCR profiles and installed model selection | Actual SQLite and OCR tests; native installed OCR manager runs on Windows |
 | Reading and voices | Source-preserving reading derivatives, portable edition/revision/asset lineage, explicit detached-draft recovery, pronunciation edits, local voice discovery, playback and SAPI5 native COM worker | Real source/backup/restart tests preserve original bytes and never infer identity from equal text; earlier Windows SAPI PCM and local Flite evidence remains specific to its tested build; other engine assets require separate qualification |
 | Audio studio | Roles, scenes, explicit voice/position, pauses, procedural score, DSP, chapters, stems, subtitles, verified resume/cache and formats | Real FFmpeg production and Windows restart; 1/3/10-hour streaming fixtures are not equivalent to full-length neural inference |
-| Shared operations | Native Tasks and resources view and CLI over the existing import, Studio, ASR and assistant stores; cooperating CPU/RAM/disk/device reservations and cancellable admission | Canonical ASR, actual isolated imports, process ownership and controller regressions are required by the exact portable/native/installed gates; hardware capacity and hard-crash orphan management remain separate |
+| Shared operations | Native Tasks and resources view and CLI over the existing import, Studio, ASR and assistant stores; cooperating CPU/RAM/disk/device reservations, shared CUDA exclusion and cancellable admission | Canonical ASR, actual isolated imports, process ownership and controller regressions are required by the exact portable/native/installed gates; disposable metadata cleanup cannot reverse a verified completed output; hardware capacity and hard-crash orphan management remain separate |
 | Documents and citations | Bounded BibTeX/RIS import, selected-field metadata review, isolated conversion, local citeproc-js styles/locales and editable DOCX regeneration with citation provenance | Actual parser, local processor, cancellation/rollback, generated-document and overwrite-confirmation regressions; no live Word add-in |
 | Recovery | Manifest-bound backup v4 includes pending import bytes, identities, settings, projects and discoverable reader drafts; catalog v5 records immutable request/attempt publication receipts in the import transaction | Real process interruption, competing imports, exact v3/v4/v5 schema validation, rollback, portable-name validation and restore tests; externally exported audio and OS credential secrets are separate |
 | Exports | Selected-file approval binds file identity and bytes; new files publish without replacement; completed exports retain success if only temporary cleanup fails | Actual competing creates, equal-size content edits, moved destinations, cancellation and bounded-read tests; existing files above the 64 MiB overwrite-check limit require a new filename |
@@ -60,8 +60,15 @@ and [the exact adapter contract](TRANSCRIPTION_SUPPLIED_WORKER.md).
 Current integration is tracked in [PR143](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/143).
 Its Windows source and installed-package workflows select the transcription,
 reader recovery, import-publication, export and shared-resource regressions.
-Native launcher acceptance runs on its exact built bytes; the complete installed
-bundle also opens the native Tasks and resources view. A final unchanged-bundle
+Native launcher acceptance binds committed source, build evidence and the exact
+EXE bytes. The fresh-bundle gate requires absent `.venv`, launches the real EXE
+through the existing installer, opens and normally closes the owned Resonance
+window, repeats startup, and checks the original synthetic library. These are
+required automated gates, not a claim that their latest composition has passed.
+The complete installed bundle also opens the native Tasks and resources view.
+Shared-resource output tests use a pinned external private FFmpeg runtime; those
+binaries are not added to the sealed application or evidence uploads.
+A final unchanged-bundle
 check remains mandatory after all installed tests, including real crash fixtures. Read the checks for
 the exact final head: a predecessor's passing run does not qualify a later tree.
 
@@ -79,13 +86,20 @@ A worker freezes its launch identity before waiting for resources, rechecks the
 retained input before execution, and validates that identity before publication.
 Restoring pending work clears the old path-bound attempt and candidate; a resumed
 import must establish a fresh attempt and cannot borrow an earlier receipt.
+Automatic stopped-worker recovery also requires its intact matching candidate
+hint. A missing or damaged hint grants no completion authority; explicit resume
+must revalidate the saved source and journal. A receipt alone does not establish
+successful recovery after arbitrary request-file loss.
 
-Existing v1 reading projects remain readable. Both reviewed v2 source dialects
-are checked: new portable projects use canonical `source_anchor`, while earlier
-`source_origin` projects retain their validated legacy recovery identity and
-family hashes. Reading an older project does not rewrite it or infer missing
-source identity; edits and undo history remain available. Neither dialect grants
-quotation authority. Matching text alone never attaches a draft to another source.
+Existing v1 reading projects remain readable. All three reviewed v2 source
+dialects are checked: current portable `source_anchor`, the earlier
+`carr.narration-source.v1` anchor with `text_verified_at_read`, and literal
+`source_origin` projects with their established recovery identity and family
+hashes. Reading an older project does not rewrite it or infer missing source
+identity; edits and undo history remain available. A pre-release format notice
+and detached autosave state preserve the old file and matching recovered edits.
+No dialect grants quotation authority. Matching text alone never attaches a
+draft to another source.
 A discovery-link failure after a committed draft, or a recovery-draft failure
 after a committed Save As, is reported separately from the successful save.
 

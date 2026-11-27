@@ -81,8 +81,14 @@ class ResourceLease:
                         value = _read(path)
                         if value != self.record:
                             raise ResourceStateError('Reservation identity changed before release.')
-                        path.unlink()
-                        sync_directory(path.parent)
+                        try:
+                            path.unlink()
+                            sync_directory(path.parent)
+                        except OSError:
+                            # Only the disposable metadata cleanup is deferred.
+                            # Identity validation and native-lock release remain
+                            # strict, and the next admission can reap this record.
+                            self.cleanup_pending = True
                     # Other callers must not observe a live lock after its
                     # corresponding record has been removed.
                     self._lock.release()

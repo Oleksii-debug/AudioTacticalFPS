@@ -95,8 +95,17 @@ def test_save_as_reports_portable_success_when_later_recovery_write_fails(tmp_pa
     _exercise_reader_project(tmp_path, monkeypatch, recovery_failure_action='save-as', fail_draft=True)
 
 
+@pytest.mark.parametrize('voice_available', [True, False], ids=['voice', 'no-voice'])
+@pytest.mark.parametrize('provided_text', [None, 'Explicit new reading text.'], ids=['recovered', 'supplied-text'])
+def test_standalone_pre_release_recovery_preserves_old_bytes_until_save_as(
+        tmp_path, monkeypatch, voice_available, provided_text):
+    _exercise_reader_project(tmp_path, monkeypatch, standalone=True, pre_release_recovery=True,
+                             provided_text=provided_text, voice_available=voice_available)
+
+
 def _exercise_reader_project(tmp_path, monkeypatch, *, archive_during_picker=False,
-                             open_case=None, standalone=False, recovery_failure_action=None, fail_draft=False):
+                             open_case=None, standalone=False, recovery_failure_action=None, fail_draft=False,
+                             pre_release_recovery=False, provided_text=None, voice_available=True):
     app = LibraryApp(tmp_path / 'library')
     workspace = app.create_workspace('Synthetic source')
     topic = app.create_topic(workspace, 'Bound topic')
@@ -105,10 +114,21 @@ def _exercise_reader_project(tmp_path, monkeypatch, *, archive_during_picker=Fal
     desk = ReadingDesk(app, workspace, imported['edition'], topic=topic)
     source = read_source_range(desk, 1, 1)
     store = ReaderDraftStore(app.root)
+    initial_text, prior_draft = original, None
     if standalone:
         previous = (ReadingDocument(original, title=source.title) if open_case == 'text'
                     else source.reading_document())
+        if pre_release_recovery:
+            previous.set_text('Recovered reading edit.')
         store.save(ReaderResume(previous))
+        if pre_release_recovery:
+            record = json.loads(store.path.read_text(encoding='utf-8'))
+            record['document'] = _pre_release_anchor_record(previous)
+            store.path.write_text(json.dumps(record), encoding='utf-8')
+            prior_draft = store.path.read_bytes()
+            initial_text = previous.text
+    if provided_text is not None:
+        initial_text = provided_text
     candidate = None
     candidate_path = tmp_path / 'opened.reading.json'
     if open_case is not None:
@@ -129,7 +149,8 @@ def _exercise_reader_project(tmp_path, monkeypatch, *, archive_during_picker=Fal
         if open_case in ('legacy-origin', 'legacy-foreign'):
             candidate_path.write_text(json.dumps(_legacy_origin_record(candidate)), encoding='utf-8')
         candidate_bytes = candidate_path.read_bytes()
-    expected_final = candidate.text if standalone or open_case in ('exact', 'legacy-origin') else original
+    expected_final = (candidate.text if candidate is not None and
+                      (standalone or open_case in ('exact', 'legacy-origin')) else initial_text)
     if recovery_failure_action:
         expected_final = 'User edits that must survive the recovery failure.'
         from carr_library.speech import session
@@ -156,7 +177,7 @@ def _exercise_reader_project(tmp_path, monkeypatch, *, archive_during_picker=Fal
     class Provider:
         name = 'Synthetic enumeration only'
         def voices(self):
-            return (Voice('fixture:local', 'Fixture voice', 'fixture', 'en'),)
+            return (Voice('fixture:local', 'Fixture voice', 'fixture', 'en'),) if voice_available else ()
         def close(self):
             pass
 
@@ -205,7 +226,7 @@ def _exercise_reader_project(tmp_path, monkeypatch, *, archive_during_picker=Fal
         def ShowModal(self):
             self.native()
             deadline = time.monotonic() + 5
-            while not named('Read &selection / all (F6)').enabled:
+            while not named('Reload &voices').enabled:
                 assert time.monotonic() < deadline, 'Canonical discovery did not complete.'
                 try:
                     callback, args = callbacks.get(timeout=.02)
@@ -213,7 +234,11 @@ def _exercise_reader_project(tmp_path, monkeypatch, *, archive_during_picker=Fal
                     continue
                 callback(*args)
             editor = next(control for control in controls if control.name.startswith('Reading copy (editable'))
-            assert editor.GetValue() == original
+            assert editor.GetValue() == initial_text
+            statuses.append(next(c for c in controls if c.name == 'Speech and save status').GetValue())
+            if pre_release_recovery:
+                self.handlers['timer'](None)
+                assert store.path.read_bytes() == prior_draft
             scope()
             if standalone:
                 self.handlers['timer'](None)
@@ -225,7 +250,7 @@ def _exercise_reader_project(tmp_path, monkeypatch, *, archive_during_picker=Fal
                     message = next(c for c in controls if c.name == 'Speech and save status').GetValue()
                     assert 'standalone voice reader' in message
                 assert candidate_path.read_bytes() == candidate_bytes
-            if standalone:
+            if standalone and candidate is not None:
                 self.handlers['timer'](None)
                 resumed = store.load().document
                 assert resumed.source_sha256 == candidate.source_sha256
@@ -288,11 +313,16 @@ def _exercise_reader_project(tmp_path, monkeypatch, *, archive_during_picker=Fal
         position_seconds=0, state='stopped', stop=lambda: None, close=lambda: None))
     parent = SimpleNamespace(library=app, report=statuses.append)
 
-    ui.show_speech_reader(parent, source_guard=scope,
+    ui.show_speech_reader(parent, source_guard=scope, text=provided_text or '',
         source_loader=None if standalone else
             lambda cancelled: read_source_range(desk, 1, 1, guard=scope, cancelled=cancelled))
     assert app.assets.resolve(imported['asset']).read_bytes() == original.encode('utf-8')
     assert guard_calls
+    if pre_release_recovery:
+        assert store.path.read_bytes() == prior_draft
+        notice = ('pre-release reading-project format' if provided_text is None
+                  else 'pre-release reading draft was preserved separately')
+        assert any(notice in message and 'Save As' in message for message in statuses)
     if archive_during_picker:
         with pytest.raises(ValueError):
             scope()
@@ -300,9 +330,13 @@ def _exercise_reader_project(tmp_path, monkeypatch, *, archive_during_picker=Fal
                                      'was archived in Save As: ' + repr(statuses))
     else:
         saved = ReadingDocument.load(output)
-        assert saved.source_text == (candidate.source_text if standalone else original)
+        expected_source = (provided_text if provided_text is not None else
+                           candidate.source_text if standalone and candidate is not None else original)
+        assert saved.source_text == expected_source
         assert saved.text == expected_final
-        expected_origin = candidate.source_origin if standalone or open_case in ('exact', 'legacy-origin') else source.origin
+        expected_origin = (None if provided_text is not None else
+                           candidate.source_origin if candidate is not None and
+                           (standalone or open_case in ('exact', 'legacy-origin')) else source.origin)
         assert saved.source_origin == expected_origin
 
 
@@ -810,6 +844,17 @@ def test_portable_source_anchor_rejects_inconsistent_data(tmp_path, mutation):
         ReadingDocument.from_dict(data)
     assert json.dumps(data, sort_keys=True) == before
 
+def _pre_release_anchor_record(document):
+    """Exact accepted PR150 producer dialect; normalized only through explicit reading."""
+    record = document.to_dict()
+    anchor = record['source_anchor']
+    anchor['schema'] = 'carr.narration-source.v1'
+    anchor['derived_separators'] = document.source_origin['derived_separators']
+    for position in anchor['positions']:
+        position['text_verified_at_read'] = position.pop('text_verified_at_capture')
+    return record
+
+
 def _canonical_anchor_record(document):
     """Canonical184 persisted format remains the current serialization."""
     record = document.to_dict()
@@ -860,7 +905,8 @@ def test_canonical_anchor_v2_reopens_history_without_rewriting_old_project(tmp_p
     assert path.read_bytes() == before
 
 
-def test_canonical_anchor_recovery_and_backup_keep_original_saved_bytes(tmp_path):
+@pytest.mark.parametrize('dialect', ['canonical-anchor', 'legacy-origin', 'pre-release-anchor'])
+def test_canonical_anchor_recovery_and_backup_keep_original_saved_bytes(tmp_path, dialect):
     from carr_library.library_backup import restore_backup
 
     app, sources = _two_equal_sources(tmp_path)
@@ -870,13 +916,17 @@ def test_canonical_anchor_recovery_and_backup_keep_original_saved_bytes(tmp_path
     store = ReaderDraftStore(app.root, slot='canonical-book-reader')
     store.save(ReaderResume(document, 'fixture:voice', rate=2, volume=65, cursor=3))
     record = json.loads(store.path.read_bytes())
-    record['document'] = _canonical_anchor_record(document)
+    writer = {'canonical-anchor': _canonical_anchor_record, 'legacy-origin': _legacy_origin_record,
+              'pre-release-anchor': _pre_release_anchor_record}[dialect]
+    record['document'] = writer(document)
     store.path.write_text(json.dumps(record, ensure_ascii=False) + '\n', encoding='utf-8')
     before = store.path.read_bytes()
 
     recovered, selected, detached = open_source_draft(source, store,
         choose=lambda: pytest.fail('An exact old-format source needs no conflict choice.'))
     assert not detached and selected.path != store.path
+    assert selected.key == store.for_source(source).key
+    assert bool(recovered.document.format_notice) is (dialect == 'pre-release-anchor')
     assert recovered.document.source_origin == source.origin
     assert recovered.document.text == document.text
     assert (recovered.voice_id, recovered.rate, recovered.volume, recovered.cursor) == ('fixture:voice', 2, 65, 3)
@@ -896,6 +946,8 @@ def test_canonical_anchor_recovery_and_backup_keep_original_saved_bytes(tmp_path
     restored_store = ReaderDraftStore(destination, slot='canonical-book-reader')
     restored = restored_store.load()
     assert restored_store.path.read_bytes() == before
+    assert bool(restored.document.format_notice) is (dialect == 'pre-release-anchor')
+    assert ReaderDraftStore(destination).for_source(source).key == selected.key
     assert restored.document.source_origin == source.origin and restored.document.text == document.text
     assert restored.document.undo() and restored.document.text == source.text
 

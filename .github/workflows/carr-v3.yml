@@ -69,9 +69,10 @@ jobs:
             tests/ui/test_progress_media_quiet.py \
             tests/ingest/test_worker_publication_boundary.py tests/ingest/test_worker_attempt_receipts.py \
             tests/ingest/test_competing_publication_receipts.py \
-            tests/ingest/test_canonical_publication_binding.py \
-            tests/e2e/test_import_worker_publication.py tests/ingest/test_import_replay_identity.py \
+            tests/ingest/test_canonical_publication_binding.py tests/audio/test_music.py \
             tests/ingest/test_import_publication_point.py tests/storage/test_publication_migration.py \
+            tests/storage/test_canonical_v5_compatibility.py tests/e2e/test_import_worker_publication.py \
+            tests/ingest/test_import_replay_identity.py tests/packaging/test_native_launcher_acceptance.py \
             tests/storage/test_backup_schema_identity.py tests/ingest/test_worker_isolated_launch.py \
             tests/e2e/test_import_worker.py tests/storage/test_atomic_state_publication.py \
             tests/storage/test_v3_state_backup.py tests/storage/test_pending_backup.py \
@@ -190,8 +191,15 @@ jobs:
                     'tests/storage/test_complete_pending_backup.py',
                     'tests/storage/test_academic_migration.py',
                     'tests/storage/test_backup_schema_identity.py',
+                    'tests/storage/test_canonical_v5_compatibility.py',
+                    'tests/storage/test_publication_migration.py',
+                    'tests/ingest/test_worker_attempt_receipts.py',
+                    'tests/ingest/test_competing_publication_receipts.py',
+                    'tests/operations/test_resources.py',
+                    'tests/operations/test_resource_backup.py',
                     'tests/e2e/test_import_worker_publication.py',
                     'tests/ingest/test_import_replay_identity.py',
+                    'tests/ingest/test_canonical_publication_binding.py',
                     'tests/speech/test_reading.py',
                     'tests/speech/test_source.py',
                     'tests/speech/test_session.py',
@@ -280,14 +288,14 @@ jobs:
         env:
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
-          python scripts/ci_check.py --jobs 3 tests/ingest/test_import_publication_point.py tests/ingest/test_worker_publication_boundary.py tests/ingest/test_worker_attempt_receipts.py tests/ingest/test_competing_publication_receipts.py tests/ingest/test_canonical_publication_binding.py tests/storage/test_publication_migration.py tests/storage/test_backup_schema_identity.py tests/reader/test_export_no_clobber.py tests/speech/test_source.py tests/packaging/test_worker_bytecode.py 2>&1 | Tee-Object 'ci-v3-results/strict-publication-integrity.txt'
+          python scripts/ci_check.py --jobs 3 tests/ingest/test_import_publication_point.py tests/ingest/test_worker_publication_boundary.py tests/ingest/test_worker_attempt_receipts.py tests/ingest/test_competing_publication_receipts.py tests/ingest/test_canonical_publication_binding.py tests/storage/test_publication_migration.py tests/storage/test_canonical_v5_compatibility.py tests/e2e/test_import_worker_publication.py tests/ingest/test_import_replay_identity.py tests/storage/test_backup_schema_identity.py tests/reader/test_export_no_clobber.py tests/speech/test_source.py tests/packaging/test_worker_bytecode.py 2>&1 | Tee-Object 'ci-v3-results/strict-publication-integrity.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Require shared resource admission and existing job recovery
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
         env:
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
-          python scripts/ci_check.py --jobs 3 tests/operations/test_resources.py tests/operations/test_worker_start_cleanup.py tests/operations/test_facade.py tests/operations/test_canonical_asr_admission.py tests/operations/test_ocr_admission.py tests/ui/test_operations_policy.py tests/ui/test_operations_dialog.py tests/e2e/test_operations_cli.py tests/operations/test_production_admission.py 2>&1 | Tee-Object 'ci-v3-results/strict-shared-resources.txt'
+          python scripts/ci_check.py --jobs 3 tests/operations/test_resources.py tests/operations/test_worker_start_cleanup.py tests/operations/test_facade.py tests/operations/test_canonical_asr_admission.py tests/operations/test_ocr_admission.py tests/ui/test_operations_policy.py tests/ui/test_operations_dialog.py tests/e2e/test_operations_cli.py tests/operations/test_production_admission.py tests/operations/test_resource_backup.py tests/audio/test_music.py 2>&1 | Tee-Object 'ci-v3-results/strict-shared-resources.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Keep source and test evidence only
         if: always()

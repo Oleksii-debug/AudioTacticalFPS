@@ -137,6 +137,7 @@ class ProductionService:
         export_bytes = pcm * (2 + roles + music * int(state['stems']) + int(state['format'] != 'wav')) + 1024 ** 2
         request = ResourceRequest(cpu_slots=runtime.budget.threads, memory_bytes=memory,
             gpu_device=device, gpu_memory_bytes=capacity, disk_bytes=cache_bytes, disk_path=self.cache,
+            devices=('accelerator:cuda',) if device is not None and device.startswith('cuda:') else (),
             additional_disks=((Path(state['destination']).parent, export_bytes),))
         return request, {'schema': 1, 'request': request.to_dict(),
             'cpu_basis': 'actual configured AudioRuntime worker thread count',
@@ -540,8 +541,14 @@ class ProductionService:
                     atomic_bytes(source, raw, replace=source.exists())
                     publish(source, name)
                 state['result'] = metadata
-                state['status'], state['progress'] = 'complete', 'Audio files and checksums verified.'
                 self._verify_artifacts(state)
+                # All native work and output validation have finished. Release
+                # before saving completion so disposable metadata cleanup can
+                # be reported separately from the durable production result.
+                lease.release()
+                state['status'], state['progress'] = 'complete', 'Audio files and checksums verified.'
+                if lease.cleanup_pending:
+                    state['progress'] += ' Resource reservation metadata cleanup is pending.'
                 self._save(state)
                 return state
             except BaseException as exc:

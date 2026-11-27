@@ -241,7 +241,9 @@ def create_operations_dialog(frame, *, controller_factory=OperationsController):
                 style=wx.TE_MULTILINE, size=(-1, 95))
             notice = wx.StaticText(policy_page, label=
                 'Allowances apply to cooperating local operations; they do not measure hardware. '
-                'Empty GPU settings disable GPU admission. Existing results remain available.')
+                'Empty GPU settings disable GPU admission. Use cuda=4096 for a 4096 MiB '
+                'transcription CUDA pool; Studio uses cuda:0. These are reservations, not measured VRAM. '
+                'Existing results remain available.')
             notice.Wrap(780)
             policy_layout.Add(notice, 0, wx.ALL | wx.EXPAND, 4)
             self.pages.AddPage(jobs_page, 'Saved operations')

@@ -309,6 +309,10 @@ jobs:
           $probe = Get-Content -LiteralPath 'ci-results/native-launcher-process.json' -Raw | ConvertFrom-Json
           $digest = (Get-FileHash -LiteralPath $launcher -Algorithm SHA256).Hash.ToLowerInvariant()
           if ($probe.status -ne 'passed' -or $probe.check_count -ne 9 -or $probe.launcher_sha256 -ne $digest -or $build.pe.sha256 -ne $digest) { throw 'Native process acceptance must identify the exact bundle launcher.' }
+          $nativeSourceCommit = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -I -B packaging/native-launcher/verify_launcher.py --launcher $launcher --build-evidence (Join-Path $private 'build-evidence.json') --native-probe 'ci-results/native-launcher-process.json' --source-commit $nativeSourceCommit | Tee-Object 'ci-results/native-launcher-source.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Copy-Item -LiteralPath (Join-Path $private 'build-evidence.json') -Destination 'ci-results/native-launcher-build.json'
           "CARR_NATIVE_LAUNCHER=$launcher" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "CARR_NATIVE_LAUNCHER_SHA256=$digest" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
@@ -349,6 +353,17 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $sourceCommit = (git rev-parse HEAD).Trim()
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $sourceProofScript = @'
+          import importlib.util, json, pathlib, sys
+          project = pathlib.Path.cwd()
+          spec = importlib.util.spec_from_file_location('native_source_wheel', project / 'packaging/source_wheel.py')
+          module = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(module)
+          proof = module.verify_application_wheel(pathlib.Path(sys.argv[1]), project.parent, sys.argv[2])
+          print(json.dumps(dict(status='PASS', **proof)))
+          '@
+          $sourceProofScript | & $env:CARR_PYTHON -I -B - $applicationWheel $sourceCommit | Tee-Object 'ci-results/source-wheel-before-native.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON packaging/build_windows_bundle.py --wheel $applicationWheel --wheelhouse $wheelhouse --lock packaging/windows-semantic-cp311.lock --sbom packaging/windows-semantic-sbom.cdx.json --python-archive $pythonArchive --model-dir $env:CARR_CI_MODEL_DIR --model-manifest $env:CARR_CI_MODEL_MANIFEST --ocr-dir $ocr --ocr-source-archive $ocrSource --source-commit $sourceCommit --native-launcher $env:CARR_NATIVE_LAUNCHER --native-launcher-sha256 $env:CARR_NATIVE_LAUNCHER_SHA256 --output $baseBundle | Tee-Object 'ci-results/full-bundle-build.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON packaging/add_native_runtime.py --bundle $baseBundle --native-runtime $nativeRuntime --output $bundle | Tee-Object 'ci-results/full-bundle-native-runtime.json'
@@ -380,7 +395,20 @@ jobs:
           $citationNodeVersion = (& $citationNode --version).Trim()
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           @{ role='external CSL test runtime'; path=$citationNode; version=$citationNodeVersion; sha256=(Get-FileHash -LiteralPath $citationNode -Algorithm SHA256).Hash.ToLowerInvariant(); bundled=$false } | ConvertTo-Json | Set-Content 'ci-results/citation-node-runtime.json'
-          $programs = @($bundledPython, (Join-Path $bundle 'runtime/pythonw.exe'), $installedPython, (Join-Path $bundle '.venv/Scripts/pythonw.exe'), (Join-Path $bundle 'ocr/tesseract.exe'), $citationNode, $sealedLauncher) | ForEach-Object { [System.IO.Path]::GetFullPath($_) }
+          # Acquire the pinned private FFmpeg test runtime before blocking egress.
+          # It remains external to the sealed application and is not redistributed.
+          $testAudio = Join-Path $env:RUNNER_TEMP 'carr-installed-test-audio'
+          & $env:CARR_PYTHON -I -B packaging/prepare_windows_audio.py --cache (Join-Path $env:RUNNER_TEMP 'carr-installed-audio-cache') --output $testAudio --download | Tee-Object 'ci-results/external-test-audio.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $testAudioBin = Join-Path $testAudio 'bin'
+          $env:PATH = "$testAudioBin;$env:PATH"
+          $testAudioBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          $testFfmpeg = Join-Path $testAudioBin 'ffmpeg.exe'
+          $testFfprobe = Join-Path $testAudioBin 'ffprobe.exe'
+          if (!(Test-Path -LiteralPath $testFfmpeg -PathType Leaf) -or !(Test-Path -LiteralPath $testFfprobe -PathType Leaf)) { throw 'The external private audio test runtime is incomplete.' }
+          $seedBasePython = (& $env:CARR_PYTHON -I -B -c "import sys; print(sys._base_executable)").Trim()
+          if ($LASTEXITCODE -ne 0 -or -not $seedBasePython) { throw 'The existing test Python base executable is unavailable.' }
+          $programs = @($bundledPython, (Join-Path $bundle 'runtime/pythonw.exe'), $installedPython, (Join-Path $bundle '.venv/Scripts/pythonw.exe'), (Join-Path $bundle 'ocr/tesseract.exe'), $citationNode, $sealedLauncher, $env:CARR_PYTHON, $seedBasePython, $testFfmpeg, $testFfprobe) | ForEach-Object { [System.IO.Path]::GetFullPath($_) } | Sort-Object -Unique
           $rulePrefix = 'CARR-offline-' + [guid]::NewGuid().ToString('N')
           $ruleNames = @()
           $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
@@ -400,7 +428,7 @@ jobs:
           $filters = @($active | Get-NetFirewallApplicationFilter -ErrorAction Stop | Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })
           if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Offline execution rules do not cover the intended programs.' }
           @{ status='PASS'; profiles_enabled=@($profiles.Name); outbound_blocked_programs=$filters; phase='installation, native desktop, multilingual inference and scanned-source research' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-results/full-bundle-firewall.json'
-          & $bundledPython -I -B (Join-Path $bundle 'install_windows.py') 2>&1 | Tee-Object 'ci-results/core-bundle-install.txt'
+          & $env:CARR_PYTHON -I -B packaging/native-launcher/probe_fresh_windows.py --bundle-root $bundle --source-proof 'ci-results/source-wheel-before-native.json' --source-commit $sourceCommit --report 'ci-results/fresh-native-launcher.json' --timeout 600 2>&1 | Tee-Object 'ci-results/core-bundle-install.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -c "import json,sys; from pathlib import Path; from carr_library.academic_integration.formatting import _node_binary; actual=Path(_node_binary(None)); assert actual.samefile(sys.argv[1]), 'CSL runtime differs from the blocked Node executable'; print(json.dumps(dict(status='PASS',node=str(actual),bundled=False)))" $citationNode | Tee-Object 'ci-results/installed-citation-node-binding.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -410,7 +438,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_installer_launchers_smoke.py --bundle $bundle 2>&1 | Tee-Object 'ci-results/installed-launchers.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B packaging/native-launcher/probe_installed_windows.py --bundle-root $bundle --report 'ci-results/installed-native-launcher.json'
+          & $installedPython -I -B packaging/native-launcher/probe_installed_windows.py --bundle-root $bundle --source-commit $sourceCommit --report 'ci-results/installed-native-launcher.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $installedLauncher = Get-Content -LiteralPath 'ci-results/installed-native-launcher.json' -Raw | ConvertFrom-Json
           if ($installedLauncher.status -ne 'passed' -or $installedLauncher.launcher_sha256 -ne $env:CARR_NATIVE_LAUNCHER_SHA256 -or -not $installedLauncher.actual_installed_app_self_test_verified) { throw 'Installed native launcher acceptance must match the sealed executable.' }
@@ -462,6 +490,8 @@ jobs:
                             'tests/e2e/test_import_progress.py',
                             'tests/ingest/test_import_metadata_shape.py',
                             'tests/operations/test_resources.py',
+                            'tests/operations/test_resource_backup.py',
+                            'tests/operations/test_production_admission.py',
                             'tests/operations/test_worker_start_cleanup.py',
                             'tests/operations/test_facade.py',
                             'tests/operations/test_canonical_asr_admission.py',
@@ -495,13 +525,15 @@ jobs:
                             'tests/reader/test_export_publication_boundary.py',
                             'tests/ui/test_academic_export_handler.py',
                             'tests/audio/test_supplied_transcription.py',
+                            'tests/audio/test_music.py',
                             'tests/ingest/test_worker_attempt_receipts.py',
                             'tests/storage/test_publication_migration.py',
+                            'tests/storage/test_canonical_v5_compatibility.py',
+                            'tests/e2e/test_import_worker_publication.py',
                             'tests/storage/test_atomic_state_publication.py',
                             'tests/audio/test_supplied_runtime_manifest.py',
                             'tests/ui/test_transcription_dialog.py',
                             'tests/ingest/test_import_replay_identity.py',
-                            'tests/e2e/test_import_worker_publication.py',
                             'tests/ingest/test_canonical_publication_binding.py',
                             'tests/ingest/test_initial_publication_completion.py',
                             'tests/catalog/test_ris_apply.py',
@@ -587,6 +619,8 @@ jobs:
             'tests/e2e/test_import_progress.py',
             'tests/ingest/test_import_metadata_shape.py',
             'tests/operations/test_resources.py',
+            'tests/operations/test_resource_backup.py',
+            'tests/operations/test_production_admission.py',
             'tests/operations/test_worker_start_cleanup.py',
             'tests/operations/test_facade.py',
             'tests/operations/test_canonical_asr_admission.py',
@@ -631,6 +665,8 @@ jobs:
             'tests/ingest/test_worker_attempt_receipts.py',
             'tests/ingest/test_competing_publication_receipts.py',
             'tests/storage/test_publication_migration.py',
+            'tests/storage/test_canonical_v5_compatibility.py',
+            'tests/e2e/test_import_worker_publication.py',
             'tests/ingest/test_application_atomic_docx_gate.py',
             'tests/e2e/test_semantic_fallback_status.py',
             'tests/e2e/test_source_file.py',
@@ -662,6 +698,7 @@ jobs:
             'tests/storage/test_v2_recovery.py',
             'tests/storage/test_atomic_state_publication.py',
             'tests/audio/test_supplied_transcription.py',
+            'tests/audio/test_music.py',
             'tests/storage/test_catalog_composition.py',
             'tests/reader/test_saved_topic_query.py',
             'tests/reader/test_evidence_export.py',
@@ -714,6 +751,7 @@ jobs:
             'tests/storage/test_finish_workspace_integrity.py',
             'tests/extract/test_docx_hidden_styles.py',
             'tests/packaging/test_windows_bundle.py',
+            'tests/packaging/test_native_launcher_acceptance.py',
             'tests/packaging/test_delivery_archive.py',
             'tests/reader/test_context.py',
             'tests/reader/test_topic_tree.py',
@@ -725,7 +763,6 @@ jobs:
             'tests/audio/test_supplied_runtime_manifest.py',
             'tests/ui/test_transcription_dialog.py',
             'tests/ingest/test_import_replay_identity.py',
-            'tests/e2e/test_import_worker_publication.py',
             'tests/ingest/test_canonical_publication_binding.py',
             'tests/ingest/test_initial_publication_completion.py',
             'tests/catalog/test_ris_apply.py',

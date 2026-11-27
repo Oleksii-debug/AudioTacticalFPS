@@ -21,6 +21,16 @@ It does not contact a package index and does not require administrator access.
 The smaller wheel-only variant requires CPython 3.11 through the Windows `py`
 launcher. Its manifest identifies whether Python is included.
 
+If the package contains `ResearchLibrary.exe`, you may open it after extracting
+the complete package. With bundled Python, it runs the existing offline installer
+when needed and then opens the application. It preserves an incomplete environment;
+use a new program folder if installation was interrupted. In the wheel-only
+variant, run `Install.cmd` first. This private native launcher is unsigned.
+
+After installation, `ResearchLibrary.exe --self-test` runs the isolated application
+check and `ResearchLibrary.exe --check-installation` checks the installed runtime.
+Use `CheckInstallation.cmd` for the detailed text diagnostics.
+
 After installation, open `ResearchLibrary.cmd`. The terminal stays visible if
 startup fails, so a screen reader can read the error. Installation and
 `CheckInstallation.cmd` verify that native desktop and document components can

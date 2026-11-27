@@ -355,6 +355,68 @@ def test_paths_do_not_follow_links_and_invalid_requests_are_rejected(tmp_path):
             ResourceRequest(**values)
 
 
+def test_released_lease_files_do_not_exhaust_inventory(broker, monkeypatch):
+    import carr_library.operations.broker as module
+    monkeypatch.setattr(module, '_MAX_RECORDS', 6)
+    for index in range(14):
+        with broker.reserve(ResourceRequest(), operation_id=f'completed-{index}', timeout=0):
+            assert len(broker.snapshot()['leases']) == 1
+        assert broker.snapshot()['leases'] == []
+    assert not tuple(broker.leases_root.iterdir())
+
+
+@pytest.mark.parametrize('failure', ['unlink', 'directory-sync'])
+def test_metadata_cleanup_failure_is_reported_after_native_release(broker, monkeypatch, failure):
+    import carr_library.operations.broker as module
+    context = broker.reserve(ResourceRequest(), operation_id='completed', timeout=0)
+    lease = context.__enter__()
+    path = broker.leases_root / (lease.id + '.json')
+    original_unlink, original_sync = Path.unlink, module.sync_directory
+
+    def unlink(candidate, *args, **kwargs):
+        if candidate == path:
+            raise OSError('Synthetic lease metadata unlink failure')
+        return original_unlink(candidate, *args, **kwargs)
+
+    def sync(candidate):
+        if candidate == broker.leases_root:
+            raise OSError('Synthetic lease metadata sync failure')
+        return original_sync(candidate)
+
+    with monkeypatch.context() as scoped:
+        if failure == 'unlink':
+            scoped.setattr(Path, 'unlink', unlink)
+        else:
+            scoped.setattr(module, 'sync_directory', sync)
+        context.__exit__(None, None, None)
+    assert lease.cleanup_pending and not lease._lock.held
+    assert not broker.snapshot()['leases']
+    assert not path.exists()
+
+
+@pytest.mark.parametrize('failure', ['lease', 'coordinator'])
+def test_native_release_failure_is_not_hidden_as_metadata_cleanup(broker, monkeypatch, failure):
+    from carr_library.operations._locks import NativeLock
+    context = broker.reserve(ResourceRequest(), operation_id='completed', timeout=0)
+    lease = context.__enter__()
+    target = lease._lock.path if failure == 'lease' else broker.root / '.admission.lock'
+    original = NativeLock.release
+    failed = []
+
+    def release(lock):
+        original(lock)
+        if lock.path == target and not failed:
+            failed.append(True)
+            raise OSError('Synthetic native release failure')
+
+    with monkeypatch.context() as scoped:
+        scoped.setattr(NativeLock, 'release', release)
+        with pytest.raises(OSError, match='native release failure'):
+            context.__exit__(None, None, None)
+    assert failed and not lease.cleanup_pending
+    assert not broker.snapshot()['leases']
+
+
 if __name__ == '__main__':
     if sys.argv[2] == 'crash':
         test_actual_spawned_process_crash_releases_without_pid_reaping(ResourceBroker(Path(sys.argv[3])))
