@@ -107,7 +107,7 @@ record/checkpoint validation, and immediately before restore publication.
 Malformed non-string membership fields in pending manifests are rejected as
 validation errors before dictionary lookup. This does not change the format,
 retained source identity, allowed filenames or existing aggregate budgets.
-Pending capture scans committed and known transient names incrementally;
+Pending capture scans at most 50,000 total directory entries (including ignored transient files) across request, batch and nested review folders; exceeding the budget rejects the backup before publication. Pending capture scans committed and known transient names incrementally;
 restore copies retained journals by a single pass through the validated file
 inventory. The existing aggregate file/byte limits still apply. JSON decoding,
 individual SQLite queries, bounded source reads and synchronous filesystem
