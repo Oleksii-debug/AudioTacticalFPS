@@ -198,6 +198,19 @@ class BibliographyWorkbench:
             return preview.citations
         raise ValueError('Choose bibliography or citation examples to copy.')
 
+    def regenerate_document(self, source, destination, *, custom_style=None, cancelled=lambda: False, approval=None):
+        from .regeneration import regenerate_citation_docx
+
+        def permitted():
+            if cancelled():
+                return True
+            with self.controller.library.read(self.controller.workspace):
+                pass
+            return False
+
+        return regenerate_citation_docx(source, destination,
+            private_root=self.controller.library.root, custom_style=custom_style, cancelled=permitted, approval=approval)
+
     def export(self, preview, destination, *, format='text', cancelled=lambda: False,
                require_absent=False, approval=None):
         snapshot = self.check(preview)

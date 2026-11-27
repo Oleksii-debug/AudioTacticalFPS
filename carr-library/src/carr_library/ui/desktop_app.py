@@ -15,6 +15,7 @@ from ..extract.document_formats import file_dialog_wildcard, supported_formats_t
 from ..catalog.read_views import active_collections
 from ..citations.anchors import format_citation
 from ..research.export_file import write_export, write_binary_export
+from .export_destination import approve_export_destination
 from ..reader.source_file import prepare_source_file, launch_source_file
 from ..research.saved_topic_query import SavedTopicQueries
 from ..research.topic_tree import TopicTree
@@ -44,6 +45,7 @@ from .assistant_dialog import install_assistant_actions
 from .portable_sync import install_portable_sync_actions
 from .language_matrix import install_language_actions
 from .translation_dialog import install_translation_actions
+from .document_conversion import install_conversion_actions
 
 
 def text_dialog(parent, title, label, value='', *, multiline=False):
@@ -572,8 +574,9 @@ class DesktopFrame(WorkspaceFrame):
         install_audio_studio_actions(self)
         install_language_actions(self)
         install_api_connection_actions(self)
-        install_translation_actions(self)
         install_assistant_actions(self)
+        install_translation_actions(self)
+        install_conversion_actions(self)
         install_portable_sync_actions(self)
 
     def build_advanced_query(self, event=None):
@@ -1017,7 +1020,7 @@ class DesktopFrame(WorkspaceFrame):
             extensions = ('.md', '.txt', '.ris', '.bib', '.csv', '.docx', '.html')
             dialog = wx.FileDialog(self, 'Export topic', defaultFile='research-topic',
                 wildcard='Markdown (*.md)|*.md|Plain text (*.txt)|*.txt|RIS (*.ris)|*.ris|BibTeX (*.bib)|*.bib|CSV (*.csv)|*.csv|Word document (*.docx)|*.docx|HTML document (*.html)|*.html',
-                style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+                style=wx.FD_SAVE)
             try:
                 if dialog.ShowModal() != wx.ID_OK:
                     return
@@ -1030,12 +1033,8 @@ class DesktopFrame(WorkspaceFrame):
                 dialog.Destroy()
             if not path.suffix:
                 # Some native save dialogs append the filter's extension and
-                # others do not. Confirm the actual target if we append it.
+                # others do not. Capture and confirm the actual target below.
                 path = path.with_suffix(extension)
-                if path.exists() and wx.MessageBox(
-                    f'Replace the existing export {path.name}?', 'Replace export',
-                    wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, self) != wx.YES:
-                    return
             elif format in ('docx', 'html') and path.suffix.lower() != extension:
                 raise ValueError(f'The selected format needs a {extension} filename. '
                                  'Export again with the matching filename or file type.')
@@ -1043,6 +1042,12 @@ class DesktopFrame(WorkspaceFrame):
             def selected_scope():
                 if self.library is not library or self.active != (workspace, topic):
                     raise ValueError('The selected library or topic changed. Export again from the intended topic.')
+
+            selected_scope()
+            approval = approve_export_destination(self, path, private_root=library.root)
+            if approval is None:
+                return
+            selected_scope()
 
             def export():
                 selected_scope()
@@ -1053,7 +1058,7 @@ class DesktopFrame(WorkspaceFrame):
                     raise TimeoutError('Export cancelled; the destination was not changed.')
                 writer = write_binary_export if format == 'docx' else write_export
                 writer(path,content,private_root=library.root,
-                       cancelled=self.cancel_event.is_set)
+                       cancelled=self.cancel_event.is_set, approval=approval)
 
             def done(result):
                 if format in ('ris','bibtex'):

@@ -252,9 +252,14 @@ def test_interrupted_sidecar_publication_never_looks_complete(
     digest = create_backup(app, backup) if mode == 'restore' else None
     destination = tmp_path / 'interrupted'
     original_link = os.link
+    # The historical fixture is transformed only after the current producer
+    # finishes. Inject at the real current publication path for backup; a
+    # historical restore still publishes the reading state at the data root.
+    publication = (destination / 'sidecars' / 'reading-state.json'
+                   if mode == 'backup' else destination / 'reading-state.json')
 
     def fail_sidecar(source, target, *args, **kwargs):
-        if str(target) == str(destination / 'reading-state.json'):
+        if str(target) == str(publication):
             raise OSError('Simulated sidecar publication interruption')
         return original_link(source, target, *args, **kwargs)
 

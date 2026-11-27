@@ -118,6 +118,37 @@ def keyboard(tmp_path):
     return KeyboardActions(frame, bindings)
 
 
+@pytest.mark.parametrize('existing', [False, True], ids=['new', 'confirmed-existing'])
+def test_legacy_preferences_export_keeps_newer_external_file(tmp_path, monkeypatch, existing):
+    import sys
+    from carr_library.ui import productivity as ui
+    private = tmp_path / 'private'
+    private.mkdir()
+    action = keyboard(private)
+    target = tmp_path / 'research-keybindings.json'
+    if existing:
+        target.write_bytes(b'Approved old preferences')
+    chooser = Mock()
+    chooser.ShowModal.return_value = 1
+    chooser.GetPath.return_value = str(target)
+    monkeypatch.setitem(sys.modules, 'wx', SimpleNamespace(ID_OK=1, FD_SAVE=2,
+        FD_OVERWRITE_PROMPT=4, FileDialog=Mock(return_value=chooser)))
+    monkeypatch.setattr('carr_library.ui.export_destination._confirm_replace', lambda *_: True)
+    original = ui.encode_preferences
+
+    def changed_during_render(value):
+        result = original(value)
+        target.write_bytes(b'Newer preferences from another application')
+        return result
+
+    monkeypatch.setattr(ui, 'encode_preferences', changed_during_render)
+    action.transfer(save=True)
+    assert target.read_bytes() == b'Newer preferences from another application'
+    assert 'destination changed' in action.frame.report.call_args.args[0]
+    assert not (private / 'keybindings.json').exists()
+    chooser.Destroy.assert_called_once()
+
+
 def test_keyboard_reload_invalid_file_falls_back_without_erasing_it(tmp_path):
     action = keyboard(tmp_path)
     action.save({'File/Save': 'Ctrl+Alt+S'})

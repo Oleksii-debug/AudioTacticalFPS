@@ -64,7 +64,10 @@ class Executor:
 
 
 @pytest.fixture
-def module():
+def module(monkeypatch):
+    # Overwrite consent is now a separate native question, after destination
+    # capture. The real helper and publisher still run in these handler tests.
+    monkeypatch.setattr('carr_library.ui.export_destination._confirm_replace', lambda *_: True)
     wx = ModuleType('wx')
     for name in ('Dialog', 'BoxSizer', 'StaticText', 'TextCtrl', 'Button', 'Choice', 'ScrolledWindow'):
         setattr(wx, name, Control)
@@ -418,8 +421,10 @@ def test_export_keeps_original_private_root_even_if_active_library_changes(
     other_root = tmp_path / 'another-library'
     other_root.mkdir()
     frame.library = SimpleNamespace(root=other_root)
-    with pytest.raises(ValueError, match='outside the private library'):
-        finish(frame)
+    assert not frame.jobs
+    assert 'outside the private library' in frame.reports[-1]
+    library.export_bibliography.assert_not_called()
+    library.export_outline.assert_not_called()
     assert destination.read_bytes() == b'Original library bytes'
 
 
@@ -464,3 +469,35 @@ def test_outline_handler_passes_exact_topic_and_atomic_export_text(module, editi
     library.export_outline.assert_called_once_with('workspace', 'topic', cancelled=frame.cancel_event.is_set)
     assert destination.read_text(encoding='utf-8') == '# Research — Україна\n'
     assert file.destroyed and 'Research outline exported' in frame.reports[-1]
+
+
+@pytest.mark.parametrize('action', ['bibliography', 'outline'])
+@pytest.mark.parametrize('existing', [False, True], ids=['new', 'confirmed-existing'])
+def test_queued_academic_export_keeps_destination_changes(module, edition, tmp_path, monkeypatch,
+                                                         action, existing):
+    frame, _, _ = host(tmp_path, edition)
+    target = tmp_path / 'export.txt'
+    if existing:
+        target.write_bytes(b'Approved old output')
+    choose(module, monkeypatch, path=target)
+    handler = module.export_bibliography if action == 'bibliography' else module.export_research_outline
+    handler(frame)
+    assert len(frame.jobs) == 1
+    target.write_bytes(b'External change after the destination question')
+    with pytest.raises(ValueError, match='destination changed'):
+        finish(frame)
+    assert target.read_bytes() == b'External change after the destination question'
+
+
+@pytest.mark.parametrize('action', ['bibliography', 'outline'])
+def test_declined_academic_overwrite_starts_no_render(module, edition, tmp_path, monkeypatch, action):
+    frame, _, library = host(tmp_path, edition)
+    target = tmp_path / 'existing.txt'
+    target.write_bytes(b'Keep this output')
+    choose(module, monkeypatch, path=target)
+    monkeypatch.setattr('carr_library.ui.export_destination._confirm_replace', lambda *_: False)
+    handler = module.export_bibliography if action == 'bibliography' else module.export_research_outline
+    handler(frame)
+    assert not frame.jobs and target.read_bytes() == b'Keep this output'
+    library.export_bibliography.assert_not_called()
+    library.export_outline.assert_not_called()

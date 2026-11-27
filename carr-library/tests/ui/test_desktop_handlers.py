@@ -128,7 +128,8 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
         'install_reading_desk_actions', 'install_ebook_actions', 'install_catalog_insights_actions',
         'install_federated_search_actions', 'install_query_manager_actions',
         'install_academic_comparison_actions', 'install_assistant_actions',
-        'install_portable_sync_actions', 'install_language_actions')}
+        'install_portable_sync_actions', 'install_language_actions', 'install_translation_actions',
+        'install_conversion_actions')}
     env.update(installers)
     from carr_library.ui.audio_studio import install_audio_studio_actions
     from carr_library.ui.api_connections import install_api_connection_actions
@@ -268,7 +269,9 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
                 ('api_connections', 'install_api_connection_actions'),
                 ('assistant_dialog', 'install_assistant_actions'),
                 ('portable_sync', 'install_portable_sync_actions'),
-                ('language_matrix', 'install_language_actions')):
+                ('language_matrix', 'install_language_actions'),
+                ('translation_dialog', 'install_translation_actions'),
+                ('document_conversion', 'install_conversion_actions')):
             if action_name in menu_globals:
                 module = importlib.import_module('carr_library.ui.' + module_name)
                 if hasattr(module, 'wx'):

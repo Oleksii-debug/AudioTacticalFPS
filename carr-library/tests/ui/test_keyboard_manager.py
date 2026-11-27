@@ -144,6 +144,41 @@ def snapshot(manager):
             tuple(manager.bindings))
 
 
+@pytest.mark.parametrize('existing', [False, True], ids=['new', 'confirmed-existing'])
+def test_keymap_export_keeps_file_changed_during_validation(manager, monkeypatch, tmp_path, existing):
+    from unittest.mock import Mock
+    private = tmp_path / 'private'
+    private.mkdir()
+    manager.store = KeymapStore(private / 'keyboard-shortcuts.json')
+    target = tmp_path / 'exported-keymap.json'
+    if existing:
+        target.write_bytes(b'Approved previous keymap')
+    chooser = Mock()
+    chooser.ShowModal.return_value = 1
+    chooser.GetPath.return_value = str(target)
+    view = KeyboardSettingsDialog.__new__(KeyboardSettingsDialog)
+    view.wx = SimpleNamespace(ID_OK=1, FD_SAVE=2, FD_OVERWRITE_PROMPT=4,
+                              FileDialog=Mock(return_value=chooser))
+    view.dialog, view.manager, view.draft = object(), manager, {'library.import': 'Ctrl+K'}
+    messages = []
+    view._message = messages.append
+    before = snapshot(manager)
+    monkeypatch.setattr('carr_library.ui.export_destination._confirm_replace', lambda *_: True)
+    original = manager.validate
+
+    def changed_during_validation(values):
+        result = original(values)
+        target.write_bytes(b'Newer keymap from another application')
+        return result
+
+    monkeypatch.setattr(manager, 'validate', changed_during_validation)
+    view.export_map()
+    assert target.read_bytes() == b'Newer keymap from another application'
+    assert 'destination changed' in messages[-1]
+    assert snapshot(manager) == before
+    chooser.Destroy.assert_called_once()
+
+
 def test_apply_and_reopen_preserve_semantic_bindings_and_menu_display(manager):
     result = manager.apply_overrides({'library.import': 'control+shift+k', 'reader.next': ''})
     assert result == {'library.import': 'Ctrl+Shift+K', 'reader.next': ''}

@@ -24,7 +24,13 @@ def main(argv=None):
     commands.add_parser('styles', help='List the pinned offline CSL styles')
     importer = commands.add_parser('import', help='Preview a bibliography; --commit applies the selected rows')
     formatter = commands.add_parser('format', help='Format existing academic references without changing them')
-    for command in (importer, formatter):
+    regenerator = commands.add_parser('regenerate', help='Regenerate a new Word document from its saved citation snapshot')
+    regenerator.add_argument('--input', required=True, type=Path)
+    regenerator.add_argument('--output', required=True, type=Path,
+                             help='New output outside the private library; existing files are never replaced')
+    regenerator.add_argument('--style-file', type=Path,
+                             help='Explicit original custom CSL file, required for a custom-style snapshot')
+    for command in (importer, formatter, regenerator):
         command.add_argument('--data-dir', required=True, type=Path)
         command.add_argument('--workspace', required=True, help='Stable library ID')
     importer.add_argument('--input', required=True, type=Path)
@@ -50,6 +56,14 @@ def main(argv=None):
             print(json.dumps([asdict(style) for style in available_styles()], ensure_ascii=False, indent=2))
             return 0
         controller = _controller(args)
+        if args.operation == 'regenerate':
+            workbench = BibliographyWorkbench(controller)
+            style = load_style_file(args.style_file) if args.style_file is not None else None
+            target = workbench.regenerate_document(args.input, args.output, custom_style=style)
+            print(json.dumps({'result': 'SAVED', 'output': str(target),
+                              'source_preserved': True, 'visible_word_edits_imported': False,
+                              'quotation_verified': False}, ensure_ascii=False, indent=2))
+            return 0
         if args.operation == 'import':
             format = args.type or {'.ris': 'ris', '.bib': 'bibtex', '.json': 'csl-json'}.get(args.input.suffix.lower())
             if format is None:

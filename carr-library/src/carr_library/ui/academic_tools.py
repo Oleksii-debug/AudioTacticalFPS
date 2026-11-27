@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ..research.export_file import write_export
+from .export_destination import approve_export_destination
 from ..research.topic_literature_matrix import build_literature_matrix, export_matrix
 from ..research.outline_export import export_topic_outline as export_outline
 from .literature_matrix import make_matrix_dialog
@@ -80,7 +81,7 @@ class AcademicDialogs:
         name = 'research-outline' if kind == 'outline' else 'literature-review'
         dialog = wx.FileDialog(frame, 'Save ' + name.replace('-', ' '),
             defaultFile=f'{name}.{extension}', wildcard=wildcard,
-            style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+            style=wx.FD_SAVE)
         try:
             return Path(dialog.GetPath()) if dialog.ShowModal() == wx.ID_OK else None
         finally:
@@ -194,6 +195,10 @@ class AcademicActions:
         if destination is None:
             self.frame.report('Export cancelled. No file was written.')
             return
+        approval = approve_export_destination(self.frame, destination, private_root=scope.library.root)
+        if approval is None:
+            self.frame.report('Export cancelled. No file was written.')
+            return
         self._require_current(scope)
         exporter = export_outline if kind == 'outline' else export_matrix
 
@@ -206,7 +211,7 @@ class AcademicActions:
                 raise InterruptedError('Export cancelled. No file was written.')
             self._require_current(scope)
             write_export(destination, text, private_root=scope.library.root,
-                         cancelled=self.frame.cancel_event.is_set)
+                         cancelled=self.frame.cancel_event.is_set, approval=approval)
             return destination
 
         def done(path):

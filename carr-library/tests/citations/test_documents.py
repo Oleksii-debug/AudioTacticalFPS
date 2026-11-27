@@ -58,7 +58,8 @@ def test_note_style_has_real_native_endnotes_and_matching_references(tmp_path):
         assert [node.get('{%s}id' % NS['w']) for node in notes.findall('w:endnote', NS)] == ['-1', '0', '1', '2']
         assert len(notes.findall('.//w:endnoteRef', NS)) == 2
         assert b'endnotes' in archive.read('word/_rels/document.xml.rels')
-        assert 'Synthetic source' in ''.join(notes.itertext())
+        # Chicago applies title casing; this guard checks the actual note text.
+        assert 'synthetic source' in ''.join(notes.itertext()).casefold()
     assert read_citation_docx(save(tmp_path, content))['style']['kind'] == 'note'
 
 
@@ -140,3 +141,17 @@ def test_custom_style_snapshot_retains_the_exact_existing_validated_style(tmp_pa
 def test_cancellation_precedes_formatting():
     with pytest.raises(TimeoutError, match='cancelled'):
         citation_document(RECORDS, cancelled=lambda: True)
+
+
+def test_xml_expansion_cannot_create_a_snapshot_the_reader_rejects(tmp_path, monkeypatch):
+    from carr_library.citations import documents
+    body = [CitationParagraph('&' * 1000, ('citation-1',))]
+    original = citation_document(RECORDS[:1], paragraphs=body)
+    with ZipFile(BytesIO(original)) as archive:
+        serialized = archive.read(PART)
+    raw_json = etree.fromstring(serialized).text.encode('utf-8')
+    limit = len(raw_json) + 1
+    assert len(serialized) > limit
+    monkeypatch.setattr(documents, '_MAX_METADATA', limit)
+    with pytest.raises(ValueError, match='Serialized citation provenance'):
+        citation_document(RECORDS[:1], paragraphs=body)

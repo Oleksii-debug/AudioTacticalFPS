@@ -58,8 +58,9 @@ def test_historical_backup_names_exact_schema_and_restores_research(backup, tmp_
                                  uri=True)) as db:
         assert manifest['schema_fingerprint'] == schema_fingerprint(db)
     assert manifest['schema_fingerprint'] == expected_schema_fingerprint(4)
+    digest = write_manifest(directory, manifest)
     original = bundle_bytes(directory)
-    target = restore_backup(directory, tmp_path / 'restored', write_manifest(directory, manifest))
+    target = restore_backup(directory, tmp_path / 'restored', digest)
     restored = LibraryApp(target)
     assert restored.evidence(workspace, topic)[0] == app.evidence(workspace, topic)[0]
     assert bundle_bytes(directory) == original

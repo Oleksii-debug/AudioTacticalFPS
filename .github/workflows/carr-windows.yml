@@ -366,6 +366,12 @@ jobs:
             'tests/storage/test_pending_backup_ocr.py',
             'tests/language_qualification',
             'tests/test_delivery_contract.py',
+            'tests/ui/test_export_destination_approval.py',
+            'tests/test_supplied_asr_preparer.py',
+            'tests/citations/test_regeneration.py',
+            'tests/conversion/test_conversion.py',
+            'tests/ingest/test_worker_publication_boundary.py',
+            'tests/conversion/test_conversion_ui.py',
             'tests/e2e/test_google_translation_gateway.py',
             'tests/ui/test_translation_dialog.py'
           )
@@ -695,7 +701,14 @@ jobs:
                             'tests/assistant/test_translation.py',
                             'tests/e2e/test_google_translation_gateway.py',
                             'tests/ui/test_translation_dialog.py',
-                            'tests/test_delivery_contract.py']
+                            'tests/test_delivery_contract.py',
+                            'tests/ui/test_export_destination_approval.py',
+                            'tests/citations/test_regeneration.py',
+                            'tests/conversion/test_conversion.py',
+                            'tests/ingest/test_worker_publication_boundary.py',
+                            'tests/conversion/test_conversion_ui.py',
+                            'tests/search/test_semantic_cache.py',
+                            'tests/search/test_semantic_cache_boundary.py']
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:
               raise SystemExit(status)

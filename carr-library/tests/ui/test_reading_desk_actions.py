@@ -347,3 +347,18 @@ def test_import_rejects_stale_source_before_bookmark_publication(source, tmp_pat
     ReadingActions(frame, dialogs=Dialogs(path=target)).import_state()
     assert 'archived' in frame.messages[-1]
     assert state.bookmarks(workspace, book['edition']) == ()
+
+
+@pytest.mark.parametrize('existing', [False, True], ids=['new', 'confirmed-existing'])
+def test_reading_state_export_keeps_destination_changes_after_selection(
+        source, tmp_path, monkeypatch, existing):
+    app, workspace, _, _, _ = source
+    frame = Frame(app, workspace)
+    target = tmp_path / 'reading-state.json'
+    if existing:
+        target.write_bytes(b'Approved previous reading state')
+    monkeypatch.setattr('carr_library.ui.export_destination._confirm_replace', lambda *_: True)
+    frame.before_operation = lambda: target.write_bytes(b'Externally changed reading state')
+    ReadingActions(frame, dialogs=Dialogs(path=target)).export_state()
+    assert target.read_bytes() == b'Externally changed reading state'
+    assert 'destination changed' in frame.messages[-1]

@@ -158,6 +158,39 @@ def test_export_uses_existing_destination_guard(controller, tmp_path):
     assert private.read_text() == 'Existing private file'
 
 
+@pytest.mark.parametrize('existing', [False, True], ids=['new', 'confirmed-existing'])
+def test_academic_render_cannot_replace_a_file_changed_since_selection(
+        controller, tmp_path, monkeypatch, existing):
+    from carr_library.ui.export_destination import approve_export_destination
+    target = tmp_path / 'bibliography.txt'
+    if existing:
+        target.write_bytes(b'Approved old output')
+    approval = approve_export_destination(None, target, private_root=controller.library.root,
+                                          confirm=lambda *_: True)
+    original = controller.export
+
+    def changed_during_render(**kwargs):
+        content = original(**kwargs)
+        target.write_bytes(b'Newer external output')
+        return content
+
+    monkeypatch.setattr(controller, 'export', changed_during_render)
+    with pytest.raises(ValueError, match='destination changed'):
+        controller.export_to(target, approval=approval)
+    assert target.read_bytes() == b'Newer external output'
+
+
+def test_academic_existing_destination_requires_consent_before_render(controller, tmp_path, monkeypatch):
+    target = tmp_path / 'bibliography.txt'
+    target.write_bytes(b'Unapproved existing output')
+    render = Mock(side_effect=AssertionError('Must not render an unapproved overwrite'))
+    monkeypatch.setattr(controller, 'export', render)
+    with pytest.raises(FileExistsError, match='Confirm replacement'):
+        controller.export_to(target)
+    render.assert_not_called()
+    assert target.read_bytes() == b'Unapproved existing output'
+
+
 def test_reference_pages_have_distinct_labels_and_all_active_export(controller):
     with controller.library.write(controller.workspace) as db:
         service = AcademicLibrary(db, controller.workspace)
