@@ -31,7 +31,8 @@ class BaseFrame:
 
 @pytest.fixture
 def classes():
-    source = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/desktop_app.py'
+    import carr_library
+    source = Path(carr_library.__file__).parent / 'ui/desktop_app.py'
     parsed = ast.parse(source.read_text(encoding='utf-8'))
     nodes = [node for node in parsed.body if isinstance(node,(ast.ClassDef,ast.FunctionDef)) and
              node.name in {'DesktopFrame','DesktopSearchPanel','format_topic_results'}]
@@ -56,6 +57,7 @@ def frame(classes):
     env,queued = classes
     value = object.__new__(env['DesktopFrame'])
     value.working = value.busy = value._closing = False
+    value._native_owner_id, value._native_destroyed = 401, False
     value.cancel_event = threading.Event()
     value.cancel_button,value.choice,value.book = Mock(),Mock(),Mock()
     value.menu_bar = Mock()
@@ -257,6 +259,44 @@ def test_forced_close_blocks_late_ui_callbacks(classes,already_queued):
         callback()
     done.assert_not_called()
     f.report.assert_not_called()
+
+
+@pytest.mark.parametrize('already_queued', [False, True])
+@pytest.mark.parametrize('outcome', ['result', 'error'])
+def test_direct_native_destruction_detaches_owned_job_and_queued_completion(classes, already_queued, outcome):
+    f = frame(classes)
+    future = Future()
+    f.executor.submit.return_value = future
+    done, failed = Mock(), Mock()
+    f.run_job('Owned native work', lambda: (), done, failed)
+    def complete():
+        if outcome == 'result': future.set_result('durable result')
+        else: future.set_exception(RuntimeError('worker failure'))
+    if already_queued:
+        complete()
+    event = SimpleNamespace(GetId=lambda: f._native_owner_id, Skip=Mock(),
+        GetEventObject=lambda: pytest.fail('Do not inspect the dying native wrapper'))
+    f.on_destroy(event)
+    f.on_destroy(event)
+    assert f._closing and f._native_destroyed and f.cancel_event.is_set()
+    f.executor.shutdown.assert_called_once_with(wait=False, cancel_futures=True)
+    f._finish_job_controls = f.report = Mock(side_effect=AssertionError('Destroyed native owner accessed'))
+    if not already_queued:
+        complete()
+    for callback in classes[1]: callback()
+    done.assert_not_called()
+    failed.assert_not_called()
+    f.run_job('Late native work', Mock())
+    assert f.executor.submit.call_count == 1
+
+
+def test_child_destruction_does_not_detach_desktop_executor(classes):
+    f = frame(classes)
+    event = SimpleNamespace(GetId=lambda: f._native_owner_id + 1, Skip=Mock())
+    f.on_destroy(event)
+    assert not f._closing and not f._native_destroyed and not f.cancel_event.is_set()
+    f.executor.shutdown.assert_not_called()
+    event.Skip.assert_called_once()
 
 
 def test_saved_query_results_use_human_readable_source_and_notes(classes):

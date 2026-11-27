@@ -520,6 +520,9 @@ class DesktopFrame(WorkspaceFrame):
         self.working = False
         self._closing = False
         super().__init__(None, library.list_scopes, self._bind)
+        self._native_owner_id = self.GetId()
+        self._native_destroyed = False
+        self.Bind(wx.EVT_WINDOW_DESTROY, self.on_destroy)
         self.SetTitle('Resonance')
         self.SetMinSize((760, 650))
         self._menus()
@@ -1326,4 +1329,12 @@ class DesktopFrame(WorkspaceFrame):
             self._closing = True
             self.cancel_event.set()
             self.executor.shutdown(wait=False, cancel_futures=True)
+
+    def on_destroy(self, event):
+        if event.GetId() == self._native_owner_id and not self._native_destroyed:
+            self._native_destroyed = True
+            self._closing = True
+            self.cancel_event.set()
+            self.executor.shutdown(wait=False, cancel_futures=True)
+        event.Skip()
 

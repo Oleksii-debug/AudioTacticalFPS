@@ -22,6 +22,7 @@ def dialog():
     exec(compile(ast.Module(body=nodes, type_ignores=[]), str(source), 'exec'), env)
     value = object.__new__(env['ClipDialog'])
     value.closed = value.closing = value.pending = False
+    value.destroyed, value.owner_id = False, 101
     value.player = None
     value.playback_generation = 0
     value.previews = []
@@ -31,6 +32,7 @@ def dialog():
     value.IsModal = Mock(return_value=False)
     value._accept = Mock()
     value.frame = SimpleNamespace(working=False, cancel_event=threading.Event())
+    value.cancel_event = value.frame.cancel_event
     calls = []
     def run_job(title, operation, done, failed):
         value.frame.working = True
@@ -191,3 +193,58 @@ def test_unconfirmed_playback_stop_keeps_dialog_files_and_blocks_new_work(dialog
     dialog.player.close.return_value = None
     dialog.close()
     assert dialog.closed and not path.exists()
+
+
+def destroy_event(identity):
+    return SimpleNamespace(GetId=lambda: identity, Skip=Mock(),
+                           GetEventObject=lambda: pytest.fail('The dying wrapper must not be inspected'))
+
+
+def test_direct_clip_destruction_cancels_pending_work_before_it_can_start(dialog):
+    operation, done = Mock(), Mock()
+    assert dialog._run('Queued clip work', operation, done)
+    event = destroy_event(dialog.owner_id)
+    dialog.on_destroy(event)
+    assert dialog.destroyed and dialog.closed and dialog.cancel_event.is_set()
+    event.Skip.assert_called_once()
+    dialog.IsModal = dialog.Hide = Mock(side_effect=AssertionError('Destroyed native owner queried'))
+    dialog.status.ChangeValue = dialog.status.SetFocus = Mock(side_effect=AssertionError('Destroyed native control touched'))
+    dialog._enable = Mock(side_effect=AssertionError('Destroyed native controls enabled'))
+    dialog.finish()
+    dialog.close()
+    dialog.message('Late message')
+    assert not dialog.pending
+    operation.assert_not_called()
+    done.assert_not_called()
+    assert dialog._run('Another clip operation', Mock(), Mock()) is False
+
+
+@pytest.mark.parametrize('outcome', ['preview', 'error'])
+def test_clip_destruction_discards_queued_completion_without_native_access(dialog, tmp_path, outcome):
+    path = tmp_path / 'clip-preview-queued.wav'
+    path.write_bytes(b'Completed owned preview')
+    done = Mock()
+    assert dialog._run('Clip preview', lambda: path, done)
+    operation, completed, failed = dialog.calls.pop()
+    result = operation()
+    dialog.on_destroy(destroy_event(dialog.owner_id))
+    dialog._enable = dialog.Hide = dialog.IsModal = Mock(side_effect=AssertionError('Destroyed native owner touched'))
+    dialog.status.ChangeValue = dialog.status.SetFocus = Mock(side_effect=AssertionError('Destroyed control touched'))
+    if outcome == 'preview':
+        completed(result)
+        assert not path.exists()
+    else:
+        failed(RuntimeError('Queued worker failure'))
+        assert path.read_bytes() == b'Completed owned preview'
+    assert not dialog.pending
+    done.assert_not_called()
+
+
+def test_child_destruction_does_not_close_or_cancel_live_clip_owner(dialog):
+    dialog._run('Clip operation', lambda: 'live result', dialog._accept)
+    event = destroy_event(dialog.owner_id + 1)
+    dialog.on_destroy(event)
+    assert not dialog.closed and not dialog.destroyed and not dialog.cancel_event.is_set()
+    dialog.finish()
+    dialog._accept.assert_called_once_with('live result')
+    event.Skip.assert_called_once()

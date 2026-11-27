@@ -10,7 +10,7 @@ import os
 from pathlib import Path
 import sys
 from tempfile import TemporaryDirectory
-from time import monotonic
+from time import monotonic, sleep
 import traceback
 
 
@@ -169,7 +169,8 @@ def main():
             if stage == 0 and refresh.IsEnabled():
                 check('opening the dialog does not discover or capture', not service._devices and not captures)
                 check('recording progress has a native accessible gauge',
-                      isinstance(control('Recording operation progress'), wx.Gauge))
+                      any(isinstance(child, wx.Gauge) and child.GetName().startswith('Operation progress: ')
+                          for child in dialog.GetChildren()))
                 stage = 1
                 press(refresh)
             elif stage == 1 and selection.GetCount() == 1 and refresh.IsEnabled():
@@ -207,6 +208,88 @@ def main():
                 press(stop, wx.WXK_ESCAPE)
             wx.CallLater(25, guarded(drive))
 
+        def destruction_case(parent):
+            nonlocal dialog
+            owner = DesktopFrame(library)
+            owner.Show()
+            state = {'phase': 0, 'destroyed': False, 'finished': False}
+            before = len(captures)
+            cancelled_before = len(cancelled_captures)
+            limit = monotonic() + 30
+            dialog = None
+
+            def drive_destruction():
+                nonlocal dialog
+                if state['finished'] or state['destroyed'] or errors:
+                    return
+                if monotonic() >= limit:
+                    raise TimeoutError('Native recording destruction did not reach actual capture')
+                if dialog is None:
+                    dialog = next((window for window in wx.GetTopLevelWindows()
+                        if isinstance(window, wx.Dialog) and window.GetParent() == owner
+                        and window.GetTitle() == 'Local microphone recording'), None)
+                if dialog is not None:
+                    refresh = control('Refresh microphones')
+                    selection = control('Microphone device (explicit selection required)')
+                    start = control('Start recording')
+                    if state['phase'] == 0 and refresh.IsEnabled():
+                        state['phase'] = 1
+                        press(refresh)
+                    elif state['phase'] == 1 and selection.GetCount() == 1 and refresh.IsEnabled():
+                        state['phase'] = 2
+                        press(selection, wx.WXK_DOWN)
+                    elif state['phase'] == 2 and selection.GetSelection() == 0 and start.IsEnabled():
+                        state['phase'] = 3
+                        press(start)
+                    elif state['phase'] == 3 and len(captures) == before + 1 and captures[-1]['seconds'] >= .1:
+                        check('native destruction occurs during actual FFmpeg capture', captures[-1]['active'])
+                        owner_id = dialog.GetId()
+                        def destroyed(event):
+                            if event.GetId() == owner_id:
+                                state['destroyed'] = True
+                            event.Skip()
+                        dialog.Bind(wx.EVT_WINDOW_DESTROY, destroyed)
+                        state['phase'] = 4
+                        (owner if parent else dialog).Destroy()
+                        return
+                wx.CallLater(25, guarded(drive_destruction))
+
+            try:
+                wx.CallLater(25, guarded(drive_destruction))
+                result = dialog_module.show_recording(owner)
+                state['finished'] = True
+                while any(item['active'] for item in captures) and monotonic() < limit:
+                    app.Yield(); sleep(.01)
+                # Drain the real worker's queued UI completion after native
+                # destruction. The callback must observe the plain lifetime flag.
+                drained = []
+                wx.CallAfter(lambda: drained.append(True))
+                while not drained and monotonic() < limit:
+                    app.Yield(); sleep(.01)
+                check('direct parent destruction returns from modal capture' if parent else
+                      'direct dialog destruction returns from modal capture',
+                      state['phase'] == 4 and state['destroyed'] and result is None)
+                check('native destruction cancels capture and drains its late completion',
+                      drained and len(cancelled_captures) == cancelled_before + 1
+                      and not any(item['active'] for item in captures) and not errors)
+                check('native destruction preserves the verified original and removes partial audio',
+                      len(service.list()) == 1 and service.get(completed[0]['id']) == completed[0]
+                      and len(list(service.root.glob('*.wav'))) == 1
+                      and not list(service.root.glob('.pending-*')))
+                if parent:
+                    check('recording parent destruction detaches its executor and progress timer',
+                          owner._native_destroyed and owner._closing and owner.cancel_event.is_set()
+                          and owner.operation_progress.closed)
+            finally:
+                state['finished'] = True
+                for item in captures[before:]:
+                    item['cancel'].set()
+                owner.executor.shutdown(wait=True, cancel_futures=True)
+                if not owner._native_destroyed:
+                    owner.Destroy()
+                app.Yield()
+                dialog = None
+
         def open_recording():
             nonlocal frame, finished
             if frame.working:
@@ -223,6 +306,8 @@ def main():
                 check('closing preserves exactly the verified original', len(service.list()) == 1
                     and service.get(completed[0]['id']) == completed[0]
                     and not list(service.root.glob('.pending-*')))
+                destruction_case(False)
+                destruction_case(True)
             app.ExitMainLoop()
 
         try:

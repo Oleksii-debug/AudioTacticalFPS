@@ -6,6 +6,7 @@ import math
 import os
 import struct
 from tempfile import TemporaryDirectory
+from threading import Event
 from time import monotonic, sleep
 from types import SimpleNamespace
 import traceback
@@ -93,6 +94,48 @@ def main():
             check('actual FFmpeg produced a completed Studio fixture', completed['status'] == 'complete')
             frame = DesktopFrame(library); frame.Show(); gui.SetTopWindow(frame)
             dialog = ui.create_publishing_dialog(frame); dialog.Show()
+            def destruction_case(parent):
+                owner = DesktopFrame(LibraryApp(root / ('parent-close' if parent else 'dialog-close')))
+                owner.Show()
+                probe = ui.create_publishing_dialog(owner); probe.Show()
+                entered, release = Event(), Event()
+                delivered = []
+                try:
+                    until(lambda: not owner.working)
+                    child = wx.StaticText(probe, label='Independent child lifetime')
+                    child.Destroy(); gui.Yield()
+                    check('child destruction keeps publication owner alive', probe.alive and not owner._closing)
+                    def operation():
+                        entered.set()
+                        if not release.wait(30):
+                            raise TimeoutError('Publication destruction fixture was not released')
+                        if not probe.stopping():
+                            raise AssertionError('Publication destruction did not cancel owned work')
+                        raise InterruptedError('Owned publication stopped after native destruction')
+                    check('actual publication executor starts before destruction',
+                          probe.begin('Native pending publication destruction', operation, delivered.append)
+                          and entered.wait(10))
+                    (owner if parent else probe).Destroy()
+                    until(lambda: probe.destroyed and (not parent or owner._native_destroyed))
+                    check('destroyed publication detaches and cancels pending work',
+                          not probe.alive and probe.cancel.is_set() and owner.cancel_event.is_set())
+                    release.set()
+                    owner.executor.shutdown(wait=True, cancel_futures=True)
+                    drained = Event(); wx.CallAfter(drained.set); until(drained.is_set)
+                    check('late publication completion never reaches destroyed native controls', not delivered)
+                    if parent:
+                        check('destroyed publication parent detaches executor and progress timer',
+                              owner._closing and owner.operation_progress.closed)
+                    else:
+                        check('live publication parent receives detached completion safely', not owner.working)
+                finally:
+                    release.set()
+                    owner.executor.shutdown(wait=True, cancel_futures=True)
+                    if not probe.destroyed:
+                        probe.Destroy()
+                    if not owner._native_destroyed:
+                        owner.Destroy()
+                    gui.Yield()
             def scenario():
                 try:
                     check('real native main loop is active', gui.GetMainLoop() is not None)
@@ -120,6 +163,10 @@ def main():
                           and 'not be overwritten' in dialog.status.GetValue())
                     press(dialog.buttons['close'])
                     check('native keyboard close completes', not dialog.alive)
+                    destruction_case(False)
+                    destruction_case(True)
+                    check('native destruction preserves completed EPUB and receipt',
+                          target.read_bytes() == original and inspect_epub(target) == provenance)
                 except Exception:
                     errors.append(traceback.format_exc())
                 finally:

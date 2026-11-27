@@ -20,6 +20,8 @@ class Widget:
     def __init__(self, parent=None, *args, value='', label='', choices=(), **kwargs):
         self.value, self.label, self.choices = value, label, list(choices)
         self.selection, self.enabled, self.name = -1, True, ''
+        self.identity, self.bindings = id(self), {}
+    def GetId(self): return self.identity
     def SetName(self, name): self.name = name
     def GetName(self): return self.name
     def GetValue(self): return self.value
@@ -29,7 +31,7 @@ class Widget:
     def GetSelection(self): return self.selection
     def Enable(self, enabled=True): self.enabled = enabled
     def IsEnabled(self): return self.enabled
-    def Bind(self, *args, **kwargs): pass
+    def Bind(self, event, callback, **kwargs): self.bindings[event] = callback
     def SetSizer(self, *args): pass
     def SetScrollRate(self, *args): pass
     def FitInside(self): pass
@@ -49,7 +51,7 @@ def desktop(source_job):
     service, state = source_job
     library = LibraryApp(service.root.parent.parent)
     constants = ('DEFAULT_DIALOG_STYLE','RESIZE_BORDER','VSCROLL','VERTICAL','HORIZONTAL','ALL','EXPAND',
-                 'TE_MULTILINE','TE_READONLY','EVT_BUTTON','EVT_CLOSE','ID_OK','ID_CLOSE','FD_SAVE')
+                 'TE_MULTILINE','TE_READONLY','EVT_BUTTON','EVT_CLOSE','EVT_WINDOW_DESTROY','ID_OK','ID_CLOSE','FD_SAVE')
     wx = SimpleNamespace(**{name:index + 1 for index, name in enumerate(constants)})
     for name in ('Dialog','StaticText','TextCtrl','Choice','Button','ScrolledWindow'):
         setattr(wx, name, Widget)
@@ -127,3 +129,40 @@ def test_invalid_budget_does_not_start_native_export(desktop, tmp_path):
     dialog.on_refresh(); dialog.job_choice.SetSelection(0); dialog.output.ChangeValue(str(tmp_path / 'invalid.epub'))
     dialog.minutes.ChangeValue('nan'); dialog.on_export()
     assert len(frame.operations) == 1 and not (tmp_path / 'invalid.epub').exists()
+
+
+@pytest.mark.parametrize('phase', ['pending-work', 'queued-result', 'queued-error'])
+def test_direct_publication_destruction_detaches_pending_callbacks(desktop, phase):
+    frame, dialog, _ = desktop
+    pending, calls, completed = [], [], []
+    frame.run_job = lambda title, operation, done, failed: pending.append((operation, done, failed))
+    assert dialog.begin('Lifetime boundary', lambda: calls.append('operation') or 'durable result', completed.append)
+    operation, done, failed = pending.pop()
+    value = operation() if phase != 'pending-work' else None
+    event = SimpleNamespace(GetId=lambda: dialog.owner_id, Skip=lambda: None,
+        GetEventObject=lambda: pytest.fail('The dying wrapper must not be inspected'))
+    dialog.on_destroy(event)
+    assert dialog.destroyed and not dialog.alive and dialog.cancel.is_set() and frame.cancel_event.is_set()
+    def dead(*args, **kwargs): pytest.fail('Destroyed publication native control accessed')
+    for control in (dialog.status, dialog.job_choice, dialog.receipt_choice, *dialog.buttons.values()):
+        control.ChangeValue = control.Set = control.Enable = control.SetFocus = dead
+    dialog.IsModal = dialog.Hide = dead
+    if phase == 'pending-work':
+        with pytest.raises(InterruptedError): operation()
+        failed(InterruptedError('Cancelled before queued work'))
+        assert calls == []
+    elif phase == 'queued-result':
+        done(value)
+    else:
+        failed(RuntimeError('Queued failure'))
+    dialog.on_close()
+    dialog.report('Late progress')
+    assert not dialog.busy and completed == []
+
+
+def test_child_destruction_keeps_publication_owner_usable(desktop):
+    _, dialog, _ = desktop
+    dialog.on_destroy(SimpleNamespace(GetId=lambda: dialog.owner_id + 1, Skip=lambda: None))
+    assert dialog.alive and not dialog.destroyed and not dialog.cancel.is_set()
+    dialog.on_refresh()
+    assert len(dialog.jobs) == 1 and not dialog.busy

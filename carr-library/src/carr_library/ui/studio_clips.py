@@ -26,6 +26,9 @@ class ClipDialog(wx.Dialog):
         self.projects = ()
         self.project = None
         self.pending = self.closing = self.closed = False
+        self.destroyed = False
+        self.owner_id = self.GetId()
+        self.cancel_event = frame.cancel_event
         self.player = None
         self.playback_generation = 0
         self.previews = []
@@ -88,6 +91,7 @@ class ClipDialog(wx.Dialog):
         self.scene_choice.Bind(wx.EVT_CHOICE, self.select_scene)
         self.clip_choice.Bind(wx.EVT_CHOICE, self.select_clip)
         self.Bind(wx.EVT_CLOSE, self.close)
+        self.Bind(wx.EVT_WINDOW_DESTROY, self.on_destroy)
         self.Bind(wx.EVT_CHAR_HOOK, self.key)
         self._enable()
 
@@ -97,6 +101,8 @@ class ClipDialog(wx.Dialog):
             self.status.SetFocus()
 
     def _enable(self):
+        if self.closed:
+            return
         for control in self.controls:
             control.Enable(not self.pending)
         for name, button in self.buttons.items():
@@ -114,6 +120,11 @@ class ClipDialog(wx.Dialog):
         def finish(value=None, error=None):
             self.pending = False
             if self.closed:
+                if isinstance(value, Path) and value.name.startswith('clip-preview-'):
+                    try:
+                        value.unlink(missing_ok=True)
+                    except OSError as exc:
+                        self.cleanup_error = str(exc)
                 return
             self._enable()
             if error is not None:
@@ -128,6 +139,8 @@ class ClipDialog(wx.Dialog):
         def work():
             from ..audio.models import AudioCancelled
             try:
+                if self.closed:
+                    raise AudioCancelled('The clip window was destroyed before the operation started.')
                 return operation()
             except AudioCancelled as exc:
                 raise InterruptedError(str(exc)) from exc
@@ -362,6 +375,8 @@ class ClipDialog(wx.Dialog):
             self.message('Cancellation requested; waiting for the owned audio operation to finish.')
 
     def close(self, event=None):
+        if self.closed:
+            return
         quiet = self.stop()
         if self.pending:
             self.closing = True
@@ -381,6 +396,26 @@ class ClipDialog(wx.Dialog):
         else:
             self.Hide()
 
+    def on_destroy(self, event):
+        if event.GetId() == self.owner_id:
+            # Compare the captured native ID; never query the dying wrapper.
+            self.destroyed = True
+            if not self.closed:
+                self.closed = self.closing = True
+                self.playback_generation += 1
+                if self.pending:
+                    self.cancel_event.set()
+                try:
+                    if self.player is not None and self.player.close() is False:
+                        raise RuntimeError('The audio device has not confirmed Stop.')
+                    for path in self.previews:
+                        path.unlink(missing_ok=True)
+                except (OSError, RuntimeError) as exc:
+                    # Preserve files and the native player on uncertain cleanup.
+                    # This plain state remains safe after the native owner dies.
+                    self.cleanup_error = str(exc)
+        event.Skip()
+
     def key(self, event):
         if event.GetKeyCode() == wx.WXK_ESCAPE:
             self.close()
@@ -397,4 +432,5 @@ def show_clip_editor(frame):
         wx.CallAfter(dialog.reload)
         dialog.ShowModal()
     finally:
-        dialog.Destroy()
+        if not dialog.destroyed:
+            dialog.Destroy()

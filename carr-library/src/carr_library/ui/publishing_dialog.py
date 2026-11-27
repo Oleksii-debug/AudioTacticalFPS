@@ -22,6 +22,9 @@ def create_publishing_dialog(frame, *, wx_module=None):
             self.production = ProductionService(self.library_root / 'state' / 'studio')
             self.service = PublicationService(self.production)
             self.alive, self.busy = True, False
+            self.destroyed = False
+            self.owner_id = self.GetId()
+            self.parent_cancel = frame.cancel_event
             self.cancel = Event()
             self.jobs, self.receipts = (), ()
             panel = wx.ScrolledWindow(self, style=wx.VSCROLL)
@@ -56,6 +59,7 @@ def create_publishing_dialog(frame, *, wx_module=None):
             layout.Add(row, 0, wx.ALL, 3); self.SetSizer(layout)
             panel.FitInside()
             self.Bind(wx.EVT_CLOSE, self.on_close)
+            self.Bind(wx.EVT_WINDOW_DESTROY, self.on_destroy)
             self.report('Load saved Studio jobs, explicitly choose a completed job and a new EPUB destination. '
                         'Export verifies all source receipts and does not open a reader.')
             self.controls()
@@ -74,7 +78,7 @@ def create_publishing_dialog(frame, *, wx_module=None):
             self.buttons['cancel'].Enable(self.busy)
 
         def stopping(self):
-            return (self.cancel.is_set() or frame.cancel_event.is_set() or not self.alive
+            return (not self.alive or self.cancel.is_set() or self.parent_cancel.is_set()
                     or frame.library.root != self.library_root or getattr(frame, '_closing', False))
 
         def budget(self):
@@ -102,7 +106,11 @@ def create_publishing_dialog(frame, *, wx_module=None):
                 self.busy = False
                 if self.alive:
                     self.report(str(error)); self.controls(); self.status.SetFocus()
-            frame.run_job(title, operation, done=done, failed=failed)
+            def checked():
+                if self.stopping():
+                    raise InterruptedError('Publication stopped before the queued operation started.')
+                return operation()
+            frame.run_job(title, checked, done=done, failed=failed)
             return True
 
         def on_refresh(self, event=None):
@@ -177,9 +185,23 @@ def create_publishing_dialog(frame, *, wx_module=None):
                 return
             if self.busy:
                 self.on_cancel()
-            self.alive = False
+            self.detach()
             if self.IsModal(): self.EndModal(wx.ID_CLOSE)
             else: self.Hide()
+
+        def detach(self):
+            if not self.alive:
+                return
+            self.alive = False
+            self.cancel.set()
+            if self.busy:
+                self.parent_cancel.set()
+
+        def on_destroy(self, event):
+            if event.GetId() == self.owner_id:
+                self.destroyed = True
+                self.detach()
+            event.Skip()
 
     return PublishingDialog()
 
@@ -189,4 +211,6 @@ def show_publishing(frame):
     try:
         dialog.ShowModal()
     finally:
-        dialog.on_close(); dialog.Destroy()
+        dialog.detach()
+        if not dialog.destroyed:
+            dialog.Destroy()

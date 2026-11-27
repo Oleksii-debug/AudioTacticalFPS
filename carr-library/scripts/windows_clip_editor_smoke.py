@@ -12,6 +12,7 @@ from pathlib import Path
 import struct
 import sys
 from tempfile import TemporaryDirectory
+from threading import Event
 from time import monotonic, sleep
 import traceback
 import wave
@@ -132,6 +133,54 @@ def main():
             project = editor.create('Native scene clips')
             dialog = ui.ClipDialog(frame, editor=editor)
             dialog.Show()
+            def destruction_case(parent):
+                owner = DesktopFrame(LibraryApp(root / ('parent-close' if parent else 'dialog-close')))
+                owner.Show()
+                probe = ui.ClipDialog(owner)
+                probe.Show()
+                entered, release = Event(), Event()
+                delivered = []
+                preview = root / 'clip-preview-late-native.wav'
+                try:
+                    pump(lambda: not owner.working, 'Preparing destruction fixture')
+                    child = wx.StaticText(probe, label='Independent child lifetime')
+                    child.Destroy(); gui.Yield()
+                    check('child destruction keeps clip owner alive', not probe.closed and not owner._closing)
+                    def operation():
+                        entered.set()
+                        if not release.wait(30):
+                            raise TimeoutError('Clip destruction fixture was not released')
+                        if parent:
+                            if not owner.cancel_event.is_set():
+                                raise AssertionError('Parent destruction did not cancel its owned clip operation')
+                            raise InterruptedError('Owned clip operation stopped after parent destruction')
+                        preview.write_bytes(b'owned late preview')
+                        return preview
+                    check('actual clip executor starts before destruction',
+                          probe._run('Native pending clip destruction', operation, delivered.append) and entered.wait(10))
+                    (owner if parent else probe).Destroy()
+                    pump(lambda: probe.destroyed and (not parent or owner._native_destroyed),
+                         'Native clip owner destruction')
+                    check('destroyed clip detaches and cancels pending work', probe.closed and owner.cancel_event.is_set())
+                    release.set()
+                    owner.executor.shutdown(wait=True, cancel_futures=True)
+                    drained = Event(); wx.CallAfter(drained.set)
+                    pump(drained.is_set, 'Draining actual late clip completion')
+                    check('late clip completion never reaches destroyed native controls', not delivered)
+                    check('late preview is removed without native callbacks', not preview.exists())
+                    if parent:
+                        check('destroyed clip parent detaches executor and progress timer',
+                              owner._closing and owner.operation_progress.closed)
+                    else:
+                        check('live clip parent receives detached completion safely', not owner.working)
+                finally:
+                    release.set()
+                    owner.executor.shutdown(wait=True, cancel_futures=True)
+                    if not probe.destroyed:
+                        probe.Destroy()
+                    if not owner._native_destroyed:
+                        owner.Destroy()
+                    gui.Yield()
             def scenario():
                 try:
                     check('real native main loop is active', gui.GetMainLoop() is not None)
@@ -181,6 +230,11 @@ def main():
                           and sha256(source.read_bytes()).hexdigest() == original)
                     press(dialog.buttons['close'])
                     check('native keyboard close finishes cleanly', dialog.closed)
+                    destruction_case(False)
+                    destruction_case(True)
+                    check('native destruction leaves retained and supplied originals unchanged',
+                          sha256(retained.read_bytes()).hexdigest() == original
+                          and sha256(source.read_bytes()).hexdigest() == original)
                 except Exception:
                     errors.append(traceback.format_exc())
                 finally:
