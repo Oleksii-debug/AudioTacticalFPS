@@ -17,7 +17,7 @@ from uuid import uuid4
 from ..audio.models import AudioBudget, AudioCancelled, AudioError
 from ..audio.process import publish_file, run_process
 from ..durable_state import (atomic_bytes, atomic_json, digest_file, encode, local_path,
-                             read_json, regular, state_lock)
+                             read_json, regular, state_lock, sync_directory)
 from ..research.export_file import write_binary_export
 from .models import (AUDIO_EXTENSIONS, FORMATS, MAX_RESULT_BYTES, encoded_outputs,
                      fingerprint, settings as validate_settings, validated_result,
@@ -322,8 +322,11 @@ class TranscriptionService:
             return state
 
     def rebind_runtime(self, identity, profile_id):
-        with state_lock(self._job_root(identity), 'run'):
+        job_root = self._job_root(identity)
+        with state_lock(job_root, 'run'):
             state = self._load(identity)
+            if state['status'] in ACTIVE or (state.get('recovery_review_required') and not state.get('restored')):
+                raise RuntimeError('Confirm the interrupted external worker stopped before rebinding this job.')
             profile = self._profile(profile_id)
             if profile.get('trusted') is not True:
                 raise PermissionError('Choose an explicitly reviewed local runtime first.')
@@ -331,6 +334,23 @@ class TranscriptionService:
             if (profile['model_content_fingerprint'] != previous['model_content_fingerprint'] or
                     profile['worker_identity'] != previous['worker_identity']):
                 raise ValueError('Resuming requires the same model content and worker; create a new job for a different engine/model.')
+            if profile['fingerprint'] != previous['fingerprint'] or state.get('restored'):
+                worker = job_root / 'worker'
+                if os.path.lexists(worker):
+                    regular(local_path(worker, root=job_root, exists=True), directory=True)
+                    history = local_path(job_root / 'worker-history', root=job_root)
+                    history.mkdir(exist_ok=True)
+                    local_path(history, root=job_root, exists=True)
+                    archived = history / (previous['id'] + '-' + uuid4().hex)
+                    if os.path.lexists(archived):
+                        raise FileExistsError('The previous worker workspace history already exists.')
+                    # The worker checkpoint does not report every base/native
+                    # support file in our admission profile. Never relabel its
+                    # old raw cache with a newly reviewed profile. Keep it for
+                    # recovery evidence; accepted artifacts stay in place.
+                    worker.rename(archived)
+                    sync_directory(history)
+                    sync_directory(job_root)
             state['profile_id'], state['profile_fingerprint'] = profile_id, profile['fingerprint']
             state['plan_fingerprint'] = self._plan(state)
             if state.get('restored'):
@@ -603,7 +623,9 @@ class TranscriptionService:
                     def checked_poll():
                         lease.checkpoint()
                         return poll()
-                    run_process([profile['python_executable'], '-I', profile['worker_path'],
+                    # Isolated mode ignores PYTHON* environment variables.
+                    # Set UTF-8 explicitly for protocol paths and worker pipes.
+                    run_process([profile['python_executable'], '-I', '-X', 'utf8', profile['worker_path'],
                                  '--job-dir', str(worker_root)], budget=self.budget,
                                 cancelled=checked_poll, watch=(worker_root / 'logs', worker_root / 'results'),
                                 env=environment, cwd=worker_root)
@@ -761,10 +783,19 @@ def prepare_restored_state(state_root, destination_root=None):
             value['error'] = 'Restored job: review and register the local runtime/model before resuming.'
         atomic_json(path, value, replace=True)
         atomic_json(path.parent / 'control.json', {'action': 'run'}, replace=(path.parent / 'control.json').exists())
-        worker = path.parent / 'worker'
-        for name in ('job_config.json', 'settings_live.json', 'job_status.json', 'pause.flag', 'stop.flag'):
-            candidate = worker / name
-            if candidate.exists() or candidate.is_symlink():
-                local_path(candidate, root=root, exists=True).unlink()
+        workspaces = [path.parent / 'worker']
+        history = path.parent / 'worker-history'
+        if os.path.lexists(history):
+            regular(local_path(history, root=root, exists=True), directory=True)
+            for count, archived in enumerate(history.iterdir(), 1):
+                if count > 1024 or not re.fullmatch('[0-9a-f]{32}-[0-9a-f]{32}', archived.name):
+                    raise ValueError('Invalid or excessive restored worker workspace history.')
+                regular(local_path(archived, root=root, exists=True), directory=True)
+                workspaces.append(archived)
+        for worker in workspaces:
+            for name in ('job_config.json', 'settings_live.json', 'job_status.json', 'pause.flag', 'stop.flag'):
+                candidate = worker / name
+                if candidate.exists() or candidate.is_symlink():
+                    local_path(candidate, root=root, exists=True).unlink()
         jobs += 1
     return {'profiles_revoked': profiles, 'jobs_reviewed': jobs, 'external_files_executed': False}

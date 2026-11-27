@@ -20,9 +20,9 @@ unchanged until a verified migration; visible application titles use Resonance.
 | Language inventory | Exact canonical 135 entries, source audit and searchable capability matrix | Resource inventory is separate from acoustic qualification; no claim of 135 working voices |
 | Assistant and providers | Typed scoped tools, durable jobs, local-only default, protected credential references and per-request consent/budget | Local and synthetic provider tests; no paid provider call was made during implementation |
 | Translation | Optional Google Basic v2 selected-text derivatives, explicit supported-language query, consent, chunk receipts/resume and new exports | Synthetic transport with real gateway/ledger/reading objects; live API, translation quality, Advanced v3 and local model inference are not qualified |
-| Transcription | Existing local Python/worker/model inspection and explicit trust, isolated supplied-worker protocol, retained audio, durable jobs, pause/cancel/resume, transcript edits and TXT/SRT/VTT/JSON | Actual subprocess/file-protocol tests use a synthetic peer; supplied private worker review is separate. No model download, real acoustic accuracy or language qualification is inferred |
+| Transcription | Existing local Python/worker/model inspection and explicit trust, isolated supplied-worker protocol, retained audio, durable jobs, pause/cancel/resume, transcript edits and TXT/SRT/VTT/JSON | Real subprocess/file-protocol tests use a synthetic peer; the unchanged corrected private worker also completed the adapter protocol with a synthetic installed recognition backend. No model download, real acoustic accuracy or language qualification is inferred |
 | Shared operations | Recovery view over canonical import/assistant/translation/studio/ASR checkpoints, explicit resource policy and native crash-released admission | Actual multiprocess contention/crash checks; cooperative declarations are not an OS sandbox or measured CPU/GPU/RAM usage |
-| Delivery preparation | Exact-source wheel checks, pinned dependency/SBOM closure, parent-manifest binding, strict paths and sealed runtime files | Source/packaging tests; checksum integrity is not a publisher signature |
+| Delivery preparation | Exact-source wheel checks, pinned dependency/SBOM closure, parent-manifest binding, strict paths, sealed runtime files and direct ZIP assembly with verified OCR source-companion reuse | Source/packaging tests; checksum integrity is not a publisher signature |
 | Private integration boundary | Separate versioned entitlement/update protocols and preservation of user-data operations | 45 synthetic boundary tests; no verifier, authority, automatic renewal, production trust or updater is enabled |
 
 The native V3 acceptance script performs installed SAPI synthesis, scene
@@ -42,8 +42,9 @@ The following cannot be labelled DONE by passing the current core tests:
 - Actual owner-supplied cloning runtime, authorized reference recordings,
   protected voice profiles and independent multilingual inference/listening.
 - Actual installed dordiai/SAPI4 compatibility, MusicGen/ACE-Step model inference,
-  the remaining approved Balabolka-equivalent workflow checklist and synchronized
-  publishing/Braille workflows.
+  the remaining reading/synthesis workflows in the [finite checklist](speech_runtime.md#requested-reading-and-synthesis-workflow-checklist),
+  and synchronized publishing/Braille workflows. Completing the checklist does
+  not complete its explicitly pending product functions.
 - Independent qualification of every required capability for the canonical 135
   entries; registry/resource counts never establish language quality.
 - Human Windows 11/NVDA and listening review. Automated Windows Server native

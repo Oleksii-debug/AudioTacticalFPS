@@ -15,7 +15,36 @@ Reuse canonical implementation → reconcile an existing reviewed PR → adopt a
   architecture requires the supplied external worker and canonical durable jobs.
 - [PR137](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/137), commit
   `cb966fc`: adopt its source authorization checks before and after the native
-  Save As chooser, with the real library authorization regression.
+  Save As chooser, with the real library authorization regression. Its later
+  commit `1601930fc672c7740e0f72715853b38a31a77e9c` adds retained source lineage
+  to portable reading copies, verifies each original slice and preserves legacy
+  projects without attaching them to a source merely by matching text.
+- [PR138](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/138), commit
+  `69f1eb359bbbdd0192c44a06b9e51c1822b6b0d5`: adopt only its three-file OCR
+  path-identity and streamed-mutation change onto the current canonical code.
+  Equivalent model directory paths retain their selected hash expectations;
+  no older branch-wide tree is substituted for the current application.
+- [PR145](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/145), commit
+  `93c09745a6a4dc3d498308d001f214d1ef10ba5c`: reuse portable state-manifest
+  validation before backup publication, including Unicode/case and
+  file/directory collisions. The combined source-lineage, backup and OCR
+  regressions passed 149 tests locally; installed Windows evidence is separate.
+- [PR139](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/139), commit
+  `74ee2073af2d67aad7bb1fa92e22d4a9627ba37f`: reuse its bounded import
+  cancellation/progress-observer handling and typed Studio interruption
+  classification. Completed imports remain completed, and a late stop request
+  does not conceal an independent publication error. Keep the current shared
+  resource admission and speech-progress implementations.
+- [PR143](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/143), reviewed
+  head `ab53b696241a9168b64096fd669cd9416945dcce`: adopt the captured export
+  destination/receipt contract and its eight native UI callers, including the
+  academic return-value compatibility correction. The same selection includes
+  commit `32772117ffb5fcdb972f66f62204585cebe658b8`'s guarded import watermark,
+  stopped-worker publication reconciliation and pending-backup validation
+  together; an existing/replayed or damaged revision cannot imply completion.
+  Reuse the bounded Windows state-replacement retry from `44821a0` without
+  replacing any other state protocol. No alternate ASR implementation or
+  branch-wide replacement is adopted.
 - [PR135](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/135) is an earlier
   ASR-03-only preparation. The privately corrected supplied worker addresses
   all four reviewed integrity findings; do not replace it with the narrower fix.
@@ -24,6 +53,10 @@ Reuse canonical implementation → reconcile an existing reviewed PR → adopt a
   No alternate database, queue, inference engine or model downloader is added.
 - Progress speech reuses the canonical isolated SAPI adapter and WAV player;
   it does not implement another synthesizer or write into rendered audio.
+- Private ZIP refresh reuses the existing exact-source wheel, dependency lock,
+  sealed inventory and strict archive verifier. Directory and direct-ZIP
+  assembly share one validation/selection path, and the existing OCR source
+  companion is reverified instead of creating another large staging copy.
 
 Record exact source commit/release, binary/model hashes, license texts/notices, dependencies/assets, supported hardware/OS, chosen distribution profile and real acceptance results. A code license does not automatically license weights, voices, training/reference recordings, SoundFonts, citation styles or generated content. GPL/AGPL allow commercial use but may impose incompatible source/combination duties for a particular closed application; IPC and a “private” ZIP are not automatic exemptions. Resolve the affected package rather than blocking unrelated platform work.
 

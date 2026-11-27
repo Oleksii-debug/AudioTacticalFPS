@@ -18,6 +18,19 @@ import time
 import wave
 
 
+def request_modal_escape(dialog, keyboard, *, escape_key, close_code, pump):
+    """Observe native close handling without waiting inside its own modal loop.
+
+    On wxMSW, IsModal stays true until this callback returns and ShowModal
+    unwinds. Check the window and return code here, then check ShowModal's
+    actual return in the caller outside the callback.
+    """
+    if not dialog.IsShown() or not dialog.IsModal():
+        return False
+    keyboard.Char(escape_key)
+    return pump(lambda: not dialog.IsShown()) and dialog.GetReturnCode() == close_code
+
+
 class SyntheticTranscriptionService:
     """Deterministic protocol-independent UI fixture, with no model execution."""
 
@@ -270,8 +283,10 @@ def main():
             def shutdown(self, **options): return self.actual.shutdown(**options)
         operations_module.ThreadPoolExecutor = RejectFirstSubmission
         dashboard_errors = []
+        dashboard_escape_received = False
 
         def dashboard_checks():
+            nonlocal dashboard_escape_received
             dashboard = next((window for window in wx.GetTopLevelWindows()
                               if isinstance(window, wx.Dialog) and window.GetTitle() == 'Tasks and resources'), None)
             if dashboard is None:
@@ -302,21 +317,24 @@ def main():
                 check('dashboard Escape routes to explicit close', dashboard.GetEscapeId() == wx.ID_CLOSE)
                 named(dashboard, 'Close').SetFocus()
                 keyboard = wx.UIActionSimulator()
-                keyboard.Char(wx.WXK_ESCAPE)
-                check('dashboard native Escape ends its modal lifecycle', pump(lambda: not dashboard.IsModal()))
+                dashboard_escape_received = request_modal_escape(dashboard, keyboard,
+                    escape_key=wx.WXK_ESCAPE, close_code=wx.ID_CLOSE, pump=pump)
+                check('dashboard native Escape requests close and hides its window', dashboard_escape_received)
             except Exception as exc:
                 dashboard_errors.append(str(exc))
             finally:
-                if dashboard.IsModal():
+                if dashboard.IsModal() and dashboard.IsShown():
                     dashboard.EndModal(wx.ID_CLOSE)
 
         wx.CallLater(200, dashboard_checks)
         try:
-            operations_module.show_operations(frame)
+            dashboard_close_code = operations_module.show_operations(frame)
         finally:
             operations_module.ThreadPoolExecutor = original_executor
         if dashboard_errors:
             raise AssertionError('; '.join(dashboard_errors))
+        check('dashboard native Escape ends its modal lifecycle',
+              dashboard_escape_received and dashboard_close_code == wx.ID_CLOSE)
 
         measured, played, pcm_paths = {}, threading.Event(), []
         class CapturePlayback:

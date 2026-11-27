@@ -7,6 +7,7 @@ from pathlib import Path
 import shutil
 import threading
 import time
+from types import SimpleNamespace
 
 import pytest
 
@@ -177,17 +178,22 @@ def test_capacity_freed_after_deadline_does_not_start_late_worker(broker, monkey
     import carr_library.operations.broker as module
     holder = broker.reserve(ResourceRequest(cpu_slots=2), operation_id='holder', timeout=0)
     holder.__enter__()
-    original_sleep, released = time.sleep, []
+    clock, released = [0.0], []
     def delayed_release(seconds):
-        original_sleep(seconds + .02)
+        assert 0 < seconds <= .01
+        # Native lock and checkpoint reads may already exceed 10 ms on Windows.
+        # Hold only the broker's scheduling clock still until its first blocked
+        # wait, then free real capacity strictly after the waiting deadline.
+        clock[0] += seconds + .02
         holder.__exit__(None, None, None)
         released.append(True)
-    monkeypatch.setattr(module.time, 'sleep', delayed_release)
+    monkeypatch.setattr(module, 'time', SimpleNamespace(
+        monotonic=lambda: clock[0], sleep=delayed_release, time=time.time))
     try:
         with pytest.raises(ResourceTimeout):
             with broker.reserve(ResourceRequest(), operation_id='too-late', timeout=.01):
                 pytest.fail('A worker was admitted after its finite waiting deadline.')
-        assert released
+        assert released == [True] and clock[0] > .01
         assert not broker.snapshot()['leases']
     finally:
         if not released:

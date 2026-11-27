@@ -42,9 +42,14 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--job-dir', required=True)
     directory = Path(parser.parse_args().job_dir)
-    config = json.loads((directory / 'job_config.json').read_text())
+    config = json.loads((directory / 'job_config.json').read_text(encoding='utf-8'))
     options_file = Path(__file__).with_name('fixture-options.json')
-    options = json.loads(options_file.read_text()) if options_file.exists() else {}
+    options = json.loads(options_file.read_text(encoding='utf-8')) if options_file.exists() else {}
+    if options.get('require_utf8') and not sys.flags.utf8_mode:
+        raise RuntimeError('The external protocol process requires explicit UTF-8 mode.')
+    if options.get('diagnostic'):
+        print(options['diagnostic'], flush=True)
+        print(options['diagnostic'], file=sys.stderr, flush=True)
     with Path(__file__).with_name('fixture-starts.log').open('a', encoding='utf-8') as stream:
         stream.write('started\n')
     sources = [path for folder in config['folders'] for path in sorted(Path(folder).glob('*')) if path.is_file()]

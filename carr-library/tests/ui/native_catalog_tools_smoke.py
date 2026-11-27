@@ -100,8 +100,11 @@ def run_native(source, timeout):
                 # claimed. All other widgets and handlers are real wx.
                 class SelectedDestination:
                     def __init__(self, *args, **kwargs):
-                        check('export requests overwrite confirmation',
-                              bool(kwargs['style'] & wx.FD_OVERWRITE_PROMPT))
+                        check('export uses a save picker before bound replacement approval',
+                              bool(kwargs['style'] & wx.FD_SAVE)
+                              and not bool(kwargs['style'] & wx.FD_OVERWRITE_PROMPT))
+                        check('synthetic destination needs no replacement confirmation',
+                              not os.path.lexists(destination))
                     def ShowModal(self): return wx.ID_OK
                     def GetPath(self): return str(destination)
                     def Destroy(self): pass

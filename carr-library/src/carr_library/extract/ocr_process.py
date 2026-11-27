@@ -45,7 +45,9 @@ def _directory(path):
         info = item.lstat()
         if not stat.S_ISDIR(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400:
             raise OcrRuntimeError('OCR staging folders cannot be links or reparse points.')
-    return path
+    # Check traversal components before normalizing '..'; otherwise a link in
+    # an equivalent spelling could disappear before the safety check.
+    return path.resolve(strict=True)
 
 
 def _copy(source, target, limit, remaining, expected=None):
@@ -184,9 +186,14 @@ def prepare_ocr_query(runtime, argv):
 
 
 def _model_expectations(runtime, directory):
-    if getattr(runtime, 'managed', False) and directory == Path(runtime.tessdata).absolute():
+    managed = getattr(runtime, 'managed', False)
+    if not managed and not runtime.portable:
+        return {}
+    if not directory.samefile(runtime.tessdata):
+        return {}
+    if managed:
         return dict(runtime.selection.model_sha256)
-    if runtime.portable and directory == Path(runtime.tessdata).absolute():
+    if runtime.portable:
         prefix = Path(runtime.tessdata).relative_to(runtime.root).as_posix() + '/'
         return {name[len(prefix):-len('.traineddata')]: value
                 for name, value in runtime.files_sha256

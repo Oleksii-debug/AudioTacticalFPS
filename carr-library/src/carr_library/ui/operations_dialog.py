@@ -209,7 +209,7 @@ def show_operations(frame):
         'actual checkpoint. Resume transcription or production from its own workstation.')
     buttons['refresh'].SetFocus()
     try:
-        dialog.ShowModal()
+        return dialog.ShowModal()
     finally:
         alive = False
         executor.shutdown(wait=False, cancel_futures=True)

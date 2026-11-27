@@ -13,7 +13,7 @@ import wx
 from ..application import LibraryApp
 from ..catalog.read_views import active_collections
 from ..citations.anchors import format_citation
-from ..research.export_file import write_export, write_binary_export
+from ..research.export_file import write_export, write_binary_export, export_completion
 from ..reader.source_file import prepare_source_file, launch_source_file
 from ..research.saved_topic_query import SavedTopicQueries
 from ..research.topic_tree import TopicTree
@@ -26,7 +26,7 @@ from .search_model import Hit
 from .catalog_metadata_dialog import edit_selected_book
 from .catalog_tools_dialog import show_catalog_tools
 from .desktop_evidence_panel import DesktopEvidencePanel
-from .research_actions import install_research_actions
+from .research_actions import install_research_actions, NativeDialogs
 from .source_review import install_source_review_actions
 from .academic_actions import install_academic_actions
 from .notebook_search import search_saved_research
@@ -992,7 +992,7 @@ class DesktopFrame(WorkspaceFrame):
             extensions = ('.md', '.txt', '.ris', '.bib', '.csv', '.docx', '.html')
             dialog = wx.FileDialog(self, 'Export topic', defaultFile='research-topic',
                 wildcard='Markdown (*.md)|*.md|Plain text (*.txt)|*.txt|RIS (*.ris)|*.ris|BibTeX (*.bib)|*.bib|CSV (*.csv)|*.csv|Word document (*.docx)|*.docx|HTML document (*.html)|*.html',
-                style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+                style=wx.FD_SAVE)
             try:
                 if dialog.ShowModal() != wx.ID_OK:
                     return
@@ -1004,16 +1004,14 @@ class DesktopFrame(WorkspaceFrame):
             finally:
                 dialog.Destroy()
             if not path.suffix:
-                # Some native save dialogs append the filter's extension and
-                # others do not. Confirm the actual target if we append it.
+                # Confirm the actual final filename after normalizing its suffix.
                 path = path.with_suffix(extension)
-                if path.exists() and wx.MessageBox(
-                    f'Replace the existing export {path.name}?', 'Replace export',
-                    wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, self) != wx.YES:
-                    return
             elif format in ('docx', 'html') and path.suffix.lower() != extension:
                 raise ValueError(f'The selected format needs a {extension} filename. '
                                  'Export again with the matching filename or file type.')
+            approval = NativeDialogs().approve_export(self, path, private_root=library.root, wx_module=wx)
+            if approval is None:
+                return
 
             def selected_scope():
                 if self.library is not library or self.active != (workspace, topic):
@@ -1027,17 +1025,18 @@ class DesktopFrame(WorkspaceFrame):
                 if self.cancel_event.is_set():
                     raise TimeoutError('Export cancelled; the destination was not changed.')
                 writer = write_binary_export if format == 'docx' else write_export
-                writer(path,content,private_root=library.root,
-                       cancelled=self.cancel_event.is_set)
+                return writer(path,content,private_root=library.root,
+                              cancelled=self.cancel_event.is_set, approval=approval)
 
             def done(result):
                 if format in ('ris','bibtex'):
-                    self.report('Bibliography exported. Quotations and research notes are not included.')
+                    message = 'Bibliography exported. Quotations and research notes are not included.'
                 elif format in ('docx', 'html'):
-                    self.report('Research document exported with navigable headings, source citations, '
-                                'and quotations kept separate from research notes.')
+                    message = ('Research document exported with navigable headings, source citations, '
+                               'and quotations kept separate from research notes.')
                 else:
-                    self.report('Topic exported with quotations and research notes kept separate.')
+                    message = 'Topic exported with quotations and research notes kept separate.'
+                self.report(export_completion(message, result))
 
             self.run_job('Exporting verified topic',export,done,
                          lambda error: self.report(f'Export not completed: {error}'))

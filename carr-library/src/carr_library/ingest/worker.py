@@ -368,6 +368,137 @@ def run_request(root, workspace, source, metadata, config, *, cancelled=lambda: 
                             request_id=request_id, new=new)
 
 
+
+def _publication_watermark(app, workspace):
+    """Release the read snapshot before starting the native worker."""
+    with app.read(workspace) as db:
+        # Revision rows are append-only in the accepted schema. A scalar is
+        # bounded even after many metadata revisions of the same edition.
+        return db.execute('SELECT coalesce(max(rowid),0) FROM revision').fetchone()[0]
+
+
+def _published_after_stop(app, initial, watermark):
+    """Recognize only a new, intact publication bound to this import request.
+
+    A stopped process may have committed before returning its stdout receipt.
+    Existing/replayed revisions are not proof that this invocation completed.
+    This read never resumes parsing, changes a journal, or approves quotations.
+    """
+    from ..catalog.membership import _metadata
+    from .retained_assets import SUFFIXES as MIME_SUFFIXES
+
+    try:
+        request = load_request(app.root, initial['request_id'])
+        identity = ('version', 'request_id', 'data_dir', 'workspace', 'source',
+                    'metadata', 'config', 'expected_manifest')
+        if any(request.get(key) != initial.get(key) for key in identity):
+            return None
+        # The parent snapshot precedes launch. A different import can finish
+        # before this child acquires the shared writer guard, so only the
+        # child's fresh, guarded boundary can distinguish a replay here.
+        boundary = request.get('publication_watermark')
+        if type(boundary) is not int or not watermark <= boundary < 2 ** 63:
+            return None
+        metadata = request['metadata']
+        digest = request.get('asset_sha256')
+        if (not isinstance(digest, str) or not re.fullmatch('[0-9a-f]{64}', digest)
+                or not isinstance(metadata, dict) or set(metadata) != FIELDS):
+            return None
+        workspace, edition = request['workspace'], metadata['edition_id']
+        with app.read(workspace) as db:
+            rows = db.execute(
+                'SELECT r.id,r.config,a.revision AS active,e.work,c.mime,c.size '
+                'FROM revision r JOIN sealed s ON s.revision=r.id '
+                'JOIN catalog_edition e ON e.workspace=r.workspace AND e.id=r.edition AND e.asset=r.asset '
+                'JOIN catalog_asset c ON c.digest=e.asset '
+                'LEFT JOIN active a ON a.workspace=r.workspace AND a.edition=r.edition '
+                'WHERE r.workspace=? AND r.edition=? AND r.asset=? AND r.rowid>? LIMIT 2',
+                (workspace, edition, digest, boundary)).fetchall()
+            if len(rows) != 1:
+                return None
+            row = rows[0]
+            if (row['work'] != metadata['work_id'] or row['active'] is None
+                    or row['mime'] not in MIME_SUFFIXES or type(row['size']) is not int
+                    or not 0 < row['size'] <= 64 * 1024 * 1024
+                    or not isinstance(row['config'], str)
+                    or len(row['config'].encode('utf-8')) > 4 * 1024 * 1024):
+                return None
+            settings = json.loads(row['config'])
+            if (not isinstance(settings, dict) or canonical(settings) != row['config']
+                    or sha256(canonical([workspace, edition, digest, row['config']])
+                              .encode('utf-8')).hexdigest() != row['id']):
+                return None
+            mime = row['mime']
+            if mime == 'application/pdf':
+                if (request.get('job') != row['id']
+                        or settings.get('adapter') != 'page_ocr-v1'
+                        or settings.get('kind') != 'physical_page'
+                        or settings.get('config') != request['config']):
+                    return None
+            else:
+                adapter = ('strict-utf8-v1' if mime == 'text/plain' else
+                           'python-docx-ordered-v1' if mime == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' else
+                           'epub-spine-v1' if mime == 'application/epub+zip' else
+                           'ordered-document-v1')
+                if settings.get('adapter') != adapter or settings.get('kind') != 'logical_segment':
+                    return None
+                if request.get('job') is not None and request['job'] != row['id']:
+                    return None
+            manifest = dict(sha256=digest, mime=mime, size=row['size'])
+            if request.get('expected_manifest') not in (None, manifest):
+                return None
+            original = app.assets.resolve(digest)
+            if original.suffix != MIME_SUFFIXES[mime] or original.stat().st_size != row['size']:
+                return None
+            title = _metadata(metadata['title']) or Path(request['source']).stem
+            authors = tuple(_metadata(value) for value in metadata['authors'])
+            source_metadata = db.execute(
+                'SELECT author,title,volume,edition_label FROM source_metadata '
+                'WHERE workspace=? AND edition=? AND revision=?',
+                (workspace, edition, row['id'])).fetchone()
+            expected = ('; '.join(authors) or None, title or 'Unknown title',
+                        _metadata(metadata['volume']), _metadata(metadata['edition']))
+            if source_metadata is None or tuple(source_metadata) != expected:
+                return None
+            for collection in metadata['collections']:
+                if not db.execute(
+                        'SELECT 1 FROM catalog_membership WHERE workspace=? AND edition=? AND collection=?',
+                        (workspace, edition, collection)).fetchone():
+                    return None
+            count, text_bytes, nonempty = 0, 0, False
+            expected_text = (original.read_bytes().decode('utf-8-sig').split('\f')
+                             if mime == 'text/plain' else None)
+            for page in db.execute(
+                    'SELECT p.ordinal,p.physical,p.printed,p.verified,p.raw,p.digest,i.raw AS indexed '
+                    'FROM page p LEFT JOIN indexed i ON i.id=p.id '
+                    'WHERE p.revision=? ORDER BY p.ordinal', (row['id'],)):
+                count += 1
+                raw = page['raw']
+                if not isinstance(raw, str) or '\x00' in raw:
+                    return None
+                encoded = raw.encode('utf-8')
+                text_bytes += len(encoded)
+                if (count > 10000 or text_bytes > 64 * 1024 * 1024
+                        or page['ordinal'] != count
+                        or page['digest'] != sha256(encoded).hexdigest()
+                        or page['printed'] is not None or page['verified'] != 0
+                        or page['physical'] != (count if mime == 'application/pdf' else None)
+                        or (row['active'] == row['id'] and page['indexed'] != raw)):
+                    return None
+                if expected_text is not None and (count > len(expected_text) or raw != expected_text[count - 1]):
+                    return None
+                nonempty = nonempty or bool(raw.strip())
+            if not count or not nonempty or (expected_text is not None and count != len(expected_text)):
+                return None
+            return dict(state='complete' if row['active'] == row['id'] else 'superseded',
+                        workspace=workspace, edition=edition, id=row['id'], asset=digest,
+                        completed=count, total=count, verified=mime == 'text/plain',
+                        recovered_publication=True)
+    except (OSError, ValueError, TypeError, KeyError, sqlite3.Error):
+        # An absent, ambiguous or damaged binding grants no completion authority.
+        return None
+
+
 def _run_request(root, workspace, source, metadata, config, *, cancelled,
                  timeout, request_id, new):
     if (not callable(cancelled) or type(timeout) not in (int, float)
@@ -382,15 +513,32 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
             raise ValueError('Import request belongs to another library.')
         if record.get('state') == 'complete' and isinstance(record.get('result'), dict):
             return dict(record['result'], request_id=request_id, isolated=True)
-    record_progress(root, request_id, state='running')
+    from ..application import LibraryApp
+    app = LibraryApp(root)
+    watermark = _publication_watermark(app, workspace)
+    started = False
+
+    def worker_started():
+        nonlocal started
+        started = True
+
+    # A stopped launch must never reuse a previous child's guarded boundary.
+    record_progress(root, request_id, state='running', publication_watermark=None)
     result = _invoke({'data_dir': str(Path(root).resolve()), 'request_id': request_id,
-                      'timeout': timeout}, timeout=timeout, cancelled=cancelled)
+                      'timeout': timeout}, timeout=timeout, cancelled=cancelled,
+                     on_started=worker_started)
+    if started and result.get('state') in ('cancelled', 'timed_out', 'failed'):
+        committed = _published_after_stop(app, record, watermark)
+        if committed is not None:
+            result = dict(committed, worker_state=result['state'],
+                          message='A durable publication matching this request is available. '
+                                  'Its saved source and publication have been verified.')
     result = dict(result, request_id=request_id, isolated=True)
     record_progress(root, request_id, state=result.get('state', 'failed'), result=result)
     return result
 
 
-def _invoke(message, *, timeout, cancelled=lambda: False):
+def _invoke(message, *, timeout, cancelled=lambda: False, on_started=None):
     """One process supervisor for import and render operations."""
     payload = canonical(message).encode('utf-8')
     if len(payload) > MAX_REQUEST:
@@ -419,6 +567,8 @@ def _invoke(message, *, timeout, cancelled=lambda: False):
                                            stdin=input_stream, stdout=output, stderr=errors,
                                            env=dict(os.environ, PYTHONUTF8='1', PYTHONIOENCODING='utf-8'),
                                            **options)
+                if on_started is not None:
+                    on_started()
                 deadline = time.monotonic() + timeout
                 while process.poll() is None:
                     if cancelled():

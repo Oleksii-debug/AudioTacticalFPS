@@ -11,6 +11,8 @@ from .models import fingerprint
 MAX_MODEL_FILES = 4096
 MAX_MODEL_ENTRIES = 16384
 MAX_MODEL_BYTES = 64 * 1024**3
+MAX_PYTHON_SUPPORT_FILES = 256
+MAX_PYTHON_SUPPORT_BYTES = 512 * 1024**2
 RUNTIME_DISTRIBUTIONS = ('faster-whisper', 'ctranslate2', 'av', 'onnxruntime',
                          'numpy', 'huggingface-hub', 'tokenizers')
 
@@ -46,19 +48,82 @@ def file_identity(path, *, cancel=None, maximum=64 * 1024**3):
     return {'sha256': digest.hexdigest(), 'size': size}
 
 
-def _runtime_inventory(python, resolved_python, *, cancel=None, progress=None):
-    """Read selected environment metadata; never import or execute its code."""
+def _python_layout(python, resolved_python, *, cancel=None):
+    """Pin a venv's operational base without executing its copied launcher."""
     environment = python.parent.parent if python.parent.name.lower() in ('bin', 'scripts') else python.parent
     base = resolved_python.parent.parent if resolved_python.parent.name.lower() in ('bin', 'scripts') else resolved_python.parent
-    roots, auxiliary = [environment], {}
+    base_home = resolved_python.parent
+    roots, configurations, support = [environment], {}, {}
     configuration = environment / 'pyvenv.cfg'
+    system_site = not configuration.exists()
     if configuration.exists():
-        auxiliary[str(configuration)] = file_identity(configuration, cancel=cancel, maximum=65536)
-        text = configuration.read_text(encoding='utf-8').casefold()
-        if re_search_system_site(text) and base != environment:
-            roots.append(base)
-    elif base != environment:
+        identity = file_identity(configuration, cancel=cancel, maximum=65536)
+        with configuration.open('rb') as stream:
+            raw = stream.read(65537)
+        if len(raw) != identity['size'] or sha256(raw).hexdigest() != identity['sha256']:
+            raise ValueError('The selected Python configuration changed during inspection.')
+        configurations[str(configuration)] = identity
+        values = {}
+        for line in raw.decode('utf-8').splitlines():
+            if '=' not in line:
+                continue
+            key, value = (item.strip() for item in line.split('=', 1))
+            key = key.casefold()
+            if key in values:
+                raise ValueError('The selected Python has ambiguous virtual-environment configuration.')
+            values[key] = value
+        home = Path(values.get('home', ''))
+        if not home.is_absolute():
+            raise ValueError('The selected virtual environment requires an explicit local base Python home.')
+        base_home = local_path(home, exists=True)
+        regular(base_home, directory=True)
+        base = base_home.parent if base_home.name.lower() in ('bin', 'scripts') else base_home
+        system_site = values.get('include-system-site-packages', '').casefold() == 'true'
+        # On Windows Scripts/python.exe is a copied redirector. Its bytes do
+        # not identify the base interpreter selected by pyvenv.cfg's home.
+        names = dict.fromkeys((resolved_python.name, python.name,
+                              'python.exe' if python.suffix.lower() == '.exe' else 'python'))
+        executable = next((base_home / name for name in names if (base_home / name).is_file()), None)
+        if executable is None:
+            raise ValueError('The selected virtual environment has no readable base Python executable.')
+        executable = local_path(executable.resolve(strict=True), exists=True)
+        support[str(executable)] = file_identity(executable, cancel=cancel, maximum=MAX_PYTHON_SUPPORT_BYTES)
+    if system_site and base != environment:
         roots.append(base)
+    locations = {python.parent, resolved_python.parent, base_home}
+    native = base / 'DLLs'
+    if native.exists():
+        locations.add(local_path(native, exists=True))
+    total = sum(item['size'] for item in support.values())
+    for directory in sorted(locations):
+        regular(local_path(directory, exists=True), directory=True)
+        with os.scandir(directory) as entries:
+            for number, entry in enumerate(entries, 1):
+                stopped(cancel)
+                if number > MAX_MODEL_ENTRIES:
+                    raise ValueError('The selected Python exceeds its support-directory inventory budget.')
+                name = entry.name.casefold()
+                selected = ((name.startswith('python') and name.endswith(('.exe', '.dll', '._pth', '.zip')))
+                            or (name.startswith('vcruntime') and name.endswith('.dll'))
+                            or (directory == native and name.endswith(('.pyd', '.dll'))))
+                if not selected:
+                    continue
+                path = local_path(entry.path, exists=True)
+                if str(path) in support:
+                    continue
+                if len(support) >= MAX_PYTHON_SUPPORT_FILES:
+                    raise ValueError('The selected Python exceeds its support-file inventory budget.')
+                identity = file_identity(path, cancel=cancel, maximum=MAX_PYTHON_SUPPORT_BYTES)
+                total += identity['size']
+                if total > MAX_PYTHON_SUPPORT_BYTES:
+                    raise ValueError('The selected Python exceeds its support-file byte budget.')
+                support[str(path)] = identity
+    return roots, configurations, support
+
+
+def _runtime_inventory(roots, *, cancel=None, progress=None):
+    """Read selected environment metadata; never import or execute its code."""
+    auxiliary = {}
     search = []
     for root in roots:
         candidates = [root / 'Lib' / 'site-packages', *sorted((root / 'lib').glob('python*/site-packages'))]
@@ -122,11 +187,6 @@ def _runtime_inventory(python, resolved_python, *, cancel=None, progress=None):
     return result, auxiliary
 
 
-def re_search_system_site(text):
-    return any(line.strip().replace(' ', '') == 'include-system-site-packages=true'
-               for line in text.splitlines())
-
-
 def inspect_runtime(python_executable, worker_path, model_directory, *, cancel=None, progress=None):
     """Inspect bytes only. The selected Python and worker are never executed.
 
@@ -141,8 +201,8 @@ def inspect_runtime(python_executable, worker_path, model_directory, *, cancel=N
     worker = local_path(worker_path, exists=True)
     if worker.suffix.lower() != '.py':
         raise ValueError('Choose the reviewed Python worker source file.')
-    runtime_files, runtime_auxiliary = _runtime_inventory(python, resolved_python,
-                                                         cancel=cancel, progress=progress)
+    roots, configurations, python_support = _python_layout(python, resolved_python, cancel=cancel)
+    runtime_files, runtime_auxiliary = _runtime_inventory(roots, cancel=cancel, progress=progress)
     model = local_path(model_directory, exists=True)
     regular(model, directory=True)
     if model.name in ('', '.', '..'):
@@ -176,16 +236,11 @@ def inspect_runtime(python_executable, worker_path, model_directory, *, cancel=N
                 if total > MAX_MODEL_BYTES:
                     raise ValueError('The model exceeds its total byte budget.')
                 model_files[label] = identity
-    auxiliary = {}
-    for candidate in (python.parent / 'pyvenv.cfg', python.parent.parent / 'pyvenv.cfg',
-                      python.with_suffix('._pth')):
-        if candidate.exists():
-            auxiliary[str(local_path(candidate, exists=True))] = file_identity(candidate, cancel=cancel)
     manifest = {
         'schema': 'resonance-transcription-runtime/1', 'protocol': 'local-file-job/1',
         'python_executable': str(python), 'python_resolved': str(resolved_python),
         'python_identity': file_identity(resolved_python, cancel=cancel),
-        'python_configuration': auxiliary,
+        'python_configuration': configurations, 'python_support': python_support,
         'runtime_distributions': runtime_files, 'runtime_auxiliary': runtime_auxiliary,
         'runtime_capability': 'installed-files-reviewed; execution-and-quality-unqualified',
         'worker_path': str(worker), 'worker_identity': file_identity(worker, cancel=cancel, maximum=16 * 1024**2),

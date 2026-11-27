@@ -12,7 +12,7 @@ import threading
 
 from ..reader.reading_desk import ReadingDesk
 from ..reader.reading_state import MAX_BYTES, ReadingState
-from ..research.export_file import write_export
+from ..research.export_file import write_export, export_completion
 from ..research.topic_tree import TopicTree
 from .research_actions import NativeDialogs
 
@@ -450,7 +450,7 @@ class ReadingDialogs(NativeDialogs):
             'Export reading positions and bookmarks' if save else 'Import reading positions and bookmarks',
             defaultFile='reading-bookmarks.json' if save else '',
             wildcard='Reading state JSON (*.json)|*.json',
-            style=(wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT) if save else (wx.FD_OPEN | wx.FD_FILE_MUST_EXIST))
+            style=wx.FD_SAVE if save else (wx.FD_OPEN | wx.FD_FILE_MUST_EXIST))
         try:
             return Path(dialog.GetPath()) if dialog.ShowModal() == wx.ID_OK else None
         finally:
@@ -563,14 +563,19 @@ class ReadingActions:
             if path is None:
                 return
             self._guard(scope)
+            approval = self.dialogs.approve_export(self.frame, path, private_root=scope.library.root)
+            if approval is None:
+                return
 
             def save():
                 self._authorize(scope)
                 state = self.state_factory(scope.library.root)
                 content = state.export_state(scope.workspace)
-                return self._run(scope, lambda: write_export(path, content, private_root=scope.library.root))
+                return self._run(scope, lambda: write_export(path, content,
+                    private_root=scope.library.root, approval=approval))
             self.frame.run_job('Exporting reading state', lambda: self._run(scope, save),
-                lambda _: self.frame.report('Reading positions and page bookmarks exported.'))
+                lambda receipt: self.frame.report(export_completion(
+                    'Reading positions and page bookmarks exported.', receipt)))
         except Exception as exc:
             self.frame.report(f'Reading state was not exported: {exc}')
 

@@ -13,6 +13,25 @@ from .scope_bindings import scope_labels
 class NativeDialogs:
     """Small keyboard-accessible dialogs, imported lazily for headless tests."""
 
+    def approve_export(self, parent, path, *, private_root, wx_module=None):
+        """Capture the real final path before the one replacement question.
+
+        Save pickers using this method must omit FD_OVERWRITE_PROMPT. Its earlier
+        confirmation cannot be bound to a file appearing or changing on return.
+        The same captured state is passed through queued work to the publisher.
+        """
+        from ..research.export_file import capture_export_destination
+        approval = capture_export_destination(path, private_root=private_root)
+        if not approval.require_absent:
+            if wx_module is None:
+                import wx as wx_module
+            wx = wx_module
+            if wx.MessageBox(f'Replace the existing export {approval.target.name}?',
+                             'Replace export', wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION,
+                             parent) != wx.YES:
+                return None
+        return approval
+
     def fields(self, parent, title, fields, explanation=''):
         import wx
 

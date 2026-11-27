@@ -107,6 +107,35 @@ def test_actual_process_receipts_reading_and_subtitle_rollover(setup):
     assert starts(runtime) == 1
 
 
+def test_isolated_worker_preserves_unicode_paths_and_diagnostics(tmp_path, monkeypatch):
+    runtime = make_runtime(tmp_path / 'Рушій з пробілами')
+    diagnostic = 'Українська діагностика — перевірено.'
+    runtime.options.write_text(json.dumps({'require_utf8': True, 'diagnostic': diagnostic},
+                                         ensure_ascii=False), encoding='utf-8')
+    service = TranscriptionService(tmp_path / 'Бібліотека/дані/state/transcription',
+                                  budget=AudioBudget(timeout=5, reserve_disk_bytes=0))
+    profile = register(service, runtime)
+    source = tmp_path / 'Розмова українською.wav'
+    source.write_bytes(b'Synthetic input identity; no acoustic inference.')
+    original_run, processes = module.run_process, []
+    def capture(argv, **kwargs):
+        result = original_run(argv, **kwargs)
+        processes.append((argv, result))
+        return result
+    monkeypatch.setattr(module, 'run_process', capture)
+    # -I intentionally ignores these; the command-line mode must prevail.
+    monkeypatch.setenv('PYTHONUTF8', '0')
+    monkeypatch.setenv('PYTHONIOENCODING', 'ascii')
+    result = service.run(service.create_job(profile['id'], [source])['id'])
+    assert result['status'] == 'complete', result['error']
+    assert len(processes) == 1
+    argv, process = processes[0]
+    assert argv[1:4] == ['-I', '-X', 'utf8']
+    assert diagnostic in process.stdout.decode('utf-8')
+    assert diagnostic in process.stderr.decode('utf-8')
+    assert service.read_transcript(result['id'])['text'] == 'Синтетичний протокольний результат.'
+
+
 @pytest.mark.parametrize('flag', ['wrong_source', 'wrong_language', 'invalid_timing', 'malformed_status'])
 def test_invalid_worker_protocol_cannot_become_success(setup, flag):
     service, runtime, profile, audio = setup
@@ -174,6 +203,65 @@ def test_export_failure_preserves_recognition_and_retry_needs_no_second_inferenc
     recovered = service.resume(created['id'])
     assert recovered['status'] == 'complete', recovered['error']
     assert starts(runtime) == 1
+
+
+def test_changed_profile_does_not_relabel_an_old_unaccepted_checkpoint(setup, monkeypatch):
+    service, runtime, profile, audio = setup
+    created = job(setup, settings={'output_srt': True})
+    original = module.atomic_bytes
+    def failing(path, payload, **kw):
+        if Path(path).suffix == '.srt':
+            raise OSError('Synthetic export failure after recognition.')
+        return original(path, payload, **kw)
+    monkeypatch.setattr(module, 'atomic_bytes', failing)
+    failed = service.run(created['id'])
+    assert failed['status'] == 'failed' and not failed['results']
+    assert starts(runtime) == 1
+    # A support-file change need not change the worker's reported launcher or
+    # installed-distribution identity, as with a Windows base-runtime update.
+    (runtime.python.parent / 'vcruntime-synthetic.dll').write_bytes(b'New reviewed support identity; never loaded.')
+    changed = register(service, runtime)
+    assert changed['fingerprint'] != profile['fingerprint']
+    assert changed['python_identity'] == profile['python_identity']
+    assert changed['runtime_distributions'] == profile['runtime_distributions']
+    monkeypatch.setattr(module, 'atomic_bytes', original)
+    service.rebind_runtime(created['id'], changed['id'])
+    recovered = service.resume(created['id'])
+    assert recovered['status'] == 'complete', recovered['error']
+    assert starts(runtime) == 2
+    assert service.read_transcript(created['id'])['provenance']['profile_fingerprint'] == changed['fingerprint']
+    archived = service._job_root(created['id']) / 'worker-history'
+    assert list(archived.glob('*/logs/cache/**/*.cache.json'))
+
+
+def test_rebind_preserves_accepted_artifact_and_its_original_profile(setup, tmp_path):
+    service, runtime, profile, audio = setup
+    second = tmp_path / 'second.wav'
+    second.write_bytes(b'Second retained synthetic input.')
+    runtime.options.write_text(json.dumps({'fail_after': 1}), encoding='utf-8')
+    created = service.create_job(profile['id'], [audio, second])
+    partial = service.run(created['id'])
+    assert partial['status'] == 'partial' and partial['done'] == 1
+    accepted = dict(partial['results'][0])
+    (runtime.python.parent / 'vcruntime-synthetic.dll').write_bytes(b'New reviewed support identity; never loaded.')
+    changed = register(service, runtime)
+    runtime.options.write_text('{}', encoding='utf-8')
+    service.rebind_runtime(created['id'], changed['id'])
+    complete = service.resume(created['id'])
+    assert complete['status'] == 'complete', complete['error']
+    assert complete['results'][0] == accepted
+    assert service.read_transcript(created['id'], accepted['source_id'])['provenance']['profile_fingerprint'] == profile['fingerprint']
+    assert service.read_transcript(created['id'], complete['results'][1]['source_id'])['provenance']['profile_fingerprint'] == changed['fingerprint']
+    assert len(runtime.worker.with_name('fixture-sources.log').read_text(encoding='utf-8').splitlines()) == 2
+
+
+def test_rebind_cannot_move_an_unreviewed_interrupted_worker(setup):
+    service, runtime, profile, audio = setup
+    created = job(setup)
+    created.update(status='interrupted', recovery_review_required=True)
+    service._save(created)
+    with pytest.raises(RuntimeError, match='worker stopped'):
+        service.rebind_runtime(created['id'], profile['id'])
 
 
 def test_retained_input_change_blocks_processing_without_touching_original(setup):
