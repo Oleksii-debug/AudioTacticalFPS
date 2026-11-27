@@ -71,6 +71,18 @@ def test_plain_prose_colons_are_not_silently_removed_in_faithful_mode():
     assert project.original_script == original
 
 
+def test_first_save_links_autosaved_draft_to_reopenable_project(tmp_path):
+    first = controller(tmp_path)
+    script = 'Narrator: An introductory line.\n[Pronunciation: Different delivery.]'
+    committed = first.save(script, 'My audio project', ('voice-a',))
+    assert committed.revision == 1
+    reopened = controller(tmp_path)
+    draft = json.loads(reopened.draft.read_text(encoding='utf-8'))
+    assert draft['project_id'] == committed.id
+    assert draft['text'] == script
+    assert reopened.service.projects.load(draft['project_id']) == committed
+
+
 def test_save_reopen_revision_and_noop_preserve_project_identity(tmp_path):
     ui = controller(tmp_path)
     first = ui.save('A plain narration.', 'A book', ('voice-a',))

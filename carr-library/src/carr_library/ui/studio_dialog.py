@@ -170,6 +170,11 @@ class StudioController:
         self.service.projects.save(project,
             expected_revision=previous_project.revision if previous_project else None)
         self.project = project
+        if previous_project is None:
+            try:
+                self.autosave(text, title, voice_ids)
+            except OSError as exc:
+                raise OSError(f'Project {project.id} was saved. Its draft could not be linked: {exc}') from exc
         return project
 
 
@@ -423,7 +428,7 @@ def show_studio(frame):
             report(f'Saved project revision {result.revision}. {len(result.scenes)} scenes, {len(result.roles)} roles.', True)
             return result
         except Exception as exc:
-            report(f'Project validation failed: {exc} The editable draft was retained if its save succeeded.', True)
+            report(f'Could not finish saving the project. {exc}', True)
             return None
 
     def changed(event):
@@ -625,7 +630,7 @@ def show_studio(frame):
             phase='Rendering audio production', with_progress=True)
 
     def jobs(event=None):
-        nonlocal current_job
+        nonlocal current_job, draft_dirty, saved_signature
         if busy:
             return
         try:
@@ -646,13 +651,17 @@ def show_studio(frame):
             if row['format'] not in formats or type(row['stems']) is not bool:
                 raise ValueError('The saved job has unsupported output settings.')
             project = Project.from_dict(row['project'])
-            controller.project = service.projects.load(project.id)
-            editor.ChangeValue(project.original_script)
-            title.ChangeValue(project.title)
+            editable = service.projects.load(project.id)
+            controller.project = editable
+            editor.ChangeValue(editable.original_script)
+            title.ChangeValue(editable.title)
             format_choice.SetSelection(formats.index(row['format']))
             stems.SetValue(row['stems'])
             current_job = row['id']
-            report(f'{row["status"]}. {row["error"]}\nFinal format: {row["format"]}; separate stems: '
+            draft_dirty = True
+            saved_signature = (editor.GetValue(), title.GetValue(), selected_voices())
+            report(f'{row["status"]}. {row["error"]}\nSaved job revision {project.revision}. '
+                   f'Editable project revision {editable.revision}.\nFinal format: {row["format"]}; separate stems: '
                    + ('Yes' if row['stems'] else 'No')
                    + '. Choose Render / resume to continue or Listen to output after completion.', True)
             controls()
