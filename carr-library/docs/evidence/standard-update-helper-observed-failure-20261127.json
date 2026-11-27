@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "kind": "observed-standard-update-helper-failure",
+  "source_commit": "3e642a5535800aa6a10c248a5b0f7b714de13a67",
+  "source_tree": "ec0889c1c52adcc80716c87f49556cfd6eee7447",
+  "run_id": 46035575768,
+  "job_id": 140629999545,
+  "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46035575768",
+  "artifact": {
+    "id": 15222135342,
+    "bytes": 1176982,
+    "github_sha256": "481d3540ffb10dcbbea5afae66cce1bab049053c99b2ac9b5ff4f9453248e495",
+    "independent_zip_read": "NOT_PERFORMED"
+  },
+  "observed": {
+    "system_helper_source_cases": 13,
+    "system_helper_installed_cases": 13,
+    "native_launcher_process_checks": 9,
+    "native_installed_launcher_checks": 2,
+    "ordinary_install_repair_uninstall_checks": 6,
+    "distinct_generation_upgrade": "FAIL",
+    "phase": "Initial snapshot of independently installed A: current _shortcut_target → run_owned fixed PowerShell command",
+    "exception": "TrustError: The standard installation was stopped before completion.",
+    "helper_admission": "Actual fixed GetSystemDirectoryW WindowsPowerShell/v1.0/powershell.exe admitted with two servicing hardlinks"
+  },
+  "decision": {
+    "cause": "NOT_YET_DETERMINED",
+    "timeout_change": "NONE",
+    "stdin": "Existing DEVNULL preserved; explicit -Command string differs from stdin command mode.",
+    "product_changes": "NONE",
+    "next": "Bounded current-owner phase diagnostics; compare fixed literal, COM New-Object/Activator, Windows module path and Windows PATH only.",
+    "diagnostic_limits": "No actual A-to-B, current install, release, NVDA or production authority qualification is conferred by diagnostic completion."
+  },
+  "primary_sources": [
+    "https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_powershell_exe?view=powershell-5.1",
+    "https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_psmodulepath?view=powershell-5.1"
+  ]
+}
