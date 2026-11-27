@@ -296,6 +296,31 @@ def test_winmm_wire_format_is_exact_reader_fixture():
     assert ctypes.sizeof(endpoint.WAVEFORMATEX) == 18
 
 
+def test_endpoint_selection_requires_both_exact_observed_pack46_names():
+    devices = [{"id": index, "name": name, "channels": 2}
+               for index, name in enumerate(sorted(endpoint.EXPECTED_WINMM_NAMES))]
+    assert endpoint.evaluation_endpoints([]) == []
+    assert endpoint.evaluation_endpoints(devices[:1]) == []
+    assert endpoint.evaluation_endpoints(devices) == devices
+    assert endpoint.evaluation_endpoints(list(reversed(devices))) == list(reversed(devices))
+
+
+@pytest.mark.parametrize("change", ["unrelated", "duplicate_name", "duplicate_id", "old_name"])
+def test_endpoint_selection_rejects_unknown_or_ambiguous_devices(change):
+    devices = [{"id": index, "name": name, "channels": 2}
+               for index, name in enumerate(sorted(endpoint.EXPECTED_WINMM_NAMES))]
+    if change == "unrelated":
+        devices.append({"id": 2, "name": "Unrelated Speakers", "channels": 2})
+    elif change == "duplicate_name":
+        devices[1]["name"] = devices[0]["name"]
+    elif change == "duplicate_id":
+        devices[1]["id"] = devices[0]["id"]
+    else:
+        devices[0]["name"] = "CABLE Input"
+    with pytest.raises(endpoint.EvaluationError, match="endpoint inventory"):
+        endpoint.evaluation_endpoints(devices)
+
+
 def install_fixture(tmp_path, monkeypatch, *, registration_flags=0,
                     update_flags=0, update_reboot=False):
     """Exercise the actual install orchestrator with no native library loaded."""

@@ -38,6 +38,12 @@ ARM_SYS_NAME = "vbaudio_cable64arm_win10.sys"
 CAT_NAME = "vbaudio_cable64_win10.cat"
 STAGED = (INF_NAME, SYS_NAME, ARM_SYS_NAME, CAT_NAME)
 SIGNED = (SYS_NAME, ARM_SYS_NAME, CAT_NAME)
+# Exact WAVEOUTCAPSW (31-character) names observed after the pinned Pack46
+# driver passed Authenticode, installed-byte identity and started-devnode checks
+# in run45959125829. Neither name is an authorization to install another driver.
+EXPECTED_WINMM_NAMES = frozenset({
+    "Speakers (VB-Audio Virtual Cabl", "CABLE In 16 Ch (VB-Audio Virtua",
+})
 FORMAT = {"sample_rate": 16000, "bits": 16, "channels": 1,
           "block_align": 2, "average_bytes_per_second": 32000}
 INSTALLFLAG_NONINTERACTIVE = 0x00000004
@@ -321,6 +327,16 @@ def verify_signatures(paths, pins, native, work):
     reports = json.loads(result.stdout.decode("utf-8-sig"),
                          object_pairs_hook=_unique_object)
     return validate_signature_reports(reports, pins)
+
+
+def evaluation_endpoints(devices):
+    """Require the complete observed endpoint set on the initially empty VM."""
+    names = [device["name"] for device in devices]
+    ids = [device["id"] for device in devices]
+    if (len(set(names)) != len(names) or len(set(ids)) != len(ids)
+            or not set(names) <= EXPECTED_WINMM_NAMES):
+        raise EvaluationError("Unexpected or duplicated WinMM endpoint inventory")
+    return devices if set(names) == EXPECTED_WINMM_NAMES else []
 
 
 DWORD = ctypes.c_uint32
@@ -702,12 +718,12 @@ def evaluate(receipt):
             deadline = time.monotonic() + 20
             while True:
                 after = native.wave_devices()
-                candidates = [d for d in after if d["name"].casefold().startswith("cable input")]
+                candidates = evaluation_endpoints(after)
                 if candidates:
                     break
                 if time.monotonic() >= deadline:
                     receipt.update(winmm_after=after)
-                    raise EvaluationError("No actual CABLE Input WinMM endpoint appeared")
+                    raise EvaluationError("The complete actual Pack46 WinMM endpoint set did not appear")
                 time.sleep(0.25)
             queries = [{"device_id": d["id"], "result": native.query_format(d["id"])}
                        for d in candidates]

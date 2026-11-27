@@ -113,11 +113,20 @@ The installed devnode must start with no problem code. Installed INF/version/
 provider/service, DriverStore path and installed SYS bytes must match the
 reviewed package; the receipt includes both installed INF and SYS hashes.
 
-An actual CABLE Input endpoint and WAVE_MAPPER must accept the unchanged reader
+Both actual Pack46 endpoints and WAVE_MAPPER must accept the unchanged reader
 fixture: PCM16 mono16000Hz, block alignment2, average bytes per second32000.
 This is a real WinMM query. The subsequent unchanged installed reader probe
 provides actual MCI playback/pause/loop/sleep/cleanup evidence. The helper alone
 does not claim playback or audible physical-device output.
+
+Run45959125829 verified both vendor SYS signatures and the Microsoft hardware
+catalog, installed the exact INF/SYS, and observed a started/problem-free devnode
+with no restart flags. Its final endpoint-selection assertion failed because
+Pack46 exposes WAVEOUTCAPSW names `Speakers (VB-Audio Virtual Cabl` and
+`CABLE In 16 Ch (VB-Audio Virtua`, rather than the older `CABLE Input` prefix.
+The bounded evaluator now requires that exact two-name set on the initially
+empty VM and rejects extra or duplicate names/IDs. Format queries and the real
+reader playback gate remain unchanged and were NOT_RUN in that failed run.
 
 Every runtime phase writes a durable JSON receipt. A180-second whole-helper
 watchdog writes FAILED before terminating; the outer workflow is also bounded.
