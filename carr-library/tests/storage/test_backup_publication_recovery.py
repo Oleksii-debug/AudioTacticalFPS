@@ -24,6 +24,24 @@ def _files(root):
 
 
 @pytest.fixture
+def fail_backup_cleanup(monkeypatch):
+    """Keep failed cleanup directories alive so their notices can be checked."""
+    original = library_backup.TemporaryDirectory.cleanup
+    retained = []
+
+    def fail(temporary):
+        if Path(temporary.name).name.startswith('.carr-library-backup-'):
+            retained.append(temporary)
+            raise PermissionError('Synthetic post-publication directory cleanup failure')
+        return original(temporary)
+
+    monkeypatch.setattr(library_backup.TemporaryDirectory, 'cleanup', fail)
+    yield retained
+    for temporary in retained:
+        original(temporary)
+
+
+@pytest.fixture
 def produced(tmp_path):
     app = LibraryApp(tmp_path / 'Бібліотека čítanie')
     workspace = app.create_workspace('Exact source')
@@ -107,7 +125,7 @@ def test_failed_staging_link_retirement_cannot_publish_completion(produced, tmp_
     assert ReadingDesk(app, workspace, 'edition').page(1).text == page.text
     retry = tmp_path / 'retry'
     checksum = create_backup(app, retry)
-    assert verify_backup(retry, checksum)['version'] == 4
+    assert verify_backup(retry, checksum)['version'] == 5
 
 
 @pytest.mark.parametrize('failure', ['partial_write', 'competing_file'])
@@ -189,7 +207,7 @@ else:
         assert reopened.script == '[pause 2]'
     folder = tmp_path / 'post-crash-backup'
     checksum = create_backup(app, folder)
-    assert verify_backup(folder, checksum)['version'] == 4
+    assert verify_backup(folder, checksum)['version'] == 5
     restored = restore_backup(folder, tmp_path / 'restored', checksum)
     restored_saved = restored / saved.relative_to(app.root)
     restored_project = StudioController(private_root=restored).open(restored_saved)
@@ -223,3 +241,69 @@ def test_unknown_managed_document_hardlink_remains_rejected(produced, tmp_path):
     assert not (tmp_path / 'rejected').exists()
     assert saved.read_bytes() == original == unrelated.read_bytes()
     assert unrelated.stat().st_nlink == 2
+
+
+@pytest.mark.parametrize('reporter', ['callback', 'logging', 'broken-reporters'])
+def test_completed_backup_survives_cleanup_and_diagnostic_failures(
+        produced, tmp_path, monkeypatch, caplog, fail_backup_cleanup, reporter):
+    app, workspace, page, bookmark = produced
+    before = _files(app.root)
+    notices = []
+    callback = notices.append if reporter == 'callback' else None
+    if reporter == 'broken-reporters':
+        def broken_callback(message):
+            notices.append(message)
+            raise RuntimeError('Synthetic warning callback failure')
+
+        def broken_logger(*args, **kwargs):
+            raise RuntimeError('Synthetic logger failure')
+
+        callback = broken_callback
+        monkeypatch.setattr(library_backup._logger, 'warning', broken_logger)
+    folder = tmp_path / 'completed'
+    checksum = create_backup(app, folder, on_warning=callback)
+    assert type(checksum) is str and checksum == sha256((folder / 'manifest.json').read_bytes()).hexdigest()
+    assert verify_backup(folder, checksum)['version'] == 5
+    assert len(fail_backup_cleanup) == 1
+    private_stage = Path(fail_backup_cleanup[0].name)
+    assert private_stage.is_dir()
+    message = notices[0] if notices else caplog.text
+    assert str(private_stage) in message and 'backup is complete' in message
+    assert 'does not need to be repeated' in message
+    assert all((app.root / name).read_bytes() == raw for name, raw in before.items())
+    restored = restore_backup(folder, tmp_path / 'restored', checksum)
+    assert ReadingState(restored).bookmarks(workspace, 'edition') == (bookmark,)
+    assert ReadingDesk(LibraryApp(restored), workspace, 'edition').page(1).text == page.text
+
+
+def test_prepublication_error_is_not_replaced_by_cleanup_failure(
+        produced, tmp_path, monkeypatch, fail_backup_cleanup):
+    app, *_ = produced
+    before = _files(app.root)
+    notices = []
+
+    def fail_snapshot(*args, **kwargs):
+        raise ValueError('Synthetic primary snapshot failure')
+
+    monkeypatch.setattr(library_backup.backup_sidecars, 'snapshot', fail_snapshot)
+    folder = tmp_path / 'rejected'
+    with pytest.raises(ValueError, match='primary snapshot failure') as error:
+        create_backup(app, folder, on_warning=notices.append)
+    assert not folder.exists() and notices == []
+    assert any(str(fail_backup_cleanup[0].name) in note for note in error.value.__notes__)
+    assert all((app.root / name).read_bytes() == raw for name, raw in before.items())
+
+
+def test_backup_cli_reports_completed_digest_and_cleanup_path(
+        produced, tmp_path, capsys, fail_backup_cleanup):
+    from carr_library.__main__ import main
+    app, *_ = produced
+    folder = tmp_path / 'cli-backup'
+    code = main(['--data-dir', str(app.root), '--backup', str(folder)])
+    assert code == 0
+    output = capsys.readouterr()
+    checksum = sha256((folder / 'manifest.json').read_bytes()).hexdigest()
+    assert checksum in output.out and 'Backup complete.' in output.out
+    assert str(fail_backup_cleanup[0].name) in output.err
+    assert 'backup is complete' in output.err
+    assert verify_backup(folder, checksum)['version'] == 5

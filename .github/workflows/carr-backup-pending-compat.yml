@@ -1,0 +1,148 @@
+name: CARR pending import backup compatibility
+
+on:
+  pull_request:
+    paths:
+      - carr-library/**
+      - .github/workflows/carr-backup-pending-compat.yml
+  push:
+    branches: [carr/backup-pending-compat-wip-20261127]
+    paths:
+      - carr-library/**
+      - .github/workflows/carr-backup-pending-compat.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-backup-pending-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backup-contracts:
+    name: Backup contracts / ${{ matrix.os }} / CPython 3.11
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022]
+    defaults:
+      run:
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      ORT_DISABLE_TELEMETRY: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - name: Check out the exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Select CPython
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Install the declared application and test dependencies
+        run: python -m pip install ".[test]"
+      - name: Check dependency consistency
+        run: python -m pip check
+      - name: Prepare the actual Linux OCR and audio engines
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install --no-install-recommends -y tesseract-ocr tesseract-ocr-eng tesseract-ocr-osd ffmpeg
+      - name: Prepare the verified Windows OCR engine
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $work = Join-Path $env:RUNNER_TEMP 'carr-backup-ocr'
+          New-Item -ItemType Directory -Force $work | Out-Null
+          $ocr = Join-Path $work 'ocr'
+          python packaging/prepare_windows_ocr.py --cache (Join-Path $work 'cache') --output $ocr --source-archive (Join-Path $work 'corresponding-source.tar') --download
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_CI_OCR_DIR=$ocr" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "TESSDATA_PREFIX=$(Join-Path $ocr 'tessdata')" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $ocr | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Prepare the verified Windows audio tools
+        if: runner.os == 'Windows'
+        shell: pwsh
+        timeout-minutes: 10
+        run: |
+          $work = Join-Path $env:RUNNER_TEMP 'carr-backup-audio'
+          $audioCache = Join-Path $work 'cache'
+          $audioRuntime = Join-Path $work 'runtime'
+          python packaging/acquire_audio_runtime.py --output $audioCache --download
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $audioLock = Get-Content packaging/audio-runtime/source-lock.json -Raw | ConvertFrom-Json
+          python packaging/prepare_audio_runtime.py --archive (Join-Path $audioCache $audioLock.archive.name) --sources-dir $audioCache --output $audioRuntime
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $audioBin = Join-Path $audioRuntime 'bin'
+          "CARR_FFMPEG=$(Join-Path $audioBin 'ffmpeg.exe')" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $audioBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Record the actual runtime
+        shell: python
+        run: |
+          import importlib.metadata as metadata
+          import json, pathlib, platform, shutil, subprocess, sys
+          destination = pathlib.Path("ci-results")
+          destination.mkdir(exist_ok=True)
+          tesseract = shutil.which("tesseract")
+          assert tesseract, "The real OCR regression must run, not skip"
+          ffmpeg = shutil.which("ffmpeg")
+          assert ffmpeg, "The real generated-audio regression must run, not skip"
+          subprocess.run([tesseract, "--version"], check=True)
+          subprocess.run([ffmpeg, "-version"], check=True)
+          value = dict(python=sys.version, platform=platform.platform(),
+                       commit=subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
+                       packages={name: metadata.version(name) for name in
+                                 ("universal-research-library", "pytest", "pypdf", "pypdfium2",
+                                  "Pillow", "reportlab")}, tesseract=tesseract, ffmpeg=ffmpeg)
+          (destination / "runtime.json").write_text(json.dumps(value, indent=2), encoding="utf-8")
+          print(json.dumps(value, indent=2), flush=True)
+      - name: Run every selected backup regression with no skips or expected failures
+        shell: python
+        run: |
+          import pathlib, subprocess, sys
+          suites = sorted(path.as_posix() for path in pathlib.Path("tests/storage").glob("test_*backup*.py"))
+          suites += ["tests/assistant/test_backup_receipt.py",
+                     "tests/catalog/test_metadata_backup_roundtrip.py",
+                     "tests/ui/test_desktop_handlers.py",
+                     "tests/e2e/test_offline_startup.py"]
+          assert "tests/storage/test_backup_pending_compatibility.py" in suites
+          assert "tests/storage/test_pending_backup.py" in suites
+          import runpy
+          child = runpy.run_path("scripts/ci_check.py")["PYTEST_CHILD"]
+          # Reproduce the original combined run and retain its full JUnit record.
+          # Then require the existing per-suite gate too, including zero skips.
+          commands = [
+              [sys.executable, "-c", child, "-o", "addopts=", "-o", "xfail_strict=true",
+               "--tb=short", "--junitxml=ci-results/backup-aggregate.xml", *suites],
+              [sys.executable, "scripts/ci_check.py", *suites],
+          ]
+          results = []
+          with pathlib.Path("ci-results/backup-tests.log").open("w", encoding="utf-8") as log:
+              for command in commands:
+                  process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                             text=True, encoding="utf-8", errors="replace", bufsize=1)
+                  for line in process.stdout:
+                      print(line, end="", flush=True)
+                      log.write(line)
+                      log.flush()
+                  results.append(process.wait())
+          raise SystemExit(0 if results == [0, 0] else 1)
+      - name: Preserve runtime and complete test output
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: backup-pending-${{ matrix.os }}-${{ github.sha }}
+          path: carr-library/ci-results/
+          if-no-files-found: error

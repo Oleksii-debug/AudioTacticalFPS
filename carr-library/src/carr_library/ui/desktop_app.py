@@ -1137,7 +1137,7 @@ class DesktopFrame(WorkspaceFrame):
             self.report(str(exc))
 
     def backup(self, event):
-        dialog = wx.DirDialog(self, 'Choose a parent folder for a backup of completed libraries; unfinished imports are excluded')
+        dialog = wx.DirDialog(self, 'Choose a parent folder for a backup of libraries and pending imports')
         try:
             if dialog.ShowModal() != wx.ID_OK:
                 return
@@ -1146,13 +1146,18 @@ class DesktopFrame(WorkspaceFrame):
             dialog.Destroy()
         from datetime import datetime
         destination = parent / ('ResearchLibrary-backup-' + datetime.now().strftime('%Y%m%d-%H%M%S'))
+        cleanup_notices = []
         def done(checksum):
+            notice_text = '\n'.join(cleanup_notices)
+            self.report('Backup complete.' + ('\n' + notice_text if notice_text else ''))
             show_text(self, 'Backup complete', f'Backup folder: {destination}\n\n'
                 'All completed libraries, original files, saved evidence, notes, tags, searches, '
                 'reading positions, bookmarks and saved reading-copy projects are included. '
-                'Unfinished imports and their pending reviews are excluded.\n\n'
-                f'Keep this checksum separately; it is needed to verify a restore:\n{checksum}')
-        self.run_job('Backing up all libraries', lambda: self.library.backup(destination), done)
+                'Pending imports, their pinned originals, checkpoints and saved reviews are also included.\n\n'
+                f'Keep this checksum separately; it is needed to verify a restore:\n{checksum}'
+                + ('\n\n' + notice_text if notice_text else ''))
+        self.run_job('Backing up all libraries', lambda: self.library.backup(
+            destination, cancelled=self.cancel_event.is_set, on_warning=cleanup_notices.append), done)
 
     def restore_backup(self, event):
         dialog = wx.DirDialog(self, 'Select the backup folder')
@@ -1182,8 +1187,9 @@ class DesktopFrame(WorkspaceFrame):
             else:
                 show_text(self,'Restore complete',f'Restored library folder: {path}\n\n'
                     'You can open it later through Library, Open existing library folder.')
-        self.run_job('Restoring backup', lambda: restore_backup(source, destination, expected_manifest_sha256=checksum.strip()),
-            done)
+        self.run_job('Restoring backup', lambda: restore_backup(
+            source, destination, expected_manifest_sha256=checksum.strip(),
+            cancelled=self.cancel_event.is_set), done)
 
     def check_installation(self, event):
         from ..__main__ import self_test
@@ -1258,7 +1264,7 @@ class DesktopFrame(WorkspaceFrame):
             'DOCX and EPUB extraction remains unverified. Reading or bookmarking does not approve quotations.\n'
             'The Source menu records or withdraws an independent review of the selected PDF page.\n'
             'For quarantined OCR imports, use Library, Review pending imported page; each page needs explicit independent comparison.\n'
-            'Backups include completed libraries. Unfinished imports and pending reviews are excluded.\n'
+            'Backups include libraries, pending imports, pinned originals, checkpoints and saved reviews.\n'
             'Reading positions, bookmarks and reading-copy projects are included in complete library backups. '
             'The Reading menu also provides separate bookmark export and import.\n'
             'Printed pages are shown only when verified; otherwise physical PDF pages or unpaginated segments are identified.')

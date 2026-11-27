@@ -240,8 +240,11 @@ def main(argv=None):
                               for group in session.groups]}, ensure_ascii=False, indent=2))
             return 0
         if args.backup:
-            checksum = app.backup(args.backup)
+            cleanup_notices = []
+            checksum = app.backup(args.backup, on_warning=cleanup_notices.append)
             print(f'Backup complete. Keep this manifest checksum separately: {checksum}')
+            for notice in cleanup_notices:
+                print('Backup cleanup notice: ' + notice, file=sys.stderr)
             return 0
         try:
             import wx

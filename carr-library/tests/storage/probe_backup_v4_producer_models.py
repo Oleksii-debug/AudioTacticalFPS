@@ -43,11 +43,12 @@ def producer_files(reading):
 
 
 @pytest.mark.parametrize('version', [3, 4])
-def test_both_real_editor_and_keymap_formats_roundtrip(producer_files, tmp_path, version):
+def test_both_real_editor_and_keymap_formats_roundtrip(producer_files, tmp_path, version, legacy_layout):
     app, project, draft, copy = producer_files
     folder = tmp_path / 'backup'
     create_backup(app, folder)
     value = manifest(folder)
+    legacy_layout(folder, value)
     assert len(value['sidecars']) == 7
     if version == 3:
         value['version'] = 3
@@ -103,11 +104,12 @@ def studio(reading):
 
 
 @pytest.mark.parametrize('version', [3, 4])
-def test_real_typed_audio_projects_and_history_restore(studio, tmp_path, version):
+def test_real_typed_audio_projects_and_history_restore(studio, tmp_path, version, legacy_layout):
     app, project, revised = studio
     folder = tmp_path / 'backup'
     create_backup(app, folder)
     value = manifest(folder)
+    legacy_layout(folder, value)
     assert len(value['sidecars']) == 2
     if version == 3:
         value['version'] = 3

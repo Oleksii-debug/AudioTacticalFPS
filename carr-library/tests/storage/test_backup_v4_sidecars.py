@@ -45,13 +45,15 @@ def reading(tmp_path):
     return app, workspace, page, bookmark
 
 
-def test_v4_preserves_exact_historical_reader_state(reading, tmp_path):
+def test_v4_preserves_exact_historical_reader_state(reading, tmp_path, legacy_layout):
     app, workspace, page, bookmark = reading
     source_bytes = (app.root / 'reading-state.json').read_bytes()
     app.archive_workspace(workspace)
     backup = tmp_path / 'Копія'
     checksum = app.backup(backup)
     value = manifest(backup)
+    legacy_layout(backup, value)
+    checksum = resign(backup, value)
     assert value['version'] == 4 and value['generated_audio_included'] is False
     assert value['sidecars'] == [dict(filename='reading-state.json', size_bytes=len(source_bytes),
                                      sha256=sha256(source_bytes).hexdigest())]
@@ -66,11 +68,12 @@ def test_v4_preserves_exact_historical_reader_state(reading, tmp_path):
 
 
 @pytest.mark.parametrize('shape', ['reading_state', 'sidecars'])
-def test_exact_v3_reader_shapes_restore_without_rewriting(reading, tmp_path, shape):
+def test_exact_v3_reader_shapes_restore_without_rewriting(reading, tmp_path, shape, legacy_layout):
     app, workspace, page, bookmark = reading
     folder = tmp_path / 'legacy'
     create_backup(app, folder)
     value = manifest(folder)
+    legacy_layout(folder, value)
     value['version'] = 3
     del value['generated_audio_included']
     if shape == 'reading_state':
@@ -182,13 +185,14 @@ def test_sidecar_disk_full_does_not_publish_partial_destination(reading, tmp_pat
 
 @pytest.mark.parametrize('change', ['mixed', 'extra', 'traversal', 'absolute', 'duplicate',
                                   'boolean-size', 'generated-number', 'reserved'])
-def test_invalid_manifest_never_reaches_writable_storage(reading, tmp_path, monkeypatch, change):
+def test_invalid_manifest_never_reaches_writable_storage(reading, tmp_path, monkeypatch, change, legacy_layout):
     app, *_ = reading
     folder = tmp_path / 'backup'
     create_backup(app, folder)
     value = manifest(folder)
     entry = value['sidecars'][0]
     if change == 'mixed':
+        legacy_layout(folder, value)
         value.update(version=3, state=[])
     elif change == 'extra':
         value['allow_unsafe_state'] = True

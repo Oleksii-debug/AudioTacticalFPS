@@ -62,12 +62,12 @@ def test_application_backup_restores_exact_bookmarks_and_resume_for_both_librari
     folder = tmp_path / 'backup'
     digest = app.backup(folder)
     manifest = read_manifest(folder)
-    assert manifest['version'] == 4
+    assert manifest['version'] == 5 and manifest['layout'] == 'sidecars-pending-v1'
     assert reading_entry(manifest) == dict(filename=FILENAME, size_bytes=len(raw),
                                              sha256=sha256(raw).hexdigest())
     assert (folder / FILENAME).read_bytes() == raw
     assert {path.name for path in folder.iterdir()} == {
-        'manifest.json', 'library.sqlite', 'originals', FILENAME}
+        'manifest.json', 'library.sqlite', 'originals', 'pending', FILENAME}
     restored = LibraryApp(restore_backup(folder, tmp_path / 'restored', digest))
     state = ReadingState(restored.root)
     assert state.path.read_bytes() == raw
@@ -264,11 +264,12 @@ def test_reading_manifest_is_an_exact_allowlist(reading_library, tmp_path, field
 
 
 @pytest.mark.parametrize('change', ['missing_descriptor', 'undeclared_file', 'array_descriptor'])
-def test_v3_reading_presence_must_be_explicit(reading_library, tmp_path, change):
+def test_v3_reading_presence_must_be_explicit(reading_library, tmp_path, change, legacy_layout):
     app, *_ = reading_library
     folder = tmp_path / 'backup'
     create_backup(app, folder)
     manifest = read_manifest(folder)
+    legacy_layout(folder, manifest)
     manifest['version'] = 3
     manifest['reading_state'] = manifest.pop('sidecars')[0]
     del manifest['generated_audio_included']
@@ -422,11 +423,12 @@ def test_interruption_while_publishing_reading_state_keeps_restore_unopenable(
 
 @pytest.mark.parametrize('version', [1, 2])
 def test_legacy_backup_restores_without_fabricating_reading_state(
-        reading_library, tmp_path, version):
+        reading_library, tmp_path, version, legacy_layout):
     app, workspaces, books, *_ = reading_library
     folder = tmp_path / 'backup'
     create_backup(app, folder)
     manifest = read_manifest(folder)
+    legacy_layout(folder, manifest)
     manifest['version'] = version
     del manifest['sidecars']
     del manifest['generated_audio_included']
@@ -445,11 +447,12 @@ def test_legacy_backup_restores_without_fabricating_reading_state(
 
 @pytest.mark.parametrize('version', [1, 2])
 def test_legacy_manifest_cannot_smuggle_an_unbound_reading_file(
-        reading_library, tmp_path, version):
+        reading_library, tmp_path, version, legacy_layout):
     app, *_ = reading_library
     folder = tmp_path / 'backup'
     create_backup(app, folder)
     manifest = read_manifest(folder)
+    legacy_layout(folder, manifest)
     manifest['version'] = version
     del manifest['sidecars']
     del manifest['generated_audio_included']
