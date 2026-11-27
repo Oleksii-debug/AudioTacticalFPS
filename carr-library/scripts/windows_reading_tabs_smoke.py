@@ -18,6 +18,34 @@ from time import monotonic
 import traceback
 
 
+
+def _installed_package_root(distributions, package_file, checkout):
+    """Bind installed acceptance to the imported package's actual wheel record.
+
+    A checkout egg-info entry may precede the wheel in metadata discovery.
+    Its project-relative locate_file('carr_library') is not package evidence.
+    Source acceptance never consults installed distribution metadata.
+    """
+    actual = Path(package_file).resolve(strict=True)
+    checkout = Path(checkout).resolve(strict=True)
+    if actual.is_relative_to(checkout):
+        raise RuntimeError('Installed acceptance imported the checkout package.')
+    matches = []
+    for distribution in distributions:
+        for member in distribution.files or ():
+            if str(member).replace('\\', '/') != 'carr_library/__init__.py':
+                continue
+            try:
+                declared = Path(distribution.locate_file(member)).resolve(strict=True)
+            except FileNotFoundError:
+                continue  # An unrelated stale metadata entry is not this package.
+            if declared == actual:
+                matches.append(declared.parent)
+    if len(matches) != 1:
+        raise RuntimeError('Exactly one installed wheel record must own the imported package.')
+    return matches[0]
+
+
 def run_native(source, report, checkpoint):
     import wx
     from carr_library.application import LibraryApp
@@ -49,8 +77,12 @@ def run_native(source, report, checkpoint):
     modules = [importlib.import_module(name) for name in names]
     origins = {module.__name__: Path(module.__file__).resolve(strict=True) for module in modules}
     checkout = Path(__file__).resolve().parents[1]
-    from importlib.metadata import distribution
-    installed = Path(distribution('universal-research-library').locate_file('carr_library')).resolve(strict=True)
+    installed = None
+    if source is None:
+        import carr_library
+        from importlib.metadata import distributions
+        installed = _installed_package_root(
+            distributions(name='universal-research-library'), carr_library.__file__, checkout)
 
     def check(label, condition):
         if not condition:

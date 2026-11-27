@@ -96,6 +96,11 @@ def view(tmp_path):
     def capture():
         state = current.state
         state.resume.document.set_text(state.editor.GetValue())
+        # The real reader captures the live native insertion point, which
+        # cannot remain beyond the end after an edit deletes its text.
+        # Keep the stand-in's code-point cursor within that same native bound;
+        # ReaderResume still rejects malformed saved recovery coordinates.
+        current.cursor = min(max(0, current.cursor), len(state.resume.document.text))
         return (ReaderResume(state.resume.document, current.voice, current.rate,
                 current.volume, current.cursor, current.seconds), state.save_path)
     def activate(state):
@@ -382,6 +387,7 @@ def test_erased_dirty_copy_is_saved_by_shared_all_tab_action(view):
     assert view.tabs.save_all(save)
     assert saved == [first.entry.id, second.entry.id]
     assert second.resume.document.text == '' and not second.resume.document.dirty
+    assert second.resume.cursor == 0 and second.store.load().cursor == 0
     restored = ReadingDocument.load(view.root / (second.entry.id + '.empty-check.reading.json'))
     assert restored.text == '' and restored.undo()
     assert restored.text == 'Second independent text.'
@@ -397,6 +403,7 @@ def test_erased_dirty_copy_cannot_skip_close_or_cas_conflict(view):
     assert not view.tabs.confirm_all_close()
     assert view.context.confirmations == [first.entry.id]
     assert first.resume.document.dirty and first.resume.document.text == ''
+    assert first.resume.cursor == 0
     assert first.store.path.read_bytes() == before
     other = ReaderResume(ReadingDocument('Another window won the draft save.'))
     first.store.save(other)
@@ -439,3 +446,70 @@ def test_owner_id_destruction_closes_tabs_without_touching_the_invalid_wrapper(v
     view.tabs.on_new()
     view.tabs.on_changed(Event(0))
     assert view.tabs.current.resume.document.source_text.startswith('😀 First original.')
+
+
+@pytest.fixture
+def installed_root_probe():
+    import ast
+    from pathlib import Path
+    source = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_reading_tabs_smoke.py'
+    module = ast.parse(source.read_text(encoding='utf-8'))
+    node = next(item for item in module.body if isinstance(item, ast.FunctionDef)
+                and item.name == '_installed_package_root')
+    scope = {'Path': Path}
+    exec(compile(ast.Module(body=[node], type_ignores=[]), str(source), 'exec'), scope)
+    return scope['_installed_package_root']
+
+
+def _distribution_record(root, members=('carr_library/__init__.py',)):
+    return SimpleNamespace(files=members, locate_file=lambda member: root / str(member))
+
+
+def test_installed_probe_uses_recorded_package_when_source_egg_info_precedes_wheel(
+        tmp_path, installed_root_probe):
+    checkout = tmp_path / 'checkout'
+    checkout.mkdir()
+    source = checkout / 'src' / 'carr_library'
+    source.mkdir(parents=True)
+    (source / '__init__.py').write_text('# Current source', encoding='utf-8')
+    installed = tmp_path / 'site-packages' / 'carr_library'
+    installed.mkdir(parents=True)
+    actual = installed / '__init__.py'
+    actual.write_text('# Current installed artifact', encoding='utf-8')
+    records = [_distribution_record(checkout, ('src/carr_library/__init__.py',)),
+               _distribution_record(checkout),  # Stale flat project metadata.
+               _distribution_record(installed.parent)]
+    assert installed_root_probe(records, actual, checkout) == installed
+
+
+@pytest.mark.parametrize('records', ['missing', 'another-wheel', 'ambiguous'])
+def test_installed_probe_never_accepts_an_unbound_or_ambiguous_package(
+        tmp_path, installed_root_probe, records):
+    checkout = tmp_path / 'checkout'
+    checkout.mkdir()
+    installed = tmp_path / 'site-packages' / 'carr_library'
+    installed.mkdir(parents=True)
+    actual = installed / '__init__.py'
+    actual.write_text('# Captured package', encoding='utf-8')
+    if records == 'missing':
+        inventory = [SimpleNamespace(files=None)]
+    elif records == 'another-wheel':
+        other = tmp_path / 'other-site' / 'carr_library'
+        other.mkdir(parents=True)
+        (other / '__init__.py').write_text('# Not imported', encoding='utf-8')
+        inventory = [_distribution_record(other.parent)]
+    else:
+        inventory = [_distribution_record(installed.parent), _distribution_record(installed.parent)]
+    with pytest.raises(RuntimeError, match='Exactly one installed wheel record'):
+        installed_root_probe(inventory, actual, checkout)
+
+
+def test_installed_probe_rejects_checkout_even_with_matching_distribution_record(
+        tmp_path, installed_root_probe):
+    checkout = tmp_path / 'checkout'
+    package = checkout / 'carr_library'
+    package.mkdir(parents=True)
+    actual = package / '__init__.py'
+    actual.write_text('# Checkout cannot satisfy installed acceptance', encoding='utf-8')
+    with pytest.raises(RuntimeError, match='imported the checkout'):
+        installed_root_probe([_distribution_record(checkout)], actual, checkout)

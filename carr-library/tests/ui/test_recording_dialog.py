@@ -15,6 +15,7 @@ import pytest
 from carr_library.audio.recording import AudioCancelled, AudioCleanupPending, RecordingOptions
 from carr_library.ui.operation_progress import ProgressTracker
 from carr_library.speech.progress_speech import play_when_quiet
+from carr_library.speech.output_devices import OutputDevice
 from carr_library.ui.recording_dialog import _VerifiedRecording
 
 
@@ -128,7 +129,7 @@ def handlers(values):
     window = next(node for node in module.body if isinstance(node, ast.FunctionDef)
                   and node.name == 'show_recording')
     names = {'current', 'cancellation', 'controls', 'release_holds', 'release_when_stopped',
-             'settled', 'poll_cleanup', 'display_record', 'show_records', 'run', 'refresh',
+             'settled', 'poll_cleanup', 'display_record', 'show_records', 'run', 'refresh', 'refresh_outputs',
              'start', 'retake', 'preview', 'use', 'close', 'stop_playback',
              'stop_recording', 'cancel_recording', 'query_progress'}
     definitions = [node for node in window.body if isinstance(node, ast.FunctionDef) and node.name in names]
@@ -175,15 +176,17 @@ def view(tmp_path):
         retain=Mock(return_value=dict(asset='a' * 64 + '.wav', sha256='a' * 64,
                                      recording_id='retained', project_id='managed')))
     buttons = {name: Control() for name in (
-        'refresh', 'query', 'start', 'retake', 'stop', 'cancel', 'preview', 'use', 'stop_preview', 'close')}
+        'refresh', 'refresh_outputs', 'query', 'start', 'retake', 'stop', 'cancel', 'preview', 'use', 'stop_preview', 'close')}
     values = dict(busy=False, alive=True, closing=False, recording=False, generation=0,
-        devices=(), records=(), holds=[], cleanup_owner=None,
+        devices=(), outputs=(), records=(), holds=[], cleanup_owner=None,
+        output_devices=Mock(return_value=(OutputDevice(2, 'Explicit headphones', 'opaque-output'),)),
         cleanup_saved=None, cleanup_retry=None, hold_guard=threading.RLock(),
         active_started=threading.Event(), active_finished=threading.Event(),
         frame=frame, library=frame.library, progress=progress, player=Mock(),
         selected_result=None, service=service, cancelled=threading.Event(), stopped=threading.Event(),
         microphone=Control(selection=-1), title=Control('My recording'), minutes=Control(2),
         sample_rate=Control('24000'), channels=Control(selection=0),
+        monitoring=Control(False), monitor_output=Control(selection=-1),
         saved=Control(selection=-1),
         buttons=buttons, details=Control(), status=Control(), gauge=Control(0), progress_label=Control(),
         dialog=Mock(), wx=wx, project_id=None, on_selected=None)
@@ -555,3 +558,60 @@ def test_explicit_progress_query_is_visible_and_focused_inside_the_modal(view):
     assert not view.progress.holds[0].closed
     view.finish()
 
+
+
+def test_monitoring_is_opt_in_and_missing_explicit_output_cannot_start_capture(view):
+    ready(view)
+    assert view.values['monitoring'].GetValue() is False
+    assert view.values['output_devices'].call_count == 0
+    view.values['monitoring'].SetValue(True)
+    view.handlers.controls()
+    assert not view.values['buttons']['start'].enabled
+    view.handlers.start()
+    assert not view.captures and not view.frame.executor.pending
+    assert not view.progress.holds
+    assert 'explicitly select' in view.values['status'].GetValue()
+
+
+def test_monitoring_output_discovery_is_background_read_only_and_never_selects_default(view):
+    ready(view)
+    view.handlers.refresh_outputs()
+    assert view.values['output_devices'].call_count == 0
+    assert not view.captures and not view.progress.holds
+    view.finish()
+    assert view.values['output_devices'].call_count == 1
+    assert view.values['monitor_output'].items == ['Explicit headphones']
+    assert view.values['monitor_output'].GetSelection() == -1
+    assert not view.captures and not view.progress.holds
+
+
+def test_start_captures_exact_explicit_monitor_identity_under_existing_quiet_hold(view):
+    ready(view)
+    view.handlers.refresh_outputs()
+    view.finish()
+    view.values['monitoring'].SetValue(True)
+    view.values['monitor_output'].SetSelection(0)
+    view.handlers.controls()
+    assert view.values['buttons']['start'].enabled
+    view.handlers.start()
+    assert len(view.progress.holds) == 1 and not view.progress.holds[0].closed
+    assert not view.values['monitoring'].enabled and not view.values['monitor_output'].enabled
+    assert not view.values['buttons']['refresh_outputs'].enabled
+    # A later UI change cannot alter the already captured request.
+    view.values['monitor_output'].SetSelection(-1)
+    view.finish()
+    selected = view.captures[0][1]['monitor_output']
+    assert selected == OutputDevice(2, 'Explicit headphones', 'opaque-output')
+    assert selected.identity == view.values['output_devices'].return_value[0].identity
+    assert view.progress.holds[0].closed
+
+
+def test_unchecked_monitoring_never_passes_a_previously_selected_output(view):
+    ready(view)
+    view.handlers.refresh_outputs()
+    view.finish()
+    view.values['monitor_output'].SetSelection(0)
+    view.handlers.start()
+    view.finish()
+    assert view.captures[0][1]['monitor_output'] is None
+    assert view.values['monitoring'].GetValue() is False

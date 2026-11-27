@@ -183,6 +183,7 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
     callbacks, controls = Queue(), []
     guard_calls = []
     statuses = []
+    focused, blocked_focus = [], []
 
     def scope():
         guard_calls.append(get_ident())
@@ -260,7 +261,15 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
         def IsEnabled(self): self.native(); return self.enabled
         def Enable(self, value=True): self.native(); self.enabled = value
         def Disable(self): self.Enable(False)
-        def SetFocus(self): self.native(); assert self.enabled
+        def SetFocus(self):
+            self.native()
+            # Native disabled controls cannot acquire focus; requesting focus
+            # while the source loads is a no-op, not a control activation.
+            if self.enabled:
+                focused[:] = [self]
+            else:
+                blocked_focus.append(self)
+
         def Add(self, *args): self.native()
         def SetSizer(self, *args): self.native()
         def SetEscapeId(self, *args): self.native()
@@ -284,6 +293,11 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
     class Dialog(Control):
         def ShowModal(self):
             self.native()
+            editor = next(control for control in controls if control.name.startswith('Reading copy (editable'))
+            # The actual source is not admitted until the queued worker result
+            # reaches the UI. A focus request must not enable or populate it.
+            assert not editor.enabled and not named('Reload &voices').enabled
+            assert editor in blocked_focus and editor not in focused
             deadline = time.monotonic() + 5
             while not named('Reload &voices').enabled:
                 assert time.monotonic() < deadline, 'Canonical discovery did not complete.'
@@ -292,11 +306,12 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
                 except Empty:
                     continue
                 callback(*args)
-            editor = next(control for control in controls if control.name.startswith('Reading copy (editable'))
-            assert editor.GetValue() == expected_editor
+            assert editor.enabled and editor.GetValue() == expected_editor
             statuses.append(next(c for c in controls if c.name == 'Speech and save status').GetValue())
             scope()
-            named('Save &as').handlers['button'](None)
+            save_as = named('Save &as')
+            assert save_as.enabled
+            save_as.handlers['button'](None)
             statuses.append(next(c for c in controls if c.name == 'Speech and save status').GetValue())
             return 5101
 
