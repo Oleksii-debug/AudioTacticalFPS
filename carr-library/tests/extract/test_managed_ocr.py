@@ -530,3 +530,70 @@ def test_windows_non_inventory_output_is_never_rewritten(monkeypatch):
     monkeypatch.setattr(ocr_process, 'sys', SimpleNamespace(platform='win32'))
     raw = b'tesseract 5.5.4\r\nscript\\Latin\r\n'
     assert ocr_process.normalize_ocr_query_output(raw, None) == raw
+
+@pytest.mark.parametrize('query', [True, False], ids=['inventory', 'recognition'])
+def test_windows_dispatch_resolves_explicit_models_against_runtime_cwd(real_models, tmp_path, monkeypatch, query):
+    """Exercise Windows argument planning with an actual local engine on either OS."""
+    from types import SimpleNamespace
+    from PIL import Image, ImageDraw, ImageFont
+    from carr_library.extract import ocr_process
+    managed, _ = real_models
+    engine_cwd = tmp_path / 'engine working directory'
+    engine_cwd.mkdir()
+    runtime = ManagedOcrRuntime(OcrRuntime(managed.executable, root=engine_cwd), managed.selection)
+    relative_models = os.path.relpath(runtime.tessdata, engine_cwd)
+    monkeypatch.setattr(ocr_process, 'sys', SimpleNamespace(platform='win32'))
+    if query:
+        args = [runtime.executable, '--list-langs']
+    else:
+        picture = Image.new('RGB', (1600, 320), 'white')
+        ImageDraw.Draw(picture).text((40, 80), 'Explicit model directory', fill='black',
+                                    font=ImageFont.load_default(size=65))
+        source = tmp_path / 'Джерело.png'
+        picture.save(source, dpi=(300, 300))
+        args = [runtime.executable, str(source), 'stdout', '-l', 'eng', '--psm', '6']
+    result = run_ocr(runtime, [*args, '--tessdata-dir', relative_models], remaining=lambda: 20)
+    if query:
+        report = result.stdout.decode('utf-8')
+        assert str(runtime.tessdata) in report and report.splitlines()[1:] == ['eng', 'osd']
+    else:
+        assert result.stdout.decode('utf-8').strip() == 'Explicit model directory'
+    runtime.assert_unchanged()
+
+
+def test_equivalent_model_directory_keeps_selected_hash_expectations(real_models, tmp_path):
+    from carr_library.extract import ocr_process
+    runtime, _ = real_models
+    sibling = runtime.tessdata.parent / 'sibling'
+    sibling.mkdir()
+    equivalent = sibling / '..' / runtime.tessdata.name
+    assert equivalent.samefile(runtime.tessdata)
+    assert ocr_process._model_expectations(runtime, equivalent) == dict(runtime.selection.model_sha256)
+
+
+def test_relative_managed_model_copy_rejects_changed_selected_bytes(real_models, tmp_path, monkeypatch):
+    import tempfile
+    from types import SimpleNamespace
+    from carr_library.extract import ocr_process
+    managed, _ = real_models
+    engine_cwd = tmp_path / 'engine'
+    engine_cwd.mkdir()
+    runtime = ManagedOcrRuntime(OcrRuntime(managed.executable, root=engine_cwd), managed.selection)
+    temporary = tmp_path / 'Окремі тимчасові файли'
+    temporary.mkdir()
+    monkeypatch.setattr(tempfile, 'tempdir', str(temporary))
+    monkeypatch.setattr(ocr_process, 'sys', SimpleNamespace(platform='win32'))
+    monkeypatch.setattr(ocr_process, '_execute',
+        lambda *args: pytest.fail('Changed selected model bytes must not reach the native engine.'))
+    source = tmp_path / 'Джерело.png'
+    source.write_bytes(b'copy-boundary fixture; native inference is forbidden')
+    model = runtime.tessdata / 'eng.traineddata'
+    raw = bytearray(model.read_bytes())
+    raw[-1] ^= 1
+    model.write_bytes(raw)
+    with pytest.raises(OcrRuntimeError, match='differs from the selected bytes'):
+        run_ocr(runtime, [runtime.executable, str(source), 'stdout', '-l', 'eng',
+            '--tessdata-dir', os.path.relpath(runtime.tessdata, engine_cwd)], remaining=lambda: 10)
+    assert model.read_bytes() == raw
+    assert source.read_bytes() == b'copy-boundary fixture; native inference is forbidden'
+    assert list(temporary.iterdir()) == []

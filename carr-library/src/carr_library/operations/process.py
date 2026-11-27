@@ -9,6 +9,7 @@ import shutil
 import signal
 import stat
 import subprocess
+import sys
 import threading
 import time
 
@@ -84,7 +85,104 @@ class ProcessResult:
     elapsed: float
 
 
+def _poll_process(process):
+    """Observe a Linux session leader without releasing its owned group ID."""
+    if sys.platform == 'linux' and process.returncode is None:
+        try:
+            status = os.waitid(os.P_PID, process.pid,
+                               os.WEXITED | os.WNOHANG | os.WNOWAIT)
+        except ChildProcessError:
+            raise ProcessError('The owned worker leader was reaped outside its lifecycle.') from None
+        if status is None:
+            return None
+        return status.si_status if status.si_code == os.CLD_EXITED else -status.si_status
+    return process.poll()
+
+
+def _wait_linux_group(group, *, timeout):
+    """Confirm that no owned group member is still executing, within a bound.
+
+    Exited orphan zombies no longer execute or retain diagnostic streams.
+    This covers the inherited process group, not descendants that deliberately
+    escape their session. It is not a native-code sandbox.
+    """
+    deadline = time.monotonic() + timeout
+    expected = str(group).encode('ascii')
+    while True:
+        active = False
+        with os.scandir('/proc') as entries:
+            for entry in entries:
+                if time.monotonic() >= deadline:
+                    raise TimeoutError('The owned worker group did not terminate in time.')
+                if not entry.name.isdigit():
+                    continue
+                try:
+                    raw = (Path(entry.path) / 'stat').read_bytes()
+                    fields = raw.rsplit(b') ', 1)[1].split()
+                except (FileNotFoundError, ProcessLookupError):
+                    continue
+                except PermissionError:
+                    try:
+                        member = os.getpgid(int(entry.name)) == group
+                    except ProcessLookupError:
+                        continue
+                    if member:
+                        raise ProcessError('Cannot confirm termination of an owned worker.')
+                    continue
+                except (IndexError, ValueError):
+                    raise ProcessError('Cannot parse the native worker-group observation.') from None
+                if len(fields) < 3:
+                    raise ProcessError('Incomplete native worker-group observation.')
+                if fields[2] == expected and fields[0] not in {b'Z', b'X', b'x'}:
+                    active = True
+                    break
+        if not active:
+            return
+        time.sleep(min(.01, max(0, deadline - time.monotonic())))
+
+
 def _terminate(process):
+    """Stop owned execution before reaping the Linux group leader.
+
+    Unconfirmed shutdown raises; it never admits a normal result. The external
+    broker still owns its existing context/release policy, so this function
+    does not promise resource-lease retention after an error unwinds.
+    Windows retains its existing direct-process termination boundary.
+    """
+    if sys.platform == 'linux':
+        if process.returncode is not None:
+            return
+        # A waitable leader pins the group identity until its execution has
+        # stopped. Do not signal a potentially reused ID after external reap.
+        _poll_process(process)
+        try:
+            try:
+                os.killpg(process.pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+            try:
+                _wait_linux_group(process.pid, timeout=1)
+            except TimeoutError:
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                _wait_linux_group(process.pid, timeout=5)
+        except (OSError, TimeoutError, ProcessError) as exc:
+            # Request forceful shutdown even if observation itself failed.
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            raise ProcessError('Owned worker shutdown could not be confirmed; '
+                               'the operation did not complete.') from exc
+        finally:
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=5)
+        return
     if process.poll() is not None:
         return
     try:
@@ -214,12 +312,20 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
             threads.append(thread)
             thread.start()
             started_pipes.add(pipe)
-        while process.poll() is None:
+        while _poll_process(process) is None:
             check()
-            try:
-                process.wait(timeout=.05)
-            except subprocess.TimeoutExpired:
-                pass
+            if sys.platform == 'linux':
+                # wait(timeout) and poll() reap an exited leader. Keep it
+                # waitable until descendants release their inherited pipes.
+                time.sleep(.05)
+            else:
+                try:
+                    process.wait(timeout=.05)
+                except subprocess.TimeoutExpired:
+                    pass
+        # A successful leader can leave a child executing and holding stdout.
+        # Close owned group execution before draining or accepting any result.
+        _terminate(process)
         for thread in threads:
             thread.join(timeout=2)
         if any(thread.is_alive() for thread in threads):

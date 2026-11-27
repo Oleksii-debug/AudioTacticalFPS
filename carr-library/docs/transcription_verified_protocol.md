@@ -47,7 +47,7 @@ tokenizers, huggingface-hub and packaging. It follows applicable Requires-Dist
 metadata, including requested extras and environment markers, validates
 installed version requirements and Requires-Python, and rejects missing or
 ambiguous distributions. Requirement parsing uses the application's pinned
-packaging 26.0 dependency. There is no automatic installation.
+packaging dependency (26.4 in the current Windows lock). There is no automatic installation.
 
 Every declared non-bytecode RECORD file is hashed, including native libraries,
 metadata and model assets carried by a distribution. The canonical package
@@ -132,6 +132,39 @@ contract. Cancel also writes cancel.flag for this protocol. Resume and restore
 remove that control flag; restore keeps external execution trust revoked.
 Accepted application receipts remain outside the optional worker cache, retain
 their original profile provenance and remain readable without executing a model.
+
+
+## Live status publication on Windows
+
+Live status is advisory until immutable result and completion receipts pass the
+strict admission checks above. The reader takes at most three bounded snapshots
+and closes each native handle before looking up the current pathname again.
+An atomic replacement between those observations causes a new observation, not
+admission of a stale result. Links, oversized content and stable malformed JSON
+still fail validation.
+
+Windows delete sharing is necessary for cooperative access, but it does not give
+ordinary Python os.replace/MoveFileEx POSIX replacement semantics. Microsoft
+documents the distinct [POSIX replacement flag](https://learn.microsoft.com/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_rename_information)
+for replacing a target while handles remain open. A producer
+using that primitive must keep its flushed staging file and retry only transient
+Windows sharing/access errors until the short reader closes, within an explicit
+bound. It must never unlink the destination or truncate the previous status as a
+fallback. The product's existing atomic state writer already uses this bounded
+retry. The public synthetic protocol peers now model the same producer rule.
+
+The native contract tests use actual concurrent handles and a bounded producer,
+then verify replacement and a fresh read after the old handle closes. Separate
+cases replace the file between the pathname check and open, exercising all three
+observation attempts. The 2,000-update subprocess churn remains unchanged; its
+Windows-only test allowance is 60 seconds because every verified fixture update
+flushes a staged file. This changes no product job allowance.
+
+These synthetic checks do not prove compatibility with a separately installed
+owner worker. That exact worker must implement and pass the same publication
+contract before its Windows interoperability is qualified. The currently
+qualified packaged desktop target is CPython 3.11; Windows 3.12 immutable-reader
+portability remains a separate unqualified boundary.
 
 ## Evidence and integration boundary
 

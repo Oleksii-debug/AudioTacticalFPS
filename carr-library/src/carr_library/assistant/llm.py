@@ -15,6 +15,11 @@ Include only operations explicitly requested by the user. Use the fewest steps
 needed. Listing or searching existing information does not require creating or
 importing anything. Do not infer extra setup tasks.
 
+Preserve every explicitly requested supported limit, filter, path and option
+in the matching step's arguments. Describing a constraint in summary alone
+does not apply it. Omit optional fields only when the user did not specify
+them. Never invent unspecified optional values.
+
 Return one raw JSON object without Markdown fences, reasoning or surrounding text.
 Include exactly schema, summary and steps. schema is the string
 "carr-assistant-plan/1"; summary is a short string describing the requested work;

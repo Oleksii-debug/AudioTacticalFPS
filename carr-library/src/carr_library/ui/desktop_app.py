@@ -1329,7 +1329,7 @@ class DesktopFrame(WorkspaceFrame):
             'Alt+S for Source, Alt+D for Reading, Alt+U for Audio, and Alt+H for Help.\n'
             'Ctrl+S saves the current research note; Ctrl+Shift+S saves all main-window changes. '
             'Ctrl+Alt+P reads the current operation phase, percentage when known, and completed units. '
-            'Help, Progress sound settings controls optional application tones, off by default. '
+            'Help, Progress sound settings controls optional application sounds, off by default. '
             'Modal editors have their own Save and Save As commands.\n'
             'Options, Keyboard shortcuts changes main-window keys and checks conflicts. '
             'Options, List current keyboard shortcuts shows the active assignments; the keys below are defaults.\n'
