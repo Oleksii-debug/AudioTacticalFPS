@@ -81,6 +81,7 @@ packages = [
   "carr_library.citations",
   "carr_library.extract",
   "carr_library.ingest",
+  "carr_library.language_qualification",
   "carr_library.reader",
   "carr_library.research",
   "carr_library.research._vendor_rispy",
@@ -105,6 +106,8 @@ bootstrap = "bootstrap"
 "*" = ["*.sql", "*.md", "LICENSE", "UPSTREAM.json", "_rispy_LICENSE"]
 "carr_library.citations" = ["_vendor_citeproc/*", "styles/*"]
 "carr_library.extract" = ["ocr-model-catalog.json", "TESSDATA_FAST_LICENSE", "TESSDATA_BEST_LICENSE"]
+
+"carr_library.language_qualification" = ["data/*.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "bootstrap", "docs/contracts/probes"]

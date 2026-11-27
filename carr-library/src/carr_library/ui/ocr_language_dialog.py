@@ -8,16 +8,7 @@ from ..extract.ocr_languages import (MAX_SELECTED_MODELS, OcrLanguageError,
 from ..extract.page_ocr import Config
 from ..extract.pinned_tessdata import POLICY
 
-PROFILE_CHOICES = ('Selected installed models (identity recorded during import)',
-                   'Pinned tessdata_fast: English, Ukrainian and Slovak',
-                   'Managed Fast models (verified official installation)',
-                   'Managed Best models (verified official installation)',
-                   'Managed Fast with pinned English, Ukrainian and Slovak policy')
-MODEL_PROFILES = ('installed', 'installed', 'fast', 'best', 'fast')
-
-
-def profile_index(model_profile, policy='default'):
-    return (4 if policy == POLICY else 2) if model_profile == 'fast' else 3 if model_profile == 'best' else 1 if policy == POLICY else 0
+MODEL_PROFILES = ('installed', 'fast', 'best')
 
 
 class OcrOptionsActions:
@@ -81,17 +72,48 @@ class OcrOptionsActions:
         self.chosen.SetFocus()
         self.report('Recognition priority updated.', focus=False)
 
+    def _model_profile(self):
+        return getattr(self, 'active_model_profile', self.initial.model_profile)
+
+    def _set_model_profile(self, value):
+        self.active_model_profile = value
+        if hasattr(self, 'model_source'):
+            self.model_source.SetSelection(MODEL_PROFILES.index(value))
+
+    def change_model_profile(self, event=None):
+        if self.busy or self.closed:
+            self._set_model_profile(self._model_profile())
+            return
+        index = self.model_source.GetSelection()
+        if index not in range(len(MODEL_PROFILES)):
+            self.report('Choose an installed, managed Fast, or managed Best profile.')
+            return
+        self._set_model_profile(MODEL_PROFILES[index])
+        self.active_pack = None
+        self.catalog = None
+        self.rescan()
+
+    def manage_models(self, event=None):
+        if self.busy or self.closed:
+            return
+        from .ocr_model_manager import show_ocr_model_manager
+        show_ocr_model_manager(self)
+        self.rescan()
+
     def current_config(self):
         if self.busy or self.catalog is None:
             raise OcrLanguageError('Wait for the installed OCR models to be checked.')
         index = self.profile.GetSelection()
-        if index not in range(len(PROFILE_CHOICES)):
+        if index not in (0, 1):
             raise OcrLanguageError('Choose a model profile.')
+        model_profile = self._model_profile()
+        if self.catalog.model_profile != model_profile:
+            raise OcrLanguageError('Check the selected model profile before using these settings.')
         pack = getattr(self, 'active_pack', None)
         config = replace(self.initial, languages='+'.join(self.selected_codes),
                          orientation=self.orientation.GetValue(),
-                         model_policy=POLICY if index in (1, 4) else 'default',
-                         model_profile=MODEL_PROFILES[index],
+                         model_policy=('default', POLICY)[index],
+                         model_profile=model_profile,
                          model_pack_path=pack[0] if pack else None,
                          model_pack_sha256=pack[1] if pack else None)
         if self.catalog.integrity != 'unavailable':
@@ -117,11 +139,11 @@ class OcrOptionsActions:
                     ('English, Ukrainian and Slovak', 'eng+ukr+slk')]:
                 if set(codes.split('+')) <= set(self.catalog.selectable):
                     settings = dict(languages=codes, model_policy='default', orientation=False)
-                    if getattr(self, 'active_profile', 'installed') != 'installed':
-                        settings['model_profile'] = self.active_profile
                     pack = getattr(self, 'active_pack', None)
                     if pack:
                         settings.update(model_pack_path=pack[0], model_pack_sha256=pack[1])
+                    if self._model_profile() != 'installed':
+                        settings['model_profile'] = self._model_profile()
                     items.append((name, settings, False))
         if self.preset_root is not None:
             try:
@@ -142,25 +164,27 @@ class OcrOptionsActions:
             label, settings, _ = self.preset_items[index]
             binding = ((settings['model_pack_path'], settings['model_pack_sha256'])
                        if settings.get('model_pack_path') else None)
-            selected_profile = settings.get('model_profile', 'installed')
+            model_profile = settings.get('model_profile', 'installed')
 
             def apply(catalog):
+                if catalog.model_profile != model_profile:
+                    raise OcrLanguageError('The returned OCR inventory belongs to a different profile.')
                 catalog.validate(settings['languages'], orientation=settings['orientation'],
                                  model_policy=settings['model_policy'])
+                self._set_model_profile(model_profile)
                 self.active_pack, self.catalog = binding, catalog
-                self.active_profile = selected_profile
                 self.selected_codes = list(split_languages(settings['languages']))
-                self.profile.SetSelection(profile_index(selected_profile, settings['model_policy']))
+                self.profile.SetSelection(0 if settings['model_policy'] == 'default' else 1)
                 self.orientation.SetValue(settings['orientation'])
                 self.filter_models()
                 self._show_selected(0)
                 self.chosen.SetFocus()
                 self.report('Applied ' + label + '. Review the order, then use these settings.', focus=False)
 
-            if binding != getattr(self, 'active_pack', None) or selected_profile != getattr(self, 'active_profile', 'installed'):
+            if binding != getattr(self, 'active_pack', None) or model_profile != self._model_profile():
                 options = dict(model_pack_path=binding[0], model_pack_sha256=binding[1]) if binding else {}
-                if selected_profile != 'installed':
-                    options['model_profile'] = selected_profile
+                if model_profile != 'installed':
+                    options['model_profile'] = model_profile
                 self._pack_job('Checking the saved OCR model binding…',
                     lambda: discover_languages(cancelled=self.cancel_event.is_set, **options), apply,
                     activation=True)
@@ -216,11 +240,11 @@ class OcrOptionsActions:
         if self.busy or self.closed:
             return
         import wx
+        model_profile = self._model_profile()
         self.busy = True
         self.cancel_event.clear()
         self.ok.Disable()
         self.rescan_button.Disable()
-        self.profile.Disable()
         self._enable_pack_controls(False)
         self.report('Checking the selected local OCR engine and its installed models…', focus=False)
 
@@ -230,10 +254,12 @@ class OcrOptionsActions:
                     return
                 self.busy = False
                 self.rescan_button.Enable()
-                self.profile.Enable()
                 self._enable_pack_controls(True)
                 try:
-                    self.catalog = future.result()
+                    catalog = future.result()
+                    if catalog.model_profile != model_profile:
+                        raise OcrLanguageError('The returned OCR inventory belongs to a different profile.')
+                    self.catalog = catalog
                     self.filter_models()
                     self._show_selected()
                     preset_problem = self._presets()
@@ -243,7 +269,9 @@ class OcrOptionsActions:
                                    'scanned pages will remain for review. No model was downloaded.')
                     else:
                         self.ok.SetLabel('Use settings')
-                        integrity = ('Selected managed model profile and license checks passed.'
+                        integrity = ('No models are installed in this managed profile. Use the shared model manager.'
+                                     if self.catalog.integrity == 'verified_managed_profile' and not self.catalog.codes else
+                                     'Selected managed model profile and license checks passed.'
                                      if self.catalog.integrity == 'verified_managed_profile' else
                                      'Selected offline pack model and license SHA256 checks passed.'
                                      if self.catalog.integrity == 'verified_model_pack' else
@@ -269,31 +297,14 @@ class OcrOptionsActions:
 
         pack = getattr(self, 'active_pack', None)
         options = dict(model_pack_path=pack[0], model_pack_sha256=pack[1]) if pack else {}
-        if getattr(self, 'active_profile', 'installed') != 'installed':
-            options['model_profile'] = self.active_profile
+        if model_profile != 'installed':
+            options['model_profile'] = model_profile
         self.executor.submit(discover_languages, cancelled=self.cancel_event.is_set, **options).add_done_callback(finish)
 
-    def change_profile(self, event=None):
-        if self.busy or self.closed:
-            return
-        index = self.profile.GetSelection()
-        if index not in range(len(PROFILE_CHOICES)):
-            self.report('Choose an installed or managed model profile.')
-            return
-        selected = MODEL_PROFILES[index]
-        if selected != getattr(self, 'active_profile', 'installed'):
-            self.active_profile = selected
-            self.active_pack = None
-            self.rescan()
-
-    def manage_models(self, event=None):
-        if self.busy or self.closed:
-            return
-        from .ocr_model_manager import show_ocr_model_manager
-        show_ocr_model_manager(self)
-        self.rescan()
-
     def _enable_pack_controls(self, enabled):
+        self.profile.Enable() if enabled else self.profile.Disable()
+        if hasattr(self, 'model_source'):
+            self.model_source.Enable() if enabled else self.model_source.Disable()
         for control in getattr(self, 'pack_controls', ()):
             control.Enable() if enabled else control.Disable()
         if hasattr(self, 'pack_stop'):
@@ -307,7 +318,6 @@ class OcrOptionsActions:
         self.cancel_event.clear()
         self.ok.Disable()
         self.rescan_button.Disable()
-        self.profile.Disable()
         self._enable_pack_controls(False)
         self.report(message, focus=False)
 
@@ -317,7 +327,6 @@ class OcrOptionsActions:
                     return
                 self.busy = False
                 self.rescan_button.Enable()
-                self.profile.Enable()
                 self._enable_pack_controls(True)
                 if self.catalog is not None:
                     self.ok.Enable()
@@ -341,7 +350,6 @@ class OcrOptionsActions:
         except Exception as exc:
             self.busy = False
             self.rescan_button.Enable()
-            self.profile.Enable()
             self._enable_pack_controls(True)
             if self.catalog is not None:
                 self.ok.Enable()
@@ -436,8 +444,10 @@ class OcrOptionsActions:
             return
 
         def ready(catalog):
+            if catalog.model_profile != 'installed':
+                raise OcrLanguageError('The returned inventory is not the selected reviewed pack.')
+            self._set_model_profile('installed')
             self.active_pack, self.catalog = (path, digest), catalog
-            self.active_profile = 'installed'
             self.profile.SetSelection(0)
             self.filter_models()
             self._show_selected()
@@ -454,8 +464,8 @@ class OcrOptionsActions:
     def use_default_models(self, event=None):
         if self.busy:
             return
+        self._set_model_profile('installed')
         self.active_pack = None
-        self.active_profile = 'installed'
         self.profile.SetSelection(0)
         self.rescan()
 
@@ -493,78 +503,42 @@ class OcrOptionsActions:
         getattr(self, attribute).SetFocus()
 
     def create_pack_page(self, notebook):
+        """One canonical Fast/Best manager plus activation of existing reviewed packs."""
         import wx
-        page = wx.ScrolledWindow(notebook, style=wx.VSCROLL)
-        page.SetScrollRate(0, 12)
+        page = wx.ScrolledWindow(notebook)
+        page.SetScrollRate(8, 8)
         layout = wx.BoxSizer(wx.VERTICAL)
-        help_text = wx.StaticText(page, label='Offline catalogue: choose already downloaded local official models. '
-            'Preparation verifies the selected fast or best profile and includes its license. '
-            'Installation needs the separately recorded manifest SHA256 and a new folder. '
-            'No download, automatic all-language selection, or portable-runtime modification is performed.')
-        help_text.Wrap(700)
-        layout.Add(help_text, 0, wx.EXPAND | wx.ALL, 8)
+        explanation = wx.StaticText(page, label=(
+            'Manage official Fast and Best models in the shared model manager. '
+            'Installation uses explicit local files and verifies their pinned upstream identities. '
+            'Then choose Managed Fast or Managed Best on the Recognition languages page. '
+            'Existing reviewed packs can still be selected below with their original manifest checksum.'))
+        explanation.Wrap(690)
+        layout.Add(explanation, 0, wx.EXPAND | wx.ALL, 8)
         self.pack_controls = []
-
-        def field(label, attribute, value='', *, browse=None):
+        manager = wx.Button(page, label='Manage official Fast and Best models...')
+        manager.SetName('Manage official Fast and Best models')
+        manager.Bind(wx.EVT_BUTTON, self.manage_models)
+        self.pack_controls.append(manager)
+        layout.Add(manager, 0, wx.ALL, 8)
+        for label, attribute, value in (
+                ('Existing reviewed pack folder', 'pack_installed', self.initial.model_pack_path or ''),
+                ('Independently recorded manifest SHA256', 'pack_digest', self.initial.model_pack_sha256 or '')):
             layout.Add(wx.StaticText(page, label=label), 0, wx.LEFT | wx.RIGHT, 8)
-            line = wx.BoxSizer(wx.HORIZONTAL)
             control = wx.TextCtrl(page, value=value)
             control.SetName(label)
             setattr(self, attribute, control)
             self.pack_controls.append(control)
-            line.Add(control, 1, wx.EXPAND | wx.RIGHT, 6)
-            if browse is not None:
-                button = wx.Button(page, label='Choose folder...')
-                button.SetName('Choose ' + label)
-                button.Bind(wx.EVT_BUTTON,
-                    lambda event, name=attribute, new=browse: self.choose_pack_directory(name, new=new))
-                self.pack_controls.append(button)
-                line.Add(button, 0)
-            layout.Add(line, 0, wx.EXPAND | wx.ALL, 8)
-            return control
-
-        layout.Add(wx.StaticText(page, label='Official model profile'), 0, wx.LEFT | wx.RIGHT, 8)
-        self.pack_profile = wx.Choice(page, choices=['fast', 'best'])
-        self.pack_profile.SetName('Official model profile')
-        self.pack_profile.SetSelection(0)
-        self.pack_profile.Bind(wx.EVT_CHOICE, self.catalogue_filter)
-        self.pack_controls.append(self.pack_profile)
-        layout.Add(self.pack_profile, 0, wx.EXPAND | wx.ALL, 8)
-        field('Filter official model catalogue', 'pack_filter').Bind(wx.EVT_TEXT, self.catalogue_filter)
-        self.pack_models = wx.ListBox(page, size=(-1, 100))
-        self.pack_models.SetName('Official offline model catalogue')
-        self.pack_controls.append(self.pack_models)
-        layout.Add(self.pack_models, 0, wx.EXPAND | wx.ALL, 8)
-        add = wx.Button(page, label='Add catalogue model to preparation')
-        add.Bind(wx.EVT_BUTTON, self.catalogue_add)
-        self.pack_controls.append(add)
-        layout.Add(add, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
-        field('Model codes to prepare, separated by spaces', 'pack_codes', 'eng ukr slk')
-        field('Disk budget in MiB, 1 to 4096', 'pack_budget', '256')
-        field('Local official model source folder', 'pack_source', browse=False)
-        field('New prepared pack folder', 'pack_prepared', browse=True)
-        field('Prepared pack folder to install', 'pack_install_source', browse=False)
-        field('Independently recorded manifest SHA256', 'pack_digest',
-              self.initial.model_pack_sha256 or '')
-        field('New installation folder, or existing installed pack to use', 'pack_installed',
-              self.initial.model_pack_path or '')
-        browse = wx.BoxSizer(wx.HORIZONTAL)
-        for label, new in [('Choose new installation folder...', True), ('Choose existing installed pack...', False)]:
-            button = wx.Button(page, label=label)
-            button.Bind(wx.EVT_BUTTON,
-                lambda event, new=new: self.choose_pack_directory('pack_installed', new=new))
-            self.pack_controls.append(button)
-            browse.Add(button, 0, wx.RIGHT, 6)
-        layout.Add(browse, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
-        for label, handler in [('Prepare verified pack', self.prepare_pack),
-                               ('Install reviewed pack', self.install_pack),
-                               ('Use verified pack', self.use_pack),
-                               ('Use bundled or system models', self.use_default_models)]:
+            layout.Add(control, 0, wx.EXPAND | wx.ALL, 8)
+        for label, handler in (
+                ('Choose existing reviewed pack...', lambda event: self.choose_pack_directory('pack_installed')),
+                ('Use verified pack', self.use_pack),
+                ('Use bundled or system models', self.use_default_models)):
             button = wx.Button(page, label=label)
             button.Bind(wx.EVT_BUTTON, handler)
             self.pack_controls.append(button)
             layout.Add(button, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
-        self.pack_stop = wx.Button(page, label='Stop model operation')
+        self.pack_stop = wx.Button(page, label='Stop model verification')
         self.pack_stop.Bind(wx.EVT_BUTTON, self.stop_pack)
         self.pack_stop.Disable()
         layout.Add(self.pack_stop, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
@@ -584,9 +558,9 @@ def create_ocr_dialog(parent, initial=None, *, preset_root=None):
             super().__init__(parent, title='Text recognition languages', size=(800, 730),
                              style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
             self.initial = initial or Config()
+            self.active_model_profile = self.initial.model_profile
             self.active_pack = ((self.initial.model_pack_path, self.initial.model_pack_sha256)
                                 if self.initial.model_pack_path else None)
-            self.active_profile = self.initial.model_profile
             self.result = None
             self.preset_root = preset_root
             self.selected_codes = list(split_languages(self.initial.languages))
@@ -632,11 +606,16 @@ def create_ocr_dialog(parent, initial=None, *, preset_root=None):
             layout.Add(actions, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
             profiles = wx.FlexGridSizer(cols=2, hgap=8, vgap=6)
             profiles.AddGrowableCol(1)
-            self.profile = wx.Choice(selection, choices=list(PROFILE_CHOICES))
-            self.profile.SetSelection(profile_index(self.initial.model_profile, self.initial.model_policy))
-            self.profile.Bind(wx.EVT_CHOICE, self.change_profile)
+            self.model_source = wx.Choice(selection, choices=['Bundled or system models',
+                'Managed Fast models', 'Managed Best models'])
+            self.model_source.SetSelection(MODEL_PROFILES.index(self.active_model_profile))
+            self.model_source.Bind(wx.EVT_CHOICE, self.change_model_profile)
+            self.profile = wx.Choice(selection, choices=['Selected models (identity recorded during import)',
+                'Pinned tessdata_fast: English, Ukrainian and Slovak'])
+            self.profile.SetSelection(0 if self.initial.model_policy == 'default' else 1)
             self.presets = wx.Choice(selection)
-            for label, control in [('Model profile', self.profile), ('Recognition presets', self.presets)]:
+            for label, control in [('Model source', self.model_source),
+                                   ('Verification policy', self.profile), ('Recognition presets', self.presets)]:
                 control.SetName(label)
                 profiles.Add(wx.StaticText(selection, label=label), 0, wx.ALIGN_CENTER_VERTICAL)
                 profiles.Add(control, 1, wx.EXPAND)
@@ -666,10 +645,6 @@ def create_ocr_dialog(parent, initial=None, *, preset_root=None):
             self.rescan_button = wx.Button(self, label='Re&scan installed models')
             self.rescan_button.Bind(wx.EVT_BUTTON, self.rescan)
             buttons.Add(self.rescan_button, 0, wx.RIGHT, 8)
-            manage = wx.Button(self, label='Manage local &Fast / Best models...')
-            manage.SetName('Manage local Fast and Best OCR models')
-            manage.Bind(wx.EVT_BUTTON, self.manage_models)
-            buttons.Add(manage, 0, wx.RIGHT, 8)
             buttons.AddStretchSpacer(1)
             self.ok = wx.Button(self, wx.ID_OK, 'Use settings')
             self.ok.Bind(wx.EVT_BUTTON, self.accept)
@@ -682,7 +657,6 @@ def create_ocr_dialog(parent, initial=None, *, preset_root=None):
             self.SetMinSize((720, 650))
             self._show_selected(0)
             self.filter.SetFocus()
-            wx.CallAfter(self.catalogue_filter)
             wx.CallAfter(self.rescan)
 
         def Destroy(self):

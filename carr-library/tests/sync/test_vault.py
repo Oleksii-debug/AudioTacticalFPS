@@ -314,10 +314,29 @@ def test_linked_ancestor_and_directory_are_rejected(tmp_path):
 
 @pytest.mark.parametrize('path', ['https://host/data', 'file:///tmp/data', '//server/share',
                                   '\\\\server\\share', 'relative', '/tmp/../escape',
-                                  'C:\\remote\\name', '/tmp/bad\x00name'])
+                                  'C:remote\\name', '/tmp/bad\x00name'])
 def test_nonlocal_ambiguous_or_traversal_roots_are_rejected(path):
     with pytest.raises(VaultError):
         Vault(path)
+
+
+def test_native_absolute_local_drive_paths_remain_supported(tmp_path):
+    selected = tmp_path / 'local vault Україна'
+    vault = Vault(str(selected))
+    assert vault.root == selected and (selected / 'vault.json').read_bytes() == module._VAULT
+    assert vault.head() is None
+    if os.name != 'nt':
+        # This spelling denotes a local drive on Windows, but is not a native
+        # absolute path on POSIX. Never probe an unrelated real C: directory.
+        with pytest.raises(VaultError):
+            Vault('C:\\remote\\name')
+
+
+def test_missing_local_parent_is_not_misclassified_as_a_remote_path(tmp_path):
+    selected = tmp_path / 'missing-parent' / 'vault'
+    with pytest.raises(FileNotFoundError):
+        Vault(str(selected))
+    assert list(tmp_path.iterdir()) == []
 
 
 @pytest.mark.parametrize('path', ['../escape', '/absolute', 'C:\\escape', '.', 'NUL',

@@ -205,10 +205,13 @@ def show_assistant(frame, *, production=None, on_ready=None):
 
     def close(event=None):
         nonlocal alive
-        cancel.set()
-        if busy and job_id:
-            service.pause(job_id)
+        if not alive:
+            return
         alive = False
+        cancel.set()
+        # The worker persists its paused checkpoint after releasing snapshot
+        # locks. A concurrent control write here can be refused by that same
+        # snapshot and must not prevent the native dialog from closing.
         executor.shutdown(wait=False, cancel_futures=True)
         dialog.EndModal(wx.ID_CLOSE)
 

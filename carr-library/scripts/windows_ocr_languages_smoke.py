@@ -69,7 +69,7 @@ def main(argv=None):
         event.SetEventObject(button)
         check('native button dispatches: ' + label, button.GetEventHandler().ProcessEvent(event))
 
-    def drive(dialog, action, expected, *, timeout=25):
+    def drive(dialog, action, expected, *, timeout=25, ready=None):
         deadline = monotonic() + timeout
         timers = []
 
@@ -79,8 +79,9 @@ def main(argv=None):
                     raise RuntimeError('\n'.join(errors))
                 if monotonic() > deadline:
                     raise TimeoutError('Native OCR model discovery did not complete: ' + dialog.status.GetValue())
-                if dialog.catalog is None or dialog.busy:
-                    if not dialog.busy and 'did not complete' in dialog.status.GetValue():
+                available = ready(dialog) if ready else dialog.catalog is not None and not dialog.busy
+                if not available:
+                    if ready is None and not dialog.busy and 'did not complete' in dialog.status.GetValue():
                         raise AssertionError(dialog.status.GetValue())
                     timers.append(wx.CallLater(40, advance))
                     return
@@ -117,10 +118,12 @@ def main(argv=None):
                 check('offline pack flow is in the existing native dialog',
                       isinstance(view.pages, wx.Notebook) and view.pages.GetPageCount() == 2
                       and view.pages.GetPageText(1) == 'Offline packs')
-                check('official catalogue and binding controls are named',
-                      view.pack_models.GetName() == 'Official offline model catalogue'
+                check('shared manager and compatible pack bindings are available',
+                      len(view.model_source.GetItems()) == 3
+                      and any(control.GetName() == 'Manage official Fast and Best models'
+                              for control in view.pack_controls)
                       and view.pack_digest.GetName() == 'Independently recorded manifest SHA256'
-                      and view.pack_installed.GetName() == 'New installation folder, or existing installed pack to use')
+                      and view.pack_installed.GetName() == 'Existing reviewed pack folder')
                 check('status is a native read-only multiline control',
                       bool(view.status.GetWindowStyleFlag() & wx.TE_READONLY)
                       and bool(view.status.GetWindowStyleFlag() & wx.TE_MULTILINE))
@@ -176,29 +179,100 @@ def main(argv=None):
                 second.Destroy()
             if arguments.require_bundled:
                 runtime = discover_ocr_runtime()
-                pack_view = ui.create_ocr_dialog(frame, Config(), preset_root=root)
+                from carr_library.extract.ocr_model_store import OcrModelStore
+                from carr_library.ui.ocr_model_manager import create_ocr_model_manager
+                store = OcrModelStore(root / 'managed-models')
+                manager = create_ocr_model_manager(frame, store)
+                phase = 0
+
+                def install_models(view):
+                    nonlocal phase
+                    if phase == 0:
+                        # Synthetic folder/checkbox input, followed by native event
+                        # dispatch to the actual background verifier and installer.
+                        view.source.SetValue(str(runtime.tessdata))
+                        for index, row in enumerate(view._rows):
+                            view.entries.Check(index, row.identifier in {'eng', 'ukr', 'slk'})
+                        click(view, '&Install selected')
+                    else:
+                        check('native shared manager installs all selected official model bytes',
+                              view.result is not None and view.result.profile == 'fast'
+                              and set(view.result.installed) == {'eng', 'ukr', 'slk'})
+                        store.select('fast', 'eng+ukr+slk').assert_unchanged()
+                        check('managed models pass independent post-install verification',
+                              set(store.available('fast')) == {'eng', 'ukr', 'slk'})
+                        click(view, '&Close')
+                    phase += 1
+
+                try:
+                    drive(manager, install_models, wx.ID_CANCEL,
+                          timeout=90, ready=lambda view: not view.pending)
+                finally:
+                    manager.closed = True
+                    manager.cancelled.set()
+                    manager.executor.shutdown(wait=True, cancel_futures=True)
+                    manager.Destroy()
+
+                previous_store = os.environ.get('CARR_OCR_MODELS_DIR')
+                os.environ['CARR_OCR_MODELS_DIR'] = str(root / 'managed-models')
+                managed_view = ui.create_ocr_dialog(frame, Config(), preset_root=root)
+                phase = 0
+
+                def use_managed(view):
+                    nonlocal phase
+                    if phase == 0:
+                        view.model_source.SetSelection(1)
+                        event = wx.CommandEvent(wx.EVT_CHOICE.typeId, view.model_source.GetId())
+                        event.SetEventObject(view.model_source)
+                        check('native model source dispatches profile selection',
+                              view.model_source.GetEventHandler().ProcessEvent(event))
+                    else:
+                        check('managed inventory is reloaded from the installed shared store',
+                              view.catalog.model_profile == 'fast'
+                              and set(view.catalog.codes) == {'eng', 'ukr', 'slk'})
+                        view.selected_codes = ['ukr', 'eng', 'slk']
+                        view._show_selected()
+                        store_preset(root, 'Native managed selection', view.current_config())
+                        click(view, view.ok.GetLabel())
+                    phase += 1
+
+                try:
+                    drive(managed_view, use_managed, wx.ID_OK)
+                    check('accepted managed choice binds profile and recognition order',
+                          managed_view.result.model_profile == 'fast'
+                          and managed_view.result.languages == 'ukr+eng+slk'
+                          and managed_view.result.model_pack_path is None)
+                    check('managed preset preserves the profile alongside earlier presets',
+                          any(row['name'] == 'Native managed selection'
+                              and row['model_profile'] == 'fast' for row in load_presets(root)))
+                finally:
+                    managed_view.Destroy()
+                    if previous_store is None:
+                        os.environ.pop('CARR_OCR_MODELS_DIR', None)
+                    else:
+                        os.environ['CARR_OCR_MODELS_DIR'] = previous_store
+
+                # Preserve the existing reviewed-pack contract without a second
+                # native installer: prepare an official compatibility fixture via
+                # the public service, then activate it through the native chooser.
+                from carr_library.extract.ocr_model_catalog import prepare_offline_pack
+                from carr_library.extract.language_manager import install_offline_pack
                 prepared, installed = root / 'prepared-model-pack', root / 'installed-model-pack'
+                report = prepare_offline_pack(runtime.tessdata, prepared, ('eng', 'ukr', 'slk'),
+                    profile='fast', max_bytes=128 * 1024 * 1024)
+                install_offline_pack(prepared, installed, expected_manifest_sha256=report.manifest_sha256)
+                pack_view = ui.create_ocr_dialog(frame, Config(), preset_root=root)
                 phase = 0
 
                 def pack_flow(view):
                     nonlocal phase
                     if phase == 0:
                         view.pages.SetSelection(1)
-                        view.pack_source.SetValue(str(runtime.tessdata))
-                        view.pack_prepared.SetValue(str(prepared))
                         view.pack_installed.SetValue(str(installed))
-                        view.pack_budget.SetValue('128')
-                        view.pack_codes.SetValue('eng ukr slk')
-                        click(view, 'Prepare verified pack')
-                    elif phase == 1:
-                        check('native preparation publishes verified official bytes', (prepared / 'models.json').is_file())
-                        check('preparation reports checksum without activating a pack',
-                              len(view.pack_digest.GetValue()) == 64 and view.active_pack is None)
-                        click(view, 'Install reviewed pack')
-                    elif phase == 2:
-                        check('native installation retains license and completed receipt',
+                        view.pack_digest.SetValue(report.manifest_sha256)
+                        check('existing reviewed pack retains license and completed receipt',
                               (installed / 'LICENSE.txt').is_file() and (installed / 'PACK-INSTALLED.json').is_file())
-                        check('installation requires a separate activation action', view.active_pack is None)
+                        check('reviewed pack requires a separate activation action', view.active_pack is None)
                         click(view, 'Use verified pack')
                     else:
                         check('native activation uses actual verified model inventory',

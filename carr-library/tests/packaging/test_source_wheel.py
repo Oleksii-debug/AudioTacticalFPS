@@ -327,3 +327,10 @@ def test_actual_sdist_builds_verified_wheel_and_keeps_ci_helpers_without_private
         evidence = verifier.verify_application_wheel(wheels[0], repository, source_commit)
         assert evidence['source_commit'] == source_commit
         assert evidence['payload_files'] == len(admitted)
+        with ZipFile(wheels[0]) as archive:
+            runtime_names = {name for name in archive.namelist()
+                             if '.dist-info/' not in name and not name.endswith('/')}
+            assert runtime_names == set(admitted), sorted(runtime_names.symmetric_difference(admitted))
+            for destination, source_name in admitted.items():
+                assert archive.read(destination) == (project / source_name.removeprefix('carr-library/')).read_bytes()
+            assert not excluded.intersection(archive.namelist())

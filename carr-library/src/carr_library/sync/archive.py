@@ -284,7 +284,12 @@ def _unpack_open(incoming_archive, before, expected_count, target, cancelled, on
             raise ValueError('Invalid snapshot archive inventory.')
         names, aliases, file_aliases, total = set(), set(), set(), 0
         for item in entries:
-            name = _name(item.filename[:-1] if item.is_dir() else item.filename)
+            # ZipInfo can normalize backslashes or truncate a name at NUL.
+            # Validate the original central-directory spelling first.
+            raw_name = item.orig_filename
+            name = _name(raw_name.removesuffix('/') if raw_name.endswith('/') else raw_name)
+            if item.filename != raw_name:
+                raise ValueError('Snapshot archive member path was normalized by the host.')
             alias = unicodedata.normalize('NFC', name).casefold()
             mode = item.external_attr >> 16
             wanted_type = stat.S_IFDIR if item.is_dir() else stat.S_IFREG

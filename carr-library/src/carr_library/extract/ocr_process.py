@@ -16,9 +16,8 @@ import subprocess
 import sys
 import tempfile
 
-from . import ocr_runtime
 from .ocr_languages import model_ids
-from .ocr_runtime import OcrRuntimeError
+from .ocr_runtime import OcrRuntimeError, PackOcrRuntime
 
 _MAX_MODEL = 256 * 1024 * 1024
 _MAX_MODELS = 512 * 1024 * 1024
@@ -185,13 +184,14 @@ def prepare_ocr_query(runtime, argv):
 
 
 def _model_expectations(runtime, directory):
-    if getattr(runtime, 'managed', False) and directory == Path(runtime.tessdata).absolute():
-        return dict(runtime.selection.model_sha256)
-    pack_runtime = getattr(ocr_runtime, 'PackOcrRuntime', None)
-    if pack_runtime is not None and isinstance(runtime, pack_runtime):
+    if isinstance(runtime, PackOcrRuntime):
         if directory != Path(runtime.tessdata).absolute():
             raise OcrRuntimeError('OCR staging requested a different selected verified model pack.')
+        # Reviewed external packs have their own verified byte identities.
+        # Their model folder is outside the base portable runtime inventory.
         return {code: digest for code, _, digest in runtime.pack.models}
+    if getattr(runtime, 'managed', False) and directory == Path(runtime.tessdata).absolute():
+        return dict(runtime.selection.model_sha256)
     if runtime.portable and directory == Path(runtime.tessdata).absolute():
         prefix = Path(runtime.tessdata).relative_to(runtime.root).as_posix() + '/'
         return {name[len(prefix):-len('.traineddata')]: value

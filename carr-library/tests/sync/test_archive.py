@@ -44,12 +44,20 @@ def test_actual_zip64_central_directory_accepted(tmp_path, monkeypatch):
     module.unpack_archive(output, tmp_path / 'out')
 
 
-@pytest.mark.parametrize('bad', ['../escape', '/absolute', 'a\\b', 'con.txt', 'COM¹.txt', 'trailing. ', 'a/./b', 'a//b'])
+@pytest.mark.parametrize('bad', ['../escape', '/absolute', 'a\\b', 'a\x00hidden', 'prefix\x00hidden',
+                                  'con.txt', 'COM¹.txt', 'trailing. ', 'a/./b', 'a//b'])
 def test_rejects_unsafe_members_before_creating_destination(tmp_path, bad):
     path = tmp_path / 'unsafe.zip'
     with ZipFile(path, 'w') as z:
         z.writestr(module.INVENTORY, '{}')
-        z.writestr(bad, 'bad')
+        # Preserve the hostile bytes in both real ZIP headers. Constructing
+        # ZipInfo(bad) would sanitize separators on Windows and truncate NUL.
+        info = ZipInfo('placeholder')
+        info.filename = info.orig_filename = bad
+        z.writestr(info, 'bad')
+    assert path.read_bytes().count(bad.encode('utf-8')) == 2
+    with ZipFile(path) as z:
+        assert z.infolist()[1].orig_filename == bad
     with pytest.raises(ValueError):
         module.unpack_archive(path, tmp_path / 'output')
     assert not (tmp_path / 'output').exists()

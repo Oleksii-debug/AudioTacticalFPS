@@ -87,7 +87,7 @@ class Config:
         if self.model_profile not in ('installed', 'fast', 'best'):
             raise ValueError('unsupported OCR model profile')
         if self.model_pack_path is not None and self.model_profile != 'installed':
-            raise ValueError('Choose one verified external pack or managed OCR profile.')
+            raise ValueError('Choose one verified external pack or managed OCR profile; they cannot be combined.')
         if self.model_policy == POLICY and self.model_profile == 'best':
             raise ValueError('the pinned Fast policy cannot use the Best model profile')
         if type(self.orientation) is not bool:

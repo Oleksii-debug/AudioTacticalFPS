@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import tempfile
 import subprocess
+import tomllib
 import unittest
 from unittest.mock import patch
 from zipfile import ZIP_DEFLATED, ZipFile
@@ -212,6 +213,63 @@ class WindowsBundleTests(unittest.TestCase):
             self.lock.write_text(text)
             with self.assertRaises(ValueError):
                 self.build()
+
+
+class OfflineInstallerInventoryTests(unittest.TestCase):
+    def inventories(self):
+        for prefix, extras in (("windows", ("desktop", "sync")),
+                               ("windows-semantic", ("desktop", "sync", "semantic"))):
+            yield prefix, extras, builder.read_lock(ROOT / "packaging" / (prefix + "-cp311.lock"))
+
+    def test_installer_roots_and_locks_include_declared_application_features(self):
+        project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+
+        def requirements(rows):
+            parsed = [builder.Requirement(row) for row in rows]
+            return {builder.canonicalize_name(row.name): next(iter(row.specifier)).version for row in parsed}
+
+        for prefix, extras, pins in self.inventories():
+            with self.subTest(installer=prefix):
+                expected = list(project["dependencies"])
+                for extra in extras:
+                    expected.extend(project["optional-dependencies"][extra])
+                roots = (ROOT / "packaging" / (prefix + "-roots.in")).read_text(encoding="utf-8").splitlines()
+                roots = [row.strip() for row in roots if row.strip() and not row.lstrip().startswith("#")]
+                self.assertEqual(requirements(roots), requirements(expected))
+                self.assertEqual(len(roots), len(requirements(roots)))
+                for name, version in requirements(expected).items():
+                    self.assertEqual(pins[name][0], version)
+
+    def test_sync_download_pins_are_identical_in_each_offline_installer(self):
+        sync = builder.read_lock(ROOT / "packaging/windows-sync-cp311.lock")
+        for prefix, _extras, pins in self.inventories():
+            with self.subTest(installer=prefix):
+                self.assertEqual({name: pins[name] for name in sync}, sync)
+
+    def test_installer_sbom_covers_the_exact_inventory_and_sync_dependency_graph(self):
+        sync = builder.read_lock(ROOT / "packaging/windows-sync-cp311.lock")
+        for prefix, _extras, pins in self.inventories():
+            with self.subTest(installer=prefix):
+                bom = json.loads((ROOT / "packaging" / (prefix + "-sbom.cdx.json")).read_text(encoding="utf-8"))
+                components = {builder.canonicalize_name(row["name"]): row for row in bom["components"]}
+                self.assertEqual(len(components), len(bom["components"]))
+                self.assertEqual({name: row["version"] for name, row in components.items()},
+                                 {name: pin[0] for name, pin in pins.items()})
+                refs = {row["bom-ref"] for row in components.values()}
+                self.assertEqual(len(refs), len(components))
+                root = bom["metadata"]["component"]["bom-ref"]
+                graph = {row["ref"]: set(row.get("dependsOn", ())) for row in bom["dependencies"]}
+                self.assertEqual(len(graph), len(bom["dependencies"]))
+                self.assertLessEqual(set(graph), refs | {root})
+                self.assertTrue(all(targets <= refs for targets in graph.values()))
+                crypto, cffi, parser = (components[name]["bom-ref"] for name in ("cryptography", "cffi", "pycparser"))
+                self.assertIn(crypto, graph[root])
+                self.assertIn(cffi, graph[crypto])
+                self.assertIn(parser, graph[cffi])
+                for name, (_version, hashes) in sync.items():
+                    self.assertEqual({row["content"] for row in components[name]["hashes"]
+                                      if row["alg"] == "SHA-256"}, hashes)
+                    self.assertTrue(components[name]["licenses"])
 
 
 if __name__ == "__main__":

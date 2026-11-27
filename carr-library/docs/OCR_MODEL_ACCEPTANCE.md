@@ -6,7 +6,11 @@ profile selection and native import integration. It does not mark the whole V3
 project, automatic regional language identification or 135-voice qualification
 complete. Existing source-integrity and independent-review requirements remain.
 
-## Executed local checks
+## Upstream implementation checks before integration
+
+The measurements in this section are retained from the canonical PR114
+implementation at `329d31937d029352ee36c43c62320c68347cc44d`. They describe that
+implementation's recorded runs, not a new run of the whole combined application.
 
 The clean CPython 3.12.14 environment used the project's exact base dependency
 pins: pypdf 7.1.1, pypdfium2 5.13.0, python-docx 1.2.0, platformdirs 4.10.0,
@@ -97,6 +101,35 @@ alias; those are not human-language or voice-quality counts. Each install checks
 the upstream Git blob and records actual SHA256. The complete respective
 Apache-2.0 notices are verified against upstream blob identity and packaged.
 
-No model downloads, paid APIs, private documents or public binary releases were
-performed for this implementation. Separate explicit setup supplies optional
-offline model files; original library sources remain unchanged.
+No paid APIs, private documents or public binary releases were used for this
+integration. Explicitly authorized test setup restored the existing pinned
+Ukrainian and Slovak artifacts through `prepare_windows_ocr.cached_artifact` and
+verified English and OSD against the same lock. The application and model manager
+perform no downloads; original library sources remain unchanged.
+
+## PR99 and PR98 integration
+
+The canonical manager is integrated with PR98's ordered language chooser,
+resource-preserving configuration and reviewed-pack bindings. Existing v1/v2
+presets remain readable without rewriting; v3 adds explicit managed Fast/Best
+choices. New regression cases cover profile changes, stale inventory rejection,
+cancelled preset activation, mixed-version preset backup/restore and rejection of
+ambiguous OCR/document/DOI/audio CLI operations.
+
+On the merged source, eleven strict suites passed **326 tests, zero failures or
+skips**: runtime identity (12), reviewed packs (31), actual managed PDF imports
+(2), model CLI (15), language/preset validation (72), ordered native-dialog
+routing (28), OCR options (9), Import Center (22), desktop handlers (59), shared
+manager routing (28) and selection validation (48). The real OCR cases used the
+four exact locked model files; the Windows GUI probe itself was not run locally.
+All 202 source/script Python modules parsed, the project TOML parsed, and the
+merge passed the whitespace/conflict-marker check.
+
+The installed Windows language smoke now invokes the real canonical manager's
+background installer using native control events and the bundled official
+English/Ukrainian/Slovak model bytes. It verifies the resulting store, chooses an
+ordered managed profile, saves that preset and separately exercises legacy
+reviewed-pack activation. The compatibility fixture is prepared with the public
+pack API; there is one active native installer. The portable runtime is checked
+for unchanged identity afterward. This script is an automated native gate, not
+evidence of manual keyboard or NVDA use; the new merged native run is pending.

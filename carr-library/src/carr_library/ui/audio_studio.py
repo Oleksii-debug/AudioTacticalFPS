@@ -55,6 +55,13 @@ def _voice_dict(voice):
     return {name: getattr(voice, name, '') for name in ('id', 'name', 'languages', 'engine', 'available', 'reason')}
 
 
+def _runtime_description(selected):
+    try:
+        return 'FFmpeg: ' + str(resolve_ffmpeg(selected) or 'not found')
+    except (OSError, ValueError, RuntimeError) as exc:
+        return 'FFmpeg unavailable: ' + str(exc) + '. Choose a verified local executable to continue.'
+
+
 def plan_description(plan):
     """Readable plan plus exact validated directions; no source quote claims."""
     value = plan.to_dict() if hasattr(plan, 'to_dict') else asdict(plan)
@@ -277,6 +284,8 @@ class StudioController:
 
     def save(self, path=None, *, overwrite=False, cancelled=lambda: False):
         selected = _local_path(path or self.project_path or '', 'project file')
+        # Windows device names can appear to exist before any file is created.
+        # Reject unsafe names before asking the filesystem about a destination.
         _filename(selected.name)
         self._protect_original(selected)
         same = self.project_path is not None and selected == self.project_path
@@ -477,9 +486,8 @@ class StudioController:
         self._write_checked(selected, self.script, expected)
 
 
-# Kept as the existing UI import name while all playback uses the shared adapter.
+# Preserve the desktop import name while every caller shares one playback adapter.
 from ..audio.player import WavePlayer as LocalPlayback
-
 
 SCRIPT_HELP = (
     'Literal narration reads all entered text using the selected voice. Headings, speaker-like '
@@ -497,6 +505,8 @@ SCRIPT_HELP = (
     'Local music capabilities depend on the configured engine. No models download automatically.\n\n'
     'Ctrl+S: Save project. Ctrl+Shift+S: Save project as. Ctrl+O: Open project. '
     'F6: move to Production. Ctrl+Enter: Preview plan. '
+    'Ctrl+Alt+P: pause or resume playback. Ctrl+Alt+Left/Right: seek ten seconds. '
+    'Ctrl+Alt+T: read the current playback position and device. '
     'Tab and Shift+Tab: named native controls. Escape: close, with unsaved-change protection. '
     'Use your normal text editing shortcuts in Script. '
     'The Preparation page applies explicit literal replacements and has separate undo/redo buttons. '
@@ -521,6 +531,7 @@ class AudioStudioDialog:
         self.playback = LocalPlayback()
         self.voice_rows = []
         self.controls = []
+        self.windows_playback_controls = []
         self._loading = True
         outer = wx.BoxSizer(wx.VERTICAL)
         self.notebook = wx.Notebook(self.dialog)
@@ -585,7 +596,7 @@ class AudioStudioDialog:
         self._button(production_page, output_row, 'Choose output folder', self.choose_output)
         self._button(production_page, output_row, 'Choose FFmpeg executable', self.choose_ffmpeg)
         prod_layout.Add(output_row, 0, wx.ALL, 5)
-        self.runtime = wx.StaticText(production_page, label='FFmpeg: ' + str(controller.ffmpeg or shutil.which('ffmpeg') or 'not found'))
+        self.runtime = wx.StaticText(production_page, label=_runtime_description(controller.ffmpeg))
         self.runtime.SetName('Local FFmpeg runtime path')
         prod_layout.Add(self.runtime, 0, wx.ALL, 5)
         self.plan_text = wx.TextCtrl(production_page, style=wx.TE_MULTILINE | wx.TE_READONLY)
@@ -597,17 +608,41 @@ class AudioStudioDialog:
         self.cancel_button = self._button(production_page, production_buttons, 'Cancel studio operation', self.cancel, busy_safe=True)
         self.cancel_button.Disable()
         self._button(production_page, production_buttons, 'Play rendered master', self.play)
-        self._button(production_page, production_buttons, 'Pause / resume playback', self.pause_playback)
+        self.windows_playback_controls.append(self._button(production_page, production_buttons,
+            'Pause / resume playback', self.pause_resume))
         self._button(production_page, production_buttons, 'Stop playback', self.stop_playback, busy_safe=True)
         prod_layout.Add(production_buttons, 0, wx.ALL, 5)
-        self.playback_position = wx.TextCtrl(production_page, value='Stopped. No recording opened.', style=wx.TE_READONLY)
-        self.playback_position.SetName('Playback position and state')
-        prod_layout.Add(self.playback_position, 0, wx.EXPAND | wx.ALL, 5)
-        self.seek_seconds = self._text(production_page, prod_layout, 'Seek to seconds', '0')
-        seek_row = wx.WrapSizer(wx.HORIZONTAL)
-        self._button(production_page, seek_row, 'Seek playback', self.seek_playback)
-        self._button(production_page, seek_row, 'Read playback position', self.read_playback_position, busy_safe=True)
-        prod_layout.Add(seek_row, 0, wx.ALL, 5)
+        device_row = wx.BoxSizer(wx.HORIZONTAL)
+        device_row.Add(wx.StaticText(production_page, label='Playback output device'), 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
+        self.playback_device = wx.Choice(production_page, choices=['Windows default output'])
+        self.playback_device.SetName('Playback output device; changes apply on the next Play')
+        self.playback_device.SetSelection(0)
+        self.playback_device_ids = [None]
+        self.controls.append(self.playback_device)
+        self.windows_playback_controls.append(self.playback_device)
+        device_row.Add(self.playback_device, 1, wx.RIGHT, 8)
+        self.windows_playback_controls.append(self._button(production_page, device_row,
+            'Reload playback devices', self.reload_playback_devices))
+        prod_layout.Add(device_row, 0, wx.EXPAND | wx.ALL, 5)
+        timeline = wx.WrapSizer(wx.HORIZONTAL)
+        timeline.Add(wx.StaticText(production_page, label='Seek to seconds'), 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 3)
+        self.seek_seconds = wx.TextCtrl(production_page, value='0')
+        self.seek_seconds.SetName('Playback position in seconds')
+        self.controls.append(self.seek_seconds)
+        self.windows_playback_controls.append(self.seek_seconds)
+        timeline.Add(self.seek_seconds, 0, wx.ALL, 3)
+        for label, handler in (('Go to playback position', self.seek_playback),
+                               ('Back 10 seconds', lambda event: self.seek_relative(-10)),
+                               ('Forward 10 seconds', lambda event: self.seek_relative(10)),
+                               ('Read playback status', self.read_playback_status)):
+            control = self._button(production_page, timeline, label, handler)
+            if handler != self.read_playback_status:
+                self.windows_playback_controls.append(control)
+        prod_layout.Add(timeline, 0, wx.EXPAND | wx.ALL, 5)
+        self.playback_status = wx.TextCtrl(production_page, value='Playback stopped.', style=wx.TE_READONLY)
+        self.playback_status.SetName('Playback state, current time, duration and output device')
+        prod_layout.Add(self.playback_status, 0, wx.EXPAND | wx.ALL, 5)
+        self._last_playback_error = None
         production_page.SetSizer(prod_layout)
 
         playback_layout = wx.BoxSizer(wx.VERTICAL)
@@ -631,7 +666,7 @@ class AudioStudioDialog:
         self.sleep_minutes = self._text(playback_page, playback_layout, 'Sleep timer minutes; zero turns it off', '0')
         sleep_buttons = wx.WrapSizer(wx.HORIZONTAL)
         self._button(playback_page, sleep_buttons, 'Apply sleep timer', self.apply_sleep)
-        self._button(playback_page, sleep_buttons, 'Read playback controls', self.read_playback_position, busy_safe=True)
+        self._button(playback_page, sleep_buttons, 'Read playback controls', self.read_playback_status, busy_safe=True)
         playback_layout.Add(sleep_buttons, 0, wx.ALL, 5)
         playback_layout.Add(wx.StaticText(playback_page, label='Rendered chapter navigation'), 0, wx.ALL, 5)
         self.segment_choice = wx.Choice(playback_page)
@@ -641,7 +676,7 @@ class AudioStudioDialog:
         segment_buttons = wx.WrapSizer(wx.HORIZONTAL)
         for label, handler in (('Go to selected segment', self.selected_segment),
                                ('Previous segment', self.previous_segment), ('Next segment', self.next_segment)):
-            self._button(playback_page, segment_buttons, label, handler)
+            self.windows_playback_controls.append(self._button(playback_page, segment_buttons, label, handler))
         playback_layout.Add(segment_buttons, 0, wx.ALL, 5)
         playback_page.SetSizer(playback_layout)
 
@@ -674,8 +709,12 @@ class AudioStudioDialog:
         self.dialog.Bind(wx.EVT_TIMER, self.autosave, self.timer)
         self.timer.Start(30000)
         self.playback_timer = wx.Timer(self.dialog)
-        self.dialog.Bind(wx.EVT_TIMER, self.update_playback_position, self.playback_timer)
+        self.dialog.Bind(wx.EVT_TIMER, self.refresh_playback, self.playback_timer)
         self.playback_timer.Start(500)
+        self.reload_playback_devices()
+        if self.playback.native is None:
+            for control in self.windows_playback_controls:
+                control.Disable()
         self._loading = False
         self._refresh_text()
 
@@ -705,6 +744,10 @@ class AudioStudioDialog:
                                     (wx.ACCEL_CTRL | wx.ACCEL_SHIFT, ord('S'), self.save_as),
                                     (wx.ACCEL_CTRL, ord('O'), self.open),
                                     (wx.ACCEL_CTRL, wx.WXK_RETURN, self.preview),
+                                    (wx.ACCEL_CTRL | wx.ACCEL_ALT, ord('P'), self.pause_resume),
+                                    (wx.ACCEL_CTRL | wx.ACCEL_ALT, wx.WXK_LEFT, lambda event: self.seek_relative(-10)),
+                                    (wx.ACCEL_CTRL | wx.ACCEL_ALT, wx.WXK_RIGHT, lambda event: self.seek_relative(10)),
+                                    (wx.ACCEL_CTRL | wx.ACCEL_ALT, ord('T'), self.read_playback_status),
                                     (wx.ACCEL_NORMAL, wx.WXK_F6, lambda event: self.notebook.SetSelection(2)),
                                     (wx.ACCEL_NORMAL, wx.WXK_F1, self.help)):
             identity = int(wx.NewIdRef())
@@ -771,9 +814,13 @@ class AudioStudioDialog:
     def _run(self, label, action, done):
         if self.busy or self.closed:
             return
+        try:
+            self.playback.stop()
+        except Exception as exc:
+            self._error(exc)
+            return
         self.busy = True
         self.cancelled.clear()
-        self.playback.stop()
         for control in self.controls:
             control.Disable()
         self.cancel_button.Enable()
@@ -786,7 +833,7 @@ class AudioStudioDialog:
                     return
                 self.busy = False
                 for control in self.controls:
-                    control.Enable()
+                    control.Enable(self.playback.native is not None or control not in self.windows_playback_controls)
                 self.cancel_button.Disable()
                 try:
                     result = completed.result()
@@ -848,6 +895,8 @@ class AudioStudioDialog:
     def new(self, event=None):
         if self.busy or not self._unsaved():
             return
+        if not self._stop_for_project_change():
+            return
         self.controller.new()
         self.plan_text.ChangeValue('')
         self._refresh_text()
@@ -860,6 +909,8 @@ class AudioStudioDialog:
         if path is None:
             return
         try:
+            if not self._stop_for_project_change():
+                return
             self.controller.open(path)
             self._refresh_text()
             self.plan_text.ChangeValue('')
@@ -902,6 +953,8 @@ class AudioStudioDialog:
                 selected = chooser.GetSelection()
             finally:
                 chooser.Destroy()
+            if not self._stop_for_project_change():
+                return
             self.controller.open(projects[selected][1])
             self._refresh_text()
             self.plan_text.ChangeValue('')
@@ -1036,6 +1089,8 @@ class AudioStudioDialog:
             payload = read_document(path, byte_budget=self.controller.loading_budget)
             encoding = 'utf-16' if payload.startswith((b'\xff\xfe', b'\xfe\xff')) else 'utf-8-sig'
             source = payload.decode(encoding)
+            if not self._stop_for_project_change():
+                return
             self.controller.new(source, title=path.stem, source_id='text-file:' + text_digest(source),
                                 source_reference={'kind': 'local-text', 'filename': path.name,
                                                   'original_path': str(path.absolute()),
@@ -1183,69 +1238,131 @@ class AudioStudioDialog:
             if self.editing_dirty:
                 raise ValueError('The script has unsaved edits. Preview and render it before playing a current result.')
             result_file = Path(self.controller.result['output'])
-            self.playback.play(result_file.parent / 'master.wav' if result_file.suffix.lower() != '.wav' else result_file)
-            from ..audio.ffmpeg import wav_info
-            rate = wav_info(self.playback.path).rate
-            self.playback.set_segments([(row['start_frame'] / rate, row['title'])
-                                       for row in self.controller.result.get('chapters', ())])
+            selected = self.playback_device.GetSelection()
+            device = self.playback_device_ids[selected] if 0 <= selected < len(self.playback_device_ids) else None
+            self.playback.play(result_file.parent / 'master.wav' if result_file.suffix.lower() != '.wav' else result_file,
+                               device_id=device)
+            chapters = self.controller.result.get('chapters', ())
+            if chapters:
+                from ..audio.ffmpeg import wav_info
+                rate = wav_info(self.playback.path).rate
+                self.playback.set_segments([(row['start_frame'] / rate, row['title']) for row in chapters])
+            else:
+                self.playback.set_segments([])
             self._refresh_playback_choices()
-            self.update_playback_position()
-            self._message('Playing the rendered master. Pause / resume and Seek affect this Studio preview.', focus=True)
+            self._last_playback_error = None
+            self.refresh_playback()
+            self._message('Starting the rendered master. Use Pause / resume, timeline controls or Stop playback.', focus=True)
         except Exception as exc:
             self._error(exc)
 
     def stop_playback(self, event=None):
         try:
             self.playback.stop()
-            self.update_playback_position()
+            self.refresh_playback()
             self._message('Studio playback stopped.', focus=True)
         except Exception as exc:
             self._error(exc)
 
-    def update_playback_position(self, event=None):
+    def reload_playback_devices(self, event=None):
+        from ..audio.playback import playback_capabilities
+        capabilities = playback_capabilities()
+        self.playback_device_ids = [None] + [row['id'] for row in capabilities['devices']]
+        self.playback_device.SetItems(['Windows default output'] +
+            [f"Output {row['id'] + 1}: {row['name']}" for row in capabilities['devices']])
+        self.playback_device.SetSelection(0)
+        if event is not None:
+            message = ('Playback devices refreshed. Select an output before Play.' if capabilities['available']
+                       else capabilities['reason'])
+            self._message(message, focus=True)
+
+    def _stop_for_project_change(self):
+        try:
+            self.playback.stop()
+            self.refresh_playback()
+            return True
+        except Exception as exc:
+            self._error(exc)
+            return False
+
+    def pause_resume(self, event=None):
+        try:
+            status = self.playback.status()
+            if self.playback.native is None:
+                raise ValueError('Pause and resume use the native Windows player.')
+            if status.state == 'paused':
+                self.playback.resume()
+                self._message('Playback resume requested.')
+            elif status.state in ('playing', 'starting'):
+                self.playback.pause()
+                self._message('Playback pause requested.')
+            else:
+                raise ValueError('Start playback before pausing or resuming.')
+        except Exception as exc:
+            self._error(exc)
+
+    def seek_playback(self, event=None):
+        try:
+            self.playback.seek(float(self.seek_seconds.GetValue().strip()))
+            self._message('Playback position change requested.')
+        except Exception as exc:
+            self._error(exc)
+
+    def seek_relative(self, delta):
+        try:
+            status = self.playback.status()
+            if status is None or status.state not in ('playing', 'paused', 'starting'):
+                raise ValueError('Start playback before moving through the audio.')
+            target = min(status.duration_seconds, max(0, status.position_seconds + delta))
+            self.playback.seek(target)
+            self.seek_seconds.ChangeValue(str(round(target, 3)))
+            self._message('Playback position change requested.')
+        except Exception as exc:
+            self._error(exc)
+
+    def refresh_playback(self, event=None):
         if self.closed:
             return
         try:
             action = self.playback.poll()
             if action == 'next':
                 self._refresh_playback_choices()
-            state = self.playback.state
-            position = self.playback.position_seconds
-            approximate = ' Approximate elapsed position.' if self.playback.position_is_approximate else ''
-            self.playback_position.ChangeValue(
-                f'{state.capitalize()}: {position:.1f} of {self.playback.duration_seconds:.1f} seconds.' + approximate +
-                (f' Playlist {self.playback.playlist_index + 1} of {len(self.playback.playlist)}.'
-                 if self.playback.playlist_index is not None else '') +
-                (f' Repeating {self.playback.ab_loop[0]:.2f} to {self.playback.ab_loop[1]:.2f} seconds.'
-                 if self.playback.ab_loop else '') +
-                (f' Sleep in {self.playback.sleep_remaining_seconds:.0f} seconds.'
-                 if self.playback.sleep_remaining_seconds is not None else '') +
-                (' Sleep timer stopped playback.' if action == 'sleep' else ''))
+            status = self.playback.status()
+            if status is None:
+                return
+            def clock(seconds):
+                hours, remainder = divmod(int(seconds), 3600)
+                minutes, seconds = divmod(remainder, 60)
+                return f'{hours:02}:{minutes:02}:{seconds:02}'
+            text = (f'{status.state.capitalize()}: {clock(status.position_seconds)} / '
+                    f'{clock(status.duration_seconds)}. Output: {status.device_name or "Windows default"}.')
+            if status.position_accuracy == 'external_player':
+                text = (f'{status.state.capitalize()}. Duration: {clock(status.duration_seconds)}. '
+                        'The local external player does not report its playback position. Output: system default.')
+            if self.playback.playlist_index is not None:
+                text += f' Playlist {self.playback.playlist_index + 1} of {len(self.playback.playlist)}.'
+            if self.playback.ab_loop is not None:
+                text += f' Repeating {self.playback.ab_loop[0]:.2f} to {self.playback.ab_loop[1]:.2f} seconds.'
+            remaining = self.playback.sleep_remaining_seconds
+            if remaining is not None:
+                text += f' Sleep in {remaining:.0f} seconds.'
+            if action == 'sleep':
+                text += ' Sleep timer stopped playback.'
+            error = status.error
+            if error:
+                text += ' ' + error
         except Exception as exc:
-            self.playback_position.ChangeValue('Playback device error: ' + str(exc))
+            error = str(exc)
+            text = 'Playback device error: ' + error
+        if error and self._last_playback_error != error:
+            self._last_playback_error = error
+            self._message(error)
+        if self.playback_status.GetValue() != text:
+            self.playback_status.ChangeValue(text)
 
-    def pause_playback(self, event=None):
-        try:
-            if self.playback.state == 'paused':
-                changed = self.playback.resume()
-            else:
-                changed = self.playback.pause()
-            if not changed:
-                raise ValueError('Play the rendered master before pausing or resuming.')
-            self.read_playback_position()
-        except Exception as exc:
-            self._error(exc)
-
-    def seek_playback(self, event=None):
-        try:
-            self.playback.seek(float(self.seek_seconds.GetValue()))
-            self.read_playback_position()
-        except Exception as exc:
-            self._error(exc)
-
-    def read_playback_position(self, event=None):
-        self.update_playback_position()
-        self._message(self.playback_position.GetValue(), focus=True)
+    def read_playback_status(self, event=None):
+        self.refresh_playback()
+        self._message(self.playback_status.GetValue(), focus=True)
 
     def _refresh_playback_choices(self):
         self.playlist_choice.SetItems([f'{index + 1}. {path.name}' for index, path in enumerate(self.playback.playlist)])
@@ -1275,7 +1392,7 @@ class AudioStudioDialog:
         try:
             result = action()
             self._refresh_playback_choices()
-            self.read_playback_position()
+            self.read_playback_status()
             if result is False or result is None and action in (self.playback.next_segment, self.playback.previous_segment):
                 self._message('No further recording or segment in that direction.', focus=True)
         except Exception as exc:
@@ -1285,7 +1402,9 @@ class AudioStudioDialog:
         self._playback_action(lambda: self.playback.set_playlist([]))
 
     def play_selected(self, event=None):
-        self._playback_action(lambda: self.playback.play_index(self.playlist_choice.GetSelection()))
+        selected = self.playback_device.GetSelection()
+        device = self.playback_device_ids[selected] if 0 <= selected < len(self.playback_device_ids) else None
+        self._playback_action(lambda: self.playback.play_index(self.playlist_choice.GetSelection(), device_id=device))
 
     def previous_recording(self, event=None):
         self._playback_action(self.playback.previous_track)
@@ -1327,11 +1446,17 @@ class AudioStudioDialog:
             if event is not None and hasattr(event, 'CanVeto') and event.CanVeto():
                 event.Veto()
             return
+        try:
+            self.playback.close()
+        except Exception as exc:
+            self._error(exc)
+            if event is not None and hasattr(event, 'CanVeto') and event.CanVeto():
+                event.Veto()
+            return
         self.closed = True
         self.cancelled.set()
         self.timer.Stop()
         self.playback_timer.Stop()
-        self.playback.close()
         self.executor.shutdown(wait=False, cancel_futures=True)
         if self.dialog.IsModal():
             self.dialog.EndModal(self.wx.ID_CANCEL)
@@ -1348,9 +1473,11 @@ class AudioStudioDialog:
             self.cancelled.set()
             self.timer.Stop()
             self.playback_timer.Stop()
-            self.playback.close()
-            self.executor.shutdown(wait=False, cancel_futures=True)
-            self.dialog.Destroy()
+            try:
+                self.playback.close()
+            finally:
+                self.executor.shutdown(wait=False, cancel_futures=True)
+                self.dialog.Destroy()
 
 
 class AudioStudioActions:

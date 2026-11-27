@@ -274,7 +274,7 @@ def test_failed_exclusive_staging_does_not_delete_an_unowned_entry(tmp_path, mon
 
 
 @pytest.mark.parametrize('kind', ['source_link', 'parent_link', 'hardlink', 'directory', 'destination_link', 'reserved', 'traversal'])
-def test_safe_local_paths_and_regular_files(tmp_path, kind):
+def test_safe_local_paths_and_regular_files(tmp_path, monkeypatch, kind):
     real = tmp_path / 'real'
     real.mkdir()
     source, output = real / 'source', tmp_path / 'output'
@@ -298,10 +298,18 @@ def test_safe_local_paths_and_regular_files(tmp_path, kind):
         output = tmp_path / 'NUL.txt'
     else:
         output = real / '..' / 'escaped'
+    # Windows resolves NUL.txt as an existing device without a directory entry.
+    output_existed = output.exists()
+    entries_before = set(tmp_path.rglob('*'))
+    def no_key_derivation(*args):
+        pytest.fail('An invalid snapshot path must be rejected before key derivation.')
+    monkeypatch.setattr(crypto, '_master', no_key_derivation)
     with pytest.raises(crypto.CryptoError):
         crypto.encrypt_file(source, output, PASSWORD)
     assert (real / 'source').read_bytes() == before
-    if kind != 'destination_link':
+    assert output.exists() == output_existed
+    assert set(tmp_path.rglob('*')) == entries_before
+    if kind not in ('destination_link', 'reserved'):
         assert not output.exists()
     no_stage(tmp_path)
 

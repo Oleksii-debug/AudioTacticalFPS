@@ -322,3 +322,93 @@ def test_actual_pack_import_reopens_and_rejects_changed_model_before_checkpoint_
     assert restored['state'] == 'complete' and restored['id'] == result['id']
     hit, = reopened.search(workspace, 'Railway')
     assert hit.verified and reopened.copy(workspace, hit.ref, hit.revision, 'quote') == 'Railway'
+
+
+@pytest.mark.parametrize('tampered', [False, True], ids=['verified-pack', 'changed-pack'])
+def test_unicode_fallback_binds_external_pack_digests_over_portable_engine(
+        prepared, tmp_path, monkeypatch, tampered):
+    """The staging boundary executes; its synthetic executable never runs."""
+    import tempfile
+    from types import SimpleNamespace
+    from carr_library.extract import ocr_process
+    source_pack, digest, _ = prepared
+    installed = tmp_path / 'Перевірений окремий пакет'
+    packs.install_offline_pack(source_pack, installed, expected_manifest_sha256=digest)
+    base_root = tmp_path / 'portable'
+    (base_root / 'tessdata').mkdir(parents=True)
+    (base_root / 'tesseract.exe').write_bytes(b'Synthetic executable, never executed')
+    (base_root / 'tessdata' / 'eng.traineddata').write_bytes(b'Different bundled model')
+    files = {path.relative_to(base_root).as_posix(): dict(size=path.stat().st_size,
+             sha256=sha256(path.read_bytes()).hexdigest())
+             for path in base_root.rglob('*') if path.is_file()}
+    (base_root / ocr_runtime.MANIFEST).write_text(json.dumps(dict(schema=1,
+        target='win_amd64', executable='tesseract.exe', tessdata='tessdata', files=files)))
+    base_runtime = ocr_runtime.verify_ocr_bundle(base_root)
+    runtime = ocr_runtime.bind_model_pack(base_runtime, str(installed), digest)
+    model_bytes = (installed / 'eng.traineddata').read_bytes()
+    if tampered:
+        (installed / 'eng.traineddata').write_bytes(bytes([model_bytes[0] ^ 1]) + model_bytes[1:])
+    temporary = tmp_path / 'Тимчасова папка'
+    temporary.mkdir()
+    monkeypatch.setattr(tempfile, 'tempdir', str(temporary))
+    monkeypatch.setattr(ocr_process, 'sys', SimpleNamespace(platform='win32'))
+    image = tmp_path / 'Зображення.png'
+    image.write_bytes(b'Synthetic path input; native inference is tested separately.')
+    before = image.read_bytes()
+    calls = []
+    def execute(command, cwd, remaining):
+        calls.append(command)
+        assert all(argument.isascii() for argument in command[1:])
+        directory = cwd / command[command.index('--tessdata-dir') + 1]
+        assert (directory / 'eng.traineddata').read_bytes() == model_bytes
+        assert directory != installed and directory != base_runtime.tessdata
+        return subprocess.CompletedProcess(command, 0, b'fixture result', b'')
+    monkeypatch.setattr(ocr_process, '_execute', execute)
+    invoke = lambda: ocr_process.run_ocr(runtime,
+        [runtime.executable, str(image), 'stdout', '-l', 'eng'], remaining=lambda: 20)
+    if tampered:
+        with pytest.raises(ocr_runtime.OcrRuntimeError, match='selected bytes'):
+            invoke()
+        assert calls == []
+    else:
+        assert invoke().stdout == b'fixture result' and len(calls) == 1
+        runtime.assert_unchanged()
+    base_runtime.assert_unchanged()
+    assert image.read_bytes() == before and list(temporary.iterdir()) == []
+
+
+def test_actual_unicode_external_pack_discovery_and_inference_preserve_selected_bytes(
+        real_pack, tmp_path, monkeypatch):
+    import tempfile
+    from types import SimpleNamespace
+    from PIL import Image, ImageDraw, ImageFont
+    from carr_library.extract import ocr_process
+    source_pack, _ = real_pack
+    prepared = catalogue.prepare_offline_pack(source_pack, tmp_path / 'prepared', ['eng'])
+    installed = tmp_path / 'Перевірені моделі'
+    packs.install_offline_pack(prepared.path, installed,
+                               expected_manifest_sha256=prepared.manifest_sha256)
+    base_runtime = ocr_runtime.discover_ocr_runtime()
+    runtime = ocr_runtime.bind_model_pack(base_runtime, str(installed), prepared.manifest_sha256)
+    temporary = tmp_path / 'Тимчасове розпізнавання'
+    temporary.mkdir()
+    monkeypatch.setattr(tempfile, 'tempdir', str(temporary))
+    # Use the actual installed engine through the ASCII-argv path on Linux too.
+    monkeypatch.setattr(ocr_process, 'sys', SimpleNamespace(platform='win32'))
+    inventory = ocr_languages.discover_languages(model_pack_path=str(installed),
+        model_pack_sha256=prepared.manifest_sha256)
+    assert inventory.codes == ('eng',) and inventory.integrity == 'verified_model_pack'
+    picture = Image.new('RGB', (1600, 320), 'white')
+    ImageDraw.Draw(picture).text((40, 80), 'Reviewed Unicode evidence', fill='black',
+                                font=ImageFont.load_default(size=65))
+    image, output = tmp_path / 'Скан джерела.png', tmp_path / 'Результат'
+    picture.save(image, dpi=(300, 300))
+    before = {path: sha256(path.read_bytes()).hexdigest()
+              for path in (image, installed / 'eng.traineddata')}
+    result = ocr_process.run_ocr(runtime, [runtime.executable, str(image), str(output),
+        '-l', 'eng', '--psm', '6', '-c', 'tessedit_create_txt=1'], remaining=lambda: 20)
+    assert result.returncode == 0 and all(arg.isascii() for arg in result.args[1:])
+    assert Path(str(output) + '.txt').read_text(encoding='utf-8').strip() == 'Reviewed Unicode evidence'
+    assert before == {path: sha256(path.read_bytes()).hexdigest() for path in before}
+    assert list(temporary.iterdir()) == []
+    runtime.assert_unchanged()

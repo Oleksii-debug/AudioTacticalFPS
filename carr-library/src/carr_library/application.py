@@ -1198,7 +1198,7 @@ class LibraryApp:
             return SavedTopicQueries(SavedEvidenceStore(db, workspace, load, metadata)).run(
                 topic, identity, timeout=budget.remaining(), cancelled=budget.stopped)
 
-    def backup(self, destination):
+    def backup(self, destination, *, cancelled=lambda: False):
         from .library_backup import create_backup
-        return create_backup(self, destination)
+        return create_backup(self, destination, cancelled=cancelled)
 
