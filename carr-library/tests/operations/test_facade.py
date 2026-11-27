@@ -213,7 +213,9 @@ def test_discovery_counts_non_job_entries_and_honours_cancel_and_byte_budget(tmp
         (base / ('irrelevant-' + str(index))).write_bytes(b'x')
     monkeypatch.setattr(module, '_MAX_DISCOVERY', 2)
     with pytest.raises(ResourceStateError, match='discovery'):
-        OperationFacade(app).list()
+        # Keep the requested page within the artificial cap; discovery must
+        # still count all non-job entries instead of stopping after one result.
+        OperationFacade(app).list(limit=1)
     monkeypatch.setattr(module, '_MAX_DISCOVERY', 10000)
     with pytest.raises(InterruptedError):
         OperationFacade(app).list(cancelled=lambda: True)
