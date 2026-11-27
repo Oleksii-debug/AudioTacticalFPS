@@ -38,7 +38,7 @@ def desktop():
     path = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/desktop_app.py'
     tree = ast.parse(path.read_text(encoding='utf-8'))
     cls = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == 'DesktopFrame')
-    functions = [node for node in cls.body if isinstance(node, ast.FunctionDef) and node.name in ('run_job', '_finish_job_controls')]
+    functions = [node for node in cls.body if isinstance(node, ast.FunctionDef) and node.name in ('report', 'run_job', '_finish_job_controls')]
     queued = []
     env = dict(__package__='carr_library.ui', wx=SimpleNamespace(CallAfter=queued.append))
     exec(compile(ast.Module(body=functions, type_ignores=[]), str(path), 'exec'), env)
@@ -48,11 +48,14 @@ def desktop():
     frame.menu_bar.GetMenuCount.return_value = 2
     frame.menu_bar.GetMenuLabel.side_effect = lambda index: ('&Library', '&Help')[index]
     text, reports = ['Ready'], []
-    frame.status = SimpleNamespace(GetValue=lambda: text[0])
-    def report(message):
+    def set_value(message):
         text[0] = message
         reports.append(message)
-    frame.report = report
+    def focus_status():
+        frame.focus = frame.status
+    frame.status = SimpleNamespace(GetValue=lambda: text[0], SetValue=set_value, SetFocus=focus_status)
+    frame.focus = None
+    frame.report = lambda message: env['report'](frame, message)
     frame._finish_job_controls = lambda: env['_finish_job_controls'](frame)
     frame.run_job = lambda *args, **kwargs: env['run_job'](frame, *args, **kwargs)
     return frame, queued, reports
@@ -81,6 +84,7 @@ def test_callback_publication_failure_never_announces_100_percent(desktop):
     frame.executor.submit.return_value = future
     def publish(result):
         assert frame.operation_progress.tracker.event.percent is None
+        frame.focus = object()
         raise OSError('Final publication did not commit')
     frame.run_job('Export', lambda: 'prepared data', publish)
     future.set_result('prepared data')
@@ -88,6 +92,7 @@ def test_callback_publication_failure_never_announces_100_percent(desktop):
     assert frame.operation_progress.tracker.event.state == 'failed'
     assert not any(event.percent == 100 for event in frame.operation_progress.history)
     assert 'Final publication did not commit' in reports[-1]
+    assert frame.focus is frame.status
     assert not frame.working
 
 
@@ -126,6 +131,83 @@ def test_success_preserves_callback_output_location_and_waits_for_it(desktop):
     queued.pop()()
     assert frame.operation_progress.tracker.event.percent == 100
     assert reports[-1] == 'Saved verified output to the selected private directory.'
+
+
+@pytest.mark.parametrize(('result', 'state', 'label'), [
+    ({'state': 'complete'}, 'succeeded', 'complete'),
+    ({'state': 'attention'}, 'paused', 'needs attention'),
+    ({'state': 'failed'}, 'failed', 'failed'),
+    ({'state': 'cancelled'}, 'cancelled', 'cancelled'),
+])
+def test_completion_preserves_callback_navigation_focus_and_updates_outcome(desktop, result, state, label):
+    frame, queued, reports = desktop
+    future = Future()
+    frame.executor.submit.return_value = future
+    destination = object()
+    def navigate(value):
+        assert value is result
+        frame.focus = destination
+    frame.run_job('Open selected evidence', lambda: result, navigate)
+    future.set_result(result)
+    queued.pop()()
+    assert frame.focus is destination
+    assert frame.status.GetValue() == 'Open selected evidence: ' + label + '.'
+    assert frame.operation_progress.tracker.event.state == state
+    assert not frame.working
+
+
+def test_completion_without_callback_still_focuses_the_status_report(desktop):
+    frame, queued, reports = desktop
+    future = Future()
+    frame.executor.submit.return_value = future
+    frame.run_job('Refresh', lambda: None)
+    frame.focus = object()
+    future.set_result(None)
+    queued.pop()()
+    assert frame.focus is frame.status
+    assert reports[-1] == 'Refresh: complete.'
+
+
+@pytest.mark.parametrize('target_name', [None, 'Search status', 'Search results'])
+def test_completion_summary_preserves_the_callback_focus_target(desktop, target_name):
+    frame, queued, reports = desktop
+    focused = []
+
+    def control(name):
+        widget = SimpleNamespace(name=name, value='Ready')
+        widget.GetValue = lambda: widget.value
+        widget.SetValue = lambda text: setattr(widget, 'value', text)
+        widget.SetFocus = lambda: focused.append(widget)
+        return widget
+
+    frame.status = control('Library operation status')
+    target = control(target_name) if target_name is not None else frame.status
+
+    def report(message):
+        frame.status.SetValue(message)
+        frame.status.SetFocus()
+        reports.append(message)
+
+    frame.report = report
+    future = Future()
+    frame.executor.submit.return_value = future
+
+    def display_result(result):
+        # The real source-open/search handlers own a panel control, not the
+        # frame status used by run_job's generic completion summary.
+        target.SetValue(result)
+        target.SetFocus()
+
+    frame.run_job('Open source', lambda: 'Readable source result',
+                  display_result if target_name is not None else None)
+    future.set_result('Readable source result')
+    queued.pop()()
+
+    assert frame.status.GetValue() == 'Open source: complete.'
+    assert focused[-1] is target
+    if target_name is not None:
+        assert target.GetValue() == 'Readable source result'
+    assert frame.operation_progress.tracker.event.percent == 100
 
 
 def test_old_completion_does_not_overwrite_a_callback_started_job(desktop):
