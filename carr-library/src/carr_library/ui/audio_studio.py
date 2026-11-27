@@ -479,6 +479,7 @@ class AudioStudioDialog:
         script_layout.Add(self.script, 1, wx.EXPAND | wx.ALL, 5)
         script_buttons = wx.BoxSizer(wx.HORIZONTAL)
         self._button(script_page, script_buttons, 'Import text', self.import_text)
+        self._button(script_page, script_buttons, 'Add role effect', self.add_effect)
         self._button(script_page, script_buttons, 'Script and keyboard help', self.help)
         script_layout.Add(script_buttons, 0, wx.ALL, 5)
         script_page.SetSizer(script_layout)
@@ -977,7 +978,28 @@ class AudioStudioDialog:
         self._show_text('Immutable original text — not edited by narration preparation', self.controller.draft.source_text)
 
     def help(self, event=None):
-        self._show_text('Audio Studio script and keyboard guide', SCRIPT_HELP)
+        from .audio_effects import effect_reference
+        self._show_text('Audio Studio script and keyboard guide', SCRIPT_HELP + '\n\n' + effect_reference())
+
+    def add_effect(self, event=None):
+        try:
+            self._capture()
+            if self.controller.input_kind != 'script':
+                raise ValueError('Choose Structured production script before adding a role effect.')
+            from ..audio.production import add_role_effect
+            from .audio_effects import choose_role_effect
+            selected = choose_role_effect(self.dialog, (role.name for role in self.controller.plan().roles))
+            if selected is None:
+                return
+            role, effect = selected
+            updated = add_role_effect(self.controller.script, role, effect,
+                                      voice=self.controller.voice, language=self.controller.language)
+            self.controller.edit_script(updated)
+            self._refresh_text()
+            self.script.SetFocus()
+            self._message(f'{effect.kind} added to {role}. Preview the plan before rendering.', focus=True)
+        except Exception as exc:
+            self._error(exc)
 
     def export_copy(self, event=None):
         try:
