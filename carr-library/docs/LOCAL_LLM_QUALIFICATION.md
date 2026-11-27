@@ -21,16 +21,24 @@ planner, engine, gateway, downloader, or automatic execution path.
 
 The selected runtime uses two CPU threads, one slot, a 2,048-token context and a
 256-token prediction cap. Thinking is disabled with the pinned runtime's
-`--reasoning off` option. No generation grammar supplies expected answers or
-forces plan syntax; the unchanged product JSON, argument and scope validators
-decide acceptance. The service binds only to loopback and uses the runtime's
+`--reasoning off` option. The exact upstream generic JSON grammar constrains
+JSON syntax. Its root consumes the pinned Qwen chat generation prefix using the
+runtime's documented special-token rules. All generic JSON productions remain
+unchanged; no plan fields, tool names, arguments or expected answers are forced.
+The unchanged product JSON, argument and scope validators decide acceptance. The service binds only to loopback and uses the runtime's
 offline option. This does not establish an operating-system network sandbox.
 
 An initial actual run loaded the model but failed before generation: this
 runtime's global `--json-schema` grammar rejected the Qwen chat generation
-prefix. The probe therefore omits that optional grammar. The exact native
-failure remains in the isolated workflow history; proposal acceptance,
-permission refusals, cancellation and no-send assertions are unchanged.
+prefix. A second run without a grammar returned Markdown-fenced output, which
+the strict product parser correctly refused. The reviewed generic grammar now
+consumes that exact native prefix before JSON generation, without rewriting
+responses or weakening parsing. These failed runs remain in the isolated
+workflow history; proposal acceptance, permission refusals, cancellation and
+no-send assertions are unchanged.
+The primary [generic grammar](https://github.com/ggml-org/llama.cpp/blob/171527522610996f5f0acf12334e185156ca8f44/grammars/json.gbnf)
+and [token-rule documentation](https://github.com/ggml-org/llama.cpp/blob/171527522610996f5f0acf12334e185156ca8f44/grammars/README.md)
+are pinned with the configured grammar hash.
 
 ## Acceptance
 

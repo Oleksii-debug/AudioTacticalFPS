@@ -25,6 +25,7 @@ from uuid import uuid4
 
 PRODUCT = Path(__file__).resolve().parents[1]
 PINS = PRODUCT / 'packaging' / 'local-llm-proof-inputs.json'
+GRAMMAR = PRODUCT / 'packaging' / 'local-llm-proof-json.gbnf'
 ALIAS = 'carr-qwen3-06b-q8-qualification'
 
 
@@ -153,7 +154,7 @@ def main():
                         'No native Windows or installed-package qualification', 'No OS network-denial test'],
         'runtime_options': {'cpu_threads': 2, 'context_tokens': 2048, 'prediction_tokens': 256,
                             'slots': 1, 'offline_option': True, 'thinking': False,
-                            'grammar': 'none; the unchanged product JSON and permission validators decide acceptance',
+                            'grammar': 'upstream generic JSON syntax with the pinned Qwen non-thinking prefix; no plan fields or tool choices forced',
                             'wall_watchdog_seconds': 240, 'address_space_limit_bytes': 3 * 1024**3},
     }
     native = None
@@ -165,6 +166,9 @@ def main():
         require(actual_source == pins['product_source_sha256'],
                 'The proposal gateway or validated executor differs from the reviewed product bytes.')
         report['product_source_sha256'] = actual_source
+        require(file_hash(GRAMMAR) == pins['generation_grammar']['sha256'],
+                'The native JSON syntax grammar differs from the reviewed bytes.')
+        report['generation_grammar'] = pins['generation_grammar']
         identities = [acquire(item, root) for item in (*pins['licenses'], pins['runtime'], pins['model'])]
         (root / 'asset-identities.json').write_text(json.dumps(identities, indent=2) + '\n', encoding='utf-8')
         report['download_identities'] = identities
@@ -191,7 +195,7 @@ def main():
             '--ctx-size', '2048', '--parallel', '1', '--n-predict', '256',
             '--batch-size', '256', '--ubatch-size', '128', '--threads-http', '2',
             '--no-webui', '--no-ui-mcp-proxy', '--no-context-shift',
-            '--reasoning', 'off', '--temp', '0.7', '--top-p', '0.8',
+            '--reasoning', 'off', '--grammar-file', str(GRAMMAR), '--temp', '0.7', '--top-p', '0.8',
             '--top-k', '20', '--min-p', '0', '--presence-penalty', '1.5', '--seed', '1701']
         report['actual_command'] = command
         sys.path[:0] = [str(PRODUCT / 'src'), str(PRODUCT)]
