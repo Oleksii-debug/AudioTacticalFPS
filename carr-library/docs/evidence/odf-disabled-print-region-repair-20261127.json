@@ -1,12 +1,12 @@
 {
   "schema": 1,
-  "component": "Bounded empty ODF page-region declarations",
-  "status": "SOURCE_REVIEW_PENDING",
+  "component": "Bounded ODF disabled print-region declarations",
+  "status": "SOURCE_REPAIR_REVIEW_PENDING",
   "parent_commit": "cb585676c82f56f7c12fa5235a14d376ccfdfa47",
   "observed_failure": {
-    "source_commit": "65ae1e9cac0352ae950b92f0f58ad6449728a0a9",
-    "run_id": 46054956286,
-    "job_id": 140695074052,
+    "source_commit": "c328abc3b96a50dd9e5977d2b6c1020a91e60bfa",
+    "run_id": 46055738652,
+    "job_id": 140697658480,
     "native_source": {
       "passed": 6,
       "failed": 1
@@ -26,18 +26,18 @@
       "office:master-styles",
       "style:master-page"
     ],
-    "descendant_emptiness": "Additional exact native census pending; this source patch admits only empty leaf declarations."
+    "descendant_emptiness": "Eight empty leaves and four populated print-label regions; exact shape retained in office-xls-layout-subtree-observed-20261127.json."
   },
   "primary_standard": "https://docs.oasis-open.org/office/OpenDocument/v1.3/os/part3-schema/OpenDocument-v1.3-os-part3-schema.html#property-style_display",
   "acceptance_contract": {
-    "permitted": "Only six documented header/footer region tags directly under a master page directly under document-styles/master-styles, exactly one style:display=false attribute, no children or non-whitespace text/tail.",
+    "permitted": "The six documented header/footer tags directly under document-styles/master-styles/master-page, exactly style:display=false, no direct text/tail. Contents can be empty or the observed inert grammar: unadorned paragraphs, spans with at most text:style-name, literal span text and attribute-free leaf text:sheet-name/text:page-number. These cached labels are omitted with an explicit warning, never evaluated or returned as body text.",
     "remaining_rejections": [
-      "Populated or unknown print-layout structure",
-      "Other hidden attributes including text:display and fo:visibility",
-      "Disabled elements at a different ancestry or in content.xml",
-      "Inherited table visibility, active/conditional/tracked text"
+      "Unknown or hidden print-label markup, attributes, nested fields and unreviewed tails",
+      "Body or inherited hidden content and other text:display/fo:visibility flags",
+      "Disabled elements at different ancestry or in content.xml",
+      "Active/conditional/tracked text anywhere in the original traversal"
     ],
-    "warning": "empty_disabled_page_regions_not_read",
+    "warning": "disabled_page_regions_not_read",
     "original_warning_retained": "headers_footers_styles_not_rendered",
     "test_module": "tests/extract/test_odf_print_layout.py",
     "support_files": [
@@ -48,10 +48,13 @@
       "test_disabled_print_region_never_swallows_source_or_unknown_structure": 8,
       "test_disabled_region_requires_exact_print_layout_ancestry": 4,
       "test_disabled_print_region_does_not_override_other_hidden_content_rules": 4,
-      "test_content_xml_cannot_impersonate_styles_print_layout": 1
+      "test_content_xml_cannot_impersonate_styles_print_layout": 1,
+      "test_reviewed_disabled_print_labels_are_explicit_omissions_not_body_text": 12,
+      "test_disabled_print_label_grammar_rejects_unknown_or_hidden_descendants": 8
     },
-    "new_cases": 35
+    "new_cases": 55
   },
   "runtime_status": "NOT_RUN",
-  "limits": "No claim that the failed XLS is fixed until the exact native conversion is rerun. Native typography/layout and manual NVDA are not qualified by synthetic static reading cases."
+  "limits": "No claim that the failed XLS is fixed until the exact native conversion is rerun. Native typography/layout and manual NVDA are not qualified by synthetic static reading cases.",
+  "previous_empty_only_component": "69a8d5d12de93b192f1b8d43b0b3075135d4104e"
 }

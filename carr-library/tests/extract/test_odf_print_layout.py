@@ -33,19 +33,19 @@ def test_empty_disabled_print_region_preserves_exact_body_and_locators(suffix, r
     actual = extract_xml_document(odf(suffix, styles=_styles(fragment)), suffix)
     assert actual['records'] == expected['records']
     assert texts(actual) == texts(expected)
-    assert set(actual['warnings']) == set(expected['warnings']) | {'empty_disabled_page_regions_not_read'}
+    assert set(actual['warnings']) == set(expected['warnings']) | {'disabled_page_regions_not_read'}
 
 
 @pytest.mark.parametrize('fragment', [
     '<style:header-left style:display="false">Hidden source</style:header-left>',
     '<style:header-first style:display="false"><text:p>Hidden source</text:p></style:header-first>',
-    '<style:footer-left style:display="false"><text:p/></style:footer-left>',
+    '<style:footer-left style:display="false"><text:list/></style:footer-left>',
     '<style:footer-first style:display="false"><text:page-number/></style:footer-first>',
     '<style:header-left style:display="false"/><text:hidden-text/>',
     '<style:header-left style:display="false"/>Hidden tail',
     '<style:header-left style:display="false" foreign="hidden"/>',
     '<style:footer-first style:display="false" style:name="Unreviewed"/>',
-], ids=['direct-text', 'paragraph-text', 'empty-child', 'dynamic-field',
+], ids=['direct-text', 'paragraph-text', 'unsupported-child', 'dynamic-field',
         'blocked-sibling', 'text-tail', 'foreign-attribute', 'extra-style-attribute'])
 def test_disabled_print_region_never_swallows_source_or_unknown_structure(fragment):
     with pytest.raises(ValueError, match='Hidden|Conditional'):
@@ -76,3 +76,33 @@ def test_content_xml_cannot_impersonate_styles_print_layout():
             for item in archive.infolist()]
     with pytest.raises(ValueError, match='Hidden'):
         extract_xml_document(zipped(entries), '.odt')
+
+
+@pytest.mark.parametrize('region', REGIONS)
+@pytest.mark.parametrize('label', [
+    '<text:p><text:span text:style-name="MT1"><text:sheet-name>Історія</text:sheet-name></text:span></text:p>',
+    '<text:p><text:span text:style-name="MT1">Сторінка </text:span><text:span text:style-name="MT1"><text:page-number>7</text:page-number></text:span></text:p>',
+], ids=['cached-sheet-name', 'cached-page-number'])
+def test_reviewed_disabled_print_labels_are_explicit_omissions_not_body_text(region, label):
+    expected = extract_xml_document(odf('.ods'), '.ods')
+    fragment = f'<style:{region} style:display="false">{label}</style:{region}>'
+    actual = extract_xml_document(odf('.ods', styles=_styles(fragment)), '.ods')
+    assert actual['records'] == expected['records']
+    assert texts(actual) == ['First', 'Second']
+    assert set(actual['warnings']) == set(expected['warnings']) | {'disabled_page_regions_not_read'}
+
+
+@pytest.mark.parametrize('label', [
+    '<text:p foreign="true"><text:span>Label</text:span></text:p>',
+    '<text:p><text:span text:display="none">Hidden</text:span></text:p>',
+    '<text:p><text:span><text:expression>Computed</text:expression></text:span></text:p>',
+    '<text:p><text:span><text:sheet-name foreign="true">Sheet</text:sheet-name></text:span></text:p>',
+    '<text:p><text:span><text:page-number><text:span>Nested</text:span></text:page-number></text:span></text:p>',
+    '<text:p><text:span><text:span>Nested</text:span></text:span></text:p>',
+    '<text:p><text:span>Label</text:span>Unreviewed tail</text:p>',
+    '<text:p><text:span><text:page-number>7</text:page-number>Unreviewed tail</text:span></text:p>',
+])
+def test_disabled_print_label_grammar_rejects_unknown_or_hidden_descendants(label):
+    fragment = f'<style:header-left style:display="false">{label}</style:header-left>'
+    with pytest.raises(ValueError, match='Hidden'):
+        extract_xml_document(odf('.ods', styles=_styles(fragment)), '.ods')

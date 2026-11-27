@@ -3176,7 +3176,9 @@
       "test_disabled_print_region_never_swallows_source_or_unknown_structure": 8,
       "test_disabled_region_requires_exact_print_layout_ancestry": 4,
       "test_disabled_print_region_does_not_override_other_hidden_content_rules": 4,
-      "test_content_xml_cannot_impersonate_styles_print_layout": 1
+      "test_content_xml_cannot_impersonate_styles_print_layout": 1,
+      "test_reviewed_disabled_print_labels_are_explicit_omissions_not_body_text": 12,
+      "test_disabled_print_label_grammar_rejects_unknown_or_hidden_descendants": 8
     }
   },
   "installed": {
@@ -6130,7 +6132,9 @@
       "test_disabled_print_region_never_swallows_source_or_unknown_structure": 8,
       "test_disabled_region_requires_exact_print_layout_ancestry": 4,
       "test_disabled_print_region_does_not_override_other_hidden_content_rules": 4,
-      "test_content_xml_cannot_impersonate_styles_print_layout": 1
+      "test_content_xml_cannot_impersonate_styles_print_layout": 1,
+      "test_reviewed_disabled_print_labels_are_explicit_omissions_not_body_text": 12,
+      "test_disabled_print_label_grammar_rejects_unknown_or_hidden_descendants": 8
     }
   },
   "native_trust": [

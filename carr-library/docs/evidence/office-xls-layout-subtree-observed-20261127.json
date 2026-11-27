@@ -1,0 +1,579 @@
+{
+  "schema": 1,
+  "status": "OBSERVED_FAILURE_COMPLETE_LAYOUT_SHAPE",
+  "source_commit": "c328abc3b96a50dd9e5977d2b6c1020a91e60bfa",
+  "source_tree": "43535b38f1529f43b3420a7f8403792dfd841c1c",
+  "run_id": 46055738652,
+  "job_id": 140697658480,
+  "observed": {
+    "native_source_passed": 6,
+    "native_source_failed": 1,
+    "native_installed": "NOT_RUN",
+    "failure": "Hidden document text requires review",
+    "phase": "extracting-text"
+  },
+  "artifact": {
+    "id": 15226093340,
+    "bytes": 4586816,
+    "sha256": "029d918332fcd2652a5ecdd872949a113d2d478ef88fbd4f8ad161137f2a4a4f"
+  },
+  "census": {
+    "acceptance_changed": false,
+    "event": "xls-visibility-census",
+    "family": "office",
+    "intermediate_bytes": 9313,
+    "intermediate_sha256": "8d504d7d543576922b40f982bc9dd074419e5e8911bc7da5bcd3f3029cf3ca06",
+    "members": [
+      {
+        "bytes": 4598,
+        "hidden_nodes": [],
+        "name": "content.xml",
+        "nodes": 32,
+        "sha256": "db736bd851a56e46d78c9766949b9d6282f3d2eb68b18e2ff84a96bfc0d8e9e8",
+        "style_references": {
+          "Default": 1,
+          "co1": 2,
+          "ro1": 3,
+          "ta1": 1
+        }
+      },
+      {
+        "bytes": 24703,
+        "hidden_nodes": [
+          {
+            "ancestors": [
+              {
+                "attributes": {
+                  "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}version": "1.4"
+                },
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}document-styles"
+              },
+              {
+                "attributes": {},
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}master-styles"
+              },
+              {
+                "attributes": {
+                  "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}name": "Default",
+                  "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}page-layout-name": "Mpm1"
+                },
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}master-page"
+              }
+            ],
+            "attributes": {
+              "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}display": "false"
+            },
+            "child_count": 0,
+            "child_tags": [],
+            "descendant_count": 0,
+            "descendant_non_whitespace_tail": false,
+            "descendants": [],
+            "own_non_whitespace_text": false,
+            "subtree_non_whitespace_text": false,
+            "tag": "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}header-left"
+          },
+          {
+            "ancestors": [
+              {
+                "attributes": {
+                  "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}version": "1.4"
+                },
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}document-styles"
+              },
+              {
+                "attributes": {},
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}master-styles"
+              },
+              {
+                "attributes": {
+                  "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}name": "Default",
+                  "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}page-layout-name": "Mpm1"
+                },
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}master-page"
+              }
+            ],
+            "attributes": {
+              "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}display": "false"
+            },
+            "child_count": 0,
+            "child_tags": [],
+            "descendant_count": 0,
+            "descendant_non_whitespace_tail": false,
+            "descendants": [],
+            "own_non_whitespace_text": false,
+            "subtree_non_whitespace_text": false,
+            "tag": "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}header-first"
+          },
+          {
+            "ancestors": [
+              {
+                "attributes": {
+                  "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}version": "1.4"
+                },
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}document-styles"
+              },
+              {
+                "attributes": {},
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}master-styles"
+              },
+              {
+                "attributes": {
+                  "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}name": "Default",
+                  "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}page-layout-name": "Mpm1"
+                },
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}master-page"
+              }
+            ],
+            "attributes": {
+              "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}display": "false"
+            },
+            "child_count": 0,
+            "child_tags": [],
+            "descendant_count": 0,
+            "descendant_non_whitespace_tail": false,
+            "descendants": [],
+            "own_non_whitespace_text": false,
+            "subtree_non_whitespace_text": false,
+            "tag": "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}footer-left"
+          },
+          {
+            "ancestors": [
+              {
+                "attributes": {
+                  "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}version": "1.4"
+                },
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}document-styles"
+              },
+              {
+                "attributes": {},
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}master-styles"
+              },
+              {
+                "attributes": {
+                  "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}name": "Default",
+                  "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}page-layout-name": "Mpm1"
+                },
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}master-page"
+              }
+            ],
+            "attributes": {
+              "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}display": "false"
+            },
+            "child_count": 0,
+            "child_tags": [],
+            "descendant_count": 0,
+            "descendant_non_whitespace_tail": false,
+            "descendants": [],
+            "own_non_whitespace_text": false,
+            "subtree_non_whitespace_text": false,
+            "tag": "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}footer-first"
+          },
+          {
+            "ancestors": [
+              {
+                "attributes": {
+                  "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}version": "1.4"
+                },
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}document-styles"
+              },
+              {
+                "attributes": {},
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}master-styles"
+              },
+              {
+                "attributes": {
+                  "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}name": "Report",
+                  "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}page-layout-name": "Mpm2"
+                },
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}master-page"
+              }
+            ],
+            "attributes": {
+              "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}display": "false"
+            },
+            "child_count": 0,
+            "child_tags": [],
+            "descendant_count": 0,
+            "descendant_non_whitespace_tail": false,
+            "descendants": [],
+            "own_non_whitespace_text": false,
+            "subtree_non_whitespace_text": false,
+            "tag": "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}header-left"
+          },
+          {
+            "ancestors": [
+              {
+                "attributes": {
+                  "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}version": "1.4"
+                },
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}document-styles"
+              },
+              {
+                "attributes": {},
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}master-styles"
+              },
+              {
+                "attributes": {
+                  "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}name": "Report",
+                  "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}page-layout-name": "Mpm2"
+                },
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}master-page"
+              }
+            ],
+            "attributes": {
+              "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}display": "false"
+            },
+            "child_count": 0,
+            "child_tags": [],
+            "descendant_count": 0,
+            "descendant_non_whitespace_tail": false,
+            "descendants": [],
+            "own_non_whitespace_text": false,
+            "subtree_non_whitespace_text": false,
+            "tag": "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}header-first"
+          },
+          {
+            "ancestors": [
+              {
+                "attributes": {
+                  "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}version": "1.4"
+                },
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}document-styles"
+              },
+              {
+                "attributes": {},
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}master-styles"
+              },
+              {
+                "attributes": {
+                  "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}name": "Report",
+                  "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}page-layout-name": "Mpm2"
+                },
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}master-page"
+              }
+            ],
+            "attributes": {
+              "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}display": "false"
+            },
+            "child_count": 0,
+            "child_tags": [],
+            "descendant_count": 0,
+            "descendant_non_whitespace_tail": false,
+            "descendants": [],
+            "own_non_whitespace_text": false,
+            "subtree_non_whitespace_text": false,
+            "tag": "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}footer-left"
+          },
+          {
+            "ancestors": [
+              {
+                "attributes": {
+                  "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}version": "1.4"
+                },
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}document-styles"
+              },
+              {
+                "attributes": {},
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}master-styles"
+              },
+              {
+                "attributes": {
+                  "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}name": "Report",
+                  "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}page-layout-name": "Mpm2"
+                },
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}master-page"
+              }
+            ],
+            "attributes": {
+              "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}display": "false"
+            },
+            "child_count": 0,
+            "child_tags": [],
+            "descendant_count": 0,
+            "descendant_non_whitespace_tail": false,
+            "descendants": [],
+            "own_non_whitespace_text": false,
+            "subtree_non_whitespace_text": false,
+            "tag": "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}footer-first"
+          },
+          {
+            "ancestors": [
+              {
+                "attributes": {
+                  "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}version": "1.4"
+                },
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}document-styles"
+              },
+              {
+                "attributes": {},
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}master-styles"
+              },
+              {
+                "attributes": {
+                  "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}display-name": "PageStyle_Sheet1",
+                  "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}name": "PageStyle_5f_Sheet1",
+                  "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}page-layout-name": "Mpm3"
+                },
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}master-page"
+              }
+            ],
+            "attributes": {
+              "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}display": "false"
+            },
+            "child_count": 1,
+            "child_tags": [
+              "{urn:oasis:names:tc:opendocument:xmlns:text:1.0}p"
+            ],
+            "descendant_count": 3,
+            "descendant_non_whitespace_tail": false,
+            "descendants": [
+              {
+                "attributes": {},
+                "child_count": 1,
+                "non_whitespace_tail": false,
+                "non_whitespace_text": false,
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:text:1.0}p"
+              },
+              {
+                "attributes": {
+                  "{urn:oasis:names:tc:opendocument:xmlns:text:1.0}style-name": "MT1"
+                },
+                "child_count": 1,
+                "non_whitespace_tail": false,
+                "non_whitespace_text": false,
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:text:1.0}span"
+              },
+              {
+                "attributes": {},
+                "child_count": 0,
+                "non_whitespace_tail": false,
+                "non_whitespace_text": true,
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:text:1.0}sheet-name"
+              }
+            ],
+            "own_non_whitespace_text": false,
+            "subtree_non_whitespace_text": true,
+            "tag": "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}header-left"
+          },
+          {
+            "ancestors": [
+              {
+                "attributes": {
+                  "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}version": "1.4"
+                },
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}document-styles"
+              },
+              {
+                "attributes": {},
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}master-styles"
+              },
+              {
+                "attributes": {
+                  "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}display-name": "PageStyle_Sheet1",
+                  "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}name": "PageStyle_5f_Sheet1",
+                  "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}page-layout-name": "Mpm3"
+                },
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}master-page"
+              }
+            ],
+            "attributes": {
+              "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}display": "false"
+            },
+            "child_count": 1,
+            "child_tags": [
+              "{urn:oasis:names:tc:opendocument:xmlns:text:1.0}p"
+            ],
+            "descendant_count": 3,
+            "descendant_non_whitespace_tail": false,
+            "descendants": [
+              {
+                "attributes": {},
+                "child_count": 1,
+                "non_whitespace_tail": false,
+                "non_whitespace_text": false,
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:text:1.0}p"
+              },
+              {
+                "attributes": {
+                  "{urn:oasis:names:tc:opendocument:xmlns:text:1.0}style-name": "MT1"
+                },
+                "child_count": 1,
+                "non_whitespace_tail": false,
+                "non_whitespace_text": false,
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:text:1.0}span"
+              },
+              {
+                "attributes": {},
+                "child_count": 0,
+                "non_whitespace_tail": false,
+                "non_whitespace_text": true,
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:text:1.0}sheet-name"
+              }
+            ],
+            "own_non_whitespace_text": false,
+            "subtree_non_whitespace_text": true,
+            "tag": "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}header-first"
+          },
+          {
+            "ancestors": [
+              {
+                "attributes": {
+                  "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}version": "1.4"
+                },
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}document-styles"
+              },
+              {
+                "attributes": {},
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}master-styles"
+              },
+              {
+                "attributes": {
+                  "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}display-name": "PageStyle_Sheet1",
+                  "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}name": "PageStyle_5f_Sheet1",
+                  "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}page-layout-name": "Mpm3"
+                },
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}master-page"
+              }
+            ],
+            "attributes": {
+              "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}display": "false"
+            },
+            "child_count": 1,
+            "child_tags": [
+              "{urn:oasis:names:tc:opendocument:xmlns:text:1.0}p"
+            ],
+            "descendant_count": 4,
+            "descendant_non_whitespace_tail": false,
+            "descendants": [
+              {
+                "attributes": {},
+                "child_count": 2,
+                "non_whitespace_tail": false,
+                "non_whitespace_text": false,
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:text:1.0}p"
+              },
+              {
+                "attributes": {
+                  "{urn:oasis:names:tc:opendocument:xmlns:text:1.0}style-name": "MT1"
+                },
+                "child_count": 0,
+                "non_whitespace_tail": false,
+                "non_whitespace_text": true,
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:text:1.0}span"
+              },
+              {
+                "attributes": {
+                  "{urn:oasis:names:tc:opendocument:xmlns:text:1.0}style-name": "MT1"
+                },
+                "child_count": 1,
+                "non_whitespace_tail": false,
+                "non_whitespace_text": false,
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:text:1.0}span"
+              },
+              {
+                "attributes": {},
+                "child_count": 0,
+                "non_whitespace_tail": false,
+                "non_whitespace_text": true,
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:text:1.0}page-number"
+              }
+            ],
+            "own_non_whitespace_text": false,
+            "subtree_non_whitespace_text": true,
+            "tag": "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}footer-left"
+          },
+          {
+            "ancestors": [
+              {
+                "attributes": {
+                  "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}version": "1.4"
+                },
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}document-styles"
+              },
+              {
+                "attributes": {},
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}master-styles"
+              },
+              {
+                "attributes": {
+                  "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}display-name": "PageStyle_Sheet1",
+                  "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}name": "PageStyle_5f_Sheet1",
+                  "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}page-layout-name": "Mpm3"
+                },
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}master-page"
+              }
+            ],
+            "attributes": {
+              "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}display": "false"
+            },
+            "child_count": 1,
+            "child_tags": [
+              "{urn:oasis:names:tc:opendocument:xmlns:text:1.0}p"
+            ],
+            "descendant_count": 4,
+            "descendant_non_whitespace_tail": false,
+            "descendants": [
+              {
+                "attributes": {},
+                "child_count": 2,
+                "non_whitespace_tail": false,
+                "non_whitespace_text": false,
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:text:1.0}p"
+              },
+              {
+                "attributes": {
+                  "{urn:oasis:names:tc:opendocument:xmlns:text:1.0}style-name": "MT1"
+                },
+                "child_count": 0,
+                "non_whitespace_tail": false,
+                "non_whitespace_text": true,
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:text:1.0}span"
+              },
+              {
+                "attributes": {
+                  "{urn:oasis:names:tc:opendocument:xmlns:text:1.0}style-name": "MT1"
+                },
+                "child_count": 1,
+                "non_whitespace_tail": false,
+                "non_whitespace_text": false,
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:text:1.0}span"
+              },
+              {
+                "attributes": {},
+                "child_count": 0,
+                "non_whitespace_tail": false,
+                "non_whitespace_text": true,
+                "tag": "{urn:oasis:names:tc:opendocument:xmlns:text:1.0}page-number"
+              }
+            ],
+            "own_non_whitespace_text": false,
+            "subtree_non_whitespace_text": true,
+            "tag": "{urn:oasis:names:tc:opendocument:xmlns:style:1.0}footer-first"
+          }
+        ],
+        "name": "styles.xml",
+        "nodes": 305,
+        "sha256": "9712ed97e3c3619e0187cf404845639cc966d0e6b4dbd384c823ed2f7617536e",
+        "style_references": {
+          "Accent": 3,
+          "Default": 6,
+          "Heading": 2,
+          "MT1": 9,
+          "Status": 5,
+          "Text": 3
+        }
+      }
+    ],
+    "synthetic_fixture": true,
+    "worker_state": "failed"
+  },
+  "disposition": {
+    "empty_leaves": 8,
+    "populated_regions": 4,
+    "populated_scope": "PageStyle_5f_Sheet1/Mpm3 only: header-left/header-first with text:p/span/sheet-name; footer-left/footer-first with text:p and two spans, one holding page-number.",
+    "non_whitespace_field_values": "Presence is recorded, values were not copied by this bounded census.",
+    "root_patch_69a8": "Its empty-leaf-only exception cannot admit all12 observed declarations; not yet launched as a successful XLS repair.",
+    "policy_changed": false
+  },
+  "evidence_access": "Exact raw job-log diagnostic parsed twice with identical JSON; GitHub artifact metadata read. Independent archive read pending."
+}

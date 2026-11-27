@@ -4,7 +4,7 @@
   "base_commit": "cb585676c82f56f7c12fa5235a14d376ccfdfa47",
   "components": {
     "generated_media": "86714f3f89236a466b740966611dae028daeb6fb",
-    "odf_print_layout": "69a8d5d12de93b192f1b8d43b0b3075135d4104e",
+    "odf_print_layout": "1282f76f8b6480b71bf8254d9b5b15beefaabee8",
     "runtime_workflows": "92ca6595a5e7b99be52632771f3b212c88b87f5e",
     "shared_test_ledger_eml_closure": "bad2aeac5181fc2ad06c3f313b1c3afa84dae2fe",
     "ukrainian_guide": "ca21be3dbc3cd7d99077ac0118605052ec5a6ccc"
@@ -12,23 +12,32 @@
   "integration_decisions": [
     "Copy generated-media completion helpers and _verified_output only onto the current production.py; preserve the newer returned-speech-stage independent-file check from 8e632.",
     "Keep current source/installed whole-music20 oracle and replace the stale three-case inline inventory proof's whole-module assumption with the same exact20 function Counter.",
-    "Keep all native converter populations unchanged; empty ODF print-layout declarations have35 separate portable cases, not35 new native engine claims.",
+    "Keep all native converter populations unchanged; the observed inert ODF print-layout declarations have55 separate portable cases, never55 native engine claims.",
     "Retain explicit passive historic/cache backup semantics. Invalid hash-consistent completed-media claims fail before new production work.",
-    "Preserve historical runtime receipt basenames; only correct current18/54 lock cardinalities, retaining exact version equality."
+    "Preserve historical runtime receipt basenames; only correct current18/54 lock cardinalities, retaining exact version equality.",
+    "The full advanced-planning inline proof now requires the current exact24 handler cases, including two durable native callback cases and one changed-goal refusal."
   ],
   "new_cases": {
     "generated_media": 36,
-    "odf_print_layout": 35
+    "odf_print_layout": 55
   },
   "populations": {
-    "full_source": 5592,
-    "full_installed": 5264,
-    "focused_source": 785,
-    "focused_installed": 785
+    "full_source": 5612,
+    "full_installed": 5284,
+    "focused_source": 805,
+    "focused_installed": 805
   },
   "limits": [
     "New component code and tests are source-reviewed only until exact-SHA execution.",
     "The previously failed XLS requires the pending actual native rerun.",
     "No real-model, physical audio, manual NVDA or distribution qualification is asserted."
-  ]
+  ],
+  "actual_predecessor": {
+    "commit": "cb585676c82f56f7c12fa5235a14d376ccfdfa47",
+    "run": 46055688197,
+    "source_passed": 714,
+    "installed_passed": 714,
+    "native_provider_recovery_checks": 22,
+    "note": "Exact predecessor only; the new36 generated-media and55 ODF cases were not in this run."
+  }
 }
