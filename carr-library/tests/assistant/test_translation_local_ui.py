@@ -1,6 +1,9 @@
 """Existing translation controls with local approval and queued-handler boundaries."""
 from dataclasses import replace
+import importlib.util
 import json
+from pathlib import Path
+import sys
 from threading import Event
 from types import SimpleNamespace
 
@@ -10,8 +13,36 @@ from carr_library.assistant.profiles import ProfileStore
 from carr_library.assistant import translation_cli
 from carr_library.ui import translation_dialog as ui
 
-from test_translation_local import ready
-from test_translation_v3 import transport, translation_handlers
+def _fixture_module(name, filename):
+    # Load only this selected sibling fixture file. Installed-package tests must
+    # not add either the tests directory or the checkout to sys.path.
+    path = Path(__file__).with_name(filename).resolve()
+    existing = sys.modules.get(name)
+    if existing is not None:
+        if Path(existing.__file__).resolve() != path:
+            raise ImportError('Fixture module name is already bound to another file.')
+        return existing
+    spec = importlib.util.spec_from_file_location(name, path)
+    if spec is None or spec.loader is None:
+        raise ImportError('Could not load the selected sibling fixture file.')
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    try:
+        spec.loader.exec_module(module)
+    except BaseException:
+        if sys.modules.get(name) is module:
+            del sys.modules[name]
+        raise
+    return module
+
+
+_local_fixtures = _fixture_module(
+    '_carr_fixture_translation_local', 'test_translation_local.py')
+_google_fixtures = _fixture_module(
+    '_carr_fixture_translation_v3', 'test_translation_v3.py')
+ready = _local_fixtures.ready
+transport = _google_fixtures.transport
+translation_handlers = _google_fixtures.translation_handlers
 
 
 @pytest.fixture
