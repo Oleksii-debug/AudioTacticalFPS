@@ -135,6 +135,39 @@ def test_actual_research_and_studio_producers_survive_verified_backup_reopen(com
     assert _file_bytes(s.app.root / 'originals') == originals
 
 
+def test_generated_namespace_does_not_collect_unregistered_private_metadata(complete_state, tmp_path):
+    s = complete_state
+    path = s.studio.output_dir / 'renders' / ('f' * 64) / 'credentials.json'
+    path.parent.mkdir(parents=True)
+    private = b'{"token":"SYNTHETIC_ONLY"}'
+    path.write_bytes(private)
+    folder = tmp_path / 'backup'
+    digest = create_backup(s.app, folder)
+    manifest = verify_backup(folder, digest)
+    assert not any(row['filename'].endswith('/credentials.json') for row in manifest['sidecars'])
+    assert path.read_bytes() == private
+
+
+def test_resigned_render_namespace_rejects_unregistered_metadata(complete_state, tmp_path):
+    s = complete_state
+    folder = tmp_path / 'backup'
+    create_backup(s.app, folder)
+    manifest = _manifest(folder)
+    name = 'audio-projects/' + s.studio.project_id + '/audio/renders/' + 'f' * 64 + '/credentials.json'
+    raw = b'{"token":"SYNTHETIC_ONLY"}'
+    path = folder / name
+    path.parent.mkdir(parents=True)
+    path.write_bytes(raw)
+    manifest['sidecars'].append(dict(filename=name, size_bytes=len(raw), sha256=sha256(raw).hexdigest()))
+    manifest['generated_audio_included'] = True
+    digest = _resign(folder, manifest)
+    with pytest.raises(ValueError, match='unsupported managed audio artifact'):
+        verify_backup(folder, digest)
+    with pytest.raises(ValueError, match='unsupported managed audio artifact'):
+        restore_backup(folder, tmp_path / 'rejected', digest)
+    assert not (tmp_path / 'rejected').exists()
+
+
 @pytest.mark.parametrize('layout', ['root-v4', 'legacy-sidecars-v4'])
 def test_exact_historical_v4_layouts_authenticate_without_rewriting(tmp_path, layout):
     app = LibraryApp(tmp_path / 'data')

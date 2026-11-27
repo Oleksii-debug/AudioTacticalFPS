@@ -29,6 +29,10 @@ _PROJECT_ID = re.compile(r'[0-9a-f]{32}')
 _HEX = r'[0-9a-f]{64}'
 _MUSIC = re.compile(r'audio/music-jobs/' + _HEX +
     r'/(?:cue\.(?:wav|mid|music\.json)|cue\.music-work/(?:state\.json|part-[0-9]{8}\.wav|score\.partial\.mid|provenance\.partial\.json))\Z')
+_RENDER = re.compile(r'audio/renders/' + _HEX +
+    r'/(?:complete\.json|timeline\.json|subtitles\.srt|chapters\.ffmeta|'
+    r'master\.(?:wav|mp3|flac|ogg|opus|aac|m4a|m4b|aiff|wma)|'
+    r'stem-[0-9]{3,6}\.wav|chapter-[0-9]{6}\.wav|music-[0-9]{6}\.(?:mid|music\.json))\Z')
 
 
 def audio_name(name):
@@ -48,6 +52,10 @@ def allowed(name):
         return False
     tail = '/'.join(parts[2:])
     from .audio.backup import _allowed
+    if tail.startswith('audio/renders/'):
+        # These are the filenames emitted by production.render_project. Its
+        # directory is not permission to copy arbitrary neighboring JSON.
+        return bool(_RENDER.fullmatch(tail))
     return tail == 'restore-manifest.json' or bool(_MUSIC.fullmatch(tail)) or bool(_allowed(tail))
 
 
@@ -318,7 +326,7 @@ def _studio_files(project, max_files, include_generated, cancelled):
                 if not re.fullmatch(_HEX, render.name):
                     continue
                 for item in _children(render, max_files):
-                    if _allowed('audio/renders/' + render.name + '/' + item.name):
+                    if _RENDER.fullmatch('audio/renders/' + render.name + '/' + item.name):
                         yield item
         elif child.name == 'music-jobs':
             for job in _children(child, max_files):
