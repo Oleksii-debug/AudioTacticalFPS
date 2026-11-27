@@ -8,6 +8,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from carr_library.audio.models import AudioCancelled
 from carr_library.ui.operation_progress import ProgressTracker, operation_outcome
 
 
@@ -48,7 +49,7 @@ def desktop():
     frame.menu_bar.GetMenuCount.return_value = 2
     frame.menu_bar.GetMenuLabel.side_effect = lambda index: ('&Library', '&Help')[index]
     text, reports = ['Ready'], []
-    frame.status = SimpleNamespace(GetValue=lambda: text[0])
+    frame.status = SimpleNamespace(GetValue=lambda: text[0], SetValue=lambda value: text.__setitem__(0, value))
     def report(message):
         text[0] = message
         reports.append(message)
@@ -197,6 +198,33 @@ def test_old_completion_does_not_overwrite_a_callback_started_job(desktop):
     assert reports[-1] == 'Render…'
 
 
+def test_generic_completion_updates_notice_without_overriding_callback_focus(desktop):
+    frame, queued, reports = desktop
+    focused = ['query']
+    status_text = ['Ready']
+    # The native status control updates its value without calling report(),
+    # whose deliberate focus change is what this regression must detect.
+    frame.status = SimpleNamespace(
+        GetValue=lambda: status_text[0],
+        SetValue=lambda value: status_text.__setitem__(0, value))
+    def focusing_report(message):
+        focused[0] = 'host-status'
+        frame.status.SetValue(message)
+        reports.append(message)
+    frame.report = focusing_report
+    future = Future()
+    frame.executor.submit.return_value = future
+    def display_results(result):
+        focused[0] = 'result-grid'
+    frame.run_job('Search', lambda: ['source result'], display_results)
+    future.set_result(['source result'])
+    queued.pop()()
+    assert focused[0] == 'result-grid'
+    assert frame.status.GetValue() == 'Search: complete.'
+    assert reports == ['Search…']
+    assert frame.operation_progress.tracker.event.state == 'succeeded'
+
+
 @pytest.mark.parametrize('observer', ['start', 'update', 'succeed', 'finalize'])
 def test_progress_observer_failure_cannot_reclassify_committed_work(desktop, observer):
     frame, queued, reports = desktop
@@ -231,8 +259,9 @@ def test_receipt_classifier_failure_preserves_successful_publication(desktop, mo
     assert not any(event.percent == 100 for event in frame.operation_progress.history)
 
 
-@pytest.mark.parametrize('worker_error', [InterruptedError('Worker cancelled'), OSError('Commit failed')],
-                         ids=['acknowledged-cancel', 'real-commit-failure'])
+@pytest.mark.parametrize('worker_error', [InterruptedError('Worker cancelled'),
+    AudioCancelled('Transcription intake cancelled'), OSError('Commit failed')],
+                         ids=['acknowledged-cancel', 'audio-cancel', 'real-commit-failure'])
 def test_observer_failure_and_late_cancel_keep_the_real_business_error(desktop, worker_error):
     frame, queued, reports = desktop
     future, done, failed = Future(), Mock(), Mock()
@@ -245,7 +274,7 @@ def test_observer_failure_and_late_cancel_keep_the_real_business_error(desktop, 
     done.assert_not_called()
     failed.assert_called_once_with(worker_error)
     assert frame.operation_progress.tracker.event.state == (
-        'cancelled' if isinstance(worker_error, InterruptedError) else 'failed')
+        'cancelled' if isinstance(worker_error, (InterruptedError, AudioCancelled)) else 'failed')
     assert str(worker_error) in reports[-1] and not frame.working
 
 

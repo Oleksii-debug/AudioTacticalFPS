@@ -68,8 +68,13 @@ def bundle(tmp_path, monkeypatch):
     (packaging / 'wheel-notices').mkdir()
     (packaging / 'wheel-notices' / 'SOURCES.json').write_text('{"synthetic-current-notices":true}\n')
     (project / 'docs').mkdir()
-    for name in ('RUNNING.md', 'START_V3_UK.txt'):
-        (project / 'docs' / name).write_text('Synthetic current installation guidance.\n')
+    for name in ('RUNNING.md', 'START_UK.txt', 'START_V3_UK.txt', *refresh.BUNDLE_GUIDES):
+        (project / 'docs' / name).write_bytes(('Synthetic current guidance: ' + name + '\n').encode('utf-8'))
+    (project / 'docs' / 'RUNNING.md').write_bytes(
+        b'[Search](ACADEMIC_SEARCH.md)\n[Insights](ACADEMIC_CATALOG_INSIGHTS.md)\n'
+        b'[NVDA](ACADEMIC_SEARCH_NVDA.md)\n[Source](../src/example.py)\n'
+        b'[Existing](docs/ACADEMIC_SEARCH.md)\n'
+        b'[External](https://example.invalid/ACADEMIC_SEARCH.md)\n')
     for name in ('install_windows.py', 'Install.cmd', 'ResearchLibrary.cmd', 'CheckInstallation.cmd'):
         (packaging / name).write_text('raise AssertionError("PACKAGING MUST NOT EXECUTE PAYLOAD")\n')
     package = project / 'src/carr_library'
@@ -154,6 +159,8 @@ def test_refresh_exact_source_parent_hash_notices_and_sources_without_execution(
     monkeypatch.setattr(subprocess, 'run', git_only)
     (bundle.source / 'unlisted-private.txt').write_text('This private file must not be copied.')
     before = (bundle.source / 'bundle-manifest.json').read_bytes()
+    assert not (bundle.source / 'docs').exists()
+    source_readme = (bundle.packaging.parent / 'docs' / 'RUNNING.md').read_bytes()
     report = _refresh(bundle)
     manifest = json.loads((bundle.output / 'bundle-manifest.json').read_bytes())
     identity = json.loads((bundle.output / 'application-source.json').read_bytes())
@@ -165,8 +172,34 @@ def test_refresh_exact_source_parent_hash_notices_and_sources_without_execution(
     assert report['manifest_sha256'] == sha256((bundle.output / 'bundle-manifest.json').read_bytes()).hexdigest()
     for name, raw in bundle.protected.items():
         assert (bundle.output / name).read_bytes() == raw
+    assert {path.name for path in (bundle.output / 'docs').iterdir()} == set(bundle.module.BUNDLE_GUIDES)
+    readme = (bundle.output / 'README.txt').read_bytes()
+    assert readme == (
+        b'[Search](docs/ACADEMIC_SEARCH.md)\n[Insights](docs/ACADEMIC_CATALOG_INSIGHTS.md)\n'
+        b'[NVDA](docs/ACADEMIC_SEARCH_NVDA.md)\n[Source](../src/example.py)\n'
+        b'[Existing](docs/ACADEMIC_SEARCH.md)\n'
+        b'[External](https://example.invalid/ACADEMIC_SEARCH.md)\n')
+    assert manifest['files']['README.txt'] == sha256(readme).hexdigest()
+    assert (bundle.packaging.parent / 'docs' / 'RUNNING.md').read_bytes() == source_readme
+    for name in bundle.module.BUNDLE_GUIDES:
+        raw = (bundle.packaging.parent / 'docs' / name).read_bytes()
+        assert (bundle.output / 'docs' / name).read_bytes() == raw
+        assert manifest['files']['docs/' + name] == sha256(raw).hexdigest()
+    for name in ('START_UK.txt', 'START_V3_UK.txt'):
+        raw = (bundle.packaging.parent / 'docs' / name).read_bytes()
+        assert (bundle.output / name).read_bytes() == raw
+        assert manifest['files'][name] == sha256(raw).hexdigest()
     assert not (bundle.output / 'unlisted-private.txt').exists()
     assert (bundle.source / 'bundle-manifest.json').read_bytes() == before
+    assert not list(bundle.output.parent.glob('.private-bundle-*'))
+
+
+@pytest.mark.parametrize('name', ['START_UK.txt', 'TRANSCRIPTION.md'])
+def test_refresh_missing_current_guide_never_publishes_incomplete_bundle(bundle, name):
+    (bundle.packaging.parent / 'docs' / name).unlink()
+    with pytest.raises(FileNotFoundError):
+        _refresh(bundle)
+    assert not bundle.output.exists()
     assert not list(bundle.output.parent.glob('.private-bundle-*'))
 
 
@@ -175,6 +208,35 @@ def test_wrong_recorded_parent_hash_fails_before_publication(bundle):
     with pytest.raises(ValueError, match='recorded SHA256'):
         _refresh(bundle)
     assert not bundle.output.exists()
+
+
+@pytest.mark.parametrize('parent_tree', [None, 'b' * 40])
+def test_refreshed_source_tree_comes_from_exact_verified_commit(bundle, parent_tree):
+    previous = bundle.source / 'bundle-manifest.json'
+    parent = json.loads(previous.read_bytes())
+    if parent_tree is not None:
+        parent['source_tree'] = parent_tree
+    raw = (json.dumps(parent, sort_keys=True) + '\n').encode()
+    previous.write_bytes(raw)
+    bundle.parent_hash = sha256(raw).hexdigest()
+
+    _refresh(bundle)
+
+    current = json.loads((bundle.output / 'bundle-manifest.json').read_bytes())
+    identity = json.loads((bundle.output / 'application-source.json').read_bytes())
+    expected = _git(bundle.repo, 'rev-parse', bundle.commit + '^{tree}')
+    assert current['source_tree'] == expected
+    assert identity['source_tree'] == expected
+    assert current['parent_source_commit'] == parent['source_commit']
+    assert current['parent_manifest_sha256'] == bundle.parent_hash
+    assert previous.read_bytes() == raw
+
+
+def test_actual_refresh_manifest_is_accepted_by_installation_diagnostic(bundle):
+    _refresh(bundle)
+    diagnostic = _load('review_refresh_native_checks', ROOT / 'src/carr_library/native_checks.py')
+    expected = json.loads((bundle.output / 'bundle-manifest.json').read_bytes())
+    assert diagnostic._manifest(bundle.output) == expected
 
 
 def test_manifest_is_never_reopened_after_verification_for_copy_paths(bundle, monkeypatch, tmp_path):

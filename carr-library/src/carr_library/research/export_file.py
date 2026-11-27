@@ -5,10 +5,17 @@ Checks cover ordinary desktop use and detect destination changes while the
 temporary file is written; they are not a sandbox against a process that can
 maliciously replace directory entries at the instant of publication.
 """
+from dataclasses import dataclass
+from hashlib import sha256
 from pathlib import Path, PureWindowsPath
 import os
 import stat
 from tempfile import NamedTemporaryFile
+
+
+# Preserve the integrated desktop policy: inspect at most the largest research
+# matrix export before asking the user to replace an existing destination.
+MAX_DESTINATION_BYTES = 64 * 1024 * 1024
 
 
 def _filename(name):
@@ -39,7 +46,7 @@ def _file_state(info):
             info.st_mtime_ns, info.st_ctime_ns)
 
 
-def _destination(path, private_root):
+def _inspect_destination(path, private_root):
     private = private_root.resolve()
     try:
         private_info = private.stat()
@@ -79,33 +86,88 @@ def _destination(path, private_root):
     return target, _identity(parent.stat()), state
 
 
-def write_export(path, content, *, private_root, cancelled=lambda: False):
-    """Atomically write exact UTF-8 text to an explicitly selected destination.
+def _destination(path, private_root, check_cancelled=lambda: None):
+    snapshot = _inspect_destination(path, private_root)
+    target, parent_identity, state = snapshot
+    if state is None:
+        return snapshot
+    if state[3] > MAX_DESTINATION_BYTES:
+        raise ValueError('The existing export exceeds the 64 MiB verification budget; choose a new filename.')
 
-    A normal existing file may be replaced after caller-side confirmation.
-    Library paths, linked ancestors/targets and hard-linked files are rejected.
-    Failure or cancellation before publication preserves an existing target
-    and removes the temporary file. Once atomic replacement completes, the
-    save is complete. CR, LF and CRLF sequences remain unchanged.
+    check_cancelled()
+    # Guard before opening, then bind the descriptor before reading any bytes.
+    # Nonblocking/no-follow opens also reject a raced-in FIFO or final symlink
+    # on platforms exposing these flags. Existing paths are already validated.
+    flags = (os.O_RDONLY | getattr(os, 'O_BINARY', 0)
+             | getattr(os, 'O_NONBLOCK', 0) | getattr(os, 'O_NOFOLLOW', 0))
+    descriptor = os.open(target, flags)
+    try:
+        with os.fdopen(descriptor, 'rb', buffering=0, closefd=False) as source:
+            opened = os.fstat(descriptor)
+            if (_file_state(opened) != state
+                    or _inspect_destination(path, private_root) != snapshot):
+                raise ValueError('The export destination changed. Choose the destination again.')
+            # Read the complete captured length with constant memory and one
+            # extra byte solely to detect growth; never accept a sampled or
+            # truncated digest.
+            digest, remaining = sha256(), opened.st_size
+            while remaining:
+                check_cancelled()
+                block = source.read(min(1024 * 1024, remaining))
+                if not block:
+                    raise ValueError('The export destination changed. Choose the destination again.')
+                digest.update(block)
+                remaining -= len(block)
+            check_cancelled()
+            if source.read(1):
+                raise ValueError('The export destination changed. Choose the destination again.')
+            check_cancelled()
+            if (_file_state(os.fstat(descriptor)) != state
+                    or _inspect_destination(path, private_root) != snapshot):
+                raise ValueError('The export destination changed. Choose the destination again.')
+    finally:
+        os.close(descriptor)
+    return target, parent_identity, (*state, digest.hexdigest())
+
+
+@dataclass(frozen=True)
+class ExportDestination:
+    """One destination state captured before caller-side overwrite approval."""
+    requested: Path
+    private_root: Path
+    target: Path
+    parent_identity: tuple
+    state: tuple | None
+
+    @property
+    def content_sha256(self):
+        return self.state[-1] if self.state is not None else None
+
+    @property
+    def require_absent(self):
+        return self.state is None
+
+
+def _export_paths(path, private_root):
+    raw_path = os.fspath(path)
+    if (not isinstance(raw_path, str) or not raw_path or raw_path in ('.', '..')
+            or raw_path.endswith(('/', '\\'))):
+        raise ValueError('Choose an export filename, not an empty path or folder.')
+    requested = Path(raw_path).absolute()
+    _filename(requested.name)
+    return requested, Path(private_root).absolute()
+
+
+def capture_export_destination(path, *, private_root, cancelled=lambda: False):
+    """Inspect a chosen path before asking to replace its existing file.
+
+    Pass this same immutable snapshot to the writer after confirmation. It
+    binds approval to the selected path, parent directory and complete existing
+    file contents across queued work and rendering; it grants no permission
+    itself. Existing destinations up to 64 MiB are streamed in full with
+    constant-memory reads, bounded to their captured size. Larger files require
+    a new destination; cancellation is checked between read blocks.
     """
-    if not isinstance(content, str):
-        raise ValueError('Text export required.')
-    _write_payload(path, content.encode('utf-8'), private_root=private_root, cancelled=cancelled)
-
-
-def write_binary_export(path, content, *, private_root, cancelled=lambda: False):
-    """Atomically publish a rendered document using the text export safeguards.
-
-    The payload must be immutable bytes. As for ``write_export``, the caller
-    selects the destination and confirms replacement of an existing file.
-    Cancellation before replacement preserves the previous destination.
-    """
-    if not isinstance(content, bytes):
-        raise ValueError('Binary document export required.')
-    _write_payload(path, content, private_root=private_root, cancelled=cancelled)
-
-
-def _write_payload(path, payload, *, private_root, cancelled):
     if not callable(cancelled):
         raise ValueError('An export cancellation callback is required.')
 
@@ -114,14 +176,70 @@ def _write_payload(path, payload, *, private_root, cancelled):
             raise TimeoutError('Export cancelled; the destination was not changed.')
 
     check_cancelled()
-    raw_path = os.fspath(path)
-    if (not isinstance(raw_path, str) or not raw_path or raw_path in ('.', '..')
-            or raw_path.endswith(('/', '\\'))):
-        raise ValueError('Choose an export filename, not an empty path or folder.')
-    requested = Path(raw_path).absolute()
-    _filename(requested.name)
-    private = Path(private_root).absolute()
-    target, parent_identity, previous = _destination(requested, private)
+    requested, private = _export_paths(path, private_root)
+    target, parent_identity, state = _destination(requested, private, check_cancelled)
+    return ExportDestination(requested, private, target, parent_identity, state)
+
+
+def write_export(path, content, *, private_root, cancelled=lambda: False,
+                 require_absent=False, approval=None):
+    """Atomically write exact UTF-8 text to an explicitly selected destination.
+
+    A normal existing file may be replaced after caller-side confirmation.
+    Library paths, linked ancestors/targets and hard-linked files are rejected.
+    Failure or cancellation before publication preserves an existing target
+    and removes the temporary file. An optional captured approval also rejects
+    changes since the caller selected and confirmed the destination. An absent
+    destination always uses atomic no-clobber publication. Once atomic
+    replacement completes, the save is complete. CR, LF and CRLF remain unchanged.
+    """
+    if not isinstance(content, str):
+        raise ValueError('Text export required.')
+    _write_payload(path, content.encode('utf-8'), private_root=private_root,
+                   cancelled=cancelled, require_absent=require_absent, approval=approval)
+
+
+def write_binary_export(path, content, *, private_root, cancelled=lambda: False,
+                        require_absent=False, approval=None):
+    """Atomically publish a rendered document using the text export safeguards.
+
+    The payload must be immutable bytes. As for ``write_export``, the caller
+    selects the destination and confirms replacement of an existing file.
+    Cancellation before replacement preserves the previous destination.
+    """
+    if not isinstance(content, bytes):
+        raise ValueError('Binary document export required.')
+    _write_payload(path, content, private_root=private_root,
+                   cancelled=cancelled, require_absent=require_absent, approval=approval)
+
+
+def _write_payload(path, payload, *, private_root, cancelled, require_absent=False, approval=None):
+    if not callable(cancelled):
+        raise ValueError('An export cancellation callback is required.')
+    if type(require_absent) is not bool:
+        raise ValueError('The export replacement policy must be boolean.')
+
+    def check_cancelled():
+        if cancelled():
+            raise TimeoutError('Export cancelled; the destination was not changed.')
+
+    check_cancelled()
+    requested, private = _export_paths(path, private_root)
+    target, parent_identity, previous = _destination(requested, private, check_cancelled)
+    # A caller approving ordinary replacement cannot approve a file that did
+    # not exist at this snapshot. Protect every existing caller from a last-
+    # moment competing create, even without the new explicit policy argument.
+    require_absent = require_absent or previous is None
+    if approval is not None:
+        if type(approval) is not ExportDestination:
+            raise ValueError('A captured export destination approval is required.')
+        if (approval.requested != requested or approval.private_root != private
+                or approval.target != target or approval.parent_identity != parent_identity
+                or approval.state != previous):
+            raise ValueError('The export destination changed. Choose the destination again.')
+        require_absent = require_absent or approval.require_absent
+    if require_absent and previous is not None:
+        raise FileExistsError('The export destination already exists; replacement was not authorized.')
     temporary = None
     try:
         check_cancelled()
@@ -133,12 +251,34 @@ def _write_payload(path, payload, *, private_root, cancelled):
             os.fsync(output.fileno())
 
         check_cancelled()
-        checked_target, checked_parent, current = _destination(requested, private)
+        checked_target, checked_parent, current = _destination(requested, private, check_cancelled)
         if (checked_target != target or checked_parent != parent_identity or
                 current != previous):
             raise ValueError('The export destination changed. Choose the destination again.')
         check_cancelled()
-        os.replace(temporary, target)
+        if require_absent:
+            if os.name == 'nt':
+                # Windows rename refuses an existing destination. Moving the
+                # staged file also leaves no second hard link if the process
+                # exits immediately after the filesystem operation succeeds.
+                # POSIX rename may overwrite, so it must never use this path.
+                os.rename(temporary, target)
+            else:
+                # Both paths share a filesystem; link fails atomically if a
+                # competitor creates the destination after the final check.
+                # Unsupported filesystems fail without weakening this policy.
+                os.link(temporary, target, follow_symlinks=False)
+                published_stage, temporary = temporary, None
+                try:
+                    published_stage.unlink()
+                except OSError:
+                    try:
+                        published_stage.unlink(missing_ok=True)
+                    except OSError as exc:
+                        raise OSError('Export was published, but its temporary '
+                                      'link could not be removed.') from exc
+        else:
+            os.replace(temporary, target)
         temporary = None
     finally:
         if temporary is not None:

@@ -27,6 +27,11 @@ from packaging.utils import canonicalize_name, parse_wheel_filename
 
 TARGET = "Windows x64 / CPython 3.11"
 HERE = Path(__file__).resolve().parent
+BUNDLE_GUIDES = ("ACADEMIC_SEARCH.md", "ADVANCED_SEARCH.md", "ACADEMIC_LIBRARY.md",
+                 "ACADEMIC_WORKFLOWS.md", "CATALOG_TOOLS.md", "READING_DESK.md",
+                 "RESEARCH_NOTEBOOK.md", "EPUB_READING.md", "IMPORT_CENTER.md",
+                 "TRANSCRIPTION.md", "ACADEMIC_CATALOG_INSIGHTS.md",
+                 "ACADEMIC_SEARCH_NVDA.md")
 TAGS = set(cpython_tags((3, 11), abis=["cp311"], platforms=["win_amd64"]))
 TAGS.update(compatible_tags((3, 11), interpreter="cp311", platforms=["win_amd64"]))
 
@@ -42,6 +47,19 @@ def regular(path):
             or getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
         raise ValueError(f"expected a regular file: {path.name}")
     return path
+
+
+def copy_bundle_guides(documentation, destination):
+    """Keep guide bytes intact and adapt their links in the root README only."""
+    readme = regular(documentation / "RUNNING.md").read_bytes()
+    for name in BUNDLE_GUIDES:
+        target = name.encode("ascii")
+        readme = readme.replace(b"](" + target + b")", b"](docs/" + target + b")")
+    (destination / "README.txt").write_bytes(readme)
+    guides = destination / "docs"
+    guides.mkdir(exist_ok=True)
+    for name in BUNDLE_GUIDES:
+        shutil.copyfile(regular(documentation / name), guides / name)
 
 
 def read_lock(path):
@@ -292,8 +310,10 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                     raise ValueError("OCR source archive changed during bundle assembly")
         for name in ("install_windows.py", "Install.cmd", "ResearchLibrary.cmd", "CheckInstallation.cmd"):
             shutil.copyfile(regular(HERE / name), staged / name)
-        shutil.copyfile(HERE.parent / "docs" / "RUNNING.md", staged / "README.txt")
         shutil.copyfile(HERE.parent / "docs" / "START_UK.txt", staged / "START_UK.txt")
+        # Ship the guides referenced by the installed README, including the
+        # exact advanced-query syntax and complete-backup behavior.
+        copy_bundle_guides(HERE.parent / "docs", staged)
         if sbom is not None:
             (staged / "runtime-sbom.cdx.json").write_bytes(sbom_bytes)
         files = {p.relative_to(staged).as_posix(): sha256(p)

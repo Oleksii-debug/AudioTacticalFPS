@@ -533,7 +533,10 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
         if record.get('state') == 'complete' and isinstance(record.get('result'), dict):
             return dict(record['result'], request_id=request_id, isolated=True)
     attempt = uuid4().hex
-    record_progress(root, request_id, state='running', attempt=attempt, publication_candidate=None)
+    # Keep the legacy scalar for backup compatibility; only the immutable
+    # attempt-bound database receipt authorizes completion after a stopped child.
+    record_progress(root, request_id, state='running', attempt=attempt,
+                    publication_candidate=None, publication_watermark=None)
     result = _invoke({'data_dir': str(Path(root).resolve()), 'request_id': request_id,
                       'timeout': timeout}, timeout=timeout, cancelled=cancelled)
     if result.get('state') in ('cancelled', 'timed_out', 'failed'):
@@ -544,7 +547,7 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
                           'The stopped import could not verify its publication. Review or resume this request.')
         else:
             if committed is not None:
-                result = committed
+                result = dict(committed, recovered_publication=True, worker_state=result['state'])
     result = dict(result, request_id=request_id, isolated=True)
     record_progress(root, request_id, state=result.get('state', 'failed'), result=result)
     return result

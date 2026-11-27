@@ -52,11 +52,27 @@ class WindowsBundleTests(unittest.TestCase):
         return builder.build_bundle(self.app, self.wheels, self.lock, self.output)
 
     def test_complete_bundle_verifies_without_network(self):
+        source_readme = (ROOT / 'docs' / 'RUNNING.md').read_bytes()
         result = self.build()
         self.assertEqual(result["wheels"], 2)
         installer.verify(self.output)
         self.assertIn("universal-research-library==1.0", (self.output / "install.lock").read_text())
         self.assertEqual((self.output / "wheelhouse" / self.app.name).read_bytes(), self.app.read_bytes())
+        manifest = json.loads((self.output / 'bundle-manifest.json').read_bytes())
+        readme = (self.output / 'README.txt').read_bytes()
+        for name in ('ACADEMIC_WORKFLOWS.md', 'EPUB_READING.md', 'READING_DESK.md',
+                     'ACADEMIC_CATALOG_INSIGHTS.md', 'ACADEMIC_SEARCH.md'):
+            self.assertIn(('](docs/' + name + ')').encode(), readme)
+            self.assertNotIn(('](' + name + ')').encode(), readme)
+        self.assertEqual(manifest['files']['README.txt'], hashlib.sha256(readme).hexdigest())
+        self.assertEqual({path.name for path in (self.output / 'docs').iterdir()}, set(builder.BUNDLE_GUIDES))
+        for name in builder.BUNDLE_GUIDES:
+            raw = (ROOT / 'docs' / name).read_bytes()
+            self.assertEqual((self.output / 'docs' / name).read_bytes(), raw)
+            self.assertEqual(manifest['files']['docs/' + name], hashlib.sha256(raw).hexdigest())
+        self.assertIn(b'](ACADEMIC_SEARCH_NVDA.md)', (self.output / 'docs/ACADEMIC_SEARCH.md').read_bytes())
+        self.assertTrue((self.output / 'docs/ACADEMIC_SEARCH_NVDA.md').is_file())
+        self.assertEqual((ROOT / 'docs' / 'RUNNING.md').read_bytes(), source_readme)
 
     def sbom(self, version="1.0"):
         path = self.root / "input-sbom.json"

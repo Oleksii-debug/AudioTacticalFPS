@@ -77,7 +77,7 @@ def _partial(app, tmp_path):
 def _rewrite_json(path, update):
     value = json.loads(path.read_bytes())
     update(value)
-    path.write_text(canonical(value) + '\n', encoding='utf-8')
+    path.write_bytes((canonical(value) + '\n').encode('utf-8'))
 
 
 def _refresh_file(metadata, component, name):
@@ -363,7 +363,8 @@ def test_journal_online_backup_includes_committed_wal(app, tmp_path):
         assert journal.execute('SELECT error FROM job').fetchone()[0] == 'committed_wal_evidence'
 
 
-@pytest.mark.skipif(shutil.which('tesseract') is None, reason='Actual local OCR engine required')
+@pytest.mark.skipif(shutil.which('tesseract') is None and not os.environ.get('CARR_OCR_DIR'),
+                    reason='Actual local OCR engine required')
 def test_actual_reviewed_ocr_checkpoint_retains_attestation_and_resumes(app, tmp_path):
     from PIL import Image, ImageDraw, ImageFont
     from reportlab.lib.utils import ImageReader
@@ -393,3 +394,71 @@ def test_actual_reviewed_ocr_checkpoint_retains_attestation_and_resumes(app, tmp
     assert final['state'] == 'complete' and final['id'] == pending['id']
     hit, = restored.search(workspace, 'Railway')
     assert hit.verified
+
+
+@pytest.mark.parametrize('present,watermark', [
+    (False, None), (True, None), (True, 0), (True, 41), (True, 2 ** 63 - 1),
+], ids=['legacy', 'launch-reset', 'guarded-zero', 'stale-boundary', 'max-rowid'])
+def test_publication_watermark_roundtrip_resumes_with_a_fresh_boundary(app, tmp_path, present, watermark):
+    workspace = app.create_workspace('Restored publication boundary')
+    source = _source(tmp_path)
+    planned = snapshot(source.parent, source.name).manifest()
+    request = prepare_request(app.root, workspace, source, _metadata(), Config(),
+                              expected_manifest=planned)
+    if present:
+        record_progress(app.root, request['request_id'], publication_watermark=watermark)
+    before = load_request(app.root, request['request_id'])
+    backup, metadata = _snapshot(app, tmp_path)
+    source.unlink()
+    restored, _ = _restore(backup, metadata, tmp_path)
+    after = load_request(restored.root, request['request_id'])
+    expected = dict(before, data_dir=str(restored.root),
+                    source=str(restored.assets.resolve(planned['sha256'])))
+    assert after == expected
+    assert ('publication_watermark' in after) is present
+
+    # The restored scalar is history, not authority for the next invocation.
+    # Resume performs a real isolated import and replaces it under the writer guard.
+    final = restored.resume_import(workspace, request['request_id'])
+    assert final['state'] == 'complete' and final['verified'] is True
+    current = load_request(restored.root, request['request_id'])
+    assert type(current['publication_watermark']) is int
+    assert current['publication_watermark'] == 0
+    assert restored.resume_import(workspace, request['request_id'])['id'] == final['id']
+    with restored.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+        assert db.execute('SELECT count(*) FROM page').fetchone()[0] == 3
+
+
+@pytest.mark.parametrize('boundary', ['backup', 'restore'])
+@pytest.mark.parametrize('field,value', [
+    ('publication_watermark', False),
+    ('publication_watermark', True),
+    ('publication_watermark', -1),
+    ('publication_watermark', 2 ** 63),
+    ('publication_watermark', 0.0),
+    ('publication_watermark', '0'),
+    ('publication_watermark', []),
+    ('publication_watermark', {}),
+    ('unexpected_publication_field', 0),
+], ids=['false', 'true', 'negative', 'overflow', 'float', 'string', 'list', 'dict', 'unknown'])
+def test_invalid_publication_watermark_or_unknown_field_never_publishes_restore(
+        app, tmp_path, boundary, field, value):
+    workspace = app.create_workspace('Untrusted publication boundary')
+    source = _source(tmp_path)
+    planned = snapshot(source.parent, source.name).manifest()
+    request = prepare_request(app.root, workspace, source, _metadata(), Config(),
+                              expected_manifest=planned)
+    name = 'import-requests/' + request['request_id'] + '.json'
+    if boundary == 'backup':
+        _rewrite_json(app.root / name, lambda record: record.update({field: value}))
+        with pytest.raises(ValueError, match='watermark|schema'):
+            _snapshot(app, tmp_path)
+    else:
+        backup, metadata = _snapshot(app, tmp_path)
+        _rewrite_json(backup / 'pending' / name, lambda record: record.update({field: value}))
+        # Recomputed transport checksums cannot authorize malformed journal data.
+        _refresh_file(metadata, backup / 'pending', name)
+        with pytest.raises(ValueError, match='watermark|schema'):
+            _restore(backup, metadata, tmp_path)
+        assert not (tmp_path / 'restored').exists()

@@ -120,9 +120,12 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
         with source.open('rb') as read:
             if _stamp(os.fstat(read.fileno())) != expected_stamp:
                 raise ValueError('Application state changed during backup; retry after saving.')
-            while block := read.read(min(1024 * 1024, entry['size_bytes'] + 1 - count)):
+            while True:
                 if cancelled():
                     raise InterruptedError('Backup cancelled.')
+                block = read.read(min(1024 * 1024, entry['size_bytes'] + 1 - count))
+                if not block:
+                    break
                 count += len(block)
                 if count > entry['size_bytes']:
                     raise ValueError('Application state grew during backup; retry after saving.')
