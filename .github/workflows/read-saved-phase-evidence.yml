@@ -1,0 +1,130 @@
+name: Read saved CARR phase evidence
+
+on:
+  push:
+    branches:
+      - carr/phase-readback-15227122483
+
+permissions:
+  actions: read
+
+jobs:
+  read-saved-public-diagnostics:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Verify and read the fixed public phase artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_HOST: github.com
+          GH_PROMPT_DISABLED: "1"
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import io
+          import json
+          from pathlib import PurePosixPath
+          import stat
+          import subprocess
+          import zipfile
+
+          REPOSITORY = "Oleksii-debug/AudioTacticalFPS"
+          ARTIFACT_ID = 15227122483
+          SOURCE_RUN = 46055675801
+          SOURCE_HEAD = "14c823bcd1c7c07dc4f768be955a972c445c4469"
+          ZIP_BYTES = 53579
+          ZIP_SHA256 = "37fd12b50f0bfd9e12257852fe9ea85879cbddc17af63ec142b276d3b218fcd2"
+          MAX_MEMBERS = 128
+          MAX_MEMBER_BYTES = 2 * 1024 * 1024
+          MAX_TOTAL_BYTES = 16 * 1024 * 1024
+          CHUNK_CHARACTERS = 4096
+          REQUIRED_FILES = {"native-import-center.txt", "native-audio-metadata.txt"}
+
+          def fixed_get(endpoint, limit):
+              result = subprocess.run(
+                  ["gh", "api", "--method", "GET",
+                   "-H", "X-GitHub-Api-Version: 2022-11-28", endpoint],
+                  stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=45, check=False)
+              if result.returncode != 0:
+                  raise RuntimeError("The fixed owned-repository artifact request failed.")
+              if len(result.stdout) > limit:
+                  raise ValueError("The fixed artifact response exceeds its byte limit.")
+              return result.stdout
+
+          endpoint = f"repos/{REPOSITORY}/actions/artifacts/{ARTIFACT_ID}"
+          metadata = json.loads(fixed_get(endpoint, 64 * 1024))
+          run = metadata.get("workflow_run", {})
+          if (metadata.get("id") != ARTIFACT_ID
+                  or run.get("id") != SOURCE_RUN
+                  or run.get("head_sha") != SOURCE_HEAD
+                  or metadata.get("size_in_bytes") != ZIP_BYTES
+                  or metadata.get("digest") != "sha256:" + ZIP_SHA256
+                  or metadata.get("expired") is not False):
+              raise ValueError("Saved phase artifact identity does not match the fixed review.")
+
+          raw = fixed_get(endpoint + "/zip", ZIP_BYTES)
+          if len(raw) != ZIP_BYTES or hashlib.sha256(raw).hexdigest() != ZIP_SHA256:
+              raise ValueError("Saved phase archive bytes do not match the fixed review.")
+
+          decoded = []
+          with zipfile.ZipFile(io.BytesIO(raw), "r") as archive:
+              entries = archive.infolist()
+              if not entries or len(entries) > MAX_MEMBERS:
+                  raise ValueError("Invalid saved phase member count.")
+              names, total, required = set(), 0, {}
+              for entry in entries:
+                  name = entry.filename
+                  path = PurePosixPath(name)
+                  if (not name or len(name.encode("utf-8")) > 1024
+                          or "\\" in name or ":" in name or "\x00" in name
+                          or path.is_absolute() or any(part in ("", ".", "..") for part in name.rstrip("/").split("/"))
+                          or name.casefold() in names
+                          or entry.flag_bits & 1
+                          or entry.compress_type not in (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED)):
+                      raise ValueError("Invalid saved phase member name or encoding.")
+                  names.add(name.casefold())
+                  kind = stat.S_IFMT(entry.external_attr >> 16)
+                  if entry.is_dir():
+                      if entry.file_size != 0 or kind not in (0, stat.S_IFDIR):
+                          raise ValueError("Invalid saved phase directory entry.")
+                      continue
+                  if kind not in (0, stat.S_IFREG) or path.suffix.lower() not in (".txt", ".log", ".json", ".xml"):
+                      raise ValueError("Saved phase artifact contains an unsupported member.")
+                  if not 0 <= entry.file_size <= MAX_MEMBER_BYTES:
+                      raise ValueError("Saved phase member exceeds its byte limit.")
+                  total += entry.file_size
+                  if total > MAX_TOTAL_BYTES:
+                      raise ValueError("Saved phase text exceeds its aggregate byte limit.")
+                  if path.name in REQUIRED_FILES:
+                      required[path.name] = required.get(path.name, 0) + 1
+                  with archive.open(entry, "r") as stream:
+                      content = stream.read(entry.file_size + 1)
+                  if len(content) != entry.file_size:
+                      raise ValueError("Saved phase member length changed during its bounded read.")
+                  text = content.decode("utf-8")
+                  decoded.append((name, content, text))
+              if required != {name: 1 for name in REQUIRED_FILES}:
+                  raise ValueError("The two required native phase diagnostics are absent or ambiguous.")
+
+          print(json.dumps({
+              "artifact_verified": True, "artifact_id": ARTIFACT_ID,
+              "source_run": SOURCE_RUN, "source_head": SOURCE_HEAD,
+              "archive_bytes": ZIP_BYTES, "archive_sha256": ZIP_SHA256,
+              "text_members": len(decoded), "text_bytes": total,
+              "scope": "readback of saved public diagnostics; no application execution"
+          }, ensure_ascii=True), flush=True)
+          for name, content, text in sorted(decoded, key=lambda item: item[0]):
+              count = (len(text) + CHUNK_CHARACTERS - 1) // CHUNK_CHARACTERS
+              print(json.dumps({
+                  "phase_file": name, "byte_sha256": hashlib.sha256(content).hexdigest(),
+                  "byte_length": len(content), "decoded_length": len(text),
+                  "encoding": "utf-8", "chunk_count": count,
+                  "chunk_characters": CHUNK_CHARACTERS
+              }, ensure_ascii=True), flush=True)
+              for index in range(count):
+                  print(json.dumps({
+                      "phase_file": name, "chunk_index": index,
+                      "text": text[index * CHUNK_CHARACTERS:(index + 1) * CHUNK_CHARACTERS]
+                  }, ensure_ascii=True), flush=True)
+          PY
