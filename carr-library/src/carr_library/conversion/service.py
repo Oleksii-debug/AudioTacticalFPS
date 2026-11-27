@@ -1,5 +1,5 @@
 """Create source-preserving text derivatives with atomic provenance receipts."""
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from dataclasses import asdict, replace
 from hashlib import sha256
 import json
@@ -175,7 +175,7 @@ def _completion_warning():
 
 
 class ConversionService:
-    def __init__(self, root, *, input_roots=(), budget=None, pandoc=None, office=None):
+    def __init__(self, root, *, input_roots=(), budget=None, pandoc=None, office=None, calibre=None):
         self.root = local_path(root)
         self.root.mkdir(mode=0o700, parents=True, exist_ok=True)
         self.input_roots = tuple(local_path(path, exists=True) for path in input_roots)
@@ -185,6 +185,9 @@ class ConversionService:
         from .office import OfficeSelection
         self.office = (office if isinstance(office, OfficeSelection) else
                        OfficeSelection.capture(office) if office is not None else None)
+        from .calibre import CalibreSelection
+        self.calibre = (calibre if isinstance(calibre, CalibreSelection) else
+                        CalibreSelection.capture(calibre) if calibre is not None else None)
         self.pandoc = local_path(pandoc, exists=True) if pandoc else None
         if self.pandoc and not self.pandoc.is_file():
             raise ValueError('Select an installed Pandoc executable.')
@@ -206,11 +209,16 @@ class ConversionService:
                            'adapter': 'installed Tesseract with explicit languages',
                            'limitation': 'OCR must be explicitly selected; unverified text only, no automatic quotation approval.'})
         from .office import OFFICE_SUFFIXES
+        from .calibre import CALIBRE_SUFFIXES
         for suffix in LEGACY:
             if suffix in OFFICE_SUFFIXES:
                 values.append({'extension': suffix, 'available': self.office is not None,
                     'adapter': 'explicitly selected local LibreOffice',
                     'limitation': 'Fixed legacy import filter; reading text only. Requires matching installed filters; layout and source fidelity need review. Selected native tool is not an OS sandbox.'})
+            elif suffix in CALIBRE_SUFFIXES:
+                values.append({'extension': suffix, 'available': self.calibre is not None,
+                    'adapter': 'explicitly selected local Calibre',
+                    'limitation': 'Unprotected supported book family; reading text only, no layout, pagination or DRM removal. DjVu requires an existing text layer; no new OCR. Selected native tool is not an OS sandbox.'})
             else:
                 values.append({'extension': suffix, 'available': False, 'adapter': 'separate reviewed converter needed',
                     'limitation': 'Legacy format is not enabled without a tested offline/active-content isolation adapter; no DRM bypass.'})
@@ -288,6 +296,40 @@ class ConversionService:
             raise ConversionError('The selected office result is not bound to the reviewed local converter.')
         return details
 
+    def _calibre(self, source, output, report, stage, cancelled):
+        from .calibre import CalibreSelection, CALIBRE_SUFFIXES, PRIVATE_BYTES
+        from .office import MAX_STAGE_ENTRIES, file_identity, regular_file, verified_reader
+        if not isinstance(self.calibre, CalibreSelection) or source.suffix.casefold() not in CALIBRE_SUFFIXES:
+            raise ConversionUnavailable('Select a compatible installed Calibre explicitly for this book.')
+        selection = self.calibre.snapshot(cancelled=cancelled)
+        request = stage / 'request.json'
+        request.write_text(json.dumps({'source': str(source), 'output': str(output),
+            'report': str(report), 'budget': asdict(self.budget), 'operation': 'calibre',
+            'calibre': selection}, ensure_ascii=False, allow_nan=False), encoding='utf-8')
+        process_budget = replace(self._process_budget(),
+            max_output_bytes=2 * self.budget.max_source_bytes + self.budget.max_text_bytes + PRIVATE_BYTES,
+            max_staging_files=MAX_STAGE_ENTRIES)
+        with ExitStack() as held:
+            held.enter_context(self.calibre.lease(selection, cancelled=cancelled))
+            held.enter_context(verified_reader(source, expected_identity=file_identity(regular_file(source))))
+            try:
+                run_process([str(Path(sys.executable).absolute()), '-I', '-B', '-m',
+                    'carr_library.conversion.worker', str(request)], budget=process_budget,
+                    cancelled=cancelled, watch=(stage,), env=self._env(stage), cwd=stage, owned_tree=True)
+            except AudioCleanupPending as error:
+                # Keep these exact selected readers with the same native owner.
+                # The existing outer retained directory follows that owner too.
+                retained = held.pop_all()
+                error.cleanup_owner.add_quiescent_callback(retained.close)
+                raise
+        details = json.loads(_read_bytes(report, 16 * 1024 * 1024, cancelled).decode('utf-8'))
+        expected = sha256(json.dumps(selection, sort_keys=True, ensure_ascii=False,
+                         separators=(',', ':'), allow_nan=False).encode('utf-8')).hexdigest()
+        if (details.get('engine') != 'selected-calibre-' + source.suffix.casefold()[1:]
+                or details.get('metadata', {}).get('selected_core_sha256') != expected):
+            raise ConversionError('The selected book result is not bound to the reviewed local converter.')
+        return details
+
     def _image(self, source, output, stage, languages, cancelled):
         if not languages or not isinstance(languages, (tuple, list)) or len(languages) > 16:
             raise ConversionUnavailable('Choose one or more installed OCR languages before converting an image.')
@@ -324,23 +366,29 @@ class ConversionService:
         target, report_path = self._output(output)
         if source == target:
             raise ValueError('The source must remain unchanged; choose a new output file.')
-        if adapter not in ('auto', 'builtin', 'pandoc', 'office'):
+        if adapter not in ('auto', 'builtin', 'pandoc', 'office', 'calibre'):
             raise ValueError('Choose a supported conversion adapter.')
         suffix = source.suffix.casefold()
         from .office import OFFICE_SUFFIXES
+        from .calibre import CALIBRE_SUFFIXES
         office_selected = suffix in OFFICE_SUFFIXES and self.office is not None and adapter in ('auto', 'office')
-        if (suffix in LEGACY and not office_selected) or suffix not in (*BUILTIN, '.rtf', *IMAGES, *OFFICE_SUFFIXES):
+        calibre_selected = suffix in CALIBRE_SUFFIXES and self.calibre is not None and adapter in ('auto', 'calibre')
+        if (suffix in LEGACY and not (office_selected or calibre_selected)) or suffix not in (*BUILTIN, '.rtf', *IMAGES, *OFFICE_SUFFIXES, *CALIBRE_SUFFIXES):
             raise ConversionUnavailable('This legacy/unknown format needs an explicitly selected compatible converter. See the supported-format matrix.')
         if adapter == 'office' and not office_selected:
             raise ConversionUnavailable('The selected office adapter supports only its declared legacy document families.')
         if office_selected:
             self.office._unchanged()
+        if adapter == 'calibre' and not calibre_selected:
+            raise ConversionUnavailable('The selected Calibre adapter supports only its declared book families.')
+        if calibre_selected:
+            self.calibre._unchanged()
         if cancelled():
             raise InterruptedError('Document conversion cancelled before reading source bytes.')
         started = monotonic()
         before = _fingerprint(source)
         original_digest = sha256()
-        office_reserve = 2 * self.budget.max_source_bytes + 64 * 1024 * 1024 if office_selected else 0
+        office_reserve = 2 * self.budget.max_source_bytes + 64 * 1024 * 1024 if (office_selected or calibre_selected) else 0
         if shutil.disk_usage(target.parent).free < before[2] + self.budget.max_text_bytes + 16 * 1024 * 1024 + office_reserve:
             raise ConversionError('Not enough free disk for the source snapshot and bounded text output.')
         completed = None
@@ -370,6 +418,8 @@ class ConversionService:
                 try:
                     if office_selected:
                         details = self._office(snapshot, converted, details_path, stage, cancelled)
+                    elif calibre_selected:
+                        details = self._calibre(snapshot, converted, details_path, stage, cancelled)
                     elif suffix in IMAGES:
                         details = self._image(snapshot, converted, stage, ocr_languages, cancelled)
                     elif adapter == 'pandoc' or (adapter == 'auto' and suffix == '.rtf'):
