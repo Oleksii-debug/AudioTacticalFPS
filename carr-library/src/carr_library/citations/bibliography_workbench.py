@@ -147,7 +147,8 @@ class BibliographyWorkbench:
             return preview.citations
         raise ValueError('Choose bibliography or citation examples to copy.')
 
-    def export(self, preview, destination, *, format='text', cancelled=lambda: False, require_absent=False):
+    def export(self, preview, destination, *, format='text', cancelled=lambda: False,
+               require_absent=False, approval=None):
         snapshot = self.check(preview)
         if cancelled():
             raise TimeoutError('Bibliography export cancelled; no output was changed.')
@@ -176,7 +177,7 @@ class BibliographyWorkbench:
             return False
 
         writer(destination, content, private_root=self.controller.library.root,
-               cancelled=cancelled_or_changed, require_absent=require_absent)
+               cancelled=cancelled_or_changed, require_absent=require_absent, approval=approval)
         return content
 
 

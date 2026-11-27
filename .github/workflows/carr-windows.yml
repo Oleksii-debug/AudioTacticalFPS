@@ -7,7 +7,7 @@ on:
       - carr-library/**
       - .github/workflows/carr-windows.yml
   push:
-    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/notebook-release-ascii-e021-20261126, carr/v3-integrated-private-ce034-20261126, carr/backup-compose-primary-20261126]
+    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/notebook-release-ascii-e021-20261126, carr/v3-integrated-private-ce034-20261126, carr/backup-compose-primary-20261126, carr/resonance-final-hardening-26c2-20261127]
     paths:
       - carr-library/**
       - .github/workflows/carr-windows.yml
@@ -219,6 +219,18 @@ jobs:
           & $env:CARR_PYTHON scripts/ci_check.py tests/extract/test_document_formats_text.py tests/extract/test_ocr_languages.py tests/extract/test_managed_ocr.py tests/e2e/test_managed_ocr_import.py tests/ui/test_ocr_selection.py 2>&1 | Tee-Object 'ci-results/platform-regressions.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Check observed native runtime regressions before long suites
+        timeout-minutes: 6
+        run: |
+          & $env:CARR_PYTHON scripts/ci_check.py tests/audio/test_music.py tests/audio/test_production.py tests/extract/test_ocr_runtime.py 2>&1 | Tee-Object 'ci-results/runtime-compatibility-regressions.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Check final export and ownership regressions before long suites
+        timeout-minutes: 6
+        run: |
+          & $env:CARR_PYTHON scripts/ci_check.py tests/e2e/test_provider_ledger_lifetime.py tests/ui/test_keyboard_manager.py tests/reader/test_export_no_clobber.py tests/ui/test_citation_styles_jobs.py 2>&1 | Tee-Object 'ci-results/finalization-regressions.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Run required integrated source workflows
         timeout-minutes: 35
         run: |
@@ -400,6 +412,7 @@ jobs:
             'tests/ui/test_audio_studio.py',
             'tests/ui/test_api_connections.py',
             'tests/e2e/test_provider_gateway.py',
+            'tests/e2e/test_provider_ledger_lifetime.py',
             'tests/e2e/test_provider_transport_boundaries.py',
             'tests/e2e/test_audio_cli.py',
             'tests/packaging/test_audio_acquisition.py',
@@ -420,7 +433,7 @@ jobs:
             'tests/ui/test_audio_menu_registry.py',
             'tests/audio/test_chunk_cache_budget.py'
           )
-          & $env:CARR_PYTHON scripts/ci_check.py @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
+          & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Prepare the pinned local model through the existing upstream verifier

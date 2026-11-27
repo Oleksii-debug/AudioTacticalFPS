@@ -42,7 +42,7 @@ def test_real_music_and_recovery_reopen_after_original_library_is_disconnected(t
         _input_wave(assets / name, 2000 + index * 500)
 
     # No spoken Line events or fake speech engine: the actual procedural
-    # composer and FFmpeg create the checkpoint/cache/render link groups.
+    # composer and FFmpeg create real checkpoints and independent exported files.
     before = studio.render()
     before_hash = sha256(Path(before['output']).read_bytes()).hexdigest()
     studio.edit_script(_script('recovery.WAV'))
@@ -59,10 +59,14 @@ def test_real_music_and_recovery_reopen_after_original_library_is_disconnected(t
         if path.is_file() and path.stat().st_nlink > 1:
             info = path.stat()
             groups.setdefault((info.st_dev, info.st_ino), []).append(path.relative_to(studio.output_dir).as_posix())
-    assert any(any(name.startswith('music-jobs/') for name in group)
-               and any(name.startswith('cache/') for name in group) for group in groups.values())
+    assert all(path.stat().st_nlink == 1
+               for folder in ('cache', 'renders')
+               for path in (studio.output_dir / folder).rglob('*') if path.is_file())
+    # The existing composer still keeps typed private score/provenance aliases.
+    # Preserve that legacy internal-link acceptance in the common backup.
     assert any(any(name.endswith('score.partial.mid') for name in group)
-               and any(name.startswith('renders/') for name in group) for group in groups.values())
+               and any(name.endswith('/cue.mid') for name in group) for group in groups.values())
+    assert all(all(name.startswith('music-jobs/') for name in group) for group in groups.values())
 
     snapshot = tmp_path / 'backup'
     digest = create_backup(app, snapshot, include_generated=include_generated)

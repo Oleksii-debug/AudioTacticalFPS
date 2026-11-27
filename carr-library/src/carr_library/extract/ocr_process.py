@@ -147,23 +147,42 @@ def _execute(command, cwd, remaining):
 
 
 def normalize_ocr_query_output(data, directory):
-    """Map only the real engine's validated relative header to its source."""
-    if directory is None:
+    """Keep the bound directory and canonical script IDs in native listings.
+
+    Tesseract 5.5.4 uses filesystem::path::string() for recursive model names.
+    On Windows that emits script\\Name; only that exact native namespace is
+    converted to the application's script/Name ID, never arbitrary paths.
+    """
+    if directory is None and sys.platform != 'win32':
         return data
-    cwd = directory
     report = data.decode('utf-8')
     match = re.search(r'^List of available languages in "([^"\r\n]+)"', report, re.MULTILINE)
     if match is None:
         raise OcrRuntimeError('The OCR engine did not report its model directory.')
-    reported = Path(match[1])
-    resolved = reported if reported.is_absolute() else cwd / reported
-    try:
-        same = resolved.samefile(directory)
-    except OSError:
-        same = False
-    if not same:
-        raise OcrRuntimeError('The OCR engine reported a different model directory.')
-    report = report[:match.start(1)] + str(directory) + report[match.end(1):]
+    if directory is not None:
+        reported = Path(match[1])
+        resolved = reported if reported.is_absolute() else directory / reported
+        try:
+            same = resolved.samefile(directory)
+        except OSError:
+            same = False
+        if not same:
+            raise OcrRuntimeError('The OCR engine reported a different model directory.')
+        report = report[:match.start(1)] + str(directory) + report[match.end(1):]
+    if sys.platform == 'win32':
+        lines = report.splitlines(keepends=True)
+        for index, line in enumerate(lines):
+            name = line.rstrip('\r\n')
+            if name.startswith('script\\'):
+                canonical = 'script/' + name[len('script\\'):]
+                try:
+                    valid = model_ids(canonical) == (canonical,)
+                except ValueError:
+                    valid = False
+                if not valid:
+                    raise OcrRuntimeError('The OCR engine returned an invalid script identifier.')
+                lines[index] = canonical + line[len(name):]
+        report = ''.join(lines)
     return report.encode('utf-8')
 
 
@@ -203,13 +222,19 @@ def run_ocr(runtime, argv, *, remaining):
     """
     command = runtime.command(argv)
     if sys.platform != 'win32' or all(arg.isascii() for arg in command[1:]):
-        return _execute(command, runtime.root, remaining)
+        result = _execute(command, runtime.root, remaining)
+        if sys.platform == 'win32' and '--list-langs' in command:
+            return subprocess.CompletedProcess(result.args, result.returncode,
+                normalize_ocr_query_output(result.stdout, None), result.stderr)
+        return result
     model_option = _option(command, '--tessdata-dir')
     model_directory = (_directory(Path(runtime.root or Path.cwd()) / Path(model_option[2]))
                        if model_option else None)
     if _INFORMATIONAL.intersection(command):
         bound, cwd, report_directory = prepare_ocr_query(runtime, argv)
         result = _execute(bound, cwd, remaining)
+        if '--list-langs' not in command:
+            return result
         return subprocess.CompletedProcess(result.args, result.returncode,
             normalize_ocr_query_output(result.stdout, report_directory), result.stderr)
 

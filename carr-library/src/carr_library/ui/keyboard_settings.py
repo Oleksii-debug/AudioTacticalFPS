@@ -86,6 +86,19 @@ class KeyboardManager:
         if spec.context != 'main':
             raise ValueError('A main-window menu command must use the main context.')
         top_index = self._top_index(item)
+        previous = self.bindings.get(spec.command_id)
+        if previous is not None:
+            try:
+                same_item = previous.item.GetId() == item.GetId()
+                if not same_item:
+                    self._top_index(previous.item)
+            except (ValueError, RuntimeError):
+                # A view rebuild may remove or destroy the former native item.
+                # Its stable command can then bind to the replacement item.
+                pass
+            else:
+                if not same_item:
+                    raise ValueError('The command is already bound to a live menu item.')
         known = {command.command_id: command for command in self.registry.commands()}
         proposed = CommandRegistry(self.registry.commands())
         if spec.command_id not in known:
@@ -148,8 +161,10 @@ class KeyboardManager:
         for identity, binding in self.bindings.items():
             if binding.item.GetId() in present and identity not in current:
                 current[identity] = _MenuBinding(binding.item, binding.caption, present[binding.item.GetId()])
-        self.bindings = current
         managed = {binding.item.GetId() for binding in current.values()}
+        if len(managed) != len(current):
+            raise ValueError('A native menu item cannot have multiple command identities.')
+        self.bindings = current
         self._unmanaged = {}
         for index in range(bar.GetMenuCount()):
             for item in _menu_items(bar.GetMenu(index)):

@@ -154,6 +154,50 @@ class ProductionRenderTests(unittest.TestCase):
         self.assertEqual(wav_info(second['output']).frames, 4000)
         self.assertEqual(len(self.engine.calls), 2)
 
+    def test_editing_export_cannot_damage_sealed_scene(self):
+        from carr_library.audio import jobs
+        completed = self.run_plan()
+        hashes = {path: jobs.sha256_file(path) for path in (self.root / 'cache').glob('*.wav')}
+        chapter = Path(completed['output']).parent / 'chapter-000001.wav'
+        chapter.write_bytes(b'user changed exported chapter')
+        self.assertTrue(all(jobs.sha256_file(path) == checksum for path, checksum in hashes.items()))
+        repaired = self.run_plan()
+        self.assertEqual(wav_info(Path(repaired['output']).parent / chapter.name).frames,
+                         completed['chapters'][0]['end_frame'])
+        self.assertEqual(len(self.engine.calls), 2)
+
+    def test_new_pipeline_does_not_reuse_legacy_aliased_complete_output(self):
+        from carr_library.audio import jobs, production
+        with patch.object(production, 'PIPELINE_VERSION', 1):
+            legacy = self.run_plan()
+        legacy_chapter = Path(legacy['output']).parent / 'chapter-000001.wav'
+        checksum = jobs.sha256_file(legacy_chapter)
+        old_cache = set((self.root / 'cache').glob('*.wav'))
+        sealed = next(path for path in old_cache if jobs.sha256_file(path) == checksum)
+        legacy_chapter.unlink()
+        os.link(sealed, legacy_chapter)
+        self.assertTrue(sealed.samefile(legacy_chapter))
+
+        current = self.run_plan()
+        self.assertNotEqual(current['run_key'], legacy['run_key'])
+        new_cache = set((self.root / 'cache').glob('*.wav')) - old_cache
+        self.assertTrue(new_cache)
+        checksums = {path: jobs.sha256_file(path) for path in new_cache}
+        legacy_chapter.write_bytes(b'Edited legacy exported chapter')
+        self.assertTrue(all(jobs.sha256_file(path) == value for path, value in checksums.items()))
+        self.assertEqual(self.run_plan()['output'], current['output'])
+        self.assertEqual(len(self.engine.calls), 4)
+
+    def test_retained_project_payload_exhausts_budget_before_speech_starts(self):
+        previous = self.root / 'music-jobs' / 'retained'
+        previous.mkdir(parents=True)
+        (previous / 'old.wav').write_bytes(b'x' * (1024 ** 2))
+        plan = replace(self.plan, disk_budget_bytes=1024 ** 2)
+        with self.assertRaisesRegex(RuntimeError, 'disk budget'):
+            self.run_plan(plan)
+        self.assertEqual(self.engine.calls, [])
+        self.assertFalse(list((self.root / 'cache').glob('*.wav')))
+
     def test_symlink_project_rejected(self):
         with tempfile.TemporaryDirectory() as other:
             link = self.root / 'alias'

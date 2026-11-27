@@ -291,6 +291,10 @@ def test_real_script_path_loading_fingerprint_and_review_boundary(native_bundle,
     write_manifest(native_bundle, target=runtime._native_target(), executable=executable)
     config = Config(languages=selection)
     assert 'script/EnglishFixture' in runtime.check_runtime()['languages']
+    from carr_library.extract.ocr_languages import discover_languages
+    from carr_library.ui.ocr_selection import discover_installed_models
+    assert 'script/EnglishFixture' in discover_languages(timeout=30).codes
+    assert 'script/EnglishFixture' in discover_installed_models(timeout=30)
     before = runtime_identity(config)
     model_hash = sha256(script.read_bytes()).hexdigest()
     assert before['ocr']['model_sha256'] == {name: model_hash for name in selection.split('+')}

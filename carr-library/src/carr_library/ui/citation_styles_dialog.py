@@ -2,6 +2,8 @@
 from concurrent.futures import ThreadPoolExecutor
 import threading
 
+from ..research.export_file import capture_export_destination
+
 from ..citations.bibliography_workbench import (
     BibliographyWorkbench, EXPORT_FORMATS, LOCALES, METADATA_NOTICE, NAME_MODES,
 )
@@ -190,18 +192,34 @@ def create_citation_styles_dialog(parent, controller, *, selected_identity=None,
                 chooser = wx.FileDialog(self, 'Save formatted bibliography',
                     defaultFile='bibliography.' + extension,
                     wildcard=f'{label} (*.{extension})|*.{extension}',
-                    style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+                    style=wx.FD_SAVE)
                 try:
                     if chooser.ShowModal() != wx.ID_OK:
                         return
                     destination = chooser.GetPath()
                 finally:
                     chooser.Destroy()
+                # Bind the exact file before showing our overwrite question.
+                # A picker prompt cannot carry its file identity into the
+                # asynchronous render, and a new path needs no-clobber.
+                approval = capture_export_destination(destination,
+                    private_root=controller.library.root)
+                if not approval.require_absent:
+                    question = wx.MessageDialog(self,
+                        f'Replace the existing bibliography file?\n{destination}',
+                        'Replace bibliography file',
+                        style=wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION)
+                    try:
+                        if question.ShowModal() != wx.ID_YES:
+                            return
+                    finally:
+                        question.Destroy()
                 self.cancelled = threading.Event()
                 self.controls(pending=True)
                 self.report('Preparing the bibliography file locally. Close cancels an unfinished export.', focus=False)
                 future = self.executor.submit(self.workbench.export, self.preview, destination,
-                    format=format, cancelled=self.cancelled.is_set)
+                    format=format, cancelled=self.cancelled.is_set,
+                    require_absent=approval.require_absent, approval=approval)
                 self.pending = future
                 future.add_done_callback(lambda completed: wx.CallAfter(self.on_export_ready, completed, destination))
             except Exception as exc:

@@ -93,6 +93,46 @@ def test_offline():
             'test_sample.py')
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
+    def test_parallel_workers_are_real_independent_processes(self):
+        source = '''from pathlib import Path
+import os,time
+def test_parallel_barrier():
+    marker=Path.cwd()/('ready-'+str(os.getpid()))
+    marker.write_text('ready')
+    deadline=time.monotonic()+15
+    while len(tuple(Path.cwd().glob('ready-*'))) < 2:
+        assert time.monotonic()<deadline, 'The second isolated suite never started'
+        time.sleep(.02)
+'''
+        result = self.run_fixture(source, '--jobs', '2', 'test_sample.py', 'test_sample.py')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn('Required suites complete: 2; passed=2; failed=0', result.stdout)
+
+    def test_parallel_missing_suite_cannot_hide_passing_suite(self):
+        result = self.run_fixture('def test_ok(): assert True\n',
+                                  '--jobs', '2', 'missing.py', 'test_sample.py')
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn('Required suites complete: 2; passed=1; failed=1', result.stdout)
+
+    def test_parallel_skips_remain_failed_required_suites(self):
+        result = self.run_fixture('import pytest\n@pytest.mark.skip\ndef test_skip(): pass\n',
+                                  '--jobs', '2', 'test_sample.py', 'test_sample.py')
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn('Required suites complete: 2; passed=0; failed=2', result.stdout)
+
+    def test_parallel_failures_remain_failed_required_suites(self):
+        result = self.run_fixture('def test_bad(): assert False\n',
+                                  '--jobs', '2', 'test_sample.py', 'test_sample.py')
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn('Required suites complete: 2; passed=0; failed=2', result.stdout)
+
+    def test_worker_limit_is_explicit_and_bounded(self):
+        for workers in ('0', '5', 'not-a-number'):
+            with self.subTest(workers=workers):
+                result = self.run_fixture('def test_ok(): assert True\n',
+                                          '--jobs', workers, 'test_sample.py')
+                self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+
 
 if __name__ == '__main__':
     unittest.main()

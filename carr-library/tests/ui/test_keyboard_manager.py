@@ -144,6 +144,63 @@ def snapshot(manager):
             tuple(manager.bindings))
 
 
+@pytest.mark.parametrize('builtin', [True, False])
+def test_one_native_menu_item_cannot_have_two_command_ids(manager, builtin):
+    if builtin:
+        item = manager.frame.items[1]
+    else:
+        item = MenuItem(91, 'Extension action')
+        manager.frame.items.append(item)
+        manager.register_menu_command(CommandSpec('extension.one', 'Extension action',
+                                                  default_shortcut='Ctrl+J'), item)
+    manager.apply_overrides({'library.new': 'Ctrl+Shift+N'})
+    before = snapshot(manager)
+    with pytest.raises(ValueError, match='multiple command identities'):
+        manager.register_menu_command(CommandSpec('extension.alias', 'Other action',
+                                                  default_shortcut='Ctrl+K'), item)
+    assert snapshot(manager) == before
+    assert 'extension.alias' not in {row.command_id for row in manager.registry.commands()}
+
+
+def test_stable_command_cannot_retarget_another_live_item(manager):
+    first, second = MenuItem(91, 'First action'), MenuItem(92, 'Second action')
+    manager.frame.items.extend((first, second))
+    spec = CommandSpec('extension.one', 'First action', default_shortcut='Ctrl+J')
+    manager.register_menu_command(spec, first)
+    manager.apply_overrides({'extension.one': ''})
+    before = snapshot(manager)
+    with pytest.raises(ValueError, match='already bound'):
+        manager.register_menu_command(spec, second)
+    assert snapshot(manager) == before
+    assert manager.bindings[spec.command_id].item is first
+
+
+def test_same_identity_same_item_registration_is_idempotent(manager):
+    item = MenuItem(91, 'Extension action')
+    manager.frame.items.append(item)
+    spec = CommandSpec('extension.one', 'Extension action', default_shortcut='Ctrl+J')
+    manager.register_menu_command(spec, item)
+    before = snapshot(manager)
+    manager.register_menu_command(spec, item)
+    assert snapshot(manager) == before
+
+
+@pytest.mark.parametrize('destroyed', [False, True])
+def test_removed_native_item_can_be_replaced(manager, monkeypatch, destroyed):
+    first, second = MenuItem(91, 'First action'), MenuItem(92, 'First action')
+    manager.frame.items.extend((first, second))
+    spec = CommandSpec('extension.one', 'First action', default_shortcut='Ctrl+J')
+    manager.register_menu_command(spec, first)
+    manager.frame.items.remove(first)
+    if destroyed:
+        def deleted_native_item():
+            raise RuntimeError('Synthetic deleted wx.MenuItem wrapper')
+        monkeypatch.setattr(first, 'GetId', deleted_native_item)
+    manager.register_menu_command(spec, second)
+    assert manager.bindings[spec.command_id].item is second
+    assert second.GetItemLabel() == 'First action\tCtrl+J'
+
+
 def test_apply_and_reopen_preserve_semantic_bindings_and_menu_display(manager):
     result = manager.apply_overrides({'library.import': 'control+shift+k', 'reader.next': ''})
     assert result == {'library.import': 'Ctrl+Shift+K', 'reader.next': ''}
