@@ -9,12 +9,14 @@ import json
 import runpy
 import subprocess
 import sys
+import wave
 
 import pytest
 
 from carr_library.application import LibraryApp
 from carr_library.durable_state import atomic_json, read_json
 from carr_library.library_backup import restore_backup
+from carr_library.transcription_host import read_worker_status
 
 
 PROTOCOL = 'whisper-v5-manifest-v1'
@@ -202,7 +204,12 @@ def v5(tmp_path):
     for name in ('model.bin', 'config.json', 'tokenizer.json'):
         (models / 'small' / name).write_bytes(('Synthetic, non-executable model placeholder: '+name).encode())
     source = tmp_path / 'Запис.wav'
-    source.write_bytes(b'Synthetic recording placeholder; no acoustic inference.')
+    with wave.open(str(source), 'wb') as audio:
+        audio.setnchannels(1)
+        audio.setsampwidth(2)
+        audio.setframerate(16000)
+        audio.writeframes(b'\0\0' * 160)
+    # Valid synthetic silence for the current typed backup WAV boundary.
     service.configure(Path(sys.executable).resolve(), worker, models, protocol=PROTOCOL)
     return app, workspace, service, source, runtime, models
 
@@ -373,7 +380,7 @@ def test_v5_stop_preserves_cache_and_resume_inputs_then_completes(v5, tmp_path):
     path = service._path(identity)
     def cancelled():
         status = path / 'job_status.json'
-        return status.exists() and read_json(status).get('done') == 1
+        return status.exists() and read_worker_status(status).get('done') == 1
     stopped = service.run(identity, timeout=10, cancelled=cancelled)
     assert stopped['status'] == 'stopped' and stopped['artifacts'] == []
     assert len(list((path / 'input').iterdir())) == 2
@@ -386,6 +393,10 @@ def test_v5_completed_results_restore_and_remain_readable_without_engine(v5, tmp
     app, workspace, service, _, runtime, _ = v5
     identity, result = run(v5)
     assert result['status'] == 'completed', result['last_error']
+    # These two files control only this synthetic worker. They are not product
+    # state and must not widen the current strict typed-backup grammar.
+    for name in ('fixture-mode.json', 'fixture-runs.json'):
+        (service._path(identity) / name).unlink(missing_ok=True)
     checksum = app.backup(tmp_path / 'backup')
     for name in ('worker.py','local_models.py','transcript_features.py'):
         (runtime / name).unlink()

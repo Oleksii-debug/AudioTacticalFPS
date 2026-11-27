@@ -72,7 +72,7 @@ Required headless source and installed suites include:
 - tests/ui/test_shared_progress.py: retain the existing complete suite.
 - tests/ui/test_desktop_handlers.py and tests/ui/test_keyboard_manager.py:
   retain existing host and keyboard assertions.
-- tests/transcription/test_pr99_host.py: all 26 existing cases, adapted to the
+- tests/transcription/test_pr99_host.py: all 27 current cases, adapted to the
   single actual host reporter where previously the dialog created one.
 - tests/transcription/test_supplied_worker_bridge.py and
   tests/storage/test_transcription_backup.py: retain the existing complete

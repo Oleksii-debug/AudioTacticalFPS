@@ -1,6 +1,7 @@
 from pathlib import Path
 import importlib.util
 import os
+import runpy
 import shutil
 import subprocess
 import sys
@@ -147,6 +148,69 @@ def test_parallel_barrier():
                 result = self.run_fixture('def test_ok(): assert True\n',
                                           '--jobs', workers, 'test_sample.py')
                 self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+
+
+class RelocatedCIChildTests(unittest.TestCase):
+    """The installed replay reuses the exact child policy from another cwd."""
+    def run_relocated_child(self, *, missing_helper=False):
+        with tempfile.TemporaryDirectory(prefix='carr-isolated-child-') as temporary:
+            root = Path(temporary)
+            trusted = root / 'Перевірений checkout'
+            scripts = trusted / 'scripts'
+            scripts.mkdir(parents=True)
+            script = scripts / SCRIPT.name
+            helper = scripts / WATCHDOG_SCRIPT.name
+            shutil.copyfile(SCRIPT, script)
+            shutil.copyfile(WATCHDOG_SCRIPT, helper)
+            child = runpy.run_path(str(script))['PYTEST_CHILD']
+            replay = root / 'installed-replay'
+            (replay / 'scripts').mkdir(parents=True)
+            (replay / 'scripts' / WATCHDOG_SCRIPT.name).write_text(
+                "raise AssertionError('Untrusted cwd watchdog must not execute')\n",
+                encoding='utf-8')
+            (replay / 'pytest.ini').write_text('[pytest]\n', encoding='utf-8')
+            sample = replay / 'test_installed_replay.py'
+            sample.write_text(f'''import faulthandler
+import socket
+import sys
+import pytest
+
+def test_installed_replay(request):
+    assert {str(trusted)!r} not in sys.path
+    assert {str(scripts)!r} not in sys.path
+    assert faulthandler.is_enabled()
+    assert float(request.config.getini('faulthandler_timeout')) == 0
+    with pytest.raises(OSError, match='disabled during offline verification'):
+        socket.getaddrinfo('example.invalid', 443)
+''', encoding='utf-8')
+            if missing_helper:
+                helper.unlink()
+            environment = {key: value for key, value in os.environ.items()
+                           if key not in ('PYTHONPATH', 'PYTEST_ADDOPTS', 'PYTEST_PLUGINS')}
+            environment['PYTEST_DISABLE_PLUGIN_AUTOLOAD'] = '1'
+            report = replay / 'results.xml'
+            result = subprocess.run([sys.executable, '-I', '-B', '-c', child,
+                '-c', str(replay / 'pytest.ini'), '-q', '-o', 'addopts=',
+                '-o', 'faulthandler_timeout=90', '--junitxml', str(report),
+                '--', str(sample)], cwd=replay, env=environment,
+                capture_output=True, text=True, timeout=60)
+            return result, report.exists()
+
+    def test_isolated_replay_loads_exact_sibling_helper_without_checkout_imports(self):
+        result, reported = self.run_relocated_child()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertTrue(reported)
+        self.assertIn('CASE_START ', result.stdout)
+        self.assertIn('1 passed', result.stdout)
+        self.assertNotIn('Untrusted cwd watchdog', result.stdout + result.stderr)
+
+    def test_missing_exact_helper_cannot_fall_back_to_working_directory(self):
+        result, reported = self.run_relocated_child(missing_helper=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(reported)
+        self.assertIn('FileNotFoundError', result.stderr)
+        self.assertIn('ci_watchdog.py', result.stderr)
+        self.assertNotIn('Untrusted cwd watchdog', result.stdout + result.stderr)
 
 
 class AudioCIEntrypointTests(unittest.TestCase):

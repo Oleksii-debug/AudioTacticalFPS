@@ -1,111 +1,146 @@
-# Supplied transcription bridge on the selected host
+# Supplied transcription on the current desktop host
 
-This feature reuses the supplied job-directory service from PR140
-`9c1615feceda570a0d52af4c8cf2abbcf1baa2a1` and its selected-host adaptation
-`7efde01c42adfecd441c99aa80dc61edb724525c`. The integration base is
-`228e85c85687a85c1dd8d227c6e88676f3795cf6`, tree
-`3669f9f26eb125f2534654f9a6d316ca06d9cc3c`.
-The earlier adaptation's backup/progress APIs differ from this host; only its
-ASR service, protocol, UI, CLI and synthetic fixtures are reused.
+The integration reuses PR140's existing transcription service, including the
+explicit V5 profile and recursive folder intake at
+`ebb5539b763a0733574f7e248be474902ebf723c`. Its earlier service identity is
+`9c1615feceda570a0d52af4c8cf2abbcf1baa2a1`; the selected-host adaptation
+`7efde01c42adfecd441c99aa80dc61edb724525c` supplied compatible process and
+receipt integration patterns. The current host keeps its own audio, progress,
+keyboard and typed-backup infrastructure.
 
-There is no new recognizer, audio model registry, provider database, progress
-panel or queue. The original supplied worker is received: 37,974 bytes,
-SHA256 `1df2a1694b35bdf69dab614f91f1e8dea99716dfb039182ef5b83ca5ccb46ec9`.
-The matching repaired private worker, runtime and model assets remain separately
-supplied and are not part of this source.
+The originally supplied worker was 37,974 bytes, SHA256
+`1df2a1694b35bdf69dab614f91f1e8dea99716dfb039182ef5b83ca5ccb46ec9`.
+Private repaired workers, interpreters, models and recordings remain separately
+supplied. This source adds no recognizer, model training, automatic acquisition
+or competing job database.
+
+## Explicit worker profiles
+
+| Profile | Selected contract | Bound identities |
+|---|---|---|
+| `receipts-v1` | Existing repaired worker's current-run result receipts | Interpreter, worker, original source, model, settings and every accepted artifact |
+| `whisper-v5-manifest-v1` | Supplied repaired V5 whole-run manifest | The same identities plus all three wrapper sources and requested/effective retry settings |
+
+The V5 profile requires `worker.py`, `local_models.py` and
+`transcript_features.py` together. The service validates the original
+manifest and its outputs before normalizing them into its existing receipt,
+edit, export and backup lifecycle. Word subtitles come only from validated word
+timings. Every attempt uses a fresh result root, so an old manifest cannot
+complete a new run. Unsupported profiles and unsupported options fail visibly.
+
+The native configuration action and CLI select a profile explicitly. New jobs
+retain that choice; older jobs without a protocol field keep the original
+receipt contract. Reconfiguring another profile does not silently change an
+existing job. Verified completed results remain readable and exportable when
+the old engine is unavailable.
+
+File and recursive folder intake share the existing bounded scanner. The
+document-import policy remains its default. Media intake preserves relative
+names, copies exact checked originals, reports excluded sidecars and rejects
+links, changed inputs and exceeded limits before publishing a job.
 
 ## Current host bindings
 
 - `transcription_host.run_process` uses the current `audio.engines._run`.
-  Existing owned-process cleanup, deadlines and bounded logs remain in use;
-  the adapter adds watched staging bytes/files and a free-space reserve.
-- The native dialog uses the existing `frame.run_job` worker. It reuses one
-  current `ProgressHub` on the frame and binds its `ProgressReporter` around
-  the operation. The previous context is restored on every exit.
-  Native status text displays measured worker counts. Verified receipt counts
-  remain separate. Only a verified completed result completes the task.
-- The service's existing observer exception isolation and monotonic counts are
-  retained. Terminal observer errors cannot retry or reverse a saved result.
-  Stopped operations map to cancellation; incomplete/error results map to failure.
-- The small `durable_state` helper is reused from the original host adaptation.
-  New-state publication and job/export directory publication use the current
-  shared exclusive-rename primitive, preserving concurrent destinations and
-  avoiding hardlink aliases. Replacement JSON remains protected by its job lock.
-- Portable names use the current `backup_files.portable_relative` boundary.
-  No alternate `backup_sidecars`, `state_backup` or progress module is imported.
-- Submission acquires engine then workspace-submit locks, so typed backup can
-  freeze namespace creation before collecting the existing job locks.
-  Running, editing and exporting use each job's transcribe lock; none of those
-  operations acquires engine while holding transcribe.
-- Complete backup uses the current typed-producer integration and existing
-  manifest format. Original media, receipts, required results and separate
-  edits are retained; engine configuration restores passively.
-  Rebuildable runtime homes, caches, logs and temporary files are excluded.
-  Existing aggregate limits remain enforced; oversized collections fail before
-  backup publication rather than omitting originals.
+  Owned-process cleanup, deadlines and bounded logs remain in use. The adapter
+  adds watched staging bytes/files and a free-space reserve.
+- The desktop's existing `run_job` binds one shared `ProgressReporter` around
+  the actual executor operation. The transcription dialog updates that same
+  reporter through `current_progress`; it creates no second task. Context is
+  restored on every exit.
+- The native progress view observes the existing `ProgressHub` and uses
+  `NotificationWorker`. Measured worker counts remain distinct from verified
+  receipt counts. Unmeasured work stays indeterminate. Only an accepted
+  completed result reaches 100.
+- Observer failure, eviction or a detached UI cannot retry or reverse a saved
+  service result. Failure to present progress does not suppress its real result
+  callback. Cooperative Stop and verified completion remain distinct.
+- Windows worker-status reads reuse the exact shared-handle design from
+  `881b6f94d995be81310795c8dc31f6593bc6e115`. Read/write/delete sharing allows
+  the worker's concurrent atomic replacement. Bounded JSON, duplicate-key,
+  non-finite-number, regular-file and link checks remain enabled.
+- New JSON and job/export publication use the current exclusive publication
+  primitive, preserving concurrent destinations without hardlink aliases.
+  Replacement state remains protected by its existing job lock.
+- Portable names use `backup_files.portable_relative`. Submission acquires
+  engine then workspace-submit locks; backup can therefore freeze namespace
+  creation before collecting existing job locks. Run/edit/export use each
+  job's transcribe lock without reversing that order.
+- The current typed backup producer retains original media, accepted manifests,
+  receipts, required outputs and separately saved edits for both profiles.
+  Validation is passive: it does not open or execute external engines/models.
+  Source state and copied staging are validated before backup publication.
+- A saved edit after partial recognition remains bound to its original receipt
+  even when a later resume is stopped. Restoring that history requires the
+  retained original, exact text and required artifacts; V5 additionally requires
+  its original manifest and effective settings. Stopped counters are not
+  promoted into accepted results.
+- Runtime homes, logs, temporary files and rebuildable caches are explicitly
+  excluded. Existing aggregate backup limits still apply; inputs are never
+  silently omitted to fit a backup.
 
-The only existing application entry-point changes are the `transcribe` CLI
-dispatch, `LibraryApp.transcription`, and the menu installer. Existing sync,
-translation, audio, pending-import recovery and keyboard actions are retained.
-A completed-job replay forwards cancellation into the final receipt recheck.
+Existing sync, translation, audio, pending-import and keyboard workflows remain
+part of the required integration tests. Database schema versions, backup-format
+versions and transcription protocol versions are separate contracts.
 
-## Required acceptance
+## Exact acceptance required
 
-This new composition was prepared from exact published sources while the local
-executor was unavailable. It has not yet executed. Earlier component results
-are not results for these new bytes.
+This composition was prepared during an executor outage. Source review and
+earlier component results are not a runtime verdict for the composed tree.
+The final source SHA and installed application-wheel identity must be recorded
+by the corresponding successful workflow.
 
-Run both existing service/host suites in source and installed-wheel modes:
+Required source and installed cases include:
 
-```
-tests/transcription/test_supplied_worker_bridge.py
-tests/transcription/test_pr99_host.py
-```
+| Suite | Required cases |
+|---|---:|
+| `tests/transcription/test_supplied_worker_bridge.py` | 59 |
+| `tests/transcription/test_pr99_host.py` | 27 |
+| `tests/transcription/test_v5_worker_profile.py` | 37 |
+| `tests/storage/test_transcription_backup.py` | 42 |
+| `tests/ui/test_progress_view.py` | 25 |
 
-Expected collection is **38 bridge cases and 26 host cases**, with no skips.
-These totals retain the previous 36/14 cases and add cancellation during
-completed-result verification, concurrent export/JSON publication, current-host
-progress context and failure behavior, engine-lock namespace serialization,
-semantic command registration before/after keyboard setup, and failed submission
-or late-callback handling. Existing Windows stop/partial assertions retain
-bounded synthetic-child diagnostics; unobserved causes are not inferred.
-The host's separate typed-backup regression suite must also run:
+The workflow checks named cases and rejects failures and skips. Existing
+scanner, playback, progress, keyboard, backup, publication and packaging suites
+remain required as well. Public test workers are explicitly synthetic; a valid
+silent WAV keeps real media validation active without claiming acoustic
+recognition.
 
-```
-tests/storage/test_transcription_backup.py
-```
-
-The synthetic retained audio fixture is a structurally valid WAV containing
-silence, so current backup media validation remains enabled. The worker itself
-is explicitly synthetic; these tests do not recognize that audio.
-
-Verify installed origins for `transcription`, `transcription_host`,
-`transcription_backup`, `transcription_cli`, `ui.transcription_dialog` and
-`durable_state`. Run the native probe with the installed bundle's existing
-activation and outbound firewall, after its test-only pytest dependency:
+Verify installed origins for the service, host, typed backup, CLI, durable-state
+helper, transcription dialog, progress core, notification worker and native
+progress view. Run both native probes after the bundle's native-runtime
+activation and test-only dependencies, inside its existing outbound-firewall
+boundary:
 
 ```
 python -I -B -X utf8 scripts/windows_transcription_smoke.py
+python -I -B -X utf8 scripts/windows_shared_progress_smoke.py
 ```
 
-Require PASS for all six existing check names: actual named wx controls; shared
-background operation; actual isolated child protocol; six verified formats;
-separate edit revision; original unchanged. The probe continues to report
-`whisper_acoustic_inference=NOT_RUN` and `manual_NVDA=NOT_RUN`.
-Its valid WAV fixture and exact original-byte assertion preserve the same
-six native scenarios.
+The transcription probe retains the original six checks and adds native profile
+selection/configuration, the V5 three-source binding, explicit receipt-profile
+reconfiguration and the actual folder action/intake/result counts. Picker
+answers are controlled synthetic inputs; those picker interactions are not
+claimed as manual keyboard acceptance.
+
+The progress probe requires 43 recorded checks: actual installed module bytes,
+native controls, operating-system key dispatch, focus preservation, measured
+25/50/75/99 values, UIA range/value at 50 and verified 100, cancellation, a real
+committed file surviving a late cancellation request, persisted settings and
+notification cleanup. It keeps optional sound Off.
 
 ## Private qualification boundary
 
-The selected private repair must expose PR140's current-run
-run_id/source/model/runtime/settings/artifact receipt schema. A repair using
-output-adjacent receipts, or a V5 whole-job manifest alone, is not interchangeable.
-Configuration records selected interpreter/worker hashes and
-`inference_qualified=false`; it is not runtime or acoustic qualification.
+The two public profiles validate different existing worker contracts. A private
+repair must match its explicitly selected profile; it is not accepted merely
+because its filename or version looks similar. Configuration records selected
+hashes and `inference_qualified=false`.
 
-A compatible reviewed runtime/model pack, actual private inference, mixed-language
-and per-language quality, native Windows execution with that pack, and manual
-NVDA acceptance still require their own evidence. The existing public synthetic
-child proves process/protocol behavior only. Transcripts and their edits are
-derived assets and are never automatically approved as original research
-evidence or verified quotations.
+Actual private inference, exact runtime/model compatibility, mixed-language and
+per-language quality, native Windows execution with that private pack, physical
+audio listening and manual NVDA usability require separate evidence. Public
+synthetic workers establish protocol and recovery behavior. They do not
+establish neural recognition, diarization or language accuracy.
+
+Transcripts and edits remain derived assets. They never automatically become
+original research evidence or verified quotations.
