@@ -532,7 +532,7 @@ def test_cli_and_application_share_one_durable_job_service(prepared, tmp_path):
     completed_job = subprocess.run([sys.executable, '-m', 'carr_library', 'transcribe',
         '--data-dir', str(app.root), '--workspace', workspace, 'run', identity, '--timeout', '30'],
         capture_output=True, text=True, encoding='utf-8')
-    assert completed_job.returncode == 0, completed_job.stderr
+    assert completed_job.returncode == 0, completed_job.stdout + '\n' + completed_job.stderr
     assert service.verify(identity)['status'] == 'completed'
 
 
@@ -697,7 +697,7 @@ def test_partial_progress_requires_verified_resume_before_host_success(prepared,
         events.append(tracker.update(completed, total, phase))
 
     partial = service.run(identity, timeout=30, progress=progress)
-    assert partial['status'] == 'partial' and partial['done'] == 1
+    assert partial['status'] == 'partial' and partial['done'] == 1, partial
     assert operation_outcome(partial) == 'paused'
     assert events and all(event.percent < 100 for event in events)
     assert tracker.transition(operation_outcome(partial), 'Review remaining input').percent < 100
