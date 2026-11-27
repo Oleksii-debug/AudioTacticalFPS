@@ -182,3 +182,34 @@ def test_invalid_name_convention_fails_without_changing_data(mode, value):
     snapshot = json.dumps([dict(id='one', type='book', title='Title', author=[dict(literal=value)])])
     with pytest.raises(ValueError):
         records_for_style(snapshot, name_mode=mode)
+
+
+@pytest.mark.parametrize('format', ('html', 'docx'))
+@pytest.mark.parametrize('existing', (False, True))
+def test_destination_approval_preserves_other_work_created_during_real_render(
+        research, tmp_path, monkeypatch, format, existing):
+    from carr_library.citations import csl
+    from carr_library.research.export_file import capture_export_destination
+
+    controller, row, workbench = research
+    preview = workbench.preview(identity=row.id, style='harvard')
+    destination = tmp_path / ('bibliography.' + format)
+    if existing:
+        destination.write_bytes(b'Old export explicitly selected for replacement')
+    approval = capture_export_destination(destination, private_root=controller.library.root)
+    render = csl.render
+    changed = b'Another program saved its work while CSL was rendering'
+
+    def real_render_then_competing_save(*args, **options):
+        rendered = render(*args, **options)
+        destination.write_bytes(changed)
+        return rendered
+
+    monkeypatch.setattr(csl, 'render', real_render_then_competing_save)
+    with pytest.raises(ValueError, match='destination changed'):
+        workbench.export(preview, destination, format=format, approval=approval,
+                         require_absent=approval.require_absent)
+
+    assert destination.read_bytes() == changed
+    assert controller.get(row.id) == row
+    assert not list(tmp_path.glob('.research-export-*'))

@@ -82,7 +82,16 @@ def no_staging(tmp_path):
     assert not list(tmp_path.glob(".carr-delivery-*"))
 
 
-def test_real_two_archive_roundtrip_preserves_exact_manifest_and_trusted_install(bundle, tmp_path):
+@pytest.mark.parametrize("native_launcher", [False, True], ids=["cmd-entry", "native-entry"])
+def test_real_two_archive_roundtrip_preserves_exact_manifest_and_trusted_install(bundle, tmp_path, native_launcher):
+    if native_launcher:
+        # A sealed packaging fixture, not a real executable or execution claim.
+        launcher = b"synthetic native launcher payload\n"
+        (bundle / "ResearchLibrary.exe").write_bytes(launcher)
+        manifest_path = bundle / delivery.MANIFEST
+        manifest = json.loads(manifest_path.read_text())
+        manifest["files"]["ResearchLibrary.exe"] = sha(launcher)
+        manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     original = (bundle / delivery.MANIFEST).read_bytes()
     report = create(bundle, tmp_path)
     app, source = paths(report)
@@ -112,6 +121,16 @@ def test_real_two_archive_roundtrip_preserves_exact_manifest_and_trusted_install
     instructions = (Path(report["output"]) / "START_HERE_UK.txt").read_text(encoding="utf-8")
     assert "ОБИДВА" in instructions and "ОДНУ Й ТУ САМУ НОВУ" in instructions
     assert app.name in instructions and source.name in instructions
+    assert "Install.cmd один раз" in instructions
+    assert "ocr-corresponding-source.tar окремо розпаковувати не потрібно" in instructions
+    assert "Ручна приймальна перевірка з NVDA ще очікується" in instructions
+    if native_launcher:
+        assert "Надалі відкривайте ResearchLibrary.exe клавішею Enter" in instructions
+        assert "ResearchLibrary.cmd також залишається доступним" in instructions
+        assert "ResearchLibrary.exe не має цифрового підпису" in instructions
+    else:
+        assert "Надалі відкривайте ResearchLibrary.cmd клавішею Enter" in instructions
+        assert "ResearchLibrary.exe" not in instructions
     no_staging(tmp_path)
 
 

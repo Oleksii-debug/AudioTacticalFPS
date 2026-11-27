@@ -1,6 +1,7 @@
 """Real SQLite, producer data, corruption and child-exit backup regressions."""
 from hashlib import sha256
 import json
+import shutil
 import os
 from pathlib import Path
 import subprocess
@@ -52,7 +53,7 @@ def test_v4_preserves_exact_historical_reader_state(reading, tmp_path):
     backup = tmp_path / 'Копія'
     checksum = app.backup(backup)
     value = manifest(backup)
-    assert value['version'] == 4 and value['generated_audio_included'] is False
+    assert value['version'] == 5 and value['generated_audio_included'] is False
     assert value['sidecars'] == [dict(filename='reading-state.json', size_bytes=len(source_bytes),
                                      sha256=sha256(source_bytes).hexdigest())]
     before = files(backup)
@@ -71,6 +72,8 @@ def test_exact_v3_reader_shapes_restore_without_rewriting(reading, tmp_path, sha
     folder = tmp_path / 'legacy'
     create_backup(app, folder)
     value = manifest(folder)
+    if value.pop('pending') is not None:
+        shutil.rmtree(folder / 'pending')
     value['version'] = 3
     del value['generated_audio_included']
     if shape == 'reading_state':
@@ -90,6 +93,8 @@ def test_empty_v3_variants_have_unambiguous_namespaces(tmp_path, shape):
     folder = tmp_path / 'legacy'
     create_backup(app, folder)
     value = manifest(folder)
+    if value.pop('pending') is not None:
+        shutil.rmtree(folder / 'pending')
     value['version'] = 3
     del value['sidecars']
     if shape == 'reading_state':

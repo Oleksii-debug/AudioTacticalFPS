@@ -142,6 +142,18 @@ def _inventory(project, entries):
             admitted[destination] = source
             if runtime or relative.endswith('.sql'):
                 required.add(destination)
+    # New product modules must not disappear from both sides of verification
+    # merely because their package was omitted from the build recipe. Probes
+    # and tests outside the application source root remain intentionally optional.
+    application_root = PROJECT + '/src/carr_library/'
+    mapped_sources = set(admitted.values())
+    omitted = sorted(source for source in entries
+                     if source.startswith(application_root)
+                     and source.endswith(('.py', '.sql'))
+                     and source not in mapped_sources)
+    if omitted:
+        raise ValueError('Committed application runtime files are outside the declared package inventory: '
+                         + ', '.join(omitted))
     if not required:
         raise ValueError('Committed packages contain no required runtime source files.')
     return admitted, required

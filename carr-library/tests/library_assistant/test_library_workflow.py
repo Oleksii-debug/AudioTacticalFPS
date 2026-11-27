@@ -412,8 +412,8 @@ def test_new_backup_is_verified_before_a_step_can_be_completed(environment, monk
         ReadingDesk(app, ws, book['edition']).page(1).location, 'Original bookmark')
     backup = app.backup
 
-    def changed_after_publication(destination):
-        digest = backup(destination)
+    def changed_after_publication(destination, **options):
+        digest = backup(destination, **options)
         path = destination / FILENAME
         path.write_bytes(path.read_bytes().replace(b'Original bookmark', b'Modified bookmark'))
         return digest
@@ -425,6 +425,89 @@ def test_new_backup_is_verified_before_a_step_can_be_completed(environment, monk
     assert result['state'] == 'failed', result
     assert result['steps'][0]['state'] != 'complete'
     assert 'reading-state' in result['error']
+
+
+def test_backup_pause_during_original_copy_leaves_no_snapshot_and_resumes(environment, monkeypatch):
+    from carr_library import library_backup
+    app, ws, _, _, outputs, _ = environment
+    book = app.add_text(ws, 'Preserved source', 'A source retained before the backup is paused.')
+    original = app.assets.resolve(book['asset']).read_bytes()
+    service = LocalLibraryAssistant(app, ws, output_root=outputs, allow_full_backup=True)
+    job = service.start(service.plan('backup: preserved'), approved=True)
+    cancel = Event()
+    copy_originals = library_backup._copy_originals
+
+    def pause_before_copy(*args, **options):
+        cancel.set()
+        return copy_originals(*args, **options)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(library_backup, '_copy_originals', pause_before_copy)
+        paused = service.run(job['id'], cancelled=cancel.is_set)
+
+    assert paused['state'] == 'paused', paused
+    assert paused['steps'][0]['state'] != 'complete'
+    assert not (outputs / 'preserved' / 'snapshot').exists()
+    assert tuple(path.name for path in (outputs / 'preserved').iterdir()) == ('assistant-owner.json',)
+    assert app.assets.resolve(book['asset']).read_bytes() == original
+    resumed = LocalLibraryAssistant.open_job(app, ws, job['id']).run(job['id'])
+    assert resumed['state'] == 'complete', resumed
+    result = resumed['steps'][0]['result']
+    library_backup.verify_backup(result['output'], result['manifest_sha256'])
+
+
+@pytest.mark.parametrize('completed', [False, True])
+def test_backup_verification_can_pause_without_republishing(environment, monkeypatch, completed):
+    from carr_library import library_backup
+    app, ws, _, _, outputs, _ = environment
+    app.add_text(ws, 'Verified source', 'Source identity survives paused verification.')
+    service = LocalLibraryAssistant(app, ws, output_root=outputs, allow_full_backup=True)
+    job = service.start(service.plan('backup: preserved'), approved=True)
+    if completed:
+        assert service.run(job['id'])['state'] == 'complete'
+    cancel = Event()
+    copy_database = library_backup._copy_database
+
+    def pause_during_verification(*args, **options):
+        cancel.set()
+        return copy_database(*args, **options)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(library_backup, '_copy_database', pause_during_verification)
+        paused = service.run(job['id'], cancelled=cancel.is_set)
+
+    assert paused['state'] == 'paused', paused
+    assert (paused['steps'][0]['state'] == 'complete') is completed
+    target = outputs / 'preserved' / 'snapshot'
+    before = {str(item.relative_to(target)): item.read_bytes()
+              for item in target.rglob('*') if item.is_file()}
+    assert 'manifest.json' in before
+
+    def no_republication(*args, **options):
+        pytest.fail('A published backup must be reverified without creating a replacement.')
+
+    monkeypatch.setattr(app, 'backup', no_republication)
+    resumed = LocalLibraryAssistant.open_job(app, ws, job['id']).run(job['id'])
+    assert resumed['state'] == 'complete', resumed
+    assert {str(item.relative_to(target)): item.read_bytes()
+            for item in target.rglob('*') if item.is_file()} == before
+
+
+def test_already_paused_completed_backup_does_not_start_verification(environment, monkeypatch):
+    from carr_library import library_backup
+    app, ws, _, _, outputs, _ = environment
+    service = LocalLibraryAssistant(app, ws, output_root=outputs, allow_full_backup=True)
+    job = service.start(service.plan('backup: preserved'), approved=True)
+    complete = service.run(job['id'])
+    assert complete['state'] == 'complete'
+
+    def no_verification(*args, **options):
+        pytest.fail('An already paused workflow must not start backup verification.')
+
+    monkeypatch.setattr(library_backup, 'verify_backup', no_verification)
+    paused = service.run(job['id'], cancelled=lambda: True)
+    assert paused['state'] == 'paused'
+    assert paused['steps'] == complete['steps']
 
 
 def test_job_lock_rejects_concurrent_runner(environment):

@@ -287,6 +287,32 @@ def test_eml_cp1251_8bit_bytes_preserved_and_bad_bytes_rejected():
         extract(invalid, '.eml')
 
 
+@pytest.mark.parametrize('encoded', [
+    b'YWJj=', b'YWJj==', b'YWJj====', b'YQ===', b'YR==', b'YWJ=',
+], ids=['excess-one', 'excess-two', 'excess-four', 'excess-after-padding',
+        'nonzero-four-pad-bits', 'nonzero-two-pad-bits'])
+def test_eml_base64_requires_canonical_padding_and_pad_bits(encoded):
+    header = b'Content-Type: text/plain; charset=utf-8\r\nContent-Transfer-Encoding: base64\r\n\r\n'
+    with pytest.raises(ValueError):
+        extract(header + encoded, '.eml')
+
+
+@pytest.mark.parametrize('text', ['a', 'ab', 'abc', 'Україна — Žilina. ' * 20],
+                         ids=['two-padding', 'one-padding', 'no-padding', 'unicode-folded'])
+def test_eml_canonical_base64_keeps_mime_folding_and_exact_text(text):
+    import base64
+    encoded = base64.b64encode(text.encode('utf-8'))
+    # MIME line folding and horizontal whitespace are independent of the
+    # canonical encoded bytes and must not alter the decoded source text.
+    folded = b' \t\r\n'.join(encoded[i:i + 76] for i in range(0, len(encoded), 76)) + b'\r\n'
+    source = (b'Content-Type: text/plain; charset=utf-8\r\n'
+              b'Content-Transfer-Encoding: base64\r\n\r\n' + folded)
+    result = extract(source, '.eml')
+    assert texts(result) == [text]
+    assert result['provenance']['asset_sha256'] == sha256(source).hexdigest()
+    assert result['status'] == 'review_required'
+
+
 @pytest.mark.parametrize('source', [
     b'Content-Type: multipart/mixed\r\n\r\nmissing boundary',
     b'Content-Type: multipart/mixed; boundary=abc\r\n\r\n--abc\r\n\r\nbody',

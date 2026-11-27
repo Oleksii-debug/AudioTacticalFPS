@@ -89,7 +89,7 @@ def test_common_backup_preserves_profile_bytes_hashes_and_authorized_recovery(pe
     manifest = json.loads((folder / 'manifest.json').read_bytes())
     expected = [dict(filename=name, size_bytes=len(raw), sha256=sha256(raw).hexdigest())
                 for name, raw in sorted(before.items())]
-    assert manifest['version'] == 4 and manifest['sidecars'] == expected
+    assert manifest['version'] == 5 and manifest['sidecars'] == expected
     assert _profile_bytes(folder) == before
     destination = restore_backup(folder, tmp_path / 'Відновлена', checksum)
     assert _profile_bytes(destination) == before and _profile_bytes(folder) == before

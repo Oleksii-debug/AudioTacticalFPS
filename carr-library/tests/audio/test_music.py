@@ -9,6 +9,7 @@ import wave
 
 import pytest
 
+from carr_library.audio import music
 from carr_library.audio.engines import EngineUnavailable
 from carr_library.audio.music import (_wave_frames, generate_music, music_capabilities,
                                       render_music)
@@ -55,6 +56,141 @@ def test_actual_changed_seed_changes_composition(tmp_path, ffmpeg):
     first = generate_music(tmp_path/'first.wav', duration=4, seed=1, ffmpeg=ffmpeg)
     second = generate_music(tmp_path/'second.wav', duration=4, seed=2, ffmpeg=ffmpeg)
     assert digest(first) != digest(second)
+
+
+def test_actual_modern_filter_files_are_bounded_literal_and_probed_once(tmp_path, ffmpeg, monkeypatch):
+    root = tmp_path / 'Музика Ω & [notes]'
+    root.mkdir()
+    source = root / 'original.txt'
+    source.write_text('Original source; never a filter or shell command.', encoding='utf-8')
+    before = source.read_bytes()
+    original_run = music._run
+    graphs = []
+
+    def observe(command, **kwargs):
+        options = [option for option in music.FILTER_FILE_OPTIONS if option in command]
+        if options:
+            assert options == ['-/filter_complex']
+            script = Path(command[command.index(options[0]) + 1])
+            raw = script.read_bytes()
+            assert script.is_relative_to(root) and 0 < len(raw) <= music.MAX_FILTER_GRAPH_BYTES
+            assert raw.decode('ascii') not in [str(arg) for arg in command]
+            assert root.name not in raw.decode('ascii')
+            graphs.append((script, command[command.index('-map') + 1]))
+        return original_run(command, **kwargs)
+
+    monkeypatch.setattr(music, '_run', observe)
+    result = render_music(root / 'score.v1.wav', duration=9.25, sample_rate=8000,
+                          tempo=240, mood='bright', ffmpeg=ffmpeg)
+    assert result['frames'] == 74000 and result['provenance']['chunks'] == 3
+    assert [label for _, label in graphs] == ['[probe]', '[music]', '[music]', '[music]']
+    assert all(not script.exists() for script, _ in graphs)
+    assert not list(root.rglob('*.filters'))
+    with wave.open(str(result['path']), 'rb') as audio:
+        assert (audio.getnchannels(), audio.getsampwidth(), audio.getframerate(), audio.getnframes()) == (1, 2, 8000, 74000)
+        samples = array('h', audio.readframes(audio.getnframes()))
+        if sys.byteorder != 'little':
+            samples.byteswap()
+        assert 50 < max(abs(sample) for sample in samples) < 16000
+    assert source.read_bytes() == before
+
+
+def test_legacy_file_option_requires_its_own_successful_probe_before_render(tmp_path, ffmpeg, monkeypatch):
+    expected = render_music(tmp_path / 'modern.wav', duration=.5, sample_rate=8000, ffmpeg=ffmpeg)
+    original_run = music._run
+    calls = []
+
+    def old_parser(command, **kwargs):
+        options = [option for option in music.FILTER_FILE_OPTIONS if option in command]
+        if options:
+            option = options[0]
+            label = command[command.index('-map') + 1]
+            calls.append((option, label))
+            if option == '-/filter_complex':
+                assert label == '[probe]'
+                raise EngineUnavailable('Controlled older parser rejects the slash option.')
+            # Only the older option spelling is simulated. The selected real
+            # FFmpeg renders the same file graph using its modern syntax, so
+            # this test also runs on FFmpeg 9 where the old option is gone.
+            command = list(command)
+            command[command.index(option)] = '-/filter_complex'
+        return original_run(command, **kwargs)
+
+    monkeypatch.setattr(music, '_run', old_parser)
+    actual = render_music(tmp_path / 'legacy.wav', duration=.5, sample_rate=8000, ffmpeg=ffmpeg)
+    assert calls == [('-/filter_complex', '[probe]'),
+                     ('-filter_complex_script', '[probe]'),
+                     ('-filter_complex_script', '[music]')]
+    assert digest(actual['path']) == digest(expected['path'])
+    assert actual['midi'].read_bytes() == expected['midi'].read_bytes()
+    assert not list(tmp_path.rglob('*.filters'))
+
+
+@pytest.mark.parametrize('failure', [InterruptedError, TimeoutError], ids=['cancelled', 'timeout'])
+def test_filter_probe_interruption_never_falls_back_or_publishes(tmp_path, ffmpeg, monkeypatch, failure):
+    original_run = music._run
+    options_seen = []
+
+    def interrupted(command, **kwargs):
+        for option in music.FILTER_FILE_OPTIONS:
+            if option in command:
+                options_seen.append(option)
+                assert command[command.index('-map') + 1] == '[probe]'
+                raise failure('Controlled probe interruption.')
+        return original_run(command, **kwargs)
+
+    monkeypatch.setattr(music, '_run', interrupted)
+    with pytest.raises(failure):
+        render_music(tmp_path / 'interrupted.wav', duration=.5, ffmpeg=ffmpeg)
+    assert options_seen == ['-/filter_complex']
+    assert not list(tmp_path.rglob('*.filters'))
+    assert not list(tmp_path.glob('*.wav')) and not list(tmp_path.glob('*.mid'))
+    assert json.loads((tmp_path / 'interrupted.music-work/state.json').read_text())['chunks'] == {}
+
+
+def test_unsupported_filter_file_options_fail_closed_without_diagnostic_text(tmp_path, ffmpeg, monkeypatch):
+    original_run = music._run
+    options_seen = []
+
+    def unsupported(command, **kwargs):
+        for option in music.FILTER_FILE_OPTIONS:
+            if option in command:
+                options_seen.append(option)
+                assert command[command.index('-map') + 1] == '[probe]'
+                raise EngineUnavailable('PRIVATE ENGINE DIAGNOSTIC TEXT')
+        return original_run(command, **kwargs)
+
+    monkeypatch.setattr(music, '_run', unsupported)
+    with pytest.raises(EngineUnavailable, match='cannot load a filter graph') as error:
+        render_music(tmp_path / 'unsupported.wav', duration=.5, ffmpeg=ffmpeg)
+    assert 'PRIVATE' not in str(error.value)
+    assert options_seen == list(music.FILTER_FILE_OPTIONS)
+    assert not list(tmp_path.rglob('*.filters'))
+    assert not list(tmp_path.glob('*.wav')) and not list(tmp_path.glob('*.mid'))
+    assert json.loads((tmp_path / 'unsupported.music-work/state.json').read_text())['chunks'] == {}
+
+
+def test_score_render_failure_never_retries_with_legacy_option(tmp_path, ffmpeg, monkeypatch):
+    original_run = music._run
+    calls = []
+
+    def fail_render(command, **kwargs):
+        options = [option for option in music.FILTER_FILE_OPTIONS if option in command]
+        if options:
+            label = command[command.index('-map') + 1]
+            calls.append((options[0], label))
+            if label == '[music]':
+                Path(command[-1]).write_bytes(b'Controlled partial PCM output')
+                raise EngineUnavailable('Local engine failed with exit code 1.')
+        return original_run(command, **kwargs)
+
+    monkeypatch.setattr(music, '_run', fail_render)
+    with pytest.raises(EngineUnavailable, match='exit code 1'):
+        render_music(tmp_path / 'failed.wav', duration=.5, ffmpeg=ffmpeg)
+    assert calls == [('-/filter_complex', '[probe]'), ('-/filter_complex', '[music]')]
+    assert not list(tmp_path.rglob('*.filters')) and not list(tmp_path.rglob('*.partial.wav'))
+    assert not list(tmp_path.glob('*.wav')) and not list(tmp_path.glob('*.mid'))
+    assert json.loads((tmp_path / 'failed.music-work/state.json').read_text())['chunks'] == {}
 
 
 def test_actual_cancel_resume_reuses_verified_chunk_and_recovers_corruption(tmp_path, ffmpeg):
@@ -104,6 +240,26 @@ def test_actual_output_and_companions_cannot_be_overwritten(tmp_path, ffmpeg):
         generate_music(tmp_path/'other.wav', duration=.5, ffmpeg=ffmpeg)
     assert (tmp_path/'other.mid').read_bytes() == b'owned by another project'
     assert not (tmp_path/'other.wav').exists()
+
+
+def test_actual_resume_recovers_already_published_identical_companions(tmp_path, ffmpeg, monkeypatch):
+    target = generate_music(tmp_path/'recovered.wav', duration=1, ffmpeg=ffmpeg)
+    expected = digest(target)
+    midi = target.with_suffix('.mid').read_bytes()
+    metadata = target.with_suffix('.music.json').read_bytes()
+    target.unlink()  # a completed companion publication with missing final WAV
+    original_run = music._run
+
+    def reuse_only(command, **kwargs):
+        assert not any(option in command for option in music.FILTER_FILE_OPTIONS)
+        return original_run(command, **kwargs)
+
+    monkeypatch.setattr(music, '_run', reuse_only)
+    result = render_music(target, duration=1, ffmpeg=ffmpeg)
+    assert digest(result['path']) == expected
+    assert result['provenance']['reused_chunks'] == 1
+    assert target.with_suffix('.mid').read_bytes() == midi
+    assert target.with_suffix('.music.json').read_bytes() == metadata
 
 
 def test_changed_checkpoint_settings_need_new_destination(tmp_path, ffmpeg):

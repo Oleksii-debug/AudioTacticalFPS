@@ -731,8 +731,10 @@ class LocalLibraryAssistant:
                 temporary.unlink(missing_ok=True)
         return dict(output=str(path), **expected, recovered=False)
 
-    def _backup(self, job, index, step):
+    def _backup(self, job, index, step, cancelled=lambda: False):
         from .library_backup import verify_backup, MANIFEST
+        if cancelled():
+            raise InterruptedError('Backup paused before starting or verifying its saved snapshot.')
         folder = self._allowed_path(self.output_root, step.arguments['folder'])
         owner = dict(job=job['id'], step=index, plan_sha256=job['approved_plan_sha256'])
         if not folder.exists():
@@ -754,10 +756,10 @@ class LocalLibraryAssistant:
             check = _hash_file(manifest_path, max_bytes=8 * 1024 * 1024)
             digest = check['sha256']
         else:
-            digest = self.library.backup(target)
+            digest = self.library.backup(target, cancelled=cancelled)
         # Delegate all supported formats/sidecars to the same authoritative
         # validation as restoration, both before completion and on recovery.
-        verify_backup(target, digest)
+        verify_backup(target, digest, cancelled=cancelled)
         return dict(output=str(target), manifest_sha256=digest, scope='ALL libraries and registered originals')
 
     def _execute(self, job, index, step, cancelled):
@@ -803,14 +805,14 @@ class LocalLibraryAssistant:
         else:
             if cancelled():
                 raise InterruptedError('Backup paused before starting.')
-            # Existing all-library backup is an atomic bounded operation. Pause
-            # is honored before/after it, not during its snapshot publication.
-            result = self._backup(job, index, step)
+            # The authoritative backup owns its safe cancellation checkpoints;
+            # final publication remains indivisible to cooperative cancellation.
+            result = self._backup(job, index, step, cancelled)
         if len(_json(result).encode('utf-8')) > MAX_RESULT_BYTES:
             raise ValueError('The result is too large for this job. Narrow the query or selected topic.')
         return result
 
-    def _verify_completed(self, job, index, step):
+    def _verify_completed(self, job, index, step, cancelled=lambda: False):
         """A resumed job must still have its earlier durable write results."""
         result, args = job['steps'][index]['result'], step.arguments
         if step.tool == 'export_topic':
@@ -836,7 +838,7 @@ class LocalLibraryAssistant:
             folder = self._allowed_path(self.output_root, args['folder'])
             if not (folder / 'snapshot').is_dir():
                 raise ValueError('A completed backup is unavailable. It was not recreated or overwritten.')
-            verified = self._backup(job, index, step)
+            verified = self._backup(job, index, step, cancelled)
             if verified['manifest_sha256'] != result.get('manifest_sha256'):
                 raise ValueError('A completed backup manifest changed.')
 
@@ -851,11 +853,11 @@ class LocalLibraryAssistant:
             try:
                 for index, step in enumerate(plan.steps):
                     self._authorize()
-                    if job['steps'][index]['state'] == 'complete':
-                        self._verify_completed(job, index, step)
-                        continue
                     if cancelled():
                         raise InterruptedError('Paused. Completed steps are saved; resume when ready.')
+                    if job['steps'][index]['state'] == 'complete':
+                        self._verify_completed(job, index, step, cancelled)
+                        continue
                     job['steps'][index]['state'] = 'running'
                     self._save(job)
                     if progress is not None:

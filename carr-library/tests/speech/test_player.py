@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import threading
+import os
 from types import SimpleNamespace
 import wave
 
@@ -10,6 +11,52 @@ import pytest
 
 from carr_library.speech.player import WavePlayer
 from carr_library.ui.voice_reader import _close_reader_resources
+
+
+@pytest.mark.parametrize('path_kind', ['relative', 'absolute-current'])
+def test_posix_player_does_not_discover_executables_in_a_book_directory(tmp_path, monkeypatch, path_kind):
+    from carr_library import audio_runtime
+    from carr_library.audio import ffmpeg
+    from carr_library.speech import player as module
+    executable = tmp_path / ('ffplay' + ffmpeg._TOOL_SUFFIX)
+    executable.write_text('Synthetic untrusted executable marker; never executed.')
+    executable.chmod(0o755)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv('PATH', '.' if path_kind == 'relative' else str(tmp_path))
+    monkeypatch.setattr(audio_runtime, 'bundled_audio_tools', lambda: None)
+    monkeypatch.setattr(module, 'os', SimpleNamespace(name='posix'))
+    player = module.WavePlayer()
+    assert not player.available and player._executable is None
+
+
+def test_posix_player_uses_the_verified_tool_resolver_for_installed_paths(tmp_path, monkeypatch):
+    from carr_library import audio_runtime
+    from carr_library.audio import ffmpeg
+    from carr_library.speech import player as module
+    current, installed = tmp_path / 'book', tmp_path / 'installed-tools'
+    current.mkdir(); installed.mkdir()
+    for directory in (current, installed):
+        executable = directory / ('ffplay' + ffmpeg._TOOL_SUFFIX)
+        executable.write_text('Synthetic executable marker; never executed.')
+        executable.chmod(0o755)
+    monkeypatch.chdir(current)
+    monkeypatch.setenv('PATH', os.pathsep.join(['.', str(current), str(installed)]))
+    monkeypatch.setattr(audio_runtime, 'bundled_audio_tools', lambda: None)
+    monkeypatch.setattr(module, 'os', SimpleNamespace(name='posix'))
+    player = module.WavePlayer()
+    assert player.available
+    assert player._executable == installed / ('ffplay' + ffmpeg._TOOL_SUFFIX)
+
+
+def test_posix_player_never_falls_back_after_a_declared_bundle_integrity_error(monkeypatch):
+    from carr_library import audio_runtime
+    from carr_library.speech import player as module
+    def broken():
+        raise ValueError('Synthetic declared audio bundle checksum mismatch')
+    monkeypatch.setattr(audio_runtime, 'bundled_audio_tools', broken)
+    monkeypatch.setattr(module, 'os', SimpleNamespace(name='posix'))
+    with pytest.raises(ValueError, match='checksum mismatch'):
+        module.WavePlayer()
 
 
 def audio_file(path):

@@ -381,9 +381,20 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
             raise ValueError('Import request belongs to another library.')
         if record.get('state') == 'complete' and isinstance(record.get('result'), dict):
             return dict(record['result'], request_id=request_id, isolated=True)
+    from .publication_recovery import published_before, recover_interrupted
+    before = published_before(root, record)
     record_progress(root, request_id, state='running')
     result = _invoke({'data_dir': str(Path(root).resolve()), 'request_id': request_id,
                       'timeout': timeout}, timeout=timeout, cancelled=cancelled)
+    if result.get('state') in ('cancelled', 'timed_out', 'failed'):
+        try:
+            recovered = recover_interrupted(root, record, load_request(root, request_id), before)
+        except (ValueError, OSError, sqlite3.Error, KeyError, TypeError) as exc:
+            result = dict(state='failed', message='The worker stopped, but its publication '
+                'could not be verified: ' + str(exc)[:2000])
+        else:
+            if recovered is not None:
+                result = recovered
     result = dict(result, request_id=request_id, isolated=True)
     record_progress(root, request_id, state=result.get('state', 'failed'), result=result)
     return result

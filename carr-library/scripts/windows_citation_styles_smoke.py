@@ -179,9 +179,13 @@ def main():
         # wx focus belongs to our GUI thread; native input additionally needs
         # its top-level window to own the real foreground input queue.
         activated = bool(user32.SetForegroundWindow(top.GetHandle()))
+        yield from pump_until(
+            lambda: top.IsActive() and user32.GetForegroundWindow() == top.GetHandle(),
+            'The native probe window did not acquire Windows foreground activation.')
         control.SetFocus()
         yield from pump_until(
-            lambda: focused(control) and user32.GetForegroundWindow() == top.GetHandle(),
+            lambda: focused(control) and top.IsActive()
+                    and user32.GetForegroundWindow() == top.GetHandle(),
             'Native keyboard focus or foreground ownership was not acquired.')
         diagnostics('native focus ready; foreground request=' + str(activated), control)
 
@@ -303,7 +307,24 @@ def main():
                       and 'customfield' in review.details.GetValue()
                       and bool(review.details.GetWindowStyleFlag() & wx.TE_READONLY))
                 yield from focus(review.entries)
-                yield from key(wx.WXK_SPACE)
+                check('the focused native import row is the first unchecked entry',
+                      review.entries.GetSelection() == 0 and not review.entries.IsChecked(0))
+                received_space = []
+
+                def observe_space(event):
+                    if event.GetKeyCode() == wx.WXK_SPACE:
+                        received_space.append((focused(review.entries), review.entries.GetSelection()))
+                    # Observe dispatch; preserve the native CheckListBox handler.
+                    event.Skip()
+
+                review.entries.Bind(wx.EVT_KEY_DOWN, observe_space)
+                try:
+                    yield from key(wx.WXK_SPACE)
+                    yield from pump_until(lambda: bool(received_space),
+                               'Windows did not deliver the simulated Space key to the focused import list.')
+                finally:
+                    review.entries.Unbind(wx.EVT_KEY_DOWN, handler=observe_space)
+                check('native Space reaches the selected import row', received_space == [(True, 0)])
                 yield from pump_until(lambda: review.entries.IsChecked(0), 'Space did not select the BibTeX entry.')
                 check('Space selects exactly the intended native import row',
                       not review.entries.IsChecked(1))

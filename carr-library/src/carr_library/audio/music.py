@@ -6,6 +6,7 @@ Long scores are disk-backed, hash-checked chunks, never a full in-memory wave.
 """
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass
 import hashlib
 import json
@@ -26,6 +27,8 @@ from .model_manifest import LocalModelManifest, ModelManifestError, digest_file,
 COMPOSER_VERSION = 'procedural-score-1'
 MOODS = ('calm', 'suspense', 'bright', 'sad', 'neutral', 'energetic', 'dark')
 MUSICGEN_SOURCE = '896ec7c47f5e5d1e5aa1e4b260c4405328bf009d'
+MAX_FILTER_GRAPH_BYTES = 64 * 1024
+FILTER_FILE_OPTIONS = ('-/filter_complex', '-filter_complex_script')
 
 
 @dataclass(frozen=True)
@@ -193,8 +196,53 @@ def _atomic_json(path, data):
         temporary.unlink(missing_ok=True)
 
 
+@contextmanager
+def _filter_graph_file(directory, graph):
+    """Keep generated graphs out of argv, with one exclusively owned small file."""
+    raw = graph.encode('ascii')
+    if len(raw) > MAX_FILTER_GRAPH_BYTES:
+        raise ValueError('The generated music filter graph exceeds its per-chunk byte budget.')
+    script = None
+    try:
+        with tempfile.NamedTemporaryFile(dir=directory, prefix='.music-filter-', suffix='.filters',
+                                         mode='wb', delete=False) as stream:
+            script = Path(stream.name)
+            stream.write(raw)
+        yield script
+    finally:
+        if script is not None:
+            script.unlink(missing_ok=True)
+
+
+def _filter_file_option(ffmpeg, directory, *, cancelled):
+    """Verify the selected executable's file-option syntax without a user output.
+
+    FFmpeg removed filter_complex_script after deprecating it in favor of the
+    generic slash-prefixed file argument. Older selected executables may still
+    need the legacy syntax; each candidate must pass the same constant probe.
+    """
+    if cancelled():
+        raise InterruptedError('Music generation cancelled.')
+    graph = 'sine=frequency=440:sample_rate=8000,atrim=end_sample=1[probe]'
+    with _filter_graph_file(directory, graph) as script:
+        for option in FILTER_FILE_OPTIONS:
+            try:
+                _run([ffmpeg, '-hide_banner', '-loglevel', 'error', '-nostdin',
+                      '-filter_complex_threads', '1', option, script, '-map', '[probe]',
+                      '-frames:a', '1', '-c:a', 'pcm_s16le', '-f', 'null', '-'],
+                     timeout=15, cancelled=cancelled, env=offline_environment())
+            except EngineUnavailable:
+                # Only a failed capability probe may try the equivalent legacy
+                # option. Cancellation, timeout and resource failures propagate.
+                continue
+            return option
+    raise EngineUnavailable('The selected FFmpeg cannot load a filter graph from a local file.') from None
+
+
 def _render_procedural_chunk(path, *, first_bar, start_frame, frame_count, total_frames, sample_rate,
-                             tempo, mood, seed, gain, ffmpeg, cancelled):
+                             tempo, mood, seed, gain, ffmpeg, cancelled, filter_file_option):
+    if filter_file_option not in FILTER_FILE_OPTIONS:
+        raise ValueError('Unsupported music filter-file option.')
     notes = _notes_for_bars(first_bar, 4, sample_rate=sample_rate, tempo=tempo,
                             mood=mood, seed=seed, total_frames=total_frames)
     graph, labels = [], []
@@ -215,16 +263,12 @@ def _render_procedural_chunk(path, *, first_bar, start_frame, frame_count, total
         raise ValueError('The score contains no notes in this chunk.')
     graph.append(''.join(labels) + f'amix=inputs={len(labels)}:normalize=0,'
                  f'volume={gain:.8f},apad=whole_len={frame_count},atrim=end_sample={frame_count}[music]')
-    script = Path(path).with_suffix('.filters')
-    try:
-        script.write_text(';\n'.join(graph), encoding='ascii')
+    with _filter_graph_file(Path(path).parent, ';\n'.join(graph)) as script:
         _run([ffmpeg, '-hide_banner', '-loglevel', 'error', '-nostdin', '-filter_complex_threads', '1',
-              '-filter_complex_script', script, '-map', '[music]', '-ar', str(sample_rate), '-ac', '1',
+              filter_file_option, script, '-map', '[music]', '-ar', str(sample_rate), '-ac', '1',
               '-c:a', 'pcm_s16le', '-rf64', 'auto', '-f', 'wav', '-n', path],
              timeout=max(120, frame_count / sample_rate * 10), cancelled=cancelled,
              env=offline_environment())
-    finally:
-        script.unlink(missing_ok=True)
 
 
 _MUSICGEN_WORKER = r'''
@@ -386,6 +430,7 @@ def _render_music(output, *, duration, mood='calm', tempo=90, seed=0, engine='pr
     previous = None
     previous_digest = None
     reused = 0
+    filter_file_option = None
     for number in range(chunk_count):
         if cancelled():
             raise InterruptedError('Music generation cancelled; accepted chunks are saved for resume.')
@@ -416,9 +461,12 @@ def _render_music(output, *, duration, mood='calm', tempo=90, seed=0, engine='pr
             partial.unlink(missing_ok=True)
             try:
                 if engine == 'procedural':
+                    if filter_file_option is None:
+                        filter_file_option = _filter_file_option(binary, work, cancelled=cancelled)
                     _render_procedural_chunk(partial, first_bar=number * 4, start_frame=start,
                         frame_count=count, total_frames=frames, sample_rate=sample_rate, tempo=tempo,
-                        mood=mood, seed=seed, gain=gain, ffmpeg=binary, cancelled=cancelled)
+                        mood=mood, seed=seed, gain=gain, ffmpeg=binary, cancelled=cancelled,
+                        filter_file_option=filter_file_option)
                 else:
                     _render_musicgen_chunk(partial, frame_count=count, sample_rate=sample_rate,
                         mood=mood, tempo=tempo, seed=(seed + number) % (2**63), gain=gain, ffmpeg=binary,
@@ -452,15 +500,18 @@ def _render_music(output, *, duration, mood='calm', tempo=90, seed=0, engine='pr
         if info['frames'] != frames or info['sample_rate'] != sample_rate:
             raise ValueError('Final music duration does not match the requested sample count.')
         midi = None
+        reuse_midi = False
         if engine == 'procedural':
-            midi = target.with_suffix('.mid')
-            if midi.exists() or midi.is_symlink():
-                raise FileExistsError(midi)
+            midi = local_path(target.with_suffix('.mid'), must_exist=False)
             midi_tmp = work / 'score.partial.mid'
             local_path(midi_tmp, must_exist=False)
             midi_tmp.unlink(missing_ok=True)
             _write_midi(midi_tmp, frames=frames, sample_rate=sample_rate, mood=mood, tempo=tempo,
                         seed=seed, cancelled=cancelled)
+            if midi.exists():
+                if not midi.is_file() or digest_file(midi) != digest_file(midi_tmp):
+                    raise FileExistsError(midi)
+                reuse_midi = True
         provenance = {'schema_version': 1, 'engine': engine, 'settings_sha256': settings_hash,
                       'frames': frames, 'sample_rate': sample_rate, 'channels': 1,
                       'sha256': digest_file(assembled, cancelled=cancelled), 'chunks': chunk_count,
@@ -470,21 +521,31 @@ def _render_music(output, *, duration, mood='calm', tempo=90, seed=0, engine='pr
                                   else '25-second generations with five-second audio context; no full-project waveform in RAM',
                       'model': model.cache_identity() if model else None,
                       'listening_acceptance': 'NOT_RUN', 'rights': model.license if model else 'Original procedural score; no sampled recording or bundled SoundFont'}
-        metadata = target.with_suffix('.music.json')
-        if metadata.exists() or metadata.is_symlink():
-            raise FileExistsError(metadata)
+        metadata = local_path(target.with_suffix('.music.json'), must_exist=False)
+        reuse_metadata = False
+        if metadata.exists():
+            try:
+                previous_metadata = read_json(metadata)
+                comparable = {key: value for key, value in provenance.items() if key != 'reused_chunks'}
+                previous_comparable = {key: value for key, value in previous_metadata.items() if key != 'reused_chunks'}
+                if previous_comparable != comparable:
+                    raise ValueError('Different provenance')
+            except (ValueError, OSError, AttributeError) as exc:
+                raise FileExistsError(metadata) from exc
+            reuse_metadata = True
         if cancelled():
             raise InterruptedError('Music generation cancelled; verified chunks are saved.')
         # Publish companions first and WAV last: the WAV is the completion marker.
         published = []
         try:
-            if midi is not None:
+            if midi is not None and not reuse_midi:
                 os.link(midi_tmp, midi)
                 published.append(midi)
             metadata_tmp = work / 'provenance.partial.json'
             _atomic_json(metadata_tmp, provenance)
-            os.link(metadata_tmp, metadata)
-            published.append(metadata)
+            if not reuse_metadata:
+                os.link(metadata_tmp, metadata)
+                published.append(metadata)
             _publish(assembled, target)
         except BaseException:
             for companion in published:

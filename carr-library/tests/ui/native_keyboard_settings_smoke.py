@@ -22,6 +22,20 @@ def not_run(reason):
     return 77
 
 
+def unused_draft_shortcut(manager, draft, command_id):
+    """Choose against the live composed registry without changing a binding."""
+    for key in 'QWERTYUIOPASDFGHJKLZXCVBNM':
+        candidate = 'Ctrl+Alt+Shift+' + key
+        if candidate == manager.shortcut(command_id):
+            continue
+        try:
+            validated = manager.validate({**draft, command_id: candidate})
+        except ValueError:
+            continue
+        return validated[command_id]
+    raise AssertionError('No free cancellation-draft key exists in the live registry.')
+
+
 def run_native(source=None, timeout=120):
     if sys.platform not in ('win32', 'darwin') and not os.environ.get('DISPLAY'):
         return not_run('A supported native display is unavailable; wx key simulation requires X11 on Linux.')
@@ -242,10 +256,11 @@ def run_native(source=None, timeout=120):
             before = keymap.read_bytes()
 
             def cancel(dialog):
-                dialog.shortcut.SetValue('Ctrl+Alt+J')
+                candidate = unused_draft_shortcut(manager, dialog.draft, test_id)
+                dialog.shortcut.SetValue(candidate)
                 activate(button(dialog.dialog, caption='Assign shortcut'))
                 check('cancel probe has an unapplied native settings draft',
-                      dialog.draft[test_id] == 'Ctrl+Alt+J' and manager.shortcut(test_id) == 'Ctrl+Shift+K')
+                      dialog.draft[test_id] == candidate and manager.shortcut(test_id) == 'Ctrl+Shift+K')
                 press(wx.WXK_ESCAPE)
 
             check('actual Escape cancels the native settings dialog', not settings_session(cancel))

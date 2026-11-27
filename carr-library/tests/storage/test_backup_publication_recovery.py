@@ -120,7 +120,7 @@ def test_failed_staging_link_retirement_cannot_publish_completion(produced, tmp_
     assert ReadingDesk(app, workspace, 'edition').page(1).text == page.text
     retry = tmp_path / 'retry'
     checksum = create_backup(app, retry)
-    assert verify_backup(retry, checksum)['version'] == 4
+    assert verify_backup(retry, checksum)['version'] == 5
 
 
 @pytest.mark.parametrize('failure', ['partial_write', 'competing_file'])

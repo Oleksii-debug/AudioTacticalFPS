@@ -85,6 +85,42 @@ change is pushed; the local checks above do not substitute for them. Manual
 Windows 11 keyboard/NVDA speech and listening acceptance remain **NOT RUN** in
 this environment. A native automated GUI pass does not change that status.
 
+### Unicode paths at the native OCR boundary
+
+`extract/ocr_process.py` is the single native execution adapter. It preserves
+safe ASCII absolute arguments and uses ASCII relative names under the selected
+model directory when a Windows engine cannot represent a Ukrainian path. Python
+passes the possibly Unicode working directory through the wide-character process
+API. When direct paths cannot be represented, the adapter copies bounded input
+and selected model bytes into a fresh temporary directory and verifies them
+before execution. No executable or DLL is copied, no short-name alias is
+required, and process-wide cwd, PATH and TESSDATA_PREFIX stay unchanged.
+
+Managed/portable model hashes remain authoritative. Explicit pinned/OSD model
+directories and script identities are preserved. A runtime without an explicit
+model directory cannot silently change its model cwd. Validated listing headers
+refer back to the original directory; the helper's source bytes participate in
+the resumable extraction fingerprint. The original deadline covers staging and
+execution. Copying text/TSV/OSD results back from staging is bounded, appends the
+suffix to the requested base, refuses an existing file, and cleans owned partial
+results after failure. Direct native output uses the caller's fresh destination.
+
+The adapter uses the existing temporary-directory permissions; it does not
+establish or attest a custom Windows DACL. It assumes trusted local, stable
+private parent directories and is not a hostile-filesystem sandbox. This
+reconciliation does not introduce an untested alternate staging implementation.
+
+The exact canonical heads `26bfafffa7cfe95b16d08bbb26024b467784425f` and
+`bfcc1f5cae137cc27030c0cec6dc46a1641892c1` passed the native Windows step
+"Exercise actual managed OCR with Unicode Windows paths" in runs
+[45914626449](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45914626449)
+and [45914994198](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45914994198).
+That step strictly executes managed-model OCR, actual reviewed batch import and
+bounded native inventory tests, retaining Unicode source/model/temp/output names.
+It does not establish all-language quality or completion of the separate full
+desktop/bundle gates. The newly reconciled composition still requires its own
+exact-head native acceptance; earlier passes are not reassigned to this tree.
+
 ## Upstream identity and rights
 
 Fast is pinned to `87416418657359cb625c412a48b6e1d6d41c29bd`; Best is pinned to

@@ -86,7 +86,7 @@ def test_studio_refreshes_its_own_voice_registry_after_explicit_tool_change(tmp_
     second = executable(tmp_path, 'second.exe')
     seen = []
     def registry(**kwargs):
-        seen.append(Path(kwargs['ffmpeg']))
+        seen.append(kwargs['ffmpeg'])
         return SimpleNamespace(voices=lambda: (), capabilities=lambda: [])
     monkeypatch.setattr(engines, 'default_registry', registry)
     controller = StudioController(private_root=tmp_path / 'library', ffmpeg=first)

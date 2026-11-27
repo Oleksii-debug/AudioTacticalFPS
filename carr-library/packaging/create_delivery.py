@@ -38,7 +38,7 @@ MAX_FILE = 2 * 1024 ** 3
 MAX_TOTAL = 2 * 1024 ** 3 - 1
 INSTRUCTIONS = ("Extract both archives into the same destination so their shared "
                 "Universal-Research-Library folder contains the complete manifest inventory. "
-                "Only then run Install.cmd. The application ZIP alone is incomplete.")
+                "Only then run Install.cmd once. The application ZIP alone is incomplete.")
 
 
 def _check(cancelled):
@@ -376,9 +376,13 @@ def _cleanup(stage, identity, parent_fd):
         shutil.rmtree(stage)
 
 
-def _start_here(application_name, source_name, reused):
+def _start_here(application_name, source_name, reused, *, native_launcher=False):
     source_note = ("Архів джерел використано повторно: він залишається у попередньому місці. "
                    "Візьміть його разом з архівом програми.\n" if reused else "")
+    launch_entry = "ResearchLibrary.exe" if native_launcher else "ResearchLibrary.cmd"
+    launch_note = ("ResearchLibrary.cmd також залишається доступним для запуску. "
+                   "Приватний ResearchLibrary.exe не має цифрового підпису.\n\n"
+                   if native_launcher else "")
     return ("Universal Research Library — встановлення у Windows x64\n\n"
             "1. Потрібні обидва ZIP-архіви:\n"
             + application_name + "\n" + source_name + "\n" + source_note + "\n"
@@ -386,10 +390,14 @@ def _start_here(application_name, source_name, reused):
             "Під час кожного розпакування вкажіть цю саму папку. Обидва архіви мають "
             "утворити одну спільну папку Universal-Research-Library.\n\n"
             "3. У спільній папці повинні бути Install.cmd та ocr-corresponding-source.tar. "
-            "Лише після розпакування обох архівів запустіть Install.cmd і дочекайтеся "
-            "успішного завершення встановлення. Самого архіву програми недостатньо.\n\n"
-            "4. Запускайте програму через ResearchLibrary.cmd. Для перевірки встановлення "
-            "використовуйте CheckInstallation.cmd.\n\n"
+            "Лише після розпакування обох архівів запустіть Install.cmd один раз і дочекайтеся "
+            "успішного завершення встановлення. Самого архіву програми недостатньо. "
+            "Файл ocr-corresponding-source.tar окремо розпаковувати не потрібно.\n\n"
+            "4. Надалі відкривайте " + launch_entry + " клавішею Enter. "
+            "Повторно запускати Install.cmd перед кожним сеансом не потрібно. "
+            "Для перевірки встановлення використовуйте CheckInstallation.cmd.\n\n"
+            + launch_note +
+            "Ручна приймальна перевірка з NVDA ще очікується.\n\n"
             "delivery-verification.json містить точну версію коду й контрольні суми архівів. "
             "Цей приватний пакет призначений для локального встановлення.\n")
 
@@ -453,7 +461,8 @@ def create_delivery(bundle, expected_source_commit, output, *, source_companion=
         report_stamp = _stamp(_plain(stage / "delivery-verification.json"))
         with (stage / "START_HERE_UK.txt").open("x", encoding="utf-8") as stream:
             stream.write(_start_here(app_name, json.dumps(companion.name, ensure_ascii=False),
-                                     source_companion is not None))
+                                     source_companion is not None,
+                                     native_launcher="ResearchLibrary.exe" in data["files"]))
             stream.flush()
             os.fsync(stream.fileno())
         instructions_stamp = _stamp(_plain(stage / "START_HERE_UK.txt"))

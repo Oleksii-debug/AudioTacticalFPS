@@ -78,6 +78,69 @@ def test_custom_style_cannot_bypass_changed_metadata_guard(research, tmp_path):
     assert not target.exists()
 
 
+def test_custom_style_keeps_active_scope_and_rejects_foreign_publication(research, tmp_path):
+    app, workspace, controller, identity, path = research
+    archived = controller.create({'title': 'ArchivedCustomMarker'})
+    controller.archive(archived)
+    other = AcademicController(app, app.create_workspace('Separate custom-style scope'))
+    other.create({'title': 'ForeignCustomMarker'})
+    preview = BibliographyWorkbench(controller).preview(style=load_style_file(path))
+    assert len(preview.result.entries) == 1
+    assert 'Original bibliography title' in preview.bibliography
+    assert all(marker not in preview.explanation for marker in (
+        'ArchivedCustomMarker', 'ForeignCustomMarker', 'PrivateResearchNoteMustRemainPrivate'))
+    foreign = BibliographyWorkbench(other)
+    with pytest.raises(ValueError, match='another library'):
+        foreign.copy_text(preview)
+    destination = tmp_path / 'foreign-custom.html'
+    with pytest.raises(ValueError, match='another library'):
+        foreign.export(preview, destination, format='html')
+    assert not destination.exists()
+    assert controller.get(identity).title == 'Original bibliography title'
+
+
+@pytest.mark.parametrize('format', ['text', 'html', 'docx'])
+@pytest.mark.parametrize('revoked', ['reference', 'workspace'])
+def test_custom_all_active_preview_rechecks_scope_during_publication(research, tmp_path, format, revoked):
+    app, workspace, controller, identity, path = research
+    workbench = BibliographyWorkbench(controller)
+    # Archiving removes a reference from the all-active selection. Explicitly
+    # selecting an archived reference remains the existing read/export policy.
+    preview = workbench.preview(style=load_style_file(path))
+    destination = tmp_path / ('retained-bibliography.' + format)
+    destination.write_bytes(b'Keep this existing output unchanged.')
+    calls = 0
+
+    def revoke_after_render():
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            # The first cancellation check precedes actual custom rendering;
+            # the second belongs to the publication writer's checked callback.
+            if revoked == 'reference':
+                controller.archive(controller.get(identity))
+            else:
+                app.archive_workspace(workspace)
+        return False
+
+    with pytest.raises(ValueError):
+        workbench.export(preview, destination, format=format, cancelled=revoke_after_render)
+    assert calls >= 2
+    assert destination.read_bytes() == b'Keep this existing output unchanged.'
+
+
+def test_custom_style_preserves_explicit_archived_reference_selection(research):
+    _, _, controller, identity, path = research
+    controller.archive(controller.get(identity))
+    workbench = BibliographyWorkbench(controller)
+    custom = load_style_file(path)
+    selected = workbench.preview(identity=identity, style=custom)
+    assert len(selected.result.entries) == 1
+    assert workbench.copy_text(selected) == 'LOCAL: Original bibliography title\n'
+    with pytest.raises(ValueError, match='no active references'):
+        workbench.preview(style=custom)
+
+
 def test_cli_loads_only_explicit_style_and_reports_exact_identity(research, tmp_path, capsys):
     app, workspace, _, _, path = research
     target = tmp_path / 'cli-bibliography.html'

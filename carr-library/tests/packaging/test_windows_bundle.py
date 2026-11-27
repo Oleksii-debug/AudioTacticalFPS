@@ -58,6 +58,59 @@ class WindowsBundleTests(unittest.TestCase):
         self.assertIn("universal-research-library==1.0", (self.output / "install.lock").read_text())
         self.assertEqual((self.output / "wheelhouse" / self.app.name).read_bytes(), self.app.read_bytes())
 
+
+    def test_native_launcher_is_sealed_and_tampering_is_rejected(self):
+        # Synthetic bytes test packaging boundaries only; native execution is
+        # independently required by the Windows launcher's real process probe.
+        launcher = self.root / "ResearchLibrary.exe"
+        approved = b"synthetic native launcher packaging fixture"
+        launcher.write_bytes(approved)
+        digest = hashlib.sha256(approved).hexdigest()
+        with patch.object(builder, "NATIVE_LAUNCHER_SHA256", digest):
+            builder.build_bundle(self.app, self.wheels, self.lock, self.output,
+                                 native_launcher=launcher)
+        self.assertEqual((self.output / "ResearchLibrary.exe").read_bytes(), approved)
+        manifest = json.loads((self.output / "bundle-manifest.json").read_text())
+        self.assertEqual(manifest["files"]["ResearchLibrary.exe"], digest)
+        installer.verify(self.output)
+        (self.output / "ResearchLibrary.exe").write_bytes(b"changed executable")
+        with self.assertRaisesRegex(ValueError, "checksum"):
+            installer.verify(self.output)
+
+    def test_native_launcher_wrong_identity_fails_before_output(self):
+        launcher = self.root / "ResearchLibrary.exe"
+        launcher.write_bytes(b"an unapproved executable")
+        with self.assertRaisesRegex(ValueError, "Windows-tested"):
+            builder.build_bundle(self.app, self.wheels, self.lock, self.output,
+                                 native_launcher=launcher)
+        self.assertFalse(self.output.exists())
+
+    def test_native_launcher_replaced_during_copy_is_rejected(self):
+        launcher = self.root / "ResearchLibrary.exe"
+        launcher.write_bytes(b"approved synthetic bytes")
+        digest = builder.sha256(launcher)
+        original_copy = builder.shutil.copyfile
+
+        def replace_before_copy(source, destination, *args, **kwargs):
+            if Path(source) == launcher:
+                launcher.write_bytes(b"replacement after verification")
+            return original_copy(source, destination, *args, **kwargs)
+
+        with patch.object(builder, "NATIVE_LAUNCHER_SHA256", digest):
+            with patch.object(builder.shutil, "copyfile", side_effect=replace_before_copy):
+                with self.assertRaisesRegex(ValueError, "changed during bundle assembly"):
+                    builder.build_bundle(self.app, self.wheels, self.lock, self.output,
+                                         native_launcher=launcher)
+        self.assertFalse(self.output.exists())
+
+    def test_native_launcher_directory_is_rejected(self):
+        launcher = self.root / "ResearchLibrary.exe"
+        launcher.mkdir()
+        with self.assertRaisesRegex(ValueError, "regular file"):
+            builder.build_bundle(self.app, self.wheels, self.lock, self.output,
+                                 native_launcher=launcher)
+        self.assertFalse(self.output.exists())
+
     def sbom(self, version="1.0"):
         path = self.root / "input-sbom.json"
         path.write_text(json.dumps({
@@ -85,6 +138,50 @@ class WindowsBundleTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "SBOM does not match"):
             builder.build_bundle(self.app, self.wheels, self.lock, self.output, sbom=sbom)
         self.assertFalse(self.output.exists())
+
+    def test_duplicate_sbom_components_rejected_before_output(self):
+        # Both exact duplicates and case-equivalent package names can otherwise
+        # disappear into the inventory set, even with different component refs.
+        cases = (
+            [{"name": "fixture", "version": "1.0"}] * 2,
+            [{"name": "fixture", "version": "1.0", "bom-ref": "fixture"}] * 2,
+            [{"name": "fixture", "version": "1.0", "bom-ref": "first"},
+             {"name": "FIXTURE", "version": "1.0", "bom-ref": "second"}],
+        )
+        for index, components in enumerate(cases):
+            with self.subTest(components=components):
+                sbom = self.sbom()
+                bom = json.loads(sbom.read_text(encoding="utf-8"))
+                bom["components"] = components
+                sbom.write_text(json.dumps(bom), encoding="utf-8")
+                output = self.root / f"duplicate-component-{index}"
+                with self.assertRaisesRegex(ValueError, "duplicate"):
+                    builder.build_bundle(self.app, self.wheels, self.lock, output, sbom=sbom)
+                self.assertFalse(output.exists())
+
+    def test_duplicate_sbom_refs_rejected_for_distinct_locked_components(self):
+        other = wheel(self.wheels, "second_fixture", version="2.0")
+        self.lock.write_text(self.lock.read_text() +
+                            f"second-fixture==2.0 --hash=sha256:{builder.sha256(other)}\n")
+        sbom = self.sbom()
+        bom = json.loads(sbom.read_text(encoding="utf-8"))
+        bom["components"] = [
+            {"name": "fixture", "version": "1.0", "bom-ref": "shared"},
+            {"name": "second_fixture", "version": "2.0", "bom-ref": "shared"},
+        ]
+        sbom.write_text(json.dumps(bom), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "duplicate"):
+            builder.build_bundle(self.app, self.wheels, self.lock, self.output, sbom=sbom)
+        self.assertFalse(self.output.exists())
+
+        # A valid two-package inventory with distinct refs still builds and is
+        # accepted by the actual sealed-bundle verifier.
+        bom["components"][1]["bom-ref"] = "second"
+        sbom.write_text(json.dumps(bom), encoding="utf-8")
+        result = builder.build_bundle(self.app, self.wheels, self.lock, self.output, sbom=sbom)
+        self.assertEqual(result["wheels"], 3)
+        self.assertEqual((self.output / "runtime-sbom.cdx.json").read_bytes(), sbom.read_bytes())
+        installer.verify(self.output)
 
     def test_duplicate_sbom_component_rejected(self):
         sbom = self.sbom()

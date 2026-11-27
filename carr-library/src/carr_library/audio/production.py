@@ -115,6 +115,8 @@ def parse_script(script, *, title='Audio project', voice='sapi5:default', langua
                         p['pan'] = _pan(p['pan'])
                     roles[name] = replace(roles.get(name, Role(name, voice=voice, language=language)), **p)
                 elif kind == 'music':
+                    if events:
+                        raise ValueError('Set scene music before its first event. Start a new chapter to change the music later.')
                     if parts[1:] == ['off']:
                         music = None
                     else:
@@ -337,7 +339,7 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status):
                 from .model_manifest import LocalModelManifest
                 location = checked_directory(root / 'models').joinpath(*scene.music.model_manifest.split('/'))
                 model = LocalModelManifest.load(location, engine=scene.music.engine)
-                model.verify(cancelled=cancelled)
+                model.verify(cancelled=cancelled, require_complete=True)
                 music_models[scene.music.model_manifest] = model
                 music_identities[scene.music.model_manifest] = model.cache_identity()
         for event in scene.events:

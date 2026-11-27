@@ -1,11 +1,56 @@
 """Advanced queries retain Search Center's real-source and session guarantees."""
+from contextlib import closing
 from dataclasses import replace
+from hashlib import sha256
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from threading import Event
+from uuid import uuid4
 
 import pytest
 
-from carr_library.application import LibraryApp
+from carr_library.application import LibraryApp, _CatalogPublisher
+from carr_library.catalog.intake import snapshot
+from carr_library.catalog.registration import Registration
+from carr_library.citations.text_attestation import CONFIG, MAX_SEGMENTS
+from carr_library.ingest.pipeline import canonical
+from carr_library.ingest.writer_guard import exclusive_writer
 from carr_library.search.federated import FederatedSearch
+from carr_library.storage.revisions import Page, Storage
+
+
+def _publish_search_scale_source(app, workspace, title, text, *, work_id=None, edition_id=None):
+    """Prepare real search-scale data through the production atomic publisher.
+
+    This fixture retains bounded original TXT bytes and uses the same strict
+    UTF-8 settings, revision identity, scoped catalog transaction, source metadata
+    and sealed-page/index publication as ordinary ingestion. The large search
+    cases do not need a separate durable extraction checkpoint for every page;
+    that import/recovery protocol remains covered by the normal small imports
+    here and the dedicated ingestion suites. No source or search result is mocked.
+    """
+    with TemporaryDirectory(prefix='.search-scale-', dir=app.root) as temporary:
+        source = Path(temporary) / 'original.txt'
+        source.write_bytes(text.encode('utf-8'))
+        asset = snapshot(source.parent, source.name)
+    pages = asset.data.decode('utf-8-sig', errors='strict').split('\f')
+    assert asset.mime == 'text/plain' and 1 <= len(pages) <= MAX_SEGMENTS
+    settings = canonical(dict(adapter='strict-utf8-v1', kind='logical_segment'))
+    assert settings == CONFIG
+    registration = Registration(work_id or uuid4().hex, edition_id or uuid4().hex,
+                                asset.manifest(), title)
+    revision = sha256(canonical([workspace, registration.edition_id, asset.digest,
+                                 settings]).encode('utf-8')).hexdigest()
+    with exclusive_writer(app.root):
+        app._check_database_paths()
+        with closing(Storage(app.database, schema_version=4)) as storage:
+            app._authorize(storage.db, workspace)
+            retained = app.assets.retain(asset.data, asset.mime, asset.digest)
+            assert retained.read_bytes() == asset.data
+            publisher = _CatalogPublisher(storage, registration)
+            publisher.publish_revision(workspace, registration.edition_id, revision,
+                                       asset.digest, settings, tuple(Page(raw) for raw in pages))
+            assert publisher.published_here
 
 
 @pytest.fixture
@@ -176,7 +221,7 @@ def test_result_pages_beyond_one_hundred_keep_order_and_current_page_authority(t
     raw_pages = tuple(tuple(f'memory identity original source page {number:03d}'
                           for number in range(count)) for count in (107, 103))
     for workspace, pages in zip(workspaces, raw_pages):
-        app.add_text(workspace, 'Many source segments', '\f'.join(pages))
+        _publish_search_scale_source(app, workspace, 'Many source segments', '\f'.join(pages))
     old_host = app.search(workspaces[0], 'original', limit=1)[0]
     host_refs = dict(app._selections)
     service = FederatedSearch(app)
@@ -217,8 +262,8 @@ def test_final_result_page_after_ten_thousand_matches_is_not_rejected(tmp_path):
     for edition, count in enumerate([1000] * 10 + [1]):
         pages = '\f'.join(f'alpha beta edition {edition:02d} page {page:03d}'
                           for page in range(count))
-        app.add_text(workspace, f'Source {edition:02d}', pages,
-                     edition_id=f'edition-{edition:02d}', work_id=f'work-{edition:02d}')
+        _publish_search_scale_source(app, workspace, f'Source {edition:02d}', pages,
+                                     edition_id=f'edition-{edition:02d}', work_id=f'work-{edition:02d}')
     service = FederatedSearch(app)
     session = service.search([workspace], 'alpha AND beta', mode='advanced',
         result_mode='short', limit_per_library=1, offset_per_library=10000)
@@ -247,7 +292,7 @@ def test_lookahead_isolated_from_two_thousand_retained_selection_handles(tmp_pat
     workspaces = tuple(app.create_workspace(f'Library {i}') for i in range(20))
     pages = '\f'.join(f'alpha beta source page {i}' for i in range(101))
     for workspace in workspaces:
-        app.add_text(workspace, 'Source', pages)
+        _publish_search_scale_source(app, workspace, 'Source', pages)
     service = FederatedSearch(app)
     session = service.search(workspaces, 'alpha AND beta', mode='advanced',
                              limit_per_library=100)

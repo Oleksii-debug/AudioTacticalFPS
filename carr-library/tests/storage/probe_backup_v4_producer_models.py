@@ -7,6 +7,7 @@ of a required producer is an error here, never a silently skipped test.
 from hashlib import sha256
 from importlib import import_module
 import json
+import shutil
 import pytest
 
 from carr_library.library_backup import create_backup, restore_backup
@@ -44,13 +45,17 @@ def producer_files(reading):
     return app, project, draft, copy
 
 
-@pytest.mark.parametrize('version', [3, 4])
+@pytest.mark.parametrize('version', [3, 4, 5])
 def test_both_real_editor_and_keymap_formats_roundtrip(producer_files, tmp_path, version):
     app, project, draft, copy = producer_files
     folder = tmp_path / 'backup'
     create_backup(app, folder)
     value = manifest(folder)
     assert len(value['sidecars']) == 7
+    if version < 5:
+        if value.pop('pending') is not None:
+            shutil.rmtree(folder / 'pending')
+        value['version'] = version
     if version == 3:
         value['version'] = 3
         del value['generated_audio_included']
@@ -104,13 +109,17 @@ def studio(reading):
     return app, project, revised
 
 
-@pytest.mark.parametrize('version', [3, 4])
+@pytest.mark.parametrize('version', [3, 4, 5])
 def test_real_typed_audio_projects_and_history_restore(studio, tmp_path, version):
     app, project, revised = studio
     folder = tmp_path / 'backup'
     create_backup(app, folder)
     value = manifest(folder)
     assert len(value['sidecars']) == 2
+    if version < 5:
+        if value.pop('pending') is not None:
+            shutil.rmtree(folder / 'pending')
+        value['version'] = version
     if version == 3:
         value['version'] = 3
         value['state'] = [{**entry, 'filename': entry['filename'][len('state/'):]} for entry in value.pop('sidecars')]

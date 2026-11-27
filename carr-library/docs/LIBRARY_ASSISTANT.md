@@ -20,8 +20,9 @@ API key or additional dependency.
    selected folders or backup permission invalidates the previous approval.
 5. Read **Library workflow status** and **Step results**. Operations run on the
    desktop worker, leaving the UI available. **Pause workflow** saves completed
-   work; it is not an undo command. During a backup, pause is honored after the
-   current atomic snapshot completes.
+   work; it is not an undo command. Backup preparation and verification check
+   pause at their safe checkpoints. Once final snapshot publication starts, it
+   finishes before pause is honored; resume verifies the saved snapshot.
 6. For recovery, choose **Refresh saved jobs**, select a job in this library,
    choose **Load for review**, inspect its folders and remaining steps, then
    choose **Approve and run**. Closing while a worker runs requests pause and
@@ -145,7 +146,10 @@ authoritative verification as restore: the owner marker, exact file namespace,
 manifest and database hashes, supported database schema and invariants,
 catalog-bound original files, and every saved reading-state byte and source
 binding must agree. Verification uses a private temporary database and never
-restores over or modifies the backup being checked.
+restores over or modifies the backup being checked. The workflow forwards pause
+requests to this verifier both for a new snapshot and when resuming completed
+steps. Pausing verification preserves the snapshot and the earlier checkpoint;
+resume rechecks it without creating a replacement.
 
 Preview binds imported bytes by SHA256. Both approval and ingestion recheck them.
 Preview uses the actual search parsers and limits for every query, including

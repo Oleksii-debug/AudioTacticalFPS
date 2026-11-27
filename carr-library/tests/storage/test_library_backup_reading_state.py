@@ -2,6 +2,7 @@
 from errno import ENOSPC
 from hashlib import sha256
 import json
+import shutil
 import os
 from pathlib import Path
 from types import SimpleNamespace
@@ -68,12 +69,12 @@ def test_application_backup_restores_exact_bookmarks_and_resume_for_both_librari
     folder = tmp_path / 'backup'
     digest = app.backup(folder)
     manifest = read_manifest(folder)
-    assert manifest['version'] == 4
+    assert manifest['version'] == 5
     assert reading_descriptor(manifest) == dict(filename=FILENAME, size_bytes=len(raw),
                                              sha256=sha256(raw).hexdigest())
     assert (folder / FILENAME).read_bytes() == raw
     assert {path.name for path in folder.iterdir()} == {
-        'manifest.json', 'library.sqlite', 'originals', FILENAME}
+        'manifest.json', 'library.sqlite', 'originals', 'pending', FILENAME}
     restored = LibraryApp(restore_backup(folder, tmp_path / 'restored', digest))
     state = ReadingState(restored.root)
     assert state.path.read_bytes() == raw
@@ -323,6 +324,8 @@ def test_v3_reading_presence_must_be_explicit(reading_library, tmp_path, change)
     folder = tmp_path / 'backup'
     create_backup(app, folder)
     manifest = read_manifest(folder)
+    if manifest.pop('pending') is not None:
+        shutil.rmtree(folder / 'pending')
     manifest['version'] = 3
     manifest['reading_state'] = manifest.pop('sidecars')[0]
     del manifest['generated_audio_included']
@@ -481,6 +484,8 @@ def test_legacy_backup_restores_without_fabricating_reading_state(
     folder = tmp_path / 'backup'
     create_backup(app, folder)
     manifest = read_manifest(folder)
+    if manifest.pop('pending') is not None:
+        shutil.rmtree(folder / 'pending')
     manifest['version'] = version
     del manifest['sidecars']
     del manifest['generated_audio_included']
@@ -504,6 +509,8 @@ def test_legacy_manifest_cannot_smuggle_an_unbound_reading_file(
     folder = tmp_path / 'backup'
     create_backup(app, folder)
     manifest = read_manifest(folder)
+    if manifest.pop('pending') is not None:
+        shutil.rmtree(folder / 'pending')
     manifest['version'] = version
     del manifest['sidecars']
     del manifest['generated_audio_included']

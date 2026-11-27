@@ -84,7 +84,7 @@ def test_real_producers_roundtrip_exact_bytes_without_applying_engine_paths(voic
         manifest = verify_backup(folder, checksum)
         snapshot = files(folder)
         target = restore_backup(folder, tmp_path / 'Відновлена', checksum)
-    assert manifest['version'] == 4 and manifest['generated_audio_included'] is False
+    assert manifest['version'] == 5 and manifest['generated_audio_included'] is False
     assert manifest['sidecars'] == [dict(filename=name, size_bytes=len(raw), sha256=sha256(raw).hexdigest())
                                     for name, raw in sorted(before.items())]
     assert sidecar_bytes(folder) == sidecar_bytes(target) == before

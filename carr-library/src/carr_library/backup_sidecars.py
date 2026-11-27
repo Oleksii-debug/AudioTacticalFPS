@@ -198,6 +198,7 @@ class Inventory:
     entries: tuple
     empty_roots: frozenset = frozenset()
     generated_audio_included: bool = False
+    pending: dict | None = None
 
 
 def _collection_budgets(entries):
@@ -210,15 +211,15 @@ def _collection_budgets(entries):
 
 
 def normalize_manifest(manifest):
-    """Discriminate exact v3 shapes without changing the signed source manifest."""
+    """Discriminate exact legacy shapes without changing the signed manifest."""
     version = manifest.get('version')
     fields = {'version', 'kind', 'schema_version', 'database', 'assets'}
-    if type(version) is not int or version not in (1, 2, 3, 4):
+    if type(version) is not int or version not in (1, 2, 3, 4, 5):
         raise RestoreError('unsupported library manifest')
     if version >= 2:
         fields.add('schema_fingerprint')
     extra = set(manifest) - fields
-    entries, roots, generated = [], frozenset(), False
+    entries, roots, generated, pending = [], frozenset(), False, None
     if version <= 2:
         if set(manifest) != fields:
             raise RestoreError('unsupported library manifest fields')
@@ -230,7 +231,8 @@ def normalize_manifest(manifest):
             entries = [value]
     elif version == 3 and extra == {'sidecars'}:
         entries = manifest['sidecars']
-    elif version == 3 and extra == {'state', 'generated_audio_included'}:
+    elif (version == 3 and extra == {'state', 'generated_audio_included'} or
+          version == 4 and extra == {'state', 'generated_audio_included', 'pending'}):
         generated = manifest['generated_audio_included']
         if type(manifest['state']) is not list or len(manifest['state']) > MAX_FILES:
             raise RestoreError('invalid legacy state manifest')
@@ -241,14 +243,23 @@ def normalize_manifest(manifest):
             portable_name(value['filename'])
             entries.append({**value, 'filename': 'state/' + value['filename']})
         roots = frozenset({'state'})
+        if version == 4:
+            pending = manifest['pending']
+            if type(pending) is not dict:
+                raise RestoreError('invalid legacy pending import manifest')
     elif version == 4 and extra == {'sidecars', 'generated_audio_included'}:
         entries, generated = manifest['sidecars'], manifest['generated_audio_included']
+    elif version == 5 and extra == {'sidecars', 'generated_audio_included', 'pending'}:
+        entries, generated, pending = (manifest['sidecars'], manifest['generated_audio_included'],
+                                       manifest['pending'])
     else:
         raise RestoreError('ambiguous or unsupported library manifest fields')
     if set(manifest) != fields | extra or not fields <= set(manifest) or type(generated) is not bool:
         raise RestoreError('invalid library manifest fields')
     if type(entries) is not list or len(entries) > MAX_FILES:
         raise RestoreError('invalid sidecar manifest')
+    if pending is not None:
+        _model('pending_backup').validate_pending(pending)
     names, portable_paths, total, copied = set(), {}, 0, []
     for entry in entries:
         if (type(entry) is not dict or set(entry) != {'filename', 'size_bytes', 'sha256'}
@@ -272,7 +283,7 @@ def normalize_manifest(manifest):
             raise RestoreError('sidecar manifest byte limit')
         copied.append(dict(entry))
     _collection_budgets((entry['filename'], entry['size_bytes']) for entry in copied)
-    return Inventory(tuple(sorted(copied, key=lambda value: value['filename'])), roots, generated)
+    return Inventory(tuple(sorted(copied, key=lambda value: value['filename'])), roots, generated, pending)
 
 
 def _identity(info):
@@ -370,13 +381,15 @@ def snapshot(db, root, stage, *, max_bytes=MAX_BYTES, cancelled=lambda: False):
     return entries
 
 
-def check_namespace(directory, inventory):
+def check_namespace(directory, inventory, *, cancelled=lambda: False):
     names = {entry['filename'] for entry in inventory.entries}
     expected_dirs = set(inventory.empty_roots)
     for name in names:
         expected_dirs.update(str(p) for p in PurePosixPath(name).parents if str(p) != '.')
     roots = {name.split('/')[0] for name in names} | set(inventory.empty_roots)
     expected_roots = {'library.sqlite', 'originals', 'manifest.json'} | roots
+    if inventory.pending is not None:
+        expected_roots.add('pending')
     actual_roots = {path.name for path in directory.iterdir()}
     if actual_roots != expected_roots:
         missing = ', '.join(sorted(expected_roots - actual_roots)[:3]) or 'none'
@@ -384,13 +397,18 @@ def check_namespace(directory, inventory):
         raise RestoreError('incomplete backup or unexpected files; missing: ' + missing +
                            '; unexpected: ' + unexpected)
     for name in expected_dirs:
+        _check_cancelled(cancelled)
         _plain(directory / name, directory=True)
         actual = {path.relative_to(directory).as_posix() for path in (directory / name).iterdir()}
         expected = {path for path in names | expected_dirs if str(PurePosixPath(path).parent) == name}
         if actual != expected:
             raise RestoreError('incomplete sidecar backup or unexpected files')
     for name in names:
+        _check_cancelled(cancelled)
         _regular(directory / name)
+    if inventory.pending is not None:
+        _model('pending_backup').check_namespace(directory / 'pending', inventory.pending,
+                                                cancelled=cancelled)
 
 
 def restore(db, source, stage, inventory, *, cancelled=lambda: False):

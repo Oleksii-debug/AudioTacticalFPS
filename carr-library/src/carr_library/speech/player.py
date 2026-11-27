@@ -7,7 +7,6 @@ import ctypes
 import math
 import os
 from pathlib import Path
-import shutil
 import signal
 import subprocess
 import time
@@ -15,6 +14,7 @@ from uuid import uuid4
 import wave
 
 from ._io import local_file, stop_process
+from ..audio.ffmpeg import select_audio_tool
 
 
 class WavePlayer:
@@ -30,7 +30,7 @@ class WavePlayer:
         self._open = False
         self.backend = 'Windows MCI' if self._windows else 'ffplay'
         self.position_is_approximate = not self._windows
-        self._executable = shutil.which('ffplay') if not self._windows else None
+        self._executable = select_audio_tool('ffplay') if not self._windows else None
 
     @property
     def available(self):

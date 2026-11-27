@@ -120,3 +120,46 @@ def test_command_collection_is_bounded_and_read_only():
         commands.register(CommandSpec('command.extra', 'Extra'))
     with pytest.raises(TypeError):
         commands.specs['command.other'] = CommandSpec('command.other', 'Other')
+
+
+@pytest.mark.parametrize('assistant_id', ['main.local_assistant', 'assistant.local'])
+def test_native_cancel_probe_selects_a_free_key_with_composed_commands(assistant_id):
+    from pathlib import Path
+    import runpy
+    from types import SimpleNamespace
+    from carr_library.ui.builtin_keyboard_commands import builtin_commands
+
+    choose = runpy.run_path(str(Path(__file__).with_name(
+        'native_keyboard_settings_smoke.py')))['unused_draft_shortcut']
+    registry = CommandRegistry((*builtin_commands(),
+        CommandSpec(assistant_id, 'Local assistant', default_shortcut='Ctrl+Alt+J'),
+        CommandSpec('probe.keyboard_action', 'Synthetic action', default_shortcut='Ctrl+Shift+J'),
+        CommandSpec('probe.occupied', 'Occupied candidate', default_shortcut='Ctrl+Alt+Shift+Q')))
+    saved = {'probe.keyboard_action': 'Ctrl+Shift+K'}
+    before = registry.effective(saved)
+    manager = SimpleNamespace(validate=registry.validate,
+        shortcut=lambda identity: registry.shortcut(identity, saved))
+    with pytest.raises(ShortcutError, match='both'):
+        registry.validate({**saved, 'probe.keyboard_action': 'Ctrl+Alt+J'})
+    selected = choose(manager, saved, 'probe.keyboard_action')
+    assert selected == 'Ctrl+Alt+Shift+W'
+    assert registry.validate({**saved, 'probe.keyboard_action': selected})
+    assert saved == {'probe.keyboard_action': 'Ctrl+Shift+K'}
+    assert registry.effective(saved) == before
+
+
+def test_native_cancel_probe_fails_when_all_candidates_are_occupied():
+    from pathlib import Path
+    import runpy
+    from types import SimpleNamespace
+
+    choose = runpy.run_path(str(Path(__file__).with_name(
+        'native_keyboard_settings_smoke.py')))['unused_draft_shortcut']
+    registry = CommandRegistry((
+        CommandSpec('probe.action', 'Action', default_shortcut='Ctrl+Shift+K'),
+        *(CommandSpec('probe.key_' + key.lower(), 'Occupied ' + key,
+            default_shortcut='Ctrl+Alt+Shift+' + key) for key in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')))
+    manager = SimpleNamespace(validate=registry.validate,
+        shortcut=lambda identity: registry.shortcut(identity, {}))
+    with pytest.raises(AssertionError, match='No free'):
+        choose(manager, {}, 'probe.action')
