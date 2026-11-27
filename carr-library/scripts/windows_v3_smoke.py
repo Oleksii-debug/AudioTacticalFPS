@@ -112,14 +112,15 @@ def main():
                         names.append(child.GetName())
                         children(child)
                 children(dialog)
-                inspected.append(all(any(required in name for name in names) for required in required_names))
+                inspected.append(tuple(required for required in required_names
+                                       if not any(required in name for name in names)))
                 if close_id is not None:
                     dialog.EndModal(close_id)
                 else:
                     dialog.Close()
             wx.CallLater(500, visit)
             open_dialog(frame)
-            assert inspected == [True], 'Native dialog lacked a required accessible control name'
+            assert inspected == [()], f'Native dialog lacked required accessible control names: {inspected!r}'
             app.Yield()
         inspect_dialog(show_studio, ('Script', 'Production and save status', 'Default voice'))
         def exercise_native_render():
@@ -384,7 +385,9 @@ def main():
         inspect_dialog(show_assistant, ('Library scope', 'Goal', 'Plan preview'))
         inspect_dialog(show_provider_settings, ('Provider accounts', 'Connection configuration status'), wx.ID_CLOSE)
         inspect_dialog(show_engine_settings, ('Local engine configuration',), wx.ID_CLOSE)
-        inspect_dialog(show_translation, ('Google Basic v2 account', 'Selected text', 'Preview, supported languages'), wx.ID_CLOSE)
+        inspect_dialog(show_translation, ('Google API account and edition', 'Selected text; originals remain unchanged',
+                                          'Advanced v3 glossary resource; blank for none', 'Source selection and limits',
+                                          'Preview, supported languages and job status'), wx.ID_CLOSE)
         result['checks'].append('native studio/assistant/provider/engine dialogs with named keyboard controls')
         frame.Close()
         app.Yield()
