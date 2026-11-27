@@ -564,3 +564,32 @@ class AudioBatchService:
         self._verify_file(destination, record['bytes'], record['sha256'])
         return {'status': 'complete', 'output': str(destination), 'sha256': record['sha256'],
                 'source_batch': batch_id, 'source_item': item_id}
+
+
+    def review_duration(self, batch_id, item_id, seconds, *, output_format=None,
+                        cancelled=lambda: False, on_status=lambda message: None):
+        """Capture accepted measured PCM and exact names; never resynthesise."""
+        from .book_duration import review
+        return review(self, batch_id, item_id, seconds, output_format=output_format,
+                      cancelled=cancelled, on_status=on_status)
+
+    def describe_duration(self, batch_id, item_id, review_id, *, cancelled=lambda: False):
+        from .book_duration import describe
+        return describe(self, batch_id, item_id, review_id, cancelled=cancelled)
+
+    def publish_duration(self, batch_id, item_id, review_id, *, approved_sha256,
+                         cancelled=lambda: False, on_status=lambda message: None):
+        from .book_duration import publish
+        return publish(self, batch_id, item_id, review_id, approved_sha256=approved_sha256,
+                       cancelled=cancelled, on_status=on_status)
+
+    def export_duration(self, batch_id, item_id, review_id, filename, destination, *,
+                        approval, cancelled=lambda: False):
+        from .book_duration import export
+        return export(self, batch_id, item_id, review_id, filename, destination,
+                      approval=approval, cancelled=cancelled)
+
+
+    def saved_duration_reviews(self, batch_id, item_id, *, cancelled=lambda: False):
+        from .book_duration import saved
+        return saved(self, batch_id, item_id, cancelled=cancelled)
