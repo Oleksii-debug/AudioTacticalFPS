@@ -8,6 +8,7 @@ import argparse
 import faulthandler
 from hashlib import sha256
 import json
+import os
 from pathlib import Path
 import sys
 import threading
@@ -160,9 +161,48 @@ def _run_probe(args, report):
             lambda: wait(state['reached'].is_set, cancel_verified_operation,
                          'Actual inventory verification was not observed.'))
 
+    def decline_download_confirmation():
+        # wxMSW's real MessageDialog is a Windows TaskDialog. A Yes/No
+        # confirmation has no Cancel button, so Escape does not decline it.
+        # Reuse the process/owner-checked native button protocol from the
+        # provider-settings probe; never replace the product confirmation.
+        import ctypes
+        from ctypes import wintypes
+        user = ctypes.WinDLL('user32', use_last_error=True)
+        user.FindWindowW.argtypes = (wintypes.LPCWSTR, wintypes.LPCWSTR)
+        user.FindWindowW.restype = wintypes.HWND
+        user.GetWindowThreadProcessId.argtypes = (wintypes.HWND, ctypes.POINTER(wintypes.DWORD))
+        user.GetWindowThreadProcessId.restype = wintypes.DWORD
+        user.GetWindow.argtypes = (wintypes.HWND, wintypes.UINT)
+        user.GetWindow.restype = wintypes.HWND
+        user.IsWindowEnabled.argtypes = (wintypes.HWND,)
+        user.IsWindowEnabled.restype = wintypes.BOOL
+        user.SendMessageW.argtypes = (wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM)
+        user.SendMessageW.restype = ctypes.c_ssize_t
+
+        def window():
+            return user.FindWindowW(None, 'Download reviewed local audio runtime')
+
+        def decline():
+            native = window()
+            check('native download confirmation exists', bool(native))
+            owner_pid = wintypes.DWORD()
+            user.GetWindowThreadProcessId(native, ctypes.byref(owner_pid))
+            check('download confirmation belongs to this probe and setup window',
+                  owner_pid.value == os.getpid()
+                  and user.GetWindow(native, 4) == state['dialog'].GetHandle())  # GW_OWNER
+            check('actual download confirmation is enabled', bool(user.IsWindowEnabled(native)))
+            # TDM_CLICK_BUTTON carries a Win32 button ID, not a wx ID. The
+            # real modal result and unchanged-settings assertions prove No.
+            user.SendMessageW(native, 0x0400 + 102, 7, 0)  # TDM_CLICK_BUTTON, IDNO
+            state['native_no_sent'] = True
+
+        wait(window, decline, 'Native download confirmation did not appear.', seconds=8)
+
     def select_source():
         check('declined download does not start the worker', not frame.working)
-        check('declined download has a readable result', 'not requested' in status())
+        check('native No declines download with a readable result',
+              state.get('native_no_sent') is True and 'not requested' in status())
         check('declined download did not publish settings', not settings_path(frame.library.root / 'state').exists())
         named('Local audio setup source path').ChangeValue(str(args.runtime.absolute()))
         named('Local audio setup source type').SetSelection(0)
@@ -176,9 +216,9 @@ def _run_probe(args, report):
         check('native setup has keyboard reachable source and cancel controls',
               named('Local audio setup source path').AcceptsFocus()
               and named('Verify and select local source').AcceptsFocus())
-        # Escape declines the native Yes/No confirmation. No network test hook
-        # or replacement downloader is installed.
-        later(lambda: check('native confirmation Escape dispatched', simulator.Char(wx.WXK_ESCAPE)), 500)
+        # Answer only this explicitly expected, process-owned confirmation.
+        # No network hook, automatic consent or replacement dialog is installed.
+        later(decline_download_confirmation)
         key(named('Download and install reviewed runtime'), wx.WXK_SPACE,
             lambda: wait(lambda: 'not requested' in status(), select_source,
                          'Native download confirmation was not declined.', seconds=10))

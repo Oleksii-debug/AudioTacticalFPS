@@ -11,6 +11,21 @@ import traceback
 import zipfile
 
 
+def _synthetic_child_command(command, runtime):
+    assert len(command) >= 4, f'Incomplete synthetic child command: {command!r}'
+    selected = Path(command[0])
+    expected = Path(runtime) / 'python/python.exe'
+    try:
+        same_file = selected.samefile(expected)
+    except OSError as error:
+        raise AssertionError(f'Cannot identify the synthetic interpreter: {selected}; expected {expected}') from error
+    # Windows TEMP can use an 8.3 spelling while manifest.asset() resolves the
+    # same file to its long name. Require file identity, not that spelling.
+    assert same_file, f'Unexpected synthetic interpreter: {selected}; expected the same file as {expected}'
+    assert command[1:4] == ['-I', '-B', '-u'], f'Unexpected synthetic child isolation flags: {command[1:4]!r}'
+    return [sys.executable, *command[1:]]
+
+
 def main():
     if sys.platform not in ('win32', 'darwin') and not (os.environ.get('DISPLAY') or os.environ.get('WAYLAND_DISPLAY')):
         print(json.dumps({'status': 'NOT_RUN', 'reason': 'A native display is required.'}))
@@ -30,7 +45,7 @@ def main():
                 if isinstance(target, ast.Name) and target.id in {'POLICY', 'PACKAGES', 'ASSETS', 'WORKER'}:
                     constants[target.id] = ast.literal_eval(node.value)
     assert set(constants) == {'POLICY', 'PACKAGES', 'ASSETS', 'WORKER'}
-    failures, checks, active = [], [], [None]
+    failures, checks, active, child_failures = [], [], [None], []
     class ProbeApp(wx.App):
         def OnExceptionInMainLoop(self):
             abort(traceback.format_exc())
@@ -90,9 +105,13 @@ def main():
             VoiceSettingsStore(library).register({'include_sapi': False, 'ffmpeg': False,
                 'espeak_ng': False, 'dordiai_manifest': str(manifest)}, expected_revision=0)
             def actual_synthetic_child(command, **kwargs):
-                assert Path(command[0]) == runtime / 'python/python.exe'
-                assert command[1:4] == ['-I', '-B', '-u']
-                return original_run([sys.executable, *command[1:]], **kwargs)
+                try:
+                    return original_run(_synthetic_child_command(command, runtime), **kwargs)
+                except BaseException:
+                    detail = traceback.format_exc()
+                    child_failures.append(detail)
+                    print(json.dumps({'event': 'synthetic-owner-child-failure', 'traceback': detail}), flush=True)
+                    raise
             model_voices._run = actual_synthetic_child
             reference_data = {'sample.wav': b'INERT reference fixture', 'sample.txt': b'INERT reference text'}
             document = {'format': 'dordiai-voice-package', 'format_version': 1,
@@ -123,7 +142,7 @@ def main():
                     click(control.configure_button)
                     later(lambda: idle(configured))
                 def configured():
-                    assert control.revision == 2, control.status.GetValue()
+                    assert control.revision == 2, f'Revision {control.revision!r}; {control.status.GetValue()}'
                     assert control.backend.GetStringSelection() == 'omnivoice'
                     checks.append('native backend controls save only existing pinned local model/reference folders')
                     # The native file picker is not claimed here: the explicit
@@ -182,6 +201,7 @@ def main():
         model_voices._run = original_run
         timer.cancel()
     print(json.dumps({'status': 'FAIL' if failures else 'PASS', 'checks': checks, 'failures': failures,
+        'child_failures': child_failures,
         'owner_api': 'SYNTHETIC API through actual isolated child',
         'native_file_picker': 'NOT_RUN', 'model_inference': 'NOT_RUN', 'reference_quality': 'NOT_RUN',
         'nvda_speech': 'NOT_RUN'}, ensure_ascii=True))

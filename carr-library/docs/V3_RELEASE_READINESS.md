@@ -38,7 +38,7 @@ document/range translation, explicit owner voice profiles, accessible local
 audio-runtime setup and an optional provider-injected delivery lifecycle.
 Those implementations are **INTEGRATED source**. Executed portable evidence is
 recorded per change; the latest adopted backup, publication and preparation
-safeguards still await composed execution. **Exact final Windows execution is
+safeguards passed their composed portable gates. **Exact final Windows execution is
 pending** until the complete successor result is recorded. Private engine/authority source,
 weights, voice recordings, signing material and actual service policy are not
 part of public source.

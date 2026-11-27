@@ -85,7 +85,31 @@ delivery identity remain independent gates.
 The intermediate commit `f62a024424c489f90e5d123e3239bca56dc41889`
 passed both native launcher toolchains and bibliography acceptance: 985 strict
 cases with no skips, plus 69 native citation assertions. Installed V3 recovery
-passed 457 cases without skips. This does not qualify its aggregate delivery.
+passed 457 cases without skips. The integrated source gate completed all 239
+suites: 235 passed and four failed. This does not qualify its aggregate delivery.
+
+The four source failures were confined to ffplay fixture signals, the JSON
+replacement assumption, the extracted reader cleanup closure and a command
+palette fixture missing the new native destruction event. All are corrected
+without removing cases; the palette follow-up passed all 37 cases.
+
+Native execution separately exposed MCI error 326 while opening the unchanged
+synthetic PCM, an owner-worker fixture assertion, a wx event-loop access violation
+in the draft lifetime probe, and an unanswered Yes/No audio-setup confirmation.
+The probes now retain real playback requirements and endpoint diagnostics, test
+worker file identity rather than path spelling, keep an independent native event
+loop owner while destroying both tested product windows, and select the actual
+No response. Detailed failure phases are retained. These changes do not establish
+a resolved native crash or available playback device until the successor runs.
+
+The predecessor's independent native preview reported DEVICE_UNAVAILABLE.
+The successor starts only the runner's existing AudioEndpointBuilder and
+Audiosrv services, with bounded waits and recorded before/after state, then
+queries real WinMM endpoints for the exact unchanged PCM format. An absent
+device fails the preparation gate; it is not playback acceptance. Early
+capability evidence is retained before the long source gate. No virtual driver,
+startup-policy change or signing/trust-policy change is introduced. Actual
+MCI open/play, A/B, pause, sleep, scope invalidation and close remain mandatory.
 
 Installed V3 exposed two test-fixture assumptions: modeled POSIX ffplay used
 the Windows signal namespace, and extracted reader cleanup omitted the new
@@ -133,8 +157,11 @@ checks cancellation again after the durable flush and before the commit, while
 post-commit cancellation does not reclassify successful publication. Legacy
 FFmpeg preparation validates all three local-only policy flags as explicit
 booleans before acquisition; the current full-runtime facade and native consent
-workflow remain unchanged. Their new composed execution remains pending and is
-not covered by the earlier portable counts. Windows acceptance now selects 241
+workflow remain unchanged. Their composed Linux gates passed 69 backup cases
+and 54 publication/preparation cases without skips. The revised delivery guide
+also passed all 69 archive tests. Twelve focused owner-worker probe controls and
+four existing draft-lifetime cases passed; these portable results do not qualify
+the revised native probes. Windows acceptance now selects 241
 source suites and 102 installed contents selectors, including the flush controls
 and the exact six new state-inventory cases in both installed lanes. No
 POSIX-only portability fixture is added to the strict Windows inventory.

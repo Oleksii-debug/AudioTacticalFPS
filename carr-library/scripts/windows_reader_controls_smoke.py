@@ -19,6 +19,58 @@ import traceback
 import wave
 
 
+def _wave_output_diagnostics():
+    """Query actual WinMM endpoints and the unchanged fixture format; no play."""
+    import ctypes
+    from ctypes import wintypes
+
+    class WaveFormat(ctypes.Structure):
+        _pack_ = 1
+        _fields_ = [('format_tag', ctypes.c_uint16), ('channels', ctypes.c_uint16),
+                    ('samples_per_second', ctypes.c_uint32), ('bytes_per_second', ctypes.c_uint32),
+                    ('block_align', ctypes.c_uint16), ('bits_per_sample', ctypes.c_uint16),
+                    ('extra_size', ctypes.c_uint16)]
+
+    class WaveOutputCaps(ctypes.Structure):
+        _fields_ = [('manufacturer', ctypes.c_uint16), ('product', ctypes.c_uint16),
+                    ('driver_version', ctypes.c_uint32), ('name', wintypes.WCHAR * 32),
+                    ('formats', ctypes.c_uint32), ('channels', ctypes.c_uint16),
+                    ('reserved', ctypes.c_uint16), ('support', ctypes.c_uint32)]
+
+    native = ctypes.WinDLL('winmm', use_last_error=True)
+    native.waveOutGetNumDevs.argtypes = ()
+    native.waveOutGetNumDevs.restype = ctypes.c_uint
+    native.waveOutGetDevCapsW.argtypes = (ctypes.c_size_t, ctypes.POINTER(WaveOutputCaps), ctypes.c_uint)
+    native.waveOutGetDevCapsW.restype = ctypes.c_uint
+    native.waveOutOpen.argtypes = (ctypes.POINTER(ctypes.c_void_p), ctypes.c_uint,
+                                  ctypes.POINTER(WaveFormat), ctypes.c_size_t, ctypes.c_size_t, ctypes.c_uint)
+    native.waveOutOpen.restype = ctypes.c_uint
+    native.waveOutGetErrorTextW.argtypes = (ctypes.c_uint, wintypes.LPWSTR, ctypes.c_uint)
+    native.waveOutGetErrorTextW.restype = ctypes.c_uint
+    native.mciGetErrorStringW.argtypes = (ctypes.c_uint, wintypes.LPWSTR, ctypes.c_uint)
+    native.mciGetErrorStringW.restype = wintypes.BOOL
+    count = native.waveOutGetNumDevs()
+    devices = []
+    for index in range(min(count, 64)):
+        caps = WaveOutputCaps()
+        result = native.waveOutGetDevCapsW(index, ctypes.byref(caps), ctypes.sizeof(caps))
+        devices.append({'index': index, 'caps_result': result, 'name': caps.name,
+                        'channels': caps.channels, 'format_mask': caps.formats})
+    # WAVE_FORMAT_PCM, 16 kHz, mono, 16 bits: exactly the fixture below.
+    waveform = WaveFormat(1, 1, 16000, 32000, 2, 16, 0)
+    result = native.waveOutOpen(None, 0xFFFFFFFF, ctypes.byref(waveform), 0, 0, 1)
+    # WAVE_MAPPER + WAVE_FORMAT_QUERY does not open or play a device.
+    message = ctypes.create_unicode_buffer(256)
+    native.waveOutGetErrorTextW(result, message, len(message))
+    mci_message = ctypes.create_unicode_buffer(256)
+    native.mciGetErrorStringW(326, mci_message, len(mci_message))
+    return {'device_count': count, 'devices': devices, 'inventory_truncated': count > len(devices),
+            'fixture': {'sample_rate': 16000, 'channels': 1, 'bits_per_sample': 16},
+            'format_query_result': result, 'format_query_message': message.value,
+            'mci_326_message': mci_message.value,
+            'scope': 'Read-only endpoint and format query; actual MCI playback remains required.'}
+
+
 def _run_probe(args, report):
     from carr_library.native_runtime import activate_bundled_runtime
     native_handle = activate_bundled_runtime()
@@ -320,6 +372,8 @@ def _run_probe(args, report):
                   and sha256(installed.read_bytes()).digest() == sha256(expected.read_bytes()).digest())
             hashes[module.__name__] = sha256(installed.read_bytes()).hexdigest()
         check('real Windows native widgets', wx.Platform == '__WXMSW__')
+        report['wave_output'] = _wave_output_diagnostics()
+        print('Actual WinMM capability: ' + json.dumps(report['wave_output'], ensure_ascii=False), flush=True)
         with TemporaryDirectory(prefix='resonance-reader-controls-') as temporary:
             root = Path(temporary)
             library_root, other_root = root / 'library', root / 'other'

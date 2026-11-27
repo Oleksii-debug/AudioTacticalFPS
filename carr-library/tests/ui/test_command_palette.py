@@ -64,7 +64,8 @@ def wx(monkeypatch):
     module = SimpleNamespace(
         EVT_MENU=SimpleNamespace(typeId=7), CommandEvent=NativeEvent, ID_OK=1, ID_CANCEL=2,
         WXK_RETURN=13, WXK_NUMPAD_ENTER=313, ID_ANY=-1, Menu=Menu,
-        EVT_TIMER=object(), Timer=lambda frame: SimpleNamespace(Start=Mock()),
+        EVT_TIMER=object(), EVT_WINDOW_DESTROY=object(),
+        Timer=lambda frame: SimpleNamespace(Start=Mock(), Stop=Mock()),
         ACCEL_CTRL=1, ACCEL_ALT=2, ACCEL_SHIFT=4, AcceleratorTable=lambda rows: tuple(rows),
         **{'WXK_F' + str(index): 1000 + index for index in range(1, 25)})
     monkeypatch.setitem(sys.modules, 'wx', module)
@@ -75,7 +76,8 @@ def make_frame(root, bar):
     root.mkdir(exist_ok=True, parents=True)
     frame = SimpleNamespace(menu_bar=bar, library=SimpleNamespace(root=root), active=('library', 'topic'),
                             working=False, busy=False, _closing=False, report=Mock(),
-                            IsBeingDeleted=lambda: False, Bind=Mock(), choice=Control(), status=Control())
+                            IsBeingDeleted=lambda: False, Bind=Mock(), Unbind=Mock(),
+                            choice=Control(), status=Control())
     frame.handler = SimpleNamespace(ProcessEvent=Mock(return_value=True))
     frame.GetEventHandler = lambda: frame.handler
     frame.GetMenuBar = lambda: bar

@@ -1,7 +1,12 @@
 """Portable control-flow tests of the actual reference package dialog handlers."""
 from concurrent.futures import Future
+import importlib.util
+from pathlib import Path
+import sys
 from types import SimpleNamespace
 import threading
+
+import pytest
 
 from carr_library.ui.voice_packages import VoicePackageDialog
 
@@ -122,4 +127,54 @@ def test_worker_failure_invalidates_review_and_preserves_explicit_revalidation_i
     pending.pop()()
     assert form.review is None and not form.rights.value and not form.busy
     assert 'review and revalidate' in form.status.value
+
+
+@pytest.fixture
+def native_probe():
+    path = Path(__file__).with_name('native_voice_packages_smoke.py')
+    spec = importlib.util.spec_from_file_location('native_voice_package_probe_review', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_native_probe_identifies_actual_fixture_through_another_path_spelling(tmp_path, native_probe):
+    from carr_library.audio.model_voices import _run
+
+    (tmp_path / 'spelling').mkdir()
+    runtime = tmp_path / 'spelling' / '..' / 'runtime'
+    expected = runtime / 'python/python.exe'
+    expected.parent.mkdir(parents=True)
+    expected.write_bytes(b'INERT synthetic interpreter marker')
+    selected = expected.resolve(strict=True)
+    assert selected != expected  # The previous lexical assertion rejects this real file.
+    command = [selected, '-I', '-B', '-u', '-c',
+               'import sys; sys.stdout.buffer.write(sys.stdin.buffer.read())']
+    adapted = native_probe._synthetic_child_command(command, runtime)
+    assert adapted == [sys.executable, *command[1:]]
+    assert _run(adapted, data=b'Synthetic bounded child', timeout=10) == b'Synthetic bounded child'
+
+
+def test_native_probe_rejects_another_file_even_with_identical_bytes(tmp_path, native_probe):
+    expected = tmp_path / 'python/python.exe'
+    expected.parent.mkdir()
+    expected.write_bytes(b'INERT marker')
+    other = tmp_path / 'other.exe'
+    other.write_bytes(expected.read_bytes())
+    with pytest.raises(AssertionError, match='Unexpected synthetic interpreter'):
+        native_probe._synthetic_child_command([other, '-I', '-B', '-u'], tmp_path)
+
+
+@pytest.mark.parametrize('flags', [['-B', '-I', '-u'], ['-I', '-u', '-c'], ['-I', '-B', '-X']])
+def test_native_probe_keeps_exact_isolation_flags(tmp_path, native_probe, flags):
+    expected = tmp_path / 'python/python.exe'
+    expected.parent.mkdir()
+    expected.write_bytes(b'INERT marker')
+    with pytest.raises(AssertionError, match='Unexpected synthetic child isolation flags'):
+        native_probe._synthetic_child_command([expected, *flags], tmp_path)
+
+
+def test_native_probe_missing_fixture_has_diagnostic_failure(tmp_path, native_probe):
+    with pytest.raises(AssertionError, match='Cannot identify the synthetic interpreter'):
+        native_probe._synthetic_child_command([tmp_path / 'missing.exe', '-I', '-B', '-u'], tmp_path)
 
