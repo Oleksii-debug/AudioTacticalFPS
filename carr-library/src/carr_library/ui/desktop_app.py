@@ -39,6 +39,7 @@ from .query_manager import install_query_manager_actions
 from .audio_studio import install_audio_studio_actions
 from .api_connections import install_api_connection_actions
 from .assistant_dialog import install_assistant_actions
+from .document_conversion import install_conversion_actions
 from .acquisition_dialog import show_acquisition_dialog
 
 
@@ -605,6 +606,7 @@ class DesktopFrame(WorkspaceFrame):
         install_audio_studio_actions(self)
         install_api_connection_actions(self)
         install_assistant_actions(self)
+        install_conversion_actions(self)
 
     def build_advanced_query(self, event=None):
         if self.working:

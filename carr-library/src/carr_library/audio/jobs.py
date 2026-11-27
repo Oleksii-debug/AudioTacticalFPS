@@ -2,12 +2,14 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+import ctypes
 import hashlib
 import json
 import os
 from pathlib import Path
 import shutil
 import stat
+import sys
 import tempfile
 import uuid
 
@@ -47,6 +49,89 @@ def regular_file(path):
         raise ValueError('Expected a regular local audio file.')
     return info
 
+
+def file_identity(info):
+    """Bind validation to the bytes inspected, including same-size replacements."""
+    return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+
+
+@contextmanager
+def verified_reader(path, *, expected_identity=None):
+    before = file_identity(regular_file(path))
+    if expected_identity is not None and before != expected_identity:
+        raise RuntimeError('An audio input changed after it was validated. Restart the production.')
+    with Path(path).open('rb') as stream:
+        if file_identity(os.fstat(stream.fileno())) != before:
+            raise RuntimeError('An audio input changed while it was being opened.')
+        yield stream
+        if file_identity(os.fstat(stream.fileno())) != before or file_identity(regular_file(path)) != before:
+            raise RuntimeError('An audio input changed while it was being read. Restart the production.')
+
+
+def read_json(path, *, limit=65536):
+    """Read at most the declared budget, rejecting ambiguous JSON objects."""
+    if type(limit) is not int or limit < 1:
+        raise ValueError('Invalid checkpoint size limit.')
+    with verified_reader(path) as stream:
+        if os.fstat(stream.fileno()).st_size > limit:
+            raise ValueError('Audio project manifest is too large.')
+        data = stream.read(limit + 1)
+        if len(data) > limit:
+            raise ValueError('Audio project manifest is too large.')
+
+    def unique(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError('Duplicate audio project field.')
+            result[key] = value
+        return result
+
+    def constant(value):
+        raise ValueError('Nonfinite audio project value.')
+
+    try:
+        return json.loads(data.decode('utf-8'), object_pairs_hook=unique, parse_constant=constant)
+    except RecursionError as exc:
+        raise ValueError('Audio project JSON is nested too deeply.') from exc
+
+
+def publish_noreplace(source, destination):
+    """Move a complete local stage atomically without replacing any destination.
+
+    Windows rename has no-replace semantics. Linux needs RENAME_NOREPLACE,
+    including for empty destination directories. No hardlink aliases remain
+    after a crash. A directory-sync error can occur after the move succeeds.
+    """
+    source, destination = Path(source), Path(destination)
+    checked_directory(source.parent)
+    checked_directory(destination.parent)
+    if source.is_dir():
+        checked_directory(source)
+        _sync_directory(source)
+    else:
+        regular_file(source)
+        # Windows CRT rejects fsync on read-only file descriptors. Stages are
+        # writable; immutable/read-only inputs use publish_new's private copy.
+        with source.open('r+b') as stream:
+            os.fsync(stream.fileno())
+    if os.name == 'nt':
+        os.rename(source, destination)
+    elif sys.platform.startswith('linux'):
+        library = ctypes.CDLL(None, use_errno=True)
+        rename = getattr(library, 'renameat2', None)
+        if rename is None:
+            raise RuntimeError('This runtime does not support atomic no-replace publication.')
+        rename.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint]
+        rename.restype = ctypes.c_int
+        if rename(-100, os.fsencode(source), -100, os.fsencode(destination), 1):
+            error = ctypes.get_errno()
+            raise OSError(error, os.strerror(error), str(destination))
+    else:
+        raise RuntimeError('Atomic audio publication currently supports Windows and Linux.')
+    _sync_directory(destination.parent)
+    if source.parent != destination.parent:
+        _sync_directory(source.parent)
 
 def sha256_file(path, *, cancelled=lambda: False):
     regular_file(path)

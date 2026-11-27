@@ -78,6 +78,7 @@ packages = [
   "carr_library.catalog",
   "carr_library.catalog._filetype",
   "carr_library.citations",
+  "carr_library.conversion",
   "carr_library.extract",
   "carr_library.ingest",
   "carr_library.language_catalog",
