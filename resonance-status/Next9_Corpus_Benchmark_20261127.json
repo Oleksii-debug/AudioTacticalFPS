@@ -1,6 +1,6 @@
 {
   "schema": "resonance-library-corpus-benchmark-candidate/1",
-  "status": "DRAFT_NOT_RUN",
+  "status": "CORRECTED_SOURCE_ACTIVATION_NOT_RERUN",
   "base_commit": "b359ca64f5c09fd971dfb8e4991a949a9cea488f",
   "base_tree": "16d76684369ba3c56b84bb6a9317d2e0ec287e87",
   "specifications": [
@@ -17,7 +17,7 @@
   "files": [
     {
       "path": "carr-library/scripts/benchmark_library_scale.py",
-      "sha": "6a1022e30240ab5e580d16c7f1b07cf23751ba37",
+      "sha": "7557f03177d9188f2a3ba8ddc0eab4aebb79ae4d",
       "preimage": null
     },
     {
@@ -27,7 +27,7 @@
     },
     {
       "path": "carr-library/docs/LIBRARY_SCALE_BENCHMARK.md",
-      "sha": "e3b6c72d99232d7209b47de8da098bc1f498abfc",
+      "sha": "8bfd5454ea54820e61f4d9b2ed36fa818a60303f",
       "preimage": null
     }
   ],
@@ -110,5 +110,15 @@
     "regression": "Actual same-size os.replace changes segment_bytes128→192 immediately after precheck; child refuses before canonical library creation."
   },
   "static_review": "Prior boundaries accepted; narrow actual SearchResult display/ordinal correction handed off for read-only acknowledgement. NOT_RUN.",
-  "ordinal_correction": "SearchResult.page is display text, not an ordinal. Traversal uses the same returned handle's canonical _Selection.ordinal, checking workspace/edition/revision equality; existing real corpus regression also asserts actual display/ordinal types. Source authentication remains production search + whole retained bytes + sampled copy."
+  "ordinal_correction": "SearchResult.page is display text, not an ordinal. Traversal uses the same returned handle's canonical _Selection.ordinal, checking workspace/edition/revision equality; existing real corpus regression also asserts actual display/ordinal types. Source authentication remains production search + whole retained bytes + sampled copy.",
+  "correction": {
+    "observed_run": 46035086967,
+    "observed_job": 140628341506,
+    "observed_head": "a0abd8830a8daa0545f2ce4c1390351d482ad558",
+    "suite_result": "22PASS/2FAIL/0SKIP",
+    "failure": "Source -I child could not import existing sibling bootstrap package",
+    "change": "Validate/select existing sibling bootstrap only for explicit source mode and bind its actual origin/hash; installed resolution unchanged",
+    "cases_unchanged": 24,
+    "rerun": "NOT_RUN"
+  }
 }

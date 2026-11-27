@@ -26,7 +26,7 @@ To measure the application installed in a chosen environment, use that interpret
 & 'C:\chosen-runtime\python.exe' -I -B scripts/benchmark_library_scale.py --installed --output-dir 'D:\Measurements\Resonance-corpus' --sizes 1000 10000 50000 --segments-per-book 20 --segment-bytes 2048
 ~~~
 
-`--source-root` selects an explicit source tree. `--installed` resolves the package in the selected interpreter and does not insert the checkout's source directory. `--expected-application-origin` additionally binds the exact imported `application.py` path, which is useful for source and installed-wheel acceptance.
+`--source-root` selects an explicit source tree and its existing sibling bootstrap package; the actual bootstrap origin is validated and hashed. `--installed` resolves the package in the selected interpreter and does not insert the checkout's source directory. `--expected-application-origin` additionally binds the exact imported `application.py` path, which is useful for source and installed-wheel acceptance.
 
 For a small functional run before committing time and disk to a larger one:
 
@@ -88,7 +88,7 @@ The fresh output directory contains:
 - One directory per requested size, containing its canonical `library/`, passive `corpus.json`, `build.json`, `measure.json`, `restart.json`, and per-phase stdout/stderr logs for phases that were attempted.
 - `library-corpus-scale.json`: the overall status, requested/actual counts, individual phase measurements, source paths and SHA-256 values, Python/SQLite/platform details, method and explicit limitations.
 
-A source hash binds the bytes actually used; it is not a digital signature. The report identifies six central imported production modules plus both measurement scripts. It is not a substitute for the complete release source/wheel provenance already enforced by packaging.
+A source hash binds the bytes actually used; it is not a digital signature. The report identifies six central imported production modules, the existing bootstrap package and both measurement scripts. It is not a substitute for the complete release source/wheel provenance already enforced by packaging.
 
 A fresh process is **not a cold-disk test**. The OS may retain cache pages from the build and earlier phases. P95 is an empirical percentile of the reported number of requests, not a statistically qualified population estimate or promised response-time bound.
 

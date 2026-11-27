@@ -36,7 +36,7 @@ MAX_SEGMENTS = 2_000_000
 MAX_SOURCE_BYTES = 8 * 1024 * 1024
 MAX_JSON = 8 * 1024 * 1024
 MODULES = (
-    'carr_library.application', 'carr_library.search.paging',
+    'bootstrap', 'carr_library.application', 'carr_library.search.paging',
     'carr_library.reader.reading_desk', 'carr_library.catalog.read_views',
     'carr_library.storage.revisions', 'carr_library.durable_state',
 )
@@ -167,6 +167,12 @@ def activate(source_root=None):
         plain(selected, directory=True)
         expected = selected / 'carr_library' / 'application.py'
         plain(expected)
+        # Production retains the reviewed bootstrap package beside src. The
+        # isolated interpreter does not inherit the caller's checkout path.
+        bootstrap_root = local(selected.parent / 'bootstrap', exists=True)
+        plain(bootstrap_root, directory=True)
+        plain(bootstrap_root / '__init__.py')
+        sys.path.insert(0, str(selected.parent))
         sys.path.insert(0, str(selected))
     origins = {}
     for name in MODULES:
@@ -174,7 +180,8 @@ def activate(source_root=None):
         path = local(module.__file__, exists=True)
         require(path.suffix == '.py', 'Benchmark requires inspectable production source.')
         if source_root is not None:
-            require(path.is_relative_to(selected / 'carr_library'),
+            package_root = bootstrap_root if name == 'bootstrap' else selected / 'carr_library'
+            require(path.is_relative_to(package_root),
                     'An already imported package differs from the selected source root.')
         origins[name] = {'path': str(path), 'sha256': file_hash(path)}
     return origins
