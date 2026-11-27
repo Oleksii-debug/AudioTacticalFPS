@@ -50,7 +50,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends ffmpeg flite
           python -B -m pip install --only-binary=:all: --require-hashes -r packaging/linux-sync-core-cp311.lock -r packaging/trusted-client.lock -r packaging/windows-sync-test-cp311.lock
+          # Reuse the integrated main workflow's exact test-only PDF fixture pin.
+          python -B -m pip install --only-binary=:all: reportlab==4.4.9
           python -B -m pip check
+          python -I -B -c "import json; from importlib.metadata import version; from reportlab.pdfgen.canvas import Canvas; assert version('reportlab') == '4.4.9'; print(json.dumps({'status':'PASS','reportlab_version':version('reportlab'),'canvas_import':Canvas.__module__+'.'+Canvas.__name__}))" | tee ci-next9-results/pdf-fixture-runtime.json
           python -I -B - <<'PY' | tee ci-next9-results/runtime.json
           from hashlib import sha256
           import json, os, platform, shutil, subprocess, sys
@@ -281,8 +284,13 @@ jobs:
           if ($LASTEXITCODE -ne 0 -or $head -cne $env:EXPECTED_SOURCE_SHA) { throw 'The requested source commit changed.' }
           & python -B -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock -r packaging/windows-sync-cp311.lock -r packaging/trusted-client.lock -r packaging/windows-sync-test-cp311.lock
           if ($LASTEXITCODE -ne 0) { throw 'Pinned dependency installation failed.' }
+          # Reuse the integrated main workflow's exact test-only PDF fixture pin.
+          & python -B -m pip install --only-binary=:all: reportlab==4.4.9
+          if ($LASTEXITCODE -ne 0) { throw 'The PDF fixture dependency installation failed.' }
           & python -B -m pip check
           if ($LASTEXITCODE -ne 0) { throw 'Pinned dependencies are inconsistent.' }
+          & python -I -B -c "import json; from importlib.metadata import version; from reportlab.pdfgen.canvas import Canvas; assert version('reportlab') == '4.4.9'; print(json.dumps({'status':'PASS','reportlab_version':version('reportlab'),'canvas_import':Canvas.__module__+'.'+Canvas.__name__}))" | Tee-Object 'ci-next9-intake/pdf-fixture-runtime.json'
+          if ($LASTEXITCODE -ne 0) { throw 'The PDF fixture import or exact version probe failed.' }
       - name: Run every actual Windows intake and replay case
         timeout-minutes: 14
         run: |
@@ -323,4 +331,533 @@ jobs:
         with:
           name: next9-windows-intake-${{ github.sha }}-${{ github.run_attempt }}
           path: carr-library/ci-next9-intake/
+          if-no-files-found: error
+
+  focused-linux:
+    name: Ubuntu focused checked publication, indexed search and owned resource contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    concurrency:
+      group: carr-next9-final-source-focused-linux-${{ github.ref }}
+      cancel-in-progress: true
+    defaults:
+      run:
+        shell: bash
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      PYTEST_ADDOPTS: ''
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+      EXPECTED_SOURCE_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Prepare existing pinned headless dependencies and Ubuntu codec
+        id: dependencies
+        timeout-minutes: 8
+        run: |
+          set -euo pipefail
+          mkdir ci-next9-focused-linux
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends ffmpeg flite
+          python -B -m pip install --only-binary=:all: --require-hashes -r packaging/linux-sync-core-cp311.lock -r packaging/trusted-client.lock -r packaging/windows-sync-test-cp311.lock
+          # Reuse the integrated main workflow's exact test-only PDF fixture pin.
+          python -B -m pip install --only-binary=:all: reportlab==4.4.9
+          python -B -m pip check
+          python -I -B -c "import json; from importlib.metadata import version; from reportlab.pdfgen.canvas import Canvas; assert version('reportlab') == '4.4.9'; print(json.dumps({'status':'PASS','reportlab_version':version('reportlab'),'canvas_import':Canvas.__module__+'.'+Canvas.__name__}))" | tee ci-next9-focused-linux/pdf-fixture-runtime.json
+          python -I -B - <<'PY' | tee ci-next9-focused-linux/runtime.json
+          from hashlib import sha256
+          import json, os, platform, shutil, subprocess, sys
+          from pathlib import Path
+          root = Path.cwd().resolve()
+          def run(args):
+              return subprocess.run(args, check=True, stdin=subprocess.DEVNULL,
+                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=30).stdout
+          head = run(['git', 'rev-parse', 'HEAD']).strip()
+          assert head == os.environ['EXPECTED_SOURCE_SHA']
+          runtime = {}
+          for name in ('ffmpeg', 'ffprobe'):
+              path = Path(shutil.which(name) or '/missing').resolve(strict=True)
+              assert path == Path('/usr/bin/' + name).resolve(strict=True)
+              runtime[name] = {'sha256': sha256(path.read_bytes()).hexdigest(),
+                               'version': run([str(path), '-version']).splitlines()[0]}
+          flite = Path(shutil.which('flite') or '/missing').resolve(strict=True)
+          assert flite == Path('/usr/bin/flite').resolve(strict=True)
+          runtime['flite'] = {'sha256': sha256(flite.read_bytes()).hexdigest()}
+          filters = run(['/usr/bin/ffmpeg', '-hide_banner', '-filters'])
+          assert 'aeval' in filters and 'alimiter' in filters and 'loudnorm' in filters
+          result = {'status': 'PREPARED', 'head': head,
+              'tree': run(['git', 'rev-parse', 'HEAD^{tree}']).strip(),
+              'python': sys.version, 'platform': platform.platform(), 'runtime': runtime,
+              'packages': run(['dpkg-query', '-W', 'ffmpeg', 'libavfilter9', 'flite']).splitlines(),
+              'qualification': 'Ubuntu source PCM only; not Windows installed, playback, acoustic, native-egress or release acceptance'}
+          print(json.dumps(result, indent=2))
+          PY
+
+      - name: Bind exact source suites, immutable companions and actual codec
+        id: source_identity
+        timeout-minutes: 3
+        run: |
+          set -euo pipefail
+          python -I -B - <<'PY'
+          from hashlib import sha1, sha256
+          import importlib.util
+          import json, os, platform, shutil, subprocess, sys
+          from pathlib import Path
+          
+          root = Path.cwd()
+          expected = {"tests/ingest/test_checked_catalog_commit.py":10,"tests/storage/test_scoped_locator_capacity.py":4,"tests/search/test_search_query_work.py":17,"tests/ui/test_native_recording_driver.py":10,"tests/operations/test_broker_scope.py":20,"tests/ingest/test_application_atomic_gate.py":1,"tests/ingest/test_pipeline.py":9,"tests/ingest/test_initial_publication_completion.py":2,"tests/ingest/test_worker_publication_boundary.py":32,"tests/e2e/test_import_worker_publication.py":36,"tests/storage/test_schema_boundary.py":9,"tests/storage/test_revisions.py":5,"tests/storage/test_read_boundary.py":5,"tests/storage/test_locator_integrity.py":8,"tests/storage/test_printed_label_integrity.py":37,"tests/catalog/test_read_views.py":9,"tests/catalog/test_read_views_v2_integration.py":5,"tests/search/test_search_paging.py":27,"tests/search/test_literal_integrity.py":6,"tests/search/test_literal_readonly.py":6,"tests/search/test_literal_v2_composition.py":6,"tests/e2e/test_retained_source_search_integrity.py":11,"tests/operations/test_facade.py":22,"tests/operations/test_import_admission.py":6,"tests/operations/test_production_admission.py":18,"tests/operations/test_resources.py":18,"tests/operations/test_transcription_admission.py":10,"tests/operations/test_current_union.py":11,"tests/operations/test_worker_start_cleanup.py":2,"tests/ui/test_operations_dialog.py":13,"tests/ui/test_operations_policy.py":37,"tests/e2e/test_operations_cli.py":5,"tests/operations/test_resources_posix.py":1}
+          pins = {"tests/ingest/test_application_atomic_gate.py":"477093d586ec83f6bddee09530b139d1d77d6d26","tests/ingest/test_pipeline.py":"11e68408f08dd08ad3cc961487354040155b10f5","tests/ingest/test_initial_publication_completion.py":"a6d66edf0b1f9717c504a60cd72ea117fea12b89","tests/ingest/test_worker_publication_boundary.py":"2352f8ad2a9ec8d6883aef9f6ba41d07702e1a38","tests/e2e/test_import_worker_publication.py":"20f9f757622ee3168f1495e640ad5a2555be3b9d","tests/storage/test_schema_boundary.py":"2b647eb1d6d39b4b9a59a30caa41e25ad66b9f85","tests/storage/test_revisions.py":"fb852dfba3f52e998e25d5f3c7b3dabcbe0e95a9","tests/storage/test_read_boundary.py":"4a760e122a3db3444457eeef477a3a13a98cc6db","tests/storage/test_locator_integrity.py":"dcdaba8eac7bb7894de9e87df74019240db187ae","tests/storage/test_printed_label_integrity.py":"0cc3cc1c0d0002c2dcda6c3a16f417ff3fe2d7d5","tests/catalog/test_read_views.py":"21cce0614ef41d8e4223f405424174fb4572bca0","tests/catalog/test_read_views_v2_integration.py":"52b200a0dc67d89ffdfd8b019488ffa72d165690","tests/search/test_search_paging.py":"809e9433d5a1f1f098c0e21518cbce540e230dcc","tests/search/test_literal_integrity.py":"d4369630452009bc9e08efacaea2208b3b178e65","tests/search/test_literal_readonly.py":"f609a2c6a1658b974e883e959b0af00a62123601","tests/search/test_literal_v2_composition.py":"2d0329d5abebedf70fd07fcb03dfa5a3a9aef93e","tests/e2e/test_retained_source_search_integrity.py":"e76900b55329bc139e0f9fe478627877df8cd2dd","tests/operations/test_facade.py":"97c23278a538865b2e7e5bbf986531efe9405440","tests/operations/test_import_admission.py":"53410c72f9ae93b38632e369c20f1d2ea2363166","tests/operations/test_production_admission.py":"ab092398189a4118c652b14a43d549a42064b172","tests/operations/test_resources.py":"c8eef1bbd9785a6993138475ad9a8e82032e7608","tests/operations/test_transcription_admission.py":"f163da1b651e4cb346a16ac2b9f12915e217b18f","tests/operations/test_current_union.py":"9cba6e080a5170b83eccd3ed834b1004e8022c3b","tests/operations/test_worker_start_cleanup.py":"c6870917d737c2a35fb3ba8cfa7541d607114d67","tests/ui/test_operations_dialog.py":"36921e597ec079acdfc2ee5ec80a52533b0d28f3","tests/ui/test_operations_policy.py":"4a3b564741df14d3fbb159c972539e0a093a7a19","tests/e2e/test_operations_cli.py":"12aef567dac6bc3732afb9f6ff960b25f4d0a82d","src/carr_library/application.py":"67aa7dc2ad70cd4929f64dd6ad275e627726117f","src/carr_library/ingest/pipeline.py":"656ac8f3943aa4bb59b7756f7982d7985179e3b2","src/carr_library/storage/revisions.py":"63a9179eff3816a81523c5fadeeea750ddfbcdc4","src/carr_library/catalog/read_views.py":"d2e2045738ace3ca99ac5decefc3d8ba3a955297","src/carr_library/search/paging.py":"ebd2a0d92dbc14ab2620e0d540ebb76e4e02c9c6","tests/ingest/test_checked_catalog_commit.py":"d351cf482029a332970953b649933c2cb060f118","tests/storage/test_scoped_locator_capacity.py":"489dec6a00fb8e4ae16611fefb84616a5ec77592","tests/search/test_search_query_work.py":"1a4128547ebc99c7be3f5e8e0f3975c5637864aa","tests/ui/test_native_recording_driver.py":"ead73e8f5b7d50e9ff9e8d850f0b225351054317","tests/operations/test_broker_scope.py":"21cdd7081b5af428d5303efa116d96765e185ff9","scripts/ci_check.py":"8a23ef36c2df93928b0aff3edd8b59a53c54684c","scripts/windows_recording_smoke.py":"27ea1213d42fd3d3826133e54ab7c82c36fc82c3","tests/catalog/catalog_membership_candidate.sql":"5ab88793b8e4041127f88c2a1dd7662bbe42094e","tests/e2e/test_epub_import.py":"e788c2dabcb94488c9c5f52190dfee447cf9e486","tests/transcription/test_supplied_worker_bridge.py":"b9a4c40ab6fbef78a4a0754e799c4426672b6707","src/carr_library/operations/broker.py":"107e1a600bb4bdf0f3edb7735ee5fcdb68d9fb36","src/carr_library/operations/_locks.py":"ae161b8483f84b2a4aa2f153b4b11b08f76b9693","tests/operations/test_resources_posix.py":"ca146746383361ad579bb016b4e74e1740b2758e"}
+          companions = ["scripts/windows_recording_smoke.py","tests/catalog/catalog_membership_candidate.sql","tests/e2e/test_epub_import.py","tests/transcription/test_supplied_worker_bridge.py"]
+          authority = ["src/carr_library/ingest/worker.py","src/carr_library/ingest/publication.py","src/carr_library/search/literal.py","src/carr_library/citations/text_attestation.py","src/carr_library/operations/models.py","src/carr_library/operations/facade.py","src/carr_library/audio/cleanup.py","src/carr_library/audio/process.py","packaging/prepare_windows_audio.py","packaging/windows-audio.lock.json",".gitattributes"]
+          report_root = root / "ci-next9-focused-linux"
+          assert sys.platform == "linux"
+          head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          assert head == os.environ['EXPECTED_SOURCE_SHA']
+          tree = subprocess.check_output(['git', 'rev-parse', 'HEAD^{tree}'], text=True).strip()
+          paths = sorted(set(expected) | set(pins) | set(companions) | set(authority))
+          inventory = {}
+          for relative in paths:
+              path = root / relative
+              assert path.is_file() and not path.is_symlink(), relative
+              raw = path.read_bytes()
+              if relative in pins:
+                  actual = sha1(b'blob ' + str(len(raw)).encode('ascii') + b'\0' + raw).hexdigest()
+                  assert actual == pins[relative], (relative, actual, pins[relative])
+              inventory[relative] = sha256(raw).hexdigest()
+          spec = importlib.util.spec_from_file_location('reviewed_ci_check', root / 'scripts/ci_check.py')
+          runner = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(runner)
+          assert runner.SUITE_TIMEOUT_SECONDS == 600
+          assert runner.REVIEWED_SUITE_TIMEOUT_SECONDS == {'tests/transcription/test_admission_boundaries.py': 900}
+          
+          def file_digest(path):
+              value = sha256()
+              with path.open('rb') as stream:
+                  for chunk in iter(lambda: stream.read(1024 * 1024), b''):
+                      value.update(chunk)
+              return value.hexdigest()
+          
+          def runtime_identity():
+              result = {}
+              selected = os.environ.get('CARR_DIAG_AUDIO_DIR')
+              pin = json.loads((root / 'packaging/windows-audio.lock.json').read_text(encoding='utf-8')) if os.name == 'nt' else None
+              for name in ('ffmpeg', 'ffprobe'):
+                  resolved = shutil.which(name)
+                  assert resolved, name + ' is required; skipped PCM cases are not accepted'
+                  path = Path(resolved).resolve(strict=True)
+                  digest = file_digest(path)
+                  if os.name == 'nt':
+                      assert selected
+                      expected_path = (Path(selected) / 'bin' / (name + '.exe')).resolve(strict=True)
+                      assert path == expected_path, (path, expected_path)
+                      expected = pin['output_files']['bin/' + name + '.exe']
+                      assert path.stat().st_size == expected['size'] and digest == expected['sha256']
+                  result[name] = {'path': str(path), 'size': path.stat().st_size, 'sha256': digest}
+              return result
+          
+          report = {'status': 'PREPARED', 'head': head, 'tree': tree,
+                    'platform': platform.platform(), 'python': sys.version,
+                    'whole_suites': expected, 'source_sha256': inventory, 'companions': companions,
+                    'reviewed_git_blobs': pins, 'runtime': runtime_identity(),
+                    'default_suite_timeout_seconds': 600, 'reviewed_timeout_seconds': runner.REVIEWED_SUITE_TIMEOUT_SECONDS,
+                    'qualification': 'Exact source fixtures only; no installed, native UI, physical device, acoustic or release claim'}
+          raw = (json.dumps(report, indent=2) + '\n').encode('utf-8')
+          (report_root / 'source-inventory-before.json').write_bytes(raw)
+          with Path(os.environ['GITHUB_OUTPUT']).open('a', encoding='utf-8') as output:
+              output.write('inventory_sha=' + sha256(raw).hexdigest() + '\n')
+          print(json.dumps({'status': 'PREPARED', 'whole_suites': len(expected),
+                            'expected_cases': sum(expected.values()), 'checked_files': len(inventory),
+                            'runtime': report['runtime']}), flush=True)
+          PY
+      - name: Require every focused whole suite without skip or xfail acceptance
+        timeout-minutes: 35
+        run: |
+          set -euo pipefail
+          python -B scripts/ci_check.py --jobs 3 \
+            tests/ingest/test_checked_catalog_commit.py \
+            tests/storage/test_scoped_locator_capacity.py \
+            tests/search/test_search_query_work.py \
+            tests/ui/test_native_recording_driver.py \
+            tests/operations/test_broker_scope.py \
+            tests/ingest/test_application_atomic_gate.py \
+            tests/ingest/test_pipeline.py \
+            tests/ingest/test_initial_publication_completion.py \
+            tests/ingest/test_worker_publication_boundary.py \
+            tests/e2e/test_import_worker_publication.py \
+            tests/storage/test_schema_boundary.py \
+            tests/storage/test_revisions.py \
+            tests/storage/test_read_boundary.py \
+            tests/storage/test_locator_integrity.py \
+            tests/storage/test_printed_label_integrity.py \
+            tests/catalog/test_read_views.py \
+            tests/catalog/test_read_views_v2_integration.py \
+            tests/search/test_search_paging.py \
+            tests/search/test_literal_integrity.py \
+            tests/search/test_literal_readonly.py \
+            tests/search/test_literal_v2_composition.py \
+            tests/e2e/test_retained_source_search_integrity.py \
+            tests/operations/test_facade.py \
+            tests/operations/test_import_admission.py \
+            tests/operations/test_production_admission.py \
+            tests/operations/test_resources.py \
+            tests/operations/test_transcription_admission.py \
+            tests/operations/test_current_union.py \
+            tests/operations/test_worker_start_cleanup.py \
+            tests/ui/test_operations_dialog.py \
+            tests/ui/test_operations_policy.py \
+            tests/e2e/test_operations_cli.py \
+            tests/operations/test_resources_posix.py \
+            2>&1 | tee ci-next9-focused-linux/source-contracts.txt
+      - name: Verify exact verdicts and unchanged source after all focused children
+        if: ${{ always() && steps.source_identity.outcome == 'success' }}
+        timeout-minutes: 3
+        env:
+          CARR_DIAG_SNAPSHOT_SHA: ${{ steps.source_identity.outputs.inventory_sha }}
+        run: |
+          set -euo pipefail
+          python -I -B - <<'PY'
+          from hashlib import sha256
+          import json, os, platform, re, shutil, subprocess, sys
+          from pathlib import Path
+          
+          root = Path.cwd()
+          report_root = root / "ci-next9-focused-linux"
+          expected = {"tests/ingest/test_checked_catalog_commit.py":10,"tests/storage/test_scoped_locator_capacity.py":4,"tests/search/test_search_query_work.py":17,"tests/ui/test_native_recording_driver.py":10,"tests/operations/test_broker_scope.py":20,"tests/ingest/test_application_atomic_gate.py":1,"tests/ingest/test_pipeline.py":9,"tests/ingest/test_initial_publication_completion.py":2,"tests/ingest/test_worker_publication_boundary.py":32,"tests/e2e/test_import_worker_publication.py":36,"tests/storage/test_schema_boundary.py":9,"tests/storage/test_revisions.py":5,"tests/storage/test_read_boundary.py":5,"tests/storage/test_locator_integrity.py":8,"tests/storage/test_printed_label_integrity.py":37,"tests/catalog/test_read_views.py":9,"tests/catalog/test_read_views_v2_integration.py":5,"tests/search/test_search_paging.py":27,"tests/search/test_literal_integrity.py":6,"tests/search/test_literal_readonly.py":6,"tests/search/test_literal_v2_composition.py":6,"tests/e2e/test_retained_source_search_integrity.py":11,"tests/operations/test_facade.py":22,"tests/operations/test_import_admission.py":6,"tests/operations/test_production_admission.py":18,"tests/operations/test_resources.py":18,"tests/operations/test_transcription_admission.py":10,"tests/operations/test_current_union.py":11,"tests/operations/test_worker_start_cleanup.py":2,"tests/ui/test_operations_dialog.py":13,"tests/ui/test_operations_policy.py":37,"tests/e2e/test_operations_cli.py":5,"tests/operations/test_resources_posix.py":1}
+          assert sys.platform == "linux"
+          raw_before = (report_root / 'source-inventory-before.json').read_bytes()
+          assert sha256(raw_before).hexdigest() == os.environ['CARR_DIAG_SNAPSHOT_SHA'], 'Original source inventory changed'
+          before = json.loads(raw_before)
+          assert before['whole_suites'] == expected
+          assert subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip() == before['head'] == os.environ['EXPECTED_SOURCE_SHA']
+          after = {relative: sha256((root / relative).read_bytes()).hexdigest() for relative in before['source_sha256']}
+          source_unchanged = after == before['source_sha256']
+          
+          def file_digest(path):
+              value = sha256()
+              with path.open('rb') as stream:
+                  for chunk in iter(lambda: stream.read(1024 * 1024), b''):
+                      value.update(chunk)
+              return value.hexdigest()
+          
+          def runtime_identity():
+              result = {}
+              selected = os.environ.get('CARR_DIAG_AUDIO_DIR')
+              pin = json.loads((root / 'packaging/windows-audio.lock.json').read_text(encoding='utf-8')) if os.name == 'nt' else None
+              for name in ('ffmpeg', 'ffprobe'):
+                  resolved = shutil.which(name)
+                  assert resolved, name + ' is required; skipped PCM cases are not accepted'
+                  path = Path(resolved).resolve(strict=True)
+                  digest = file_digest(path)
+                  if os.name == 'nt':
+                      assert selected
+                      expected_path = (Path(selected) / 'bin' / (name + '.exe')).resolve(strict=True)
+                      assert path == expected_path, (path, expected_path)
+                      expected = pin['output_files']['bin/' + name + '.exe']
+                      assert path.stat().st_size == expected['size'] and digest == expected['sha256']
+                  result[name] = {'path': str(path), 'size': path.stat().st_size, 'sha256': digest}
+              return result
+          
+          runtime = runtime_identity()
+          runtime_unchanged = runtime == before['runtime']
+          raw_log = (report_root / 'source-contracts.txt').read_bytes()
+          lines = raw_log.decode('utf-8-sig').splitlines()
+          verdict_lines = [line for line in lines if line.startswith(('PASS: tests/', 'FAIL: tests/'))]
+          selected = [line.split(': ', 2)[1] for line in verdict_lines]
+          failures = [name for name, count in expected.items()
+                      if lines.count(f'PASS: {name}: junit_passed={count}, failed=0, skipped=0, pytest_exit=0') != 1]
+          suites_match = sorted(selected) == sorted(expected)
+          status = 'PASS' if source_unchanged and runtime_unchanged and suites_match and not failures else 'FAIL'
+          report = {'status': status, 'head': before['head'], 'tree': before['tree'],
+                    'platform': platform.platform(), 'python': sys.version,
+                    'whole_suites': expected, 'suite_count': len(expected), 'expected_cases': sum(expected.values()),
+                    'source_before_after': source_unchanged, 'source_sha256': after,
+                    'runtime_before_after': runtime_unchanged, 'runtime': runtime,
+                    'source_inventory_sha256': sha256(raw_before).hexdigest(),
+                    'log_sha256': sha256(raw_log).hexdigest(), 'failed_or_missing_exact_verdicts': failures,
+                    'all_suite_verdicts': verdict_lines, 'exact_suite_membership': suites_match,
+                    'strict_fail_skip_xfail_xpass_policy': True, 'default_suite_timeout_seconds': 600,
+                    'reviewed_timeout_seconds': before['reviewed_timeout_seconds'],
+                    'qualification': 'Exact source/runtime contracts only; no installed, native UI, physical device, acoustic or release claim'}
+          (report_root / 'summary.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps({'status': status, 'whole_suites': len(expected), 'expected_cases': sum(expected.values()),
+                            'source_before_after': source_unchanged, 'runtime_before_after': runtime_unchanged,
+                            'failed_or_missing_exact_verdicts': failures}), flush=True)
+          assert status == 'PASS', 'Required source cases, source identity or codec identity failed'
+          PY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ always() }}
+        with:
+          name: next9-focused-linux-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-next9-focused-linux/
+          if-no-files-found: error
+
+  focused-windows:
+    name: Windows focused checked publication, indexed search and owned resource contracts
+    runs-on: windows-2022
+    timeout-minutes: 60
+    concurrency:
+      group: carr-next9-final-source-focused-windows-${{ github.ref }}
+      cancel-in-progress: true
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      PYTEST_ADDOPTS: ''
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+      EXPECTED_SOURCE_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Prepare existing pinned Windows source dependencies
+        timeout-minutes: 10
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Path ci-next9-focused-windows | Out-Null
+          $head = (& git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $head -cne $env:EXPECTED_SOURCE_SHA) { throw 'The requested source commit changed.' }
+          & python -B -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock -r packaging/windows-sync-cp311.lock -r packaging/trusted-client.lock -r packaging/windows-sync-test-cp311.lock
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned dependency installation failed.' }
+          # Reuse the integrated main workflow's exact test-only PDF fixture pin.
+          & python -B -m pip install --only-binary=:all: reportlab==4.4.9
+          if ($LASTEXITCODE -ne 0) { throw 'The PDF fixture dependency installation failed.' }
+          & python -B -m pip check
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned dependencies are inconsistent.' }
+          & python -I -B -c "import json; from importlib.metadata import version; from reportlab.pdfgen.canvas import Canvas; assert version('reportlab') == '4.4.9'; print(json.dumps({'status':'PASS','reportlab_version':version('reportlab'),'canvas_import':Canvas.__module__+'.'+Canvas.__name__}))" | Tee-Object 'ci-next9-focused-windows/pdf-fixture-runtime.json'
+          if ($LASTEXITCODE -ne 0) { throw 'The PDF fixture import or exact version probe failed.' }
+      - name: Prepare existing pinned external codec for actual resource admission cases
+        timeout-minutes: 10
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $audio = Join-Path $env:RUNNER_TEMP 'carr-focused-source-audio'
+          & python -B packaging/prepare_windows_audio.py --cache (Join-Path $env:RUNNER_TEMP 'carr-focused-source-audio-cache') --output $audio --download | Tee-Object 'ci-next9-focused-windows/audio-preparation.json'
+          if ($LASTEXITCODE -ne 0) { throw 'The existing pinned source-test codec could not be prepared.' }
+          (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          "CARR_DIAG_AUDIO_DIR=$audio" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Bind exact source suites, immutable companions and actual codec
+        id: source_identity
+        timeout-minutes: 3
+        run: |
+          $ErrorActionPreference = 'Stop'
+          @'
+          from hashlib import sha1, sha256
+          import importlib.util
+          import json, os, platform, shutil, subprocess, sys
+          from pathlib import Path
+          
+          root = Path.cwd()
+          expected = {"tests/ingest/test_checked_catalog_commit.py":10,"tests/storage/test_scoped_locator_capacity.py":4,"tests/search/test_search_query_work.py":17,"tests/ui/test_native_recording_driver.py":10,"tests/operations/test_broker_scope.py":20,"tests/ingest/test_application_atomic_gate.py":1,"tests/ingest/test_pipeline.py":9,"tests/ingest/test_initial_publication_completion.py":2,"tests/ingest/test_worker_publication_boundary.py":32,"tests/e2e/test_import_worker_publication.py":36,"tests/storage/test_schema_boundary.py":9,"tests/storage/test_revisions.py":5,"tests/storage/test_read_boundary.py":5,"tests/storage/test_locator_integrity.py":8,"tests/storage/test_printed_label_integrity.py":37,"tests/catalog/test_read_views.py":9,"tests/catalog/test_read_views_v2_integration.py":5,"tests/search/test_search_paging.py":27,"tests/search/test_literal_integrity.py":6,"tests/search/test_literal_readonly.py":6,"tests/search/test_literal_v2_composition.py":6,"tests/e2e/test_retained_source_search_integrity.py":11,"tests/operations/test_facade.py":22,"tests/operations/test_import_admission.py":6,"tests/operations/test_production_admission.py":18,"tests/operations/test_resources.py":18,"tests/operations/test_transcription_admission.py":10,"tests/operations/test_current_union.py":11,"tests/operations/test_worker_start_cleanup.py":2,"tests/ui/test_operations_dialog.py":13,"tests/ui/test_operations_policy.py":37,"tests/e2e/test_operations_cli.py":5}
+          pins = {"tests/ingest/test_application_atomic_gate.py":"477093d586ec83f6bddee09530b139d1d77d6d26","tests/ingest/test_pipeline.py":"11e68408f08dd08ad3cc961487354040155b10f5","tests/ingest/test_initial_publication_completion.py":"a6d66edf0b1f9717c504a60cd72ea117fea12b89","tests/ingest/test_worker_publication_boundary.py":"2352f8ad2a9ec8d6883aef9f6ba41d07702e1a38","tests/e2e/test_import_worker_publication.py":"20f9f757622ee3168f1495e640ad5a2555be3b9d","tests/storage/test_schema_boundary.py":"2b647eb1d6d39b4b9a59a30caa41e25ad66b9f85","tests/storage/test_revisions.py":"fb852dfba3f52e998e25d5f3c7b3dabcbe0e95a9","tests/storage/test_read_boundary.py":"4a760e122a3db3444457eeef477a3a13a98cc6db","tests/storage/test_locator_integrity.py":"dcdaba8eac7bb7894de9e87df74019240db187ae","tests/storage/test_printed_label_integrity.py":"0cc3cc1c0d0002c2dcda6c3a16f417ff3fe2d7d5","tests/catalog/test_read_views.py":"21cce0614ef41d8e4223f405424174fb4572bca0","tests/catalog/test_read_views_v2_integration.py":"52b200a0dc67d89ffdfd8b019488ffa72d165690","tests/search/test_search_paging.py":"809e9433d5a1f1f098c0e21518cbce540e230dcc","tests/search/test_literal_integrity.py":"d4369630452009bc9e08efacaea2208b3b178e65","tests/search/test_literal_readonly.py":"f609a2c6a1658b974e883e959b0af00a62123601","tests/search/test_literal_v2_composition.py":"2d0329d5abebedf70fd07fcb03dfa5a3a9aef93e","tests/e2e/test_retained_source_search_integrity.py":"e76900b55329bc139e0f9fe478627877df8cd2dd","tests/operations/test_facade.py":"97c23278a538865b2e7e5bbf986531efe9405440","tests/operations/test_import_admission.py":"53410c72f9ae93b38632e369c20f1d2ea2363166","tests/operations/test_production_admission.py":"ab092398189a4118c652b14a43d549a42064b172","tests/operations/test_resources.py":"c8eef1bbd9785a6993138475ad9a8e82032e7608","tests/operations/test_transcription_admission.py":"f163da1b651e4cb346a16ac2b9f12915e217b18f","tests/operations/test_current_union.py":"9cba6e080a5170b83eccd3ed834b1004e8022c3b","tests/operations/test_worker_start_cleanup.py":"c6870917d737c2a35fb3ba8cfa7541d607114d67","tests/ui/test_operations_dialog.py":"36921e597ec079acdfc2ee5ec80a52533b0d28f3","tests/ui/test_operations_policy.py":"4a3b564741df14d3fbb159c972539e0a093a7a19","tests/e2e/test_operations_cli.py":"12aef567dac6bc3732afb9f6ff960b25f4d0a82d","src/carr_library/application.py":"67aa7dc2ad70cd4929f64dd6ad275e627726117f","src/carr_library/ingest/pipeline.py":"656ac8f3943aa4bb59b7756f7982d7985179e3b2","src/carr_library/storage/revisions.py":"63a9179eff3816a81523c5fadeeea750ddfbcdc4","src/carr_library/catalog/read_views.py":"d2e2045738ace3ca99ac5decefc3d8ba3a955297","src/carr_library/search/paging.py":"ebd2a0d92dbc14ab2620e0d540ebb76e4e02c9c6","tests/ingest/test_checked_catalog_commit.py":"d351cf482029a332970953b649933c2cb060f118","tests/storage/test_scoped_locator_capacity.py":"489dec6a00fb8e4ae16611fefb84616a5ec77592","tests/search/test_search_query_work.py":"1a4128547ebc99c7be3f5e8e0f3975c5637864aa","tests/ui/test_native_recording_driver.py":"ead73e8f5b7d50e9ff9e8d850f0b225351054317","tests/operations/test_broker_scope.py":"21cdd7081b5af428d5303efa116d96765e185ff9","scripts/ci_check.py":"8a23ef36c2df93928b0aff3edd8b59a53c54684c","scripts/windows_recording_smoke.py":"27ea1213d42fd3d3826133e54ab7c82c36fc82c3","tests/catalog/catalog_membership_candidate.sql":"5ab88793b8e4041127f88c2a1dd7662bbe42094e","tests/e2e/test_epub_import.py":"e788c2dabcb94488c9c5f52190dfee447cf9e486","tests/transcription/test_supplied_worker_bridge.py":"b9a4c40ab6fbef78a4a0754e799c4426672b6707","src/carr_library/operations/broker.py":"107e1a600bb4bdf0f3edb7735ee5fcdb68d9fb36","src/carr_library/operations/_locks.py":"ae161b8483f84b2a4aa2f153b4b11b08f76b9693"}
+          companions = ["scripts/windows_recording_smoke.py","tests/catalog/catalog_membership_candidate.sql","tests/e2e/test_epub_import.py","tests/transcription/test_supplied_worker_bridge.py"]
+          authority = ["src/carr_library/ingest/worker.py","src/carr_library/ingest/publication.py","src/carr_library/search/literal.py","src/carr_library/citations/text_attestation.py","src/carr_library/operations/models.py","src/carr_library/operations/facade.py","src/carr_library/audio/cleanup.py","src/carr_library/audio/process.py","packaging/prepare_windows_audio.py","packaging/windows-audio.lock.json",".gitattributes"]
+          report_root = root / "ci-next9-focused-windows"
+          assert sys.platform == "win32"
+          head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          assert head == os.environ['EXPECTED_SOURCE_SHA']
+          tree = subprocess.check_output(['git', 'rev-parse', 'HEAD^{tree}'], text=True).strip()
+          paths = sorted(set(expected) | set(pins) | set(companions) | set(authority))
+          inventory = {}
+          for relative in paths:
+              path = root / relative
+              assert path.is_file() and not path.is_symlink(), relative
+              raw = path.read_bytes()
+              if relative in pins:
+                  actual = sha1(b'blob ' + str(len(raw)).encode('ascii') + b'\0' + raw).hexdigest()
+                  assert actual == pins[relative], (relative, actual, pins[relative])
+              inventory[relative] = sha256(raw).hexdigest()
+          spec = importlib.util.spec_from_file_location('reviewed_ci_check', root / 'scripts/ci_check.py')
+          runner = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(runner)
+          assert runner.SUITE_TIMEOUT_SECONDS == 600
+          assert runner.REVIEWED_SUITE_TIMEOUT_SECONDS == {'tests/transcription/test_admission_boundaries.py': 900}
+          
+          def file_digest(path):
+              value = sha256()
+              with path.open('rb') as stream:
+                  for chunk in iter(lambda: stream.read(1024 * 1024), b''):
+                      value.update(chunk)
+              return value.hexdigest()
+          
+          def runtime_identity():
+              result = {}
+              selected = os.environ.get('CARR_DIAG_AUDIO_DIR')
+              pin = json.loads((root / 'packaging/windows-audio.lock.json').read_text(encoding='utf-8')) if os.name == 'nt' else None
+              for name in ('ffmpeg', 'ffprobe'):
+                  resolved = shutil.which(name)
+                  assert resolved, name + ' is required; skipped PCM cases are not accepted'
+                  path = Path(resolved).resolve(strict=True)
+                  digest = file_digest(path)
+                  if os.name == 'nt':
+                      assert selected
+                      expected_path = (Path(selected) / 'bin' / (name + '.exe')).resolve(strict=True)
+                      assert path == expected_path, (path, expected_path)
+                      expected = pin['output_files']['bin/' + name + '.exe']
+                      assert path.stat().st_size == expected['size'] and digest == expected['sha256']
+                  result[name] = {'path': str(path), 'size': path.stat().st_size, 'sha256': digest}
+              return result
+          
+          report = {'status': 'PREPARED', 'head': head, 'tree': tree,
+                    'platform': platform.platform(), 'python': sys.version,
+                    'whole_suites': expected, 'source_sha256': inventory, 'companions': companions,
+                    'reviewed_git_blobs': pins, 'runtime': runtime_identity(),
+                    'default_suite_timeout_seconds': 600, 'reviewed_timeout_seconds': runner.REVIEWED_SUITE_TIMEOUT_SECONDS,
+                    'qualification': 'Exact source fixtures only; no installed, native UI, physical device, acoustic or release claim'}
+          raw = (json.dumps(report, indent=2) + '\n').encode('utf-8')
+          (report_root / 'source-inventory-before.json').write_bytes(raw)
+          with Path(os.environ['GITHUB_OUTPUT']).open('a', encoding='utf-8') as output:
+              output.write('inventory_sha=' + sha256(raw).hexdigest() + '\n')
+          print(json.dumps({'status': 'PREPARED', 'whole_suites': len(expected),
+                            'expected_cases': sum(expected.values()), 'checked_files': len(inventory),
+                            'runtime': report['runtime']}), flush=True)
+          '@ | & python -I -B -
+          if ($LASTEXITCODE -ne 0) { throw 'Focused source and companion identity preparation failed.' }
+      - name: Require every focused whole suite without skip or xfail acceptance
+        timeout-minutes: 35
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $suites = @(
+            'tests/ingest/test_checked_catalog_commit.py'
+            'tests/storage/test_scoped_locator_capacity.py'
+            'tests/search/test_search_query_work.py'
+            'tests/ui/test_native_recording_driver.py'
+            'tests/operations/test_broker_scope.py'
+            'tests/ingest/test_application_atomic_gate.py'
+            'tests/ingest/test_pipeline.py'
+            'tests/ingest/test_initial_publication_completion.py'
+            'tests/ingest/test_worker_publication_boundary.py'
+            'tests/e2e/test_import_worker_publication.py'
+            'tests/storage/test_schema_boundary.py'
+            'tests/storage/test_revisions.py'
+            'tests/storage/test_read_boundary.py'
+            'tests/storage/test_locator_integrity.py'
+            'tests/storage/test_printed_label_integrity.py'
+            'tests/catalog/test_read_views.py'
+            'tests/catalog/test_read_views_v2_integration.py'
+            'tests/search/test_search_paging.py'
+            'tests/search/test_literal_integrity.py'
+            'tests/search/test_literal_readonly.py'
+            'tests/search/test_literal_v2_composition.py'
+            'tests/e2e/test_retained_source_search_integrity.py'
+            'tests/operations/test_facade.py'
+            'tests/operations/test_import_admission.py'
+            'tests/operations/test_production_admission.py'
+            'tests/operations/test_resources.py'
+            'tests/operations/test_transcription_admission.py'
+            'tests/operations/test_current_union.py'
+            'tests/operations/test_worker_start_cleanup.py'
+            'tests/ui/test_operations_dialog.py'
+            'tests/ui/test_operations_policy.py'
+            'tests/e2e/test_operations_cli.py'
+          )
+          & python -B scripts/ci_check.py --jobs 2 @suites 2>&1 | Tee-Object -FilePath ci-next9-focused-windows/source-contracts.txt
+          if ($LASTEXITCODE -ne 0) { throw 'A required focused whole suite failed.' }
+      - name: Verify exact verdicts and unchanged source after all focused children
+        if: ${{ always() && steps.source_identity.outcome == 'success' }}
+        timeout-minutes: 3
+        env:
+          CARR_DIAG_SNAPSHOT_SHA: ${{ steps.source_identity.outputs.inventory_sha }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          @'
+          from hashlib import sha256
+          import json, os, platform, re, shutil, subprocess, sys
+          from pathlib import Path
+          
+          root = Path.cwd()
+          report_root = root / "ci-next9-focused-windows"
+          expected = {"tests/ingest/test_checked_catalog_commit.py":10,"tests/storage/test_scoped_locator_capacity.py":4,"tests/search/test_search_query_work.py":17,"tests/ui/test_native_recording_driver.py":10,"tests/operations/test_broker_scope.py":20,"tests/ingest/test_application_atomic_gate.py":1,"tests/ingest/test_pipeline.py":9,"tests/ingest/test_initial_publication_completion.py":2,"tests/ingest/test_worker_publication_boundary.py":32,"tests/e2e/test_import_worker_publication.py":36,"tests/storage/test_schema_boundary.py":9,"tests/storage/test_revisions.py":5,"tests/storage/test_read_boundary.py":5,"tests/storage/test_locator_integrity.py":8,"tests/storage/test_printed_label_integrity.py":37,"tests/catalog/test_read_views.py":9,"tests/catalog/test_read_views_v2_integration.py":5,"tests/search/test_search_paging.py":27,"tests/search/test_literal_integrity.py":6,"tests/search/test_literal_readonly.py":6,"tests/search/test_literal_v2_composition.py":6,"tests/e2e/test_retained_source_search_integrity.py":11,"tests/operations/test_facade.py":22,"tests/operations/test_import_admission.py":6,"tests/operations/test_production_admission.py":18,"tests/operations/test_resources.py":18,"tests/operations/test_transcription_admission.py":10,"tests/operations/test_current_union.py":11,"tests/operations/test_worker_start_cleanup.py":2,"tests/ui/test_operations_dialog.py":13,"tests/ui/test_operations_policy.py":37,"tests/e2e/test_operations_cli.py":5}
+          assert sys.platform == "win32"
+          raw_before = (report_root / 'source-inventory-before.json').read_bytes()
+          assert sha256(raw_before).hexdigest() == os.environ['CARR_DIAG_SNAPSHOT_SHA'], 'Original source inventory changed'
+          before = json.loads(raw_before)
+          assert before['whole_suites'] == expected
+          assert subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip() == before['head'] == os.environ['EXPECTED_SOURCE_SHA']
+          after = {relative: sha256((root / relative).read_bytes()).hexdigest() for relative in before['source_sha256']}
+          source_unchanged = after == before['source_sha256']
+          
+          def file_digest(path):
+              value = sha256()
+              with path.open('rb') as stream:
+                  for chunk in iter(lambda: stream.read(1024 * 1024), b''):
+                      value.update(chunk)
+              return value.hexdigest()
+          
+          def runtime_identity():
+              result = {}
+              selected = os.environ.get('CARR_DIAG_AUDIO_DIR')
+              pin = json.loads((root / 'packaging/windows-audio.lock.json').read_text(encoding='utf-8')) if os.name == 'nt' else None
+              for name in ('ffmpeg', 'ffprobe'):
+                  resolved = shutil.which(name)
+                  assert resolved, name + ' is required; skipped PCM cases are not accepted'
+                  path = Path(resolved).resolve(strict=True)
+                  digest = file_digest(path)
+                  if os.name == 'nt':
+                      assert selected
+                      expected_path = (Path(selected) / 'bin' / (name + '.exe')).resolve(strict=True)
+                      assert path == expected_path, (path, expected_path)
+                      expected = pin['output_files']['bin/' + name + '.exe']
+                      assert path.stat().st_size == expected['size'] and digest == expected['sha256']
+                  result[name] = {'path': str(path), 'size': path.stat().st_size, 'sha256': digest}
+              return result
+          
+          runtime = runtime_identity()
+          runtime_unchanged = runtime == before['runtime']
+          raw_log = (report_root / 'source-contracts.txt').read_bytes()
+          lines = raw_log.decode('utf-8-sig').splitlines()
+          verdict_lines = [line for line in lines if line.startswith(('PASS: tests/', 'FAIL: tests/'))]
+          selected = [line.split(': ', 2)[1] for line in verdict_lines]
+          failures = [name for name, count in expected.items()
+                      if lines.count(f'PASS: {name}: junit_passed={count}, failed=0, skipped=0, pytest_exit=0') != 1]
+          suites_match = sorted(selected) == sorted(expected)
+          status = 'PASS' if source_unchanged and runtime_unchanged and suites_match and not failures else 'FAIL'
+          report = {'status': status, 'head': before['head'], 'tree': before['tree'],
+                    'platform': platform.platform(), 'python': sys.version,
+                    'whole_suites': expected, 'suite_count': len(expected), 'expected_cases': sum(expected.values()),
+                    'source_before_after': source_unchanged, 'source_sha256': after,
+                    'runtime_before_after': runtime_unchanged, 'runtime': runtime,
+                    'source_inventory_sha256': sha256(raw_before).hexdigest(),
+                    'log_sha256': sha256(raw_log).hexdigest(), 'failed_or_missing_exact_verdicts': failures,
+                    'all_suite_verdicts': verdict_lines, 'exact_suite_membership': suites_match,
+                    'strict_fail_skip_xfail_xpass_policy': True, 'default_suite_timeout_seconds': 600,
+                    'reviewed_timeout_seconds': before['reviewed_timeout_seconds'],
+                    'qualification': 'Exact source/runtime contracts only; no installed, native UI, physical device, acoustic or release claim'}
+          (report_root / 'summary.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps({'status': status, 'whole_suites': len(expected), 'expected_cases': sum(expected.values()),
+                            'source_before_after': source_unchanged, 'runtime_before_after': runtime_unchanged,
+                            'failed_or_missing_exact_verdicts': failures}), flush=True)
+          assert status == 'PASS', 'Required source cases, source identity or codec identity failed'
+          '@ | & python -I -B -
+          if ($LASTEXITCODE -ne 0) { throw 'Focused source verdict or identity validation failed.' }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ always() }}
+        with:
+          name: next9-focused-windows-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-next9-focused-windows/
           if-no-files-found: error

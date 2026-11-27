@@ -94,6 +94,13 @@ class NativeLock:
             context.lock_file_fd = None
         context.lock_counter = 0
 
+    def close_owned_descriptor(self):
+        """Close this process's descriptor without resolving or mutating its path."""
+        if self.pid != os.getpid():
+            raise ResourceStateError('A child process cannot close its parent reservation.')
+        with _GUARD:
+            self._close_only()
+
     def release(self):
         if self.pid != os.getpid():
             raise ResourceStateError('A child process cannot release its parent reservation.')

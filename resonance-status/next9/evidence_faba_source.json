@@ -1,0 +1,531 @@
+{
+  "schema": "carr-ci-evidence/1",
+  "status": "OBSERVED_EXACT_HEAD_RESULTS_NO_RELEASE_QUALIFICATION",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "evidence_method": "Fetched exact GitHub job logs and completed job metadata; source checkout SHA, strict per-file verdicts, network receipt, parser receipt and artifact upload identities matched. No new run or ref change.",
+  "source": {
+    "commit": "fabae325a1a197ac6959732254ddf16d3ecef367",
+    "tree": "96decbfdd19bf67e3c88f9d27169d6dd3479f21e",
+    "run": 46045805486,
+    "job": 140664654836,
+    "job_conclusion": "failure",
+    "log_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46045805486/job/140664654836",
+    "whole_suites": 49,
+    "whole_suites_passed": 47,
+    "whole_suites_failed": 2,
+    "passed": 1510,
+    "failed": 11,
+    "skipped": 0,
+    "strict_verdicts": [
+      {
+        "status": "PASS",
+        "suite": "tests/audio/test_envelopes.py",
+        "passed": 64,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/studio/test_envelope_workflow.py",
+        "passed": 17,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/audio/test_dsp.py",
+        "passed": 41,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/audio/test_effect_presets.py",
+        "passed": 40,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/audio/test_audio_conversion.py",
+        "passed": 15,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/studio/test_project_effects.py",
+        "passed": 25,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/storage/test_backup_studio_effects.py",
+        "passed": 21,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/packaging/test_library_scale_benchmark.py",
+        "passed": 24,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/studio/test_clip_operations.py",
+        "passed": 59,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/studio/test_project_history.py",
+        "passed": 29,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/studio/test_clip_history_dialog.py",
+        "passed": 22,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/studio/test_clip_editing.py",
+        "passed": 20,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/studio/test_clip_dialog.py",
+        "passed": 45,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/studio/test_clip_restoration.py",
+        "passed": 24,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/studio/test_clip_cli.py",
+        "passed": 8,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/assistant/test_translation_layout.py",
+        "passed": 33,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/ui/test_translation_layout.py",
+        "passed": 23,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/assistant/test_translation_layout_cli.py",
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/assistant/test_translation.py",
+        "passed": 168,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/assistant/test_translation_local.py",
+        "passed": 39,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/assistant/test_translation_documents.py",
+        "passed": 20,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/ui/test_translation_documents.py",
+        "passed": 29,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/assistant/test_translation_advanced_union.py",
+        "passed": 12,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/assistant/test_translation_advanced_source.py",
+        "passed": 9,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/speech/test_narration_receipt.py",
+        "passed": 79,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/academic_integration/test_word_records.py",
+        "passed": 50,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/academic_integration/test_word_bridge.py",
+        "passed": 20,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/academic_integration/test_word_worker.py",
+        "passed": 17,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/ui/test_word_citations.py",
+        "passed": 17,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/assistant/test_translation_partition.py",
+        "passed": 26,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/ui/test_save_all.py",
+        "passed": 24,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/assistant/test_google_oauth.py",
+        "passed": 49,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/ui/test_google_oauth.py",
+        "passed": 15,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/assistant/test_translation_v3.py",
+        "passed": 64,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/ui/test_profile_project_exports.py",
+        "passed": 27,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/storage/test_backup_translation.py",
+        "passed": 14,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/citations/test_csl.py",
+        "passed": 79,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/citations/test_bibliography_workbench.py",
+        "passed": 27,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/academic_integration/test_documents.py",
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/academic_integration/test_formatting.py",
+        "passed": 24,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/academic_integration/test_regeneration.py",
+        "passed": 20,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/academic_integration/test_citation_ui.py",
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "FAIL",
+        "suite": "tests/assistant/test_translation_epub_layout.py",
+        "passed": 21,
+        "failed": 10,
+        "skipped": 0,
+        "pytest_exit": 1
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/ui/test_translation_epub_layout.py",
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/assistant/test_translation_epub_cli.py",
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "FAIL",
+        "suite": "tests/speech/test_spelling.py",
+        "passed": 54,
+        "failed": 1,
+        "skipped": 0,
+        "pytest_exit": 1
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/speech/test_spelling_handlers.py",
+        "passed": 20,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/speech/test_spelling_reader_hook.py",
+        "passed": 9,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/packaging/test_hunspell_build.py",
+        "passed": 31,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      }
+    ],
+    "failed_nodes": [
+      "FAILED tests/speech/test_spelling.py::test_mutation_during_profile_hash_is_refused - AssertionError: Regex pattern did not match.",
+      "FAILED tests/assistant/test_translation_epub_layout.py::test_actual_package_active_uri_or_refresh_is_refused_before_transfer[OEBPS/chapter-1.xhtml-<p><a href=\"javascript:alert(1)\">Original.</a></p>] - carr_library.extract.epub_ordered.EpubError: EPUB navigation anchor is missing or ambiguous.",
+      "FAILED tests/assistant/test_translation_epub_layout.py::test_actual_package_active_uri_or_refresh_is_refused_before_transfer[OEBPS/chapter-1.xhtml-<p><a href=\"JaVa&#x9;script:alert(1)\">Original.</a></p>] - carr_library.extract.epub_ordered.EpubError: EPUB navigation anchor is missing or ambiguous.",
+      "FAILED tests/assistant/test_translation_epub_layout.py::test_actual_package_active_uri_or_refresh_is_refused_before_transfer[OEBPS/chapter-1.xhtml-<p><a href=\"data:text/html,active\">Original.</a></p>] - carr_library.extract.epub_ordered.EpubError: EPUB navigation anchor is missing or ambiguous.",
+      "FAILED tests/assistant/test_translation_epub_layout.py::test_actual_package_active_uri_or_refresh_is_refused_before_transfer[OEBPS/chapter-1.xhtml-<meta http-equiv=\" Refresh \" content=\"0;url=https://example.org\"/>] - carr_library.extract.epub_ordered.EpubError: EPUB navigation anchor is missing or ambiguous.",
+      "FAILED tests/assistant/test_translation_epub_layout.py::test_actual_package_active_uri_or_refresh_is_refused_before_transfer[OEBPS/nav.xhtml-<meta http-equiv=\"refresh\" content=\"0;url=https://example.org\"/>] - carr_library.extract.epub_ordered.EpubError: EPUB navigation anchor is missing or ambiguous.",
+      "FAILED tests/assistant/test_translation_epub_layout.py::test_actual_package_active_uri_or_refresh_is_refused_before_transfer[OEBPS/chapter-1.xhtml-<p><a href=\"vbscript:active()\">Original.</a></p>] - carr_library.extract.epub_ordered.EpubError: EPUB navigation anchor is missing or ambiguous.",
+      "FAILED tests/assistant/test_translation_epub_layout.py::test_ordinary_package_and_https_links_remain_exact_without_fetching[#target] - carr_library.extract.epub_ordered.EpubError: EPUB navigation anchor is missing or ambiguous.",
+      "FAILED tests/assistant/test_translation_epub_layout.py::test_ordinary_package_and_https_links_remain_exact_without_fetching[chapter-2.xhtml#heading] - carr_library.extract.epub_ordered.EpubError: EPUB navigation anchor is missing or ambiguous.",
+      "FAILED tests/assistant/test_translation_epub_layout.py::test_ordinary_package_and_https_links_remain_exact_without_fetching[https://example.org/source?q=1] - carr_library.extract.epub_ordered.EpubError: EPUB navigation anchor is missing or ambiguous.",
+      "FAILED tests/assistant/test_translation_epub_layout.py::test_preserved_image_only_figure_does_not_create_a_translation_request - carr_library.extract.epub_ordered.EpubError: EPUB navigation anchor is missing or ambiguous."
+    ],
+    "correction_boundary": {
+      "hunspell": {
+        "cause": "Actual growth refusal occurred; expected message category was too narrow.",
+        "fixed_source_manifest": "0c94043c33776c10873c39bc003da7662b10e2a6",
+        "test_blob": "15e7f8ea5322a9bd5e8781e11a8841b0b4e7ae8b",
+        "included_in": "0425541302b637c0fbdc6e950bcf87cd1cd8f6d1",
+        "corrected_execution": "Not established by this faba run"
+      },
+      "epub": {
+        "observed_failure": "Ten package fixtures are refused for a missing/ambiguous navigation anchor before the intended translation boundary.",
+        "reviewed_successor": "Root reports reviewed fixture-only successor6e793736; exact final map is separate.",
+        "corrected_execution": "NOT_RUN_IN_THIS_EVIDENCE"
+      }
+    },
+    "artifact": {
+      "id": 15224571269,
+      "name": "next9-word-refresh-contracts-fabae325a1a197ac6959732254ddf16d3ecef367-1",
+      "bytes": 87129,
+      "sha256": "84d2dfb56a41cdcd91ac19b021ce248d81e188f5952c9db1ffc31d026e2d7ffb",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46045805486/artifacts/15224571269"
+    }
+  },
+  "provider_loopback": {
+    "same_source_commit": "fabae325a1a197ac6959732254ddf16d3ecef367",
+    "same_run": 46045805486,
+    "same_job": 140664654836,
+    "suite": "tests/assistant/test_providers.py",
+    "status": "PASS",
+    "passed": 28,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_seconds": 4.16,
+    "receipt": {
+      "status": "PASS",
+      "cases": 28,
+      "pytest_exit": 0,
+      "xfail_or_xpass": false,
+      "namespace": "net:[4026532751]",
+      "parent_namespace": "net:[4026531833]",
+      "interfaces": [
+        "lo"
+      ],
+      "external_route": "ABSENT",
+      "source_origins": {
+        "carr_library.assistant.providers": "1828df5560867a50cc9b207d0da16902e1fe2afcc9f2a58e87419a0b81989cea",
+        "carr_library.assistant.profiles": "2c25b48248a7dbf9708a93264e1721d9005a600dc0d1f4bb0a5ba7d159e32121",
+        "carr_library.assistant.google_oauth": "b00b35f9713dfb0d9075ea23908a27eb32763460fda191d76f34695dd9f1bb87",
+        "carr_library.assistant.credentials": "d2daafa426d25af1f7a7adddd2ecd512440f94b536f645c7364000e19b0ea2f2",
+        "carr_library.assistant.models": "3c2416b6da29b2ef3894af73e11201f437e495e89fcab0b7030f1a182350b75d",
+        "carr_library.assistant.llm": "44af89bc7e432c48ba9453d4409962cd7f64d940c055e28e74f465206c676248"
+      },
+      "test_sha256": "d4dc51213d8ca848fdffff5092f6633345b685a11044155b5280b1890fdcf315",
+      "junit_sha256": "e32bc5aa2a5e3eaeffd9e30e5abb16fa270e67302a08bed6c4118459744d4cff",
+      "qualification": "Whole source suite, real synthetic loopback HTTP; no external API or installed-package claim"
+    },
+    "boundary": "Separate actual Linux network namespace with loopback only and no external route; original ci_check socket denial unchanged. Six current imported source hashes verified before and after. No real provider, external Google, credential-manager or installed-package qualification."
+  },
+  "powershell_parser": {
+    "commit": "0425541302b637c0fbdc6e950bcf87cd1cd8f6d1",
+    "run": 46051069136,
+    "job": 140682214020,
+    "job_conclusion": "success",
+    "log_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46051069136/job/140682214020",
+    "receipt": {
+      "status": "PASS",
+      "source_commit": "0425541302b637c0fbdc6e950bcf87cd1cd8f6d1",
+      "parsed_bodies": 113,
+      "failed_bodies": 0,
+      "controls": 6,
+      "control_failures": 0,
+      "report": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/ci-next9-parser/workflow-powershell.json",
+      "runtime_qualification": "NOT_RUN"
+    },
+    "artifact": {
+      "id": 15225096316,
+      "name": "next9-final-workflow-parser-0425541302b637c0fbdc6e950bcf87cd1cd8f6d1-1",
+      "bytes": 11242,
+      "sha256": "12bcdd8a2636b161304f623b83d00e1cbeca0028725df1fcbf429a488ff2b778",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46051069136/artifacts/15225096316"
+    },
+    "qualified_gate_blobs": {
+      "main": "3109b784e9a030a2217f6818e7cfc3de6332818d",
+      "v3": "20cbbf7ab79a39e68e873f0781e08ac45fc5bfac"
+    },
+    "qualification": "Real YAML extraction and PowerShell parser,113 bodies/6 controls/0 errors for this exact source only. Not workflow execution or the later a07e/6373 gate pair."
+  },
+  "additional_status_observation": {
+    "observed_run": 46051069136,
+    "ubuntu_job": 140682214196,
+    "ubuntu_status": "completed",
+    "ubuntu_conclusion": "failure",
+    "windows_job": 140682214261,
+    "windows_status": "completed",
+    "windows_conclusion": "failure",
+    "diagnostics": "Parent informed; their detailed verdicts are outside this evidence manifest."
+  },
+  "no_prior_pass_transfer": true,
+  "unqualified": [
+    "Current composed next9 source as a whole",
+    "Installed final bundle and same-head native phases",
+    "Updated gate pair a07e6567/6373bf05 parsing",
+    "Real models, physical audio/acoustic listening, NVDA, live Word, production trust authority",
+    "Final wheel/PE/optional dependency closure, delivery or release"
+  ],
+  "recorded_at_utc": "2026-11-27 19:01:38 UTC"
+}

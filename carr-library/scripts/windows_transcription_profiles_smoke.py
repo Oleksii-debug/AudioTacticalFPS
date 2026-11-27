@@ -162,8 +162,17 @@ def verify_runtime_profiles(frame, temporary, source_root):
                 assert len(exports) == 1, exports
                 assert len(list(exports[0].iterdir())) == 10
                 assert {path.suffix for path in exports[0].iterdir()} == {'.txt', '.srt', '.vtt', '.json'}
-                assert 'Export saved.' in dialog.status.GetValue()
-                assert str(exports[0]) in dialog.status.GetValue()
+                status = dialog.status.GetValue()
+                heading, separator, payload = status.partition('\n')
+                assert heading == 'Export saved.' and separator, status
+                receipt = json.loads(payload)
+                assert receipt['status'] == 'complete' and receipt['job_id'] == state['job']
+                assert isinstance(receipt['files'], list) and len(receipt['files']) == 9
+                manifest = Path(receipt['manifest_path'])
+                assert manifest.parent == exports[0]
+                assert sha256(manifest.read_bytes()).hexdigest() == receipt['manifest_sha256']
+                assert {Path(row['path']) for row in receipt['files']} == (
+                    set(exports[0].iterdir()) - {manifest})
                 assert all(source.read_bytes() == raw for source, raw in originals.items())
                 assert [row['id'] for row in service.list()] == old_legacy
                 # Simulate an unbound canonical historical job. The actual

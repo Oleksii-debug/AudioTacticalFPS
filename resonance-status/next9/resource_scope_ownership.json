@@ -1,0 +1,128 @@
+{
+  "schema": "carr-resource-scope-correction/1",
+  "status": "REVIEWED_STATIC_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "name": "Keep resource cleanup bound to its original directories and native descriptor",
+  "evidence": {
+    "source": "0425541302b637c0fbdc6e950bcf87cd1cd8f6d1",
+    "run": 46051069136,
+    "job": 140682214196,
+    "suite": "tests/assistant/test_translation_rich_docx.py",
+    "case": "test_source_root_replacement_during_format_process_refuses_late_admission",
+    "observed": "The source guard refused an actual post-child library replacement; lease cleanup entered an unbound coordinator path and created directories in the replacement before closing the displaced descriptor."
+  },
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/operations/broker.py",
+      "preimage": "3aebf909a5949f428b6d502388496035142f0fed",
+      "sha": "107e1a600bb4bdf0f3edb7735ee5fcdb68d9fb36",
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/src/carr_library/operations/_locks.py",
+      "preimage": "ac567ba23b52f59ebc61fb0c25131b6126674c91",
+      "sha": "ae161b8483f84b2a4aa2f153b4b11b08f76b9693",
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/tests/operations/test_broker_scope.py",
+      "preimage": null,
+      "sha": "21cdd7081b5af428d5303efa116d96765e185ff9",
+      "readback": "EXACT"
+    }
+  ],
+  "changes": [
+    "Capture existing application, coordinator, lease and policy-parent dev/ino identities for the broker lifetime.",
+    "Recheck scope before coordinator acquisition, after cancellation callbacks/acquisition, around policy reads and before scoped publication/retirement.",
+    "Reuse the pinned NativeLock backend; invalid scope invokes its new PID/RLock-protected descriptor-only close method, without resolving/deleting a replacement path.",
+    "Preserve the existing pending CleanupOwner settlement body byte-for-byte; native quiescence still precedes lease release.",
+    "Keep the existing reservation try/finally around both admission and work, so scope failure at gate exit after lease publication cannot strand the newly owned descriptor.",
+    "Mark a lease released only when its actual lock descriptor is no longer held; retain cleanup_pending and surface ResourceStateError instead of silently adopting the new scope."
+  ],
+  "exception_contract": {
+    "type": "carr_library.operations.models.ResourceStateError",
+    "message": "The selected resource directory changed; reopen the selected library before retrying.",
+    "original_error": "Preserved through normal cause/context chaining; no blanket suppression.",
+    "replacement_paths": "Not cleaned, adopted or initialized by the stale broker.",
+    "old_metadata": "May remain inert at its original owned location after descriptor-only close; an explicitly constructed current broker can handle stale unlocked metadata."
+  },
+  "validation": {
+    "whole_suite": "tests/operations/test_broker_scope.py",
+    "static_cases": 20,
+    "static_functions": 5,
+    "required_functions": [
+      "test_stale_broker_refuses_replacement_before_any_new_coordination",
+      "test_live_release_closes_only_owned_descriptor_and_preserves_replacement",
+      "test_scope_changed_by_gate_callback_cannot_create_a_new_coordinator",
+      "test_scope_change_after_lease_publication_releases_before_unstarted_work",
+      "test_pending_cleanup_retains_native_lease_after_scope_revocation_until_quiescent"
+    ],
+    "scenario_counts": {
+      "stale_directory_action_combinations": 16,
+      "live_descriptor_release": 1,
+      "scope_change_inside_gate_callback": 1,
+      "scope_change_after_real_lease_publication": 1,
+      "retained_cleanup_owner_ordering": 1
+    },
+    "companions": [],
+    "source_and_installed": true,
+    "origins": [
+      "carr_library.operations.broker",
+      "carr_library.operations._locks",
+      "carr_library.operations.models",
+      "carr_library.durable_state",
+      "carr_library.audio.cleanup",
+      "carr_library.audio.models"
+    ],
+    "required_unchanged_whole_suites": [
+      "tests/operations/test_resources.py",
+      "tests/operations/test_current_union.py",
+      "tests/operations/test_worker_start_cleanup.py",
+      "tests/operations/test_facade.py",
+      "tests/operations/test_import_admission.py",
+      "tests/operations/test_production_admission.py",
+      "tests/operations/test_transcription_admission.py",
+      "tests/ui/test_operations_dialog.py",
+      "tests/ui/test_operations_policy.py",
+      "tests/e2e/test_operations_cli.py"
+    ],
+    "real_service_regression": {
+      "manifest": "063ed76c1a57df2a5be9d81f0dfa3bf3ee14ac66",
+      "path": "carr-library/tests/assistant/test_translation_rich_docx.py",
+      "sha": "3f0f9c64d496f9ca423b169e6871e67816c51e1a",
+      "whole_cases_unchanged": 17,
+      "required_case": "test_source_root_replacement_during_format_process_refuses_late_admission",
+      "scope": "Actual formatting child, actual root swap/canary/no new replacement files; only exact native Windows5/32 rename refusal may prevent the real swap."
+    },
+    "readback": "EXACT",
+    "python_parse": "NOT_RUN",
+    "test_collection": "NOT_RUN",
+    "portable_execution": "NOT_RUN",
+    "windows_execution": "NOT_RUN",
+    "native_runtime_qualification": "NOT_RUN"
+  },
+  "peer_review": {
+    "reviewer": "canonical_regression",
+    "status": "ACCEPTED_STATIC_NOT_RUN",
+    "source": [
+      "107e1a600bb4bdf0f3edb7735ee5fcdb68d9fb36",
+      "ae161b8483f84b2a4aa2f153b4b11b08f76b9693"
+    ],
+    "tests": "21cdd7081b5af428d5303efa116d96765e185ff9",
+    "real_service_case": "3f0f9c64d496f9ca423b169e6871e67816c51e1a",
+    "scope": "Directory authority, descriptor ownership, preserved pending cleanup, real filesystem tests and actual format-child fixture; no execution claim."
+  },
+  "unchanged": [
+    "Public ResourceBroker/ResourceLease constructor and operation signatures",
+    "Resource policies and per-operation budgets",
+    "Native process/worker and FileLock backend",
+    "Every existing resource test and native scenario",
+    "No global cache, alternate worker, new persistent state or model/device dependency",
+    "No refs moved"
+  ],
+  "related_diagnostic_dependency_fix": {
+    "manifest": "776ee3390a720d302660c1b11d54aec1f92841a0",
+    "workflow": "6bdaf8c2beb467739dcf9c63684dfb7c061ccdc4",
+    "policy": "Separate version-pinned ReportLab4.4.9 test fixture import; all production locks untouched."
+  }
+}

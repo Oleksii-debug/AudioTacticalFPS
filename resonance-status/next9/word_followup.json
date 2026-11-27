@@ -1,0 +1,129 @@
+{
+  "schema": "resonance-source-fix-checkpoint/1",
+  "status": "DRAFT_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_preflight": {
+    "head": "1fc5fb4cc4bf412568d76c3175a64c89326c1150",
+    "run": 46042518081,
+    "job": 140653551461,
+    "platform": "Linux",
+    "python": "3.11.18",
+    "actual_verdict": "35/43 whole suites passed; 1336 passed, 53 failures/errors, 0 skipped",
+    "word_actual": {
+      "records": {
+        "passed": 46,
+        "failed": 1
+      },
+      "bridge": {
+        "passed": 0,
+        "errors": 20
+      },
+      "worker": {
+        "passed": 16,
+        "failed": 1
+      },
+      "ui": {
+        "passed": 0,
+        "errors": 17
+      }
+    }
+  },
+  "fixes": [
+    "Validate Unicode recursively in object keys and nested values before unchanged ASCII canonical JSON. Preserve valid non-BMP Unicode; existing negative still required.",
+    "Use TimeoutError at both final source-grant expiration checks. Preserve five-second grant, check order, all mutation/no-mutation assertions, and actual slow-child test.",
+    "Use the existing keyword-only AcademicController.export(identity=...) API in both fixtures and both native scripts. Production bridge/dialog already use the correct workbench source guard."
+  ],
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/academic_integration/word_records.py",
+      "before": "8691e78ec4e2f5bc2c963e4c5056c918186ed110",
+      "sha": "55d40c59289e87fa1af78678f6b3fbb823c6ee50"
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/word_worker.py",
+      "before": "1bfa3dd64d64e691ab82502d16fc16a0bf47d224",
+      "sha": "1bf5222e2eddf744cc65503202dad62fda528eb7"
+    },
+    {
+      "path": "carr-library/tests/academic_integration/test_word_records.py",
+      "before": "eabe21cc425d105283c6e7e93333338552fe05d2",
+      "sha": "a6c30063c3d921c67786eaa911247fd696530b8a"
+    },
+    {
+      "path": "carr-library/tests/academic_integration/test_word_bridge.py",
+      "before": "e671c0e984be3d875a86ffa57b1a1e03feb04a56",
+      "sha": "10abb0b8c14ed34f42a2d606ecdc97ea32ef66bb"
+    },
+    {
+      "path": "carr-library/tests/ui/test_word_citations.py",
+      "before": "71ae5ac1fec9aef6a8f5a706a075d001784918e5",
+      "sha": "d2b884592ba361f5a43c05f8e2c4f550fe0d7262"
+    },
+    {
+      "path": "carr-library/scripts/windows_word_bridge_smoke.py",
+      "before": "b5d856f3e29621b797636521e5174f760b34c555",
+      "sha": "33ef7bd2e5c710631a8cc93838cb8c74f44df169"
+    },
+    {
+      "path": "carr-library/scripts/windows_word_office_probe.py",
+      "before": "7424f93899cc5693a74feae8c4dd48ffec7a8fa0",
+      "sha": "8eaa7fa0e775784a996bc8497d039347229d72b8"
+    }
+  ],
+  "validation": {
+    "executed": false,
+    "preimages": "Exact fetched blob content verified",
+    "readback": "All seven created blobs fetched and compared byte-for-byte",
+    "parse": "NOT_RUN",
+    "native": "NOT_RUN",
+    "actual_word": "NOT_RUN"
+  },
+  "required_suites": [
+    {
+      "path": "tests/academic_integration/test_word_records.py",
+      "expected_cases": 50,
+      "count_basis": "47 actual collected on 1fc5 plus three new statically enumerated cases"
+    },
+    {
+      "path": "tests/academic_integration/test_word_bridge.py",
+      "expected_cases": 20,
+      "count_basis": "unchanged"
+    },
+    {
+      "path": "tests/academic_integration/test_word_worker.py",
+      "expected_cases": 17,
+      "count_basis": "unchanged"
+    },
+    {
+      "path": "tests/ui/test_word_citations.py",
+      "expected_cases": 17,
+      "count_basis": "unchanged"
+    }
+  ],
+  "expected_total": 104,
+  "fixture_companion": {
+    "path": "tests/academic_integration/word_fixtures.py",
+    "sha": "d1a4fda7e3b855fd789784672a7efc5f7d004727",
+    "changed": false
+  },
+  "native_contract": {
+    "script": "scripts/windows_word_bridge_smoke.py",
+    "required_checks": 24,
+    "installed_origins": 20,
+    "owned_children": 3,
+    "native_failure_cleanup": "PASS required",
+    "actual_word": "NOT_RUN required",
+    "optional_office_probe": "Never invoked by mandatory synthetic/native UI gate"
+  },
+  "unchanged_guards": [
+    "source/root/workspace revalidation",
+    "native document identity",
+    "finite preview and grant",
+    "owned native cleanup",
+    "immutable receipt wins late cancellation",
+    "UNCERTAIN after possible mutation without receipt",
+    "no automatic retry",
+    "no Word open/save/quit"
+  ],
+  "refs_changed": false
+}

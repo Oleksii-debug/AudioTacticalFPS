@@ -143,11 +143,20 @@ class _CatalogPublisher:
                 self.db.execute('INSERT INTO source_page_review VALUES(?,?,?,?,?,?,?,?,1)',
                     (workspace, edition, revision, review['physical'], review['raw_sha256'],
                      review['render_sha256'], review['renderer'], review['reviewer']))
-            # Reject inconsistent candidates while this publication can still
-            # roll back every catalog, source, review and search-index write.
-            self.storage._check()
             self.before_commit(workspace, revision)
+            # Reject inconsistent candidates while this publication can still
+            # roll back every catalog, source, review, receipt and index write.
+            self.storage._check()
         self.published_here = True
+
+    def publish_checked_revision(self, workspace, edition, revision, asset, config, pages):
+        """Commit only after the complete candidate passes the full audit.
+
+        Keep the existing publication method as the one commit boundary. Callers
+        using this explicit operation need no second audit after it has returned;
+        recovery and replay still call check() independently.
+        """
+        return self.publish_revision(workspace, edition, revision, asset, config, pages)
 
     def check(self):
         return self.storage.check()
@@ -707,7 +716,7 @@ class LibraryApp:
                     prior = storage.db.execute('SELECT workspace,edition,asset,config FROM revision WHERE id=?',
                                                (revision,)).fetchone()
                     if prior is None:
-                        publisher.publish_revision(workspace, record.edition_id, revision, asset.digest, settings,
+                        publisher.publish_checked_revision(workspace, record.edition_id, revision, asset.digest, settings,
                             tuple(Page(r['raw_text']) for r in extracted['records']))
                     else:
                         if tuple(prior) != (workspace, record.edition_id, asset.digest, settings):
@@ -723,7 +732,7 @@ class LibraryApp:
                             register_batch(Catalog(storage.db, workspace), (record,))
                             # Replays may add memberships; validate before exposing them.
                             storage._check()
-                    publisher.check()
+                        publisher.check()
                     return {'state': 'complete', 'edition': record.edition_id, 'id': revision,
                             'completed': len(extracted['records']), 'verified': False,
                             'format': source_format, 'warnings': extracted['warnings'],

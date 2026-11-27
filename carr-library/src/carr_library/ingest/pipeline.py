@@ -263,9 +263,19 @@ class Ingest:
                             if self._active(workspace, row['edition']) != row['expected_active']:
                                 self._set(job, 'conflict', 'active_revision_changed')
                                 break
-                            self.storage.publish_revision(workspace, row['edition'], job, asset.digest, settings,
-                                                          [Page(p['raw_text'], p['physical_index']) for p in records])
-                            self.storage.check()
+                            pages = [Page(p['raw_text'], p['physical_index']) for p in records]
+                            checked_publish = getattr(self.storage, 'publish_checked_revision', None)
+                            if checked_publish is None:
+                                # A generic revision store retains its original
+                                # publication followed by independent full check.
+                                self.storage.publish_revision(workspace, row['edition'], job,
+                                                              asset.digest, settings, pages)
+                                self.storage.check()
+                            else:
+                                # The catalog adapter validates inside the same
+                                # transaction that publishes all candidate rows.
+                                checked_publish(workspace, row['edition'], job,
+                                                asset.digest, settings, pages)
                             self._set(job, 'complete')
                             break
                         i = len(records) + 1

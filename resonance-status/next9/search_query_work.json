@@ -1,0 +1,87 @@
+{
+  "schema": "carr-source-change-manifest/1",
+  "purpose": "Bounded indexed catalog and source-window queries",
+  "base_ref": "fabae325a1a197ac6959732254ddf16d3ecef367",
+  "measured_baseline": {
+    "ref": "fb39ed3cb1e23ffa3be8bd768c1dd64216f110da",
+    "evidence_blob": "8d0c4bbaad3b39f411fce2fde644618509d11056",
+    "ordinary_retained_books": 1000,
+    "segments": 20000,
+    "visible_search_page_requests": 600,
+    "traversal_seconds": 172.100854771
+  },
+  "status": "SOURCE_REVIEWED_RUNTIME_NOT_RUN",
+  "source_changes": [
+    {
+      "path": "carr-library/src/carr_library/catalog/read_views.py",
+      "preimage": "84b9a28698f3b65f69c880fc3a10de11cdb3c864",
+      "blob": "d2e2045738ace3ca99ac5decefc3d8ba3a955297",
+      "change": "Expose existing composite-key after/exact-edition predicates without nullable OR; preserve bound parameters, validation, other filters and author order."
+    },
+    {
+      "path": "carr-library/src/carr_library/search/paging.py",
+      "preimage": "d73fa894e40f5b0697a8c99cafcb6402db8bbe1d",
+      "blob": "ebd2a0d92dbc14ab2620e0d540ebb76e4e02c9c6",
+      "change": "Resolve the exact active(workspace,edition) pointer, validate its revision scope, then read only enough existing indexed revision/page ranges in unchanged catalog BINARY order. Preserve source-window wire, identity, cursor, budgets and cancellation."
+    }
+  ],
+  "tests": [
+    {
+      "path": "carr-library/tests/search/test_search_query_work.py",
+      "preimage": null,
+      "blob": "1a4128547ebc99c7be3f5e8e0f3975c5637864aa",
+      "static_case_count": 17,
+      "executed_case_count": null,
+      "families": {
+        "catalog keyset/exact/combined VM work": 3,
+        "first/continued source-window VM work": 2,
+        "Unicode and explicit filter wire equivalence": 3,
+        "exact100 boundary with/without following edition": 2,
+        "character boundary": 1,
+        "empty500-edition catalog continuation": 1,
+        "stale revision/ordinal/id": 3,
+        "foreign active pointer": 1,
+        "cancellation and continued snapshot usability": 1
+      }
+    }
+  ],
+  "source_review": {
+    "reviewer": "canonical_regression",
+    "verdict": "ACCEPTED_STATIC_NOT_RUN",
+    "blobs": [
+      "d2e2045738ace3ca99ac5decefc3d8ba3a955297",
+      "ebd2a0d92dbc14ab2620e0d540ebb76e4e02c9c6"
+    ],
+    "test_review": "PENDING"
+  },
+  "execution": {
+    "parser": "NOT_RUN",
+    "new_tests": "NOT_RUN",
+    "existing_tests": "NOT_RUN",
+    "public_corpus_remeasurement": "NOT_RUN",
+    "native": "NOT_RUN"
+  },
+  "required_focused_selectors": [
+    "tests/search/test_search_query_work.py",
+    "tests/search/test_search_paging.py",
+    "tests/catalog/test_read_views.py",
+    "tests/catalog/test_read_views_v2_integration.py",
+    "tests/search/test_literal_integrity.py",
+    "tests/search/test_literal_readonly.py",
+    "tests/search/test_literal_v2_composition.py",
+    "tests/e2e/test_retained_source_search_integrity.py"
+  ],
+  "preserved": [
+    "No application.py change or overlap with checked-catalog publication",
+    "No schema, index or cursor version change",
+    "No persistent connection or cross-request validation cache",
+    "No literal/FTS/lookahead/attestor changes",
+    "No worker, queue or source authorization changes",
+    "No refs moved"
+  ],
+  "limits": [
+    "VM tests isolate existing Storage/Catalog query behavior; their setup is not ordinary retained-book ingestion benchmark evidence.",
+    "No measured performance improvement is claimed. Rerun the unchanged ordinary-import corpus harness against the composed candidate.",
+    "Repeated literal lookahead/folding and original-source attestation are separate remaining costs, deliberately unchanged."
+  ]
+}

@@ -5,6 +5,8 @@ audio directory. Optional --ffmpeg/--ffprobe must identify those exact binaries.
 This never discovers or opens a microphone.
 """
 import argparse
+import ctypes
+from ctypes import wintypes
 from hashlib import file_digest, sha256
 import json
 import os
@@ -16,6 +18,66 @@ from time import monotonic
 import traceback
 import wave
 
+
+
+class _DriverCallbacks:
+    """Own only this probe's wx timers and reject queued callbacks from old modals."""
+
+    def __init__(self, later, on_error):
+        self._later = later
+        self._on_error = on_error
+        self._generation = 0
+        self._pending = {}
+
+    def schedule(self, milliseconds, callback):
+        generation = self._generation
+        owner = {}
+
+        def invoke():
+            timer = owner.get('timer')
+            if timer is not None:
+                self._pending.pop(id(timer), None)
+            if generation != self._generation:
+                return
+            try:
+                callback()
+            except Exception:
+                self._on_error(traceback.format_exc())
+
+        timer = self._later(milliseconds, invoke)
+        owner['timer'] = timer
+        self._pending[id(timer)] = timer
+        return timer
+
+    def reset(self):
+        # Invalidate before stopping: an already queued native notification must
+        # not gain authority over the next dialog even if Stop cannot recall it.
+        self._generation += 1
+        failures = []
+        for identity, timer in tuple(self._pending.items()):
+            try:
+                timer.Stop()
+            except Exception as exc:
+                failures.append(exc)
+            else:
+                self._pending.pop(identity, None)
+        if failures:
+            raise RuntimeError('Native recording driver timer cleanup failed.') from failures[0]
+
+
+def _live_recording_dialog(windows, parent, retired_handles, is_window):
+    """Ignore same-title windows that are closing, foreign or no longer modal."""
+    matches = []
+    for window in windows:
+        if not window or window.GetTitle() != 'Local microphone recording':
+            continue
+        handle = window.GetHandle()
+        if (window.GetParent() is parent and window.IsModal()
+                and handle not in retired_handles and is_window(handle)):
+            matches.append(window)
+    if len(matches) > 1:
+        raise RuntimeError('More than one owned recording modal is active.')
+    return matches[0] if matches else None
 
 def main():
     if sys.platform != 'win32':
@@ -57,6 +119,10 @@ def main():
     watchdog.daemon = True
     watchdog.start()
     stage, dialog, frame, finished = 0, None, None, False
+    dialog_handle = dialog_loop = None
+    retired_handles = set()
+    host_handle = host_executor = host_cancel = None
+    abort_pending = False
 
     def check(name, condition):
         if not condition:
@@ -93,14 +159,30 @@ def main():
         check('installed exact source: ' + module.__name__, not actual.is_relative_to(checkout)
               and sha256(actual.read_bytes()).digest() == sha256(expected.read_bytes()).digest())
 
+    def failed(detail):
+        errors.append(detail)
+        print('FAIL: native recording phase ' + str(stage) + '\n' + detail,
+              file=sys.stderr, flush=True)
+        try:
+            abort()
+        except Exception:
+            cleanup_detail = traceback.format_exc()
+            errors.append(cleanup_detail)
+            print('FAIL: native recording failure cleanup\n' + cleanup_detail,
+                  file=sys.stderr, flush=True)
+
     class ProbeApp(wx.App):
         def OnExceptionInMainLoop(self):
-            errors.append(traceback.format_exc())
-            abort()
+            failed(traceback.format_exc())
             return True
 
     app = ProbeApp(False)
+    app.SetAssertMode(wx.APP_ASSERT_EXCEPTION)
+    app.SetExitOnFrameDelete(False)
     simulator = wx.UIActionSimulator()
+    user32 = ctypes.WinDLL('user32', use_last_error=True)
+    user32.IsWindow.argtypes, user32.IsWindow.restype = [wintypes.HWND], wintypes.BOOL
+    driver = _DriverCallbacks(wx.CallLater, failed)
     original_factory = dialog_module.RecordingService
     original_chooser = wx.FileDialog
     original_runner = recording_module.run_process
@@ -166,7 +248,23 @@ def main():
                 super().__init__()
                 monitors.append(self)
         monitor_module.DryMonitor = TrackedMonitor
+        monitoring_inventory = {'started': False, 'finished': False, 'count': None, 'error': None}
+        real_monitoring_outputs = service.monitoring_outputs
 
+        def monitoring_outputs(*, cancelled):
+            monitoring_inventory['started'] = True
+            try:
+                values = real_monitoring_outputs(cancelled=cancelled)
+                monitoring_inventory['count'] = sum(value.selectable for value in values)
+                print('ACTUAL_MONITORING_OUTPUTS: ' + str(monitoring_inventory['count']), flush=True)
+                return values
+            except Exception as exc:
+                monitoring_inventory['error'] = type(exc).__name__
+                raise
+            finally:
+                monitoring_inventory['finished'] = True
+
+        service.monitoring_outputs = monitoring_outputs
         real_capture = service.capture
 
         def capture(device_id, **kwargs):
@@ -191,51 +289,88 @@ def main():
         service.capture = capture
         dialog_module.RecordingService = lambda selected_root: service
 
+        def active_dialog():
+            return (dialog is not None and bool(dialog) and dialog_handle is not None
+                and user32.IsWindow(dialog_handle) and dialog.GetHandle() == dialog_handle
+                and dialog.IsModal() and dialog_loop is not None and dialog_loop.IsRunning())
+
         def control(name):
+            if not active_dialog():
+                raise RuntimeError('The current recording modal no longer owns native input.')
             found = wx.FindWindowByName(name, dialog)
             if found is None:
                 raise AssertionError('Missing accessible native control: ' + name)
             return found
 
         def abort():
+            nonlocal abort_pending
             for item in captures:
                 item['cancel'].set()
-            if dialog is not None and bool(dialog):
-                dialog.Close()
-            else:
-                app.ExitMainLoop()
+            driver.reset()
+            if abort_pending:
+                return
+            abort_pending = True
+            def close_owned():
+                nonlocal abort_pending
+                abort_pending = False
+                try:
+                    if active_dialog():
+                        # The real Close handler waits for capture/monitor cleanup.
+                        dialog.Close()
+                    else:
+                        loop = wx.EventLoopBase.GetActive()
+                        if loop is not None and loop.IsMain() and loop.IsRunning():
+                            loop.ScheduleExit(1)
+                        elif monotonic() < deadline:
+                            abort_pending = True
+                            wx.CallLater(25, close_owned)
+                except Exception:
+                    detail = traceback.format_exc()
+                    errors.append(detail)
+                    print('FAIL: native recording owned close\n' + detail,
+                          file=sys.stderr, flush=True)
+            wx.CallAfter(close_owned)
 
         def guarded(callback):
             def invoke():
                 try:
                     callback()
                 except Exception:
-                    errors.append(traceback.format_exc())
-                    abort()
+                    failed(traceback.format_exc())
             return invoke
 
         def press(target, key=wx.WXK_SPACE):
+            current_dialog, current_handle = dialog, dialog_handle
             target.SetFocus()
             def dispatch():
+                if (dialog is not current_dialog or dialog_handle != current_handle
+                        or not active_dialog()):
+                    raise RuntimeError('Queued native input belongs to an expired recording modal.')
                 check('native focus reaches ' + target.GetName(), wx.Window.FindFocus() == target)
                 check('native key dispatch: ' + target.GetName(), simulator.Char(key))
-            wx.CallLater(25, guarded(dispatch))
+            driver.schedule(25, dispatch)
 
         def drive():
-            nonlocal stage, dialog, paused_at, paused_frames
+            nonlocal stage, dialog, dialog_handle, dialog_loop, paused_at, paused_frames
             if errors or finished:
                 return
             if monotonic() >= deadline:
                 raise TimeoutError('Native recording acceptance exceeded its deadline')
             if dialog is None:
-                dialog = next((window for window in wx.GetTopLevelWindows()
-                    if isinstance(window, wx.Dialog) and window.GetTitle() == 'Local microphone recording'), None)
+                current = wx.EventLoopBase.GetActive()
+                if current is not None and not current.IsMain() and current.IsRunning():
+                    dialog = _live_recording_dialog(
+                        (window for window in wx.GetTopLevelWindows() if isinstance(window, wx.Dialog)),
+                        frame, retired_handles, user32.IsWindow)
+                    if dialog is not None:
+                        dialog_handle, dialog_loop = dialog.GetHandle(), current
+                        print('NATIVE_RECORDING_MODAL: ' + str(stage) + ':' + str(dialog_handle), flush=True)
             if dialog is None:
-                wx.CallLater(25, guarded(drive))
+                driver.schedule(25, drive)
                 return
             if stage >= 100:
                 drive_monitor()
-                wx.CallLater(25, guarded(drive))
+                driver.schedule(25, drive)
                 return
             refresh = control('Refresh microphones')
             start = control('Start recording')
@@ -324,7 +459,7 @@ def main():
             elif stage == 7 and len(captures) == 3 and captures[2]['seconds'] >= .1:
                 stage = 8
                 press(stop, wx.WXK_ESCAPE)
-            wx.CallLater(25, guarded(drive))
+            driver.schedule(25, drive)
 
         def drive_monitor():
             nonlocal stage, paused_at, paused_frames
@@ -343,7 +478,10 @@ def main():
             elif stage == 102 and selection.GetSelection() == 0:
                 stage = 103
                 press(control('Refresh monitoring outputs'))
-            elif stage == 103 and refresh.IsEnabled():
+            elif stage == 103 and monitoring_inventory['finished'] and refresh.IsEnabled():
+                if monitoring_inventory['error'] is not None:
+                    raise RuntimeError('Actual Windows monitoring enumeration failed: '
+                                       + monitoring_inventory['error'] + '. ' + status.GetValue())
                 if output.GetCount() == 0:
                     raise RuntimeError('Actual Windows monitoring output is required; no output was enumerated. '
                                        'Native monitoring remains unqualified. ' + status.GetValue())
@@ -395,32 +533,71 @@ def main():
                 press(control('Close'))
 
         def open_recording():
-            nonlocal frame, finished, dialog, stage
+            nonlocal frame, dialog, dialog_handle, dialog_loop, stage
             if frame.working:
                 if monotonic() >= deadline:
                     raise TimeoutError('Canonical desktop did not become ready')
-                wx.CallLater(25, guarded(open_recording))
+                driver.schedule(25, open_recording)
                 return
-            wx.CallLater(25, guarded(drive))
-            result = dialog_module.show_recording(frame)
-            if not errors:
-                check('Escape closes only after active capture cleanup', stage == 8 and result is None
-                    and len(cancelled_captures) == 2 and not any(item['active'] for item in captures))
-                check('closing preserves exactly the verified original', len(service.list()) == 1
-                    and service.get(completed[0]['id']) == completed[0]
-                    and not list(service.root.glob('.pending-*')))
-                stage, dialog = 100, None
-                wx.CallLater(25, guarded(drive))
-                dialog_module.show_recording(frame)
-                check('second explicit monitoring dialog closes after completed cleanup',
-                      stage == 111 and len(service.list()) == 2 and len(completed) == 2
-                      and not any(item['active'] for item in captures)
-                      and all(not value.handle.value and not value.pending for value in monitors))
-            finished = True
-            app.ExitMainLoop()
+            driver.reset()
+            driver.schedule(25, drive)
+            try:
+                result = dialog_module.show_recording(frame)
+            finally:
+                driver.reset()
+            if errors:
+                abort()
+                return
+            check('Escape closes only after active capture cleanup', stage == 8 and result is None
+                and len(cancelled_captures) == 2 and not any(item['active'] for item in captures))
+            check('closing preserves exactly the verified original', len(service.list()) == 1
+                and service.get(completed[0]['id']) == completed[0]
+                and not list(service.root.glob('.pending-*')))
+            previous_handle = dialog_handle
+            if previous_handle is None:
+                raise AssertionError('The first native recording modal was not captured.')
+            retired_handles.add(previous_handle)
+            dialog, dialog_handle, dialog_loop = None, None, None
+
+            def open_monitoring():
+                nonlocal finished, stage
+                if monotonic() >= deadline:
+                    raise TimeoutError('The first recording modal did not release its native window.')
+                if user32.IsWindow(previous_handle):
+                    driver.schedule(25, open_monitoring)
+                    return
+                check('second recording modal starts after first HWND and callbacks retire',
+                      not driver._pending and not any(item['active'] for item in captures))
+                # A future native window may legitimately reuse this integer;
+                # retirement is established by observed destruction, not an
+                # eternal handle blacklist.
+                retired_handles.discard(previous_handle)
+                stage = 100
+                driver.reset()
+                driver.schedule(25, drive)
+                try:
+                    dialog_module.show_recording(frame)
+                finally:
+                    driver.reset()
+                if not errors:
+                    check('second explicit monitoring dialog closes after completed cleanup',
+                          stage == 111 and len(service.list()) == 2 and len(completed) == 2
+                          and not any(item['active'] for item in captures)
+                          and all(not value.handle.value and not value.pending for value in monitors))
+                finished = True
+                loop = wx.EventLoopBase.GetActive()
+                if loop is not None and loop.IsMain() and loop.IsRunning():
+                    loop.ScheduleExit(1 if errors else 0)
+                elif errors:
+                    abort()
+
+            # Return to the actual main loop before opening another same-title
+            # modal. Native Destroy and old timer notifications must drain first.
+            driver.schedule(25, open_monitoring)
 
         try:
             frame = DesktopFrame(library)
+            host_handle, host_executor, host_cancel = frame.GetHandle(), frame.executor, frame.cancel_event
             app.SetTopWindow(frame)
             frame.Show()
             frame.Raise()
@@ -429,24 +606,47 @@ def main():
             if errors:
                 raise AssertionError('\n'.join(errors))
         finally:
-            dialog_module.RecordingService = original_factory
-            recording_module.run_process = original_runner
-            monitor_module.DryMonitor = original_monitor
-            wx.FileDialog = original_chooser
-            for item in captures:
-                item['cancel'].set()
-            if frame is not None:
-                frame.cancel_event.set()
-                frame.executor.shutdown(wait=True, cancel_futures=True)
-                frame.Destroy()
-                app.Yield()
-            if native_handle is not None:
-                native_handle.close()
+            try:
+                try:
+                    driver.reset()
+                finally:
+                    for item in captures:
+                        item['cancel'].set()
+                    if host_executor is not None:
+                        host_cancel.set()
+                        try:
+                            if user32.IsWindow(host_handle):
+                                frame.Close(force=True)
+                            cleanup_deadline = monotonic() + 20
+                            while user32.IsWindow(host_handle):
+                                if monotonic() >= cleanup_deadline:
+                                    raise TimeoutError('Actual recording host Close did not release its HWND.')
+                                app.Yield()
+                        finally:
+                            # Even a native Close/wait failure cannot bypass the
+                            # retained worker and its registered finalizers.
+                            host_executor.shutdown(wait=True, cancel_futures=True)
+                        check('recording host Close drains its registered native owners',
+                              not host_executor.cleanup_failures
+                              and not any(item['active'] for item in captures)
+                              and all(not value.handle.value and not value.pending for value in monitors)
+                              and (service._broker_instance is None
+                                   or service._broker_instance.snapshot()['leases'] == []))
+            finally:
+                # Keep the exact synthetic input/runner/monitor fixtures owned
+                # until cancellation and executor drain have been attempted.
+                dialog_module.RecordingService = original_factory
+                recording_module.run_process = original_runner
+                monitor_module.DryMonitor = original_monitor
+                wx.FileDialog = original_chooser
+                if native_handle is not None:
+                    native_handle.close()
     watchdog.cancel()
     print(json.dumps({'status': 'PASS', 'checks': checks, 'actual_native_keys': True,
         'actual_ffmpeg_synthetic_capture': True, 'verified_wav_export': True,
         'actual_pause_resume': True, 'actual_selected_waveout_monitor': True,
         'retained_frame_ranges': True, 'owned_cleanup_and_shared_admission': True,
+        'sequential_modal_ownership': True, 'actual_monitoring_outputs': monitoring_inventory['count'],
         'file_destination': 'CONTROLLED_FIXTURE', 'audio_runtime': audio_proof, 'physical_microphone': 'NOT_RUN',
         'nvda': 'NOT_RUN', 'audio_listening': 'NOT_RUN'}, ensure_ascii=True, indent=2))
 

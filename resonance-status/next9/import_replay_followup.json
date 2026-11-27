@@ -1,0 +1,50 @@
+{
+  "schema": "carr-ci-fixture-correction/1",
+  "name": "Import replay cancellation phase binding",
+  "status": "DRAFT_NOT_RUN",
+  "baseline": "dd9f90893ecb21f5f2aef5a3e11e4d6a83d6913c",
+  "checked_current": "fabae325a1a197ac6959732254ddf16d3ecef367",
+  "files": [
+    {
+      "path": "carr-library/tests/ingest/test_import_replay_identity.py",
+      "preimage": "fe84d8a406aa85e5fdb12452df8ac8ed2815be3c",
+      "sha": "befd833938c370498f42d612d2515e4eeca64af0",
+      "static_cases": 24
+    },
+    {
+      "path": "carr-library/tests/ingest/test_terminal_replay_registration.py",
+      "preimage": "19176dd41b5d0454812b35a9d580f264c40f1bf6",
+      "sha": "9cc8a5e4e6c968f0c978dfe1ce5cb9b7c9c450d6",
+      "static_cases": 10
+    },
+    {
+      "path": "carr-library/tests/ingest/test_txt_replay_registration.py",
+      "preimage": "ee542dc44f8b7674710796bd33c4fb787ccf7553",
+      "sha": "460c6570f16f7f869f183063671cca6c78748f18",
+      "static_cases": 7
+    },
+    {
+      "path": "carr-library/tests/ingest/test_import_publication_point.py",
+      "preimage": "8cdbbd19ec125fa1256262d4a1d70cb814b2cb1b",
+      "sha": "cb8ea117b42866ef4d8527a1ef14d3615ae0e39a",
+      "static_cases": 2
+    }
+  ],
+  "product": {
+    "path": "carr-library/src/carr_library/application.py",
+    "sha": "8987d40771f9758137c991dcd398c5fdcfd9b5fe",
+    "changed": false
+  },
+  "diagnosis": "Root-provided actual V3 txt/pdf failure was DID NOT RAISE at entry cancellation. Current intake returns an explicit cancelled result before writer/retention/journal; no demonstrated membership publication violation. Existing import_files and isolated worker both handle explicit cancellation results.",
+  "correction": "Keep original InterruptedError expectation at actual completed Ingest.run replay boundary before new catalog registration; separately assert entry cancelled with no writer/retention/ingestion and immutable source/retained bytes. Existing postcommit completion assertions unchanged. Align neighboring entry-replay expectations to same explicit cancellation contract.",
+  "terminal_fixture": "Forged-terminal test now cancels only after actual Ingest.start durable pending admission, proving real journal before deliberate corruption. No manufactured completed return or publication is substituted.",
+  "whole_suites": {
+    "tests/ingest/test_import_replay_identity.py": 24,
+    "tests/ingest/test_terminal_replay_registration.py": 10,
+    "tests/ingest/test_txt_replay_registration.py": 7,
+    "tests/ingest/test_import_publication_point.py": 2
+  },
+  "counts_kind": "Static enumeration;41 prior cases retained plus2 explicit entry-cancel variants; no collection/runtime claim",
+  "preimages": "All four exact file blobs verified against faba tree; application unchanged across dd9/faba. Pending intake5a55/test15285 not edited.",
+  "runtime": "NOT_RUN; executor unavailable; fresh source/installed gates required."
+}

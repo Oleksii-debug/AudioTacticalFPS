@@ -1,0 +1,559 @@
+{
+  "schema": "carr-ci-outcome/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_commit": "0425541302b637c0fbdc6e950bcf87cd1cd8f6d1",
+  "source_tree": "34bbd5aaf6f11b880cdcf8999ec165c5cd0d2b0f",
+  "run_id": 46051069136,
+  "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46051069136",
+  "overall": "FAIL",
+  "evidence_basis": "Actual completed GitHub job logs, final strict ci_check verdicts, run job conclusions and artifact metadata retrieved from the GitHub API; no successor result inferred.",
+  "jobs": [
+    {
+      "job_id": 140682214196,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46051069136/job/140682214196",
+      "platform": "Ubuntu24.04 source",
+      "conclusion": "failure",
+      "whole_suites": 41,
+      "suites_passed": 34,
+      "suites_failed": 7,
+      "junit_passed": 1048,
+      "junit_failed_or_error": 31,
+      "junit_skipped": 0,
+      "python_compile": {
+        "status": "PASS",
+        "files": 1060
+      },
+      "verdicts": [
+        {
+          "status": "PASS",
+          "suite": "tests/extract/test_docx_rich.py",
+          "passed": 55,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "time": "2026-11-27T19:00:21.6774508Z"
+        },
+        {
+          "status": "FAIL",
+          "suite": "tests/assistant/test_translation_rich_docx.py",
+          "passed": 15,
+          "failed": 2,
+          "skipped": 0,
+          "exit": 1,
+          "time": "2026-11-27T19:00:21.6775768Z"
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/ui/test_translation_rich_docx.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "time": "2026-11-27T19:00:21.6776944Z"
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/assistant/test_translation_rich_docx_cli.py",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "time": "2026-11-27T19:00:21.6778149Z"
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/extract/test_docx_ordered.py",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "time": "2026-11-27T19:00:21.6779300Z"
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/extract/test_docx_omitted_content.py",
+          "passed": 20,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "time": "2026-11-27T19:00:21.6780114Z"
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/extract/test_docx_hidden_styles.py",
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "time": "2026-11-27T19:00:21.6781006Z"
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/ingest/test_application_atomic_docx_gate.py",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "time": "2026-11-27T19:00:21.6781618Z"
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/assistant/test_translation_partition.py",
+          "passed": 26,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "time": "2026-11-27T19:00:21.6782250Z"
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/assistant/test_translation_layout.py",
+          "passed": 33,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "time": "2026-11-27T19:00:21.6783163Z"
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/ui/test_translation_layout.py",
+          "passed": 23,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "time": "2026-11-27T19:00:21.6783761Z"
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/assistant/test_translation_layout_cli.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "time": "2026-11-27T19:00:21.6784369Z"
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/storage/test_backup_translation.py",
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "time": "2026-11-27T19:00:21.6784957Z"
+        },
+        {
+          "status": "FAIL",
+          "suite": "tests/assistant/test_translation_epub_layout.py",
+          "passed": 21,
+          "failed": 10,
+          "skipped": 0,
+          "exit": 1,
+          "time": "2026-11-27T19:00:21.6785564Z"
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/ui/test_translation_epub_layout.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "time": "2026-11-27T19:00:21.6786139Z"
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/assistant/test_translation_epub_cli.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "time": "2026-11-27T19:00:21.6786695Z"
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/studio/test_clip_copy.py",
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "time": "2026-11-27T19:00:21.6787264Z"
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/studio/test_clip_copy_dialog.py",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "time": "2026-11-27T19:00:21.6787797Z"
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/studio/test_clip_operations.py",
+          "passed": 59,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "time": "2026-11-27T19:00:21.6788543Z"
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/studio/test_project_history.py",
+          "passed": 29,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "time": "2026-11-27T19:00:21.6789119Z"
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/studio/test_clip_history_dialog.py",
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "time": "2026-11-27T19:00:21.6789682Z"
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/studio/test_clip_editing.py",
+          "passed": 20,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "time": "2026-11-27T19:00:21.6790498Z"
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/studio/test_clip_dialog.py",
+          "passed": 45,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "time": "2026-11-27T19:00:21.6791099Z"
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/studio/test_clip_restoration.py",
+          "passed": 24,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "time": "2026-11-27T19:00:21.6791706Z"
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/studio/test_clip_cli.py",
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "time": "2026-11-27T19:00:21.6792269Z"
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/catalog/test_streaming_intake.py",
+          "passed": 16,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "time": "2026-11-27T19:00:21.6792856Z"
+        },
+        {
+          "status": "FAIL",
+          "suite": "tests/ingest/test_import_replay_identity.py",
+          "passed": 12,
+          "failed": 12,
+          "skipped": 0,
+          "exit": 1,
+          "time": "2026-11-27T19:00:21.6793502Z"
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/studio/test_book_batch.py",
+          "passed": 29,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "time": "2026-11-27T19:00:21.6794148Z"
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/studio/test_book_cli.py",
+          "passed": 18,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "time": "2026-11-27T19:00:21.6794685Z"
+        },
+        {
+          "status": "FAIL",
+          "suite": "tests/studio/test_book_audio.py",
+          "passed": 45,
+          "failed": 1,
+          "skipped": 0,
+          "exit": 1,
+          "time": "2026-11-27T19:00:21.6795255Z"
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/ui/test_desktop_handlers.py",
+          "passed": 60,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "time": "2026-11-27T19:00:21.6795850Z"
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/ui/test_progress_voice_actions.py",
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "time": "2026-11-27T19:00:21.6796618Z"
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/ui/test_engine_settings_lifetime.py",
+          "passed": 33,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "time": "2026-11-27T19:00:21.6797610Z"
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/assistant/test_translation.py",
+          "passed": 168,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "time": "2026-11-27T19:00:21.6798439Z"
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/assistant/test_translation_local.py",
+          "passed": 39,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "time": "2026-11-27T19:00:21.6799441Z"
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/assistant/test_translation_documents.py",
+          "passed": 20,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "time": "2026-11-27T19:00:21.6801687Z"
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/ui/test_translation_documents.py",
+          "passed": 29,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "time": "2026-11-27T19:00:21.6802511Z"
+        },
+        {
+          "status": "FAIL",
+          "suite": "tests/ingest/test_terminal_replay_registration.py",
+          "passed": 6,
+          "failed": 4,
+          "skipped": 0,
+          "exit": 1,
+          "time": "2026-11-27T19:00:21.6803230Z"
+        },
+        {
+          "status": "FAIL",
+          "suite": "tests/ingest/test_txt_replay_registration.py",
+          "passed": 6,
+          "failed": 1,
+          "skipped": 0,
+          "exit": 1,
+          "time": "2026-11-27T19:00:21.6803955Z"
+        },
+        {
+          "status": "FAIL",
+          "suite": "tests/ingest/test_import_publication_point.py",
+          "passed": 1,
+          "failed": 1,
+          "skipped": 0,
+          "exit": 1,
+          "time": "2026-11-27T19:00:21.6804650Z"
+        },
+        {
+          "status": "PASS",
+          "suite": "tests/speech/test_spelling.py",
+          "passed": 55,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "time": "2026-11-27T19:00:21.6805499Z"
+        }
+      ]
+    },
+    {
+      "job_id": 140682214261,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46051069136/job/140682214261",
+      "platform": "Windows2022 source",
+      "conclusion": "failure",
+      "whole_suites": 5,
+      "suites_passed": 1,
+      "suites_failed": 4,
+      "junit_passed": 41,
+      "junit_failed_or_error": 18,
+      "junit_skipped": 0,
+      "verdicts": [
+        {
+          "status": "PASS",
+          "suite": "tests/catalog/test_streaming_intake.py",
+          "passed": 16,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "time": "2026-11-27T18:58:07.8267341Z"
+        },
+        {
+          "status": "FAIL",
+          "suite": "tests/ingest/test_import_replay_identity.py",
+          "passed": 12,
+          "failed": 12,
+          "skipped": 0,
+          "exit": 1,
+          "time": "2026-11-27T18:58:07.8268526Z"
+        },
+        {
+          "status": "FAIL",
+          "suite": "tests/ingest/test_terminal_replay_registration.py",
+          "passed": 6,
+          "failed": 4,
+          "skipped": 0,
+          "exit": 1,
+          "time": "2026-11-27T18:58:07.8269586Z"
+        },
+        {
+          "status": "FAIL",
+          "suite": "tests/ingest/test_txt_replay_registration.py",
+          "passed": 6,
+          "failed": 1,
+          "skipped": 0,
+          "exit": 1,
+          "time": "2026-11-27T18:58:07.8270874Z"
+        },
+        {
+          "status": "FAIL",
+          "suite": "tests/ingest/test_import_publication_point.py",
+          "passed": 1,
+          "failed": 1,
+          "skipped": 0,
+          "exit": 1,
+          "time": "2026-11-27T18:58:07.8272029Z"
+        }
+      ]
+    },
+    {
+      "job_id": 140682214020,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46051069136/job/140682214020",
+      "platform": "Ubuntu real PowerShell/YAML parser",
+      "conclusion": "success",
+      "parsed_bodies": 113,
+      "failed_bodies": 0,
+      "negative_controls": 6,
+      "control_failures": 0,
+      "runtime_qualification": "NOT_RUN"
+    }
+  ],
+  "diagnosis": [
+    {
+      "class": "TEST_DEPENDENCY",
+      "ubuntu_cases": 19,
+      "windows_cases": 18,
+      "observed": "ModuleNotFoundError: No module named 'reportlab'",
+      "boundary": "Synthetic PDF fixture creation/import fails before the requested PDF replay/Book publication assertions.",
+      "correction": "Reuse existing main ReportLab4.4.9 binary-only fixture acquisition and actual Canvas/version probes.",
+      "correction_workflow_blob": "6bdaf8c2beb467739dcf9c63684dfb7c061ccdc4",
+      "correction_manifest": "776ee3390a720d302660c1b11d54aec1f92841a0",
+      "successor_execution": "NOT_RUN"
+    },
+    {
+      "class": "TEST_FIXTURE",
+      "ubuntu_cases": 10,
+      "windows_cases": 0,
+      "suite": "tests/assistant/test_translation_epub_layout.py",
+      "observed": "EPUB navigation anchor is missing or ambiguous",
+      "boundary": "Custom first-body fixtures removed h1#heading while the package navigation still referenced #heading, so canonical intake refused before formatter URI/link/image assertions.",
+      "correction": "Retain the zero-offset body id=heading only in overridden first-body fixtures, without adding source text or changing the31 case assertions.",
+      "correction_blob": "6e793736eec942adf6f0c268a6bc3026ce49925e",
+      "successor_execution": "NOT_RUN"
+    },
+    {
+      "class": "TEST_FIXTURE",
+      "ubuntu_cases": 1,
+      "windows_cases": 0,
+      "case": "tests/assistant/test_translation_rich_docx.py::test_actual_worker_matches_retained_rich_source_and_exact_owned_origin",
+      "observed": "assert False is True for owned_windows_job on Ubuntu",
+      "boundary": "The existing host opts into the Windows Job only on Windows; the assertion assumed that platform flag was always True.",
+      "correction": "Use the explicit actual platform flag while preserving real child/origin and retained-source assertions.",
+      "correction_blob": "3f0f9c64d496f9ca423b169e6871e67816c51e1a",
+      "correction_manifest": "063ed76c1a57df2a5be9d81f0dfa3bf3ee14ac66",
+      "successor_execution": "NOT_RUN"
+    },
+    {
+      "class": "PRODUCT_SCOPE_AND_TEST_CLEANUP",
+      "ubuntu_cases": 1,
+      "windows_cases": 0,
+      "case": "tests/assistant/test_translation_rich_docx.py::test_source_root_replacement_during_format_process_refuses_late_admission",
+      "observed": "After real root rename/replacement, lease cleanup raised ResourceStateError and the fixture's rmdir then failed because replacement library directory was no longer empty.",
+      "boundary": "The trace contains stale broker path use during coordination/cleanup; the final fixture rmdir exception masks the earlier ResourceStateError. This is not a formatting success or a harmless ignored teardown. No claim is made that a later formatter scope check was reached.",
+      "correction": "Bind broker directories/policy to retained identities, close only the owned native descriptor on revocation, refuse new coordination in the replacement root; preserve pending cleanup ownership. Strengthen the real fixture with exact ResourceStateError, canary/no replacement writes and original-root restoration.",
+      "correction_test_blob": "21cdd7081b5af428d5303efa116d96765e185ff9",
+      "new_scope_cases": 20,
+      "rich_fixture_blob": "3f0f9c64d496f9ca423b169e6871e67816c51e1a",
+      "successor_execution": "NOT_RUN",
+      "correction_manifest": "c174dfcf313bd1a2b10dcbc6ad6b4b96779909da",
+      "correction_source_blobs": {
+        "broker": "107e1a600bb4bdf0f3edb7735ee5fcdb68d9fb36",
+        "native_locks": "ae161b8483f84b2a4aa2f153b4b11b08f76b9693"
+      }
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 15225108895,
+      "name": "next9-windows-intake-0425541302b637c0fbdc6e950bcf87cd1cd8f6d1-1",
+      "size_in_bytes": 3341,
+      "digest": "sha256:7f7514660d97493aa594433a4399cd2ff97afe6f043acf39505e84c2de32937a",
+      "created_at": "2026-11-27T18:58:09Z",
+      "expired": false,
+      "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15225108895"
+    },
+    {
+      "id": 15225096316,
+      "name": "next9-final-workflow-parser-0425541302b637c0fbdc6e950bcf87cd1cd8f6d1-1",
+      "size_in_bytes": 11242,
+      "digest": "sha256:12bcdd8a2636b161304f623b83d00e1cbeca0028725df1fcbf429a488ff2b778",
+      "created_at": "2026-11-27T18:41:03Z",
+      "expired": false,
+      "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15225096316"
+    },
+    {
+      "id": 15224484242,
+      "name": "next9-final-source-contracts-0425541302b637c0fbdc6e950bcf87cd1cd8f6d1-1",
+      "size_in_bytes": 80417,
+      "digest": "sha256:07afcc365dca49f6d3574ed72aff67a720e41a4e2308ae112aaffa646080b4fd",
+      "created_at": "2026-11-27T19:00:23Z",
+      "expired": false,
+      "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15224484242"
+    }
+  ],
+  "limitations": [
+    "Failure/error counts follow strict JUnit verdicts; they include fixture setup errors.",
+    "The two platform lanes overlap tests and are not added into a unique-test qualification total.",
+    "Artifact digests are GitHub API metadata, not a claim that artifact ZIP contents were independently downloaded and rehashed in this review.",
+    "No overall source pass, installed-wheel pass, native UI/audio pass, physical device, acoustic, model, Office, NVDA or release qualification is claimed.",
+    "Corrections and newly added gates require a fresh exact-head run."
+  ]
+}

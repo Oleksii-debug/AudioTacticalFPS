@@ -1,0 +1,102 @@
+{
+  "schema": "carr-native-recording-correction/1",
+  "status": "DRAFT_PEER_REVIEWED_NOT_RUN",
+  "date": "2026-11-27",
+  "files": [
+    {
+      "path": "carr-library/scripts/windows_recording_smoke.py",
+      "preimage": "10b85f6a8c827c3e0db9068dc5bd4ec721e557ff",
+      "sha": "27ea1213d42fd3d3826133e54ab7c82c36fc82c3",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/tests/ui/test_native_recording_driver.py",
+      "preimage": null,
+      "sha": "ead73e8f5b7d50e9ff9e8d850f0b225351054317",
+      "exact_readback": true
+    }
+  ],
+  "actual_failure": {
+    "run": 46031173898,
+    "job": 140615140983,
+    "source_commit": "b359ca64f5c09fd971dfb8e4991a949a9cea488f",
+    "source_tree": "16d76684369ba3c56b84bb6a9317d2e0ec287e87",
+    "bounded_evidence_blob": "7370c67a3bce2d3b73a87c955557779a7d0a4480",
+    "last_output": "2026-11-27T17:54:45.6066114Z PASS: new dialog starts with dry monitoring disabled",
+    "terminal_output": "2026-11-27T17:58:11.5934983Z FAIL: native recording probe or owned cleanup exceeded 210 seconds",
+    "before_failure": "Actual FFmpeg synthetic capture, Pause/Resume PCM range binding, export, Cancel and Escape cleanup had passed.",
+    "hardware_boundary": "The stalled run had not yet logged the next key dispatch or entered monitoring output enumeration. Missing output hardware is not established as this hang's cause. Other device probes reported zero identifiable output devices; this corrected probe still requires a real selected waveOut endpoint."
+  },
+  "diagnosis": {
+    "status": "STATIC_CAUSE_MATCH_NOT_LOCALLY_REPRODUCED",
+    "driver": "The old title-only global dialog lookup and uncancelled CallLater callbacks can cross from a pending-destruction first dialog into its same-title successor. Errors were silent until the modal returned, while abort could target that stale dialog.",
+    "preservation": "No product capture/UI/monitor code, engine contract, timeout or hardware requirement changes.",
+    "cleanup_peer": "Progress found and reviewed the corrected finally ordering: actual Close/wait failure cannot bypass retained executor drain; exact synthetic fixtures remain owned until the drain attempt, then DLL context releases."
+  },
+  "source_changes": [
+    "Own and invalidate only this probe's delayed timers by modal generation; stopped but already queued notifications cannot act on the next dialog.",
+    "Select a live modal with the exact parent and native handle; require its captured currently running event loop before native input.",
+    "Return to the real main loop, observe first HWND destruction and retire pending callbacks before opening the second modal.",
+    "Observe actual monitoring-output discovery completion before checking its results; zero selectable outputs and discovery errors fail explicitly.",
+    "Print the first phase failure immediately; cancellation uses the actual owned dialog Close handler.",
+    "Call actual frame.Close and drain registered host owners; a Close or HWND-wait failure still attempts executor shutdown before restoring fixtures or releasing the native DLL context."
+  ],
+  "validation": {
+    "whole_suite": "tests/ui/test_native_recording_driver.py",
+    "static_functions": 8,
+    "static_cases": 10,
+    "collected_cases": "NOT_RUN",
+    "execution": "NOT_RUN",
+    "required_companion": "scripts/windows_recording_smoke.py",
+    "companion_note": "The portable suite imports the probe helpers and AST-extracts its actual finalizer; installed copied-suite execution must retain this exact source companion. These helper tests do not claim wx/audio/device execution.",
+    "meaningful_cases": [
+      "queued callbacks from a retired modal cannot touch its successor",
+      "failed timer stop is retained and all other stops are attempted",
+      "timer callback exceptions are reported inside the timer callback",
+      "same-title closing/dead/foreign windows are not selected",
+      "retired/missing native handles are refused",
+      "ambiguous owned modals are refused",
+      "legitimate handle reuse is allowed after observed retirement",
+      "actual ThreadPoolExecutor quiescence and fixture ownership precede DLL release on native Close failure",
+      "the same actual drain order holds on HWND-wait timeout"
+    ],
+    "preserved_native_literal_check_sites": 38,
+    "new_native_literal_check_sites": 40,
+    "required_new_native_checks": [
+      "second recording modal starts after first HWND and callbacks retire",
+      "recording host Close drains its registered native owners"
+    ],
+    "required_new_native_fields": {
+      "sequential_modal_ownership": true,
+      "actual_monitoring_outputs": "type(value) is int and value > 0; bool is not accepted"
+    },
+    "unchanged_required_native_fields": [
+      "actual_native_keys",
+      "actual_ffmpeg_synthetic_capture",
+      "verified_wav_export",
+      "actual_pause_resume",
+      "actual_selected_waveout_monitor",
+      "retained_frame_ranges",
+      "owned_cleanup_and_shared_admission"
+    ],
+    "installed_origin_count": 10,
+    "report_limits": {
+      "physical_microphone": "NOT_RUN",
+      "nvda": "NOT_RUN",
+      "audio_listening": "NOT_RUN"
+    },
+    "watchdog_seconds": 210,
+    "cooperative_probe_seconds": 180,
+    "host_hwnd_cleanup_seconds": 20
+  },
+  "peer_review": {
+    "agent": "/root/progress_completion",
+    "status": "ACCEPTED_STATIC_NOT_RUN",
+    "scope": "Timer/generation/native modal ownership and corrected Close/finalizer/fixture/DLL cleanup order with the actual-thread regressions."
+  },
+  "primary_references": [
+    "https://docs.wxpython.org/wx.CallLater.html",
+    "https://docs.wxpython.org/wx.EventLoopBase.html",
+    "https://docs.wxpython.org/wx.Window.html#wx.Window.Destroy"
+  ]
+}

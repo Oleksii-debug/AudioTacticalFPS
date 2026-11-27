@@ -82,6 +82,26 @@ class SearchPage:
     window_identity: str
 
 
+def _active_revision(db, workspace, edition):
+    # Resolve the existing composite active key before reading its page range.
+    # Joining active_page by revision alone cannot use that composite key.
+    source = db.execute(
+        'SELECT a.revision,r.workspace,r.edition FROM active a '
+        'LEFT JOIN revision r ON r.id=a.revision '
+        'WHERE a.workspace=? AND a.edition=?', (workspace, edition))
+    try:
+        row = source.fetchone()
+    finally:
+        source.close()
+    if row is None:
+        return None
+    revision, actual_workspace, actual_edition = row
+    if (not _text(revision) or actual_workspace != workspace
+            or actual_edition != edition):
+        raise ValueError('Invalid active source navigation metadata.')
+    return revision
+
+
 def select_window(db, catalog, *, scope, cursor=None, check=lambda: None, **filters):
     """Select <=100 source pages/5M characters from <=500 catalog identities.
 
@@ -102,40 +122,65 @@ def select_window(db, catalog, *, scope, cursor=None, check=lambda: None, **filt
     previous = current['after_page']
     if previous is not None:
         edition, revision, ordinal, page_id = previous
-        row = db.execute('SELECT edition,revision,ordinal,id FROM active_page '
-                         'WHERE workspace=? AND id=?', (catalog.workspace, page_id)).fetchone()
-        if edition not in allowed or row is None or tuple(row) != tuple(previous):
+        check()
+        if (edition not in allowed
+                or _active_revision(db, catalog.workspace, edition) != revision):
             raise ValueError('The active source changed since this cursor. Restart search.')
-    placeholders = ','.join('?' for _ in allowed)
-    sql = ('SELECT id,edition,revision,ordinal,length(raw),digest FROM active_page '
-           'WHERE workspace=? AND edition IN (' + placeholders + ')')
-    parameters = [catalog.workspace, *allowed]
-    if previous is not None:
-        edition, revision, ordinal, page_id = previous
-        sql += (' AND (edition COLLATE BINARY>? OR (edition=? AND '
-                '(ordinal>? OR (ordinal=? AND id>?))))')
-        parameters += [edition, edition, ordinal, ordinal, page_id]
-    sql += ' ORDER BY edition COLLATE BINARY,ordinal,id LIMIT ?'
-    parameters.append(MAX_SOURCE_PAGES + 1)
+        source = db.execute(
+            'SELECT id FROM page WHERE revision=? AND ordinal=? AND id=?',
+            (revision, ordinal, page_id))
+        try:
+            row = source.fetchone()
+        finally:
+            source.close()
+        if row is None:
+            raise ValueError('The active source changed since this cursor. Restart search.')
     rows, characters, more_pages = [], 0, False
-    source = db.execute(sql, parameters)
-    try:
-        for row in source:
-            check()
-            page_id, edition, revision, ordinal, count, digest = row
-            if (type(page_id) is not int or page_id < 1 or edition not in allowed
-                    or not _text(revision) or type(ordinal) is not int or ordinal < 1
-                    or type(count) is not int or count < 0 or type(digest) is not str):
-                raise ValueError('Invalid active source navigation metadata.')
-            if count > MAX_SOURCE_CHARACTERS:
-                raise ValueError('One extracted source page exceeds the bounded search window; split or re-import its reading segments.')
-            if len(rows) == MAX_SOURCE_PAGES or characters + count > MAX_SOURCE_CHARACTERS:
-                more_pages = True
-                break
-            rows.append(tuple(row))
-            characters += count
-    finally:
-        source.close()
+    reached_previous = previous is None
+    # Catalog order is already the exact BINARY edition order. Resolve only
+    # enough keyed revision/page ranges to fill this bounded source window;
+    # unrelated later editions must not be scanned or sorted first.
+    for edition in allowed:
+        if not reached_previous:
+            if edition != previous[0]:
+                continue
+            reached_previous = True
+        check()
+        revision = _active_revision(db, catalog.workspace, edition)
+        if revision is None:
+            continue
+        sql = ('SELECT id,revision,ordinal,length(raw),digest FROM page '
+               'WHERE revision=?')
+        parameters = [revision]
+        if previous is not None and edition == previous[0]:
+            # UNIQUE(revision,ordinal) makes an equal-ordinal ID tie
+            # impossible after the exact previous page was validated above.
+            sql += ' AND ordinal>?'
+            parameters.append(previous[2])
+        sql += ' ORDER BY ordinal,id LIMIT ?'
+        parameters.append(MAX_SOURCE_PAGES + 1 - len(rows))
+        source = db.execute(sql, parameters)
+        try:
+            for selected in source:
+                check()
+                page_id, actual_revision, ordinal, count, digest = selected
+                row = (page_id, edition, actual_revision, ordinal, count, digest)
+                if (type(page_id) is not int or page_id < 1
+                        or actual_revision != revision or not _text(actual_revision)
+                        or type(ordinal) is not int or ordinal < 1
+                        or type(count) is not int or count < 0 or type(digest) is not str):
+                    raise ValueError('Invalid active source navigation metadata.')
+                if count > MAX_SOURCE_CHARACTERS:
+                    raise ValueError('One extracted source page exceeds the bounded search window; split or re-import its reading segments.')
+                if len(rows) == MAX_SOURCE_PAGES or characters + count > MAX_SOURCE_CHARACTERS:
+                    more_pages = True
+                    break
+                rows.append(row)
+                characters += count
+        finally:
+            source.close()
+        if more_pages:
+            break
     check()
     if more_pages:
         last = rows[-1]

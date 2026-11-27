@@ -1,0 +1,343 @@
+{
+  "schema": "resonance-next9-ownership-preflight/1",
+  "status": "INTEGRATED_SOURCE_RUNTIME_NOT_RUN",
+  "base_commit": "0425541302b637c0fbdc6e950bcf87cd1cd8f6d1",
+  "base_tree": "34bbd5aaf6f11b880cdcf8999ec165c5cd0d2b0f",
+  "working_integration_at_composition": "dd9f90893ecb21f5f2aef5a3e11e4d6a83d6913c",
+  "canonical_at_composition": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+  "changes": [
+    {
+      "path": "carr-library/src/carr_library/ui/import_center.py",
+      "preimage": "505553ef6bf28eb073133ad1f4597a15930924f9",
+      "sha": "b304c895432fe69f68b7ea7a768ee0c70c9d4f0d",
+      "feature": "import_center"
+    },
+    {
+      "path": "carr-library/tests/ui/native_import_center_smoke.py",
+      "preimage": "a74e2ab5dc844d36bbf99085c76a1a03ec9e29c7",
+      "sha": "cd36b78bab9ca11ec3113f2c6f5f4434da7c1078",
+      "feature": "import_center"
+    },
+    {
+      "path": "carr-library/scripts/windows_book_audio_smoke.py",
+      "preimage": "4dd4c91feeaa3c3c08cf78c01d3f8b877a95085a",
+      "sha": "4f0d1a8e006bf43963f00d3dcd6f284a2c8f5f67",
+      "feature": "book_native"
+    },
+    {
+      "path": "carr-library/scripts/windows_recording_smoke.py",
+      "preimage": "10b85f6a8c827c3e0db9068dc5bd4ec721e557ff",
+      "sha": "27ea1213d42fd3d3826133e54ab7c82c36fc82c3",
+      "exact_readback": true,
+      "feature": "recording_native"
+    },
+    {
+      "path": "carr-library/tests/ui/test_native_recording_driver.py",
+      "preimage": null,
+      "sha": "ead73e8f5b7d50e9ff9e8d850f0b225351054317",
+      "exact_readback": true,
+      "feature": "recording_native"
+    },
+    {
+      "path": "carr-library/src/carr_library/storage/revisions.py",
+      "preimage": "0e326329b65b519a7743503ee2967211fd19897b",
+      "sha": "63a9179eff3816a81523c5fadeeea750ddfbcdc4",
+      "exact_readback": true,
+      "source_donor": "a24851a456b9625ad6e36bce5580ed36c2a6e1ea",
+      "change": "Replace only _check_locators with the exact donor fixed-query-shape method; all other current bytes are unchanged.",
+      "feature": "locator"
+    },
+    {
+      "path": "carr-library/tests/storage/test_scoped_locator_capacity.py",
+      "preimage": null,
+      "sha": "489dec6a00fb8e4ae16611fefb84616a5ec77592",
+      "exact_readback": true,
+      "source_donor": "489dec6a00fb8e4ae16611fefb84616a5ec77592",
+      "change": "Reuse exact existing donor tests: actual SQLite VM progress-counter work and actual publication rollback/refusal.",
+      "feature": "locator"
+    },
+    {
+      "path": "carr-library/src/carr_library/application.py",
+      "preimage": "8987d40771f9758137c991dcd398c5fdcfd9b5fe",
+      "sha": "67aa7dc2ad70cd4929f64dd6ad275e627726117f",
+      "readback": "EXACT",
+      "feature": "checked_commit"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/pipeline.py",
+      "preimage": "8e13ac17b7da61af48ecfc68af60ba9897bbf553",
+      "sha": "656ac8f3943aa4bb59b7756f7982d7985179e3b2",
+      "readback": "EXACT",
+      "feature": "checked_commit"
+    },
+    {
+      "path": "carr-library/tests/ingest/test_checked_catalog_commit.py",
+      "preimage": null,
+      "sha": "d351cf482029a332970953b649933c2cb060f118",
+      "readback": "EXACT",
+      "feature": "checked_commit"
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_rich_docx.py",
+      "preimage": "0f59e27cf30a76636c61293a0e957a9be60d5918",
+      "sha": "3f0f9c64d496f9ca423b169e6871e67816c51e1a",
+      "readback": "EXACT",
+      "feature": "rich_fixture"
+    },
+    {
+      "path": "carr-library/scripts/windows_transcription_profiles_smoke.py",
+      "preimage": "6e806b42b02f8e64325a3b318a8ba1f0d098dc16",
+      "sha": "3737286758c88f8a634da2e276cadeccaad4360b",
+      "feature": "trust_asr"
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_epub_layout.py",
+      "preimage": "40645987906ab1fd6633ae69ea19f66dc01d1da9",
+      "sha": "6e793736eec942adf6f0c268a6bc3026ce49925e",
+      "feature": "epub_fixture"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/read_views.py",
+      "preimage": "84b9a28698f3b65f69c880fc3a10de11cdb3c864",
+      "sha": "d2e2045738ace3ca99ac5decefc3d8ba3a955297",
+      "feature": "search_sql"
+    },
+    {
+      "path": "carr-library/src/carr_library/search/paging.py",
+      "preimage": "d73fa894e40f5b0697a8c99cafcb6402db8bbe1d",
+      "sha": "ebd2a0d92dbc14ab2620e0d540ebb76e4e02c9c6",
+      "feature": "search_sql"
+    },
+    {
+      "path": "carr-library/tests/search/test_search_query_work.py",
+      "preimage": null,
+      "sha": "1a4128547ebc99c7be3f5e8e0f3975c5637864aa",
+      "feature": "search_sql"
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "preimage": "3109b784e9a030a2217f6818e7cfc3de6332818d",
+      "sha": "a07e65670300af364749682e4ad0e8409ecfdec1",
+      "feature": "required_gates"
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "preimage": "20cbbf7ab79a39e68e873f0781e08ac45fc5bfac",
+      "sha": "6373bf052d1ed83eacfc746476e8c9de34536bb9",
+      "feature": "required_gates"
+    },
+    {
+      "path": ".github/workflows/carr-next9-final-source.yml",
+      "preimage": "3ee29faae1a19e9ca4f124b7aca27020dfba1c0b",
+      "sha": "6bdaf8c2beb467739dcf9c63684dfb7c061ccdc4",
+      "readback": "EXACT",
+      "chars": 19553,
+      "feature": "diagnostic_dependencies"
+    },
+    {
+      "path": "carr-library/src/carr_library/operations/broker.py",
+      "preimage": "3aebf909a5949f428b6d502388496035142f0fed",
+      "sha": "107e1a600bb4bdf0f3edb7735ee5fcdb68d9fb36",
+      "feature": "broker_scope"
+    },
+    {
+      "path": "carr-library/src/carr_library/operations/_locks.py",
+      "preimage": "ac567ba23b52f59ebc61fb0c25131b6126674c91",
+      "sha": "ae161b8483f84b2a4aa2f153b4b11b08f76b9693",
+      "feature": "broker_scope"
+    },
+    {
+      "path": "carr-library/tests/operations/test_broker_scope.py",
+      "preimage": null,
+      "sha": "21cdd7081b5af428d5303efa116d96765e185ff9",
+      "feature": "broker_scope"
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "preimage": "a07e65670300af364749682e4ad0e8409ecfdec1",
+      "sha": "bfcde86f3af2817df6469c4fec8f15f8089c79a8",
+      "feature": "ownership_search_checked_gates"
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "preimage": "6373bf052d1ed83eacfc746476e8c9de34536bb9",
+      "sha": "12ba3a4fc20da6ecdd3ff57ef4c7fc844a774021",
+      "feature": "ownership_search_checked_gates"
+    },
+    {
+      "path": ".github/workflows/carr-next9-final-source.yml",
+      "preimage": "6bdaf8c2beb467739dcf9c63684dfb7c061ccdc4",
+      "sha": "bfbac56257c0075e04b7077f5c377fb881c0e717",
+      "feature": "focused_diagnostic"
+    }
+  ],
+  "reachable_manifests": [
+    {
+      "path": "resonance-status/next9/clip_history.json",
+      "blob": "0a120043fce60a7dce760cc51afc5085b9e9333f"
+    },
+    {
+      "path": "resonance-status/next9/audio_envelopes.json",
+      "blob": "a2e0ae00e01a5e9e74ec73dc0607223abfd332ae"
+    },
+    {
+      "path": "resonance-status/next9/formatted_epub.json",
+      "blob": "7e9e39f2099e89e412036bb103b54aecdd03fa91"
+    },
+    {
+      "path": "resonance-status/next9/rich_docx.json",
+      "blob": "41db5198a9c00aba8373f15ee79332a56c0f6015"
+    },
+    {
+      "path": "resonance-status/next9/clip_copy_cut_paste.json",
+      "blob": "d9b522f074023e68041a0dd8124e49d6529e7b56"
+    },
+    {
+      "path": "resonance-status/next9/word_live_bridge.json",
+      "blob": "afe604fa5ba1c739ff9894271764b65b30b2bb0b"
+    },
+    {
+      "path": "resonance-status/next9/word_followup.json",
+      "blob": "1e00b474402aeff7a814cff6ca097c01cd80a4eb"
+    },
+    {
+      "path": "resonance-status/next9/google_oauth_refresh.json",
+      "blob": "671da216bd134e2d2f7bacc64324c65076a7d4d0"
+    },
+    {
+      "path": "resonance-status/next9/hunspell_growth_followup.json",
+      "blob": "0c94043c33776c10873c39bc003da7662b10e2a6"
+    },
+    {
+      "path": "resonance-status/next9/intake_windows_identity.json",
+      "blob": "2c141cc0a78d3e8662a65450ecce0c3546ef1940"
+    },
+    {
+      "path": "resonance-status/next9/book_batch_cli_followup.json",
+      "blob": "933e8cbbe00794b9538b40a3977a9937e8492a4a"
+    },
+    {
+      "path": "resonance-status/next9/import_replay_followup.json",
+      "blob": "4c89ef13bce4a3ebade5e32b5172e93abd612282"
+    },
+    {
+      "path": "resonance-status/next9/import_center_native_followup.json",
+      "blob": "fd964ec3f7785e4d1121fdd59d30045fbb717b36"
+    },
+    {
+      "path": "resonance-status/next9/book_native_followup.json",
+      "blob": "da34c8855a533983ada0337a6d03bc4a5da114ef"
+    },
+    {
+      "path": "resonance-status/next9/recording_native_followup.json",
+      "blob": "637747b8c2a82c2a543ddefd75edf0896bb479fb"
+    },
+    {
+      "path": "resonance-status/next9/trust_asr_native_followup.json",
+      "blob": "c64865b738714e1381f18d2e3fee768b9fec9f51"
+    },
+    {
+      "path": "resonance-status/next9/scoped_locator_sql.json",
+      "blob": "f436ba4fff6d879d381aa79a39a0404131ebcb89"
+    },
+    {
+      "path": "resonance-status/next9/checked_catalog_commit.json",
+      "blob": "0de49b4c2e8679b1928e8b4e38d3a67c3542005e"
+    },
+    {
+      "path": "resonance-status/next9/search_query_work.json",
+      "blob": "52797e0822da1594102603e1f3d1ad58bae0a58b"
+    },
+    {
+      "path": "resonance-status/next9/resource_scope_ownership.json",
+      "blob": "c174dfcf313bd1a2b10dcbc6ad6b4b96779909da"
+    },
+    {
+      "path": "resonance-status/next9/rich_service_followup.json",
+      "blob": "063ed76c1a57df2a5be9d81f0dfa3bf3ee14ac66"
+    },
+    {
+      "path": "resonance-status/next9/diagnostic_pdf_dependency.json",
+      "blob": "776ee3390a720d302660c1b11d54aec1f92841a0"
+    },
+    {
+      "path": "resonance-status/next9/evidence_faba_source.json",
+      "blob": "f9954e2df32a81532c11b374ba74efbd74ec2db1"
+    },
+    {
+      "path": "resonance-status/next9/evidence_previous_windows_failures.json",
+      "blob": "7370c67a3bce2d3b73a87c955557779a7d0a4480"
+    },
+    {
+      "path": "resonance-status/next9/evidence_managed_update.json",
+      "blob": "4038dec4e8646d9820979a7f77e43c46d206e40c"
+    },
+    {
+      "path": "resonance-status/next9/evidence_previous_v3_budget.json",
+      "blob": "62a83d2530024f5a10c079f1226f7d48bf77d747"
+    },
+    {
+      "path": "resonance-status/next9/evidence_ordinary_corpus1000.json",
+      "blob": "8d0c4bbaad3b39f411fce2fde644618509d11056"
+    },
+    {
+      "path": "resonance-status/next9/evidence_partial_ordinary_corpora.json",
+      "blob": "4bc93de5e8ba6ec9020e5d0f5fabe9feb696e43c"
+    },
+    {
+      "path": "resonance-status/next9/design_scoped_audit_not_implemented.json",
+      "blob": "f06294df092bde509924cc94b74dc09c5c706bf6"
+    },
+    {
+      "path": "resonance-status/next9/required_gates.json",
+      "blob": "9fcf140b67d4ad7df570e3dfb22327b8ec9f3079"
+    },
+    {
+      "path": "resonance-status/next9/focused_diagnostic.json",
+      "blob": "46c62b30ba61c76cb6a08db81639b3d0be2e95f1"
+    },
+    {
+      "path": "resonance-status/next9/evidence_042_source.json",
+      "blob": "7744fe9c33c60f7bb891b122457e672820b90f5d"
+    }
+  ],
+  "verification": {
+    "source_and_test_preimages": "EXACT",
+    "independent_source_review": "ACCEPTED_STATIC_NOT_RUN",
+    "diagnostic_jobs": {
+      "linux_existing": {
+        "whole_suites": 41,
+        "expected_cases": 1079
+      },
+      "windows_intake_replay": {
+        "whole_suites": 5,
+        "expected_cases": 59
+      },
+      "linux_focused": {
+        "whole_suites": 33,
+        "expected_cases": 418
+      },
+      "windows_focused": {
+        "whole_suites": 32,
+        "expected_cases": 417
+      },
+      "actual_yaml_powershell_parser": "REQUIRED"
+    },
+    "default_suite_seconds": 600,
+    "one_existing_reviewed_asr_exception_seconds": 900,
+    "successor_runtime": "NOT_RUN"
+  },
+  "preserved": {
+    "canonical_save_all": "c109f48ccb561b25fc9f348dacc4688f734f2e6b",
+    "narration_receipt": "8ed968bb63043018e557f4c0cbc7c771d9cb11b3",
+    "whole_catalog_publication_audits": true,
+    "original_diagnostic_jobs": true,
+    "required_native_and_release_gates": true
+  },
+  "pending_independent_work": [
+    "Explicit retained-corpus fixture construction and separately measured public imports; original ordinary-import mode remains available.",
+    "Review a named large-library complete-backup capacity profile through current typed producers.",
+    "Actual installed/native Windows/full package execution; no transfer of earlier or synthetic evidence."
+  ],
+  "qualification": "Working source checkpoint only. No release, final owner binary, private engine, physical audio, Word installation, NVDA, or50k qualification is asserted."
+}

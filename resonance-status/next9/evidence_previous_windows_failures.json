@@ -1,0 +1,85 @@
+{
+  "schema": "carr-main-actual-failure-evidence/1",
+  "run": 46031173898,
+  "job": 140615140983,
+  "status": "FAILURE",
+  "source_commit": "b359ca64f5c09fd971dfb8e4991a949a9cea488f",
+  "source_tree": "16d76684369ba3c56b84bb6a9317d2e0ec287e87",
+  "checkout_line": "2026-11-27T17:44:59.0623056Z HEAD is now at b359ca6 Integrate Resonance candidate 8 and current canonical safeguards",
+  "artifact_label_sha": "3492abeed1ad4fd23ee5b6ed5d1efffdd48836d1",
+  "artifact_label_warning": "The artifact label uses GitHub merge-event SHA; the exact checkout and package source report bind b359/tree16d. No source identity is inferred from an artifact name.",
+  "artifacts": [
+    {
+      "id": 15225110630,
+      "name": "carr-phase-diagnostics-3492abeed1ad4fd23ee5b6ed5d1efffdd48836d1-1",
+      "size_in_bytes": 123203,
+      "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15225110630",
+      "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15225110630/zip",
+      "expired": false,
+      "created_at": "2026-11-27T18:35:35Z",
+      "expires_at": "2026-11-30T18:35:33Z",
+      "updated_at": "2026-11-27T18:35:35Z",
+      "digest": "sha256:85989ae6467fa5c7a41d7037ddb3b9bd8517abbdd336b8493e0f3e1aab8e18b8",
+      "workflow_run": {
+        "id": 46031173898,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/resonance-final-integration-20261127-5a9e",
+        "head_sha": "b359ca64f5c09fd971dfb8e4991a949a9cea488f"
+      }
+    },
+    {
+      "id": 15224960686,
+      "name": "carr-windows-3492abeed1ad4fd23ee5b6ed5d1efffdd48836d1-1",
+      "size_in_bytes": 2333724,
+      "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15224960686",
+      "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15224960686/zip",
+      "expired": false,
+      "created_at": "2026-11-27T18:35:38Z",
+      "expires_at": "2026-12-04T18:35:36Z",
+      "updated_at": "2026-11-27T18:35:38Z",
+      "digest": "sha256:e117ae509082f5475ce9c6f897e478d6049711b0088910dfb9b86d79dcce776f",
+      "workflow_run": {
+        "id": 46031173898,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/resonance-final-integration-20261127-5a9e",
+        "head_sha": "b359ca64f5c09fd971dfb8e4991a949a9cea488f"
+      }
+    }
+  ],
+  "actual_partial_passes": {
+    "installed_trusted_client": {
+      "cases": 354,
+      "failed": 0,
+      "skipped": 0,
+      "duration_seconds": 52.66,
+      "qualification": "Only this exact installed trust suite; native signed-status dispatch failed afterward"
+    },
+    "provider_transport": {
+      "cases": 28,
+      "failed": 0,
+      "skipped": 0,
+      "qualification": "Synthetic actual local loopback only"
+    }
+  },
+  "failures": {
+    "import_center": "2026-11-27T17:49:44.4554041Z Traceback (most recent call last):\n2026-11-27T17:49:44.4576872Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\ui\\native_import_center_smoke.py\", line 121, in <module>\n2026-11-27T17:49:44.4588487Z     raise SystemExit(main())\n2026-11-27T17:49:44.4736241Z                      ^^^^^^\n2026-11-27T17:49:44.4742553Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\ui\\native_import_center_smoke.py\", line 113, in main\n2026-11-27T17:49:44.4745733Z     raise AssertionError('\\n'.join(errors))\n2026-11-27T17:49:44.4749260Z AssertionError: Traceback (most recent call last):\n2026-11-27T17:49:44.4752438Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\ui\\native_import_center_smoke.py\", line 99, in begin\n2026-11-27T17:49:44.4754860Z     assert dialog.GetSizer().GetMinSize().height <= dialog.GetClientSize().height\n2026-11-27T17:49:44.4760885Z            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n2026-11-27T17:49:44.4763456Z AssertionError\n2026-11-27T17:49:44.4780261Z \n2026-11-27T17:49:44.5137527Z ##[error]Process completed with exit code 1.",
+    "reader_output": "2026-11-27T17:53:23.0114305Z Traceback (most recent call last):\n2026-11-27T17:53:23.0115731Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_player_smoke.py\", line 499, in <module>\n2026-11-27T17:53:23.0128752Z     raise SystemExit(main())\n2026-11-27T17:53:23.0130384Z                      ^^^^^^\n2026-11-27T17:53:23.0133556Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_player_smoke.py\", line 385, in main\n2026-11-27T17:53:23.0242593Z     raise RuntimeError('Actual output-device qualification requires an identifiable Windows output.')\n2026-11-27T17:53:23.0247799Z RuntimeError: Actual output-device qualification requires an identifiable Windows output.\n2026-11-27T17:53:23.0401165Z REQUIRED NATIVE BLOCK FAILED [reader-player]: Actual installed native reader playback failed.\n2026-11-27T17:53:23.6018827Z Looking in links: d:\\a\\_temp\\carr-test-wheels",
+    "trust_argv": "2026-11-27T17:54:18.5800078Z usage: native_trust_status_smoke.py [-h] --native [--source SOURCE]\n2026-11-27T17:54:18.5801991Z native_trust_status_smoke.py: error: unrecognized arguments: D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\ui\\native_trust_status_smoke.py\n2026-11-27T17:54:18.5902236Z REQUIRED NATIVE BLOCK FAILED [signed-status]: The actual optional bundle failed native signed-status acceptance.",
+    "asr_profile_export": "2026-11-27T17:54:40.9032852Z Traceback (most recent call last):\n2026-11-27T17:54:40.9034073Z   File \"<string>\", line 1, in <module>\n2026-11-27T17:54:40.9036961Z   File \"<frozen runpy>\", line 291, in run_path\n2026-11-27T17:54:40.9039064Z   File \"<frozen runpy>\", line 98, in _run_module_code\n2026-11-27T17:54:40.9040877Z   File \"<frozen runpy>\", line 88, in _run_code\n2026-11-27T17:54:40.9043590Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_transcription_smoke.py\", line 186, in <module>\n2026-11-27T17:54:40.9051546Z     profile_report = profiles_probe.verify_runtime_profiles(frame, root, source_root)\n2026-11-27T17:54:40.9055422Z                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n2026-11-27T17:54:40.9071058Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_transcription_profiles_smoke.py\", line 201, in verify_runtime_profiles\n2026-11-27T17:54:40.9072034Z     raise AssertionError('\\n'.join(failures))\n2026-11-27T17:54:40.9072597Z AssertionError: Traceback (most recent call last):\n2026-11-27T17:54:40.9073413Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_transcription_profiles_smoke.py\", line 166, in drive\n2026-11-27T17:54:40.9074210Z     assert str(exports[0]) in dialog.status.GetValue()\n2026-11-27T17:54:40.9074690Z            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n2026-11-27T17:54:40.9075090Z AssertionError\n2026-11-27T17:54:40.9075409Z \n2026-11-27T17:54:41.0074470Z REQUIRED NATIVE BLOCK FAILED [transcription]: Required native process exited with code 1\n2026-11-27T17:54:41.5690536Z PASS: installed exact source: carr_library.audio.process",
+    "recording": "2026-11-27T17:54:44.8034696Z PASS: Cancel removes unfinished audio and preserves prior original\n2026-11-27T17:54:44.8035721Z PASS: Cancel is announced distinctly\n2026-11-27T17:54:44.8301036Z PASS: native focus reaches Start recording\n2026-11-27T17:54:44.8301516Z PASS: native key dispatch: Start recording\n2026-11-27T17:54:45.5203147Z PASS: native focus reaches Stop and save recording\n2026-11-27T17:54:45.5204998Z PASS: native key dispatch: Stop and save recording\n2026-11-27T17:54:45.5542043Z PASS: Escape closes only after active capture cleanup\n2026-11-27T17:54:45.5714756Z PASS: closing preserves exactly the verified original\n2026-11-27T17:54:45.6066114Z PASS: new dialog starts with dry monitoring disabled\n2026-11-27T17:58:11.5934983Z FAIL: native recording probe or owned cleanup exceeded 210 seconds\n2026-11-27T17:58:11.6028091Z REQUIRED NATIVE BLOCK FAILED [recording]: Required native process exited with code 1",
+    "book_confirmation": "2026-11-27T17:58:17.0753917Z PASS: native key release: Discover local voices\n2026-11-27T17:58:17.6132341Z PASS: installed native SAPI voice is actually enumerated\n2026-11-27T17:58:17.6143203Z PASS: owned native focus: Preview split and names\n2026-11-27T17:58:17.6143644Z PASS: native key down: Preview split and names\n2026-11-27T17:58:17.6583469Z PASS: native key release: Preview split and names\n2026-11-27T17:58:17.7290973Z PASS: native preview names both real EPUB chapters and original revision\n2026-11-27T17:58:17.7291521Z PASS: preview and voice discovery do not synthesize\n2026-11-27T17:58:17.7292006Z PASS: native preview retains readable status focus\n2026-11-27T17:58:17.7296849Z PASS: owned native focus: Prepare saved items\n2026-11-27T17:58:17.7297203Z PASS: native key down: Prepare saved items\n2026-11-27T17:58:17.7678464Z PASS: native key release: Prepare saved items\n2026-11-27T17:58:17.7833464Z PASS: confirmation belongs to the book dialog: Prepare reviewed book items\n2026-11-27T18:35:33.7236323Z ##[error]The action 'Build, install and exercise the complete bundle with runtime egress blocked' has timed out after 45 minutes.\n2026-11-27T18:35:33.7747162Z ##[group]Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+    "source_parser": "2026-11-27T18:35:35.5566296Z   CARR_CI_TRANSFER_BUNDLE: D:\\a\\_temp\\carr-bundle-ci\\native bundle\n2026-11-27T18:35:35.5566509Z   CARR_CI_BUNDLE: D:\\a\\_temp\\carr-bundle-ci\\complete bundle\n2026-11-27T18:35:35.5566675Z ##[endgroup]\n2026-11-27T18:35:35.8517063Z ParserError: D:\\a\\_temp\\7d0c8071-efa2-4a80-8a62-93c36b8c158f.ps1:394\n2026-11-27T18:35:35.8517557Z Line |\n2026-11-27T18:35:35.8517944Z  394 |    'tests/packaging/test_local_schedules_cli.py',\n2026-11-27T18:35:35.8518450Z      |                                                  ~\n2026-11-27T18:35:35.8518941Z      | Missing expression after ','.\n2026-11-27T18:35:35.8876550Z ##[error]Process completed with exit code 1."
+  },
+  "full_bundle": {
+    "start": "2026-11-27T17:50:32Z",
+    "timeout": "2026-11-27T18:35:33Z",
+    "outer_minutes": 45,
+    "last_live_phase": "Book Prepare confirmation at17:58:17; no subsequent output before outer timeout",
+    "final_verifier": "NOT_RUN",
+    "tested_wheel_retention": "NOT_QUALIFIED"
+  },
+  "source_gate": "Old PowerShell trailing comma parse failure before source execution; corrected successor remains NOT_RUN",
+  "delivery": "HELD"
+}

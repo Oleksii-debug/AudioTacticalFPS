@@ -1,0 +1,56 @@
+{
+  "schema": "carr-native-actual-correction/1",
+  "status": "DRAFT_NOT_RUN",
+  "name": "Exact native argv and ASR JSON receipt assertions",
+  "baseline_main_gate_manifest": "4c4dbb8819e5b0af0b8355e715317265c4239595",
+  "actual_run": 46031173898,
+  "actual_job": 140615140983,
+  "actual_source": "b359ca64f5c09fd971dfb8e4991a949a9cea488f",
+  "current_source_checked": "fabae325a1a197ac6959732254ddf16d3ecef367",
+  "evidence": "7370c67a3bce2d3b73a87c955557779a7d0a4480",
+  "files": [
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "preimage": "3109b784e9a030a2217f6818e7cfc3de6332818d",
+      "sha": "a44d3de4592add9dfdc0c4c0c93eceae47bef6d9",
+      "chars": 499824,
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/scripts/windows_transcription_profiles_smoke.py",
+      "preimage": "6e806b42b02f8e64325a3b318a8ba1f0d098dc16",
+      "sha": "3737286758c88f8a634da2e276cadeccaad4360b",
+      "chars": 12376,
+      "readback": "EXACT"
+    }
+  ],
+  "corrections": {
+    "trust": {
+      "cause": "runpy.run_path received sys.argv[1] but the operand remained in sys.argv; runpy changes argv[0] only, so argparse saw an extra positional script path.",
+      "change": "Consume only the bootstrap's script operand with pop(1) before runpy; exact --native remains. Retain -I/-B, installed runtime activation and strong native handle; native acceptance fields/10 checks unchanged.",
+      "whole_tests": "Installed354 passed in actual old run; not transferred to this successor.",
+      "diff_before": "          & $python -I -B -c \"import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')\" (Resolve-Path tests/ui/native_trust_status_smoke.py).Path --native 2>&1 | Tee-Object 'ci-results/full-bundle-trust-native.txt'",
+      "diff_after": "          & $python -I -B -c \"import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv.pop(1),run_name='__main__')\" (Resolve-Path tests/ui/native_trust_status_smoke.py).Path --native 2>&1 | Tee-Object 'ci-results/full-bundle-trust-native.txt'"
+    },
+    "asr": {
+      "cause": "The real UI reports an Export saved. header followed by JSON; Windows path separators are escaped in JSON, so raw path substring comparison fails after actual ten-file export succeeded.",
+      "change": "Decode the displayed receipt; require complete/job identity, nine actual file paths, exact parent, actual manifest SHA256. Preserve ten output files, all four extensions, unchanged originals and later historical-binding assertions.",
+      "diff": "--- a/windows_transcription_profiles_smoke.py\n+++ b/windows_transcription_profiles_smoke.py\n@@ -162,8 +162,17 @@\n                 assert len(exports) == 1, exports\n                 assert len(list(exports[0].iterdir())) == 10\n                 assert {path.suffix for path in exports[0].iterdir()} == {'.txt', '.srt', '.vtt', '.json'}\n+                status = dialog.status.GetValue()\n+                heading, separator, payload = status.partition('\\n')\n+                assert heading == 'Export saved.' and separator, status\n+                receipt = json.loads(payload)\n+                assert receipt['status'] == 'complete' and receipt['job_id'] == state['job']\n+                assert isinstance(receipt['files'], list) and len(receipt['files']) == 9\n+                manifest = Path(receipt['manifest_path'])\n+                assert manifest.parent == exports[0]\n+                assert sha256(manifest.read_bytes()).hexdigest() == receipt['manifest_sha256']\n+                assert {Path(row['path']) for row in receipt['files']} == (\n+                    set(exports[0].iterdir()) - {manifest})\n-                assert 'Export saved.' in dialog.status.GetValue()\n-                assert str(exports[0]) in dialog.status.GetValue()\n                 assert all(source.read_bytes() == raw for source, raw in originals.items())\n                 assert [row['id'] for row in service.list()] == old_legacy\n                 # Simulate an unbound canonical historical job. The actual\n",
+      "required_native_checks": 10,
+      "module_origins": 10
+    }
+  },
+  "unchanged": [
+    "Product sources",
+    "All source/installed selectors and case counts",
+    "All prior native scenario/report/check names",
+    "All inner time limits, firewalls, strict outcomes and cleanup ownership"
+  ],
+  "validation": {
+    "readback": "EXACT",
+    "source_api_review": "STATIC",
+    "python_parse": "NOT_RUN",
+    "powershell_parse": "NOT_RUN",
+    "actual_corrected_windows_native": "NOT_RUN"
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "schema": "carr-ci-evidence/1",
+  "subject": "Real Windows standard installer and managed A-to-B lifecycle",
+  "source_b": {
+    "commit": "b359ca64f5c09fd971dfb8e4991a949a9cea488f",
+    "tree": "16d76684369ba3c56b84bb6a9317d2e0ec287e87"
+  },
+  "source_a": {
+    "commit": "665acf2c1fdb5a30a05ef31c482eb02dcaf1e141",
+    "tree": "7113483d1d6287ed60c5115704232d66f7dde501",
+    "policy": "Each immutable source builds its own wheel, native launcher, core bundle and standard setup. No payload crosscopy."
+  },
+  "actual": {
+    "run_id": 46031173898,
+    "job_id": 140615141148,
+    "conclusion": "SUCCESS",
+    "started_utc": "2026-11-27T17:16:50Z",
+    "native_report_utc": "2026-11-27T17:30:41Z",
+    "source_whole_suites": [
+      {
+        "path": "tests/security/test_managed_installation.py",
+        "passed": 34
+      },
+      {
+        "path": "tests/security/test_managed_registration.py",
+        "passed": 10
+      },
+      {
+        "path": "tests/packaging/test_standard_installer.py",
+        "passed": 102
+      },
+      {
+        "path": "tests/packaging/test_managed_launch_boundary.py",
+        "passed": 8
+      },
+      {
+        "path": "tests/packaging/test_managed_update_native_policy.py",
+        "passed": 7
+      }
+    ],
+    "source_total": {
+      "passed": 161,
+      "failed": 0,
+      "skipped": 0
+    },
+    "observed_stages": [
+      "install-A",
+      "real-B-then-injected-health-refusal",
+      "commit-real-B",
+      "repair-and-uninstall-B"
+    ],
+    "native_report": {
+      "actual_backup_restore": "PASS",
+      "actual_inno": "PASS",
+      "actual_windows_registration": "PASS",
+      "actual_windows_vault": "PASS",
+      "authenticode": "NOT_CLAIMED",
+      "full_wrapper_rollback": "PASS",
+      "host_package": "D:\\a\\_temp\\carr-managed-upgrade-private\\host\\Lib\\site-packages\\carr_library\\__init__.py",
+      "live_app_exclusion": "PASS",
+      "nvda": "NOT_RUN",
+      "production_publisher": "NOT_CONFIGURED",
+      "repair": "PASS",
+      "schema": 1,
+      "setup_a_sha256": "01a16d035ae9a86f993c41497c2145356e75249f17f02bbf3a0041dad357b091",
+      "setup_b_sha256": "0702a1a4fff82d203b07c149bb56fd586e1c0e20963204ce85df6fc1e6bed3a9",
+      "source_a": "665acf2c1fdb5a30a05ef31c482eb02dcaf1e141",
+      "source_b": "b359ca64f5c09fd971dfb8e4991a949a9cea488f",
+      "status": "PASS",
+      "target_sha256": "49234a8a1b9e394cd30f31d3d1cc477654c92afc3d334814207a9af6a199a3d9",
+      "uninstall": "PASS",
+      "update": "PASS",
+      "user_source_preserved": "PASS"
+    },
+    "artifact": {
+      "id": 15221226114,
+      "name": "managed-update-b359ca64f5c09fd971dfb8e4991a949a9cea488f-1",
+      "bytes": 89472,
+      "sha256": "bff4d81f245fd86d9e1f7f8faa2c300ed555dce17923ec988ac8a539e7460176",
+      "scope": "Public text evidence only; no installers, runtime, audio, or model bytes retained"
+    },
+    "log_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46031173898/job/140615141148"
+  },
+  "limits": [
+    "This proves the exact synthetic Windows migration/lifecycle gate for these two commits only.",
+    "It does not qualify the overall integrated Windows job, V3, ASR, full optional dependency bundle or a final delivery wheel.",
+    "Production publisher is not configured, Authenticode is not claimed, NVDA was not run.",
+    "No result transfers to later source or payload without its own required execution."
+  ]
+}

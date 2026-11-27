@@ -1,0 +1,68 @@
+{
+  "schema": "resonance-measured-source-fix/1",
+  "status": "STATIC_REVIEWED_NOT_RUN",
+  "feature": "Stable Windows read ownership for file-backed TXT/PDF source intake",
+  "base_commit": "fabae325a1a197ac6959732254ddf16d3ecef367",
+  "evidence": {
+    "failed_head": "dd9f90893ecb21f5f2aef5a3e11e4d6a83d6913c",
+    "run": 46036034510,
+    "job": 140631564120,
+    "test": "tests/catalog/test_streaming_intake.py::test_source_changed_after_genuine_final_hash_is_rejected",
+    "observed": "10 passed, 1 failed: real same-size write after completed hash was not rejected by timestamp/ChangeTime comparison.",
+    "compact_evidence_blob": "e65560872c50299ef92208dcb18539edea059843",
+    "artifact": {
+      "id": 15222296963,
+      "bytes": 61954,
+      "sha256": "bb84847da084be40427328d7ba088c702704f67bb9e78bc8a30289039ef31a9f"
+    }
+  },
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/catalog/intake.py",
+      "preimage": "66cf246df02472b131133ece8e1859eceec04224",
+      "sha": "5a55fa8b1326a43ea2b6a4773f4072886e436031"
+    },
+    {
+      "path": "carr-library/tests/catalog/test_streaming_intake.py",
+      "preimage": "84fe7a923a0871aa20f9d3d1739d73dfe808371d",
+      "sha": "15285cceb4098ad84d86ac7f36ab28283f3a3a44"
+    }
+  ],
+  "behavior": "FileSnapshot.open on Windows owns a GENERIC_READ/FILE_SHARE_READ handle from CreateFileW. Other readers remain allowed; existing or subsequent writers and renames cannot share this held source. HANDLE ownership transfers once to a CRT descriptor and then the Python stream. Existing descriptor/path identity, size, link/reparse and ChangeTime checks remain.",
+  "unchanged": [
+    "All eleven original whole-suite cases including the measured failure",
+    "All byte limits and streaming/buffer budgets",
+    "POSIX opener and exception behavior",
+    "Immutable-byte AssetSnapshot branch",
+    "InterruptedError and TimeoutError identity",
+    "No repeated full-file hash added to indexed source reads"
+  ],
+  "tests": {
+    "whole_suite": "tests/catalog/test_streaming_intake.py",
+    "expected_cases": 16,
+    "added_cases": 5,
+    "added_functions": [
+      "test_held_source_allows_another_reader_and_keeps_its_exact_identity",
+      "test_held_source_excludes_windows_writes_or_rejects_portable_drift",
+      "test_open_writer_is_never_admitted_as_a_stable_windows_source",
+      "test_held_source_cleanup_preserves_the_original_cancellation"
+    ],
+    "skip_policy": "No skips or expected failures; Windows sharing and POSIX drift branches exercise their actual platform contracts."
+  },
+  "primary_sources": [
+    "https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew",
+    "https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/open-osfhandle?view=msvc-170",
+    "https://learn.microsoft.com/en-us/windows/win32/sysinfo/file-times"
+  ],
+  "review": {
+    "reviewer": "progress_completion",
+    "result": "ACCEPTED_STATIC_NOT_RUN",
+    "readback": "Both source and test blobs EXACT"
+  },
+  "verification": {
+    "parse": "NOT_RUN",
+    "linux": "NOT_RUN",
+    "windows": "NOT_RUN",
+    "required": "Rerun whole16 on Windows and existing larger-source/read/retention/import/backup boundaries. No original source98 PASS transfer."
+  }
+}

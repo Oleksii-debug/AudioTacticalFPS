@@ -1,0 +1,78 @@
+{
+  "schema": "carr-hunspell-measured-fixture-fix/1",
+  "status": "REVIEWED_STATIC_NOT_RUN",
+  "failed_head": "d548e2054cd68c228e8fa25c0e554fc837ee5684",
+  "run_id": 46044123535,
+  "job_id": 140658982952,
+  "files": [
+    {
+      "path": "carr-library/tests/speech/test_spelling.py",
+      "preimage": "6bde6f86f3298700e51cf91aae675302c3e6e0be",
+      "sha": "15e7f8ea5322a9bd5e8781e11a8841b0b4e7ae8b"
+    }
+  ],
+  "diagnosis": "The actual dictionary mutation grows the captured file. The bounded size guard rejects that growth before the later identity check, so a changed-only text matcher rejected a correct ValueError category.",
+  "correction": "Retain the real mutation and ValueError refusal; allow the existing changed or size-budget categories and assert that the callback actually ran and exact changed bytes remain. No product code/bound/retry change.",
+  "counts": {
+    "core": 55,
+    "whole_four_modules": 115,
+    "change": 0
+  },
+  "actual_predecessor_evidence": {
+    "source": {
+      "passed": 114,
+      "failed": 1,
+      "skipped": 0
+    },
+    "official_source_acquisition_and_msvc_build": "PASS",
+    "reports": [
+      {
+        "status": "PASS",
+        "mode": "source",
+        "source_commit": "d548e2054cd68c228e8fa25c0e554fc837ee5684",
+        "checks": 28,
+        "module_origins": 12,
+        "library_sha256": "c8c836bff6c7c8826c0a20fdeb8b6e05649ad2ca672fe7aa5fd4f57aa65fb8c5",
+        "source_inventory_sha256": "f5ea8a9afae905cd1d2dd56415b320fd0949d85e28151eb8ddb63d19d128aefc",
+        "qualification": "Exact source-only execution; no installed-wheel qualification",
+        "dictionary_quality": "NOT_RUN",
+        "manual_nvda": "NOT_RUN",
+        "distribution_clearance": "NOT_GRANTED"
+      },
+      {
+        "status": "PASS",
+        "mode": "native-source",
+        "source_commit": "d548e2054cd68c228e8fa25c0e554fc837ee5684",
+        "checks": 29,
+        "module_origins": 20,
+        "library_sha256": "c8c836bff6c7c8826c0a20fdeb8b6e05649ad2ca672fe7aa5fd4f57aa65fb8c5",
+        "source_inventory_sha256": "f5ea8a9afae905cd1d2dd56415b320fd0949d85e28151eb8ddb63d19d128aefc",
+        "qualification": "Exact source-only execution; no installed-wheel qualification",
+        "dictionary_quality": "NOT_RUN",
+        "manual_nvda": "NOT_RUN",
+        "distribution_clearance": "NOT_GRANTED"
+      }
+    ],
+    "artifact": {
+      "id": 15222044385,
+      "bytes": 697227,
+      "sha256": "988cf821488e2dd65ae17f47083d2c518d1e1ec6e035fcc5905df2e393e7f5db"
+    },
+    "overall": "FAIL",
+    "installed_wheel": "NOT_RUN",
+    "dictionary_quality": "NOT_RUN",
+    "manual_nvda": "NOT_RUN"
+  },
+  "validation": {
+    "readback": "EXACT",
+    "parse": "NOT_RUN",
+    "corrected_test": "NOT_RUN"
+  },
+  "workflow_policy": "Add the unchanged whole test_spelling module to the fresh diagnostic; do not cancel or relabel any existing run.",
+  "previous_manifest": "c281a7127672ac97846ef69501d581e08ab354c2",
+  "peer_review": {
+    "reviewer": "canonical_regression",
+    "status": "ACCEPTED_STATIC_NOT_RUN",
+    "scope": "Exact two-line fixture delta; remaining test bytes unchanged, all55/115 counts and production refusal retained."
+  }
+}

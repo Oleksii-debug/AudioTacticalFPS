@@ -1,0 +1,2804 @@
+{
+  "schema": "resonance-next9-required-gates/1",
+  "status": "SOURCE_CHECKPOINT_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_context": {
+    "base_commit": "b359ca64f5c09fd971dfb8e4991a949a9cea488f",
+    "base_tree": "16d76684369ba3c56b84bb6a9317d2e0ec287e87",
+    "no_ref_mutation": true,
+    "current_integration_head": "dd9f90893ecb21f5f2aef5a3e11e4d6a83d6913c",
+    "latest_isolated_diagnostic": "0425541302b637c0fbdc6e950bcf87cd1cd8f6d1",
+    "current_delta": "Required whole-source and installed tests for checked catalog commit, scoped search queries and stale resource-owner release. Existing native/final-seal/firewall blocks remain byte-identical to a07e/6373. No ref mutation."
+  },
+  "feature_manifests": {
+    "hunspell": "bd330ba5e6cdeb27da93a575da9919bc1e09f4f9",
+    "hunspell_shared_hooks": "d7686bcecec464b4ecc23c92a9db84562a355c0e",
+    "corpus": "9e5b1511bc70cf9ad9772400c4dfdfe2ae484e21",
+    "envelopes": "a2e0ae00e01a5e9e74ec73dc0607223abfd332ae",
+    "clip_history": "0a120043fce60a7dce760cc51afc5085b9e9333f",
+    "formatted_docx": "198365e2c7d46dd4542dfab6d769fa25acf58a82",
+    "docx_partition": "54018b48539ce43f4b523d7f56bee1fcbe5ae12f",
+    "word": "afe604fa5ba1c739ff9894271764b65b30b2bb0b",
+    "google_oauth": "671da216bd134e2d2f7bacc64324c65076a7d4d0",
+    "google_oauth_native": "b99a48a0288a491a9cd4cd836e6ceb01f9e11812",
+    "hunspell_actual_failure_correction": "84d817ea4f83cb0013291afe6085a54b5d0a0170",
+    "word_native_cleanup": "9a20339a545bc44ea0ee65b5a55bc804c714702f",
+    "formatted_epub": "7e9e39f2099e89e412036bb103b54aecdd03fa91",
+    "word_actual_failure_corrections": "1e00b474402aeff7a814cff6ca097c01cd80a4eb",
+    "clipboard": "d9b522f074023e68041a0dd8124e49d6529e7b56",
+    "rich_docx": "41db5198a9c00aba8373f15ee79332a56c0f6015",
+    "formatted_native_cleanup": "abafa33ecb95cce140081b4632f6c30af951b842",
+    "intake_actual_failure": "2c141cc0a78d3e8662a65450ecce0c3546ef1940",
+    "book_actual_failure": "933e8cbbe00794b9538b40a3977a9937e8492a4a",
+    "replay_actual_failure": "4c89ef13bce4a3ebade5e32b5172e93abd612282",
+    "ui_fixture_actual_failures": "1186a93d72ee4448411bf65e11a1130f787c19f3",
+    "hunspell_growth_fixture": "0c94043c33776c10873c39bc003da7662b10e2a6",
+    "desktop_fixture": "7044151f3dc7339282f5de9333440e1a558f93c6",
+    "native_trust_argv_asr_receipt": "c64865b738714e1381f18d2e3fee768b9fec9f51",
+    "book_native_failure": "da34c8855a533983ada0337a6d03bc4a5da114ef",
+    "recording_native_failure": "637747b8c2a82c2a543ddefd75edf0896bb479fb",
+    "import_center_native_layout": "fd964ec3f7785e4d1121fdd59d30045fbb717b36",
+    "scoped_locator_capacity": "f436ba4fff6d879d381aa79a39a0404131ebcb89",
+    "checked_catalog_commit": "0de49b4c2e8679b1928e8b4e38d3a67c3542005e",
+    "search_query_work": "52797e0822da1594102603e1f3d1ad58bae0a58b",
+    "broker_root_identity": "c174dfcf313bd1a2b10dcbc6ad6b4b96779909da",
+    "rich_root_substitution_fixture": "063ed76c1a57df2a5be9d81f0dfa3bf3ee14ac66"
+  },
+  "files": [
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "base": "6847510e152b22c6a0eaacfe1a338889c10a026c",
+      "sha": "bfcde86f3af2817df6469c4fec8f15f8089c79a8",
+      "chars": 509552,
+      "readback": "EXACT",
+      "incremental_base": "a07e65670300af364749682e4ad0e8409ecfdec1"
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "base": "08e8f65fc634ba230d8656d9140f5e0175dbf031",
+      "sha": "12ba3a4fc20da6ecdd3ff57ef4c7fc844a774021",
+      "chars": 393071,
+      "readback": "EXACT",
+      "incremental_base": "6373bf052d1ed83eacfc746476e8c9de34536bb9"
+    },
+    {
+      "path": "carr-library/packaging/build_windows_bundle.py",
+      "base": "2bcaa3b3a6410e28e8d35b0cdb33852b4aeae864",
+      "sha": "2bfe5585ad12b0a366ac54a076c538b344c94714",
+      "chars": 27747,
+      "readback": "EXACT",
+      "incremental_base": "9435313333fc7b1c0df4ff1863c840f26a461341"
+    },
+    {
+      "path": "carr-library/scripts/check_workflow_powershell.ps1",
+      "base": null,
+      "sha": "63e0ff18828031f89b726175ea74f8c8310247fa",
+      "chars": 10057,
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/scripts/translation_loopback_check.py",
+      "base": "17878fdf081092becb082e6ba07039ee5be5928a",
+      "incremental_base": "17878fdf081092becb082e6ba07039ee5be5928a",
+      "sha": "194df6f0589c077fac26fc38751d79068c7570ea",
+      "chars": 12605,
+      "readback": "EXACT"
+    }
+  ],
+  "source_and_installed": {
+    "whole_modules": {
+      "tests/speech/test_spelling.py": {
+        "count": 55,
+        "functions": [
+          "test_review_hashes_exact_selected_files_without_loading_runtime",
+          "test_explicit_profile_requires_language_and_provenance",
+          "test_same_file_and_hardlinked_dictionary_are_refused",
+          "test_mutation_during_profile_hash_is_refused",
+          "test_profile_hash_budget_and_cancel_stop_before_any_runtime",
+          "test_exact_word_ranges_preserve_emoji_crlf_combining_marks_and_apostrophes",
+          "test_invalid_reading_scope_is_refused",
+          "test_word_scan_is_bounded_and_cancellable_even_inside_one_long_token",
+          "test_protocol_deduplicates_requests_but_retains_each_exact_issue_range",
+          "test_unbound_or_malformed_worker_result_cannot_be_used",
+          "test_changed_unavailable_crashed_or_warning_runtime_fails_closed",
+          "test_too_long_words_are_visible_unchecked_issues_not_silently_accepted",
+          "test_repeated_unknown_words_cannot_overflow_review",
+          "test_actual_child_refuses_changed_dictionary_before_loading_dummy_library",
+          "test_actual_child_refuses_non_library_without_importing_application",
+          "test_parent_removes_owned_staging_after_reaped_worker_failure",
+          "test_correction_is_explicit_one_undoable_edit_with_original_source_retained",
+          "test_stale_or_tampered_correction_preserves_reading_document",
+          "test_library_selection_is_required_before_native_work",
+          "test_invalid_native_budget_is_refused_before_staging",
+          "test_shared_broker_admits_hashes_native_files_request_and_result_once",
+          "test_changed_same_path_library_after_policy_lookup_has_no_new_stage",
+          "test_source_guard_rechecked_before_a_queued_native_request",
+          "test_same_size_dictionary_change_after_native_result_is_not_accepted",
+          "test_duplicate_native_result_fields_are_refused",
+          "test_profile_growth_reads_only_captured_size_plus_one",
+          "test_real_child_cleanup_retains_request_dictionary_and_actual_shared_lease",
+          "test_stage_delete_failure_keeps_cleanup_owner_and_lease_until_confirmed",
+          "test_review_only_hashing_holds_real_cpu_memory_lease_without_a_disk_reservation"
+        ]
+      },
+      "tests/speech/test_spelling_handlers.py": {
+        "count": 20,
+        "functions": [
+          "test_profile_review_does_not_execute_engine_and_corrections_are_explicit",
+          "test_original_selection_scope_survives_issue_navigation",
+          "test_stale_worker_completion_never_offers_correction",
+          "test_profile_edit_during_hash_cannot_authorize_previous_selection",
+          "test_cancel_and_late_close_do_not_access_dead_widgets_or_apply_text",
+          "test_stale_apply_does_not_mutate_reading_copy",
+          "test_recovery_warning_does_not_erase_committed_correction_or_undo",
+          "test_undo_after_unrelated_edit_is_refused",
+          "test_profile_changes_invalidate_result_and_worker_rejection_is_recoverable",
+          "test_picker_scope_change_never_adopts_or_reads_stale_path",
+          "test_cancelled_picker_never_reads_path_or_starts_worker",
+          "test_changed_owner_before_queued_hash_never_reads_a_selected_file",
+          "test_hash_and_check_use_the_same_existing_serial_worker_with_only_ui_thread_controls"
+        ]
+      },
+      "tests/speech/test_spelling_reader_hook.py": {
+        "count": 9,
+        "functions": [
+          "test_real_reader_spelling_closure_select_apply_undo_and_recovery",
+          "test_spelling_closure_rechecks_authority_before_apply",
+          "test_spelling_closure_reports_committed_edit_when_recovery_is_unavailable",
+          "test_spelling_modal_return_never_refocuses_a_replaced_or_closed_owner"
+        ]
+      },
+      "tests/packaging/test_hunspell_build.py": {
+        "count": 31,
+        "functions": [
+          "test_committed_manifest_binds_exact_official_commit_and_license_set",
+          "test_source_must_match_git_blob_bytes_even_with_preserved_timestamps",
+          "test_manifest_paths_cannot_escape_or_silently_normalize",
+          "test_source_budget_and_notice_are_checked",
+          "test_source_directory_link_is_rejected_without_following_it",
+          "test_sanitized_environment_preserves_common_application_data_roots",
+          "test_build_fixture_retains_only_verified_source_and_separates_native_api_claim",
+          "test_existing_destination_is_never_replaced_or_run",
+          "test_invalid_source_has_no_output_or_compiler_side_effect",
+          "test_changed_sources_or_tool_cannot_publish_success",
+          "test_failed_compiler_keeps_diagnostic_log_without_success_receipt",
+          "test_output_must_be_a_64_bit_dll",
+          "test_msbuild_property_injection_is_rejected_before_output",
+          "test_actual_owned_process_is_reaped_and_log_is_retained"
+        ]
+      },
+      "tests/packaging/test_library_scale_benchmark.py": {
+        "count": 24,
+        "functions": [
+          "test_real_imports_source_and_result_cursors_reading_and_cancel_recover",
+          "test_actual_cli_runs_three_owned_processes_and_binds_parent_import",
+          "test_real_cli_budget_stop_is_partial_and_remaining_scale_is_not_run",
+          "test_actual_child_refuses_origin_tamper_before_creating_corpus",
+          "test_configuration_replacement_after_precheck_cannot_change_measured_work"
+        ]
+      },
+      "tests/audio/test_envelopes.py": {
+        "count": 64,
+        "functions": [
+          "test_default_points_use_existing_typed_numeric_wire",
+          "test_invalid_active_and_bypassed_controls_cannot_compile",
+          "test_spatial_point_ranges_are_not_clamped_or_silently_changed",
+          "test_linear_and_hold_reference_values_and_exact_point_boundaries",
+          "test_output_sample_quantization_refuses_collapsed_distinct_times",
+          "test_pan_curve_cannot_silently_override_stereo_route_or_fixed_placement",
+          "test_width_curve_requires_stereo_and_duplicate_owners_are_rejected",
+          "test_actual_linear_gain_is_sample_evaluated_and_preserves_frames",
+          "test_actual_hold_gain_changes_at_sample_point_and_holds_last_value",
+          "test_actual_pan_moves_mono_between_isolated_channels_and_equal_power_centre",
+          "test_actual_stereo_width_keeps_mid_side_math_and_duration",
+          "test_actual_curve_bypass_keeps_pcm_and_cancellation_never_publishes",
+          "test_actual_loudnorm_then_curve_reestablishes_declared_sample_clock",
+          "test_actual_convert_refuses_unreviewed_spatial_downmix",
+          "test_actual_explicit_mono_to_stereo_convert_retains_pan_curve",
+          "test_actual_convert_rejects_duplicate_curve_owners_before_publication"
+        ]
+      },
+      "tests/studio/test_envelope_workflow.py": {
+        "count": 17,
+        "functions": [
+          "test_existing_schema_three_carries_exact_ordered_numeric_curves",
+          "test_empty_curve_extension_does_not_change_legacy_project_or_role_wire",
+          "test_invalid_curve_placement_is_rejected_on_deserialization",
+          "test_timeline_receipt_cannot_relabel_saved_curve_points",
+          "test_curve_save_uses_existing_revision_cas_and_retains_previous_bytes",
+          "test_passive_backup_restores_curve_bytes_without_codec_or_output_authority",
+          "test_actual_render_reuses_completed_scene_nodes_and_exports_exact_curve_receipt"
+        ]
+      },
+      "tests/studio/test_clip_operations.py": {
+        "count": 59,
+        "functions": [
+          "test_split_retains_original_identity_bytes_and_exact_scene_grid",
+          "test_split_invalid_boundary_cannot_create_a_piece",
+          "test_split_inside_existing_fade_is_refused_without_reshaping_it",
+          "test_completed_outer_fades_survive_split_and_rejoin",
+          "test_curve_shift_matches_independent_piecewise_function_at_every_sample",
+          "test_pan_curve_split_rejoins_without_resetting_original_motion",
+          "test_eight_point_shift_stays_in_existing_wire_bound_and_bypass_is_unchanged",
+          "test_stateful_clip_processing_requires_explicit_render_before_edit",
+          "test_cut_leaves_original_scene_time_and_source_ranges",
+          "test_invalid_cut_is_refused",
+          "test_join_cannot_discard_different_content_routing_or_internal_fade",
+          "test_join_keeps_external_fades_and_refuses_changed_bypassed_controls",
+          "test_invalid_inspected_geometry_or_new_identity_is_refused",
+          "test_split_and_prefix_cut_use_one_captured_integer_scene_origin",
+          "test_unaligned_source_selection_requires_explicit_conversion",
+          "test_fractional_scene_end_that_changes_rounding_is_explicitly_refused"
+        ]
+      },
+      "tests/studio/test_project_history.py": {
+        "count": 29,
+        "functions": [
+          "test_history_and_whole_project_restore_need_no_audio_or_voice_runtime",
+          "test_history_cursor_covers_all_revisions_once_with_bounded_pages",
+          "test_changed_history_payload_is_never_published_under_old_identity",
+          "test_same_revision_replacement_cannot_race_restore_compare_and_swap",
+          "test_stale_project_cannot_browse_or_restore_without_reload",
+          "test_pre_cancel_never_reads_history_or_creates_revision",
+          "test_history_hardlink_is_refused_without_reading_or_replacing_its_target",
+          "test_history_ambiguous_revisions_are_visible_failure",
+          "test_revision_references_cannot_be_paths_or_unbounded_numbers",
+          "test_current_or_missing_revision_is_never_synthesized_as_history",
+          "test_actual_split_rejoin_cut_and_history_restore_preserve_pcm_and_original",
+          "test_pre_cancel_clip_edit_never_opens_runtime",
+          "test_actual_half_sample_scene_start_splits_without_a_one_sample_hole",
+          "test_actual_different_source_rate_requires_reviewed_conversion",
+          "test_actual_unaligned_source_selection_is_never_silently_shifted"
+        ]
+      },
+      "tests/studio/test_clip_history_dialog.py": {
+        "count": 22,
+        "functions": [
+          "test_split_binds_saved_project_scene_clip_and_time_before_queue",
+          "test_cut_binds_both_reviewed_positions_before_queue",
+          "test_invalid_cut_entry_starts_no_worker",
+          "test_cancelled_native_picker_never_starts_an_edit",
+          "test_join_queues_exact_selected_following_section",
+          "test_changed_library_while_queued_prevents_clip_mutation",
+          "test_session_history_tracks_successful_whole_project_edits_and_redo_branch",
+          "test_history_is_cleared_when_switching_project_identity",
+          "test_undo_redo_uses_exact_saved_reference_and_only_pops_after_success",
+          "test_failed_restore_keeps_session_history_available",
+          "test_cancelled_queued_restore_preserves_history_and_saved_project",
+          "test_committed_restore_is_shown_after_late_cancel_but_not_in_another_library",
+          "test_history_pagination_queues_existing_store_cursor_without_loading_all_content",
+          "test_history_modal_scope_change_never_restores_into_new_library"
+        ]
+      },
+      "tests/assistant/test_translation_layout.py": {
+        "count": 33,
+        "functions": [
+          "test_actual_worker_maps_only_exact_retained_paragraphs_and_simple_cells",
+          "test_review_requires_no_provider_request_and_binds_visible_layout_limitations",
+          "test_actual_completed_docx_preserves_tables_styles_relationships_and_unselected_parts",
+          "test_unsupported_source_shapes_are_refused_by_unchanged_canonical_admission",
+          "test_mixed_hyperlink_fails_real_capture_before_jobs_or_translation",
+          "test_actual_document_with_more_than2048_nonempty_units_is_refused_before_job_creation",
+          "test_changed_same_size_worker_request_is_refused_by_its_actual_decoded_snapshot",
+          "test_foreign_worker_origin_is_rejected_before_source_parsing",
+          "test_mutated_mapping_cannot_authorize_another_body_or_layout",
+          "test_actual_partial_jobs_must_finish_before_format_publication_and_resume_without_duplicates",
+          "test_changed_profile_cannot_resume_prepared_formatted_requests",
+          "test_final_protected_publication_keeps_source_destination_and_no_clobber_authority",
+          "test_late_cancel_after_actual_publisher_return_preserves_completed_receipt",
+          "test_same_path_library_replacement_revokes_captured_layout_before_worker",
+          "test_actual_child_cancellation_reaps_worker_before_lease_and_staging_release",
+          "test_actual_full_restore_exports_completed_layout_offline_after_deleting_original_and_prior_root",
+          "test_explicit_saved_job_selection_orders_only_the_chosen_source_positions",
+          "test_explicit_saved_job_selection_cannot_substitute_foreign_or_incomplete_approval",
+          "test_export_rejects_forged_layout_even_when_source_paragraph_jobs_are_authentic"
+        ]
+      },
+      "tests/ui/test_translation_layout.py": {
+        "count": 23,
+        "functions": [
+          "test_committed_export_receipt_survives_late_stop_for_the_same_open_view",
+          "test_committed_receipt_never_updates_a_closed_or_different_library_view",
+          "test_late_stop_does_not_promote_an_uncommitted_or_malformed_result",
+          "test_committed_delivery_mode_requires_explicit_boolean_before_scheduling",
+          "test_native_workstation_default_no_then_explicit_jobs_run_and_new_docx_export",
+          "test_actual_formatted_view_does_not_read_or_update_after_queued_scope_change",
+          "test_actual_formatted_picker_rechecks_same_path_library_replacement_before_queue",
+          "test_existing_document_workstation_reaches_the_formatted_route_without_provider_calls",
+          "test_larger_docx_chooser_reuses_one_exact_saved_partition_job"
+        ]
+      },
+      "tests/assistant/test_translation_layout_cli.py": {
+        "count": 5,
+        "functions": [
+          "test_actual_cli_previews_then_saves_only_explicit_unchanged_layout_jobs",
+          "test_actual_cli_rejects_changed_review_or_remote_consent_for_local_profile",
+          "test_actual_cli_complete_jobs_export_offline_and_refuse_existing_file",
+          "test_actual_cli_unfinished_jobs_require_the_original_current_profile"
+        ]
+      },
+      "tests/assistant/test_translation_partition.py": {
+        "count": 26,
+        "functions": [
+          "test_partition_rejects_ambiguous_or_incomplete_coverage",
+          "test_partition_preserves_exact_source_and_whitespace_without_transfer_chunks",
+          "test_partition_cannot_attach_to_pasted_text_or_competing_paragraph_policy",
+          "test_absent_partition_keeps_original_source_job_uuid_and_chunks",
+          "test_larger_docx_uses_one_job_with_exact_paragraph_and_separator_receipts",
+          "test_partition_pause_resumes_only_unaccepted_requests",
+          "test_changed_partition_is_refused_before_request_and_before_output",
+          "test_partition_checks_actual_root_again_before_next_transfer",
+          "test_full_backup_restores_partition_job_for_offline_layout_export",
+          "test_ordinary_review_hash_does_not_authorize_changed_layout_partitions",
+          "test_generic_pasted_job_cannot_acquire_a_source_partition",
+          "test_prepare_captures_partition_before_guard_can_mutate_callers_mapping"
+        ]
+      },
+      "tests/ui/test_save_all.py": {
+        "count": 24,
+        "functions": [
+          "test_coordinator_follows_native_parent_links_and_rejects_a_cycle",
+          "test_many_clean_documents_do_not_exhaust_the_ui_stack",
+          "test_many_synchronous_durable_saves_finish_once_without_recursion",
+          "test_cancel_check_failure_releases_busy_and_retains_drafts",
+          "test_async_completion_waits_for_durable_result_and_preserves_newer_edit",
+          "test_failure_does_not_skip_other_drafts_or_claim_all_saved",
+          "test_newly_opened_dirty_document_prevents_false_complete",
+          "test_cancellation_after_one_completed_draft_reports_remaining",
+          "test_unregister_is_lease_scoped_and_replacement_is_not_lost",
+          "test_truthy_return_is_not_a_completed_save",
+          "test_late_cancel_after_final_durable_save_is_complete",
+          "test_late_cancel_with_clean_tail_is_complete",
+          "test_cancel_before_saving_clean_drafts_does_not_invent_unsaved_changes",
+          "test_cancel_with_newer_edits_still_reports_unsaved_changes",
+          "test_cancel_after_failed_save_not_misreported_as_complete",
+          "test_failed_old_save_does_not_hide_replacement_draft",
+          "test_failed_old_save_does_not_focus_clean_replacement",
+          "test_queued_replacement_is_reported_separately_and_never_saved_under_old_registration",
+          "test_focus_rechecks_registration_after_completion_notification",
+          "test_live_failed_registration_retains_its_own_focus",
+          "test_focus_chooses_first_usable_live_failed_draft",
+          "test_focus_skips_replaced_registration_and_unavailable_target"
+        ]
+      },
+      "tests/academic_integration/test_word_records.py": {
+        "count": 50,
+        "functions": [
+          "test_metadata_xml_roundtrip_is_inert_and_preserves_complete_current_wire",
+          "test_strict_json_refuses_ambiguous_or_unencodable_records",
+          "test_strict_json_rejects_surrogates_in_keys_and_nested_values",
+          "test_unicode_record_preserves_canonical_bytes_and_valid_non_bmp_text",
+          "test_changed_or_forged_capture_refuses_before_any_operation",
+          "test_existing_word_editing_policy_is_never_modified_or_bypassed",
+          "test_insertion_requires_a_collapsed_main_story_outside_foreign_objects",
+          "test_replacing_managed_text_never_discards_nested_foreign_fields_or_controls",
+          "test_whole_proposal_binding_is_required",
+          "test_completed_receipt_cannot_self_assert_a_different_commit",
+          "test_completed_binding_requires_exact_text_identity_inventory_and_metadata",
+          "test_approval_is_exact_single_explicit_and_revocable",
+          "test_typography_preserves_unicode_underline_superscript_and_literal_text",
+          "test_duplicate_reference_items_preserve_their_distinct_verified_locators",
+          "test_actual_canonical_processor_builds_complete_source_bound_proposal",
+          "test_actual_regeneration_retains_stable_ids_and_updates_the_entire_sequence",
+          "test_real_bibliography_only_preview_includes_all_selected_records_without_invented_citations"
+        ]
+      },
+      "tests/academic_integration/test_word_bridge.py": {
+        "count": 20,
+        "functions": [
+          "test_real_child_inspection_does_not_offer_approval_or_write",
+          "test_real_child_receipt_and_csl_win_over_late_close_error",
+          "test_no_approval_stops_before_any_native_mutation",
+          "test_changed_source_after_preview_is_rejected_before_grant",
+          "test_word_changed_during_preview_cannot_use_earlier_document_approval",
+          "test_interruption_after_grant_is_uncertain_never_retryable_success",
+          "test_source_change_or_cancellation_after_completed_receipt_cannot_relabel_success",
+          "test_preview_observer_failure_prevents_approval_and_preserves_native_document",
+          "test_stale_owner_is_refused_before_launch_or_admission",
+          "test_visible_grant_sync_failure_is_uncertain_even_if_begun_marker_is_missing",
+          "test_postcommit_lease_release_notice_preserves_verified_outcome",
+          "test_pending_real_child_retains_staging_and_native_resource_lease_until_death",
+          "test_pending_stage_cleanup_remains_owned_after_a_confirmed_result",
+          "test_deferred_interruption_after_native_quiescence_cannot_delete_a_complete_receipt"
+        ]
+      },
+      "tests/academic_integration/test_word_worker.py": {
+        "count": 17,
+        "functions": [
+          "test_actual_protocol_waits_for_each_explicit_approval_boundary",
+          "test_changed_immutable_protocol_authority_refuses_before_first_mutation",
+          "test_expired_preview_cannot_be_applied_or_replayed",
+          "test_slow_native_first_write_cannot_use_an_expired_source_grant",
+          "test_fixed_request_has_no_arbitrary_program_or_document_operations",
+          "test_actual_worker_keeps_completed_record_when_adapter_close_fails",
+          "test_production_native_method_never_ends_a_foreign_undo_record_or_changes_revision_policy",
+          "test_first_write_authority_is_checked_immediately_before_content_control_add",
+          "test_native_capture_refuses_aggregate_repeated_text_before_reading_remaining_controls",
+          "test_outside_proof_uses_native_offsets_when_display_text_has_different_length"
+        ]
+      },
+      "tests/ui/test_word_citations.py": {
+        "count": 17,
+        "functions": [
+          "test_opening_and_closing_do_not_attach_or_mutate_word_or_shutdown_borrowed_worker",
+          "test_real_borrowed_worker_inspection_exposes_stable_ids_and_inert_references",
+          "test_preview_never_applies_without_default_no_confirmation",
+          "test_explicit_yes_keeps_exact_preview_and_actual_completion_visible",
+          "test_confirmation_return_rechecks_exact_owner_directory_and_preview",
+          "test_stop_after_approval_does_not_erase_a_verified_late_completion",
+          "test_busy_close_requests_stop_and_waits_for_outcome_before_native_destruction",
+          "test_destroyed_dialog_ignores_all_queued_callbacks_and_retains_worker_cleanup",
+          "test_queued_work_rechecks_original_scope_before_attaching",
+          "test_invalid_selection_is_refused_without_attaching_or_mutating",
+          "test_csl_workbench_hook_borrows_same_worker_and_preserves_exact_host_scope"
+        ]
+      },
+      "tests/assistant/test_google_oauth.py": {
+        "count": 49,
+        "functions": [
+          "test_actual_gateway_refresh_is_fixed_authority_and_contains_no_document",
+          "test_local_only_or_invalid_mode_opens_no_vault_or_token_connection",
+          "test_invalid_approval_or_unknown_budget_never_refreshes",
+          "test_cancel_after_vault_before_refresh_retains_not_sent",
+          "test_cancel_during_refresh_cannot_send_document_or_cache_token",
+          "test_approval_expiring_during_refresh_stops_before_document",
+          "test_same_total_deadline_covers_token_response",
+          "test_cache_requires_fresh_vault_and_renews_before_monotonic_expiry",
+          "test_changed_or_removed_vault_credential_cannot_reuse_cached_access",
+          "test_endpoint_mismatch_refuses_even_with_fresh_cached_access",
+          "test_refresh_http_failures_are_redacted_not_sent_and_not_retried",
+          "test_malformed_token_metadata_never_authorizes_translation",
+          "test_token_stream_bounds_and_duplicate_fields_are_enforced",
+          "test_sent_translation_failure_remains_uncertain_without_refresh_or_paid_retry",
+          "test_legacy_manual_access_token_remains_unrenewed",
+          "test_configuration_and_export_are_local_and_preserve_existing_profile",
+          "test_stale_profile_cannot_replace_refresh_grant",
+          "test_new_reference_is_rolled_back_when_profile_save_fails",
+          "test_explicit_refresh_configuration_rejects_unreviewed_shapes",
+          "test_absent_client_secret_is_not_sent_as_an_empty_parameter",
+          "test_actual_job_resumes_after_refresh_failure_without_rebilling_completed_prefix"
+        ]
+      },
+      "tests/ui/test_google_oauth.py": {
+        "count": 15,
+        "functions": [
+          "test_explicit_default_no_confirmation_saves_only_selected_windows_vault_record",
+          "test_no_or_cancel_at_confirmation_never_writes_credential",
+          "test_cancelled_form_does_not_read_secret_fields_or_ask_confirmation",
+          "test_invalid_grant_is_rejected_before_confirmation",
+          "test_changed_modal_authority_cannot_save_any_secret",
+          "test_same_path_replaced_library_with_identical_profile_never_writes_global_vault",
+          "test_wrong_adapter_is_rejected_before_dialog_or_secret_read",
+          "test_review_captures_exact_fields_before_confirmation"
+        ]
+      },
+      "tests/assistant/test_translation_epub_layout.py": {
+        "count": 31,
+        "functions": [
+          "test_mapping_uses_exact_canonical_spine_text_and_complete_nonoverlapping_xhtml_ranges",
+          "test_actual_capture_and_review_retain_whole_chapter_authority_without_provider_calls",
+          "test_actual_translated_epub_keeps_dom_links_styles_media_and_original_source",
+          "test_unsupported_epub_layouts_fail_before_any_translation_admission",
+          "test_actual_package_active_uri_or_refresh_is_refused_before_transfer",
+          "test_ordinary_package_and_https_links_remain_exact_without_fetching",
+          "test_preserved_image_only_figure_does_not_create_a_translation_request",
+          "test_literal_translated_markup_is_escaped_and_never_becomes_an_xhtml_element",
+          "test_rendered_whitespace_hash_is_explicit_and_accepted_provider_receipt_stays_unchanged",
+          "test_unreceipted_same_byte_competitor_remains_a_conflict",
+          "test_forged_dom_mapping_does_not_reuse_other_approved_receipts",
+          "test_changed_actual_worker_snapshot_is_refused_before_parsing",
+          "test_pause_keeps_accepted_blocks_and_resume_never_repeats_them",
+          "test_actual_backup_restore_exports_completed_epub_without_credentials_or_old_paths",
+          "test_seventy_source_chapters_keep_one_existing_job_without_raising_job_lock_limit",
+          "test_late_stop_after_actual_epub_publication_retains_completed_receipt"
+        ]
+      },
+      "tests/ui/test_translation_epub_layout.py": {
+        "count": 6,
+        "functions": [
+          "test_epub_workstation_uses_one_reviewed_job_and_preserves_default_no_offline_export",
+          "test_epub_branch_revokes_queued_source_work_and_late_ui_after_scope_change",
+          "test_current_document_workstation_has_separate_explicit_epub_route",
+          "test_unknown_format_cannot_schedule_an_alternate_parser_or_source"
+        ]
+      },
+      "tests/assistant/test_translation_epub_cli.py": {
+        "count": 5,
+        "functions": [
+          "test_actual_cli_previews_then_saves_only_explicit_unchanged_layout_jobs",
+          "test_actual_cli_rejects_changed_review_or_remote_consent_for_local_profile",
+          "test_actual_cli_complete_jobs_export_offline_and_refuse_existing_file",
+          "test_actual_cli_unfinished_jobs_require_the_original_current_profile"
+        ]
+      },
+      "tests/catalog/test_streaming_intake.py": {
+        "count": 16,
+        "functions": [
+          "test_large_txt_manifest_and_exact_segments_use_bounded_python_buffers",
+          "test_real_pdf_exactly_at_profile_limit_is_screened_without_materializing_it",
+          "test_small_snapshot_keeps_immutable_bytes_and_original_identity",
+          "test_streamed_utf8_crosses_block_boundary_without_newline_or_bom_rewriting",
+          "test_cancel_during_streamed_hash_never_returns_an_admitted_manifest",
+          "test_source_changed_after_genuine_final_hash_is_rejected",
+          "test_saved_file_identity_rejects_same_bytes_path_replacement",
+          "test_streamed_retention_cancellation_cleans_only_its_private_stage",
+          "test_no_replace_retention_and_late_external_drift_remain_explicit",
+          "test_profile_does_not_raise_other_format_or_absolute_maximum",
+          "test_large_txt_requires_original_bounded_logical_segments",
+          "test_held_source_allows_another_reader_and_keeps_its_exact_identity",
+          "test_held_source_excludes_windows_writes_or_rejects_portable_drift",
+          "test_open_writer_is_never_admitted_as_a_stable_windows_source",
+          "test_held_source_cleanup_preserves_the_original_cancellation"
+        ]
+      },
+      "tests/studio/test_book_batch.py": {
+        "count": 29,
+        "functions": [
+          "test_batch_preview_prepare_and_reopen_reuse_existing_jobs_without_speech",
+          "test_actual_two_book_render_and_reopened_resume_verify_original_outputs",
+          "test_changed_review_cannot_reuse_preparation_approval",
+          "test_scope_duplicate_and_missing_plan_bindings_are_rejected",
+          "test_source_change_in_later_book_keeps_first_outputs_and_stops_before_second",
+          "test_active_control_stops_current_item_and_never_starts_later_books",
+          "test_pause_between_books_retains_verified_first_book_and_resume_does_not_duplicate",
+          "test_old_invocation_signal_cannot_stop_a_new_explicit_run",
+          "test_observer_failure_does_not_relabel_or_repeat_completed_books",
+          "test_backup_restore_preserves_order_and_requires_new_explicit_destination_review",
+          "test_passive_backup_refuses_unbound_batch_membership",
+          "test_plan_save_then_prepare_uses_one_lock_at_a_time",
+          "test_stop_between_books_does_not_signal_a_foreign_locked_job",
+          "test_failure_in_second_part_preserves_actual_first_part_receipt_and_resume",
+          "test_postcommit_control_cleanup_failure_retains_results_and_does_not_repeat_audio",
+          "test_primary_failure_is_not_masked_by_control_cleanup_failure",
+          "test_selection_postcommit_sync_warning_requires_real_confirmation_before_jobs",
+          "test_competing_same_bytes_selection_is_not_adopted_as_our_commit",
+          "test_same_path_library_replacement_invalidates_existing_batch_service_before_writes",
+          "test_saved_batch_inventory_never_silently_omits_unreadable_directory",
+          "test_active_invocation_tamper_after_real_pcm_refuses_publication_and_later_books"
+        ]
+      },
+      "tests/studio/test_book_cli.py": {
+        "count": 18,
+        "functions": [
+          "test_request_freezes_explicit_voice_settings_and_request_changes_do_not_mutate_review",
+          "test_invalid_or_unavailable_request_never_prepares_or_speaks",
+          "test_output_mapping_is_complete_unique_and_follows_saved_order",
+          "test_actual_cli_preview_prepare_run_status_and_verified_resume",
+          "test_actual_cli_rechecks_source_before_preparation",
+          "test_actual_book_help_creates_no_library",
+          "test_actual_cli_restore_prepares_new_outputs_without_old_external_review",
+          "test_cli_review_source_change_inside_real_export_fsync_preserves_destination",
+          "test_cli_json_stdout_is_safe_for_a_real_cp1252_stream",
+          "test_cli_close_failure_keeps_returned_result_and_strong_owner_until_explicit_retry",
+          "test_review_reader_rejects_bytes_beyond_the_writer_budget_before_parsing"
+        ]
+      },
+      "tests/studio/test_clip_copy.py": {
+        "count": 17,
+        "functions": [
+          "test_actual_copy_and_paste_preserve_pcm_original_and_saved_selection",
+          "test_cut_for_paste_retains_exact_old_revision_and_can_restore_or_reuse_it",
+          "test_current_revision_copy_can_be_pasted_without_an_intervening_edit",
+          "test_saved_copy_can_move_between_scenes_without_changing_other_content",
+          "test_forged_clip_reference_is_refused_before_decoder_or_publication",
+          "test_changed_saved_history_cannot_relabel_a_copied_selection",
+          "test_changed_retained_original_is_refused_before_paste_publication",
+          "test_cancel_after_original_verification_still_prevents_paste_commit",
+          "test_paste_compare_and_swap_keeps_a_competing_same_revision_edit",
+          "test_pre_cancelled_clipboard_operation_opens_no_saved_project",
+          "test_invalid_paste_position_never_opens_media_or_saves"
+        ]
+      },
+      "tests/studio/test_clip_copy_dialog.py": {
+        "count": 10,
+        "functions": [
+          "test_copy_is_queued_and_remembers_only_the_completed_saved_selection",
+          "test_changed_library_before_queued_clipboard_work_prevents_all_mutation",
+          "test_paste_freezes_saved_reference_destination_and_time_before_queue",
+          "test_cancelled_paste_picker_creates_no_job_and_retains_copied_reference",
+          "test_paste_without_a_saved_reference_is_a_visible_noop",
+          "test_committed_cut_keeps_reference_and_completion_after_late_stop",
+          "test_failed_cut_preserves_previous_clipboard_and_history",
+          "test_same_path_directory_replacement_revokes_queued_paste"
+        ]
+      },
+      "tests/extract/test_docx_rich.py": {
+        "count": 55,
+        "functions": [
+          "test_plain_docx_keeps_exact_original_record_warning_and_provenance_wire",
+          "test_actual_notes_have_independent_records_exact_reference_mapping_and_no_page_authority",
+          "test_actual_inline_picture_relationship_header_geometry_and_bytes_are_bound",
+          "test_invalid_note_graph_is_refused_without_shortened_accepted_text",
+          "test_unreviewed_picture_authority_or_content_is_refused",
+          "test_prior_hidden_active_and_omitted_text_guards_cover_new_note_parts",
+          "test_rich_source_refuses_content_hidden_below_preserved_properties",
+          "test_rich_source_preserves_ordinary_tab_stop_properties_without_hidden_text",
+          "test_actual_fixed_bookmark_and_proof_boundaries_partition_and_replay_positions",
+          "test_no_rich_feature_keeps_unselected_separator_only_part_in_legacy_body_profile",
+          "test_note_table_cannot_silently_admit_merged_or_nested_content",
+          "test_rich_canonical_import_never_opens_a_network_or_word_process",
+          "test_note_separator_keeps_ordinary_paragraph_and_run_properties_without_prose"
+        ]
+      },
+      "tests/assistant/test_translation_rich_docx.py": {
+        "count": 17,
+        "functions": [
+          "test_actual_worker_matches_retained_rich_source_and_exact_owned_origin",
+          "test_one_existing_job_covers_full_body_notes_and_separator_text_once",
+          "test_actual_translation_preserves_note_anchors_images_styles_and_exact_provider_receipts",
+          "test_forged_mapping_never_becomes_a_new_approval_or_request",
+          "test_pause_resumes_without_repeating_accepted_rich_fragments",
+          "test_restore_reopens_actual_retained_rich_source_and_exports_complete_jobs_offline",
+          "test_actual_same_byte_competing_output_is_still_a_conflict",
+          "test_literal_translated_note_and_xml_like_text_never_creates_objects",
+          "test_changed_retained_picture_bytes_refuse_source_before_transfer",
+          "test_source_root_replacement_during_format_process_refuses_late_admission",
+          "test_actual_commit_has_no_late_source_or_cancellation_observer",
+          "test_private_output_destination_stays_protected_for_rich_documents",
+          "test_rich_source_inventory_is_searchable_but_never_auto_verified",
+          "test_rich_unit_budget_is_enforced_before_any_translation"
+        ]
+      },
+      "tests/ui/test_translation_rich_docx.py": {
+        "count": 5,
+        "functions": [
+          "test_actual_rich_source_route_reviews_notes_fragments_then_one_job_and_offline_export",
+          "test_rich_view_revokes_queued_capture_and_late_updates_on_host_scope_change",
+          "test_rich_view_restores_saved_partition_only_after_exact_retained_source_is_selected"
+        ]
+      },
+      "tests/assistant/test_translation_rich_docx_cli.py": {
+        "count": 4,
+        "functions": [
+          "test_actual_cli_reviews_rich_source_then_saves_one_explicit_partition_job",
+          "test_actual_cli_refuses_rich_source_without_the_exact_local_review",
+          "test_actual_cli_exports_completed_rich_job_offline_without_overwrite"
+        ]
+      },
+      "tests/extract/test_docx_ordered.py": {
+        "count": 9,
+        "functions": [
+          "test_order_and_exact_text",
+          "test_merged_table",
+          "test_nested_table",
+          "test_revision",
+          "test_custom_xml_body",
+          "test_custom_xml_cell",
+          "test_custom_xml_inline",
+          "test_corrupt",
+          "test_empty"
+        ]
+      },
+      "tests/extract/test_docx_omitted_content.py": {
+        "count": 20,
+        "functions": [
+          "test_omitted_inline_content_requires_explicit_review",
+          "test_alternate_content_is_not_silently_discarded",
+          "test_display_equation_between_body_paragraphs_requires_review",
+          "test_smart_tag_nested_in_hyperlink_requires_review",
+          "test_plain_unicode_hyperlink_and_formatting_remain_supported",
+          "test_soft_hyphen_does_not_silently_join_word_parts",
+          "test_supported_nonbreaking_hyphen_keeps_word_separator",
+          "test_bidirectional_wrappers_do_not_discard_contained_text"
+        ]
+      },
+      "tests/extract/test_docx_hidden_styles.py": {
+        "count": 13,
+        "functions": [
+          "test_hidden_style_rejected",
+          "test_direct_hidden_properties_rejected",
+          "test_plain_unicode_with_nonhidden_style_keeps_preview",
+          "test_alternate_style_hidden_requires_review",
+          "test_external_effects_style_never_followed",
+          "test_ordinary_effects_part_keeps_logical_text"
+        ]
+      },
+      "tests/ingest/test_application_atomic_docx_gate.py": {
+        "count": 1,
+        "functions": [
+          "test_docx_replay_gate_preserves_revision_and_rolls_back_new_membership"
+        ]
+      },
+      "tests/ingest/test_import_replay_identity.py": {
+        "count": 24,
+        "functions": [
+          "test_registration_failure_rolls_back_then_replay_adds_only_membership",
+          "test_replay_conflicting_identity_cannot_leave_catalog_or_membership",
+          "test_replay_after_metadata_edit_preserves_revision_and_validates_current_metadata",
+          "test_replay_rejects_checkpoint_text_that_differs_from_sealed_source",
+          "test_replay_rechecks_active_revision_before_registering",
+          "test_cancelled_replay_does_not_add_membership",
+          "test_pre_cancelled_replay_returns_cancelled_without_intake_or_registration_effects",
+          "test_fresh_post_commit_cancellation_returns_committed_source"
+        ]
+      },
+      "tests/ingest/test_terminal_replay_registration.py": {
+        "count": 10,
+        "functions": [
+          "test_terminal_replay_registration_is_invisible_until_accepted",
+          "test_superseded_replay_uses_current_metadata_without_reactivating_old_source",
+          "test_cancelled_completed_replay_does_not_add_memberships",
+          "test_replay_rejects_rehashed_checkpoint_text_before_registration",
+          "test_forged_terminal_journal_without_published_source_does_not_register"
+        ]
+      },
+      "tests/ingest/test_txt_replay_registration.py": {
+        "count": 7,
+        "functions": [
+          "test_txt_replay_registration_is_atomic",
+          "test_txt_replay_rejects_conflicting_identity",
+          "test_cancelled_completed_replay_never_adds_membership",
+          "test_cancellation_during_completed_replay_validation_rolls_back_membership",
+          "test_superseded_replay_requires_current_metadata_without_reactivation",
+          "test_cancelled_completed_replay_preserves_membership",
+          "test_pdf_completed_replay_registers_exact_source_without_approving_it"
+        ]
+      },
+      "tests/ingest/test_import_publication_point.py": {
+        "count": 2,
+        "functions": [
+          "test_cancel_after_committed_publication_returns_complete_and_keeps_replay_guard"
+        ]
+      },
+      "tests/ui/test_native_recording_driver.py": {
+        "count": 10,
+        "functions": [
+          "test_retired_modal_callbacks_cannot_enter_the_next_native_phase",
+          "test_reset_attempts_every_timer_and_retains_a_failed_stop_for_retry",
+          "test_callback_failure_is_reported_inside_the_timer_callback",
+          "test_same_title_closing_window_is_not_the_current_modal",
+          "test_retired_or_missing_native_handle_never_receives_input",
+          "test_ambiguous_owned_modals_are_refused_before_any_input",
+          "test_a_new_window_may_reuse_a_handle_after_observed_retirement",
+          "test_actual_cleanup_drains_owned_worker_before_restoring_fixtures_or_dll"
+        ]
+      },
+      "tests/storage/test_scoped_locator_capacity.py": {
+        "count": 4,
+        "functions": [
+          "test_scoped_locator_validation_does_not_scan_unrelated_books",
+          "test_scoped_publication_keeps_original_locator_refusals_and_rolls_back"
+        ]
+      },
+      "tests/storage/test_locator_integrity.py": {
+        "count": 8,
+        "functions": [
+          "test_invalid_revision_rolls_back",
+          "test_history_and_backup",
+          "test_bad_historical_locator_refuses_backup"
+        ]
+      },
+      "tests/storage/test_printed_label_integrity.py": {
+        "count": 37,
+        "functions": [
+          "test_malformed_label_rejected_before_publication",
+          "test_unknown_and_valid_candidate_labels_survive_backup",
+          "test_corrupt_historical_label_refuses_backup",
+          "test_uncoerced_locator_rejected_inside_caller_transaction"
+        ]
+      },
+      "tests/ingest/test_checked_catalog_commit.py": {
+        "count": 10,
+        "functions": [
+          "test_fresh_catalog_commit_audits_once_and_cold_open_rechecks_everything",
+          "test_generic_ingest_storage_keeps_its_separate_full_check",
+          "test_real_attempt_receipt_is_inside_rejectable_audit_and_retry_reuses_checkpoints",
+          "test_receipt_callback_damage_is_rejected_before_any_publication",
+          "test_late_cancel_keeps_checked_commit_and_its_exact_attempt_receipt",
+          "test_terminal_replay_still_runs_full_checks_without_a_new_publication"
+        ]
+      },
+      "tests/search/test_search_query_work.py": {
+        "count": 17,
+        "functions": [
+          "test_catalog_keys_do_not_revisit_twenty_thousand_preceding_editions",
+          "test_window_work_is_independent_of_twenty_thousand_later_pages",
+          "test_window_wire_matches_old_order_and_identity_across_unicode_and_filters",
+          "test_exact_hundred_page_boundary_does_not_skip_or_invent_continuation",
+          "test_character_boundary_preserves_exact_cursor_and_window_digest",
+          "test_empty_catalog_window_still_advances_to_later_active_source",
+          "test_keyed_continuation_still_rejects_stale_or_forged_page",
+          "test_foreign_active_pointer_is_refused_instead_of_reinterpreted",
+          "test_cancel_during_keyed_page_iteration_closes_cursor_and_keeps_snapshot"
+        ]
+      },
+      "tests/operations/test_broker_scope.py": {
+        "count": 20,
+        "functions": [
+          "test_stale_broker_refuses_replacement_before_any_new_coordination",
+          "test_live_release_closes_only_owned_descriptor_and_preserves_replacement",
+          "test_scope_changed_by_gate_callback_cannot_create_a_new_coordinator",
+          "test_scope_change_after_lease_publication_releases_before_unstarted_work",
+          "test_pending_cleanup_retains_native_lease_after_scope_revocation_until_quiescent"
+        ]
+      }
+    },
+    "expected_static_cases": 1014,
+    "count_status": "STATIC_EXPECTED_NOT_COLLECTED; complete gate inventories below include additional existing whole suites whose counts are measured by strict collection and JUnit.",
+    "companions": [
+      "tests/speech/spelling_fixtures.py",
+      "tests/ui/test_find_replace_hooks.py",
+      "scripts/build_hunspell_msvc.py",
+      "scripts/hunspell-1.7.2-source.json",
+      "scripts/benchmark_library_scale.py",
+      "scripts/benchmark_semantic_cache.py",
+      "tests/assistant/test_translation_local.py",
+      "tests/assistant/test_translation_layout.py",
+      "tests/ui/test_translation_documents.py",
+      "tests/academic_integration/word_fixtures.py",
+      "tests/ui/test_translation_layout.py",
+      "scripts/translation_layout_fixtures.py",
+      "tests/studio/test_book_audio.py",
+      "tests/studio/test_book_batch.py",
+      "tests/ui/test_book_audio_dialog.py",
+      "tests/storage/test_backup_book_audio.py",
+      "scripts/windows_reading_presentation_smoke.py",
+      "tests/ingest/large_source_fixtures.py",
+      "tests/ui/test_desktop_integration.py",
+      "tests/transcription/fixture_runtime.py",
+      "tests/studio/test_project_history.py",
+      "tests/studio/test_clip_history_dialog.py",
+      "scripts/translation_rich_docx_fixtures.py",
+      "tests/assistant/test_translation_layout_cli.py",
+      "scripts/windows_recording_smoke.py",
+      "tests/ingest/test_application_atomic_gate.py",
+      "tests/ingest/test_pipeline.py",
+      "tests/storage/test_schema_boundary.py",
+      "tests/storage/test_revisions.py",
+      "tests/storage/test_read_boundary.py",
+      "tests/catalog/test_read_views.py",
+      "tests/catalog/test_read_views_v2_integration.py",
+      "tests/search/test_literal_integrity.py",
+      "tests/search/test_literal_readonly.py",
+      "tests/search/test_literal_v2_composition.py",
+      "tests/e2e/test_retained_source_search_integrity.py",
+      "tests/e2e/test_epub_import.py",
+      "tests/ingest/test_initial_publication_completion.py",
+      "tests/ingest/test_worker_publication_boundary.py"
+    ],
+    "origins": [
+      "carr_library.speech.spelling",
+      "carr_library.speech.spelling_worker",
+      "carr_library.speech.reading",
+      "carr_library.speech._io",
+      "carr_library.ui.spelling_dialog",
+      "carr_library.ui.pronunciation_dialog",
+      "carr_library.audio.models",
+      "carr_library.audio.process",
+      "carr_library.audio.cleanup",
+      "carr_library.operations.broker",
+      "carr_library.operations.models",
+      "carr_library.durable_state",
+      "carr_library.speech.source",
+      "carr_library.speech.session",
+      "carr_library.ui.speech_dialog",
+      "carr_library.ui.reading_shortcuts",
+      "carr_library.ui.builtin_keyboard_commands",
+      "carr_library.ui.desktop_app",
+      "carr_library.ui.worker_lifetime",
+      "carr_library.ui.worker_cleanup",
+      "carr_library.audio.windows_job",
+      "carr_library.native_runtime",
+      "carr_library.application",
+      "carr_library.search.paging",
+      "carr_library.reader.reading_desk",
+      "carr_library.catalog.read_views",
+      "carr_library.storage.revisions",
+      "carr_library.audio.envelopes",
+      "carr_library.studio.clip_operations",
+      "carr_library.studio.project_history",
+      "carr_library.assistant.translation_layout",
+      "carr_library.assistant.translation_layout_worker",
+      "carr_library.assistant.translation_documents",
+      "carr_library.assistant.translation",
+      "carr_library.assistant.providers",
+      "carr_library.assistant.profiles",
+      "carr_library.ui.translation_documents",
+      "carr_library.ui.translation_layout",
+      "carr_library.research.export_file",
+      "carr_library.progress",
+      "carr_library.assistant.translation_partition",
+      "carr_library.ui.save_all",
+      "carr_library.academic_integration.word_bridge",
+      "carr_library.academic_integration.word_worker",
+      "carr_library.academic_integration.word_native",
+      "carr_library.academic_integration.word_records",
+      "carr_library.academic_integration.formatting",
+      "carr_library.citations.bibliography_workbench",
+      "carr_library.citations.csl",
+      "carr_library.ui.word_citations_dialog",
+      "carr_library.ui.citation_styles_dialog",
+      "carr_library.ui.academic_library_dialog",
+      "carr_library.assistant.google_oauth",
+      "carr_library.ui.google_oauth",
+      "carr_library.ui.assistant_dialog",
+      "carr_library.assistant.translation_epub_layout",
+      "carr_library.assistant.translation_epub_layout_worker",
+      "carr_library.extract.epub_ordered",
+      "carr_library.assistant.translation_docx_rich",
+      "carr_library.extract.docx_rich",
+      "carr_library.extract.docx_ordered",
+      "carr_library.search.literal",
+      "carr_library.ingest.pipeline",
+      "carr_library.ingest.worker",
+      "carr_library.ingest.publication",
+      "carr_library.operations._locks",
+      "carr_library.catalog.membership"
+    ],
+    "tracked_whole_module_count": 48
+  },
+  "counts": {
+    "main_source": 437,
+    "main_fast_source": 119,
+    "main_installed_contents": 281,
+    "main_installed_completion": 141,
+    "v3_installed_publication": 137,
+    "v3_installed_completion": 108,
+    "v3_installed_recovery": 75,
+    "guide_count": 52,
+    "v3_publication_source_command_whole_paths": 158
+  },
+  "preserved": {
+    "all_existing_test_paths": true,
+    "all_existing_required_case_names": true,
+    "existing_step_order": true,
+    "old_count_contracts_unchanged": "All except reviewed additions: narration79, Word50, BookBatch29/CLI18, intake16, replay24; source manifests bind every changed count.",
+    "strict_failure_skip_xfail_rules": true,
+    "asr_workflow": "0a318607b4fe4f96082b51a02a8cfc1c8c8383e4",
+    "core_15_51_optional56_and_source_bound_pe": true,
+    "transferable_no_audio": true,
+    "retained_same_source_tested_wheel_rules": true,
+    "required_name_migration": {
+      "old": "test_actual_document_with_more_than64_nonempty_units_is_refused_before_job_creation",
+      "new": "test_actual_document_with_more_than2048_nonempty_units_is_refused_before_job_creation",
+      "reason": "Explicit reviewed partition feature supports up to2048 units; the new finite upper-bound negative is required, with no unnamed waiver."
+    },
+    "inner_timeouts": true,
+    "outer_timeouts": "Only parent-authorized finite orchestration envelopes changed; see orchestration_envelopes."
+  },
+  "hunspell": {
+    "acquisition": {
+      "official_commit": "2969be996acad84b91ab3875b1816636fe61a40e",
+      "source_manifest_sha256": "f5ea8a9afae905cd1d2dd56415b320fd0949d85e28151eb8ddb63d19d128aefc",
+      "source_files": 38,
+      "source_bytes": 3332658,
+      "notice_files": 5,
+      "source": "Fixed official raw source URLs; exact size and Git blob identity before write",
+      "tools": "Explicit installed VS2022/v143/x64 Windows10 SDK; build helper verifies tool identities before and after",
+      "order": "Acquisition and build occur before source-probe firewall; no application download"
+    },
+    "source": {
+      "headless_checks": 28,
+      "origins": 12,
+      "source_path_exact": true,
+      "own_firewall": "Selected/base/pythonw outbound blocks with all three enabled profiles, exact readback and owned cleanup; previous PYTHONPATH restored",
+      "runtime": "NOT_RUN"
+    },
+    "installed": {
+      "headless_checks": 40,
+      "headless_origins": 12,
+      "native_checks": 29,
+      "native_origins": 20,
+      "owned_children": 4,
+      "arguments": "-I -B -X utf8 plus --require-installed; same explicit DLL/source-root",
+      "firewall": "Existing complete-bundle/V3 publication active offline boundary",
+      "aggregation": "Both new installed phases independently fail into existing required native failure aggregate",
+      "source_binding": "Current committed module bytes plus actual selected installed root, exact head, build receipt, same external DLL",
+      "runtime": "NOT_RUN"
+    },
+    "artifact": "Only public source/notices, build log and reports under own hunspell evidence subdirectory. No DLL/EXE/LIB/PDB/WHL/ZIP in that subdirectory; existing main tested-wheel evidence remains unchanged.",
+    "no_package_or_binary_inventory_changes": true,
+    "manual_nvda": "NOT_RUN",
+    "dictionary_quality": "NOT_RUN",
+    "distribution_clearance": "NOT_GRANTED",
+    "actual_failure_correction": {
+      "manifest": "84d817ea4f83cb0013291afe6085a54b5d0a0170",
+      "source_core_cases": 55,
+      "native_script": "0499b35d3779694104f96da8d3b763f8e21b6bb4",
+      "native_checks": 29,
+      "headless_source_checks": 28,
+      "headless_installed_checks": 40,
+      "source_status": "NOT_RUN",
+      "prior_run": "46034620604",
+      "prior_job": "140626778136",
+      "cause": "Zero-byte hash admission incorrectly included disk_path; native failure cleanup targeted a suspended outer modal. Exact product one-expression fix plus owned active-modal cleanup and concrete regression remain unexecuted."
+    }
+  },
+  "corpus": {
+    "ordinary_gate": "One whole 24-case source/installed suite only. No automatic 1k/10k/50k corpus run in these workflows.",
+    "companions": [
+      "scripts/benchmark_library_scale.py",
+      "scripts/benchmark_semantic_cache.py"
+    ],
+    "child_origin": "Existing parent-selected source/installed binding is preserved",
+    "large_scale_qualification": "QUEUED_NOT_RUN",
+    "actual_prior_diagnostic": "22PASS/2FAIL before root's isolated-source bootstrap correction; not a full PASS. Same24 tests remain required in these gates.",
+    "current_harness": "7557f03177d9188f2a3ba8ddc0eab4aebb79ae4d",
+    "current_guide": "8bfd5454ea54820e61f4d9b2ed36fa818a60303f",
+    "actual_corrected_diagnostic": {
+      "source_commit": "fb39ed3cb1e23ffa3be8bd768c1dd64216f110da",
+      "run": 46037427185,
+      "job": 140636268625,
+      "status": "SUCCESS",
+      "whole_suites": 8,
+      "total_cases": 247,
+      "corpus_cases": 24,
+      "evidence": "Root's exact job/log handoff; separate diagnostic, no final-head PASS transfer.",
+      "artifact_id": 15219551567,
+      "artifact_sha256": "38cfb4959c196f2f739a60d18728fab358f06215dd4fb34dbde442bb674ee20a"
+    }
+  },
+  "envelopes": {
+    "whole_cases": 81,
+    "native_script": "de123b44e46d0131e068cc1155955bc3ba14f62d",
+    "old_checks_retained": 23,
+    "additional_essential_checks": [
+      "native bus exposes width and refuses mono pan envelopes",
+      "installed native effect picker offers gain envelope",
+      "native envelope review shows explicit hold points",
+      "native envelope edit is reversible before applying",
+      "native envelope redo restores exact reviewed points",
+      "native envelope points persist in existing schema3 history",
+      "native saved envelope changes actual PCM at reviewed sample intervals",
+      "native envelope retains exact sample geometry",
+      "native envelope receipt binds every saved numeric point",
+      "native envelope reuses completed unchanged scene audio"
+    ],
+    "post_cleanup_hash_checks": 15,
+    "total_required_checks": 58,
+    "origins": 15,
+    "added_module": "carr_library.audio.envelopes",
+    "new_required_fields": {
+      "actual_gain_envelope": "PASS",
+      "module_sha256": "exact fifteen origin keys with actual installed/source SHA256 equality"
+    },
+    "explicit_pinned_audio_unchanged": true,
+    "physical_audio": "NOT_RUN",
+    "manual_nvda": "NOT_RUN",
+    "native_extension": "Clip/history ten additional essential checks and two additional origins; prior23+10 envelope checks preserved."
+  },
+  "guides_added": [
+    "HUNSPELL_REVIEW.md",
+    "HUNSPELL_WINDOWS_BUILD.md",
+    "LIBRARY_SCALE_BENCHMARK.md",
+    "STUDIO_ENVELOPES.md",
+    "STUDIO_CLIP_HISTORY.md",
+    "FORMATTED_TRANSLATION.md",
+    "WORD_BRIDGE.md",
+    "WORD_BRIDGE_VALIDATION.md",
+    "GOOGLE_OAUTH_RENEWAL.md",
+    "GOOGLE_OAUTH_NATIVE_VALIDATION.md"
+  ],
+  "validation": {
+    "text_inventory": "PASS",
+    "readback": "EXACT",
+    "heredoc_delimiters": {
+      "main": [
+        40,
+        40
+      ],
+      "v3": [
+        31,
+        31
+      ]
+    },
+    "yaml_parse": "NOT_RUN",
+    "powershell_parse": "NOT_RUN",
+    "python_parse": "NOT_RUN",
+    "test_collection": "NOT_RUN",
+    "runtime": "NOT_RUN",
+    "incremental_text_audit": {
+      "base_manifest": "3d37bb6eb5a694e2500646a6b69e3a10a0ac0af5",
+      "status": "STATIC_NOT_RUN",
+      "omitted_paths": {
+        "main": [],
+        "v3": []
+      },
+      "omitted_names": {
+        "main": [],
+        "v3": []
+      },
+      "counts": {
+        "main": {
+          "test_paths": 468,
+          "required_function_names": 1614,
+          "installed_completion": 141,
+          "installed_whole": 281,
+          "reviewed_fixtures": 37,
+          "duplicate_installed": [],
+          "source": 437,
+          "fast": 119
+        },
+        "v3": {
+          "test_paths": 247,
+          "required_function_names": 1336,
+          "installed_completion": 108,
+          "installed_whole": 137,
+          "reviewed_fixtures": 37,
+          "duplicate_installed": [],
+          "source": 158,
+          "recovery": 75
+        }
+      },
+      "contracts": {
+        "main": {
+          "changed_prior_entries": [],
+          "new_entries_valid": true
+        },
+        "v3": {
+          "changed_prior_entries": [],
+          "new_entries_valid": true
+        }
+      },
+      "block_preservation": {
+        "main": {
+          "heredoc_open": 40,
+          "heredoc_close": 40,
+          "final_seal_unchanged": true,
+          "epub_fixture": true,
+          "required_origins": true,
+          "unchanged_other_heredocs": true
+        },
+        "v3": {
+          "heredoc_open": 31,
+          "heredoc_close": 31,
+          "epub_fixture": true,
+          "required_origins": true,
+          "unchanged_other_heredocs": true
+        }
+      },
+      "ps_dangling": {
+        "main": [],
+        "v3": []
+      }
+    },
+    "actual_prior_parser_evidence": {
+      "source_head": "fabae325a1a197ac6959732254ddf16d3ecef367",
+      "run": 46045805486,
+      "job": 140664654456,
+      "bodies": 110,
+      "controls": 6,
+      "status": "PASS_FOR_THAT_HEAD_ONLY",
+      "artifact": 15223990805,
+      "artifact_sha256": "f436c93aff9a467bb496e069e6d2ec36876d11cec58008929d4e58e59fa982b3",
+      "new_current_gate_bodies": "NOT_RUN"
+    },
+    "actual_prior_parser_evidence_current_diagnostic": {
+      "source_head": "0425541302b637c0fbdc6e950bcf87cd1cd8f6d1",
+      "run": 46051069136,
+      "job": 140682214020,
+      "status": "SUCCESS_FOR_THAT_HEAD_ONLY",
+      "bodies": 113,
+      "controls": 6,
+      "artifact": 15225096316,
+      "artifact_sha256": "12bcdd8a2636b161304f623b83d00e1cbeca0028725df1fcbf429a488ff2b778",
+      "scope": "Previous3109/20cb workflow bodies only; no qualification of a07e/6373 or this successor."
+    }
+  },
+  "peer_review": {
+    "hunspell": {
+      "reviewer": "canonical_regression",
+      "status": "ACCEPTED_STATIC_NOT_RUN",
+      "reviewed_main": "187f06c02ec7b5242774aa58be3270bc5114646d",
+      "reviewed_v3": "e28a28a6016ec1fcd8c48bef440da249229e4086",
+      "scope": "Exact acquisition/build/source/installed/native/receipt/offline composition only"
+    },
+    "corpus_envelope": {
+      "reviewer": "locate_project",
+      "status": "ACCEPTED_STATIC_NOT_RUN",
+      "scope": "Corpus24 + envelope81 source/installed contracts, fixture binding and native23+10+13 checks; no old selector loss"
+    },
+    "docx_clip": {
+      "reviewer": "locate_project",
+      "status": "ACCEPTED_STATIC_NOT_RUN",
+      "main": "56461d141ad9518aadadf37e33567a5999a0545e",
+      "v3": "0953be462f3d1e9c5d6f1b89078842b63997243a",
+      "scope": "All six source/installed module contracts, DOCX59/16 and Studio58/15, native failure aggregation and final full-bundle seal placement."
+    },
+    "partition_save_all": {
+      "reviewer": "locate_project",
+      "status": "ACCEPTED_STATIC_NOT_RUN",
+      "main": "bc1b701ccd6c2313a99602f1f3f9d4f151017206",
+      "v3": "f0ae5cf0498b4bec3cc9169731c3a883beeab7e0",
+      "scope": "No old paths removed; whole26/33/23/5, explicit64→2048 bound-name migration,61 labels/17 origins; SaveAll24 strict source/installed; final seal ordering."
+    },
+    "word_gate": {
+      "reviewer": "canonical_regression",
+      "status": "ACCEPTED_STATIC_NOT_RUN",
+      "main": "bc1b701ccd6c2313a99602f1f3f9d4f151017206",
+      "v3": "f0ae5cf0498b4bec3cc9169731c3a883beeab7e0",
+      "scope": "Four whole47/20/17/17 modules and fixture identity; native23 checks/20 exact origins/3 owned child invocations; typed PASS/NOT_RUN fields; stdout/report equality and final seal order. Actual Office is never invoked."
+    },
+    "oauth_hunspell_word_cleanup": {
+      "status": "ACCEPTED_STATIC_NOT_RUN",
+      "reviewer": "canonical_regression",
+      "main": "34b134cc8f8575b74a2f6cf8b7e07224f56eade2",
+      "v3": "e8595b9e56b25053f1c0fe10e18000a287bbf80c",
+      "scope": "OAuth64/32native/18origins; Hunspell55/29native; Word24/20/3; prior selectors retained; final seal/firewall/NOT_RUN boundaries."
+    },
+    "final_seal_preservation": {
+      "status": "ACCEPTED_STATIC_NOT_RUN",
+      "reviewer": "locate_project",
+      "main": "ff99316d90710b4bba3977016b6419588564f065",
+      "v3": "707a2af38d6c966d573ad7987644fd7f95e8ef8d"
+    },
+    "epub_conformance": {
+      "status": "ACCEPTED_STATIC_NOT_RUN",
+      "reviewer": "locate_project",
+      "main": "ff99316d90710b4bba3977016b6419588564f065",
+      "v3": "707a2af38d6c966d573ad7987644fd7f95e8ef8d",
+      "scope": "No old selectors lost; EPUB31/6/5 and fixtures,65 required labels/19 origins,3 valid/PKG-007 invalid conformance with4zero counts/5 installed origins/pinned archive+Java/helper/fixture/stdout receipt identity; independent catches and final original-manifest/full-payload seal after both late blocks."
+    },
+    "provider_loopback": {
+      "status": "ACCEPTED_STATIC_NOT_RUN",
+      "reviewer": "canonical_regression",
+      "runner": "194df6f0589c077fac26fc38751d79068c7570ea",
+      "v3": "707a2af38d6c966d573ad7987644fd7f95e8ef8d",
+      "scope": "Closed dispatch; original7/13 unchanged; provider28/16 source+installed with strict collection/JUnit bijection and exact bytes; existing active external-range firewall try/finally and required aggregation; no common socket-policy change."
+    },
+    "word_actual_failure": {
+      "status": "ACCEPTED_STATIC_NOT_RUN",
+      "reviewer": "progress_completion",
+      "manifest": "1e00b474402aeff7a814cff6ca097c01cd80a4eb",
+      "scope": "Strict Unicode keys/nested values + valid non-BMP byte roundtrip; exact unchanged grant budget/order now maps to existing expired category;47 prior cases retained+3."
+    },
+    "current_delta": {
+      "status": "ACCEPTED_SCOPED_STATIC_NOT_RUN",
+      "main": "3109b784e9a030a2217f6818e7cfc3de6332818d",
+      "v3": "20cbbf7ab79a39e68e873f0781e08ac45fc5bfac",
+      "scope": "Locate: rich/native/replay; Canonical: Book/outer envelope; no execution transfer from earlier reviewed gates."
+    },
+    "current_book_envelopes": {
+      "status": "ACCEPTED_STATIC_NOT_RUN",
+      "reviewer": "canonical_regression",
+      "main": "3109b784e9a030a2217f6818e7cfc3de6332818d",
+      "v3": "20cbbf7ab79a39e68e873f0781e08ac45fc5bfac",
+      "scope": "Exact BookBatch29/CLI18 and original functions plus two new tamper/budget functions; no selector loss; root-authorized outer envelopes only; all600/900, firewall and strict outcome lines retained. Unrelated rich/native scope not requalified."
+    },
+    "current_rich_replay": {
+      "status": "ACCEPTED_STATIC_NOT_RUN",
+      "reviewer": "locate_project",
+      "main": "3109b784e9a030a2217f6818e7cfc3de6332818d",
+      "v3": "20cbbf7ab79a39e68e873f0781e08ac45fc5bfac",
+      "scope": "Exact rich55/17/5/4, legacy DOCX9/20/13/1, replay24/10/7/2; no old selectors lost; native62/17,66/19,75/20 exact; cleanup field and nested label; fixture/installed hashes; rich catch and final original seal before aggregate/retention."
+    },
+    "native_followup": {
+      "status": "ACCEPTED_SCOPED_STATIC_NOT_RUN",
+      "main": "a07e65670300af364749682e4ad0e8409ecfdec1",
+      "v3": "6373bf052d1ed83eacfc746476e8c9de34536bb9",
+      "canonical_scope": "Recording+locator",
+      "locate_scope": "Book+Import Center+trust argv and baseline preservation",
+      "root_scope": "Independent native/gate preservation review",
+      "runtime": "NOT_RUN"
+    },
+    "recording_locator_followup": {
+      "status": "ACCEPTED_STATIC_NOT_RUN",
+      "reviewer": "canonical_regression",
+      "main": "a07e65670300af364749682e4ad0e8409ecfdec1",
+      "v3": "6373bf052d1ed83eacfc746476e8c9de34536bb9",
+      "scope": "Whole driver10/all8functions/exact script companion; locator4+integrity8+printed37; native43/same10origins, final sequential-modal and strict positive-int device evidence; original pins/limits retained. No parser/runtime claim."
+    },
+    "broker_source": {
+      "status": "ACCEPTED_STATIC_NOT_RUN",
+      "reviewers": [
+        "root",
+        "canonical_regression"
+      ],
+      "manifest": "c174dfcf313bd1a2b10dcbc6ad6b4b96779909da",
+      "scope": "Source and20 real-filesystem/retained-owner tests; actual-rich-child substitution fixture; no runtime claim."
+    },
+    "current_ownership_query_gate": {
+      "status": "REQUESTED_SCOPED_STATIC_REVIEW",
+      "main": "bfcde86f3af2817df6469c4fec8f15f8089c79a8",
+      "v3": "12ba3a4fc20da6ecdd3ff57ef4c7fc844a774021",
+      "canonical_scope": "Checked commit/broker and old affected boundaries",
+      "locate_scope": "Search query and old catalog/literal boundaries",
+      "runtime": "NOT_RUN"
+    }
+  },
+  "no_prior_pass_transfer": true,
+  "actual_failure_correction": {
+    "job": 140615140471,
+    "source": "b359ca64f5c09fd971dfb8e4991a949a9cea488f",
+    "failure": "PowerShell ParserError Missing expression after ',' before any test launch",
+    "fix": "Remove exactly two final commas from the source @(...)-arrays; every selector/count/order preserved.",
+    "candidate8_main_successor": "729187e8321e5b077f8aa93a2b51e79b3322a593",
+    "next9_main_successor": "bc1b701ccd6c2313a99602f1f3f9d4f151017206",
+    "v3_asr_source98": "No corresponding trailing-array comma found",
+    "generator": "Only the in-session appendPsList helper corrected to omit the terminal comma",
+    "runtime": "NOT_RUN"
+  },
+  "parser_gate": {
+    "yaml": "Hosted Ubuntu Ruby standard Psych YAML.safe_load, no arbitrary permitted classes; actual parsed jobs/steps/defaults",
+    "powershell": "System.Management.Automation.Language.Parser.ParseInput, workflow bodies are data and are never executed",
+    "selection": "Explicit step shell, then job/workflow defaults, then literal Windows runner default. Dynamic unresolved shell/runner is an error.",
+    "all_committed_workflows": true,
+    "controls": [
+      "invalid-fast-final-comma",
+      "corrected-fast-array",
+      "invalid-full-final-comma",
+      "corrected-full-array",
+      "python-trailing-comma-is-literal-here-string",
+      "parse-never-executes-commands"
+    ],
+    "expressions": "No GitHub expression evaluation or substitution; raw committed bodies are parsed",
+    "runtime_versions": "Actual Ruby/Psych/libyaml/PowerShell versions are recorded alongside commit, file and body SHA256 and every parser error.",
+    "no_new_dependencies": true,
+    "no_application_execution": true
+  },
+  "main_syntax_prerequisite": {
+    "job": "source-syntax",
+    "timeout_minutes": 5,
+    "parser_step_minutes": 2,
+    "dependent_jobs": [
+      "completion-regressions",
+      "flite-runtime",
+      "portable-sync",
+      "trusted-client",
+      "managed-update",
+      "integrated-desktop",
+      "keyboard-native"
+    ],
+    "scope": "Only same-workflow main jobs wait on its source syntax result. Independent V3/ASR workflows retain their own full runtime gates."
+  },
+  "receipt_followup": {
+    "commit": "dd9f90893ecb21f5f2aef5a3e11e4d6a83d6913c",
+    "source": "8ed968bb63043018e557f4c0cbc7c771d9cb11b3",
+    "tests": "9d03dba47432fabbb37a541b52651f1dbea5512b",
+    "previous_static_count": 73,
+    "current_static_count": 79,
+    "new_functions": [
+      "test_exact_span_inside_retained_position_remains_valid",
+      "test_actual_cross_position_selection_remains_approximate",
+      "test_exact_standalone_selection_remains_valid"
+    ],
+    "source98": "Already whole-file; no fixed73 count exists in its exact workflow, so no edit needed."
+  },
+  "previous_manifest": "3d37bb6eb5a694e2500646a6b69e3a10a0ac0af5",
+  "clip_history": {
+    "whole_modules": {
+      "tests/studio/test_clip_operations.py": 59,
+      "tests/studio/test_project_history.py": 29,
+      "tests/studio/test_clip_history_dialog.py": 22
+    },
+    "expected_static_cases": 110,
+    "manifest": "0a120043fce60a7dce760cc51afc5085b9e9333f",
+    "native": {
+      "script_sha": "f64a4dcc568614542f704f01b3da08dd26a29ab9",
+      "preserves_prior_effect_checks": 23,
+      "preserves_envelope_checks": 10,
+      "additional_essential_checks": [
+        "native timeline menu is available",
+        "native split retains two exact original selections",
+        "native project undo restores prior complete content",
+        "native project redo returns reviewed split",
+        "native rejoin recovers original timing and effect chains",
+        "native cut preserves scene clock and removes selected interval",
+        "native cut renders silence only inside selected interval",
+        "native history picker targets exact reviewed revision",
+        "native saved project history restores exact prior content",
+        "native history restore creates new revision without replacing outputs"
+      ],
+      "added_origins": [
+        "carr_library.studio.clip_operations",
+        "carr_library.studio.project_history"
+      ],
+      "origins": 15,
+      "post_cleanup_hash_checks": 15,
+      "required_checks": 64,
+      "required_fields": {
+        "actual_clip_editing": "PASS",
+        "project_history_restore": "PASS",
+        "native_clipboard": "PASS",
+        "native_failure_cleanup": "PASS"
+      },
+      "watchdog_seconds": 180,
+      "actual": "NOT_RUN"
+    },
+    "geometry": "Only reviewed same-rate aligned selections with verified frames; captured integer scene origin, no duration re-rounding.",
+    "status": "NOT_RUN"
+  },
+  "formatted_docx": {
+    "whole_modules": [
+      {
+        "path": "tests/assistant/test_translation_partition.py",
+        "expected_cases": 26
+      },
+      {
+        "path": "tests/assistant/test_translation_layout.py",
+        "expected_cases": 33
+      },
+      {
+        "path": "tests/ui/test_translation_layout.py",
+        "expected_cases": 23
+      },
+      {
+        "path": "tests/assistant/test_translation_layout_cli.py",
+        "expected_cases": 5
+      }
+    ],
+    "expected_static_cases": 87,
+    "native_script": "3dff8332d0ee7507c9ee3dfaffac2eabff099796",
+    "native": {
+      "fields": {
+        "status": "PASS",
+        "native_keyboard": "PASS",
+        "format_children": "PASS",
+        "source_bound_docx": "PASS",
+        "package_preservation": "PASS",
+        "completed_offline_export": "PASS",
+        "late_stop_completion": "PASS",
+        "controlled_pickers_and_consent": true,
+        "real_translation_service": "NOT_RUN",
+        "translation_quality": "NOT_RUN",
+        "Word_layout": "NOT_RUN",
+        "nvda": "NOT_RUN",
+        "native_failure_cleanup": "PASS"
+      },
+      "required": [
+        "native Windows wx",
+        "actual canonical DOCX import",
+        "actual shared desktop executor",
+        "actual unchanged host worker",
+        "actual shared ProgressHub",
+        "actual retained catalog scope",
+        "existing document keyboard command retained",
+        "formatted workstation is a native modal",
+        "limitations visible before approval",
+        "source selection is readonly",
+        "format inspection sends no source text",
+        "review binds mapping and source with no quotation authority",
+        "default-No decision saves no job and makes no request",
+        "preparation makes no provider call",
+        "exact three reviewed paragraph requests",
+        "late Stop retains actual committed completion",
+        "completed export needs no active profile",
+        "exact committed DOCX receipt",
+        "all unselected DOCX parts preserved exactly",
+        "actual paragraph and simple-table translation",
+        "original source bytes remain unchanged",
+        "completed export retains readable native status focus",
+        "existing DOCX export never overwritten",
+        "real installed formatting children completed",
+        "format resource leases quiescent",
+        "existing document workstation route preserved",
+        "host shutdown retains no failed cleanup owner",
+        "installed exact source: carr_library.assistant.translation_layout",
+        "installed exact source: carr_library.assistant.translation_layout_worker",
+        "installed exact source: carr_library.assistant.translation_documents",
+        "installed exact source: carr_library.assistant.translation",
+        "installed exact source: carr_library.assistant.providers",
+        "installed exact source: carr_library.assistant.profiles",
+        "installed exact source: carr_library.ui.translation_documents",
+        "installed exact source: carr_library.ui.translation_layout",
+        "installed exact source: carr_library.research.export_file",
+        "installed exact source: carr_library.reader.reading_desk",
+        "installed exact source: carr_library.durable_state",
+        "installed exact source: carr_library.progress",
+        "installed exact source: carr_library.ui.desktop_app",
+        "installed exact source: carr_library.ui.worker_lifetime",
+        "installed exact source: carr_library.audio.process",
+        "installed exact source: carr_library.operations.broker",
+        "post-cleanup installed hash: carr_library.assistant.translation_layout",
+        "post-cleanup installed hash: carr_library.assistant.translation_layout_worker",
+        "post-cleanup installed hash: carr_library.assistant.translation_documents",
+        "post-cleanup installed hash: carr_library.assistant.translation",
+        "post-cleanup installed hash: carr_library.assistant.providers",
+        "post-cleanup installed hash: carr_library.assistant.profiles",
+        "post-cleanup installed hash: carr_library.ui.translation_documents",
+        "post-cleanup installed hash: carr_library.ui.translation_layout",
+        "post-cleanup installed hash: carr_library.research.export_file",
+        "post-cleanup installed hash: carr_library.reader.reading_desk",
+        "post-cleanup installed hash: carr_library.durable_state",
+        "post-cleanup installed hash: carr_library.progress",
+        "post-cleanup installed hash: carr_library.ui.desktop_app",
+        "post-cleanup installed hash: carr_library.ui.worker_lifetime",
+        "post-cleanup installed hash: carr_library.audio.process",
+        "post-cleanup installed hash: carr_library.operations.broker",
+        "installed exact source: carr_library.assistant.translation_partition",
+        "post-cleanup installed hash: carr_library.assistant.translation_partition",
+        "nested native failure unwinds only the active owned modal"
+      ],
+      "origins": [
+        "carr_library.assistant.translation_layout",
+        "carr_library.assistant.translation_layout_worker",
+        "carr_library.assistant.translation_documents",
+        "carr_library.assistant.translation",
+        "carr_library.assistant.providers",
+        "carr_library.assistant.profiles",
+        "carr_library.ui.translation_documents",
+        "carr_library.ui.translation_layout",
+        "carr_library.research.export_file",
+        "carr_library.reader.reading_desk",
+        "carr_library.durable_state",
+        "carr_library.progress",
+        "carr_library.ui.desktop_app",
+        "carr_library.ui.worker_lifetime",
+        "carr_library.audio.process",
+        "carr_library.operations.broker",
+        "carr_library.assistant.translation_partition"
+      ],
+      "check_count_minimum": 62,
+      "essential": 28,
+      "installed_before": 17,
+      "installed_after": 17,
+      "watchdog": 180,
+      "audio_prerequisite": false,
+      "origin_count": 17,
+      "script": "3dff8332d0ee7507c9ee3dfaffac2eabff099796"
+    },
+    "arguments": "-I -B -X utf8 scripts/windows_translation_layout_smoke.py --source-root (Resolve-Path src).Path",
+    "publication_scope": "Existing source/ledger and protected publication authority. Native synthetic gateway only; actual installed format children and host.",
+    "real_translation_or_word_layout_or_nvda": "NOT_RUN",
+    "runtime": "NOT_RUN",
+    "partition": {
+      "manifest": "54018b48539ce43f4b523d7f56bee1fcbe5ae12f",
+      "whole_cases": 26,
+      "layout_ui_cases": 23,
+      "maximum_units": 2048,
+      "same_source_and_job_authority": true,
+      "reviewed_policy_snapshot_before_callbacks": true,
+      "status": "NOT_RUN"
+    },
+    "lifecycle_successor": "62 required checks/17 origins: all prior61 retained plus actual owned-loop cleanup control; native_failure_cleanup=PASS. Source review only."
+  },
+  "final_bundle_seal": {
+    "problem": "Previous complete verifier preceded late desktop/Hunspell/DOCX native phases.",
+    "resolution": "Original full verifier retained; exact same module.verify(root) is also required after every installed/native phase, with the original captured manifest SHA rechecked before artifact retention.",
+    "main": "a07e65670300af364749682e4ad0e8409ecfdec1",
+    "incremental_lines": 11,
+    "report": "ci-results/full-bundle-final-native-seal.txt",
+    "failure": "Added to existing requiredNativeFailures and blocks tested-wheel/PE/optional-wheel retention.",
+    "runtime": "NOT_RUN",
+    "word_precedes_final_seal": true,
+    "rich_docx_precedes_final_seal": true
+  },
+  "identity_audit": {
+    "application_literal_old_commit_or_Next8_map": false,
+    "source": "Application commit/tree are derived from checked out git HEAD; wheel/source/PE/bundle proofs compare that exact identity.",
+    "fixed_upstream": "Action hashes and official Hunspell commit remain intentional pins.",
+    "save_all": {
+      "canonical": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+      "suite": "tests/ui/test_save_all.py",
+      "reported_static_count": 24,
+      "previous_count": 10,
+      "hardcoded_count_in_main_v3": false,
+      "main_whole_source_selector_retained": true,
+      "source_union_owned_by": "root",
+      "execution": "NOT_RUN",
+      "strict_installed_main_v3_added": true
+    },
+    "runtime": "NOT_RUN"
+  },
+  "word": {
+    "manifest": "afe604fa5ba1c739ff9894271764b65b30b2bb0b",
+    "whole_modules": {
+      "tests/academic_integration/test_word_records.py": {
+        "count": 50,
+        "functions": [
+          "test_metadata_xml_roundtrip_is_inert_and_preserves_complete_current_wire",
+          "test_strict_json_refuses_ambiguous_or_unencodable_records",
+          "test_strict_json_rejects_surrogates_in_keys_and_nested_values",
+          "test_unicode_record_preserves_canonical_bytes_and_valid_non_bmp_text",
+          "test_changed_or_forged_capture_refuses_before_any_operation",
+          "test_existing_word_editing_policy_is_never_modified_or_bypassed",
+          "test_insertion_requires_a_collapsed_main_story_outside_foreign_objects",
+          "test_replacing_managed_text_never_discards_nested_foreign_fields_or_controls",
+          "test_whole_proposal_binding_is_required",
+          "test_completed_receipt_cannot_self_assert_a_different_commit",
+          "test_completed_binding_requires_exact_text_identity_inventory_and_metadata",
+          "test_approval_is_exact_single_explicit_and_revocable",
+          "test_typography_preserves_unicode_underline_superscript_and_literal_text",
+          "test_duplicate_reference_items_preserve_their_distinct_verified_locators",
+          "test_actual_canonical_processor_builds_complete_source_bound_proposal",
+          "test_actual_regeneration_retains_stable_ids_and_updates_the_entire_sequence",
+          "test_real_bibliography_only_preview_includes_all_selected_records_without_invented_citations"
+        ]
+      },
+      "tests/academic_integration/test_word_bridge.py": 20,
+      "tests/academic_integration/test_word_worker.py": 17,
+      "tests/ui/test_word_citations.py": 17
+    },
+    "expected_static_cases": 104,
+    "companions": [
+      "carr-library/tests/academic_integration/word_fixtures.py"
+    ],
+    "required_native": {
+      "path": "carr-library/scripts/windows_word_bridge_smoke.py",
+      "sha": "33ef7bd2e5c710631a8cc93838cb8c74f44df169",
+      "command": [
+        "<installed-python>",
+        "-I",
+        "-B",
+        "scripts/windows_word_bridge_smoke.py",
+        "--source-root",
+        "<exact-checkout>/carr-library/src",
+        "--require-installed",
+        "--synthetic-transport",
+        "--output",
+        "<new-report>/word-bridge-native.json"
+      ],
+      "total_deadline_seconds": 180,
+      "companion": "Exact checked-out tests/academic_integration/word_fixtures.py; report its SHA256.",
+      "report_expected": {
+        "status": "PASS",
+        "actual_native_ui": "PASS",
+        "actual_csl": "PASS",
+        "synthetic_word_protocol": "PASS",
+        "owned_child_cleanup": "PASS",
+        "owned_child_invocations": 3,
+        "actual_word": "NOT_RUN",
+        "manual_nvda": "NOT_RUN",
+        "office_document_quality": "NOT_RUN",
+        "native_failure_cleanup": "PASS"
+      },
+      "required_checks": [
+        "all twenty Word host and protocol module bytes match their requested origins",
+        "every invoked Word action is enabled in its actual native state",
+        "native Word application confirmation starts on No",
+        "actual current DesktopFrame owns the selected library and one worker",
+        "opening Word review launches no child or document mutation",
+        "Word operation and preview controls have distinct accessible names",
+        "actual inspection uses one reaped protocol child without a mutation",
+        "document references remain a read-only inert display",
+        "native Space selects an explicit source reference",
+        "actual canonical CSL preview is not a synthetic citation string",
+        "the held preview retains its child staging and shared reservation",
+        "preview alone does not write a mutation or final grant",
+        "native No leaves the held preview unapplied",
+        "explicit native Yes completes exactly the reviewed proposal",
+        "confirmed completion returns accessible status and releases the private Job",
+        "native copy exposes only the reviewed inert document references",
+        "busy Close stops and reports before destroying the native review",
+        "review closure never shuts down its borrowed desktop worker",
+        "failure cleanup answers owned Word confirmation No before closing only its active modal",
+        "existing workbench formatting remains the Word entrypoint",
+        "all Word protocol work uses the existing single off-main worker",
+        "bibliographic source bytes remain exact after every native action",
+        "actual host finalizers settle before native completion is reported",
+        "application and synthetic companion bytes remain unchanged after native cleanup"
+      ],
+      "installed_origins": [
+        "carr_library.academic_integration.word_bridge",
+        "carr_library.academic_integration.word_worker",
+        "carr_library.academic_integration.word_native",
+        "carr_library.academic_integration.word_records",
+        "carr_library.academic_integration.formatting",
+        "carr_library.citations.bibliography_workbench",
+        "carr_library.citations.csl",
+        "carr_library.ui.word_citations_dialog",
+        "carr_library.ui.citation_styles_dialog",
+        "carr_library.ui.academic_library_dialog",
+        "carr_library.ui.desktop_app",
+        "carr_library.ui.worker_lifetime",
+        "carr_library.audio.process",
+        "carr_library.audio.windows_job",
+        "carr_library.audio.cleanup",
+        "carr_library.operations.broker",
+        "carr_library.operations.models",
+        "carr_library.application",
+        "carr_library.durable_state",
+        "carr_library.native_runtime"
+      ],
+      "check_count": 24,
+      "origin_count": 20,
+      "classification": "Actual Windows/wx/keyboard/CSL/resource/owned-process checks with an explicitly synthetic COM backend. This cannot qualify Microsoft Word itself."
+    },
+    "optional_office": {
+      "path": "carr-library/scripts/windows_word_office_probe.py",
+      "sha": "7424f93899cc5693a74feae8c4dd48ffec7a8fa0",
+      "mandatory_ci": false,
+      "command": [
+        "<installed-python>",
+        "-I",
+        "-B",
+        "scripts/windows_word_office_probe.py",
+        "--source-root",
+        "<exact-checkout>/carr-library/src",
+        "--require-installed",
+        "--document-name",
+        "<exact disposable document name>",
+        "--style",
+        "apa|chicago-notes",
+        "--approve-disposable-edits",
+        "--output",
+        "<new-report>/word-office.json"
+      ],
+      "conditions": "Interactive terminal and explicit consent; exact already-open disposable marker document with collapsed initial caret, no controls/fields/metadata/endnotes, unprotected and Track Changes off. No lease or child is held during prompted inter-phase caret movement.",
+      "total_deadline_seconds": 600,
+      "report_expected": {
+        "status": "PASS",
+        "actual_word": "EXECUTED",
+        "saved_or_closed_by_bridge": false,
+        "manual_nvda": "NOT_RUN",
+        "visual_layout_review": "NOT_RUN",
+        "all_office_versions": "NOT_QUALIFIED",
+        "foreign_document_conversion": "NOT_RUN"
+      },
+      "required_checks": [
+        "actual already-open Word attaches without opening or saving a document",
+        "disposable document starts at its exact unprotected main-text caret",
+        "actual Word insertion returns an exact completed stable citation receipt",
+        "actual Word edit preserves the stable citation and document identity",
+        "actual Word bibliography is a separate managed completed range",
+        "actual Word remains open with the original unmanaged text and latest complete metadata",
+        "the source library and all native resource reservations remain unchanged or released",
+        "application module bytes remain unchanged after actual Office work"
+      ],
+      "installed_origins": [
+        "carr_library.academic_integration.word_bridge",
+        "carr_library.academic_integration.word_worker",
+        "carr_library.academic_integration.word_native",
+        "carr_library.academic_integration.word_records",
+        "carr_library.academic_integration.formatting",
+        "carr_library.citations.bibliography_workbench",
+        "carr_library.citations.csl",
+        "carr_library.audio.process",
+        "carr_library.audio.windows_job",
+        "carr_library.audio.cleanup",
+        "carr_library.operations.broker"
+      ],
+      "check_count": 8,
+      "origin_count": 11,
+      "current_execution": "NOT_RUN; Office unavailable/unobserved must never count as a passing execution."
+    },
+    "actual_office_workflow_invocation": false,
+    "final_seal_after_native": true,
+    "status": "NOT_RUN",
+    "cleanup_manifest": "9a20339a545bc44ea0ee65b5a55bc804c714702f",
+    "actual_failure_correction": "1e00b474402aeff7a814cff6ca097c01cd80a4eb"
+  },
+  "save_all": {
+    "canonical": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+    "source": "c109f48ccb561b25fc9f348dacc4688f734f2e6b",
+    "tests": "849fcdf2b0ad71d63be4a08ea1b044554f988881",
+    "path": "tests/ui/test_save_all.py",
+    "expected_static_cases": 24,
+    "main_existing_whole_source_retained": true,
+    "added": "Main fast and installed plus V3 strict source/installed; exact module identity remains checked.",
+    "status": "NOT_RUN"
+  },
+  "supersedes_intermediate_source_only_manifest": "431a4c78f0db381cb0294117c2a80dce21066871",
+  "google_oauth": {
+    "manifest": "671da216bd134e2d2f7bacc64324c65076a7d4d0",
+    "native_manifest": "b99a48a0288a491a9cd4cd836e6ceb01f9e11812",
+    "whole_modules": {
+      "tests/assistant/test_google_oauth.py": {
+        "count": 49,
+        "functions": [
+          "test_actual_gateway_refresh_is_fixed_authority_and_contains_no_document",
+          "test_local_only_or_invalid_mode_opens_no_vault_or_token_connection",
+          "test_invalid_approval_or_unknown_budget_never_refreshes",
+          "test_cancel_after_vault_before_refresh_retains_not_sent",
+          "test_cancel_during_refresh_cannot_send_document_or_cache_token",
+          "test_approval_expiring_during_refresh_stops_before_document",
+          "test_same_total_deadline_covers_token_response",
+          "test_cache_requires_fresh_vault_and_renews_before_monotonic_expiry",
+          "test_changed_or_removed_vault_credential_cannot_reuse_cached_access",
+          "test_endpoint_mismatch_refuses_even_with_fresh_cached_access",
+          "test_refresh_http_failures_are_redacted_not_sent_and_not_retried",
+          "test_malformed_token_metadata_never_authorizes_translation",
+          "test_token_stream_bounds_and_duplicate_fields_are_enforced",
+          "test_sent_translation_failure_remains_uncertain_without_refresh_or_paid_retry",
+          "test_legacy_manual_access_token_remains_unrenewed",
+          "test_configuration_and_export_are_local_and_preserve_existing_profile",
+          "test_stale_profile_cannot_replace_refresh_grant",
+          "test_new_reference_is_rolled_back_when_profile_save_fails",
+          "test_explicit_refresh_configuration_rejects_unreviewed_shapes",
+          "test_absent_client_secret_is_not_sent_as_an_empty_parameter",
+          "test_actual_job_resumes_after_refresh_failure_without_rebilling_completed_prefix"
+        ]
+      },
+      "tests/ui/test_google_oauth.py": {
+        "count": 15,
+        "functions": [
+          "test_explicit_default_no_confirmation_saves_only_selected_windows_vault_record",
+          "test_no_or_cancel_at_confirmation_never_writes_credential",
+          "test_cancelled_form_does_not_read_secret_fields_or_ask_confirmation",
+          "test_invalid_grant_is_rejected_before_confirmation",
+          "test_changed_modal_authority_cannot_save_any_secret",
+          "test_same_path_replaced_library_with_identical_profile_never_writes_global_vault",
+          "test_wrong_adapter_is_rejected_before_dialog_or_secret_read",
+          "test_review_captures_exact_fields_before_confirmation"
+        ]
+      }
+    },
+    "expected_static_cases": 64,
+    "required_native": {
+      "path": "carr-library/scripts/windows_google_oauth_smoke.py",
+      "sha": "a149b7efc95c65fc6d752b77b33cafcae22ae61f",
+      "whole_source_and_installed_suites": {
+        "tests/assistant/test_google_oauth.py": 49,
+        "tests/ui/test_google_oauth.py": 15
+      },
+      "counts_kind": "Root-provided static enumeration; unchanged; actual collection/execution pending.",
+      "fixture_companions": [],
+      "native_command": "<installed-python> -I -B scripts/windows_google_oauth_smoke.py --source-root <checkout>/carr-library/src --require-installed --synthetic-transport --output <NEW.json>",
+      "checks": [
+        "all eighteen OAuth settings and host module bytes match their requested origins",
+        "actual credential replacement confirmation defaults to native No",
+        "actual DesktopFrame owns this library and the existing shared worker",
+        "existing provider settings expose the selected account without a request",
+        "renewal fields have distinct names and both credential fields are password controls",
+        "failure cleanup answers only the owned question No before unwinding its active modal",
+        "native form Cancel keeps the old credential and makes no confirmation or request",
+        "native default No keeps the old credential and exact nonsecret profile",
+        "native Yes stores only the explicitly reviewed grant in the synthetic vault",
+        "credential replacement preserves exact profile bytes and account identity",
+        "successful configuration reports no provider contact and restores accessible status focus",
+        "actual local configuration check reads the vault without exchanging a token",
+        "changing the selected profile during real confirmation refuses the global credential write",
+        "profile export remains inert and does not transfer the credential reference",
+        "all four renewal forms close without shutting down the borrowed host worker",
+        "LOCAL ONLY refuses renewal before any credential read or HTTPS boundary",
+        "explicit remote mode still refuses a missing job authorization before vault or transport",
+        "the actual Gateway returns the synthetic translation and a complete usage receipt",
+        "renewal uses only the fixed official form route without selected document text",
+        "the approved API receives the access token without the desktop secret or refresh grant",
+        "the same Gateway cache still rereads the vault and records a separate approved result",
+        "a cached access token cannot bypass a removed vault record",
+        "cancellation after the actual vault boundary prevents even cached transmission",
+        "a failed renewal is not sent to translation and never retried automatically",
+        "HTTP credential error bodies and secret material stay out of user-visible status",
+        "token exchange never rewrites or deletes the explicitly saved credential",
+        "all synthetic HTTPS boundaries run on the one existing non-GUI host worker",
+        "every synthetic connection is closed and no real socket was attempted",
+        "persistent profile and usage files contain none of the synthetic credential material",
+        "the exact nonsecret account survives every worker result and refusal",
+        "actual host closure drains all operations and finalizers before reporting success",
+        "all requested module bytes remain unchanged after native and worker cleanup"
+      ],
+      "check_count": 32,
+      "origins": [
+        "carr_library.assistant.google_oauth",
+        "carr_library.assistant.profiles",
+        "carr_library.assistant.providers",
+        "carr_library.assistant.credentials",
+        "carr_library.assistant.models",
+        "carr_library.assistant.translation",
+        "carr_library.ui.google_oauth",
+        "carr_library.ui.assistant_dialog",
+        "carr_library.ui.desktop_app",
+        "carr_library.ui.worker_lifetime",
+        "carr_library.ui.progress_panel",
+        "carr_library.ui.command_registry",
+        "carr_library.ui.keyboard_settings",
+        "carr_library.progress",
+        "carr_library.application",
+        "carr_library.durable_state",
+        "carr_library.native_runtime",
+        "carr_library.speech._io"
+      ],
+      "origin_count": 18,
+      "required_fields": {
+        "status": "PASS",
+        "actual_windows_controls": "PASS",
+        "actual_profile_store": "PASS",
+        "actual_gateway_and_ledger": "PASS",
+        "synthetic_vault_and_https": "PASS",
+        "shared_host_worker": "PASS",
+        "native_cleanup": "PASS",
+        "native_renewal_forms": 4,
+        "synthetic_token_requests": 2,
+        "synthetic_translation_requests": 2,
+        "real_google": "NOT_RUN",
+        "real_credential_manager": "NOT_RUN",
+        "manual_nvda": "NOT_RUN"
+      },
+      "report": "Exit0; final stdout JSON equals exclusively-created UTF8 report; all check names and origin hashes required.",
+      "watchdog_seconds": 180,
+      "prerequisites": "Current Windows interactive desktop, installed application + wx; no audio/Office/Hunspell/real Google/vault dependency; existing full offline gate remains.",
+      "source_and_installed": "Same script supports explicit source mode without --require-installed; only installed invocation qualifies installed origins."
+    },
+    "final_seal_after_native": true,
+    "production_google": "NOT_RUN",
+    "real_credential_manager": "NOT_RUN",
+    "manual_nvda": "NOT_RUN",
+    "runtime": "NOT_RUN"
+  },
+  "formatted_epub": {
+    "manifest": "7e9e39f2099e89e412036bb103b54aecdd03fa91",
+    "whole_modules": {
+      "tests/assistant/test_translation_epub_layout.py": {
+        "count": 31,
+        "functions": [
+          "test_mapping_uses_exact_canonical_spine_text_and_complete_nonoverlapping_xhtml_ranges",
+          "test_actual_capture_and_review_retain_whole_chapter_authority_without_provider_calls",
+          "test_actual_translated_epub_keeps_dom_links_styles_media_and_original_source",
+          "test_unsupported_epub_layouts_fail_before_any_translation_admission",
+          "test_actual_package_active_uri_or_refresh_is_refused_before_transfer",
+          "test_ordinary_package_and_https_links_remain_exact_without_fetching",
+          "test_preserved_image_only_figure_does_not_create_a_translation_request",
+          "test_literal_translated_markup_is_escaped_and_never_becomes_an_xhtml_element",
+          "test_rendered_whitespace_hash_is_explicit_and_accepted_provider_receipt_stays_unchanged",
+          "test_unreceipted_same_byte_competitor_remains_a_conflict",
+          "test_forged_dom_mapping_does_not_reuse_other_approved_receipts",
+          "test_changed_actual_worker_snapshot_is_refused_before_parsing",
+          "test_pause_keeps_accepted_blocks_and_resume_never_repeats_them",
+          "test_actual_backup_restore_exports_completed_epub_without_credentials_or_old_paths",
+          "test_seventy_source_chapters_keep_one_existing_job_without_raising_job_lock_limit",
+          "test_late_stop_after_actual_epub_publication_retains_completed_receipt"
+        ]
+      },
+      "tests/ui/test_translation_epub_layout.py": {
+        "count": 6,
+        "functions": [
+          "test_epub_workstation_uses_one_reviewed_job_and_preserves_default_no_offline_export",
+          "test_epub_branch_revokes_queued_source_work_and_late_ui_after_scope_change",
+          "test_current_document_workstation_has_separate_explicit_epub_route",
+          "test_unknown_format_cannot_schedule_an_alternate_parser_or_source"
+        ]
+      },
+      "tests/assistant/test_translation_epub_cli.py": {
+        "count": 5,
+        "functions": [
+          "test_actual_cli_previews_then_saves_only_explicit_unchanged_layout_jobs",
+          "test_actual_cli_rejects_changed_review_or_remote_consent_for_local_profile",
+          "test_actual_cli_complete_jobs_export_offline_and_refuse_existing_file",
+          "test_actual_cli_unfinished_jobs_require_the_original_current_profile"
+        ]
+      }
+    },
+    "expected_static_cases": 42,
+    "native": {
+      "fields": {
+        "status": "PASS",
+        "native_keyboard": "PASS",
+        "format_children": "PASS",
+        "source_bound_epub": "PASS",
+        "package_preservation": "PASS",
+        "completed_offline_export": "PASS",
+        "late_stop_completion": "PASS",
+        "controlled_pickers_and_consent": true,
+        "real_translation_service": "NOT_RUN",
+        "translation_quality": "NOT_RUN",
+        "visual_layout": "NOT_RUN",
+        "epubcheck": "NOT_RUN",
+        "nvda": "NOT_RUN",
+        "native_failure_cleanup": "PASS"
+      },
+      "required": [
+        "native Windows wx",
+        "actual canonical EPUB import",
+        "actual shared desktop executor",
+        "actual unchanged host worker",
+        "actual shared ProgressHub",
+        "actual retained catalog scope",
+        "existing document keyboard command retained",
+        "formatted workstation is a native modal",
+        "limitations visible before approval",
+        "source selection is readonly",
+        "format inspection sends no source text",
+        "review binds mapping and source with no quotation authority",
+        "default-No decision saves no job and makes no request",
+        "preparation makes no provider call",
+        "exact three reviewed paragraph requests",
+        "late Stop retains actual committed completion",
+        "completed export needs no active profile",
+        "exact committed EPUB receipt",
+        "all unselected EPUB parts preserved exactly",
+        "actual XHTML blocks/table/styles/links translation",
+        "original source bytes remain unchanged",
+        "completed export retains readable native status focus",
+        "existing EPUB export never overwritten",
+        "real installed formatting children completed",
+        "format resource leases quiescent",
+        "existing document workstation route preserved",
+        "host shutdown retains no failed cleanup owner",
+        "installed exact source: carr_library.assistant.translation_layout",
+        "installed exact source: carr_library.assistant.translation_layout_worker",
+        "installed exact source: carr_library.assistant.translation_documents",
+        "installed exact source: carr_library.assistant.translation",
+        "installed exact source: carr_library.assistant.providers",
+        "installed exact source: carr_library.assistant.profiles",
+        "installed exact source: carr_library.ui.translation_documents",
+        "installed exact source: carr_library.ui.translation_layout",
+        "installed exact source: carr_library.research.export_file",
+        "installed exact source: carr_library.reader.reading_desk",
+        "installed exact source: carr_library.durable_state",
+        "installed exact source: carr_library.progress",
+        "installed exact source: carr_library.ui.desktop_app",
+        "installed exact source: carr_library.ui.worker_lifetime",
+        "installed exact source: carr_library.audio.process",
+        "installed exact source: carr_library.operations.broker",
+        "installed exact source: carr_library.assistant.translation_partition",
+        "installed exact source: carr_library.assistant.translation_epub_layout",
+        "installed exact source: carr_library.assistant.translation_epub_layout_worker",
+        "post-cleanup installed hash: carr_library.assistant.translation_layout",
+        "post-cleanup installed hash: carr_library.assistant.translation_layout_worker",
+        "post-cleanup installed hash: carr_library.assistant.translation_documents",
+        "post-cleanup installed hash: carr_library.assistant.translation",
+        "post-cleanup installed hash: carr_library.assistant.providers",
+        "post-cleanup installed hash: carr_library.assistant.profiles",
+        "post-cleanup installed hash: carr_library.ui.translation_documents",
+        "post-cleanup installed hash: carr_library.ui.translation_layout",
+        "post-cleanup installed hash: carr_library.research.export_file",
+        "post-cleanup installed hash: carr_library.reader.reading_desk",
+        "post-cleanup installed hash: carr_library.durable_state",
+        "post-cleanup installed hash: carr_library.progress",
+        "post-cleanup installed hash: carr_library.ui.desktop_app",
+        "post-cleanup installed hash: carr_library.ui.worker_lifetime",
+        "post-cleanup installed hash: carr_library.audio.process",
+        "post-cleanup installed hash: carr_library.operations.broker",
+        "post-cleanup installed hash: carr_library.assistant.translation_partition",
+        "post-cleanup installed hash: carr_library.assistant.translation_epub_layout",
+        "post-cleanup installed hash: carr_library.assistant.translation_epub_layout_worker",
+        "nested native failure unwinds only the active owned modal"
+      ],
+      "origins": [
+        "carr_library.assistant.translation_layout",
+        "carr_library.assistant.translation_layout_worker",
+        "carr_library.assistant.translation_documents",
+        "carr_library.assistant.translation",
+        "carr_library.assistant.providers",
+        "carr_library.assistant.profiles",
+        "carr_library.ui.translation_documents",
+        "carr_library.ui.translation_layout",
+        "carr_library.research.export_file",
+        "carr_library.reader.reading_desk",
+        "carr_library.durable_state",
+        "carr_library.progress",
+        "carr_library.ui.desktop_app",
+        "carr_library.ui.worker_lifetime",
+        "carr_library.audio.process",
+        "carr_library.operations.broker",
+        "carr_library.assistant.translation_partition",
+        "carr_library.assistant.translation_epub_layout",
+        "carr_library.assistant.translation_epub_layout_worker"
+      ],
+      "essential": 28,
+      "check_count_minimum": 66,
+      "origin_count": 19,
+      "fixture_script": "scripts/translation_layout_fixtures.py",
+      "fixture_blob": "06c1b4be2a38243a258868ce760b92babc5bd5d6",
+      "audio_prerequisite": false,
+      "script": "4b26382f7f71449f896ec7f29afd75f2ebd63824"
+    },
+    "conformance": {
+      "fields": {
+        "schema": "carr-formatted-epub-conformance/1",
+        "status": "PASS",
+        "validator_version": "5.3.0",
+        "actual_formatter": "PASS",
+        "real_translation_service": "NOT_RUN",
+        "translation_quality": "NOT_RUN",
+        "visual_layout": "NOT_RUN",
+        "reader_interoperability": "NOT_RUN",
+        "nvda": "NOT_RUN"
+      },
+      "origins": [
+        "carr_library.assistant.translation_epub_layout_worker",
+        "carr_library.assistant.translation_epub_layout",
+        "carr_library.assistant.translation_layout",
+        "carr_library.assistant.translation_partition",
+        "carr_library.extract.epub_ordered"
+      ],
+      "valid_publications": 3,
+      "invalid_controls": 1,
+      "checker_version": "5.3.0",
+      "zero_counts": [
+        "nFatal",
+        "nError",
+        "nWarning",
+        "nUsage"
+      ],
+      "negative_id": "PKG-007",
+      "reuse": "Same pre-acquired pinned EPUBCheck archive and exact already-firewalled Java; no new runtime or assets in bundle",
+      "report_equality": "stdout and exclusive report plus pinned helper/fixture/archive/Java/source hashes"
+    },
+    "native_script": "4b26382f7f71449f896ec7f29afd75f2ebd63824",
+    "conformance_script": "f1ac42577e9d99051cc38330a8dad29edc882935",
+    "no_new_runtime_acquisition": true,
+    "no_bundled_assets": true,
+    "final_seal_after_all_native_and_conformance": true,
+    "runtime": "NOT_RUN",
+    "cleanup_manifest": "abafa33ecb95cce140081b4632f6c30af951b842"
+  },
+  "provider_loopback": {
+    "runner": "194df6f0589c077fac26fc38751d79068c7570ea",
+    "preimage": "17878fdf081092becb082e6ba07039ee5be5928a",
+    "workflow": "V3 existing process-scoped external-address firewall boundary",
+    "suite": "--suite providers",
+    "whole_suite": "tests/assistant/test_providers.py",
+    "required_case_names": [
+      "test_local_only_denies_before_any_vault_or_connection",
+      "test_remote_envelope_rejects_wrong_scope_before_credentials[change0]",
+      "test_remote_envelope_rejects_wrong_scope_before_credentials[change1]",
+      "test_remote_envelope_rejects_wrong_scope_before_credentials[change2]",
+      "test_remote_envelope_rejects_wrong_scope_before_credentials[change3]",
+      "test_remote_envelope_rejects_wrong_scope_before_credentials[change4]",
+      "test_remote_envelope_rejects_wrong_scope_before_credentials[change5]",
+      "test_remote_envelope_rejects_wrong_scope_before_credentials[change6]",
+      "test_unknown_cost_rejected_and_budget_retains_uncertain_reservation",
+      "test_actual_loopback_chat_and_separate_account_routing",
+      "test_redirect_never_forwarded_and_error_is_redacted",
+      "test_invalid_remote_endpoint_cannot_save_credentials[http://api.example.test/v1]",
+      "test_invalid_remote_endpoint_cannot_save_credentials[https://user:password@example.com/v1]",
+      "test_invalid_remote_endpoint_cannot_save_credentials[https://example.com/v1?api_key=secret]",
+      "test_invalid_remote_endpoint_cannot_save_credentials[https://example.com/#token]",
+      "test_invalid_remote_endpoint_cannot_save_credentials[https://127.0.0.1/v1]",
+      "test_invalid_remote_endpoint_cannot_save_credentials[https://localhost/v1]",
+      "test_invalid_remote_endpoint_cannot_save_credentials[https://example.com/%2Fescape]",
+      "test_untrusted_response_tool_call_and_wrong_content_type_are_rejected",
+      "test_response_bounds_and_pretransmission_cancel",
+      "test_profiles_export_never_contains_secret_references_or_enabled_state",
+      "test_credential_references_cannot_cross_accounts",
+      "test_windows_vault_has_no_plaintext_fallback",
+      "test_actual_local_planner_output_cannot_grant_tool_or_scope_permissions",
+      "test_elevenlabs_templates_are_typed_and_locked_to_official_host",
+      "test_untrusted_provider_response_cannot_echo_a_credential",
+      "test_native_header_encoding_error_does_not_expose_secret",
+      "test_authorized_remote_route_budget_and_unsafe_retry_with_local_mock"
+    ],
+    "source_count": 28,
+    "installed_count": 28,
+    "provider_origins": 16,
+    "original_translation_count_each": 7,
+    "original_translation_origins": 13,
+    "original_planning_count_each": 25,
+    "source_and_installed_byte_binding": "16 modules and exact copied whole test before/after; collection and JUnit Counters must match28; no skip/XFAIL/XPASS",
+    "firewall": "Same active selected+base interpreter/range/profile readback and owned cleanup. Runner only verifies receipt; changes no network policy.",
+    "runtime": "NOT_RUN"
+  },
+  "rich_docx": {
+    "manifest": "41db5198a9c00aba8373f15ee79332a56c0f6015",
+    "whole_modules": {
+      "tests/extract/test_docx_rich.py": {
+        "count": 55,
+        "functions": [
+          "test_plain_docx_keeps_exact_original_record_warning_and_provenance_wire",
+          "test_actual_notes_have_independent_records_exact_reference_mapping_and_no_page_authority",
+          "test_actual_inline_picture_relationship_header_geometry_and_bytes_are_bound",
+          "test_invalid_note_graph_is_refused_without_shortened_accepted_text",
+          "test_unreviewed_picture_authority_or_content_is_refused",
+          "test_prior_hidden_active_and_omitted_text_guards_cover_new_note_parts",
+          "test_rich_source_refuses_content_hidden_below_preserved_properties",
+          "test_rich_source_preserves_ordinary_tab_stop_properties_without_hidden_text",
+          "test_actual_fixed_bookmark_and_proof_boundaries_partition_and_replay_positions",
+          "test_no_rich_feature_keeps_unselected_separator_only_part_in_legacy_body_profile",
+          "test_note_table_cannot_silently_admit_merged_or_nested_content",
+          "test_rich_canonical_import_never_opens_a_network_or_word_process",
+          "test_note_separator_keeps_ordinary_paragraph_and_run_properties_without_prose"
+        ]
+      },
+      "tests/assistant/test_translation_rich_docx.py": {
+        "count": 17,
+        "functions": [
+          "test_actual_worker_matches_retained_rich_source_and_exact_owned_origin",
+          "test_one_existing_job_covers_full_body_notes_and_separator_text_once",
+          "test_actual_translation_preserves_note_anchors_images_styles_and_exact_provider_receipts",
+          "test_forged_mapping_never_becomes_a_new_approval_or_request",
+          "test_pause_resumes_without_repeating_accepted_rich_fragments",
+          "test_restore_reopens_actual_retained_rich_source_and_exports_complete_jobs_offline",
+          "test_actual_same_byte_competing_output_is_still_a_conflict",
+          "test_literal_translated_note_and_xml_like_text_never_creates_objects",
+          "test_changed_retained_picture_bytes_refuse_source_before_transfer",
+          "test_source_root_replacement_during_format_process_refuses_late_admission",
+          "test_actual_commit_has_no_late_source_or_cancellation_observer",
+          "test_private_output_destination_stays_protected_for_rich_documents",
+          "test_rich_source_inventory_is_searchable_but_never_auto_verified",
+          "test_rich_unit_budget_is_enforced_before_any_translation"
+        ]
+      },
+      "tests/ui/test_translation_rich_docx.py": {
+        "count": 5,
+        "functions": [
+          "test_actual_rich_source_route_reviews_notes_fragments_then_one_job_and_offline_export",
+          "test_rich_view_revokes_queued_capture_and_late_updates_on_host_scope_change",
+          "test_rich_view_restores_saved_partition_only_after_exact_retained_source_is_selected"
+        ]
+      },
+      "tests/assistant/test_translation_rich_docx_cli.py": {
+        "count": 4,
+        "functions": [
+          "test_actual_cli_reviews_rich_source_then_saves_one_explicit_partition_job",
+          "test_actual_cli_refuses_rich_source_without_the_exact_local_review",
+          "test_actual_cli_exports_completed_rich_job_offline_without_overwrite"
+        ]
+      }
+    },
+    "expected_static_cases": 81,
+    "retained_compatibility_whole_modules": {
+      "tests/extract/test_docx_ordered.py": {
+        "count": 9,
+        "functions": [
+          "test_order_and_exact_text",
+          "test_merged_table",
+          "test_nested_table",
+          "test_revision",
+          "test_custom_xml_body",
+          "test_custom_xml_cell",
+          "test_custom_xml_inline",
+          "test_corrupt",
+          "test_empty"
+        ]
+      },
+      "tests/extract/test_docx_omitted_content.py": {
+        "count": 20,
+        "functions": [
+          "test_omitted_inline_content_requires_explicit_review",
+          "test_alternate_content_is_not_silently_discarded",
+          "test_display_equation_between_body_paragraphs_requires_review",
+          "test_smart_tag_nested_in_hyperlink_requires_review",
+          "test_plain_unicode_hyperlink_and_formatting_remain_supported",
+          "test_soft_hyphen_does_not_silently_join_word_parts",
+          "test_supported_nonbreaking_hyphen_keeps_word_separator",
+          "test_bidirectional_wrappers_do_not_discard_contained_text"
+        ]
+      },
+      "tests/extract/test_docx_hidden_styles.py": {
+        "count": 13,
+        "functions": [
+          "test_hidden_style_rejected",
+          "test_direct_hidden_properties_rejected",
+          "test_plain_unicode_with_nonhidden_style_keeps_preview",
+          "test_alternate_style_hidden_requires_review",
+          "test_external_effects_style_never_followed",
+          "test_ordinary_effects_part_keeps_logical_text"
+        ]
+      },
+      "tests/ingest/test_application_atomic_docx_gate.py": {
+        "count": 1,
+        "functions": [
+          "test_docx_replay_gate_preserves_revision_and_rolls_back_new_membership"
+        ]
+      }
+    },
+    "compatibility_cases": 43,
+    "native": {
+      "fields": {
+        "status": "PASS",
+        "native_keyboard": "PASS",
+        "format_children": "PASS",
+        "source_bound_docx": "PASS",
+        "rich_source_mapping": "PASS",
+        "independent_notes": "PASS",
+        "fixed_markers": "PASS",
+        "original_media": "PASS",
+        "package_preservation": "PASS",
+        "completed_offline_export": "PASS",
+        "late_stop_completion": "PASS",
+        "controlled_pickers_and_consent": true,
+        "real_translation_service": "NOT_RUN",
+        "translation_quality": "NOT_RUN",
+        "Word_layout": "NOT_RUN",
+        "nvda": "NOT_RUN",
+        "native_failure_cleanup": "PASS"
+      },
+      "required": [
+        "native Windows wx",
+        "actual canonical DOCX import",
+        "actual shared desktop executor",
+        "actual unchanged host worker",
+        "actual shared ProgressHub",
+        "actual retained catalog scope",
+        "existing document keyboard command retained",
+        "formatted workstation is a native modal",
+        "limitations visible before approval",
+        "source selection is readonly",
+        "format inspection sends no source text",
+        "rich source profile and limitations visible before approval",
+        "body and independent note canonical records bound",
+        "review binds mapping and source with no quotation authority",
+        "default-No decision saves no job and makes no request",
+        "preparation makes no provider call",
+        "one exact rich partition job",
+        "exact reviewed rich fragment requests",
+        "late Stop retains actual committed completion",
+        "completed export needs no active profile",
+        "exact committed DOCX receipt",
+        "all unselected DOCX parts preserved exactly",
+        "actual paragraph and simple-table translation",
+        "actual footnote and endnote text translated with exact locators",
+        "embedded picture bytes and identity retained",
+        "fixed bookmark proof and note marker identities retained",
+        "rich output binds every accepted fragment digest",
+        "original source bytes remain unchanged",
+        "completed export retains readable native status focus",
+        "existing DOCX export never overwritten",
+        "real installed formatting children completed",
+        "format resource leases quiescent",
+        "existing document workstation route preserved",
+        "host shutdown retains no failed cleanup owner",
+        "nested native failure unwinds only the active owned modal",
+        "installed exact source: carr_library.assistant.translation_layout",
+        "installed exact source: carr_library.assistant.translation_layout_worker",
+        "installed exact source: carr_library.assistant.translation_documents",
+        "installed exact source: carr_library.assistant.translation",
+        "installed exact source: carr_library.assistant.providers",
+        "installed exact source: carr_library.assistant.profiles",
+        "installed exact source: carr_library.ui.translation_documents",
+        "installed exact source: carr_library.ui.translation_layout",
+        "installed exact source: carr_library.research.export_file",
+        "installed exact source: carr_library.reader.reading_desk",
+        "installed exact source: carr_library.durable_state",
+        "installed exact source: carr_library.progress",
+        "installed exact source: carr_library.ui.desktop_app",
+        "installed exact source: carr_library.ui.worker_lifetime",
+        "installed exact source: carr_library.audio.process",
+        "installed exact source: carr_library.operations.broker",
+        "installed exact source: carr_library.assistant.translation_partition",
+        "installed exact source: carr_library.assistant.translation_docx_rich",
+        "installed exact source: carr_library.extract.docx_ordered",
+        "installed exact source: carr_library.extract.docx_rich",
+        "post-cleanup installed hash: carr_library.assistant.translation_layout",
+        "post-cleanup installed hash: carr_library.assistant.translation_layout_worker",
+        "post-cleanup installed hash: carr_library.assistant.translation_documents",
+        "post-cleanup installed hash: carr_library.assistant.translation",
+        "post-cleanup installed hash: carr_library.assistant.providers",
+        "post-cleanup installed hash: carr_library.assistant.profiles",
+        "post-cleanup installed hash: carr_library.ui.translation_documents",
+        "post-cleanup installed hash: carr_library.ui.translation_layout",
+        "post-cleanup installed hash: carr_library.research.export_file",
+        "post-cleanup installed hash: carr_library.reader.reading_desk",
+        "post-cleanup installed hash: carr_library.durable_state",
+        "post-cleanup installed hash: carr_library.progress",
+        "post-cleanup installed hash: carr_library.ui.desktop_app",
+        "post-cleanup installed hash: carr_library.ui.worker_lifetime",
+        "post-cleanup installed hash: carr_library.audio.process",
+        "post-cleanup installed hash: carr_library.operations.broker",
+        "post-cleanup installed hash: carr_library.assistant.translation_partition",
+        "post-cleanup installed hash: carr_library.assistant.translation_docx_rich",
+        "post-cleanup installed hash: carr_library.extract.docx_ordered",
+        "post-cleanup installed hash: carr_library.extract.docx_rich"
+      ],
+      "origins": [
+        "carr_library.assistant.translation_layout",
+        "carr_library.assistant.translation_layout_worker",
+        "carr_library.assistant.translation_documents",
+        "carr_library.assistant.translation",
+        "carr_library.assistant.providers",
+        "carr_library.assistant.profiles",
+        "carr_library.ui.translation_documents",
+        "carr_library.ui.translation_layout",
+        "carr_library.research.export_file",
+        "carr_library.reader.reading_desk",
+        "carr_library.durable_state",
+        "carr_library.progress",
+        "carr_library.ui.desktop_app",
+        "carr_library.ui.worker_lifetime",
+        "carr_library.audio.process",
+        "carr_library.operations.broker",
+        "carr_library.assistant.translation_partition",
+        "carr_library.assistant.translation_docx_rich",
+        "carr_library.extract.docx_ordered",
+        "carr_library.extract.docx_rich"
+      ],
+      "essential": 35,
+      "check_count_minimum": 75,
+      "origin_count": 20,
+      "fixture_script": "scripts/translation_rich_docx_fixtures.py",
+      "fixture_blob": "2e36000ad9b6f2bdef4d6ae2a99cb4e696cc8d38",
+      "audio_prerequisite": false,
+      "script": "29a5c381a11a4ba64ac2ee6daca96029f8121c2b"
+    },
+    "final_seal_after_probe": true,
+    "no_audio_or_office_prerequisite": true,
+    "qualification": "Actual installed source/control/worker/publication gates required; real translation, Word layout and NVDA remain NOT_RUN",
+    "runtime": "NOT_RUN"
+  },
+  "clipboard": {
+    "manifest": "d9b522f074023e68041a0dd8124e49d6529e7b56",
+    "whole_modules": {
+      "tests/studio/test_clip_copy.py": {
+        "count": 17,
+        "functions": [
+          "test_actual_copy_and_paste_preserve_pcm_original_and_saved_selection",
+          "test_cut_for_paste_retains_exact_old_revision_and_can_restore_or_reuse_it",
+          "test_current_revision_copy_can_be_pasted_without_an_intervening_edit",
+          "test_saved_copy_can_move_between_scenes_without_changing_other_content",
+          "test_forged_clip_reference_is_refused_before_decoder_or_publication",
+          "test_changed_saved_history_cannot_relabel_a_copied_selection",
+          "test_changed_retained_original_is_refused_before_paste_publication",
+          "test_cancel_after_original_verification_still_prevents_paste_commit",
+          "test_paste_compare_and_swap_keeps_a_competing_same_revision_edit",
+          "test_pre_cancelled_clipboard_operation_opens_no_saved_project",
+          "test_invalid_paste_position_never_opens_media_or_saves"
+        ]
+      },
+      "tests/studio/test_clip_copy_dialog.py": {
+        "count": 10,
+        "functions": [
+          "test_copy_is_queued_and_remembers_only_the_completed_saved_selection",
+          "test_changed_library_before_queued_clipboard_work_prevents_all_mutation",
+          "test_paste_freezes_saved_reference_destination_and_time_before_queue",
+          "test_cancelled_paste_picker_creates_no_job_and_retains_copied_reference",
+          "test_paste_without_a_saved_reference_is_a_visible_noop",
+          "test_committed_cut_keeps_reference_and_completion_after_late_stop",
+          "test_failed_cut_preserves_previous_clipboard_and_history",
+          "test_same_path_directory_replacement_revokes_queued_paste"
+        ]
+      }
+    },
+    "expected_static_cases": 27,
+    "native_script": "f64a4dcc568614542f704f01b3da08dd26a29ab9",
+    "required_native_checks": 64,
+    "origin_count": 15,
+    "additional_fields": {
+      "native_clipboard": "PASS",
+      "native_failure_cleanup": "PASS"
+    },
+    "runtime": "NOT_RUN"
+  },
+  "orchestration_envelopes": {
+    "main": {
+      "authorization": "Parent explicit acceptance 2026-11-27; measured finite orchestration only",
+      "old": {
+        "fast_job_minutes": 25,
+        "full_bundle_minutes": 45,
+        "job_minutes": 110
+      },
+      "new": {
+        "fast_job_minutes": 45,
+        "full_bundle_minutes": 120,
+        "job_minutes": 270
+      },
+      "unchanged": {
+        "source_minutes": 45,
+        "transferable_minutes": 15,
+        "standard_minutes": 20,
+        "default_suite_seconds": 600,
+        "asr_admission_allowlist_seconds": 900
+      },
+      "measured": {
+        "source98_job_seconds": 1302.83,
+        "source98_head": "dd9f90893ecb21f5f2aef5a3e11e4d6a83d6913c",
+        "v3_recovery_pytest_seconds": 1198.78,
+        "v3_recovery_source_copied_modules": 72,
+        "v3_recovery_cases": 1931
+      },
+      "inventory": {
+        "fast_source": 116,
+        "installed_suites": 267,
+        "native_and_conformance_commands": 27
+      },
+      "native_watchdogs": "No gate-level watchdog relaxation; reviewed Book probe adds a300-second cleanup-inclusive watchdog, recording preserves210 seconds.",
+      "verdicts_firewalls_cleanup": "UNCHANGED",
+      "execution": "NOT_RUN"
+    },
+    "v3": {
+      "evidence": "62a83d2530024f5a10c079f1226f7d48bf77d747",
+      "old": {
+        "job_minutes": 50,
+        "recovery_minutes": 20,
+        "publication_minutes": 15,
+        "source_minutes": null
+      },
+      "new": {
+        "job_minutes": 270,
+        "recovery_minutes": 25,
+        "publication_minutes": 120,
+        "source_minutes": 45
+      },
+      "measured": {
+        "recovery_cases": 1931,
+        "recovery_pytest_seconds": 1198.78,
+        "completed_source_suites": 86,
+        "old_source_total": 103,
+        "source_wall_seconds": 779,
+        "recovery_outcome": "1921 passed and10 failed; measured duration is orchestration evidence only, not release qualification."
+      },
+      "inventory": {
+        "source_whole": 141,
+        "installed_whole": 121,
+        "native_and_conformance_commands": 27,
+        "installed_recovery_whole": 75
+      },
+      "unchanged": [
+        "All case lists, collectors, JUnit/origin/receipt verdicts",
+        "Existing600s suite limits and separate ASR900 allowlist",
+        "All product time budgets and native cleanup watchdogs",
+        "Existing process firewall and failure aggregates"
+      ],
+      "validation": "NOT_RUN"
+    }
+  },
+  "regression_gates": {
+    "intake": {
+      "count": 16,
+      "functions": [
+        "test_large_txt_manifest_and_exact_segments_use_bounded_python_buffers",
+        "test_real_pdf_exactly_at_profile_limit_is_screened_without_materializing_it",
+        "test_small_snapshot_keeps_immutable_bytes_and_original_identity",
+        "test_streamed_utf8_crosses_block_boundary_without_newline_or_bom_rewriting",
+        "test_cancel_during_streamed_hash_never_returns_an_admitted_manifest",
+        "test_source_changed_after_genuine_final_hash_is_rejected",
+        "test_saved_file_identity_rejects_same_bytes_path_replacement",
+        "test_streamed_retention_cancellation_cleans_only_its_private_stage",
+        "test_no_replace_retention_and_late_external_drift_remain_explicit",
+        "test_profile_does_not_raise_other_format_or_absolute_maximum",
+        "test_large_txt_requires_original_bounded_logical_segments",
+        "test_held_source_allows_another_reader_and_keeps_its_exact_identity",
+        "test_held_source_excludes_windows_writes_or_rejects_portable_drift",
+        "test_open_writer_is_never_admitted_as_a_stable_windows_source",
+        "test_held_source_cleanup_preserves_the_original_cancellation"
+      ]
+    },
+    "book": {
+      "batch": 29,
+      "cli": 18,
+      "all_original_cases_retained": true
+    },
+    "replay": {
+      "whole_modules": {
+        "tests/ingest/test_import_replay_identity.py": {
+          "count": 24,
+          "functions": [
+            "test_registration_failure_rolls_back_then_replay_adds_only_membership",
+            "test_replay_conflicting_identity_cannot_leave_catalog_or_membership",
+            "test_replay_after_metadata_edit_preserves_revision_and_validates_current_metadata",
+            "test_replay_rejects_checkpoint_text_that_differs_from_sealed_source",
+            "test_replay_rechecks_active_revision_before_registering",
+            "test_cancelled_replay_does_not_add_membership",
+            "test_pre_cancelled_replay_returns_cancelled_without_intake_or_registration_effects",
+            "test_fresh_post_commit_cancellation_returns_committed_source"
+          ]
+        },
+        "tests/ingest/test_terminal_replay_registration.py": {
+          "count": 10,
+          "functions": [
+            "test_terminal_replay_registration_is_invisible_until_accepted",
+            "test_superseded_replay_uses_current_metadata_without_reactivating_old_source",
+            "test_cancelled_completed_replay_does_not_add_memberships",
+            "test_replay_rejects_rehashed_checkpoint_text_before_registration",
+            "test_forged_terminal_journal_without_published_source_does_not_register"
+          ]
+        },
+        "tests/ingest/test_txt_replay_registration.py": {
+          "count": 7,
+          "functions": [
+            "test_txt_replay_registration_is_atomic",
+            "test_txt_replay_rejects_conflicting_identity",
+            "test_cancelled_completed_replay_never_adds_membership",
+            "test_cancellation_during_completed_replay_validation_rolls_back_membership",
+            "test_superseded_replay_requires_current_metadata_without_reactivation",
+            "test_cancelled_completed_replay_preserves_membership",
+            "test_pdf_completed_replay_registers_exact_source_without_approving_it"
+          ]
+        },
+        "tests/ingest/test_import_publication_point.py": {
+          "count": 2,
+          "functions": [
+            "test_cancel_after_committed_publication_returns_complete_and_keeps_replay_guard"
+          ]
+        }
+      },
+      "source_and_installed": true,
+      "scope": "All four existing replay contracts; real Windows intake/replay additional diagnostic separate"
+    },
+    "fixture_counts_unchanged": {
+      "progress_voice_actions": 22,
+      "engine_settings_lifetime": 33,
+      "desktop_handlers": 60,
+      "spelling": 55
+    }
+  },
+  "diagnostic_peer_review": {
+    "blob": "3ee29faae1a19e9ca4f124b7aca27020dfba1c0b",
+    "status": "ACCEPTED_STATIC_NOT_RUN",
+    "ubuntu_suites": 41,
+    "ubuntu_cases": 1079,
+    "windows_suites": 5,
+    "windows_cases": 59,
+    "parse_runtime": "NOT_RUN",
+    "points": [
+      "exact source event checkout/head verification",
+      "pinned existing Python dependency locks; explicit actual Ubuntu FFmpeg/Flite",
+      "whole command/expected/strict verdict bijection matches",
+      "existing ci_check default 600 and fail/skip/xfail/xpass policy unchanged",
+      "Windows actual platform assertions and read-share/replay cases required",
+      "independent actual YAML/PowerShell parser; report-only artifacts",
+      "no provider rerun or network-policy mutation"
+    ]
+  },
+  "native_failure_followup": {
+    "actual_evidence": "7370c67a3bce2d3b73a87c955557779a7d0a4480",
+    "actual_source": "b359ca64f5c09fd971dfb8e4991a949a9cea488f",
+    "actual_run": 46031173898,
+    "actual_job": 140615140983,
+    "trust": {
+      "bootstrap_script_operand": "consumed exactly once with sys.argv.pop(1)",
+      "native_switch": "--native retained",
+      "source": "gate only",
+      "qualified": "NOT_RUN"
+    },
+    "asr": {
+      "source": "3737286758c88f8a634da2e276cadeccaad4360b",
+      "source_path": "carr-library/scripts/windows_transcription_profiles_smoke.py",
+      "required_checks": 10,
+      "origins": 10,
+      "change": "Parse real JSON export receipt, preserve exact published-file/manifest/source assertions",
+      "gate_inventory": "UNCHANGED"
+    },
+    "import_center": {
+      "manifest": "fd964ec3f7785e4d1121fdd59d30045fbb717b36",
+      "ui": "b304c895432fe69f68b7ea7a768ee0c70c9d4f0d",
+      "probe": "cd36b78bab9ca11ec3113f2c6f5f4434da7c1078",
+      "invocation": "Existing early main native Import Center invocation; exit code remains required",
+      "required_report": {
+        "status": "PASS",
+        "native_controls": "PASS",
+        "planned_import_search_reopen": "PASS",
+        "compact_layout": "PASS",
+        "native_host_cleanup": "PASS",
+        "nvda": "NOT_RUN"
+      },
+      "whole_handler_cases_unchanged": 42,
+      "corrected_runtime": "NOT_RUN"
+    },
+    "book": {
+      "manifest": "da34c8855a533983ada0337a6d03bc4a5da114ef",
+      "probe": "4f0d1a8e006bf43963f00d3dcd6f284a2c8f5f67",
+      "required_checks": 36,
+      "origins": 12,
+      "new_check": "native failure answers only owned question No before unwinding active modal",
+      "new_field": {
+        "native_failure_cleanup": "PASS"
+      },
+      "watchdog_seconds": 300,
+      "corrected_runtime": "NOT_RUN"
+    },
+    "recording": {
+      "manifest": "637747b8c2a82c2a543ddefd75edf0896bb479fb",
+      "probe": "27ea1213d42fd3d3826133e54ab7c82c36fc82c3",
+      "test": "ead73e8f5b7d50e9ff9e8d850f0b225351054317",
+      "required_checks": 43,
+      "origins": 10,
+      "new_checks": [
+        "second recording modal starts after first HWND and callbacks retire",
+        "recording host Close drains its registered native owners"
+      ],
+      "new_fields": {
+        "sequential_modal_ownership": true,
+        "actual_monitoring_outputs": "type(value) is int and value > 0; bool is not accepted"
+      },
+      "whole_module": {
+        "count": 10,
+        "functions": [
+          "test_retired_modal_callbacks_cannot_enter_the_next_native_phase",
+          "test_reset_attempts_every_timer_and_retains_a_failed_stop_for_retry",
+          "test_callback_failure_is_reported_inside_the_timer_callback",
+          "test_same_title_closing_window_is_not_the_current_modal",
+          "test_retired_or_missing_native_handle_never_receives_input",
+          "test_ambiguous_owned_modals_are_refused_before_any_input",
+          "test_a_new_window_may_reuse_a_handle_after_observed_retirement",
+          "test_actual_cleanup_drains_owned_worker_before_restoring_fixtures_or_dll"
+        ]
+      },
+      "companion": "scripts/windows_recording_smoke.py",
+      "watchdog_seconds": 210,
+      "actual_output_device": "Required; zero outputs remains failure",
+      "corrected_runtime": "NOT_RUN"
+    }
+  },
+  "scoped_locator_capacity": {
+    "manifest": "f436ba4fff6d879d381aa79a39a0404131ebcb89",
+    "source": "63a9179eff3816a81523c5fadeeea750ddfbcdc4",
+    "test": "489dec6a00fb8e4ae16611fefb84616a5ec77592",
+    "new_cases": 4,
+    "existing_essential_companions": {
+      "tests/storage/test_locator_integrity.py": {
+        "sha": "dcdaba8eac7bb7894de9e87df74019240db187ae",
+        "count": 8
+      },
+      "tests/storage/test_printed_label_integrity.py": {
+        "sha": "0cc3cc1c0d0002c2dcda6c3a16f417ff3fe2d7d5",
+        "count": 37
+      }
+    },
+    "coverage": "Whole source, fast Windows source, isolated installed in main and V3; current module origin/hash before and after",
+    "global_checks": "Unchanged; no global or persistent connection cache",
+    "capacity_qualification": "NOT_ESTABLISHED",
+    "execution": "NOT_RUN"
+  },
+  "ownership_and_query_followup": {
+    "status": "SOURCE_CHECKPOINT_NOT_RUN",
+    "checked_commit": {
+      "manifest": "0de49b4c2e8679b1928e8b4e38d3a67c3542005e",
+      "whole_suite": "tests/ingest/test_checked_catalog_commit.py",
+      "cases": 10
+    },
+    "search_queries": {
+      "manifest": "52797e0822da1594102603e1f3d1ad58bae0a58b",
+      "whole_suite": "tests/search/test_search_query_work.py",
+      "cases": 17
+    },
+    "broker_scope": {
+      "manifest": "c174dfcf313bd1a2b10dcbc6ad6b4b96779909da",
+      "whole_suite": "tests/operations/test_broker_scope.py",
+      "cases": 20,
+      "source": "107e1a600bb4bdf0f3edb7735ee5fcdb68d9fb36",
+      "locks": "ae161b8483f84b2a4aa2f153b4b11b08f76b9693",
+      "tests": "21cdd7081b5af428d5303efa116d96765e185ff9",
+      "rich_service_fixture": "3f0f9c64d496f9ca423b169e6871e67816c51e1a"
+    },
+    "additional_existing_whole_suites": {
+      "main_source": [
+        "tests/ingest/test_pipeline.py",
+        "tests/storage/test_schema_boundary.py",
+        "tests/storage/test_revisions.py",
+        "tests/storage/test_read_boundary.py",
+        "tests/catalog/test_read_views.py",
+        "tests/catalog/test_read_views_v2_integration.py",
+        "tests/search/test_literal_integrity.py",
+        "tests/search/test_literal_readonly.py"
+      ],
+      "main_installed": [
+        "tests/ingest/test_application_atomic_gate.py",
+        "tests/ingest/test_pipeline.py",
+        "tests/storage/test_schema_boundary.py",
+        "tests/storage/test_revisions.py",
+        "tests/storage/test_read_boundary.py",
+        "tests/catalog/test_read_views.py",
+        "tests/catalog/test_read_views_v2_integration.py",
+        "tests/search/test_literal_integrity.py",
+        "tests/search/test_literal_readonly.py",
+        "tests/search/test_literal_v2_composition.py",
+        "tests/e2e/test_retained_source_search_integrity.py"
+      ],
+      "v3_source": [
+        "tests/ingest/test_application_atomic_gate.py",
+        "tests/ingest/test_pipeline.py",
+        "tests/ingest/test_initial_publication_completion.py",
+        "tests/ingest/test_worker_publication_boundary.py",
+        "tests/e2e/test_import_worker_publication.py",
+        "tests/storage/test_schema_boundary.py",
+        "tests/storage/test_revisions.py",
+        "tests/storage/test_read_boundary.py",
+        "tests/catalog/test_read_views.py",
+        "tests/catalog/test_read_views_v2_integration.py",
+        "tests/search/test_literal_integrity.py",
+        "tests/search/test_literal_readonly.py",
+        "tests/search/test_literal_v2_composition.py",
+        "tests/e2e/test_retained_source_search_integrity.py"
+      ],
+      "v3_installed": [
+        "tests/ingest/test_application_atomic_gate.py",
+        "tests/ingest/test_pipeline.py",
+        "tests/ingest/test_initial_publication_completion.py",
+        "tests/ingest/test_worker_publication_boundary.py",
+        "tests/storage/test_schema_boundary.py",
+        "tests/storage/test_revisions.py",
+        "tests/storage/test_read_boundary.py",
+        "tests/catalog/test_read_views.py",
+        "tests/catalog/test_read_views_v2_integration.py",
+        "tests/search/test_literal_integrity.py",
+        "tests/search/test_literal_readonly.py",
+        "tests/search/test_literal_v2_composition.py",
+        "tests/e2e/test_retained_source_search_integrity.py"
+      ]
+    },
+    "additional_existing_suite_policy": "Keep whole-file strict nonzero collection/JUnit without inventing static case counts; retain failure/error/skip/XFAIL/XPASS rejection and before/after exact copied-source hashes.",
+    "fixture_dependency": {
+      "path": "tests/e2e/test_epub_import.py",
+      "sha": "e788c2dabcb94488c9c5f52190dfee447cf9e486",
+      "reason": "Existing tests/ingest/test_worker_publication_boundary.py loads this helper using runpy; both isolated installed groups now copy and hash it explicitly."
+    },
+    "no_new_native_command": true,
+    "no_new_dependency": true,
+    "timeout_policy_unchanged": true,
+    "no_performance_qualification": true
+  },
+  "diagnostic_dependency_correction": {
+    "manifest": "776ee3390a720d302660c1b11d54aec1f92841a0",
+    "path": ".github/workflows/carr-next9-final-source.yml",
+    "preimage": "3ee29faae1a19e9ca4f124b7aca27020dfba1c0b",
+    "sha": "6bdaf8c2beb467739dcf9c63684dfb7c061ccdc4",
+    "role": "Reviewed precursor for Locate's separately owned expanded diagnostic; do not overwrite its later successor.",
+    "test_tool": "reportlab==4.4.9",
+    "acquisition": "binary-only version pin reused from existing main; not a new hash-locked closure",
+    "preflight": "Actual -I -B Canvas import and exact distribution-version check before tests, with retained JSON and platform exit checks.",
+    "production_dependencies_changed": false,
+    "prior_hashed_installs_unchanged": true,
+    "selectors_assertions_budgets_unchanged": true,
+    "review": "Root and Canonical accepted STATIC_NOT_RUN",
+    "runtime": "NOT_RUN"
+  },
+  "actual_evidence": {
+    "manifest": "f9954e2df32a81532c11b374ba74efbd74ec2db1",
+    "faba_source": "47/49 whole suites PASS;1510 passed,11 failed,0 skipped; overall source FAIL",
+    "faba_provider_loopback": "28 PASS in an actual isolated Linux network namespace; no real provider or installed qualification",
+    "current_gate_runtime": "NOT_RUN",
+    "no_prior_pass_transfer": true
+  }
+}

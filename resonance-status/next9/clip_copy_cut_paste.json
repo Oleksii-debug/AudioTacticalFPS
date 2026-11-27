@@ -1,0 +1,97 @@
+{
+  "schema": "resonance-reviewed-source-slice/1",
+  "status": "DRAFT_NOT_RUN",
+  "feature": "V3-05 saved-clip copy, cut for paste and paste through existing immutable revisions",
+  "base_commit": "fabae325a1a197ac6959732254ddf16d3ecef367",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/studio/project_history.py",
+      "preimage": "55be6fcdc5266a546b60541b2bb72768ade8c800",
+      "sha": "ad9dd72a8101639cf03a02420dbb0c2b0c0cc7be"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/clips.py",
+      "preimage": "fb038128ffb1ba636b31a07410fb8729a532d323",
+      "sha": "f77512fc1f0f242a6202ffa247e5ce9049debefc"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/studio_clips.py",
+      "preimage": "2e8d4c92b2a0fcf8d115fb87ec0befe7a263384f",
+      "sha": "d926e06b20694c0e586a102bd0ec25747faea444"
+    },
+    {
+      "path": "carr-library/tests/studio/test_clip_copy.py",
+      "preimage": null,
+      "sha": "fa35b61f5fd75066bc01bb209f00b8154629503c"
+    },
+    {
+      "path": "carr-library/tests/studio/test_clip_copy_dialog.py",
+      "preimage": null,
+      "sha": "b473afbdc68d289c547d261585d2c9af9fecc917"
+    },
+    {
+      "path": "carr-library/scripts/windows_studio_effects_smoke.py",
+      "preimage": "de123b44e46d0131e068cc1155955bc3ba14f62d",
+      "sha": "f64a4dcc568614542f704f01b3da08dd26a29ab9"
+    },
+    {
+      "path": "carr-library/docs/STUDIO_CLIP_HISTORY.md",
+      "preimage": "ea8610c2d4ad846c7f726bb5c0c9bfba2d8504d1",
+      "sha": "734ae7b31ec916ab0e4e355dcec51673e6d20dbc"
+    }
+  ],
+  "authority": "Current ProjectStore/Cue/managed-input/runtime/project CAS; passive ClipReference contains exact original project revision, scene and clip IDs. No new database, queue, renderer, external clipboard, media copy or engine.",
+  "whole_suites": {
+    "tests/studio/test_clip_copy.py": 17,
+    "tests/studio/test_clip_copy_dialog.py": 10
+  },
+  "companions": [
+    "tests/studio/test_project_history.py",
+    "tests/studio/test_clip_history_dialog.py"
+  ],
+  "preserved_suites": {
+    "tests/studio/test_clip_operations.py": 59,
+    "tests/studio/test_project_history.py": 29,
+    "tests/studio/test_clip_history_dialog.py": 22
+  },
+  "native": {
+    "script": "scripts/windows_studio_effects_smoke.py",
+    "required_subset": 64,
+    "origins": 15,
+    "existing_required": 58,
+    "added": [
+      "native Copy retains an exact saved selection without mutation",
+      "native Paste preserves original selection and effects at a new scene position",
+      "native Cut for Paste retains the removed clip in immutable history",
+      "native Paste reuses the cut selection with a fresh stable identity",
+      "native Undo restores content after clipboard edits",
+      "native Studio failure cleanup closes only the running owned modal"
+    ],
+    "required_fields": {
+      "native_clipboard": "PASS",
+      "native_failure_cleanup": "PASS"
+    },
+    "cleanup": "Owned running modal unwind, real nested-loop control, actual DesktopFrame.Close and retained executor drain; no direct host _closing/Destroy bypass."
+  },
+  "guards": [
+    "Copy and Cut do not open media",
+    "Paste reads the exact immutable source revision",
+    "No caller-supplied Cue or external path is accepted as copied authority",
+    "Current retained input bytes are revalidated",
+    "Same-project scenes only; switching project clears UI clipboard",
+    "Current revision and fingerprint compare at publication",
+    "Cancellation and same-path library replacement retain existing guards",
+    "Completed cut/paste retains the ordinary late-stop outcome"
+  ],
+  "limits": [
+    "Whole saved selections; split/cut interval operations retain their existing separate behavior",
+    "No cross-project copy, system clipboard, arbitrary multi-source consolidation or new audio codec/runtime",
+    "No new audio-device, acoustic or NVDA qualification"
+  ],
+  "validation": {
+    "readback": "All seven blobs EXACT",
+    "parse": "NOT_RUN",
+    "whole_suites": "NOT_RUN",
+    "native": "NOT_RUN"
+  }
+}

@@ -4,6 +4,7 @@ from dataclasses import replace
 from hashlib import sha256
 from io import BytesIO
 import importlib.util
+import os
 from pathlib import Path
 import shutil
 from types import SimpleNamespace
@@ -25,6 +26,7 @@ from carr_library.assistant.translation_partition import partition_ranges
 from carr_library.extract.docx_ordered import extract_docx
 from carr_library.library_backup import create_backup, restore_backup
 from carr_library.operations.broker import ResourceBroker
+from carr_library.operations.models import ResourceStateError
 
 _spec = importlib.util.spec_from_file_location('rich_docx_current_transport',
     Path(__file__).with_name('test_translation_layout.py'))
@@ -90,7 +92,7 @@ def test_actual_worker_matches_retained_rich_source_and_exact_owned_origin(bound
     assert len(invocations) == 1 and '-I' in invocations[0][0] and '-B' in invocations[0][0]
     from carr_library.assistant import translation_layout_worker
     assert str(Path(translation_layout_worker.__file__).resolve()) in invocations[0][0]
-    assert invocations[0][1]['owned_windows_job'] is True
+    assert invocations[0][1]['owned_windows_job'] is (os.name == 'nt')
     assert bound.state['calls'] == calls
     assert ResourceBroker.for_app(bound.app.root).snapshot()['leases'] == []
 
@@ -249,23 +251,58 @@ def test_changed_retained_picture_bytes_refuse_source_before_transfer(bound):
 def test_source_root_replacement_during_format_process_refuses_late_admission(bound, tmp_path, monkeypatch):
     actual = layout.run_process
     old_root, moved = bound.app.root, tmp_path / 'owned moved root'
-    swapped = False
+    replacement = tmp_path / 'preserved replacement root'
+    marker = b'The replacement directory belongs to another owner.\n'
+    swapped, child_returned = False, False
+    blocked = []
     def replace_root(args, **kwargs):
-        nonlocal swapped
+        nonlocal swapped, child_returned
         result = actual(args, **kwargs)
-        old_root.rename(moved)
-        old_root.mkdir()
+        child_returned = True
+        try:
+            old_root.rename(moved)
+        except PermissionError as exc:
+            if os.name != 'nt' or getattr(exc, 'winerror', None) not in (5, 32):
+                raise
+            # A real Windows handle may prevent substitution altogether.
+            # Preserve that exact OS refusal instead of inventing a swap.
+            blocked.append(exc)
+            raise
         swapped = True
+        old_root.mkdir()
+        (old_root / 'replacement-owner.txt').write_bytes(marker)
         return result
     monkeypatch.setattr(layout, 'run_process', replace_root)
     before = list(bound.state['calls'])
     try:
-        with pytest.raises((ValueError, OSError)):
+        with pytest.raises((ValueError, OSError, ResourceStateError)) as refused:
             captured(bound)
-        assert swapped and bound.state['calls'] == before
+        assert child_returned and bound.state['calls'] == before
+        if swapped:
+            assert not blocked
+            assert isinstance(refused.value, ResourceStateError)
+            assert str(refused.value) == (
+                'The selected resource directory changed; reopen the selected library before retrying.')
+            causes, seen, error = [], set(), refused.value
+            while error is not None and id(error) not in seen:
+                seen.add(id(error))
+                causes.append(error)
+                error = error.__cause__ or error.__context__
+            assert any(isinstance(error, ValueError)
+                       and 'selected library directory changed' in str(error).lower()
+                       for error in causes)
+            assert (old_root / 'replacement-owner.txt').read_bytes() == marker
+            assert tuple(path.name for path in old_root.iterdir()) == ('replacement-owner.txt',)
+        else:
+            assert len(blocked) == 1 and refused.value is blocked[0]
+            assert old_root.is_dir() and not moved.exists()
+            assert ResourceBroker.for_app(bound.app.root).snapshot()['leases'] == []
     finally:
         if swapped:
-            old_root.rmdir()
+            # Restore the fixture without deleting another directory's bytes
+            # or masking the original ownership failure with rmdir(ENOTEMPTY).
+            if old_root.exists():
+                old_root.rename(replacement)
             moved.rename(old_root)
 
 

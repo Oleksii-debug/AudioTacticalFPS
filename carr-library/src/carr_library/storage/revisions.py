@@ -295,13 +295,19 @@ class Storage:
     def _check_locators(self, revision=None):
         # Native SQLite window functions validate sequence and locator kind.
         # Existing schema derives kind from physical IS NULL; no migration here.
+        # A bound nullable OR prevents SQLite from seeking the existing
+        # (revision, ordinal) index and scans every book for each new revision.
+        # Choose only between these two fixed query shapes; identities remain
+        # bound parameters and all locator checks stay identical.
+        selected = '' if revision is None else ' WHERE revision=?'
+        parameters = () if revision is None else (revision,)
         invalid = self.db.execute("""
             WITH ordered AS (
                 SELECT ordinal, physical, printed, verified,
                     row_number() OVER w AS expected,
                     lag(physical) OVER w AS previous_physical,
                     lag(physical IS NULL) OVER w AS previous_logical
-                FROM page WHERE (? IS NULL OR revision=?)
+                FROM page""" + selected + """
                 WINDOW w AS (PARTITION BY revision ORDER BY ordinal)
             )
             SELECT 1 FROM ordered WHERE ordinal != expected
@@ -312,14 +318,14 @@ class Storage:
                 OR (expected>1 AND previous_logical != (physical IS NULL))
                 OR (physical IS NOT NULL AND physical <= previous_physical)
             LIMIT 1
-        """, (revision, revision)).fetchone()
+        """, parameters).fetchone()
         if invalid:
             raise sqlite3.IntegrityError('invalid source locator sequence or label')
         # Apply the citation boundary to every authoritative label, including
         # inactive historical revisions checked before backup or recovery.
         for physical, printed in self.db.execute(
-                'SELECT physical,printed FROM page WHERE verified=1 AND (? IS NULL OR revision=?)',
-                (revision, revision)):
+                'SELECT physical,printed FROM page WHERE verified=1'
+                + ('' if revision is None else ' AND revision=?'), parameters):
             try:
                 Locator('physical_page', physical, printed, True)
             except ValueError as exc:

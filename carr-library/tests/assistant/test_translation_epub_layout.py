@@ -67,12 +67,16 @@ def epub_bytes(*, chapters=2, first_body=None, repeated=False, overlay=False):
             '<img src="image.png" alt="Original image alternative"/>')
         if index == 1 and first_body is not None:
             body = first_body
+        # A substituted body removes the default heading, but the unchanged
+        # navigation still targets #heading. Keep that anchor on the body at
+        # text offset zero without adding prose or another translation unit.
+        body_open = '<body id="heading">' if index == 1 and first_body is not None else '<body>'
         payloads['OEBPS/' + href] = (
             '<?xml version="1.0" encoding="UTF-8"?>'
             '<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">'
             '<head><title>Untranslated original chapter ' + str(index) + '</title>'
-            '<link rel="stylesheet" type="text/css" href="styles.css"/></head><body>'
-            + body + '</body></html>').encode('utf-8')
+            '<link rel="stylesheet" type="text/css" href="styles.css"/></head>'
+            + body_open + body + '</body></html>').encode('utf-8')
     if repeated:
         spine.append('<itemref idref="chapter-1"/>')
     if overlay:
