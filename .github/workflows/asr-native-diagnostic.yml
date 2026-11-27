@@ -43,7 +43,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Require fresh-profile and exact mixed-source label regressions
         run: |
-          python scripts/ci_check.py --jobs 1 tests/transcription/test_profile_controls.py
+          python scripts/ci_check.py --jobs 1 tests/transcription/test_profile_controls.py tests/ui/test_transcription_dialog.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Exercise the unchanged native workflow and observe the actual close outcome
         run: |
