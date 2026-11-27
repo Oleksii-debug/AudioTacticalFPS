@@ -18,6 +18,10 @@ ROOT = Path(__file__).resolve().parents[1]
 PYTEST_CHILD = """
 import sys
 import socket
+from pathlib import Path
+
+sys.path.insert(0, str(Path.cwd() / 'scripts'))
+from ci_watchdog import CaseWatchdog, without_scheduled_faulthandler
 
 def offline_network(*args, **kwargs):
     raise OSError('Network access is disabled during offline verification')
@@ -39,6 +43,10 @@ import pytest
 class RejectExpectedFailures:
     seen = False
 
+    def __init__(self):
+        self.watchdog = CaseWatchdog()
+        self.case_token = None
+
     def pytest_sessionstart(self, session):
         self.reporter = session.config.pluginmanager.get_plugin('terminalreporter')
 
@@ -46,13 +54,24 @@ class RejectExpectedFailures:
         # Windows can reject huge parameter IDs in environment variables;
         # diagnostics also need a bounded label when a native call stalls.
         self.reporter.write_line('CASE_START ' + nodeid.partition('[')[0][:240])
+        self.case_token = self.watchdog.start(nodeid)
+
+    def pytest_runtest_logfinish(self, nodeid, location):
+        self.watchdog.finish(self.case_token)
+        self.case_token = None
+
+    def pytest_sessionfinish(self, session, exitstatus):
+        self.watchdog.close()
 
     def pytest_runtest_logreport(self, report):
         if hasattr(report, 'wasxfail'):
             self.seen = True
 
 policy = RejectExpectedFailures()
-status = pytest.main(sys.argv[1:], plugins=[policy])
+try:
+    status = pytest.main(without_scheduled_faulthandler(sys.argv[1:]), plugins=[policy])
+finally:
+    policy.watchdog.close()
 if policy.seen:
     print('FAIL: pytest reported XFAIL or XPASS', flush=True)
     if status == pytest.ExitCode.OK:
@@ -83,7 +102,7 @@ def run_suite(suite: str) -> bool:
         try:
             proc = subprocess.run([
                 sys.executable, '-c', PYTEST_CHILD, '-o', 'addopts=',
-                '-o', 'xfail_strict=true', '-o', 'faulthandler_timeout=90',
+                '-o', 'xfail_strict=true',
                 '--durations=15', '--junitxml', str(report),
                 '--basetemp', str(Path(tmp) / 'pytest'),
                 '--', str(path),

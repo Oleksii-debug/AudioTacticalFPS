@@ -12,7 +12,7 @@ from pathlib import Path
 import platform
 import sys
 from tempfile import TemporaryDirectory
-from threading import Event, Thread
+from threading import Event, Thread, Timer
 from time import monotonic
 
 
@@ -118,8 +118,33 @@ class AccessibleAnswer:
             stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
         self.deadline = monotonic() + 8
+        # A failed modal callback must not leave an unpolled UIA process alive.
+        # This timer owns this exact Popen object, never a process-name/PID scan.
+        self.watchdog = Timer(8, self._expire)
+        self.watchdog.daemon = True
+        try:
+            self.watchdog.start()
+        except BaseException:
+            try:
+                self.close()
+            except Exception:
+                pass
+            raise
+
+    def _expire(self):
+        if self.process.poll() is None:
+            try:
+                self.process.kill()
+            except OSError:
+                pass  # The polling/close path still reports an unfinished helper.
+
+    def _cancel_watchdog(self):
+        watchdog = getattr(self, 'watchdog', None)
+        if watchdog is not None:
+            watchdog.cancel()
 
     def close(self):
+        self._cancel_watchdog()
         if self.process.poll() is None:
             self.process.kill()
         self.process.communicate(timeout=1)
@@ -130,6 +155,7 @@ class AccessibleAnswer:
                 self.close()
                 raise AssertionError('Owned accessible confirmation lookup exceeded eight seconds')
             return False
+        self._cancel_watchdog()
         output, unused_error = self.process.communicate(timeout=1)
         if self.process.returncode or len(output) > 16384:
             raise AssertionError('Owned accessible confirmation interaction failed')
@@ -193,6 +219,23 @@ class WindowsConfirmations:
             operation, unused_key = self.pending
             operation.close()
             self.pending = None
+
+    def dismiss(self, owner, titles):
+        """Drain one genuine No action before looking for another owned modal."""
+        if self.pending is not None:
+            operation, key = self.pending
+            if key[0] != owner or key[1] not in titles:
+                raise AssertionError('Cleanup cannot retarget an owned confirmation')
+            if key[2]:
+                self.close()
+            else:
+                complete = self.reply(owner, key[1], accept=False)
+                return complete or self.pending is not None
+        for title in titles:
+            complete = self.reply(owner, title, accept=False)
+            if complete or self.pending is not None:
+                return True
+        return False
 
     def reply(self, owner, title, *, accept):
         key = (owner, title, accept)
@@ -263,6 +306,15 @@ class WindowsConfirmations:
                 hwnd=window, owner=owner, pid=os.getpid(), title=title,
                 yes=self.yes_label, no=self.no_label,
                 answer=self.yes_label if accept else self.no_label)), key)
+            return False
+        if not buttons and not direct_ui:
+            # The top-level native dialog can become visible before its answers.
+            # The caller keeps the existing twelve-second readiness deadline.
+            observation = dict(status='NATIVE_DIALOG_LOOKUP_WAITING',
+                               hwnd=window, owner_chain=chain, controls=controls)
+            if observation != getattr(self, 'last_lookup', None):
+                print(json.dumps(observation), flush=True)
+                self.last_lookup = observation
             return False
         if len(buttons) != 1:
             print(json.dumps(dict(status='NATIVE_DIALOG_LOOKUP_FAILED',
@@ -355,9 +407,8 @@ def run_native(source=None, *, encrypted=False):
 
         def dismiss_one_modal():
             if windows is not None and native is not None and native._window_alive:
-                for title in confirmation_titles:
-                    if windows.reply(native.window.GetHandle(), title, accept=False):
-                        return True
+                if windows.dismiss(native.window.GetHandle(), confirmation_titles):
+                    return True
             modals = []
             for window in wx.GetTopLevelWindows():
                 try:
@@ -421,12 +472,18 @@ def run_native(source=None, *, encrypted=False):
                             windows.close()
                         except Exception:
                             print('Native confirmation helper cleanup failed', flush=True)
-                    try:
-                        dismiss_one_modal()
-                    except BaseException:
-                        # Preserve the original failed check instead of raising
-                        # a second exception from the timer's cleanup callback.
-                        print('Native confirmation cleanup also failed', flush=True)
+                    def finish_modal_cleanup():
+                        if state['finished']:
+                            return
+                        try:
+                            if dismiss_one_modal():
+                                timers.append(wx.CallLater(20, finish_modal_cleanup))
+                        except BaseException:
+                            # The original error remains the first failed check.
+                            # AccessibleAnswer's independent timer bounds any
+                            # helper even when this native callback cannot finish.
+                            print('Native confirmation cleanup also failed', flush=True)
+                    finish_modal_cleanup()
 
             timers.append(wx.CallLater(20, answer))
 
