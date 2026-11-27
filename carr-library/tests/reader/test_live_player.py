@@ -107,3 +107,34 @@ def test_canonical_windows_paused_seek_never_sends_play_before_explicit_resume(c
     assert player._resume_from_seek is False
     with pytest.raises(ValueError):
         player.seek(float('nan'))
+
+
+@pytest.mark.parametrize('stop_fails', [False, True])
+def test_failed_native_close_retains_alias_and_pcm_until_a_confirmed_retry(chunk, monkeypatch, stop_fails):
+    from types import SimpleNamespace
+    import carr_library.speech.player as implementation
+    player = implementation.WavePlayer()
+    monkeypatch.setattr(implementation, 'os', SimpleNamespace(name='nt'))
+    commands, failed_close = [], [True]
+    def mci(command):
+        commands.append(command)
+        if command.startswith('stop ') and stop_fails:
+            raise RuntimeError('Synthetic native Stop failure')
+        if command.startswith('close ') and failed_close[0]:
+            raise RuntimeError('Synthetic native Close failure')
+        return ''
+    player._mci = mci
+    player.path, player.duration_seconds = chunk, .2
+    player._open, player._state = True, 'playing'
+    facade = CanonicalPlayer(player)
+    facade.path, facade.duration, facade._started = chunk, .2, True
+    with pytest.raises(RuntimeError, match='Close failure'):
+        facade.close()
+    assert player._open and player.path == chunk
+    assert facade.path == chunk and chunk.is_file()
+    assert commands.count(f'close {player._alias}') == 1
+    failed_close[0] = False
+    assert facade.close()['state'] == 'closed'
+    assert not player._open and player._state == 'stopped'
+    assert facade.path is None
+    assert commands.count(f'close {player._alias}') == 2

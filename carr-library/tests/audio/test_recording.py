@@ -295,3 +295,119 @@ def test_pcm_validation_cancellation_uses_the_shared_bounded_wave_reader(capture
     result = capture.service.capture(capture.device.id, options=capture.options)
     with pytest.raises(AudioCancelled):
         capture.service._audio(Path(result['path']), capture.options, lambda: True)
+
+
+@pytest.mark.parametrize('deferred', [False, True])
+def test_failed_admission_release_is_retried_only_by_explicit_capture(capture, monkeypatch, deferred):
+    import subprocess
+    import sys
+    from carr_library.audio.models import AudioCleanupPending
+    from filelock import FileLock
+
+    class Owner:
+        def __init__(self):
+            self.quiescent_event = threading.Event()
+            self.callbacks = []
+        @property
+        def quiescent(self):
+            return self.quiescent_event.is_set()
+        def add_quiescent_callback(self, callback):
+            if self.quiescent:
+                callback()
+            else:
+                self.callbacks.append(callback)
+        def confirm(self):
+            self.quiescent_event.set()
+            callbacks, self.callbacks = self.callbacks, []
+            for callback in callbacks:
+                callback()
+
+    owner = Owner()
+    reservations, releases, launches, staged = [], [], [], []
+    original_init = recording._CaptureReservation.__init__
+    original_run = recording.run_process
+
+    def reserve(self, root):
+        original_init(self, root)
+        if not reservations:
+            original_release = self.lock.release
+            releases.append(original_release)
+            self.release_attempts = 0
+            def fail_twice(*args, **kwargs):
+                self.release_attempts += 1
+                if self.release_attempts <= 2:
+                    raise OSError('Synthetic transient admission-release failure.')
+                return original_release(*args, **kwargs)
+            monkeypatch.setattr(self.lock, 'release', fail_twice)
+        reservations.append(self)
+
+    def run(args, **kwargs):
+        launches.append(tuple(args))
+        if deferred and len(launches) == 1:
+            path = Path(args[-1])
+            path.write_bytes(b'Unfinished capture remains private until native silence')
+            staged.append(path)
+            raise AudioCleanupPending('Synthetic retained native owner', cleanup_owner=owner)
+        return original_run(args, **kwargs)
+
+    monkeypatch.setattr(recording._CaptureReservation, '__init__', reserve)
+    monkeypatch.setattr(recording, 'run_process', run)
+    first = None
+    try:
+        if deferred:
+            with pytest.raises(AudioCleanupPending):
+                capture.service.capture(capture.device.id, options=capture.options)
+            assert reservations[0].release_attempts == 0
+            assert not reservations[0].release_retry_required
+            with pytest.raises(RuntimeError, match='cleanup'):
+                capture.service.capture(capture.device.id, options=capture.options)
+            assert len(launches) == 1 and reservations[0].release_attempts == 0
+            assert staged[0].is_file()
+            assert not list(capture.service.root.glob('*.wav'))
+            owner.confirm()
+            assert not staged[0].parent.exists()
+        else:
+            first = capture.service.capture(capture.device.id, options=capture.options)
+            assert capture.service.get(first['id']) == first
+
+        retained = reservations[0]
+        assert retained.release_retry_required and not retained.closed
+        assert retained.release_attempts == 1
+        code = ("from filelock import FileLock, Timeout\nimport sys\n"
+                "try:\n    lock=FileLock(sys.argv[1], timeout=0); lock.acquire()\n"
+                "except Timeout:\n    sys.exit(0)\n"
+                "else:\n    lock.release(); sys.exit(9)\n")
+        child = subprocess.run([sys.executable, '-I', '-B', '-c', code,
+            str(capture.service.root / '.recording.lock')], capture_output=True, timeout=10)
+        assert child.returncode == 0, child.stderr
+
+        # A second failed release must not open another microphone or discard
+        # a committed original. Native silence alone cannot release admission.
+        with pytest.raises(RuntimeError, match='admission lock'):
+            capture.service.capture(capture.device.id, options=capture.options)
+        assert retained.release_attempts == 2 and len(launches) == 1
+        assert retained.release_retry_required and not retained.closed
+        if first is not None:
+            assert capture.service.get(first['id']) == first
+
+        result = capture.service.capture(capture.device.id, options=capture.options)
+        assert capture.service.get(result['id']) == result
+        assert len(launches) == 2
+        assert retained.release_attempts == 3 and retained.closed
+        assert not retained.release_retry_required
+        assert retained not in recording._PENDING_CAPTURES
+        if first is not None:
+            assert first['id'] != result['id']
+            assert capture.service.get(first['id']) == first
+        with FileLock(capture.service.root / '.recording.lock', timeout=0):
+            pass
+        assert recording._CAPTURE.acquire(blocking=False)
+        recording._CAPTURE.release()
+    finally:
+        # A failing assertion must not poison later tests or leave an owned
+        # file reservation behind. This is fixture cleanup, not production retry.
+        owner.confirm()
+        if reservations:
+            monkeypatch.setattr(reservations[0].lock, 'release', releases[0])
+        for reservation in reservations:
+            reservation.close()

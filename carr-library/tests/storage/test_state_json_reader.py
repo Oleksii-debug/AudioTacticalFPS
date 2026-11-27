@@ -29,10 +29,31 @@ finally:
 '''
 
 
-def replace_in_child(path):
+PRODUCTION_REPLACE_ONCE = r'''
+import importlib.util, json, pathlib, sys
+target = pathlib.Path(sys.argv[1])
+origin = pathlib.Path(sys.argv[2]).resolve(strict=True)
+# Load the exact production file used by the parent. This works for both
+# source-tree and installed-wheel gates under Python's isolated (-I) mode.
+spec = importlib.util.spec_from_file_location('actual_state_under_test', origin)
+state = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(state)
+assert pathlib.Path(state.__file__).resolve(strict=True) == origin
+try:
+    state.atomic_bytes(target, b'{"done":1}', replace=True)
+except OSError as error:
+    print(json.dumps({'published': False, 'winerror': getattr(error, 'winerror', None)}))
+    raise SystemExit(2)
+else:
+    print(json.dumps({'published': True}))
+'''
+
+
+def replace_in_child(path, *, production=False):
+    script = PRODUCTION_REPLACE_ONCE if production else REPLACE_ONCE
     process = subprocess.run([sys.executable, '-I', '-B', '-X', 'utf8', '-c',
-                              REPLACE_ONCE, str(path)], capture_output=True,
-                             text=True, encoding='utf-8', timeout=15)
+                              script, str(path), str(state.__file__)], capture_output=True,
+                             text=True, encoding='utf-8', timeout=15, close_fds=True)
     assert process.returncode in (0, 2), process.stderr
     return json.loads(process.stdout)
 
@@ -59,7 +80,7 @@ def test_production_json_reader_allows_actual_atomic_child_replacement(tmp_path,
         streams.append(stream)
         try:
             assert not os.get_inheritable(stream.fileno())
-            observed.append(replace_in_child(path))
+            observed.append(replace_in_child(path, production=True))
             assert observed[-1] == {'published': True}
         except BaseException:
             stream.close()
@@ -170,3 +191,117 @@ def test_json_byte_limit_applies_before_and_after_open(tmp_path, monkeypatch, gr
     with pytest.raises(ValueError, match='budget'):
         state.read_json(target)
     assert all(stream.closed for stream in streams)
+
+
+def test_legacy_replace_still_reproduces_shared_open_target_limit(tmp_path):
+    target = tmp_path / 'стан.json'
+    target.write_bytes(b'{"done":0}')
+    with state._open_json_file(target) as reader:
+        report = replace_in_child(target)
+        assert reader.read() == b'{"done":0}'
+    if os.name == 'nt':
+        assert report['published'] is False
+        assert report['winerror'] in (5, 32, 33)
+        assert state.read_json(target) == {'done': 0}
+    else:
+        assert report == {'published': True}
+        assert state.read_json(target) == {'done': 1}
+
+
+def test_replace_can_publish_first_unicode_state_with_actual_production_child(tmp_path):
+    target = tmp_path / 'новий стан.json'
+    assert not target.exists()
+    assert replace_in_child(target, production=True) == {'published': True}
+    assert state.read_json(target) == {'done': 1}
+    assert list(tmp_path.glob('.pending-*')) == []
+
+
+def test_create_only_publication_keeps_existing_bytes_without_replacement(tmp_path, monkeypatch):
+    target = tmp_path / 'стан.json'
+    state.atomic_json(target, {'done': 0})
+    before = target.read_bytes()
+    monkeypatch.setattr(state, '_replace_state_file',
+                        lambda *args: pytest.fail('Create-only save used replacement.'))
+    with pytest.raises(FileExistsError):
+        state.atomic_json(target, {'done': 1})
+    assert target.read_bytes() == before
+    assert list(tmp_path.glob('.pending-*')) == []
+
+
+def test_rejected_publication_preserves_committed_state_and_cleans_only_staging(tmp_path, monkeypatch):
+    target = tmp_path / 'стан.json'
+    state.atomic_json(target, {'done': 0})
+    before = target.read_bytes()
+    stages = []
+
+    def denied(source, destination):
+        assert destination == target
+        assert source.parent == target.parent
+        assert source.read_bytes() == state.encode({'done': 1})
+        stages.append(source)
+        raise PermissionError('Synthetic denied rename before publication.')
+
+    monkeypatch.setattr(state, '_replace_state_file', denied)
+    with pytest.raises(PermissionError, match='denied rename'):
+        state.atomic_json(target, {'done': 1}, replace=True)
+    assert target.read_bytes() == before
+    assert len(stages) == 1 and not stages[0].exists()
+    assert list(tmp_path.glob('.pending-*')) == []
+
+
+def test_native_committed_save_is_not_reclassified_by_descriptor_close_error(tmp_path, monkeypatch):
+    target = tmp_path / 'стан.json'
+    state.atomic_json(target, {'done': 0})
+    close = os.close
+    injected = []
+
+    def close_then_error(descriptor):
+        close(descriptor)
+        if os.name == 'nt':
+            injected.append(descriptor)
+            raise OSError('Synthetic close error after releasing the real descriptor.')
+
+    with monkeypatch.context() as scoped:
+        scoped.setattr(state.os, 'close', close_then_error)
+        state.atomic_json(target, {'done': 1}, replace=True)
+    assert state.read_json(target) == {'done': 1}
+    assert list(tmp_path.glob('.pending-*')) == []
+    if os.name == 'nt':
+        assert len(injected) == 1
+
+
+def test_native_denied_save_keeps_its_primary_error_if_descriptor_close_raises(tmp_path, monkeypatch):
+    target = tmp_path / 'стан.json'
+    state.atomic_json(target, {'done': 0})
+    before = target.read_bytes()
+    close = os.close
+    injected = []
+
+    def close_then_error(descriptor):
+        close(descriptor)
+        if os.name == 'nt':
+            injected.append(descriptor)
+            raise OSError('Synthetic secondary descriptor close failure.')
+
+    # Windows disallows replacement of a read-only target unless explicitly
+    # overridden. POSIX permits replacement of a read-only file in this owned
+    # writable directory. Both branches exercise their actual publication API.
+    target.chmod(0o400)
+    try:
+        with monkeypatch.context() as scoped:
+            scoped.setattr(state.os, 'close', close_then_error)
+            if os.name == 'nt':
+                with pytest.raises(OSError) as caught:
+                    state.atomic_json(target, {'done': 1}, replace=True)
+                assert caught.value.winerror == 5
+                assert 'secondary' not in str(caught.value)
+            else:
+                state.atomic_json(target, {'done': 1}, replace=True)
+        if os.name == 'nt':
+            assert len(injected) == 1
+            assert target.read_bytes() == before
+        else:
+            assert state.read_json(target) == {'done': 1}
+        assert list(tmp_path.glob('.pending-*')) == []
+    finally:
+        target.chmod(0o600)

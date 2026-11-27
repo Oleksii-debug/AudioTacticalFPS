@@ -14,11 +14,22 @@ def backup_scope_text(include_generated=False):
 def recovery_summary(root):
     """Describe activated state separately from preserved historical records."""
     from .backup_compat.archive import recovery_notices
+    from .audio.recording import unverified_recording_files
     lines = ['Restored library folder: ' + str(Path(root)),
              'External engines and credentials may need to be reconnected. '
              'Review restored jobs before resuming them.']
     labels = {'restored': 'Restored', 'restored-disabled': 'Restored, disabled',
               'inert': 'Preserved, not activated'}
+    try:
+        unverified = len(unverified_recording_files(root))
+    except (OSError, ValueError) as error:
+        # This report runs after durable restoration. A later inventory problem
+        # must not report the already-restored library as an unsuccessful restore.
+        lines.append('The library is restored. Unverified recording originals could not be listed: ' + str(error))
+    else:
+        if unverified:
+            lines.append('Unverified recording originals preserved: ' + str(unverified) +
+                         '. They have no capture receipt and remain inactive.')
     for index, notice in enumerate(recovery_notices(root), 1):
         lines.extend(('', 'Earlier backup ' + str(index) + ': original archived bytes are preserved.'))
         for component in notice['components']:

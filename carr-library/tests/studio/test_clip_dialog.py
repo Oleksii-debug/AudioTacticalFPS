@@ -131,3 +131,63 @@ def test_stop_invalidates_deferred_playback_and_releases_native_file(dialog, tmp
     assert dialog.playback_generation > generation
     dialog.player.close.assert_called_once()
     assert not path.exists()
+
+
+@pytest.mark.parametrize('answer,choose_output', [('no', True), ('yes', False), ('yes', True)])
+def test_native_review_defers_exact_file_approval_until_worker(dialog, answer, choose_output):
+    import carr_library
+    source = Path(carr_library.__file__).parent / 'ui/studio_dialog.py'
+    parsed = ast.parse(source.read_text(encoding='utf-8'))
+    parent = next(node for node in parsed.body if isinstance(node, ast.FunctionDef) and node.name == 'show_studio')
+    function = next(node for node in parent.body if isinstance(node, ast.FunctionDef) and node.name == 'render')
+    function.body = [ast.copy_location(ast.Global(names=node.names), node)
+                     if isinstance(node, ast.Nonlocal) else node for node in function.body]
+    pending = ('C:/Explicit/original.wav',)
+    review = Mock()
+    review.ShowModal.return_value = 1 if answer == 'yes' else 0
+    folder = Mock()
+    folder.ShowModal.return_value = 2 if choose_output else 0
+    folder.GetPath.return_value = 'C:/Explicit/new-output'
+    wx = SimpleNamespace(MessageDialog=Mock(return_value=review), DirDialog=Mock(return_value=folder),
+                         ID_YES=1, ID_OK=2, YES_NO=4, NO_DEFAULT=8, ICON_QUESTION=16)
+    service = Mock()
+    service.restored_inputs_to_review.return_value = pending
+    service.get.return_value = {'recovery': {'requires_output_directory': True}}
+    queued = []
+    cancel = threading.Event()
+    env = dict(wx=wx, Path=Path, busy=False, current_job='selected-job', dialog=object(),
+               service=service, cancel=cancel, report=Mock(), run=lambda work, done, **kw: queued.append(work))
+    exec(compile(ast.Module(body=[function], type_ignores=[]), str(source), 'exec'), env)
+    env['render']()
+    service.approve_restored_inputs.assert_not_called()
+    assert wx.MessageDialog.call_args.args[-1] & wx.NO_DEFAULT
+    assert pending[0] in wx.MessageDialog.call_args.args[1]
+    if answer != 'yes' or not choose_output:
+        assert not queued
+        service.relocate_restored_job.assert_not_called()
+        return
+    assert len(queued) == 1
+    service.relocate_restored_job.assert_called_once_with('selected-job', Path('C:/Explicit/new-output'))
+    queued[0](lambda text: None)
+    service.approve_restored_inputs.assert_called_once_with(pending, cancelled=cancel.is_set)
+    assert service.run.call_args.args == ('selected-job',)
+
+
+def test_unconfirmed_playback_stop_keeps_dialog_files_and_blocks_new_work(dialog, tmp_path):
+    path = tmp_path / 'clip-preview-retained.wav'
+    path.write_bytes(b'Owned preview bytes')
+    dialog.previews = [path]
+    dialog.player = Mock()
+    dialog.player.close.side_effect = RuntimeError('Injected native close failure')
+    event = Mock()
+    event.CanVeto.return_value = True
+    dialog.close(event)
+    assert not dialog.closed and path.exists()
+    event.Veto.assert_called_once()
+    assert 'cleanup is still pending' in dialog.status.ChangeValue.call_args.args[0]
+    assert dialog._run('Next clip operation', Mock(), Mock()) is False
+    assert not dialog.pending and not dialog.calls
+    dialog.player.close.side_effect = None
+    dialog.player.close.return_value = None
+    dialog.close()
+    assert dialog.closed and not path.exists()

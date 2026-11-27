@@ -266,3 +266,22 @@ def test_pending_native_cleanup_retains_holds_after_future_and_modal_completion(
     assert not view.progress.holds[0].closed
     owner.confirm()
     assert view.progress.holds[0].closed and view.parent.holds[0].closed
+
+
+def test_cleanup_retry_start_failure_keeps_existing_owner_and_quiet_holds(view, monkeypatch):
+    discovered(view)
+    view.progress.ready = view.parent.ready = True
+    owner = PendingOwner()
+    def pending(*args, **kwargs):
+        raise AudioCleanupPending('Native cleanup is not confirmed', cleanup_owner=owner)
+    view.service.capture = pending
+    view.handlers.start()
+    view.executor.finish()
+    def no_thread(self):
+        raise RuntimeError('Synthetic retry thread unavailable')
+    monkeypatch.setattr(threading.Thread, 'start', no_thread)
+    view.handlers.stop_recording()
+    assert 'remain retained' in view.values['status'].value
+    assert not view.progress.holds[0].closed and not view.parent.holds[0].closed
+    owner.confirm()
+    assert view.progress.holds[0].closed and view.parent.holds[0].closed

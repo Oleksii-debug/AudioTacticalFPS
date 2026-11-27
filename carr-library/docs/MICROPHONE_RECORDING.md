@@ -13,7 +13,12 @@ progress audio muted for the capture. Named native controls support keyboard
 navigation. **Stop and save recording** sends FFmpeg its fixed quit command and
 waits for the WAV header to be finalized. **Cancel unfinished recording**
 terminates capture and removes incomplete output. Escape and Close wait for
-cancellation cleanup before leaving an active recording.
+cancellation cleanup before leaving an active recording. If native cleanup cannot
+confirm silence, the dialog reports that state and retains its quiet reservation.
+Stop can request another bounded cleanup attempt. Closing that pending dialog
+keeps the native owner, staged bytes and capture admission reserved in the
+background until silence is confirmed; worker completion alone does not release
+them. No executor worker waits indefinitely for that confirmation.
 
 The output is 16-bit PCM WAV at 16, 24, 44.1 or 48 kHz. The dialog permits up to
 180 minutes; the service also enforces a finite duration, a 2 GiB upper byte
@@ -33,6 +38,9 @@ frame count, byte count, SHA-256 and completion reason. Saved input selection
 and playback reverify the actual bytes. A late cancellation or progress
 observer failure does not remove a committed recording. A receipt-write failure
 reports the retained WAV path for recovery and does not claim successful capture.
+Opening the dialog also reports canonical retained WAVs without receipts. They
+remain unselected, unplayed and unverified; listing them performs no audio,
+device or runtime probe.
 
 Existing private-state backup includes these retained originals. Restore derives
 paths from the new state root and does not approve a microphone. Callers attach
@@ -53,10 +61,19 @@ service has no synthetic-source or arbitrary-input setting.
 selection, deferred quiet admission, Stop versus Cancel, cleanup and progress
 observer failures. These headless callback tests do not claim native keyboard,
 physical microphone, Windows driver, acoustic quality or NVDA acceptance.
-`test_windows_capture_is_killed_after_abrupt_owner_exit` uses actual Windows
-processes and a Job Object with no microphone; it is skipped outside Windows.
+The shared owned-process acceptance covers process-family lifetime separately
+from physical microphone capture.
 Physical-device recording and human assistive-technology checks remain NOT_RUN
 until performed on a selected Windows device.
+
+On 27 November 2026, the combined source recording, recording-callback and
+progress-controller gate passed 100 tests with no skips. This included actual
+FFmpeg synthetic PCM, Stop and Cancel, plus controlled uncertain-cleanup cases
+that retained both admission locks and staging until confirmation. A separate
+process attempted the same file lock while cleanup was pending. The source gate
+also verified detached controls remain untouched and the native gauge name stays
+stable through start, update, pause, resume and completion. These results do not
+substitute for the installed Windows probe below.
 
 `scripts/windows_recording_smoke.py` must run with the installed interpreter,
 `-I -B`, real wx MainLoop and a staged FFmpeg build. It dispatches native keys

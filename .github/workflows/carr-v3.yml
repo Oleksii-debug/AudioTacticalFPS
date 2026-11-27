@@ -36,6 +36,12 @@ jobs:
         with:
           python-version: '3.11'
           architecture: x64
+      - name: Verify native Windows state replacement semantics
+        timeout-minutes: 3
+        run: |
+          New-Item -ItemType Directory -Force 'ci-v3-results' | Out-Null
+          python -I -B scripts/windows_json_replace_diagnostic.py 2>&1 | Tee-Object 'ci-v3-results/native-json-replacement.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Native state replacement diagnostic failed.' }
       - name: Install exact application and native desktop dependencies
         id: install-runtime
         run: |
@@ -98,6 +104,11 @@ jobs:
           policy = RejectExpectedFailures()
           report = pathlib.Path('ci-v3-results/installed-recovery.xml')
           suites = ['tests/storage/test_v3_state_backup.py',
+                    'tests/storage/test_state_backup_portability.py::test_portable_manifest_rejects_collisions',
+                    'tests/storage/test_state_backup_portability.py::test_portable_manifest_allows_distinct_siblings',
+                    'tests/storage/test_state_backup_portability.py::test_portable_manifest_rejects_non_windows_names',
+                    'tests/storage/test_state_backup_portability.py::test_portable_manifest_keeps_ordinary_unicode_names',
+                    'tests/storage/test_state_backup_portability.py::test_portable_snapshot_roundtrip_unicode',
                     'tests/storage/test_pending_backup.py',
                     'tests/storage/test_complete_pending_backup.py',
                     'tests/storage/test_academic_migration.py',

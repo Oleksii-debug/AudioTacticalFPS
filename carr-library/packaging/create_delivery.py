@@ -3,6 +3,8 @@
 Extract BOTH archives into the same destination before opening the sealed entry.
 The unchanged bundle manifest requires their union. No supplied Python code,
 native executable or model is loaded. Use private local build directories.
+The currently reviewed FFmpeg packs are local-installation only, not transfer
+payloads. Verify old archives separately; do not create new archives with them.
 """
 from __future__ import annotations
 
@@ -400,6 +402,25 @@ def _start_here(application_name, source_name, reused, *, native_launcher=False)
             "Цей приватний пакет призначений для локального встановлення.\n")
 
 
+def _require_transferable_audio_inventory(data):
+    """Fail closed for both existing owner-local FFmpeg bundle layouts.
+
+    This is a transfer gate, not a local execution or integrity verdict.
+    No reviewed redistribution evidence schema exists for either audio pack.
+    Neither a false/missing outer flag nor a forged true clearance flag can
+    authorize a sealed audio payload. Revisit this gate only with an exact
+    package-specific source/notices/replacement review.
+    """
+    audio_claim = any(key in data and data[key] is not False
+                      for key in ("bundled_audio", "bundled_audio_runtime"))
+    audio_payload = any(unicodedata.normalize("NFC", name.split("/", 1)[0]).casefold()
+                        in {"audio", "audio-runtime"} for name in data["files"])
+    if audio_claim or audio_payload:
+        raise ValueError("Audio runtime distribution clearance is not established. "
+                         "Prepare and install the reviewed audio runtime locally; "
+                         "do not create transfer archives containing it.")
+
+
 def create_delivery(bundle, expected_source_commit, output, *, source_companion=None, cancelled=lambda: False):
     """Publish a new verified delivery directory; reuse a companion without copying it."""
     _check(cancelled)
@@ -412,6 +433,7 @@ def create_delivery(bundle, expected_source_commit, output, *, source_companion=
         raise ValueError("Delivery output must be outside the input bundle.")
     raw = _read_manifest(bundle, cancelled)
     data = _manifest(raw, expected_source_commit)
+    _require_transferable_audio_inventory(data)
     native_launcher = "ResearchLibrary.exe" in data["files"]
     sizes = [_plain(bundle / name).st_size for name in data["files"]]
     if max(sizes) > MAX_FILE or sum(sizes) > MAX_TOTAL:

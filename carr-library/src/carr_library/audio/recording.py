@@ -199,9 +199,22 @@ class _CaptureReservation:
         self.deferred = False
         self.closed = False
         self.cleanup_error = None
+        self.release_retry_required = False
         self._guard = threading.Lock()
         self.lock = None
+        # Retry only a failed admission release, and only for a new explicit
+        # capture request. An active capture without a native owner must never
+        # be mistaken for an abandoned reservation.
+        with _PENDING_CAPTURE_LOCK:
+            retained = tuple(_PENDING_CAPTURES)
+        release_pending = False
+        for reservation in retained:
+            if reservation.release_retry_required and not reservation.close():
+                release_pending = True
         if not _CAPTURE.acquire(blocking=False):
+            if release_pending:
+                raise RuntimeError('Previous recording cleanup could not release its admission lock. '
+                                   'Retry Start; no microphone was opened.')
             raise RuntimeError('Another microphone recording or cleanup is active. Confirm it has stopped first.')
         try:
             path = self.root / '.recording.lock'
@@ -250,7 +263,9 @@ class _CaptureReservation:
                 self.lock.release()
             except Exception as exc:
                 self.cleanup_error = str(exc)
+                self.release_retry_required = True
                 return False
+            self.release_retry_required = False
             self.closed = True
             _CAPTURE.release()
         with _PENDING_CAPTURE_LOCK:
