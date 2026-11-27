@@ -351,7 +351,7 @@ class TranslationStore:
 
     def cache_path(self, profile):
         if not isinstance(profile, ProviderProfile) or profile.provider not in GOOGLE_TRANSLATION_PROVIDERS:
-            raise ValueError('Choose a Google Basic v2 or Advanced v3 profile.')
+            raise ValueError('Choose a Google Basic v2 or Advanced v3 translation profile.')
         return self.directory / ('languages-' + profile.id + '.json')
 
     def load(self, identity):
