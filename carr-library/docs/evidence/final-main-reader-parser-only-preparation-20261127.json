@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "status": "PREPARED_NOT_RUN",
+  "parent": "2323d6a004f414e2b53f4114c90b0443fa052f21",
+  "workflow": {
+    "path": ".github/workflows/carr-main-reader-self-check.yml",
+    "sha256": "58d0ba8f47e3bdb6f4e9fd654dabbb0cdab4fde4e6c64086fa9f7339bc8e0356",
+    "trigger": "carr/main-reader-self-check-*",
+    "runner": "ubuntu-24.04",
+    "python": "3.11",
+    "timeout_minutes": 5
+  },
+  "reader": {
+    "path": "carr-library/scripts/main_artifact_reader.py",
+    "blob": "e3971670d392e47fc26b7e737a234fba76956105",
+    "sha256": "8f0ed96ba3b5ece1bd5aab1fe556013e5479ec164efa7f87e62f6ae86bcf8624"
+  },
+  "scope": {
+    "negative_controls": [
+      "missing-required-member",
+      "duplicate-normalized-member",
+      "wrong-function-multiplicity",
+      "wrong-source-identity"
+    ],
+    "positive_controls": [
+      "appended-verdict-and-universal-newlines"
+    ],
+    "in_memory_only": true,
+    "entrypoint": "python -I -B -X utf8 carr-library/scripts/main_artifact_reader.py --self-check",
+    "application_execution": "NOT_RUN",
+    "artifact_read": "NOT_RUN",
+    "application_or_artifact_qualification": "NOT_RUN"
+  },
+  "boundaries": [
+    "The self-check branch returns before reading main_artifact_reader.json or calling inspect/api.",
+    "The workflow passes no GH_TOKEN and has no artifact-download/read step.",
+    "The existing final artifact-reader workflow and null artifact input are unchanged.",
+    "A successful parser-only job does not qualify any application/test/native/runtime or main artifact result."
+  ],
+  "refs_changed": false,
+  "execution": "NOT_RUN; root source review and a separately authorized frozen branch launch are still required."
+}
