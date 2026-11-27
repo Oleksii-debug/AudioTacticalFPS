@@ -158,6 +158,8 @@ def show_studio(frame):
         editor.Enable(not busy)
         title.Enable(not busy)
         voice_choice.Enable(not busy)
+        format_choice.Enable(not busy)
+        stems.Enable(not busy)
         buttons['saveall'].Enable(not busy and coordinator is not None)
 
     def run(operation, complete, *, phase='Audio Studio operation', with_progress=False):
@@ -458,21 +460,36 @@ def show_studio(frame):
         nonlocal current_job
         if busy:
             return
-        if current_job is None:
-            project = save()
-            if project is None:
-                return
-            chooser = wx.DirDialog(dialog, 'Choose the parent folder for new audio outputs')
-            try:
-                if chooser.ShowModal() != wx.ID_OK:
-                    return
-                current_job = service.submit(project, Path(chooser.GetPath()),
-                    format=formats[format_choice.GetSelection()], stems=stems.GetValue())
-            except Exception as exc:
-                report(str(exc), True)
-                return
-            finally:
-                chooser.Destroy()
+        try:
+            selection = format_choice.GetSelection()
+            if not 0 <= selection < len(formats):
+                raise ValueError('Choose a final audio format.')
+            chosen_format, chosen_stems = formats[selection], stems.GetValue()
+            previous = service.get(current_job) if current_job is not None else None
+            if previous is not None and (previous['format'] not in formats or type(previous['stems']) is not bool):
+                raise ValueError('The saved job has unsupported output settings.')
+            changed_options = previous is not None and (previous['format'], previous['stems']) != (chosen_format, chosen_stems)
+            if previous is None or changed_options:
+                message = ('Output settings changed. Choose a folder for a NEW production job; the previous job is retained.'
+                           if changed_options else 'Choose the parent folder for new audio outputs')
+                chooser = wx.DirDialog(dialog, message)
+                try:
+                    if chooser.ShowModal() != wx.ID_OK:
+                        if changed_options:
+                            format_choice.SetSelection(formats.index(previous['format']))
+                            stems.SetValue(previous['stems'])
+                            report('New output cancelled. Previous job and its output settings retained.', True)
+                        return
+                    project = save()
+                    if project is None:
+                        return
+                    current_job = service.submit(project, Path(chooser.GetPath()),
+                        format=chosen_format, stems=chosen_stems)
+                finally:
+                    chooser.Destroy()
+        except Exception as exc:
+            report(str(exc), True)
+            return
         identity = current_job
         run(lambda measured: service.run(identity, cancelled=cancel.is_set, progress=measured),
             lambda result: report('Production complete. ' + result['destination'] +
@@ -481,10 +498,14 @@ def show_studio(frame):
 
     def jobs(event=None):
         nonlocal current_job
+        if busy:
+            return
         try:
             rows = service.jobs()
             chooser = wx.SingleChoiceDialog(dialog, 'Select a saved job to inspect, resume, or replay.', 'Production jobs',
-                [f'{row["project"]["title"]}; {row["status"]}; {row["progress"]}' for row in rows])
+                [f'{row["project"]["title"]}; {row["status"]}; {row["progress"]}; '
+                 f'{row["format"]}; separate stems: {"Yes" if row["stems"] else "No"}; job {row["id"]}'
+                 for row in rows])
             try:
                 if chooser.ShowModal() != wx.ID_OK:
                     return
@@ -494,12 +515,18 @@ def show_studio(frame):
             if not 0 <= index < len(rows):
                 return
             row = rows[index]
+            if row['format'] not in formats or type(row['stems']) is not bool:
+                raise ValueError('The saved job has unsupported output settings.')
             project = Project.from_dict(row['project'])
             controller.project = service.projects.load(project.id)
             editor.ChangeValue(project.original_script)
             title.ChangeValue(project.title)
+            format_choice.SetSelection(formats.index(row['format']))
+            stems.SetValue(row['stems'])
             current_job = row['id']
-            report(f'{row["status"]}. {row["error"]}\nChoose Render / resume to continue or Listen to output after completion.', True)
+            report(f'{row["status"]}. {row["error"]}\nFinal format: {row["format"]}; separate stems: '
+                   + ('Yes' if row['stems'] else 'No')
+                   + '. Choose Render / resume to continue or Listen to output after completion.', True)
             controls()
         except Exception as exc:
             report(str(exc), True)
