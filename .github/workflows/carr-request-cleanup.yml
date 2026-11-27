@@ -134,7 +134,7 @@ jobs:
           & $python -I -B -c $inventory | Tee-Object 'request-cleanup-ci-results/runtime-56-pins.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           # Test tooling follows the complete production-inventory check.
-          & $python -I -m pip install --only-binary=:all: pytest==9.0.2
+          & $python -I -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -I -B -c $inventory | Tee-Object 'request-cleanup-ci-results/runtime-56-pins-after-test-tools.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
