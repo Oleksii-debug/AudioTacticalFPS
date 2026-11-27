@@ -1,3 +1,4 @@
+# Frozen UTF-8 retry qualification; branch publication includes this workflow path.
 name: CARR r9 explicit reading preparation
 
 on:
