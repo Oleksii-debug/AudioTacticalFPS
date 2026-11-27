@@ -246,8 +246,12 @@ def _make(store, workspace, cursor, *, session_id, index, previous,
                 pass  # Persist an inert start cursor; no source was opened.
             else:
                 store._authorize(workspace, collections)
-                result = scan_page(cursor=cursor, recursive=cursor['recursive'],
-                                   cancelled=lease.cancelled, **limits)
+                remaining = limits['timeout'] - max(0, time.monotonic() - started)
+                if remaining < .05:
+                    result['reason'] = 'time'
+                else:
+                    result = scan_page(cursor=cursor, recursive=cursor['recursive'],
+                        cancelled=lease.cancelled, **dict(limits, timeout=remaining))
                 rows = [dict(row, row_id=uuid4().hex, work_id=uuid4().hex,
                              edition_id=uuid4().hex, request_id=uuid4().hex, result=None)
                         for row in result['rows']]

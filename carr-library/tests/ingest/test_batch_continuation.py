@@ -1,5 +1,6 @@
 """Actual-file scan pages, ordinary queue reuse and passive backup recovery."""
 from copy import deepcopy
+from contextlib import contextmanager
 from hashlib import sha256
 import json
 import os
@@ -8,6 +9,7 @@ import shutil
 import subprocess
 import sys
 import threading
+from types import SimpleNamespace
 
 import pytest
 
@@ -310,3 +312,40 @@ def test_cursor_validation_is_passive_for_foreign_platform_selection(monkeypatch
     assert batch_scan.validate_scan_cursor(cursor) is cursor
     assert len(batch_scan.scan_cursor_digest(cursor)) == 64
 
+
+
+@pytest.mark.parametrize('admission_elapsed,expected', [(3.0, 7.0), (9.98, None)])
+def test_actual_admission_consumes_page_budget_before_any_source_scan(peer, monkeypatch, admission_elapsed, expected):
+    app, workspace, folder, store = peer
+    write(folder, 'source.txt')
+    clock = [100.0]
+    monkeypatch.setattr(batch_pages, 'time', SimpleNamespace(monotonic=lambda: clock[0]))
+    reserve = ResourceBroker.reserve
+    @contextmanager
+    def admitted(self, *args, **kwargs):
+        # Retain the actual interprocess resource lease. Only the supervisor's
+        # elapsed-time observation is deterministic; the reservation is real.
+        with reserve(self, *args, **kwargs) as lease:
+            assert self.snapshot()['usage']['cpu_slots'] == 1
+            clock[0] += admission_elapsed
+            yield lease
+    monkeypatch.setattr(ResourceBroker, 'reserve', admitted)
+    scan, budgets = batch_pages.scan_page, []
+    def bounded(*args, **kwargs):
+        budgets.append(kwargs['timeout'])
+        if expected is None:
+            pytest.fail('Exhausted admission budget opened a source scan.')
+        assert kwargs['timeout'] == pytest.approx(expected)
+        return scan(*args, **kwargs)
+    monkeypatch.setattr(batch_pages, 'scan_page', bounded)
+    saved = store.plan_page(workspace, [folder], timeout=10)
+    assert saved['scan']['limits']['timeout'] == 10.0
+    if expected is None:
+        assert budgets == [] and saved['rows'] == []
+        assert saved['scan']['reason'] == 'time'
+        assert saved['scan']['cursor']['root_index'] == 0
+    else:
+        assert budgets == [pytest.approx(expected)]
+        assert saved['rows'][0]['manifest']['sha256'] == sha256((folder / 'source.txt').read_bytes()).hexdigest()
+    assert app.browse(workspace) == ()
+    assert ResourceBroker.for_app(app.root).snapshot()['leases'] == []
