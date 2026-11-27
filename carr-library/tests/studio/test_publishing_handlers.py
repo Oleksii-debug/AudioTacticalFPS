@@ -22,6 +22,8 @@ class Widget:
         self.selection, self.enabled, self.name = -1, True, ''
         self.identity, self.bindings = id(self), {}
     def GetId(self): return self.identity
+    def __bool__(self): return not getattr(self, 'native_deleted', False)
+    def IsBeingDeleted(self): return getattr(self, 'pending_delete', False)
     def SetName(self, name): self.name = name
     def GetName(self): return self.name
     def GetValue(self): return self.value
@@ -59,7 +61,7 @@ def desktop(source_job):
     wx.CallAfter = lambda callback, *args: callback(*args)
     progress = ProgressTracker()
     frame = SimpleNamespace(library=library, cancel_event=Event(), working=False, _closing=False,
-                            operation_progress=progress, operations=[])
+                            operation_progress=progress, operations=[], test_wx=wx)
     def run_job(title, operation, done, failed):
         frame.working = True; frame.cancel_event.clear(); frame.operations.append(title)
         progress.start(title)
@@ -166,3 +168,219 @@ def test_child_destruction_keeps_publication_owner_usable(desktop):
     assert dialog.alive and not dialog.destroyed and not dialog.cancel.is_set()
     dialog.on_refresh()
     assert len(dialog.jobs) == 1 and not dialog.busy
+
+
+def test_native_handler_reports_committed_epub_when_cancellation_arrives_after_link(
+        desktop, tmp_path, monkeypatch):
+    from carr_library.studio import publishing
+    frame, dialog, _ = desktop
+    dialog.on_refresh(); dialog.job_choice.SetSelection(0)
+    target = tmp_path / 'late-native-cancel.epub'
+    dialog.output.ChangeValue(str(target))
+    original = publishing.publish_file
+
+    def publish_then_cancel(staged, output, **kwargs):
+        original(staged, output, **kwargs)
+        frame.cancel_event.set()
+        dialog.cancel.set()
+
+    monkeypatch.setattr(publishing, 'publish_file', publish_then_cancel)
+    dialog.on_export()
+    assert target.exists() and len(dialog.receipts) == 1, dialog.status.GetValue()
+    assert dialog.receipts[0]['status'] == 'complete'
+    assert 'EPUB saved and its bytes verified' in dialog.status.GetValue()
+    assert not dialog.busy and not dialog.buttons['cancel'].IsEnabled()
+
+
+def test_native_handler_distinguishes_saved_output_from_prepared_receipt(
+        desktop, tmp_path, monkeypatch):
+    from carr_library.studio import publishing
+    frame, dialog, _ = desktop
+    dialog.on_refresh(); dialog.job_choice.SetSelection(0)
+    target = tmp_path / 'native-receipt-warning.epub'
+    dialog.output.ChangeValue(str(target))
+    original = publishing.atomic_json
+
+    def finalization_failure(path, record, **kwargs):
+        if record.get('schema') == 'resonance-publication/1' and record.get('status') == 'complete':
+            raise OSError('Synthetic receipt persistence failure')
+        return original(path, record, **kwargs)
+
+    monkeypatch.setattr(publishing, 'atomic_json', finalization_failure)
+    dialog.on_export()
+    assert target.exists() and len(dialog.receipts) == 1, dialog.status.GetValue()
+    receipt = dialog.receipts[0]
+    assert receipt['status'] == 'complete' and receipt['receipt_status'] == 'prepared'
+    assert 'EPUB saved and its bytes verified' in dialog.status.GetValue()
+    assert 'Verify this existing publication' in dialog.status.GetValue()
+    assert dialog.receipt_choice.choices[0].startswith('prepared; ')
+    monkeypatch.setattr(publishing, 'atomic_json', original)
+    dialog.on_verify()
+    assert 'Verified exact saved EPUB bytes' in dialog.status.GetValue()
+    assert dialog.receipt_choice.choices[0].startswith('complete; ')
+
+
+def test_queued_native_export_retains_the_selected_directory_identity(desktop, tmp_path):
+    frame, dialog, _ = desktop
+    dialog.on_refresh(); dialog.job_choice.SetSelection(0)
+    selected = tmp_path / 'chosen-export-directory'; selected.mkdir()
+    target = selected / 'book.epub'
+    dialog.output.ChangeValue(str(target))
+    pending = []
+    frame.run_job = lambda title, operation, done, failed: pending.append((operation, done, failed))
+    dialog.on_export()
+    assert dialog.busy and len(pending) == 1
+    moved = tmp_path / 'original-export-directory'
+    selected.rename(moved)
+    selected.mkdir()
+    operation, done, failed = pending[0]
+    try:
+        done(operation())
+    except Exception as exc:
+        failed(exc)
+    assert not dialog.busy and not dialog.receipts
+    assert 'destination changed before publication' in dialog.status.GetValue()
+    assert not target.exists() and not (moved / 'book.epub').exists()
+
+
+def test_daisy_handler_requires_publisher_and_verifies_selected_receipt(desktop, tmp_path):
+    from carr_library.studio.daisy import inspect_daisy
+    frame, dialog, _ = desktop
+    dialog.on_refresh(); dialog.job_choice.SetSelection(0); dialog.format_choice.SetSelection(1)
+    output = tmp_path / 'native-handler-daisy.zip'; dialog.output.ChangeValue(str(output))
+    dialog.on_export()
+    assert not output.exists() and len(frame.operations) == 1 and 'publisher metadata' in dialog.status.GetValue()
+    dialog.publisher.ChangeValue('Synthetic publisher chosen in the UI')
+    dialog.on_export()
+    assert output.exists(), dialog.status.GetValue()
+    assert len(dialog.receipts) == 1 and dialog.receipts[0]['format'] == 'daisy-2.02'
+    assert inspect_daisy(output)['publisher'] == 'Synthetic publisher chosen in the UI'
+    dialog.format_choice.SetSelection(0)  # Verification follows its receipt, not a changed export preference.
+    dialog.on_verify()
+    assert 'Verified exact saved DAISY bytes' in dialog.status.GetValue()
+
+
+def test_queued_daisy_handler_captures_reviewed_format_and_publisher(desktop, tmp_path):
+    from carr_library.studio.daisy import inspect_daisy
+    frame, dialog, _ = desktop
+    dialog.on_refresh(); dialog.job_choice.SetSelection(0); dialog.format_choice.SetSelection(1)
+    output = tmp_path / 'captured-daisy.zip'; dialog.output.ChangeValue(str(output))
+    dialog.publisher.ChangeValue('Reviewed publisher')
+    pending = []
+    frame.run_job = lambda title, operation, done, failed: pending.append((operation, done, failed))
+    dialog.on_export()
+    assert dialog.busy and not dialog.format_choice.IsEnabled() and not dialog.publisher.IsEnabled()
+    dialog.format_choice.SetSelection(0); dialog.publisher.ChangeValue('Later value')
+    operation, done, failed = pending[0]
+    try: done(operation())
+    except Exception as exc: failed(exc)
+    assert output.exists(), dialog.status.GetValue()
+    assert inspect_daisy(output)['publisher'] == 'Reviewed publisher'
+
+
+def test_queued_daisy_export_retains_the_reviewed_directory_identity(desktop, tmp_path):
+    frame, dialog, _ = desktop
+    dialog.on_refresh(); dialog.job_choice.SetSelection(0); dialog.format_choice.SetSelection(1)
+    dialog.publisher.ChangeValue('Explicit publisher')
+    selected = tmp_path / 'selected-daisy-directory'; selected.mkdir()
+    target = selected / 'book.zip'
+    dialog.output.ChangeValue(str(target))
+    pending = []
+    frame.run_job = lambda title, operation, done, failed: pending.append((operation, done, failed))
+    dialog.on_export()
+    assert dialog.busy and len(pending) == 1
+    moved = tmp_path / 'original-daisy-directory'
+    selected.rename(moved); selected.mkdir()
+    operation, done, failed = pending[0]
+    try:
+        done(operation())
+    except Exception as exc:
+        failed(exc)
+    assert not dialog.busy and not dialog.receipts
+    assert 'destination changed before publication' in dialog.status.GetValue()
+    assert not target.exists() and not (moved / 'book.zip').exists()
+
+
+@pytest.mark.parametrize('termination', ('native-parent', 'picker-only', 'owner-pending', 'picker-pending'))
+def test_publication_picker_detaches_before_native_modal_return(desktop, monkeypatch, termination):
+    frame, dialog, _ = desktop
+    forbidden, observed = [], []
+    original = dialog.output.GetValue()
+
+    def dead(name):
+        def fail(*args, **kwargs):
+            forbidden.append(name)
+            pytest.fail('Destroyed native picker accessed: ' + name)
+        return fail
+
+    class Picker(Widget):
+        def ShowModal(self):
+            observed.append('modal entered')
+            if termination == 'native-parent':
+                dialog.on_destroy(SimpleNamespace(GetId=lambda: dialog.owner_id, Skip=lambda: None))
+                dialog.output.ChangeValue = dead('output.ChangeValue')
+            if termination == 'owner-pending':
+                dialog.pending_delete = True  # No destruction event has arrived yet.
+            elif termination == 'picker-pending':
+                self.pending_delete = True
+            else:
+                self.bindings[frame.test_wx.EVT_WINDOW_DESTROY](
+                    SimpleNamespace(GetId=self.GetId, Skip=lambda: None))
+            self.GetPath, self.Destroy = dead('picker.GetPath'), dead('picker.Destroy')
+            return frame.test_wx.ID_OK
+
+    monkeypatch.setattr(frame.test_wx, 'FileDialog', Picker, raising=False)
+    dialog.on_choose()
+    assert observed == ['modal entered'] and forbidden == [] and not frame.operations
+    assert dialog.output.value == original
+    assert dialog.alive is (termination != 'native-parent')
+
+
+@pytest.mark.parametrize('daisy', (False, True))
+def test_live_publication_picker_preserves_chosen_path_and_disposes_once(desktop, tmp_path, monkeypatch, daisy):
+    frame, dialog, _ = desktop
+    dialog.format_choice.SetSelection(1 if daisy else 0)
+    selected = tmp_path / ('chosen.zip' if daisy else 'chosen.epub')
+    observed = []
+
+    class Picker(Widget):
+        def __init__(self, *args, **options):
+            super().__init__(*args, **options)
+            observed.append(options)
+        def ShowModal(self):
+            return frame.test_wx.ID_OK
+        def GetPath(self):
+            return str(selected)
+        def Destroy(self):
+            observed.append('disposed')
+            self.bindings[frame.test_wx.EVT_WINDOW_DESTROY](
+                SimpleNamespace(GetId=self.GetId, Skip=lambda: None))
+
+    monkeypatch.setattr(frame.test_wx, 'FileDialog', Picker, raising=False)
+    dialog.on_choose()
+    assert dialog.output.GetValue() == str(selected) and dialog.alive
+    assert observed[0]['defaultFile'] == ('publication.zip' if daisy else 'publication.epub')
+    assert observed[1:] == ['disposed'] and not frame.operations
+
+
+@pytest.mark.parametrize('native_state', ('pending-delete', 'deleted', 'live'))
+def test_modal_return_disposes_only_a_live_publication_wrapper(monkeypatch, native_state):
+    from carr_library.ui import publishing_dialog
+    observed = []
+    class Modal:
+        destroyed = False  # EVT_WINDOW_DESTROY may still be queued.
+        def ShowModal(self):
+            observed.append('returned')
+        def detach(self):
+            observed.append('detached')
+        def __bool__(self):
+            return native_state != 'deleted'
+        def IsBeingDeleted(self):
+            assert native_state != 'deleted', 'A deleted native peer was inspected.'
+            return native_state == 'pending-delete'
+        def Destroy(self):
+            assert native_state == 'live', 'A pending/deleted modal peer was destroyed again.'
+            observed.append('destroyed')
+    monkeypatch.setattr(publishing_dialog, 'create_publishing_dialog', lambda frame: Modal())
+    publishing_dialog.show_publishing(object())
+    assert observed == ['returned', 'detached'] + (['destroyed'] if native_state == 'live' else [])

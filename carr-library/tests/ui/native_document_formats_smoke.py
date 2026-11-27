@@ -39,6 +39,7 @@ def run_native(source=None):
     import carr_library.extract.document_formats as formats_module
     import carr_library.ui.import_center as import_module
     import carr_library.ui.desktop_app as desktop_module
+    import carr_library.ingest.worker as worker_module
     from carr_library.application import LibraryApp
     from carr_library.reader.reading_desk import ReadingDesk
     from carr_library.reader.reading_state import ReadingState
@@ -52,7 +53,7 @@ def run_native(source=None):
     checks, errors, state = [], [], {}
     started = monotonic()
     origins = {module.__name__: str(Path(module.__file__).resolve())
-               for module in (formats_module, import_module, desktop_module)}
+               for module in (formats_module, import_module, desktop_module, worker_module)}
 
     def check(name, condition):
         if not condition:
@@ -135,8 +136,57 @@ def run_native(source=None):
             if errors:
                 raise AssertionError('\n'.join(errors))
 
+            def record_batch_outcome():
+                # Synthetic fixture diagnostics only. Keep actual row/request
+                # outcomes bounded and never dump document text or whole journals.
+                def fields(value):
+                    if not isinstance(value, dict):
+                        return None
+                    keys = ('state', 'message', 'error', 'request_id', 'job', 'id',
+                            'edition', 'verified', 'completed', 'isolated',
+                            'recovered_publication', 'publication_recovered',
+                            'worker_state', 'attempt', 'asset_sha256')
+                    return {key: (value[key] if value[key] is None
+                                  or type(value[key]) in (bool, int, float)
+                                  else str(value[key])[:4000])
+                            for key in keys if key in value}
+
+                try:
+                    dialog = state.get('import')
+                    batch = getattr(dialog, 'batch', None) or {}
+                    outcome = dict(status='FAIL', phase=state.get('phase'),
+                        batch_id=batch.get('batch_id'), state=batch.get('state'),
+                        counts={key: batch.get('counts', {}).get(key, 0)
+                                for key in ('queued', 'running', 'complete', 'duplicate',
+                                            'rejected', 'failed', 'quarantined', 'excluded')},
+                        rows=[])
+                    for row in batch.get('rows', ())[:4]:
+                        item = dict(file=str(row.get('file', ''))[:240],
+                                    row_id=row.get('row_id'), request_id=row.get('request_id'),
+                                    state=row.get('state'), message=str(row.get('message', ''))[:4000],
+                                    result=fields(row.get('result')))
+                        try:
+                            request = worker_module.load_request(library.root, row['request_id'])
+                            item['request'] = fields(request)
+                            item['request_result'] = fields(request.get('result'))
+                            manifest = request.get('expected_manifest') or {}
+                            item['expected_manifest'] = {
+                                key: manifest.get(key) for key in ('sha256', 'mime', 'size')}
+                        except (OSError, ValueError, KeyError) as exc:
+                            item['request_read_error'] = type(exc).__name__ + ': ' + str(exc)[:1000]
+                        outcome['rows'].append(item)
+                    try:
+                        outcome['visible_status'] = dialog.status.GetValue()[:4000]
+                    except Exception as exc:
+                        outcome['status_read_error'] = type(exc).__name__
+                    print(json.dumps(outcome, sort_keys=True, ensure_ascii=True), flush=True)
+                except Exception as exc:
+                    print(json.dumps(dict(status='FAIL', diagnostic_error=
+                        type(exc).__name__ + ': ' + str(exc)[:1000])), flush=True)
+
             def fail():
                 errors.append(traceback.format_exc())
+                record_batch_outcome()
                 frame.cancel_event.set()
                 dialog = state.get('import')
                 if dialog is not None:
@@ -154,6 +204,7 @@ def run_native(source=None):
                     fail()
 
             def imported():
+                state['phase'] = 'after-import'
                 dialog = state['import']
                 check('native queue completes both actual document imports',
                       dialog.batch['state'] == 'complete' and dialog.batch['counts']['complete'] == 2)
@@ -181,6 +232,7 @@ def run_native(source=None):
                               if isinstance(child, wx.Button) and child.GetLabel() == '&Start queued files')
                 event = wx.CommandEvent(wx.EVT_BUTTON.typeId, button.GetId())
                 event.SetEventObject(button)
+                state['phase'] = 'importing'
                 check('native Start queued files button event launches work',
                       button.GetEventHandler().ProcessEvent(event) and dialog.busy)
                 wx.CallLater(50, poll, imported)
@@ -194,6 +246,7 @@ def run_native(source=None):
                           dialog.rows.GetName() == 'Files and import status'
                           and dialog.details.GetName() == 'Selected file details'
                           and dialog.status.GetName() == 'Import Center status')
+                    state['phase'] = 'preflight'
                     dialog.plan((selected,))
                     check('document preflight runs asynchronously with cancellation enabled',
                           dialog.busy and dialog.cancel.IsEnabled())

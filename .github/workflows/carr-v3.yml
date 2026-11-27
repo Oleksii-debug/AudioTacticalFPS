@@ -170,7 +170,25 @@ jobs:
           skipped = sum(case.find('skipped') is not None for case in cases)
           passed = len(cases) - failed - skipped
           portable = [case for case in cases if 'test_state_backup_portability' in case.get('classname', '').split('.')]
-          portable_complete = len(portable) == 21 and len({case.get('name') for case in portable}) == 21
+          portable_base_names = {'test_portable_manifest_rejects_collisions',
+              'test_portable_manifest_allows_distinct_siblings',
+              'test_portable_manifest_rejects_non_windows_names',
+              'test_portable_manifest_keeps_ordinary_unicode_names',
+              'test_portable_snapshot_roundtrip_unicode'}
+          portable_cases = [case.get('name', '') for case in portable]
+          portable_base = [name for name in portable_cases if name.split('[', 1)[0] in portable_base_names]
+          portable_base_complete = len(portable_base) == 21 and len(set(portable_base)) == 21
+          required_inventory = {
+              'test_state_inventory_rejects_unreadable_subtree[snapshot]',
+              'test_state_inventory_rejects_unreadable_subtree[restore]',
+              'test_state_restore_rejects_unlisted_file_before_scanning_later_subtree',
+              'test_state_root_lookup_error_is_not_absence[PermissionError]',
+              'test_state_root_lookup_error_is_not_absence[NotADirectoryError]',
+              'test_state_root_missing_is_optional_only_when_requested'}
+          inventory_cases = [name for name in portable_cases if name.split('[', 1)[0] not in portable_base_names]
+          inventory_exact = len(inventory_cases) == len(required_inventory) and set(inventory_cases) == required_inventory
+          portable_complete = (portable_base_complete and inventory_exact
+              and len(portable_cases) == 27 and len(set(portable_cases)) == 27)
           required_ocr = {'test_unreadable_directory_rejects_entire_inventory', 'test_empty_directory_inventory_has_a_bound', 'test_directory_inventory_checks_budget_between_entries'}
           ocr_cases = [c.get('name') for c in cases if c.get('classname', '').rsplit('.', 1)[-1] == 'test_ocr_runtime']
           ocr_exact = len(ocr_cases) == len(required_ocr) and set(ocr_cases) == required_ocr
@@ -185,7 +203,10 @@ jobs:
           ok = status == 0 and passed > 0 and failed == skipped == 0 and not policy.seen and portable_complete and ocr_exact and owner_exact
           result = dict(status='PASS' if ok else 'FAIL', passed=passed, failed=failed,
                         skipped=skipped, pytest_exit=int(status), expected_failures=policy.seen,
-                        origins=installed_origins(), ocr_inventory_cases=sorted(ocr_cases),
+                        origins=installed_origins(), portable_cases=sorted(portable_cases),
+                        portable_base_complete=portable_base_complete,
+                        state_inventory_cases=sorted(inventory_cases), state_inventory_exact=inventory_exact,
+                        portable_complete=portable_complete, ocr_inventory_cases=sorted(ocr_cases),
                         ocr_inventory_exact=ocr_exact, native_owner_cases=sorted(owner_cases),
                         native_owner_exact=owner_exact, native_owner_source_sha256=owner_source,
                         manual_nvda='NOT_RUN')

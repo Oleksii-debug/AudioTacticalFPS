@@ -18,6 +18,25 @@ def data_directory(selected):
     return selected_directory() or user_data_path('Universal Research Library', appauthor=False, roaming=False)
 
 
+def _close_production(service):
+    """Report lifecycle cleanup separately from the completed command outcome."""
+    if service is None:
+        return
+    try:
+        close = getattr(service, 'close', None)
+        if not callable(close) or close() is not False:
+            return
+        detail = 'the owned voice worker has not confirmed shutdown'
+    except (Exception, KeyboardInterrupt) as exc:
+        detail = type(exc).__name__ + ': ' + str(exc)[:1000]
+    try:
+        print('Local voice cleanup was not confirmed: ' + detail + '.',
+              file=sys.stderr, flush=True)
+    except (OSError, ValueError):
+        # A closed diagnostics stream must not replace the command's exit code.
+        pass
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Local reading and audio production; no remote fallback')
     parser.add_argument('--data-dir', type=Path)
@@ -26,19 +45,24 @@ def main(argv=None):
     operations.add_parser('voices', help='List actually installed local voices')
     operations.add_parser('jobs', help='List saved resumable production jobs')
     operations.add_parser('projects', help='List saved projects')
-    operations.add_parser('publications', help='List saved EPUB publication receipts; explicit verification checks bytes')
-    publish = operations.add_parser('publish-epub', help='Publish a completed Studio job with measured line synchronization')
-    publish.add_argument('job_id')
-    publish.add_argument('--output', type=Path, required=True)
-    publish.add_argument('--language', default='und')
-    publish.add_argument('--creator', default='')
-    publish.add_argument('--max-bytes', type=int, default=32 * 1024**3)
-    publish.add_argument('--timeout', type=float, default=3600)
-    verify_publication = operations.add_parser('verify-publication', help='Verify an existing EPUB against its exact receipt')
-    verify_publication.add_argument('publication_id')
-    verify_publication.add_argument('--file', type=Path, help='Explicit existing EPUB after relocation')
-    verify_publication.add_argument('--max-bytes', type=int, default=32 * 1024**3)
-    verify_publication.add_argument('--timeout', type=float, default=3600)
+    operations.add_parser('publications', help='List saved publication receipts; use verify-publication to check actual bytes')
+    for operation, extension, description in (
+            ('publish-epub', '.epub', 'Local EPUB3 with measured line overlays'),
+            ('publish-daisy', '.zip', 'DAISY 2.02 file-set ZIP with measured line synchronization')):
+        publish = operations.add_parser(operation, help=description + ' from a completed Studio job')
+        publish.add_argument('job_id')
+        publish.add_argument('--output', type=Path, required=True, help=f'New {extension} file in an existing directory; never overwritten')
+        publish.add_argument('--language', default='und', help='Publication language, such as uk, en or und')
+        publish.add_argument('--creator', default='')
+        publish.add_argument('--max-bytes', type=int, default=32 * 1024**3, help='Source graph and publication staging byte limit')
+        publish.add_argument('--timeout', type=float, default=3600, help='Total export time budget in seconds')
+        if operation == 'publish-daisy':
+            publish.add_argument('--publisher', required=True, help='Publisher metadata explicitly supplied for this publication')
+    verify = operations.add_parser('verify-publication', help='Verify a saved receipt or recover completed publication after interruption')
+    verify.add_argument('publication_id')
+    verify.add_argument('--file', type=Path, help='Explicit existing publication after relocation; must match the exact saved receipt')
+    verify.add_argument('--max-bytes', type=int, default=32 * 1024**3)
+    verify.add_argument('--timeout', type=float, default=3600)
     operations.add_parser('capabilities', help='Inspect the actual installed audio runtime')
     render = operations.add_parser('render', help='Produce actual WAV master, chapters, stems and subtitles')
     source = render.add_mutually_exclusive_group(required=True)
@@ -69,7 +93,7 @@ def main(argv=None):
         elif args.operation == 'jobs':
             result = [{'id': job['id'], 'title': job['project']['title'], 'status': job['status'],
                        'progress': job['progress'], 'destination': job['destination']} for job in service.jobs()]
-        elif args.operation in ('publications', 'publish-epub', 'verify-publication'):
+        elif args.operation in ('publications', 'publish-epub', 'publish-daisy', 'verify-publication'):
             from ..audio.models import AudioBudget
             from .publishing import PublicationService
             if args.operation == 'publications':
@@ -77,7 +101,11 @@ def main(argv=None):
             else:
                 publisher = PublicationService(service, budget=AudioBudget(
                     max_output_bytes=args.max_bytes, timeout=args.timeout))
-                if args.operation == 'publish-epub':
+                if args.operation == 'publish-daisy':
+                    result = publisher.export_daisy(args.job_id, args.output, publisher=args.publisher,
+                        language=args.language, creator=args.creator,
+                        progress=lambda text: print(text, file=sys.stderr, flush=True))
+                elif args.operation == 'publish-epub':
                     result = publisher.export_epub(args.job_id, args.output, language=args.language,
                         creator=args.creator, progress=lambda text: print(text, file=sys.stderr, flush=True))
                 else:
@@ -118,6 +146,8 @@ def main(argv=None):
     except (ValueError, OSError, RuntimeError) as exc:
         print('Audio Studio: ' + str(exc), file=sys.stderr)
         return 1
+    finally:
+        _close_production(service)
 
 
 def assistant_main(argv=None):

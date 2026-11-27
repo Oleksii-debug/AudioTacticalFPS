@@ -918,3 +918,33 @@ def test_maximum_pasted_advanced_source_reserves_existing_serialization_limits(t
     assert restored.undo() and restored.text == original
     assert len(transport['calls']) == 1  # Discovery only; no billable request.
 
+
+
+@pytest.mark.parametrize('bound', [False, True], ids=['pasted', 'retained-source'])
+@pytest.mark.parametrize('non_boolean', [0, 0.0], ids=['integer-zero', 'float-zero'])
+def test_saved_glossary_requires_literal_false_without_resume_or_export_side_effects(
+        tmp_path, transport, bound, non_boolean):
+    if bound:
+        case = source_case(tmp_path, transport, first=2, last=2)
+        service, vault = case.service, case.vault
+        identity, approval = submit_source(case)
+    else:
+        service, p, vault = ready(tmp_path, transport)
+        identity, approval = submit(service, p, glossary=GLOSSARY)
+    assert service.resume(identity)['status'] == 'complete'
+    saved = service.jobs.load(identity)
+    assert saved['receipts'][0]['glossary_config']['ignoreCase'] is False
+    saved['receipts'][0]['glossary_config']['ignoreCase'] = non_boolean
+    service.jobs.save(saved)
+    job_path = service.jobs.path(identity)
+    usage_path = service.gateway.ledger._path(approval.id)
+    before = (job_path.read_bytes(), usage_path.read_bytes())
+    calls, credentials = len(transport['calls']), len(vault.calls)
+    with pytest.raises(ValueError, match='glossary provenance'):
+        service.resume(identity)
+    destination = tmp_path / 'unverified-glossary'
+    with pytest.raises(ValueError, match='glossary provenance'):
+        service.export(identity, destination)
+    assert not destination.exists()
+    assert (job_path.read_bytes(), usage_path.read_bytes()) == before
+    assert len(transport['calls']) == calls and len(vault.calls) == credentials

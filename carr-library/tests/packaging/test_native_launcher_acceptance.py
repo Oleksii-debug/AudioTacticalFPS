@@ -91,10 +91,17 @@ def build(inputs, **kwargs):
 
 
 def synthetic_application_identity(monkeypatch):
-    # The existing source-wheel suite separately rejects synthetic application
-    # wheels. This fixture isolates launcher admission and copying, not that gate.
-    monkeypatch.setattr(builder, "verify_application_source",
-                        lambda path, commit: {"wheel_sha256": builder.sha256(path)})
+    # The source-wheel suite separately rejects synthetic application wheels.
+    # Preserve the real commit/tree shape while this inert fixture isolates
+    # launcher admission and sealing, not application-wheel certification.
+    def identity(path, commit):
+        tree = subprocess.check_output(
+            ["git", "--no-replace-objects", "-C", str(ROOT.parent),
+             "rev-parse", "--verify", commit + "^{tree}"], text=True).strip()
+        return {"source_commit": commit, "source_tree": tree,
+                "wheel_sha256": builder.sha256(path)}
+
+    monkeypatch.setattr(builder, "verify_application_source", identity)
 
 
 
@@ -278,6 +285,10 @@ def test_installed_probe_records_exact_identity_and_requires_expected_source(
     report = installed_probe.inspect_installed(bundle_inputs.output, native_inputs.source_commit)
     manifest = json.loads((bundle_inputs.output / "bundle-manifest.json").read_text(encoding="utf-8"))
     assert report["source_commit"] == native_inputs.source_commit
+    source = json.loads((bundle_inputs.output / "application-source.json").read_bytes())
+    assert source["source_commit"] == report["source_commit"]
+    assert source["source_tree"] == manifest["source_tree"]
+    assert len(source["source_tree"]) == 40
     assert report["launcher_sha256"] == manifest["files"]["ResearchLibrary.exe"]
     assert report["application_wheel_sha256"] == manifest["files"][report["application_wheel"]]
     assert report["sealed_bundle_verified_before_and_after"] is True

@@ -42,7 +42,7 @@ def make(progress, executor, wx, report, service):
     queued, reports, history = [], [], []
     progress = object.__new__(NativeProgressPanel)
     progress.hub, progress.active_task, progress.feedback = ProgressHub(), None, Mock()
-    progress.notice = ''
+    progress.closed, progress.notice = False, ''
     progress.refresh = lambda: history.append(progress.active_task.snapshot()) if progress.active_task else None
     executor, service = Mock(), Mock()
     def report(message, focus=False):
@@ -191,24 +191,31 @@ def test_begin_failure_never_finalizes_callback_started_new_operation(studio, mo
     assert not any(event.percent == 100 for event in studio.history)
 
 
-def test_studio_close_retains_parent_observer_when_device_and_local_feedback_both_fail():
+def test_studio_close_retains_parent_observer_when_device_and_local_feedback_both_fail(monkeypatch):
     """A local view cannot hide uncertain native audio from the surviving parent."""
     source = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/studio_dialog.py'
     parsed = ast.parse(source.read_text(encoding='utf-8'))
     window = next(node for node in parsed.body if isinstance(node, ast.FunctionDef) and node.name == 'show_studio')
-    close = next(node for node in window.body if isinstance(node, ast.FunctionDef) and node.name == 'close')
+    lifecycle = [node for node in window.body if isinstance(node, ast.FunctionDef)
+                 and node.name in ('retire_worker', 'retire_playback', 'close')]
+    assert {node.name for node in lifecycle} == {'retire_worker', 'retire_playback', 'close'}
     factory = ast.parse('''
 def make(autosave, cancel, service, timer, dialog, progress, parent_progress, report, executor, owned_progress_voices):
     alive, busy = True, False
     current_job = None
+    cleanup_started = False
+    playback_owner = [dialog._audio_player]
     return close
 ''')
-    factory.body[0].body.insert(-1, close)
+    factory.body[0].body[-1:-1] = lifecycle
     environment = {'wx': SimpleNamespace(ID_CLOSE=321),
                    '__name__': 'carr_library.ui.studio_dialog', '__package__': 'carr_library.ui'}
     exec(compile(ast.fix_missing_locations(factory), str(source), 'exec'), environment)
     autosave, service, timer, dialog, progress, parent_progress, executor, owned_voice = [Mock() for _ in range(8)]
-    cancel, reports = threading.Event(), []
+    cancel, reports, pending = threading.Event(), [], []
+    from carr_library.audio import cleanup
+    monkeypatch.setattr(cleanup, 'pending_cleanup',
+        lambda callback, **options: pending.append((callback, options)))
     dialog._audio_player.close.side_effect = RuntimeError('The native device did not confirm silence')
     progress.unregister_player.side_effect = RuntimeError('The local progress view is detached')
     callback = environment['make'](autosave, cancel, service, timer, dialog,
@@ -230,3 +237,10 @@ def make(autosave, cancel, service, timer, dialog, progress, parent_progress, re
     service.close.assert_called_once_with()
     owned_voice.close.assert_called_once_with()
     dialog.EndModal.assert_called_once_with(321)
+    assert len(pending) == 1 and 'Studio playback' in pending[0][1]['message']
+    # The captured retry retains the exact failed player independently of the
+    # closed dialog. Confirming its later close completes that same cleanup.
+    dialog._audio_player.close.side_effect = None
+    dialog._audio_player.close.return_value = True
+    assert pending[0][0]() is True
+    assert dialog._audio_player.close.call_count == 2

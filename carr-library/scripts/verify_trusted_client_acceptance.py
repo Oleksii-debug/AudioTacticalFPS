@@ -16,6 +16,7 @@ ORIGINS = [
     'carr_library', 'carr_library.delivery_contract', 'carr_library.assistant.credentials',
     'carr_library.security', 'carr_library.security._files', 'carr_library.security.anchors',
     'carr_library.security.entitlements', 'carr_library.security.updates',
+    'carr_library.security.installation',
     'carr_library.security.refresh', 'carr_library.security.polling',
     'carr_library.security.boundary', 'carr_library.security.controller',
     'carr_library.security.__main__', 'carr_library.ui.trust_status',
@@ -28,6 +29,7 @@ SUITES = [
     'tests/security/test_native_lifetime.py', 'tests/security/test_publication_integrity.py',
     'tests/security/test_refresh.py', 'tests/security/test_update_polling.py',
     'tests/security/test_updates.py', 'tests/ui/test_desktop_handlers.py',
+    'tests/security/test_installation.py', 'tests/security/test_update_activation_boundaries.py',
 ]
 PINS = {'cryptography': '50.0.2', 'tuf': '7.0.1', 'securesystemslib': '1.6.0',
         'urllib3': '2.8.0', 'cffi': '2.1.1', 'pycparser': '3.12'}
@@ -84,6 +86,8 @@ def main():
     result = {'status': 'RUNNING', 'source': source_identity(), 'python': sys.version,
               'dependencies': dependencies, 'origins': installed_origins(), 'suites': SUITES,
               'production_authority': 'NOT_CONFIGURED', 'private_issuer_interoperability': 'NOT_RUN',
+              'portable_activation_backend': 'SYNTHETIC_TESTS_ONLY',
+              'activation_host': 'NOT_IMPLEMENTED', 'installed_windows_upgrade': 'NOT_RUN',
               'managed_activation_and_rollback': 'NOT_IMPLEMENTED', 'manual_nvda': 'NOT_RUN'}
     evidence.write_text(json.dumps(result, indent=2), encoding='utf-8')
     import pytest

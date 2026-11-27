@@ -9,6 +9,7 @@ from pathlib import Path
 import sys
 import threading
 import time
+import traceback
 
 if os.name != 'nt':
     raise SystemExit('This required acceptance probe must run on native Windows.')
@@ -31,7 +32,8 @@ def run_case(origin):
     started, release, worker_done = threading.Event(), threading.Event(), threading.Event()
     retired = threading.Event()
     observations = {'destroy_calls': 0, 'native_destroyed': False, 'parent_destroyed': False,
-                    'late_callbacks': [], 'uncaught': [], 'cleanup_after_worker': False}
+                    'late_callbacks': [], 'uncaught': [], 'cleanup_after_worker': False,
+                    'destroy_attempts': []}
     original_dialog, original_call_after = wx.Dialog, wx.CallAfter
     original_executor = speech_dialog.ThreadPoolExecutor
     original_temporary = speech_dialog.TemporaryDirectory
@@ -65,6 +67,10 @@ def run_case(origin):
             if self.acceptance_dead:
                 observations['late_callbacks'].append('second native Destroy')
                 raise AssertionError('A deleted Reader was destroyed twice.')
+            if len(observations['destroy_attempts']) < 4:
+                observations['destroy_attempts'].append({
+                    'already_pending': bool(self.IsBeingDeleted()),
+                    'callers': [frame.name for frame in traceback.extract_stack(limit=5)[:-1]]})
             return super().Destroy()
 
     def call_after(action, *args, **kwargs):
@@ -136,14 +142,15 @@ def run_case(origin):
         pump_until(lambda: worker_done.is_set() and observations['cleanup_after_worker'])
         wx.YieldIfNeeded()
         assert observations['native_destroyed']
-        assert observations['destroy_calls'] == (1 if origin == 'owner' else 0), observations
+        assert observations['destroy_calls'] == (1 if origin == 'owner' else 0), json.loads(json.dumps(observations))
         assert observations['parent_destroyed'] == (origin == 'parent')
-        assert not observations['late_callbacks'], observations
-        assert not observations['uncaught'], observations
+        assert not observations['late_callbacks'], json.loads(json.dumps(observations))
+        assert not observations['uncaught'], json.loads(json.dumps(observations))
         assert not Path(temporary[0].name).exists()
         return {'origin': origin, 'cancelled': True, 'worker_released': True,
                 'cleanup_after_worker': True, 'late_native_calls': 0,
-                'destroy_calls': observations['destroy_calls']}
+                'destroy_calls': observations['destroy_calls'],
+                'destroy_attempts': observations['destroy_attempts']}
     finally:
         release.set()
         for executor in executors:

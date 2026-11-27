@@ -273,17 +273,20 @@ class AcquisitionService:
     def save_reference(self, workspace, preview, *, cancelled=lambda: False):
         preview = self._checked(workspace, preview, cancelled)
         with self.app.write(workspace) as db:
-            _cancel(cancelled)
-            library = AcademicLibrary(db, workspace)
-            rows = tuple(db.execute('SELECT id FROM academic_reference '
-                'WHERE workspace=? AND doi=? AND archived=0 ORDER BY id LIMIT 2', (workspace, preview.doi)))
-            if len(rows) > 1:
-                raise ValueError('More than one reference already has this DOI. Resolve its duplicates in the academic library first.')
-            if rows:
-                return library.get(rows[0][0])
-            reference = library.create(**self._fields(preview))
-            _cancel(cancelled)
-            return reference
+            return self._save_reference_in_transaction(db, workspace, preview, cancelled)
+
+    def _save_reference_in_transaction(self, db, workspace, preview, cancelled):
+        _cancel(cancelled)
+        library = AcademicLibrary(db, workspace)
+        rows = tuple(db.execute('SELECT id FROM academic_reference '
+            'WHERE workspace=? AND doi=? AND archived=0 ORDER BY id LIMIT 2', (workspace, preview.doi)))
+        if len(rows) > 1:
+            raise ValueError('More than one reference already has this DOI. Resolve its duplicates in the academic library first.')
+        if rows:
+            return library.get(rows[0][0])
+        reference = library.create(**self._fields(preview))
+        _cancel(cancelled)
+        return reference
 
     def apply_metadata(self, workspace, edition_id, preview, *, expected_metadata,
                        cancelled=lambda: False):
@@ -299,6 +302,32 @@ class AcquisitionService:
             edition=expected_metadata.edition,
             volume=meta.volume or expected_metadata.volume,
             expected_metadata=expected_metadata, cancelled=cancelled)
+
+    @staticmethod
+    def _active_asset_editions(db, workspace, digest):
+        return tuple(row[0] for row in db.execute(
+            'SELECT e.id FROM catalog_edition e JOIN active a '
+            'ON a.workspace=e.workspace AND a.edition=e.id '
+            'WHERE e.workspace=? AND e.asset=? ORDER BY e.id LIMIT 2',
+            (workspace, digest)))
+
+    def _link_download(self, db, workspace, preview, edition_id, receipt, message, cancelled):
+        reference = self._save_reference_in_transaction(db, workspace, preview, cancelled)
+        store = AcademicLibrary(db, workspace)
+        changes = {}
+        if edition_id is not None:
+            if reference.edition_id is None:
+                changes['edition_id'] = edition_id
+            elif reference.edition_id != edition_id:
+                message += ' The existing reference links another edition and was preserved; review the link manually.'
+        note = '\n\nDownloaded source provenance:\n' + json.dumps(receipt,
+            ensure_ascii=False, sort_keys=True)
+        if note not in reference.notes:
+            changes['notes'] = reference.notes + note
+        if changes:
+            reference = store.update(reference.id, expected=reference, **changes)
+        _cancel(cancelled)
+        return reference, message
 
     def acquire(self, workspace, preview, source_index, destination, *, online_allowed=False,
                 rights_confirmed=False, collection=None, cancelled=lambda: False):
@@ -374,21 +403,38 @@ class AcquisitionService:
         try:
             self._scope(workspace, cancelled, collection)
             with self.app.read(workspace) as db:
-                existing = db.execute('SELECT e.id FROM catalog_edition e JOIN active a '
-                    'ON a.workspace=e.workspace AND a.edition=e.id '
-                    'WHERE e.workspace=? AND e.asset=? ORDER BY e.id LIMIT 1',
-                    (workspace, info.sha256)).fetchone()
+                matches = self._active_asset_editions(db, workspace, info.sha256)
+            if len(matches) > 1:
+                return AcquisitionResult(path, receipt_path, None, None, 'downloaded',
+                    'The PDF and provenance were saved. Multiple editions in this library '
+                    'share these bytes; review the correct edition and link it manually. '
+                    'No reference or collection membership was changed.', info.sha256)
+            existing = matches[0] if matches else None
             if existing:
                 # Matching database hashes are not proof that the retained file
                 # still exists with these exact bytes. Revalidate before linking
                 # a reference or publishing collection membership.
                 self.app.assets.resolve(info.sha256)
-                edition_id, state = existing[0], 'duplicate'
+                edition_id, state = existing, 'duplicate'
                 message = 'Identical source bytes already exist in this library; linked to the existing edition.'
-                if collection is not None:
-                    with self.app.catalog_transaction(workspace) as catalog:
-                        _cancel(cancelled)
-                        catalog.assign(collection, edition_id)
+                self._checked(workspace, preview, cancelled)
+                # Hash verification above may take time. Recheck the exact
+                # edition identity under the same writer transaction as every
+                # automatic membership/reference mutation; never guess after
+                # another import or revision activation changes the match set.
+                with self.app.write(workspace) as db:
+                    _cancel(cancelled)
+                    if self._active_asset_editions(db, workspace, info.sha256) != (edition_id,):
+                        return AcquisitionResult(path, receipt_path, None, None, 'downloaded',
+                            'The PDF and provenance were saved. Matching editions changed; '
+                            'review the correct edition and link it manually. '
+                            'No reference or collection membership was changed.', info.sha256)
+                    if collection is not None:
+                        Catalog(db, workspace).assign(collection, edition_id)
+                    reference, message = self._link_download(
+                        db, workspace, preview, edition_id, receipt, message, cancelled)
+                return AcquisitionResult(path, receipt_path, reference.id, edition_id,
+                                         state, message, info.sha256)
             else:
                 edition_id = uuid4().hex
                 imported = self.app.import_file(workspace, path, title=preview.metadata.title,
@@ -401,23 +447,13 @@ class AcquisitionService:
                 message = imported.get('message') or ('Source imported; quotation review remains separate.'
                     if state == 'complete' else 'Source downloaded. Continue its pending review in Import Center.')
             self._scope(workspace, cancelled, collection)
-            reference = self.save_reference(workspace, preview, cancelled=cancelled)
+            self._checked(workspace, preview, cancelled)
             with self.app.write(workspace) as db:
                 _cancel(cancelled)
-                store = AcademicLibrary(db, workspace)
-                current = store.get(reference.id)
-                changes = {}
-                if edition_id is not None:
-                    if current.edition_id is None:
-                        changes['edition_id'] = edition_id
-                    elif current.edition_id != edition_id:
-                        message += ' The existing reference links another edition and was preserved; review the link manually.'
-                note = '\n\nDownloaded source provenance:\n' + json.dumps(receipt,
-                    ensure_ascii=False, sort_keys=True)
-                if note not in current.notes:
-                    changes['notes'] = current.notes + note
-                if changes:
-                    reference = store.update(current.id, expected=current, **changes)
+                if collection is not None:
+                    Catalog(db, workspace)._active_collection(collection)
+                reference, message = self._link_download(
+                    db, workspace, preview, edition_id, receipt, message, cancelled)
             return AcquisitionResult(path, receipt_path, reference.id, edition_id,
                                      state, message, info.sha256)
         except (ValueError, OSError, RuntimeError, sqlite3.Error):

@@ -425,8 +425,10 @@ class TranslationService:
                 raise ValueError('The completed translation text differs from its accepted decoded-output receipt.')
             if profile.adapter == 'google-translation-v3':
                 expected_glossary = {'glossary': job['glossary'], 'ignoreCase': False} if job.get('glossary') else None
+                reported_glossary = row.get('glossary_config')
                 if (row.get('reported_model') != google_v3_parent(profile.endpoint) + '/models/' + profile.model
-                        or row.get('glossary_config') != expected_glossary):
+                        or reported_glossary != expected_glossary
+                        or (expected_glossary is not None and reported_glossary['ignoreCase'] is not False)):
                     raise ValueError('The Advanced v3 receipt has no verified model/glossary provenance.')
         return job
 

@@ -440,7 +440,8 @@ def test_studio_executor_start_failure_is_terminal_and_unlocks_controls(studio):
 
 
 @pytest.mark.parametrize('device_failure', [False, True])
-def test_reader_close_always_unregisters_playback_and_finishes_resource_cleanup(device_failure, monkeypatch):
+@pytest.mark.parametrize('native_pending', [False, True], ids=['live', 'native-destroy-pending'])
+def test_reader_close_always_unregisters_playback_and_finishes_resource_cleanup(device_failure, native_pending, monkeypatch):
     from carr_library.audio import cleanup as native_cleanup
     before = set(native_cleanup._RETAINED)
     monkeypatch.setattr(native_cleanup, 'threading', SimpleNamespace(
@@ -456,6 +457,7 @@ def test_reader_close_always_unregisters_playback_and_finishes_resource_cleanup(
                threading=threading, native_destroyed=False, parent_destroyed=False,
                wx=SimpleNamespace(CallAfter=lambda callback: callback(), EVT_WINDOW_DESTROY='destroy'))
     env['parent']._closing = False
+    env['dialog'].IsBeingDeleted.return_value = native_pending
     def detached():
         env['alive'] = False
         env['cancel'].set()
@@ -487,7 +489,10 @@ def test_reader_close_always_unregisters_playback_and_finishes_resource_cleanup(
         else:
             env['audio_files'].cleanup.assert_called_once_with()
             assert set(native_cleanup._RETAINED) == before
-        env['dialog'].Destroy.assert_called_once_with()
+        if native_pending:
+            env['dialog'].Destroy.assert_not_called()
+        else:
+            env['dialog'].Destroy.assert_called_once_with()
         assert env['alive'] is False
     finally:
         env['player'].close.side_effect = None

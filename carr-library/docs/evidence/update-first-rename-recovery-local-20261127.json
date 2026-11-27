@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "base_commit": "78f5ce61145975e30b4dc61bd5317e63b117232a",
+  "base_tree": "e8710a9edf3d1f6a4c6260e77b5beaf0fa0af829",
+  "reused_installation_blob": "9c1053c3409d3043de8c9b0c33508f394e91abac",
+  "negative_checkpoint": "3a3a3930f5bbe95a93e0914ab3b4e410040dd005",
+  "negative_test_blob": "d6e37351266633a2d76f15d84a7443b0c417776b",
+  "negative_result": {
+    "passed": 4,
+    "failed": 2,
+    "skipped": 0,
+    "deselected": 24,
+    "scope": "The first-move error was masked by strict missing-previous rollback; durable no-move completion was never reached."
+  },
+  "tested_git_blobs": {
+    "src/carr_library/security/installation.py": "ef0ea98c5ec193b31d1f2d3ef2a0fdc0c80318d5",
+    "tests/security/test_installation.py": "d1228f436d08a6369955d6f33066c1ecbc69ec32",
+    "tests/security/test_update_activation_boundaries.py": "ffd7009ec8bbafc644b06b93b3947e78b96b7be6",
+    "scripts/verify_trusted_client_acceptance.py": "21451bfe45db3a5b49605763814bee22fa904032"
+  },
+  "python": "3.12.14",
+  "platform": "Linux",
+  "dependencies": {
+    "pytest": "9.0.2",
+    "cryptography": "50.0.2",
+    "tuf": "7.0.1",
+    "securesystemslib": "1.6.0",
+    "urllib3": "2.8.0",
+    "cffi": "2.1.1",
+    "pycparser": "3.12"
+  },
+  "command": "PYTHONPATH=<checkout>/carr-library/src PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 <pinned-trust-python> -m pytest -q -o addopts= -o xfail_strict=true --junitxml=<results>.xml tests/security -k 'not test_real_windows_vault_anchor_roundtrip'",
+  "source_result": {
+    "status": "PASS",
+    "passed": 167,
+    "failed": 0,
+    "skipped": 0,
+    "expected_failures": 0,
+    "deselected": 1,
+    "deselected_test": "test_real_windows_vault_anchor_roundtrip",
+    "seconds": 4.11
+  },
+  "first_move_regressions": [
+    "unchanged original and original rename error retained",
+    "native rename completed before reporting error",
+    "identical bytes in a replaced directory rejected",
+    "changed valid manifest rejected",
+    "modified sealed file rejected",
+    "terminal journal failure remains unrecovered"
+  ],
+  "gate_syntax": "PASS; existing strict installed Windows helper adds installation origin and both complete backend suites; no original selectors or rejection policies removed.",
+  "windows_native": "NOT_RUN",
+  "host_boundary": "No UI or CLI activation, concrete cross-process idle/restart supervisor, production authority, or installed Windows A-to-B qualification is supplied.",
+  "cleanup_boundary": "The donor owned native runner retains caller transaction ownership while cleanup is pending; it must run outside the desktop process/thread. No successful rollback is inferred while a native installer remains active.",
+  "journal_boundary": "Existing version1 and strict restart missing-previous rejection are unchanged; only the current lease owner can publish a verified no-move terminal phase."
+}

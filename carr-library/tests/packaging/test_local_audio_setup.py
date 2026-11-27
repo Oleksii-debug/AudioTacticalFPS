@@ -86,6 +86,9 @@ def synthetic(setup, tmp_path, monkeypatch):
                   for name, raw in sources.items()})
     lock = {'schema': 1, 'package_id': audio_runtime.PACKAGE_ID, 'target': 'Windows x64',
             'version': 'synthetic-only', 'executables': audio_runtime.TOOLS,
+            'use_scope': 'private-owner-local-installation',
+            'review': {'public_distribution_clearance': False,
+                       'third_party_complete_source_bundle': False},
             'archive': dict(records[0], root='fixture'), 'source_packages': records[1:],
             'archive_files': {name: {'size': len(raw), 'sha256': _digest(raw)}
                               for name, raw in payload.items()}, 'extra_files': extra}
@@ -142,6 +145,9 @@ def test_real_helpers_prepare_and_verify_external_runtime_without_mutating_insta
     assert setup.main(args) == 0
     report = audio_runtime.verify_audio_runtime(synthetic.output / 'runtime')
     assert report['native_execution'] == 'NOT_RUN'
+    assert report['use_scope'] == 'private-owner-local-installation'
+    assert report['public_distribution_clearance'] is False
+    assert report['third_party_complete_source_bundle'] is False
     assert [url for url, _ in synthetic.calls] == [r['url'] for r in synthetic.records]
     assert all(timeout == 45 for _, timeout in synthetic.calls)
     assert (synthetic.output / 'runtime' / 'README.txt').read_bytes() == synthetic.notice

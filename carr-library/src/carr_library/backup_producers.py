@@ -19,7 +19,7 @@ TRANSLATION = re.compile(r'state/translation/jobs/([0-9a-f]{32})(\.control)?\.js
 LANGUAGES = re.compile(r'state/translation/languages-(' + ID + r')\.json\Z')
 ASSISTANT = re.compile(r'state/assistant/([0-9a-f]{32})(\.control)?\.json\Z')
 STUDIO = re.compile(r'state/studio/jobs/(' + ID + r')/(job|control|project|timeline)\.json\Z')
-SUBTITLE = re.compile(r'state/studio/jobs/(' + ID + r')/script\.(srt|vtt)\Z')
+SUBTITLE = re.compile(r'state/studio/jobs/(' + ID + r')/script\.(srt|vtt|lrc)\Z')
 
 
 MEDIA_RECORD = re.compile(r'state/studio/(?:recordings/[0-9a-f]{32}\.(?:json|wav)|publications/[0-9a-f]{32}\.json|backup-inputs\.json)\Z')
@@ -190,9 +190,12 @@ def _studio_job(value, identity):
     fields(value, {'schema', 'id', 'status', 'project', 'fingerprint', 'destination',
                    'format', 'stems', 'nodes', 'artifacts', 'progress', 'created',
                    'updated', 'error', 'runtime'}, {'result', 'recovery', 'resource_plan',
-                                                    'resource_cleanup_notice', 'total_disk_bytes'})
+                                                    'resource_cleanup_notice', 'total_disk_bytes', 'warnings', 'artifact_version'})
     if type(value['schema']) is not int or value['schema'] != 1 or value['id'] != identity:
         raise ValueError('Invalid production job identity.')
+    artifact_version = value.get('artifact_version', 1)
+    if type(artifact_version) is not int or artifact_version not in (1, 2):
+        raise ValueError('Unsupported production artifact version.')
     project = Project.from_dict(value['project'])
     if value['fingerprint'] != project.fingerprint:
         raise ValueError('Production project fingerprint changed.')
@@ -211,6 +214,11 @@ def _studio_job(value, identity):
         _resource_plan(value['resource_plan'])
     if 'resource_cleanup_notice' in value:
         text(value['resource_cleanup_notice'], 8192)
+    if 'warnings' in value:
+        if type(value['warnings']) is not list or len(value['warnings']) > 1000:
+            raise ValueError('Invalid bounded production warning list.')
+        for warning in value['warnings']:
+            text(warning, 1800)
     if 'recovery' in value:
         _studio_recovery(value['recovery'])
     if 'total_disk_bytes' in value:

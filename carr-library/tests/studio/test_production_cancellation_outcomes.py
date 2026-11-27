@@ -42,6 +42,56 @@ def production(tmp_path, voices):
     return service, service.submit(project, output, stems=False)
 
 
+def test_completed_replay_requires_full_inventory_and_owner(tmp_path, voices, monkeypatch):
+    from copy import deepcopy
+    from carr_library.durable_state import atomic_json, read_json
+    service, job = production(tmp_path, voices)
+    complete = service.run(job)
+    output = Path(complete['destination'])
+    original = {row['path']: row['sha256'] for row in complete['artifacts']}
+    receipt = service.jobs_root / job / 'job.json'
+    marker = output / 'production-owner.json'
+    owner = read_json(marker)
+
+    def forbid_render():
+        pytest.fail('Committed replay must not invoke the audio runtime.')
+
+    monkeypatch.setattr(service, '_runtime', forbid_render)
+    assert service.run(job) == complete
+    for missing in ('master.wav', 'script.vtt', 'script.srt', 'timeline.json', 'project.json', 'chapter'):
+        damaged = deepcopy(complete)
+        damaged['artifacts'] = [
+            row for row in damaged['artifacts']
+            if (Path(row['path']).parent.name != 'chapters' if missing == 'chapter'
+                else Path(row['path']).name != missing)
+        ]
+        assert len(damaged['artifacts']) < len(complete['artifacts'])
+        atomic_json(receipt, damaged, replace=True)
+        with pytest.raises(ValueError, match='missing required artifacts'):
+            service.run(job)
+        assert read_json(receipt) == damaged
+
+    damaged = deepcopy(complete)
+    damaged['artifacts'] = []
+    atomic_json(receipt, damaged, replace=True)
+    with pytest.raises(ValueError, match='missing required artifacts'):
+        service.run(job)
+
+    damaged = deepcopy(complete)
+    damaged['artifacts'].append(damaged['artifacts'][0])
+    atomic_json(receipt, damaged, replace=True)
+    with pytest.raises(ValueError, match='Duplicate production artifact'):
+        service.run(job)
+
+    atomic_json(receipt, complete, replace=True)
+    atomic_json(marker, {**owner, 'job': 'another-job'}, replace=True)
+    with pytest.raises(ValueError, match='owner receipt changed'):
+        service.run(job)
+    atomic_json(marker, owner, replace=True)
+    assert service.run(job) == complete
+    assert {name: sha256(Path(name).read_bytes()).hexdigest() for name in original} == original
+
+
 @pytest.mark.parametrize('stop_kind', ['pause', 'cancel', 'predicate'])
 def test_late_stop_does_not_hide_error_after_verified_outputs(tmp_path, voices, monkeypatch, stop_kind):
     service, job = production(tmp_path, voices)

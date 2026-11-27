@@ -111,5 +111,30 @@ jobs:
             tests/speech/test_source.py \
             tests/assistant/test_translation_narration.py \
             tests/packaging/test_standard_installer.py \
+            tests/e2e/test_extended_document_workflows.py \
+            tests/acquisition/test_acquisition_workflow.py \
+            tests/acquisition/test_acquisition_cli.py \
+            tests/acquisition/test_acquisition_security.py \
+            tests/acquisition/test_providers.py \
+            tests/operations/test_resources.py \
+            tests/ui/test_progress_job_review.py \
+            tests/studio/test_production_cancellation_outcomes.py \
+            tests/studio/test_clip_editing.py \
+            tests/studio/test_production_hardening.py \
+            tests/studio/test_production.py \
+            tests/audio/test_audiobook.py \
+            tests/studio/test_audiobook_publication.py \
+            tests/studio/test_daisy_publishing.py \
+            tests/studio/test_publishing.py \
+            tests/studio/test_publishing_cli.py \
+            tests/studio/test_publishing_handlers.py \
+            tests/packaging/test_native_launcher_acceptance.py \
+            tests/packaging/test_local_audio_setup.py \
+            tests/ui/test_studio_progress_isolation.py \
+            tests/progress/test_progress_media_integration.py \
+            tests/ui/test_studio_keyboard_registration.py \
+            tests/assistant/test_local_assistant.py \
+            tests/storage/test_backup_pending_common4.py \
+            tests/assistant/test_translation_v3.py \
             tests/packaging/test_ci_check.py
       # This source-only job supplements the complete native Windows/bundle gate.

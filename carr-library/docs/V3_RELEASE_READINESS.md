@@ -22,7 +22,7 @@ execution and manual Windows 11/NVDA review remain separate evidence.
 | Reading and voices | Source-preserving reading derivatives, pronunciation edits, local voice discovery, playback, canonical dordiai-voices connection and SAPI5 native COM worker | Real Windows SAPI PCM with outbound network blocked; local Flite rendering; other engine assets require separate qualification |
 | Audio studio | Roles, scenes, explicit voice/position, pauses, procedural score, DSP, chapters, stems, subtitles, retained clips, trim/fade/gain/pan editing and verified resume/cache | Real FFmpeg production and retained-input recovery tests; CPU/RAM/disk admission is cooperative. 1/3/10-hour streaming fixtures are not full-length neural inference |
 | Recording | Explicit microphone selection, bounded PCM capture, separate Stop/save and Cancel/discard, retained originals and recording receipts | Synthetic capture uses actual FFmpeg; device contention and pending native cleanup retain leases and staging. Physical microphones, listening quality and real-time monitoring remain unqualified |
-| EPUB publication | EPUB 3 audio overlays from measured line or clip intervals, original script and publication receipts, exact-byte verification | Three real synthetic-tone/FFmpeg publications passed pinned EPUBCheck 5.3.0 and an invalid publication was rejected; reader interoperability, sentence alignment, DAISY, Braille and manual NVDA remain separate |
+| Audiobook publication | EPUB 3 overlays and DAISY 2.02 from measured line/clip intervals through one publication service; original scripts, exact-byte receipts, chaptered M4B metadata and measured line-level LRC | Final combined source/native qualification is pending. Prior EPUBCheck evidence stays bound to its original source. DAISY’s optional validator accepts pinned local schemas only. Actual readers, acoustic sentence alignment, Braille and manual NVDA remain separate |
 | Documents and citations | Isolated bounded conversion, reviewed BibTeX/RIS/CSL import, the canonical QuickJS citeproc-js processor/styles, editable DOCX with checked citation provenance, destination approval and the shared opt-in DOI acquisition service | Actual local processor, generated documents, parser limits and integrity tests; no live Word add-in |
 | Recovery | One common typed format-4 writer includes canonical settings, drafts, reading state and explicit media/ASR/translation/resource producers; historical exact state envelopes 3–6 retain bounded compatibility validation | Real deletion/restore/rerender tests retain source and SQL receipt bytes. Restored jobs require a new output directory; old external paths require review. Unreadable state or pending roots reject the backup; OS credential secrets remain external |
 | Transcription | One existing job service for supplied-worker profiles, retained audio/video files or folders, cancellation/resume, verified results, editable derivatives and text/subtitle export | Synthetic child-process and native control checks; private V5 wrapper interoperability uses a controlled backend and does not qualify neural inference or recording quality |
@@ -31,12 +31,36 @@ execution and manual Windows 11/NVDA review remain separate evidence.
 | Assistant and providers | Typed scoped tools, durable jobs, guided fallback and explicit local-model proposals through the existing validated plan adapter; execution requires a separate action | Real loopback HTTP and cancellation/destruction tests with synthetic responses; no automatic server/model startup, arbitrary model commands or model-quality claim |
 | Translation | Basic v2 and Advanced v3 bounded plain text, whole retained reading sources or position ranges; exact account/model/glossary consent, chunk receipts, resume and source-bound reading derivatives. Completed source-bound jobs can export a literal bilingual Studio project with two explicitly selected exact-language voices | Synthetic HTTPS with the real gateway, independent decoded-text ledger and source checks. Export itself performs no translation request or speech render; original/translation pairs follow accepted chunks, not claimed acoustic sentence alignment. Advanced uses an explicitly supplied expiring OAuth token. Live Google access, linguistic quality, formatted documents, document batches and local inference remain unqualified or unimplemented as stated below |
 | Delivery preparation | Exact-source wheel checks, pinned dependency/SBOM closure, parent-manifest binding, sealed runtime files, native Windows executable and reusable per-user Inno installation/repair in fresh program generations | Each setup uses an exact sealed transferable payload. Source preparation tests and prior native installer evidence remain tied to their original source; the current assembled installer requires fresh install/failure/repair/uninstall acceptance. Publisher signatures and distribution clearance remain separate |
-| Private integration boundary | Optional Ed25519 entitlement verification, protected monotonic anchors, crash recovery, selected-repository TUF verification, verified package acquisition and accessible status controls; private operation and user-data actions remain available | Exact installed Windows client/vault/native evidence is recorded in the integration review by source, separate from later compositions. Synthetic trust roots are test-only; production authority and concrete transactional activation remain outstanding |
+| Private integration boundary | Optional Ed25519 entitlement verification, protected monotonic anchors, crash recovery, selected-repository TUF verification, verified package acquisition and accessible status controls; private operation and user-data actions remain available | Exact installed Windows client/vault/native evidence is recorded in the integration review by source, separate from later compositions. The portable activation backend now retains locks through native cleanup and refuses managed installer layouts. Synthetic trust roots are test-only; production authority, a concrete external idle/restart host, managed updates and actual native A-to-B acceptance remain outstanding |
 
 The native V3 acceptance script performs installed SAPI synthesis, scene
 production, output verification, restart, CSL/DOCX, isolated text conversion and
 named native dialogs while the selected runtime executables have outbound
 firewall rules. Its evidence explicitly labels manual NVDA as NOT_RUN.
+
+## Current qualification checkpoint
+
+The previous exact candidate `e5da666c3794f34f4b6acdfeb41c917cf69ec349`
+passed 64 strict Linux source suites (1912 passed, zero failures or skips),
+the supplied-worker bridge, signed-client component, bibliography, keyboard and
+native launcher lanes. It failed the separate operations timing fixture, the
+V3 portability-case counter, native mixed-format import, Reader pending deletion
+and the final broad Windows source step. That source step produced eight failed
+suite receipts (42 failed cases) and exceeded its 25-minute allowance; its
+interleaved progress labels and repeated suites are not a completed aggregate.
+
+This checkpoint includes reviewed corrections for those observed contracts,
+complete production inventories, atomic DOI selection, portable update recovery,
+and the shared audiobook publisher. The Linux qualification selection retains
+the existing 65 selectors and adds 24 affected suites. Every new combined result
+must carry this checkpoint's exact commit/tree identity; earlier donor results
+are not transferred. The final publisher/update interruption changes were
+reconstructed after executor loss and require fresh execution.
+
+Canonical `e69ba2403515f21509686d66f4bc8b3673756d81` reconciliation is still
+in progress at this qualification checkpoint. Its alternative transcription
+package must not shadow the current workspace-scoped module, job service or
+typed backup authority. This checkpoint is not the final canonical merge.
 
 ## Requirements still open
 
@@ -49,15 +73,17 @@ The following cannot be labelled DONE by passing the current core tests:
   policies; exact assembled Windows verification of the implemented client;
   production renewal acceptance and transactional signed update A-to-B
   activation, interruption/recovery and release key-rotation acceptance. Package
-  verification/download exists; automatic installation/activation remains a
-  software gap, not merely a missing signing key.
+  verification/download and a bounded portable activation backend exist. The
+  concrete external idle/restart host, managed installation update path and
+  cross-schema migration recovery remain software gaps, not merely missing keys.
 - Owner-supplied cloning runtime and an integrated consent/enrollment/versioned
   clone-profile/revocation workflow, authorized reference recordings and
   independent multilingual inference/listening. Registering a synthesis helper
   does not implement enrollment or qualify voice likeness.
 - Actual installed dordiai/SAPI4 compatibility, MusicGen/ACE-Step model inference,
   the remaining approved Balabolka-equivalent workflow checklist, real EPUB
-  reader interoperability, DAISY/BRF/Liblouis and acoustic sentence alignment.
+  reader interoperability, independent DAISY validation/reader use, BRF/Liblouis
+  and acoustic sentence alignment.
 - Physical microphone/device qualification, real-time input monitoring and the
   remaining professional multitrack workflow. Bounded capture, retained clip
   editing and offline scene production do not establish those capabilities.
