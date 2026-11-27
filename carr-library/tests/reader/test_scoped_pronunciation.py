@@ -75,7 +75,9 @@ def test_invalid_pattern_or_replacement_cannot_partially_edit_a_project(pattern,
 def _observe_children(monkeypatch):
     from carr_library.audio import engines
     started, children, commands = threading.Event(), [], []
-    real = engines.subprocess.Popen
+    # WindowsJobProcess is a retained Popen subclass, so patch the actual
+    # owned launcher rather than replacing subprocess.Popen after import.
+    real = engines._start_process
     def launch(command, **kwargs):
         process = real(command, **kwargs)
         children.append(process)
@@ -83,7 +85,7 @@ def _observe_children(monkeypatch):
         if any(str(value).endswith('pronunciation_worker.py') for value in command):
             started.set()
         return process
-    monkeypatch.setattr(engines.subprocess, 'Popen', launch)
+    monkeypatch.setattr(engines, '_start_process', launch)
     return started, children, commands
 
 

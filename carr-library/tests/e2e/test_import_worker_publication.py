@@ -18,6 +18,13 @@ from carr_library.extract.page_ocr import Config
 from carr_library.ingest import worker
 
 
+# The loaded Windows runner needs up to 6.5 s to reach the actual PDF commit.
+# Keep the child paused longer than this finite test-only supervisor deadline;
+# marker assertions below still require reaching the intended commit boundary.
+PUBLICATION_TIMEOUT = 12.0
+BARRIER_HOLD_SECONDS = 30.0
+
+
 def _source(root, kind):
     path = root / ('Джерело.' + kind)
     if kind == 'txt':
@@ -53,7 +60,7 @@ def _pause():
     Path({str(marker)!r}).write_text('observed', encoding='utf-8')
     if {exit_after!r}:
         os._exit(7)
-    time.sleep(20)
+    time.sleep({BARRIER_HOLD_SECONDS!r})
 '''
     if boundary == 'before':
         code += '''
@@ -123,10 +130,11 @@ def test_stopped_child_reports_verified_fresh_commit(tmp_path, monkeypatch, kind
     _barrier(monkeypatch, marker, boundary='after', exit_after=termination == 'crash')
     result = worker.run_request(app.root, workspace, source, _metadata((collection,)), Config(),
         cancelled=lambda: termination == 'cancel' and marker.exists(),
-        timeout=3.0 if termination == 'timeout' else 15.0)
+        timeout=PUBLICATION_TIMEOUT if termination == 'timeout' else 15.0)
     assert marker.exists(), result
     assert result['state'] == 'complete', result
     assert result['publication_recovered'] is True
+    assert result['worker_state'] == {'cancel': 'cancelled', 'crash': 'failed', 'timeout': 'timed_out'}[termination]
     assert result['verified'] is (kind == 'txt')
     record = worker.load_request(app.root, result['request_id'])
     assert record['state'] == 'complete' and record['result'] == result
@@ -158,7 +166,7 @@ def test_stopped_child_before_commit_never_reports_completion(tmp_path, monkeypa
     _barrier(monkeypatch, marker, boundary='before', exit_after=termination == 'crash')
     result = worker.run_request(app.root, workspace, source, _metadata(), Config(),
         cancelled=lambda: termination == 'cancel' and marker.exists(),
-        timeout=3.0 if termination == 'timeout' else 15.0)
+        timeout=PUBLICATION_TIMEOUT if termination == 'timeout' else 15.0)
     assert marker.exists(), result
     assert result['state'] == {'cancel': 'cancelled', 'crash': 'failed', 'timeout': 'timed_out'}[termination]
     assert app.browse(workspace) == ()

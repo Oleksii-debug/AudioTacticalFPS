@@ -74,6 +74,11 @@ def test_prepare_preserves_exact_seal_and_excludes_user_files(native_bundle, tmp
     assert "Result := 'Offline installation was not activated." in script
     assert "CloseApplications=no" in script and "PrivilegesRequired=lowest" in script
     assert "UninstallLogMode=append" in script
+    assert "EnsureInstallationLease;" in script
+    assert "Result := AcquireUninstallLease;" in script
+    preparation = script.split("function PrepareToInstall", 1)[1].split("function PlainTree", 1)[0]
+    assert "AcquireUninstallLease" not in preparation
+    assert "procedure DeinitializeUninstall" in script
     assert 'Type: filesandordirs; Name: "{code:PayloadDir}\\.venv"' in script
     assert 'Type: filesandordirs; Name: "{app}"' not in script
     assert not list(tmp_path.glob(".carr-standard-installer-*"))

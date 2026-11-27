@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 import shutil
 
-from carr_library.library_backup import create_backup
+from carr_library.library_backup import create_backup, _reader_path
 
 
 def historical_backup(folder):
@@ -20,10 +20,10 @@ def historical_backup(folder):
         del manifest['pending']
         shutil.rmtree(folder / 'pending')
         entries = manifest.pop('sidecars')
-        # Historical managed audio/assistant archives used paths under sidecars;
-        # historical reading/preferences archives used filenames at the root.
-        managed = any(entry['path'].startswith(('audio-projects/', 'state/assistant/'))
-                      for entry in entries)
+        # Reuse the production boundary between reading-only v3 and typed v4.
+        # A PDF import also has a portable resource policy: treating it as a
+        # reading filename would create a fixture the v3 reader must reject.
+        managed = any(not _reader_path(entry['path']) for entry in entries)
         if managed:
             manifest.update(version=4, sidecars=entries)
         else:

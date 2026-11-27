@@ -1,4 +1,4 @@
-"""Real resource-record publication plus bounded Windows sharing faults."""
+"""Real resource publication; inject denial after the shared native fallback."""
 from pathlib import Path
 
 import pytest
@@ -10,7 +10,7 @@ from carr_library.operations import _state
 def test_transient_windows_sharing_retries_the_same_flushed_stage(tmp_path, monkeypatch, code):
     target = tmp_path / 'policy.json'
     _state.atomic_json(target, {'value': 'old'})
-    real_replace = _state.os.replace
+    real_replace = _state.jobs._replace_state_file
     attempts, sleeps = [], []
     def replace(stage, destination):
         raw = Path(stage).read_bytes()
@@ -20,7 +20,7 @@ def test_transient_windows_sharing_retries_the_same_flushed_stage(tmp_path, monk
             failure.winerror = code
             raise failure
         return real_replace(stage, destination)
-    monkeypatch.setattr(_state.os, 'replace', replace)
+    monkeypatch.setattr(_state.jobs, '_replace_state_file', replace)
     monkeypatch.setattr(_state.time, 'sleep', sleeps.append)
     _state.atomic_json(target, {'value': 'new'}, replace=True)
     assert _state.read_json(target) == {'value': 'new'}
@@ -39,7 +39,7 @@ def test_exhausted_sharing_retry_preserves_the_original_and_cleans_only_its_stag
         failure = PermissionError('Synthetic persistent sharing conflict')
         failure.winerror = 32
         raise failure
-    monkeypatch.setattr(_state.os, 'replace', fail)
+    monkeypatch.setattr(_state.jobs, '_replace_state_file', fail)
     monkeypatch.setattr(_state.time, 'sleep', sleeps.append)
     with pytest.raises(PermissionError):
         _state.atomic_json(target, {'value': 'new'}, replace=True)
@@ -56,7 +56,7 @@ def test_unrelated_publication_error_has_no_retry_or_destination_removal(tmp_pat
     def fail(stage, destination):
         calls.append(stage)
         raise PermissionError('Synthetic unrelated denial')
-    monkeypatch.setattr(_state.os, 'replace', fail)
+    monkeypatch.setattr(_state.jobs, '_replace_state_file', fail)
     monkeypatch.setattr(_state.time, 'sleep', lambda seconds: pytest.fail('Unrelated denial was retried.'))
     with pytest.raises(PermissionError):
         _state.atomic_json(target, {'value': 'new'}, replace=True)

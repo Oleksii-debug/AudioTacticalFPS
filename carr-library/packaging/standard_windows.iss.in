@@ -49,14 +49,24 @@ Type: dirifempty; Name: "{code:PayloadDir}"
 Type: dirifempty; Name: "{app}\versions"
 
 [Code]
+type
+  TResonanceLeaseHandle = INT_PTR; { Pointer width follows the Inno process. }
 const
   LayoutMarker = 'Resonance.StandardInstall/1';
   ReparseAttribute = $400;
+  InvalidLeaseHandle = -1;
 var
   SelectedPayload: String;
+  UninstallLease: TResonanceLeaseHandle;
 
 function FileAttributes(const Filename: String): Cardinal;
   external 'GetFileAttributesW@kernel32.dll stdcall';
+
+function CreateFileW(Name: String; Access, Share: LongWord; Security: INT_PTR;
+  Creation, Flags: LongWord; Template: TResonanceLeaseHandle): TResonanceLeaseHandle;
+  external 'CreateFileW@kernel32.dll stdcall';
+function CloseHandle(Handle: TResonanceLeaseHandle): Boolean;
+  external 'CloseHandle@kernel32.dll stdcall';
 
 function PlainParents(Path: String): Boolean;
 var
@@ -75,6 +85,43 @@ begin
     Path := Parent;
   end;
   Result := True;
+end;
+
+procedure EnsureInstallationLease;
+var
+  Name: String;
+  Handle: TResonanceLeaseHandle;
+begin
+  Name := ExpandConstant('{app}\installation.lease');
+  if DirExists(Name) or not PlainParents(Name) then
+    RaiseException('The installation coordination file is redirected or invalid.');
+  if not FileExists(Name) then begin
+    { Exclusive creation never overwrites another file. A new generation does
+      not acquire an exclusive lifetime lease or stop older applications. }
+    Handle := CreateFileW(Name, $80000000, 7, 0, 1, $00200080, 0);
+    if Handle <> InvalidLeaseHandle then CloseHandle(Handle)
+    else if not FileExists(Name) or not PlainParents(Name) then
+      RaiseException('The installation coordination file could not be created.');
+  end;
+end;
+
+procedure ReleaseUninstallLease;
+begin
+  if (UninstallLease <> 0) and (UninstallLease <> InvalidLeaseHandle) then
+    CloseHandle(UninstallLease);
+  UninstallLease := 0;
+end;
+
+function AcquireUninstallLease: Boolean;
+var
+  Name: String;
+begin
+  ReleaseUninstallLease;
+  Name := ExpandConstant('{app}\installation.lease');
+  Result := FileExists(Name) and PlainParents(Name);
+  if not Result then exit;
+  UninstallLease := CreateFileW(Name, $C0000000, 0, 0, 3, $00200080, 0);
+  Result := UninstallLease <> InvalidLeaseHandle;
 end;
 
 function EmptyDirectory(const Path: String): Boolean;
@@ -209,6 +256,7 @@ begin
       if not SaveStringToFile(Root + '\install-layout-v1.txt', LayoutMarker + #13#10, False) then
         RaiseException('The program ownership marker could not be saved.');
     end;
+    EnsureInstallationLease;
     if not CreateDir(PayloadDir('')) then
       RaiseException('Another operation created this generation; retry in a fresh directory.');
     ExtractTemporaryFiles('{tmp}\resonance-payload\*');
@@ -256,8 +304,20 @@ function InitializeUninstall(): Boolean;
 var
   Count: Integer;
 begin
+  Result := AcquireUninstallLease;
+  if not Result then begin
+    SuppressibleMsgBox('Close Resonance and its running jobs before uninstalling. No application was closed automatically.', mbError, MB_OK, IDOK);
+    exit;
+  end;
   Count := 0;
   Result := PlainTree(ExpandConstant('{app}'), Count);
-  if not Result then
-    MsgBox('The program directory contains a link or could not be checked. Uninstall stopped without removing it. Research data is preserved.', mbError, MB_OK);
+  if not Result then begin
+    ReleaseUninstallLease;
+    SuppressibleMsgBox('The program directory contains a link or could not be checked. Uninstall stopped without removing it. Research data is preserved.', mbError, MB_OK, IDOK);
+  end;
+end;
+
+procedure DeinitializeUninstall;
+begin
+  ReleaseUninstallLease;
 end;

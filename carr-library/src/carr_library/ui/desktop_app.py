@@ -50,6 +50,7 @@ from .document_conversion import install_conversion_actions
 from .engine_settings import install_engine_settings_actions
 from .operations_dialog import install_operations_actions
 from .reading_import import install_reading_import_actions
+from .trust_status import install_trust_actions
 
 
 def text_dialog(parent, title, label, value='', *, multiline=False):
@@ -494,8 +495,9 @@ class DesktopSearchPanel(PagedSearchPanel):
 
 
 class DesktopFrame(WorkspaceFrame):
-    def __init__(self, library, remember_data_dir=None):
+    def __init__(self, library, remember_data_dir=None, *, trust_controller=None):
         self.library = library
+        self.trust_controller = trust_controller
         self.remember_data_dir = remember_data_dir
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='library')
         self.cancel_event = threading.Event()
@@ -590,6 +592,7 @@ class DesktopFrame(WorkspaceFrame):
         install_operations_actions(self)
         install_reading_import_actions(self)
         install_portable_sync_actions(self)
+        install_trust_actions(self)
 
     def build_advanced_query(self, event=None):
         if self.working:
@@ -734,7 +737,13 @@ class DesktopFrame(WorkspaceFrame):
                 task = progress.reporter
             else:
                 task = shared_hub(self).start(title, total=progress_total, unit=progress_unit)
-            future = self.executor.submit(lambda: run_observed(task, operation, finalize=False))
+            from ..installation_lease import application_lease
+            def execute():
+                # The actual worker retains the shared generation lease even
+                # after a parent window's lifecycle or callback has finished.
+                with application_lease():
+                    return run_observed(task, operation, finalize=False)
+            future = self.executor.submit(execute)
         except Exception as exc:
             fail_operation(task, exc)
             self._finish_job_controls()

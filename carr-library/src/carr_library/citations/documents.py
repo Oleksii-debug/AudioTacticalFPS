@@ -214,6 +214,19 @@ def citation_document(records, *, style='apa', locale='en-US', citations=None,
     if len(serialized) > _MAX_METADATA:
         raise ValueError('Serialized citation provenance exceeds its byte budget.')
     part = Part(PackURI('/' + _PART), 'application/xml', serialized)
+    # Office's CustomXMLPart object uses a local datastore identity. This is
+    # package metadata, not another reference/citation ID or an external schema.
+    from uuid import NAMESPACE_URL, uuid5
+    ds = 'http://schemas.openxmlformats.org/officeDocument/2006/customXml'
+    properties = etree.Element('{%s}datastoreItem' % ds, nsmap={'ds': ds})
+    properties.set('{%s}itemID' % ds,
+                   '{' + str(uuid5(NAMESPACE_URL, _NAMESPACE + ':' + sha256(raw).hexdigest())).upper() + '}')
+    references = etree.SubElement(properties, '{%s}schemaRefs' % ds)
+    etree.SubElement(references, '{%s}schemaRef' % ds).set('{%s}uri' % ds, _NAMESPACE)
+    property_part = Part(PackURI('/customXml/carr-citations-props.xml'),
+        'application/vnd.openxmlformats-officedocument.customXmlProperties+xml',
+        etree.tostring(properties, xml_declaration=True, encoding='UTF-8', standalone=True))
+    part.relate_to(property_part, RT.CUSTOM_XML_PROPS)
     document.part.relate_to(part, RT.CUSTOM_XML)
     output = BytesIO()
     document.save(output)
@@ -263,10 +276,40 @@ def _read_citation_bytes(data):
                         or path.is_absolute() or '..' in path.parts or info.filename in names):
                     raise ValueError('Citation document contains an ambiguous archive entry.')
                 names.add(info.filename)
-            matches = [info for info in infos if info.filename == _PART]
-            if len(matches) != 1 or matches[0].file_size > _MAX_METADATA:
+            # Word may rename a retained CustomXMLPart to customXml/itemN.xml
+            # when saving. Bind the unique namespace, not the incidental part name.
+            matches, scanned = [], 0
+            for info in infos:
+                path = PurePosixPath(info.filename)
+                if (len(path.parts) != 2 or path.parts[0] != 'customXml'
+                        or path.suffix.lower() != '.xml'):
+                    continue
+                scanned += info.file_size
+                if scanned > _MAX_METADATA + 1024 * 1024:
+                    raise ValueError('Citation custom XML exceeds its aggregate byte budget.')
+                candidate = archive.read(info)
+                node = ElementTree.fromstring(candidate, forbid_dtd=True,
+                    forbid_entities=True, forbid_external=True)
+                if info.filename == _PART or node.tag == '{%s}citations' % _NAMESPACE:
+                    # Parsing also rejects duplicate fields, active XML and bad checksums.
+                    read_citation_xml(candidate)
+                    matches.append(candidate)
+            if len(matches) != 1:
                 raise ValueError('No unique bounded citation snapshot is present.')
-            raw = archive.read(matches[0])
+            raw = matches[0]
+        return read_citation_xml(raw)
+    except (BadZipFile, OSError, UnicodeError, RecursionError) as exc:
+        raise ValueError('Citation document is unreadable or exceeds its input limits.') from exc
+
+
+def read_citation_xml(raw):
+    """The same checked embedded snapshot at the DOCX or Word COM boundary."""
+    from defusedxml import ElementTree
+    if type(raw) is str:
+        raw = raw.encode('utf-8')
+    if type(raw) is not bytes or len(raw) > _MAX_METADATA:
+        raise ValueError('Citation provenance exceeds its byte budget.')
+    try:
         node = ElementTree.fromstring(raw, forbid_dtd=True, forbid_entities=True, forbid_external=True)
         if (node.tag != '{%s}citations' % _NAMESPACE or node.get('schema') != SCHEMA
                 or len(node) != 0 or set(node.attrib) != {'schema', 'sha256'}):
@@ -290,5 +333,19 @@ def _read_citation_bytes(data):
         if result['citation_ids'] != [context['id'] for context in contexts]:
             raise ValueError('Citation snapshot occurrence identities changed.')
         return result
-    except (BadZipFile, OSError, UnicodeError, RecursionError) as exc:
-        raise ValueError('Citation document is unreadable or exceeds its input limits.') from exc
+    except (UnicodeError, RecursionError) as exc:
+        raise ValueError('Citation provenance is unreadable.') from exc
+
+
+def citation_xml(snapshot):
+    """Serialize the existing snapshot contract; never invent a second store."""
+    from xml.etree import ElementTree
+    raw = _json(snapshot)
+    if len(raw) > _MAX_METADATA:
+        raise ValueError('Citation provenance exceeds its byte budget.')
+    node = ElementTree.Element('{%s}citations' % _NAMESPACE,
+        {'schema': SCHEMA, 'sha256': sha256(raw).hexdigest()})
+    node.text = raw.decode('utf-8')
+    result = ElementTree.tostring(node, encoding='utf-8')
+    read_citation_xml(result)
+    return result.decode('utf-8')

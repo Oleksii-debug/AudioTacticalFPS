@@ -180,15 +180,36 @@ def inspect(setup, setup_sha256, source_commit, manifest_sha256, work, *,
             if phase == "install":
                 original, original_raw = payload, raw
                 ready = work / "old-process-ready.txt"
-                # Keep a real previous installed interpreter alive across repair.
+                # Keep the real installed entrypoint lease alive across repair.
+                # The child resolves its own installed sys.prefix and package.
+                held_application = (
+                    "from pathlib import Path; import sys,time\n"
+                    "from carr_library.installation_lease import application_lease\n"
+                    "with application_lease():\n"
+                    "    Path(sys.argv[1]).write_text('ready')\n"
+                    "    time.sleep(3600)\n")
                 launched = _start_process([str(payload / ".venv/Scripts/python.exe"), "-I", "-B",
-                    "-c", "from pathlib import Path; import sys,time; Path(sys.argv[1]).write_text('ready'); time.sleep(3600)",
-                    str(ready)], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    "-c", held_application, str(ready)],
+                    stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 deadline = time.monotonic() + 20
                 while not ready.exists() and launched.poll() is None and time.monotonic() < deadline:
                     time.sleep(0.05)
                 if not ready.exists() or launched.poll() is not None:
                     raise AssertionError("The previous installed process did not start.")
+                uninstallers = tuple(root.glob("unins*.exe"))
+                if len(uninstallers) != 1:
+                    raise AssertionError("Expected the actual registered uninstaller.")
+                prior_entry, prior_shortcut = _registration(), shortcut.read_bytes()
+                blocked_code = _run([str(uninstallers[0]), "/VERYSILENT", "/SUPPRESSMSGBOXES",
+                    "/NORESTART", "/LOG=" + str(work / "blocked-uninstall-setup.log")],
+                    work / "blocked-uninstall-process.log", require_success=False)
+                if (blocked_code == 0 or launched.poll() is not None
+                        or _registration() != prior_entry or shortcut.read_bytes() != prior_shortcut
+                        or _verified_seal(original, source_commit)[0] != original_raw
+                        or not (original / ".venv/.installation-complete").is_file()
+                        or sentinel.read_bytes() != sentinel_bytes):
+                    raise AssertionError("Uninstall did not preserve the active application and registration.")
+                checked.append("active-application-blocks-uninstall")
                 (root / "unowned-notes.txt").write_bytes(b"do not recursively erase program parents")
                 (original / "unowned-recording.wav").write_bytes(b"preserve unknown user file")
                 previous_entry = _registration()
@@ -247,6 +268,7 @@ def inspect(setup, setup_sha256, source_commit, manifest_sha256, work, *,
                 "installer_sha256": setup_sha256, "manifest_sha256": manifest_sha256,
                 "failed_installer_sha256": failed_setup_sha256,
                 "checks": checked, "old_process_survived_repair": True,
+                "active_application_blocks_uninstall": True,
                 "failed_bootstrap_preserves_previous_registration": True,
                 "failed_environment_preserved": True,
                 "research_and_unknown_files_preserved": True, "one_start_menu_entry": True,

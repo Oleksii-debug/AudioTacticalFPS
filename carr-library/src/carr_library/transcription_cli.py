@@ -55,6 +55,10 @@ def _supplied_command(root, args):
     raise ValueError('This operation is not supported by the selected transcription profile.')
 
 
+from .installation_lease import installed_entrypoint
+
+
+@installed_entrypoint
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Supplied local Whisper transcription; no downloads')
     parser.add_argument('--data-dir', type=Path)

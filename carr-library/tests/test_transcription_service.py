@@ -691,7 +691,7 @@ def test_standalone_worker_lock_preserves_live_controls_and_execution_before_adm
         "import sys;from pathlib import Path;sys.path.insert(0,sys.argv[1]);"
         "from carr_library.audio.jobs import project_lock;"
         "guard=project_lock(Path(sys.argv[2]),lock_name='.worker-v5.lock');"
-        "guard.__enter__();print('READY',flush=True);sys.stdin.buffer.read(1);guard.__exit__(None,None,None)"
+        "guard.__enter__();sys.stdout.buffer.write(b'READY\\n');sys.stdout.buffer.flush();sys.stdin.buffer.read(1);guard.__exit__(None,None,None)"
     )
     holder = subprocess.Popen([sys.executable, '-I', '-B', '-c', child,
         str(Path(service.__file__).resolve().parents[1]), str(logs)],
