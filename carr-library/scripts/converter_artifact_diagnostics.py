@@ -12,12 +12,20 @@ import xml.etree.ElementTree as ET
 REPOSITORY = 'Oleksii-debug/AudioTacticalFPS'
 ARTIFACTS = [
   {
-    "run": 46039340019,
-    "commit": "08fb93a68ebbdb0c564a1e09b9960d2d718d020e",
-    "id": 15221460560,
-    "sha256": "90a93ab8e51aa7c2fd381dc98ded022a76f8d1ce6afbc96147c5ae95a08b206e",
-    "bytes": 2447599,
-    "kind": "ordinary-calibre-six-unprotected-formats-and-three-boundaries"
+    "run": 46037799495,
+    "commit": "639b05acbb7540d16b01317f066b12ae082bde48",
+    "id": 15222184595,
+    "sha256": "4512e4af83bab398df2fabd9d2f2fc872ccd2486b975f58f553121fa6ee58909",
+    "bytes": 4549483,
+    "kind": "office-short-native-stage-four-pass-three-stage-admission-failures"
+  },
+  {
+    "run": 46046112267,
+    "commit": "1b13c06cf17383014a5bb787ad792d63ee978fa7",
+    "id": 15223334464,
+    "sha256": "ff3325a9652c3a96e733c34482e12d9e69b7512feb5598d12d161a1abe6a04d1",
+    "bytes": 2495954,
+    "kind": "chm-complete-seventy-member-census-two-remaining-refusals"
   }
 ]
 
@@ -62,7 +70,9 @@ wanted = {
     'native-local-document.json', 'native-local-document.txt',
     'native-local-chapter.json', 'native-local-chapter.txt',
     'native-local-batch.json', 'native-local-batch.txt',
-    'source-junit.xml', 'installed-junit.xml', 'source-pytest.txt', 'installed-pytest.txt'}
+    'source-junit.xml', 'installed-junit.xml', 'source-pytest.txt', 'installed-pytest.txt',
+    'portable-source-junit.xml', 'portable-installed-junit.xml',
+    'portable-source-pytest.txt', 'portable-installed-pytest.txt'}
 for pin in ARTIFACTS:
     base = 'https://api.github.com/repos/' + REPOSITORY + '/actions/artifacts/' + str(pin['id'])
     metadata = json.loads(read(base, 65536))
