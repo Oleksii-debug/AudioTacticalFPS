@@ -47,9 +47,25 @@ class StudioController:
     def save(self, text, title, voice_ids):
         # Keep even an invalid script draft, and report the validation failure.
         self.autosave(text, title, voice_ids)
-        project = parse_script(text, title=title, voice_ids=voice_ids,
-                               project_id=self.project.id if self.project else None)
-        if self.project:
+        previous_project = self.project
+        if previous_project and text == previous_project.original_script:
+            # JSON projects can contain recorded clips, source bindings and
+            # non-default render settings which the prose grammar cannot express.
+            # Saving an unchanged script must preserve that complete performance.
+            project = replace(previous_project, title=title)
+        else:
+            project = parse_script(text, title=title, voice_ids=voice_ids,
+                                   mode=previous_project.mode if previous_project else 'faithful',
+                                   project_id=previous_project.id if previous_project else None)
+        if previous_project and text != previous_project.original_script:
+            attached = {scene.id: scene for scene in previous_project.scenes if scene.cues}
+            current = {scene.id: scene for scene in project.scenes}
+            if any(identity not in current or current[identity].title != old.title
+                   for identity, old in attached.items()):
+                raise ValueError('A scene with attached audio changed its identity. '
+                                 'Move or remove its clips in the scene audio editor before changing scene structure.')
+            scenes = tuple(replace(scene, cues=attached[scene.id].cues)
+                           if scene.id in attached else scene for scene in project.scenes)
             previous = {role.name.casefold(): role for role in self.project.roles}
             roles = tuple(replace(role, voice_id=previous[role.name.casefold()].voice_id,
                                   language=previous[role.name.casefold()].language,
@@ -58,10 +74,13 @@ class StudioController:
                                   rate=previous[role.name.casefold()].rate,
                                   volume=previous[role.name.casefold()].volume)
                           if role.name.casefold() in previous else role for role in project.roles)
-            project = replace(project, roles=roles, revision=self.project.revision)
-            if project.to_dict() != self.project.to_dict():
-                project = replace(project, revision=self.project.revision + 1)
-        self.service.projects.save(project)
+            project = replace(project, roles=roles, scenes=scenes,
+                              sample_rate=previous_project.sample_rate,
+                              schema=previous_project.schema, revision=previous_project.revision)
+        if previous_project and project.to_dict() != previous_project.to_dict():
+            project = replace(project, revision=previous_project.revision + 1)
+        self.service.projects.save(project,
+            expected_revision=previous_project.revision if previous_project else None)
         self.project = project
         return project
 
@@ -533,6 +552,8 @@ def show_studio(frame):
 
     def close(event=None):
         nonlocal alive
+        if not alive:
+            return
         autosave()
         cancel.set()
         if current_job is not None and busy:
@@ -560,7 +581,10 @@ def show_studio(frame):
             progress.pause('Audio production paused; completed chunks retained')
         progress.close()
         alive = False
-        executor.shutdown(wait=False, cancel_futures=True)
+        # Queue owned registry cleanup after the cancelled render/discovery.
+        # Keep it off the UI thread and do not tear down a borrowed registry.
+        executor.submit(service.close)
+        executor.shutdown(wait=False, cancel_futures=False)
         dialog.EndModal(wx.ID_CLOSE)
 
     for name, callback in {'save': save, 'open': open_project, 'saveas': save_as, 'roles': edit_roles,
@@ -611,7 +635,8 @@ def show_studio(frame):
                if voices else 'No local voice is installed. Configure a local SAPI/Piper voice before narration.', True)
         editor.SetFocus()
 
-    run(lambda: service.voices.voices(), loaded, phase='Checking installed local voices')
+    run(lambda: service.discover_voices(cancelled=cancel.is_set).voices(), loaded,
+        phase='Checking installed local voices')
     try:
         dialog.ShowModal()
     finally:
@@ -690,10 +715,17 @@ def show_audio_conversion(frame):
 def install_studio_actions(frame):
     import wx
     from .engine_settings import show_engine_settings
+    from .studio_clips import show_clip_editor
+    from .publishing_dialog import show_publishing
     menu = wx.Menu()
     for title, handler in [('Script and audio production...\tCtrl+Alt+A', lambda e: show_studio(frame)),
+                            ('Edit scene audio clips...', lambda e: show_clip_editor(frame)),
+                            ('Publish synchronized EPUB3...', lambda e: show_publishing(frame)),
+                            ('Publish DAISY 2.02...', lambda e: show_publishing(frame, initial_format='daisy-2.02')),
                             ('Convert audio and apply effects...', lambda e: show_audio_conversion(frame)),
                             ('Local voice and music engines...', lambda e: show_engine_settings(frame))]:
         item = menu.Append(wx.ID_ANY, title)
         frame.Bind(wx.EVT_MENU, handler, item)
     frame.menu_bar.Append(menu, 'Audio St&udio')
+    from .recording_dialog import install_recording_actions
+    install_recording_actions(frame)

@@ -13,7 +13,7 @@ from carr_library.catalog.ris_apply import apply_ris_metadata, prepare_ris_revie
 from carr_library.catalog.ris_preview import preview_ris
 from carr_library.library_backup import restore_backup
 from carr_library.research.academic_library import AcademicLibrary
-from carr_library.storage.revisions import Storage
+from carr_library.storage.revisions import CURRENT_SCHEMA_VERSION, Storage
 
 
 RIS = (b'TY  - BOOK\nTI  - Reviewed catalog title\nAU  - Reviewed catalog author\n'
@@ -37,7 +37,7 @@ def v4_case(tmp_path):
     references = {}
     for workspace in (selected, other):
         with app.write(workspace) as db:
-            assert db.execute('PRAGMA user_version').fetchone()[0] == 4
+            assert db.execute('PRAGMA user_version').fetchone()[0] == CURRENT_SCHEMA_VERSION
             library = AcademicLibrary(db, workspace)
             for identity in ('first', 'second', None):
                 reference = library.create(
@@ -62,7 +62,7 @@ def v4_case(tmp_path):
 def _references(app, expected):
     for (workspace, _), reference in expected.items():
         with app.read(workspace) as db:
-            assert db.execute('PRAGMA user_version').fetchone()[0] == 4
+            assert db.execute('PRAGMA user_version').fetchone()[0] == CURRENT_SCHEMA_VERSION
             assert AcademicLibrary(db, workspace).get(reference.id) == reference
 
 

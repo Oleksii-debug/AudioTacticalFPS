@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "purpose": "Explicit offline validation only; no production download or bundled DTD",
+  "files": {
+    "SMIL10.dtd": {
+      "url": "https://raw.githubusercontent.com/daisy/pipeline-modules/88d39392e9a3e10c1f55f1a82e5e7ea12b0b28b6/smil-utils/src/main/resources/xml/dtd/SMIL10.dtd",
+      "size": 7496,
+      "sha256": "2d99e59884b8e43870aafebc7510a8dc58a4b65cbe30096dcde1574c92f8e786"
+    },
+    "xhtml-lat1.ent": {
+      "url": "https://www.w3.org/TR/xhtml1/DTD/xhtml-lat1.ent",
+      "size": 11775,
+      "sha256": "3da1daad08f93b8aff7a32d5447f94853d517561d9c7d0c7bc3ee5c002d12a38"
+    },
+    "xhtml-special.ent": {
+      "url": "https://www.w3.org/TR/xhtml1/DTD/xhtml-special.ent",
+      "size": 4131,
+      "sha256": "7f9518026c59ccee47a02ed74e43f8946d92207d438a7f540a0f3c28f05fa27e"
+    },
+    "xhtml-symbol.ent": {
+      "url": "https://www.w3.org/TR/xhtml1/DTD/xhtml-symbol.ent",
+      "size": 13848,
+      "sha256": "a6cd0f9c59e488b8c8e2de80c31c6811f316a3919cd9a0725b5390a8fc785d61"
+    },
+    "xhtml1-transitional.dtd": {
+      "url": "https://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd",
+      "size": 32111,
+      "sha256": "28905cd059167bfa1a5866053799d55fd335c0717920a7048de400c8a32b9d93"
+    }
+  }
+}

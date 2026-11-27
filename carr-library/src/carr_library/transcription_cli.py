@@ -6,8 +6,10 @@ import sys
 
 from .studio.cli import data_directory
 from .transcription import PROTOCOLS, RECEIPTS_PROTOCOL
+from .installation_lease import installed_entrypoint
 
 
+@installed_entrypoint
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Supplied local Whisper transcription; no downloads')
     parser.add_argument('--data-dir', type=Path)

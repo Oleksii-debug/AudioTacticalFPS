@@ -10,6 +10,7 @@ import shutil
 import sqlite3
 import subprocess
 import sys
+from types import SimpleNamespace
 
 import pytest
 
@@ -98,6 +99,24 @@ LibraryApp._import_file = _replay
     monkeypatch.setattr(worker.subprocess, 'Popen', launch)
 
 
+def _expire_at_boundary(monkeypatch, marker):
+    """Advance only the supervisor clock after the real child reaches its gate.
+
+    Native PDF startup speed cannot consume the test's three-second window
+    before the commit boundary. The real supervisor still detects and enforces
+    its own deadline, stops its actual child and recovers the real database.
+    """
+    actual = worker.time
+    reached = False
+
+    def monotonic():
+        nonlocal reached
+        reached = reached or marker.exists()
+        return actual.monotonic() + (60 if reached else 0)
+
+    monkeypatch.setattr(worker, 'time', SimpleNamespace(monotonic=monotonic, sleep=actual.sleep))
+
+
 @pytest.mark.parametrize('arguments, expected', [
     (['-V'], 'Python '),
     (['-c', "print('unrelated helper')"], 'unrelated helper'),
@@ -121,9 +140,11 @@ def test_stopped_child_reports_verified_fresh_commit(tmp_path, monkeypatch, kind
     original = source.read_bytes()
     marker = tmp_path / 'after-commit'
     _barrier(monkeypatch, marker, boundary='after', exit_after=termination == 'crash')
+    if termination == 'timeout':
+        _expire_at_boundary(monkeypatch, marker)
     result = worker.run_request(app.root, workspace, source, _metadata((collection,)), Config(),
         cancelled=lambda: termination == 'cancel' and marker.exists(),
-        timeout=3.0 if termination == 'timeout' else 15.0)
+        timeout=30.0 if termination == 'timeout' else 15.0)
     assert marker.exists(), result
     assert result['state'] == 'complete', result
     assert result['publication_recovered'] is True
@@ -156,9 +177,11 @@ def test_stopped_child_before_commit_never_reports_completion(tmp_path, monkeypa
     source = _source(tmp_path, kind)
     marker = tmp_path / 'before-commit'
     _barrier(monkeypatch, marker, boundary='before', exit_after=termination == 'crash')
+    if termination == 'timeout':
+        _expire_at_boundary(monkeypatch, marker)
     result = worker.run_request(app.root, workspace, source, _metadata(), Config(),
         cancelled=lambda: termination == 'cancel' and marker.exists(),
-        timeout=3.0 if termination == 'timeout' else 15.0)
+        timeout=30.0 if termination == 'timeout' else 15.0)
     assert marker.exists(), result
     assert result['state'] == {'cancel': 'cancelled', 'crash': 'failed', 'timeout': 'timed_out'}[termination]
     assert app.browse(workspace) == ()

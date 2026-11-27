@@ -136,6 +136,10 @@ def refresh(source, wheel, output, source_commit, *, parent_manifest_sha256,
         for name in ('install_windows.py', 'Install.cmd', 'ResearchLibrary.cmd', 'CheckInstallation.cmd'):
             shutil.copyfile(HERE / name, stage / name)
         shutil.copyfile(HERE.parent / 'docs' / 'RUNNING.md', stage / 'README.txt')
+        (stage / 'docs').mkdir(exist_ok=True)
+        for name in ('TRUSTED_CLIENT.md', 'STUDIO_CLIP_EDITING.md', 'MICROPHONE_RECORDING.md',
+                     'STUDIO_EPUB_PUBLISHING.md', 'STUDIO_DAISY_PUBLISHING.md', 'translation_workstation.md'):
+            shutil.copyfile(HERE.parent / 'docs' / name, stage / 'docs' / name)
         shutil.copyfile(HERE.parent / 'docs' / 'START_V3_UK.txt', stage / 'START_V3_UK.txt')
         (stage / 'runtime-sbom.cdx.json').write_bytes(sbom_bytes)
         for origin in (HERE / 'wheel-notices').iterdir():

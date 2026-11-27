@@ -1,0 +1,476 @@
+"""Fixed offline install/repair/uninstall operations called by the Inno wrapper.
+
+No package install logic lives here: the captured, verified bundle's existing
+install_windows.py is used at its final absolute path. Every previous tree is
+retained on repair; uninstall removes only exactly recorded, unchanged files.
+"""
+from __future__ import annotations
+
+import argparse
+import configparser
+from contextlib import nullcontext
+import hashlib
+import importlib.util
+import json
+import os
+from pathlib import Path, PurePosixPath
+import re
+import shutil
+import stat
+import subprocess
+import sys
+import uuid
+
+
+HERE = Path(__file__).absolute().parent
+PRODUCT = 'Resonance.StandardInstall.v1'
+OWNER = 'owned-files.json'
+MARKER = 'managed-install.ini'
+MAX_MANIFEST = 32 * 1024 * 1024
+MAX_FILES = 100000
+MAINTENANCE = ('ResonanceSetup.exe', 'maintenance.py', 'installation_lease.py',
+               'bundle_verifier.py', 'windows_process.py')
+
+
+def _module(name, path):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+lease_source = HERE / 'installation_lease.py'
+if not lease_source.exists():
+    lease_source = HERE.parent.parent / 'src/carr_library/installation_lease.py'
+lease_module = _module('resonance_installation_lease', lease_source)
+plain, installation_lease = lease_module.plain, lease_module.installation_lease
+verify_source = HERE / 'bundle_verifier.py'
+if not verify_source.exists():
+    verify_source = HERE.parent / 'install_windows.py'
+verifier = _module('resonance_trusted_bundle_verifier', verify_source)
+process_source = HERE / 'windows_process.py'
+if not process_source.exists():
+    process_source = HERE.parent.parent / 'src/carr_library/audio/windows_process.py'
+HELPERS = {'maintenance.py': HERE / 'maintenance.py', 'installation_lease.py': lease_source,
+           'bundle_verifier.py': verify_source, 'windows_process.py': process_source}
+
+
+def unique(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError('Duplicate installation manifest field.')
+        result[key] = value
+    return result
+
+
+def digest(value):
+    if type(value) is not str or not re.fullmatch('[0-9a-f]{64}', value):
+        raise ValueError('Invalid installation checksum.')
+    return value
+
+
+def relative(value):
+    if (type(value) is not str or not value or len(value) > 1024 or '\\' in value
+            or any(c in value for c in ':<>"|?*') or any(ord(c) < 32 for c in value)):
+        raise ValueError('Invalid owned installation path.')
+    path = PurePosixPath(value)
+    if path.is_absolute() or path.as_posix() != value or any(p in ('.', '..') or p.endswith((' ', '.')) for p in path.parts):
+        raise ValueError('Invalid owned installation path.')
+    for part in path.parts:
+        base = part.split('.')[0].upper()
+        if base in {'CON', 'PRN', 'AUX', 'NUL', *(f'COM{i}' for i in range(1, 10)), *(f'LPT{i}' for i in range(1, 10))}:
+            raise ValueError('A Windows device name cannot be an owned file.')
+    return path
+
+
+def read(path, limit=MAX_MANIFEST):
+    before = plain(path)
+    if before.st_size > limit:
+        raise ValueError('Installation metadata exceeds its budget.')
+    flags = os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_BINARY', 0)
+    with os.fdopen(os.open(path, flags), 'rb') as stream:
+        opened = os.fstat(stream.fileno())
+        if (opened.st_dev, opened.st_ino, opened.st_size, opened.st_mtime_ns) != (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns):
+            raise ValueError('Installation file changed before reading.')
+        raw = stream.read(limit + 1)
+        after = os.fstat(stream.fileno())
+    current = plain(path)
+    if len(raw) != before.st_size or any((i.st_dev, i.st_ino, i.st_size, i.st_mtime_ns, i.st_ctime_ns) != (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns, before.st_ctime_ns) for i in (after, current)):
+        raise ValueError('Installation file changed during reading.')
+    return raw
+
+
+def sha(path):
+    before = plain(path)
+    with path.open('rb') as stream:
+        if (os.fstat(stream.fileno()).st_dev, os.fstat(stream.fileno()).st_ino) != (before.st_dev, before.st_ino):
+            raise ValueError('Installation payload changed before hashing.')
+        result = hashlib.file_digest(stream, 'sha256').hexdigest()
+        after = os.fstat(stream.fileno())
+    current = plain(path)
+    if any((i.st_dev, i.st_ino, i.st_size, i.st_mtime_ns, i.st_ctime_ns) != (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns, before.st_ctime_ns) for i in (after, current)):
+        raise ValueError('Installation payload changed during hashing.')
+    return result
+
+
+def write(path, raw):
+    plain(path.parent, directory=True)
+    temporary = path.with_name(path.name + '.' + uuid.uuid4().hex + '.tmp')
+    try:
+        with temporary.open('xb') as stream:
+            stream.write(raw)
+            stream.flush()
+            os.fsync(stream.fileno())
+        if os.path.lexists(path):
+            plain(path)
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def inventory(root, *, exclude_top=()):
+    plain(root, directory=True)
+    files, directories, folded = {}, [], set()
+    for directory, dirs, names in os.walk(root, followlinks=False):
+        if Path(directory) == root:
+            for name in exclude_top:
+                if name in dirs:
+                    plain(root / name, directory=True)
+                    dirs.remove(name)
+        for name in sorted(dirs):
+            child = Path(directory) / name
+            plain(child, directory=True)
+            text = child.relative_to(root).as_posix()
+            relative(text)
+            if text.casefold() in folded:
+                raise ValueError('Case-colliding installation paths.')
+            folded.add(text.casefold())
+            directories.append(text)
+        for name in sorted(names):
+            child = Path(directory) / name
+            text = child.relative_to(root).as_posix()
+            relative(text)
+            if text.casefold() in folded:
+                raise ValueError('Case-colliding installation paths.')
+            folded.add(text.casefold())
+            if len(files) >= MAX_FILES:
+                raise ValueError('Installation inventory exceeds its entry budget.')
+            files[text] = sha(child)
+    return files, sorted(directories)
+
+
+def bundle(root, expected, *, allow_installed=False):
+    raw = read(root / 'bundle-manifest.json')
+    if hashlib.sha256(raw).hexdigest() != digest(expected):
+        raise ValueError('The bundle differs from this installer identity.')
+    document = json.loads(raw, object_pairs_hook=unique)
+    if document.get('bundled_python') is not True or document.get('bundled_launcher') is not True:
+        raise ValueError('Standard installation requires the existing complete Python/native launcher bundle.')
+    if not re.fullmatch('[0-9a-f]{40}', str(document.get('source_commit', ''))):
+        raise ValueError('Standard installation requires an exact source commit.')
+    expected_files = dict(document['files'], **{'bundle-manifest.json': expected})
+    for name, checksum in expected_files.items():
+        relative(name)
+        digest(checksum)
+    actual, _ = inventory(root, exclude_top=('.venv',) if allow_installed else ())
+    if actual != expected_files:
+        raise ValueError('The pristine bundle contains missing, changed, or undeclared files.')
+    verifier.verify(root, manifest_bytes=raw)
+    return document
+
+
+def marker(root):
+    parser = configparser.ConfigParser(interpolation=None, strict=True)
+    parser.read_string(read(root / MARKER, 8192).decode('utf-8'))
+    if parser.sections() != ['installation'] or parser.defaults():
+        raise ValueError('Invalid managed installation identity.')
+    values = dict(parser['installation'])
+    if set(values) != {'schema', 'product', 'state', 'bundle_sha256', 'setup_sha256', 'owner_sha256'} or values['schema'] != '1' or values['product'] != PRODUCT or values['state'] not in ('preparing', 'complete', 'uninstalled'):
+        raise ValueError('Invalid managed installation identity.')
+    for name in ('bundle_sha256', 'setup_sha256', 'owner_sha256'):
+        digest(values[name])
+    return values
+
+
+def set_marker(root, state, bundle_hash, setup_hash, owner_hash='0' * 64):
+    text = '[installation]\n' + ''.join(f'{key}={value}\n' for key, value in dict(schema='1', product=PRODUCT, state=state, bundle_sha256=digest(bundle_hash), setup_sha256=digest(setup_hash), owner_sha256=digest(owner_hash)).items())
+    write(root / MARKER, text.encode('utf-8'))
+
+
+def owned(root, expected, setup_hash):
+    info = marker(root)
+    if info['bundle_sha256'] != digest(expected) or info['setup_sha256'] != digest(setup_hash):
+        raise ValueError('Use the matching setup for this installation; this is not an upgrade service.')
+    if info['state'] != 'complete':
+        raise ValueError('The installation has not completed; retain it and run the matching setup for recovery.')
+    raw = read(root / OWNER)
+    if hashlib.sha256(raw).hexdigest() != info['owner_sha256']:
+        raise ValueError('The owned-file manifest changed. No files were removed.')
+    value = json.loads(raw, object_pairs_hook=unique)
+    if set(value) != {'schema', 'product', 'bundle_sha256', 'files', 'directories', 'maintenance'} or value['schema'] != 1 or value['product'] != PRODUCT or value['bundle_sha256'] != expected:
+        raise ValueError('Invalid owned-file manifest.')
+    if type(value['files']) is not dict or not value['files'] or len(value['files']) > MAX_FILES or type(value['directories']) is not list or type(value['maintenance']) is not dict:
+        raise ValueError('Invalid owned-file inventory.')
+    seen = set()
+    for path in (*value['files'], *value['directories']):
+        relative(path)
+        if path.casefold() in seen:
+            raise ValueError('Ambiguous owned-file inventory.')
+        seen.add(path.casefold())
+    for checksum in value['files'].values():
+        digest(checksum)
+    # The wrapper has a fixed set of files; supplied JSON cannot own arbitrary
+    # files elsewhere in the program folder or in a research-data directory.
+    if set(value['maintenance']) != set(MAINTENANCE):
+        raise ValueError('Invalid installer maintenance inventory.')
+    for name, checksum in value['maintenance'].items():
+        if sha(root / 'maintenance' / name) != digest(checksum):
+            raise ValueError('The maintenance tools changed. Use the original verified setup.')
+    if value['maintenance']['ResonanceSetup.exe'] != setup_hash:
+        raise ValueError('The cached setup identity changed.')
+    return value
+
+
+def location(root):
+    root = Path(root).absolute()
+    if '..' in root.parts or root == Path(root.anchor) or root.name in ('.', '..'):
+        raise ValueError('Choose a new local program folder.')
+    if os.name == 'nt' and (not root.drive or root.drive.startswith('\\')):
+        raise ValueError('Use a local per-user Windows drive folder.')
+    parent = root.parent
+    while not os.path.lexists(parent):
+        parent = parent.parent
+    plain(parent, directory=True)
+    local = os.environ.get('LOCALAPPDATA')
+    if local:
+        data = (Path(local) / 'Universal Research Library').absolute()
+        if root == data or root in data.parents or data in root.parents:
+            raise ValueError('The program and research-data directories must be separate.')
+    return root
+
+
+def preflight(root, expected, setup_hash):
+    """Reserve only a fresh folder; an existing folder needs our exact receipt."""
+    root = location(root)
+    if not root.exists():
+        root.mkdir(parents=True)
+    plain(root, directory=True)
+    if not os.path.lexists(root / MARKER):
+        if any(root.iterdir()):
+            raise ValueError('This folder contains unowned files. Choose a new program folder.')
+        # Atomic exclusive creation prevents two first installs claiming a
+        # preexisting directory. The persistent file is never replaced/deleted.
+        with (root / lease_module.LEASE).open('xb'):
+            pass
+        set_marker(root, 'preparing', expected, setup_hash)
+    else:
+        info = marker(root)
+        if info['bundle_sha256'] != digest(expected) or info['setup_sha256'] != digest(setup_hash):
+            raise ValueError('This program folder belongs to a different installation identity.')
+        plain(root / lease_module.LEASE)
+    return root
+
+
+def _bootstrap(program):
+    if os.name != 'nt':
+        raise RuntimeError('Actual offline installation requires Windows; source tests use an explicit synthetic runner.')
+    environment = {k: v for k, v in os.environ.items() if not k.upper().startswith(('PYTHON', 'PIP_'))}
+    environment.update(PIP_NO_INDEX='1', HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1', DO_NOT_TRACK='1')
+    # Reuse the reviewed shared Windows ownership helper, captured byte-for-byte
+    # by the setup builder. Its private Job owns pip/ensurepip descendants too.
+    process_api = _module('resonance_installer_owned_process', process_source)
+    command = [str(program / 'runtime/python.exe'), '-I', '-B', '-X', 'utf8',
+               str(program / 'install_windows.py')]
+    child = process_api.WindowsJobProcess(command, cwd=program, env=environment,
+                                         stdin=subprocess.DEVNULL)
+    try:
+        result = child.wait(timeout=1800)
+        if result:
+            raise subprocess.CalledProcessError(result, command)
+    finally:
+        child._carr_job.close()
+        child.wait(timeout=5)
+
+
+def check(root, expected, setup_hash, *, owner=None):
+    root = location(root)
+    with installation_lease(root, exclusive=True, owner=owner):
+        info = marker(root)
+        if info['bundle_sha256'] != expected or info['setup_sha256'] != setup_hash:
+            raise ValueError('This folder belongs to a different installation identity.')
+        if info['state'] == 'complete':
+            owned(root, expected, setup_hash)
+        else:
+            allowed = {MARKER, lease_module.LEASE, 'maintenance', 'unins000.exe', 'unins000.dat', 'unins000.msg'}
+            if any(p.name not in allowed for p in root.iterdir()):
+                raise ValueError('Unowned or incomplete files were retained. Choose a new program folder.')
+            maintenance = root / 'maintenance'
+            if maintenance.exists():
+                for path in maintenance.iterdir():
+                    if path.name == 'ResonanceSetup.exe':
+                        expected_file = setup_hash
+                    elif path.name in HELPERS:
+                        expected_file = sha(HELPERS[path.name])
+                    else:
+                        raise ValueError('The maintenance folder contains an unowned file.')
+                    if sha(path) != expected_file:
+                        raise ValueError('A retained maintenance file changed; it will not be overwritten.')
+    return {'status': 'PASS', 'operation': 'check'}
+
+
+def install(payload, root, expected, setup_hash, *, owner=None, runner=_bootstrap, setup_source=None):
+    bundle(payload, expected)
+    root = preflight(root, expected, setup_hash)
+    with installation_lease(root, exclusive=True, owner=owner):
+        info = marker(root)
+        if info['state'] == 'complete':
+            owned(root, expected, setup_hash)  # Metadata must be trustworthy; changed app files are retained.
+        elif any(p.name not in {MARKER, lease_module.LEASE, 'maintenance', 'unins000.exe', 'unins000.dat', 'unins000.msg'} for p in root.iterdir()):
+            raise ValueError('An incomplete installation contains retained files. Preserve it and choose a new program folder.')
+        if setup_source is not None:
+            sources = dict(HELPERS, **{'ResonanceSetup.exe': Path(setup_source)})
+            source_hashes = {name: sha(source) for name, source in sources.items()}
+            if source_hashes['ResonanceSetup.exe'] != setup_hash:
+                raise ValueError('The setup source changed before caching.')
+            tools = root / 'maintenance'
+            tools.mkdir(exist_ok=True)
+            plain(tools, directory=True)
+            if any(path.name not in sources for path in tools.iterdir()):
+                raise ValueError('The maintenance folder contains an unowned file.')
+            for name, source in sources.items():
+                source_hash = source_hashes[name]
+                destination = tools / name
+                if os.path.lexists(destination):
+                    if sha(destination) != source_hash:
+                        raise ValueError('An existing maintenance file will not be overwritten.')
+                else:
+                    with source.open('rb') as incoming, destination.open('xb') as outgoing:
+                        shutil.copyfileobj(incoming, outgoing, 1024 * 1024)
+                        outgoing.flush()
+                        os.fsync(outgoing.fileno())
+                    if sha(destination) != source_hash:
+                        raise ValueError('A cached maintenance file changed during copying.')
+        program = root / 'app'
+        stage = root / ('staging-' + uuid.uuid4().hex)
+        recovery = None
+        previous_receipts = {}
+        previous_moved = new_published = False
+        shutil.copytree(payload, stage, symlinks=False)
+        bundle(stage, expected)
+        if os.path.lexists(program):
+            plain(program, directory=True)
+            for name in (OWNER, MARKER):
+                if os.path.lexists(root / name):
+                    previous_receipts[name] = read(root / name)
+        try:
+            if os.path.lexists(program):
+                recovery = root.parent / (root.name + '-recovery-' + uuid.uuid4().hex)
+                recovery.mkdir(exist_ok=False)
+                # Allocate recovery receipts while the original application is
+                # still in place. A failed copy must not depend on moving it
+                # back, or allocating replacement metadata, to stay usable.
+                for name in previous_receipts:
+                    shutil.copyfile(root / name, recovery / name)
+                # All unknown/modified files travel with this directory, never
+                # into a delete list. Later failures restore the whole tree.
+                program.rename(recovery / 'app')
+                previous_moved = True
+            stage.rename(program)
+            new_published = True
+            runner(program)
+            if not (program / '.venv/.installation-complete').is_file():
+                raise ValueError('The existing offline installer did not publish completion.')
+            verifier.verify(program)
+            files, directories = inventory(program)
+            maintenance = {name: sha(root / 'maintenance' / name) for name in MAINTENANCE}
+            if maintenance['ResonanceSetup.exe'] != setup_hash:
+                raise ValueError('Cached setup changed before completion.')
+            record = dict(schema=1, product=PRODUCT, bundle_sha256=expected, files=files,
+                          directories=directories, maintenance=maintenance)
+            raw = (json.dumps(record, ensure_ascii=False, sort_keys=True, separators=(',', ':')) + '\n').encode('utf-8')
+            if len(raw) > MAX_MANIFEST:
+                raise ValueError('Owned-file receipt exceeds its budget.')
+            write(root / OWNER, raw)
+            set_marker(root, 'complete', expected, setup_hash, hashlib.sha256(raw).hexdigest())
+        except BaseException:
+            if new_published and program.exists():
+                failed = root.parent / (root.name + '-incomplete-' + uuid.uuid4().hex)
+                program.rename(failed)
+            if previous_moved:
+                (recovery / 'app').rename(program)
+                for name, original in previous_receipts.items():
+                    current = root / name
+                    # Pre-bootstrap errors never changed these files. Avoid a
+                    # needless new write when the original failure was ENOSPC.
+                    if os.path.lexists(current) and read(current) == original:
+                        continue
+                    retained = recovery / name
+                    if os.path.lexists(retained) and read(retained) == original:
+                        if os.path.lexists(current):
+                            plain(current)
+                        os.replace(retained, current)
+                    else:
+                        write(current, original)
+            raise
+        return {'status': 'PASS', 'operation': 'repair' if recovery else 'install',
+                'bundle_sha256': expected, 'retained_previous': recovery.name if recovery else None,
+                'user_data_modified': False}
+
+
+def uninstall(root, expected, setup_hash, *, owner=None):
+    root = location(root)
+    with installation_lease(root, exclusive=True, owner=owner):
+        record = owned(root, expected, setup_hash)
+        program = root / 'app'
+        current, directories = inventory(program)
+        if current != record['files'] or directories != record['directories']:
+            raise ValueError('Program files were changed or unowned files were added. Run Repair to retain them before uninstalling.')
+        for name, checksum in record['files'].items():
+            path = program.joinpath(*relative(name).parts)
+            if sha(path) != checksum:
+                raise ValueError('An owned file changed before removal; remaining files were retained.')
+            path.unlink()
+        for name in sorted(record['directories'], key=lambda s: (s.count('/'), s), reverse=True):
+            program.joinpath(*relative(name).parts).rmdir()
+        program.rmdir()
+        # Only fixed metadata that was verified above is changed. Inno removes
+        # its own checked maintenance files, shortcuts and uninstall record.
+        (root / OWNER).unlink()
+        set_marker(root, 'uninstalled', expected, setup_hash)
+        return {'status': 'PASS', 'operation': 'uninstall', 'bundle_sha256': expected,
+                'user_data_modified': False, 'coordination_receipt_retained': True}
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('operation', choices=('preflight', 'check', 'install', 'uninstall'))
+    parser.add_argument('--root', required=True, type=Path)
+    parser.add_argument('--bundle-sha256', required=True)
+    parser.add_argument('--setup-sha256', required=True)
+    parser.add_argument('--payload', type=Path)
+    parser.add_argument('--setup-source', type=Path)
+    parser.add_argument('--lease-owner', nargs=2, type=int)
+    args = parser.parse_args(argv)
+    if args.operation == 'preflight':
+        preflight(args.root, args.bundle_sha256, args.setup_sha256)
+        result = {'status': 'PASS', 'operation': 'preflight'}
+    elif args.operation == 'install':
+        if args.payload is None:
+            parser.error('Install requires its captured payload.')
+        result = install(args.payload, args.root, args.bundle_sha256, args.setup_sha256,
+                         owner=args.lease_owner, setup_source=args.setup_source)
+    elif args.operation == 'check':
+        result = check(args.root, args.bundle_sha256, args.setup_sha256, owner=args.lease_owner)
+    else:
+        result = uninstall(args.root, args.bundle_sha256, args.setup_sha256, owner=args.lease_owner)
+    print(json.dumps(result, sort_keys=True))
+    return 0
+
+
+if __name__ == '__main__':
+    try:
+        raise SystemExit(main())
+    except (ValueError, RuntimeError, OSError, subprocess.SubprocessError) as error:
+        print('Resonance setup: ' + str(error), file=sys.stderr)
+        raise SystemExit(1)

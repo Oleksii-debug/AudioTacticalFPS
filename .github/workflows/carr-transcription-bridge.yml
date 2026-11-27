@@ -52,7 +52,7 @@ jobs:
       - name: Verify retained inputs, actual child protocol, recovery and CLI
         shell: pwsh
         run: |
-          python scripts/ci_check.py --jobs 2 tests/transcription/test_supplied_worker_bridge.py tests/transcription/test_v5_worker_profile.py tests/ui/test_progress_job_review.py tests/storage/test_durable_state_read.py tests/storage/test_durable_state_publication.py
+          python scripts/ci_check.py --jobs 2 tests/transcription/test_supplied_worker_bridge.py tests/transcription/test_v5_worker_profile.py tests/ui/test_progress_job_review.py tests/storage/test_durable_state_read.py tests/storage/test_state_replacement.py tests/storage/test_durable_state_publication.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Require actual Windows JSON sharing and native handle ownership
         if: runner.os == 'Windows'
@@ -60,7 +60,7 @@ jobs:
         run: |
           python -I -B -m pytest -q -o pythonpath= --import-mode=importlib tests/storage/test_durable_state_windows_read.py --junitxml=windows-json-sharing.xml
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python -I -B -c "import xml.etree.ElementTree as E; cases=list(E.parse('windows-json-sharing.xml').iter('testcase')); required={'test_windows_unshared_reader_reproduces_atomic_child_replace_denial','test_windows_json_reader_allows_atomic_child_replace_and_keeps_old_snapshot','test_windows_real_handle_is_closed_if_descriptor_transfer_fails','test_windows_real_descriptor_is_closed_if_stream_construction_fails','test_windows_json_handle_is_not_inheritable'}; assert required=={c.get('name') for c in cases} and not any(c.find(t) is not None for c in cases for t in ('failure','error','skipped')); print('PASS: five actual Windows file-sharing and native handle barriers')"
+          python -I -B -c "import xml.etree.ElementTree as E; cases=list(E.parse('windows-json-sharing.xml').iter('testcase')); required={'test_windows_unshared_reader_reproduces_atomic_child_replace_denial','test_windows_json_reader_allows_atomic_child_replace_and_keeps_old_snapshot','test_windows_real_handle_is_closed_if_descriptor_transfer_fails','test_windows_real_descriptor_is_closed_if_stream_construction_fails','test_windows_json_handle_is_not_inheritable','test_windows_legacy_replace_still_refuses_a_delete_shared_target'}; assert required=={c.get('name') for c in cases} and not any(c.find(t) is not None for c in cases for t in ('failure','error','skipped')); print('PASS: six actual Windows publication and native handle barriers')"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Install actual native desktop controls
         if: runner.os == 'Windows'

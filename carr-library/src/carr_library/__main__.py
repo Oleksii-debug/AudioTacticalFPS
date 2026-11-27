@@ -7,6 +7,8 @@ import sqlite3
 import sys
 from tempfile import TemporaryDirectory
 
+from .installation_lease import installed_entrypoint
+
 
 def self_test():
     """Exercise real SQLite and retained originals without touching user data."""
@@ -62,6 +64,7 @@ def self_test():
             'native_gui': 'NOT_RUN', 'windows_nvda': 'NOT_RUN'}
 
 
+@installed_entrypoint(allow_bootstrap_self_test=True)
 def main(argv=None):
     arguments = list(sys.argv[1:] if argv is None else argv)
     if arguments[:1] == ['--carr-doi-metadata-worker'] and len(arguments) in (1, 3):
@@ -73,6 +76,9 @@ def main(argv=None):
     if arguments and arguments[0] == 'transcribe':
         from .transcription_cli import main as transcription_main
         return transcription_main(arguments[1:])
+    if arguments and arguments[0] == 'translate':
+        from .assistant.translation_cli import main as translation_main
+        return translation_main(arguments[1:])
     if arguments and arguments[0] in ('studio', 'assistant'):
         from .studio.cli import main as studio_main, assistant_main
         return (studio_main if arguments[0] == 'studio' else assistant_main)(arguments[1:])

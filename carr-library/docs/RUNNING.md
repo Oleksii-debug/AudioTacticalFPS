@@ -60,6 +60,23 @@ location and verify the copy before deleting that program folder. Never delete
 a folder containing your only research copy. The application does not silently
 move existing data. The installer refuses to replace an existing environment.
 
+## Signed permission and update status
+
+Open **Help → License and signed updates** to read the installation's status.
+The default private installation remains perpetual and works offline. When
+trusted host configuration supplies a managed client, this window can review
+and import an exact signed permission, check a configured renewal provider, or
+verify and prepare an explicitly selected offline update package. Reading,
+saving, export, backups, recovery and prior outputs remain available.
+
+Import displays the actual matching terms and requires the acceptance checkbox.
+Checks run through the existing background job controls. Automatic renewal is
+off unless explicitly configured, and only admits requests while the host is
+idle. The package preparation action does not replace the running application;
+managed activation still requires an external restart supervisor. See
+[TRUSTED_CLIENT.md](TRUSTED_CLIENT.md) for the supported boundary and remaining
+qualification.
+
 ## Installation from a source checkout
 
 Use Python 3.11 or later. From the `carr-library` directory:
@@ -116,6 +133,25 @@ needs review or fails, the PDF and provenance remain available for Import
 Center without another download. A metadata record never verifies quotations.
 [The acquisition guide](ACADEMIC_ACQUISITION.md) documents the provider choices,
 headless commands, privacy boundaries and recovery steps.
+
+## Retain audio clips, record a microphone and publish synchronized EPUB3
+
+**Audio Studio, Edit scene audio clips** retains the exact selected audio in the
+current library. Set its scene position, source trim, gain, pan and fades with
+keyboard controls; edits preserve the original file and use versioned projects.
+See [Scene audio editing](STUDIO_CLIP_EDITING.md).
+
+**Audio Studio, Record microphone and manage saved inputs** opens no microphone
+on launch. Refresh devices, explicitly select one, then choose Start. Stop
+finalizes a verified WAV; Cancel discards the unfinished capture. Saved recordings
+can become retained scene clips. The [microphone guide](MICROPHONE_RECORDING.md)
+separates the Windows capture controls from physical-device qualification.
+
+**Audio Studio, Publish synchronized EPUB3** packages a completed job with its
+original script, exact source hashes and measured line media overlays. Choose a
+new file outside the private library; existing files are never overwritten.
+[EPUB publication](STUDIO_EPUB_PUBLISHING.md) explains the CLI, recoverable receipts,
+explicit limits and remaining reader, speech-quality and assistive-technology checks.
 
 ## Open original sources and export research
 
@@ -484,3 +520,7 @@ are retained in `native-runtime/licenses` and `native-runtime/provenance`.
 Microsoft DLL bytes are not
 included in the source repository. The private-install permission for this
 prepared package does not establish permission for public binary distribution.
+
+## DAISY 2.02 from completed Studio productions
+
+Audio Studio → Publish DAISY 2.02 opens the existing publication dialog with DAISY selected. Choose a completed job, supply publisher metadata and a new ZIP path. The Studio CLI adds publish-daisy; publications and verify-publication share the same durable receipts as EPUB. See STUDIO_DAISY_PUBLISHING.md for the measured-text contract, recovery, pinned structural checks and native-reader limits. Existing EPUB commands and saved keyboard identities remain valid.

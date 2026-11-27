@@ -623,3 +623,124 @@ def test_observed_cancellation_stays_latched_when_callback_later_clears(
     assert not cancel.is_set() and stopped.is_set()
     row = gateway.ledger.get(approval.id)['operations']['only_call']
     assert row['status'] == 'uncertain' and row['output_sha256'] is None
+
+
+def _advanced_gateway(tmp_path, server, monkeypatch, operation, payload):
+    """Use the real pinned transport; every synthetic public address stays local."""
+    from carr_library.assistant.profiles import google_oauth_credential
+    parent = 'projects/123456789/locations/us-central1'
+    profile = ProviderProfile('advanced_tls', 'Synthetic Advanced TLS account', 'google-translation-v3',
+        'https://translation.googleapis.com/v3/' + parent, 'general/nmt',
+        capabilities=('translation.text', 'translation.languages'), enabled=True,
+        credential_ref='carr/provider/advanced_tls/' + 'a' * 32)
+    route, body, _ = providers._request(profile, operation, payload)
+    request_hash = sha256(providers.canonical(body).encode('utf-8')).hexdigest()
+    approval = Authorization('advanced_tls_approval', 'advanced_tls_task', ((profile.id, profile.endpoint),),
+        (operation,), ('selected-excerpt',), '1', 1, time() + 60, (request_hash,))
+    token = 'SYNTHETIC_ADVANCED_TLS_TOKEN'
+    class Vault:
+        def get(self, identity, reference):
+            assert (identity, reference) == (profile.id, profile.credential_ref)
+            return google_oauth_credential(token, time() + 1800, profile.endpoint)
+    gateway = Gateway(tmp_path / 'advanced-gateway', vault=Vault(), mode='APPROVED_REMOTE')
+    options = dict(task_id=approval.task_id, data_class='selected-excerpt', authorization=approval,
+                   operation_id='advanced_only_call', max_cost='0.20')
+    native_socket = socket.socket
+    lookups, dialled = [], []
+    destination = ('93.184.216.34', 443)
+
+    def resolve(host, port, *args, **kwargs):
+        lookups.append((host, port))
+        assert lookups == [('translation.googleapis.com', 443)]
+        return [(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, '', destination)]
+
+    class RoutedSocket(native_socket):
+        def connect_ex(self, address):
+            assert address == destination
+            dialled.append(address)
+            return super().connect_ex(('127.0.0.1', server.port))
+
+        def connect(self, address):
+            assert address == destination
+            dialled.append(address)
+            return super().connect(('127.0.0.1', server.port))
+
+    monkeypatch.setattr(socket, 'getaddrinfo', resolve)
+    monkeypatch.setattr(socket, 'socket', RoutedSocket)
+    return gateway, profile, approval, options, lookups, dialled, body, route
+
+
+@pytest.mark.parametrize('operation,glossary', [
+    ('translation.languages', False), ('translation.text', False), ('translation.text', True),
+])
+def test_advanced_v3_keeps_verified_tls_authority_and_exact_plaintext(
+        tmp_path, provider_server, monkeypatch, operation, glossary):
+    parent = 'projects/123456789/locations/us-central1'
+    model = parent + '/models/general/nmt'
+    value = '  Literal &amp; Україна.\n'
+    if operation == 'translation.languages':
+        payload = {'target': 'en'}
+        response = {'languages': [{'languageCode': 'uk', 'displayName': 'Ukrainian', 'supportTarget': True}]}
+    else:
+        payload = {'q': 'Selected source &amp; text.', 'source': 'en', 'target': 'uk'}
+        result = {'translatedText': value, 'model': model}
+        if glossary:
+            payload['glossary'] = parent + '/glossaries/test-terms'
+            result['glossaryConfig'] = {'glossary': payload['glossary'], 'ignoreCase': False}
+        response = {'glossaryTranslations' if glossary else 'translations': [result]}
+    server = provider_server(body=json.dumps(response, ensure_ascii=False).encode('utf-8'))
+    gateway, profile, approval, options, lookups, dialled, body, route = _advanced_gateway(
+        tmp_path, server, monkeypatch, operation, payload)
+    observed = _response_spy(monkeypatch)
+    result = gateway.request(profile, operation, payload, timeout=3, **options)
+    sent, = server.requests
+    assert sent['path'] == '/v3/' + parent + route
+    assert sent['headers']['host'] == 'translation.googleapis.com'
+    assert sent['headers']['authorization'] == 'Bearer SYNTHETIC_ADVANCED_TLS_TOKEN'
+    assert sent['headers']['x-goog-user-project'] == '123456789'
+    assert 'x-goog-api-key' not in sent['headers']
+    assert server.sni == ['translation.googleapis.com']
+    assert lookups == [('translation.googleapis.com', 443)]
+    assert dialled == [('93.184.216.34', 443)]
+    if operation == 'translation.languages':
+        assert sent['method'] == 'GET' and sent['body'] == b''
+        assert result['languages'] == [{'language': 'uk', 'name': 'Ukrainian', 'source': False, 'target': True}]
+    else:
+        assert sent['method'] == 'POST' and json.loads(sent['body']) == body
+        assert body['contents'] == [payload['q']] and body['mimeType'] == 'text/plain'
+        assert result['text'] == value and result['reported_model'] == model
+        assert result['glossary_config'] == body.get('glossaryConfig')
+    assert gateway.ledger.get(approval.id)['operations']['advanced_only_call']['status'] == 'complete'
+    _closed_response(observed, detached=True)
+
+
+@pytest.mark.parametrize('phase,reason', [('drip', 'deadline'), ('drip', 'cancel'), ('eof_delay', 'deadline')])
+def test_advanced_v3_late_body_cannot_publish_or_retry(
+        tmp_path, provider_server, monkeypatch, phase, reason):
+    parent = 'projects/123456789/locations/us-central1'
+    raw = json.dumps({'translations': [{'translatedText': 'Late result',
+        'model': parent + '/models/general/nmt'}]}).encode()
+    if phase == 'eof_delay':
+        raw += b' ' * (65536 - len(raw))
+    cancel = Event()
+    server = provider_server(phase=phase, framing='eof' if phase == 'eof_delay' else 'length',
+                             body=raw, cancel_event=cancel if reason == 'cancel' else None)
+    payload = {'q': 'Selected immutable text.', 'source': 'en', 'target': 'uk'}
+    gateway, profile, approval, options, lookups, dialled, _, _ = _advanced_gateway(
+        tmp_path, server, monkeypatch, 'translation.text', payload)
+    observed = _response_spy(monkeypatch)
+    before = {thread.ident for thread in threads() if thread.name == 'carr-provider-watchdog'}
+    started = monotonic()
+    with pytest.raises(InterruptedError if reason == 'cancel' else TimeoutError):
+        gateway.request(profile, 'translation.text', payload, cancelled=cancel.is_set,
+                        timeout=3 if reason == 'cancel' else BUDGET, **options)
+    assert monotonic() - started < RETURN_LIMIT
+    assert len(server.requests) == 1 and server.body_started.is_set()
+    recorded = gateway.ledger.get(approval.id)['operations']['advanced_only_call']
+    assert recorded['status'] == 'uncertain' and recorded['output_sha256'] is None
+    with pytest.raises(ProviderError, match='already been attempted'):
+        gateway.request(profile, 'translation.text', payload, timeout=3, **options)
+    assert len(server.requests) == 1 and lookups == [('translation.googleapis.com', 443)]
+    assert dialled == [('93.184.216.34', 443)]
+    _closed_response(observed, detached=True)
+    assert {thread.ident for thread in threads() if thread.name == 'carr-provider-watchdog'} == before

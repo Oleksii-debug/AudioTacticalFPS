@@ -355,11 +355,33 @@ def audit(event, args):
         writable(args[1])
 sys.dont_write_bytecode = True
 sys.addaudithook(audit)
+if os.name == 'nt':
+    # Only the declared live-status name uses the host's native publication
+    # primitive. Other worker replacements keep their normal implementation.
+    original_replace = os.replace
+    def publish_status(source, destination, *arguments, **keywords):
+        if (not arguments and not keywords
+                and pathlib.Path(os.fsdecode(destination)).absolute() == job / 'job_status.json'):
+            writable(source)
+            writable(destination)
+            return replace_file(source, destination)
+        return original_replace(source, destination, *arguments, **keywords)
+    os.replace = publish_status
 if len(sys.argv) > 3 and sys.argv[3] == 'whisper-v5-manifest-v1':
     sys.path.insert(0, str(worker.parent))
 sys.argv = [str(worker), '--job-dir', str(job)]
 runpy.run_path(str(worker), run_name='__main__')
 '''
+
+
+def _worker_bootstrap():
+    from .audio.music import _SITE_BOOTSTRAP
+    publication = ''
+    if os.name == 'nt':
+        from inspect import getsource
+        from .windows_state import replace_file
+        publication = getsource(replace_file) + '\n'
+    return _SITE_BOOTSTRAP + publication + _WORKER_BOOTSTRAP
 
 
 class TranscriptionService:
@@ -973,10 +995,10 @@ class TranscriptionService:
                         pass
                 return stop_at is not None and now - stop_at >= 3
             failure = None
-            from .audio.music import _SITE_BOOTSTRAP
             try:
                 run_process([config['python'], '-I', '-S', '-B', '-X', 'utf8', '-c',
-                    _SITE_BOOTSTRAP + _WORKER_BOOTSTRAP, config['worker'], str(path), config['protocol']],
+                    _worker_bootstrap(),
+                    config['worker'], str(path), config['protocol']],
                     cwd=path, env=environment, cancelled=poll, watch=(path,),
                     budget=AudioBudget(timeout=timeout,
                         max_output_bytes=(sum(x['size_bytes'] for x in job['sources'])
