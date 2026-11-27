@@ -39,6 +39,7 @@ def install_save_actions(frame):
     item = menu.Append(wx.ID_EXIT, 'E&xit\tAlt+F4')
     frame.Bind(wx.EVT_MENU, lambda event: frame.Close(), item)
     frame.menu_bar.Insert(0, menu, '&File')
+    owner_id = frame.GetId()
     timer = wx.Timer(frame)
     frame._draft_save_timer = timer
     previous = [None]
@@ -65,12 +66,14 @@ def install_save_actions(frame):
 
     def stop_autosave(event):
         nonlocal active
-        if event.GetEventObject() is frame:
-            # wx.Timer does not own its event target. Stop native delivery
-            # while that target still exists, including direct Destroy().
+        if event.GetId() == owner_id:
+            # wx can deliver destruction through a different Python wrapper.
+            # Use the native ID captured while the owner was alive; the dying
+            # frame must not be queried or unbound through an invalid wrapper.
+            # Stopping the separate timer prevents native delivery, and active
+            # makes an already queued Python callback inert.
             active = False
             timer.Stop()
-            frame.Unbind(wx.EVT_TIMER, handler=autosave, source=timer)
         event.Skip()
 
     frame.Bind(wx.EVT_WINDOW_DESTROY, stop_autosave)

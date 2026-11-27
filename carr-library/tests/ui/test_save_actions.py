@@ -23,7 +23,9 @@ class SaveActionsLifetime(unittest.TestCase):
             self.timer.running = False
 
         self.timer.Start, self.timer.Stop = start, Mock(side_effect=stop)
+        self.owner_id = 1047
         self.frame = SimpleNamespace(
+            GetId=Mock(return_value=self.owner_id),
             working=False, _closing=False, active=('library', 'topic'),
             library=SimpleNamespace(root=Path('synthetic-library')),
             _dirty=Mock(return_value=True), menu_bar=Mock(), report=Mock(), Close=Mock(),
@@ -43,8 +45,9 @@ class SaveActionsLifetime(unittest.TestCase):
         self.assertTrue(self.timer.running)
         self.assertEqual(self.timer.interval, 3000)
 
-    def destroy(self, owner):
-        event = SimpleNamespace(GetEventObject=lambda: owner, Skip=Mock())
+    def destroy(self, owner, *, identity=None):
+        identity = (self.owner_id if owner is self.frame else 2097) if identity is None else identity
+        event = SimpleNamespace(GetEventObject=lambda: owner, GetId=lambda: identity, Skip=Mock())
         callback = self.bindings.get('destroy')
         if callback is not None:
             callback(event)
@@ -72,7 +75,7 @@ class SaveActionsLifetime(unittest.TestCase):
         self.destroy(self.frame)
         self.assertFalse(self.timer.running)
         self.timer.Stop.assert_called_once_with()
-        self.frame.Unbind.assert_called_once_with('timer', handler=self.tick, source=self.timer)
+        self.frame.Unbind.assert_not_called()
         self.frame._dirty.side_effect = AssertionError('A queued tick touched a destroyed frame.')
         self.tick(None)
         self.frame._dirty.assert_not_called()
@@ -84,6 +87,18 @@ class SaveActionsLifetime(unittest.TestCase):
 
     def test_direct_destroy_also_blocks_a_previously_queued_autosave(self):
         self.assert_owner_stopped()
+
+    def test_native_destroy_wrapper_needs_only_the_previously_captured_owner_id(self):
+        self.frame.GetId.side_effect = AssertionError('A dying frame must not be queried.')
+        self.frame.Unbind.side_effect = AssertionError('A dying frame must not be unbound.')
+        self.frame._dirty.side_effect = AssertionError('A queued tick touched a destroyed frame.')
+        self.destroy(object(), identity=self.owner_id)
+        self.assertFalse(self.timer.running)
+        self.timer.Stop.assert_called_once_with()
+        self.tick(None)
+        self.frame._dirty.assert_not_called()
+        self.frame.Unbind.assert_not_called()
+        self.write.assert_not_called()
 
 
 if __name__ == '__main__':
