@@ -5,12 +5,12 @@ from pathlib import Path
 import threading
 
 
-def show_assistant(frame, *, production=None, on_ready=None):
+def show_assistant(frame, *, production=None, interactive=None, parent=None, initial_goal=None, on_ready=None):
     import wx
     from ..assistant import AssistantService, Scope, HELP, Plan, Step
     from ..assistant.production import LocalProduction
     cancel = threading.Event()
-    dialog = wx.Dialog(frame, title='Local assistant — review and run a bounded plan', size=(900, 850),
+    dialog = wx.Dialog(frame if parent is None else parent, title='Local assistant — review and run a bounded plan', size=(900, 850),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
     layout = wx.BoxSizer(wx.VERTICAL)
     executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='local-assistant')
@@ -59,7 +59,7 @@ def show_assistant(frame, *, production=None, on_ready=None):
     file_budget = field('Maximum files per operation', value='5000')
     deadline = field('Time budget for each run or resume (seconds)', value='3600')
     instruction = field('&Goal — guided English/Ukrainian commands or typed JSON plan', proportion=1,
-                        style=wx.TE_MULTILINE, value='Покажи бібліотеки')
+                        style=wx.TE_MULTILINE, value='Покажи бібліотеки' if initial_goal is None else initial_goal)
     review = field('Plan &preview and actual results', proportion=1, style=wx.TE_MULTILINE | wx.TE_READONLY,
                    value='LOCAL ONLY. Nothing executes until you review the plan and choose Run.')
     row = wx.BoxSizer(wx.HORIZONTAL)
@@ -93,7 +93,10 @@ def show_assistant(frame, *, production=None, on_ready=None):
         return cancel.is_set() or not alive or not library_current()
 
     production = production or LocalProduction(bound_root, cancelled=stopped)
-    service = AssistantService(bound_library, production=production)
+    options = {'production': production}
+    if interactive is not None:
+        options['interactive'] = interactive
+    service = AssistantService(bound_library, **options)
 
     def input_identity():
         return (scope_choice.GetSelection(), input_folder.GetValue(), output_folder.GetValue(),

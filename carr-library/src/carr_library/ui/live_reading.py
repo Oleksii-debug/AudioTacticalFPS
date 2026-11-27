@@ -131,6 +131,8 @@ class LiveReadingDialog:
         self.pause_requested = False
         self.cleanup_pending = False
         self.warning = ''
+        self._assistant_error_sequence = 0
+        self._assistant_last_error = ''
         self.voice_rows, self.device_ids = [], [None]
         self.player = WavePlayer()
         self.unregister_player = (self.progress.register_player(self.player)
@@ -206,6 +208,7 @@ class LiveReadingDialog:
                 ('seek', 'Seek within utterance', self.seek),
                 ('resume', 'Restore saved text cursor', self.restore_cursor),
                 ('where', 'Where am I?', self.where),
+                ('assistant', 'Assistant for this &reader/player...', self.assistant),
                 ('close', '&Close reader', self.close)):
             button = wx.Button(self.dialog, id=wx.ID_CLOSE if name == 'close' else wx.ID_ANY, label=label)
             button.SetName(label.replace('&', ''))
@@ -236,8 +239,17 @@ class LiveReadingDialog:
             self.status.ChangeValue(str(message))
 
     def _error(self, error):
+        self._assistant_error_sequence = getattr(self, '_assistant_error_sequence', 0) + 1
+        self._assistant_last_error = str(error)
         self._say(str(error))
         self._enable()
+
+    def assistant(self, event=None):
+        try:
+            from .assistant_interactive import show_reader_assistant
+            show_reader_assistant(self)
+        except Exception as exc:
+            self._error(exc)
 
     def _select(self, selected):
         first, last = selected
@@ -268,6 +280,9 @@ class LiveReadingDialog:
         self.controls['pause'].Enable(self.playing and self.player.native is not None)
         self.controls['seek'].Enable(ready and self.player.native is not None and self.player.path is not None)
         self.controls['stop'].Enable(self.session is not None or self.future is not None)
+        if 'assistant' in self.controls:
+            self.controls['assistant'].Enable(self.location is not None and bool(self.source)
+                and self.future is None and not self.cleanup_pending and not self.close_pending)
         self._playback_controls(idle)
         if idle:
             self._voice_controls()
