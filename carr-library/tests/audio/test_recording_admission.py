@@ -225,3 +225,26 @@ def test_active_capture_and_pending_cleanup_have_distinct_playback_refusals(tmp_
     finally:
         progress.set_recording_active(owner, False)
         player.close()
+
+
+def test_capture_waits_for_a_concurrently_starting_existing_player(tmp_path, monkeypatch):
+    original = pcm(tmp_path / 'existing.wav')
+    player, owner = WavePlayer(), object()
+    entered, release = threading.Event(), threading.Event()
+    def starting(*args, **kwargs):
+        entered.set()
+        assert release.wait(5)
+    monkeypatch.setattr(player, '_start_owned', starting)
+    try:
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(player.play, original)
+            assert entered.wait(2)
+            progress.set_recording_active(owner, True)
+            assert not progress.recording_admission_ready(owner)
+            release.set()
+            future.result(timeout=3)
+            assert progress.recording_admission_ready(owner)
+    finally:
+        release.set()
+        progress.set_recording_active(owner, False)
+        player.close()

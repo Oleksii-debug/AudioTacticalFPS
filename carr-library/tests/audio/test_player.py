@@ -129,7 +129,13 @@ def native_player(monkeypatch):
             super().close()
             state['mode'] = 'closed'
     monkeypatch.setattr(native_module, 'PCMPlayer', NativeDouble)
-    return WavePlayer(clock=lambda: state['clock']), state
+    player = WavePlayer(clock=lambda: state['clock'])
+    try:
+        yield player, state
+    finally:
+        # Capture shares native playback ownership across operations. Every
+        # fixture must end its simulated active device just as a real caller does.
+        player.close()
 
 
 def test_bounded_playlist_does_not_autoplay_and_advances_only_after_natural_end(tmp_path, native_player):

@@ -45,6 +45,10 @@ jobs:
           set -euo pipefail
           python -m compileall -q src/carr_library/audio src/carr_library/progress.py src/carr_library/ui/audio_recording.py src/carr_library/ui/audio_studio.py scripts/windows_recording_smoke.py
           python scripts/ci_check.py tests/audio/test_recording.py tests/audio/test_capture_ownership.py tests/audio/test_recording_admission.py tests/audio/test_project_backup.py tests/audio/test_input_asset_backup.py tests/audio/test_player.py tests/audio/test_progress_speech.py tests/test_progress.py tests/ui/test_audio_playback_controls.py tests/ui/test_progress_voice.py tests/ui/test_audio_recording.py
+      - name: Verify capture and playback ownership in one test process
+        run: |
+          set -euo pipefail
+          python -m pytest -q tests/audio/test_player.py tests/audio/test_recording_admission.py tests/audio/test_progress_speech.py tests/test_progress.py --import-mode=importlib
   source-windows:
     runs-on: windows-2022
     timeout-minutes: 15
@@ -90,6 +94,10 @@ jobs:
           python -m compileall -q src/carr_library/audio src/carr_library/progress.py src/carr_library/ui/audio_recording.py src/carr_library/ui/audio_studio.py scripts/windows_recording_smoke.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python scripts/ci_check.py tests/audio/test_recording.py tests/audio/test_capture_ownership.py tests/audio/test_recording_admission.py tests/audio/test_project_backup.py tests/audio/test_input_asset_backup.py tests/audio/test_player.py tests/audio/test_progress_speech.py tests/test_progress.py tests/ui/test_audio_playback_controls.py tests/ui/test_progress_voice.py tests/ui/test_audio_recording.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify capture and playback ownership in one test process
+        run: |
+          python -m pytest -q tests/audio/test_player.py tests/audio/test_recording_admission.py tests/audio/test_progress_speech.py tests/test_progress.py --import-mode=importlib
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Actual installed Studio recording action and native keyboard lifecycle
         run: |
