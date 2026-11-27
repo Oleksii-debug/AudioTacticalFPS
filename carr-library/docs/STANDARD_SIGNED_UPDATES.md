@@ -97,7 +97,9 @@ The transaction proceeds through these guarded boundaries:
    Review the current standard report and complete manifest, and retain the
    exact verified target archive under the fixed transaction identity.
 3. Create a complete library backup using the existing typed backup framework.
-   Recheck A's registration, Start-menu shortcut and uninstaller bytes.
+   Recheck A's registration, Start-menu shortcut and uninstaller bytes. With an
+   explicitly configured Windows vault anchor, verify the backup and save/read
+   back the compact transaction authority before any pending native handoff.
 4. Persist the previous activation snapshot and pending handoff, then release
    the coordinator's Inno setup mutexes before launching the actual setup.
 5. Inno owns those same mutexes during installation. Its fixed handoff checks
@@ -147,14 +149,24 @@ or research data. Different roots, different releases and rewritten journal
 metadata cannot authorize rollback.
 
 The signed B package does not authenticate A's original native registration,
-shortcut or generated uninstaller bytes. Their exact prior snapshot is retained
-only in the original controller's memory. If that controller/process restarts,
-or if a journal rewrite changes the prior snapshot, automatic pre-commit
-rollback is refused even with a valid fresh B package. This distinct attention
-state does not repeatedly ask for a repository: it requires owner-assisted
-repair using retained A, research data, backup and diagnostics. No new protected
-store or changed anchor schema is introduced, and no automatic restart rollback
-is claimed.
+shortcut or generated uninstaller bytes. An explicitly configured
+`WindowsVaultAnchor` can additionally protect their exact prior digest across a
+controller restart. The transaction reuses that anchor's existing vault and
+opaque reference with a distinct, transaction-specific domain binding. A compact
+credential binds the canonical program/data/work roots, policy/bootstrap,
+before-anchor, exact release/setup candidate, complete backup identity and
+bounded prior snapshot bytes. The large prior stays in the existing `PRIOR`
+file; no anchor schema, separate vault, issuer or default authority is added.
+
+After restart, fresh same-scope TUF verification, the exact protected digest,
+complete backup revalidation and unchanged native A/observed B are all required
+before rollback. Missing, corrupt, replayed or coherently rewritten journals and
+prior bytes cannot supply that authority. A newer C remains untouched. The
+credential is deleted only after terminal state and pending cleanup, and only
+when its exact value still matches. Credential errors preserve research and
+prevent native setup or require explicit cleanup review. A generic/in-memory
+anchor has no durable recovery capability and retains the previous refusal
+for restarted pre-commit controllers.
 
 A crash before the complete new activation can be observed may leave
 `recovery-required`. The application does not guess a registry/shortcut
@@ -189,8 +201,10 @@ Its registry/shortcut/installer adapter is explicitly synthetic. It tests
 foreign-root refusal, exact metadata rollback, interruption before/after anchor
 commit, newer-state refusal, complete-backup tampering, pending/rejected startup,
 old-process lifetime, GUI review choice, CLI/controller parity and bounded
-cleanup. Restarted pre-commit controllers and coherent prior-component rewrites
-are explicitly tested to refuse changes. These tests do not claim that an inert
+cleanup. New-controller recovery with the same explicit protected vault is
+exercised at prepared/installing/activated/health/committed crash boundaries;
+generic anchors and coherent prior-component rewrites still refuse changes.
+Native vault API stubs distinguish only actual ERROR_NOT_FOUND from failures. These tests do not claim that an inert
 setup image is a native EXE.
 
 Run it with the current reviewed optional trusted-client dependencies:

@@ -21,7 +21,8 @@ from uuid import uuid4
 from ..audio.cleanup import AudioCleanupPending
 from ._files import (TrustError, atomic_write, directory, file_info, json_bytes,
                      json_value, locked, read_bytes)
-from .anchors import Anchor
+from .anchors import Anchor, WindowsVaultAnchor
+from .standard_recovery import StandardRecoveryAuthority
 from .installation import unpack, _verified_snapshot
 from .standard_state import (MAX_STATE, PENDING, PRIOR, REJECTED, PROTOCOL, begin_pending,
     clear_pending, generation_name, prior_bytes, publish_new, read_pending, replace_pending)
@@ -145,11 +146,12 @@ class StandardUpdateTransaction:
             if one.is_relative_to(other) or other.is_relative_to(one):
                 raise TrustError('Program, signed-update staging and research data must be separate.')
         self.journal = self.work / 'standard-activation.json'
-        # Native registration, shortcut and uninstaller bytes are not signed
-        # payload files. Only the original live controller has an authenticated
-        # in-memory copy of the prior activation. A mutable restart journal
-        # cannot confer authority to restore those components.
+        # A mutable journal cannot authenticate native registration/shortcut
+        # bytes. Retain live authority, and only an explicitly configured
+        # Windows anchor can additionally seal the exact restart authority.
         self._live_prior = None
+        self._recovery_authority = (StandardRecoveryAuthority(anchor, policy, self.root, data, self.work)
+                                    if isinstance(anchor, WindowsVaultAnchor) else None)
 
     def _retain_target(self, package, destination, cancelled):
         """Retain exact verified bytes, with no overwrite or hard-link window."""
@@ -324,7 +326,14 @@ class StandardUpdateTransaction:
             raise TrustError('The previous registered generation has not been restored exactly.')
         self._write(record, 'rolled-back')
         clear_pending(self.root, record['pending'])
+        self._settle_authority(record)
         return 'rolled-back'
+
+    def _settle_authority(self, record):
+        if self._recovery_authority is not None:
+            if record['phase'] not in _TERMINAL or os.path.lexists(self.root / PENDING) or os.path.lexists(self.root / PRIOR):
+                raise TrustError('Protected recovery authority can clear only after terminal pending cleanup.')
+            self._recovery_authority.settle(record)
 
     def _recover_locked(self, package=None, *, cancelled=lambda: False):
         _cancel(cancelled)
@@ -344,6 +353,7 @@ class StandardUpdateTransaction:
                 raise TrustError('The committed generation changed or is unhealthy; preserve data for owner recovery.')
             self._write(record, 'complete')
             clear_pending(self.root, pending or record['pending'])
+            self._settle_authority(record)
             return 'complete'
         if current != before:
             raise TrustError('Protected update state changed; automatic rollback is refused.')
@@ -353,12 +363,23 @@ class StandardUpdateTransaction:
             if self.host.snapshot(self.root) != record['prior']:
                 raise TrustError('A newer installation changed the completed rollback.')
             if not os.path.lexists(self.root / PENDING) and not os.path.lexists(self.root / PRIOR):
+                self._settle_authority(record)
                 return 'rolled-back'
-        if self._live_prior != (record['transaction'], json_bytes(record['prior'])):
+        if (self._recovery_authority is None
+                and self._live_prior != (record['transaction'], json_bytes(record['prior']))):
             raise TrustError('The prior native activation has no retained live authority. '
                 'Owner recovery is required; no restart journal can authorize replacing '
                 'registration, shortcut or uninstaller bytes. The previous program and data are preserved.')
         self._review_recovery_target(record, release, package, committed=False, cancelled=cancelled)
+        if self._recovery_authority is not None:
+            self._recovery_authority.require(record)
+            from ..library_backup import verify_backup
+            verify_backup(self.work / record['backup'], record['backup_sha256'], cancelled=cancelled)
+            if self.anchor.load() != before:
+                raise TrustError('Protected update state changed during restart verification.')
+            current_native = self.host.snapshot(self.root)
+            if current_native != record['prior'] and current_native != record['observed']:
+                raise TrustError('A newer native activation cannot be replaced by this protected recovery.')
         _cancel(cancelled)
         return self._rollback(record)
 
@@ -432,6 +453,11 @@ class StandardUpdateTransaction:
                 'pending': self._pending(token, prior, candidate)}
             self._live_prior = (token, json_bytes(prior))
             self._write(record, 'prepared')
+            if self._recovery_authority is not None:
+                verify_backup(self.work / backup_name, backup_sha, cancelled=cancelled)
+                if self.host.snapshot(self.root) != prior:
+                    raise TrustError('The live prior activation changed before protected recovery publication.')
+                self._recovery_authority.seal(record, before, guard=lambda: _cancel(cancelled))
             begin_pending(self.root, record['pending'], prior)
             self._write(record, 'installing')
             setup.close()  # The existing Inno mutex owns the launch interval.
@@ -460,6 +486,7 @@ class StandardUpdateTransaction:
             self._write(record, 'committed')
             clear_pending(self.root, record['pending'])
             self._write(record, 'complete')
+            self._settle_authority(record)
             return {'status': 'complete', 'version': release.version, 'build': release.build,
                     'source_commit': release.source_commit, 'previous': str(self.generation),
                     'generation': str(self.root.joinpath(*observed['generation'].split('/'))),

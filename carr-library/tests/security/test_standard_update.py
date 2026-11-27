@@ -1073,3 +1073,291 @@ def test_retained_target_failure_never_unlinks_foreign_stage_replacement(setup, 
         setup.transaction._retain_target(package, setup.transaction.work / 'never-published.zip', lambda: False)
     assert len(retained) == 1 and retained[0].read_bytes() == b'Foreign competing bytes must remain'
     assert not (setup.transaction.work / 'never-published.zip').exists()
+
+
+# The vault protocol is the existing provider test double, with an exact
+# optional-read seam. This is not a plaintext production anchor or fallback.
+def protected_setup(value):
+    from carr_library.security.anchors import WindowsVaultAnchor
+    path = Path(__file__).resolve().parents[1] / 'e2e' / 'test_provider_gateway.py'
+    specification = importlib.util.spec_from_file_location('_existing_provider_vault_fixture', path)
+    fixture = importlib.util.module_from_spec(specification)
+    specification.loader.exec_module(fixture)
+    class RecoveryVault(fixture.MemoryVault):
+        def get_optional(self, reference, binding):
+            return self.values.get((reference, binding))
+    vault = RecoveryVault()
+    anchor = WindowsVaultAnchor('url-api-' + '1' * 32, '2' * 64,
+        product=value.policy.product, profile_id='standard-recovery-test', vault=vault)
+    vault.put(anchor.reference, anchor.vault_binding, anchor.encode(value.anchor.load()))
+    # A separate provider credential at the same opaque reference must survive.
+    vault.put(anchor.reference, 'f' * 64, 'unrelated-explicit-test-credential')
+    value.anchor = anchor
+    value.transaction = StandardUpdateTransaction(value.app, value.generation,
+        value.transaction.work, value.policy, anchor, value.host)
+    return vault
+
+
+def restart_protected(value):
+    from carr_library.security.anchors import WindowsVaultAnchor
+    previous = value.anchor
+    # New anchor/transaction/controller objects; no retained live snapshot.
+    value.anchor = WindowsVaultAnchor(previous.reference, previous.binding,
+        product=previous.product, profile_id=previous.profile_id, vault=previous.vault)
+    value.transaction = StandardUpdateTransaction(value.app, value.generation,
+        value.transaction.work, value.policy, value.anchor, value.host)
+    assert value.transaction._live_prior is None
+    return configured_controller(value)
+
+
+def recovery_credential(value):
+    record = json.loads(value.transaction.journal.read_bytes())
+    authority = value.transaction._recovery_authority
+    return record, (value.anchor.reference, authority.binding(record))
+
+
+def test_current_native_vault_optional_read_distinguishes_only_actual_not_found(monkeypatch):
+    import carr_library.providers as providers
+    vault = providers.WindowsCredentialVault.__new__(providers.WindowsCredentialVault)
+    vault.Credential = providers.ctypes.c_void_p
+    vault.api = SimpleNamespace(CredReadW=lambda *args: False)
+    monkeypatch.setattr(providers.ctypes, 'get_last_error', lambda: 1168, raising=False)
+    assert vault.get_optional('url-api-' + '1' * 32, '2' * 64) is None
+    with pytest.raises(providers.ProviderError, match='unavailable'):
+        vault.get('url-api-' + '1' * 32, '2' * 64)
+
+
+@pytest.mark.parametrize('native_error', [0, 5, 87])
+def test_current_native_vault_optional_read_does_not_turn_native_errors_into_absence(monkeypatch, native_error):
+    import carr_library.providers as providers
+    vault = providers.WindowsCredentialVault.__new__(providers.WindowsCredentialVault)
+    vault.Credential = providers.ctypes.c_void_p
+    vault.api = SimpleNamespace(CredReadW=lambda *args: False)
+    monkeypatch.setattr(providers.ctypes, 'get_last_error', lambda: native_error, raising=False)
+    for read in (vault.get, vault.get_optional):
+        with pytest.raises(providers.ProviderError, match='unavailable'):
+            read('url-api-' + '1' * 32, '2' * 64)
+
+
+@pytest.mark.parametrize('phase', ['installing', 'activated', 'health-checked'])
+def test_protected_prior_survives_real_controller_restart_and_fresh_tuf_recovery(setup, monkeypatch, phase):
+    vault = protected_setup(setup)
+    # Native prior bytes exceed the credential limit and stay in bounded PRIOR.
+    (setup.root / 'unins000.exe').write_bytes(b'Inert prior uninstaller bytes. ' * 256)
+    prior = setup.host.snapshot(setup.root)
+    interrupted_update(setup, monkeypatch, phase)
+    record, key = recovery_credential(setup)
+    assert len(json_bytes(record['prior'])) > 2400
+    assert len(vault.values[key].encode('ascii')) <= 2400
+    controller = restart_protected(setup)
+    before = recovery_state(setup)
+    with pytest.raises(RecoveryReviewRequired):
+        controller.recover_update()
+    assert recovery_state(setup) == before
+    assert controller.recover_update(setup.repository.root) == 'rolled-back'
+    assert setup.host.snapshot(setup.root) == prior and setup.anchor.load() == Anchor()
+    assert key not in vault.values
+    assert vault.get(setup.anchor.reference, 'f' * 64) == 'unrelated-explicit-test-credential'
+    assert setup.app.search(setup.workspace, 'exact research source')
+    assert not (setup.root / PENDING).exists() and not (setup.root / PRIOR).exists()
+
+
+def test_protected_readback_precedes_any_native_pending_state_and_crash_is_recoverable(setup, monkeypatch):
+    import carr_library.security.standard_installation as module
+    vault = protected_setup(setup)
+    class ProcessEnded(BaseException):
+        pass
+    def stop_before_pending(root, pending, prior):
+        record, key = recovery_credential(setup)
+        assert vault.values[key] == setup.transaction._recovery_authority.value(record)
+        assert not (root / PENDING).exists() and not (root / PRIOR).exists()
+        raise ProcessEnded
+    with monkeypatch.context() as patch:
+        patch.setattr(module, 'begin_pending', stop_before_pending)
+        with pytest.raises(ProcessEnded):
+            setup.transaction.apply(verified(setup))
+    assert setup.host.launches == 0
+    assert restart_protected(setup).recover_update(setup.repository.root) == 'rolled-back'
+    assert setup.host.snapshot(setup.root)['source_commit'] == A
+
+
+@pytest.mark.parametrize('phase', ['committed', 'complete'])
+def test_protected_restart_finishes_committed_b_and_only_then_invalidates_its_authority(setup, monkeypatch, phase):
+    vault = protected_setup(setup)
+    package = interrupted_update(setup, monkeypatch, phase)
+    record, key = recovery_credential(setup)
+    assert key in vault.values and setup.anchor.load().digest == package.release.sha256
+    assert restart_protected(setup).recover_update() == 'complete'
+    assert setup.host.snapshot(setup.root)['source_commit'] == B
+    assert key not in vault.values
+    assert not (setup.root / PENDING).exists() and not (setup.root / PRIOR).exists()
+
+
+@pytest.mark.parametrize('failure', ['read', 'write', 'readback'])
+def test_protected_credential_failure_never_starts_native_setup_or_loses_research(setup, monkeypatch, failure):
+    vault = protected_setup(setup)
+    prior, original_read, original_put = setup.host.snapshot(setup.root), vault.get_optional, vault.put
+    written = []
+    def read(reference, binding):
+        if binding != setup.anchor.vault_binding:
+            if failure == 'read':
+                raise OSError('Synthetic native credential failure')
+            if failure == 'readback' and written:
+                return 'corrupt-protected-readback'
+        return original_read(reference, binding)
+    def put(reference, binding, value):
+        if binding != setup.anchor.vault_binding:
+            if failure == 'write':
+                raise OSError('Synthetic native credential failure')
+            written.append(binding)
+        return original_put(reference, binding, value)
+    monkeypatch.setattr(vault, 'get_optional', read)
+    monkeypatch.setattr(vault, 'put', put)
+    with pytest.raises(TrustError):
+        setup.transaction.apply(verified(setup))
+    assert setup.host.launches == 0 and setup.host.snapshot(setup.root) == prior
+    assert setup.app.search(setup.workspace, 'exact research source')
+    assert setup.anchor.load() == Anchor()
+    assert not (setup.root / PENDING).exists() and not (setup.root / PRIOR).exists()
+
+
+@pytest.mark.parametrize('damage', ['missing', 'changed', 'foreign-transaction'])
+def test_protected_restart_rejects_missing_corrupt_or_mismatched_credential_without_native_writes(setup, monkeypatch, damage):
+    vault = protected_setup(setup)
+    package = interrupted_update(setup, monkeypatch)
+    record, key = recovery_credential(setup)
+    if damage == 'missing':
+        del vault.values[key]
+    elif damage == 'changed':
+        vault.values[key] = 'corrupted'
+    else:
+        parsed = json.loads(vault.values[key])
+        parsed['transaction'] = '0' * 32
+        vault.values[key] = json_bytes(parsed).decode('ascii')
+    restart_protected(setup)
+    before = recovery_state(setup)
+    with pytest.raises(TrustError, match='protected restart authority'):
+        setup.transaction.recover(reverified(setup, package))
+    assert recovery_state(setup) == before
+
+
+def test_protected_restart_rejects_coherently_rewritten_prior_even_after_fresh_same_tuf(setup, monkeypatch):
+    from carr_library.security.standard_state import pending_bytes
+    protected_setup(setup)
+    package = interrupted_update(setup, monkeypatch)
+    record = json.loads(setup.transaction.journal.read_bytes())
+    foreign = b'UNAPPROVED mutable native uninstaller'
+    record['prior']['uninstallers']['unins000.exe'] = _binary(foreign)
+    raw = json_bytes(record['prior'])
+    record['pending']['prior_sha256'] = sha256(raw).hexdigest()
+    atomic_write(setup.transaction.journal, json_bytes(record))
+    atomic_write(setup.root / PRIOR, raw)
+    atomic_write(setup.root / PENDING, pending_bytes(record['pending'], setup.root))
+    restart_protected(setup)
+    assert setup.transaction._read()[0]['prior'] == record['prior']
+    before = recovery_state(setup)
+    with pytest.raises(TrustError, match='prior native activation'):
+        setup.transaction.recover(reverified(setup, package))
+    assert recovery_state(setup) == before
+    assert (setup.root / 'unins000.exe').read_bytes() != foreign
+
+
+def test_protected_prior_credential_cannot_be_replayed_for_a_new_transaction(setup, monkeypatch):
+    vault = protected_setup(setup)
+    package = interrupted_update(setup, monkeypatch)
+    record, key = recovery_credential(setup)
+    old = vault.values[key]
+    assert restart_protected(setup).recover_update(setup.repository.root) == 'rolled-back'
+    assert key not in vault.values
+    # Same signed B and unchanged A do not authorize replaying the old UUID.
+    setup.repository.advance()
+    package = interrupted_update(setup, monkeypatch)
+    newer, new_key = recovery_credential(setup)
+    assert new_key != key and newer['transaction'] != record['transaction']
+    vault.values[new_key] = old
+    restart_protected(setup)
+    before = recovery_state(setup)
+    with pytest.raises(TrustError, match='protected restart authority'):
+        setup.transaction.recover(reverified(setup, package))
+    assert recovery_state(setup) == before
+
+
+def test_protected_restart_revalidates_the_exact_research_backup_before_rollback(setup, monkeypatch):
+    protected_setup(setup)
+    package = interrupted_update(setup, monkeypatch)
+    record, _ = recovery_credential(setup)
+    backup = setup.transaction.work / record['backup']
+    # The normal verified manifest is real; mutate an actual listed payload.
+    files = [path for path in backup.rglob('*') if path.is_file() and path.name != 'manifest.json']
+    assert files
+    files[0].write_bytes(b'Corrupted retained research backup')
+    restart_protected(setup)
+    before = recovery_state(setup)
+    with pytest.raises((TrustError, ValueError, OSError)):
+        setup.transaction.recover(reverified(setup, package))
+    assert recovery_state(setup) == before
+    assert setup.app.search(setup.workspace, 'exact research source')
+
+
+def test_protected_restart_never_replaces_an_unrelated_newer_c_activation(setup, monkeypatch):
+    protected_setup(setup)
+    package = interrupted_update(setup, monkeypatch)
+    setup.host.install(setup_image(C, 'C')[0])
+    restart_protected(setup)
+    before = recovery_state(setup)
+    with pytest.raises(TrustError, match='newer native activation'):
+        setup.transaction.recover(reverified(setup, package))
+    assert recovery_state(setup) == before
+    assert setup.host.snapshot(setup.root)['source_commit'] == C
+
+
+def test_protected_recovery_never_overwrites_a_conflicting_credential(setup, monkeypatch):
+    vault = protected_setup(setup)
+    original = setup.transaction._write
+    conflicting = []
+    def introduce_conflict(record, phase):
+        original(record, phase)
+        if phase == 'prepared':
+            key = (setup.anchor.reference, setup.transaction._recovery_authority.binding(record))
+            vault.values[key] = 'retain-this-unrelated-existing-value'
+            conflicting.append(key)
+    monkeypatch.setattr(setup.transaction, '_write', introduce_conflict)
+    with pytest.raises(TrustError):
+        setup.transaction.apply(verified(setup))
+    assert len(conflicting) == 1 and vault.values[conflicting[0]] == 'retain-this-unrelated-existing-value'
+    assert setup.host.launches == 0 and setup.host.snapshot(setup.root)['source_commit'] == A
+
+
+def test_protected_terminal_cleanup_failure_retains_exact_credential_and_retries_without_reinstall(setup, monkeypatch):
+    vault = protected_setup(setup)
+    original = vault.delete
+    def failed(reference, binding):
+        assert json.loads(setup.transaction.journal.read_bytes())['phase'] == 'complete'
+        assert not (setup.root / PENDING).exists() and not (setup.root / PRIOR).exists()
+        raise OSError('Synthetic secure deletion failure')
+    with monkeypatch.context() as patch:
+        patch.setattr(vault, 'delete', failed)
+        with pytest.raises(TrustError, match='clear its own protected'):
+            setup.transaction.apply(verified(setup))
+    record, key = recovery_credential(setup)
+    assert key in vault.values and setup.host.launches == 1
+    assert restart_protected(setup).recover_update() == 'complete'
+    assert key not in vault.values and setup.host.launches == 1
+    assert vault.get(setup.anchor.reference, 'f' * 64) == 'unrelated-explicit-test-credential'
+
+
+def test_settled_journal_replay_without_protected_authority_cannot_restore_native_bytes(setup, monkeypatch):
+    vault = protected_setup(setup)
+    package = interrupted_update(setup, monkeypatch)
+    record, key = recovery_credential(setup)
+    retained = {path: path.read_bytes() for path in
+                (setup.transaction.journal, setup.root / PENDING, setup.root / PRIOR)}
+    assert restart_protected(setup).recover_update(setup.repository.root) == 'rolled-back'
+    assert key not in vault.values
+    for path, raw in retained.items():
+        atomic_write(path, raw)
+    restart_protected(setup)
+    before = recovery_state(setup)
+    with pytest.raises(TrustError, match='protected restart authority'):
+        setup.transaction.recover(reverified(setup, package))
+    assert recovery_state(setup) == before
