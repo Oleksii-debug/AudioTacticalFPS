@@ -1,0 +1,82 @@
+{
+  "schema": "carr-audio-metadata-review-candidate/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "donor": "41de2ca89fb5f5550c3d92d64d4c1850b2e6e3a7",
+  "base_reference": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+  "qualification": {
+    "final": "NOT_RUN; final sources reconstructed from exact retained patch inputs during unavailable executor; no final syntax, full suite, installed or Windows execution claim",
+    "earlier_donor": "56 PASS across original metadata core and UI suites, actual local FFmpeg, before final adaptation",
+    "earlier_publication_fix": "Eight initial boundary cases: baseline 6 FAIL / 2 PASS; earlier core correction 8 PASS. Final ten-case suite and later descriptor/resource/lifetime refinements have not run."
+  },
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/audio/metadata.py",
+      "blob": "bc6cd7d2d145f11aa25506fd324f2d2586df7ae4",
+      "origin": "41de2ca + exact reviewed patch inputs",
+      "runtime": "NOT_RUN on reconstructed final composition"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/audio_metadata_dialog.py",
+      "blob": "d511772a6a30eff240b94e0cd5cb4cf0578b6a5e",
+      "origin": "41de2ca + current ownership/resource/lifecycle adaptation",
+      "runtime": "NOT_RUN"
+    },
+    {
+      "path": "carr-library/tests/audio/test_metadata_publication.py",
+      "blob": "e6be0ecfd9de6018147c28c6c59ce27a52649d7f",
+      "runtime": "First eight cases passed earlier core; final ten-case reconstructed suite NOT_RUN"
+    },
+    {
+      "path": "carr-library/tests/ui/test_audio_metadata_dialog.py",
+      "blob": "f9ce819169db168361d22dcaf8c290a7ec99167c",
+      "runtime": "All donor tests retained; lifecycle fixture adapted; final NOT_RUN"
+    },
+    {
+      "path": "carr-library/tests/audio/test_metadata.py",
+      "blob": "356246290727d81d954b8d4077cf3be93398f8cc",
+      "runtime": "Exact donor source; 56-case baseline overlaps both donor suites"
+    },
+    {
+      "path": "carr-library/tests/ui/test_audio_metadata_lifetime.py",
+      "blob": "7a1e487685684e52eaffcd0430682b4ab2d2285d",
+      "runtime": "NOT_RUN; actual shared broker/FFmpeg and logical native control regression bodies"
+    },
+    {
+      "path": "carr-library/scripts/windows_audio_metadata_smoke.py",
+      "blob": "a312205a045c7b8e9eb834669a90da8c955fd5b7",
+      "runtime": "NOT_RUN final reconstructed composition"
+    },
+    {
+      "path": "carr-library/docs/AUDIO_METADATA_COVER.md",
+      "blob": "81d2b0c070256a00159b6eca98bda5897bec11fa",
+      "runtime": "NOT_RUN final reconstructed composition"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/studio_dialog.py",
+      "blob": "2ea4841d78a47f874a559af7fbfe42891a7f39e2",
+      "base_commit": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+      "merge_only": "Two added lines in install_studio_actions: audio_metadata_dialog import and Review audio metadata and cover action. Preserve concurrent Studio progress/other changes.",
+      "runtime": "NOT_RUN"
+    }
+  ],
+  "required_common_suites": [
+    "tests/audio/test_metadata.py",
+    "tests/audio/test_metadata_publication.py",
+    "tests/ui/test_audio_metadata_dialog.py",
+    "tests/ui/test_audio_metadata_lifetime.py"
+  ],
+  "installed_modules": [
+    "carr_library.audio.metadata",
+    "carr_library.ui.audio_metadata_dialog"
+  ],
+  "native_command": "python -I -B -X utf8 scripts/windows_audio_metadata_smoke.py --audio-evidence EXISTING_EXTERNAL_AUDIO_EVIDENCE_JSON",
+  "native_placement": "Inside current native outbound guard, external prepared test FFmpeg/ffprobe only, no sealed bundle mutation or audio redistribution",
+  "dependencies": "No new dependency/package; existing audio/ui packages, shared resource broker, owned process and retained temporary-directory mechanism",
+  "menu_delta": {
+    "path": "carr-library/src/carr_library/ui/studio_dialog.py",
+    "after_import": "    from .publishing_dialog import show_publishing",
+    "add_import": "    from .audio_metadata_dialog import show_audio_metadata",
+    "after_action": "                            ('Convert audio and apply effects...', lambda e: show_audio_conversion(frame)),",
+    "add_action": "                            ('Review audio metadata and cover...', lambda e: show_audio_metadata(frame)),"
+  }
+}

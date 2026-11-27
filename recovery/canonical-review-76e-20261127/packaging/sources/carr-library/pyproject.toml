@@ -1,0 +1,130 @@
+[build-system]
+requires = ["setuptools>=77,<85", "wheel>=0.45,<0.49"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "universal-research-library"
+version = "0.3.0.dev1"
+description = "Offline academic libraries, reading plans and exact source quotations with accessible desktop controls"
+readme = "docs/RUNNING.md"
+requires-python = ">=3.11"
+dependencies = [
+  "pypdf==7.1.1",
+  "pypdfium2==5.13.0",
+  "python-docx==1.2.0",
+  "platformdirs==4.10.0",
+  "filelock==3.29.0",
+  "Pillow==13.0.0",
+  "defusedxml==0.7.1",
+  "comtypes==1.5.0; sys_platform == 'win32'",
+  "bibtexparser==2.1.0",
+  "pylatexenc==2.11",
+  "quickjs-ng==0.18.0.2",
+]
+license-files = [
+  "bootstrap/vendor/cairn_extractors/LICENSE",
+  "src/carr_library/catalog/_filetype/LICENSE",
+  "src/carr_library/catalog/_rispy_LICENSE",
+  "src/carr_library/research/_vendor_rispy/LICENSE",
+  "src/carr_library/search/_vendor/rifflux/LICENSE",
+  "src/carr_library/ui/_vendor/wx_grid/LICENSE",
+  "src/carr_library/speech/COMTYPES_LICENSE.txt",
+  "src/carr_library/citations/_vendor_citeproc/LICENSE",
+  "src/carr_library/citations/_vendor_citeproc/CPAL",
+  "src/carr_library/citations/_vendor_citeproc/AGPLv3",
+  "src/carr_library/extract/TESSDATA_FAST_LICENSE",
+  "src/carr_library/extract/TESSDATA_BEST_LICENSE",
+]
+
+[project.optional-dependencies]
+spellcheck = ["spylls==0.1.7+carr.1"]
+sync = ["cryptography==50.0.2"]
+trusted-client = ["cryptography==50.0.2", "tuf==7.0.1", "securesystemslib==1.6.0",
+                  "urllib3==2.8.0", "cffi==2.1.1", "pycparser==3.12"]
+desktop = ["wxPython==4.2.4"]
+semantic = [
+  "fastembed==0.9.1",
+  "onnxruntime==1.32.0",
+  "tokenizers==0.23.3",
+  "huggingface-hub==1.16.1",
+  "numpy==2.3.5",
+]
+test = [
+  "pytest==9.0.2",
+  "beautifulsoup4>=4.12,<5",
+  "openpyxl>=3.1,<4",
+  "packaging>=25,<27",
+  "huggingface-hub==1.16.1",
+  "Pillow>=10.3,<14",
+  "reportlab==4.4.9",
+  "pytesseract==0.3.13",
+  "rapidfuzz==3.14.6",
+  "nltk==3.9.2",
+  "zstandard==0.25.0",
+]
+
+[project.scripts]
+research-library = "carr_library.__main__:main"
+research-library-trust = "carr_library.security.__main__:main"
+research-library-bibliography = "carr_library.bibliography_cli:main"
+research-library-ocr-models = "carr_library.extract.ocr_model_catalog:main"
+
+[project.gui-scripts]
+research-library-desktop = "carr_library.__main__:main"
+
+[project.urls]
+Source = "https://github.com/Oleksii-debug/AudioTacticalFPS/tree/carr-library/carr-library"
+
+[tool.setuptools]
+include-package-data = true
+packages = [
+  "carr_library",
+  "carr_library.acquisition",
+  "carr_library.integrations",
+  "carr_library.backup_compat",
+  "carr_library.catalog",
+  "carr_library.catalog._filetype",
+  "carr_library.citations",
+  "carr_library.extract",
+  "carr_library.ingest",
+  "carr_library.reader",
+  "carr_library.research",
+  "carr_library.research._vendor_rispy",
+  "carr_library.search",
+  "carr_library.search._vendor",
+  "carr_library.search._vendor.rifflux",
+  "carr_library.storage",
+  "carr_library.ui",
+  "carr_library.ui._vendor",
+  "carr_library.ui._vendor.wx_grid",
+  "carr_library.audio",
+  "carr_library.speech",
+  "carr_library.studio",
+  "carr_library.assistant",
+  "carr_library.operations",
+  "carr_library.security",
+  "carr_library.sync",
+  "carr_library.conversion",
+  "carr_library.academic_integration",
+  "carr_library.language_qualification",
+  "bootstrap",
+  "bootstrap.vendor",
+  "bootstrap.vendor.cairn_extractors",
+]
+
+[tool.setuptools.package-dir]
+carr_library = "src/carr_library"
+bootstrap = "bootstrap"
+
+[tool.setuptools.package-data]
+"*" = ["*.sql", "*.md", "*.ps1", "LICENSE", "UPSTREAM.json", "_rispy_LICENSE"]
+"carr_library.extract" = ["ocr-model-catalog.json", "TESSDATA_FAST_LICENSE", "TESSDATA_BEST_LICENSE"]
+"carr_library.academic_integration" = ["styles/*.csl", "locales/*.xml", "vendor/*", "csl_worker.cjs"]
+"carr_library.language_qualification" = ["data/*.md"]
+"carr_library.citations" = ["_vendor_citeproc/*", "styles/*"]
+"carr_library.speech" = ["COMTYPES_LICENSE.txt", "spellcheck_backend.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "bootstrap", "docs/contracts/probes"]
+pythonpath = ["src", "."]
+markers = ["requires_loopback: exercises an explicit synthetic local HTTP server; never an external provider"]

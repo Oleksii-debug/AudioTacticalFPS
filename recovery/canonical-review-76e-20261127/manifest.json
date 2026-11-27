@@ -1,0 +1,1114 @@
+{
+  "schema": "resonance-durable-reconciliation-checkpoint/1",
+  "base_commit": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+  "canonical_commit": "3beebd5aca900b8bf2e86498ae79db4015c96705",
+  "status": "REVIEWABLE_SOURCE_CHECKPOINT_NOT_APPLICATION_INTEGRATION",
+  "execution_environment": "Unavailable; final reconstructed candidates require exact CI. Do not transfer prior local PASS to reconstructed bytes.",
+  "base_portable_evidence": {
+    "run_id": 45969316754,
+    "job_id": 140405673702,
+    "passed": 5001,
+    "subtests": 14,
+    "failed": 0,
+    "skipped": 0,
+    "artifact_id": 15184756993
+  },
+  "export_candidate_commit": "c27b8b8ebf03cfb169a19b56b6e382c8f2623529",
+  "export_candidate_ci_run": 45971834200,
+  "files": [
+    {
+      "group": "packaging",
+      "path": "carr-library/docs/AUDIO_RUNTIME.md",
+      "sha": "ea21b6537841cd94f6e3187c15d65bbb84b4d804",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/packaging/SetupLocalAudio.cmd",
+      "sha": "eede996f0f90bf09a81fccdefad9b392aa998760",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/packaging/acquire_audio_runtime.py",
+      "sha": "9de23d3f79bf179a2b3da4d759d324086e09675b",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/packaging/add_audio_runtime.py",
+      "sha": "90f6acb4101d4adca90b7244043b678e82fe1900",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/packaging/audio-runtime/README.txt",
+      "sha": "3b2d20479de5994a9c9d1497a196459f14cd05c3",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/packaging/audio-runtime/licenses/BUILD_RECIPES_LICENSE",
+      "sha": "b9444ddc2718d07086ff655e306741d9cabf84b4",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/packaging/audio-runtime/licenses/COPYING.GPLv2",
+      "sha": "d159169d1050894d3ea3b98e1c965c4058208fe1",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/packaging/audio-runtime/licenses/COPYING.GPLv3",
+      "sha": "94a9ed024d3859793618152ea559a168bbcbb5e2",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/packaging/audio-runtime/licenses/COPYING.LGPLv2.1",
+      "sha": "40924c2a6da76a2b0c639f6fe7ef0b2d095a6adb",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/packaging/audio-runtime/licenses/COPYING.LGPLv3",
+      "sha": "65c5ca88a67c30becee01c5a8816d964b03862f9",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/packaging/audio-runtime/licenses/LICENSE.md",
+      "sha": "371b0913ce7c199c4092d9344680c80f78ebeb2a",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/packaging/audio-runtime/provenance/build-configuration.txt",
+      "sha": "51177e3d9c022ee90a11e0e60c953d5c7ee400a3",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/packaging/audio-runtime/provenance/checksums.sha256",
+      "sha": "8351116133798ac35ff04f72bf727fbc89b9a7df",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/packaging/audio-runtime/provenance/dependency-source-index.json",
+      "sha": "69dab303955ac5a6622e3a5a223d8ff3cf0cf4ed",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/packaging/audio-runtime/source-lock.json",
+      "sha": "be9955a9485b4fa419cc286aaa7920b48fecff07",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/packaging/build_windows_bundle.py",
+      "sha": "334ef7a24eb41dce9597b32612ebe5b2c15e0c90",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/packaging/prepare_audio_runtime.py",
+      "sha": "2ddde57cc6e7b29fd33ff8fc25d184b35c4b991d",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/packaging/setup_local_audio.py",
+      "sha": "2df676d830a4aedd2a417315f9f757d65129272d",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/packaging/wheel-notices/SOURCES.json",
+      "sha": "117955855f5c5dd47317fd3b40e682dd7df4dc26",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/packaging/wheel-notices/quickjs-ng-LICENSE.txt",
+      "sha": "85a47b3834ea036f597f5a318fe6e653a663fed5",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/packaging/wheel-notices/quickjs-ng-SOURCE_NOTICES.txt",
+      "sha": "da0f5e106ab0265549a37df983a971cab90cb5cd",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/packaging/windows-cp311.lock",
+      "sha": "1bccdec67a5d445677bc747275251ea0a02700a0",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/packaging/windows-roots.in",
+      "sha": "4cd6753985b5509015deda2f9753c57910e2bc2e",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/packaging/windows-sbom.cdx.json",
+      "sha": "a3d3661d110fdc4be61b3eda19d2fd253cf5262e",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/packaging/windows-semantic-cp311.lock",
+      "sha": "d9db4968b7e6fdb776da958072df7870332a2bb4",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/packaging/windows-semantic-roots.in",
+      "sha": "0ad32b2062d803827c7f79541d612db9a4156bff",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/packaging/windows-semantic-sbom.cdx.json",
+      "sha": "b99a213c3fb46dd5f7e01552946fd133cf4ac168",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/pyproject.toml",
+      "sha": "dcb0db89a8db568b3343bd97753dfb460c0d6466",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/scripts/ci_check.py",
+      "sha": "1cbf0988af39422fc6270a82bdbaebcefdad2ad2",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/scripts/windows_audio_runtime_smoke.py",
+      "sha": "eb9ee4918692e99441e800a808a377b71b92b14b",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/scripts/windows_transferable_bundle_smoke.py",
+      "sha": "a3b5de3d527ea1e06852f53b818aec977e74327b",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/scripts/windows_v3_smoke.py",
+      "sha": "950ae704028e500d2d4f27cdd3cc8f551fa1f210",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/src/carr_library/audio_runtime.py",
+      "sha": "ef0311800066241a2df6b7be79e48d1648c4c8e1",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/src/carr_library/native_checks.py",
+      "sha": "9164a5bd6e2fa2ac29f5a597eac57a801f7158f6",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/tests/packaging/test_audio_acquisition.py",
+      "sha": "a93e1b3fbc9b68aa5c5a66942ac8148c5d417f5b",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/tests/packaging/test_audio_bundle.py",
+      "sha": "bf63cf92deaf8df1b32d4fef0f5e6d90aa8c795c",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/tests/packaging/test_audio_runtime.py",
+      "sha": "2c9bc27c263464981ca4bf56d3d36cbeed595a07",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/tests/packaging/test_ci_check.py",
+      "sha": "b85c9f4b06592bb6471957b823b9a6e3d9068782",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/tests/packaging/test_local_audio_setup.py",
+      "sha": "b6fdbdfb6697a19da2afeca44542bae9ab6af5a9",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/tests/packaging/test_native_checks.py",
+      "sha": "1b60f6ef9da34fe8fe44bdbd457bc8b252d63033",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/tests/packaging/test_native_checks_manifest.py",
+      "sha": "5c1bc741d95a33d3969fbb7a310450aa5d2ef1e7",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/tests/packaging/test_native_launcher_acceptance.py",
+      "sha": "5238d6d7f397aba5d6673897146dc0c600cf5f69",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/tests/packaging/test_native_launcher_bundle.py",
+      "sha": "0bcd708ff3b98a522d9f18ba91eb384aeab1dbf5",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/tests/packaging/test_source_wheel.py",
+      "sha": "5251148aa4bae692d5a42ca22694e74d9ba863fe",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "packaging",
+      "path": "carr-library/tests/packaging/test_windows_bundle.py",
+      "sha": "d97961759a7e0e60458469317202539131686aa0",
+      "status": {
+        "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+        "native": "NOT_RUN",
+        "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+      }
+    },
+    {
+      "group": "backup",
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "sha": "fba1ff7758a1258f14606c6a31cce7ba78e02643",
+      "status": "EXACT_LOCAL_CHECKPOINT_FINAL_COMPOSITION_NOT_RUN"
+    },
+    {
+      "group": "backup",
+      "path": "carr-library/src/carr_library/pending_backup.py",
+      "sha": "240b2dd5497aa576b68899c88d353e0850ed09b9",
+      "status": "EXACT_LOCAL_CHECKPOINT_FINAL_COMPOSITION_NOT_RUN"
+    },
+    {
+      "group": "backup",
+      "path": "carr-library/src/carr_library/state_backup.py",
+      "sha": "d233427beb2b0b71437733280ce050acde2d2f94",
+      "status": "EXACT_LOCAL_CHECKPOINT_FINAL_COMPOSITION_NOT_RUN"
+    },
+    {
+      "group": "backup",
+      "path": "carr-library/src/carr_library/backup_compat/state.py",
+      "sha": "54390288e972b575fa71f39c4e470f595126fa96",
+      "status": "RECONSTRUCTED_EXACT_APPLIED_DELTA_LOCAL_SHA_COMPARISON_PENDING"
+    },
+    {
+      "group": "backup",
+      "path": "carr-library/src/carr_library/backup_current.py",
+      "sha": "4a4249da993ef312d158a1dff3b64a45649287b9",
+      "status": "RECONSTRUCTED_EXACT_APPLIED_DELTA_LOCAL_SHA_COMPARISON_PENDING"
+    },
+    {
+      "group": "backup",
+      "path": "carr-library/src/carr_library/backup_generated.py",
+      "sha": "4c4a2741eb7c2e9a5725604551834e5c2a9fb947",
+      "status": "EXACT_CANONICAL_BLOB"
+    },
+    {
+      "group": "backup",
+      "path": "carr-library/src/carr_library/backup_producers.py",
+      "sha": "fef4934ed396218d10ded34d88deeffd9c978627",
+      "status": "NEW_TRANSLATION_ADAPTER_SOURCE_APPROVED_NOT_RUN"
+    },
+    {
+      "group": "backup",
+      "path": "carr-library/src/carr_library/backup_sidecars.py",
+      "sha": "7f5ac619c75527b0c3b3e4ba839944b9d2cc2bb4",
+      "status": "RECONSTRUCTED_EXACT_APPLIED_DELTA_LOCAL_SHA_COMPARISON_PENDING"
+    },
+    {
+      "group": "backup",
+      "path": "carr-library/tests/storage/test_backup_legacy_compat.py",
+      "sha": "f86800a57db805d08f5cf0ef786fea18fc97f549",
+      "status": "RECONSTRUCTED_CHECKED_TRANSFORM_NOT_RUN"
+    },
+    {
+      "group": "backup",
+      "path": "carr-library/tests/storage/test_backup_reporting.py",
+      "sha": "b5cef41eb740c61dd94fed9b3ffb0c9e80a42373",
+      "status": "RECONSTRUCTED_CHECKED_TRANSFORM_NOT_RUN"
+    },
+    {
+      "group": "backup",
+      "path": "carr-library/tests/storage/test_backup_restore_cancellation.py",
+      "sha": "c0a6400a318dda15fa3a2c53a89387f9bc33c114",
+      "status": "RECONSTRUCTED_CHECKED_TRANSFORM_NOT_RUN"
+    },
+    {
+      "group": "backup",
+      "path": "carr-library/tests/storage/test_progress_preferences_backup.py",
+      "sha": "33c832a7cc62adbf7e14ad54d20c77a9f161a56b",
+      "status": "RECONSTRUCTED_CHECKED_TRANSFORM_NOT_RUN"
+    },
+    {
+      "group": "backup",
+      "path": "carr-library/tests/storage/test_engine_settings_dordiai_backup.py",
+      "sha": "84d0952b6e93f2f5dd1a82bda63718a8f8c6ea06",
+      "status": "RECONSTRUCTED_CHECKED_TRANSFORM_NOT_RUN"
+    },
+    {
+      "group": "backup",
+      "path": "carr-library/tests/storage/test_backup_keyboard_drafts.py",
+      "sha": "2f0076bd4272bc8f542ab50ea56187a3cd191b78",
+      "status": "RECONSTRUCTED_CHECKED_TRANSFORM_NOT_RUN"
+    },
+    {
+      "group": "backup",
+      "path": "carr-library/tests/storage/test_backup_generated_audio.py",
+      "sha": "faed937a5258204d285472c1e667bbca6e4cc443",
+      "status": "EXACT_PUBLIC_PREIMAGE"
+    },
+    {
+      "group": "backup",
+      "path": "carr-library/tests/storage/test_backup_pending_common4.py",
+      "sha": "2d0bd02e29dbc533a9ef4de298f6eaaa508e1675",
+      "status": "EXACT_PUBLIC_PREIMAGE"
+    },
+    {
+      "group": "backup",
+      "path": "carr-library/tests/storage/test_backup_v4_sidecars.py",
+      "sha": "2f669e3c61f2b3c271033688416918a897e69b09",
+      "status": "EXACT_PUBLIC_PREIMAGE"
+    },
+    {
+      "group": "backup",
+      "path": "carr-library/tests/storage/test_engine_settings_backup.py",
+      "sha": "b7ecfa366738b0428912803266249dd343f96776",
+      "status": "EXACT_PUBLIC_PREIMAGE"
+    },
+    {
+      "group": "backup",
+      "path": "carr-library/tests/storage/test_state_snapshot_identity.py",
+      "sha": "e8706c5258741aac52a01270b85290beb01ac594",
+      "status": "EXACT_PUBLIC_PREIMAGE"
+    },
+    {
+      "group": "backup",
+      "path": "carr-library/tests/storage/test_library_backup_reading_state.py",
+      "sha": "b225c9f1fc96cf112d93bc728a50699ee64c3585",
+      "status": "EXACT_PUBLIC_PREIMAGE"
+    },
+    {
+      "group": "backup",
+      "path": "carr-library/tests/storage/test_backup_schema_identity.py",
+      "sha": "2a9cde0547292d759c74074c94fe696cd75f1349",
+      "status": "EXACT_PUBLIC_PREIMAGE"
+    },
+    {
+      "group": "backup",
+      "path": "carr-library/tests/storage/test_complete_pending_backup.py",
+      "sha": "1fa4bf33b17eed0e31ec80bb2abac410f8a49ee2",
+      "status": "EXACT_PUBLIC_PREIMAGE"
+    },
+    {
+      "group": "backup",
+      "path": "carr-library/tests/storage/test_v3_state_backup.py",
+      "sha": "d3172f0ab18b8a51cff5127d4f7c98682649f1ce",
+      "status": "RECONSTRUCTED_CHECKED_TRANSFORM_NOT_RUN"
+    },
+    {
+      "group": "backup",
+      "path": "carr-library/tests/storage/test_backup_primary_producers.py",
+      "sha": "f75ef2b869565c467296ea455d606fb4463fdc8e",
+      "status": "RECONSTRUCTED_CHECKED_TRANSFORM_NOT_RUN"
+    },
+    {
+      "group": "backup",
+      "path": "carr-library/tests/storage/test_backup_v4_review.py",
+      "sha": "e70e93463c388ef710a0f45eb354bc25c4a43263",
+      "status": "RECONSTRUCTED_CHECKED_TRANSFORM_NOT_RUN"
+    },
+    {
+      "group": "backup",
+      "path": "carr-library/tests/storage/test_studio_input_backup.py",
+      "sha": "2314423388f5fb4fa3f492899c643e540aff9ea4",
+      "status": "RECONSTRUCTED_CHECKED_TRANSFORM_NOT_RUN"
+    },
+    {
+      "group": "backup",
+      "path": "carr-library/tests/storage/test_backup_transcription.py",
+      "sha": "cd6aae96b8436986ac81e2d4efdb6459ecc60dcf",
+      "status": "RECONSTRUCTED_CHECKED_TRANSFORM_NOT_RUN"
+    },
+    {
+      "group": "backup",
+      "path": "carr-library/tests/storage/test_backup_studio_media.py",
+      "sha": "4abd02281fe03c0e42c663e7196d4ffd1d74a020",
+      "status": "RECONSTRUCTED_CHECKED_TRANSFORM_NOT_RUN"
+    },
+    {
+      "group": "backup",
+      "path": "carr-library/tests/storage/test_backup_v5_extensions.py",
+      "sha": "eb60bed9fbf5030cfa4a0e705323c321d5c5da88",
+      "status": "RECONSTRUCTED_CHECKED_TRANSFORM_NOT_RUN"
+    },
+    {
+      "group": "backup",
+      "path": "carr-library/tests/storage/legacy_state_writer.py",
+      "sha": "0cf80f8fcfc338a6da2203fdd4f96ad57296185a",
+      "status": "LITERAL_PRIOR_PRODUCER_WITH_QUALIFIED_IMPORTS_NOT_RUN"
+    },
+    {
+      "group": "backup",
+      "path": "carr-library/tests/storage/test_backup_translation.py",
+      "sha": "d9d91d85e5bcccd38ce68c9731f1434671652fda",
+      "status": "SOURCE_APPROVED_NOT_RUN"
+    },
+    {
+      "group": "metadata",
+      "path": "carr-library/src/carr_library/audio/metadata.py",
+      "sha": "bc6cd7d2d145f11aa25506fd324f2d2586df7ae4",
+      "status": "NOT_RUN on reconstructed final composition"
+    },
+    {
+      "group": "metadata",
+      "path": "carr-library/src/carr_library/ui/audio_metadata_dialog.py",
+      "sha": "d511772a6a30eff240b94e0cd5cb4cf0578b6a5e",
+      "status": "NOT_RUN"
+    },
+    {
+      "group": "metadata",
+      "path": "carr-library/tests/audio/test_metadata_publication.py",
+      "sha": "e6be0ecfd9de6018147c28c6c59ce27a52649d7f",
+      "status": "First eight cases passed earlier core; final ten-case reconstructed suite NOT_RUN"
+    },
+    {
+      "group": "metadata",
+      "path": "carr-library/tests/ui/test_audio_metadata_dialog.py",
+      "sha": "f9ce819169db168361d22dcaf8c290a7ec99167c",
+      "status": "All donor tests retained; lifecycle fixture adapted; final NOT_RUN"
+    },
+    {
+      "group": "metadata",
+      "path": "carr-library/tests/audio/test_metadata.py",
+      "sha": "356246290727d81d954b8d4077cf3be93398f8cc",
+      "status": "Exact donor source; 56-case baseline overlaps both donor suites"
+    },
+    {
+      "group": "metadata",
+      "path": "carr-library/tests/ui/test_audio_metadata_lifetime.py",
+      "sha": "7a1e487685684e52eaffcd0430682b4ab2d2285d",
+      "status": "NOT_RUN; actual shared broker/FFmpeg and logical native control regression bodies"
+    },
+    {
+      "group": "metadata",
+      "path": "carr-library/scripts/windows_audio_metadata_smoke.py",
+      "sha": "a312205a045c7b8e9eb834669a90da8c955fd5b7",
+      "status": "NOT_RUN final reconstructed composition"
+    },
+    {
+      "group": "metadata",
+      "path": "carr-library/docs/AUDIO_METADATA_COVER.md",
+      "sha": "81d2b0c070256a00159b6eca98bda5897bec11fa",
+      "status": "NOT_RUN final reconstructed composition"
+    },
+    {
+      "group": "metadata",
+      "path": "carr-library/src/carr_library/ui/studio_dialog.py",
+      "sha": "2ea4841d78a47f874a559af7fbfe42891a7f39e2",
+      "status": "NOT_RUN"
+    },
+    {
+      "group": "root",
+      "path": "carr-library/src/carr_library/research/export_file.py",
+      "sha": "fb95127e3938a66ec1c4cb4f0d9fa92468fc9ef8",
+      "status": "SOURCE_RECONSTRUCTED_NOT_RUN"
+    },
+    {
+      "group": "root",
+      "path": "carr-library/src/carr_library/ui/export_destination.py",
+      "sha": "26a227fab5a7737ae3469e4d342fc70d5a44ef6c",
+      "status": "SOURCE_RECONSTRUCTED_NOT_RUN"
+    },
+    {
+      "group": "root",
+      "path": "carr-library/tests/reader/test_export_no_clobber.py",
+      "sha": "0b15b2a0f6aae9cc7dcb9cc26e9de730c1f4c0c9",
+      "status": "SOURCE_RECONSTRUCTED_NOT_RUN"
+    },
+    {
+      "group": "root",
+      "path": "carr-library/tests/reader/test_export_change_time.py",
+      "sha": "ebeba99d47eea6e4e97d9447ac568e576af0240c",
+      "status": "SOURCE_RECONSTRUCTED_NOT_RUN"
+    },
+    {
+      "group": "root",
+      "path": "carr-library/tests/ui/test_export_confirmation.py",
+      "sha": "bf1a4134995af42c0e4ee3d40dc49e784d57d34f",
+      "status": "SOURCE_RECONSTRUCTED_NOT_RUN"
+    },
+    {
+      "group": "root",
+      "path": ".github/workflows/carr-convergence-review.yml",
+      "sha": "695a846e3f60e2e48c95e061bdcf27e45a86c6f2",
+      "status": "SOURCE_REVIEWED_NOT_RUN"
+    },
+    {
+      "group": "root",
+      "path": "carr-library/src/carr_library/assistant/service.py",
+      "sha": "946a1a28ced7de30d97893e7edb8b01333b986c1",
+      "status": "THREE_WAY_MERGED_SOURCE_REVIEWED_NOT_RUN"
+    },
+    {
+      "group": "root",
+      "path": "carr-library/src/carr_library/audio/music.py",
+      "sha": "da590603a38085ff3f8a0f6099c40f5b7bc1b76f",
+      "status": "THREE_WAY_MERGED_SOURCE_REVIEWED_NOT_RUN"
+    },
+    {
+      "group": "root",
+      "path": "carr-library/src/carr_library/audio/process.py",
+      "sha": "d7a477ac5c2e5ff3cfb9169b41750fb07f6459ca",
+      "status": "THREE_WAY_MERGED_SOURCE_REVIEWED_NOT_RUN"
+    },
+    {
+      "group": "root",
+      "path": "carr-library/src/carr_library/durable_state.py",
+      "sha": "669b623881cdd90fb723f9c7da725a5f57ae5b1c",
+      "status": "THREE_WAY_MERGED_SOURCE_REVIEWED_NOT_RUN"
+    },
+    {
+      "group": "root",
+      "path": "carr-library/src/carr_library/ingest/retained_assets.py",
+      "sha": "51ff989f452f926a71105e96223c3eb2f57dc5ce",
+      "status": "THREE_WAY_MERGED_SOURCE_REVIEWED_NOT_RUN"
+    },
+    {
+      "group": "root",
+      "path": "carr-library/src/carr_library/search/literal.py",
+      "sha": "ce7af8cc3fc2f6ac73e4fb6edd382be46ca3474d",
+      "status": "THREE_WAY_MERGED_SOURCE_REVIEWED_NOT_RUN"
+    },
+    {
+      "group": "root",
+      "path": "carr-library/src/carr_library/speech/reading.py",
+      "sha": "18dd461f9ee7853bc745ef7805a8c187c41233e8",
+      "status": "THREE_WAY_MERGED_SOURCE_REVIEWED_NOT_RUN"
+    },
+    {
+      "group": "root",
+      "path": "carr-library/src/carr_library/application.py",
+      "sha": "ff42600453f550510fafa83f804b94d8002143d4",
+      "status": "SOURCE_RECONCILED_NOT_RUN"
+    },
+    {
+      "group": "root",
+      "path": "carr-library/src/carr_library/research/academic_library.py",
+      "sha": "19222932e33bf34a2b825211d6cd32f31bac55b0",
+      "status": "SOURCE_RECONCILED_NOT_RUN"
+    },
+    {
+      "group": "root",
+      "path": "carr-library/src/carr_library/research/bibtex_import.py",
+      "sha": "0571e36ff9c23b27fe9acf5d2023d047fe5a32eb",
+      "status": "CURRENT_EXACT_ALREADY_PORTABLE_QUALIFIED"
+    },
+    {
+      "group": "root",
+      "path": "carr-library/src/carr_library/ui/academic_actions.py",
+      "sha": "c97f1e1d0b1f73e366af47cdf8bdafb4691eeeb4",
+      "status": "SOURCE_RECONCILED_NOT_RUN"
+    },
+    {
+      "group": "root",
+      "path": "carr-library/src/carr_library/ui/academic_library_dialog.py",
+      "sha": "1e29563c0a6d113d1ff5269ff115a21c222aa55a",
+      "status": "SOURCE_RECONCILED_NOT_RUN"
+    },
+    {
+      "group": "root",
+      "path": "carr-library/src/carr_library/ui/assistant_dialog.py",
+      "sha": "b584dd0bf677cfe590382199f671283eedccda04",
+      "status": "SOURCE_RECONCILED_NOT_RUN"
+    },
+    {
+      "group": "root",
+      "path": "carr-library/src/carr_library/ui/catalog_tools_dialog.py",
+      "sha": "401e084beb3d6f0d02db9d56cf86b1c4bc7a0ee0",
+      "status": "SOURCE_RECONCILED_NOT_RUN"
+    },
+    {
+      "group": "root",
+      "path": "carr-library/src/carr_library/ui/import_center.py",
+      "sha": "dc83ac96132411c8d96e53272ffabcfc09c88c29",
+      "status": "SOURCE_RECONCILED_NOT_RUN"
+    },
+    {
+      "group": "root",
+      "path": "carr-library/src/carr_library/ui/language_matrix.py",
+      "sha": "b0630fc87e8f631b2054538d4bff51ba0f2f7ed3",
+      "status": "SOURCE_RECONCILED_NOT_RUN"
+    }
+  ],
+  "exact_preserve": {
+    "carr-library/src/carr_library/__main__.py": {
+      "sha": "a809c0a658c52de3cd16444e632e9cecb107374f",
+      "reason": "The current CLI includes every canonical retained change plus mandatory DOI and native SAPI dispatchers; canonical deleted those accepted current routes."
+    },
+    "carr-library/src/carr_library/semantic.py": {
+      "sha": "0df23b007dac6200c448166efae435edc930f4fd",
+      "reason": "Reviewed exact comparison: current file contains canonical functionality plus stricter accepted behavior; retain current source and tests."
+    },
+    "carr-library/src/carr_library/semantic_cache.py": {
+      "sha": "3ba6e9498797d02d952b75afe33eb7911fe66696",
+      "reason": "Reviewed exact comparison: current file contains canonical functionality plus stricter accepted behavior; retain current source and tests."
+    },
+    "carr-library/src/carr_library/extract/document_formats_text.py": {
+      "sha": "c760e7d1aabf5acbf71c2e76acc2eba9a714783d",
+      "reason": "Reviewed exact comparison: current file contains canonical functionality plus stricter accepted behavior; retain current source and tests."
+    },
+    "carr-library/src/carr_library/ui/acquisition_dialog.py": {
+      "sha": "86d853bfd5e47fc698c5890b2f556606caad71f5",
+      "reason": "Reviewed exact comparison: current file contains canonical functionality plus stricter accepted behavior; retain current source and tests."
+    },
+    "carr-library/docs/academic_integration.md": {
+      "sha": "eadf93982b60cb4a39e343952ef834638b74c76f",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    "carr-library/src/carr_library/academic_integration/UPSTREAM.json": {
+      "sha": "d98edb62ec84f3f1c1358a7ca6920eeaf688a183",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    "carr-library/src/carr_library/academic_integration/__init__.py": {
+      "sha": "142b054676a957cf87dd389e2c85989f9b715a3a",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    "carr-library/src/carr_library/academic_integration/csl_worker.cjs": {
+      "sha": "5796d5da9db986250fef76f81b600410c40e493a",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    "carr-library/src/carr_library/academic_integration/documents.py": {
+      "sha": "fc36615166dab5768dc577c0828040f4beae6e45",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    "carr-library/src/carr_library/academic_integration/doi.py": {
+      "sha": "56fd04e3704a2d38ddb5f64e877364c723e6877c",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    "carr-library/src/carr_library/academic_integration/formatting.py": {
+      "sha": "ec4e18eadadb16e42abbf88b6ef0f09941ce3681",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    "carr-library/src/carr_library/academic_integration/locales/locales-en-US.xml": {
+      "sha": "e1de22196bdbc12bdda9478dbbd4f37f472c818c",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    "carr-library/src/carr_library/academic_integration/locales/locales-sk-SK.xml": {
+      "sha": "02e24843325381a25f3a9462008c6b157b3f41f0",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    "carr-library/src/carr_library/academic_integration/locales/locales-uk-UA.xml": {
+      "sha": "d850a8c282873ca43f6f8afdcaced2d6a9ea1339",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    "carr-library/src/carr_library/academic_integration/regeneration.py": {
+      "sha": "83974ab2c6a3832517a5f1e5b1dde24b0c62756a",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    "carr-library/src/carr_library/academic_integration/styles/apa.csl": {
+      "sha": "5ba26ebddef20a9e41d2456b916c14ce88647050",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    "carr-library/src/carr_library/academic_integration/styles/chicago-author-date.csl": {
+      "sha": "44a177b9cfbeeb61db38bd78616e87e1dcdee4eb",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    "carr-library/src/carr_library/academic_integration/styles/chicago-fullnote-bibliography.csl": {
+      "sha": "b933cd7e18daa61c6efbeda27c262ef7893136ab",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    "carr-library/src/carr_library/academic_integration/styles/harvard-cite-them-right.csl": {
+      "sha": "903c6d2dff0195f7acb7b929126379bb49e8e263",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    "carr-library/src/carr_library/academic_integration/styles/ieee.csl": {
+      "sha": "72cb1491864a388edf086b35d04071f5b2ce84a4",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    "carr-library/src/carr_library/academic_integration/styles/modern-language-association.csl": {
+      "sha": "698263eb2dd88fdbee3a16021465c2e3bc78dcb1",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    "carr-library/src/carr_library/academic_integration/styles/nlm-citation-sequence.csl": {
+      "sha": "cbfcc8212dd71a4a0b4faf0cdb20a89307902ed2",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    "carr-library/src/carr_library/academic_integration/vendor/LICENSE": {
+      "sha": "dbc0a018c367d83f061e706d52007d988d083d2a",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    "carr-library/src/carr_library/academic_integration/vendor/LICENSE-AGPL-3.0.txt": {
+      "sha": "0c97efd25b5974b974ed9a8a18207bc4f55bb338",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    "carr-library/src/carr_library/academic_integration/vendor/LICENSE-CC-BY-SA-3.0.txt": {
+      "sha": "604209a804632b6e5274005a22293976d07c3099",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    "carr-library/src/carr_library/academic_integration/vendor/LICENSE-CPAL-1.0.txt": {
+      "sha": "0ed5b69013c62675941639f3acad0ce3d746a4a7",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    "carr-library/src/carr_library/academic_integration/vendor/NOTICE.txt": {
+      "sha": "f0ddf6fc770a5bbf6d45cd43b65db4ea265053f8",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    "carr-library/src/carr_library/academic_integration/vendor/citeproc.js": {
+      "sha": "31b4f533c4bb4816d91dd61f79b4aa54ff520ac2",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    "carr-library/tests/academic_integration/test_bibtex_workflow.py": {
+      "sha": "b89043cafc09f7ffe2b5621d6ceae0c86b0fb12f",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    "carr-library/tests/academic_integration/test_citation_ui.py": {
+      "sha": "1c83e05eb2028acf1dac6cd068597646d33c2d5f",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    "carr-library/tests/academic_integration/test_documents.py": {
+      "sha": "ae8f71f381cfe94f65601da7fd5039b16321c411",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    "carr-library/tests/academic_integration/test_doi.py": {
+      "sha": "e777d18f249b4417c539c968660fe67e60153929",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    "carr-library/tests/academic_integration/test_end_to_end.py": {
+      "sha": "e65865916714adcb0576b696f533ceed70b01216",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    "carr-library/tests/academic_integration/test_formatting.py": {
+      "sha": "5e6720c4d4c02438788fe63bd677a6af8ce7408a",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    "carr-library/tests/academic_integration/test_regeneration.py": {
+      "sha": "ac8fda9ec62c5a34b3e2fc4f4eebb1dfae613732",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    "carr-library/src/carr_library/ingest/worker.py": {
+      "sha": "65a90957d98fce756bc501fa669fed59278d9f25",
+      "reason": "Previously independently reviewed current ownership, selected-runtime process and refresh evidence is stronger; canonical counterpart is older or removed."
+    },
+    "carr-library/packaging/native-launcher/README.md": {
+      "sha": "a81ec36b46476d2e1b2ccdad5fdcbdc76b7a86ce",
+      "reason": "Previously independently reviewed current ownership, selected-runtime process and refresh evidence is stronger; canonical counterpart is older or removed."
+    },
+    "carr-library/packaging/native-launcher/probe_installed_windows.py": {
+      "sha": "fe43d20d79009f82a5031bcb2932aed52c8bad20",
+      "reason": "Previously independently reviewed current ownership, selected-runtime process and refresh evidence is stronger; canonical counterpart is older or removed."
+    },
+    "carr-library/packaging/refresh_private_bundle.py": {
+      "sha": "07a3e62a1975d961d24e55eccc63befe0bcb56f3",
+      "reason": "Previously independently reviewed current ownership, selected-runtime process and refresh evidence is stronger; canonical counterpart is older or removed."
+    },
+    "carr-library/tests/packaging/test_refresh_private_bundle_review.py": {
+      "sha": "2fa8627fc3f803335ebafb97d4e4a74b1ac4b339",
+      "reason": "Previously independently reviewed current ownership, selected-runtime process and refresh evidence is stronger; canonical counterpart is older or removed."
+    },
+    "carr-library/src/carr_library/ui/catalog_insights_actions.py": {
+      "sha": "2927392e1cbb3db71255a2d9beebc5d45d634748",
+      "reason": "Exact current source already owns the overwrite prompt and publication receipt; canonical auto-added prompt would duplicate it and reference an unimported helper."
+    }
+  },
+  "unresolved": [
+    ".github/workflows/carr-native-launcher.yml",
+    ".github/workflows/carr-v3.yml",
+    ".github/workflows/carr-windows.yml",
+    "carr-library/docs/ACADEMIC_ACQUISITION.md",
+    "carr-library/docs/READING_DESK.md",
+    "carr-library/docs/RUNNING.md",
+    "carr-library/docs/START_UK.txt",
+    "carr-library/docs/START_V3_UK.txt",
+    "carr-library/docs/TRANSCRIPTION_INTEGRATION_REVIEW.md",
+    "carr-library/docs/UPSTREAM_BIBTEX.md",
+    "carr-library/docs/V3_RELEASE_READINESS.md",
+    "carr-library/packaging/CheckInstallation.cmd",
+    "carr-library/packaging/build_windows_bundle.py",
+    "carr-library/packaging/install_windows.py",
+    "carr-library/packaging/prepare_windows_audio.py",
+    "carr-library/packaging/wheel-notices/SOURCES.json",
+    "carr-library/packaging/windows-cp311.lock",
+    "carr-library/packaging/windows-sbom.cdx.json",
+    "carr-library/packaging/windows-semantic-cp311.lock",
+    "carr-library/packaging/windows-semantic-sbom.cdx.json",
+    "carr-library/pyproject.toml",
+    "carr-library/scripts/ci_check.py",
+    "carr-library/scripts/windows_v3_smoke.py",
+    "carr-library/src/carr_library/acquisition/__init__.py",
+    "carr-library/src/carr_library/acquisition/cli.py",
+    "carr-library/src/carr_library/acquisition/models.py",
+    "carr-library/src/carr_library/acquisition/providers.py",
+    "carr-library/src/carr_library/acquisition/service.py",
+    "carr-library/src/carr_library/acquisition/transport.py",
+    "carr-library/src/carr_library/integrations/__init__.py",
+    "carr-library/src/carr_library/integrations/dordiai_voices.py",
+    "carr-library/src/carr_library/library_backup.py",
+    "carr-library/src/carr_library/native_checks.py",
+    "carr-library/src/carr_library/pending_backup.py",
+    "carr-library/src/carr_library/runtime_settings.py",
+    "carr-library/src/carr_library/speech/progress_speech.py",
+    "carr-library/src/carr_library/speech/runtime.py",
+    "carr-library/src/carr_library/state_backup.py",
+    "carr-library/src/carr_library/studio/render.py",
+    "carr-library/src/carr_library/ui/citation_formatting.py",
+    "carr-library/src/carr_library/ui/desktop_app.py",
+    "carr-library/src/carr_library/ui/engine_settings.py",
+    "carr-library/src/carr_library/ui/keyboard_settings.py",
+    "carr-library/src/carr_library/ui/operation_progress.py",
+    "carr-library/src/carr_library/ui/reading_desk.py",
+    "carr-library/src/carr_library/ui/save_actions.py",
+    "carr-library/src/carr_library/ui/speech_dialog.py",
+    "carr-library/src/carr_library/ui/studio_dialog.py",
+    "carr-library/src/carr_library/ui/translation_dialog.py",
+    "carr-library/tests/acquisition/test_acquisition_cli.py",
+    "carr-library/tests/acquisition/test_acquisition_security.py",
+    "carr-library/tests/acquisition/test_acquisition_workflow.py",
+    "carr-library/tests/acquisition/test_providers.py",
+    "carr-library/tests/catalog/test_ris_apply.py",
+    "carr-library/tests/e2e/test_extended_document_workflows.py",
+    "carr-library/tests/e2e/test_nested_search_clock_budget.py",
+    "carr-library/tests/e2e/test_search_operation_budget.py",
+    "carr-library/tests/extract/test_document_formats_text.py",
+    "carr-library/tests/ingest/test_worker_publication_boundary.py",
+    "carr-library/tests/integrations/test_dordiai_convergence.py",
+    "carr-library/tests/integrations/test_dordiai_probe_cancellation.py",
+    "carr-library/tests/integrations/test_dordiai_voices.py",
+    "carr-library/tests/packaging/test_ci_check.py",
+    "carr-library/tests/packaging/test_prepare_windows_audio.py",
+    "carr-library/tests/packaging/test_source_wheel.py",
+    "carr-library/tests/packaging/test_windows_bundle.py",
+    "carr-library/tests/packaging/test_worker_bytecode.py",
+    "carr-library/tests/reader/test_export_publication_boundary.py",
+    "carr-library/tests/research/test_bibtex_import.py",
+    "carr-library/tests/search/test_advanced_search.py",
+    "carr-library/tests/search/test_semantic_cache.py",
+    "carr-library/tests/speech/test_progress_speech.py",
+    "carr-library/tests/storage/test_complete_pending_backup.py",
+    "carr-library/tests/storage/test_pending_backup.py",
+    "carr-library/tests/storage/test_v3_state_backup.py",
+    "carr-library/tests/studio/test_production_cancellation_outcomes.py",
+    "carr-library/tests/ui/native_catalog_tools_smoke.py",
+    "carr-library/tests/ui/native_document_formats_smoke.py",
+    "carr-library/tests/ui/probe_advanced_search_native.py",
+    "carr-library/tests/ui/probe_catalog_insights_actions.py",
+    "carr-library/tests/ui/test_academic_actions.py",
+    "carr-library/tests/ui/test_academic_export_handler.py",
+    "carr-library/tests/ui/test_academic_library_dialog.py",
+    "carr-library/tests/ui/test_catalog_tools_dialog.py",
+    "carr-library/tests/ui/test_desktop_handlers.py",
+    "carr-library/tests/ui/test_desktop_result_modes.py",
+    "carr-library/tests/ui/test_federated_search.py",
+    "carr-library/tests/ui/test_keyboard_settings.py",
+    "carr-library/tests/ui/test_operation_progress.py",
+    "carr-library/tests/ui/test_progress_job_review.py",
+    "carr-library/tests/ui/test_progress_media_quiet.py",
+    "carr-library/tests/ui/test_progress_voice_actions.py",
+    "carr-library/tests/ui/test_reading_desk_actions.py",
+    "carr-library/tests/ui/test_studio_progress_isolation.py"
+  ],
+  "notes": [
+    "These sources are nested under recovery only; application tree remains the base commit.",
+    "Each module manifest states qualification and integration requirements. Reconstructed final sources are NOT_RUN unless later exact CI evidence says otherwise.",
+    "Metadata Studio source is a two-line menu delta only. Do not overwrite the richer progress/player Studio composition.",
+    "Canonical whole-tree merge, final Windows/NVDA, actual private engines and distribution qualification remain incomplete."
+  ]
+}

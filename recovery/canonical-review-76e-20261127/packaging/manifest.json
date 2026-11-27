@@ -1,0 +1,418 @@
+{
+  "commit": "7d83bbb4824e8013cc56758ff1ede490d8579670",
+  "tree": "60046697d2a37adea0d7ebaba07079697f18b76c",
+  "base": "25c7e78e5e0ea415b9938afbf1412826c18deabd",
+  "canonical": "966e5ccf892243ead6942c635af5fbab47e72551",
+  "paths": [
+    {
+      "path": "carr-library/docs/AUDIO_RUNTIME.md",
+      "blob": "ea21b6537841cd94f6e3187c15d65bbb84b4d804",
+      "base_blob": null,
+      "canonical_blob": "0fd717382d8accb908fab966b803cb9510c2d086",
+      "sha256": "50d48e28c93a595084c3d2a75e896191406317d3aeb76d894f225c082b1a570e",
+      "bytes": 7993,
+      "canonical_exact": false
+    },
+    {
+      "path": "carr-library/packaging/SetupLocalAudio.cmd",
+      "blob": "eede996f0f90bf09a81fccdefad9b392aa998760",
+      "base_blob": null,
+      "canonical_blob": "eede996f0f90bf09a81fccdefad9b392aa998760",
+      "sha256": "9764a7eb0e6679888722576bcc1ceec0569650c7375002c15815e289af08893a",
+      "bytes": 621,
+      "canonical_exact": true
+    },
+    {
+      "path": "carr-library/packaging/acquire_audio_runtime.py",
+      "blob": "9de23d3f79bf179a2b3da4d759d324086e09675b",
+      "base_blob": null,
+      "canonical_blob": "9de23d3f79bf179a2b3da4d759d324086e09675b",
+      "sha256": "7d1791707248afe415fa6a7ec4970369ba8eb1e3e6f9a8c8f621e5013099801e",
+      "bytes": 3794,
+      "canonical_exact": true
+    },
+    {
+      "path": "carr-library/packaging/add_audio_runtime.py",
+      "blob": "90f6acb4101d4adca90b7244043b678e82fe1900",
+      "base_blob": null,
+      "canonical_blob": "90f6acb4101d4adca90b7244043b678e82fe1900",
+      "sha256": "0bb50ca4bad8ddea401420e2b8863c142d4d0e7c2bc8af4df26a1f2a1384fc27",
+      "bytes": 7835,
+      "canonical_exact": true
+    },
+    {
+      "path": "carr-library/packaging/audio-runtime/README.txt",
+      "blob": "3b2d20479de5994a9c9d1497a196459f14cd05c3",
+      "base_blob": null,
+      "canonical_blob": "3b2d20479de5994a9c9d1497a196459f14cd05c3",
+      "sha256": "6c2c33ded92415f71aad340bb47ac2ffc440dba22cf8692587a5acd601b6e8c6",
+      "bytes": 1967,
+      "canonical_exact": true
+    },
+    {
+      "path": "carr-library/packaging/audio-runtime/licenses/BUILD_RECIPES_LICENSE",
+      "blob": "b9444ddc2718d07086ff655e306741d9cabf84b4",
+      "base_blob": null,
+      "canonical_blob": "b9444ddc2718d07086ff655e306741d9cabf84b4",
+      "sha256": "3a8df6889e4d5487b75f58326ef816df31ea49649d8f7146efda860b8167a964",
+      "bytes": 1064,
+      "canonical_exact": true
+    },
+    {
+      "path": "carr-library/packaging/audio-runtime/licenses/COPYING.GPLv2",
+      "blob": "d159169d1050894d3ea3b98e1c965c4058208fe1",
+      "base_blob": null,
+      "canonical_blob": "d159169d1050894d3ea3b98e1c965c4058208fe1",
+      "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+      "bytes": 18092,
+      "canonical_exact": true
+    },
+    {
+      "path": "carr-library/packaging/audio-runtime/licenses/COPYING.GPLv3",
+      "blob": "94a9ed024d3859793618152ea559a168bbcbb5e2",
+      "base_blob": null,
+      "canonical_blob": "94a9ed024d3859793618152ea559a168bbcbb5e2",
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+      "bytes": 35147,
+      "canonical_exact": true
+    },
+    {
+      "path": "carr-library/packaging/audio-runtime/licenses/COPYING.LGPLv2.1",
+      "blob": "40924c2a6da76a2b0c639f6fe7ef0b2d095a6adb",
+      "base_blob": null,
+      "canonical_blob": "40924c2a6da76a2b0c639f6fe7ef0b2d095a6adb",
+      "sha256": "246041b6ecf9bc32d718a62c57877c78b5eb397b6467e74ed7ae2626ab189c30",
+      "bytes": 26517,
+      "canonical_exact": true
+    },
+    {
+      "path": "carr-library/packaging/audio-runtime/licenses/COPYING.LGPLv3",
+      "blob": "65c5ca88a67c30becee01c5a8816d964b03862f9",
+      "base_blob": null,
+      "canonical_blob": "65c5ca88a67c30becee01c5a8816d964b03862f9",
+      "sha256": "da7eabb7bafdf7d3ae5e9f223aa5bdc1eece45ac569dc21b3b037520b4464768",
+      "bytes": 7651,
+      "canonical_exact": true
+    },
+    {
+      "path": "carr-library/packaging/audio-runtime/licenses/LICENSE.md",
+      "blob": "371b0913ce7c199c4092d9344680c80f78ebeb2a",
+      "base_blob": null,
+      "canonical_blob": "371b0913ce7c199c4092d9344680c80f78ebeb2a",
+      "sha256": "2e1d16c72fd74e12063776371da757322f8b77589386532f4fd8634bde7de1af",
+      "bytes": 4346,
+      "canonical_exact": true
+    },
+    {
+      "path": "carr-library/packaging/audio-runtime/provenance/build-configuration.txt",
+      "blob": "51177e3d9c022ee90a11e0e60c953d5c7ee400a3",
+      "base_blob": null,
+      "canonical_blob": "51177e3d9c022ee90a11e0e60c953d5c7ee400a3",
+      "sha256": "9a44517095a2e81dee367435c59178d4fdda3b0ee4ac6a81a57c363a93d81ad2",
+      "bytes": 1973,
+      "canonical_exact": true
+    },
+    {
+      "path": "carr-library/packaging/audio-runtime/provenance/checksums.sha256",
+      "blob": "8351116133798ac35ff04f72bf727fbc89b9a7df",
+      "base_blob": null,
+      "canonical_blob": "8351116133798ac35ff04f72bf727fbc89b9a7df",
+      "sha256": "8ce4b77f01450da946aa4dc4efef50ecb98651e9f9077252031eef0851134c14",
+      "bytes": 5744,
+      "canonical_exact": true
+    },
+    {
+      "path": "carr-library/packaging/audio-runtime/provenance/dependency-source-index.json",
+      "blob": "69dab303955ac5a6622e3a5a223d8ff3cf0cf4ed",
+      "base_blob": null,
+      "canonical_blob": "69dab303955ac5a6622e3a5a223d8ff3cf0cf4ed",
+      "sha256": "feeda51d8cdf3eb174052a5a3ab1f0dd52b1c174a9b49dda98bbf0923f92f87b",
+      "bytes": 42148,
+      "canonical_exact": true
+    },
+    {
+      "path": "carr-library/packaging/audio-runtime/source-lock.json",
+      "blob": "be9955a9485b4fa419cc286aaa7920b48fecff07",
+      "base_blob": null,
+      "canonical_blob": "be9955a9485b4fa419cc286aaa7920b48fecff07",
+      "sha256": "fba184226c559a39684810ce34b823b86b75a3708711b599dfbd437c5511f80a",
+      "bytes": 36722,
+      "canonical_exact": true
+    },
+    {
+      "path": "carr-library/packaging/build_windows_bundle.py",
+      "blob": "334ef7a24eb41dce9597b32612ebe5b2c15e0c90",
+      "base_blob": "72aeb98d73e90b5af3051b9a04e843c1d32e02c1",
+      "canonical_blob": "20d3da68cb0a9543be98844227e08ac7cd463add",
+      "sha256": "6e16dbc180d85db3af6d5502cad676755067f2499dc2205347a866120ee50dd8",
+      "bytes": 22352,
+      "canonical_exact": false
+    },
+    {
+      "path": "carr-library/packaging/prepare_audio_runtime.py",
+      "blob": "2ddde57cc6e7b29fd33ff8fc25d184b35c4b991d",
+      "base_blob": null,
+      "canonical_blob": "2ddde57cc6e7b29fd33ff8fc25d184b35c4b991d",
+      "sha256": "5553c6390d0346e783109d689e50933ffdc5e522862d2caccf538c26a3fe80f4",
+      "bytes": 6596,
+      "canonical_exact": true
+    },
+    {
+      "path": "carr-library/packaging/setup_local_audio.py",
+      "blob": "2df676d830a4aedd2a417315f9f757d65129272d",
+      "base_blob": null,
+      "canonical_blob": "2df676d830a4aedd2a417315f9f757d65129272d",
+      "sha256": "a4d69e2657801da7676dc56614d4680e9bd57b848efe275c34a18f12c0ff8a43",
+      "bytes": 8883,
+      "canonical_exact": true
+    },
+    {
+      "path": "carr-library/packaging/wheel-notices/SOURCES.json",
+      "blob": "117955855f5c5dd47317fd3b40e682dd7df4dc26",
+      "base_blob": "9866124a6b5800a0fd07166872e59a3b9f453049",
+      "canonical_blob": "2479850e2fe160df01418082ae735eb8fcbb560e",
+      "sha256": "229519f051c584dc81dc52ca60e667906bfb91b1f1b8e9d1f542dc297a121ec0",
+      "bytes": 3311,
+      "canonical_exact": false
+    },
+    {
+      "path": "carr-library/packaging/wheel-notices/quickjs-ng-LICENSE.txt",
+      "blob": "85a47b3834ea036f597f5a318fe6e653a663fed5",
+      "base_blob": null,
+      "canonical_blob": null,
+      "sha256": "eac6e04a1feb150e577c140f4897b23be9e95384292482b4da74f493358c6f4d",
+      "bytes": 1096,
+      "canonical_exact": false
+    },
+    {
+      "path": "carr-library/packaging/wheel-notices/quickjs-ng-SOURCE_NOTICES.txt",
+      "blob": "da0f5e106ab0265549a37df983a971cab90cb5cd",
+      "base_blob": null,
+      "canonical_blob": null,
+      "sha256": "d1d13ac7fe4897200af37a93df5a63825a64ebb92993cb09cee9ac6e7f1de364",
+      "bytes": 14369,
+      "canonical_exact": false
+    },
+    {
+      "path": "carr-library/packaging/windows-cp311.lock",
+      "blob": "1bccdec67a5d445677bc747275251ea0a02700a0",
+      "base_blob": "10b80734d776070fd78c027bd9c6dfb87811c77b",
+      "canonical_blob": "8dad99c0ea80470b7253873aee78e08857affec6",
+      "sha256": "27c13a9edc394d5966b927142d9d9b52f80755acea5d49a41dad1f98ed291c7d",
+      "bytes": 34007,
+      "canonical_exact": false
+    },
+    {
+      "path": "carr-library/packaging/windows-roots.in",
+      "blob": "4cd6753985b5509015deda2f9753c57910e2bc2e",
+      "base_blob": "23ccf90763a6d1d92e78942bc665c2395a038442",
+      "canonical_blob": "ee6577f366f16e791665a5cb3ee9697c5db21288",
+      "sha256": "553660fba80ec0a95e928cc09c5d17b945cf1430470cf9d57e2c42771595abf0",
+      "bytes": 174,
+      "canonical_exact": false
+    },
+    {
+      "path": "carr-library/packaging/windows-sbom.cdx.json",
+      "blob": "a3d3661d110fdc4be61b3eda19d2fd253cf5262e",
+      "base_blob": "d1f248f9c5082a89ac219c2e118a61821d8eaec5",
+      "canonical_blob": "d0eb8047cc7853ac9952b8f2c59fd2068459daf6",
+      "sha256": "fd1664b48d09d666966df3541c75f339228cf624d990a1ff4f7e8e21da308702",
+      "bytes": 8418,
+      "canonical_exact": false
+    },
+    {
+      "path": "carr-library/packaging/windows-semantic-cp311.lock",
+      "blob": "d9db4968b7e6fdb776da958072df7870332a2bb4",
+      "base_blob": "0742c68a925afa817080841362081fa0a052e220",
+      "canonical_blob": "70dbd10a1dd6282027820f82207ccc617cc9a740",
+      "sha256": "490335b58ad67a09fd72441894fb089a593d15de517eeda19be188d75639cb39",
+      "bytes": 96689,
+      "canonical_exact": false
+    },
+    {
+      "path": "carr-library/packaging/windows-semantic-roots.in",
+      "blob": "0ad32b2062d803827c7f79541d612db9a4156bff",
+      "base_blob": "5a95a086f9d46f63686b9088d47b8a452387a42c",
+      "canonical_blob": "ce0eb2efce11d5f827ff17516f6e1dc857893f0b",
+      "sha256": "9a6fa17f20ccd10ce21c3a11599815d59c2cf6f02eb794672cb2ac3e9fb5ec91",
+      "bytes": 267,
+      "canonical_exact": false
+    },
+    {
+      "path": "carr-library/packaging/windows-semantic-sbom.cdx.json",
+      "blob": "b99a213c3fb46dd5f7e01552946fd133cf4ac168",
+      "base_blob": "c8929fbb372c44e8fb045ed4cd86bc3a9594164b",
+      "canonical_blob": "50dca8289df36b9c8c695cb860f9f7bf609028f3",
+      "sha256": "dbff6bb4fa216a19259138acde12878cb054038414daae9fc7f5718a006e1c00",
+      "bytes": 24400,
+      "canonical_exact": false
+    },
+    {
+      "path": "carr-library/pyproject.toml",
+      "blob": "dcb0db89a8db568b3343bd97753dfb460c0d6466",
+      "base_blob": "d14576aec2b80ff6a17418534dc8b9812cc6b433",
+      "canonical_blob": "d1e017155394c9dc5200a20cfea5f37eded23656",
+      "sha256": "dd0aeab9d6a6fbcb06c3c0d89bc8b2c26b71093178eef674635d65e07294012a",
+      "bytes": 4234,
+      "canonical_exact": false
+    },
+    {
+      "path": "carr-library/scripts/ci_check.py",
+      "blob": "1cbf0988af39422fc6270a82bdbaebcefdad2ad2",
+      "base_blob": "b21898c05a16050180334219f543dedaf3285805",
+      "canonical_blob": "075f493052b367b243bb48279a7523d16bf744ab",
+      "sha256": "2f73792aca2d3b5720853d74fed983577460f65cac97fb3c3d6694a1d86a7b0b",
+      "bytes": 14266,
+      "canonical_exact": false
+    },
+    {
+      "path": "carr-library/scripts/windows_audio_runtime_smoke.py",
+      "blob": "eb9ee4918692e99441e800a808a377b71b92b14b",
+      "base_blob": null,
+      "canonical_blob": "79f24d2c4110709869085f336e727edbbccbc697",
+      "sha256": "9178268deee9434385dc76fad53a76817d082f85aef38e1a75642cd9ff533635",
+      "bytes": 7058,
+      "canonical_exact": false
+    },
+    {
+      "path": "carr-library/scripts/windows_transferable_bundle_smoke.py",
+      "blob": "a3b5de3d527ea1e06852f53b818aec977e74327b",
+      "base_blob": null,
+      "canonical_blob": "1a2dc53026622f639f2de08caac869ff067b1217",
+      "sha256": "dc6c016e7f478e90cfde8bd7e55e352af41f7d372bab41fa9c9f1cd1b69afc13",
+      "bytes": 10816,
+      "canonical_exact": false
+    },
+    {
+      "path": "carr-library/scripts/windows_v3_smoke.py",
+      "blob": "950ae704028e500d2d4f27cdd3cc8f551fa1f210",
+      "base_blob": "ab716c5caf45b17c5e6624df11a37ece46431e56",
+      "canonical_blob": "7fbcfaf0e4d8dfc61aef05eef77fcc64a5f1e690",
+      "sha256": "ca3224ea1c2cae2c10f63801f96d3a475ebf74a2a54367a1935e65a902343500",
+      "bytes": 19276,
+      "canonical_exact": false
+    },
+    {
+      "path": "carr-library/src/carr_library/audio_runtime.py",
+      "blob": "ef0311800066241a2df6b7be79e48d1648c4c8e1",
+      "base_blob": null,
+      "canonical_blob": "23b08b9f4d50f67c7216156869a4e41b3dde65cb",
+      "sha256": "01fca2ba2b87a5b762914ee59c251208bf278ed985d54aadefcd37e94481325b",
+      "bytes": 10495,
+      "canonical_exact": false
+    },
+    {
+      "path": "carr-library/src/carr_library/native_checks.py",
+      "blob": "9164a5bd6e2fa2ac29f5a597eac57a801f7158f6",
+      "base_blob": "cce28f61c8ea1f66f693c646b680e7d8a44612aa",
+      "canonical_blob": "f852cfb3748f20cb279de98b41d8750093af8e43",
+      "sha256": "506a08780b84f73c75a315386619b02556720b7b5f6d9a976b0250bd441f3631",
+      "bytes": 9311,
+      "canonical_exact": false
+    },
+    {
+      "path": "carr-library/tests/packaging/test_audio_acquisition.py",
+      "blob": "a93e1b3fbc9b68aa5c5a66942ac8148c5d417f5b",
+      "base_blob": null,
+      "canonical_blob": "a93e1b3fbc9b68aa5c5a66942ac8148c5d417f5b",
+      "sha256": "3daeaf2ae002b38a20898b4546c245064b42cc66eebcf51d4b11213e657c1de5",
+      "bytes": 3197,
+      "canonical_exact": true
+    },
+    {
+      "path": "carr-library/tests/packaging/test_audio_bundle.py",
+      "blob": "bf63cf92deaf8df1b32d4fef0f5e6d90aa8c795c",
+      "base_blob": null,
+      "canonical_blob": "bf63cf92deaf8df1b32d4fef0f5e6d90aa8c795c",
+      "sha256": "2e34a1d4a17dfdde9716b543f9d8b455dc0497caadd65a22c384f31f7f53734c",
+      "bytes": 8861,
+      "canonical_exact": true
+    },
+    {
+      "path": "carr-library/tests/packaging/test_audio_runtime.py",
+      "blob": "2c9bc27c263464981ca4bf56d3d36cbeed595a07",
+      "base_blob": null,
+      "canonical_blob": "56d26d123dbe8f1de63dcbee905f884fb20f64eb",
+      "sha256": "71e98a93705d586db61d73cf9cd6f840113f95cc193b745a6a41598ba355f3dd",
+      "bytes": 14516,
+      "canonical_exact": false
+    },
+    {
+      "path": "carr-library/tests/packaging/test_ci_check.py",
+      "blob": "b85c9f4b06592bb6471957b823b9a6e3d9068782",
+      "base_blob": "6d5adb9063d36647d4b7678809c73cbc88d402d0",
+      "canonical_blob": "ea6f6605a7805011097d8b97c93fd22f3528d2ce",
+      "sha256": "f687f03f7540c3bd4243bc5ba60ddb4e12e92a594765e4e36a415613e4339ebc",
+      "bytes": 26957,
+      "canonical_exact": false
+    },
+    {
+      "path": "carr-library/tests/packaging/test_local_audio_setup.py",
+      "blob": "b6fdbdfb6697a19da2afeca44542bae9ab6af5a9",
+      "base_blob": null,
+      "canonical_blob": "b6fdbdfb6697a19da2afeca44542bae9ab6af5a9",
+      "sha256": "fb350ea5efc027c6f45a280c697d61a901dc18203f847e0c5058e76d64aeaab7",
+      "bytes": 12522,
+      "canonical_exact": true
+    },
+    {
+      "path": "carr-library/tests/packaging/test_native_checks.py",
+      "blob": "1b60f6ef9da34fe8fe44bdbd457bc8b252d63033",
+      "base_blob": "e40b6ddb793385d53b35faf2dee609c6fbe11319",
+      "canonical_blob": "12adebecfa76143409ff2afe9d30a2c4ee9f8260",
+      "sha256": "f454fc5c4c05038a20f78aaa62f2c4b24151d3c1cc340a0f598518588d605272",
+      "bytes": 15681,
+      "canonical_exact": false
+    },
+    {
+      "path": "carr-library/tests/packaging/test_native_checks_manifest.py",
+      "blob": "5c1bc741d95a33d3969fbb7a310450aa5d2ef1e7",
+      "base_blob": null,
+      "canonical_blob": "05e2c92925d9df1002bd6cbd4786d887b34af5b7",
+      "sha256": "4ec9d627311550df32a463a06d8cf4841440dfe2cd6d8f99c366e053c35f1877",
+      "bytes": 2175,
+      "canonical_exact": false
+    },
+    {
+      "path": "carr-library/tests/packaging/test_native_launcher_acceptance.py",
+      "blob": "5238d6d7f397aba5d6673897146dc0c600cf5f69",
+      "base_blob": "49f8c6c0d0546f2fe4c143dcd2e389b8bf38c07e",
+      "canonical_blob": null,
+      "sha256": "329c008a1082864121cde1ffe1b7a6a4dd1a6beaadf3410d61a042a9e6b3bbf1",
+      "bytes": 17093,
+      "canonical_exact": false
+    },
+    {
+      "path": "carr-library/tests/packaging/test_native_launcher_bundle.py",
+      "blob": "0bcd708ff3b98a522d9f18ba91eb384aeab1dbf5",
+      "base_blob": "b0c167a53e5c8d3ad91e8bc30134a63c3cb4b049",
+      "canonical_blob": null,
+      "sha256": "52d516c175aac96e3f313fc797751d83d012d68ca59ed411570e7a3ed35a5d4b",
+      "bytes": 13333,
+      "canonical_exact": false
+    },
+    {
+      "path": "carr-library/tests/packaging/test_source_wheel.py",
+      "blob": "5251148aa4bae692d5a42ca22694e74d9ba863fe",
+      "base_blob": "9aae48015b44a32e3f5dcff2e1a88c64ae8caad2",
+      "canonical_blob": "5251148aa4bae692d5a42ca22694e74d9ba863fe",
+      "sha256": "80d1a4cd5e86762bf62340f0f6d0ae1489489eb957bd67cfeea15163f4fedd4e",
+      "bytes": 10235,
+      "canonical_exact": true
+    },
+    {
+      "path": "carr-library/tests/packaging/test_windows_bundle.py",
+      "blob": "d97961759a7e0e60458469317202539131686aa0",
+      "base_blob": "54c69f8e2d08b604aba273fda996dbc960fb67b1",
+      "canonical_blob": "08a55a00b3157346e9d1b17c0d432f9f8e420d33",
+      "sha256": "4eb5ee5e20ead3490130a1652ec93a362d5ff132ca96eda7dca1cb44e0142c94",
+      "bytes": 20010,
+      "canonical_exact": false
+    }
+  ],
+  "qualification": {
+    "source": "267 PASS + 10 subtests, 0 failures, 0 skips; 12 selected packaging suites, before metadata and native-only additions",
+    "native": "NOT_RUN",
+    "syntax": "22 Python, all changed JSON and pyproject TOML parsed"
+  }
+}
