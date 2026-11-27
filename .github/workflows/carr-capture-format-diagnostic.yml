@@ -209,6 +209,143 @@ jobs:
                                 bits=int(wave.bits), rate=int(wave.rate), extra=int(wave.extra))
               return result
           
+
+          def inspect_wasapi(winmm, wave_id, report):
+              # Primary ABI: Microsoft win32metadata mmdeviceapi.h, Audioclient.h,
+              # mmddk.h, and the documented legacy waveform endpoint-ID bridge.
+              # Open the exact same capture endpoint without Start/GetBuffer.
+              result = {'scope': 'exact selected native input only',
+                        'capture_started': False, 'buffers_requested': False,
+                        'shared_mode': True, 'property_changes': False,
+                        'device_fallback': False, 'calls': []}
+              report['wasapi'] = result
+              winmm.waveInMessage.argtypes = [P, W.UINT, C.c_size_t, C.c_size_t]
+              winmm.waveInMessage.restype = W.UINT
+
+              def mm_id(label):
+                  size = C.c_size_t(0)
+                  code = int(winmm.waveInMessage(P(wave_id), 0x0800 + 18,
+                                                C.addressof(size), 0))
+                  result['calls'].append({'operation': label + '.size',
+                                          'mmresult': code})
+                  if code:
+                      return None
+                  if not 2 <= size.value <= 16384 or size.value % 2:
+                      raise RuntimeError('Exact native endpoint ID exceeds its bound.')
+                  buffer = C.create_unicode_buffer(size.value // 2)
+                  code = int(winmm.waveInMessage(P(wave_id), 0x0800 + 17,
+                                                C.addressof(buffer), size.value))
+                  result['calls'].append({'operation': label + '.value',
+                                          'mmresult': code})
+                  if code:
+                      return None
+                  value = C.string_at(C.addressof(buffer), size.value).decode('utf-16le')
+                  if not value.endswith('\x00') or not value[:-1] or '\x00' in value[:-1]:
+                      raise RuntimeError('Exact native endpoint ID is not bounded terminated text.')
+                  return value[:-1]
+
+              def observed(label, code):
+                  result['calls'].append({'operation': label,
+                                          'hresult': f'0x{code & 0xffffffff:08x}'})
+                  return code >= 0
+
+              mm_enum, device, endpoint, client, mix = (P() for _ in range(5))
+              try:
+                  endpoint_id = mm_id('waveIn.endpoint.before')
+                  if endpoint_id is None:
+                      return
+                  result['endpoint_id'] = endpoint_id
+                  # GetDevice consumes this opaque ID; never parse its contents
+                  # and never choose an endpoint by name, role, or default.
+                  clsid = GUID('{BCDE0395-E52F-467C-8E3D-C4579291692E}')
+                  iid = GUID('{A95664D2-9614-4F35-A746-DE8DB63617E6}')
+                  create = C.WinDLL('ole32', winmode=0x00000800).CoCreateInstance
+                  create.argtypes = [C.POINTER(GUID), P, W.DWORD,
+                                     C.POINTER(GUID), C.POINTER(P)]
+                  create.restype = HR
+                  code = create(C.byref(clsid), None, 1, C.byref(iid), C.byref(mm_enum))
+                  if not observed('CoCreateInstance.IMMDeviceEnumerator', code):
+                      return
+                  if not mm_enum:
+                      raise RuntimeError('The native endpoint enumerator is absent.')
+                  code = method(mm_enum, 5, (W.LPCWSTR, C.POINTER(P)))(
+                      mm_enum, endpoint_id, C.byref(device))
+                  if not observed('IMMDeviceEnumerator.GetDevice', code):
+                      return
+                  if not device:
+                      raise RuntimeError('The selected native endpoint is absent.')
+                  state = W.DWORD()
+                  code = method(device, 6, (C.POINTER(W.DWORD),))(device, C.byref(state))
+                  if not observed('IMMDevice.GetState.before', code):
+                      return
+                  result['state_before'] = int(state.value)
+                  endpoint_iid = GUID('{1BE09788-6894-4089-8586-9A2A6C265AC5}')
+                  code = method(device, 0, (C.POINTER(GUID), C.POINTER(P)))(
+                      device, C.byref(endpoint_iid), C.byref(endpoint))
+                  if not observed('QueryInterface.IMMEndpoint', code):
+                      return
+                  if not endpoint:
+                      raise RuntimeError('The native endpoint data-flow interface is absent.')
+                  flow = C.c_int(-1)
+                  code = method(endpoint, 3, (C.POINTER(C.c_int),))(endpoint, C.byref(flow))
+                  if not observed('IMMEndpoint.GetDataFlow', code):
+                      return
+                  result['data_flow'] = int(flow.value)
+                  if flow.value != 1:
+                      raise RuntimeError('The exact selected endpoint is not a capture endpoint.')
+                  if state.value != 1:
+                      result['not_initialized'] = 'Selected capture endpoint is not active.'
+                      return
+                  client_iid = GUID('{1CB9AD4C-DBFA-4C32-B178-C2F568A703B2}')
+                  code = method(device, 3, (C.POINTER(GUID), W.DWORD, P, C.POINTER(P)))(
+                      device, C.byref(client_iid), 1, None, C.byref(client))
+                  if not observed('IMMDevice.Activate.IAudioClient', code):
+                      return
+                  if not client:
+                      raise RuntimeError('The exact selected audio client is absent.')
+                  default_period, minimum_period = C.c_longlong(), C.c_longlong()
+                  code = method(client, 9, (C.POINTER(C.c_longlong), C.POINTER(C.c_longlong)))(
+                      client, C.byref(default_period), C.byref(minimum_period))
+                  if observed('IAudioClient.GetDevicePeriod', code):
+                      result['device_period_100ns'] = {'default': default_period.value,
+                                                      'minimum': minimum_period.value}
+                  code = method(client, 8, (C.POINTER(P),))(client, C.byref(mix))
+                  if not observed('IAudioClient.GetMixFormat', code):
+                      return
+                  if not mix or C.sizeof(WaveFormat) != 18:
+                      raise RuntimeError('Native mix format or WAVEFORMATEX ABI is unavailable.')
+                  wave = C.cast(mix, C.POINTER(WaveFormat)).contents
+                  if (not 1 <= wave.channels <= 64 or not 1 <= wave.rate <= 768000
+                          or not 1 <= wave.bits <= 64 or not 0 <= wave.extra <= 65518
+                          or not 1 <= wave.alignment <= 65535
+                          or not 1 <= wave.average <= 0xffffffff):
+                      raise RuntimeError('Native mix format exceeds its diagnostic bound.')
+                  result['mix_format'] = {'tag': int(wave.tag), 'channels': int(wave.channels),
+                      'rate': int(wave.rate), 'bits': int(wave.bits),
+                      'block_align': int(wave.alignment), 'average_bytes_per_second': int(wave.average),
+                      'extra_bytes': int(wave.extra)}
+                  # No forced PCM format, exclusive mode, session settings,
+                  # event callback, capture service, or sample buffer request.
+                  if mm_id('waveIn.endpoint.pre_initialize') != endpoint_id:
+                      raise RuntimeError('Selected native endpoint changed before initialization.')
+                  code = method(client, 3,
+                      (C.c_int, W.DWORD, C.c_longlong, C.c_longlong, P, C.POINTER(GUID)))(
+                      client, 0, 0, 0, 0, mix, None)
+                  result['stream_initialized'] = observed('IAudioClient.Initialize.shared', code)
+                  code = method(device, 6, (C.POINTER(W.DWORD),))(device, C.byref(state))
+                  if observed('IMMDevice.GetState.after', code):
+                      result['state_after'] = int(state.value)
+                  result['endpoint_unchanged'] = mm_id('waveIn.endpoint.after') == endpoint_id
+                  if not result['endpoint_unchanged']:
+                      raise RuntimeError('Selected native endpoint changed during initialization.')
+              finally:
+                  # Releasing an initialized-but-never-started client closes
+                  # the stream. GetMixFormat storage is independently owned.
+                  for pointer in (client, endpoint, device, mm_enum):
+                      release(pointer)
+                  if mix:
+                      ole.CoTaskMemFree(mix)
+
           report = {'status': 'DIAGNOSED', 'scope': 'selected moniker only; no recording started',
                     'physical_microphone': 'NOT_RUN', 'policy_changes': False, 'fallback': False}
           enumerator = monikers = context = chosen = capture_filter = pins = P()
@@ -295,6 +432,7 @@ jobs:
                               row['close_result'] = closed
                               if closed:
                                   raise RuntimeError('Exact native input handle did not close.')
+              inspect_wasapi(winmm, wave_id, report)
               filter_iid = GUID('{56A86895-0AD4-11CE-B03A-0020AF0BA770}')
               ok(method(chosen, 8, (P, P, C.POINTER(GUID), C.POINTER(P)))(chosen, context, None, C.byref(filter_iid), C.byref(capture_filter)), 'BindToObject capture filter')
               ok(method(capture_filter, 10, (C.POINTER(P),))(capture_filter, C.byref(pins)), 'IBaseFilter.EnumPins')
