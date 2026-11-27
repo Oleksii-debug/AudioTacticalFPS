@@ -76,6 +76,11 @@ def create_citation_styles_dialog(parent, controller, *, selected_identity=None,
                 button.Enable(False)
                 actions.Add(button, 0, wx.ALL, 4)
             layout.Add(actions, 0, wx.ALL, 4)
+            self.word_button = wx.Button(self, label='Open &Word citation controls...')
+            self.word_button.SetName('Open optional live Word citation controls')
+            self.word_button.Bind(wx.EVT_BUTTON, self.on_word)
+            self.word_button.Enable(False)
+            layout.Add(self.word_button, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
             self.regenerate_button = wx.Button(self, label='Regenerate saved citation document...')
             self.regenerate_button.Bind(wx.EVT_BUTTON, self.on_regenerate)
             layout.Add(self.regenerate_button, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
@@ -109,7 +114,7 @@ def create_citation_styles_dialog(parent, controller, *, selected_identity=None,
         def controls(self, *, pending):
             for control in (*self.options, self.generate, self.regenerate_button):
                 control.Enable(not pending)
-            for control in (self.copy_bibliography, self.copy_citations, self.export_button):
+            for control in (self.copy_bibliography, self.copy_citations, self.export_button, self.word_button):
                 control.Enable(not pending and self.preview is not None)
 
         def on_options_changed(self, event=None):
@@ -213,6 +218,20 @@ def create_citation_styles_dialog(parent, controller, *, selected_identity=None,
                 self.report('Bibliography copied.' if part == 'bibliography' else 'Citation examples copied.')
             except Exception as exc:
                 self.report(f'Text not copied: {exc}')
+
+        def on_word(self, event=None):
+            if self.pending is not None:
+                return
+            try:
+                self.workbench.check(self.preview)
+                from .word_citations_dialog import create_word_citations_dialog
+                dialog = create_word_citations_dialog(self, self.workbench, self.preview)
+                try:
+                    dialog.ShowModal()
+                finally:
+                    dialog.Destroy()
+            except Exception as exc:
+                self.report('Word citation controls unavailable: ' + str(exc))
 
         def on_regenerate(self, event=None):
             if self.pending is not None:

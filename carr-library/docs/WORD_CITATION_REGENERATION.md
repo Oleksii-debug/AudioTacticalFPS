@@ -43,3 +43,11 @@ second formatting engine. Source tests exercise actual CSL/OOXML roundtrips,
 note ordering, changed references, stale styles, source and destination races,
 cancellation, revoked library access, native job wiring and the CLI. Execution
 results must be read from the matching published commit's Windows evidence.
+
+## Optional live Word controls
+
+For explicit insert/edit and bibliography refresh in a new managed desktop Word
+copy, see [Word desktop integration](WORD_DESKTOP_INTEGRATION.md). That optional
+COM workflow retains this snapshot and its unverified-evidence contract. The
+regeneration operation described above remains an independent new-file export;
+it does not mutate a running Word document or import arbitrary visible edits.
