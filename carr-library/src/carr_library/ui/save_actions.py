@@ -98,6 +98,13 @@ def install_save_actions(frame):
             frame.status.SetValue(f'Research draft could not be saved automatically: {exc}. Keep this window open and use Save.')
 
     frame.Bind(wx.EVT_TIMER, autosave, timer)
+
+    def stop_autosave(event):
+        if event.GetEventObject() is frame:
+            timer.Stop()
+        event.Skip()
+
+    frame.Bind(wx.EVT_WINDOW_DESTROY, stop_autosave)
     timer.Start(3000)
 
     edit = wx.Menu()

@@ -282,8 +282,20 @@ def main():
                 check('startup citation credit does not take keyboard focus',
                       not credit.AcceptsFocusFromKeyboard() and wx.Window.FindFocus() is not credit)
                 startup_executor, startup_cancel = startup.executor, startup.cancel_event
+                startup_autosave_timer = startup._draft_save_timer
+                check('startup research-note autosave timer is running before close',
+                      startup_autosave_timer.IsRunning())
+                startup.working = True
+                try:
+                    close_vetoed = not startup.Close()
+                finally:
+                    startup.working = False
+                check('vetoing startup close keeps research-note autosave running',
+                      close_vetoed and bool(startup) and startup_autosave_timer.IsRunning())
                 startup.Close()
                 yield from until(lambda: not startup, 'The startup host did not close normally.')
+                check('startup host destruction stops the retained research-note autosave timer',
+                      not startup_autosave_timer.IsRunning())
                 check('startup host closes its executor without ending the interchange event loop',
                       startup_executor._shutdown and startup_cancel.is_set()
                       and gui.GetMainLoop() is not None and frame.IsShown())
