@@ -15,7 +15,7 @@ from carr_library.research.query_manager import QueryManager
 from carr_library.research.saved_evidence import SavedEvidenceStore
 from carr_library.research.saved_topic_query import SavedTopicQueries
 from carr_library.research.topic_tree import TopicTree
-from carr_library.storage.revisions import Page, Storage, _expected_signature, _schema_signature
+from carr_library.storage.revisions import Page, Storage, _expected_signature, _schema_signature, CURRENT_SCHEMA_VERSION
 
 
 def test_populated_v3_queries_preserve_all_criteria_and_run_after_v4_upgrade(tmp_path):
@@ -91,8 +91,8 @@ def test_populated_v3_queries_preserve_all_criteria_and_run_after_v4_upgrade(tmp
     # The production constructor performs the checked, transactional migration.
     app = LibraryApp(root)
     with app.read(workspace) as db:
-        assert db.execute('PRAGMA user_version').fetchone()[0] == 4
-        assert _schema_signature(db) == _expected_signature(4)
+        assert db.execute('PRAGMA user_version').fetchone()[0] == CURRENT_SCHEMA_VERSION
+        assert _schema_signature(db) == _expected_signature(CURRENT_SCHEMA_VERSION)
         assert tuple(tuple(row) for row in db.execute(query_rows_sql)) == before_queries
         assert tuple(tuple(row) for row in db.execute(evidence_rows_sql)) == before_evidence
         assert db.execute('SELECT revision FROM active WHERE workspace=? AND edition=?',

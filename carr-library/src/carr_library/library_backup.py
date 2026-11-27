@@ -42,7 +42,7 @@ from .backup_historical import (
     state_paths as _historical_files, validate_state_tree as _validate_historical,
     retain_state as _retain_historical,
 )
-from .storage.revisions import Storage
+from .storage.revisions import Storage, CURRENT_SCHEMA_VERSION
 from .storage.schema_identity import expected_schema_fingerprint, schema_fingerprint
 from .reader.reading_state import (
     FILENAME as READING_STATE, MAX_BYTES as MAX_READING_STATE, ReadingState,
@@ -731,12 +731,12 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
             stage = Path(tmp)
             inventory = _sidecar_inventory(app.root, max_sidecar_files, max_sidecar_bytes, cancelled)
             snapshot = stage / DATABASE
-            with closing(Storage(app.database, schema_version=4)) as storage:
+            with closing(Storage(app.database, schema_version=CURRENT_SCHEMA_VERSION)) as storage:
                 storage.backup(snapshot)
             size = _plain(snapshot).st_size
             if not 0 < size <= MAX_DATABASE:
                 raise RestoreError('database exceeds backup size limit')
-            with closing(Storage(snapshot, schema_version=4)) as snapshot_storage:
+            with closing(Storage(snapshot, schema_version=CURRENT_SCHEMA_VERSION)) as snapshot_storage:
                 entries = copy_catalog_assets(snapshot_storage.db, app.assets, stage / ORIGINALS,
                     include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
                 fingerprint = schema_fingerprint(snapshot_storage.db)
@@ -751,7 +751,7 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
             # Bind the copied ASR state to this exact catalog before publishing
             # its manifest. The validator neither runs a worker nor opens models.
             if any(_transcription_path(entry['path']) for entry in sidecars):
-                with closing(Storage(snapshot, schema_version=4)) as snapshot_storage:
+                with closing(Storage(snapshot, schema_version=CURRENT_SCHEMA_VERSION)) as snapshot_storage:
                     _validate_transcriptions(snapshot_storage.db, stage / SIDECARS, cancelled=cancelled)
             # Refuse a newly introduced project before interpreting its files.
             # The final check also covers inventory changes during the rescan.
@@ -772,7 +772,7 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
                 from .pending_backup import snapshot_pending
                 pending = snapshot_pending(app, stage / PENDING, cancelled=cancelled)
             managed = pending is not None or any(not _reader_path(entry['path']) for entry in sidecars)
-            manifest = dict(version=5 if pending is not None else 4 if managed else 3 if sidecars else 2, kind='carr-library', schema_version=4,
+            manifest = dict(version=5 if pending is not None else 4 if managed else 3 if sidecars else 2, kind='carr-library', schema_version=CURRENT_SCHEMA_VERSION,
                 schema_fingerprint=fingerprint,
                 database=dict(filename=DATABASE, size_bytes=size, sha256=hash_file(snapshot)),
                 assets=_asset_manifest(entries))
@@ -891,7 +891,7 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
             fields.add('pending')
     if (set(manifest) != fields
             or manifest['kind'] != 'carr-library'
-            or type(manifest['schema_version']) is not int or manifest['schema_version'] not in (3, 4)
+            or type(manifest['schema_version']) is not int or manifest['schema_version'] not in (3, 4, 5)
             or type(manifest['assets']) is not list or len(manifest['assets']) > MAX_ASSETS):
         raise RestoreError('unsupported library manifest')
     if manifest['version'] >= 2:
