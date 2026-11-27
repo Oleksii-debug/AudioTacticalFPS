@@ -122,8 +122,52 @@ def test_checksum_rejects_same_size_mutation_during_read(tmp_path):
             source.write_bytes(b'new input')
         return False
 
-    with pytest.raises(RuntimeError, match='changed'):
-        jobs.sha256_file(source, cancelled=mutate)
+    if os.name == 'nt':
+        # A payload's retained native read handle prevents this write outright;
+        # timestamp comparisons alone can miss rapid same-size NTFS writes.
+        with pytest.raises(PermissionError) as error:
+            jobs.sha256_file(source, cancelled=mutate)
+        assert error.value.winerror == 32
+        assert changed and source.read_bytes() == b'old input'
+        source.write_bytes(b'new input')  # The exceptional exit released it.
+    else:
+        with pytest.raises(RuntimeError, match='changed'):
+            jobs.sha256_file(source, cancelled=mutate)
+
+
+def test_audio_payload_reader_keeps_content_available_to_other_readers(tmp_path):
+    source = tmp_path / 'input'
+    source.write_bytes(b'complete immutable input')
+    with jobs.verified_reader(source) as first:
+        with jobs.verified_reader(source) as second:
+            assert first.read() == second.read() == b'complete immutable input'
+        assert source.read_bytes() == b'complete immutable input'
+    source.write_bytes(b'after the read interval')
+    assert source.read_bytes() == b'after the read interval'
+
+
+def test_audio_payload_read_interval_rejects_or_blocks_a_real_child_write(tmp_path):
+    source = tmp_path / 'input'
+    source.write_bytes(b'old input')
+    command = [sys.executable, '-I', '-c',
+               'from pathlib import Path; import sys\n'
+               'try: Path(sys.argv[1]).write_bytes(b"new input")\n'
+               'except PermissionError as error: print("blocked", error.winerror)\n', str(source)]
+
+    def read_while_child_writes():
+        with jobs.verified_reader(source) as stream:
+            child = subprocess.run(command, capture_output=True, text=True, timeout=10, check=True)
+            if os.name == 'nt':
+                assert child.stdout.strip() == 'blocked 32'
+                assert stream.read() == b'old input'
+            else:
+                assert child.stdout == '' and source.read_bytes() == b'new input'
+    if os.name == 'nt':
+        read_while_child_writes()
+    else:
+        with pytest.raises(RuntimeError, match='changed'):
+            read_while_child_writes()
+    source.write_bytes(b'released after validation')
 
 
 def test_streamed_concat_binds_inputs_to_preflight_identity(tmp_path):

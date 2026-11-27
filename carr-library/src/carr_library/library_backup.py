@@ -9,7 +9,8 @@ Version 2 also identifies the exact schema, not just its numeric user_version.
 Version 3 preserves the reader foundation's filename/root sidecar schema.
 Version 4 adds managed audio/assistant state using path/sidecars and streamed
 file checksums. Version 5 adds the typed pending-import component. The alternate
-historical v3/v4 state-folder schemas are dispatched explicitly, never guessed. Live audio jobs must release their project locks. Assistant
+historical state-v3/v4/v5 and common-v4 schemas are dispatched by exact envelopes.
+Live audio jobs must release their project locks. Assistant
 publications share the application writer and state guards; a backup may borrow
 only its own live same-process/thread execution guard.
 Legacy version 1 backups and newer backups are accepted only for an exact
@@ -39,7 +40,9 @@ from .backup_files import local_path, publish_tree
 from .backup_historical import (
     DIRECTORY as HISTORICAL_DIRECTORY, is_state_path as _historical_path,
     state_paths as _historical_files, validate_state_tree as _validate_historical,
-    retain_state as _retain_historical,
+    retain_state as _retain_historical, manifest_layout as _historical_layout,
+    validate_manifest as _validate_historical_manifest, root_entries as _historical_entries,
+    source_inventory as _historical_inventory,
 )
 from .operations.policy_backup import (
     MAX_BYTES as MAX_RESOURCE_POLICY,
@@ -913,20 +916,23 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
 
 
 def _legacy_state_layout(manifest):
-    """The two historical v3/v4 families have disjoint exact field shapes."""
-    return manifest['version'] in (3, 4) and (
-        'state' in manifest or 'generated_audio_included' in manifest)
+    """Historical state/common and current typed families have exact envelopes."""
+    return _historical_layout(manifest) is not None
 
 
 def _sidecar_layout(manifest):
     """Reading v3 keeps filename/root; typed v4/v5 uses path/sidecars."""
+    if _legacy_state_layout(manifest):
+        return 'filename', ''
     return ('path', SIDECARS) if manifest['version'] >= 4 else ('filename', '')
 
 
 def _declared_sidecars(manifest):
     """Keep the historical one-reading-file v3 shape as an exact read schema."""
     if _legacy_state_layout(manifest):
-        return []
+        # Only already registered reading formats become live. Original engine,
+        # assistant, provider and alternate Studio bytes stay in inert history.
+        return [entry for entry in _historical_entries(manifest) if _reader_path(entry['filename'])]
     if 'reading_state' not in manifest:
         return manifest.get('sidecars', [])
     reading = manifest['reading_state']
@@ -954,6 +960,36 @@ def _backup_sidecar_allowed(value):
         return False
 
 
+def _historical_reader_budget(entries):
+    groups = (
+        (lambda name: True, MAX_READER_BYTES,
+         1 + len(_SIMPLE_SIDECARS) + MAX_PROJECTS * 2 + MAX_ARCHIVES + MAX_SESSIONS),
+        (lambda name: name.startswith(NARRATION_DIRECTORY + '/'), MAX_NARRATION_BYTES, MAX_PROJECTS * 2),
+        (is_archive_path, MAX_READING_IMPORT_BYTES, MAX_ARCHIVES),
+        (is_session_path, MAX_SESSION_SNAPSHOT_BYTES, MAX_SESSIONS),
+    )
+    for item in entries:
+        if not 0 < item['size_bytes'] <= _reader_limit(item['filename']):
+            raise RestoreError('historical reader sidecar byte limit')
+    for selected, maximum, count in groups:
+        rows = [item for item in entries if selected(item['filename'])]
+        if len(rows) > count or sum(item['size_bytes'] for item in rows) > maximum:
+            raise RestoreError('historical reader sidecar count or byte limit')
+
+
+def _historical_reader_bytes(root, entries):
+    """Read only declared current-compatible formats, never scan foreign state."""
+    result = {}
+    for item in entries:
+        name = item['path']
+        raw = _optional_sidecar(local_path(root / name, root=root), _reader_limit(name))
+        if (raw is None or len(raw) != item['size_bytes']
+                or sha256(raw).hexdigest() != item['sha256']):
+            raise RestoreError('historical reader sidecar checksum mismatch')
+        result[name] = raw
+    return result
+
+
 def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX_SIDECAR_FILES,
                    max_sidecar_bytes=MAX_SIDECAR_BYTES):
     if not isinstance(expected_manifest_sha256, str) or not re.fullmatch(
@@ -978,9 +1014,12 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
         fields.add('schema_fingerprint')
     legacy_state = _legacy_state_layout(manifest)
     if legacy_state:
-        fields.update(('state', 'generated_audio_included'))
-        if manifest['version'] == 4:
+        layout = _historical_layout(manifest)
+        fields.update(('sidecars' if layout == 'root' else 'state', 'generated_audio_included'))
+        if 'pending' in manifest:
             fields.add('pending')
+        if layout == 'state-reading':
+            fields.add('reading_state')
     elif manifest['version'] == 3:
         fields.add('reading_state' if 'reading_state' in manifest else 'sidecars')
     elif manifest['version'] >= 4:
@@ -1021,21 +1060,27 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
         if total > MAX_ASSET_BYTES:
             raise RestoreError('asset manifest byte limit')
     if 'pending' in manifest:
-        from .pending_backup import validate_pending
-        validate_pending(manifest['pending'])
+        if manifest['pending'] is not None or _historical_layout(manifest) != 'state-reading':
+            from .pending_backup import validate_pending
+            validate_pending(manifest['pending'])
     if legacy_state:
-        from .backup_legacy_state import validate_state
-        if type(manifest['generated_audio_included']) is not bool:
-            raise RestoreError('invalid legacy application state options')
-        # Retention adds the original manifest as one authenticated sidecar.
-        validate_state(manifest['state'], max_files=max_sidecar_files - 1,
-                       max_bytes=max_sidecar_bytes - size)
-        expected_names = {DATABASE, ORIGINALS, MANIFEST, 'state'}
-        if 'pending' in manifest:
+        _validate_historical_manifest(manifest)
+        readers = _declared_sidecars(manifest)
+        _historical_reader_budget(readers)
+        # Retention includes the original manifest and independent live copies
+        # of reader data. Count both in the caller's explicit restore budget.
+        _validate_historical_manifest(manifest, max_files=max_sidecar_files - 1 - len(readers),
+            max_bytes=max_sidecar_bytes - size - sum(item['size_bytes'] for item in readers))
+        expected_names = {DATABASE, ORIGINALS, MANIFEST}
+        if layout in ('state', 'state-reading'):
+            expected_names.add('state')
+        expected_names.update(item['filename'].split('/')[0] for item in _historical_entries(manifest))
+        if manifest.get('pending') is not None:
             expected_names.add(PENDING)
-        if set(p.name for p in directory.iterdir()) != expected_names:
+        if {p.name for p in _children(directory, max_sidecar_files + 4)} != expected_names:
             raise RestoreError('incomplete legacy application state backup')
-        _plain(directory / 'state', directory=True)
+        if 'state' in expected_names:
+            _plain(directory / 'state', directory=True)
         return manifest
     field, subdirectory = _sidecar_layout(manifest)
     if manifest['version'] >= 3:
@@ -1186,15 +1231,19 @@ def _verify_contents(source, stage, manifest, *, copy_files=False,
         storage.check()
         if sidecars:
             checked_root = stage / SIDECARS if copy_files else sidecar_source
-            _validate_readers(storage.db, _snapshot_readers(checked_root, cancelled=cancelled),
-                              cancelled=cancelled)
-            _validate_studios(storage.db, checked_root, strict_assets=True)
-            _validate_assistants(storage.db, checked_root, cancelled=cancelled)
-            _validate_historical(checked_root, cancelled=cancelled)
-            _validate_translations(storage.db, checked_root, cancelled=cancelled)
-            _validate_resource_policy(storage.db, checked_root, cancelled=cancelled)
-            _validate_transcriptions(storage.db, checked_root, cancelled=cancelled)
-            _validate_recordings(storage.db, checked_root, cancelled=cancelled)
+            if _legacy_state_layout(manifest):
+                _validate_readers(storage.db, _historical_reader_bytes(checked_root, sidecars),
+                                  cancelled=cancelled)
+            else:
+                _validate_readers(storage.db, _snapshot_readers(checked_root, cancelled=cancelled),
+                                  cancelled=cancelled)
+                _validate_studios(storage.db, checked_root, strict_assets=True)
+                _validate_assistants(storage.db, checked_root, cancelled=cancelled)
+                _validate_historical(checked_root, cancelled=cancelled)
+                _validate_translations(storage.db, checked_root, cancelled=cancelled)
+                _validate_resource_policy(storage.db, checked_root, cancelled=cancelled)
+                _validate_transcriptions(storage.db, checked_root, cancelled=cancelled)
+                _validate_recordings(storage.db, checked_root, cancelled=cancelled)
         original_store = RetainedAssets(source / ORIGINALS)
         entries = verify_catalog_assets(storage.db, original_store,
             include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
@@ -1208,13 +1257,14 @@ def _verify_contents(source, stage, manifest, *, copy_files=False,
         raise RestoreError('sidecar changed during verification')
     if _legacy_state_layout(manifest):
         if copy_files:
-            sidecars = _retain_historical(source, stage / SIDECARS, manifest,
-                                         expected_manifest_sha256, cancelled=cancelled)
+            sidecars.extend(_retain_historical(source, stage / SIDECARS, manifest,
+                                              expected_manifest_sha256, cancelled=cancelled))
             _validate_historical(stage / SIDECARS, cancelled=cancelled)
         else:
             from .backup_legacy_state import verify_state
-            verify_state(source / 'state', None, manifest['state'], cancelled=cancelled)
-    if 'pending' in manifest and not copy_files:
+            subdirectory, historical, ignored = _historical_inventory(manifest)
+            verify_state(source / subdirectory, None, historical, cancelled=cancelled, ignored=ignored)
+    if manifest.get('pending') is not None and not copy_files:
         from .pending_backup import verify_pending
         verify_pending(source / PENDING, stage, manifest['pending'], cancelled=cancelled)
     if cancelled():
@@ -1260,7 +1310,7 @@ def restore_backup(source, destination, expected_manifest_sha256, *,
         entries, sidecars, output_directories = _verify_contents(source, stage, manifest,
             copy_files=True, expected_manifest_sha256=expected_manifest_sha256, cancelled=cancelled)
         pending = {'assets': [], 'paths': []}
-        if 'pending' in manifest:
+        if manifest.get('pending') is not None:
             from .pending_backup import restore_pending
             pending = restore_pending(source / PENDING, stage, destination, manifest['pending'],
                                       cancelled=cancelled)

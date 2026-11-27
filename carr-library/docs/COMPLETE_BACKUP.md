@@ -132,6 +132,41 @@ backup, verify and restore check its manifest identity, exact inventory and all
 inner content hashes, and retain it again. A newly signed outer manifest cannot
 hide corruption of an inner historical payload.
 
+The reader also accepts the canonical common-v4 envelope (`sidecars` with
+`filename` entries at the backup root and `generated_audio_included`) and the
+older state/reading-v5 envelope (`state`, `reading_state`, and `pending`). These
+are distinguished by their exact field sets from the current path/sidecars-v4
+and v5 formats. A missing pending component is accepted only in the historical
+v5 format where it was explicitly nullable. Empty common-v4 inventories remain
+valid snapshots. Mixing envelopes or shadowing catalog/originals paths fails.
+
+For these formats, declared reading positions, bookmarks, canonical reader
+sessions and supported reading/preferences files additionally restore to their
+current registered locations. They pass the same bounded decoder and exact
+historical database/source checks as a current backup. Only declared reader
+files are read; alternate assistant/provider directories are never interpreted
+as current service state. All original sidecar bytes and the complete original
+manifest also remain in the inert history archive. The common-v4 and legacy-v5
+archive keys hash root-relative filenames; older state-v3/v4 archives retain
+their existing state-relative hash convention.
+
+The distinct canonical `progress-preferences.json` version-1 envelope maps its
+integer percentage volume and background/media preferences without rewriting
+the file. Imported speech modes remain muted and carry no voice identity until
+an explicit current voice selection. The original bytes survive restore and
+subsequent backups. This does not activate a stored executable or voice path.
+
+Restore budgets include both the original archive and additional live reader
+copies. Common-v4 metadata remain limited to 512 MiB and declared generated
+media to 32 GiB; archive streaming and the existing portable path/alias checks
+remain bounded. Source bytes are rehashed after copying, so same-size edits
+hidden by coarse or restored timestamps cannot publish a completed restore.
+Retained foreign producer metadata and media are checksum-authenticated recovery
+bytes, not authorization to resume another runtime or a new codec qualification.
+`tests/storage/test_canonical_common_backup.py` covers exact format roundtrips,
+read-only verification, bookmark/source binding, nested reader history, pending
+import resumption, inactive old profiles, budgets, mutation and cancellation.
+
 ## Boundaries
 
 The backup does not copy arbitrary neighboring files, API credentials, runtime

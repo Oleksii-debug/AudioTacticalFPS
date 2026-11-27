@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 import shutil
 
-from carr_library.library_backup import create_backup
+from carr_library.library_backup import create_backup, _reader_path
 
 
 def historical_backup(folder):
@@ -22,8 +22,7 @@ def historical_backup(folder):
         entries = manifest.pop('sidecars')
         # Historical managed audio/assistant archives used paths under sidecars;
         # historical reading/preferences archives used filenames at the root.
-        managed = any(entry['path'].startswith(('audio-projects/', 'state/assistant/'))
-                      for entry in entries)
+        managed = any(not _reader_path(entry['path']) for entry in entries)
         if managed:
             manifest.update(version=4, sidecars=entries)
         else:

@@ -97,6 +97,22 @@ def decode_preferences(raw):
         raise ValueError('Progress preferences must be nonempty and at most 16 KiB.')
     try:
         data = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique)
+        if type(data) is dict and set(data) == {'version', 'preferences'}:
+            # The canonical common-v4 producer used this distinct envelope.
+            # Read its exact bytes without selecting or admitting a voice.
+            value = data['preferences']
+            if (type(data['version']) is not int or data['version'] != 1 or len(raw) > 8 * 1024
+                    or type(value) is not dict or set(value) != {
+                        'mode', 'interval_seconds', 'volume', 'muted',
+                        'allow_background', 'quiet_during_media'}
+                    or type(value['volume']) is not int or not 0 <= value['volume'] <= 100
+                    or any(type(value[key]) is not bool for key in
+                           ('muted', 'allow_background', 'quiet_during_media'))):
+                raise ValueError('Unsupported canonical progress preferences format.')
+            _number(value['interval_seconds'], 1, 60, 'Canonical notification interval')
+            return ProgressPreferences(mode=value['mode'], interval_seconds=value['interval_seconds'],
+                volume=value['volume'] / 100, muted=value['muted'] or value['mode'] in ('speech', 'beep_speech'),
+                background=value['allow_background'], suppress_during_media=value['quiet_during_media'])
         if (type(data) is not dict or set(data) != {'version', 'kind', 'preferences'}
                 or type(data['version']) is not int or data['version'] not in (1, 2)
                 or data['kind'] != 'carr-progress'

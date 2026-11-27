@@ -119,6 +119,7 @@ jobs:
             'tests/audio/test_model_inventory.py',
             'tests/audio/test_model_snapshot.py',
             'tests/storage/test_legacy_state_portability.py',
+            'tests/storage/test_canonical_common_backup.py',
             'tests/operations/test_state.py',
             'tests/operations/test_transcription_admission.py',
             'tests/operations/test_heavy_admission.py',
@@ -860,6 +861,7 @@ jobs:
                             'tests/reader/test_export_publication_boundary.py',
                             'tests/storage/test_pending_backup.py',
                             'tests/storage/test_complete_pending_backup.py',
+                            'tests/storage/test_canonical_common_backup.py',
                             'tests/storage/test_backup_pending_integration.py',
                             'tests/storage/test_pending_backup_ocr.py',
                             'tests/assistant/test_local_llm.py',
@@ -1174,6 +1176,7 @@ jobs:
             tests/audio/test_model_inventory.py \
             tests/audio/test_model_snapshot.py \
             tests/storage/test_legacy_state_portability.py \
+            tests/storage/test_canonical_common_backup.py \
             tests/operations/test_state.py \
             tests/operations/test_transcription_admission.py \
             tests/operations/test_heavy_admission.py \

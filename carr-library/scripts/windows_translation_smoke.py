@@ -208,7 +208,6 @@ def main():
                     active[0] = False
                     timer.Stop()
                     button(dialog, 'Close')
-                    wx.CallAfter(app.ExitMainLoop)
             except BaseException as exc:
                 failures.append(type(exc).__name__ + ': ' + str(exc))
                 print('FAIL: native translation phase ' + str(phase[0]) + ': ' + failures[-1], flush=True)
@@ -218,7 +217,8 @@ def main():
                 if dialog is not None:
                     close = wx.CloseEvent(wx.EVT_CLOSE.typeId, dialog.GetId())
                     dialog.GetEventHandler().ProcessEvent(close)
-                wx.CallAfter(app.ExitMainLoop)
+                else:
+                    wx.CallAfter(app.ExitMainLoop)
 
             finally:
                 if active[0]:
@@ -227,7 +227,16 @@ def main():
         # A modal disables its parent frame. Use a parent-independent timer
         # so the driver and its deadline continue inside the modal loop.
         timer = wx.CallLater(50, drive)
-        wx.CallAfter(show_translation, frame, initial_text=original, title='Synthetic public source', service=service)
+        def open_workspace():
+            try:
+                show_translation(frame, initial_text=original, title='Synthetic public source', service=service)
+            except BaseException as exc:
+                failures.append(type(exc).__name__ + ': ' + str(exc))
+            finally:
+                # Exit the outer loop only after the modal has fully unwound.
+                print('Native translation modal returned; phase:', phase[0], flush=True)
+                wx.CallAfter(app.ExitMainLoop)
+        wx.CallAfter(open_workspace)
         import faulthandler
         faulthandler.dump_traceback_later(60)
         try:

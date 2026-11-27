@@ -76,7 +76,7 @@ def verified_reader(path, *, expected_identity=None):
     before = file_identity(regular_file(path))
     if expected_identity is not None and before != expected_identity:
         raise RuntimeError('An audio input changed after it was validated. Restart the production.')
-    with Path(path).open('rb') as stream:
+    with _open_payload_file(Path(path)) as stream:
         if file_identity(os.fstat(stream.fileno())) != before:
             raise RuntimeError('An audio input changed while it was being opened.')
         native_before = stream_change_time(stream)
@@ -138,6 +138,25 @@ def _open_json_file(path):
         return path.open('rb')
     # GENERIC_READ; FILE_SHARE_READ | WRITE | DELETE. No write/delete access.
     descriptor = _windows_descriptor(path, 0x80000000)
+    try:
+        return os.fdopen(descriptor, 'rb')
+    except BaseException:
+        os.close(descriptor)
+        raise
+
+
+def _open_payload_file(path):
+    """Hold immutable audio bytes against Windows writers and renames.
+
+    Native metadata alone cannot prove that a same-size write did not occur:
+    filesystem timestamps may be deferred or have insufficient resolution.
+    Keep ordinary shared readers, but refuse existing and subsequent writers
+    for the complete validation/read interval. JSON snapshots intentionally use
+    their separate atomic-publication sharing contract above.
+    """
+    if os.name != 'nt':
+        return path.open('rb')
+    descriptor = _windows_descriptor(path, 0x80000000, share=0x1)
     try:
         return os.fdopen(descriptor, 'rb')
     except BaseException:

@@ -5,7 +5,6 @@ These tests measure routing, dynamics and levels, not speech or music quality.
 from array import array
 import hashlib
 import math
-import subprocess
 import sys
 import time
 import wave
@@ -122,15 +121,16 @@ def test_actual_loudness_measurement_reports_expected_gain_difference(tmp_path, 
 
 
 def test_actual_running_ffmpeg_process_is_terminated_by_cancellation(ffmpeg, monkeypatch):
+    from carr_library.audio import ffmpeg as audio_ffmpeg
     processes = []
-    popen = subprocess.Popen
+    start = audio_ffmpeg.start_owned_process
 
     def tracked_process(*args, **kwargs):
-        process = popen(*args, **kwargs)
+        process = start(*args, **kwargs)
         processes.append(process)
         return process
 
-    monkeypatch.setattr(subprocess, "Popen", tracked_process)
+    monkeypatch.setattr(audio_ffmpeg, "start_owned_process", tracked_process)
     started = time.monotonic()
     with pytest.raises(RenderCancelled):
         run_ffmpeg(ffmpeg, ["-f", "lavfi", "-i", "anullsrc=r=8000:cl=mono", "-f", "null", "-"],
