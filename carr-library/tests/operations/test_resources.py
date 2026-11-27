@@ -438,10 +438,6 @@ def test_native_release_can_remove_the_file_during_unheld_preflight(tmp_path, mo
                 raise AssertionError('The waiter did not reach its pre-acquisition boundary.')
             holder.release()
             assert not holder.held
-            if os.name != 'nt':
-                # WindowsFileLock 3.29 performs this unlink itself. Reproduce
-                # that lifecycle on POSIX only after the real holder released.
-                path.unlink()
             assert not os.path.lexists(path)
         except BaseException as exc:
             errors.append(exc)
