@@ -573,6 +573,9 @@ class ProductionService:
                                 os.fsync(write.fileno())
                             if digest_file(temporary) != identity:
                                 raise ValueError('Audio changed during publication.')
+                            # Hashing and flushing large outputs can take time.
+                            # Stop before publication, never after the link commits.
+                            check()
                             os.link(temporary, target)
                         finally:
                             temporary.unlink(missing_ok=True)
