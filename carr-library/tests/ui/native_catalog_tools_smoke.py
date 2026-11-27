@@ -116,8 +116,8 @@ def run_native(source, timeout):
                         check('export uses a save picker before bound replacement approval',
                               bool(kwargs['style'] & wx.FD_SAVE)
                               and not bool(kwargs['style'] & wx.FD_OVERWRITE_PROMPT))
-                        check('synthetic destination needs no replacement confirmation',
-                              not os.path.lexists(destination))
+                        check('save picker preserves the selected existing export',
+                              destination.is_file() and destination.read_bytes() == previous)
                     def ShowModal(self): return wx.ID_OK
                     def GetPath(self): return str(destination)
                     def Destroy(self): pass
